@@ -1,10 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { normalizePlayerTags, type PlayerTag } from '@/modules/relationships/player-tags'
-import {
-  significantPhoneSql,
-  suggestionPhoneSql,
-} from '@/modules/relationships/contact-identity'
+import { significantPhoneSql, suggestionPhoneSql } from '@/modules/relationships/contact-identity'
 
 /**
  * Una persona vista por este complejo (B13). Dos orígenes, una sola lista:
@@ -329,7 +326,14 @@ export async function getPlayerStats(
     FROM bookings
     WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
   `)
-  const r = (rows as unknown as Array<{ total: number; completed: number; no_show: number; canceled: number }>)[0]
+  const r = (
+    rows as unknown as Array<{
+      total: number
+      completed: number
+      no_show: number
+      canceled: number
+    }>
+  )[0]
   const total = r?.total ?? 0
   const completed = r?.completed ?? 0
   const noShow = r?.no_show ?? 0

@@ -35,9 +35,10 @@ const meta = {
     depositStatus: 'paid',
     charges: [],
     chargesTotal: 0,
-    addBookingChargeAction: fn(
-      async (): Promise<BookingChargeActionResult> => ({ success: true, cashFlow: cashFlow() }),
-    ),
+    addBookingChargeAction: fn(async (): Promise<BookingChargeActionResult> => ({
+      success: true,
+      cashFlow: cashFlow(),
+    })),
   },
   decorators: [
     // `[id]/page.tsx` monta BookingCharges bajo el mismo <h1> "Detalle de la
@@ -159,12 +160,10 @@ export const AgregarCargo: Story = {
 /** El servidor rechaza el cobro (ej. caja del día ya cerrada): error inline, el form no se cierra. */
 export const ErrorDelServidor: Story = {
   args: {
-    addBookingChargeAction: fn(
-      async (): Promise<BookingChargeActionResult> => ({
-        success: false,
-        error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
-      }),
-    ),
+    addBookingChargeAction: fn(async (): Promise<BookingChargeActionResult> => ({
+      success: false,
+      error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
+    })),
   },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)

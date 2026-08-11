@@ -60,7 +60,11 @@ export async function sendPushNotification(
   try {
     const result = await webpush.sendNotification(subscription, json)
     const statusCode = result.statusCode ?? 200
-    track.notification('notification.push.sent', { statusCode, endpoint: subscription.endpoint, payloadType: payload.type })
+    track.notification('notification.push.sent', {
+      statusCode,
+      endpoint: subscription.endpoint,
+      payloadType: payload.type,
+    })
     return { success: true, statusCode }
   } catch (err: unknown) {
     // web-push throws WebPushError (has statusCode + body). We duck-type so the
@@ -74,11 +78,22 @@ export async function sendPushNotification(
       'unknown'
     if (statusCode === 410) {
       // Subscription expired/revoked — caller MUST delete the row.
-      track.notification('notification.push.failed', { statusCode: 410, reason: 'gone', endpoint: subscription.endpoint })
-      logger.warn('push subscription gone (410)', { endpoint: subscription.endpoint, module: 'web-push' })
+      track.notification('notification.push.failed', {
+        statusCode: 410,
+        reason: 'gone',
+        endpoint: subscription.endpoint,
+      })
+      logger.warn('push subscription gone (410)', {
+        endpoint: subscription.endpoint,
+        module: 'web-push',
+      })
       return { success: false, gone: true, statusCode: 410 }
     }
-    track.notification('notification.push.failed', { statusCode, reason: 'error', endpoint: subscription.endpoint })
+    track.notification('notification.push.failed', {
+      statusCode,
+      reason: 'error',
+      endpoint: subscription.endpoint,
+    })
     logger.error('push send failed', { statusCode, error: errorMessage, module: 'web-push' })
     return { success: false, gone: false, statusCode, error: errorMessage }
   }

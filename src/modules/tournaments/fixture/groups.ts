@@ -30,10 +30,7 @@ export function groupLabel(index: number): string {
   return label
 }
 
-export function distributeIntoGroups(
-  teamIds: readonly string[],
-  groupCount: number,
-): TeamGroup[] {
+export function distributeIntoGroups(teamIds: readonly string[], groupCount: number): TeamGroup[] {
   if (groupCount < 1) {
     throw new FixtureGenerationError('Hace falta al menos una zona.')
   }

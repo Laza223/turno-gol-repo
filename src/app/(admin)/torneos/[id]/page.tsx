@@ -39,9 +39,7 @@ import { SlotsPanel } from './SlotsPanel'
 import { TeamsPanel } from './TeamsPanel'
 import { TorneoTabs } from './TorneoTabs'
 
-export default async function TorneoDetailPage(props: {
-  params: Promise<{ id: string }>
-}) {
+export default async function TorneoDetailPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
 
   const user = await extractAuthUser()
@@ -66,9 +64,7 @@ export default async function TorneoDetailPage(props: {
         listCourts(tenant.id, tx),
       ])
       // Plantel de cada equipo, para la UI de altas/bajas de jugadores.
-      const rosterLists = await Promise.all(
-        teams.map((t) => listTeamPlayers(tenant.id, t.id, tx)),
-      )
+      const rosterLists = await Promise.all(teams.map((t) => listTeamPlayers(tenant.id, t.id, tx)))
       const rosters: Record<string, TournamentTeamPlayerRow[]> = {}
       teams.forEach((t, i) => {
         rosters[t.id] = rosterLists[i]!

@@ -15,9 +15,7 @@ export function summarizeBookingCharges(opts: {
   chargesTotal: number
 }): { depositCounted: number; totalPaid: number; pending: number } {
   const depositCounted =
-    opts.depositStatus === 'paid' || opts.depositStatus === 'captured'
-      ? opts.depositAmount
-      : 0
+    opts.depositStatus === 'paid' || opts.depositStatus === 'captured' ? opts.depositAmount : 0
   const totalPaid = depositCounted + opts.chargesTotal
   const pending = Math.max(0, opts.priceSnapshot - totalPaid)
   return { depositCounted, totalPaid, pending }

@@ -54,7 +54,9 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
         </div>
         {fromPrice && (
           <div>
-            <p className="font-display text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{fromPrice}</p>
+            <p className="font-display text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+              {fromPrice}
+            </p>
             {perPlayer && (
               <p className="text-[11px] tabular-nums text-muted-foreground">{perPlayer}</p>
             )}

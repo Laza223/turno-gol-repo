@@ -1,5 +1,9 @@
 import * as Sentry from '@sentry/nextjs'
-import { runWithRequestContext, updateRequestContext, type RequestContext } from '@/shared/lib/request-context'
+import {
+  runWithRequestContext,
+  updateRequestContext,
+  type RequestContext,
+} from '@/shared/lib/request-context'
 import { resolveRequestId } from '@/shared/lib/request-id'
 
 /**
@@ -24,7 +28,11 @@ export function runRequestObservability<T>(req: Request, fn: () => Promise<T>): 
 }
 
 /** Attach tenant/user identity to the active request context + Sentry scope. Safe to call with no active context (updateRequestContext no-ops). */
-export function tagSession(tenantId?: string | null, userId?: string | null, userType?: RequestContext['userType']): void {
+export function tagSession(
+  tenantId?: string | null,
+  userId?: string | null,
+  userType?: RequestContext['userType'],
+): void {
   updateRequestContext({
     ...(tenantId ? { tenantId } : {}),
     ...(userId ? { userId } : {}),

@@ -29,7 +29,9 @@ afterAll(async () => {
   await closeSql()
 })
 
-async function getProductRow(productId: string): Promise<{ stock: number | null; cost: number | null }> {
+async function getProductRow(
+  productId: string,
+): Promise<{ stock: number | null; cost: number | null }> {
   const sql = getSql()
   const rows = await sql<{ stock: number | null; cost: number | null }[]>`
     SELECT stock, cost FROM canteen_products WHERE id = ${productId}
@@ -59,9 +61,13 @@ async function setup() {
 async function getCashFlowsByKey(
   tenantId: string,
   key: string,
-): Promise<{ type: string; category: string; amount: number; method: string; description: string }[]> {
+): Promise<
+  { type: string; category: string; amount: number; method: string; description: string }[]
+> {
   const sql = getSql()
-  return sql<{ type: string; category: string; amount: number; method: string; description: string }[]>`
+  return sql<
+    { type: string; category: string; amount: number; method: string; description: string }[]
+  >`
     SELECT type, category, amount, method, description FROM cash_flows
     WHERE tenant_id = ${tenantId} AND client_idempotency_key = ${key}
   `
@@ -86,7 +92,12 @@ describe('stock service — registerPurchase', () => {
       registerPurchase(
         tenant.id,
         staff.id,
-        { productId: product.id, units: 24, unitCost: 100000, clientIdempotencyKey: crypto.randomUUID() },
+        {
+          productId: product.id,
+          units: 24,
+          unitCost: 100000,
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -153,7 +164,12 @@ describe('stock service — registerPurchase', () => {
       registerPurchase(
         tenant.id,
         staff.id,
-        { productId: product.id, units: 10, unitCost: 999000, clientIdempotencyKey: crypto.randomUUID() },
+        {
+          productId: product.id,
+          units: 10,
+          unitCost: 999000,
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -170,8 +186,12 @@ describe('stock service — registerPurchase', () => {
     const key = crypto.randomUUID()
     const input = { productId: product.id, units: 12, clientIdempotencyKey: key }
 
-    const first = await withTenantContext(tenant.id, (tx) => registerPurchase(tenant.id, staff.id, input, tx))
-    const second = await withTenantContext(tenant.id, (tx) => registerPurchase(tenant.id, staff.id, input, tx))
+    const first = await withTenantContext(tenant.id, (tx) =>
+      registerPurchase(tenant.id, staff.id, input, tx),
+    )
+    const second = await withTenantContext(tenant.id, (tx) =>
+      registerPurchase(tenant.id, staff.id, input, tx),
+    )
 
     expect(first.duplicate).toBe(false)
     expect(second.duplicate).toBe(true)
@@ -235,8 +255,12 @@ describe('stock service — registerPurchase con expense (migr. 050)', () => {
       clientIdempotencyKey: key,
     }
 
-    const first = await withTenantContext(tenant.id, (tx) => registerPurchase(tenant.id, staff.id, input, tx))
-    const second = await withTenantContext(tenant.id, (tx) => registerPurchase(tenant.id, staff.id, input, tx))
+    const first = await withTenantContext(tenant.id, (tx) =>
+      registerPurchase(tenant.id, staff.id, input, tx),
+    )
+    const second = await withTenantContext(tenant.id, (tx) =>
+      registerPurchase(tenant.id, staff.id, input, tx),
+    )
 
     expect(first.duplicate).toBe(false)
     expect(second.duplicate).toBe(true)
@@ -253,7 +277,9 @@ describe('stock service — registerPurchase con expense (migr. 050)', () => {
     const product = await withTenantContext(tenant.id, (tx) =>
       createProduct(tenant.id, { name: 'Caja cerrada', price: 300000, stock: 5 }, tx),
     )
-    await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx))
+    await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
+    )
     const key = crypto.randomUUID()
 
     await expect(
@@ -286,7 +312,9 @@ describe('stock service — registerPurchase con expense (migr. 050)', () => {
     const product = await withTenantContext(tenant.id, (tx) =>
       createProduct(tenant.id, { name: 'Reposición sin gasto', price: 300000, stock: 5 }, tx),
     )
-    await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx))
+    await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
+    )
 
     const result = await withTenantContext(tenant.id, (tx) =>
       registerPurchase(
@@ -377,7 +405,12 @@ describe('stock service — adjustStock', () => {
       adjustStock(
         tenant.id,
         staff.id,
-        { productId: product.id, newStock: 8, note: 'conteo físico', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          productId: product.id,
+          newStock: 8,
+          note: 'conteo físico',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -398,7 +431,12 @@ describe('stock service — adjustStock', () => {
       adjustStock(
         tenant.id,
         staff.id,
-        { productId: product.id, newStock: 4, note: 'conteo físico', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          productId: product.id,
+          newStock: 4,
+          note: 'conteo físico',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -441,7 +479,12 @@ describe('stock service — adjustStock', () => {
       adjustStock(
         tenant.id,
         staff.id,
-        { productId: product.id, newStock: 6, note: 'coincide', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          productId: product.id,
+          newStock: 6,
+          note: 'coincide',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )

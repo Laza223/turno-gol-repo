@@ -1,9 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import {
-  closeSql,
-  getSql,
-  withTenantContext,
-} from '@/shared/db/client'
+import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   createDepositPayment,
@@ -16,12 +12,7 @@ import {
   BookingNotPendingPaymentError,
   RefundInvalidStateError,
 } from '@/modules/payments/payment.errors'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const PRICING = {
   rules: [
@@ -134,13 +125,9 @@ async function getAuditActions(resourceId: string) {
   `
 }
 
-function parseMeta(
-  m: Record<string, unknown> | string | null,
-): Record<string, unknown> {
+function parseMeta(m: Record<string, unknown> | string | null): Record<string, unknown> {
   if (m == null) return {}
-  return typeof m === 'string'
-    ? (JSON.parse(m) as Record<string, unknown>)
-    : m
+  return typeof m === 'string' ? (JSON.parse(m) as Record<string, unknown>) : m
 }
 
 beforeAll(async () => {
@@ -196,9 +183,7 @@ describe('processWebhook — idempotency (Pilar B)', () => {
     expect(await getBookingStatus(bookingId)).toBe('confirmed')
 
     const paymentsAfterFirst = await getPaymentRows(bookingId)
-    const approvedAfterFirst = paymentsAfterFirst.filter(
-      (p) => p.status === 'approved',
-    )
+    const approvedAfterFirst = paymentsAfterFirst.filter((p) => p.status === 'approved')
     expect(approvedAfterFirst).toHaveLength(1)
 
     const second = await withTenantContext(tenant.id, (tx) =>
@@ -348,9 +333,7 @@ describe('processWebhook — race against expiry (Pilar C)', () => {
     // A regression that silently drops this row would strand the player's money
     // with no operational trace — the original test never checked for it.
     const audits = await getAuditActions(bookingId)
-    const late = audits.filter(
-      (a) => a.action === 'booking.late_payment_attempt',
-    )
+    const late = audits.filter((a) => a.action === 'booking.late_payment_attempt')
     expect(late).toHaveLength(1)
     expect(late[0]!.actor_type).toBe('system')
     expect(parseMeta(late[0]!.metadata)).toMatchObject({
@@ -400,7 +383,12 @@ describe('prepareRefund + settleRefund — new row, no cash_flow (Fix #9 Fase 3;
     expect(gateway.refundCalls).toHaveLength(0)
     const afterPrepare = await getPaymentRows(bookingId)
     const pendingRefund = afterPrepare.find((r) => r.id === prepared.refundPaymentId)
-    expect(pendingRefund).toMatchObject({ type: 'refund', amount: 240000, status: 'pending', mp_payment_id: null })
+    expect(pendingRefund).toMatchObject({
+      type: 'refund',
+      amount: 240000,
+      status: 'pending',
+      mp_payment_id: null,
+    })
 
     const settled = await settleRefund(prepared, gateway, tenant.id)
     expect(settled.status).toBe('approved')
@@ -462,7 +450,9 @@ describe('createDepositPayment — booking-payment consistency (Fix #13)', () =>
     expect(bookingRow[0]!.payment_id).not.toBeNull()
 
     const rows = await getPaymentRows(bookingId)
-    const pendingRow = rows.find((r) => r.status === 'pending' && r.mp_preference_id === pref.preferenceId)
+    const pendingRow = rows.find(
+      (r) => r.status === 'pending' && r.mp_preference_id === pref.preferenceId,
+    )
     expect(pendingRow).toBeDefined()
     expect(pendingRow!.id).toBe(bookingRow[0]!.payment_id)
   })
@@ -623,9 +613,7 @@ describe('handleApproved — discrepancia de monto (Fix #52)', () => {
     })
 
     // El payment row guarda el monto realmente recibido, no el esperado.
-    const approved = (await getPaymentRows(bookingId)).find(
-      (r) => r.mp_payment_id === mpPaymentId,
-    )
+    const approved = (await getPaymentRows(bookingId)).find((r) => r.mp_payment_id === mpPaymentId)
     expect(approved!.amount).toBe(200_000)
   })
 
@@ -723,9 +711,7 @@ describe('processWebhook — pago rechazado', () => {
     // Un rechazo no confirma ni expira la reserva: sigue esperando pago.
     expect(await getBookingStatus(bookingId)).toBe('pending_payment')
 
-    const rej = (await getPaymentRows(bookingId)).filter(
-      (r) => r.mp_payment_id === mpPaymentId,
-    )
+    const rej = (await getPaymentRows(bookingId)).filter((r) => r.mp_payment_id === mpPaymentId)
     expect(rej).toHaveLength(1)
     expect(rej[0]!.status).toBe('rejected')
   })
@@ -791,16 +777,12 @@ describe('createDepositPayment / createRefund — guards', () => {
     const gateway = new MockGateway()
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        prepareRefund(pendingPaymentId, undefined, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => prepareRefund(pendingPaymentId, undefined, tx)),
     ).rejects.toBeInstanceOf(RefundInvalidStateError)
 
     // No se tocó MP ni se creó payment row de refund.
     expect(gateway.refundCalls).toHaveLength(0)
-    const refunds = (await getPaymentRows(bookingId)).filter(
-      (r) => r.type === 'refund',
-    )
+    const refunds = (await getPaymentRows(bookingId)).filter((r) => r.type === 'refund')
     expect(refunds).toHaveLength(0)
   })
 })

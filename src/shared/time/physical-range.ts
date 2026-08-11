@@ -16,7 +16,13 @@ export function physicalRange(args: {
     const [y, mo, d] = args.date.split('-').map(Number)
     const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
     return new Date(
-      Date.UTC(y!, (mo ?? 1) - 1, (d ?? 1) + (args.physicallyNextDay ? 1 : 0), (h ?? 0) + 3, m ?? 0),
+      Date.UTC(
+        y!,
+        (mo ?? 1) - 1,
+        (d ?? 1) + (args.physicallyNextDay ? 1 : 0),
+        (h ?? 0) + 3,
+        m ?? 0,
+      ),
     )
   }
   return { startsAt: at(args.timeStart), endsAt: at(args.timeEnd) }

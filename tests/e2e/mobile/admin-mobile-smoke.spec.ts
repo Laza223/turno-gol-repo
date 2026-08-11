@@ -144,7 +144,10 @@ test.describe('Admin mobile smoke', () => {
   // (visión v2 §3.3, "nada de hamburguesa como acceso primario"). La
   // hamburguesa del header ya no existe: su lugar lo ocupa "Más", que abre el
   // mismo drawer con los 6 espacios.
-  test('bottom nav: 3 accesos directos + Más abre el drawer', async ({ browser, adminStorageState }) => {
+  test('bottom nav: 3 accesos directos + Más abre el drawer', async ({
+    browser,
+    adminStorageState,
+  }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
     await page.goto('/grilla', { waitUntil: 'domcontentloaded' })
@@ -206,7 +209,10 @@ test.describe('Admin mobile smoke', () => {
     await ctx.close()
   })
 
-  test('cantina quick-sale buttons meet 44px touch targets', async ({ browser, adminStorageState }) => {
+  test('cantina quick-sale buttons meet 44px touch targets', async ({
+    browser,
+    adminStorageState,
+  }) => {
     // Rediseño Fase 2: el catálogo vive en la tabla `canteen_products`
     // (migr. 048), no en un editor con "Cargar sugeridos". Sembrar un producto
     // determinístico por SQL (mismo criterio que el seed de abonados de este
@@ -231,10 +237,14 @@ test.describe('Admin mobile smoke', () => {
       // nodo entre el toBeVisible y la medición (boundingBox → null transitorio).
       const measure = async (locator: import('@playwright/test').Locator, label: string) => {
         await expect
-          .poll(async () => (await locator.boundingBox())?.height ?? 0, { message: `alto de ${label}` })
+          .poll(async () => (await locator.boundingBox())?.height ?? 0, {
+            message: `alto de ${label}`,
+          })
           .toBeGreaterThanOrEqual(44)
         await expect
-          .poll(async () => (await locator.boundingBox())?.width ?? 0, { message: `ancho de ${label}` })
+          .poll(async () => (await locator.boundingBox())?.width ?? 0, {
+            message: `ancho de ${label}`,
+          })
           .toBeGreaterThanOrEqual(44)
       }
 
@@ -269,7 +279,10 @@ test.describe('Admin mobile smoke', () => {
     }
   })
 
-  test('RegisterMovementModal fits inside mobile viewport', async ({ browser, adminStorageState }) => {
+  test('RegisterMovementModal fits inside mobile viewport', async ({
+    browser,
+    adminStorageState,
+  }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
     await page.goto('/caja', { waitUntil: 'networkidle' })
@@ -277,7 +290,7 @@ test.describe('Admin mobile smoke', () => {
     // Click "Agregar movimiento" or similar trigger. UI text is "Agregar movimiento" per RegisterMovementModal title.
     // The trigger button (in caja page) might say "Registrar movimiento" or "Nuevo movimiento" — locate by accessible name fuzzy.
     const trigger = page.getByRole('button', { name: /movimiento/i }).first()
-    if (await trigger.count() > 0 && await trigger.isVisible()) {
+    if ((await trigger.count()) > 0 && (await trigger.isVisible())) {
       await trigger.click()
 
       const dialog = page.getByRole('dialog')

@@ -35,7 +35,9 @@ function makeRequest(params: Record<string, string>): NextRequest {
 function verifyOtpError(code: string | undefined) {
   mockCreateClient.mockResolvedValue({
     auth: {
-      verifyOtp: vi.fn().mockResolvedValue({ data: { user: null }, error: { code, message: 'boom' } }),
+      verifyOtp: vi
+        .fn()
+        .mockResolvedValue({ data: { user: null }, error: { code, message: 'boom' } }),
     },
   } as never)
 }
@@ -45,7 +47,7 @@ beforeEach(() => {
 })
 
 describe('GET /api/auth/callback — error.code de verifyOtp', () => {
-  it("otp_expired -> redirige a /verify con error=expired (no exchange_failed)", async () => {
+  it('otp_expired -> redirige a /verify con error=expired (no exchange_failed)', async () => {
     verifyOtpError('otp_expired')
 
     const res = await GET(makeRequest({ token_hash: 'tok-123', type: 'magiclink' }))

@@ -85,9 +85,7 @@ export function TeamsPanel({
   const [removeConfirm, setRemoveConfirm] = useState<TournamentTeamRow | null>(null)
 
   // El cupo cuenta solo a los que siguen en carrera, igual que el service.
-  const active = teams.filter(
-    (t) => t.status === 'registered' || t.status === 'confirmed',
-  ).length
+  const active = teams.filter((t) => t.status === 'registered' || t.status === 'confirmed').length
   const isFull = maxTeams !== null && active >= maxTeams
 
   function handleAdd(e: React.FormEvent) {
@@ -215,9 +213,15 @@ export function TeamsPanel({
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
                     {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <ChevronUp
+                        className="h-4 w-4 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <ChevronDown
+                        className="h-4 w-4 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">{t.name}</p>
@@ -479,13 +483,13 @@ function TeamEditor({
           aria-label={`Estado de ${team.name}`}
           className="grid gap-1.5 sm:grid-cols-2"
         >
-          {(
-            ['registered', 'confirmed', 'withdrawn', 'disqualified'] as TournamentTeamStatus[]
-          ).map((status) => (
-            <RadioChip key={status} value={status} description={STATUS_HINTS[status]}>
-              {TEAM_STATUS_LABELS[status]}
-            </RadioChip>
-          ))}
+          {(['registered', 'confirmed', 'withdrawn', 'disqualified'] as TournamentTeamStatus[]).map(
+            (status) => (
+              <RadioChip key={status} value={status} description={STATUS_HINTS[status]}>
+                {TEAM_STATUS_LABELS[status]}
+              </RadioChip>
+            ),
+          )}
         </RadioChipGroup>
       </fieldset>
 
@@ -736,7 +740,11 @@ function TeamRosterEditor({
         setError(result.error)
         return
       }
-      toast({ title: 'Jugador agregado al plantel', description: fullName.trim(), variant: 'success' })
+      toast({
+        title: 'Jugador agregado al plantel',
+        description: fullName.trim(),
+        variant: 'success',
+      })
       setFullName('')
       setShirtNumber('')
       setDni('')
@@ -777,9 +785,7 @@ function TeamRosterEditor({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Plantel
-      </p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plantel</p>
       {players.length === 0 ? (
         <EmptyState title="Todavía no hay plantel cargado." className="py-4" />
       ) : (

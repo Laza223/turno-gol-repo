@@ -24,16 +24,22 @@ describe('WeekStrip', () => {
 
   it('renderiza los 7 días de la semana del día seleccionado', () => {
     setup()
-    for (const label of ['Lun 8', 'Mar 9', 'Mié 10', 'Jue 11 (hoy)', 'Vie 12', 'Sáb 13', 'Dom 14']) {
+    for (const label of [
+      'Lun 8',
+      'Mar 9',
+      'Mié 10',
+      'Jue 11 (hoy)',
+      'Vie 12',
+      'Sáb 13',
+      'Dom 14',
+    ]) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
   })
 
   it('marca el día seleccionado con aria-current y el día actual con "(hoy)"', () => {
     setup('2026-06-12') // seleccionado viernes; hoy sigue siendo jueves
-    expect(
-      screen.getByRole('button', { name: 'Vie 12' }).getAttribute('aria-current'),
-    ).toBe('date')
+    expect(screen.getByRole('button', { name: 'Vie 12' }).getAttribute('aria-current')).toBe('date')
     const today = screen.getByRole('button', { name: 'Jue 11 (hoy)' })
     expect(today.getAttribute('aria-current')).toBeNull()
   })

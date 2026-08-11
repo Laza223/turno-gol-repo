@@ -20,7 +20,10 @@ const PLAYER_ID = '00000000-0000-4000-8000-000000000020'
  * tail end).
  */
 test.describe('aha moment — first online booking', () => {
-  test('dashboard checklist reflects first online booking', async ({ browser, adminStorageState }) => {
+  test('dashboard checklist reflects first online booking', async ({
+    browser,
+    adminStorageState,
+  }) => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!url || !key) {
@@ -32,24 +35,22 @@ test.describe('aha moment — first online booking', () => {
     const bookingDate = tomorrowDateIsoArt()
     const bookingId = randomUUID()
 
-    const { error: insertErr } = await supabase
-      .from('bookings')
-      .insert({
-        id: bookingId,
-        tenant_id: TENANT_ID,
-        court_id: COURT_ID,
-        player_id: PLAYER_ID,
-        date: bookingDate,
-        time_start: '10:00:00',
-        time_end: '11:00:00',
-        // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
-        ...bookingInstants({ date: bookingDate, timeStart: '10:00', timeEnd: '11:00' }),
-        status: 'confirmed',
-        price_snapshot: 10000,
-        deposit_amount: 0,
-        deposit_status: 'not_required',
-        created_by_staff: null,
-      })
+    const { error: insertErr } = await supabase.from('bookings').insert({
+      id: bookingId,
+      tenant_id: TENANT_ID,
+      court_id: COURT_ID,
+      player_id: PLAYER_ID,
+      date: bookingDate,
+      time_start: '10:00:00',
+      time_end: '11:00:00',
+      // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
+      ...bookingInstants({ date: bookingDate, timeStart: '10:00', timeEnd: '11:00' }),
+      status: 'confirmed',
+      price_snapshot: 10000,
+      deposit_amount: 0,
+      deposit_status: 'not_required',
+      created_by_staff: null,
+    })
     if (insertErr) {
       throw new Error(`Insert booking failed: ${insertErr.message}`)
     }

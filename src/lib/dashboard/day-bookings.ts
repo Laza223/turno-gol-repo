@@ -9,11 +9,7 @@
  */
 import { DAY_KEYS, generateTimeSlots } from '@/lib/booking/grid-cells'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import type {
-  BookingStatus,
-  BookingType,
-  DepositStatus,
-} from '@/modules/bookings/booking.types'
+import type { BookingStatus, BookingType, DepositStatus } from '@/modules/bookings/booking.types'
 
 export interface DayBookingRow {
   id: string

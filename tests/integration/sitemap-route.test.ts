@@ -17,8 +17,14 @@ async function seed() {
   `
 }
 
-beforeAll(async () => { await ensureRoles(); await seed() })
-afterAll(async () => { await cleanupAll(); await closeSql() })
+beforeAll(async () => {
+  await ensureRoles()
+  await seed()
+})
+afterAll(async () => {
+  await cleanupAll()
+  await closeSql()
+})
 
 describe('GET /sitemap.xml (Next.js sitemap.ts)', () => {
   it('includes active + trialing tenant slugs', async () => {

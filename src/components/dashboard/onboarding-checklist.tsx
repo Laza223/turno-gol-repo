@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button'
 import { usePersistedString } from '@/hooks/use-persisted-flag'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
-import type { MarkSharedResult, MarkChecklistDismissedResult } from '@/app/(admin)/dashboard/actions'
+import type {
+  MarkSharedResult,
+  MarkChecklistDismissedResult,
+} from '@/app/(admin)/dashboard/actions'
 import type { StaffRole } from '@/modules/staff/roles'
 
 /** localStorage key para el estado plegado/desplegado (bidireccional: se lee al hidratar y se escribe en cada toggle). */
@@ -23,12 +26,22 @@ interface ChecklistItem {
 }
 
 const ITEMS: ChecklistItem[] = [
-  { key: 'accountCreated',       label: 'Cuenta creada' },
-  { key: 'complexData',          label: 'Datos del complejo completados' },
-  { key: 'hasCourts',            label: 'Al menos una cancha configurada',    href: '/settings/canchas', adminOnly: true },
-  { key: 'hasSchedule',          label: 'Horarios definidos',                 href: '/settings/horarios', adminOnly: true },
-  { key: 'mpConnected',          label: 'MercadoPago conectado',              href: '/settings/facturacion', adminOnly: true },
-  { key: 'publicLinkShared',     label: 'Link público compartido',            action: 'copy-link' },
+  { key: 'accountCreated', label: 'Cuenta creada' },
+  { key: 'complexData', label: 'Datos del complejo completados' },
+  {
+    key: 'hasCourts',
+    label: 'Al menos una cancha configurada',
+    href: '/settings/canchas',
+    adminOnly: true,
+  },
+  { key: 'hasSchedule', label: 'Horarios definidos', href: '/settings/horarios', adminOnly: true },
+  {
+    key: 'mpConnected',
+    label: 'MercadoPago conectado',
+    href: '/settings/facturacion',
+    adminOnly: true,
+  },
+  { key: 'publicLinkShared', label: 'Link público compartido', action: 'copy-link' },
   { key: 'firstBookingReceived', label: 'Primera reserva online recibida' },
 ]
 
@@ -55,7 +68,14 @@ interface OnboardingChecklistProps {
  * PENDIENTES quedan siempre visibles con su CTA; los completados se pliegan a
  * una fila-toggle para que el setup no entierre los KPIs del día.
  */
-export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismiss, staffRole }: OnboardingChecklistProps) {
+export function OnboardingChecklist({
+  state,
+  tenantSlug,
+  appUrl,
+  action,
+  onDismiss,
+  staffRole,
+}: OnboardingChecklistProps) {
   // El manager no puede completar los pasos de Configuración (guard server-side
   // ya se lo bloquea): se excluyen del conteo para no mostrarle un "N de 7"
   // imposible de completar al 100%.
@@ -70,10 +90,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
   // El `serverValue: null` deja el HTML del servidor y el primer render del
   // cliente idénticos — la preferencia guardada entra recién en el render
   // siguiente, sin parpadeo y sin setState encadenado en un efecto.
-  const [storedMinimized, setStoredMinimized] = usePersistedString(
-    MINIMIZED_STORAGE_KEY,
-    null,
-  )
+  const [storedMinimized, setStoredMinimized] = usePersistedString(MINIMIZED_STORAGE_KEY, null)
   const minimized = storedMinimized === null ? completed === total : storedMinimized === '1'
   const [showDone, setShowDone] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -143,7 +160,8 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
     if (!publicUrl) return
     setShareError(null)
 
-    const canCopy = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
+    const canCopy =
+      typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
     if (canCopy) {
       try {
         await navigator.clipboard.writeText(publicUrl)
@@ -166,8 +184,13 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
     return (
       <div className="card-entrance flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-xs shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">¡Tu complejo está 100% listo!</p>
+          <CheckCircle2
+            className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          />
+          <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
+            ¡Tu complejo está 100% listo!
+          </p>
         </div>
         <Button
           variant="ghost"
@@ -186,7 +209,10 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
     return (
       <li key={key} className="flex items-center gap-3 py-2.5">
         {done ? (
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50 fade-in duration-300" aria-hidden="true" />
+          <CheckCircle2
+            className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400 animate-in zoom-in-50 fade-in duration-300"
+            aria-hidden="true"
+          />
         ) : (
           <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" aria-hidden="true" />
         )}
@@ -242,14 +268,22 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
 
   return (
     <div className="card-premium card-entrance rounded-2xl">
-      <div data-tour-id="tour-checklist" className="flex items-center justify-between border-b border-border px-5 py-3">
+      <div
+        data-tour-id="tour-checklist"
+        className="flex items-center justify-between border-b border-border px-5 py-3"
+      >
         <div className="flex items-center gap-3">
-          <div className="icon-halo inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true">
+          <div
+            className="icon-halo inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            aria-hidden="true"
+          >
             <Rocket className="h-4.5 w-4.5" />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-foreground">Configuración del complejo</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">{completed} de {total} completados</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {completed} de {total} completados
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -272,7 +306,10 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
                 {dismissed ? 'Descartado ✓' : 'Descartar'}
               </Button>
               {dismissError && (
-                <p role="alert" className="max-w-40 text-right text-xs text-red-600 dark:text-red-400">
+                <p
+                  role="alert"
+                  className="max-w-40 text-right text-xs text-red-600 dark:text-red-400"
+                >
                   {dismissError}
                 </p>
               )}
@@ -292,9 +329,7 @@ export function OnboardingChecklist({ state, tenantSlug, appUrl, action, onDismi
       </div>
 
       {/* Pendientes: siempre visibles, cada uno con su acción (Zeigarnik). */}
-      <ul className="divide-y divide-border px-5">
-        {pendingItems.map(renderItem)}
-      </ul>
+      <ul className="divide-y divide-border px-5">{pendingItems.map(renderItem)}</ul>
 
       {/* Completados: plegados — lo hecho no ocupa lugar. */}
       {doneItems.length > 0 && (

@@ -20,12 +20,8 @@ const STATUS_LABELS: Record<AbonadoStatus, string> = {
   canceled: 'Cancelados',
 }
 
-export default async function AbonadosPage(
-  props: {
-    searchParams: Promise<{ status?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function AbonadosPage(props: { searchParams: Promise<{ status?: string }> }) {
+  const searchParams = await props.searchParams
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -42,7 +38,9 @@ export default async function AbonadosPage(
 
   const total = abonados.length
   const totalWord = total === 1 ? '1 turno fijo' : `${total} turnos fijos`
-  const headerSubtitle = statusFilter ? `${totalWord} · ${STATUS_LABELS[statusFilter].toLowerCase()}` : totalWord
+  const headerSubtitle = statusFilter
+    ? `${totalWord} · ${STATUS_LABELS[statusFilter].toLowerCase()}`
+    : totalWord
 
   return (
     <div className="p-6 space-y-6">

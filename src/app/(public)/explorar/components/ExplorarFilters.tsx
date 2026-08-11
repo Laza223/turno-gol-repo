@@ -111,8 +111,7 @@ export default function ExplorarFilters({ onApplied }: Props) {
     onApplied?.()
   }
 
-  const checkbox =
-    'h-4 w-4 rounded border-border text-emerald-600 focus-visible:ring-emerald-500'
+  const checkbox = 'h-4 w-4 rounded border-border text-emerald-600 focus-visible:ring-emerald-500'
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,7 +119,12 @@ export default function ExplorarFilters({ onApplied }: Props) {
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-foreground">Cerramiento</legend>
         <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
-          <input type="checkbox" checked={techado} onChange={() => setTechado((v) => !v)} className={`${checkbox} mt-0.5`} />
+          <input
+            type="checkbox"
+            checked={techado}
+            onChange={() => setTechado((v) => !v)}
+            className={`${checkbox} mt-0.5`}
+          />
           <Umbrella className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
           <span className="wrap-break-word whitespace-normal leading-tight flex-1">Techado</span>
         </label>
@@ -131,14 +135,19 @@ export default function ExplorarFilters({ onApplied }: Props) {
         <legend className="mb-2 text-sm font-semibold text-foreground">Superficie</legend>
         <div className="flex flex-col gap-2">
           {SURFACE_OPTIONS.map(({ key, label }) => (
-            <label key={key} className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
+            <label
+              key={key}
+              className="flex cursor-pointer items-start gap-2 text-sm text-foreground"
+            >
               <input
                 type="checkbox"
                 checked={surfaces.has(key)}
                 onChange={() => setSurfaces((s) => toggle(s, key))}
                 className={`${checkbox} mt-0.5`}
               />
-              <span className="wrap-break-word whitespace-normal leading-tight flex-1">{label}</span>
+              <span className="wrap-break-word whitespace-normal leading-tight flex-1">
+                {label}
+              </span>
             </label>
           ))}
         </div>
@@ -176,7 +185,10 @@ export default function ExplorarFilters({ onApplied }: Props) {
           {SERVICE_KEYS.map((key) => {
             const { label, Icon } = AMENITIES[key]
             return (
-              <label key={key} className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
+              <label
+                key={key}
+                className="flex cursor-pointer items-start gap-2 text-sm text-foreground"
+              >
                 <input
                   type="checkbox"
                   checked={services.has(key)}
@@ -184,7 +196,9 @@ export default function ExplorarFilters({ onApplied }: Props) {
                   className={`${checkbox} mt-0.5`}
                 />
                 <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" aria-hidden />
-                <span className="wrap-break-word whitespace-normal leading-tight flex-1">{label}</span>
+                <span className="wrap-break-word whitespace-normal leading-tight flex-1">
+                  {label}
+                </span>
               </label>
             )
           })}
@@ -193,7 +207,9 @@ export default function ExplorarFilters({ onApplied }: Props) {
 
       {/* Precio */}
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold text-foreground">Precio por turno (ARS)</legend>
+        <legend className="mb-2 text-sm font-semibold text-foreground">
+          Precio por turno (ARS)
+        </legend>
         <div className="flex items-center gap-2">
           <div className="flex-1">
             <label htmlFor="min-price" className="sr-only">
@@ -222,15 +238,24 @@ export default function ExplorarFilters({ onApplied }: Props) {
           </div>
         </div>
         {priceError && (
-          <p role="alert" className="mt-1.5 text-xs text-red-600 dark:text-red-300">{priceError}</p>
+          <p role="alert" className="mt-1.5 text-xs text-red-600 dark:text-red-300">
+            {priceError}
+          </p>
         )}
       </fieldset>
 
       {/* Reserva online */}
       <label className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
-        <input type="checkbox" checked={online} onChange={() => setOnline((v) => !v)} className={`${checkbox} mt-0.5`} />
+        <input
+          type="checkbox"
+          checked={online}
+          onChange={() => setOnline((v) => !v)}
+          className={`${checkbox} mt-0.5`}
+        />
         <Zap className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" aria-hidden />
-        <span className="wrap-break-word whitespace-normal leading-tight flex-1">Solo con reserva online</span>
+        <span className="wrap-break-word whitespace-normal leading-tight flex-1">
+          Solo con reserva online
+        </span>
       </label>
 
       <div className="flex gap-2 border-t border-border pt-4">

@@ -25,7 +25,11 @@ function timeLabel(timeStart: string, timeEnd: string): string {
   return `${timeStart.slice(0, 5)}-${timeEnd.slice(0, 5)}`
 }
 
-function contactNameOf(guestName: string | null, firstName: string | null, lastName: string | null): string {
+function contactNameOf(
+  guestName: string | null,
+  firstName: string | null,
+  lastName: string | null,
+): string {
   if (guestName) return guestName
   const full = [firstName, lastName].filter(Boolean).join(' ')
   return full || 'Sin nombre'
@@ -284,7 +288,11 @@ async function getDepositsPaidToday(
  * el worker de resumen diario (D8) pasa AYER y solo lee `numbers` (alertas y
  * feed de ese caso quedan sin uso, aceptado — ver docs/decisions/2026-08-02-taxonomia-alertas-hoy.md).
  */
-export async function getHoyData(tenantId: string, tx: DbTx, opts: GetHoyDataOpts): Promise<HoyData> {
+export async function getHoyData(
+  tenantId: string,
+  tx: DbTx,
+  opts: GetHoyDataOpts,
+): Promise<HoyData> {
   const { date, cutoffMins } = opts
   const lastWeekDate = addDays(date, -7)
   const yesterday = addDays(date, -1)
@@ -318,7 +326,10 @@ export async function getHoyData(tenantId: string, tx: DbTx, opts: GetHoyDataOpt
   ])
 
   const unpaidBookingAlerts: AttentionItem[] = streetMoneyRows
-    .filter((r): r is Extract<typeof r, { origin: 'booking' }> => r.origin === 'booking' && r.date === date)
+    .filter(
+      (r): r is Extract<typeof r, { origin: 'booking' }> =>
+        r.origin === 'booking' && r.date === date,
+    )
     .map((r) => ({
       kind: 'unpaid_completed_booking',
       bookingId: r.refId,
@@ -331,17 +342,32 @@ export async function getHoyData(tenantId: string, tx: DbTx, opts: GetHoyDataOpt
 
   const yesterdayUnclosed: AttentionItem[] =
     yesterdayClose === null && (yesterdayOpen !== null || yesterdayHadActivity)
-      ? [{ kind: 'yesterday_cash_unclosed', date: yesterday, since: new Date(`${yesterday}T00:00:00Z`) }]
+      ? [
+          {
+            kind: 'yesterday_cash_unclosed',
+            date: yesterday,
+            since: new Date(`${yesterday}T00:00:00Z`),
+          },
+        ]
       : []
 
-  const needsAttention = sortAttentionItems([...unpaidBookingAlerts, ...failedDeposits, ...yesterdayUnclosed])
-  const whileYouWereAway = sortWhileAwayItems([...onlineBookings, ...cancellations, ...depositsPaid])
+  const needsAttention = sortAttentionItems([
+    ...unpaidBookingAlerts,
+    ...failedDeposits,
+    ...yesterdayUnclosed,
+  ])
+  const whileYouWereAway = sortWhileAwayItems([
+    ...onlineBookings,
+    ...cancellations,
+    ...depositsPaid,
+  ])
 
   return {
     date,
     numbers: {
       collectedTodayCents: todaySummary.totalIncome + todaySummary.totalAdjustments,
-      collectedSameWeekdayLastWeekCents: lastWeekSummary.totalIncome + lastWeekSummary.totalAdjustments,
+      collectedSameWeekdayLastWeekCents:
+        lastWeekSummary.totalIncome + lastWeekSummary.totalAdjustments,
       occupancy,
       streetMoneyCents: sumStreetMoney(streetMoneyRows),
       cashClosed: todayClose !== null,

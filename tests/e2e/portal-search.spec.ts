@@ -22,7 +22,10 @@ test.describe('portal search (/explorar)', () => {
 
   test('click on tenant card navigates to /<slug>', async ({ page }) => {
     await page.goto('/explorar')
-    await page.getByRole('link', { name: /E2E Complejo Demo/i }).first().click()
+    await page
+      .getByRole('link', { name: /E2E Complejo Demo/i })
+      .first()
+      .click()
     await expect(page).toHaveURL(/\/e2e-complejo-demo/)
   })
 })

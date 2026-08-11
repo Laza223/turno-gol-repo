@@ -66,9 +66,10 @@ function makeDbChain(rows: unknown[]) {
 }
 
 function mockTx() {
-  h.withTenantContext.mockImplementation(
-    (async (_id: string, cb: (t: unknown) => Promise<unknown>) => cb({ execute: vi.fn() })) as never,
-  )
+  h.withTenantContext.mockImplementation((async (
+    _id: string,
+    cb: (t: unknown) => Promise<unknown>,
+  ) => cb({ execute: vi.fn() })) as never)
 }
 
 const baseJob: MpWebhookJob = {
@@ -76,7 +77,11 @@ const baseJob: MpWebhookJob = {
   mpEventId: 'evt-sub-1',
   eventType: 'subscription_authorized_payment',
   mpPaymentId: 'mp-pay-1',
-  rawPayload: { id: 'evt-sub-1', type: 'subscription_authorized_payment', data: { id: 'mp-pay-1' } },
+  rawPayload: {
+    id: 'evt-sub-1',
+    type: 'subscription_authorized_payment',
+    data: { id: 'mp-pay-1' },
+  },
 }
 
 beforeEach(() => {

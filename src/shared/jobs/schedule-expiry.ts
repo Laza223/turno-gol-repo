@@ -13,10 +13,7 @@ import {
  * never spin up a real pg-boss instance — the suite does not globally mock the
  * boss singleton, and starting it leaks an open handle that hangs teardown.
  */
-export type ExpiryScheduler = (
-  bookingId: string,
-  startAfterSeconds: number,
-) => Promise<void>
+export type ExpiryScheduler = (bookingId: string, startAfterSeconds: number) => Promise<void>
 
 let _override: ExpiryScheduler | null = null
 

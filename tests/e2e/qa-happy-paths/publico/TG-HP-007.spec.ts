@@ -11,7 +11,9 @@ test.describe('TG-HP-007 — Privacidad', () => {
   test('renderiza política de privacidad completa', async ({ page }) => {
     // Step 1-2: h1 "Política de Privacidad"
     await page.goto('/privacidad')
-    await expect(page.getByRole('heading', { level: 1, name: 'Política de Privacidad' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Política de Privacidad' }),
+    ).toBeVisible()
 
     // Step 3: timestamp
     await expect(page.getByText('Última actualización: 25 de mayo de 2026.')).toBeVisible()

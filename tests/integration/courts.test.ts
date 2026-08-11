@@ -2,11 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createCourt, getCourtCountAndLimit } from '@/modules/courts/court.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
-import {
-  cleanupAll,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { getOrCreatePlanId, insertSubscription } from '../helpers/factories'
 
 const DEFAULT_PRICING: CourtPricingData = {
@@ -75,11 +71,7 @@ describe('createCourt', () => {
     const tenant = await createTestTenant(sql)
 
     const court = await withTenantContext(tenant.id, (tx) =>
-      createCourt(
-        tenant.id,
-        { ...COURT_INPUT, isCovered: true, hasLighting: false },
-        tx,
-      ),
+      createCourt(tenant.id, { ...COURT_INPUT, isCovered: true, hasLighting: false }, tx),
     )
 
     expect(court.isCovered).toBe(true)
@@ -139,7 +131,10 @@ describe('plan limit enforcement', () => {
       SELECT max_courts FROM plans WHERE id = ${planId}
     `
     const techo = plan!.max_courts
-    expect(techo, 'el plan del fixture debe tener techo finito para que este control sirva').not.toBeNull()
+    expect(
+      techo,
+      'el plan del fixture debe tener techo finito para que este control sirva',
+    ).not.toBeNull()
 
     for (let i = 1; i <= techo!; i++) {
       await withTenantContext(tenant.id, (tx) =>
@@ -161,9 +156,7 @@ describe('plan limit enforcement', () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
 
-    await withTenantContext(tenant.id, (tx) =>
-      createCourt(tenant.id, COURT_INPUT, tx),
-    )
+    await withTenantContext(tenant.id, (tx) => createCourt(tenant.id, COURT_INPUT, tx))
 
     const { count, maxCourts } = await withTenantContext(tenant.id, (tx) =>
       getCourtCountAndLimit(tenant.id, tx),

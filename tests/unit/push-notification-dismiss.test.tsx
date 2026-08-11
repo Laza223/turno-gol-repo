@@ -26,9 +26,15 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
     getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, val: string) => { store[key] = val },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
+    setItem: (key: string, val: string) => {
+      store[key] = val
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
   }
 })()
 
@@ -41,12 +47,36 @@ const origPlay = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'pl
 const origPause = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'pause')
 
 beforeAll(() => {
-  Object.defineProperty(globalThis, 'Notification', { value: { permission: 'default', requestPermission: vi.fn() }, writable: true, configurable: true })
-  Object.defineProperty(globalThis, 'PushManager', { value: class {}, writable: true, configurable: true })
-  Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true, configurable: true })
-  Object.defineProperty(navigator, 'serviceWorker', { value: { getRegistration: vi.fn().mockResolvedValue(undefined) }, writable: true, configurable: true })
-  Object.defineProperty(HTMLMediaElement.prototype, 'play', { value: vi.fn().mockResolvedValue(undefined), writable: true, configurable: true })
-  Object.defineProperty(HTMLMediaElement.prototype, 'pause', { value: vi.fn(), writable: true, configurable: true })
+  Object.defineProperty(globalThis, 'Notification', {
+    value: { permission: 'default', requestPermission: vi.fn() },
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(globalThis, 'PushManager', {
+    value: class {},
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: localStorageMock,
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(navigator, 'serviceWorker', {
+    value: { getRegistration: vi.fn().mockResolvedValue(undefined) },
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+    value: vi.fn().mockResolvedValue(undefined),
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
+    value: vi.fn(),
+    writable: true,
+    configurable: true,
+  })
 })
 
 afterAll(() => {
@@ -71,9 +101,9 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 beforeEach(() => {
   vi.clearAllMocks()
   localStorageMock.clear()
-  ;(navigator.serviceWorker as unknown as { getRegistration: ReturnType<typeof vi.fn> }).getRegistration = vi
-    .fn()
-    .mockResolvedValue(undefined)
+  ;(
+    navigator.serviceWorker as unknown as { getRegistration: ReturnType<typeof vi.fn> }
+  ).getRegistration = vi.fn().mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -106,7 +136,9 @@ describe('PushNotificationManager — descarte del banner', () => {
 
     expect(screen.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
     // Unmount real: el botón "Habilitar notificaciones" tampoco debe quedar en el DOM.
-    expect(screen.queryByRole('button', { name: 'Habilitar notificaciones' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Habilitar notificaciones' }),
+    ).not.toBeInTheDocument()
 
     const stored = Number(localStorageMock.getItem(DISMISS_KEY))
     expect(stored).toBeGreaterThanOrEqual(before)

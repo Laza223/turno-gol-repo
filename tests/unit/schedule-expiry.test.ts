@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  scheduleBookingExpiry,
-  setExpiryScheduler,
-} from '@/shared/jobs/schedule-expiry'
+import { scheduleBookingExpiry, setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 
 afterEach(() => setExpiryScheduler(null))

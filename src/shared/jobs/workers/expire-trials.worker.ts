@@ -179,7 +179,11 @@ export async function runExpireTrials(): Promise<void> {
           metadata: { reason: 'trial_ends_at_passed' },
         })
       })
-      logger.info('blocked tenant trial expired', { module: 'expire-trials', tenantId: t.id, tenantName: t.name })
+      logger.info('blocked tenant trial expired', {
+        module: 'expire-trials',
+        tenantId: t.id,
+        tenantName: t.name,
+      })
     } catch (err) {
       logger.error('failed expire for tenant', {
         module: 'expire-trials',

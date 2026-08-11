@@ -1,4 +1,8 @@
-import type { CanteenProductRow, CanteenTabRow, StockLedgerEntry } from '@/modules/canteen/canteen.types'
+import type {
+  CanteenProductRow,
+  CanteenTabRow,
+  StockLedgerEntry,
+} from '@/modules/canteen/canteen.types'
 // Tipos puros (DTOs) del reporte, colocados junto a las queries en
 // canteen-report.service.ts (server-only, NO se toca ese archivo). `import
 // type` se borra en compilación (isolatedModules) — mismo criterio que
@@ -227,7 +231,9 @@ export const canteenMethodTotals = (): CanteenMethodTotal[] => [
   canteenMethodTotal({ method: 'mercadopago', total: 300000 }),
 ]
 
-export const canteenDailyTotal = (overrides: Partial<CanteenDailyTotal> = {}): CanteenDailyTotal => ({
+export const canteenDailyTotal = (
+  overrides: Partial<CanteenDailyTotal> = {},
+): CanteenDailyTotal => ({
   day: artDateString(),
   total: 620000,
   ...overrides,

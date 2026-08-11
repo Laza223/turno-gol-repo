@@ -39,7 +39,12 @@ describe('processed_webhooks.payload — jsonb object, no double-encode', () => 
     const mpEventId = 'jsonbtest-payments-1'
     await withTenantContext(tenant.id, (tx) =>
       lockMpEvent(
-        { mpEventId, eventType: 'payment', mpPaymentId: 'p-1', rawPayload: { marker: 'pay', data: { id: 'x' } } },
+        {
+          mpEventId,
+          eventType: 'payment',
+          mpPaymentId: 'p-1',
+          rawPayload: { marker: 'pay', data: { id: 'x' } },
+        },
         tx,
       ),
     )
@@ -51,7 +56,14 @@ describe('processed_webhooks.payload — jsonb object, no double-encode', () => 
     // Sin fila de suscripción para este tenant → onPaymentRejected inserta el
     // lock de idempotencia (payload) y retorna en loadSub null: aísla el escritor.
     await withTenantContext(tenant.id, (tx) =>
-      onPaymentRejected(tenant.id, mpEventId, 'subscription', { marker: 'rej', foo: 1 }, new Date(), tx),
+      onPaymentRejected(
+        tenant.id,
+        mpEventId,
+        'subscription',
+        { marker: 'rej', foo: 1 },
+        new Date(),
+        tx,
+      ),
     )
     expect(await typeAndField(mpEventId)).toEqual({ typ: 'object', field: 'rej' })
   })

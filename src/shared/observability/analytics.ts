@@ -103,11 +103,7 @@ function schedule(row: EventRow): void {
  * Sink de `track.*`. Sincrónico y a prueba de todo: si algo falla acá, el flujo
  * de negocio no se entera.
  */
-export function recordEvent(
-  category: string,
-  event: string,
-  data: Record<string, unknown>,
-): void {
+export function recordEvent(category: string, event: string, data: Record<string, unknown>): void {
   try {
     const tenantId = typeof data.tenantId === 'string' ? data.tenantId : null
     schedule({ category, event, tenantId, data: scrub(data) })

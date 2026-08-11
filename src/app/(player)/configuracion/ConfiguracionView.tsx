@@ -30,11 +30,18 @@ export function ConfiguracionView({ firstName }: { firstName: string | null }) {
             <User className="h-5 w-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-display text-base font-bold tracking-tight text-foreground">Mi perfil</h2>
-            <p className="text-sm text-muted-foreground">Editá tu nombre, teléfono y zona preferida.</p>
+            <h2 className="font-display text-base font-bold tracking-tight text-foreground">
+              Mi perfil
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Editá tu nombre, teléfono y zona preferida.
+            </p>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" aria-hidden />
+        <ChevronRight
+          className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600"
+          aria-hidden
+        />
       </Link>
 
       {/* Card Apariencia */}
@@ -48,7 +55,8 @@ export function ConfiguracionView({ firstName }: { firstName: string | null }) {
           </h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Elegí el tema de la aplicación: seguí la preferencia de tu dispositivo, o forzá claro u oscuro.
+          Elegí el tema de la aplicación: seguí la preferencia de tu dispositivo, o forzá claro u
+          oscuro.
         </p>
         <ThemeToggle />
       </div>
@@ -81,8 +89,8 @@ export function ConfiguracionView({ firstName }: { firstName: string | null }) {
           </h2>
         </div>
         <p className="text-sm text-red-800 dark:text-red-200">
-          Eliminá permanentemente tu cuenta. Tu perfil se anonimiza, pero el historial financiero
-          de los complejos se conserva por requisitos legales. Acción irreversible.
+          Eliminá permanentemente tu cuenta. Tu perfil se anonimiza, pero el historial financiero de
+          los complejos se conserva por requisitos legales. Acción irreversible.
         </p>
         <Link
           href="/eliminar-cuenta"

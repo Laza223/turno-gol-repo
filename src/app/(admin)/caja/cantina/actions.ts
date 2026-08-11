@@ -30,20 +30,15 @@ import { formatArs } from '@/lib/format'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
 export type SellTicketActionResult =
-  | { success: true; total: number }
-  | { success: false; error: string }
+  { success: true; total: number } | { success: false; error: string }
 
 export type CreateTabActionResult =
-  | { success: true; debtorName: string; total: number }
-  | { success: false; error: string }
+  { success: true; debtorName: string; total: number } | { success: false; error: string }
 
 export type SettleTabActionResult =
-  | { success: true; total: number }
-  | { success: false; error: string }
+  { success: true; total: number } | { success: false; error: string }
 
-export type CancelTabActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type CancelTabActionResult = { success: true } | { success: false; error: string }
 
 function revalidateCaja(): void {
   revalidatePath('/caja')

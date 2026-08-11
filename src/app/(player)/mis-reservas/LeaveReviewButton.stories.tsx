@@ -16,7 +16,8 @@ import { LeaveReviewButton } from './LeaveReviewButton'
 async function settleToasts() {
   await waitFor(async () => {
     const region = document.querySelector('[aria-label="Notifications (F8)"]')
-    const running = region?.getAnimations({ subtree: true }).filter((a) => a.playState === 'running') ?? []
+    const running =
+      region?.getAnimations({ subtree: true }).filter((a) => a.playState === 'running') ?? []
     if (running.length > 0) {
       await Promise.all(running.map((a) => a.finished)).catch(() => {})
       throw new Error('toast todavía animando')
@@ -98,7 +99,9 @@ export const YaResenado: Story = {
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getAllByRole('radio', { name: /estrella/i })[4])
     await userEvent.click(within(dialog).getByRole('button', { name: /publicar reseña/i }))
-    await expect(await screen.findByText('Ya dejaste una reseña para esta reserva.')).toBeInTheDocument()
+    await expect(
+      await screen.findByText('Ya dejaste una reseña para esta reserva.'),
+    ).toBeInTheDocument()
     await settleToasts()
   },
 }
@@ -129,7 +132,10 @@ export const Exito: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /dejar reseña/i }))
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getAllByRole('radio', { name: /estrella/i })[4])
-    await userEvent.type(within(dialog).getByLabelText(/comentario/i), 'Excelente cancha y atención.')
+    await userEvent.type(
+      within(dialog).getByLabelText(/comentario/i),
+      'Excelente cancha y atención.',
+    )
     await userEvent.click(within(dialog).getByRole('button', { name: /publicar reseña/i }))
     await expect(await screen.findByText('¡Gracias por tu reseña!')).toBeInTheDocument()
     await settleToasts()

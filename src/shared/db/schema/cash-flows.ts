@@ -13,11 +13,7 @@ import { tenants } from './tenants'
 import { bookings } from './bookings'
 import { staffUsers } from './staff-users'
 import { tournamentTeams } from './tournament-teams'
-import {
-  cashflowCategoryEnum,
-  cashflowTypeEnum,
-  paymentMethodEnum,
-} from './enums'
+import { cashflowCategoryEnum, cashflowTypeEnum, paymentMethodEnum } from './enums'
 
 // chk_cashflow_type_category — combinaciones válidas; 'expense' desde migración 025.
 export const cashFlows = pgTable(
@@ -43,9 +39,7 @@ export const cashFlows = pgTable(
      * frena antes con un error propio). Va SIEMPRE junto con category
      * 'tournament' — el CHECK lo hace bidireccional.
      */
-    tournamentTeamId: uuid('tournament_team_id').references(
-      () => tournamentTeams.id,
-    ),
+    tournamentTeamId: uuid('tournament_team_id').references(() => tournamentTeams.id),
 
     registeredBy: uuid('registered_by')
       .notNull()
@@ -59,15 +53,10 @@ export const cashFlows = pgTable(
     // Evita que un doble-submit o reintento de red cree movimientos duplicados.
     clientIdempotencyKey: text('client_idempotency_key'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    amountPositive: check(
-      'chk_cashflow_amount_positive',
-      sql`${table.amount} > 0`,
-    ),
+    amountPositive: check('chk_cashflow_amount_positive', sql`${table.amount} > 0`),
     typeCategoryValid: check(
       'chk_cashflow_type_category',
       // Espejo del CHECK real (migr. 066 recrea el de 050 comparando ::text).
@@ -84,18 +73,9 @@ export const cashFlows = pgTable(
       sql`(${table.category} = 'tournament') = (${table.tournamentTeamId} IS NOT NULL)`,
     ),
     tenantIdx: index('idx_cash_flows_tenant').on(table.tenantId),
-    tenantDateIdx: index('idx_cash_flows_tenant_date').on(
-      table.tenantId,
-      table.occurredAt,
-    ),
-    tenantTypeIdx: index('idx_cash_flows_tenant_type').on(
-      table.tenantId,
-      table.type,
-    ),
-    tenantCategoryIdx: index('idx_cash_flows_tenant_category').on(
-      table.tenantId,
-      table.category,
-    ),
+    tenantDateIdx: index('idx_cash_flows_tenant_date').on(table.tenantId, table.occurredAt),
+    tenantTypeIdx: index('idx_cash_flows_tenant_type').on(table.tenantId, table.type),
+    tenantCategoryIdx: index('idx_cash_flows_tenant_category').on(table.tenantId, table.category),
     // Migr. 066. Parcial: solo las filas de torneo, que son minoría.
     tournamentTeamIdx: index('idx_cash_flows_tournament_team')
       .on(table.tournamentTeamId)

@@ -39,11 +39,7 @@ type Props = {
 
 /** Comparación insensible a acentos y mayúsculas ("cordoba" matchea "Córdoba"). */
 function normalize(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 }
 
 /**
@@ -158,8 +154,7 @@ export default function Combobox({
       case 'ArrowUp':
         e.preventDefault()
         if (!open) openList(visible.length - 1)
-        else if (visible.length > 0)
-          setActiveIndex((i) => (i <= 0 ? visible.length - 1 : i - 1))
+        else if (visible.length > 0) setActiveIndex((i) => (i <= 0 ? visible.length - 1 : i - 1))
         break
       case 'Enter':
         if (open) {
@@ -275,37 +270,39 @@ export default function Combobox({
           }}
         >
           {visible.map((o, i) => (
-              <li
-                key={`${o.value}-${i}`}
-                id={`${id}-option-${i}`}
-                role="option"
-                aria-selected={i === activeIndex}
-                onMouseDown={(e) => {
-                  // Solo botón principal: el click derecho (menú contextual) no selecciona.
-                  // El preventDefault del ul (bubbling) ya evita perder el foco.
-                  if (e.button !== 0) return
-                  select(o)
-                }}
-                onClick={() => {
-                  // Fallback para clicks sintetizados (AT) que no emiten mousedown.
-                  select(o)
-                }}
-                onMouseMove={(e) => {
-                  const moved =
-                    lastPointer.current?.x !== e.clientX || lastPointer.current?.y !== e.clientY
-                  lastPointer.current = { x: e.clientX, y: e.clientY }
-                  if (moved && activeIndex !== i) setActiveIndex(i)
-                }}
-                className={`flex cursor-pointer select-none items-center justify-between gap-3 px-2.5 py-2 text-sm rounded-lg outline-hidden transition-all duration-200 ${
-                  i === activeIndex ? 'bg-accent text-accent-foreground' : 'text-foreground/90'
-                }`}
-              >
-                <span className="truncate">{o.label}</span>
-                {o.hint && (
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{o.hint}</span>
-                )}
-              </li>
-            ))}
+            <li
+              key={`${o.value}-${i}`}
+              id={`${id}-option-${i}`}
+              role="option"
+              aria-selected={i === activeIndex}
+              onMouseDown={(e) => {
+                // Solo botón principal: el click derecho (menú contextual) no selecciona.
+                // El preventDefault del ul (bubbling) ya evita perder el foco.
+                if (e.button !== 0) return
+                select(o)
+              }}
+              onClick={() => {
+                // Fallback para clicks sintetizados (AT) que no emiten mousedown.
+                select(o)
+              }}
+              onMouseMove={(e) => {
+                const moved =
+                  lastPointer.current?.x !== e.clientX || lastPointer.current?.y !== e.clientY
+                lastPointer.current = { x: e.clientX, y: e.clientY }
+                if (moved && activeIndex !== i) setActiveIndex(i)
+              }}
+              className={`flex cursor-pointer select-none items-center justify-between gap-3 px-2.5 py-2 text-sm rounded-lg outline-hidden transition-all duration-200 ${
+                i === activeIndex ? 'bg-accent text-accent-foreground' : 'text-foreground/90'
+              }`}
+            >
+              <span className="truncate">{o.label}</span>
+              {o.hint && (
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {o.hint}
+                </span>
+              )}
+            </li>
+          ))}
         </ul>
       </PopoverContent>
       {/* Anuncio de resultados para lectores de pantalla (WCAG 4.1.3). */}

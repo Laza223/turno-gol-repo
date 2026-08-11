@@ -20,7 +20,10 @@ type Story = StoryObj<typeof meta>
 export const VistaLista: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: /lista/i })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('button', { name: /lista/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await expect(canvas.getByRole('combobox', { name: /ordenar por/i })).toHaveValue('name')
   },
 }
@@ -30,7 +33,10 @@ export const VistaMapa: Story = {
   parameters: { nextjs: { navigation: { pathname: '/explorar', query: { view: 'map' } } } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: /mapa/i })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('button', { name: /mapa/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   },
 }
 
@@ -50,7 +56,10 @@ export const OrdenarPorDistanciaSinGeolocalizacion: Story = {
     const original = navigator.geolocation
     Object.defineProperty(navigator, 'geolocation', { value: undefined, configurable: true })
     try {
-      await userEvent.selectOptions(canvas.getByRole('combobox', { name: /ordenar por/i }), 'distance')
+      await userEvent.selectOptions(
+        canvas.getByRole('combobox', { name: /ordenar por/i }),
+        'distance',
+      )
       // El Toaster porta su contenido a document.body (Radix Portal): se busca
       // con `screen`, no con `canvas` (scoped a canvasElement).
       //
@@ -92,7 +101,10 @@ export const OrdenarPorDistanciaConGeolocalizacion: Story = {
       },
     })
     try {
-      await userEvent.selectOptions(canvas.getByRole('combobox', { name: /ordenar por/i }), 'distance')
+      await userEvent.selectOptions(
+        canvas.getByRole('combobox', { name: /ordenar por/i }),
+        'distance',
+      )
       await expect(getRouter().push).toHaveBeenCalledWith(expect.stringContaining('sort=distance'))
     } finally {
       Object.defineProperty(navigator, 'geolocation', { value: original, configurable: true })

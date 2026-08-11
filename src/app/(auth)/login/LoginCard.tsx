@@ -37,12 +37,8 @@ export function LoginCard({
   return (
     <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <header className="mb-6 space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Iniciá sesión
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Ingresá con tu email y contraseña.
-        </p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Iniciá sesión</h1>
+        <p className="text-sm text-muted-foreground">Ingresá con tu email y contraseña.</p>
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>
@@ -98,7 +94,11 @@ export function LoginCard({
               // pr-11 = 44px, así que el cuadrado encaja justo).
               className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
             >
-              {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+              {show ? (
+                <EyeOff className="h-4 w-4" aria-hidden />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden />
+              )}
             </button>
           </div>
         </div>
@@ -123,7 +123,10 @@ export function LoginCard({
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         ¿Sos nuevo?{' '}
-        <Link href="/register" className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline">
+        <Link
+          href="/register"
+          className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline"
+        >
           Empezar gratis
         </Link>
       </p>

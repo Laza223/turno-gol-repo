@@ -9,7 +9,10 @@ import {
   updateProduct,
 } from '@/modules/canteen/canteen.service'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
-import { ProductNotFoundError, StockNotEditableFromCatalogError } from '@/modules/canteen/canteen.errors'
+import {
+  ProductNotFoundError,
+  StockNotEditableFromCatalogError,
+} from '@/modules/canteen/canteen.errors'
 
 async function getStock(productId: string): Promise<number | null> {
   const sql = getSql()
@@ -146,7 +149,11 @@ describe('canteen catalog service', () => {
       expect(noControl.stock).toBeNull()
       // E: bajo mínimo pero INACTIVO -> no cuenta.
       const inactiveLow = await withTenantContext(tenant.id, (tx) =>
-        createProduct(tenant.id, { name: 'Bajo pero pausado', price: 100000, stock: 1, minStock: 5 }, tx),
+        createProduct(
+          tenant.id,
+          { name: 'Bajo pero pausado', price: 100000, stock: 1, minStock: 5 },
+          tx,
+        ),
       )
       await withTenantContext(tenant.id, (tx) => deactivateProduct(tenant.id, inactiveLow.id, tx))
 
@@ -208,7 +215,9 @@ describe('canteen catalog service', () => {
       )
 
       await expect(
-        withTenantContext(tenant.id, (tx) => updateProduct(tenant.id, product.id, { stock: 15 }, tx)),
+        withTenantContext(tenant.id, (tx) =>
+          updateProduct(tenant.id, product.id, { stock: 15 }, tx),
+        ),
       ).rejects.toBeInstanceOf(StockNotEditableFromCatalogError)
 
       expect(await getStock(product.id)).toBe(20) // no tocado

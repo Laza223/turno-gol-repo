@@ -56,9 +56,7 @@ export function verifyWebhookSignature(
 }
 
 function matchesHmac(secret: string, manifest: string, v1: string): boolean {
-  const expectedSignature = createHmac('sha256', secret)
-    .update(manifest)
-    .digest('hex')
+  const expectedSignature = createHmac('sha256', secret).update(manifest).digest('hex')
 
   const a = Buffer.from(v1)
   const b = Buffer.from(expectedSignature)

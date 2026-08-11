@@ -20,7 +20,7 @@ function getArtToday(): string {
 }
 
 export default async function DisponibilidadPage(props: Props) {
-  const params = await props.params;
+  const params = await props.params
   const tenant = await getPublicTenant(params.slug)
   if (!tenant || UNAVAILABLE.has(tenant.status)) notFound()
 
@@ -40,7 +40,10 @@ export default async function DisponibilidadPage(props: Props) {
           { name: 'Disponibilidad', url: absoluteUrl(`/${tenant.slug}/disponibilidad`) },
         ])}
       />
-      <Link href={`/${tenant.slug}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+      <Link
+        href={`/${tenant.slug}`}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
         <ChevronLeft className="h-4 w-4" aria-hidden /> {tenant.name}
       </Link>
       <h1 className="text-xl font-bold tracking-tight text-foreground">Disponibilidad semanal</h1>
@@ -50,7 +53,7 @@ export default async function DisponibilidadPage(props: Props) {
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
-  const params = await props.params;
+  const params = await props.params
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
   if (UNAVAILABLE.has(tenant.status)) {

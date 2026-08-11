@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
+import {
+  SplitPaymentFields,
+  newChargeLine,
+  type ChargeLine,
+} from '@/components/admin/SplitPaymentFields'
 import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
@@ -27,7 +31,10 @@ export type SettleTabAction = (input: {
   clientIdempotencyKey: string
 }) => Promise<SettleTabActionResult>
 
-export type CancelTabAction = (input: { tabId: string; reason: string }) => Promise<CancelTabActionResult>
+export type CancelTabAction = (input: {
+  tabId: string
+  reason: string
+}) => Promise<CancelTabActionResult>
 
 /**
  * Fiados abiertos (canteen_tabs, status='open'): se llenan al "Anotar como
@@ -70,7 +77,9 @@ export function FiadosList({
       </div>
 
       {tabs.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-muted-foreground">Sin fiados pendientes.</p>
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+          Sin fiados pendientes.
+        </p>
       ) : (
         <ul className="divide-y divide-border">
           {tabs.map((tab) => (
@@ -78,9 +87,12 @@ export function FiadosList({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{tab.debtorName}</p>
                 <p className="text-xs tabular-nums text-muted-foreground">
-                  {formatArs(tab.totalAmount)} · {relativeTimeEs(tab.createdAt.toISOString(), nowMs)}
+                  {formatArs(tab.totalAmount)} ·{' '}
+                  {relativeTimeEs(tab.createdAt.toISOString(), nowMs)}
                 </p>
-                {tab.note && <p className="mt-0.5 truncate text-xs text-muted-foreground">{tab.note}</p>}
+                {tab.note && (
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{tab.note}</p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button
@@ -177,7 +189,9 @@ function SettleTabDialog({
     }
     const totalCents = charges.reduce((s, c) => s + c.amount, 0)
     if (totalCents !== tab.totalAmount) {
-      setError(`Los cobros tienen que sumar exacto ${formatArs(tab.totalAmount)} (ingresaste ${formatArs(totalCents)}).`)
+      setError(
+        `Los cobros tienen que sumar exacto ${formatArs(tab.totalAmount)} (ingresaste ${formatArs(totalCents)}).`,
+      )
       return
     }
 

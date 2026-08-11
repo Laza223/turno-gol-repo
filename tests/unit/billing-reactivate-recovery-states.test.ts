@@ -76,9 +76,9 @@ describe('reactivate — estados habilitados (ENS-20)', () => {
     const tx = makeTx('past_due')
     const gateway = new MockGateway()
 
-    await expect(
-      reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx),
-    ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+    await expect(reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toBeInstanceOf(
+      ReactivateNotAllowedError,
+    )
     expect(gateway.preapprovalCalls).toHaveLength(0)
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
   })
@@ -87,9 +87,9 @@ describe('reactivate — estados habilitados (ENS-20)', () => {
     const tx = makeTx('active')
     const gateway = new MockGateway()
 
-    await expect(
-      reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx),
-    ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+    await expect(reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toBeInstanceOf(
+      ReactivateNotAllowedError,
+    )
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
   })
 
@@ -97,9 +97,9 @@ describe('reactivate — estados habilitados (ENS-20)', () => {
     const tx = makeTx('churned', { scheduledDeletionAt: '2020-01-01T00:00:00Z' })
     const gateway = new MockGateway()
 
-    await expect(
-      reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx),
-    ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
+    await expect(reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toBeInstanceOf(
+      ReactivateNotAllowedError,
+    )
     expect(gateway.preapprovalCalls).toHaveLength(0)
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
   })
@@ -172,9 +172,7 @@ describe('reactivate — cancela el preapproval viejo antes de crear el nuevo (F
     const gateway = new MockGateway()
     gateway.cancelPreapproval = vi.fn().mockRejectedValue(new Error('MP 500'))
 
-    await expect(
-      reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx),
-    ).rejects.toThrow('MP 500')
+    await expect(reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toThrow('MP 500')
     expect(gateway.preapprovalCalls).toHaveLength(0)
   })
 })

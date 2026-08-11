@@ -34,7 +34,10 @@ export default function ActivityStats({
       value: streakWeeks,
       detail: streakWeeks === 1 ? 'semana' : 'semanas',
       Icon: Flame,
-      accent: streakWeeks > 0 ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300' : 'bg-muted text-muted-foreground',
+      accent:
+        streakWeeks > 0
+          ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300'
+          : 'bg-muted text-muted-foreground',
     },
   ]
 

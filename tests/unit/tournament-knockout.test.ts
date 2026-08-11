@@ -82,8 +82,7 @@ describe('generateKnockout — cantidad que no es potencia de 2 (BYE)', () => {
       const m = generateKnockout(teams(n))
       expect(m).toHaveLength(n - 1)
       for (const match of m) {
-        const known =
-          (match.homeTeamId !== null ? 1 : 0) + (match.homeSourceIndex !== null ? 1 : 0)
+        const known = (match.homeTeamId !== null ? 1 : 0) + (match.homeSourceIndex !== null ? 1 : 0)
         const knownAway =
           (match.awayTeamId !== null ? 1 : 0) + (match.awaySourceIndex !== null ? 1 : 0)
         // Cada lado tiene exactamente un origen: equipo directo o ganador.
@@ -96,9 +95,7 @@ describe('generateKnockout — cantidad que no es potencia de 2 (BYE)', () => {
   it('el equipo con BYE aparece directo en la segunda ronda', () => {
     const m = generateKnockout(teams(5))
     // t1 es el mejor sembrado: le toca el hueco, así que pasa sin jugar.
-    const r1Teams = m
-      .filter((x) => x.round === 1)
-      .flatMap((x) => [x.homeTeamId, x.awayTeamId])
+    const r1Teams = m.filter((x) => x.round === 1).flatMap((x) => [x.homeTeamId, x.awayTeamId])
     expect(r1Teams).not.toContain('t1')
     const r2 = m.filter((x) => x.round === 2)
     expect(r2.some((x) => x.homeTeamId === 't1' || x.awayTeamId === 't1')).toBe(true)

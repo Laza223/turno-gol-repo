@@ -13,16 +13,15 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     products: PRODUCTS,
-    sellTicketAction: fn(
-      async (): Promise<SellTicketActionResult> => ({ success: true, total: 300000 }),
-    ),
-    createTabAction: fn(
-      async (): Promise<CreateTabActionResult> => ({
-        success: true,
-        debtorName: 'Capitán equipo 22hs',
-        total: 300000,
-      }),
-    ),
+    sellTicketAction: fn(async (): Promise<SellTicketActionResult> => ({
+      success: true,
+      total: 300000,
+    })),
+    createTabAction: fn(async (): Promise<CreateTabActionResult> => ({
+      success: true,
+      debtorName: 'Capitán equipo 22hs',
+      total: 300000,
+    })),
   },
 } satisfies Meta<typeof TicketPanel>
 
@@ -143,12 +142,10 @@ export const QuitarLinea: Story = {
 /** La venta falla del lado del servidor: error inline, el ticket NO se vacía. */
 export const ErrorDeVenta: Story = {
   args: {
-    sellTicketAction: fn(
-      async (): Promise<SellTicketActionResult> => ({
-        success: false,
-        error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
-      }),
-    ),
+    sellTicketAction: fn(async (): Promise<SellTicketActionResult> => ({
+      success: false,
+      error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

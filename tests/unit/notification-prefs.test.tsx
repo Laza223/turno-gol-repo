@@ -29,9 +29,7 @@ describe('NotificationPrefs', () => {
     expect(updateMock).toHaveBeenCalledWith('email', false)
     await waitFor(() => {
       expect(
-        screen
-          .getByRole('switch', { name: 'Novedades por email' })
-          .getAttribute('aria-checked'),
+        screen.getByRole('switch', { name: 'Novedades por email' }).getAttribute('aria-checked'),
       ).toBe('false')
     })
     // El otro switch no se toca.

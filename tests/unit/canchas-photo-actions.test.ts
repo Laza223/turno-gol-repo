@@ -51,9 +51,10 @@ beforeEach(() => {
   vi.mocked(requireAdminStaffAction).mockResolvedValue({ ok: true, tenant: TENANT } as never)
   vi.mocked(adminRateLimited).mockResolvedValue(null)
   vi.mocked(isR2Configured).mockReturnValue(true)
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (tx: never) => Promise<unknown>) => cb(FAKE_TX)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (tx: never) => Promise<unknown>,
+  ) => cb(FAKE_TX)) as never)
   vi.mocked(getCourtById).mockResolvedValue({
     photos: ['https://media.turnogol.com/tenant-1/courts/court-1/x.webp'],
   } as never)
@@ -70,7 +71,9 @@ describe('uploadCourtPhotoAction', () => {
   })
 
   it('sube a R2 y appendea a courts.photos, y revalida grilla admin + perfil público', async () => {
-    vi.mocked(appendCourtPhoto).mockResolvedValue(['https://media.turnogol.com/tenant-1/courts/court-1/x.webp'])
+    vi.mocked(appendCourtPhoto).mockResolvedValue([
+      'https://media.turnogol.com/tenant-1/courts/court-1/x.webp',
+    ])
     const fd = new FormData()
     fd.set('file', new Blob(['x'], { type: 'image/webp' }), 'a.webp')
     const res = await uploadCourtPhotoAction('court-1', fd)

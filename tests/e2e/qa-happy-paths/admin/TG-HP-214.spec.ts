@@ -20,10 +20,10 @@ test.describe('TG-HP-214 — caja: agregar movimiento', () => {
     const today = todayART()
 
     // Defensive: garantiza caja de HOY abierta.
-    await runSql(
-      `DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`,
-      [E2E_TENANT_ID, today],
-    )
+    await runSql(`DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`, [
+      E2E_TENANT_ID,
+      today,
+    ])
 
     const context = await browser.newContext()
     await suppressPushPrompt(context)

@@ -59,9 +59,7 @@ export function useSlotCharges({
     }
     const total = charges.reduce((s, c) => s + c.amount, 0)
     if (total > pending) {
-      setError(
-        `El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`,
-      )
+      setError(`El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
       return
     }
 

@@ -21,12 +21,19 @@ import {
   type AdminCancellationType,
   type CancellationOutcome,
 } from '@/modules/bookings/booking.cancellation'
-import { searchTenantPlayers, type PlayerSearchResult } from '@/modules/players/player-search.service'
+import {
+  searchTenantPlayers,
+  type PlayerSearchResult,
+} from '@/modules/players/player-search.service'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
-import { settleRefund, confirmManualDepositPayment, type ManualDepositMethod } from '@/modules/payments/payment.service'
+import {
+  settleRefund,
+  confirmManualDepositPayment,
+  type ManualDepositMethod,
+} from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { captureMessage, captureException } from '@/lib/sentry'
 import {
@@ -34,10 +41,7 @@ import {
   rescheduleBookingSchema,
   bookingResponseSchema,
 } from '@/modules/bookings/booking.schema'
-import {
-  rescheduleBooking,
-  type RescheduleOutcome,
-} from '@/modules/bookings/booking.reschedule'
+import { rescheduleBooking, type RescheduleOutcome } from '@/modules/bookings/booking.reschedule'
 import { validateApiOutput } from '@/shared/api-output'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { artNowParts, addDays } from '@/shared/dates/art'
@@ -102,7 +106,7 @@ export async function createBookingAction(data: unknown): Promise<BookingActionR
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, (tx) =>
-      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx)
+      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx),
     )
   } catch (err) {
     if (err instanceof SlotTakenError) {
@@ -152,7 +156,7 @@ export type CheckSlotAvailabilityResult = { available: boolean }
  * fallo propio.
  */
 export async function checkSlotAvailabilityAction(
-  input: CheckSlotAvailabilityInput
+  input: CheckSlotAvailabilityInput,
 ): Promise<CheckSlotAvailabilityResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { available: true }
@@ -201,7 +205,7 @@ export type SearchBookingPlayersActionResult =
  * tenant dejaría sin cupo a las mutaciones reales de dinero del staff.
  */
 export async function searchBookingPlayersAction(
-  input: unknown
+  input: unknown,
 ): Promise<SearchBookingPlayersActionResult> {
   const parsed = searchBookingPlayersSchema.safeParse(input)
   if (!parsed.success) {
@@ -218,7 +222,7 @@ export async function searchBookingPlayersAction(
   }
 
   const players = await withTenantContext(tenant.id, (tx) =>
-    searchTenantPlayers(tenant.id, parsed.data.query, tx)
+    searchTenantPlayers(tenant.id, parsed.data.query, tx),
   )
 
   return { success: true, players }
@@ -269,7 +273,7 @@ export async function confirmDepositPaymentAction(
   if (limited) return { success: false, error: limited }
 
   const outcome = await withTenantContext(tenant.id, (tx) =>
-    confirmManualDepositPayment(bookingId, parsed.data.method, user.staffUserId, tenant.id, tx)
+    confirmManualDepositPayment(bookingId, parsed.data.method, user.staffUserId, tenant.id, tx),
   )
 
   if (!outcome.won) {
@@ -317,7 +321,7 @@ export async function completeBookingAction(bookingId: string): Promise<BookingA
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, (tx) =>
-      completeBooking(bookingId, 'admin', tx, user.staffUserId)
+      completeBooking(bookingId, 'admin', tx, user.staffUserId),
     )
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
@@ -418,7 +422,7 @@ export async function revertNoShowAction(bookingId: string): Promise<BookingActi
 export async function cancelBookingAction(
   bookingId: string,
   reason: string,
-  cancellationType: AdminCancellationType
+  cancellationType: AdminCancellationType,
 ): Promise<BookingActionResult> {
   if (!reason || reason.trim().length < 3) {
     return { success: false, error: 'El motivo debe tener al menos 3 caracteres.' }
@@ -455,7 +459,7 @@ export async function cancelBookingAction(
   let outcome: CancellationOutcome
   try {
     outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx)
+      cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx),
     )
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
@@ -582,8 +586,7 @@ export async function listRescheduleSlotsAction(
   }
 
   const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!
-  const openHhmm =
-    tenant.openingHours[dayKey as keyof typeof tenant.openingHours]?.open ?? '08:00'
+  const openHhmm = tenant.openingHours[dayKey as keyof typeof tenant.openingHours]?.open ?? '08:00'
 
   try {
     const raw = await withTenantContext(tenant.id, (tx) =>
@@ -619,8 +622,7 @@ export async function listRescheduleSlotsAction(
 export type RescheduleBookingActionInput = z.input<typeof rescheduleBookingSchema>
 
 export type RescheduleBookingActionResult =
-  | { success: true; booking: BookingRow; priceChanged: boolean }
-  | { success: false; error: string }
+  { success: true; booking: BookingRow; priceChanged: boolean } | { success: false; error: string }
 
 /**
  * Reprogramar un turno (Fase 3): moverlo a otra cancha, otro día u otro horario
@@ -736,7 +738,7 @@ export type AddBookingChargeInput = z.input<typeof addBookingChargeSchema>
  * withTenantContext, así el cobro queda aislado por tenant y sin duplicados.
  */
 export async function addBookingChargeAction(
-  input: AddBookingChargeInput
+  input: AddBookingChargeInput,
 ): Promise<BookingChargeActionResult> {
   const parsed = addBookingChargeSchema.safeParse(input)
   if (!parsed.success) {
@@ -846,7 +848,7 @@ export async function addBookingChargeAction(
           bookingId,
           clientIdempotencyKey,
         },
-        tx
+        tx,
       )
       return { success: true as const, cashFlow }
     })
@@ -889,7 +891,7 @@ export type CompleteAndChargeResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
 
 export async function completeAndChargeBookingAction(
-  input: CompleteAndChargeInput
+  input: CompleteAndChargeInput,
 ): Promise<CompleteAndChargeResult> {
   const parsed = completeAndChargeSchema.safeParse(input)
   if (!parsed.success) {
@@ -943,7 +945,7 @@ export async function completeAndChargeBookingAction(
         const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
         if (totalCharging > pending) {
           throw new BookingValidationError(
-            `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`
+            `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`,
           )
         }
 
@@ -968,7 +970,7 @@ export async function completeAndChargeBookingAction(
               bookingId,
               clientIdempotencyKey: lineKey,
             },
-            tx
+            tx,
           )
         }
       }
@@ -980,7 +982,7 @@ export async function completeAndChargeBookingAction(
           ? `${existingNotes}\n[Deuda] ${debtNote.trim()}`
           : `[Deuda] ${debtNote.trim()}`
         await tx.execute(
-          sql`UPDATE bookings SET notes_internal = ${newNote} WHERE id = ${bookingId}`
+          sql`UPDATE bookings SET notes_internal = ${newNote} WHERE id = ${bookingId}`,
         )
       }
 

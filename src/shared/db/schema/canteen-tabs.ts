@@ -36,9 +36,7 @@ export const canteenTabs = pgTable(
     createdBy: uuid('created_by')
       .notNull()
       .references(() => staffUsers.id),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 
     settledAt: timestamp('settled_at', { withTimezone: true, mode: 'date' }),
     settledBy: uuid('settled_by').references(() => staffUsers.id),
@@ -52,10 +50,7 @@ export const canteenTabs = pgTable(
     clientIdempotencyKey: uuid('client_idempotency_key'),
   },
   (table) => ({
-    debtorNonempty: check(
-      'chk_tab_debtor_nonempty',
-      sql`length(trim(${table.debtorName})) > 0`,
-    ),
+    debtorNonempty: check('chk_tab_debtor_nonempty', sql`length(trim(${table.debtorName})) > 0`),
     amountPositive: check('chk_tab_amount_positive', sql`${table.totalAmount} > 0`),
     paidConsistency: check(
       'chk_tab_paid_consistency',

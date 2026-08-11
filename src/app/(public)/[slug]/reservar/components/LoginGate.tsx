@@ -19,8 +19,18 @@ const inputClass =
 function Submit() {
   const { pending } = useFormStatus()
   return (
-    <button type="submit" disabled={pending} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] disabled:scale-100 disabled:opacity-60 whitespace-nowrap">
-      {pending ? <><TgBallSpinner size="xs" className="mr-2" aria-hidden /> Enviando…</> : 'Continuar con email'}
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] disabled:scale-100 disabled:opacity-60 whitespace-nowrap"
+    >
+      {pending ? (
+        <>
+          <TgBallSpinner size="xs" className="mr-2" aria-hidden /> Enviando…
+        </>
+      ) : (
+        'Continuar con email'
+      )}
     </button>
   )
 }
@@ -45,7 +55,10 @@ export default function LoginGate({
           <Mail className="h-5 w-5" aria-hidden />
         </div>
         <h2 className="font-display text-base font-bold text-foreground">Revisá tu email</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Te enviamos un enlace a <strong className="text-foreground">{state.email}</strong>. Hacé click para confirmar tu reserva.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Te enviamos un enlace a <strong className="text-foreground">{state.email}</strong>. Hacé
+          click para confirmar tu reserva.
+        </p>
       </div>
     )
   }
@@ -54,7 +67,9 @@ export default function LoginGate({
     <form action={formAction} className="reserva-receipt-card space-y-4 rounded-2xl p-6" noValidate>
       <div>
         <h2 className="font-display text-base font-bold text-foreground">Confirmá con tu email</h2>
-        <p className="text-sm text-muted-foreground">Sin contraseñas. Te mandamos un enlace mágico para entrar y reservar.</p>
+        <p className="text-sm text-muted-foreground">
+          Sin contraseñas. Te mandamos un enlace mágico para entrar y reservar.
+        </p>
       </div>
       <input type="hidden" name="next" value={next} />
       <div className="grid grid-cols-2 gap-3">
@@ -69,13 +84,33 @@ export default function LoginGate({
       </div>
       <label className="block space-y-1 text-sm">
         <span className="font-medium text-foreground/90">Email</span>
-        <input name="email" type="email" autoComplete="email" required defaultValue={vals.email} placeholder="vos@email.com" className={inputClass} />
+        <input
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          defaultValue={vals.email}
+          placeholder="vos@email.com"
+          className={inputClass}
+        />
       </label>
       <label className="flex items-start gap-2 text-xs text-muted-foreground">
-        <input type="checkbox" name="terms" required defaultChecked={vals.terms} className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/4" />
-        <span>Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada).</span>
+        <input
+          type="checkbox"
+          name="terms"
+          required
+          defaultChecked={vals.terms}
+          className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/4"
+        />
+        <span>
+          Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada).
+        </span>
       </label>
-      {state.status === 'error' && <p role="alert" className="text-xs text-destructive dark:text-red-300">{state.message}</p>}
+      {state.status === 'error' && (
+        <p role="alert" className="text-xs text-destructive dark:text-red-300">
+          {state.message}
+        </p>
+      )}
       <Submit />
     </form>
   )

@@ -16,7 +16,11 @@ export const metadata = buildMetadata({
   path: '/precios',
 })
 
-const HERO_CHIPS = ['30 días gratis, sin tarjeta', 'Mes a mes, sin permanencia', 'Sin comisión por reserva']
+const HERO_CHIPS = [
+  '30 días gratis, sin tarjeta',
+  'Mes a mes, sin permanencia',
+  'Sin comisión por reserva',
+]
 
 /** Solo features que existen en el producto (regla GTM: nada que no esté construido). */
 const INCLUDED = [
@@ -118,7 +122,9 @@ function Hero() {
       <div
         aria-hidden
         className="pointer-events-none absolute right-[-10%] top-[-30%] z-0 h-[640px] w-[640px] animate-tg-drift rounded-full blur-sm motion-reduce:animate-none"
-        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.22), transparent 70%)' }}
+        style={{
+          background: 'radial-gradient(closest-side, rgba(16,185,129,.22), transparent 70%)',
+        }}
       />
       <div
         aria-hidden
@@ -159,9 +165,14 @@ function Hero() {
           </span>
         </h1>
 
-        <p className="mx-auto mt-6 max-w-[560px] text-slate-400" style={{ fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.55' }}>
+        <p
+          className="mx-auto mt-6 max-w-[560px] text-slate-400"
+          style={{ fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.55' }}
+        >
           Eso sale TurnoGol: un precio fijo según cuántas canchas tenés.{' '}
-          <span className="font-semibold text-slate-200">Sin comisión por reserva, sin permanencia, sin sorpresas.</span>{' '}
+          <span className="font-semibold text-slate-200">
+            Sin comisión por reserva, sin permanencia, sin sorpresas.
+          </span>{' '}
           El primer mes es gratis.
         </p>
 
@@ -203,7 +214,11 @@ function CuentaDelClavo() {
             </div>
             <h2
               className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{ fontSize: 'clamp(30px, 3.6vw, 46px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
+              style={{
+                fontSize: 'clamp(30px, 3.6vw, 46px)',
+                lineHeight: '1.02',
+                letterSpacing: '-0.025em',
+              }}
             >
               ¿Cuánto te cuesta el que no viene?
             </h2>
@@ -233,19 +248,27 @@ function TodoIncluido() {
             </div>
             <h2
               className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{ fontSize: 'clamp(30px, 3.6vw, 46px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
+              style={{
+                fontSize: 'clamp(30px, 3.6vw, 46px)',
+                lineHeight: '1.02',
+                letterSpacing: '-0.025em',
+              }}
             >
               Todo esto, en todos los planes.
             </h2>
             <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Ninguna función está recortada. La única diferencia entre planes es la cantidad de canchas.
+              Ninguna función está recortada. La única diferencia entre planes es la cantidad de
+              canchas.
             </p>
           </div>
         </Reveal>
         <div className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-2">
           {INCLUDED.map((item, i) => (
             <Reveal key={item} delay={Math.min(i * 40, 240)}>
-              <div className="flex items-start gap-3 rounded-2xl border border-white/[.07] px-5 py-4" style={{ background: 'rgba(15,23,42,.4)' }}>
+              <div
+                className="flex items-start gap-3 rounded-2xl border border-white/[.07] px-5 py-4"
+                style={{ background: 'rgba(15,23,42,.4)' }}
+              >
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
                 <span className="text-[14.5px] leading-relaxed text-slate-300">{item}</span>
               </div>
@@ -270,7 +293,11 @@ function RiesgoCero() {
             </div>
             <h2
               className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{ fontSize: 'clamp(30px, 3.6vw, 46px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
+              style={{
+                fontSize: 'clamp(30px, 3.6vw, 46px)',
+                lineHeight: '1.02',
+                letterSpacing: '-0.025em',
+              }}
             >
               Empezar no te cuesta nada.
             </h2>
@@ -279,10 +306,18 @@ function RiesgoCero() {
         <ol className="space-y-5">
           {STEPS.map((step, i) => (
             <li key={step.n}>
-              <Reveal delay={i * 70} className="flex gap-4 rounded-2xl border border-white/[.07] p-5" style={{ background: 'rgba(15,23,42,.4)' }}>
+              <Reveal
+                delay={i * 70}
+                className="flex gap-4 rounded-2xl border border-white/[.07] p-5"
+                style={{ background: 'rgba(15,23,42,.4)' }}
+              >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] font-logo text-sm font-bold text-emerald-400"
-                  style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.3)', boxShadow: 'inset 0 0 16px rgba(16,185,129,.15)' }}
+                  style={{
+                    background: 'rgba(16,185,129,.12)',
+                    border: '1px solid rgba(16,185,129,.3)',
+                    boxShadow: 'inset 0 0 16px rgba(16,185,129,.15)',
+                  }}
                 >
                   {step.n}
                 </span>
@@ -312,7 +347,11 @@ function Faq() {
             </div>
             <h2
               className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{ fontSize: 'clamp(30px, 3.6vw, 46px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
+              style={{
+                fontSize: 'clamp(30px, 3.6vw, 46px)',
+                lineHeight: '1.02',
+                letterSpacing: '-0.025em',
+              }}
             >
               Lo que preguntan todos antes de arrancar.
             </h2>
@@ -323,7 +362,10 @@ function Faq() {
             <Reveal key={q} delay={Math.min(i * 50, 250)}>
               <details
                 className="group border border-white/9 px-6 py-5 transition-colors hover:border-emerald-400/30"
-                style={{ borderRadius: '16px', background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))' }}
+                style={{
+                  borderRadius: '16px',
+                  background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))',
+                }}
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-display text-[15.5px] font-bold text-[#f8fafc] [&::-webkit-details-marker]:hidden">
                   {q}
@@ -350,19 +392,25 @@ function FinalCta() {
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[-1]"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(16,185,129,.20), transparent 60%)' }}
+        style={{
+          background: 'radial-gradient(ellipse at top, rgba(16,185,129,.20), transparent 60%)',
+        }}
       />
       <div className="relative mx-auto max-w-[900px] px-6 text-center">
         <Reveal>
           <h2
             className="font-display font-black italic text-[#f8fafc]"
-            style={{ fontSize: 'clamp(32px, 4vw, 52px)', lineHeight: '1.02', letterSpacing: '-0.025em' }}
+            style={{
+              fontSize: 'clamp(32px, 4vw, 52px)',
+              lineHeight: '1.02',
+              letterSpacing: '-0.025em',
+            }}
           >
             Empezá hoy. Gratis.
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
-            En 20 minutos tenés la grilla andando y el link de reservas listo para mandar por WhatsApp.
-            Si no te sirve, lo dejás y no pasó nada.
+            En 20 minutos tenés la grilla andando y el link de reservas listo para mandar por
+            WhatsApp. Si no te sirve, lo dejás y no pasó nada.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
@@ -370,7 +418,10 @@ function FinalCta() {
               className="group inline-flex h-12 items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-500/5 px-6 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] sm:px-8 sm:text-sm whitespace-nowrap"
             >
               Empezar 30 días gratis
-              <ArrowRight className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0" aria-hidden />
+              <ArrowRight
+                className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
+                aria-hidden
+              />
             </Link>
             <Link
               href="/para-complejos"
@@ -379,7 +430,9 @@ function FinalCta() {
               Ver cómo funciona
             </Link>
           </div>
-          <p className="mt-6 text-[13px] text-slate-500">Sin tarjeta · Sin permanencia · Tus datos son tuyos</p>
+          <p className="mt-6 text-[13px] text-slate-500">
+            Sin tarjeta · Sin permanencia · Tus datos son tuyos
+          </p>
         </Reveal>
       </div>
     </section>

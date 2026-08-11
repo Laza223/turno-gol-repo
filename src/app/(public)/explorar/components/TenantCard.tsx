@@ -29,7 +29,8 @@ export default function TenantCard({
   slotPills?: { date: string; slots: SlotPill[] }
   variant?: 'grid' | 'compact'
 }) {
-  if (variant === 'compact') return <TenantCardCompact tenant={tenant} initialFavorited={initialFavorited} />
+  if (variant === 'compact')
+    return <TenantCardCompact tenant={tenant} initialFavorited={initialFavorited} />
 
   const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
   const perPlayer = formatPerPlayer(tenant.fromPriceCents, tenant.courtFormats)
@@ -77,13 +78,20 @@ export default function TenantCard({
             Reservá online
           </span>
         )}
-        <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-3 top-3 z-20" />
+        <FavoriteButton
+          tenantId={tenant.id}
+          initialFavorited={initialFavorited}
+          className="absolute right-3 top-3 z-20"
+        />
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
-            <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0 focus-visible:outline-hidden">
+            <Link
+              href={`/${tenant.slug}`}
+              className="after:absolute after:inset-0 focus-visible:outline-hidden"
+            >
               {tenant.name}
             </Link>
           </h3>
@@ -160,7 +168,9 @@ export default function TenantCard({
           {fromPrice && (
             <div className="text-right">
               <p className="flex items-baseline justify-end gap-1">
-                <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">desde</span>
+                <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">
+                  desde
+                </span>
                 <span className="font-display text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
                   {fromPrice}
                 </span>
@@ -189,7 +199,13 @@ function TenantCardCompact({
     <article className="group relative flex gap-3 rounded-xl border border-border bg-card p-2.5 shadow-xs transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
       <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
         {tenant.coverUrl ? (
-          <Image src={tenant.coverUrl} alt={`Cancha de ${tenant.name}`} fill sizes="112px" className="object-cover" />
+          <Image
+            src={tenant.coverUrl}
+            alt={`Cancha de ${tenant.name}`}
+            fill
+            sizes="112px"
+            className="object-cover"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-50 to-muted text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:text-emerald-300">
             {tenant.name.slice(0, 2).toUpperCase()}
@@ -209,15 +225,23 @@ function TenantCardCompact({
             </span>
           )}
         </div>
-        <p className="truncate text-xs text-muted-foreground">{tenant.city}, {tenant.province}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {tenant.city}, {tenant.province}
+        </p>
         {fromPrice && (
           <p className="mt-auto flex items-baseline gap-1">
-            <span className="font-display text-base font-bold text-emerald-700 tabular-nums dark:text-emerald-400">{fromPrice}</span>
+            <span className="font-display text-base font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
+              {fromPrice}
+            </span>
             <span className="text-xs text-muted-foreground">/turno</span>
           </p>
         )}
       </div>
-      <FavoriteButton tenantId={tenant.id} initialFavorited={initialFavorited} className="absolute right-2 top-2 z-20" />
+      <FavoriteButton
+        tenantId={tenant.id}
+        initialFavorited={initialFavorited}
+        className="absolute right-2 top-2 z-20"
+      />
     </article>
   )
 }

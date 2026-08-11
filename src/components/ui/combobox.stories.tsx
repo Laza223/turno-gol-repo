@@ -94,7 +94,10 @@ export const AbrirListado: Story = {
     // el primer tick y toBeVisible() lo agarra en falso negativo.
     const body = within(canvasElement.ownerDocument.body)
     await waitFor(() => expect(body.getByRole('listbox', { name: 'Localidades' })).toBeVisible())
-    await expect(body.getByRole('option', { name: /Mendoza/ })).toHaveAttribute('aria-selected', 'true')
+    await expect(body.getByRole('option', { name: /Mendoza/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   },
 }
 

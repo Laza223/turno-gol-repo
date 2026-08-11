@@ -62,8 +62,7 @@ import { getTenantSummary } from '@/modules/super-admin/tenants.service'
  */
 
 export type SupportActionResult =
-  | { success: true; message?: string }
-  | { success: false; error: string }
+  { success: true; message?: string } | { success: false; error: string }
 
 const CONFIRM_MISMATCH =
   'El nombre ingresado no coincide con el nombre exacto del complejo. No se ejecutó la acción.'
@@ -250,11 +249,7 @@ export async function updateTenantSettingsAction(input: unknown): Promise<Suppor
   }
 
   try {
-    await updateTenantSettingsForSupport(
-      parsed.data.tenantId,
-      parsed.data.patch,
-      auth.admin.id,
-    )
+    await updateTenantSettingsForSupport(parsed.data.tenantId, parsed.data.patch, auth.admin.id)
     revalidateTenantPaths(parsed.data.tenantId)
     return { success: true, message: 'Settings actualizados.' }
   } catch (err) {
@@ -381,9 +376,7 @@ export async function resetStaffPasswordAction(input: unknown): Promise<SupportA
  * vive en los guards del admin, que leen esta cookie. Audita
  * `support.impersonation.started` con actor_type='system'.
  */
-export async function startImpersonationAction(
-  tenantId: string,
-): Promise<SupportActionResult> {
+export async function startImpersonationAction(tenantId: string): Promise<SupportActionResult> {
   const auth = await requireSystemAdminAction()
   if (!auth.ok) return { success: false, error: auth.error }
 

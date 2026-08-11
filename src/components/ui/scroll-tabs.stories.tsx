@@ -22,7 +22,13 @@ const meta = {
     activeHref: '/settings/reservas',
     ariaLabel: 'Secciones de configuración',
   },
-  decorators: [(Story) => <div className="max-w-lg"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-lg">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof ScrollTabs>
 
 export default meta
@@ -43,5 +49,11 @@ export const Overflow: Story = {
     ],
     activeHref: '/settings/integraciones',
   },
-  decorators: [(Story) => <div className="max-w-xs"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-xs">
+        <Story />
+      </div>
+    ),
+  ],
 }

@@ -28,7 +28,7 @@ async function insertCourt(tenantId: string): Promise<string> {
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
     VALUES (
       ${tenantId}, ${'Cancha Abonado Test'}, ${10},
-      ${sql.json({ rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }] })},
+      ${sql.json({ rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 }] })},
       'online'
     )
     RETURNING id
@@ -73,17 +73,22 @@ describe('abonado service', () => {
     const courtId = await insertCourt(tenant.id)
 
     const { abonado, slotsGenerated, conflictDates } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(tenant.id, staff.id, {
-        courtId,
-        contactName: 'Grupo Lunes',
-        contactPhone: '1122334455',
-        dayOfWeek: ABO_DOW,
-        timeStart: '14:00',
-        timeEnd: '15:00',
-        pricePerSession: 800000,
-        startsOn: ABO_START,
-        paymentMethod: 'cash',
-      }, tx),
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Grupo Lunes',
+          contactPhone: '1122334455',
+          dayOfWeek: ABO_DOW,
+          timeStart: '14:00',
+          timeEnd: '15:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+          paymentMethod: 'cash',
+        },
+        tx,
+      ),
     )
 
     expect(abonado.status).toBe('active')
@@ -111,16 +116,21 @@ describe('abonado service', () => {
     const courtId = await insertCourt(tenant.id)
 
     const { abonado } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(tenant.id, staff.id, {
-        courtId,
-        contactName: 'Pausa Test',
-        contactPhone: '0000000001',
-        dayOfWeek: ABO_DOW,
-        timeStart: '16:00',
-        timeEnd: '17:00',
-        pricePerSession: 800000,
-        startsOn: ABO_START,
-      }, tx),
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Pausa Test',
+          contactPhone: '0000000001',
+          dayOfWeek: ABO_DOW,
+          timeStart: '16:00',
+          timeEnd: '17:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+        },
+        tx,
+      ),
     )
 
     expect(await countFutureBookings(abonado.id)).toBe(8)
@@ -141,21 +151,24 @@ describe('abonado service', () => {
     const courtId = await insertCourt(tenant.id)
 
     const { abonado } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(tenant.id, staff.id, {
-        courtId,
-        contactName: 'Reactivar Test',
-        contactPhone: '0000000002',
-        dayOfWeek: ABO_DOW,
-        timeStart: '18:00',
-        timeEnd: '19:00',
-        pricePerSession: 800000,
-        startsOn: ABO_START,
-      }, tx),
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Reactivar Test',
+          contactPhone: '0000000002',
+          dayOfWeek: ABO_DOW,
+          timeStart: '18:00',
+          timeEnd: '19:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+        },
+        tx,
+      ),
     )
 
-    await withTenantContext(tenant.id, (tx) =>
-      pauseAbonado(tenant.id, abonado.id, staff.id, tx),
-    )
+    await withTenantContext(tenant.id, (tx) => pauseAbonado(tenant.id, abonado.id, staff.id, tx))
 
     expect(await countFutureBookings(abonado.id)).toBe(0)
 
@@ -176,16 +189,21 @@ describe('abonado service', () => {
     const courtId = await insertCourt(tenant.id)
 
     const { abonado } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(tenant.id, staff.id, {
-        courtId,
-        contactName: 'Cancelar Test',
-        contactPhone: '0000000003',
-        dayOfWeek: ABO_DOW,
-        timeStart: '20:00',
-        timeEnd: '21:00',
-        pricePerSession: 800000,
-        startsOn: ABO_START,
-      }, tx),
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Cancelar Test',
+          contactPhone: '0000000003',
+          dayOfWeek: ABO_DOW,
+          timeStart: '20:00',
+          timeEnd: '21:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+        },
+        tx,
+      ),
     )
 
     // Manually insert a "past" booking (before ABO_START) to verify it's preserved
@@ -241,16 +259,21 @@ describe('abonado service', () => {
     const courtId = await insertCourt(tenant.id)
 
     const { abonado } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(tenant.id, staff.id, {
-        courtId,
-        contactName: 'Rolling Test',
-        contactPhone: '0000000004',
-        dayOfWeek: ABO_DOW,
-        timeStart: '09:00',
-        timeEnd: '10:00',
-        pricePerSession: 800000,
-        startsOn: ABO_START,
-      }, tx),
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Rolling Test',
+          contactPhone: '0000000004',
+          dayOfWeek: ABO_DOW,
+          timeStart: '09:00',
+          timeEnd: '10:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+        },
+        tx,
+      ),
     )
 
     // Delete 5 of the 8 future bookings leaving 3
@@ -346,15 +369,19 @@ describe('abonado service', () => {
     expect(await countPtrRows(player.id, tenant.id)).toBe(0)
 
     await withTenantContext(tenant.id, (tx) =>
-      createOnlineBooking(tenant.id, {
-        playerId: player.id,
-        courtId,
-        date: '2028-03-04',
-        timeStart: '14:00',
-        timeEnd: '15:00',
-        requiresDeposit: false,
-        depositPercentage: 0,
-      }, tx),
+      createOnlineBooking(
+        tenant.id,
+        {
+          playerId: player.id,
+          courtId,
+          date: '2028-03-04',
+          timeStart: '14:00',
+          timeEnd: '15:00',
+          requiresDeposit: false,
+          depositPercentage: 0,
+        },
+        tx,
+      ),
     )
 
     expect(await countPtrRows(player.id, tenant.id)).toBe(1)

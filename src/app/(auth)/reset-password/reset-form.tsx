@@ -9,10 +9,7 @@ import type { ResetState } from './actions'
 const initial: ResetState = { status: 'idle' }
 
 /** Firma de la Server Action que consume el form. */
-export type ResetPasswordAction = (
-  prevState: ResetState,
-  formData: FormData,
-) => Promise<ResetState>
+export type ResetPasswordAction = (prevState: ResetState, formData: FormData) => Promise<ResetState>
 
 /**
  * La action llega por PROP, no por import: './actions' es `'use server'` y
@@ -48,7 +45,11 @@ export function ResetForm({ action }: { action: ResetPasswordAction }) {
             aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            {show ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+            {show ? (
+              <EyeOff className="h-4 w-4" aria-hidden />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden />
+            )}
           </button>
         </div>
       </div>

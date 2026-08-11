@@ -5,10 +5,7 @@ import { withBillingTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { cancelSchema } from '@/modules/billing/billing.schema'
 import { cancel } from '@/modules/billing/billing.service'
-import {
-  InvalidTransitionError,
-  SubscriptionNotFoundError,
-} from '@/modules/billing/billing.errors'
+import { InvalidTransitionError, SubscriptionNotFoundError } from '@/modules/billing/billing.errors'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 
 export const dynamic = 'force-dynamic'
@@ -21,35 +18,33 @@ export const dynamic = 'force-dynamic'
 // `/api/billing/reactivate`) solo bloquea `deleted`, dejando pasar al service
 // layer para que la FSM (`transitionToCanceled`) decida qué estados son
 // legalmente cancelables.
-export const POST = withBillingTenant(async (req: NextRequest, user, tx) => {
-  const throttled = await guard('adminCrud', user.tenantId!)
-  if (throttled) return throttled
+export const POST = withBillingTenant(
+  async (req: NextRequest, user, tx) => {
+    const throttled = await guard('adminCrud', user.tenantId!)
+    if (throttled) return throttled
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
-  }
-  const parsed = cancelSchema.safeParse(body)
-  if (!parsed.success) {
-    return validationError(parsed.error, { status: 422 })
-  }
-  try {
-    const result = await cancel(
-      user.tenantId!,
-      parsed.data.reason,
-      getBillingGateway(),
-      tx,
-    )
-    return NextResponse.json({ data: result }, { status: 200 })
-  } catch (err) {
-    if (err instanceof InvalidTransitionError) {
-      return conflict(err.message, { code: 'INVALID_STATE' })
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
     }
-    if (err instanceof SubscriptionNotFoundError) {
-      return notFound(err.message)
+    const parsed = cancelSchema.safeParse(body)
+    if (!parsed.success) {
+      return validationError(parsed.error, { status: 422 })
     }
-    throw err
-  }
-}, { roles: ['admin'] })
+    try {
+      const result = await cancel(user.tenantId!, parsed.data.reason, getBillingGateway(), tx)
+      return NextResponse.json({ data: result }, { status: 200 })
+    } catch (err) {
+      if (err instanceof InvalidTransitionError) {
+        return conflict(err.message, { code: 'INVALID_STATE' })
+      }
+      if (err instanceof SubscriptionNotFoundError) {
+        return notFound(err.message)
+      }
+      throw err
+    }
+  },
+  { roles: ['admin'] },
+)

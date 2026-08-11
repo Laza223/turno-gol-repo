@@ -53,10 +53,14 @@ export function HorariosForm({
       </div>
       <div aria-live="polite" className="min-h-5">
         {!state.success && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {state.error}
+          </p>
         )}
         {didSubmit && state.success && (
-          <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">Horarios guardados.</p>
+          <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
+            Horarios guardados.
+          </p>
         )}
       </div>
     </form>

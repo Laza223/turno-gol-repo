@@ -27,8 +27,8 @@ const meta = {
       'Comparamos las opciones disponibles para complejos deportivos que quieren dejar el cuaderno y el WhatsApp atrás.',
     children: (
       <p>
-        Administrar un complejo con un cuaderno de espiral y mensajes de WhatsApp a cualquier hora ya no es
-        sostenible.
+        Administrar un complejo con un cuaderno de espiral y mensajes de WhatsApp a cualquier hora
+        ya no es sostenible.
       </p>
     ),
   },
@@ -109,8 +109,8 @@ export const ContenidoRico: Story = {
       <>
         <h2>¿Por qué cambiar de sistema?</h2>
         <p>
-          El cuaderno de espiral y el WhatsApp funcionan hasta que dejan de funcionar: turnos superpuestos, señas
-          que nadie anota, horas perdidas cada noche cuadrando la caja.
+          El cuaderno de espiral y el WhatsApp funcionan hasta que dejan de funcionar: turnos
+          superpuestos, señas que nadie anota, horas perdidas cada noche cuadrando la caja.
         </p>
         <h3>Lo que resuelve un sistema dedicado</h3>
         <ul>
@@ -124,7 +124,9 @@ export const ContenidoRico: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { level: 2, name: '¿Por qué cambiar de sistema?' })).toBeVisible()
+    await expect(
+      canvas.getByRole('heading', { level: 2, name: '¿Por qué cambiar de sistema?' }),
+    ).toBeVisible()
     // Scopeado a `.prose`: el `<ol>` del Toaster global también matchea el rol
     // implícito "list" (es una lista ordenada vacía, siempre montada por el preview).
     const prose = within(canvasElement.querySelector('.prose') as HTMLElement)

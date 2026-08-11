@@ -28,15 +28,15 @@ describe('createTournamentSchema', () => {
   })
 
   it('rechaza el nombre vacío', () => {
-    expect(
-      createTournamentSchema.safeParse({ ...validTournament, name: '   ' }).success,
-    ).toBe(false)
+    expect(createTournamentSchema.safeParse({ ...validTournament, name: '   ' }).success).toBe(
+      false,
+    )
   })
 
   it('rechaza un formato inventado', () => {
-    expect(
-      createTournamentSchema.safeParse({ ...validTournament, format: 'suizo' }).success,
-    ).toBe(false)
+    expect(createTournamentSchema.safeParse({ ...validTournament, format: 'suizo' }).success).toBe(
+      false,
+    )
   })
 
   it('rechaza el fin anterior al inicio', () => {
@@ -76,26 +76,23 @@ describe('createTournamentSchema', () => {
 
   it('rechaza una duración de partido fuera de rango', () => {
     expect(
-      createTournamentSchema.safeParse({ ...validTournament, matchDurationMinutes: 5 })
-        .success,
+      createTournamentSchema.safeParse({ ...validTournament, matchDurationMinutes: 5 }).success,
     ).toBe(false)
     expect(
-      createTournamentSchema.safeParse({ ...validTournament, matchDurationMinutes: 200 })
-        .success,
+      createTournamentSchema.safeParse({ ...validTournament, matchDurationMinutes: 200 }).success,
     ).toBe(false)
   })
 
   it('rechaza una inscripción negativa', () => {
     expect(
-      createTournamentSchema.safeParse({ ...validTournament, inscriptionFee: -1 })
-        .success,
+      createTournamentSchema.safeParse({ ...validTournament, inscriptionFee: -1 }).success,
     ).toBe(false)
   })
 
   it('rechaza un cupo de un solo equipo', () => {
-    expect(
-      createTournamentSchema.safeParse({ ...validTournament, maxTeams: 1 }).success,
-    ).toBe(false)
+    expect(createTournamentSchema.safeParse({ ...validTournament, maxTeams: 1 }).success).toBe(
+      false,
+    )
   })
 })
 
@@ -116,15 +113,13 @@ describe('createTeamSchema', () => {
   })
 
   it('rechaza el nombre vacío', () => {
-    expect(createTeamSchema.safeParse({ tournamentId: UUID, name: '  ' }).success).toBe(
-      false,
-    )
+    expect(createTeamSchema.safeParse({ tournamentId: UUID, name: '  ' }).success).toBe(false)
   })
 
   it('rechaza un tournamentId que no es UUID', () => {
-    expect(
-      createTeamSchema.safeParse({ tournamentId: 'nope', name: 'Los Pibes' }).success,
-    ).toBe(false)
+    expect(createTeamSchema.safeParse({ tournamentId: 'nope', name: 'Los Pibes' }).success).toBe(
+      false,
+    )
   })
 })
 
@@ -173,9 +168,7 @@ describe('reserveSlotsSchema', () => {
   })
 
   it("no acepta '24:00' como inicio", () => {
-    expect(reserveSlotsSchema.safeParse({ ...base, timeStart: '24:00' }).success).toBe(
-      false,
-    )
+    expect(reserveSlotsSchema.safeParse({ ...base, timeStart: '24:00' }).success).toBe(false)
   })
 
   it('exige al menos una cancha y una fecha', () => {
@@ -184,17 +177,14 @@ describe('reserveSlotsSchema', () => {
   })
 
   it('rechaza una fecha inexistente del calendario', () => {
-    expect(reserveSlotsSchema.safeParse({ ...base, dates: ['2026-02-30'] }).success).toBe(
-      false,
-    )
+    expect(reserveSlotsSchema.safeParse({ ...base, dates: ['2026-02-30'] }).success).toBe(false)
   })
 })
 
 describe('releaseSlotsSchema', () => {
   it('exige torneo y fecha de corte', () => {
     expect(
-      releaseSlotsSchema.safeParse({ tournamentId: UUID, fromDate: '2026-08-01' })
-        .success,
+      releaseSlotsSchema.safeParse({ tournamentId: UUID, fromDate: '2026-08-01' }).success,
     ).toBe(true)
     expect(releaseSlotsSchema.safeParse({ tournamentId: UUID }).success).toBe(false)
   })

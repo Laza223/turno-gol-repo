@@ -114,9 +114,7 @@ export function openingsForMatch<S extends OwnedSlot>({
   movingMatchId,
   options,
 }: OpeningsInput<S>): Array<MatchOpening<S>> {
-  const moving = movingMatchId
-    ? (matches.find((m) => m.id === movingMatchId) ?? null)
-    : null
+  const moving = movingMatchId ? (matches.find((m) => m.id === movingMatchId) ?? null) : null
 
   // El partido que se mueve libera su lugar: no se cuenta a sí mismo ni como
   // cancha ocupada ni como equipo ocupado. Sin esto, mover un partido 15
@@ -150,10 +148,10 @@ export function openingsForMatch<S extends OwnedSlot>({
   // llave sin resolver ('A definir') no tiene equipo y por lo tanto tampoco
   // puede chocar con nadie.
   const movingTeams = moving
-    ? ([
+    ? [
         { id: moving.homeTeamId, name: moving.homeTeamName },
         { id: moving.awayTeamId, name: moving.awayTeamName },
-      ].filter((t): t is { id: string; name: string | null } => t.id !== null))
+      ].filter((t): t is { id: string; name: string | null } => t.id !== null)
     : []
 
   const movingAt = moving ? intervalOf(moving) : null
@@ -226,8 +224,7 @@ export function openingsForMatch<S extends OwnedSlot>({
 
   return out.sort(
     (a, b) =>
-      a.startsAt.getTime() - b.startsAt.getTime() ||
-      a.slot.courtId.localeCompare(b.slot.courtId),
+      a.startsAt.getTime() - b.startsAt.getTime() || a.slot.courtId.localeCompare(b.slot.courtId),
   )
 }
 

@@ -1,9 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import {
-  bookings,
-  courts,
-  tenants,
-} from '@/shared/db/schema'
+import { bookings, courts, tenants } from '@/shared/db/schema'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import type { DbTx } from '@/shared/db/client'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
@@ -103,9 +99,7 @@ export function slotDurationMins(timeStart: string, timeEnd: string): number {
  */
 export function assertSlotDuration(timeStart: string, timeEnd: string): void {
   if (slotDurationMins(timeStart, timeEnd) !== SLOT_DURATION_MINUTES) {
-    throw new BookingValidationError(
-      `Los turnos son de ${SLOT_DURATION_MINUTES} minutos.`,
-    )
+    throw new BookingValidationError(`Los turnos son de ${SLOT_DURATION_MINUTES} minutos.`)
   }
 }
 
@@ -159,13 +153,15 @@ export async function lockCourtOrThrow(
     WHERE id = ${courtId}
     FOR UPDATE
   `)
-  const row = (result as unknown as Array<{
-    id: string
-    tenantId: string
-    pricing: CourtPricingData
-    status: string
-    name: string
-  }>)[0]
+  const row = (
+    result as unknown as Array<{
+      id: string
+      tenantId: string
+      pricing: CourtPricingData
+      status: string
+      name: string
+    }>
+  )[0]
   if (!row || row.status !== 'online') {
     throw new CourtOfflineError(courtId)
   }
@@ -214,19 +210,17 @@ export async function createManualBooking(
   } else if (input.type === 'block') {
     priceSnapshot = 0
   } else {
-    const calc = calculatePrice(
-      court.pricing,
-      artDateAt(input.date, input.timeStart),
-    )
+    const calc = calculatePrice(court.pricing, artDateAt(input.date, input.timeStart))
     if (calc === null) throw new PriceUnavailableError()
     priceSnapshot = calc
   }
 
-  const physicallyNextDay = await slotIsPhysicallyNextDay(
-    tenantId, input.date, input.timeStart, tx,
-  )
+  const physicallyNextDay = await slotIsPhysicallyNextDay(tenantId, input.date, input.timeStart, tx)
   const { startsAt, endsAt } = physicalRange({
-    date: input.date, timeStart: input.timeStart, timeEnd: input.timeEnd, physicallyNextDay,
+    date: input.date,
+    timeStart: input.timeStart,
+    timeEnd: input.timeEnd,
+    physicallyNextDay,
   })
 
   await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
@@ -238,9 +232,7 @@ export async function createManualBooking(
   //   * cash/transfer/other + payment_id NULL
   //   * NULL method + deposit_status='not_required'
   const paymentMethod =
-    input.depositMethod && input.depositMethod !== 'mercadopago'
-      ? input.depositMethod
-      : null
+    input.depositMethod && input.depositMethod !== 'mercadopago' ? input.depositMethod : null
 
   try {
     const inserted = await tx
@@ -515,26 +507,22 @@ async function createOnlineBookingImpl(
     throw new CourtOfflineError(input.courtId)
   }
 
-  const calc = calculatePrice(
-    court.pricing,
-    artDateAt(input.date, input.timeStart),
-  )
+  const calc = calculatePrice(court.pricing, artDateAt(input.date, input.timeStart))
   if (calc === null) throw new PriceUnavailableError()
   const priceSnapshot = calc
 
-  const physicallyNextDay = await slotIsPhysicallyNextDay(
-    tenantId, input.date, input.timeStart, tx,
-  )
+  const physicallyNextDay = await slotIsPhysicallyNextDay(tenantId, input.date, input.timeStart, tx)
   const { startsAt, endsAt } = physicalRange({
-    date: input.date, timeStart: input.timeStart, timeEnd: input.timeEnd, physicallyNextDay,
+    date: input.date,
+    timeStart: input.timeStart,
+    timeEnd: input.timeEnd,
+    physicallyNextDay,
   })
 
   await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
   const withDeposit = input.requiresDeposit && input.depositPercentage > 0
-  const depositAmount = withDeposit
-    ? calcDepositCents(priceSnapshot, input.depositPercentage)
-    : 0
+  const depositAmount = withDeposit ? calcDepositCents(priceSnapshot, input.depositPercentage) : 0
 
   try {
     const inserted = await tx
@@ -562,15 +550,15 @@ async function createOnlineBookingImpl(
     await invalidateAvailSearch(input.date)
     await ensurePTR(input.playerId, tenantId, tx)
 
-    const playerRows = await tx.execute(sql`
+    const playerRows = (await tx.execute(sql`
       SELECT first_name, phone FROM players WHERE id = ${input.playerId} LIMIT 1
-    `) as unknown as Array<{ first_name: string; phone: string | null }>
+    `)) as unknown as Array<{ first_name: string; phone: string | null }>
     const playerFirstName = playerRows[0]?.first_name ?? ''
     const playerPhone = playerRows[0]?.phone ?? undefined
 
-    const tenantRows = await tx.execute(sql`
+    const tenantRows = (await tx.execute(sql`
       SELECT name, address FROM tenants WHERE id = ${tenantId} LIMIT 1
-    `) as unknown as Array<{ name: string; address: string }>
+    `)) as unknown as Array<{ name: string; address: string }>
     const tenantName = tenantRows[0]?.name ?? ''
     const tenantAddress = tenantRows[0]?.address ?? ''
 
@@ -716,9 +704,7 @@ export async function autoCompleteOverdueBookings(
       AND b.ends_at < NOW() - (${graceMinutes} || ' minutes')::interval
     RETURNING b.*
   `)
-  return (rows as unknown as Array<typeof bookings.$inferSelect>).map(
-    rowToBookingRow,
-  )
+  return (rows as unknown as Array<typeof bookings.$inferSelect>).map(rowToBookingRow)
 }
 
 // ─── markNoShow ─────────────────────────────────────────────────────
@@ -857,10 +843,7 @@ export async function revertNoShow(
 }
 
 // ─── expirePendingBooking ───────────────────────────────────────────
-export async function expirePendingBooking(
-  bookingId: string,
-  tx: DbTx,
-): Promise<TransitionResult> {
+export async function expirePendingBooking(bookingId: string, tx: DbTx): Promise<TransitionResult> {
   return transitionFromPendingPayment(bookingId, 'expired', tx)
 }
 
@@ -895,9 +878,7 @@ export function generateSlots(p: GenerateSlotsInput): AvailableSlot[] {
   const slots: AvailableSlot[] = []
   for (let start = openMins; start <= lastStart; start += SLOT_DURATION_MINUTES) {
     const slotEnd = start + SLOT_DURATION_MINUTES
-    const overlaps = occupied.some(
-      (b) => start < b.timeEndMins && slotEnd > b.timeStartMins,
-    )
+    const overlaps = occupied.some((b) => start < b.timeEndMins && slotEnd > b.timeStartMins)
     const timeStart = minsToTime(start)
     // El slot que termina en la medianoche calendario se etiqueta '24:00'
     // (> '23:00' → pasa chk_time_valid); las madrugadas vuelven a 01:00, 02:00…
@@ -998,4 +979,3 @@ export async function getAvailableSlots(
 // `src/shared/cache/slots-cache.ts` para por qué la forma del cache no le
 // servía a su único consumidor plausible (`getPublicAvailability` resuelve
 // todas las canchas en una query y ya cachea en el borde).
-

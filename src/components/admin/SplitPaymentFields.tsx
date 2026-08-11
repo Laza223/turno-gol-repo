@@ -7,7 +7,10 @@ import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 
 export type ChargeLine = { id: string; amountCents: number | null; method: MethodKey }
 
-export function newChargeLine(amountCents: number | null = null, method: MethodKey = 'cash'): ChargeLine {
+export function newChargeLine(
+  amountCents: number | null = null,
+  method: MethodKey = 'cash',
+): ChargeLine {
   return { id: crypto.randomUUID(), amountCents, method }
 }
 
@@ -88,13 +91,15 @@ export function SplitPaymentFields({
             // pantalla el control se anuncia sólo por su valor ("Efectivo") y
             // no se entiende qué se está eligiendo. Con varias líneas de cobro
             // hay varios selects idénticos, así que el índice va en el nombre.
-            aria-label={
-              lines.length > 1 ? `Método de pago del cobro ${i + 1}` : 'Método de pago'
-            }
+            aria-label={lines.length > 1 ? `Método de pago del cobro ${i + 1}` : 'Método de pago'}
             className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring disabled:opacity-60"
           >
             {methodOptions.map((m) => (
-              <option key={m.value} value={m.value} className="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100">
+              <option
+                key={m.value}
+                value={m.value}
+                className="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100"
+              >
                 {m.label}
               </option>
             ))}

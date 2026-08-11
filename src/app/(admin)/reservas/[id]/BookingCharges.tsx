@@ -78,7 +78,11 @@ export default function BookingCharges({
   const [method, setMethod] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>('cash')
   const [isMethodOpen, setIsMethodOpen] = useState(false)
 
-  const { depositCounted, totalPaid, pending: pendingAmount } = useMemo(
+  const {
+    depositCounted,
+    totalPaid,
+    pending: pendingAmount,
+  } = useMemo(
     () =>
       summarizeBookingCharges({
         priceSnapshot,
@@ -92,8 +96,12 @@ export default function BookingCharges({
 
   const [chargeMode, setChargeMode] = useState<'single' | 'split'>('single')
   const [splitCents1, setSplitCents1] = useState<number | null>(null)
-  const [splitMethod1, setSplitMethod1] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>('cash')
-  const [splitMethod2, setSplitMethod2] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>('transfer')
+  const [splitMethod1, setSplitMethod1] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>(
+    'cash',
+  )
+  const [splitMethod2, setSplitMethod2] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>(
+    'transfer',
+  )
   const [isMethod1Open, setIsMethod1Open] = useState(false)
   const [isMethod2Open, setIsMethod2Open] = useState(false)
 
@@ -135,8 +143,10 @@ export default function BookingCharges({
       const amount2 = splitCents2Value
 
       startTransition(async () => {
-        const key1 = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
-        const key2 = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
+        const key1 =
+          typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
+        const key2 =
+          typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
 
         const res1 = await addBookingChargeAction({
           bookingId,
@@ -416,7 +426,8 @@ export default function BookingCharges({
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground/90 italic">
-                💡 Si pagaron con 2 medios (ej. parte Efectivo y parte Transferencia), podés usar la pestaña arriba <strong>&quot;⚡ Pago dividido&quot;</strong>.
+                💡 Si pagaron con 2 medios (ej. parte Efectivo y parte Transferencia), podés usar la
+                pestaña arriba <strong>&quot;⚡ Pago dividido&quot;</strong>.
               </p>
             </div>
           ) : (
@@ -463,7 +474,10 @@ export default function BookingCharges({
                           <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50">
+                      <PopoverContent
+                        align="start"
+                        className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50"
+                      >
                         {PAYMENT_METHODS.map((m) => (
                           <button
                             key={m.value}
@@ -474,7 +488,9 @@ export default function BookingCharges({
                             }}
                             className={cn(
                               'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-left cursor-pointer',
-                              splitMethod1 === m.value ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300' : 'hover:bg-accent',
+                              splitMethod1 === m.value
+                                ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300'
+                                : 'hover:bg-accent',
                             )}
                           >
                             <span>{m.label}</span>
@@ -487,17 +503,15 @@ export default function BookingCharges({
               </div>
 
               <div className="rounded-md bg-background/60 p-3 border border-border/60 space-y-3">
-                <p className="text-xs font-semibold text-foreground">Segundo pago (saldo restante)</p>
+                <p className="text-xs font-semibold text-foreground">
+                  Segundo pago (saldo restante)
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label htmlFor="split-amount-2" className="text-xs font-medium text-foreground">
                       Monto 2 (ARS)
                     </label>
-                    <MoneyInput
-                      id="split-amount-2"
-                      valueCents={splitCents2Value}
-                      disabled
-                    />
+                    <MoneyInput id="split-amount-2" valueCents={splitCents2Value} disabled />
                   </div>
                   <div className="space-y-1">
                     <label htmlFor="split-method-2" className="text-xs font-medium text-foreground">
@@ -526,7 +540,10 @@ export default function BookingCharges({
                           <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50">
+                      <PopoverContent
+                        align="start"
+                        className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50"
+                      >
                         {PAYMENT_METHODS.map((m) => (
                           <button
                             key={m.value}
@@ -537,7 +554,9 @@ export default function BookingCharges({
                             }}
                             className={cn(
                               'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-left cursor-pointer',
-                              splitMethod2 === m.value ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300' : 'hover:bg-accent',
+                              splitMethod2 === m.value
+                                ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300'
+                                : 'hover:bg-accent',
                             )}
                           >
                             <span>{m.label}</span>
@@ -550,8 +569,13 @@ export default function BookingCharges({
               </div>
 
               <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                <span>Resumen: {formatArs(splitCents1Value)} ({METHOD_LABELS[splitMethod1]}) + {formatArs(splitCents2Value)} ({METHOD_LABELS[splitMethod2]})</span>
-                <span className="font-semibold">Total: {formatArs(splitCents1Value + splitCents2Value)}</span>
+                <span>
+                  Resumen: {formatArs(splitCents1Value)} ({METHOD_LABELS[splitMethod1]}) +{' '}
+                  {formatArs(splitCents2Value)} ({METHOD_LABELS[splitMethod2]})
+                </span>
+                <span className="font-semibold">
+                  Total: {formatArs(splitCents1Value + splitCents2Value)}
+                </span>
               </div>
             </div>
           )}

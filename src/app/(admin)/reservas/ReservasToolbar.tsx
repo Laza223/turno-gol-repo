@@ -63,7 +63,10 @@ export function ReservasToolbar() {
   return (
     <div className="flex w-full items-center gap-2 sm:w-auto">
       <div className="relative w-full sm:w-72">
-        <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
         <label htmlFor="reservas-search" className="sr-only">
           Buscar por nombre o número de reserva
         </label>
@@ -93,7 +96,11 @@ export function ReservasToolbar() {
         )}
       </div>
 
-      <div role="group" aria-label="Densidad de la lista" className="flex shrink-0 rounded-lg bg-muted p-0.5">
+      <div
+        role="group"
+        aria-label="Densidad de la lista"
+        className="flex shrink-0 rounded-lg bg-muted p-0.5"
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -103,7 +110,9 @@ export function ReservasToolbar() {
               aria-label="Vista detallada"
               className={cn(
                 'flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500',
-                !compact ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                !compact
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <LayoutList aria-hidden className="h-4 w-4" />
@@ -120,7 +129,9 @@ export function ReservasToolbar() {
               aria-label="Vista compacta"
               className={cn(
                 'flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500',
-                compact ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                compact
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Rows3 aria-hidden className="h-4 w-4" />

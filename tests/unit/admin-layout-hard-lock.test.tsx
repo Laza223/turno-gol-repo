@@ -17,12 +17,20 @@ vi.mock('@/modules/auth/impersonation.server', () => ({ resolveImpersonatedStaff
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn(async () => 'admin') }))
 vi.mock('@/shared/db/client', () => ({
-  withTenantContext: vi.fn(async () => ({ currentPeriodEnd: new Date('2026-09-13T12:00:00.000Z') })),
+  withTenantContext: vi.fn(async () => ({
+    currentPeriodEnd: new Date('2026-09-13T12:00:00.000Z'),
+  })),
 }))
 vi.mock('@/shared/kill-switch', () => ({ redirectIfTenantSuspended: vi.fn(async () => undefined) }))
 vi.mock('@/shared/db/schema', () => ({ tenantSubscriptions: {} }))
 vi.mock('@/components/layout/admin-layout-shell', () => ({
-  AdminLayoutShell: ({ tenantStatus, children }: { tenantStatus: string; children: React.ReactNode }) => (
+  AdminLayoutShell: ({
+    tenantStatus,
+    children,
+  }: {
+    tenantStatus: string
+    children: React.ReactNode
+  }) => (
     <div data-testid="admin-shell" data-tenant-status={tenantStatus}>
       {children}
     </div>
@@ -33,7 +41,9 @@ vi.mock('@/components/admin/PushNotificationManagerLoader', () => ({
   PushNotificationManagerLoader: () => null,
 }))
 vi.mock('@/app/(admin)/actions/auth', () => ({ signOutAction: vi.fn() }))
-vi.mock('@/app/(super-admin)/super-admin/tenants/[id]/actions', () => ({ stopImpersonationAction: vi.fn() }))
+vi.mock('@/app/(super-admin)/super-admin/tenants/[id]/actions', () => ({
+  stopImpersonationAction: vi.fn(),
+}))
 
 import AdminLayout from '@/app/(admin)/layout'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -80,7 +90,9 @@ describe('AdminLayout — hard lock por tenant_status', () => {
     '%s: redirige a /suspended',
     async (status) => {
       vi.mocked(getStaffTenant).mockResolvedValue(tenant(status) as never)
-      await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow('REDIRECT:/suspended')
+      await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow(
+        'REDIRECT:/suspended',
+      )
     },
   )
 

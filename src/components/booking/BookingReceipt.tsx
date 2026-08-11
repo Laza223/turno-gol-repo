@@ -57,7 +57,10 @@ export default function BookingReceipt(props: BookingReceiptData) {
         <Row label="Dirección" value={`${props.address}, ${props.city}`} />
         <Row label="Cancha" value={props.courtName} />
         <Row label="Fecha" value={props.date.split('-').reverse().join('/')} />
-        <Row label="Horario" value={`${props.timeStart.slice(0, 5)}–${props.timeEnd.slice(0, 5)}`} />
+        <Row
+          label="Horario"
+          value={`${props.timeStart.slice(0, 5)}–${props.timeEnd.slice(0, 5)}`}
+        />
         <Row label="Precio del turno" value={`$${fmtArs(props.priceSnapshot)}`} />
         {withDeposit ? (
           <>
@@ -71,7 +74,11 @@ export default function BookingReceipt(props: BookingReceiptData) {
       </dl>
 
       <div className="mt-5 flex items-center gap-4">
-        <BookingQR value={props.verifyUrl} label="Código QR de verificación de la reserva" size={132} />
+        <BookingQR
+          value={props.verifyUrl}
+          label="Código QR de verificación de la reserva"
+          size={132}
+        />
         <p className="text-xs leading-5 text-slate-500">
           Escaneá este código para verificar el estado de la reserva en tiempo real, o entrá a:
           <br />

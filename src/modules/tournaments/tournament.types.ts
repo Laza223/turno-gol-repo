@@ -3,18 +3,9 @@
 
 export type TournamentFormat = 'league' | 'knockout' | 'groups_playoff'
 
-export type TournamentStatus =
-  | 'draft'
-  | 'registration'
-  | 'in_progress'
-  | 'finished'
-  | 'canceled'
+export type TournamentStatus = 'draft' | 'registration' | 'in_progress' | 'finished' | 'canceled'
 
-export type TournamentTeamStatus =
-  | 'registered'
-  | 'confirmed'
-  | 'withdrawn'
-  | 'disqualified'
+export type TournamentTeamStatus = 'registered' | 'confirmed' | 'withdrawn' | 'disqualified'
 
 /**
  * Criterios de desempate, aplicados EN ORDEN después de los puntos.
@@ -172,12 +163,7 @@ export type ReserveSlotsResult = {
 
 export type TournamentStageKind = 'league' | 'group_stage' | 'knockout'
 
-export type TournamentMatchStatus =
-  | 'scheduled'
-  | 'played'
-  | 'walkover'
-  | 'postponed'
-  | 'canceled'
+export type TournamentMatchStatus = 'scheduled' | 'played' | 'walkover' | 'postponed' | 'canceled'
 
 export type TournamentStageRow = {
   id: string

@@ -30,18 +30,24 @@ describe('VerifyPage — estado de éxito', () => {
   it('intent login: copy genérico + botón a mis reservas', async () => {
     await renderPage({ status: 'success', next: '/mis-reservas', intent: 'login' })
     expect(screen.getByText(/iniciaste sesión/i)).toBeTruthy()
-    expect(screen.getByRole('link', { name: /ir a mis reservas/i }).getAttribute('href')).toBe('/mis-reservas')
+    expect(screen.getByRole('link', { name: /ir a mis reservas/i }).getAttribute('href')).toBe(
+      '/mis-reservas',
+    )
   })
 
   it('intent signup: bienvenida + botón al panel', async () => {
     await renderPage({ status: 'success', next: '/dashboard', intent: 'signup' })
     expect(screen.getByText(/bienvenido a turnogol/i)).toBeTruthy()
-    expect(screen.getByRole('link', { name: /ir al panel/i }).getAttribute('href')).toBe('/dashboard')
+    expect(screen.getByRole('link', { name: /ir al panel/i }).getAttribute('href')).toBe(
+      '/dashboard',
+    )
   })
 
   it('next malicioso cae al fallback /mis-reservas', async () => {
     await renderPage({ status: 'success', next: '//evil.com', intent: 'login' })
-    expect(screen.getByRole('link', { name: /ir a mis reservas/i }).getAttribute('href')).toBe('/mis-reservas')
+    expect(screen.getByRole('link', { name: /ir a mis reservas/i }).getAttribute('href')).toBe(
+      '/mis-reservas',
+    )
     expect(screen.getByTestId('redirect').getAttribute('data-next')).toBe('/mis-reservas')
   })
 

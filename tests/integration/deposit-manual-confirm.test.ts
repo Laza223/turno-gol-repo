@@ -1,7 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
-import { createDepositPayment, confirmManualDepositPayment } from '@/modules/payments/payment.service'
+import {
+  createDepositPayment,
+  confirmManualDepositPayment,
+} from '@/modules/payments/payment.service'
 import { cancelByAdmin } from '@/modules/bookings/booking.cancellation'
 import {
   cleanupAll,

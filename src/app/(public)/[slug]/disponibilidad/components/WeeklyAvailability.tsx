@@ -6,7 +6,11 @@ import type { WeeklyAvailabilityResponse } from '@/modules/tenants/public.servic
 import { formatArs } from '@/lib/format'
 
 const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
-const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+})
 
 function formatDayTab(dateStr: string): { dow: string; dm: string } {
   const dt = new Date(dateStr + 'T12:00:00Z')
@@ -15,7 +19,13 @@ function formatDayTab(dateStr: string): { dow: string; dm: string } {
   return { dow, dm }
 }
 
-export default function WeeklyAvailability({ slug, week }: { slug: string; week: WeeklyAvailabilityResponse }) {
+export default function WeeklyAvailability({
+  slug,
+  week,
+}: {
+  slug: string
+  week: WeeklyAvailabilityResponse
+}) {
   const [active, setActive] = useState(0)
   const day = week.days[active]!
 
@@ -32,7 +42,9 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
               onClick={() => setActive(i)}
               aria-pressed={isActive}
               className={`flex min-w-[68px] snap-start flex-col items-center rounded-xl border px-3 py-2 text-xs transition-colors ${
-                isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-accent'
+                isActive
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-muted-foreground hover:bg-accent'
               }`}
             >
               <span className="font-semibold capitalize">{dow}</span>
@@ -43,7 +55,9 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
       </div>
 
       {day.courts.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">Sin canchas disponibles este día.</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          Sin canchas disponibles este día.
+        </p>
       ) : (
         <div className="space-y-5">
           {day.courts.map((court) => {
@@ -63,7 +77,11 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
                       >
                         <span className="tabular-nums">{s.time}</span>
                         {/* text-green-600 sobre bg-green-50 mide 3.14:1 — bajo AA. text-green-700 (igual que el resto del link) da 4.79:1. */}
-                        {s.price && <span className="text-[10px] text-green-700 dark:text-emerald-400 tabular-nums">{formatArs(s.price)}</span>}
+                        {s.price && (
+                          <span className="text-[10px] text-green-700 dark:text-emerald-400 tabular-nums">
+                            {formatArs(s.price)}
+                          </span>
+                        )}
                       </Link>
                     ))}
                   </div>

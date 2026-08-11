@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { within, expect } from 'storybook/test'
-import { planSummaries, tenantDetail, tenantDetailPastDue, tenantDetailTrialing } from '@/test/fixtures/super-admin'
+import {
+  planSummaries,
+  tenantDetail,
+  tenantDetailPastDue,
+  tenantDetailTrialing,
+} from '@/test/fixtures/super-admin'
 import { SuscripcionTab } from './suscripcion-tab'
 
 /**

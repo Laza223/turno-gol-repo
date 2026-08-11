@@ -29,7 +29,8 @@ test.describe('TG-HP-223 — Settings horarios: general + Sábado madrugada + d�
     }>('SELECT opening_hours, closes_next_day FROM tenants WHERE id = $1', [E2E_TENANT_ID])
     const originalOpeningHours = before?.opening_hours
     const originalClosesNextDay = before?.closes_next_day
-    if (!originalOpeningHours) throw new Error('No se pudo leer tenants.opening_hours antes del test')
+    if (!originalOpeningHours)
+      throw new Error('No se pudo leer tenants.opening_hours antes del test')
 
     const context = await browser.newContext()
     await suppressPushPrompt(context)
@@ -49,7 +50,10 @@ test.describe('TG-HP-223 — Settings horarios: general + Sábado madrugada + d�
       // y `.check()` son idempotentes, así que repetir la secuencia es seguro y
       // no relaja la aserción final de DB.
       let row:
-        | { opening_hours: Record<string, { open: string; close: string; closed?: boolean }>; closes_next_day: boolean }
+        | {
+            opening_hours: Record<string, { open: string; close: string; closed?: boolean }>
+            closes_next_day: boolean
+          }
         | undefined
       await expect(async () => {
         // Horario general: 18:00–23:00 (aplica a lun-vie, que arrancan en modo 'general').
@@ -91,7 +95,8 @@ test.describe('TG-HP-223 — Settings horarios: general + Sábado madrugada + d�
       await writeEvidence('TG-HP-223', {
         status: 'pass',
         dbRow: row,
-        dbWrites: 'tenants.opening_hours (jsonb 7 días) + tenants.closes_next_day (columna propia, actions.ts:31)',
+        dbWrites:
+          'tenants.opening_hours (jsonb 7 días) + tenants.closes_next_day (columna propia, actions.ts:31)',
       })
     } finally {
       await context.close()

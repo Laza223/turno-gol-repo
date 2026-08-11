@@ -35,9 +35,9 @@ test.describe('TG-HP-311 — Editar settings de soporte', () => {
       const page = await ctx.newPage()
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=acciones`)
 
-      await expect(
-        page.getByRole('heading', { name: 'Editar settings del complejo' }),
-      ).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Editar settings del complejo' })).toBeVisible(
+        { timeout: 15_000 },
+      )
 
       const advanceInput = page.locator('#advance-days')
       await expect(advanceInput).toHaveValue(String(currentAdvanceDays))
@@ -78,8 +78,10 @@ test.describe('TG-HP-311 — Editar settings de soporte', () => {
         after: { advanceDays: newAdvanceDays, requiresDeposit: newRequiresDeposit },
         settingsAfter: after.settings,
         latestSettingsAuditLog: auditRow ?? null,
-        dbWrites: 'tenants.settings (lee-mergea-escribe, support.service.ts:412-439) + audit_logs support.tenant.settings_updated',
-        notes: 'z.strictObject rechaza campos no whitelisteados — no se probó ese rechazo (fuera del happy path).',
+        dbWrites:
+          'tenants.settings (lee-mergea-escribe, support.service.ts:412-439) + audit_logs support.tenant.settings_updated',
+        notes:
+          'z.strictObject rechaza campos no whitelisteados — no se probó ese rechazo (fuera del happy path).',
       })
     } finally {
       await ctx.close()

@@ -66,6 +66,9 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  logger.error('fatal', { module: 'workers', error: err instanceof Error ? err.message : String(err) })
+  logger.error('fatal', {
+    module: 'workers',
+    error: err instanceof Error ? err.message : String(err),
+  })
   process.exit(1)
 })

@@ -4,7 +4,11 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
+import {
+  SplitPaymentFields,
+  newChargeLine,
+  type ChargeLine,
+} from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
@@ -88,11 +92,15 @@ export function StreetMoneyChargeDialog({
 
     if (row.origin === 'canteen_tab') {
       if (totalCents !== row.pendingCents) {
-        setError(`Los cobros tienen que sumar exacto ${formatArs(row.pendingCents)} (ingresaste ${formatArs(totalCents)}).`)
+        setError(
+          `Los cobros tienen que sumar exacto ${formatArs(row.pendingCents)} (ingresaste ${formatArs(totalCents)}).`,
+        )
         return
       }
     } else if (totalCents > row.pendingCents) {
-      setError(`El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(row.pendingCents)}).`)
+      setError(
+        `El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(row.pendingCents)}).`,
+      )
       return
     }
 
@@ -108,7 +116,10 @@ export function StreetMoneyChargeDialog({
             : row.origin === 'canteen_tab'
               ? await settleTabAction({
                   tabId: row.refId,
-                  charges: parsedCharges as { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[],
+                  charges: parsedCharges as {
+                    amount: number
+                    method: 'cash' | 'transfer' | 'mercadopago'
+                  }[],
                   clientIdempotencyKey: idempotencyKey,
                 })
               : await registerInscriptionPaymentAction({

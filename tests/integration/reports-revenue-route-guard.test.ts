@@ -53,8 +53,7 @@ const makeStaffUser = (staffUserId: string): AuthUser => ({
 
 // `withTenant` recibe un NextRequest; para lo que usa el handler (req.url,
 // req.method) un Request estándar es estructuralmente compatible.
-const csvRequest = () =>
-  new Request(CSV_URL) as unknown as Parameters<typeof exportRevenue>[0]
+const csvRequest = () => new Request(CSV_URL) as unknown as Parameters<typeof exportRevenue>[0]
 
 beforeAll(async () => {
   const sql = getSql()

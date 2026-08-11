@@ -1,21 +1,9 @@
 import { sql } from 'drizzle-orm'
-import {
-  check,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { bookings } from './bookings'
 import { players } from './players'
-import {
-  paymentMethodEnum,
-  paymentStatusEnum,
-  paymentTypeEnum,
-} from './enums'
+import { paymentMethodEnum, paymentStatusEnum, paymentTypeEnum } from './enums'
 
 export const payments = pgTable(
   'payments',
@@ -39,15 +27,10 @@ export const payments = pgTable(
     description: text('description'),
 
     processedAt: timestamp('processed_at', { withTimezone: true, mode: 'date' }),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    amountPositive: check(
-      'chk_payment_amount_positive',
-      sql`${table.amount} > 0`,
-    ),
+    amountPositive: check('chk_payment_amount_positive', sql`${table.amount} > 0`),
     tenantIdx: index('idx_payments_tenant').on(table.tenantId),
     bookingIdx: index('idx_payments_booking')
       .on(table.bookingId)
@@ -61,14 +44,8 @@ export const payments = pgTable(
     mpPreferenceIdx: index('idx_payments_mp_preference')
       .on(table.mpPreferenceId)
       .where(sql`mp_preference_id IS NOT NULL`),
-    tenantStatusIdx: index('idx_payments_tenant_status').on(
-      table.tenantId,
-      table.status,
-    ),
-    tenantCreatedIdx: index('idx_payments_tenant_created').on(
-      table.tenantId,
-      table.createdAt,
-    ),
+    tenantStatusIdx: index('idx_payments_tenant_status').on(table.tenantId, table.status),
+    tenantCreatedIdx: index('idx_payments_tenant_created').on(table.tenantId, table.createdAt),
     // Migr. 061 (reconciliación contable D4 §7): sweep cross-tenant
     // (turnogol_worker, sin tenant_id en el WHERE) — ver reconciliation.service.ts.
     approvedCreatedIdx: index('idx_payments_approved_created')

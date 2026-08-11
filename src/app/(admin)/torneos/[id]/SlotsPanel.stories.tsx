@@ -45,9 +45,7 @@ export const ConHorarios: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('4 horas · 1 cancha · 1 fecha')).toBeVisible()
-    await expect(
-      canvas.getByRole('button', { name: /liberar de hoy en adelante/i }),
-    ).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /liberar de hoy en adelante/i })).toBeVisible()
   },
 }
 
@@ -57,9 +55,7 @@ export const SinHorarios: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Sin horarios tomados')).toBeVisible()
-    await expect(
-      canvas.queryByRole('button', { name: /liberar de hoy en adelante/i }),
-    ).toBeNull()
+    await expect(canvas.queryByRole('button', { name: /liberar de hoy en adelante/i })).toBeNull()
   },
 }
 
@@ -67,9 +63,7 @@ export const SinHorarios: Story = {
 export const SinCanchaElegida: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByRole('button', { name: /tomar estos horarios/i }),
-    ).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: /tomar estos horarios/i })).toBeDisabled()
   },
 }
 
@@ -80,16 +74,14 @@ export const SinCanchaElegida: Story = {
  */
 export const ConConflictos: Story = {
   args: {
-    reserveAction: fn(
-      async (): Promise<ReserveSlotsActionResult> => ({
-        success: true,
-        reserved: 6,
-        conflicts: [
-          { courtId: CANCHA_1.id, date: '2026-03-21', timeStart: '16:00', timeEnd: '17:00' },
-          { courtId: CANCHA_2.id, date: '2026-03-28', timeStart: '15:00', timeEnd: '16:00' },
-        ],
-      }),
-    ),
+    reserveAction: fn(async (): Promise<ReserveSlotsActionResult> => ({
+      success: true,
+      reserved: 6,
+      conflicts: [
+        { courtId: CANCHA_1.id, date: '2026-03-21', timeStart: '16:00', timeEnd: '17:00' },
+        { courtId: CANCHA_2.id, date: '2026-03-28', timeStart: '15:00', timeEnd: '16:00' },
+      ],
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -101,9 +93,7 @@ export const ConConflictos: Story = {
     // de más. Y con `selector` porque el textContent del contenedor padre
     // también matchea el regex.
     await expect(await canvas.findByText('Se tomaron 6 horas.')).toBeVisible()
-    await expect(
-      canvas.getByText(/2 horas ya estaban ocupadas/i, { selector: 'p' }),
-    ).toBeVisible()
+    await expect(canvas.getByText(/2 horas ya estaban ocupadas/i, { selector: 'p' })).toBeVisible()
     await expect(canvas.getByText(/21\/03\/2026/, { selector: 'li' })).toBeVisible()
   },
 }
@@ -111,12 +101,10 @@ export const ConConflictos: Story = {
 /** Ninguna hora estaba libre: es error, no un éxito vacío. */
 export const TodoOcupado: Story = {
   args: {
-    reserveAction: fn(
-      async (): Promise<ReserveSlotsActionResult> => ({
-        success: false,
-        error: 'Ninguna de esas horas estaba libre: no se tomó nada.',
-      }),
-    ),
+    reserveAction: fn(async (): Promise<ReserveSlotsActionResult> => ({
+      success: false,
+      error: 'Ninguna de esas horas estaba libre: no se tomó nada.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

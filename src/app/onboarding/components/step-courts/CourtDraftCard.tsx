@@ -55,17 +55,23 @@ export function CourtDraftCard({
           className="group flex flex-1 items-center gap-3 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform duration-200" aria-hidden />
+            <ChevronUp
+              className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform duration-200"
+              aria-hidden
+            />
           ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform duration-200" aria-hidden />
+            <ChevronDown
+              className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform duration-200"
+              aria-hidden
+            />
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
               <span className="text-sm font-semibold text-foreground truncate">
                 {draft.name || 'Cancha sin nombre'}
               </span>
-              {!isExpanded && (
-                draft.priceCents != null ? (
+              {!isExpanded &&
+                (draft.priceCents != null ? (
                   <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
                     {formatArs(draft.priceCents)}
                   </span>
@@ -73,8 +79,7 @@ export function CourtDraftCard({
                   <span className="text-xs font-medium text-red-600 dark:text-red-400">
                     (falta precio)
                   </span>
-                )
-              )}
+                ))}
             </div>
             {!isExpanded && (
               <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -127,7 +132,7 @@ export function CourtDraftCard({
           'grid transition-all duration-200 ease-out overflow-hidden',
           isExpanded
             ? 'grid-rows-[1fr] opacity-100 mt-4 border-t border-border/60 pt-4'
-            : 'grid-rows-[0fr] opacity-0 mt-0 pt-0'
+            : 'grid-rows-[0fr] opacity-0 mt-0 pt-0',
         )}
       >
         <div className="min-h-0 space-y-4">
@@ -183,7 +188,9 @@ export function CourtDraftCard({
               <select
                 id={`court-surface-${draft.key}`}
                 value={draft.surfaceType}
-                onChange={(e) => onUpdate(draft.key, { surfaceType: e.target.value as SurfaceType })}
+                onChange={(e) =>
+                  onUpdate(draft.key, { surfaceType: e.target.value as SurfaceType })
+                }
                 className={fieldClass}
               >
                 {SURFACE_OPTIONS.map((o) => (
@@ -205,8 +212,8 @@ export function CourtDraftCard({
                 required
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Por turno de 1 hora, igual toda la semana. Después podés poner
-                precio por franja desde Canchas.
+                Por turno de 1 hora, igual toda la semana. Después podés poner precio por franja
+                desde Canchas.
               </p>
             </div>
           </div>
@@ -227,7 +234,8 @@ export function CourtDraftCard({
               <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
             </label>
             <p className="mb-3 text-xs text-muted-foreground">
-              Subí una foto para que los jugadores puedan identificar visualmente esta cancha al reservar.
+              Subí una foto para que los jugadores puedan identificar visualmente esta cancha al
+              reservar.
             </p>
             <ImageUploader
               preset="court"
@@ -239,7 +247,11 @@ export function CourtDraftCard({
                 if (res.success) {
                   onUpdate(draft.key, { photos: [...draft.photos, res.url] })
                 } else {
-                  toast({ title: 'No se pudo subir la foto', description: res.error, variant: 'destructive' })
+                  toast({
+                    title: 'No se pudo subir la foto',
+                    description: res.error,
+                    variant: 'destructive',
+                  })
                 }
               }}
               onRemove={async (url) => {
@@ -247,7 +259,11 @@ export function CourtDraftCard({
                 if (res.success) {
                   onUpdate(draft.key, { photos: draft.photos.filter((p) => p !== url) })
                 } else {
-                  toast({ title: 'No se pudo borrar la foto', description: res.error, variant: 'destructive' })
+                  toast({
+                    title: 'No se pudo borrar la foto',
+                    description: res.error,
+                    variant: 'destructive',
+                  })
                 }
               }}
               max={1}

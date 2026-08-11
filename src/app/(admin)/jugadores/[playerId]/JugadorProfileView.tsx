@@ -3,12 +3,7 @@ import { ChevronLeft } from 'lucide-react'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import type { ManualBanDuration } from '@/modules/bans/ban.schema'
-import type {
-  PlayerProfile,
-  PlayerStats,
-  PlayerBookingRow,
-  PlayerFixedSlotRow,
-} from '../queries'
+import type { PlayerProfile, PlayerStats, PlayerBookingRow, PlayerFixedSlotRow } from '../queries'
 import { BanPlayerControls } from './BanPlayerControls'
 import { PlayerTagsCard, type SetPlayerTagsFn } from './PlayerTagsCard'
 import { PlayerFixedSlotsCard, type UnlinkContactFn } from './PlayerFixedSlotsCard'
@@ -115,7 +110,9 @@ export function JugadorProfileView({
           </div>
           {profile.firstSeenAt && (
             <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Cliente desde</dt>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Cliente desde
+              </dt>
               <dd className="text-foreground">{formatDateArt(new Date(profile.firstSeenAt))}</dd>
             </div>
           )}
@@ -182,7 +179,9 @@ export function JugadorProfileView({
                 </div>
                 <div className="text-right">
                   <p className="text-foreground">{formatArs(b.priceSnapshot)}</p>
-                  <p className="text-xs text-muted-foreground">{STATUS_LABELS[b.status] ?? b.status}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {STATUS_LABELS[b.status] ?? b.status}
+                  </p>
                 </div>
               </li>
             ))}

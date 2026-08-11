@@ -17,7 +17,7 @@ test.describe('Public smoke (cross-browser)', () => {
     expect(scrollW).toBeLessThanOrEqual(innerW + 1)
 
     const criticalErrors = consoleErrors.filter(
-      (e) => !e.includes('Failed to load resource') && !e.includes('favicon')
+      (e) => !e.includes('Failed to load resource') && !e.includes('favicon'),
     )
     expect(criticalErrors).toHaveLength(0)
   })

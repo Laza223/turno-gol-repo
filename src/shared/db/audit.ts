@@ -47,10 +47,7 @@ export type AuditEntry = {
   metadata?: Record<string, unknown>
 }
 
-export async function insertAuditLog(
-  tx: DbTx,
-  entry: AuditEntry,
-): Promise<void> {
+export async function insertAuditLog(tx: DbTx, entry: AuditEntry): Promise<void> {
   const override = await resolveImpersonationOverride()
   const actorId = override ? override.systemAdminId : entry.actorId
   const actorType: AuditEntry['actorType'] = override ? 'system' : entry.actorType
@@ -71,10 +68,7 @@ export async function insertAuditLog(
 
 export type SystemAuditEntry = Omit<AuditEntry, 'actorId' | 'actorType'>
 
-export async function insertSystemAuditLog(
-  tx: DbTx,
-  entry: SystemAuditEntry,
-): Promise<void> {
+export async function insertSystemAuditLog(tx: DbTx, entry: SystemAuditEntry): Promise<void> {
   await insertAuditLog(tx, {
     ...entry,
     actorId: SYSTEM_ACTOR_ID,

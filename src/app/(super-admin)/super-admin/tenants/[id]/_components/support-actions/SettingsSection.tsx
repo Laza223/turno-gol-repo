@@ -105,9 +105,7 @@ export function SettingsSection({ tenantId, settings, pending, run, action }: Pr
         <button
           type="button"
           disabled={pending}
-          onClick={() =>
-            run(() => action({ tenantId, patch: form }), setSettingsFeedback)
-          }
+          onClick={() => run(() => action({ tenantId, patch: form }), setSettingsFeedback)}
           className={primaryBtn}
         >
           Guardar settings

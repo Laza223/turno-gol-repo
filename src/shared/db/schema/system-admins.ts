@@ -1,10 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { staffStatusEnum } from './enums'
 
 // Fix #10 F2: equipo interno TurnoGol con MFA + IP whitelist.
@@ -30,12 +24,8 @@ export const systemAdmins = pgTable(
     }),
     lastLoginIp: text('last_login_ip'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     emailIdx: uniqueIndex('idx_system_admins_email').on(table.email),

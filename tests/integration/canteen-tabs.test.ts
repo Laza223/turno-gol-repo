@@ -8,7 +8,12 @@ import {
   linkStaffToTenant,
 } from '../helpers/tenant'
 import { createProduct } from '@/modules/canteen/canteen.service'
-import { cancelTab, createTab, listOpenTabs, settleTab } from '@/modules/canteen/canteen-tab.service'
+import {
+  cancelTab,
+  createTab,
+  listOpenTabs,
+  settleTab,
+} from '@/modules/canteen/canteen-tab.service'
 import {
   InsufficientStockError,
   TabNotFoundError,
@@ -201,8 +206,12 @@ describe('canteen tabs — createTab idempotencia', () => {
       clientIdempotencyKey: key,
     }
 
-    const first = await withTenantContext(tenant.id, (tx) => createTab(tenant.id, staff.id, input, tx))
-    const second = await withTenantContext(tenant.id, (tx) => createTab(tenant.id, staff.id, input, tx))
+    const first = await withTenantContext(tenant.id, (tx) =>
+      createTab(tenant.id, staff.id, input, tx),
+    )
+    const second = await withTenantContext(tenant.id, (tx) =>
+      createTab(tenant.id, staff.id, input, tx),
+    )
 
     expect(first.duplicate).toBe(false)
     expect(second.duplicate).toBe(true)
@@ -341,7 +350,11 @@ describe('canteen tabs — settleTab happy path', () => {
       settleTab(
         tenant.id,
         staff.id,
-        { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() },
+        {
+          tabId: tab.id,
+          charges: [{ amount: tab.totalAmount, method: 'cash' }],
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -387,12 +400,30 @@ describe('canteen tabs — settleTab idempotencia', () => {
     )
     const settleKey = crypto.randomUUID()
     const first = await withTenantContext(tenant.id, (tx) =>
-      settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: settleKey }, tx),
+      settleTab(
+        tenant.id,
+        staff.id,
+        {
+          tabId: tab.id,
+          charges: [{ amount: tab.totalAmount, method: 'cash' }],
+          clientIdempotencyKey: settleKey,
+        },
+        tx,
+      ),
     )
     expect(first.duplicate).toBe(false)
 
     const second = await withTenantContext(tenant.id, (tx) =>
-      settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: settleKey }, tx),
+      settleTab(
+        tenant.id,
+        staff.id,
+        {
+          tabId: tab.id,
+          charges: [{ amount: tab.totalAmount, method: 'cash' }],
+          clientIdempotencyKey: settleKey,
+        },
+        tx,
+      ),
     )
 
     expect(second.duplicate).toBe(true)
@@ -423,10 +454,28 @@ describe('canteen tabs — settleTab idempotencia', () => {
 
     const [r1, r2] = await Promise.all([
       withTenantContext(tenant.id, (tx) =>
-        settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
+        settleTab(
+          tenant.id,
+          staff.id,
+          {
+            tabId: tab.id,
+            charges: [{ amount: tab.totalAmount, method: 'cash' }],
+            clientIdempotencyKey: crypto.randomUUID(),
+          },
+          tx,
+        ),
       ),
       withTenantContext(tenant.id, (tx) =>
-        settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
+        settleTab(
+          tenant.id,
+          staff.id,
+          {
+            tabId: tab.id,
+            charges: [{ amount: tab.totalAmount, method: 'cash' }],
+            clientIdempotencyKey: crypto.randomUUID(),
+          },
+          tx,
+        ),
       ),
     ])
 
@@ -467,7 +516,16 @@ describe('canteen tabs — settleTab con caja cerrada (asimetría: crear no toca
 
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
+        settleTab(
+          tenant.id,
+          staff.id,
+          {
+            tabId: tab.id,
+            charges: [{ amount: tab.totalAmount, method: 'cash' }],
+            clientIdempotencyKey: crypto.randomUUID(),
+          },
+          tx,
+        ),
       ),
     ).rejects.toBeInstanceOf(DayAlreadyClosedError)
 
@@ -559,7 +617,16 @@ describe('canteen tabs — cancelTab', () => {
       ),
     )
     await withTenantContext(tenant.id, (tx) =>
-      settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
+      settleTab(
+        tenant.id,
+        staff.id,
+        {
+          tabId: tab.id,
+          charges: [{ amount: tab.totalAmount, method: 'cash' }],
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
+        tx,
+      ),
     )
 
     await expect(
@@ -605,7 +672,11 @@ describe('canteen tabs — aislamiento cross-tenant (control positivo Y negativo
         settleTab(
           tenantA.id,
           staffA.id,
-          { tabId: foreignTab.id, charges: [{ amount: foreignTab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() },
+          {
+            tabId: foreignTab.id,
+            charges: [{ amount: foreignTab.totalAmount, method: 'cash' }],
+            clientIdempotencyKey: crypto.randomUUID(),
+          },
           tx,
         ),
       ),
@@ -621,7 +692,11 @@ describe('canteen tabs — aislamiento cross-tenant (control positivo Y negativo
       settleTab(
         tenantB.id,
         staffB.id,
-        { tabId: foreignTab.id, charges: [{ amount: foreignTab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() },
+        {
+          tabId: foreignTab.id,
+          charges: [{ amount: foreignTab.totalAmount, method: 'cash' }],
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )

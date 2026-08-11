@@ -162,7 +162,12 @@ describe('generateSlots', () => {
         occupied: [],
       })
       expect(slots.map((s) => s.timeStart)).toEqual([
-        '20:00', '21:00', '22:00', '23:00', '00:00', '01:00',
+        '20:00',
+        '21:00',
+        '22:00',
+        '23:00',
+        '00:00',
+        '01:00',
       ])
       // El slot 23:00 termina en 24:00; las madrugadas vuelven a wall-clock.
       expect(slots.find((s) => s.timeStart === '23:00')?.timeEnd).toBe('24:00')

@@ -7,9 +7,7 @@ export type TenantDeletionWarningData = {
   daysRemaining: number
 }
 
-export function renderTenantDeletionWarning(
-  data: TenantDeletionWarningData,
-): EmailContent {
+export function renderTenantDeletionWarning(data: TenantDeletionWarningData): EmailContent {
   const subject = `Eliminación programada — ${data.tenantName}`
   const html = `
 <!DOCTYPE html>

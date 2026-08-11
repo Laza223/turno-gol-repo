@@ -57,7 +57,7 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
 }
 
 export default async function ReservaExitoPage(props: Props) {
-  const params = await props.params;
+  const params = await props.params
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 

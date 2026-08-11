@@ -21,9 +21,30 @@ import type { ActivatePlanOption } from '@/app/(admin)/settings/facturacion/Acti
 const originalLocation = window.location
 
 const PLANS: ActivatePlanOption[] = [
-  { id: 'plan-predio', slug: 'predio', name: 'Predio', maxCourts: 2, priceMonthly: 5_500_000, priceAnnual: 4_400_000 },
-  { id: 'plan-complejo', slug: 'complejo', name: 'Complejo', maxCourts: 5, priceMonthly: 8_500_000, priceAnnual: 6_800_000 },
-  { id: 'plan-estadio', slug: 'estadio', name: 'Estadio', maxCourts: null, priceMonthly: 11_500_000, priceAnnual: 9_200_000 },
+  {
+    id: 'plan-predio',
+    slug: 'predio',
+    name: 'Predio',
+    maxCourts: 2,
+    priceMonthly: 5_500_000,
+    priceAnnual: 4_400_000,
+  },
+  {
+    id: 'plan-complejo',
+    slug: 'complejo',
+    name: 'Complejo',
+    maxCourts: 5,
+    priceMonthly: 8_500_000,
+    priceAnnual: 6_800_000,
+  },
+  {
+    id: 'plan-estadio',
+    slug: 'estadio',
+    name: 'Estadio',
+    maxCourts: null,
+    priceMonthly: 11_500_000,
+    priceAnnual: 9_200_000,
+  },
 ]
 
 const PERIOD_END = '2026-09-13T12:00:00.000Z'
@@ -115,10 +136,7 @@ describe('ChangePlanSection', () => {
   })
 
   it('muestra el mensaje del backend cuando el downgrade está bloqueado por canchas', async () => {
-    mockFetch(
-      { error: { message: 'Tenés 4 canchas online y el plan Predio soporta 2.' } },
-      409,
-    )
+    mockFetch({ error: { message: 'Tenés 4 canchas online y el plan Predio soporta 2.' } }, 409)
     renderSection({ currentPlanId: 'plan-estadio' })
 
     fireEvent.click(screen.getAllByRole('button', { name: /Bajar a este plan/i })[0]!)

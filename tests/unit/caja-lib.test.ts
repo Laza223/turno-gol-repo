@@ -158,7 +158,12 @@ describe('closeView', () => {
         hasDiff: false,
       })
       expect(
-        closeView({ declaredCash: 300000, diffAmount: 100000, balance: 400000, expectedCash: null }),
+        closeView({
+          declaredCash: 300000,
+          diffAmount: 100000,
+          balance: 400000,
+          expectedCash: null,
+        }),
       ).toEqual({
         variant: 'legacy',
         hasCashCount: true,
@@ -199,8 +204,15 @@ describe('closeView', () => {
         balance: 500000,
         expectedCash: 500000,
       })
-      expect(result).toMatchObject({ variant: 'v2', hasCashCount: true, hasDiff: true, tone: 'surplus' })
-      expect(flat((result as { message: string }).message)).toBe(`sobraron ${flat(formatArs(100000))}`)
+      expect(result).toMatchObject({
+        variant: 'v2',
+        hasCashCount: true,
+        hasDiff: true,
+        tone: 'surplus',
+      })
+      expect(flat((result as { message: string }).message)).toBe(
+        `sobraron ${flat(formatArs(100000))}`,
+      )
     })
 
     it('diff < 0 → "faltaron $X"', () => {
@@ -216,7 +228,9 @@ describe('closeView', () => {
         hasDiff: true,
         tone: 'shortfall',
       })
-      expect(flat((result as { message: string }).message)).toBe(`faltaron ${flat(formatArs(100000))}`)
+      expect(flat((result as { message: string }).message)).toBe(
+        `faltaron ${flat(formatArs(100000))}`,
+      )
     })
   })
 })

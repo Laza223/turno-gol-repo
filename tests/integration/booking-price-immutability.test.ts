@@ -157,7 +157,10 @@ describe('migr. 070 — price_snapshot al reprogramar', () => {
   it('permite recalcular el precio de una reserva todavía esperando seña que se mueve', async () => {
     const sql = getSql()
     const id = await insertBooking({
-      date: OTHER_DATE, timeStart: '20:00', timeEnd: '21:00', status: 'pending_payment',
+      date: OTHER_DATE,
+      timeStart: '20:00',
+      timeEnd: '21:00',
+      status: 'pending_payment',
     })
 
     await sql.unsafe(
@@ -175,7 +178,10 @@ describe('migr. 070 — price_snapshot al reprogramar', () => {
   it('sigue bloqueando cualquier UPDATE sobre un booking terminal (invariante previa intacta)', async () => {
     const sql = getSql()
     const id = await insertBooking({
-      date: OTHER_DATE, timeStart: '14:00', timeEnd: '15:00', status: 'canceled_no_refund',
+      date: OTHER_DATE,
+      timeStart: '14:00',
+      timeEnd: '15:00',
+      status: 'canceled_no_refund',
     })
 
     await expect(

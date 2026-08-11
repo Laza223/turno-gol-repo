@@ -2,12 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { TooManyActiveHoldsError } from '@/modules/bookings/booking.errors'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 import { MAX_ACTIVE_HOLDS_PER_PLAYER } from '@/shared/constants'
 
@@ -15,7 +10,12 @@ const FUTURE_DATE = '2027-05-10' // Monday, far in the future
 
 const PRICING = {
   rules: [
-    { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 },
+    {
+      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      from: '08:00',
+      to: '23:00',
+      price: 800000,
+    },
   ],
 }
 

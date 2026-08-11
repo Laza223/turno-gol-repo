@@ -1,19 +1,8 @@
 import { sql } from 'drizzle-orm'
-import {
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { jsonb } from '../jsonb'
 import { tenants } from './tenants'
-import {
-  notificationChannelEnum,
-  notificationStatusEnum,
-  recipientTypeEnum,
-} from './enums'
+import { notificationChannelEnum, notificationStatusEnum, recipientTypeEnum } from './enums'
 
 // recipient_id NO tiene FK (apunta a players|staff_users|tenant_staff_members
 // según recipient_type). Validado por trigger validate_notification_recipient (005).
@@ -36,24 +25,17 @@ export const notifications = pgTable(
     attemptCount: integer('attempt_count').notNull().default(1),
     lastError: text('last_error'),
 
-    queuedAt: timestamp('queued_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    queuedAt: timestamp('queued_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     sentAt: timestamp('sent_at', { withTimezone: true, mode: 'date' }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true, mode: 'date' }),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     tenantIdx: index('idx_notifications_tenant')
       .on(table.tenantId)
       .where(sql`tenant_id IS NOT NULL`),
-    tenantStatusIdx: index('idx_notifications_tenant_status').on(
-      table.tenantId,
-      table.status,
-    ),
+    tenantStatusIdx: index('idx_notifications_tenant_status').on(table.tenantId, table.status),
     recipientIdx: index('idx_notifications_recipient').on(table.recipientId),
     triggerIdx: index('idx_notifications_trigger').on(table.triggerEvent),
     queuedIdx: index('idx_notifications_queued')

@@ -58,7 +58,10 @@ test.describe('onboarding', () => {
       await expect(page.getByText(/paso \d+ de 4/i).first()).toBeVisible()
     })
 
-    test('wizard shows single progress indicator with goal gradient', async ({ page, freshAdminStorageState }) => {
+    test('wizard shows single progress indicator with goal gradient', async ({
+      page,
+      freshAdminStorageState,
+    }) => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
@@ -82,13 +85,18 @@ test.describe('onboarding', () => {
       await expect(page.getByRole('button', { name: /continuar/i })).toBeVisible()
     })
 
-    test('completes full 4-step wizard and lands on /onboarding/listo', async ({ page, freshAdminStorageState }) => {
+    test('completes full 4-step wizard and lands on /onboarding/listo', async ({
+      page,
+      freshAdminStorageState,
+    }) => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
       await expect(page).toHaveURL(/\/onboarding/)
 
       // Step 1: identidad del complejo
-      await expect(page.getByRole('heading', { name: /tu complejo/i })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: /tu complejo/i })).toBeVisible({
+        timeout: 10_000,
+      })
       await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard E2E')
       await page.getByPlaceholder(/av\. corrientes/i).fill('Av. Test 123')
       await page.getByPlaceholder(/luj[aá]n/i).fill('Buenos Aires')
@@ -118,7 +126,9 @@ test.describe('onboarding', () => {
 
       // Cierre peak-end: link público + compartir (el Aha Moment empieza acá)
       await expect(page).toHaveURL(/\/onboarding\/listo/, { timeout: 15_000 })
-      await expect(page.getByRole('heading', { name: /tu complejo está online/i })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: /tu complejo está online/i })).toBeVisible({
+        timeout: 10_000,
+      })
       await expect(page.getByRole('button', { name: /copiar link/i })).toBeVisible()
 
       // "Ir a mi panel" aterriza en el dashboard con el tenant creado y sus

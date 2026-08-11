@@ -1,12 +1,4 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 import type { Sql } from 'postgres'
@@ -17,14 +9,10 @@ import type { Sql } from 'postgres'
 let failAuditForTenantIds: Set<string> = new Set()
 
 vi.mock('@/shared/db/audit', async () => {
-  const actual = await vi.importActual<typeof import('@/shared/db/audit')>(
-    '@/shared/db/audit',
-  )
+  const actual = await vi.importActual<typeof import('@/shared/db/audit')>('@/shared/db/audit')
   return {
     ...actual,
-    insertSystemAuditLog: async (
-      ...args: Parameters<typeof actual.insertSystemAuditLog>
-    ) => {
+    insertSystemAuditLog: async (...args: Parameters<typeof actual.insertSystemAuditLog>) => {
       const entry = args[1]
       if (failAuditForTenantIds.has(entry.tenantId)) {
         throw new Error('forced audit failure (atomicity test)')

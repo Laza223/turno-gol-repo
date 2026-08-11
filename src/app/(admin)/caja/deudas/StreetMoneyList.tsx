@@ -136,7 +136,9 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
                       {row.debtorName}
                     </Link>
                   ) : (
-                    <span className="truncate text-sm font-medium text-foreground">{row.debtorName}</span>
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {row.debtorName}
+                    </span>
                   )}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">

@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import {
-  DAY_KEYS,
-  type PriceGrid,
-  isHourActive,
-} from '@/modules/courts/pricing-grid'
+import { DAY_KEYS, type PriceGrid, isHourActive } from '@/modules/courts/pricing-grid'
 import { cellKey, parseCellKey } from './cell-utils'
 
 type Params = {

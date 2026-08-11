@@ -39,9 +39,7 @@ export function PublicGoleadores({ scorers }: { scorers: TopScorersResult }) {
                     </span>
                   ) : null}
                 </span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {row.teamName}
-                </span>
+                <span className="block truncate text-xs text-muted-foreground">{row.teamName}</span>
               </span>
               <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
                 {row.goals}

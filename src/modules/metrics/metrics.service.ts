@@ -93,7 +93,10 @@ export function fillDailySeries(
  * Ventana inmediatamente anterior a [from, to], del mismo largo: termina el día
  * previo a `from`. Para tendencias (ej: tasa de ausencias vs período anterior).
  */
-export function previousWindow(window: { from: string; to: string }, days: number): {
+export function previousWindow(
+  window: { from: string; to: string },
+  days: number,
+): {
   from: string
   to: string
 } {

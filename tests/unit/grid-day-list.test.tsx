@@ -32,7 +32,10 @@ vi.mock('@/hooks/use-booking-realtime', () => ({
 }))
 
 vi.mock('next/dynamic', () => ({
-  default: () => function Stub() { return null },
+  default: () =>
+    function Stub() {
+      return null
+    },
 }))
 
 import { BookingGrid } from '@/components/booking/BookingGrid'
@@ -114,7 +117,11 @@ function booking(over: Partial<GridBooking>): GridBooking {
   }
 }
 
-function renderGrid(opts?: { courts?: CourtRow[]; bookings?: GridBooking[]; depositPercentage?: number }) {
+function renderGrid(opts?: {
+  courts?: CourtRow[]
+  bookings?: GridBooking[]
+  depositPercentage?: number
+}) {
   return render(
     <BookingGrid
       courts={opts?.courts ?? [court('c1', 'Cancha 1'), court('c2', 'Cancha 2')]}
@@ -227,8 +234,8 @@ describe('GridDayList — la grilla en mobile', () => {
     expect(
       within(selector).getByRole('button', { name: 'Cancha 2' }).getAttribute('aria-pressed'),
     ).toBe('true')
-    expect(within(selector).getByRole('button', { name: 'Todas' }).getAttribute('aria-pressed')).toBe(
-      'false',
-    )
+    expect(
+      within(selector).getByRole('button', { name: 'Todas' }).getAttribute('aria-pressed'),
+    ).toBe('false')
   })
 })

@@ -10,7 +10,11 @@ import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import CompleteBookingDialog from '../CompleteBookingDialog'
-import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from '../actions'
+import type {
+  BookingActionResult,
+  CompleteAndChargeInput,
+  CompleteAndChargeResult,
+} from '../actions'
 
 type CancellationType = 'complejo' | 'jugador'
 
@@ -64,7 +68,9 @@ type Props = {
   updatedAt?: string | null
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
-  completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
+  completeAndChargeBookingAction: (
+    input: CompleteAndChargeInput,
+  ) => Promise<CompleteAndChargeResult>
   markNoShowAction: SimpleBookingFn
   revertNoShowAction: SimpleBookingFn
   cancelBookingAction: CancelBookingFn
@@ -177,13 +183,18 @@ export default function BookingActions({
   if (status !== 'confirmed') return null
 
   const hasPaidDeposit = depositStatus === 'paid' && depositAmount > 0
-  const bookingStartUtcMs = startsAt ? new Date(startsAt).getTime() : bookingStartMs(bookingDate, timeStart)
-  const bookingEndUtcMs = endsAt ? new Date(endsAt).getTime() : bookingStartUtcMs + SLOT_DURATION_MINUTES * 60_000
+  const bookingStartUtcMs = startsAt
+    ? new Date(startsAt).getTime()
+    : bookingStartMs(bookingDate, timeStart)
+  const bookingEndUtcMs = endsAt
+    ? new Date(endsAt).getTime()
+    : bookingStartUtcMs + SLOT_DURATION_MINUTES * 60_000
   const inPolicy = nowMs < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
 
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
-    if (reason.trim().length < 3) return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
+    if (reason.trim().length < 3)
+      return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
     const res = await cancelBookingAction(bookingId, reason.trim(), cancelType)
     if (res.success) {
       toast({ title: 'Reserva cancelada', variant: 'success' })
@@ -251,7 +262,11 @@ export default function BookingActions({
         </button>
         <button
           type="button"
-          onClick={() => { setReason(''); setCancelType(null); setCancelOpen(true) }}
+          onClick={() => {
+            setReason('')
+            setCancelType(null)
+            setCancelOpen(true)
+          }}
           className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
         >
           Cancelar
@@ -276,10 +291,16 @@ export default function BookingActions({
               value={cancelType ?? ''}
               onValueChange={(v) => setCancelType(v as CancellationType)}
             >
-              <RadioChip value="complejo" description="Rotura, mantenimiento o error. Reembolso automático de la seña.">
+              <RadioChip
+                value="complejo"
+                description="Rotura, mantenimiento o error. Reembolso automático de la seña."
+              >
                 El complejo necesita cancelar
               </RadioChip>
-              <RadioChip value="jugador" description="Se aplica la política de cancelación del complejo.">
+              <RadioChip
+                value="jugador"
+                description="Se aplica la política de cancelación del complejo."
+              >
                 El jugador pidió cancelar
               </RadioChip>
             </RadioChipGroup>
@@ -290,7 +311,9 @@ export default function BookingActions({
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">Motivo (obligatorio)</label>
+            <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">
+              Motivo (obligatorio)
+            </label>
             <textarea
               id="cancel-reason"
               value={reason}

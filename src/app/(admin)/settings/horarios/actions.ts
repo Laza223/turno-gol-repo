@@ -8,9 +8,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/opening-hours.schema'
 
-export type HorariosActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type HorariosActionResult = { success: true } | { success: false; error: string }
 
 export async function updateHorariosAction(
   _prevState: HorariosActionResult,

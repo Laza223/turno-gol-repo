@@ -39,9 +39,7 @@ describe('validateServerEnv', () => {
     ['65 hex (uno de más)', 'a'.repeat(65)],
     ['64 chars con un no-hex adentro', 'z' + 'a'.repeat(63)],
   ])('rechaza ENCRYPTION_KEY de %s', (_caso, key) => {
-    expect(() => validateServerEnv({ ...baseValid, ENCRYPTION_KEY: key })).toThrow(
-      /ENCRYPTION_KEY/,
-    )
+    expect(() => validateServerEnv({ ...baseValid, ENCRYPTION_KEY: key })).toThrow(/ENCRYPTION_KEY/)
   })
 
   it('acepta ENCRYPTION_KEY de 64 hex, en mayúsculas o minúsculas', () => {
@@ -52,12 +50,16 @@ describe('validateServerEnv', () => {
   })
 
   it('fails when IMPERSONATION_COOKIE_SECRET < 16', () => {
-    expect(() => validateServerEnv({ ...baseValid, IMPERSONATION_COOKIE_SECRET: 'short' })).toThrow(/IMPERSONATION_COOKIE_SECRET/)
+    expect(() => validateServerEnv({ ...baseValid, IMPERSONATION_COOKIE_SECRET: 'short' })).toThrow(
+      /IMPERSONATION_COOKIE_SECRET/,
+    )
   })
 
   it('fails when MP_WEBHOOK_SECRET missing in production', () => {
     const { MP_WEBHOOK_SECRET: _, ...rest } = baseValid
-    expect(() => validateServerEnv({ ...rest, NODE_ENV: 'production' })).toThrow(/MP_WEBHOOK_SECRET/)
+    expect(() => validateServerEnv({ ...rest, NODE_ENV: 'production' })).toThrow(
+      /MP_WEBHOOK_SECRET/,
+    )
   })
 
   it('allows missing MP_WEBHOOK_SECRET outside production', () => {
@@ -67,6 +69,8 @@ describe('validateServerEnv', () => {
 
   it('fails when NEXT_PUBLIC_APP_URL missing in production', () => {
     const { NEXT_PUBLIC_APP_URL: _, ...rest } = baseValid
-    expect(() => validateServerEnv({ ...rest, NODE_ENV: 'production' })).toThrow(/NEXT_PUBLIC_APP_URL/)
+    expect(() => validateServerEnv({ ...rest, NODE_ENV: 'production' })).toThrow(
+      /NEXT_PUBLIC_APP_URL/,
+    )
   })
 })

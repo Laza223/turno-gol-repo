@@ -60,9 +60,10 @@ beforeEach(() => {
   vi.mocked(getStaffTenant).mockResolvedValue({ id: 'tenant-1', settings: {} } as never)
   vi.mocked(getStaffRole).mockResolvedValue('manager')
   vi.mocked(adminRateLimited).mockResolvedValue(null as never)
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (tx: never) => Promise<unknown>) => cb(FAKE_TX)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (tx: never) => Promise<unknown>,
+  ) => cb(FAKE_TX)) as never)
   vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-1', bookingId: null } as never)
 })
 

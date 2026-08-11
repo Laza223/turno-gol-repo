@@ -11,9 +11,7 @@ import { getPublicTenant, getPublicAvailability } from '@/modules/tenants/public
 const todayStr = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
 function req(slug: string, date: string) {
-  return new NextRequest(
-    `http://localhost/api/public/availability?slug=${slug}&date=${date}`,
-  )
+  return new NextRequest(`http://localhost/api/public/availability?slug=${slug}&date=${date}`)
 }
 
 beforeEach(() => {

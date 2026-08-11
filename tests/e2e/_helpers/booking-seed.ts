@@ -16,11 +16,7 @@ import { formatInTimeZone } from 'date-fns-tz'
 import type { makeServiceClient } from './player-seed'
 import { bookingInstants } from './booking-instants'
 
-export {
-  E2E_TENANT_ID,
-  E2E_COURT_ID,
-  makeServiceClient,
-} from './player-seed'
+export { E2E_TENANT_ID, E2E_COURT_ID, makeServiceClient } from './player-seed'
 
 export const E2E_STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 
@@ -36,11 +32,7 @@ export const E2E_STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
  * `CURRENT_DATE` en UTC.
  */
 export function dateIsoArtIn(days: number): string {
-  return formatInTimeZone(
-    addDays(new Date(), days),
-    'America/Argentina/Buenos_Aires',
-    'yyyy-MM-dd',
-  )
+  return formatInTimeZone(addDays(new Date(), days), 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd')
 }
 
 /** Returns YYYY-MM-DD for tomorrow in ART (America/Argentina/Buenos_Aires). */
@@ -150,7 +142,9 @@ export async function cleanupBookingsByIds(
 
       const { error } = await supabase.from('bookings').delete().eq('id', id)
       if (error) {
-        console.warn(`[booking-seed] cleanupBookingsByIds: DELETE failed for ${id}: ${error.message}`)
+        console.warn(
+          `[booking-seed] cleanupBookingsByIds: DELETE failed for ${id}: ${error.message}`,
+        )
       }
     } catch (err) {
       console.warn(`[booking-seed] cleanupBookingsByIds: unexpected error for ${id}:`, err)

@@ -108,10 +108,10 @@ beforeEach(() => {
   // `execute` devuelve `[]`: la rama de seña sigue de largo hasta buscar el
   // booking del `external_reference`, y con cero filas corta sin tocar nada —
   // que es todo lo que necesita este test, cuyo objeto es la elección de cuenta.
-  h.withTenantContext.mockImplementation(
-    (async (_id: string, cb: (t: unknown) => Promise<unknown>) =>
-      cb({ execute: vi.fn().mockResolvedValue([]) })) as never,
-  )
+  h.withTenantContext.mockImplementation((async (
+    _id: string,
+    cb: (t: unknown) => Promise<unknown>,
+  ) => cb({ execute: vi.fn().mockResolvedValue([]) })) as never)
   mockLockMpEvent.mockResolvedValue(true)
 })
 
@@ -170,9 +170,7 @@ describe('handleMpWebhookJob — elección de cuenta MP para eventos `payment`',
     h.getDb.mockReturnValue(makeDbChain('token-del-complejo'))
     mockGetBillingGateway.mockReturnValue(gatewayReturning('booking-abc'))
 
-    await expect(handleMpWebhookJob(job({ source: 'saas' }))).rejects.toThrow(
-      /source mismatch/i,
-    )
+    await expect(handleMpWebhookJob(job({ source: 'saas' }))).rejects.toThrow(/source mismatch/i)
     expect(mockHandleUpgradeApproved).not.toHaveBeenCalled()
   })
 
@@ -190,9 +188,7 @@ describe('handleMpWebhookJob — elección de cuenta MP para eventos `payment`',
       gatewayReturning(buildSaasUpgradeRef('tenant-ajeno', TARGET_PLAN_ID)),
     )
 
-    await expect(handleMpWebhookJob(job({ source: 'saas' }))).rejects.toThrow(
-      /tenant mismatch/i,
-    )
+    await expect(handleMpWebhookJob(job({ source: 'saas' }))).rejects.toThrow(/tenant mismatch/i)
     expect(mockHandleUpgradeApproved).not.toHaveBeenCalled()
   })
 })

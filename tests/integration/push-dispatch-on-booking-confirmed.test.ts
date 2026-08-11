@@ -9,12 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { getBoss, stopBoss } from '@/shared/jobs/boss'
 import { notifyAdminPush } from '@/modules/notifications/push.service'
-import {
-  cleanupAll,
-  createTestStaffUser,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestStaffUser, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const SAMPLE_PAYLOAD = {
   type: 'booking.confirmed_online',

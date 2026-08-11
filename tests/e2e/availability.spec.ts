@@ -15,7 +15,10 @@ test.describe('public availability', () => {
 
   test('navigates to weekly availability', async ({ page }) => {
     await page.goto('/e2e-complejo-demo')
-    await page.getByRole('link', { name: /ver semana completa|semana/i }).first().click()
+    await page
+      .getByRole('link', { name: /ver semana completa|semana/i })
+      .first()
+      .click()
     await expect(page).toHaveURL(/\/e2e-complejo-demo\/disponibilidad/)
   })
 

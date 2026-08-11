@@ -1,11 +1,6 @@
 import { and, asc, count, desc, eq, gte, lte, sql } from 'drizzle-orm'
 import { getDb, getWorkerDb } from '@/shared/db/client'
-import {
-  plans,
-  processedWebhooks,
-  tenants,
-  tenantSubscriptions,
-} from '@/shared/db/schema'
+import { plans, processedWebhooks, tenants, tenantSubscriptions } from '@/shared/db/schema'
 import { tenantStatusEnum } from '@/shared/db/schema/enums'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
 import { getQueueDepths, type QueueDepthEntry } from '@/shared/jobs/queue-stats'
@@ -122,9 +117,7 @@ async function getExpiringTrials(now: Date): Promise<ExpiringTrial[]> {
   return rows.filter((r): r is ExpiringTrial => r.trialEndsAt !== null)
 }
 
-async function getRecentSignups(
-  now: Date,
-): Promise<{ list: RecentSignup[]; total: number }> {
+async function getRecentSignups(now: Date): Promise<{ list: RecentSignup[]; total: number }> {
   const db = getDb()
   const sevenDaysAgo = new Date(now.getTime() - SEVEN_DAYS_MS)
   const [list, totals] = await Promise.all([
@@ -140,10 +133,7 @@ async function getRecentSignups(
       .where(gte(tenants.createdAt, sevenDaysAgo))
       .orderBy(desc(tenants.createdAt))
       .limit(10),
-    db
-      .select({ total: count() })
-      .from(tenants)
-      .where(gte(tenants.createdAt, sevenDaysAgo)),
+    db.select({ total: count() }).from(tenants).where(gte(tenants.createdAt, sevenDaysAgo)),
   ])
   return { list, total: totals[0]?.total ?? 0 }
 }

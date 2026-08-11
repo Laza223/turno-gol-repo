@@ -16,11 +16,7 @@ import { GridScroller } from './grid/GridScroller'
 import { GridDayList } from './grid/GridDayList'
 import { GridLegend } from './grid/GridLegend'
 import { GridOverlays } from './grid/GridOverlays'
-import {
-  ClosedDayEmptyState,
-  GridOfflineBanner,
-  NoCourtsEmptyState,
-} from './grid/GridEmptyStates'
+import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
 import { QuickFormCell } from './grid/QuickFormCell'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
 import type { RenderCanteenDialog, SlotPanelActions } from './BookingSlotPanel'
@@ -39,8 +35,13 @@ export type { GridBooking } from '@/lib/booking/grid-cells'
 const HINT_STORAGE_KEY = 'tg-hint-grilla-primera-reserva'
 
 const LABEL_DAYS: Record<string, string> = {
-  mon: 'Lun', tue: 'Mar', wed: 'Mié', thu: 'Jue',
-  fri: 'Vie', sat: 'Sáb', sun: 'Dom',
+  mon: 'Lun',
+  tue: 'Mar',
+  wed: 'Mié',
+  thu: 'Jue',
+  fri: 'Vie',
+  sat: 'Sáb',
+  sun: 'Dom',
 }
 
 type Props = {
@@ -164,10 +165,7 @@ export function BookingGrid({
     [detailBookingId, bookings],
   )
 
-  const courtNameById = useMemo(
-    () => new Map(courts.map((c) => [c.id, c.name])),
-    [courts],
-  )
+  const courtNameById = useMemo(() => new Map(courts.map((c) => [c.id, c.name])), [courts])
 
   const renderQuickForm = useCallback(
     (courtId: string, courtName: string, slotTime: string) =>
@@ -321,7 +319,9 @@ export function BookingGrid({
         checkAvailabilityAction={checkAvailabilityAction}
         searchPlayersAction={searchPlayersAction}
         detailBooking={detailBooking}
-        courtName={detailBooking ? (courtNameById.get(detailBooking.courtId) ?? 'Cancha') : 'Cancha'}
+        courtName={
+          detailBooking ? (courtNameById.get(detailBooking.courtId) ?? 'Cancha') : 'Cancha'
+        }
         onCloseDetail={handleDetailClose}
         onMutated={handleSlotMutated}
         hasEnded={detailBooking ? isSlotPast(detailBooking.timeEnd) : false}

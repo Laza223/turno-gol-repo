@@ -9,7 +9,13 @@ import { Card } from './detail-primitives'
  * reservas. Presentacional puro — la paginación es 100% GET (Link), sin
  * estado de cliente.
  */
-export function ActividadTab({ tenantId, activity }: { tenantId: string; activity: TenantActivity }) {
+export function ActividadTab({
+  tenantId,
+  activity,
+}: {
+  tenantId: string
+  activity: TenantActivity
+}) {
   const totalPages = Math.max(1, Math.ceil(activity.totalLogs / activity.pageSize))
   return (
     <div className="space-y-4">

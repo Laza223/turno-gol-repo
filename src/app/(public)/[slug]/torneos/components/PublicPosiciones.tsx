@@ -1,9 +1,6 @@
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import type { StandingsGroup } from '@/modules/tournaments/standings/types'
-import {
-  formatGoalDiff,
-  qualificationBadgeClass,
-} from '@/app/(admin)/torneos/torneos-lib'
+import { formatGoalDiff, qualificationBadgeClass } from '@/app/(admin)/torneos/torneos-lib'
 
 /**
  * Tabla de posiciones pública.

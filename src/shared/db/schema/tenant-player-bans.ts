@@ -1,10 +1,4 @@
-import {
-  index,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { players } from './players'
 import { staffUsers } from './staff-users'
@@ -22,9 +16,7 @@ export const tenantPlayerBans = pgTable(
       .notNull()
       .references(() => players.id),
     reason: text('reason').notNull(),
-    bannedAt: timestamp('banned_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    bannedAt: timestamp('banned_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     bannedUntil: timestamp('banned_until', {
       withTimezone: true,
       mode: 'date',

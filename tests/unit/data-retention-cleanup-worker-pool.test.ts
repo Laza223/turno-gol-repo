@@ -69,19 +69,14 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     // en null evita que el post-commit intente llamar a MP acá — esto es un
     // test de CABLEADO del pool, no de la lógica de cancelación (esa vive en
     // tests/integration/data-retention-cleanup.test.ts).
-    const txExecute = vi
-      .fn()
-      .mockResolvedValue([{ mp_subscription_id: null, eligible: true }])
-    const transaction = vi.fn(
-      async (fn: (tx: { execute: typeof txExecute }) => Promise<void>) => {
-        await fn({ execute: txExecute })
-      },
-    )
+    const txExecute = vi.fn().mockResolvedValue([{ mp_subscription_id: null, eligible: true }])
+    const transaction = vi.fn(async (fn: (tx: { execute: typeof txExecute }) => Promise<void>) => {
+      await fn({ execute: txExecute })
+    })
     h.getWorkerDb.mockReturnValue({ transaction })
 
-    const { runDataRetentionCleanup } = await import(
-      '@/shared/jobs/workers/data-retention-cleanup.worker'
-    )
+    const { runDataRetentionCleanup } =
+      await import('@/shared/jobs/workers/data-retention-cleanup.worker')
     await expect(runDataRetentionCleanup()).resolves.toBeUndefined()
 
     expect(h.getWorkerSql).toHaveBeenCalled()
@@ -113,9 +108,8 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     const transaction = vi.fn()
     h.getWorkerDb.mockReturnValue({ transaction })
 
-    const { runDataRetentionCleanup } = await import(
-      '@/shared/jobs/workers/data-retention-cleanup.worker'
-    )
+    const { runDataRetentionCleanup } =
+      await import('@/shared/jobs/workers/data-retention-cleanup.worker')
     await expect(runDataRetentionCleanup()).resolves.toBeUndefined()
 
     expect(transaction).not.toHaveBeenCalled()
@@ -124,9 +118,7 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
   })
 
   it('acumula fallas por-tenant, sigue con los tenants restantes y hace fallar el job al final', async () => {
-    h.getWorkerSql.mockReturnValue(
-      makeSqlTag([{ id: 'tenant-bad' }, { id: 'tenant-good' }]),
-    )
+    h.getWorkerSql.mockReturnValue(makeSqlTag([{ id: 'tenant-bad' }, { id: 'tenant-good' }]))
     let call = 0
     const transaction = vi.fn(async () => {
       call += 1
@@ -134,9 +126,8 @@ describe('runDataRetentionCleanup — usa el pool worker (bypass-capable), nunca
     })
     h.getWorkerDb.mockReturnValue({ transaction })
 
-    const { runDataRetentionCleanup } = await import(
-      '@/shared/jobs/workers/data-retention-cleanup.worker'
-    )
+    const { runDataRetentionCleanup } =
+      await import('@/shared/jobs/workers/data-retention-cleanup.worker')
     const { logger } = await import('@/shared/lib/logger')
 
     // Ambos tenants se procesan (el segundo no se aborta por la falla del

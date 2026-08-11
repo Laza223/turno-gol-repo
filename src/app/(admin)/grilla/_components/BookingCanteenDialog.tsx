@@ -64,9 +64,10 @@ export function BookingCanteenDialog({
   listCatalogAction,
   sellTicketAction,
 }: Props) {
-  const [catalog, setCatalog] = useState<
-    { products: CanteenProductRow[]; saleDisabled: boolean } | null
-  >(null)
+  const [catalog, setCatalog] = useState<{
+    products: CanteenProductRow[]
+    saleDisabled: boolean
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -94,9 +95,7 @@ export function BookingCanteenDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>
-            Cantina{displayName ? ` — ${displayName}` : ''}
-          </DialogTitle>
+          <DialogTitle>Cantina{displayName ? ` — ${displayName}` : ''}</DialogTitle>
         </DialogHeader>
 
         {error && (

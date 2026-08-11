@@ -98,7 +98,9 @@ export function PricingGridTable({
                 const isSelected = selected.has(key)
                 const isEditing = editing === key
                 const style =
-                  price != null ? heatStyle(price, priceStats.min, priceStats.max, isDark) : undefined
+                  price != null
+                    ? heatStyle(price, priceStats.min, priceStats.max, isDark)
+                    : undefined
 
                 return (
                   <td key={day} className="border-l border-border p-0.5">

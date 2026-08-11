@@ -70,8 +70,20 @@ describe('ReservasPage — render', () => {
   it('hoy: agrupa por cancha y muestra el total del día en el subtítulo', async () => {
     listMock.mockResolvedValue([
       row({ id: 'b1', courtName: 'Cancha 1', timeStart: '14:00:00', timeEnd: '15:00:00' }),
-      row({ id: 'b2', courtName: 'Cancha 1', timeStart: '16:00:00', timeEnd: '17:00:00', guestName: 'Ana López' }),
-      row({ id: 'b3', courtName: 'Cancha 2', timeStart: '15:00:00', timeEnd: '16:00:00', guestName: 'Luis Sosa' }),
+      row({
+        id: 'b2',
+        courtName: 'Cancha 1',
+        timeStart: '16:00:00',
+        timeEnd: '17:00:00',
+        guestName: 'Ana López',
+      }),
+      row({
+        id: 'b3',
+        courtName: 'Cancha 2',
+        timeStart: '15:00:00',
+        timeEnd: '16:00:00',
+        guestName: 'Luis Sosa',
+      }),
     ])
     countsMock.mockResolvedValue({ confirmed: 3 })
 
@@ -89,7 +101,9 @@ describe('ReservasPage — render', () => {
     render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
     expect(
-      screen.getByRole('article', { name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada' }),
+      screen.getByRole('article', {
+        name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada',
+      }),
     ).toBeTruthy()
   })
 
@@ -114,11 +128,15 @@ describe('ReservasPage — render', () => {
     render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', q: 'juan' }) }))
 
     const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
-    expect(within(filtros).getByRole('link', { name: /Pendientes/ }).getAttribute('href')).toBe(
-      '/reservas?dia=historial&status=pending_payment&q=juan',
-    )
+    expect(
+      within(filtros)
+        .getByRole('link', { name: /Pendientes/ })
+        .getAttribute('href'),
+    ).toBe('/reservas?dia=historial&status=pending_payment&q=juan')
     const tabs = screen.getByRole('navigation', { name: 'Rango de fechas' })
-    expect(within(tabs).getByRole('link', { name: 'Hoy' }).getAttribute('href')).toBe('/reservas?q=juan')
+    expect(within(tabs).getByRole('link', { name: 'Hoy' }).getAttribute('href')).toBe(
+      '/reservas?q=juan',
+    )
   })
 
   it('?vista=compacta renderiza filas de una línea preservando el aria-label', async () => {
@@ -132,9 +150,11 @@ describe('ReservasPage — render', () => {
     expect(article.textContent).not.toContain('Seña')
     // Y los filtros preservan la vista en la URL.
     const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
-    expect(within(filtros).getByRole('link', { name: /Confirmadas/ }).getAttribute('href')).toBe(
-      '/reservas?status=confirmed&vista=compacta',
-    )
+    expect(
+      within(filtros)
+        .getByRole('link', { name: /Confirmadas/ })
+        .getAttribute('href'),
+    ).toBe('/reservas?status=confirmed&vista=compacta')
   })
 
   it('la búsqueda se pasa a la query junto al scope', async () => {

@@ -97,9 +97,7 @@ export const REQUIRED_ENV = [
  *
  * Pure (no I/O): safe to import from tests.
  */
-export function encryptionKeyStrengthCheck(
-  key: string | undefined,
-): CheckResult {
+export function encryptionKeyStrengthCheck(key: string | undefined): CheckResult {
   if (key === undefined || key.length === 0) {
     return {
       ok: false,
@@ -125,8 +123,7 @@ export function encryptionKeyStrengthCheck(
   if (key === ENCRYPTION_KEY_PLACEHOLDER) {
     return {
       ok: false,
-      error:
-        'ENCRYPTION_KEY equals the .env.example placeholder (64 zeros) — generate a fresh key',
+      error: 'ENCRYPTION_KEY equals the .env.example placeholder (64 zeros) — generate a fresh key',
     }
   }
   return { ok: true }

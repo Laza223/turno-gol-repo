@@ -4,11 +4,17 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 // never throttle. This file tests the REAL enforce path; capture + restore.
 const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
-vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
+vi.mock('@upstash/redis', () => ({
+  Redis: class {
+    constructor(_: unknown) {}
+  },
+}))
 vi.mock('@upstash/ratelimit', () => {
   const counts = new Map<string, number>()
   class FakeRatelimit {
-    static tokenBucket(limit: number) { return { limit } }
+    static tokenBucket(limit: number) {
+      return { limit }
+    }
     private prefix: string
     private _limit: number
     constructor(opts: { redis: unknown; limiter: { limit: number }; prefix: string }) {
@@ -26,7 +32,9 @@ vi.mock('@upstash/ratelimit', () => {
         reset: Date.now() + 60_000,
       }
     }
-    static __reset() { counts.clear() }
+    static __reset() {
+      counts.clear()
+    }
   }
   return { Ratelimit: FakeRatelimit }
 })
@@ -62,7 +70,9 @@ describe('root middleware rate limit', () => {
 
   it('public/availability: 30 OK, 31st returns 429', async () => {
     for (let i = 0; i < 30; i++) {
-      const r = await middleware(mkReq('/api/public/availability?slug=x&date=2026-05-22', '1.2.3.4'))
+      const r = await middleware(
+        mkReq('/api/public/availability?slug=x&date=2026-05-22', '1.2.3.4'),
+      )
       expect(r.status).not.toBe(429)
     }
     const r = await middleware(mkReq('/api/public/availability?slug=x&date=2026-05-22', '1.2.3.4'))
@@ -80,7 +90,8 @@ describe('root middleware rate limit', () => {
   })
 
   it('different IPs do not share buckets', async () => {
-    for (let i = 0; i < 30; i++) await middleware(mkReq('/api/public/availability?slug=x&date=2026-05-22', '1.1.1.1'))
+    for (let i = 0; i < 30; i++)
+      await middleware(mkReq('/api/public/availability?slug=x&date=2026-05-22', '1.1.1.1'))
     const r = await middleware(mkReq('/api/public/availability?slug=x&date=2026-05-22', '2.2.2.2'))
     expect(r.status).not.toBe(429)
   })

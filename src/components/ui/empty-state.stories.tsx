@@ -16,7 +16,13 @@ const meta = {
     title: 'Sin canchas todavía',
     description: 'Creá la primera para aparecer en búsquedas públicas.',
   },
-  decorators: [(Story) => <div className="max-w-md"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-md">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof EmptyState>
 
 export default meta
@@ -30,8 +36,19 @@ export const ConIlustracion: Story = {
     icon: LayoutGrid,
     illustration: (
       <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-        <circle cx="32" cy="32" r="30" className="fill-emerald-500/10 stroke-emerald-500/30" strokeWidth="2" />
-        <path d="M20 32h24M32 20v24" className="stroke-emerald-600 dark:stroke-emerald-400" strokeWidth="2.5" strokeLinecap="round" />
+        <circle
+          cx="32"
+          cy="32"
+          r="30"
+          className="fill-emerald-500/10 stroke-emerald-500/30"
+          strokeWidth="2"
+        />
+        <path
+          d="M20 32h24M32 20v24"
+          className="stroke-emerald-600 dark:stroke-emerald-400"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },

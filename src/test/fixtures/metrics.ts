@@ -23,8 +23,20 @@ export const courtReport = (overrides: Partial<CourtReport> = {}): CourtReport =
 
 export const courtReports = (): CourtReport[] => [
   courtReport(),
-  courtReport({ courtId: courtFutbol7().id, courtName: 'Cancha 2', income: 15000000, bookingCount: 36, occupancyPct: 61 }),
-  courtReport({ courtId: courtFutbol11().id, courtName: 'Cancha 3 - Fútbol 11', income: 9000000, bookingCount: 18, occupancyPct: 34 }),
+  courtReport({
+    courtId: courtFutbol7().id,
+    courtName: 'Cancha 2',
+    income: 15000000,
+    bookingCount: 36,
+    occupancyPct: 61,
+  }),
+  courtReport({
+    courtId: courtFutbol11().id,
+    courtName: 'Cancha 3 - Fútbol 11',
+    income: 9000000,
+    bookingCount: 18,
+    occupancyPct: 34,
+  }),
 ]
 
 export const methodReport = (overrides: Partial<MethodReport> = {}): MethodReport => ({
@@ -68,12 +80,17 @@ export const revenueReportFirstMonth = (): RevenueReport =>
     balance: 6200000,
     bookingCount: 14,
     byCourt: [courtReport({ income: 6200000, bookingCount: 14, occupancyPct: 22 })],
-    byMethod: [methodReport({ method: 'mercadopago', total: 4200000 }), methodReport({ method: 'cash', total: 2000000 })],
+    byMethod: [
+      methodReport({ method: 'mercadopago', total: 4200000 }),
+      methodReport({ method: 'cash', total: 2000000 }),
+    ],
     prevPeriod: null,
   })
 
 /** Fila de la exportación CSV de caja — `monto_ars` va en centavos (convención del repo). */
-export const cashFlowExportRow = (overrides: Partial<CashFlowExportRow> = {}): CashFlowExportRow => ({
+export const cashFlowExportRow = (
+  overrides: Partial<CashFlowExportRow> = {},
+): CashFlowExportRow => ({
   fecha: artDateString(hoursFromNow(-26)),
   tipo: 'Ingreso',
   categoria: 'Reserva',
@@ -127,12 +144,17 @@ function isWeekend(dayIndex: number): boolean {
 }
 
 /** 30 días de actividad, con picos de fin de semana — la vista default de /metricas. */
-export const tenantMetrics = (overrides: Partial<TenantMetricsFixture> = {}): TenantMetricsFixture => ({
+export const tenantMetrics = (
+  overrides: Partial<TenantMetricsFixture> = {},
+): TenantMetricsFixture => ({
   windowDays: METRICS_WINDOW_DAYS,
   from: artDateString(new Date(FROZEN_NOW.getTime() - (METRICS_WINDOW_DAYS - 1) * 86_400_000)),
   to: artDateString(FROZEN_NOW),
   bookingsPerDay: thirtyDaySeries((date, i) => ({ date, count: isWeekend(i) ? 14 : 6 })),
-  revenuePerDay: thirtyDaySeries((date, i) => ({ date, amountCents: isWeekend(i) ? 2_100_000 : 900_000 })),
+  revenuePerDay: thirtyDaySeries((date, i) => ({
+    date,
+    amountCents: isWeekend(i) ? 2_100_000 : 900_000,
+  })),
   topSlots: [
     { time: '20:00', count: 24 },
     { time: '21:00', count: 21 },
@@ -186,7 +208,9 @@ const QUEUE_NAMES = [
 ]
 
 /** Sistema operativo: DB al día, colas vacías, último health-ping reciente. */
-export const systemStatusOk = (overrides: Partial<SystemStatusFixture> = {}): SystemStatusFixture => ({
+export const systemStatusOk = (
+  overrides: Partial<SystemStatusFixture> = {},
+): SystemStatusFixture => ({
   db: { status: 'ok', latencyMs: 12 },
   pgboss: { queues: QUEUE_NAMES.map((queue) => ({ queue, depth: 0 })) },
   lastHealthPing: hoursFromNow(-0.05).toISOString(),

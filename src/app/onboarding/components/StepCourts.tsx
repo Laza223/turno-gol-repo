@@ -47,8 +47,16 @@ export function StepCourts({
   const [isPending, startTransition] = useTransition()
   const [isGoingBack, startBackTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const { drafts, expandedKeys, canRemove, toggleExpand, expand, updateDraft, addDraft, removeDraft } =
-    useCourtDrafts(existingCourts)
+  const {
+    drafts,
+    expandedKeys,
+    canRemove,
+    toggleExpand,
+    expand,
+    updateDraft,
+    addDraft,
+    removeDraft,
+  } = useCourtDrafts(existingCourts)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

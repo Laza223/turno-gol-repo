@@ -51,11 +51,14 @@ beforeAll(async () => {
       ${'Cancha Reporte Test'},
       ${10},
       ${sql.json({
-        rules: [{
-          days: ['mon','tue','wed','thu','fri','sat','sun'],
-          from: '08:00', to: '23:00',
-          price: 800000,
-        }],
+        rules: [
+          {
+            days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+            from: '08:00',
+            to: '23:00',
+            price: 800000,
+          },
+        ],
       })},
       'online'
     )
@@ -105,7 +108,7 @@ describe('getRevenueReport — with data', () => {
     const report = await getRevenueReport(tenantId, MAY, OPENING_HOURS)
     const cash = report.byMethod.find((m) => m.method === 'cash')
     const transfer = report.byMethod.find((m) => m.method === 'transfer')
-    expect(cash?.total).toBe(60000)   // solo income: adjustment no entra en byMethod (#43)
+    expect(cash?.total).toBe(60000) // solo income: adjustment no entra en byMethod (#43)
     expect(transfer?.total).toBe(40000)
   })
 

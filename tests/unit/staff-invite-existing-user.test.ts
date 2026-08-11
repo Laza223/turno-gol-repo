@@ -90,7 +90,9 @@ beforeEach(() => {
   h.actorLimit.mockResolvedValue([{ role: 'admin' }])
   h.updateUserById.mockResolvedValue({ data: {}, error: null })
   h.staffUserInsert.mockReturnValue({
-    values: () => ({ onConflictDoUpdate: () => ({ returning: async () => [{ id: 'staff-new' }] }) }),
+    values: () => ({
+      onConflictDoUpdate: () => ({ returning: async () => [{ id: 'staff-new' }] }),
+    }),
   })
   h.tsmInsert.mockReturnValue({
     values: () => ({ onConflictDoUpdate: async () => undefined }),
@@ -103,7 +105,11 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
     h.listUsers.mockResolvedValue({
       data: {
         users: [
-          { id: 'auth-existing', email: 'New@X.com', app_metadata: { tenant_id: 'other-tenant', role: 'admin' } },
+          {
+            id: 'auth-existing',
+            email: 'New@X.com',
+            app_metadata: { tenant_id: 'other-tenant', role: 'admin' },
+          },
         ],
       },
       error: null,

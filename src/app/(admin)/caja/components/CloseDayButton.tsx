@@ -72,7 +72,11 @@ export function CloseDayButton({
     try {
       const res = await closeDayAction(date, declaredCents, note.trim() || undefined)
       if (res.success) {
-        toast({ title: 'Caja cerrada', description: 'El resumen del día quedó guardado.', variant: 'success' })
+        toast({
+          title: 'Caja cerrada',
+          description: 'El resumen del día quedó guardado.',
+          variant: 'success',
+        })
         track.cashflow('close.confirmed', {
           tenantId,
           durationMs: openedAtMs != null ? Date.now() - openedAtMs : undefined,
@@ -86,7 +90,10 @@ export function CloseDayButton({
       // mensaje contextual y permitir reintentar, sin disparar el error boundary
       // ni quedar colgado en "Procesando…" (#49). Mismo patrón que RegisterMovementModal.
       Sentry.captureException(err)
-      return { success: false, error: 'No pudimos cerrar la caja. Revisá tu conexión e intentá de nuevo.' }
+      return {
+        success: false,
+        error: 'No pudimos cerrar la caja. Revisá tu conexión e intentá de nuevo.',
+      }
     }
   }
 
@@ -125,15 +132,21 @@ export function CloseDayButton({
           <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ingresos</span>
-              <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">+{formatArsContable(totalIncome)}</span>
+              <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+                +{formatArsContable(totalIncome)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Egresos</span>
-              <span className="font-medium tabular-nums text-red-700 dark:text-red-400">−{formatArsContable(totalExpense)}</span>
+              <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
+                −{formatArsContable(totalExpense)}
+              </span>
             </div>
             <div className="flex justify-between border-t border-border pt-1">
               <span className="text-muted-foreground">Saldo neto del día</span>
-              <span className="font-semibold tabular-nums text-foreground">{formatArsContable(balance)}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {formatArsContable(balance)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">En efectivo según los movimientos</span>
@@ -152,7 +165,9 @@ export function CloseDayButton({
             <div className="flex justify-between border-t border-border pt-1">
               <span className="text-muted-foreground">Efectivo esperado</span>
               <span className="font-semibold tabular-nums text-foreground">
-                {expectedCash < 0 ? `−${formatArsContable(-expectedCash)}` : formatArsContable(expectedCash)}
+                {expectedCash < 0
+                  ? `−${formatArsContable(-expectedCash)}`
+                  : formatArsContable(expectedCash)}
               </span>
             </div>
           </div>
@@ -160,7 +175,9 @@ export function CloseDayButton({
             2. Contá e ingresá lo real
           </p>
           <div className="space-y-1">
-            <label htmlFor="declared" className="text-xs font-medium text-foreground">Efectivo contado (opcional, pesos)</label>
+            <label htmlFor="declared" className="text-xs font-medium text-foreground">
+              Efectivo contado (opcional, pesos)
+            </label>
             <MoneyInput
               id="declared"
               minCents={0}
@@ -183,8 +200,13 @@ export function CloseDayButton({
             <label htmlFor="close-note" className="text-xs font-medium text-foreground">
               Nota {noteRequired ? '(obligatoria)' : '(opcional)'}
             </label>
-            <textarea id="close-note" value={note} onChange={(e) => setNote(e.target.value)} rows={2}
-              className="w-full rounded-md border border-border px-3 py-2 text-base md:text-sm" />
+            <textarea
+              id="close-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              className="w-full rounded-md border border-border px-3 py-2 text-base md:text-sm"
+            />
           </div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             3. Confirmar

@@ -5,9 +5,7 @@ export type SubscriptionSuspendedData = {
   tenantName: string
 }
 
-export function renderSubscriptionSuspended(
-  data: SubscriptionSuspendedData,
-): EmailContent {
+export function renderSubscriptionSuspended(data: SubscriptionSuspendedData): EmailContent {
   const subject = `Cuenta suspendida — ${data.tenantName}`
   const html = `
 <!DOCTYPE html>

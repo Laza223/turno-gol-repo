@@ -15,7 +15,13 @@ const OK = { open: '08:00', close: '23:00' }
 
 function week(overrides: Record<string, { open: string; close: string }> = {}) {
   return {
-    mon: OK, tue: OK, wed: OK, thu: OK, fri: OK, sat: OK, sun: OK,
+    mon: OK,
+    tue: OK,
+    wed: OK,
+    thu: OK,
+    fri: OK,
+    sat: OK,
+    sun: OK,
     ...overrides,
   }
 }
@@ -69,8 +75,12 @@ describe('horariosSchema', () => {
   })
 
   it('rechaza formato de hora inválido', () => {
-    expect(horariosSchema.safeParse(week({ mon: { open: '8', close: '23:00' } })).success).toBe(false)
-    expect(horariosSchema.safeParse(week({ mon: { open: '25:00', close: '26:00' } })).success).toBe(false)
+    expect(horariosSchema.safeParse(week({ mon: { open: '8', close: '23:00' } })).success).toBe(
+      false,
+    )
+    expect(horariosSchema.safeParse(week({ mon: { open: '25:00', close: '26:00' } })).success).toBe(
+      false,
+    )
   })
 
   it('día operativo: rechaza cierre post-medianoche sin el flag, lo acepta con el flag', () => {

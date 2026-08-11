@@ -114,7 +114,7 @@ export function matchStatusBadgeClass(status: TournamentMatchStatus): string {
 export function roundLabel(
   round: number,
   kind: 'league' | 'group_stage' | 'knockout',
-  totalRounds: number
+  totalRounds: number,
 ): string {
   if (kind !== 'knockout') return `Fecha ${round}`
   const fromFinal = totalRounds - round

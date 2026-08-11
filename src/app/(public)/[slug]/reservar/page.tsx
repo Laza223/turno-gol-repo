@@ -34,41 +34,69 @@ type Props = {
 
 function addMinsToHHMM(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number)
-  const total = (h! * 60 + (m ?? 0)) + mins
+  const total = h! * 60 + (m ?? 0) + mins
   // El slot que termina en la medianoche calendario se guarda '24:00' (> '23:00'
   // → pasa chk_time_valid); las madrugadas vuelven a 01:00, 02:00…
   return endLabelFromMins(total)
 }
 
 export default async function ReservarPage(props: Props) {
-  const searchParams = await props.searchParams;
-  const params = await props.params;
+  const searchParams = await props.searchParams
+  const params = await props.params
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) notFound()
   if (UNAVAILABLE.has(tenant.status) || !tenant.allowOnlineBooking) {
-    return <CheckoutInvalidState slug={params.slug} message="Este complejo no acepta reservas online por el momento." />
+    return (
+      <CheckoutInvalidState
+        slug={params.slug}
+        message="Este complejo no acepta reservas online por el momento."
+      />
+    )
   }
 
   const { court, date, time, dur } = searchParams
   const durNum = Number(dur)
-  if (!court || !date || !time || !DATE_RE.test(date) || !TIME_RE.test(time) || durNum !== SLOT_DURATION_MINUTES) {
-    return <CheckoutInvalidState slug={params.slug} message="Faltan datos del turno. Elegí un horario desde la grilla." />
+  if (
+    !court ||
+    !date ||
+    !time ||
+    !DATE_RE.test(date) ||
+    !TIME_RE.test(time) ||
+    durNum !== SLOT_DURATION_MINUTES
+  ) {
+    return (
+      <CheckoutInvalidState
+        slug={params.slug}
+        message="Faltan datos del turno. Elegí un horario desde la grilla."
+      />
+    )
   }
 
   const availability = await getPublicAvailability(tenant, date)
   const courtData = availability.courts.find((c) => c.id === court)
   const slot = courtData?.slots.find((s) => s.time === time)
   if (!courtData || !slot) {
-    return <CheckoutInvalidState slug={params.slug} message="No encontramos ese turno. Puede que haya cambiado la disponibilidad." />
+    return (
+      <CheckoutInvalidState
+        slug={params.slug}
+        message="No encontramos ese turno. Puede que haya cambiado la disponibilidad."
+      />
+    )
   }
   if (slot.status !== 'free') {
-    return <CheckoutInvalidState slug={params.slug} message="Ese turno ya no está disponible. Elegí otro horario." />
+    return (
+      <CheckoutInvalidState
+        slug={params.slug}
+        message="Ese turno ya no está disponible. Elegí otro horario."
+      />
+    )
   }
 
   const price = slot.price ?? 0
-  const depositAmount = tenant.requiresDeposit && tenant.depositPercentage > 0
-    ? Math.round((price * tenant.depositPercentage) / 100)
-    : 0
+  const depositAmount =
+    tenant.requiresDeposit && tenant.depositPercentage > 0
+      ? Math.round((price * tenant.depositPercentage) / 100)
+      : 0
   const timeEnd = addMinsToHHMM(time, durNum)
 
   // El paso más caro del embudo: el jugador ya eligió cancha y horario y está
@@ -104,44 +132,52 @@ export default async function ReservarPage(props: Props) {
   // importar el tenant — mismas policies que ya usa `checkPlayerBanned`.
   const banReason =
     searchParams.error === 'banned' && isPlayer
-      ? await withPlayerContext(user!.playerId, (tx) => getActiveBanReason(user!.playerId, tenant.id, tx))
+      ? await withPlayerContext(user!.playerId, (tx) =>
+          getActiveBanReason(user!.playerId, tenant.id, tx),
+        )
       : null
 
   return (
     <ReservaShell>
-    <div className="mx-auto max-w-md space-y-5 px-4 py-10 sm:px-6">
-      <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">Confirmá tu reserva</h1>
+      <div className="mx-auto max-w-md space-y-5 px-4 py-10 sm:px-6">
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
+          Confirmá tu reserva
+        </h1>
 
-      <CheckoutErrorBanner error={searchParams.error} until={searchParams.until} reason={banReason ?? undefined} />
-
-      <BookingSummary
-        data={{
-          tenantName: tenant.name,
-          city: tenant.city,
-          courtName: courtData.name,
-          date,
-          timeStart: time,
-          timeEnd,
-          price,
-          depositAmount,
-        }}
-      />
-
-      {isPlayer ? (
-        <ConfirmBookingButton
-          slug={params.slug}
-          court={court}
-          date={date}
-          time={time}
-          dur={durNum}
-          depositAmount={depositAmount}
-          payMethods={payMethods}
-          action={createBookingAndCheckout}
+        <CheckoutErrorBanner
+          error={searchParams.error}
+          until={searchParams.until}
+          reason={banReason ?? undefined}
         />
-      ) : (
-        <LoginGate next={nextUrl} action={sendPlayerMagicLink} />
-      )}
-    </div>
+
+        <BookingSummary
+          data={{
+            tenantName: tenant.name,
+            city: tenant.city,
+            courtName: courtData.name,
+            date,
+            timeStart: time,
+            timeEnd,
+            price,
+            depositAmount,
+          }}
+        />
+
+        {isPlayer ? (
+          <ConfirmBookingButton
+            slug={params.slug}
+            court={court}
+            date={date}
+            time={time}
+            dur={durNum}
+            depositAmount={depositAmount}
+            payMethods={payMethods}
+            action={createBookingAndCheckout}
+          />
+        ) : (
+          <LoginGate next={nextUrl} action={sendPlayerMagicLink} />
+        )}
+      </div>
     </ReservaShell>
   )
 }

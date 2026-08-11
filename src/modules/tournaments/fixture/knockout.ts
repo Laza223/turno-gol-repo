@@ -87,9 +87,8 @@ export function generateKnockout(
    * Para cada posición de la ronda siguiente: de dónde sale ese participante.
    * O es un equipo directo (BYE: pasó sin jugar) o el ganador de un partido.
    */
-  let feeders: Array<
-    { kind: 'team'; teamId: string } | { kind: 'winner'; index: number } | null
-  > = []
+  let feeders: Array<{ kind: 'team'; teamId: string } | { kind: 'winner'; index: number } | null> =
+    []
 
   // ── Primera ronda ──────────────────────────────────────────────
   for (let i = 0; i < size / 2; i++) {

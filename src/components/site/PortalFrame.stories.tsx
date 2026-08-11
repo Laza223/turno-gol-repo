@@ -54,7 +54,9 @@ export const SinSesion: Story = {
   ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('navigation', { name: 'Navegación del jugador' })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('navigation', { name: 'Navegación del jugador' }),
+    ).not.toBeInTheDocument()
   },
 }
 

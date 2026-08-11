@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { contrastRatio, heatStyle } from '@/app/(admin)/settings/canchas/components/pricing-grid/cell-utils'
+import {
+  contrastRatio,
+  heatStyle,
+} from '@/app/(admin)/settings/canchas/components/pricing-grid/cell-utils'
 
 /**
  * El heat map de la grilla de precios pinta el fondo de cada celda con un color
@@ -60,7 +63,10 @@ describe('heatStyle — contraste de la grilla de precios (WCAG AA)', () => {
   it('sin rango de precios (min === max) sigue siendo legible', () => {
     for (const isDark of [false, true]) {
       const style = heatStyle(25_000_00, 25_000_00, 25_000_00, isDark)
-      const ratio = contrastRatio(parseHex(String(style.color)), parseRgb(String(style.backgroundColor)))
+      const ratio = contrastRatio(
+        parseHex(String(style.color)),
+        parseRgb(String(style.backgroundColor)),
+      )
       expect(ratio).toBeGreaterThanOrEqual(AA_NORMAL_TEXT)
     }
   })

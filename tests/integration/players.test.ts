@@ -3,8 +3,13 @@ import { closeSql, getSql } from '@/shared/db/client'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { cleanupAll, ensureRoles } from '../helpers/tenant'
 
-beforeAll(async () => { await ensureRoles() })
-afterAll(async () => { await cleanupAll(); await closeSql() })
+beforeAll(async () => {
+  await ensureRoles()
+})
+afterAll(async () => {
+  await cleanupAll()
+  await closeSql()
+})
 
 describe('getOrCreatePlayer', () => {
   it('creates a new player with terms agreed', async () => {
@@ -16,7 +21,9 @@ describe('getOrCreatePlayer', () => {
     expect(player.id).toMatch(/^[0-9a-f-]{36}$/)
 
     const sql = getSql()
-    const rows = await sql<{ email: string; agreed_to_terms_at: Date | null; terms_version: string | null }[]>`
+    const rows = await sql<
+      { email: string; agreed_to_terms_at: Date | null; terms_version: string | null }[]
+    >`
       SELECT email, agreed_to_terms_at, terms_version FROM players WHERE id = ${player.id}
     `
     expect(rows[0]!.email).toBe(email.toLowerCase())

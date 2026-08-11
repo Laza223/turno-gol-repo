@@ -33,10 +33,12 @@ export function StatusBanner({
   if (serviceDegraded) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/25 dark:text-amber-200">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        <AlertTriangle
+          className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        />
         <span>
-          Estamos experimentando problemas técnicos. Algunas funciones pueden no estar
-          disponibles.
+          Estamos experimentando problemas técnicos. Algunas funciones pueden no estar disponibles.
         </span>
       </div>
     )
@@ -47,9 +49,13 @@ export function StatusBanner({
     const days = daysUntil(trialEndsAt)
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border-b border-emerald-200 text-sm text-emerald-900 dark:bg-emerald-500/10 dark:border-emerald-500/25 dark:text-emerald-100">
-        <Clock className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+        <Clock
+          className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+          aria-hidden="true"
+        />
         <span className="flex-1">
-          Período de prueba: <strong>{days}</strong> {days === 1 ? 'día restante' : 'días restantes'}.
+          Período de prueba: <strong>{days}</strong>{' '}
+          {days === 1 ? 'día restante' : 'días restantes'}.
         </span>
         <Link
           href="/settings/facturacion"
@@ -67,8 +73,7 @@ export function StatusBanner({
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200">
         <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
         <span className="flex-1">
-          Tu pago falló. Regularizá antes del{' '}
-          <strong>{formatDate(periodEnd)}</strong>.
+          Tu pago falló. Regularizá antes del <strong>{formatDate(periodEnd)}</strong>.
         </span>
         <Link
           href="/reactivar"
@@ -87,10 +92,13 @@ export function StatusBanner({
   if (tenantStatus === 'canceled' && periodEnd) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/25 dark:text-amber-200">
-        <XCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        <XCircle
+          className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        />
         <span className="flex-1">
-          Cancelaste tu suscripción. Tenés acceso hasta el{' '}
-          <strong>{formatDate(periodEnd)}</strong>. Podés reactivarla cuando quieras.
+          Cancelaste tu suscripción. Tenés acceso hasta el <strong>{formatDate(periodEnd)}</strong>.
+          Podés reactivarla cuando quieras.
         </span>
         <Link
           href="/reactivar"

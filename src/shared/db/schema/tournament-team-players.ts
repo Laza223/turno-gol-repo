@@ -35,18 +35,11 @@ export const tournamentTeamPlayers = pgTable(
     dni: text('dni'),
     shirtNumber: smallint('shirt_number'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    nameNonEmpty: check(
-      'chk_team_player_name_nonempty',
-      sql`length(trim(${table.fullName})) > 0`,
-    ),
+    nameNonEmpty: check('chk_team_player_name_nonempty', sql`length(trim(${table.fullName})) > 0`),
     shirtRange: check(
       'chk_team_player_shirt',
       sql`${table.shirtNumber} IS NULL OR ${table.shirtNumber} BETWEEN 0 AND 999`,

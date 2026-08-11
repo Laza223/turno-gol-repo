@@ -9,7 +9,13 @@ vi.mock('next/headers', () => ({
 // Mock the rate-limit module: default to allowed (failMode 'open' passthrough).
 vi.mock('@/shared/rate-limit', () => ({
   parseClientIp: vi.fn(() => '127.0.0.1'),
-  enforce: vi.fn().mockResolvedValue({ ok: true, limit: 5, remaining: 4, reset: Date.now() + 60_000, unavailable: false }),
+  enforce: vi.fn().mockResolvedValue({
+    ok: true,
+    limit: 5,
+    remaining: 4,
+    reset: Date.now() + 60_000,
+    unavailable: false,
+  }),
   rateLimit429: vi.fn(),
 }))
 
@@ -37,7 +43,7 @@ describe('GET /api/admin/push/vapid', () => {
 
     const res = await GET()
     expect(res.status).toBe(200)
-    const json = await res.json() as { publicKey: string }
+    const json = (await res.json()) as { publicKey: string }
     expect(json.publicKey).toBe(REAL_KEY)
   })
 

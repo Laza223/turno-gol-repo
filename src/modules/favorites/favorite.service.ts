@@ -18,12 +18,7 @@ export async function toggleFavorite(
   const existing = await tx
     .select({ id: playerFavorites.id })
     .from(playerFavorites)
-    .where(
-      and(
-        eq(playerFavorites.playerId, playerId),
-        eq(playerFavorites.tenantId, tenantId),
-      ),
-    )
+    .where(and(eq(playerFavorites.playerId, playerId), eq(playerFavorites.tenantId, tenantId)))
     .limit(1)
 
   if (existing[0]) {
@@ -31,35 +26,20 @@ export async function toggleFavorite(
     return { favorited: false }
   }
 
-  await tx
-    .insert(playerFavorites)
-    .values({ playerId, tenantId })
-    .onConflictDoNothing()
+  await tx.insert(playerFavorites).values({ playerId, tenantId }).onConflictDoNothing()
   return { favorited: true }
 }
 
-export async function isFavorite(
-  playerId: string,
-  tenantId: string,
-  tx: DbTx,
-): Promise<boolean> {
+export async function isFavorite(playerId: string, tenantId: string, tx: DbTx): Promise<boolean> {
   const rows = await tx
     .select({ id: playerFavorites.id })
     .from(playerFavorites)
-    .where(
-      and(
-        eq(playerFavorites.playerId, playerId),
-        eq(playerFavorites.tenantId, tenantId),
-      ),
-    )
+    .where(and(eq(playerFavorites.playerId, playerId), eq(playerFavorites.tenantId, tenantId)))
     .limit(1)
   return Boolean(rows[0])
 }
 
-export async function getFavorites(
-  playerId: string,
-  tx: DbTx,
-): Promise<FavoriteCard[]> {
+export async function getFavorites(playerId: string, tx: DbTx): Promise<FavoriteCard[]> {
   const rows = await tx
     .select({
       tenantId: tenants.id,

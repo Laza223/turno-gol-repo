@@ -36,7 +36,10 @@ export const IniciasFallback: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('TI')).toBeInTheDocument() // Tomás Ibáñez
-    await expect(canvas.getByRole('link', { name: 'Datos' })).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getByRole('link', { name: 'Datos' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 
@@ -48,14 +51,16 @@ export const ConAvatar: Story = {
     // Antes pedía una foto real a images.unsplash.com — un tercero real desde
     // el runner de CI. El test solo verifica que el <img role="Avatar"> exista
     // (línea de abajo), no que la foto cargue: una data URI embebida alcanza.
-    avatarUrl:
-      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7',
+    avatarUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7',
     tab: 'favoritos',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('img', { name: 'Avatar' })).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Favoritos' })).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getByRole('link', { name: 'Favoritos' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 

@@ -5,9 +5,7 @@ export function SignedAmount({ type, amount }: { type: string; amount: number })
   return (
     <span
       className={`font-medium tabular-nums ${
-        isExpense
-          ? 'text-red-700 dark:text-red-400'
-          : 'text-emerald-700 dark:text-emerald-400'
+        isExpense ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'
       }`}
     >
       {isExpense ? '−' : '+'}

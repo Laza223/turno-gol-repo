@@ -45,9 +45,7 @@ describe('race: expiry vs confirm (same pending_payment row)', () => {
       withTenantContext(tenant.id, (tx) =>
         transitionFromPendingPayment(bookingId, 'confirmed', tx),
       ),
-      withTenantContext(tenant.id, (tx) =>
-        transitionFromPendingPayment(bookingId, 'expired', tx),
-      ),
+      withTenantContext(tenant.id, (tx) => transitionFromPendingPayment(bookingId, 'expired', tx)),
     ])
 
     const winners = [a, b].filter((r) => r.won).length

@@ -83,12 +83,8 @@ describe('tournament_teams — unicidad case-insensitive del nombre', () => {
       addTeam(tenant.id, staff.id, otherTournament, { name: 'Los Pibes' }, tx),
     )
 
-    const a = await withTenantContext(tenant.id, (tx) =>
-      listTeams(tenant.id, tournamentId, tx),
-    )
-    const b = await withTenantContext(tenant.id, (tx) =>
-      listTeams(tenant.id, otherTournament, tx),
-    )
+    const a = await withTenantContext(tenant.id, (tx) => listTeams(tenant.id, tournamentId, tx))
+    const b = await withTenantContext(tenant.id, (tx) => listTeams(tenant.id, otherTournament, tx))
     expect(a).toHaveLength(1)
     expect(b).toHaveLength(1)
   })

@@ -4,23 +4,37 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 // never throttle. This file tests the REAL enforce path; capture + restore.
 const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
-vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
+vi.mock('@upstash/redis', () => ({
+  Redis: class {
+    constructor(_: unknown) {}
+  },
+}))
 vi.mock('@upstash/ratelimit', () => {
   const counts = new Map<string, number>()
   class FakeRatelimit {
-    static tokenBucket(limit: number) { return { limit } }
+    static tokenBucket(limit: number) {
+      return { limit }
+    }
     private prefix: string
     private _limit: number
     constructor(opts: { redis: unknown; limiter: { limit: number }; prefix: string }) {
-      this.prefix = opts.prefix; this._limit = opts.limiter.limit
+      this.prefix = opts.prefix
+      this._limit = opts.limiter.limit
     }
     async limit(key: string) {
       const k = `${this.prefix}:${key}`
       const n = (counts.get(k) ?? 0) + 1
       counts.set(k, n)
-      return { success: n <= this._limit, limit: this._limit, remaining: Math.max(0, this._limit - n), reset: Date.now() + 60_000 }
+      return {
+        success: n <= this._limit,
+        limit: this._limit,
+        remaining: Math.max(0, this._limit - n),
+        reset: Date.now() + 60_000,
+      }
     }
-    static __reset() { counts.clear() }
+    static __reset() {
+      counts.clear()
+    }
   }
   return { Ratelimit: FakeRatelimit }
 })
@@ -49,7 +63,8 @@ describe('guard helper', () => {
     expect(res?.status).toBe(429)
   })
   it('different tenants do not share buckets', async () => {
-    const a = 'a'.repeat(36), b = 'b'.repeat(36)
+    const a = 'a'.repeat(36),
+      b = 'b'.repeat(36)
     for (let i = 0; i < 100; i++) await guard('adminCrud', a)
     expect(await guard('adminCrud', b)).toBeNull()
   })

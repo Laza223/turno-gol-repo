@@ -1,11 +1,7 @@
 import { Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
-import {
-  isTenantStatus,
-  listActivePlans,
-  listTenants,
-} from '@/modules/super-admin/tenants.service'
+import { isTenantStatus, listActivePlans, listTenants } from '@/modules/super-admin/tenants.service'
 import { TenantsFilters } from './_components/tenants-filters'
 import { TenantsTable } from './_components/tenants-table'
 
@@ -41,18 +37,15 @@ function buildQuery(params: SearchParams, overrides: Record<string, string | und
   return qs ? `?${qs}` : ''
 }
 
-export default async function SuperAdminTenantsPage(
-  props: {
-    searchParams: Promise<SearchParams>
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function SuperAdminTenantsPage(props: {
+  searchParams: Promise<SearchParams>
+}) {
+  const searchParams = await props.searchParams
   await requireSystemAdmin()
 
   const q = searchParams.q?.trim() || undefined
-  const status = searchParams.status && isTenantStatus(searchParams.status)
-    ? searchParams.status
-    : undefined
+  const status =
+    searchParams.status && isTenantStatus(searchParams.status) ? searchParams.status : undefined
   const page = parsePage(searchParams.page)
 
   const plansList = await listActivePlans()
@@ -68,7 +61,9 @@ export default async function SuperAdminTenantsPage(
       <PageHeader
         title="Tenants"
         subtitle={`${result.total} complejo${result.total === 1 ? '' : 's'} — vista global de soporte`}
-        icon={<Building2 className="h-6 w-6 text-violet-600 dark:text-violet-400" aria-hidden="true" />}
+        icon={
+          <Building2 className="h-6 w-6 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+        }
       />
 
       <TenantsFilters q={q} status={status} planSlug={planSlug} plans={plansList} />

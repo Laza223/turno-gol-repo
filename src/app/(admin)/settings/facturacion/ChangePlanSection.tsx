@@ -159,7 +159,10 @@ export function ChangePlanSection({
 
       {pending && (
         <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/60 p-3.5 text-sm text-muted-foreground">
-          <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <CalendarClock
+            className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+            aria-hidden
+          />
           <span>
             Ya tenés agendado el cambio al plan{' '}
             <span className="font-semibold text-foreground">{pending.name}</span> para el{' '}

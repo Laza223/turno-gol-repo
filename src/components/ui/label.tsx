@@ -10,18 +10,11 @@ const labelVariants = cva(
 
 /** @public Superficie vendorizada de shadcn/ui: la reintroduce cualquier `npx shadcn add`. */
 export interface LabelProps
-  extends React.LabelHTMLAttributes<HTMLLabelElement>,
-    VariantProps<typeof labelVariants> {}
+  extends React.LabelHTMLAttributes<HTMLLabelElement>, VariantProps<typeof labelVariants> {}
 
-const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
-  ({ className, ...props }, ref) => (
-    <label
-      ref={ref}
-      className={cn(labelVariants(), className)}
-      {...props}
-    />
-  ),
-)
+const Label = React.forwardRef<HTMLLabelElement, LabelProps>(({ className, ...props }, ref) => (
+  <label ref={ref} className={cn(labelVariants(), className)} {...props} />
+))
 Label.displayName = 'Label'
 
 export { Label }

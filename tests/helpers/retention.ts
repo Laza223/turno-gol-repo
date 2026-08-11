@@ -245,9 +245,7 @@ export async function countChildren(
   sql: ReturnType<typeof getSql>,
   tenantId: string,
 ): Promise<ChildCounts> {
-  const [r] = await sql<
-    Array<Record<keyof ChildCounts, string>>
-  >`
+  const [r] = await sql<Array<Record<keyof ChildCounts, string>>>`
     SELECT
       (SELECT COUNT(*) FROM bookings WHERE tenant_id = ${tenantId})::text AS bookings,
       (SELECT COUNT(*) FROM payments WHERE tenant_id = ${tenantId})::text AS payments,

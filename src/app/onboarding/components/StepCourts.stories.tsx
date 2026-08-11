@@ -26,7 +26,10 @@ const meta = {
     existingCourts: [],
     createCourtsAction: fn(async () => ({ success: true as const })),
     setStepAction: fn(async () => ({ success: true as const })),
-    uploadPhotoAction: fn(async () => ({ success: true as const, url: 'https://example.com/foto.webp' })),
+    uploadPhotoAction: fn(async () => ({
+      success: true as const,
+      url: 'https://example.com/foto.webp',
+    })),
     deletePhotoAction: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof StepCourts>
@@ -47,7 +50,9 @@ export const ConCanchasExistentes: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Cancha 1', { exact: true })).toBeInTheDocument()
     await expect(canvas.getByText('Cancha 2', { exact: true })).toBeInTheDocument()
-    await expect(canvas.getByText('Estas ya están creadas — las editás después desde Canchas.')).toBeInTheDocument()
+    await expect(
+      canvas.getByText('Estas ya están creadas — las editás después desde Canchas.'),
+    ).toBeInTheDocument()
     // Sin borradores nuevos todavía: ningún campo "Nombre" editable en pantalla.
     await expect(canvas.queryByLabelText('Nombre *')).not.toBeInTheDocument()
 

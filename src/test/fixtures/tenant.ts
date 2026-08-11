@@ -1,4 +1,9 @@
-import type { OpeningHours, OpeningHoursDay, TenantRow, TenantSettings } from '@/modules/tenants/tenant.types'
+import type {
+  OpeningHours,
+  OpeningHoursDay,
+  TenantRow,
+  TenantSettings,
+} from '@/modules/tenants/tenant.types'
 import { daysFromNow } from './clock'
 import { uid } from './ids'
 
@@ -30,7 +35,11 @@ export type PublicTenantCardFixture = {
   courtFormats: number[]
 }
 
-const day = (open: string, close: string, closed = false): OpeningHoursDay => ({ open, close, closed })
+const day = (open: string, close: string, closed = false): OpeningHoursDay => ({
+  open,
+  close,
+  closed,
+})
 
 /** Horario típico: todos los días, cierra un poco más tarde el fin de semana. */
 export const openingHours = (overrides: Partial<OpeningHours> = {}): OpeningHours => ({
@@ -264,7 +273,9 @@ export type StaffTenantRowFixture = {
   role: string
 }
 
-export const staffTenantRow = (overrides: Partial<StaffTenantRowFixture> = {}): StaffTenantRowFixture => ({
+export const staffTenantRow = (
+  overrides: Partial<StaffTenantRowFixture> = {},
+): StaffTenantRowFixture => ({
   tenantId: uid(1),
   tenantName: 'Complejo Fénix',
   tenantSlug: 'complejo-fenix',

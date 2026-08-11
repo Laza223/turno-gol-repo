@@ -86,7 +86,8 @@ test.describe('TG-HP-113 — Reseña post-partido', () => {
         status: 'pass',
         bookingId,
         db: review,
-        notes: 'POST /api/player/reviews respondió ok (res.ok) — código exacto (200/201) no inspeccionado, ver GAP del manual.',
+        notes:
+          'POST /api/player/reviews respondió ok (res.ok) — código exacto (200/201) no inspeccionado, ver GAP del manual.',
       })
     } finally {
       await ctx.close()

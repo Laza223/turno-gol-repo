@@ -22,10 +22,7 @@ const PREFIX = 'retention-age-test-'
 // recipient real (recipient_type='player' → players.id), no un tenant.
 let playerId: string
 
-async function insertAuditLog(
-  sql: ReturnType<typeof getSql>,
-  monthsAgo: number,
-): Promise<string> {
+async function insertAuditLog(sql: ReturnType<typeof getSql>, monthsAgo: number): Promise<string> {
   const [row] = await sql<{ id: string }[]>`
     INSERT INTO audit_logs (
       tenant_id, actor_id, actor_type, action, resource_type, resource_id, created_at

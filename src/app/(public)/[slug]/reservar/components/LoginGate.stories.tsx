@@ -49,7 +49,9 @@ export const EmailEnviado: Story = {
     await userEvent.click(canvas.getByRole('checkbox'))
     await userEvent.click(canvas.getByRole('button', { name: /continuar con email/i }))
 
-    await expect(await canvas.findByRole('heading', { name: /revisá tu email/i })).toBeInTheDocument()
+    await expect(
+      await canvas.findByRole('heading', { name: /revisá tu email/i }),
+    ).toBeInTheDocument()
     await expect(canvas.getByText('tomas.ibanez@example.com')).toBeInTheDocument()
   },
 }

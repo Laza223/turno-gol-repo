@@ -15,7 +15,10 @@
 import { test, expect } from './fixtures'
 
 test.describe('Toggle de tema', () => {
-  test('togglea superficies de app y /explorar es theme-adaptive', async ({ browser, playerStorageState }) => {
+  test('togglea superficies de app y /explorar es theme-adaptive', async ({
+    browser,
+    playerStorageState,
+  }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
     const page = await ctx.newPage()
 

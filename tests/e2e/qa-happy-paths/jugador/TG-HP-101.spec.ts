@@ -105,7 +105,9 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
         timeout: 10_000,
       })
       await expect(
-        page.getByText(`Te enviamos un enlace a ${newEmail}. Hacé click para confirmar tu reserva.`),
+        page.getByText(
+          `Te enviamos un enlace a ${newEmail}. Hacé click para confirmar tu reserva.`,
+        ),
       ).toBeVisible()
 
       const link = await fetchMagicLinkFromInbucket(newEmail, sinceMs)
@@ -157,10 +159,9 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       // Limpieza: no es caso de plata — el email es sintético por corrida, se borra siempre.
       const sb = makeServiceClient()
       await sb.from('players').delete().eq('email', newEmail.toLowerCase())
-      const authRows = await runSql<{ id: string }>(
-        'SELECT id FROM auth.users WHERE email = $1',
-        [newEmail.toLowerCase()],
-      )
+      const authRows = await runSql<{ id: string }>('SELECT id FROM auth.users WHERE email = $1', [
+        newEmail.toLowerCase(),
+      ])
       for (const row of authRows) {
         await sb.auth.admin.deleteUser(row.id)
       }

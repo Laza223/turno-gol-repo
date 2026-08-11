@@ -23,13 +23,11 @@ const meta = {
     courts: planillaCourts(),
     matchDurationMinutes: 60,
     restBetweenMatchesMinutes: 0,
-    generateAction: fn(
-      async (): Promise<GenerateFixtureActionResult> => ({
-        success: true,
-        matches: 6,
-        unscheduled: 0,
-      }),
-    ),
+    generateAction: fn(async (): Promise<GenerateFixtureActionResult> => ({
+      success: true,
+      matches: 6,
+      unscheduled: 0,
+    })),
     clearAction: fn(async (): Promise<TournamentActionResult> => ({ success: true })),
     rescheduleAction: fn(async (): Promise<TournamentActionResult> => ({ success: true })),
   },
@@ -105,22 +103,18 @@ export const GeneradoConPartidosSinAgendar: Story = {
     stages: [],
     slots: [],
     courts: [],
-    generateAction: fn(
-      async (): Promise<GenerateFixtureActionResult> => ({
-        success: true,
-        matches: 12,
-        unscheduled: 5,
-      }),
-    ),
+    generateAction: fn(async (): Promise<GenerateFixtureActionResult> => ({
+      success: true,
+      matches: 12,
+      unscheduled: 5,
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /generar fixture/i }))
     // Por texto y no por role="status": el Toaster global aporta dos
     // live-regions sr-only con ese mismo role.
-    await expect(
-      await canvas.findByText(/5 quedaron sin día ni hora/i),
-    ).toBeVisible()
+    await expect(await canvas.findByText(/5 quedaron sin día ni hora/i)).toBeVisible()
   },
 }
 
@@ -131,12 +125,10 @@ export const ErrorYaTieneFixture: Story = {
     stages: [],
     slots: [],
     courts: [],
-    generateAction: fn(
-      async (): Promise<GenerateFixtureActionResult> => ({
-        success: false,
-        error: 'Este torneo ya tiene un fixture de 6 partidos. Borralo antes de generar uno nuevo.',
-      }),
-    ),
+    generateAction: fn(async (): Promise<GenerateFixtureActionResult> => ({
+      success: false,
+      error: 'Este torneo ya tiene un fixture de 6 partidos. Borralo antes de generar uno nuevo.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

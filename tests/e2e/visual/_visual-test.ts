@@ -52,6 +52,6 @@ export async function suppressPushBanner(page: Page): Promise<void> {
 export async function assertDevOverlayHookExists(page: Page): Promise<void> {
   await expect(
     page.locator('[data-nextjs-dev-overlay], nextjs-portal').first(),
-    'El hook del overlay de dev de Next cambió de nombre: revisá los selectores de tests/e2e/visual/screenshot.css'
+    'El hook del overlay de dev de Next cambió de nombre: revisá los selectores de tests/e2e/visual/screenshot.css',
   ).toBeAttached()
 }

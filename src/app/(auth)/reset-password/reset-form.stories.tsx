@@ -55,7 +55,9 @@ export const Error: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Guardar contraseña' }))
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('Las contraseñas no coinciden.')
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Las contraseñas no coinciden.',
+    )
   },
 }
 

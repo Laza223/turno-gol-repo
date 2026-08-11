@@ -45,7 +45,7 @@ export async function createAbonadoAction(input: CreateAbonadoInput): Promise<Ab
   let created: { abonado: AbonadoRow; slotsGenerated: number; conflictDates: string[] }
   try {
     created = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(tenant.id, user.staffUserId!, parsed.data, tx)
+      createAbonado(tenant.id, user.staffUserId!, parsed.data, tx),
     )
   } catch (err) {
     if (err instanceof AbonadoConflictError) {
@@ -79,7 +79,7 @@ export async function pauseAbonadoAction(id: string): Promise<AbonadoActionResul
   let abonado: AbonadoRow
   try {
     abonado = await withTenantContext(tenant.id, (tx) =>
-      pauseAbonado(tenant.id, parsedId.data, user.staffUserId!, tx)
+      pauseAbonado(tenant.id, parsedId.data, user.staffUserId!, tx),
     )
   } catch (err) {
     if (err instanceof AbonadoNotFoundError || err instanceof AbonadoAlreadyCanceledError) {
@@ -105,7 +105,7 @@ export async function reactivateAbonadoAction(id: string): Promise<AbonadoAction
   let reactivated: { abonado: AbonadoRow; slotsGenerated: number }
   try {
     reactivated = await withTenantContext(tenant.id, (tx) =>
-      reactivateAbonado(tenant.id, parsedId.data, user.staffUserId!, tx)
+      reactivateAbonado(tenant.id, parsedId.data, user.staffUserId!, tx),
     )
   } catch (err) {
     if (
@@ -128,7 +128,7 @@ export async function reactivateAbonadoAction(id: string): Promise<AbonadoAction
 
 export async function cancelAbonadoAction(
   id: string,
-  fromDate: string
+  fromDate: string,
 ): Promise<AbonadoActionResult> {
   const parsed = z.object({ id: uuid, fromDate: dateStr }).safeParse({ id, fromDate })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
@@ -142,7 +142,7 @@ export async function cancelAbonadoAction(
   let abonado: AbonadoRow
   try {
     abonado = await withTenantContext(tenant.id, (tx) =>
-      cancelAbonado(tenant.id, parsed.data.id, parsed.data.fromDate, user.staffUserId!, tx)
+      cancelAbonado(tenant.id, parsed.data.id, parsed.data.fromDate, user.staffUserId!, tx),
     )
   } catch (err) {
     if (err instanceof AbonadoNotFoundError || err instanceof AbonadoAlreadyCanceledError) {

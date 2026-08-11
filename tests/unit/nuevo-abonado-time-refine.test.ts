@@ -30,10 +30,7 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-import {
-  previewAbonadoSlotsAction,
-  submitNewAbonado,
-} from '@/app/(admin)/abonados/nuevo/actions'
+import { previewAbonadoSlotsAction, submitNewAbonado } from '@/app/(admin)/abonados/nuevo/actions'
 
 const VALID_UUID = '11111111-1111-1111-1111-111111111111'
 const TIME_MSG = 'El horario de fin debe ser posterior al de inicio.'

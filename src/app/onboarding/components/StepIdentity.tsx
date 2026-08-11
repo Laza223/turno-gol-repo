@@ -81,7 +81,8 @@ export function StepIdentity({ action }: { action: CreateTenantAction }) {
             <p className="text-xs text-muted-foreground mt-1.5">
               Tu link público:{' '}
               <span className="text-foreground">
-                turnogol.app/<strong className="text-emerald-700 dark:text-emerald-400">{slugPreview}</strong>
+                turnogol.app/
+                <strong className="text-emerald-700 dark:text-emerald-400">{slugPreview}</strong>
               </span>
             </p>
           )}
@@ -138,12 +139,7 @@ export function StepIdentity({ action }: { action: CreateTenantAction }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <PhoneInput
-            id="identity-phone"
-            name="phone"
-            label="Teléfono"
-            required
-          />
+          <PhoneInput id="identity-phone" name="phone" label="Teléfono" required />
           <div>
             <label htmlFor="identity-email" className={labelClass}>
               Email de contacto <span className="text-red-500 dark:text-red-400">*</span>
@@ -160,7 +156,11 @@ export function StepIdentity({ action }: { action: CreateTenantAction }) {
           </div>
         </div>
 
-        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
 
         <Button type="submit" isLoading={isPending} className="w-full">
           Continuar

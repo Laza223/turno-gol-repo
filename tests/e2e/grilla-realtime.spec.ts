@@ -111,68 +111,69 @@ test.describe('grilla realtime — multi-browser <2s', () => {
   // in under 2 s end-to-end. The local E2E setup's Realtime channel
   // SUBSCRIBE round-trip routinely exceeds that window. Unit-level coverage
   // for the hook lives in tests/unit/use-booking-realtime.test.ts.
-  test.fixme(
-    'booking created by admin A appears in admin B grid in under 2 seconds',
-    async ({ browser, adminStorageState, secondAdminStorageState }) => {
-      const supabase = makeServiceClient()
-      // We prefer the API path for this test so it genuinely exercises
-      // "admin A creates via the app" rather than a DB shortcut.
-      // The service-role client is only used for cleanup.
-      let createdBookingId: string | null = null
+  test.fixme('booking created by admin A appears in admin B grid in under 2 seconds', async ({
+    browser,
+    adminStorageState,
+    secondAdminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    // We prefer the API path for this test so it genuinely exercises
+    // "admin A creates via the app" rather than a DB shortcut.
+    // The service-role client is only used for cleanup.
+    let createdBookingId: string | null = null
 
-      const ctxA = await browser.newContext()
-      const ctxB = await browser.newContext()
+    const ctxA = await browser.newContext()
+    const ctxB = await browser.newContext()
 
-      try {
-        // Authenticate both contexts using their respective storage states.
-        await ctxA.addCookies(JSON.parse(adminStorageState).cookies)
-        await ctxB.addCookies(JSON.parse(secondAdminStorageState).cookies)
+    try {
+      // Authenticate both contexts using their respective storage states.
+      await ctxA.addCookies(JSON.parse(adminStorageState).cookies)
+      await ctxB.addCookies(JSON.parse(secondAdminStorageState).cookies)
 
-        const pageA = await ctxA.newPage()
-        const pageB = await ctxB.newPage()
+      const pageA = await ctxA.newPage()
+      const pageB = await ctxB.newPage()
 
-        const gridUrl = `/grilla?date=${TARGET_DATE}`
+      const gridUrl = `/grilla?date=${TARGET_DATE}`
 
-        // Navigate both pages to the grid concurrently.
-        await Promise.all([pageA.goto(gridUrl), pageB.goto(gridUrl)])
+      // Navigate both pages to the grid concurrently.
+      await Promise.all([pageA.goto(gridUrl), pageB.goto(gridUrl)])
 
-        // Wait for B's grid table to be visible, then assert the offline banner
-        // is NOT visible — subscription readiness assumed when offline banner is
-        // gone (or never appeared). Timeout 10s is sufficient for the Realtime
-        // WebSocket SUBSCRIBED state to be established.
-        await expect(pageB.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
-        await expect(
-          pageB.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
-        ).not.toBeVisible({ timeout: 10_000 })
+      // Wait for B's grid table to be visible, then assert the offline banner
+      // is NOT visible — subscription readiness assumed when offline banner is
+      // gone (or never appeared). Timeout 10s is sufficient for the Realtime
+      // WebSocket SUBSCRIBED state to be established.
+      await expect(pageB.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
+      await expect(
+        pageB.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
+      ).not.toBeVisible({ timeout: 10_000 })
 
-        // Admin A creates a booking via the authenticated API.
-        const t0 = Date.now()
-        const apiRes = await ctxA.request.post('/api/bookings', {
-          data: buildApiPayload('10:00', '11:00'),
-        })
-        expect(apiRes.ok()).toBeTruthy() // 201 Created
+      // Admin A creates a booking via the authenticated API.
+      const t0 = Date.now()
+      const apiRes = await ctxA.request.post('/api/bookings', {
+        data: buildApiPayload('10:00', '11:00'),
+      })
+      expect(apiRes.ok()).toBeTruthy() // 201 Created
 
-        // Capture the created booking id for cleanup (from response body).
-        const apiBody = (await apiRes.json()) as { data?: { id?: string } }
-        if (apiBody.data?.id) {
-          createdBookingId = apiBody.data.id
-        }
-
-        // Admin B should see the booking appear via Realtime in <2s.
-        // BookingCard no longer renders the time range in the cell (the sticky
-        // hour axis is the single source — pages/grilla.md §3); the cell shows
-        // the guest name, so we assert on that.
-        await expect(pageB.getByText('E2E Api Guest')).toBeVisible({ timeout: 2000 })
-        expect(Date.now() - t0).toBeLessThan(2000)
-      } finally {
-        await ctxA.close()
-        await ctxB.close()
-        if (createdBookingId) {
-          await deleteBookingServiceRole(supabase, createdBookingId)
-        }
+      // Capture the created booking id for cleanup (from response body).
+      const apiBody = (await apiRes.json()) as { data?: { id?: string } }
+      if (apiBody.data?.id) {
+        createdBookingId = apiBody.data.id
       }
-    },
-  )
+
+      // Admin B should see the booking appear via Realtime in <2s.
+      // BookingCard no longer renders the time range in the cell (the sticky
+      // hour axis is the single source — pages/grilla.md §3); the cell shows
+      // the guest name, so we assert on that.
+      await expect(pageB.getByText('E2E Api Guest')).toBeVisible({ timeout: 2000 })
+      expect(Date.now() - t0).toBeLessThan(2000)
+    } finally {
+      await ctxA.close()
+      await ctxB.close()
+      if (createdBookingId) {
+        await deleteBookingServiceRole(supabase, createdBookingId)
+      }
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -183,99 +184,99 @@ test.describe('grilla realtime — catch-up after disconnect', () => {
   // working Realtime SUBSCRIBE within the 30 s poll fallback window.
   // Unit coverage for the catch-up path lives in
   // tests/unit/use-booking-realtime.test.ts.
-  test.fixme(
-    'booking inserted while offline appears after reconnect (catch-on-SUBSCRIBE or 30s poll)',
-    async ({ browser, adminStorageState }) => {
-      // NOTE on determinism: the canonical unit-level guarantee that fetchFromApi()
-      // is called on re-SUBSCRIBE lives in T1 (unit test for use-booking-realtime).
-      // This E2E validates the observable end-to-end behavior only — i.e., the
-      // booking eventually appears. The 35s timeout covers worst-case 30s polling.
-      const supabase = makeServiceClient()
-      const bookingId = randomUUID()
+  test.fixme('booking inserted while offline appears after reconnect (catch-on-SUBSCRIBE or 30s poll)', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    // NOTE on determinism: the canonical unit-level guarantee that fetchFromApi()
+    // is called on re-SUBSCRIBE lives in T1 (unit test for use-booking-realtime).
+    // This E2E validates the observable end-to-end behavior only — i.e., the
+    // booking eventually appears. The 35s timeout covers worst-case 30s polling.
+    const supabase = makeServiceClient()
+    const bookingId = randomUUID()
 
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto(`/grilla?date=${TARGET_DATE}`)
-        await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
-        // Subscription readiness assumed when offline banner is gone (or never appeared).
-        await expect(
-          page.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
-        ).not.toBeVisible({ timeout: 10_000 })
+      await page.goto(`/grilla?date=${TARGET_DATE}`)
+      await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
+      // Subscription readiness assumed when offline banner is gone (or never appeared).
+      await expect(
+        page.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
+      ).not.toBeVisible({ timeout: 10_000 })
 
-        // Go offline.
-        await context.setOffline(true)
+      // Go offline.
+      await context.setOffline(true)
 
-        // Insert a booking via service-role while the page's Realtime is disconnected.
-        await insertBookingServiceRole(supabase, {
-          id: bookingId,
-          timeStart: '14:00',
-          timeEnd: '15:00',
-        })
+      // Insert a booking via service-role while the page's Realtime is disconnected.
+      await insertBookingServiceRole(supabase, {
+        id: bookingId,
+        timeStart: '14:00',
+        timeEnd: '15:00',
+      })
 
-        // Reconnect.
-        await context.setOffline(false)
+      // Reconnect.
+      await context.setOffline(false)
 
-        // After reconnect the hook fires fetchFromApi() on re-SUBSCRIBE (seconds)
-        // or falls back to the 30s polling interval. Allow 35s for either path.
-        // Cells render the guest name (not the time range — pages/grilla.md §3).
-        await expect(page.getByText('E2E Guest')).toBeVisible({ timeout: 35_000 })
-      } finally {
-        await context.close()
-        await deleteBookingServiceRole(supabase, bookingId)
-      }
-    },
-  )
+      // After reconnect the hook fires fetchFromApi() on re-SUBSCRIBE (seconds)
+      // or falls back to the 30s polling interval. Allow 35s for either path.
+      // Cells render the guest name (not the time range — pages/grilla.md §3).
+      await expect(page.getByText('E2E Guest')).toBeVisible({ timeout: 35_000 })
+    } finally {
+      await context.close()
+      await deleteBookingServiceRole(supabase, bookingId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 3 — Mobile usable at 375px viewport
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('grilla — mobile usable (375px)', () => {
-  test(
-    'interactive free-slot cells are ≥44px tall and page body does not overflow horizontally',
-    async ({ browser, adminStorageState }) => {
-      const context = await browser.newContext({
-        viewport: { width: 375, height: 667 },
-        deviceScaleFactor: 2,
-        isMobile: true,
-        hasTouch: true,
+  test('interactive free-slot cells are ≥44px tall and page body does not overflow horizontally', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 667 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    })
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
+
+      await page.goto(`/grilla?date=${TARGET_DATE}`)
+
+      // Heading must be visible (basic render check).
+      await expect(page.getByRole('heading', { name: /Grilla/i })).toBeVisible({
+        timeout: 15_000,
       })
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
 
-        await page.goto(`/grilla?date=${TARGET_DATE}`)
+      // Fase 4: a 375px la matriz NO se renderiza — la reemplaza la lista por
+      // hora con swipe entre canchas (`booking-day-list`). Sus slots libres
+      // se llaman `Reservar ${hora} en ${cancha}`, SIN la palabra "turno":
+      // ese es el desambiguador contra los labels de la matriz.
+      await expect(page.getByTestId('booking-day-list')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByTestId('booking-grid')).toHaveCount(0)
 
-        // Heading must be visible (basic render check).
-        await expect(page.getByRole('heading', { name: /Grilla/i })).toBeVisible({
-          timeout: 15_000,
-        })
+      // Touch target: los slots libres de la lista miden ≥44px (min-h-14).
+      const cell = page.getByRole('button', { name: /^Reservar \d{2}:\d{2} en /i }).first()
+      await expect(cell).toBeVisible({ timeout: 10_000 })
+      const box = await cell.boundingBox()
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
 
-        // Fase 4: a 375px la matriz NO se renderiza — la reemplaza la lista por
-        // hora con swipe entre canchas (`booking-day-list`). Sus slots libres
-        // se llaman `Reservar ${hora} en ${cancha}`, SIN la palabra "turno":
-        // ese es el desambiguador contra los labels de la matriz.
-        await expect(page.getByTestId('booking-day-list')).toBeVisible({ timeout: 10_000 })
-        await expect(page.getByTestId('booking-grid')).toHaveCount(0)
-
-        // Touch target: los slots libres de la lista miden ≥44px (min-h-14).
-        const cell = page.getByRole('button', { name: /^Reservar \d{2}:\d{2} en /i }).first()
-        await expect(cell).toBeVisible({ timeout: 10_000 })
-        const box = await cell.boundingBox()
-        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
-
-        // No horizontal body overflow: the grid wraps in overflow-x-auto so the
-        // page body must not exceed the viewport width (±1px for subpixel rounding).
-        const noBodyOverflow = await page.evaluate(
-          () => document.body.scrollWidth <= window.innerWidth + 1,
-        )
-        expect(noBodyOverflow).toBe(true)
-      } finally {
-        await context.close()
-      }
-    },
-  )
+      // No horizontal body overflow: the grid wraps in overflow-x-auto so the
+      // page body must not exceed the viewport width (±1px for subpixel rounding).
+      const noBodyOverflow = await page.evaluate(
+        () => document.body.scrollWidth <= window.innerWidth + 1,
+      )
+      expect(noBodyOverflow).toBe(true)
+    } finally {
+      await context.close()
+    }
+  })
 })

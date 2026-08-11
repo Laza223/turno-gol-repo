@@ -14,7 +14,7 @@ vi.mock('next/headers', () => ({
 }))
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
-  return { ...actual, cache: actual.cache ?? (<T,>(fn: T): T => fn) }
+  return { ...actual, cache: actual.cache ?? (<T>(fn: T): T => fn) }
 })
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
@@ -69,9 +69,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   setSupabaseUser()
   vi.mocked(getStaffRole).mockResolvedValue('admin')
-  h.withTenantContext.mockImplementation(
-    (async (_id: string, cb: (tx: never) => Promise<unknown>) => cb({} as never)) as never,
-  )
+  h.withTenantContext.mockImplementation((async (
+    _id: string,
+    cb: (tx: never) => Promise<unknown>,
+  ) => cb({} as never)) as never)
   mockCancel.mockResolvedValue({ accessUntil: new Date('2027-01-01T00:00:00Z') })
 })
 

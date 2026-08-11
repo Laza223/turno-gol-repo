@@ -127,7 +127,9 @@ export const BloqueoInterno: Story = {
     // Cerrar antes de terminar: el popover de Radix vive en un portal fuera del
     // canvas y si queda abierto la story siguiente lo encuentra montado.
     await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(body.queryByRole('button', { name: /\(2 horas\)/ })).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(body.queryByRole('button', { name: /\(2 horas\)/ })).not.toBeInTheDocument(),
+    )
   },
 }
 
@@ -163,7 +165,7 @@ export const ErrorDelServidor: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
-      'Este turno acaba de ser tomado.'
+      'Este turno acaba de ser tomado.',
     )
   },
 }

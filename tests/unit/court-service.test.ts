@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  calculatePrice,
-  validatePricingRulesCoverage,
-} from '@/modules/courts/court.service'
+import { calculatePrice, validatePricingRulesCoverage } from '@/modules/courts/court.service'
 import type { CourtPricingData, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 
@@ -36,7 +33,13 @@ function artDate(isoWeekday: string, hhmmART: string): Date {
   const utcH = (h ?? 0) + 3 // ART → UTC
   // Use 2026-04-27 (Monday) as reference. Day offsets: mon=0 fri=4 sat=5
   const dayOffsets: Record<string, number> = {
-    mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6,
+    mon: 0,
+    tue: 1,
+    wed: 2,
+    thu: 3,
+    fri: 4,
+    sat: 5,
+    sun: 6,
   }
   const base = new Date('2026-04-27T00:00:00Z') // Monday 00:00 UTC
   base.setUTCDate(base.getUTCDate() + (dayOffsets[isoWeekday] ?? 0))

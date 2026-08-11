@@ -14,15 +14,17 @@ import {
 } from '@/modules/bookings/booking.expiry'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const PRICING = {
-  rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 1000000 }],
+  rules: [
+    {
+      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      from: '08:00',
+      to: '23:00',
+      price: 1000000,
+    },
+  ],
 }
 const FUTURE = '2099-08-10'
 
@@ -94,7 +96,15 @@ describe('expirePendingBookingWithPolicy', () => {
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(sql, tenant.id)
-    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 20 * 60, '10:00', '11:00')
+    const bookingId = await insertPending(
+      sql,
+      tenant.id,
+      courtId,
+      player.id,
+      20 * 60,
+      '10:00',
+      '11:00',
+    )
 
     const action = await expirePendingBookingWithPolicy(bookingId)
 
@@ -107,10 +117,20 @@ describe('expirePendingBookingWithPolicy', () => {
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(sql, tenant.id)
-    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 2 * 60, '12:00', '13:00')
+    const bookingId = await insertPending(
+      sql,
+      tenant.id,
+      courtId,
+      player.id,
+      2 * 60,
+      '12:00',
+      '13:00',
+    )
 
     const captured: Array<{ id: string; delay: number }> = []
-    setExpiryScheduler(async (id, delay) => { captured.push({ id, delay }) })
+    setExpiryScheduler(async (id, delay) => {
+      captured.push({ id, delay })
+    })
 
     const action = await expirePendingBookingWithPolicy(bookingId)
 
@@ -127,7 +147,15 @@ describe('expirePendingBookingWithPolicy', () => {
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(sql, tenant.id)
-    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 20 * 60, '14:00', '15:00')
+    const bookingId = await insertPending(
+      sql,
+      tenant.id,
+      courtId,
+      player.id,
+      20 * 60,
+      '14:00',
+      '15:00',
+    )
     await insertInProcessPayment(sql, tenant.id, bookingId, player.id)
 
     const action = await expirePendingBookingWithPolicy(bookingId)
@@ -141,7 +169,15 @@ describe('expirePendingBookingWithPolicy', () => {
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(sql, tenant.id)
-    const bookingId = await insertPending(sql, tenant.id, courtId, player.id, 20 * 60, '16:00', '17:00')
+    const bookingId = await insertPending(
+      sql,
+      tenant.id,
+      courtId,
+      player.id,
+      20 * 60,
+      '16:00',
+      '17:00',
+    )
     await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
 
     const action = await expirePendingBookingWithPolicy(bookingId)
@@ -157,7 +193,15 @@ describe('sweepExpiredPendingBookings', () => {
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const courtId = await insertCourt(sql, tenant.id)
-    const overdue = await insertPending(sql, tenant.id, courtId, player.id, 20 * 60, '18:00', '19:00')
+    const overdue = await insertPending(
+      sql,
+      tenant.id,
+      courtId,
+      player.id,
+      20 * 60,
+      '18:00',
+      '19:00',
+    )
     const fresh = await insertPending(sql, tenant.id, courtId, player.id, 60, '20:00', '21:00')
 
     const expired = await sweepExpiredPendingBookings()

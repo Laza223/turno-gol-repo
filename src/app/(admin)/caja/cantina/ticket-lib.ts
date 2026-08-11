@@ -42,7 +42,13 @@ export function addProduct(lines: TicketLine[], product: TicketProduct): TicketL
   if (idx === -1) {
     return [
       ...lines,
-      { productId: product.id, name: product.name, price: product.price, qty: 1, stock: product.stock },
+      {
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        qty: 1,
+        stock: product.stock,
+      },
     ]
   }
   const line = lines[idx]!

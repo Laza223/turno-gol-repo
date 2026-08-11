@@ -6,10 +6,7 @@ import { physicalRange } from '@/shared/time/physical-range'
 import { hasActiveBookingOverlap } from '@/modules/bookings/booking.overlap'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { expandRangeToHourSlots } from './slot-expansion'
-import {
-  NoSlotsReservedError,
-  TournamentCourtUnavailableError,
-} from './tournament.errors'
+import { NoSlotsReservedError, TournamentCourtUnavailableError } from './tournament.errors'
 import type {
   ReserveSlotsInput,
   ReserveSlotsResult,
@@ -51,11 +48,7 @@ async function getTenantHours(tenantId: string, tx: DbTx): Promise<TenantHours> 
  * El lock serializa el chequeo optimista + INSERT contra otra reserva sobre la
  * misma cancha; el exclusion constraint sigue siendo la garantía real.
  */
-async function lockCourtsOrThrow(
-  courtIds: string[],
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
+async function lockCourtsOrThrow(courtIds: string[], tenantId: string, tx: DbTx): Promise<void> {
   const idList = sql.join(
     courtIds.map((id) => sql`${id}::uuid`),
     sql`, `,

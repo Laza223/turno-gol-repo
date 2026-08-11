@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  parseIntent,
-  playerSuccessIntent,
-  successVerifyPath,
-} from '@/lib/auth-success'
+import { parseIntent, playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
 
 describe('parseIntent', () => {
   it('acepta los 3 intents válidos', () => {
@@ -22,7 +18,9 @@ describe('parseIntent', () => {
 describe('playerSuccessIntent', () => {
   it('booking cuando next es una ruta de reserva', () => {
     expect(playerSuccessIntent('/club-norte/reservar')).toBe('booking')
-    expect(playerSuccessIntent('/club-norte/reservar?court=1&date=2026-06-25&time=20:00')).toBe('booking')
+    expect(playerSuccessIntent('/club-norte/reservar?court=1&date=2026-06-25&time=20:00')).toBe(
+      'booking',
+    )
   })
   it('login para cualquier otro destino', () => {
     expect(playerSuccessIntent('/mis-reservas')).toBe('login')

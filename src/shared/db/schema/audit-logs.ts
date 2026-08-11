@@ -1,10 +1,4 @@
-import {
-  index,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { jsonb } from '../jsonb'
 import { tenants } from './tenants'
 import { auditActorTypeEnum } from './enums'
@@ -27,16 +21,11 @@ export const auditLogs = pgTable(
     afterState: jsonb('after_state'),
     metadata: jsonb('metadata'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     tenantIdx: index('idx_audit_logs_tenant').on(table.tenantId),
-    tenantCreatedIdx: index('idx_audit_logs_tenant_created').on(
-      table.tenantId,
-      table.createdAt,
-    ),
+    tenantCreatedIdx: index('idx_audit_logs_tenant_created').on(table.tenantId, table.createdAt),
     resourceIdx: index('idx_audit_logs_resource').on(
       table.tenantId,
       table.resourceType,

@@ -12,7 +12,10 @@ export function ExistingCourtsList({ courts }: { courts: CourtRow[] }) {
           const price = minPrice(court)
           return (
             <li key={court.id} className="flex items-center gap-3 px-3 py-2.5">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <CheckCircle2
+                className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                aria-hidden
+              />
               <span className="flex-1 truncate text-sm font-medium text-foreground">
                 {court.name}
               </span>

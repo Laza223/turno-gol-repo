@@ -14,7 +14,13 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
-import { cleanupAll, createTestStaffUser, createTestTenant, ensureRoles, linkStaffToTenant } from '../helpers/tenant'
+import {
+  cleanupAll,
+  createTestStaffUser,
+  createTestTenant,
+  ensureRoles,
+  linkStaffToTenant,
+} from '../helpers/tenant'
 import { createProduct } from '@/modules/canteen/canteen.service'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
 import { cancelTab, createTab, settleTab } from '@/modules/canteen/canteen-tab.service'
@@ -68,7 +74,11 @@ describe('canteen report — getSalesRanking', () => {
       sellTicket(
         tenant.id,
         staff.id,
-        { lines: [{ productId: productX.id, qty: 2 }], method: 'cash', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          lines: [{ productId: productX.id, qty: 2 }],
+          method: 'cash',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -93,12 +103,18 @@ describe('canteen report — getSalesRanking', () => {
       sellTicket(
         tenant.id,
         staff.id,
-        { lines: [{ productId: productY.id, qty: 1 }], method: 'cash', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          lines: [{ productId: productY.id, qty: 1 }],
+          method: 'cash',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
 
-    const ranking = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
+    const ranking = await withTenantContext(tenant.id, (tx) =>
+      getSalesRanking(tenant.id, tx, last7(), 0),
+    )
 
     expect(ranking).toHaveLength(2)
     // productX suma AMBOS orígenes (venta + fiado): 2 + 3 = 5 unidades.
@@ -138,10 +154,14 @@ describe('canteen report — getSalesRanking', () => {
     const tenDaysAgo = new Date(Date.now() - 10 * 24 * 3600_000).toISOString()
     await sql`UPDATE stock_movements SET occurred_at = ${tenDaysAgo} WHERE tab_id = ${tab.id}`
 
-    const ranking7 = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
+    const ranking7 = await withTenantContext(tenant.id, (tx) =>
+      getSalesRanking(tenant.id, tx, last7(), 0),
+    )
     expect(ranking7.find((r) => r.productId === product.id)).toBeUndefined()
 
-    const ranking30 = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last30(), 0))
+    const ranking30 = await withTenantContext(tenant.id, (tx) =>
+      getSalesRanking(tenant.id, tx, last30(), 0),
+    )
     const row30 = ranking30.find((r) => r.productId === product.id)
     expect(row30).toBeDefined()
     expect(row30!.units).toBe(4)
@@ -170,7 +190,9 @@ describe('canteen report — getSalesRanking', () => {
       ),
     )
     // Antes de anular, el fiado abierto SÍ cuenta (es lo entregado).
-    const before = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
+    const before = await withTenantContext(tenant.id, (tx) =>
+      getSalesRanking(tenant.id, tx, last7(), 0),
+    )
     expect(before.find((r) => r.productId === product.id)?.units).toBe(5)
 
     await withTenantContext(tenant.id, (tx) =>
@@ -179,7 +201,9 @@ describe('canteen report — getSalesRanking', () => {
 
     // Anulado: el stock volvió (adjustment) y las líneas 'sale' quedan en el
     // ledger, pero el ranking NO debe contarlas — no hubo venta.
-    const after = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
+    const after = await withTenantContext(tenant.id, (tx) =>
+      getSalesRanking(tenant.id, tx, last7(), 0),
+    )
     expect(after.find((r) => r.productId === product.id)).toBeUndefined()
 
     // Una venta directa (tab_id NULL) del mismo producto sigue contando normal.
@@ -195,7 +219,9 @@ describe('canteen report — getSalesRanking', () => {
         tx,
       ),
     )
-    const withSale = await withTenantContext(tenant.id, (tx) => getSalesRanking(tenant.id, tx, last7(), 0))
+    const withSale = await withTenantContext(tenant.id, (tx) =>
+      getSalesRanking(tenant.id, tx, last7(), 0),
+    )
     expect(withSale.find((r) => r.productId === product.id)?.units).toBe(2)
   })
 })
@@ -214,7 +240,11 @@ describe('canteen report — getCanteenTotalsByMethod', () => {
       sellTicket(
         tenant.id,
         staff.id,
-        { lines: [{ productId: product.id, qty: 2 }], method: 'cash', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          lines: [{ productId: product.id, qty: 2 }],
+          method: 'cash',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -222,7 +252,11 @@ describe('canteen report — getCanteenTotalsByMethod', () => {
       sellTicket(
         tenant.id,
         staff.id,
-        { lines: [{ productId: product.id, qty: 1 }], method: 'transfer', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          lines: [{ productId: product.id, qty: 1 }],
+          method: 'transfer',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -230,12 +264,18 @@ describe('canteen report — getCanteenTotalsByMethod', () => {
       createTab(
         tenant.id,
         staff.id,
-        { debtorName: 'Fiado sin cobrar', lines: [{ productId: product.id, qty: 3 }], clientIdempotencyKey: crypto.randomUUID() },
+        {
+          debtorName: 'Fiado sin cobrar',
+          lines: [{ productId: product.id, qty: 3 }],
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
 
-    const beforeSettle = await withTenantContext(tenant.id, (tx) => getCanteenTotalsByMethod(tenant.id, tx, last7(), 0))
+    const beforeSettle = await withTenantContext(tenant.id, (tx) =>
+      getCanteenTotalsByMethod(tenant.id, tx, last7(), 0),
+    )
     expect(beforeSettle).toHaveLength(2)
     const cashBefore = beforeSettle.find((m) => m.method === 'cash')
     const transferBefore = beforeSettle.find((m) => m.method === 'transfer')
@@ -245,10 +285,21 @@ describe('canteen report — getCanteenTotalsByMethod', () => {
 
     // Saldar el fiado en MercadoPago: ahora sí entra a la caja, bajo ESE método.
     await withTenantContext(tenant.id, (tx) =>
-      settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'mercadopago' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
+      settleTab(
+        tenant.id,
+        staff.id,
+        {
+          tabId: tab.id,
+          charges: [{ amount: tab.totalAmount, method: 'mercadopago' }],
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
+        tx,
+      ),
     )
 
-    const afterSettle = await withTenantContext(tenant.id, (tx) => getCanteenTotalsByMethod(tenant.id, tx, last7(), 0))
+    const afterSettle = await withTenantContext(tenant.id, (tx) =>
+      getCanteenTotalsByMethod(tenant.id, tx, last7(), 0),
+    )
     expect(afterSettle).toHaveLength(3)
     const mp = afterSettle.find((m) => m.method === 'mercadopago')
     expect(mp?.total).toBe(3 * 150000)
@@ -272,7 +323,11 @@ describe('canteen report — getCanteenDailyTotals', () => {
       createTab(
         tenant.id,
         staff.id,
-        { debtorName: 'Entregado hace 5 días', lines: [{ productId: product.id, qty: 2 }], clientIdempotencyKey: crypto.randomUUID() },
+        {
+          debtorName: 'Entregado hace 5 días',
+          lines: [{ productId: product.id, qty: 2 }],
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
@@ -287,16 +342,31 @@ describe('canteen report — getCanteenDailyTotals', () => {
       sellTicket(
         tenant.id,
         staff.id,
-        { lines: [{ productId: product.id, qty: 1 }], method: 'cash', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          lines: [{ productId: product.id, qty: 1 }],
+          method: 'cash',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
     // Saldar el fiado HOY (el cash_flow del cobro se registra con occurred_at = ahora).
     await withTenantContext(tenant.id, (tx) =>
-      settleTab(tenant.id, staff.id, { tabId: tab.id, charges: [{ amount: tab.totalAmount, method: 'cash' }], clientIdempotencyKey: crypto.randomUUID() }, tx),
+      settleTab(
+        tenant.id,
+        staff.id,
+        {
+          tabId: tab.id,
+          charges: [{ amount: tab.totalAmount, method: 'cash' }],
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
+        tx,
+      ),
     )
 
-    const daily = await withTenantContext(tenant.id, (tx) => getCanteenDailyTotals(tenant.id, tx, last7(), 0))
+    const daily = await withTenantContext(tenant.id, (tx) =>
+      getCanteenDailyTotals(tenant.id, tx, last7(), 0),
+    )
 
     const today = todayART()
     const fiveDaysAgoArt = addDays(today, -5)
@@ -326,22 +396,34 @@ describe('canteen report — aislamiento cross-tenant', () => {
       sellTicket(
         tenantA.id,
         staffA.id,
-        { lines: [{ productId: product.id, qty: 2 }], method: 'cash', clientIdempotencyKey: crypto.randomUUID() },
+        {
+          lines: [{ productId: product.id, qty: 2 }],
+          method: 'cash',
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
         tx,
       ),
     )
 
     const rangeAll = { from: '2000-01-01', to: '2100-01-01' }
-    const rankingB = await withTenantContext(tenantB.id, (tx) => getSalesRanking(tenantB.id, tx, rangeAll, 0))
-    const byMethodB = await withTenantContext(tenantB.id, (tx) => getCanteenTotalsByMethod(tenantB.id, tx, rangeAll, 0))
-    const dailyB = await withTenantContext(tenantB.id, (tx) => getCanteenDailyTotals(tenantB.id, tx, rangeAll, 0))
+    const rankingB = await withTenantContext(tenantB.id, (tx) =>
+      getSalesRanking(tenantB.id, tx, rangeAll, 0),
+    )
+    const byMethodB = await withTenantContext(tenantB.id, (tx) =>
+      getCanteenTotalsByMethod(tenantB.id, tx, rangeAll, 0),
+    )
+    const dailyB = await withTenantContext(tenantB.id, (tx) =>
+      getCanteenDailyTotals(tenantB.id, tx, rangeAll, 0),
+    )
 
     expect(rankingB).toEqual([])
     expect(byMethodB).toEqual([])
     expect(dailyB).toEqual([])
 
     // Control positivo: tenantA sí ve su propia venta en el mismo rango.
-    const rankingA = await withTenantContext(tenantA.id, (tx) => getSalesRanking(tenantA.id, tx, rangeAll, 0))
+    const rankingA = await withTenantContext(tenantA.id, (tx) =>
+      getSalesRanking(tenantA.id, tx, rangeAll, 0),
+    )
     expect(rankingA).toHaveLength(1)
   })
 })

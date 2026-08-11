@@ -13,9 +13,10 @@ const meta = {
   args: {
     tabs: TABS,
     settleDisabled: false,
-    settleTabAction: fn(
-      async (): Promise<SettleTabActionResult> => ({ success: true, total: 450000 }),
-    ),
+    settleTabAction: fn(async (): Promise<SettleTabActionResult> => ({
+      success: true,
+      total: 450000,
+    })),
     cancelTabAction: fn(async (): Promise<CancelTabActionResult> => ({ success: true })),
   },
 } satisfies Meta<typeof FiadosList>

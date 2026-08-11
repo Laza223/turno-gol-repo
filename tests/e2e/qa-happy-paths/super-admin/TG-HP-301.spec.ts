@@ -60,7 +60,8 @@ test.describe('TG-HP-301 — Login super-admin + triple guard', () => {
       status: 'pass',
       superadmin: { finalUrl: saFinalUrl, httpStatus: saStatus },
       nonSuperAdminAdmin: { finalUrl: adminFinalUrl, redirectedToLogin: true },
-      dbWrites: 'ninguno directo del caso (recordLastLogin en el layout es fire-and-forget, throttle 15min)',
+      dbWrites:
+        'ninguno directo del caso (recordLastLogin en el layout es fire-and-forget, throttle 15min)',
       notes:
         'Mint por cookie (newAuthedContext), no por el form de /login: el guard verificado es ' +
         'requireSystemAdmin() (system-admin.guards.ts), no loginAction. Consistente con GAP 1 del manual.',

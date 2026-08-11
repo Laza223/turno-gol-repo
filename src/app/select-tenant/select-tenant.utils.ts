@@ -6,9 +6,6 @@ import type { StaffTenantRow } from '@/modules/auth/auth.service'
  * separada del archivo 'use server' para poder testearla sin Supabase ni DB
  * (los módulos 'use server' sólo pueden exportar funciones async).
  */
-export function isMemberTenant(
-  tenantId: string,
-  tenants: StaffTenantRow[],
-): boolean {
+export function isMemberTenant(tenantId: string, tenants: StaffTenantRow[]): boolean {
   return tenants.some((t) => t.tenantId === tenantId)
 }

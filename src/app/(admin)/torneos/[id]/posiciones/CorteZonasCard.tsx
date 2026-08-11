@@ -337,9 +337,7 @@ function SorteoDesempateDialog({
               max={64}
               inputMode="numeric"
               value={seeds[team.teamId] ?? ''}
-              onChange={(e) =>
-                setSeeds((prev) => ({ ...prev, [team.teamId]: e.target.value }))
-              }
+              onChange={(e) => setSeeds((prev) => ({ ...prev, [team.teamId]: e.target.value }))}
               className="h-11 w-20 shrink-0 rounded-md border border-border bg-card px-3 text-base text-foreground tabular-nums focus:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10 md:text-sm"
             />
           </li>

@@ -25,7 +25,13 @@ type Props = {
  * (`bg-white`/`text-slate-*` fijos, no `bg-card`/`text-foreground`) — es
  * deliberado, reproduce el look real del MP mock, no un descuido de theming.
  */
-export function MockCheckoutView({ booking, bookingId, payAction, rejectAction, cancelAction }: Props) {
+export function MockCheckoutView({
+  booking,
+  bookingId,
+  payAction,
+  rejectAction,
+  cancelAction,
+}: Props) {
   const timeStart = booking.time_start.slice(0, 5)
   const timeEnd = booking.time_end.slice(0, 5)
 
@@ -33,7 +39,9 @@ export function MockCheckoutView({ booking, bookingId, payAction, rejectAction, 
     <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 py-12">
       {/* Mock banner */}
       <div className="mb-6 w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <span className="mr-1" aria-hidden>⚠</span>
+        <span className="mr-1" aria-hidden>
+          ⚠
+        </span>
         <strong>Entorno de prueba (MOCK)</strong> — no se cobra dinero real.
       </div>
 
@@ -104,9 +112,7 @@ export function MockCheckoutView({ booking, bookingId, payAction, rejectAction, 
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-slate-500">
-          ID de reserva: {bookingId}
-        </p>
+        <p className="mt-4 text-center text-xs text-slate-500">ID de reserva: {bookingId}</p>
       </div>
     </div>
   )

@@ -43,10 +43,13 @@ export function PortalSessionProvider({
   initialValue?: PortalSessionContextValue
 }) {
   const [value, setValue] = useState<PortalSessionContextValue>(() => {
-    return initialValue ?? cachedSessionValue ?? {
-      session: null,
-      favoriteTenantIds: EMPTY_FAVORITES,
-    }
+    return (
+      initialValue ??
+      cachedSessionValue ?? {
+        session: null,
+        favoriteTenantIds: EMPTY_FAVORITES,
+      }
+    )
   })
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function PortalSessionProvider({
         }
         const json = (await res.json()) as SessionPayload
         if (!active) return
-        
+
         const newValue = {
           session: json.data?.session ?? null,
           favoriteTenantIds: new Set(json.data?.favoriteTenantIds ?? []),

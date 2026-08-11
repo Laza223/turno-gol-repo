@@ -54,11 +54,7 @@ function rowToTournament(r: typeof tournaments.$inferSelect): TournamentRow {
  * reusa el mismo `generateSlug` del slug público del complejo) y se desambigua
  * con sufijo numérico.
  */
-async function uniqueSlug(
-  tenantId: string,
-  name: string,
-  tx: DbTx,
-): Promise<string> {
+async function uniqueSlug(tenantId: string, name: string, tx: DbTx): Promise<string> {
   const base = tournamentSlugBase(name)
   const taken = (await tx.execute(sql`
     SELECT slug FROM tournaments
@@ -186,8 +182,7 @@ export async function updateTournament(
     patch.yellowCardsForSuspension = input.yellowCardsForSuspension
   if (input.redCardSuspensionMatches !== undefined)
     patch.redCardSuspensionMatches = input.redCardSuspensionMatches
-  if (input.walkoverGoalsFor !== undefined)
-    patch.walkoverGoalsFor = input.walkoverGoalsFor
+  if (input.walkoverGoalsFor !== undefined) patch.walkoverGoalsFor = input.walkoverGoalsFor
   if (input.status !== undefined) patch.status = input.status
   if (input.isPublic !== undefined) patch.isPublic = input.isPublic
   if (input.notes !== undefined) patch.notes = input.notes

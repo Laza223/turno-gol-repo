@@ -16,10 +16,7 @@ import { buildStorageState } from '../../_helpers/auth-state'
  */
 
 /** Mint a fresh authenticated context for `email` on top of `browser`. */
-export async function newAuthedContext(
-  browser: Browser,
-  email: string,
-): Promise<BrowserContext> {
+export async function newAuthedContext(browser: Browser, email: string): Promise<BrowserContext> {
   const state = await buildStorageState(email)
   const context = await browser.newContext()
   await context.addCookies(state.cookies)

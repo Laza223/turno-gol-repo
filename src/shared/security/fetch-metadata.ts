@@ -38,10 +38,7 @@ export function isSensitiveMutationPath(path: string): boolean {
  * Metadata signal and must be rejected. Non-mutating methods and any
  * non-`cross-site` (or absent) `Sec-Fetch-Site` value are allowed.
  */
-export function isForbiddenCrossSiteMutation(
-  method: string,
-  secFetchSite: string | null,
-): boolean {
+export function isForbiddenCrossSiteMutation(method: string, secFetchSite: string | null): boolean {
   if (!MUTATING_METHODS.has(method.toUpperCase())) return false
   return secFetchSite === 'cross-site'
 }

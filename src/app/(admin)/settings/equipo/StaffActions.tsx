@@ -26,7 +26,10 @@ const ConfirmDialog = dynamic(
 /** Firmas de deactivateStaffAction/resendInviteAction/updateStaffRoleAction — DI, ver ReservasPolicyForm.tsx. */
 export type DeactivateStaffAction = (staffMemberId: string) => Promise<StaffActionResult>
 export type ResendInviteAction = (email: string) => Promise<StaffActionResult>
-export type UpdateStaffRoleAction = (staffMemberId: string, role: string) => Promise<StaffActionResult>
+export type UpdateStaffRoleAction = (
+  staffMemberId: string,
+  role: string,
+) => Promise<StaffActionResult>
 
 interface StaffActionsProps {
   member: {
@@ -75,7 +78,10 @@ export function StaffActions({
     if (!res.success) {
       return { success: false, error: res.error }
     }
-    toast({ title: `${member.firstName} ${member.lastName} fue desactivado/a.`, variant: 'success' })
+    toast({
+      title: `${member.firstName} ${member.lastName} fue desactivado/a.`,
+      variant: 'success',
+    })
     return { success: true }
   }
 
@@ -145,26 +151,26 @@ export function StaffActions({
       </DropdownMenu>
 
       {deactivateOpen && (
-      <ConfirmDialog
-        open={deactivateOpen}
-        onOpenChange={setDeactivateOpen}
-        title={`Desactivar ${member.firstName} ${member.lastName}`}
-        description={
-          <div className="space-y-2">
-            <p>Al desactivar este miembro:</p>
-            <ul className="list-disc pl-4 space-y-1">
-              <li>Pierde acceso al panel inmediatamente.</li>
-              <li>Sus sesiones activas se invalidan.</li>
-              <li>El historial de actividad no se borra.</li>
-            </ul>
-          </div>
-        }
-        variant="destructive"
-        confirmLabel="Desactivar"
-        cancelLabel="Cancelar"
-        confirmationPhrase={member.email}
-        onConfirm={onConfirmDeactivate}
-      />
+        <ConfirmDialog
+          open={deactivateOpen}
+          onOpenChange={setDeactivateOpen}
+          title={`Desactivar ${member.firstName} ${member.lastName}`}
+          description={
+            <div className="space-y-2">
+              <p>Al desactivar este miembro:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>Pierde acceso al panel inmediatamente.</li>
+                <li>Sus sesiones activas se invalidan.</li>
+                <li>El historial de actividad no se borra.</li>
+              </ul>
+            </div>
+          }
+          variant="destructive"
+          confirmLabel="Desactivar"
+          cancelLabel="Cancelar"
+          confirmationPhrase={member.email}
+          onConfirm={onConfirmDeactivate}
+        />
       )}
     </>
   )

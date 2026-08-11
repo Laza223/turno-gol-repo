@@ -141,9 +141,9 @@ describe('reactivate — payer sin cuenta de MP (ENS-23, comparte createPreappro
     const tx = makeReactivateTx()
     const gateway = gatewayRejecting(INVALID_PAYER_MP_ERROR)
 
-    await expect(
-      reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx),
-    ).rejects.toBeInstanceOf(InvalidPayerEmailError)
+    await expect(reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toBeInstanceOf(
+      InvalidPayerEmailError,
+    )
   })
 
   it('NO enmascara otros errores de MP', async () => {

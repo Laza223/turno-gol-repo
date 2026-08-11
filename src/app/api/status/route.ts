@@ -109,7 +109,11 @@ async function checkUpstash(): Promise<Check> {
   // fail-open/closed). Report ok so the health gate stays 200 — launch-check
   // REQUIRED_ENV already guarantees Upstash is configured for production.
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return { name: 'upstash', status: 'ok', note: 'not configured (rate limiting degrades gracefully)' }
+    return {
+      name: 'upstash',
+      status: 'ok',
+      note: 'not configured (rate limiting degrades gracefully)',
+    }
   }
   try {
     const redis = getRedis()

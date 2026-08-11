@@ -73,18 +73,14 @@ describe('Sentry PII scrub helpers (B9.4)', () => {
 
   describe('scrubQueryString', () => {
     it('redacts email and token values', () => {
-      expect(
-        scrubQueryString('?email=user@example.com&id=1'),
-      ).toBe('?email=[REDACTED]&id=1')
-      expect(
-        scrubQueryString('?token=abc123&foo=bar'),
-      ).toBe('?token=[REDACTED]&foo=bar')
+      expect(scrubQueryString('?email=user@example.com&id=1')).toBe('?email=[REDACTED]&id=1')
+      expect(scrubQueryString('?token=abc123&foo=bar')).toBe('?token=[REDACTED]&foo=bar')
     })
 
     it('redacts access_token and refresh_token', () => {
-      expect(
-        scrubQueryString('?access_token=AT&refresh_token=RT'),
-      ).toBe('?access_token=[REDACTED]&refresh_token=[REDACTED]')
+      expect(scrubQueryString('?access_token=AT&refresh_token=RT')).toBe(
+        '?access_token=[REDACTED]&refresh_token=[REDACTED]',
+      )
     })
 
     it('preserves non-sensitive params', () => {

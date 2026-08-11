@@ -103,7 +103,9 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(fu
   }
 
   const words =
-    showWords && cents != null && cents >= MONEY_WORDS_THRESHOLD_CENTS ? centsToWordsEsAr(cents) : null
+    showWords && cents != null && cents >= MONEY_WORDS_THRESHOLD_CENTS
+      ? centsToWordsEsAr(cents)
+      : null
   const wordsId = id ? `${id}-words` : undefined
   const describedBy = [aria['aria-describedby'], wordsId].filter(Boolean).join(' ') || undefined
 

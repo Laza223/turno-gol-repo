@@ -26,7 +26,9 @@ export function makeServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY required for player-seed helpers')
+    throw new Error(
+      'NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY required for player-seed helpers',
+    )
   }
   return createClient(url, key, { auth: { persistSession: false } })
 }
@@ -78,10 +80,7 @@ export async function resetPlayer(supabase: ReturnType<typeof makeServiceClient>
   }
 
   // Step 2: Delete stale PTR rows (may or may not exist)
-  await supabase
-    .from('player_tenant_relationships')
-    .delete()
-    .eq('player_id', E2E_PLAYER_ID)
+  await supabase.from('player_tenant_relationships').delete().eq('player_id', E2E_PLAYER_ID)
 
   // Step 3: Re-insert PTR rows for both tenants
   const { error: ptrDemoErr } = await supabase
@@ -181,8 +180,5 @@ export async function cleanupPlayerBookings(
     .update({ payment_id: null, payment_method: null })
     .eq('player_id', E2E_PLAYER_ID)
 
-  await supabase
-    .from('bookings')
-    .delete()
-    .eq('player_id', E2E_PLAYER_ID)
+  await supabase.from('bookings').delete().eq('player_id', E2E_PLAYER_ID)
 }

@@ -8,14 +8,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { toast } from '@/hooks/use-toast'
 import { formatDateLong } from '@/lib/format'
-import {
-  openingsForMatch,
-  type MatchOpening,
-} from '@/modules/tournaments/fixture/placement'
-import type {
-  TournamentMatchView,
-  TournamentSlotRow,
-} from '@/modules/tournaments/tournament.types'
+import { openingsForMatch, type MatchOpening } from '@/modules/tournaments/fixture/placement'
+import type { TournamentMatchView, TournamentSlotRow } from '@/modules/tournaments/tournament.types'
 import type { TournamentActionResult } from '../../actions'
 import {
   MATCH_STATUS_LABELS,
@@ -92,10 +86,7 @@ export function PlanillaBoard({
     [slots, matches, movingId, options],
   )
 
-  const courtName = useMemo(
-    () => new Map(courts.map((c) => [c.id, c.name])),
-    [courts],
-  )
+  const courtName = useMemo(() => new Map(courts.map((c) => [c.id, c.name])), [courts])
 
   const moving = movingId ? (matches.find((m) => m.id === movingId) ?? null) : null
 
@@ -131,9 +122,7 @@ export function PlanillaBoard({
       .map(([date, list]) => {
         const present = new Set(list.map((o) => o.slot.courtId))
         const times = [...new Set(list.map((o) => o.startsAt.getTime()))].sort((a, b) => a - b)
-        const byCell = new Map(
-          list.map((o) => [cellKey(o.slot.courtId, o.startsAt.getTime()), o]),
-        )
+        const byCell = new Map(list.map((o) => [cellKey(o.slot.courtId, o.startsAt.getTime()), o]))
         return {
           date,
           // Orden de canchas del complejo, no orden de aparición.
@@ -255,10 +244,13 @@ export function PlanillaBoard({
           role="status"
           className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 dark:border-emerald-400/30 dark:bg-emerald-500/10"
         >
-          <Move className="h-4 w-4 shrink-0 text-emerald-800 dark:text-emerald-400" aria-hidden="true" />
+          <Move
+            className="h-4 w-4 shrink-0 text-emerald-800 dark:text-emerald-400"
+            aria-hidden="true"
+          />
           <p className="min-w-0 flex-1 text-sm text-foreground">
-            Moviendo <span className="font-semibold">{matchLabel(moving)}</span>. Elegí una hora
-            del torneo.
+            Moviendo <span className="font-semibold">{matchLabel(moving)}</span>. Elegí una hora del
+            torneo.
           </p>
           <button
             type="button"
@@ -437,9 +429,7 @@ function PlanillaDay({
                 </p>
                 <OpeningCell
                   opening={opening}
-                  chip={
-                    cellFor(opening.slot.courtId, opening.startsAt.getTime()).chip
-                  }
+                  chip={cellFor(opening.slot.courtId, opening.startsAt.getTime()).chip}
                   tournamentId={tournamentId}
                   courtLabel={label}
                   isMoving={isMoving}
@@ -456,10 +446,7 @@ function PlanillaDay({
   )
 }
 
-function matchLabel(match: {
-  homeTeamName: string | null
-  awayTeamName: string | null
-}): string {
+function matchLabel(match: { homeTeamName: string | null; awayTeamName: string | null }): string {
   return `${match.homeTeamName ?? 'A definir'} vs ${match.awayTeamName ?? 'A definir'}`
 }
 

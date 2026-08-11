@@ -1,12 +1,7 @@
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 
 export type StockMovementKind =
-  | 'purchase'
-  | 'sale'
-  | 'waste'
-  | 'courtesy'
-  | 'internal_use'
-  | 'adjustment'
+  'purchase' | 'sale' | 'waste' | 'courtesy' | 'internal_use' | 'adjustment'
 
 /** Salidas no comerciales: mueven stock, NO tocan caja. */
 type StockExitReason = 'waste' | 'courtesy' | 'internal_use'

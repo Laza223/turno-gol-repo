@@ -35,7 +35,12 @@ async function insertCourt(tenantId: string): Promise<string> {
       ${tenantId}, ${'Cancha B13'}, ${10},
       ${sql.json({
         rules: [
-          { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 },
+          {
+            days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+            from: '08:00',
+            to: '23:00',
+            price: 800000,
+          },
         ],
       })},
       'online'
@@ -255,9 +260,7 @@ describe('linkContactToPlayer / unlinkContactFromPlayer (B13)', () => {
     await insertAbonadoBooking(tenant.id, courtId, abonadoId, '2030-01-07')
 
     const key = normalizeContactPhone('11 2233-4455')
-    await withTenantContext(tenant.id, (tx) =>
-      linkContactToPlayer(tenant.id, key, player.id, tx),
-    )
+    await withTenantContext(tenant.id, (tx) => linkContactToPlayer(tenant.id, key, player.id, tx))
     const afterFirst = await ptrCounters(tenant.id, player.id)
 
     const second = await withTenantContext(tenant.id, (tx) =>
@@ -265,9 +268,7 @@ describe('linkContactToPlayer / unlinkContactFromPlayer (B13)', () => {
     )
 
     expect(second).toEqual({ abonadosLinked: 0, bookingsReassigned: 0 })
-    expect((await ptrCounters(tenant.id, player.id)).bookings_count).toBe(
-      afterFirst.bookings_count,
-    )
+    expect((await ptrCounters(tenant.id, player.id)).bookings_count).toBe(afterFirst.bookings_count)
   })
 
   it('rechaza vincular con un jugador que no es cliente del complejo', async () => {

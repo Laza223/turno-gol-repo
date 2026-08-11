@@ -14,7 +14,12 @@ export default async function SuperAdminDashboardPage() {
       <PageHeader
         title="Dashboard global"
         subtitle="Métricas cross-tenant de la plataforma"
-        icon={<LayoutDashboard className="h-6 w-6 text-violet-600 dark:text-violet-400" aria-hidden="true" />}
+        icon={
+          <LayoutDashboard
+            className="h-6 w-6 text-violet-600 dark:text-violet-400"
+            aria-hidden="true"
+          />
+        }
       />
 
       <SuperAdminDashboardView data={data} />

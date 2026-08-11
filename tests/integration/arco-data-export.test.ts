@@ -13,7 +13,8 @@ import {
 import { insertBooking, insertCourt, insertPayment } from '../helpers/factories'
 
 vi.mock('@/server/middleware/with-player', () => ({
-  withPlayer: (handler: (req: NextRequest, user: { playerId: string }, tx: unknown) => unknown) =>
+  withPlayer:
+    (handler: (req: NextRequest, user: { playerId: string }, tx: unknown) => unknown) =>
     async (req: NextRequest) => {
       const playerId = (globalThis as Record<string, unknown>).__AS_PLAYER__ as string
       const { getDb } = await import('@/shared/db/client')

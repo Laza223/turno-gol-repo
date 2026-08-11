@@ -174,7 +174,11 @@ export const NavegacionPendiente: Story = {
 export const GrillaVacia: Story = {
   name: 'Día sin reservas (todas las celdas libres)',
   args: (() => {
-    const empty = buildLayout({ courts: [courtFutbol5(), courtFutbol7()], bookings: [], nowTime: '15:30' })
+    const empty = buildLayout({
+      courts: [courtFutbol5(), courtFutbol7()],
+      bookings: [],
+      nowTime: '15:30',
+    })
     return {
       courts: [courtFutbol5(), courtFutbol7()],
       slots: empty.slots,

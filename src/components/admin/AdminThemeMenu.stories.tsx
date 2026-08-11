@@ -43,7 +43,10 @@ export const SeleccionaOscuro: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Cambiar tema' }))
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('radio', { name: 'Oscuro' }))
-    await expect(body.getByRole('radio', { name: 'Oscuro' })).toHaveAttribute('aria-checked', 'true')
+    await expect(body.getByRole('radio', { name: 'Oscuro' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   },
 }
 
@@ -53,6 +56,9 @@ export const SeleccionaSistema: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Cambiar tema' }))
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('radio', { name: 'Sistema' }))
-    await expect(body.getByRole('radio', { name: 'Sistema' })).toHaveAttribute('aria-checked', 'true')
+    await expect(body.getByRole('radio', { name: 'Sistema' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   },
 }

@@ -17,8 +17,13 @@ function Inner({ depositAmount }: { depositAmount: number }) {
       // twMerge no deduplica contra un h-[58px] sin prefijo (breakpoints distintos).
       className="h-[58px] md:h-[58px] w-full gap-2 rounded-xl text-base font-bold"
     >
-      {pending ? 'Procesando…' : (
-        <><ShieldCheck className="h-4 w-4" aria-hidden /> {depositAmount > 0 ? 'Pagar seña y reservar' : 'Confirmar reserva'}</>
+      {pending ? (
+        'Procesando…'
+      ) : (
+        <>
+          <ShieldCheck className="h-4 w-4" aria-hidden />{' '}
+          {depositAmount > 0 ? 'Pagar seña y reservar' : 'Confirmar reserva'}
+        </>
       )}
     </Button>
   )

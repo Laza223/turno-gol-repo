@@ -43,7 +43,9 @@ const NIGHT_OPENING_HOURS: OpeningHours = {
   sun: { open: '08:00', close: '23:00' },
 }
 
-async function seedNightTenant(sql: Sql): Promise<{ tenant: TestTenant; staffId: string; courtId: string }> {
+async function seedNightTenant(
+  sql: Sql,
+): Promise<{ tenant: TestTenant; staffId: string; courtId: string }> {
   const tenant = await createTestTenant(sql)
   const staff = await createTestStaffUser(sql)
   await linkStaffToTenant(sql, tenant.id, staff.id)
@@ -90,12 +92,20 @@ describe('home.service — día operativo (closes_next_day)', () => {
     const friday = await withTenantContext(tenant.id, (tx) =>
       getHoyData(tenant.id, tx, hoyOpts('2026-01-16', cutoffMins)),
     )
-    expect(friday.needsAttention.some((a) => a.kind === 'failed_deposit' && 'bookingId' in a && a.bookingId === bookingId)).toBe(true)
+    expect(
+      friday.needsAttention.some(
+        (a) => a.kind === 'failed_deposit' && 'bookingId' in a && a.bookingId === bookingId,
+      ),
+    ).toBe(true)
 
     const saturday = await withTenantContext(tenant.id, (tx) =>
       getHoyData(tenant.id, tx, hoyOpts('2026-01-17', cutoffMins)),
     )
-    expect(saturday.needsAttention.some((a) => a.kind === 'failed_deposit' && 'bookingId' in a && a.bookingId === bookingId)).toBe(false)
+    expect(
+      saturday.needsAttention.some(
+        (a) => a.kind === 'failed_deposit' && 'bookingId' in a && a.bookingId === bookingId,
+      ),
+    ).toBe(false)
   })
 
   it('"caja de ayer sin cerrar" (hasCashFlowsOnDate) respeta el mismo cutoff — un movimiento de madrugada no se le escapa al día operativo correcto', async () => {

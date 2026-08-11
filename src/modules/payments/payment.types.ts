@@ -5,12 +5,7 @@ export type PreferenceResult = {
 }
 
 export type MpPaymentStatus =
-  | 'pending'
-  | 'in_process'
-  | 'approved'
-  | 'rejected'
-  | 'refunded'
-  | 'cancelled'
+  'pending' | 'in_process' | 'approved' | 'rejected' | 'refunded' | 'cancelled'
 
 export type GatewayPaymentInfo = {
   mpPaymentId: string

@@ -136,13 +136,27 @@ export const AusenteConSenaCapturada: Story = {
 export const Todos: Story = {
   render: () => (
     <div className="flex flex-wrap gap-2">
-      <ReservaStatusBadge visual={reservaStatusVisual({ status: 'pending_payment', type: 'spontaneous' })} />
-      <ReservaStatusBadge visual={reservaStatusVisual({ status: 'confirmed', type: 'spontaneous' })} />
-      <ReservaStatusBadge visual={reservaStatusVisual({ status: 'completed', type: 'spontaneous' })} />
-      <ReservaStatusBadge visual={reservaStatusVisual({ status: 'no_show', type: 'spontaneous' })} />
-      <ReservaStatusBadge visual={reservaStatusVisual({ status: 'canceled_refunded', type: 'spontaneous' })} />
-      <ReservaStatusBadge visual={reservaStatusVisual({ status: 'canceled_no_refund', type: 'spontaneous' })} />
-      <ReservaStatusBadge visual={reservaStatusVisual({ status: 'expired', type: 'spontaneous' })} />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({ status: 'pending_payment', type: 'spontaneous' })}
+      />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({ status: 'confirmed', type: 'spontaneous' })}
+      />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({ status: 'completed', type: 'spontaneous' })}
+      />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({ status: 'no_show', type: 'spontaneous' })}
+      />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({ status: 'canceled_refunded', type: 'spontaneous' })}
+      />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({ status: 'canceled_no_refund', type: 'spontaneous' })}
+      />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({ status: 'expired', type: 'spontaneous' })}
+      />
       <ReservaStatusBadge visual={reservaStatusVisual({ status: 'confirmed', type: 'block' })} />
     </div>
   ),

@@ -115,7 +115,8 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const dateFieldClass =
     'h-[62px] w-full rounded-xl border border-border bg-background pl-10 pr-2 text-base text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
-  const labelClass = 'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-wider text-muted-foreground'
+  const labelClass =
+    'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-wider text-muted-foreground'
 
   if (layout === 'vertical') {
     return (
@@ -218,7 +219,10 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                       <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
                         {time || 'Cualquiera'}
                       </span>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 h-4.5 w-4.5 text-muted-foreground" aria-hidden />
+                      <ChevronDown
+                        className="pointer-events-none absolute right-2.5 h-4.5 w-4.5 text-muted-foreground"
+                        aria-hidden
+                      />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
@@ -226,7 +230,11 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                       Cualquier horario
                     </DropdownMenuItem>
                     {HOURS.map((h) => (
-                      <DropdownMenuItem key={h} onSelect={() => setTime(h)} className="cursor-pointer">
+                      <DropdownMenuItem
+                        key={h}
+                        onSelect={() => setTime(h)}
+                        className="cursor-pointer"
+                      >
                         {h}
                       </DropdownMenuItem>
                     ))}
@@ -240,12 +248,19 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
             type="submit"
             className="group relative overflow-hidden inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 px-7 text-base font-bold text-slate-950 border border-emerald-400/20 shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] active:scale-[0.98] after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:via-white/30 after:to-transparent after:transition-transform after:duration-1000 hover:after:translate-x-full whitespace-nowrap"
           >
-            <Search className="h-[19px] w-[19px] group-hover:scale-110 transition-transform duration-300" aria-hidden />
+            <Search
+              className="h-[19px] w-[19px] group-hover:scale-110 transition-transform duration-300"
+              aria-hidden
+            />
             Buscar canchas
           </button>
         </div>
 
-        <p id="hero-city-v-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-muted-foreground">
+        <p
+          id="hero-city-v-status"
+          aria-live="polite"
+          className="mt-2 min-h-4 text-xs text-muted-foreground"
+        >
           {geoMessage}
         </p>
       </form>
@@ -352,10 +367,15 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                   id="hero-time"
                   className={`${fieldClass} flex items-center justify-between gap-1 text-left pr-9`}
                 >
-                  <span className={`truncate ${!time ? 'text-muted-foreground' : 'text-foreground'}`}>
+                  <span
+                    className={`truncate ${!time ? 'text-muted-foreground' : 'text-foreground'}`}
+                  >
                     {time || 'Cualquier horario'}
                   </span>
-                  <ChevronDown className="pointer-events-none absolute right-3 h-4.5 w-4.5 text-muted-foreground" aria-hidden />
+                  <ChevronDown
+                    className="pointer-events-none absolute right-3 h-4.5 w-4.5 text-muted-foreground"
+                    aria-hidden
+                  />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
@@ -377,12 +397,19 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
           type="submit"
           className="group relative overflow-hidden inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 px-7 text-base font-bold text-slate-950 border border-emerald-400/20 shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] active:scale-[0.98] after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:via-white/30 after:to-transparent after:transition-transform after:duration-1000 hover:after:translate-x-full whitespace-nowrap"
         >
-          <Search className="h-[19px] w-[19px] group-hover:scale-110 transition-transform duration-300" aria-hidden />
+          <Search
+            className="h-[19px] w-[19px] group-hover:scale-110 transition-transform duration-300"
+            aria-hidden
+          />
           Buscar canchas
         </button>
       </div>
 
-      <p id="hero-city-status" aria-live="polite" className="mt-2 min-h-4 text-xs text-muted-foreground">
+      <p
+        id="hero-city-status"
+        aria-live="polite"
+        className="mt-2 min-h-4 text-xs text-muted-foreground"
+      >
         {geoMessage}
       </p>
     </form>

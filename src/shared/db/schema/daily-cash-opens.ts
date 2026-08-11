@@ -33,12 +33,8 @@ export const dailyCashOpens = pgTable(
     openedBy: uuid('opened_by')
       .notNull()
       .references(() => staffUsers.id),
-    openedAt: timestamp('opened_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    openedAt: timestamp('opened_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     perTenantDay: unique('uq_daily_open_per_tenant').on(table.tenantId, table.date),

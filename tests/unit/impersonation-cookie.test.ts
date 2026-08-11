@@ -42,7 +42,11 @@ describe('buildImpersonationCookie / verifyImpersonationCookie', () => {
       NOW,
     )
     const dot = cookie.indexOf('.')
-    const tampered = `${cookie.slice(0, dot + 1)}${cookie.slice(dot + 1).split('').reverse().join('')}`
+    const tampered = `${cookie.slice(0, dot + 1)}${cookie
+      .slice(dot + 1)
+      .split('')
+      .reverse()
+      .join('')}`
     expect(verifyImpersonationCookie(tampered, NOW + 1000)).toBeNull()
   })
 

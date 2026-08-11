@@ -17,7 +17,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div style={{ transform: 'translateZ(0)', height: 120 }} className="relative isolate overflow-hidden">
+      <div
+        style={{ transform: 'translateZ(0)', height: 120 }}
+        className="relative isolate overflow-hidden"
+      >
         <Story />
       </div>
     ),

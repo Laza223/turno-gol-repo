@@ -12,10 +12,7 @@ import {
   TournamentFullError,
   TournamentTeamNotFoundError,
 } from './tournament.errors'
-import {
-  countEventsForTeam,
-  countEventsForTeamPlayer,
-} from './tournament-result.service'
+import { countEventsForTeam, countEventsForTeamPlayer } from './tournament-result.service'
 import { assertTeamHasNoPayments } from './tournament-payment.service'
 import type {
   CreateTeamInput,
@@ -49,9 +46,7 @@ function rowToTeam(r: typeof tournamentTeams.$inferSelect): TournamentTeamRow {
   }
 }
 
-function rowToTeamPlayer(
-  r: typeof tournamentTeamPlayers.$inferSelect,
-): TournamentTeamPlayerRow {
+function rowToTeamPlayer(r: typeof tournamentTeamPlayers.$inferSelect): TournamentTeamPlayerRow {
   return {
     id: r.id,
     tenantId: r.tenantId,
@@ -74,10 +69,7 @@ export async function listTeams(
     .select()
     .from(tournamentTeams)
     .where(
-      and(
-        eq(tournamentTeams.tenantId, tenantId),
-        eq(tournamentTeams.tournamentId, tournamentId),
-      ),
+      and(eq(tournamentTeams.tenantId, tenantId), eq(tournamentTeams.tournamentId, tournamentId)),
     )
     .orderBy(asc(tournamentTeams.groupLabel), asc(tournamentTeams.name))
   return rows.map(rowToTeam)
@@ -187,9 +179,7 @@ export async function updateTeam(
     const updated = await tx
       .update(tournamentTeams)
       .set(patch)
-      .where(
-        and(eq(tournamentTeams.id, input.id), eq(tournamentTeams.tenantId, tenantId)),
-      )
+      .where(and(eq(tournamentTeams.id, input.id), eq(tournamentTeams.tenantId, tenantId)))
       .returning()
 
     const row = updated[0]
@@ -244,10 +234,7 @@ export async function removeTeam(
   await tx
     .delete(tournamentTeamPlayers)
     .where(
-      and(
-        eq(tournamentTeamPlayers.teamId, teamId),
-        eq(tournamentTeamPlayers.tenantId, tenantId),
-      ),
+      and(eq(tournamentTeamPlayers.teamId, teamId), eq(tournamentTeamPlayers.tenantId, tenantId)),
     )
   await tx
     .delete(tournamentTeams)
@@ -275,10 +262,7 @@ export async function listTeamPlayers(
     .select()
     .from(tournamentTeamPlayers)
     .where(
-      and(
-        eq(tournamentTeamPlayers.tenantId, tenantId),
-        eq(tournamentTeamPlayers.teamId, teamId),
-      ),
+      and(eq(tournamentTeamPlayers.tenantId, tenantId), eq(tournamentTeamPlayers.teamId, teamId)),
     )
     .orderBy(asc(tournamentTeamPlayers.shirtNumber), asc(tournamentTeamPlayers.fullName))
   return rows.map(rowToTeamPlayer)
@@ -338,10 +322,7 @@ export async function removeTeamPlayer(
   const deleted = await tx
     .delete(tournamentTeamPlayers)
     .where(
-      and(
-        eq(tournamentTeamPlayers.id, teamPlayerId),
-        eq(tournamentTeamPlayers.tenantId, tenantId),
-      ),
+      and(eq(tournamentTeamPlayers.id, teamPlayerId), eq(tournamentTeamPlayers.tenantId, tenantId)),
     )
     .returning()
 

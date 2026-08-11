@@ -61,9 +61,7 @@ export const bookings = pgTable(
 
     priceSnapshot: integer('price_snapshot').notNull(),
     depositAmount: integer('deposit_amount').notNull().default(0),
-    depositStatus: depositStatusEnum('deposit_status')
-      .notNull()
-      .default('not_required'),
+    depositStatus: depositStatusEnum('deposit_status').notNull().default('not_required'),
 
     paymentMethod: paymentMethodEnum('payment_method'),
     paymentId: uuid('payment_id'),
@@ -80,23 +78,13 @@ export const bookings = pgTable(
 
     completedByStaff: uuid('completed_by_staff').references(() => staffUsers.id),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    timeValid: check(
-      'chk_time_valid',
-      sql`${table.timeEnd} > ${table.timeStart}`,
-    ),
+    timeValid: check('chk_time_valid', sql`${table.timeEnd} > ${table.timeStart}`),
     pricePositive: check('chk_price_positive', sql`${table.priceSnapshot} >= 0`),
-    depositNonNegative: check(
-      'chk_deposit_non_negative',
-      sql`${table.depositAmount} >= 0`,
-    ),
+    depositNonNegative: check('chk_deposit_non_negative', sql`${table.depositAmount} >= 0`),
     paymentConsistency: check(
       'chk_booking_payment_consistency',
       sql`(${table.paymentMethod} = 'mercadopago' AND ${table.paymentId} IS NOT NULL) OR
@@ -104,10 +92,7 @@ export const bookings = pgTable(
           (${table.paymentMethod} IS NULL)`,
     ),
     tenantIdx: index('idx_bookings_tenant').on(table.tenantId),
-    tenantDateIdx: index('idx_bookings_tenant_date').on(
-      table.tenantId,
-      table.date,
-    ),
+    tenantDateIdx: index('idx_bookings_tenant_date').on(table.tenantId, table.date),
     tenantCourtDateIdx: index('idx_bookings_tenant_court_date').on(
       table.tenantId,
       table.courtId,
@@ -123,11 +108,7 @@ export const bookings = pgTable(
       .on(table.tournamentId)
       .where(sql`tournament_id IS NOT NULL`),
     statusIdx: index('idx_bookings_status').on(table.tenantId, table.status),
-    dateStatusIdx: index('idx_bookings_date_status').on(
-      table.tenantId,
-      table.date,
-      table.status,
-    ),
+    dateStatusIdx: index('idx_bookings_date_status').on(table.tenantId, table.date, table.status),
     // Migr. 061 (reconciliación contable D4 §7): sweep cross-tenant
     // (turnogol_worker, sin tenant_id en el WHERE) — ver reconciliation.service.ts.
     // INV4 filtra y ordena por updated_at (no created_at): el índice tiene que

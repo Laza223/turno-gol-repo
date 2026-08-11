@@ -36,15 +36,18 @@ export default async function CajaPage(props: {
   // reventaba el cast SQL ::date y addDays(); degradar a hoy (día operativo) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
-  const { summary, cashFlows, open, streetMoney } = await withTenantContext(tenant.id, async (tx) => {
-    const [s, cf, o, sm] = await Promise.all([
-      getDaySummary(tenant.id, date, cutoffMins, tx),
-      getCashFlows(tenant.id, date, cutoffMins, tx),
-      getDayOpen(tenant.id, date, tx),
-      getStreetMoney(tenant.id, tx),
-    ])
-    return { summary: s, cashFlows: cf, open: o, streetMoney: sm }
-  })
+  const { summary, cashFlows, open, streetMoney } = await withTenantContext(
+    tenant.id,
+    async (tx) => {
+      const [s, cf, o, sm] = await Promise.all([
+        getDaySummary(tenant.id, date, cutoffMins, tx),
+        getCashFlows(tenant.id, date, cutoffMins, tx),
+        getDayOpen(tenant.id, date, tx),
+        getStreetMoney(tenant.id, tx),
+      ])
+      return { summary: s, cashFlows: cf, open: o, streetMoney: sm }
+    },
+  )
 
   const ingresos = summary.totalIncome + summary.totalAdjustments
   const streetMoneyCents = sumStreetMoney(streetMoney)
@@ -128,12 +131,7 @@ export default async function CajaPage(props: {
 
       {!summary.isClosed && (
         <div className="card-entrance" style={{ animationDelay: '80ms' }}>
-          <OpenDayCard
-            date={date}
-            open={open}
-            openDayAction={openDayAction}
-            isToday={isToday}
-          />
+          <OpenDayCard date={date} open={open} openDayAction={openDayAction} isToday={isToday} />
         </div>
       )}
 

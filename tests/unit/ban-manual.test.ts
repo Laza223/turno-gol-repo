@@ -99,7 +99,9 @@ function makeFakeTx(opts: { playerStatus?: string; playerBanUntil?: Date | null 
       set: vi.fn((patch: Record<string, unknown>) => ({
         where: vi.fn(() => {
           if (table !== tenantPlayerBans) {
-            const empty = Promise.resolve([]) as Promise<unknown> & { returning: () => Promise<unknown[]> }
+            const empty = Promise.resolve([]) as Promise<unknown> & {
+              returning: () => Promise<unknown[]>
+            }
             empty.returning = () => Promise.resolve([])
             return empty
           }
@@ -117,7 +119,9 @@ function makeFakeTx(opts: { playerStatus?: string; playerBanUntil?: Date | null 
             if ('bannedAt' in patch) t.bannedAt = patch.bannedAt as Date
           }
           const rows = targets.map((t) => ({ id: t.id }))
-          const result = Promise.resolve(rows) as Promise<unknown> & { returning: () => Promise<unknown[]> }
+          const result = Promise.resolve(rows) as Promise<unknown> & {
+            returning: () => Promise<unknown[]>
+          }
           result.returning = () => Promise.resolve(rows)
           return result
         }),
@@ -196,7 +200,9 @@ describe('banPlayerManually + checkPlayerBanned', () => {
     const until2 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     await banPlayerManually(TENANT_ID, PLAYER_ID, STAFF_ID, 'Segundo motivo', until2, tx)
 
-    const vigentes = store.filter((b) => b.bannedUntil === null || b.bannedUntil.getTime() > Date.now())
+    const vigentes = store.filter(
+      (b) => b.bannedUntil === null || b.bannedUntil.getTime() > Date.now(),
+    )
     expect(vigentes).toHaveLength(1)
     expect(vigentes[0]!.reason).toBe('Segundo motivo')
     expect(vigentes[0]!.bannedUntil?.getTime()).toBe(until2.getTime())

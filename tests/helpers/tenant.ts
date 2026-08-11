@@ -140,8 +140,8 @@ export async function createTestSystemAdmin(
   overrides: Partial<{ email: string }> = {},
 ): Promise<TestSystemAdmin> {
   const s = sql ?? getSql()
-  const email = overrides.email
-    ?? `sa-${Date.now()}-${faker.string.alphanumeric(6).toLowerCase()}@test.local`
+  const email =
+    overrides.email ?? `sa-${Date.now()}-${faker.string.alphanumeric(6).toLowerCase()}@test.local`
   const rows = await s<{ id: string; email: string }[]>`
     INSERT INTO system_admins (email, first_name, last_name)
     VALUES (

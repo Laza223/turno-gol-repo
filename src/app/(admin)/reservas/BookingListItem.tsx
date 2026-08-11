@@ -45,7 +45,12 @@ type Props = {
   cancellationPolicyHours?: number
 }
 
-export function BookingListItem({ booking, compact = false, actions, cancellationPolicyHours }: Props) {
+export function BookingListItem({
+  booking,
+  compact = false,
+  actions,
+  cancellationPolicyHours,
+}: Props) {
   const visual = reservaStatusVisual(booking)
   const name = clientName(booking)
   const isBlock = booking.type === 'block'
@@ -162,7 +167,9 @@ export function BookingListItem({ booking, compact = false, actions, cancellatio
 
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
-              {isBlock && <Ban aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+              {isBlock && (
+                <Ban aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              )}
               {name}
             </p>
             <p className="truncate text-xs text-muted-foreground">

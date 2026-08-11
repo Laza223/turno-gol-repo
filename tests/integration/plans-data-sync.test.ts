@@ -63,7 +63,10 @@ describe('plans-data.ts está en sync con la tabla `plans`', () => {
     const huerfanos = rows.map((r) => r.slug).filter((s) => !publicSlugs.has(s))
 
     // Un plan activo que /precios no lista es vendible pero invisible.
-    expect(huerfanos, `planes activos ausentes del catálogo público: ${huerfanos.join(', ')}`).toEqual([])
+    expect(
+      huerfanos,
+      `planes activos ausentes del catálogo público: ${huerfanos.join(', ')}`,
+    ).toEqual([])
   })
 
   it('planForCourts coincide con el techo declarado de cada plan', () => {
@@ -77,7 +80,9 @@ describe('plans-data.ts está en sync con la tabla `plans`', () => {
 
       const next = PLANS[i + 1]
       if (next) {
-        expect(planForCourts(plan.maxCourts + 1).slug, `${plan.maxCourts + 1} canchas`).toBe(next.slug)
+        expect(planForCourts(plan.maxCourts + 1).slug, `${plan.maxCourts + 1} canchas`).toBe(
+          next.slug,
+        )
       }
     }
   })

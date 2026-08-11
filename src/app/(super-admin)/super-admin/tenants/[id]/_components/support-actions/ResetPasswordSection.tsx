@@ -4,7 +4,13 @@ import { useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
-import { inputCls, primaryBtn, type Feedback, type RunAction, type SupportAction } from './constants'
+import {
+  inputCls,
+  primaryBtn,
+  type Feedback,
+  type RunAction,
+  type SupportAction,
+} from './constants'
 
 type Props = {
   tenantId: string

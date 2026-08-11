@@ -68,12 +68,16 @@ export function VerifyView({ searchParams }: { searchParams: VerifySearchParams 
       <div
         aria-hidden
         className="pointer-events-none absolute right-[-10%] top-[-12%] h-[520px] w-[520px] rounded-full blur-md"
-        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.2), transparent 70%)' }}
+        style={{
+          background: 'radial-gradient(closest-side, rgba(16,185,129,.2), transparent 70%)',
+        }}
       />
       <div
         aria-hidden
         className="pointer-events-none absolute bottom-[-16%] left-[-10%] h-[440px] w-[440px] rounded-full"
-        style={{ background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)' }}
+        style={{
+          background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)',
+        }}
       />
       <div className="relative w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center">
@@ -104,7 +108,10 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
   return (
     <>
       <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
-        <span aria-hidden className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden" />
+        <span
+          aria-hidden
+          className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden"
+        />
         <span
           className="relative flex h-16 w-16 items-center justify-center rounded-full text-emerald-300"
           style={{
@@ -116,7 +123,9 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
           <CheckCircle2 className="h-7 w-7" aria-hidden />
         </span>
       </div>
-      <h1 className="font-display text-2xl font-black italic tracking-tight text-white">{copy.title}</h1>
+      <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
+        {copy.title}
+      </h1>
       <p className="mt-3 text-sm text-slate-400">{copy.subtitle}</p>
       <Link href={safeNext} className={ctaClass}>
         {copy.cta}
@@ -139,7 +148,9 @@ function LoadingState() {
       <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
         Verificando tu enlace…
       </h1>
-      <p className="mt-3 text-sm text-slate-400">Esto tarda un instante. No cierres esta pestaña.</p>
+      <p className="mt-3 text-sm text-slate-400">
+        Esto tarda un instante. No cierres esta pestaña.
+      </p>
     </>
   )
 }
@@ -163,7 +174,10 @@ function ErrorState({ code }: { code: string }) {
           `error`, nunca `type`/intent. En vez de adivinar, se ofrecen los dos caminos. */}
       <p className="mt-4 text-xs text-slate-400">
         ¿Sos jugador?{' '}
-        <Link href="/ingresar" className="font-medium text-emerald-300 underline-offset-2 hover:underline">
+        <Link
+          href="/ingresar"
+          className="font-medium text-emerald-300 underline-offset-2 hover:underline"
+        >
           Ingresá acá
         </Link>
       </p>

@@ -27,7 +27,10 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
         }}
       />
       {/* Ambiente light: líneas de cal (firma "Matchday") */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-[-12%] z-0 h-[68%] text-emerald-600/[.14] dark:hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-[-12%] z-0 h-[68%] text-emerald-600/[.14] dark:hidden"
+      >
         <PitchLines className="h-full w-full" />
       </div>
       {/* Glow blobs */}
@@ -73,8 +76,8 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
             style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}
           >
             Explorá complejos verificados, compará horarios en tiempo real y{' '}
-            <span className="font-semibold text-foreground">asegurá tu cancha</span>{' '}
-            con confirmación inmediata.
+            <span className="font-semibold text-foreground">asegurá tu cancha</span> con
+            confirmación inmediata.
           </p>
 
           {/* Buscador */}
@@ -84,12 +87,21 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
 
           {/* Pills de confianza */}
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2.5">
-            {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map((t) => (
-              <span key={t} className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-                <Check className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" strokeWidth={2.4} aria-hidden />
-                {t}
-              </span>
-            ))}
+            {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map(
+              (t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground"
+                >
+                  <Check
+                    className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400"
+                    strokeWidth={2.4}
+                    aria-hidden
+                  />
+                  {t}
+                </span>
+              ),
+            )}
           </div>
         </div>
 

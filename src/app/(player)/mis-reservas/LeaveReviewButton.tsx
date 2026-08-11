@@ -114,7 +114,9 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
               placeholder="¿Qué te pareció la cancha, el lugar, la atención?"
               className="w-full resize-none rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             />
-            <p className="text-right text-xs text-muted-foreground tabular-nums">{comment.length}/500</p>
+            <p className="text-right text-xs text-muted-foreground tabular-nums">
+              {comment.length}/500
+            </p>
           </div>
 
           <button

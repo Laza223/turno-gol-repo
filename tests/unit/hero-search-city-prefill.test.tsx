@@ -62,9 +62,7 @@ describe('HeroSearch — pre-llenado por geolocalización', () => {
     stubGeolocation((_success, error) => error({ code: 1 }))
     render(<HeroSearch cities={CITIES} />)
 
-    await waitFor(() =>
-      expect(screen.getByText(/no pudimos acceder a tu ubicación/i)).toBeTruthy(),
-    )
+    await waitFor(() => expect(screen.getByText(/no pudimos acceder a tu ubicación/i)).toBeTruthy())
     expect(cityInput().value).toBe('')
 
     fireEvent.submit(screen.getByRole('form', { name: 'Buscar canchas de fútbol' }))

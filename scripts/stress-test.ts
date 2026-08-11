@@ -94,7 +94,9 @@ async function main(): Promise<void> {
   let invariantHeld = false
 
   try {
-    console.log(`Firing ${SLOT_COUNT} parallel bookings on ${slot.date} ${slot.timeStart}-${slot.timeEnd}...`)
+    console.log(
+      `Firing ${SLOT_COUNT} parallel bookings on ${slot.date} ${slot.timeStart}-${slot.timeEnd}...`,
+    )
     const barrier = new Promise<void>((resolve) => setTimeout(resolve, 100))
     const promises = playerIds.map(async (pid) => {
       await barrier

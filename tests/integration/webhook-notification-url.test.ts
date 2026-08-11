@@ -8,20 +8,11 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { sql as drizzleSql } from 'drizzle-orm'
-import {
-  closeSql,
-  getSql,
-  withPlayerContext,
-} from '@/shared/db/client'
+import { closeSql, getSql, withPlayerContext } from '@/shared/db/client'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 import type { CreatePreferenceInput } from '@/modules/payments/payment.types'
 
@@ -73,9 +64,7 @@ describe('createDepositPayment — notification URL', () => {
 
     // Create a pending_payment booking with a deposit
     const booking = await withPlayerContext(player.id, async (tx) => {
-      await tx.execute(
-        drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-      )
+      await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
       return createOnlineBooking(
         tenant.id,
         {
@@ -108,16 +97,12 @@ describe('createDepositPayment — notification URL', () => {
     // Primary assertion: notification URL must point at the real handler
     expect(capturedInput).not.toBeNull()
     const notifUrl = capturedInput!.notificationUrl
-    expect(notifUrl).toMatch(
-      new RegExp(`/api/webhooks/mercadopago\\?tenant=${tenant.id}$`),
-    )
+    expect(notifUrl).toMatch(new RegExp(`/api/webhooks/mercadopago\\?tenant=${tenant.id}$`))
 
     // Negative: must NOT contain the nonexistent route
     expect(notifUrl).not.toContain('/api/mp/webhooks')
 
     // Sanity: correct tenant in the query param
-    expect(notifUrl).toBe(
-      `${APP_URL}/api/webhooks/mercadopago?tenant=${tenant.id}`,
-    )
+    expect(notifUrl).toBe(`${APP_URL}/api/webhooks/mercadopago?tenant=${tenant.id}`)
   })
 })

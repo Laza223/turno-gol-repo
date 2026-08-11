@@ -49,7 +49,9 @@ export function PlayerBottomNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={`flex flex-1 flex-col items-center gap-0.5 py-3 transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500 ${
-              active ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'
+              active
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <Icon className="h-5 w-5" aria-hidden />

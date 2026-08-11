@@ -70,7 +70,9 @@ export const VistaManager: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('button', { name: '+ Nueva cancha' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
-    await expect(canvas.getAllByRole('button', { name: /desactivar|activar/i }).length).toBeGreaterThan(0)
+    await expect(
+      canvas.getAllByRole('button', { name: /desactivar|activar/i }).length,
+    ).toBeGreaterThan(0)
   },
 }
 
@@ -93,13 +95,11 @@ export const FormularioAbierto: Story = {
 export const DesactivarConImpacto: Story = {
   args: {
     initialCourts: [courtFutbol5()],
-    getDeactivationImpactAction: fn(
-      async (): Promise<CourtDeactivationImpactResult> => ({
-        success: true,
-        futureBookings: 4,
-        activeAbonados: 2,
-      }),
-    ),
+    getDeactivationImpactAction: fn(async (): Promise<CourtDeactivationImpactResult> => ({
+      success: true,
+      futureBookings: 4,
+      activeAbonados: 2,
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -128,12 +128,10 @@ export const DesactivarConImpacto: Story = {
 export const ErrorAlVerificarImpacto: Story = {
   args: {
     initialCourts: [courtFutbol5()],
-    getDeactivationImpactAction: fn(
-      async (): Promise<CourtDeactivationImpactResult> => ({
-        success: false,
-        error: 'Timeout de base de datos.',
-      }),
-    ),
+    getDeactivationImpactAction: fn(async (): Promise<CourtDeactivationImpactResult> => ({
+      success: false,
+      error: 'Timeout de base de datos.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

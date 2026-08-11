@@ -154,7 +154,9 @@ async function main(): Promise<void> {
   // -------------------------------------------------------------------------
   console.log(`Minting admin session for ${ADMIN_EMAIL}…`)
   const cookies = await mintAdminCookies(ADMIN_EMAIL)
-  console.log(`  ${cookies.length} SSR cookie(s) obtained: ${cookies.map((c) => c.name).join(', ')}`)
+  console.log(
+    `  ${cookies.length} SSR cookie(s) obtained: ${cookies.map((c) => c.name).join(', ')}`,
+  )
 
   // -------------------------------------------------------------------------
   // 2. Write cookies to a temp file for the puppeteerScript to read
@@ -255,9 +257,9 @@ function readPerformanceScore(): number | null {
       .filter((f) => f.startsWith('lhr-') && f.endsWith('.json'))
       .sort()
     if (lhrs.length === 0) return null
-    const lhr = JSON.parse(
-      readFileSync(join(dir, lhrs[lhrs.length - 1]!), 'utf-8'),
-    ) as { categories?: { performance?: { score?: number } } }
+    const lhr = JSON.parse(readFileSync(join(dir, lhrs[lhrs.length - 1]!), 'utf-8')) as {
+      categories?: { performance?: { score?: number } }
+    }
     return lhr.categories?.performance?.score ?? null
   } catch {
     return null

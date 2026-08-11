@@ -124,188 +124,188 @@ async function deleteBooking(
 // TEST 1 — Happy: create a new court via UI
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — happy: create court', () => {
-  test(
-    '/settings/canchas → "+ Nueva cancha" → fill form → submit → new court appears with Online badge',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const courtName = `E2E Cancha Happy ${randomUUID().slice(0, 8)}`
-      let createdCourtId: string | null = null
+  test('/settings/canchas → "+ Nueva cancha" → fill form → submit → new court appears with Online badge', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const courtName = `E2E Cancha Happy ${randomUUID().slice(0, 8)}`
+    let createdCourtId: string | null = null
 
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto('/settings/canchas')
-        await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto('/settings/canchas')
+      await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Open the creation form.
-        await page.getByRole('button', { name: '+ Nueva cancha' }).click()
-        await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
+      // Open the creation form.
+      await page.getByRole('button', { name: '+ Nueva cancha' }).click()
+      await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
 
-        // Fill the name.
-        await page.getByPlaceholder('Ej: Cancha 1').fill(courtName)
+      // Fill the name.
+      await page.getByPlaceholder('Ej: Cancha 1').fill(courtName)
 
-        // Keep default surface (Césped sintético) and capacity.
-        // Prices: a new court starts EMPTY (no more fake DEFAULT_RULES). Use the
-        // quick template — "Un precio" is the default mode — and apply it to the
-        // whole week so every operative hour is covered.
-        await page.getByLabel('Precio por turno').fill('10000')
-        await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
+      // Keep default surface (Césped sintético) and capacity.
+      // Prices: a new court starts EMPTY (no more fake DEFAULT_RULES). Use the
+      // quick template — "Un precio" is the default mode — and apply it to the
+      // whole week so every operative hour is covered.
+      await page.getByLabel('Precio por turno').fill('10000')
+      await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
 
-        // Submit.
-        await page.getByRole('button', { name: 'Crear cancha' }).click()
+      // Submit.
+      await page.getByRole('button', { name: 'Crear cancha' }).click()
 
-        // After success the form closes and the CourtList is shown again.
-        await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
-          timeout: 10_000,
-        })
+      // After success the form closes and the CourtList is shown again.
+      await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
+        timeout: 10_000,
+      })
 
-        // The new court card should appear with the correct name and Online badge.
-        await expect(page.getByText(courtName)).toBeVisible({ timeout: 10_000 })
-        // Inline badge next to the court name should say "Online".
-        // Anchor on the card's own outer class — using a bare `locator('div')`
-        // matches every ancestor (incl. the page container that has every card),
-        // so getByText('Online') would match all status badges.
-        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
-        await expect(courtCard.getByText('Online')).toBeVisible()
+      // The new court card should appear with the correct name and Online badge.
+      await expect(page.getByText(courtName)).toBeVisible({ timeout: 10_000 })
+      // Inline badge next to the court name should say "Online".
+      // Anchor on the card's own outer class — using a bare `locator('div')`
+      // matches every ancestor (incl. the page container that has every card),
+      // so getByText('Online') would match all status badges.
+      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      await expect(courtCard.getByText('Online')).toBeVisible()
 
-        // Capture the created court id for cleanup by finding it via the DB.
-        const { data: rows } = await supabase
-          .from('courts')
-          .select('id')
-          .eq('tenant_id', TENANT_ID)
-          .eq('name', courtName)
-          .limit(1)
-        createdCourtId = rows?.[0]?.id ?? null
-      } finally {
-        await context.close()
-        if (createdCourtId) await deleteCourt(supabase, createdCourtId)
-      }
-    },
-  )
+      // Capture the created court id for cleanup by finding it via the DB.
+      const { data: rows } = await supabase
+        .from('courts')
+        .select('id')
+        .eq('tenant_id', TENANT_ID)
+        .eq('name', courtName)
+        .limit(1)
+      createdCourtId = rows?.[0]?.id ?? null
+    } finally {
+      await context.close()
+      if (createdCourtId) await deleteCourt(supabase, createdCourtId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 2 — Edge: deactivate court with future bookings (impact warning shown)
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — edge: deactivate with future bookings', () => {
-  test(
-    'service-role court + future booking → "Desactivar" → dialog shows future-booking warning → confirm → badge Offline',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const courtId = randomUUID()
-      const bookingId = randomUUID()
-      const courtName = `E2E Cancha Deactivate ${courtId.slice(0, 8)}`
+  test('service-role court + future booking → "Desactivar" → dialog shows future-booking warning → confirm → badge Offline', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const courtId = randomUUID()
+    const bookingId = randomUUID()
+    const courtName = `E2E Cancha Deactivate ${courtId.slice(0, 8)}`
 
-      const context = await browser.newContext()
-      try {
-        // Insert a test court (online).
-        await insertCourt(supabase, { id: courtId, name: courtName })
+    const context = await browser.newContext()
+    try {
+      // Insert a test court (online).
+      await insertCourt(supabase, { id: courtId, name: courtName })
 
-        // Insert a future confirmed booking on that court.
-        await insertBooking(supabase, {
-          id: bookingId,
-          courtId,
-          date: '2099-12-21',
-          timeStart: '10:00',
-          timeEnd: '11:00',
-        })
+      // Insert a future confirmed booking on that court.
+      await insertBooking(supabase, {
+        id: bookingId,
+        courtId,
+        date: '2099-12-21',
+        timeStart: '10:00',
+        timeEnd: '11:00',
+      })
 
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto('/settings/canchas')
-        await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto('/settings/canchas')
+      await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Find the court card and click "Desactivar".
-        // Anchor on the card's class (rounded-lg) — bare locator('div') matches
-        // every ancestor and would match every Desactivar button on the page.
-        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
-        await expect(courtCard).toBeVisible({ timeout: 10_000 })
-        await courtCard.getByRole('button', { name: 'Desactivar' }).click()
+      // Find the court card and click "Desactivar".
+      // Anchor on the card's class (rounded-lg) — bare locator('div') matches
+      // every ancestor and would match every Desactivar button on the page.
+      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      await expect(courtCard).toBeVisible({ timeout: 10_000 })
+      await courtCard.getByRole('button', { name: 'Desactivar' }).click()
 
-        // ConfirmDialog opens with title "Desactivar {courtName}".
-        await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByText(`Desactivar ${courtName}`)).toBeVisible()
+      // ConfirmDialog opens with title "Desactivar {courtName}".
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByText(`Desactivar ${courtName}`)).toBeVisible()
 
-        // The impact warning must mention the future booking count.
-        await expect(
-          page.getByText(/Hay 1 reserva\(s\) futura\(s\)/i),
-        ).toBeVisible({ timeout: 10_000 })
+      // The impact warning must mention the future booking count.
+      await expect(page.getByText(/Hay 1 reserva\(s\) futura\(s\)/i)).toBeVisible({
+        timeout: 10_000,
+      })
 
-        // Confirm deactivation.
-        await page.getByRole('button', { name: 'Desactivar' }).last().click()
+      // Confirm deactivation.
+      await page.getByRole('button', { name: 'Desactivar' }).last().click()
 
-        // Dialog closes and the badge updates to Offline.
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
-      } finally {
-        await context.close()
-        // Cleanup: delete booking first (FK), then court.
-        await deleteBooking(supabase, bookingId)
-        await deleteCourt(supabase, courtId)
-      }
-    },
-  )
+      // Dialog closes and the badge updates to Offline.
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
+    } finally {
+      await context.close()
+      // Cleanup: delete booking first (FK), then court.
+      await deleteBooking(supabase, bookingId)
+      await deleteCourt(supabase, courtId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 3 — Edge: pricing coverage gap blocks court creation
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — edge: pricing coverage gap', () => {
-  test(
-    '"+ Nueva cancha" with a pricing rule that leaves a gap → submit → error "Precios sin cubrir"',
-    async ({ browser, adminStorageState }) => {
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+  test('"+ Nueva cancha" with a pricing rule that leaves a gap → submit → error "Precios sin cubrir"', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto('/settings/canchas')
-        await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto('/settings/canchas')
+      await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Open the creation form.
-        await page.getByRole('button', { name: '+ Nueva cancha' }).click()
-        await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
+      // Open the creation form.
+      await page.getByRole('button', { name: '+ Nueva cancha' }).click()
+      await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
 
-        // Fill a unique name.
-        await page.getByPlaceholder('Ej: Cancha 1').fill(`E2E Gap ${randomUUID().slice(0, 8)}`)
+      // Fill a unique name.
+      await page.getByPlaceholder('Ej: Cancha 1').fill(`E2E Gap ${randomUUID().slice(0, 8)}`)
 
-        // Cover the whole week with the quick template first…
-        await page.getByLabel('Precio por turno').fill('10000')
-        await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
+      // Cover the whole week with the quick template first…
+      await page.getByLabel('Precio por turno').fill('10000')
+      await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
 
-        // …then open the fine-tune grid and empty one operative cell (Mon 22:00)
-        // to leave a coverage gap: click it to open the inline editor, clear the
-        // value, commit with Enter.
-        await page.getByRole('button', { name: 'Ajustar por hora' }).click()
-        await page.getByRole('button', { name: /^Lun 22:00/ }).click()
-        const cellEditor = page.getByLabel('Precio Lun 22:00')
-        await cellEditor.fill('')
-        await cellEditor.press('Enter')
+      // …then open the fine-tune grid and empty one operative cell (Mon 22:00)
+      // to leave a coverage gap: click it to open the inline editor, clear the
+      // value, commit with Enter.
+      await page.getByRole('button', { name: 'Ajustar por hora' }).click()
+      await page.getByRole('button', { name: /^Lun 22:00/ }).click()
+      const cellEditor = page.getByLabel('Precio Lun 22:00')
+      await cellEditor.fill('')
+      await cellEditor.press('Enter')
 
-        // The cell now reads "sin precio" → submitting must hit the client-side
-        // gate (spec §3.3); validatePricingRulesCoverage stays as server backstop.
-        await page.getByRole('button', { name: 'Crear cancha' }).click()
+      // The cell now reads "sin precio" → submitting must hit the client-side
+      // gate (spec §3.3); validatePricingRulesCoverage stays as server backstop.
+      await page.getByRole('button', { name: 'Crear cancha' }).click()
 
-        // The gate error is shown ("No se puede guardar: falta 1 horario sin precio…").
-        await expect(page.getByText(/No se puede guardar/i)).toBeVisible({ timeout: 10_000 })
+      // The gate error is shown ("No se puede guardar: falta 1 horario sin precio…").
+      await expect(page.getByText(/No se puede guardar/i)).toBeVisible({ timeout: 10_000 })
 
-        // The form stays open (no redirect to court list).
-        await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
-      } finally {
-        await context.close()
-        // No DB cleanup needed — court was never created.
-      }
-    },
-  )
+      // The form stays open (no redirect to court list).
+      await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
+    } finally {
+      await context.close()
+      // No DB cleanup needed — court was never created.
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -325,90 +325,92 @@ test.describe('canchas — edge: pricing coverage gap', () => {
 //   tenant_subscriptions row → maxCourts = null → the limit check never fires.)
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — edge: optimistic rollback on activate failure', () => {
-  test(
-    'offline court deleted under the UI → "Activar" → optimistic Online then rolls back to Offline + toast',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const courtId = randomUUID()
-      const courtName = `E2E Cancha Rollback ${courtId.slice(0, 8)}`
+  test('offline court deleted under the UI → "Activar" → optimistic Online then rolls back to Offline + toast', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const courtId = randomUUID()
+    const courtName = `E2E Cancha Rollback ${courtId.slice(0, 8)}`
 
-      const context = await browser.newContext()
-      try {
-        // Insert an offline court so the "Activar" button is shown.
-        await insertCourt(supabase, { id: courtId, name: courtName, status: 'offline' })
+    const context = await browser.newContext()
+    try {
+      // Insert an offline court so the "Activar" button is shown.
+      await insertCourt(supabase, { id: courtId, name: courtName, status: 'offline' })
 
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto('/settings/canchas')
-        await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto('/settings/canchas')
+      await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Locate the court card; it shows Offline before activation.
-        // Anchor on the card's class (rounded-lg) to avoid resolving to the
-        // page container which holds every other card too.
-        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
-        await expect(courtCard).toBeVisible({ timeout: 10_000 })
-        await expect(courtCard.getByText('Offline')).toBeVisible()
+      // Locate the court card; it shows Offline before activation.
+      // Anchor on the card's class (rounded-lg) to avoid resolving to the
+      // page container which holds every other card too.
+      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      await expect(courtCard).toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Offline')).toBeVisible()
 
-        // Delete the row out from under the UI so the next toggle fails gracefully.
-        await deleteCourt(supabase, courtId)
+      // Delete the row out from under the UI so the next toggle fails gracefully.
+      await deleteCourt(supabase, courtId)
 
-        // Click "Activar": optimistic Online, then the action returns { success:false }
-        // ('Cancha no encontrada') → rollback to Offline + destructive toast.
-        await courtCard.getByRole('button', { name: 'Activar' }).click()
+      // Click "Activar": optimistic Online, then the action returns { success:false }
+      // ('Cancha no encontrada') → rollback to Offline + destructive toast.
+      await courtCard.getByRole('button', { name: 'Activar' }).click()
 
-        // Badge must revert to Offline and the failure toast must appear.
-        // exact:true — the aria-live announcement renders
-        // "Notification No se pudo activarCancha no encontrada" which
-        // substring-matches and trips strict mode.
-        await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText('No se pudo activar', { exact: true })).toBeVisible({ timeout: 10_000 })
-      } finally {
-        await context.close()
-        // Court already deleted above; safety net (delete of 0 rows is not an error).
-        await deleteCourt(supabase, courtId)
-      }
-    },
-  )
+      // Badge must revert to Offline and the failure toast must appear.
+      // exact:true — the aria-live announcement renders
+      // "Notification No se pudo activarCancha no encontrada" which
+      // substring-matches and trips strict mode.
+      await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('No se pudo activar', { exact: true })).toBeVisible({
+        timeout: 10_000,
+      })
+    } finally {
+      await context.close()
+      // Court already deleted above; safety net (delete of 0 rows is not an error).
+      await deleteCourt(supabase, courtId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 5 — Smoke: edit court shows photos section
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — smoke: edit court photos section', () => {
-  test(
-    'existing court edit form renders Fotos section (images only in edit mode)',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const courtId = randomUUID()
-      const courtName = `E2E Cancha Photos ${courtId.slice(0, 8)}`
+  test('existing court edit form renders Fotos section (images only in edit mode)', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const courtId = randomUUID()
+    const courtName = `E2E Cancha Photos ${courtId.slice(0, 8)}`
 
-      const context = await browser.newContext()
-      try {
-        // Insert a test court via service-role.
-        await insertCourt(supabase, { id: courtId, name: courtName })
+    const context = await browser.newContext()
+    try {
+      // Insert a test court via service-role.
+      await insertCourt(supabase, { id: courtId, name: courtName })
 
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto('/settings/canchas')
-        await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto('/settings/canchas')
+      await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Find the court card and open the edit form by clicking "Editar".
-        const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
-        await expect(courtCard).toBeVisible({ timeout: 10_000 })
-        await courtCard.getByRole('button', { name: /editar/i }).click()
+      // Find the court card and open the edit form by clicking "Editar".
+      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      await expect(courtCard).toBeVisible({ timeout: 10_000 })
+      await courtCard.getByRole('button', { name: /editar/i }).click()
 
-        // Verify the Fotos section is visible (smoke test: section only renders in edit mode).
-        await expect(page.getByText('Fotos')).toBeVisible({ timeout: 10_000 })
-      } finally {
-        await context.close()
-        await deleteCourt(supabase, courtId)
-      }
-    },
-  )
+      // Verify the Fotos section is visible (smoke test: section only renders in edit mode).
+      await expect(page.getByText('Fotos')).toBeVisible({ timeout: 10_000 })
+    } finally {
+      await context.close()
+      await deleteCourt(supabase, courtId)
+    }
+  })
 })

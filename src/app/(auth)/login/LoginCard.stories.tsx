@@ -46,7 +46,9 @@ export const CredencialesInvalidas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Ingresar' }))
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('Email o contraseña incorrectos.')
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Email o contraseña incorrectos.',
+    )
     // Sin unconfirmedEmail: no aparece el link de reenvío.
     await expect(canvas.queryByText(/reenviar email/i)).not.toBeInTheDocument()
   },
@@ -64,8 +66,12 @@ export const EmailSinConfirmar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Ingresar' }))
-    await expect(await canvas.findByText('Tenés que confirmar tu email antes de entrar.')).toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: /reenviar email de confirmación/i })).toBeInTheDocument()
+    await expect(
+      await canvas.findByText('Tenés que confirmar tu email antes de entrar.'),
+    ).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('button', { name: /reenviar email de confirmación/i }),
+    ).toBeInTheDocument()
   },
 }
 
@@ -82,7 +88,9 @@ export const ReenvioOk: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Ingresar' }))
-    await userEvent.click(await canvas.findByRole('button', { name: /reenviar email de confirmación/i }))
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /reenviar email de confirmación/i }),
+    )
     await expect(
       await canvas.findByText('Te reenviamos el email de confirmación. Revisá tu bandeja.'),
     ).toBeInTheDocument()

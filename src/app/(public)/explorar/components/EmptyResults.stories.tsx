@@ -16,7 +16,9 @@ export const SinFiltros: Story = {
   args: { avail: null },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'Sin resultados para tu búsqueda' })).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('heading', { name: 'Sin resultados para tu búsqueda' }),
+    ).toBeInTheDocument()
   },
 }
 

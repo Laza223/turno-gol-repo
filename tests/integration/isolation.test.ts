@@ -21,12 +21,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { faker } from '@faker-js/faker'
-import {
-  closeSql,
-  getSql,
-  withContext,
-  withContextRollback,
-} from '@/shared/db/client'
+import { closeSql, getSql, withContext, withContextRollback } from '@/shared/db/client'
 import {
   cleanupAll,
   createTestPlayer,
@@ -142,10 +137,7 @@ const tablesAll: TableDef[] = [
 // Tables with UPDATE policy (RLS allows UPDATE if context matches).
 // Excludes audit_logs/daily_cash_closes (no UPDATE policy) and PTR (handled separately in F).
 const tablesUpdDel = tablesAll.filter(
-  (t) =>
-    !['audit_logs', 'daily_cash_closes', 'player_tenant_relationships'].includes(
-      t.name,
-    ),
+  (t) => !['audit_logs', 'daily_cash_closes', 'player_tenant_relationships'].includes(t.name),
 )
 
 // All RLS tables with tenant/player isolation for the fail-safe (no context) test.
@@ -166,9 +158,8 @@ describe('A. tenant SÍ ve sus propias filas (smoke positivo)', () => {
     it(`${t.name}: tenant A ve su fila (staff context)`, async () => {
       // Staff-only context: NO playerId. Garantiza que tenant_isolation_select sea
       // el camino exclusivo (sin que player_own_* enmascare el bug si lo comentás).
-      const rows = await withContext(
-        { role: 'authenticated', tenantId: tenantA.id },
-        (tx) => tx.unsafe(`SELECT id FROM ${t.name} WHERE id = $1`, [t.ownId()]),
+      const rows = await withContext({ role: 'authenticated', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`SELECT id FROM ${t.name} WHERE id = $1`, [t.ownId()]),
       )
       expect(rows.length).toBeGreaterThanOrEqual(1)
     })
@@ -179,9 +170,8 @@ describe('A. tenant SÍ ve sus propias filas (smoke positivo)', () => {
 describe('B. cross-tenant SELECT bloqueado', () => {
   for (const t of tablesAll) {
     it(`${t.name}: tenant B no ve fila de A`, async () => {
-      const rows = await withContext(
-        { role: 'authenticated', tenantId: tenantB.id },
-        (tx) => tx.unsafe(`SELECT id FROM ${t.name} WHERE id = $1`, [t.ownId()]),
+      const rows = await withContext({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
+        tx.unsafe(`SELECT id FROM ${t.name} WHERE id = $1`, [t.ownId()]),
       )
       expect(rows.length).toBe(0)
     })
@@ -289,9 +279,7 @@ describe('C. cross-tenant INSERT bloqueado', () => {
         withContextRollback({ role: 'authenticated', tenantId: tenantA.id }, (tx) =>
           op(tx, tenantB.id),
         ),
-      ).rejects.toThrow(
-        new RegExp(`row-level security policy for table "${t.name}"`, 'i'),
-      )
+      ).rejects.toThrow(new RegExp(`row-level security policy for table "${t.name}"`, 'i'))
     })
   }
 })
@@ -303,10 +291,9 @@ describe('D. cross-tenant UPDATE bloqueado', () => {
       const rows = await withContextRollback(
         { role: 'authenticated', tenantId: tenantB.id },
         (tx) =>
-          tx.unsafe(
-            `UPDATE ${t.name} SET tenant_id = tenant_id WHERE id = $1 RETURNING id`,
-            [t.ownId()],
-          ),
+          tx.unsafe(`UPDATE ${t.name} SET tenant_id = tenant_id WHERE id = $1 RETURNING id`, [
+            t.ownId(),
+          ]),
       )
       expect((rows as unknown[]).length).toBe(0)
     })
@@ -319,11 +306,7 @@ describe('E. cross-tenant DELETE bloqueado', () => {
     it(`${t.name}: tenant B no DELETE fila de A`, async () => {
       const rows = await withContextRollback(
         { role: 'authenticated', tenantId: tenantB.id },
-        (tx) =>
-          tx.unsafe(
-            `DELETE FROM ${t.name} WHERE id = $1 RETURNING id`,
-            [t.ownId()],
-          ),
+        (tx) => tx.unsafe(`DELETE FROM ${t.name} WHERE id = $1 RETURNING id`, [t.ownId()]),
       )
       expect((rows as unknown[]).length).toBe(0)
     })
@@ -333,13 +316,11 @@ describe('E. cross-tenant DELETE bloqueado', () => {
 // ─── F. PTR cross-tenant UPDATE ────────────────────────────────
 describe('F. PTR cross-tenant UPDATE bloqueado', () => {
   it('player_tenant_relationships: tenant B no UPDATE fila de A', async () => {
-    const rows = await withContextRollback(
-      { role: 'authenticated', tenantId: tenantB.id },
-      (tx) =>
-        tx.unsafe(
-          `UPDATE player_tenant_relationships SET status = 'active' WHERE id = $1 RETURNING id`,
-          [A.ptrId],
-        ),
+    const rows = await withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
+      tx.unsafe(
+        `UPDATE player_tenant_relationships SET status = 'active' WHERE id = $1 RETURNING id`,
+        [A.ptrId],
+      ),
     )
     expect((rows as unknown[]).length).toBe(0)
   })
@@ -363,47 +344,34 @@ describe('G. REVOKE en append-only', () => {
 
   it('audit_logs: UPDATE propio falla con permission denied', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) =>
-          tx.unsafe(`UPDATE audit_logs SET action = 'tampered' WHERE id = $1`, [
-            A.auditLogId,
-          ]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`UPDATE audit_logs SET action = 'tampered' WHERE id = $1`, [A.auditLogId]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
 
   it('audit_logs: DELETE propio falla con permission denied', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) =>
-          tx.unsafe(`DELETE FROM audit_logs WHERE id = $1`, [A.auditLogId]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`DELETE FROM audit_logs WHERE id = $1`, [A.auditLogId]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
 
   it('daily_cash_closes: UPDATE propio falla con permission denied', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) =>
-          tx.unsafe(
-            `UPDATE daily_cash_closes SET declared_cash = 999 WHERE id = $1`,
-            [A.dailyCashCloseId],
-          ),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`UPDATE daily_cash_closes SET declared_cash = 999 WHERE id = $1`, [
+          A.dailyCashCloseId,
+        ]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
 
   it('daily_cash_closes: DELETE propio falla con permission denied', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) =>
-          tx.unsafe(`DELETE FROM daily_cash_closes WHERE id = $1`, [
-            A.dailyCashCloseId,
-          ]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`DELETE FROM daily_cash_closes WHERE id = $1`, [A.dailyCashCloseId]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
@@ -414,9 +382,8 @@ describe('H. fail-safe: sin contexto seteado, 0 filas', () => {
   for (const tableName of failSafeTables) {
     it(`${tableName}: SELECT sin contexto → 0 filas`, async () => {
       // Role authenticated, no SET LOCAL para app.current_*.
-      const rows = await withContext(
-        { role: 'authenticated' },
-        (tx) => tx.unsafe(`SELECT count(*)::int AS c FROM ${tableName}`),
+      const rows = await withContext({ role: 'authenticated' }, (tx) =>
+        tx.unsafe(`SELECT count(*)::int AS c FROM ${tableName}`),
       )
       expect((rows as unknown as { c: number }[])[0].c).toBe(0)
     })
@@ -442,8 +409,7 @@ describe('I. casos especiales', () => {
     // bajo policy player_own_bookings_select (sin context tenant).
     const rows = await withContext(
       { role: 'authenticated', playerId: A.playerId },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${bookingC}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${bookingC}`,
     )
     expect(rows.length).toBe(0)
   })
@@ -454,8 +420,7 @@ describe('I. casos especiales', () => {
         role: 'authenticated',
         jwtClaims: { app_metadata: { tenant_id: tenantB.id } },
       },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
     )
     expect(rows.length).toBe(0)
   })
@@ -463,8 +428,7 @@ describe('I. casos especiales', () => {
   it('I.3 staff A no ve email de staff B', async () => {
     const rows = await withContext(
       { role: 'authenticated', tenantId: tenantA.id },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM staff_users WHERE id = ${B.staffUserId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM staff_users WHERE id = ${B.staffUserId}`,
     )
     expect(rows.length).toBe(0)
   })
@@ -473,8 +437,7 @@ describe('I. casos especiales', () => {
     // extraPlayerA fue creado pero NO linkeado a ningún tenant.
     const rows = await withContext(
       { role: 'authenticated', tenantId: tenantA.id },
-      (tx) =>
-        tx<{ email: string }[]>`SELECT email FROM players WHERE id = ${extraPlayerA.id}`,
+      (tx) => tx<{ email: string }[]>`SELECT email FROM players WHERE id = ${extraPlayerA.id}`,
     )
     expect(rows.length).toBe(0)
   })
@@ -482,8 +445,7 @@ describe('I. casos especiales', () => {
   it('I.5 jugador baneado en A ve su propio ban vía player_own_bans_select', async () => {
     const rows = await withContext(
       { role: 'authenticated', playerId: A.playerId },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM tenant_player_bans WHERE id = ${A.banId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM tenant_player_bans WHERE id = ${A.banId}`,
     )
     expect(rows.length).toBe(1)
   })
@@ -596,9 +558,7 @@ describe('J. positive policies (cierre de gaps)', () => {
             VALUES (${tenantB.id}, ${B.playerId})
           `,
       ),
-    ).rejects.toThrow(
-      /row-level security policy for table "player_tenant_relationships"/i,
-    )
+    ).rejects.toThrow(/row-level security policy for table "player_tenant_relationships"/i)
   })
 
   it('system_admin_self: super admin ve SU PROPIA fila', async () => {
@@ -606,8 +566,7 @@ describe('J. positive policies (cierre de gaps)', () => {
     const sa = await createTestSystemAdmin(sql)
     const rows = await withContext(
       { role: 'authenticated', systemAdminId: sa.id },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM system_admins WHERE id = ${sa.id}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM system_admins WHERE id = ${sa.id}`,
     )
     expect(rows.length).toBe(1)
   })
@@ -618,8 +577,7 @@ describe('J. positive policies (cierre de gaps)', () => {
     const sa2 = await createTestSystemAdmin(sql)
     const rows = await withContext(
       { role: 'authenticated', systemAdminId: sa1.id },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM system_admins WHERE id = ${sa2.id}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM system_admins WHERE id = ${sa2.id}`,
     )
     expect(rows.length).toBe(0)
   })
@@ -631,13 +589,17 @@ describe('J. positive policies (cierre de gaps)', () => {
     const ok = await withContextRollback(
       { role: 'authenticated', systemAdminId: sa1.id },
       (tx) =>
-        tx<{ id: string }[]>`UPDATE system_admins SET first_name='x' WHERE id=${sa1.id} RETURNING id`,
+        tx<
+          { id: string }[]
+        >`UPDATE system_admins SET first_name='x' WHERE id=${sa1.id} RETURNING id`,
     )
     expect(ok.length).toBe(1)
     const blocked = await withContextRollback(
       { role: 'authenticated', systemAdminId: sa1.id },
       (tx) =>
-        tx<{ id: string }[]>`UPDATE system_admins SET first_name='hijack' WHERE id=${sa2.id} RETURNING id`,
+        tx<
+          { id: string }[]
+        >`UPDATE system_admins SET first_name='hijack' WHERE id=${sa2.id} RETURNING id`,
     )
     expect(blocked.length).toBe(0)
   })
@@ -645,8 +607,7 @@ describe('J. positive policies (cierre de gaps)', () => {
   it('realtime: claim app_metadata.tenant_id ausente → 0 filas', async () => {
     const rows = await withContext(
       { role: 'authenticated', jwtClaims: { app_metadata: {} } },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
     )
     expect(rows.length).toBe(0)
   })
@@ -655,8 +616,7 @@ describe('J. positive policies (cierre de gaps)', () => {
     try {
       const rows = await withContext(
         { role: 'authenticated', jwtClaims: { app_metadata: { tenant_id: 'not-a-uuid' } } },
-        (tx) =>
-          tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+        (tx) => tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
       )
       expect(rows.length).toBe(0)
     } catch (e) {
@@ -667,8 +627,7 @@ describe('J. positive policies (cierre de gaps)', () => {
   it('realtime: claim sin app_metadata → 0 filas', async () => {
     const rows = await withContext(
       { role: 'authenticated', jwtClaims: { sub: 'whoever' } },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
     )
     expect(rows.length).toBe(0)
   })
@@ -684,8 +643,7 @@ describe('K. positive relational reads', () => {
   it('player_own_bookings_select: jugador A ve su propia reserva', async () => {
     const rows = await withContext(
       { role: 'authenticated', playerId: A.playerId },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
     )
     expect(rows.length).toBe(1)
     expect(rows[0].id).toBe(A.bookingId)
@@ -696,8 +654,7 @@ describe('K. positive relational reads', () => {
     // realtime (contraparte positiva de I.2, que sólo cubre el cross-tenant).
     const rows = await withContext(
       { role: 'authenticated', jwtClaims: { app_metadata: { tenant_id: tenantA.id } } },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM bookings WHERE id = ${A.bookingId}`,
     )
     expect(rows.length).toBe(1)
     expect(rows[0].id).toBe(A.bookingId)
@@ -707,8 +664,7 @@ describe('K. positive relational reads', () => {
     // Contraparte positiva de I.4 (que sólo cubre el negativo, player sin PTR).
     const rows = await withContext(
       { role: 'authenticated', tenantId: tenantA.id },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM players WHERE id = ${A.playerId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM players WHERE id = ${A.playerId}`,
     )
     expect(rows.length).toBe(1)
     expect(rows[0].id).toBe(A.playerId)
@@ -718,8 +674,7 @@ describe('K. positive relational reads', () => {
     // Contraparte positiva de I.3 (que sólo cubre el negativo cross-tenant).
     const rows = await withContext(
       { role: 'authenticated', tenantId: tenantA.id },
-      (tx) =>
-        tx<{ id: string }[]>`SELECT id FROM staff_users WHERE id = ${A.staffUserId}`,
+      (tx) => tx<{ id: string }[]>`SELECT id FROM staff_users WHERE id = ${A.staffUserId}`,
     )
     expect(rows.length).toBe(1)
     expect(rows[0].id).toBe(A.staffUserId)
@@ -780,8 +735,10 @@ describe('L. tablas RLS post-021', () => {
     // RLS default-deny: feature_flags sólo tiene policy de SELECT. Un tenant no
     // puede crear overrides (ej. flipear su propio kill switch `suspended`).
     await expect(
-      withContextRollback({ role: 'authenticated', tenantId: tenantA.id }, (tx) =>
-        tx`INSERT INTO feature_flags (key, value, tenant_id)
+      withContextRollback(
+        { role: 'authenticated', tenantId: tenantA.id },
+        (tx) =>
+          tx`INSERT INTO feature_flags (key, value, tenant_id)
            VALUES (${`spoof_flag_${tenantA.id}`}, true, ${tenantA.id})`,
       ),
     ).rejects.toThrow(/row-level security policy for table "feature_flags"/i)
@@ -803,8 +760,10 @@ describe('L. tablas RLS post-021', () => {
     // reviews tiene lectura PÚBLICA (USING true) pero INSERT sólo del jugador
     // dueño del booking. Sin app.current_player_id, la WITH CHECK falla.
     await expect(
-      withContextRollback({ role: 'authenticated', tenantId: tenantA.id }, (tx) =>
-        tx`INSERT INTO reviews (tenant_id, player_id, booking_id, rating)
+      withContextRollback(
+        { role: 'authenticated', tenantId: tenantA.id },
+        (tx) =>
+          tx`INSERT INTO reviews (tenant_id, player_id, booking_id, rating)
            VALUES (${tenantA.id}, ${A.playerId}, ${A.bookingId}, 5)`,
       ),
     ).rejects.toThrow(/row-level security policy for table "reviews"/i)
@@ -890,17 +849,18 @@ describe('N. tablas RLS cantina (migración 048)', () => {
 
   it('canteen_products: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
     await expect(
-      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
-        tx`INSERT INTO canteen_products (tenant_id, name, price) VALUES (${tenantA.id}, 'spoof', 100000)`,
+      withContextRollback(
+        { role: 'authenticated', tenantId: tenantB.id },
+        (tx) =>
+          tx`INSERT INTO canteen_products (tenant_id, name, price) VALUES (${tenantA.id}, 'spoof', 100000)`,
       ),
     ).rejects.toThrow(/row-level security policy for table "canteen_products"/i)
   })
 
   it('canteen_products: turnogol_app NO puede DELETE (soft delete via is_active, sin policy de DELETE)', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) => tx.unsafe(`DELETE FROM canteen_products WHERE id = $1`, [canteenProductA]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`DELETE FROM canteen_products WHERE id = $1`, [canteenProductA]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
@@ -923,8 +883,10 @@ describe('N. tablas RLS cantina (migración 048)', () => {
 
   it('canteen_tabs: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
     await expect(
-      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
-        tx`INSERT INTO canteen_tabs (tenant_id, debtor_name, total_amount, created_by)
+      withContextRollback(
+        { role: 'authenticated', tenantId: tenantB.id },
+        (tx) =>
+          tx`INSERT INTO canteen_tabs (tenant_id, debtor_name, total_amount, created_by)
            VALUES (${tenantA.id}, 'spoof', 100000, ${B.staffUserId})`,
       ),
     ).rejects.toThrow(/row-level security policy for table "canteen_tabs"/i)
@@ -932,9 +894,8 @@ describe('N. tablas RLS cantina (migración 048)', () => {
 
   it('canteen_tabs: turnogol_app NO puede DELETE (anular = status canceled, sin policy de DELETE)', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) => tx.unsafe(`DELETE FROM canteen_tabs WHERE id = $1`, [canteenTabA]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`DELETE FROM canteen_tabs WHERE id = $1`, [canteenTabA]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
@@ -957,8 +918,10 @@ describe('N. tablas RLS cantina (migración 048)', () => {
 
   it('stock_movements: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
     await expect(
-      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
-        tx`INSERT INTO stock_movements (tenant_id, product_id, kind, qty, created_by)
+      withContextRollback(
+        { role: 'authenticated', tenantId: tenantB.id },
+        (tx) =>
+          tx`INSERT INTO stock_movements (tenant_id, product_id, kind, qty, created_by)
            VALUES (${tenantA.id}, ${canteenProductA}, 'purchase', 5, ${B.staffUserId})`,
       ),
     ).rejects.toThrow(/row-level security policy for table "stock_movements"/i)
@@ -968,18 +931,16 @@ describe('N. tablas RLS cantina (migración 048)', () => {
   // como rol de aplicación, puede corregir o borrar una línea ya escrita.
   it('stock_movements: turnogol_app NO puede UPDATE un movimiento propio (ledger append-only)', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) => tx.unsafe(`UPDATE stock_movements SET qty = 999 WHERE id = $1`, [stockMovementA]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`UPDATE stock_movements SET qty = 999 WHERE id = $1`, [stockMovementA]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
 
   it('stock_movements: turnogol_app NO puede DELETE un movimiento propio (ledger append-only)', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) => tx.unsafe(`DELETE FROM stock_movements WHERE id = $1`, [stockMovementA]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`DELETE FROM stock_movements WHERE id = $1`, [stockMovementA]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
@@ -1021,8 +982,10 @@ describe('O. daily_cash_opens (migración 049)', () => {
 
   it('daily_cash_opens: tenant B no puede insertar con tenant_id de A (spoof)', async () => {
     await expect(
-      withContextRollback({ role: 'authenticated', tenantId: tenantB.id }, (tx) =>
-        tx`INSERT INTO daily_cash_opens (tenant_id, date, opening_cash, opened_by)
+      withContextRollback(
+        { role: 'authenticated', tenantId: tenantB.id },
+        (tx) =>
+          tx`INSERT INTO daily_cash_opens (tenant_id, date, opening_cash, opened_by)
            VALUES (${tenantA.id}, '2019-06-02', 100000, ${B.staffUserId})`,
       ),
     ).rejects.toThrow(/row-level security policy for table "daily_cash_opens"/i)
@@ -1039,9 +1002,8 @@ describe('O. daily_cash_opens (migración 049)', () => {
 
   it('daily_cash_opens: turnogol_app NO puede DELETE (la apertura no se borra, REVOKE 049)', async () => {
     await expect(
-      withContextRollback(
-        { role: 'turnogol_app', tenantId: tenantA.id },
-        (tx) => tx.unsafe(`DELETE FROM daily_cash_opens WHERE id = $1`, [openA]),
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`DELETE FROM daily_cash_opens WHERE id = $1`, [openA]),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
@@ -1069,9 +1031,7 @@ describe('P. push_send_log (migración 059)', () => {
   it('turnogol_app: INSERT denegado (permission denied — sin GRANT, migr. 059)', async () => {
     await expect(
       withContextRollback({ role: 'turnogol_app' }, (tx) =>
-        tx.unsafe(
-          `INSERT INTO push_send_log (dedupe_key) VALUES ('spoof-key-isolation-test')`,
-        ),
+        tx.unsafe(`INSERT INTO push_send_log (dedupe_key) VALUES ('spoof-key-isolation-test')`),
       ),
     ).rejects.toThrow(/permission denied/i)
   })
@@ -1099,9 +1059,8 @@ describe('Q. analytics_events (migración 072)', () => {
   })
 
   it('tenant A no ve los eventos de B ni los de sistema (tenant_id NULL)', async () => {
-    const rows = await withContextRollback(
-      { role: 'turnogol_app', tenantId: tenantA.id },
-      (tx) => tx.unsafe(`SELECT tenant_id FROM analytics_events`),
+    const rows = await withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+      tx.unsafe(`SELECT tenant_id FROM analytics_events`),
     )
     expect(rows.length).toBe(1)
     expect(rows[0]!.tenant_id).toBe(tenantA.id)

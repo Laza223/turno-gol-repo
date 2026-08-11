@@ -60,7 +60,9 @@ describe('BookingFormModal — loading recovery', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Confirmar' })).toBeTruthy()
     })
-    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    )
 
     // A recoverable error is shown to the user.
     const alert = screen.getByRole('alert')
@@ -256,11 +258,13 @@ describe('BookingFormModal — checkAvailabilityAction (Fase 4 UX)', () => {
     const checkAvailabilityAction = vi.fn(async () => ({ available: false }))
     renderModal({ checkAvailabilityAction })
 
-    await waitFor(() => expect(checkAvailabilityAction).toHaveBeenCalledWith({
-      courtId: slot.courtId,
-      date: slot.date,
-      timeStart: slot.timeStart,
-    }))
+    await waitFor(() =>
+      expect(checkAvailabilityAction).toHaveBeenCalledWith({
+        courtId: slot.courtId,
+        date: slot.date,
+        timeStart: slot.timeStart,
+      }),
+    )
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('Este turno acaba de ser tomado.')
     })

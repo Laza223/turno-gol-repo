@@ -13,9 +13,9 @@ export type LinkContactDialogProps = {
   suggestedPlayerId: string | null
   suggestedPlayerName: string | null
   /** Inyectadas por el server component para que este archivo no importe acciones. */
-  searchAction: (q: string) => Promise<
-    { success: true; candidates: LinkCandidate[] } | { success: false; error: string }
-  >
+  searchAction: (
+    q: string,
+  ) => Promise<{ success: true; candidates: LinkCandidate[] } | { success: false; error: string }>
   linkAction: (
     contactKey: string,
     playerId: string,
@@ -104,8 +104,8 @@ export function LinkContactDialog({
         description={
           <>
             {contactName} figura solo como nombre y teléfono en{' '}
-            {fixedCount === 1 ? 'un turno fijo' : `${fixedCount} turnos fijos`}. Elegí la cuenta
-            que le corresponde y su historial pasa a estar junto.
+            {fixedCount === 1 ? 'un turno fijo' : `${fixedCount} turnos fijos`}. Elegí la cuenta que
+            le corresponde y su historial pasa a estar junto.
           </>
         }
         consequences={[
@@ -122,8 +122,9 @@ export function LinkContactDialog({
         <div className="space-y-3">
           {suggestedPlayerName && (
             <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-              Coincide el teléfono con <strong className="text-foreground">{suggestedPlayerName}</strong>.
-              Confirmalo solo si es la misma persona.
+              Coincide el teléfono con{' '}
+              <strong className="text-foreground">{suggestedPlayerName}</strong>. Confirmalo solo si
+              es la misma persona.
             </p>
           )}
 

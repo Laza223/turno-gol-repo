@@ -3,7 +3,13 @@ import { courts, tenantSubscriptions, plans, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { priceForSlot } from '@/lib/booking/pricing'
-import type { CourtRow, CreateCourtInput, UpdateCourtInput, PricingRule, CourtPricingData } from './court.types'
+import type {
+  CourtRow,
+  CreateCourtInput,
+  UpdateCourtInput,
+  PricingRule,
+  CourtPricingData,
+} from './court.types'
 
 function timeToMins(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
@@ -169,10 +175,7 @@ export async function getCourtCountAndLimit(
  * `@/lib/booking/pricing` (fuente única, también usable desde el cliente):
  * acá sólo queda la conversión instante → (día ART, hora de pared).
  */
-export function calculatePrice(
-  pricing: CourtPricingData,
-  date: Date,
-): number | null {
+export function calculatePrice(pricing: CourtPricingData, date: Date): number | null {
   const artDate = new Date(date.getTime() - 3 * 60 * 60 * 1000)
   const dayKey = (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[artDate.getUTCDay()]!
   const slotTime = `${String(artDate.getUTCHours()).padStart(2, '0')}:${String(artDate.getUTCMinutes()).padStart(2, '0')}`
@@ -185,7 +188,10 @@ export function validatePricingRulesCoverage(
 ): { valid: boolean; gaps: { day: string; time: string }[] } {
   const gaps: { day: string; time: string }[] = []
 
-  for (const [day, hours] of Object.entries(openingHours) as [string, OpeningHours[keyof OpeningHours]][]) {
+  for (const [day, hours] of Object.entries(openingHours) as [
+    string,
+    OpeningHours[keyof OpeningHours],
+  ][]) {
     if (!hours || hours.closed) continue
     const openMins = timeToMins(hours.open)
     const closeMins = hours.close === '00:00' ? 24 * 60 : timeToMins(hours.close)
@@ -205,7 +211,11 @@ export function validatePricingRulesCoverage(
   return { valid: gaps.length === 0, gaps }
 }
 
-async function getCourtPhotos(courtId: string, tenantId: string, tx: DbTx): Promise<string[] | null> {
+async function getCourtPhotos(
+  courtId: string,
+  tenantId: string,
+  tx: DbTx,
+): Promise<string[] | null> {
   const rows = await tx
     .select({ photos: courts.photos })
     .from(courts)

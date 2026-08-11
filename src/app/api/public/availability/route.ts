@@ -2,10 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { dateStr, slug } from '@/shared/validation/primitives'
-import {
-  getPublicAvailability,
-  getPublicTenant,
-} from '@/modules/tenants/public.service'
+import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
 import { isTenantPubliclyVisible } from '@/modules/tenants/tenant-status'
 
 export const dynamic = 'force-dynamic'

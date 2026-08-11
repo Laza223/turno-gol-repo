@@ -32,8 +32,15 @@ describe('isMpUnauthorized', () => {
 // billing.service.ts en la práctica.
 describe('isMpInvalidPayerError', () => {
   it('detecta el mensaje exacto de MP anidado en .cause.message (forma real via MpGatewayError)', () => {
-    const mpRawError = { message: 'Both payer and collector must be real or test users', status: 400 }
-    const wrapped = { name: 'MpGatewayError', message: 'Failed to create MP preapproval', cause: mpRawError }
+    const mpRawError = {
+      message: 'Both payer and collector must be real or test users',
+      status: 400,
+    }
+    const wrapped = {
+      name: 'MpGatewayError',
+      message: 'Failed to create MP preapproval',
+      cause: mpRawError,
+    }
     expect(isMpInvalidPayerError(wrapped)).toBe(true)
   })
 
@@ -52,7 +59,11 @@ describe('isMpInvalidPayerError', () => {
   it('es false para otros errores de MP (no enmascara errores no relacionados)', () => {
     expect(isMpInvalidPayerError({ message: '500 server error' })).toBe(false)
     expect(
-      isMpInvalidPayerError({ name: 'MpGatewayError', message: 'boom', cause: { message: 'timeout' } }),
+      isMpInvalidPayerError({
+        name: 'MpGatewayError',
+        message: 'boom',
+        cause: { message: 'timeout' },
+      }),
     ).toBe(false)
     expect(isMpInvalidPayerError(new Error('unrelated'))).toBe(false)
     expect(isMpInvalidPayerError(null)).toBe(false)
@@ -69,19 +80,27 @@ describe('isMpInvalidPayerError', () => {
 describe('isMpAlreadyCancelledPreapprovalError', () => {
   it('detecta el mensaje exacto de MP anidado en .cause.message (forma real via MpGatewayError)', () => {
     const mpRawError = { message: 'You can not modify a cancelled preapproval.', status: 400 }
-    const wrapped = { name: 'MpGatewayError', message: 'Failed to cancel MP preapproval x', cause: mpRawError }
+    const wrapped = {
+      name: 'MpGatewayError',
+      message: 'Failed to cancel MP preapproval x',
+      cause: mpRawError,
+    }
     expect(isMpAlreadyCancelledPreapprovalError(wrapped)).toBe(true)
   })
 
   it('detecta el mensaje cuando viene directo en .message (sin wrapper)', () => {
     expect(
-      isMpAlreadyCancelledPreapprovalError({ message: 'You can not modify a cancelled preapproval.' }),
+      isMpAlreadyCancelledPreapprovalError({
+        message: 'You can not modify a cancelled preapproval.',
+      }),
     ).toBe(true)
   })
 
   it('es case-insensitive', () => {
     expect(
-      isMpAlreadyCancelledPreapprovalError({ message: 'YOU CAN NOT MODIFY A CANCELLED PREAPPROVAL.' }),
+      isMpAlreadyCancelledPreapprovalError({
+        message: 'YOU CAN NOT MODIFY A CANCELLED PREAPPROVAL.',
+      }),
     ).toBe(true)
   })
 

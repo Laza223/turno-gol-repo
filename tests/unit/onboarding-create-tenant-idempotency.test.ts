@@ -29,10 +29,7 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-import {
-  createTenantWithTrial,
-  getStaffTenant,
-} from '@/modules/tenants/tenant.service'
+import { createTenantWithTrial, getStaffTenant } from '@/modules/tenants/tenant.service'
 import { createTenantAction } from '@/app/onboarding/actions'
 
 function validForm(): FormData {

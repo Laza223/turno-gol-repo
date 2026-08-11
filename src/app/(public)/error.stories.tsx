@@ -35,6 +35,9 @@ export const ConDigest: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('a1b2c3d4')).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: /explorar complejos/i })).toHaveAttribute('href', '/explorar')
+    await expect(canvas.getByRole('link', { name: /explorar complejos/i })).toHaveAttribute(
+      'href',
+      '/explorar',
+    )
   },
 }

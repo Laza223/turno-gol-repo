@@ -45,10 +45,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import {
-  createManualBooking,
-  completeBooking,
-} from '@/modules/bookings/booking.service'
+import { createManualBooking, completeBooking } from '@/modules/bookings/booking.service'
 import {
   cancelByAdmin,
   handleNoShow,
@@ -66,9 +63,10 @@ beforeEach(() => {
   vi.mocked(extractAuthUser).mockResolvedValue(STAFF_USER as never)
   vi.mocked(getStaffTenant).mockResolvedValue(TENANT as never)
   vi.mocked(adminRateLimited).mockResolvedValue(null as never)
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (tx: never) => Promise<unknown>) => cb(FAKE_TX)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (tx: never) => Promise<unknown>,
+  ) => cb(FAKE_TX)) as never)
 })
 
 describe('reservas actions — staff sin membresía activa (rol null) es rechazado (cruce #1)', () => {
@@ -141,7 +139,11 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
   it('cancelBookingAction (motivo jugador) funciona para manager y pasa el tipo a cancelByAdmin', async () => {
     // El gateway se resuelve desde tenants.mp_access_token; sin token → null.
     vi.mocked(getDb).mockReturnValue({
-      select: () => ({ from: () => ({ where: () => ({ limit: () => Promise.resolve([{ mpAccessToken: null }]) }) }) }),
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: () => Promise.resolve([{ mpAccessToken: null }]) }),
+        }),
+      }),
     } as never)
     vi.mocked(cancelByAdmin).mockResolvedValue({
       booking: { id: 'b-1' },

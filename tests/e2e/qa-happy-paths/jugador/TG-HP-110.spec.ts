@@ -27,7 +27,9 @@ test.describe('TG-HP-110 — Preferencias de notificación', () => {
       const pushSwitch = page.getByRole('switch', { name: 'Notificaciones push' })
       await expect(emailSwitch).toBeVisible()
       await expect(pushSwitch).toBeVisible()
-      await expect(page.getByText(/emails de confirmación y cancelación se envían siempre/i)).toBeVisible()
+      await expect(
+        page.getByText(/emails de confirmación y cancelación se envían siempre/i),
+      ).toBeVisible()
 
       // Estado inicial (resetPlayer no toca notify_*, pero el seed original = true).
       await expect(emailSwitch).toHaveAttribute('aria-checked', 'true')
@@ -73,7 +75,10 @@ test.describe('TG-HP-110 — Preferencias de notificación', () => {
     } finally {
       await ctx.close()
       // notify_email/notify_push NO los toca resetPlayer() — restaurar a mano (default true).
-      await sb.from('players').update({ notify_email: true, notify_push: true }).eq('id', E2E_PLAYER_ID)
+      await sb
+        .from('players')
+        .update({ notify_email: true, notify_push: true })
+        .eq('id', E2E_PLAYER_ID)
     }
   })
 })

@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { ActivatePlanSection, type ActivatePlanOption } from '@/app/(admin)/settings/facturacion/ActivatePlanSection'
+import {
+  ActivatePlanSection,
+  type ActivatePlanOption,
+} from '@/app/(admin)/settings/facturacion/ActivatePlanSection'
 
 // Este archivo pisa `window.location` entero (ver beforeEach) — sin
 // restaurarlo, cualquier otro test file que corra DESPUÉS en el mismo
@@ -34,9 +37,30 @@ function mockFetch(body: unknown, status: number) {
 // de `plans-data.ts`, así que si el fixture se desincroniza del catálogo el test
 // pasa a medir dos cosas distintas a la vez.
 const PLANS: ActivatePlanOption[] = [
-  { id: 'plan-predio', slug: 'predio', name: 'Predio', maxCourts: 3, priceMonthly: 6_300_000, priceAnnual: 5_040_000 },
-  { id: 'plan-complejo', slug: 'complejo', name: 'Complejo', maxCourts: 6, priceMonthly: 9_900_000, priceAnnual: 7_920_000 },
-  { id: 'plan-estadio', slug: 'estadio', name: 'Estadio', maxCourts: null, priceMonthly: 12_900_000, priceAnnual: 10_320_000 },
+  {
+    id: 'plan-predio',
+    slug: 'predio',
+    name: 'Predio',
+    maxCourts: 3,
+    priceMonthly: 6_300_000,
+    priceAnnual: 5_040_000,
+  },
+  {
+    id: 'plan-complejo',
+    slug: 'complejo',
+    name: 'Complejo',
+    maxCourts: 6,
+    priceMonthly: 9_900_000,
+    priceAnnual: 7_920_000,
+  },
+  {
+    id: 'plan-estadio',
+    slug: 'estadio',
+    name: 'Estadio',
+    maxCourts: null,
+    priceMonthly: 12_900_000,
+    priceAnnual: 10_320_000,
+  },
 ]
 
 let assignSpy: ReturnType<typeof vi.fn>
@@ -73,17 +97,23 @@ describe('ActivatePlanSection', () => {
     // Complejo: el corte de Predio pasó de 2 a 3 canchas para alinearse con los
     // tramos de ATC, y 3 canchas es justo el piso del ICP.
     expect(
-      within(screen.getByText('Sugerido para tus canchas').parentElement as HTMLElement).getByRole('heading', {
-        name: 'Predio',
-      }),
+      within(screen.getByText('Sugerido para tus canchas').parentElement as HTMLElement).getByRole(
+        'heading',
+        {
+          name: 'Predio',
+        },
+      ),
     ).toBeTruthy()
 
     // Elegir "8+" canchas cambia el sugerido a Estadio.
     fireEvent.click(screen.getByRole('radio', { name: '8+' }))
     expect(
-      within(screen.getByText('Sugerido para tus canchas').parentElement as HTMLElement).getByRole('heading', {
-        name: 'Estadio',
-      }),
+      within(screen.getByText('Sugerido para tus canchas').parentElement as HTMLElement).getByRole(
+        'heading',
+        {
+          name: 'Estadio',
+        },
+      ),
     ).toBeTruthy()
   })
 

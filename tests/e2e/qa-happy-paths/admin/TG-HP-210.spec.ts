@@ -45,10 +45,10 @@ test.describe('TG-HP-210 — agregar cobro parcial', () => {
     // Defensive: garantiza caja del día ABIERTA — un run anterior de este mismo
     // QA suite pudo haber cerrado la caja de "hoy" (TG-HP-216). El superuser DSN
     // de runSql bypassea el REVOKE UPDATE/DELETE de turnogol_app.
-    await runSql(
-      `DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`,
-      [E2E_TENANT_ID, today],
-    )
+    await runSql(`DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`, [
+      E2E_TENANT_ID,
+      today,
+    ])
 
     const priceSnapshot = 200_000 // $2000
     const partialCharge = 50_000 // $500 (parcial, < pendiente)

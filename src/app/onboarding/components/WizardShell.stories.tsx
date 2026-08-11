@@ -13,7 +13,9 @@ function StepPlaceholder({ title }: { title: string }) {
     <div className="card-premium rounded-2xl p-6 md:p-8">
       <div className="space-y-2">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">{title}</h2>
-        <p className="text-sm text-muted-foreground">Contenido del paso (ver la story del Step correspondiente).</p>
+        <p className="text-sm text-muted-foreground">
+          Contenido del paso (ver la story del Step correspondiente).
+        </p>
       </div>
     </div>
   )

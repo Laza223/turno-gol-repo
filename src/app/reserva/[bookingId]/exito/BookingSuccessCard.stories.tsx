@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 import { uid } from '@/test/fixtures/ids'
-import { BookingSuccessCard, BookingSuccessNotFound, type ConfirmedBooking } from './BookingSuccessCard'
+import {
+  BookingSuccessCard,
+  BookingSuccessNotFound,
+  type ConfirmedBooking,
+} from './BookingSuccessCard'
 
 const base: ConfirmedBooking = {
   tenantName: 'Complejo Fénix',
@@ -39,7 +43,9 @@ const meta = {
   decorators: [
     (Story) => (
       <div className="player-shell-bg min-h-dvh">
-        <ReservaDarkShell><Story /></ReservaDarkShell>
+        <ReservaDarkShell>
+          <Story />
+        </ReservaDarkShell>
       </div>
     ),
   ],

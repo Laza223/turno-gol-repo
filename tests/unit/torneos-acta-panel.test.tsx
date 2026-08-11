@@ -14,7 +14,10 @@ vi.mock('@/hooks/use-toast', () => ({
 }))
 
 import { ActaPanel } from '@/app/(admin)/torneos/[id]/partidos/[matchId]/ActaPanel'
-import type { TournamentMatchEventView, TournamentMatchView } from '@/modules/tournaments/tournament.types'
+import type {
+  TournamentMatchEventView,
+  TournamentMatchView,
+} from '@/modules/tournaments/tournament.types'
 
 const saveResultAction = vi.fn(async () => ({ success: true as const }))
 const walkoverAction = vi.fn(async () => ({ success: true as const }))

@@ -113,7 +113,8 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
           courtRow: courtRows[0],
           dbWrites:
             'tenants (Paso 1) + tenant_staff_members + opening_hours UPDATE (Paso 2) + courts INSERT (Paso 3) + settings.onboarding_completed=true (Paso 4)',
-          notes: 'Camino "Sin seña" — settings.onboarding_completed marcado por finishOnboardingAction.',
+          notes:
+            'Camino "Sin seña" — settings.onboarding_completed marcado por finishOnboardingAction.',
         })
       } finally {
         await sql.end({ timeout: 5 })

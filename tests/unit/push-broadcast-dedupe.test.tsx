@@ -56,9 +56,15 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
     getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, val: string) => { store[key] = val },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
+    setItem: (key: string, val: string) => {
+      store[key] = val
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
   }
 })()
 
@@ -77,12 +83,36 @@ beforeAll(() => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(globalThis as any).BroadcastChannel = MockBroadcastChannel
   // Install browser API mocks absent from happy-dom
-  Object.defineProperty(globalThis, 'Notification', { value: { permission: 'default', requestPermission: vi.fn() }, writable: true, configurable: true })
-  Object.defineProperty(globalThis, 'PushManager', { value: class {}, writable: true, configurable: true })
-  Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true, configurable: true })
-  Object.defineProperty(navigator, 'serviceWorker', { value: { getRegistration: vi.fn().mockResolvedValue(undefined) }, writable: true, configurable: true })
-  Object.defineProperty(HTMLMediaElement.prototype, 'play', { value: vi.fn().mockResolvedValue(undefined), writable: true, configurable: true })
-  Object.defineProperty(HTMLMediaElement.prototype, 'pause', { value: vi.fn(), writable: true, configurable: true })
+  Object.defineProperty(globalThis, 'Notification', {
+    value: { permission: 'default', requestPermission: vi.fn() },
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(globalThis, 'PushManager', {
+    value: class {},
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: localStorageMock,
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(navigator, 'serviceWorker', {
+    value: { getRegistration: vi.fn().mockResolvedValue(undefined) },
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+    value: vi.fn().mockResolvedValue(undefined),
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
+    value: vi.fn(),
+    writable: true,
+    configurable: true,
+  })
 })
 
 afterAll(() => {

@@ -110,7 +110,10 @@ describe('CircuitBreaker', () => {
 
     it('admits only ONE trial request concurrently', async () => {
       let release: (v: string) => void = () => {}
-      const slow = () => new Promise<string>((res) => { release = res })
+      const slow = () =>
+        new Promise<string>((res) => {
+          release = res
+        })
       const trial = cb.execute(KEY, slow) // claims the single trial slot
       const op = vi.fn(ok)
       await expect(cb.execute(KEY, op)).rejects.toBeInstanceOf(CircuitOpenError)
@@ -169,7 +172,8 @@ describe('CircuitBreaker', () => {
     // workers re-throw it as retryable (webhook tx rollback → pg-boss retry).
     // If it stopped extending Error, that retry assumption breaks silently.
     it('is an Error subclass carrying the offending key', async () => {
-      for (let i = 0; i < 3; i++) await expect(cb.execute('tenant-42', boom)).rejects.toThrow('boom')
+      for (let i = 0; i < 3; i++)
+        await expect(cb.execute('tenant-42', boom)).rejects.toThrow('boom')
 
       const err = await cb.execute('tenant-42', ok).catch((e: unknown) => e)
 

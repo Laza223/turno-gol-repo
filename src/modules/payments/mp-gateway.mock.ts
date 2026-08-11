@@ -113,10 +113,7 @@ export class MockGateway implements PaymentGateway {
     if (this.cancelPreapprovalError !== undefined) throw this.cancelPreapprovalError
   }
 
-  async updatePreapprovalAmount(
-    preapprovalId: string,
-    amount: number,
-  ): Promise<void> {
+  async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {
     this.updatePreapprovalCalls.push({ preapprovalId, amount })
   }
 

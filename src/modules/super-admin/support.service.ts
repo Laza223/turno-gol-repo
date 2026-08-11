@@ -216,7 +216,9 @@ export async function extendTrial(
 
     await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.trial_extended', {
       days,
-      before: { trialEndsAt: tenant.trial_ends_at ? toDate(tenant.trial_ends_at).toISOString() : null },
+      before: {
+        trialEndsAt: tenant.trial_ends_at ? toDate(tenant.trial_ends_at).toISOString() : null,
+      },
       after: { trialEndsAt: newEnd.toISOString() },
     })
 
@@ -339,12 +341,14 @@ export async function changePlanForSupport(
       WHERE id = ${targetPlanId} AND is_active = true
       LIMIT 1
     `)
-    const plan = (planRows as unknown as Array<{
-      id: string
-      max_courts: number | null
-      price_monthly: number
-      price_annual: number
-    }>)[0]
+    const plan = (
+      planRows as unknown as Array<{
+        id: string
+        max_courts: number | null
+        price_monthly: number
+        price_annual: number
+      }>
+    )[0]
     if (!plan) throw new PlanNotFoundError(targetPlanId)
 
     if (plan.max_courts !== null) {
@@ -371,8 +375,7 @@ export async function changePlanForSupport(
     // Dentro de la tx (mismo patrón que billing.service): si MP falla, el
     // cambio de plan rollbackea junto con el audit.
     if (sub.mp_subscription_id) {
-      const newAmount =
-        sub.billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly
+      const newAmount = sub.billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly
       await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
     }
 

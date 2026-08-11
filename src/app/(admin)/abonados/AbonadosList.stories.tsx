@@ -16,7 +16,11 @@ const meta = {
   args: {
     abonados: abonados(),
     pauseAction: fn(async () => ({ success: true as const, abonado: abonado() })),
-    reactivateAction: fn(async () => ({ success: true as const, abonado: abonado(), slotsGenerated: 8 })),
+    reactivateAction: fn(async () => ({
+      success: true as const,
+      abonado: abonado(),
+      slotsGenerated: 8,
+    })),
     cancelAction: fn(async () => ({ success: true as const, abonado: abonadoCanceled() })),
     previewSlotsAction: fn(async () => ({
       success: true as const,
@@ -74,7 +78,9 @@ export const PausarAbonado: Story = {
     // entra por next/dynamic: timeout largo para no flakear bajo carga (batería
     // completa de stories, chunk más lento de cargar).
     const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
-    await waitFor(() => expect(dialog.getByRole('heading', { name: 'Pausar turno fijo' })).toBeVisible())
+    await waitFor(() =>
+      expect(dialog.getByRole('heading', { name: 'Pausar turno fijo' })).toBeVisible(),
+    )
     await userEvent.click(dialog.getByRole('button', { name: 'Pausar' }))
 
     await expect(args.pauseAction).toHaveBeenCalledWith(abonado().id)

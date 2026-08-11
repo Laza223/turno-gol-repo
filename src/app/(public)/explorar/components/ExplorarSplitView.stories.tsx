@@ -52,7 +52,8 @@ const complejoBelgrano = publicTenantCard({
  */
 function mapColumnOf(canvasElement: HTMLElement) {
   const el = canvasElement.querySelector('.lg\\:order-2')
-  if (!el) throw new Error('No se encontró la columna del mapa (`.lg:order-2`) de ExplorarSplitView')
+  if (!el)
+    throw new Error('No se encontró la columna del mapa (`.lg:order-2`) de ExplorarSplitView')
   return within(el as HTMLElement)
 }
 
@@ -62,8 +63,12 @@ export const Composicion: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Columna lista: una TenantCard (variant compact) por complejo.
-    await expect(canvas.findByRole('heading', { name: 'Complejo Fénix' })).resolves.toBeInTheDocument()
-    await expect(canvas.findByRole('heading', { name: 'Polideportivo Belgrano' })).resolves.toBeInTheDocument()
+    await expect(
+      canvas.findByRole('heading', { name: 'Complejo Fénix' }),
+    ).resolves.toBeInTheDocument()
+    await expect(
+      canvas.findByRole('heading', { name: 'Polideportivo Belgrano' }),
+    ).resolves.toBeInTheDocument()
     // Columna mapa: un pin "Desde $X" por complejo.
     const mapa = mapColumnOf(canvasElement)
     const pinFenix = await mapa.findByText('$ 9.000')
@@ -105,7 +110,9 @@ export const HoverResaltaPinEnMapa: Story = {
     await expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO })
 
     await userEvent.unhover(fila)
-    await waitFor(() => expect(mapa.getByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO }))
+    await waitFor(() =>
+      expect(mapa.getByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO }),
+    )
   },
 }
 
@@ -115,7 +122,9 @@ export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: 'mobile-primary' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.findByRole('heading', { name: 'Complejo Fénix' })).resolves.toBeInTheDocument()
+    await expect(
+      canvas.findByRole('heading', { name: 'Complejo Fénix' }),
+    ).resolves.toBeInTheDocument()
     const pinFenix = await mapColumnOf(canvasElement).findByText('$ 9.000')
     const root = pinFenix.closest('.lg\\:grid')
     if (!root) throw new Error('No se encontró el contenedor `lg:grid` de ExplorarSplitView')
@@ -135,11 +144,12 @@ export const ConFavoritos: Story = {
       'aria-pressed',
       'true',
     )
-    const otraFila = (await canvas.findByRole('heading', { name: 'Polideportivo Belgrano' })).closest('article')
+    const otraFila = (
+      await canvas.findByRole('heading', { name: 'Polideportivo Belgrano' })
+    ).closest('article')
     if (!otraFila) throw new Error('TenantCard (variant compact) debería renderizar un <article>')
-    await expect(within(otraFila).getByRole('button', { name: 'Guardar en favoritos' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    await expect(
+      within(otraFila).getByRole('button', { name: 'Guardar en favoritos' }),
+    ).toHaveAttribute('aria-pressed', 'false')
   },
 }

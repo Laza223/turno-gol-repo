@@ -9,8 +9,14 @@ import { getDb, withTenantContext } from '@/shared/db/client'
 import { plans } from '@/shared/db/schema'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
-import { ActivatePlanSection, type ActivatePlanOption } from '@/app/(admin)/settings/facturacion/ActivatePlanSection'
-import { CancelSubscriptionSection, CANCELABLE } from '@/app/(admin)/settings/facturacion/CancelSubscriptionSection'
+import {
+  ActivatePlanSection,
+  type ActivatePlanOption,
+} from '@/app/(admin)/settings/facturacion/ActivatePlanSection'
+import {
+  CancelSubscriptionSection,
+  CANCELABLE,
+} from '@/app/(admin)/settings/facturacion/CancelSubscriptionSection'
 
 // ENS-20: destino del "recovery por UI" del ciclo de dunning
 // (past_due → suspended → blocked → churned). Vive fuera de (admin) para
@@ -170,7 +176,10 @@ export default async function ReactivarPage() {
             Contactar a soporte
           </a>
           {tenant.status === 'past_due' && (
-            <Link href="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
               Volver al panel
             </Link>
           )}

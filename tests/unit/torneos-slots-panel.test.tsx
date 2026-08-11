@@ -61,7 +61,9 @@ describe('SlotsPanel — liberar horarios (Clase B: ConfirmDialog, sin Deshacer)
       ),
     )
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Horarios liberados' })),
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Horarios liberados' }),
+      ),
     )
   })
 

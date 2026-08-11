@@ -119,9 +119,7 @@ function slotEndTime(mins: number): string {
  *     same pure slot semantics as the public profile grid;
  *  2. one cross-tenant anti-join over courts/bookings for the candidates.
  */
-export async function findAvailableTenantIds(
-  params: AvailabilitySearchParams,
-): Promise<string[]> {
+export async function findAvailableTenantIds(params: AvailabilitySearchParams): Promise<string[]> {
   return withSpan('search.availability', 'db.query.search', async () => {
     const { tenantIds } = await readThroughAvailSearch(
       params.date,
@@ -191,10 +189,19 @@ async function loadAvailableTenantIds({
   // the worker pool). Only tenant_id is selected, never booking data.
   // The slot window length is per-tenant (60' vs 120' grids), hence the unnest
   // of (tenant_id, time_end) pairs instead of a single shared window.
-  const idList = sql.join(candidates.map((c) => sql`${c.id}::uuid`), sql`, `)
-  const endList = sql.join(candidates.map((c) => sql`${c.timeEnd}::time`), sql`, `)
+  const idList = sql.join(
+    candidates.map((c) => sql`${c.id}::uuid`),
+    sql`, `,
+  )
+  const endList = sql.join(
+    candidates.map((c) => sql`${c.timeEnd}::time`),
+    sql`, `,
+  )
   const formatCond = formats?.length
-    ? sql` AND c.format IN (${sql.join(formats.map((f) => sql`${f}`), sql`, `)})`
+    ? sql` AND c.format IN (${sql.join(
+        formats.map((f) => sql`${f}`),
+        sql`, `,
+      )})`
     : sql``
 
   const result = await db.execute(sql`
@@ -216,9 +223,7 @@ async function loadAvailableTenantIds({
     )
   `)
 
-  const ids = (result as unknown as Array<{ tenant_id: string }>)
-    .map((r) => r.tenant_id)
-    .sort()
+  const ids = (result as unknown as Array<{ tenant_id: string }>).map((r) => r.tenant_id).sort()
 
   track.search('search.availability.query', {
     date,
@@ -257,9 +262,7 @@ export function pickFreeSlotPills(
     if (pills.length >= cap) break
     const start = timeToMins(time)
     const end = start + durationMins
-    const free = courts.find(
-      (c) => !c.busy.some((b) => b.startMins < end && b.endMins > start),
-    )
+    const free = courts.find((c) => !c.busy.some((b) => b.startMins < end && b.endMins > start))
     if (free) pills.push({ time, courtId: free.courtId, durationMins })
   }
   return pills
@@ -343,9 +346,7 @@ async function loadFreeSlotPillsByTenant({
       nowDateStr: now.nowDateStr,
       nowMins: now.nowMins,
     })
-    const times = slots
-      .filter((sl) => sl.status === 'free' && sl.time >= time)
-      .map((sl) => sl.time)
+    const times = slots.filter((sl) => sl.status === 'free' && sl.time >= time).map((sl) => sl.time)
     if (times.length > 0) candidates.set(row.id, { times, durationMins })
   }
   if (candidates.size === 0) return {}
@@ -356,7 +357,10 @@ async function loadFreeSlotPillsByTenant({
     sql`, `,
   )
   const formatCond = formats?.length
-    ? sql` AND c.format IN (${sql.join(formats.map((f) => sql`${f}`), sql`, `)})`
+    ? sql` AND c.format IN (${sql.join(
+        formats.map((f) => sql`${f}`),
+        sql`, `,
+      )})`
     : sql``
   const result = await db.execute(sql`
     SELECT c.tenant_id AS tenant_id, c.id AS court_id,

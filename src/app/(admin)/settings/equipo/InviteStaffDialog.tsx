@@ -3,12 +3,7 @@
 import { useActionState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
@@ -84,7 +79,12 @@ export function InviteStaffDialog({
   const errorMessage = state && !state.success ? state.error : null
 
   return (
-    <Dialog defaultOpen onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      defaultOpen
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Invitar miembro del equipo</DialogTitle>

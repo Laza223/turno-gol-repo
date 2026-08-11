@@ -36,8 +36,18 @@ const COURT_NAME = 'Cancha E2E 1'
 const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 
 const MONTH_NAMES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
-  'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
 ]
 
 /**
@@ -55,7 +65,10 @@ const MONTH_NAMES = [
  */
 async function selectCombobox(page: Page, fieldId: string, optionName: string): Promise<void> {
   await page.locator(`#${fieldId}`).click()
-  await page.locator(`#${fieldId}-listbox`).getByRole('option', { name: optionName, exact: true }).click()
+  await page
+    .locator(`#${fieldId}-listbox`)
+    .getByRole('option', { name: optionName, exact: true })
+    .click()
 }
 
 /**
@@ -241,10 +254,7 @@ test.describe('Abonados CRUD', () => {
     }
   })
 
-  test('#2 edge — preview surfaces conflicting date', async ({
-    page,
-    adminStorageState,
-  }) => {
+  test('#2 edge — preview surfaces conflicting date', async ({ page, adminStorageState }) => {
     const supabase = makeServiceClient()
     const contactPhone = `1100001${Date.now() % 100000}`
     const startsOn = pickFutureMonday(5) // a different year so we don't collide with #1

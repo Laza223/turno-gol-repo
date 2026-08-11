@@ -84,12 +84,7 @@ describe('playerTagsSchema', () => {
   })
 
   it('acepta el set completo compatible (las 4 que conviven)', () => {
-    const compatible: PlayerTag[] = [
-      'gets_credit',
-      'group_organizer',
-      'agreed_price',
-      'difficult',
-    ]
+    const compatible: PlayerTag[] = ['gets_credit', 'group_organizer', 'agreed_price', 'difficult']
     expect(playerTagsSchema.safeParse(compatible).success).toBe(true)
   })
 

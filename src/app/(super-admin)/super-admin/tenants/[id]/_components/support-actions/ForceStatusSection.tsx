@@ -78,7 +78,11 @@ export function ForceStatusSection({
             </select>
             <button
               type="button"
-              disabled={pending || forceTarget === '' || (forceIsDestructive && forceConfirm.trim() !== tenantName)}
+              disabled={
+                pending ||
+                forceTarget === '' ||
+                (forceIsDestructive && forceConfirm.trim() !== tenantName)
+              }
               onClick={() =>
                 run(
                   () =>
@@ -97,8 +101,12 @@ export function ForceStatusSection({
           </div>
           {forceIsDestructive && (
             <div className="space-y-1 rounded-md bg-red-50 dark:bg-red-500/10 p-3 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30">
-              <label htmlFor="force-confirm" className="block text-xs font-medium text-red-700 dark:text-red-400">
-                Acción destructiva. Escribí el nombre exacto del complejo (<span className="font-semibold">{tenantName}</span>) para confirmar:
+              <label
+                htmlFor="force-confirm"
+                className="block text-xs font-medium text-red-700 dark:text-red-400"
+              >
+                Acción destructiva. Escribí el nombre exacto del complejo (
+                <span className="font-semibold">{tenantName}</span>) para confirmar:
               </label>
               <input
                 id="force-confirm"

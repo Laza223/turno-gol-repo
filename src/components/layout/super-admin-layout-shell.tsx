@@ -76,11 +76,13 @@ function SidebarContent({
       </div>
 
       {/* Nav */}
-      <nav aria-label="Navegación del panel super-admin" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+      <nav
+        aria-label="Navegación del panel super-admin"
+        className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5"
+      >
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const isActive =
-            pathname === href ||
-            (href !== '/super-admin' && pathname.startsWith(href + '/'))
+            pathname === href || (href !== '/super-admin' && pathname.startsWith(href + '/'))
 
           return (
             <Link
@@ -96,12 +98,17 @@ function SidebarContent({
               )}
             >
               {isActive && (
-                <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-violet-500" aria-hidden />
+                <span
+                  className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-violet-500"
+                  aria-hidden
+                />
               )}
               <Icon
                 className={cn(
                   'h-4 w-4 shrink-0 transition-colors',
-                  isActive ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground/70 group-hover:text-foreground',
+                  isActive
+                    ? 'text-violet-600 dark:text-violet-400'
+                    : 'text-muted-foreground/70 group-hover:text-foreground',
                 )}
               />
               <span className="flex-1 truncate">{label}</span>

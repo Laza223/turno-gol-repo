@@ -42,9 +42,7 @@ afterAll(async () => {
   await closeSql()
 })
 
-type Attempt =
-  | { outcome: 'won'; booking: BookingRow }
-  | { outcome: 'lost'; error: unknown }
+type Attempt = { outcome: 'won'; booking: BookingRow } | { outcome: 'lost'; error: unknown }
 
 /**
  * Lanza un createManualBooking en su propia transacción con tenant context y
@@ -71,9 +69,7 @@ function attemptManualBooking(args: {
           type: 'spontaneous',
           staffUserId: seed.staffUserId,
           playerId,
-          ...(args.priceOverride !== undefined
-            ? { priceOverride: args.priceOverride }
-            : {}),
+          ...(args.priceOverride !== undefined ? { priceOverride: args.priceOverride } : {}),
         },
         tx,
       )
@@ -144,7 +140,13 @@ describe('race: double booking — manual bookings concurrentes (mismo court/slo
     const timeEnd = '21:00'
 
     const [a, b] = await Promise.all([
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart, timeEnd, priceOverride: 800000 }),
+      attemptManualBooking({
+        courtId: seed.courtId,
+        date,
+        timeStart,
+        timeEnd,
+        priceOverride: 800000,
+      }),
       attemptManualBooking({ courtId: court2Id, date, timeStart, timeEnd, priceOverride: 800000 }),
     ])
 
@@ -160,8 +162,20 @@ describe('race: double booking — manual bookings concurrentes (mismo court/slo
     const date = '2026-06-19'
 
     const [first, second] = await Promise.all([
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '20:00', timeEnd: '21:00', priceOverride: 800000 }),
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', priceOverride: 800000 }),
+      attemptManualBooking({
+        courtId: seed.courtId,
+        date,
+        timeStart: '20:00',
+        timeEnd: '21:00',
+        priceOverride: 800000,
+      }),
+      attemptManualBooking({
+        courtId: seed.courtId,
+        date,
+        timeStart: '21:00',
+        timeEnd: '22:00',
+        priceOverride: 800000,
+      }),
     ])
 
     // tsrange es semiabierto [): 21:00 (fin) y 21:00 (inicio) NO solapan. Si la
@@ -182,8 +196,20 @@ describe('race: double booking — manual bookings concurrentes (mismo court/slo
     // time_start/time_end en vez de rango dejaría coexistir estas dos y pasaría
     // igual. El solape parcial bajo carrera lo descarta.
     const [a, b] = await Promise.all([
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '20:30', timeEnd: '21:30', priceOverride: 1500000 }),
-      attemptManualBooking({ courtId: seed.courtId, date, timeStart: '21:00', timeEnd: '22:00', priceOverride: 800000 }),
+      attemptManualBooking({
+        courtId: seed.courtId,
+        date,
+        timeStart: '20:30',
+        timeEnd: '21:30',
+        priceOverride: 1500000,
+      }),
+      attemptManualBooking({
+        courtId: seed.courtId,
+        date,
+        timeStart: '21:00',
+        timeEnd: '22:00',
+        priceOverride: 800000,
+      }),
     ])
 
     const results = [a, b]

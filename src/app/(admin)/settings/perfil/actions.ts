@@ -18,8 +18,7 @@ import {
 import { tenantImageKindSchema } from './perfil.schema'
 
 export type TenantImageActionResult =
-  | { success: true; url: string }
-  | { success: false; error: string }
+  { success: true; url: string } | { success: false; error: string }
 
 const MAX_BYTES = 2 * 1024 * 1024
 
@@ -76,7 +75,10 @@ export async function setTenantImageAction(
     await deletePreviousIfOwned(typeof previousUrl === 'string' ? previousUrl : null, tenant.id)
     await updateTenant(tenant.id, kind === 'logo' ? { logoUrl: url } : { coverUrl: url })
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'No se pudo guardar la imagen' }
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : 'No se pudo guardar la imagen',
+    }
   }
 
   revalidatePath('/settings/perfil')
@@ -117,12 +119,9 @@ export async function removeTenantImageAction(
 }
 
 export type UpdateEmailActionResult =
-  | { success: true; message: string }
-  | { success: false; error: string }
+  { success: true; message: string } | { success: false; error: string }
 
-export async function updateUserEmailAction(
-  newEmail: string,
-): Promise<UpdateEmailActionResult> {
+export async function updateUserEmailAction(newEmail: string): Promise<UpdateEmailActionResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
@@ -151,7 +150,8 @@ export async function updateUserEmailAction(
   }
 
   const supabase = await createClient()
-  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  const origin =
+    (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
   const { error } = await supabase.auth.updateUser(
     { email: parsed.data },

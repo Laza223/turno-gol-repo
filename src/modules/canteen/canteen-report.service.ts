@@ -86,12 +86,14 @@ export async function getSalesRanking(
     GROUP BY sm.product_id, cp.name
     ORDER BY revenue DESC, units DESC
   `)
-  return (rows as unknown as Array<{
-    product_id: string
-    product_name: string
-    units: number
-    revenue: number
-  }>).map((r) => ({
+  return (
+    rows as unknown as Array<{
+      product_id: string
+      product_name: string
+      units: number
+      revenue: number
+    }>
+  ).map((r) => ({
     productId: r.product_id,
     productName: r.product_name,
     units: r.units,
@@ -118,9 +120,10 @@ export async function getCanteenTotalsByMethod(
     GROUP BY method
     ORDER BY total DESC
   `)
-  return (rows as unknown as Array<{ method: CashPaymentMethod; total: number }>).map(
-    (r) => ({ method: r.method, total: r.total }),
-  )
+  return (rows as unknown as Array<{ method: CashPaymentMethod; total: number }>).map((r) => ({
+    method: r.method,
+    total: r.total,
+  }))
 }
 
 export async function getCanteenDailyTotals(

@@ -80,7 +80,14 @@ describe('cashflow bucketing — día operativo (closes_next_day)', () => {
 
     // 2026-01-17 04:00 UTC = 01:00 ART del sábado calendario, pero pertenece
     // al día operativo del viernes 2026-01-16 (20:00 vie → 02:00 sáb).
-    await insertCashFlow(sql, tenant.id, staff.id, '2026-01-17T04:00:00Z', 500000, 'Venta de madrugada')
+    await insertCashFlow(
+      sql,
+      tenant.id,
+      staff.id,
+      '2026-01-17T04:00:00Z',
+      500000,
+      'Venta de madrugada',
+    )
 
     const fridayList = await withTenantContext(tenant.id, (tx) =>
       getCashFlows(tenant.id, '2026-01-16', cutoffMins, tx),
@@ -108,7 +115,14 @@ describe('cashflow bucketing — día operativo (closes_next_day)', () => {
     const { tenant, staff } = await seedNightTenant(sql)
     const cutoffMins = nightCutoffMins(nightOpeningHours(), true)
 
-    await insertCashFlow(sql, tenant.id, staff.id, '2026-01-17T04:00:00Z', 500000, 'Venta de madrugada')
+    await insertCashFlow(
+      sql,
+      tenant.id,
+      staff.id,
+      '2026-01-17T04:00:00Z',
+      500000,
+      'Venta de madrugada',
+    )
 
     await withTenantContext(tenant.id, (tx) =>
       closeDailyRegister(tenant.id, '2026-01-16', staff.id, {}, cutoffMins, tx),
@@ -119,28 +133,38 @@ describe('cashflow bucketing — día operativo (closes_next_day)', () => {
     // ya hecho para siempre (decisión B del ADR: sin re-bucketing histórico).
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        createCashFlow(tenant.id, staff.id, {
-          type: 'income',
-          category: 'booking',
-          amount: 100000,
-          method: 'cash',
-          description: 'Segunda venta, misma madrugada ya cerrada',
-          occurredAt: new Date('2026-01-17T04:30:00Z'),
-        }, tx),
+        createCashFlow(
+          tenant.id,
+          staff.id,
+          {
+            type: 'income',
+            category: 'booking',
+            amount: 100000,
+            method: 'cash',
+            description: 'Segunda venta, misma madrugada ya cerrada',
+            occurredAt: new Date('2026-01-17T04:30:00Z'),
+          },
+          tx,
+        ),
       ),
     ).rejects.toBeInstanceOf(DayAlreadyClosedError)
 
     // Control: un movimiento de un día operativo DISTINTO (sábado, sin cerrar)
     // sí se acepta — el guard no bloquea de más.
     const accepted = await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(tenant.id, staff.id, {
-        type: 'income',
-        category: 'booking',
-        amount: 70000,
-        method: 'cash',
-        description: 'Venta sábado diurno',
-        occurredAt: new Date('2026-01-17T20:00:00Z'),
-      }, tx),
+      createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 70000,
+          method: 'cash',
+          description: 'Venta sábado diurno',
+          occurredAt: new Date('2026-01-17T20:00:00Z'),
+        },
+        tx,
+      ),
     )
     expect(accepted.id).toBeDefined()
   })

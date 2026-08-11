@@ -37,7 +37,9 @@ export const EligiendoCobrarSena: Story = {
     const canvas = within(canvasElement)
     const link = canvas.getByRole('link', { name: /conectar mercadopago/i })
     await expect(link).toHaveAttribute('href', '/api/mp/oauth-start')
-    await expect(canvas.queryByRole('button', { name: /terminar y ver mi complejo/i })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('button', { name: /terminar y ver mi complejo/i }),
+    ).not.toBeInTheDocument()
   },
 }
 

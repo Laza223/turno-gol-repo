@@ -13,7 +13,13 @@ const day = (open: string, close: string, closed = false) => ({ open, close, clo
 function hours(overrides: Partial<OpeningHours> = {}): OpeningHours {
   const base = day('08:00', '23:00')
   return {
-    mon: base, tue: base, wed: base, thu: base, fri: base, sat: base, sun: base,
+    mon: base,
+    tue: base,
+    wed: base,
+    thu: base,
+    fri: base,
+    sat: base,
+    sun: base,
     ...overrides,
   }
 }
@@ -47,9 +53,7 @@ describe('tenantMatchesRequestedSlot', () => {
   })
 
   it('rejects when the date is in closed_dates', () => {
-    expect(
-      tenantMatchesRequestedSlot(cfg({ closedDates: [DATE] }), DATE, '20:00', NOW),
-    ).toBe(false)
+    expect(tenantMatchesRequestedSlot(cfg({ closedDates: [DATE] }), DATE, '20:00', NOW)).toBe(false)
   })
 
   it('rejects a slot that already started today (past slot)', () => {

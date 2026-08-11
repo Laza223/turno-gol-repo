@@ -5,9 +5,7 @@ import { CalendarPlus, MessageCircle, Navigation } from 'lucide-react'
 
 const BookingMiniMap = dynamic(() => import('./BookingMiniMap'), {
   ssr: false,
-  loading: () => (
-    <div className="h-44 w-full animate-pulse bg-muted" aria-hidden />
-  ),
+  loading: () => <div className="h-44 w-full animate-pulse bg-muted" aria-hidden />,
 })
 
 type Props = {
@@ -41,7 +39,10 @@ function toIcsUtc(date: string, time: string): string {
   const [y, mo, d] = date.split('-').map(Number)
   const [hh, mm] = time.split(':').map(Number)
   const dt = new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (hh ?? 0) + 3, mm ?? 0, 0))
-  return dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  return dt
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '')
 }
 
 export default function BookingSuccessExtras(props: Props) {
@@ -63,7 +64,10 @@ export default function BookingSuccessExtras(props: Props) {
   }
 
   function addToCalendar() {
-    const dtStamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+    const dtStamp = new Date()
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}/, '')
     const ics = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',

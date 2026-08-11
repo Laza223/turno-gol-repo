@@ -22,7 +22,10 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
   const visual = reservaStatusVisual(booking)
 
   const rows: Array<[string, ReactNode]> = [
-    ['Fecha', `${formatDateLong(booking.date)} · ${formatTime(booking.timeStart)}–${formatTime(booking.timeEnd)}`],
+    [
+      'Fecha',
+      `${formatDateLong(booking.date)} · ${formatTime(booking.timeStart)}–${formatTime(booking.timeEnd)}`,
+    ],
     ['Cancha', booking.courtName],
     ['Cliente', booking.playerName ?? booking.guestName ?? '—'],
     ['Teléfono', booking.playerPhone ?? booking.guestPhone ?? '—'],
@@ -45,7 +48,8 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
     [
       'Método de pago',
       booking.paymentMethod
-        ? ((METHOD_LABELS as Record<string, string>)[booking.paymentMethod] ?? booking.paymentMethod)
+        ? ((METHOD_LABELS as Record<string, string>)[booking.paymentMethod] ??
+          booking.paymentMethod)
         : '—',
     ],
   ]
@@ -66,13 +70,17 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
           después de que el <dl> de arriba ya había cerrado. */}
       {booking.notesPlayer && (
         <dl className="mt-4 border-t border-border pt-4">
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Nota del jugador</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+            Nota del jugador
+          </dt>
           <dd className="mt-1 text-sm text-foreground">{booking.notesPlayer}</dd>
         </dl>
       )}
       {booking.canceledReason && (
         <dl className="mt-4 border-t border-border pt-4">
-          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Motivo de cancelación</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+            Motivo de cancelación
+          </dt>
           <dd className="mt-1 text-sm text-foreground">{booking.canceledReason}</dd>
         </dl>
       )}

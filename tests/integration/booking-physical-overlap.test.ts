@@ -3,7 +3,11 @@ import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createManualBooking } from '@/modules/bookings/booking.service'
 import { SlotTakenError } from '@/modules/bookings/booking.errors'
 import {
-  cleanupAll, createTestPlayer, createTestTenant, ensureRoles, linkPlayerToTenant,
+  cleanupAll,
+  createTestPlayer,
+  createTestTenant,
+  ensureRoles,
+  linkPlayerToTenant,
 } from '../helpers/tenant'
 import { seedIsolationData, type IsolationSeed } from '../helpers/seed'
 
@@ -24,24 +28,39 @@ beforeAll(async () => {
   await sql`
     UPDATE tenants SET closes_next_day = true,
       opening_hours = ${sql.json({
-        mon: { open: '20:00', close: '02:00' }, tue: { open: '20:00', close: '02:00' },
-        wed: { open: '20:00', close: '02:00' }, thu: { open: '20:00', close: '02:00' },
-        fri: { open: '20:00', close: '02:00' }, sat: { open: '20:00', close: '02:00' },
+        mon: { open: '20:00', close: '02:00' },
+        tue: { open: '20:00', close: '02:00' },
+        wed: { open: '20:00', close: '02:00' },
+        thu: { open: '20:00', close: '02:00' },
+        fri: { open: '20:00', close: '02:00' },
+        sat: { open: '20:00', close: '02:00' },
         sun: { open: '20:00', close: '02:00' },
       })}
     WHERE id = ${tenant.id}
   `
 }, 30_000)
 
-afterAll(async () => { await closeSql() })
+afterAll(async () => {
+  await closeSql()
+})
 
 function attempt(args: { timeStart: string; timeEnd: string; date: string }) {
   return withTenantContext(tenant.id, async (tx) => {
     try {
-      const booking = await createManualBooking(tenant.id, {
-        courtId: seed.courtId, date: args.date, timeStart: args.timeStart, timeEnd: args.timeEnd,
-        type: 'spontaneous', staffUserId: seed.staffUserId, playerId, priceOverride: 800000,
-      }, tx)
+      const booking = await createManualBooking(
+        tenant.id,
+        {
+          courtId: seed.courtId,
+          date: args.date,
+          timeStart: args.timeStart,
+          timeEnd: args.timeEnd,
+          type: 'spontaneous',
+          staffUserId: seed.staffUserId,
+          playerId,
+          priceOverride: 800000,
+        },
+        tx,
+      )
       return { outcome: 'won' as const, booking }
     } catch (error) {
       return { outcome: 'lost' as const, error }

@@ -20,20 +20,22 @@ export async function runRollingSlotGeneration(): Promise<void> {
   const sql = getWorkerSql()
   const today = artToday()
 
-  const abonadoRows = await sql<{
-    id: string
-    tenant_id: string
-    court_id: string
-    player_id: string | null
-    day_of_week: number
-    time_start: string
-    time_end: string
-    price_per_session: number
-    starts_on: string
-    ends_on: string | null
-    tenant_status: string
-    closed_dates: string[] | null
-  }[]>`
+  const abonadoRows = await sql<
+    {
+      id: string
+      tenant_id: string
+      court_id: string
+      player_id: string | null
+      day_of_week: number
+      time_start: string
+      time_end: string
+      price_per_session: number
+      starts_on: string
+      ends_on: string | null
+      tenant_status: string
+      closed_dates: string[] | null
+    }[]
+  >`
     SELECT a.id, a.tenant_id, a.court_id, a.player_id,
            a.day_of_week, a.time_start, a.time_end,
            a.price_per_session, a.starts_on::text, a.ends_on::text,
@@ -44,13 +46,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
     WHERE a.status = 'active'
   `
 
-  const SKIP_STATUSES = new Set([
-    'suspended',
-    'blocked',
-    'canceled',
-    'churned',
-    'deleted',
-  ])
+  const SKIP_STATUSES = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
 
   for (const abonado of abonadoRows) {
     if (SKIP_STATUSES.has(abonado.tenant_status)) continue
@@ -94,9 +90,10 @@ export async function runRollingSlotGeneration(): Promise<void> {
       // Madrugada/día-operativo: mismo cálculo que insertBookingsForSlots
       // (abonado.service.ts) — recurrencia semanal, mismo día calendario en
       // todas las fechas generadas, así que se resuelve una sola vez.
-      const physicallyNextDay = slotDates.length > 0
-        ? await slotIsPhysicallyNextDay(abonado.tenant_id, slotDates[0]!, abonado.time_start, tx)
-        : false
+      const physicallyNextDay =
+        slotDates.length > 0
+          ? await slotIsPhysicallyNextDay(abonado.tenant_id, slotDates[0]!, abonado.time_start, tx)
+          : false
 
       let count = 0
       for (const dateStr of slotDates) {
@@ -111,7 +108,10 @@ export async function runRollingSlotGeneration(): Promise<void> {
         if ((conflictRows as unknown as Array<{ n: number }>)[0]!.n > 0) continue
 
         const { startsAt, endsAt } = physicalRange({
-          date: dateStr, timeStart: abonado.time_start, timeEnd: abonado.time_end, physicallyNextDay,
+          date: dateStr,
+          timeStart: abonado.time_start,
+          timeEnd: abonado.time_end,
+          physicallyNextDay,
         })
 
         await tx.execute(drizzleSql`
@@ -134,7 +134,11 @@ export async function runRollingSlotGeneration(): Promise<void> {
     })
 
     if (generated > 0) {
-      logger.info('generated abonado slots', { module: 'generate-abonado-slots', abonadoId: abonado.id, count: generated })
+      logger.info('generated abonado slots', {
+        module: 'generate-abonado-slots',
+        abonadoId: abonado.id,
+        count: generated,
+      })
     }
   }
 }

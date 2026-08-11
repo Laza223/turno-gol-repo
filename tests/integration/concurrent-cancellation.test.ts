@@ -27,7 +27,11 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
   }
 })
 
-import { cancelByAdmin, cancelByPlayer, type CancellationOutcome } from '@/modules/bookings/booking.cancellation'
+import {
+  cancelByAdmin,
+  cancelByPlayer,
+  type CancellationOutcome,
+} from '@/modules/bookings/booking.cancellation'
 import { expirePendingBooking } from '@/modules/bookings/booking.service'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
 import { settleRefund } from '@/modules/payments/payment.service'
@@ -165,9 +169,7 @@ async function setOutOfPolicy(tenantId: string): Promise<void> {
 
 async function getBooking(bookingId: string) {
   const sql = getSql()
-  const rows = await sql<
-    { status: string; deposit_status: string; canceled_by: string | null }[]
-  >`
+  const rows = await sql<{ status: string; deposit_status: string; canceled_by: string | null }[]>`
     SELECT status, deposit_status, canceled_by FROM bookings WHERE id = ${bookingId}
   `
   return rows[0]!
@@ -286,9 +288,7 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
       const losers = cancels.filter((r) => r.status === 'rejected')
       expect(winners, `round ${i}: exactly one cancel should win`).toHaveLength(1)
       expect(losers).toHaveLength(1)
-      expect((losers[0] as PromiseRejectedResult).reason).toBeInstanceOf(
-        BookingNotInConfirmedError,
-      )
+      expect((losers[0] as PromiseRejectedResult).reason).toBeInstanceOf(BookingNotInConfirmedError)
 
       // Expiry is a no-op on a confirmed booking.
       expect(expiryRes.status).toBe('fulfilled')
@@ -412,9 +412,7 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     expect((await getBooking(bookingId)).status).toBe('canceled_refunded')
     expect(await countRefundRows(bookingId)).toBe(1)
     expect(await countCancelAudits(bookingId)).toBe(1)
-    const refundCallsBefore = refundSpy.mock.calls.filter(
-      (c) => c[0] === mpPaymentId,
-    ).length
+    const refundCallsBefore = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
     expect(refundCallsBefore).toBe(1)
 
     // Tormenta de reintentos sobre el booking ya terminal.
@@ -444,9 +442,7 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     expect(booking.deposit_status).toBe('refunded')
     expect(await countRefundRows(bookingId)).toBe(1)
     expect(await countCancelAudits(bookingId)).toBe(1)
-    const refundCallsAfter = refundSpy.mock.calls.filter(
-      (c) => c[0] === mpPaymentId,
-    ).length
+    const refundCallsAfter = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
     expect(refundCallsAfter, 'el gateway MP no se reembolsó de nuevo').toBe(1)
   }, 30_000)
 

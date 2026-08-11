@@ -6,17 +6,8 @@ import {
   withContextRollback,
   withPlayerContext,
 } from '@/shared/db/client'
-import {
-  getFavorites,
-  isFavorite,
-  toggleFavorite,
-} from '@/modules/favorites/favorite.service'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { getFavorites, isFavorite, toggleFavorite } from '@/modules/favorites/favorite.service'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const PRICING = {
   rules: [
@@ -117,10 +108,10 @@ describe('favorites RLS', () => {
     const a = await createTestPlayer()
     await withPlayerContext(a.id, (tx) => toggleFavorite(a.id, tenant.id, tx))
 
-    const rows = await withContext({ role: 'authenticated' }, (tx) =>
-      tx`SELECT count(*)::int AS c FROM player_favorites` as unknown as Promise<
-        { c: number }[]
-      >,
+    const rows = await withContext(
+      { role: 'authenticated' },
+      (tx) =>
+        tx`SELECT count(*)::int AS c FROM player_favorites` as unknown as Promise<{ c: number }[]>,
     )
     expect((rows as unknown as { c: number }[])[0]!.c).toBe(0)
   })
@@ -131,8 +122,10 @@ describe('favorites RLS', () => {
     const b = await createTestPlayer()
 
     await expect(
-      withContextRollback({ role: 'authenticated', playerId: a.id }, (tx) =>
-        tx`
+      withContextRollback(
+        { role: 'authenticated', playerId: a.id },
+        (tx) =>
+          tx`
           INSERT INTO player_favorites (player_id, tenant_id)
           VALUES (${b.id}, ${tenant.id})
         `,

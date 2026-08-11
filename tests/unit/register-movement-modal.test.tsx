@@ -38,7 +38,8 @@ function renderModal() {
   fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Test' } })
   // Submit via the form: happy-dom doesn't bubble a click on the submit button
   // to a form submit event for this modal.
-  const submit = () => fireEvent.submit(screen.getByRole('button', { name: 'Guardar' }).closest('form')!)
+  const submit = () =>
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar' }).closest('form')!)
   return { onClose, submit }
 }
 

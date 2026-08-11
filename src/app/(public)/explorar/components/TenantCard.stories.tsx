@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { publicTenantCard, publicTenantCardSinReservaOnline, publicTenantCardSinResenas } from '@/test/fixtures/tenant'
+import {
+  publicTenantCard,
+  publicTenantCardSinReservaOnline,
+  publicTenantCardSinResenas,
+} from '@/test/fixtures/tenant'
 import { slotPill } from '@/test/fixtures/public'
 import TenantCard from './TenantCard'
 
@@ -9,7 +13,13 @@ const meta = {
   title: 'Player/Explorar/TenantCard',
   component: TenantCard,
   parameters: { layout: 'padded' },
-  decorators: [(Story) => <div className="max-w-sm"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-sm">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof TenantCard>
 
 export default meta
@@ -39,7 +49,10 @@ export const GridSinFotos: Story = {
 export const GridConSlotPills: Story = {
   args: {
     tenant: publicTenantCard({ coverUrl: '/bg-hero.png' }),
-    slotPills: { date: '2026-03-14', slots: [slotPill({ time: '18:00' }), slotPill({ time: '19:00' })] },
+    slotPills: {
+      date: '2026-03-14',
+      slots: [slotPill({ time: '18:00' }), slotPill({ time: '19:00' })],
+    },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

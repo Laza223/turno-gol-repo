@@ -34,7 +34,11 @@ function ImagePane() {
       />
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
         <Link href="/">
-          <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30" />
+          <Logo
+            variant="horizontal"
+            textClassName="text-white"
+            iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30"
+          />
         </Link>
 
         <div className="max-w-md">

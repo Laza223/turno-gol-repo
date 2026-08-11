@@ -108,7 +108,8 @@ export default function SearchBar({ cities }: Props) {
   const fieldClass =
     'h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-base md:text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500'
 
-  const labelClass = 'mb-1.5 block font-logo text-[11px] font-bold uppercase tracking-wider text-muted-foreground'
+  const labelClass =
+    'mb-1.5 block font-logo text-[11px] font-bold uppercase tracking-wider text-muted-foreground'
 
   return (
     <form
@@ -123,7 +124,10 @@ export default function SearchBar({ cities }: Props) {
             Buscar
           </label>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" aria-hidden />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600"
+              aria-hidden
+            />
             <input
               id="exp-q"
               type="search"
@@ -180,7 +184,10 @@ export default function SearchBar({ cities }: Props) {
             Hora
           </label>
           <div className="relative">
-            <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600 z-10" aria-hidden />
+            <Clock
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600 z-10"
+              aria-hidden
+            />
             {/* modal={false}: con el default (modal=true) Radix aria-hide-ea los
                 demás campos del form (Buscar/Localidad/Fecha/Buscar) mientras el
                 menú está abierto, pero esos siguen siendo tabbable → axe
@@ -197,7 +204,10 @@ export default function SearchBar({ cities }: Props) {
                   <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
                     {time || 'Cualquiera'}
                   </span>
-                  <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-muted-foreground/70" aria-hidden />
+                  <ChevronDown
+                    className="pointer-events-none absolute right-3 h-4 w-4 text-muted-foreground/70"
+                    aria-hidden
+                  />
                 </button>
               </DropdownMenuTrigger>
               {/* tabIndex={0}: la lista de 17 horas desborda max-h-60 (scroll). Al
@@ -205,7 +215,11 @@ export default function SearchBar({ cities }: Props) {
                   foco programático — las horas individuales solo son roving-
                   focusable después de navegar con flechas) y axe no lo detecta
                   como "focusable" estáticamente → scrollable-region-focusable. */}
-              <DropdownMenuContent align="start" tabIndex={0} className="max-h-60 w-[200px] overflow-y-auto">
+              <DropdownMenuContent
+                align="start"
+                tabIndex={0}
+                className="max-h-60 w-[200px] overflow-y-auto"
+              >
                 <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
                   Cualquiera
                 </DropdownMenuItem>
@@ -225,7 +239,10 @@ export default function SearchBar({ cities }: Props) {
             aria-label="Buscar"
             className="group relative overflow-hidden inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 px-4 text-sm font-bold text-slate-950 border border-emerald-400/20 shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] active:scale-[0.98] after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:via-white/30 after:to-transparent after:transition-transform after:duration-1000 hover:after:translate-x-full whitespace-nowrap"
           >
-            <Search className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" aria-hidden />
+            <Search
+              className="h-4 w-4 group-hover:scale-110 transition-transform duration-300"
+              aria-hidden
+            />
             <span className="lg:hidden">Buscar canchas</span>
           </button>
         </div>

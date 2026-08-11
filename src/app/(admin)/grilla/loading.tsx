@@ -33,10 +33,7 @@ export default function GrillaLoading() {
 
       {/* Grilla: eje horario + 3 columnas de canchas */}
       <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div
-          className="grid gap-1 p-1"
-          style={{ gridTemplateColumns: '3.5rem repeat(3, 1fr)' }}
-        >
+        <div className="grid gap-1 p-1" style={{ gridTemplateColumns: '3.5rem repeat(3, 1fr)' }}>
           {/* Header de canchas */}
           <div />
           {Array.from({ length: 3 }).map((_, i) => (

@@ -5,11 +5,7 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { insertAuditLog } from '@/shared/db/audit'
-import {
-  banPlayerManually,
-  liftPlayerBan,
-  resolveManualBanUntil,
-} from '@/modules/bans/ban.service'
+import { banPlayerManually, liftPlayerBan, resolveManualBanUntil } from '@/modules/bans/ban.service'
 import {
   banPlayerInputSchema,
   liftPlayerBanInputSchema,
@@ -24,9 +20,7 @@ import {
 import { linkContactInputSchema } from '@/modules/relationships/contact-link.schema'
 import { searchLinkCandidates, type LinkCandidate } from './queries'
 
-export type BanPlayerActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type BanPlayerActionResult = { success: true } | { success: false; error: string }
 
 /**
  * Ban manual del complejo (doc7 Flujo 5B, ENS-8): el encargado bloquea a un

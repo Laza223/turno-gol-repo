@@ -94,7 +94,8 @@ test.describe('TG-HP-309 — Cambiar plan sin cobro', () => {
         onlineCourtsAtFixtureTime: Number(onlineCourts),
         subscriptionPlanAfter: subRow,
         latestPlanChangedAuditLog: auditRow ?? null,
-        dbWrites: 'tenant_subscriptions.plan_id/pending_plan_change (support.service.ts:358-365) + audit_logs',
+        dbWrites:
+          'tenant_subscriptions.plan_id/pending_plan_change (support.service.ts:358-365) + audit_logs',
         notes:
           'CASO DE PLATA: plan Complejo queda vivo para el verificador. mp_subscription_id=NULL → rama MP no ejercida.',
       })

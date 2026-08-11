@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
-import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from './toast'
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from './toast'
 
 /**
  * @radix-ui/react-toast puro. Necesita `ToastProvider` + `ToastViewport`
@@ -25,7 +32,10 @@ const meta = {
     (Story) => (
       <ToastProvider swipeDirection="right">
         <Story />
-        <ToastViewport className="static w-80 max-w-full p-0" label="Toast de ejemplo (Storybook)" />
+        <ToastViewport
+          className="static w-80 max-w-full p-0"
+          label="Toast de ejemplo (Storybook)"
+        />
       </ToastProvider>
     ),
   ],

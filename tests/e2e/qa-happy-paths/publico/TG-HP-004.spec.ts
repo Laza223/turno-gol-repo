@@ -14,7 +14,9 @@ test.describe('TG-HP-004 — Disponibilidad semanal', () => {
     // Step 1-3: back-link "{tenant.name}" + h1 "Disponibilidad semanal"
     await page.goto('/e2e-complejo-sena/disponibilidad')
     await expect(page.getByRole('link', { name: /E2E Complejo Seña/ })).toBeVisible()
-    await expect(page.getByRole('heading', { level: 1, name: 'Disponibilidad semanal' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Disponibilidad semanal' }),
+    ).toBeVisible()
 
     // Step 4: fila de tabs de día (aria-pressed) — segundo tab (mañana). Escopeado a la
     // section aria-label="Disponibilidad semanal" (WeeklyAvailability.tsx:27) para no
@@ -42,7 +44,8 @@ test.describe('TG-HP-004 — Disponibilidad semanal', () => {
       status: 'pass',
       finalUrl: page.url(),
       reservarParams: Object.fromEntries(reservarUrl.searchParams.entries()),
-      dbWrites: 'none (getPublicWeeklyAvailability server-side, sin fetch client-side ni Server Action)',
+      dbWrites:
+        'none (getPublicWeeklyAvailability server-side, sin fetch client-side ni Server Action)',
       notes:
         'Confirmado: cambiar de tab de día NO dispara red (a diferencia de AvailabilityGrid en TG-HP-003) — ' +
         'solo re-renderiza con week.days[active] ya cargado server-side.',

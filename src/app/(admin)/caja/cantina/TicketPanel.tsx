@@ -156,7 +156,10 @@ export function TicketPanel({
         {/* Desplegable / Buscador de productos */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <label htmlFor="ticket-product-combobox" className="text-xs font-semibold text-foreground">
+            <label
+              htmlFor="ticket-product-combobox"
+              className="text-xs font-semibold text-foreground"
+            >
               Buscar o seleccionar producto / servicio
             </label>
             {isInDialog && (
@@ -245,7 +248,9 @@ export function TicketPanel({
                     className="min-h-[64px] flex flex-col justify-between rounded-lg border border-border bg-card p-3 text-left transition-all hover:border-emerald-500 hover:bg-primary/5 active:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10"
                   >
                     <div>
-                      <span className="block truncate text-sm font-semibold text-foreground">{p.name}</span>
+                      <span className="block truncate text-sm font-semibold text-foreground">
+                        {p.name}
+                      </span>
                       <span className="block text-sm font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
                         {formatArs(p.price)}
                       </span>
@@ -314,7 +319,9 @@ export function TicketPanel({
                 <li key={l.productId} className="flex items-center justify-between gap-2 px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{l.name}</p>
-                    <p className="text-xs tabular-nums text-muted-foreground">{formatArs(l.price * l.qty)}</p>
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      {formatArs(l.price * l.qty)}
+                    </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <button
@@ -326,7 +333,9 @@ export function TicketPanel({
                     >
                       <Minus className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
-                    <span className="w-6 text-center text-sm font-semibold tabular-nums">{l.qty}</span>
+                    <span className="w-6 text-center text-sm font-semibold tabular-nums">
+                      {l.qty}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setLines((prev) => incrementLine(prev, l.productId))}

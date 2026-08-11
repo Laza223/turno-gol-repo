@@ -21,13 +21,9 @@ import {
 } from '@/modules/canteen/canteen.errors'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
-export type ProductActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type ProductActionResult = { success: true } | { success: false; error: string }
 
-export type StockActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type StockActionResult = { success: true } | { success: false; error: string }
 
 function revalidateCaja(): void {
   revalidatePath('/caja')

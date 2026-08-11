@@ -12,7 +12,9 @@ import type { CourtRow } from '@/modules/courts/court.types'
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeBooking(overrides: Partial<GridBooking> & Pick<GridBooking, 'courtId' | 'timeStart' | 'timeEnd'>): GridBooking {
+function makeBooking(
+  overrides: Partial<GridBooking> & Pick<GridBooking, 'courtId' | 'timeStart' | 'timeEnd'>,
+): GridBooking {
   return {
     id: 'b1',
     date: '2025-06-01',
@@ -146,8 +148,18 @@ describe('computeCells', () => {
   // -------------------------------------------------------------------------
 
   it('T5: buildBookingsIndex first-wins — duplicate courtId:timeStart keeps the first booking', () => {
-    const first = makeBooking({ id: 'first', courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00' })
-    const second = makeBooking({ id: 'second', courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00' })
+    const first = makeBooking({
+      id: 'first',
+      courtId: 'court1',
+      timeStart: '10:00:00',
+      timeEnd: '11:00:00',
+    })
+    const second = makeBooking({
+      id: 'second',
+      courtId: 'court1',
+      timeStart: '10:00:00',
+      timeEnd: '11:00:00',
+    })
     const index = buildBookingsIndex([first, second])
 
     expect(index.get('court1:10:00')?.id).toBe('first')
@@ -176,7 +188,12 @@ describe('countCollapsibleLeading', () => {
   it('una reserva pasada corta el colapso (lo jugado/ausente queda visible)', () => {
     const slots = generateTimeSlots('08:00', '23:00')
     const cells = cellsFor(slots, [
-      makeBooking({ courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00', status: 'completed' }),
+      makeBooking({
+        courtId: 'court1',
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        status: 'completed',
+      }),
     ])
     // Solo 08:00 y 09:00 son colapsables: 10:00 tiene una Jugada.
     expect(countCollapsibleLeading(slots, courts, cells, pastBefore('15:30'))).toBe(2)

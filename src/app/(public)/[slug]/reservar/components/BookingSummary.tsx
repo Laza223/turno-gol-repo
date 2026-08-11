@@ -24,7 +24,8 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
       <div>
         <h2 className="font-display text-lg font-bold text-foreground">{data.tenantName}</h2>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden /> {data.city}
+          <MapPin className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden />{' '}
+          {data.city}
         </p>
       </div>
       {/* <div>, no <dl>: son filas ícono+texto, no pares término/definición (axe definition-list). */}
@@ -35,7 +36,9 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
         </div>
         <div className="flex items-center gap-2 text-foreground/90">
           <Clock className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
-          <span className="tabular-nums">{data.timeStart}–{data.timeEnd} · {data.courtName}</span>
+          <span className="tabular-nums">
+            {data.timeStart}–{data.timeEnd} · {data.courtName}
+          </span>
         </div>
       </div>
       <div className="space-y-1.5 border-t border-border pt-4 text-sm dark:border-white/10">
@@ -57,7 +60,9 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
             </div>
           </>
         ) : (
-          <p className="text-xs text-muted-foreground">Este complejo no requiere seña. Pagás el total en el complejo.</p>
+          <p className="text-xs text-muted-foreground">
+            Este complejo no requiere seña. Pagás el total en el complejo.
+          </p>
         )}
       </div>
     </div>

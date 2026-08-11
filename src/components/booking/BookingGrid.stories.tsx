@@ -95,9 +95,10 @@ export const ComplejoCerrado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Complejo cerrado este día')).toBeInTheDocument()
-    await expect(
-      canvas.getByRole('link', { name: 'Revisar horarios' }),
-    ).toHaveAttribute('href', '/settings/horarios')
+    await expect(canvas.getByRole('link', { name: 'Revisar horarios' })).toHaveAttribute(
+      'href',
+      '/settings/horarios',
+    )
   },
 }
 

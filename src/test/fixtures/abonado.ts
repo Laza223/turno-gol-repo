@@ -72,4 +72,9 @@ export const abonadoCanceled = (): AbonadoRow =>
     endsOn: daysFromNow(-15),
   })
 
-export const abonados = (): AbonadoRow[] => [abonado(), abonadoGuestOnly(), abonadoPaused(), abonadoCanceled()]
+export const abonados = (): AbonadoRow[] => [
+  abonado(),
+  abonadoGuestOnly(),
+  abonadoPaused(),
+  abonadoCanceled(),
+]

@@ -97,7 +97,12 @@ describe('sumBookingChargesByBooking — saldo batch de la grilla', () => {
   it('suma los cobros de varios turnos en una sola pasada y omite los que no tienen', async () => {
     const a = await insertBooking({ tenantId, courtId, timeStart: '08:00', timeEnd: '09:00' })
     const b = await insertBooking({ tenantId, courtId, timeStart: '09:00', timeEnd: '10:00' })
-    const sinCobros = await insertBooking({ tenantId, courtId, timeStart: '10:00', timeEnd: '11:00' })
+    const sinCobros = await insertBooking({
+      tenantId,
+      courtId,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
 
     await charge(a, 30000, 'Parcial 1')
     await charge(a, 20000, 'Parcial 2')

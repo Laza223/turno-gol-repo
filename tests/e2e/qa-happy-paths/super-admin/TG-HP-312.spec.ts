@@ -31,9 +31,9 @@ test.describe('TG-HP-312 — Reset password de staff', () => {
       const page = await ctx.newPage()
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=acciones`)
 
-      await expect(
-        page.getByRole('heading', { name: 'Resetear contraseña de staff' }),
-      ).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Resetear contraseña de staff' })).toBeVisible(
+        { timeout: 15_000 },
+      )
 
       const resetBtn = page.getByRole('button', { name: 'Resetear contraseña' })
       await expect(resetBtn).toBeDisabled() // email vacío

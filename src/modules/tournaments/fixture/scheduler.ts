@@ -97,9 +97,7 @@ export function scheduleMatches(
   // Huecos disponibles, ordenados cronológicamente y después por cancha, para
   // que el reparto sea determinista (importa: el fixture se regenera igual).
   const openings = slots
-    .flatMap((slot) =>
-      placementsIn(slot, durationMs, stepMs).map((p) => ({ slot, ...p })),
-    )
+    .flatMap((slot) => placementsIn(slot, durationMs, stepMs).map((p) => ({ slot, ...p })))
     .sort(
       (a, b) =>
         a.start.getTime() - b.start.getTime() || a.slot.courtId.localeCompare(b.slot.courtId),
@@ -134,9 +132,7 @@ export function scheduleMatches(
       currentRound = match.round
     }
 
-    const teams = [match.homeTeamId, match.awayTeamId].filter(
-      (t): t is string => t !== null,
-    )
+    const teams = [match.homeTeamId, match.awayTeamId].filter((t): t is string => t !== null)
 
     let placed: ScheduledMatch | null = null
 
@@ -201,10 +197,7 @@ export function openingsIn(slot: OwnedSlot, opts: ScheduleOptions): Placement[] 
  * Cuántos partidos entran en las horas dadas, ignorando las restricciones de
  * equipos. Sirve para avisar ANTES de generar que no va a alcanzar.
  */
-export function slotCapacity(
-  slots: readonly OwnedSlot[],
-  opts: ScheduleOptions,
-): number {
+export function slotCapacity(slots: readonly OwnedSlot[], opts: ScheduleOptions): number {
   const durationMs = opts.matchDurationMinutes * MS_PER_MIN
   const stepMs = durationMs + (opts.restBetweenMatchesMinutes ?? 0) * MS_PER_MIN
   return slots.reduce((acc, s) => acc + placementsIn(s, durationMs, stepMs).length, 0)

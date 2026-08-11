@@ -13,7 +13,13 @@ const meta = {
   title: 'Public/Precios',
   component: PreciosPage,
   parameters: { layout: 'fullscreen', backgrounds: { disable: true } },
-  decorators: [(Story) => <BusinessLayout><Story /></BusinessLayout>],
+  decorators: [
+    (Story) => (
+      <BusinessLayout>
+        <Story />
+      </BusinessLayout>
+    ),
+  ],
 } satisfies Meta<typeof PreciosPage>
 
 export default meta
@@ -22,7 +28,9 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(/lo que te deja un turno/i)
+    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /lo que te deja un turno/i,
+    )
     await expect(canvas.getByRole('heading', { name: 'Complejo' })).toBeInTheDocument()
   },
 }

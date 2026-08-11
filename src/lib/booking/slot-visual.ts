@@ -192,7 +192,8 @@ export function slotStateKey(facts: SlotFacts): SlotStateKey {
   if (facts.status === 'no_show') return 'no_show'
   if (facts.status === 'completed') return 'completed'
   if (facts.status === 'pending_payment') return 'pending_payment'
-  if (facts.status === 'canceled_refunded' || facts.status === 'canceled_no_refund') return 'canceled'
+  if (facts.status === 'canceled_refunded' || facts.status === 'canceled_no_refund')
+    return 'canceled'
   if (facts.status === 'expired') return 'expired'
   if (facts.status === 'confirmed') {
     if (facts.depositStatus === 'paid' || facts.depositStatus === 'captured') return 'deposit_paid'

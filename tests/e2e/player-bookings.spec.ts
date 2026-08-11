@@ -73,9 +73,7 @@ test.describe('Player bookings', () => {
       await page.getByRole('button', { name: 'Sí, cancelar' }).click()
 
       // Wait for dialog to close
-      await expect(
-        page.getByRole('heading', { name: '¿Cancelar esta reserva?' }),
-      ).not.toBeVisible()
+      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible()
 
       // Wait for UI to show canceled badge (page.reload() via router.refresh())
       await expect(page.getByText('Cancelado').first()).toBeVisible({ timeout: 8_000 })
@@ -126,10 +124,7 @@ test.describe('Player bookings', () => {
         .update({ payment_id: null, payment_method: null })
         .in('id', ids)
       await supabase.from('payments').delete().in('booking_id', ids)
-      const { error: delErr } = await supabase
-        .from('bookings')
-        .delete()
-        .in('id', ids)
+      const { error: delErr } = await supabase.from('bookings').delete().in('id', ids)
       if (delErr) throw new Error(`Cleanup DELETE failed: ${delErr.message}`)
     }
     // Sanity: post-cleanup, the player must have 0 bookings. If this throws,
@@ -165,72 +160,68 @@ test.describe('Player bookings', () => {
     }
   })
 
-  test(
-    'player cancels booking with paid deposit → status=canceled_* + deposit info in canceled state @critical',
-    async ({ browser, playerStorageState }) => {
-      const supabase = makeServiceClient()
-      // Insert a booking with deposit_status='paid' so the cancel modal shows
-      // deposit-related information. deposit_amount=30000 (300 ARS in centavos).
-      // The player cancel policy decides refunded vs no_refund based on hours_before —
-      // we assert against either value to avoid coupling to tenant policy config.
-      const bookingId = await insertPlayerBooking(supabase, {
-        // Slot 21:00–22:00 — avoids collisions with other tomorrow specs.
-        date: artTomorrowISO(),
-        timeStart: '21:00',
-        timeEnd: '22:00',
-        status: 'confirmed',
-        depositStatus: 'paid',
-        depositAmount: 30000,
-      })
+  test('player cancels booking with paid deposit → status=canceled_* + deposit info in canceled state @critical', async ({
+    browser,
+    playerStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    // Insert a booking with deposit_status='paid' so the cancel modal shows
+    // deposit-related information. deposit_amount=30000 (300 ARS in centavos).
+    // The player cancel policy decides refunded vs no_refund based on hours_before —
+    // we assert against either value to avoid coupling to tenant policy config.
+    const bookingId = await insertPlayerBooking(supabase, {
+      // Slot 21:00–22:00 — avoids collisions with other tomorrow specs.
+      date: artTomorrowISO(),
+      timeStart: '21:00',
+      timeEnd: '22:00',
+      status: 'confirmed',
+      depositStatus: 'paid',
+      depositAmount: 30000,
+    })
 
-      const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
-      const page = await ctx.newPage()
+    const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
+    const page = await ctx.newPage()
 
-      try {
-        await page.goto('/mis-reservas')
-        await expect(page.getByRole('heading', { name: 'Mis Reservas' })).toBeVisible()
-        await expect(page.getByText('Confirmado').first()).toBeVisible()
+    try {
+      await page.goto('/mis-reservas')
+      await expect(page.getByRole('heading', { name: 'Mis Reservas' })).toBeVisible()
+      await expect(page.getByText('Confirmado').first()).toBeVisible()
 
-        // Click cancel button on the booking row → ConfirmDialog opens.
-        await page.getByRole('button', { name: 'Cancelar' }).first().click()
-        await expect(
-          page.getByRole('heading', { name: '¿Cancelar esta reserva?' }),
-        ).toBeVisible()
+      // Click cancel button on the booking row → ConfirmDialog opens.
+      await page.getByRole('button', { name: 'Cancelar' }).first().click()
+      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).toBeVisible()
 
-        // Fill cancellation reason.
-        await page.locator('textarea#cancel-reason').fill('test player cancel with deposit')
+      // Fill cancellation reason.
+      await page.locator('textarea#cancel-reason').fill('test player cancel with deposit')
 
-        // Confirm cancellation.
-        await page.getByRole('button', { name: 'Sí, cancelar' }).click()
+      // Confirm cancellation.
+      await page.getByRole('button', { name: 'Sí, cancelar' }).click()
 
-        // Wait for dialog to close.
-        await expect(
-          page.getByRole('heading', { name: '¿Cancelar esta reserva?' }),
-        ).not.toBeVisible()
+      // Wait for dialog to close.
+      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible()
 
-        // Wait for canceled badge.
-        await expect(page.getByText('Cancelado').first()).toBeVisible({ timeout: 8_000 })
+      // Wait for canceled badge.
+      await expect(page.getByText('Cancelado').first()).toBeVisible({ timeout: 8_000 })
 
-        // ── DB assertion ────────────────────────────────────────────────────
-        // status must be one of the two canceled variants (policy-dependent).
-        // canceled_by must be 'player'; reason must match.
-        // No cash_flows/payments assertion: player cancel with null payment_id
-        // skips the real refund path (cancelByPlayer:113 requires payment_id != null).
-        const { data: row, error } = await supabase
-          .from('bookings')
-          .select('status, canceled_reason, canceled_by')
-          .eq('id', bookingId)
-          .single()
+      // ── DB assertion ────────────────────────────────────────────────────
+      // status must be one of the two canceled variants (policy-dependent).
+      // canceled_by must be 'player'; reason must match.
+      // No cash_flows/payments assertion: player cancel with null payment_id
+      // skips the real refund path (cancelByPlayer:113 requires payment_id != null).
+      const { data: row, error } = await supabase
+        .from('bookings')
+        .select('status, canceled_reason, canceled_by')
+        .eq('id', bookingId)
+        .single()
 
-        expect(error).toBeNull()
-        expect(row?.status).toMatch(/^canceled_(refunded|no_refund)$/)
-        expect(row?.canceled_reason).toBe('test player cancel with deposit')
-        expect(row?.canceled_by).toBe('player')
-      } finally {
-        await ctx.close()
-      }
-    },
-  )
+      expect(error).toBeNull()
+      expect(row?.status).toMatch(/^canceled_(refunded|no_refund)$/)
+      expect(row?.canceled_reason).toBe('test player cancel with deposit')
+      expect(row?.canceled_by).toBe('player')
+    } finally {
+      await ctx.close()
+    }
+  })
 
   test('shows completed booking in history and displays "Jugada" status badge', async ({
     browser,

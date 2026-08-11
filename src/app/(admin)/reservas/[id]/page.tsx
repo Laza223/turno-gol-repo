@@ -22,7 +22,7 @@ const CHARGEABLE_STATUSES = new Set(['confirmed', 'completed', 'no_show'])
 type Props = { params: Promise<{ id: string }> }
 
 export default async function ReservaDetailPage(props: Props) {
-  const params = await props.params;
+  const params = await props.params
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
   const tenant = await getStaffTenant(user.staffUserId)
@@ -40,7 +40,10 @@ export default async function ReservaDetailPage(props: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <Link href="/reservas" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+      <Link
+        href="/reservas"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
         <ChevronLeft className="h-4 w-4" aria-hidden /> Reservas
       </Link>
       <h1 className="text-2xl font-semibold text-foreground">Detalle de la reserva</h1>

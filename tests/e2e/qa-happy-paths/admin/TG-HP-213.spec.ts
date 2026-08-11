@@ -83,9 +83,7 @@ test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
       // paymentMethod=null (mismo DECISION que la spec de referencia), así que
       // cae en la rama "Coordiná el reembolso..." en vez de "Se reembolsará
       // ... vía MercadoPago." El regex cubre ambas ramas sin acoplarse a cuál.
-      await expect(
-        page.getByText(/(Se reembolsará la seña|Coordiná el reembolso)/i),
-      ).toBeVisible()
+      await expect(page.getByText(/(Se reembolsará la seña|Coordiná el reembolso)/i)).toBeVisible()
       await page.locator('#cancel-reason').fill('rotura de la cancha, mantenimiento programado')
 
       await page.getByRole('dialog').getByRole('button', { name: 'Cancelar reserva' }).click()

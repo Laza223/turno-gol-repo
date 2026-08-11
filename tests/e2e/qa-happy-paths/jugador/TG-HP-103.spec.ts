@@ -64,7 +64,9 @@ test.describe('TG-HP-103 — Reserva online SIN seña → confirma instantáneo'
       const sb = makeServiceClient()
       const { data: booking, error } = await sb
         .from('bookings')
-        .select('status, deposit_status, deposit_amount, price_snapshot, tenant_id, court_id, player_id')
+        .select(
+          'status, deposit_status, deposit_amount, price_snapshot, tenant_id, court_id, player_id',
+        )
         .eq('id', bookingId)
         .single()
 

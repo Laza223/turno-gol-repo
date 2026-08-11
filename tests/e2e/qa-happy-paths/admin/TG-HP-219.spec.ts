@@ -68,7 +68,10 @@ test.describe('TG-HP-219 — ficha jugador + indicador de softban', () => {
       // ResponsiveList renderiza cards (mobile) Y tabla (desktop) a la vez —
       // ambas coexisten en el DOM, toggleadas por CSS. La tabla va primero
       // (responsive-list.tsx:19) y es la visible en el viewport desktop.
-      await page.getByRole('link', { name: new RegExp(fullName) }).first().click()
+      await page
+        .getByRole('link', { name: new RegExp(fullName) })
+        .first()
+        .click()
       await page.waitForURL(new RegExp(`/jugadores/${playerId}$`), { timeout: 10_000 })
 
       await expect(page.getByRole('heading', { name: fullName })).toBeVisible({ timeout: 10_000 })
@@ -114,10 +117,10 @@ test.describe('TG-HP-219 — ficha jugador + indicador de softban', () => {
         E2E_TENANT_ID,
         playerId,
       ])
-      await runSql(`DELETE FROM player_tenant_relationships WHERE tenant_id = $1 AND player_id = $2`, [
-        E2E_TENANT_ID,
-        playerId,
-      ])
+      await runSql(
+        `DELETE FROM player_tenant_relationships WHERE tenant_id = $1 AND player_id = $2`,
+        [E2E_TENANT_ID, playerId],
+      )
       await runSql(`DELETE FROM players WHERE id = $1`, [playerId])
     }
   })

@@ -302,11 +302,32 @@ describe('computeStandings — fases y zonas', () => {
 
   it('el fair play no cuenta tarjetas de partidos no computables ni de playoffs', () => {
     const events: StandingsEvent[] = [
-      { id: 'e1', matchId: 'z1', teamId: 'A', teamPlayerId: 'p1', type: 'yellow_card', suspensionMatches: null },
+      {
+        id: 'e1',
+        matchId: 'z1',
+        teamId: 'A',
+        teamPlayerId: 'p1',
+        type: 'yellow_card',
+        suspensionMatches: null,
+      },
       // Partido postergado: no cuenta.
-      { id: 'e2', matchId: 'z2', teamId: 'A', teamPlayerId: 'p1', type: 'red_card', suspensionMatches: null },
+      {
+        id: 'e2',
+        matchId: 'z2',
+        teamId: 'A',
+        teamPlayerId: 'p1',
+        type: 'red_card',
+        suspensionMatches: null,
+      },
       // Playoff: no cuenta para la zona.
-      { id: 'e3', matchId: 'p1', teamId: 'A', teamPlayerId: 'p1', type: 'red_card', suspensionMatches: null },
+      {
+        id: 'e3',
+        matchId: 'p1',
+        teamId: 'A',
+        teamPlayerId: 'p1',
+        type: 'red_card',
+        suspensionMatches: null,
+      },
     ]
     const groups = computeStandings({
       teams: [team('A'), team('B')],

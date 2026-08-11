@@ -52,7 +52,9 @@ export const BaneadoSinFecha: Story = {
   args: { error: 'banned', until: undefined },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('alert')).toHaveTextContent('No podés reservar en este complejo actualmente.')
+    await expect(canvas.getByRole('alert')).toHaveTextContent(
+      'No podés reservar en este complejo actualmente.',
+    )
   },
 }
 
@@ -65,7 +67,9 @@ export const BaneadoConMotivo: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('alert')).toHaveTextContent('Ausencias reiteradas (2+ en 90 días)')
+    await expect(canvas.getByRole('alert')).toHaveTextContent(
+      'Ausencias reiteradas (2+ en 90 días)',
+    )
     await expect(canvas.getByRole('alert')).toHaveTextContent(/volvés a poder reservar el/i)
   },
 }
@@ -101,6 +105,8 @@ export const NoDisponible: Story = {
   args: { error: 'unavailable' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('alert')).toHaveTextContent(/no está disponible o no tiene precio/i)
+    await expect(canvas.getByRole('alert')).toHaveTextContent(
+      /no está disponible o no tiene precio/i,
+    )
   },
 }

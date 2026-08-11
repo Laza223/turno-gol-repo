@@ -8,9 +8,10 @@ const meta = {
   component: TorneoForm,
   parameters: { layout: 'padded' },
   args: {
-    action: fn(
-      async (): Promise<TournamentActionResult> => ({ success: true, id: 'nuevo-torneo' }),
-    ),
+    action: fn(async (): Promise<TournamentActionResult> => ({
+      success: true,
+      id: 'nuevo-torneo',
+    })),
   },
 } satisfies Meta<typeof TorneoForm>
 
@@ -23,9 +24,7 @@ export const Vacio: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: /crear torneo/i })).toBeDisabled()
     // El default es 60 min = un partido por hora.
-    await expect(canvas.getByLabelText(/duración de cada partido/i)).toHaveValue(
-      '60 minutos',
-    )
+    await expect(canvas.getByLabelText(/duración de cada partido/i)).toHaveValue('60 minutos')
   },
 }
 
@@ -65,12 +64,10 @@ export const RestriccionesNumericas: Story = {
 /** Error devuelto por el servidor (ej. el flag apagado para el complejo). */
 export const ErrorDelServidor: Story = {
   args: {
-    action: fn(
-      async (): Promise<TournamentActionResult> => ({
-        success: false,
-        error: 'El módulo de Torneos no está habilitado en este complejo.',
-      }),
-    ),
+    action: fn(async (): Promise<TournamentActionResult> => ({
+      success: false,
+      error: 'El módulo de Torneos no está habilitado en este complejo.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

@@ -24,7 +24,6 @@ function day(open: string, close: string, closed = false): OpeningHoursDay {
 // Todos los días con la misma ventana.
 function uniformHours(open: string, close: string): OpeningHours {
   return Object.fromEntries(DAYS.map((d) => [d, day(open, close)])) as OpeningHours
-
 }
 
 // Grilla vacía con la forma de OpeningHours.
@@ -133,7 +132,9 @@ describe('getOperativeHours / isHourActive', () => {
       sun: day('00:00', '00:00', true),
     }
     // unión: min 8, max 24 → 8..23
-    expect(getOperativeHours(oh)).toEqual([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+    expect(getOperativeHours(oh)).toEqual([
+      8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+    ])
     expect(isHourActive(oh.sat, 9)).toBe(false) // sat abre 10
     expect(isHourActive(oh.sat, 22)).toBe(true)
     expect(isHourActive(oh.sat, 23)).toBe(false) // close 23 exclusivo
@@ -141,9 +142,7 @@ describe('getOperativeHours / isHourActive', () => {
   })
 
   it('sin días abiertos devuelve grilla vacía', () => {
-    const oh = Object.fromEntries(
-      DAYS.map((d) => [d, day('00:00', '00:00', true)]),
-    ) as OpeningHours
+    const oh = Object.fromEntries(DAYS.map((d) => [d, day('00:00', '00:00', true)])) as OpeningHours
     expect(getOperativeHours(oh)).toEqual([])
   })
 })

@@ -98,7 +98,10 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
       </div>
 
       {/* Tenants por estado */}
-      <SectionCard title="Tenants por estado" icon={<Building2 className="h-4 w-4" aria-hidden="true" />}>
+      <SectionCard
+        title="Tenants por estado"
+        icon={<Building2 className="h-4 w-4" aria-hidden="true" />}
+      >
         <div className="flex flex-wrap gap-2">
           {statuses.map((status) => (
             <TenantStatusBadge key={status} status={status} count={data.tenantsByStatus[status]} />
@@ -108,7 +111,10 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Trials por vencer */}
-        <SectionCard title="Trials por vencer (≤7 días)" icon={<Hourglass className="h-4 w-4" aria-hidden="true" />}>
+        <SectionCard
+          title="Trials por vencer (≤7 días)"
+          icon={<Hourglass className="h-4 w-4" aria-hidden="true" />}
+        >
           {data.expiringTrials.length === 0 ? (
             <EmptyHint text="Ningún trial vence en los próximos 7 días." />
           ) : (
@@ -126,7 +132,9 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
                     <tr key={trial.id} className="text-foreground hover:bg-accent">
                       <td className="py-2 pr-4 font-medium">{trial.name}</td>
                       <td className="py-2 pr-4 text-muted-foreground">{trial.slug}</td>
-                      <td className="py-2 text-right tabular-nums">{daysRemaining(trial.trialEndsAt, now)}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {daysRemaining(trial.trialEndsAt, now)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -136,7 +144,10 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
         </SectionCard>
 
         {/* Signups recientes */}
-        <SectionCard title="Signups recientes (7 días)" icon={<UserPlus className="h-4 w-4" aria-hidden="true" />}>
+        <SectionCard
+          title="Signups recientes (7 días)"
+          icon={<UserPlus className="h-4 w-4" aria-hidden="true" />}
+        >
           {data.recentSignups.length === 0 ? (
             <EmptyHint text="Sin signups en los últimos 7 días." />
           ) : (
@@ -158,7 +169,10 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
         </SectionCard>
 
         {/* Colas pg-boss */}
-        <SectionCard title="Colas de jobs (pg-boss)" icon={<ListChecks className="h-4 w-4" aria-hidden="true" />}>
+        <SectionCard
+          title="Colas de jobs (pg-boss)"
+          icon={<ListChecks className="h-4 w-4" aria-hidden="true" />}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -184,7 +198,10 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
         </SectionCard>
 
         {/* Webhooks MP recientes */}
-        <SectionCard title="Webhooks MP recientes" icon={<Webhook className="h-4 w-4" aria-hidden="true" />}>
+        <SectionCard
+          title="Webhooks MP recientes"
+          icon={<Webhook className="h-4 w-4" aria-hidden="true" />}
+        >
           {data.recentWebhooks.length === 0 ? (
             <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
               <Inbox className="h-4 w-4" aria-hidden="true" />
@@ -207,7 +224,8 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
           )}
           <p className="mt-3 text-xs text-muted-foreground">
             Los webhooks que fallan hacen rollback y se reintentan — no persisten en{' '}
-            <code className="text-[11px]">processed_webhooks</code>; acá se listan los últimos procesados.
+            <code className="text-[11px]">processed_webhooks</code>; acá se listan los últimos
+            procesados.
           </p>
         </SectionCard>
       </div>

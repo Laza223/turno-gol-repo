@@ -24,7 +24,9 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Registrar el primer movimiento' })).toBeVisible()
+    await expect(
+      canvas.getByRole('button', { name: 'Registrar el primer movimiento' }),
+    ).toBeVisible()
   },
 }
 

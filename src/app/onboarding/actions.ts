@@ -14,10 +14,7 @@ import {
   completeOnboarding,
 } from '@/modules/tenants/tenant.service'
 import { createTenantSchema } from '@/modules/tenants/tenant.schema'
-import {
-  horariosFormDataToInput,
-  horariosSchema,
-} from '@/modules/tenants/opening-hours.schema'
+import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/opening-hours.schema'
 import {
   createCourt,
   getCourtCountAndLimit,
@@ -39,9 +36,7 @@ export type WizardActionResult = { success: true } | { success: false; error: st
 // funcionando aunque setStaffTenantClaim del Paso 1 todavía no haya
 // propagado al JWT — no reintroduce el problema que este guard evitaba.
 
-export async function createTenantAction(
-  formData: FormData,
-): Promise<WizardActionResult> {
+export async function createTenantAction(formData: FormData): Promise<WizardActionResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff') redirect('/login')
   if (!user.staffUserId) return { success: false, error: 'Staff ID no disponible' }
@@ -151,10 +146,7 @@ const wizardCourtsSchema = z.object({
         format: z.number().int(),
         surfaceType: z.enum(['synthetic_grass', 'natural_grass', 'cement', 'tile']),
         isCovered: z.boolean(),
-        priceCents: z
-          .number()
-          .int()
-          .positive('Cargá el precio por turno de cada cancha'),
+        priceCents: z.number().int().positive('Cargá el precio por turno de cada cancha'),
         photos: z.array(z.string()).optional(),
       }),
     )
@@ -163,9 +155,7 @@ const wizardCourtsSchema = z.object({
 
 export type WizardCourtDraftInput = z.infer<typeof wizardCourtsSchema>['courts'][number]
 
-export async function createWizardCourtsAction(
-  input: unknown,
-): Promise<WizardActionResult> {
+export async function createWizardCourtsAction(input: unknown): Promise<WizardActionResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
@@ -190,7 +180,8 @@ export async function createWizardCourtsAction(
     if (rules.length === 0) {
       return {
         success: false,
-        error: 'Tus horarios no tienen días abiertos. Volvé al paso Horarios y abrí al menos un día.',
+        error:
+          'Tus horarios no tienen días abiertos. Volvé al paso Horarios y abrí al menos un día.',
       }
     }
     const courtParsed = createCourtSchema.safeParse({
@@ -211,7 +202,10 @@ export async function createWizardCourtsAction(
     // irreservables online.
     const coverage = validatePricingRulesCoverage(rules, tenant.openingHours)
     if (!coverage.valid) {
-      const sample = coverage.gaps.slice(0, 3).map((g) => `${g.day} ${g.time}`).join(', ')
+      const sample = coverage.gaps
+        .slice(0, 3)
+        .map((g) => `${g.day} ${g.time}`)
+        .join(', ')
       return { success: false, error: `Precios sin cubrir: ${sample}` }
     }
     inputs.push(courtParsed.data)
@@ -253,7 +247,8 @@ export async function finishOnboardingAction(): Promise<void> {
   redirect('/onboarding/listo')
 }
 
-export type UploadPhotoActionResult = { success: true; url: string } | { success: false; error: string }
+export type UploadPhotoActionResult =
+  { success: true; url: string } | { success: false; error: string }
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024
 

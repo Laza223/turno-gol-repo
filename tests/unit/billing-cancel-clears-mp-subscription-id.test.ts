@@ -133,7 +133,9 @@ describe('cancel — limpia mp_subscription_id al dar de baja voluntariamente (F
       new InvalidTransitionError(TENANT_ID, 'blocked', 'canceled'),
     )
 
-    await expect(cancel(TENANT_ID, 'baja', gateway, tx)).rejects.toBeInstanceOf(InvalidTransitionError)
+    await expect(cancel(TENANT_ID, 'baja', gateway, tx)).rejects.toBeInstanceOf(
+      InvalidTransitionError,
+    )
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
   })
@@ -144,10 +146,13 @@ describe('cancel — limpia mp_subscription_id al dar de baja voluntariamente (F
   it('si cancelPreapproval devuelve el 400 de ya-cancelado, tolera y sigue transicionando a canceled', async () => {
     const tx = makeTx('mp-live-4')
     const gateway = new MockGateway()
-    gateway.cancelPreapprovalError = new MpGatewayError('Failed to cancel MP preapproval mp-live-4', {
-      message: 'You can not modify a cancelled preapproval.',
-      status: 400,
-    })
+    gateway.cancelPreapprovalError = new MpGatewayError(
+      'Failed to cancel MP preapproval mp-live-4',
+      {
+        message: 'You can not modify a cancelled preapproval.',
+        status: 400,
+      },
+    )
 
     const result = await cancel(TENANT_ID, 'Muy caro', gateway, tx)
 

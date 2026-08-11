@@ -42,7 +42,9 @@ export const Cerrada: Story = {
   args: { isClosed: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('button', { name: '+ Agregar movimiento' })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('button', { name: '+ Agregar movimiento' }),
+    ).not.toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Cerrar caja' })).not.toBeInTheDocument()
   },
 }

@@ -69,6 +69,8 @@ export const AbrePorFoco: Story = {
     // accesible para lectores de pantalla): getByText matchea ambos y tira
     // "Found multiple elements". El rol es único.
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByRole('tooltip')).toHaveTextContent('Solo el admin puede editar Configuración')
+    await expect(await body.findByRole('tooltip')).toHaveTextContent(
+      'Solo el admin puede editar Configuración',
+    )
   },
 }

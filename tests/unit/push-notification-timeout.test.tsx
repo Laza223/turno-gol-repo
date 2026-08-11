@@ -24,9 +24,21 @@ let requestPermission: ReturnType<typeof vi.fn>
 let readyPromise: Promise<unknown>
 
 beforeAll(() => {
-  Object.defineProperty(globalThis, 'PushManager', { value: class {}, writable: true, configurable: true })
-  Object.defineProperty(HTMLMediaElement.prototype, 'play', { value: vi.fn().mockResolvedValue(undefined), writable: true, configurable: true })
-  Object.defineProperty(HTMLMediaElement.prototype, 'pause', { value: vi.fn(), writable: true, configurable: true })
+  Object.defineProperty(globalThis, 'PushManager', {
+    value: class {},
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+    value: vi.fn().mockResolvedValue(undefined),
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
+    value: vi.fn(),
+    writable: true,
+    configurable: true,
+  })
 })
 
 afterAll(() => {
@@ -76,7 +88,9 @@ async function renderAndGetEnableButton(): Promise<HTMLButtonElement> {
   await act(async () => {
     render(<PushNotificationManager />)
   })
-  return (await screen.findByRole('button', { name: /habilitar notificaciones/i })) as HTMLButtonElement
+  return (await screen.findByRole('button', {
+    name: /habilitar notificaciones/i,
+  })) as HTMLButtonElement
 }
 
 describe('PushNotificationManager — enable() never hangs', () => {

@@ -1,17 +1,5 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from 'vitest'
-import {
-  closeSql,
-  getSql,
-  withTenantContext,
-} from '@/shared/db/client'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import { setBillingGateway } from '@/modules/billing/billing.gateway'
 import {
@@ -23,10 +11,7 @@ import {
   subscribe as billingSubscribe,
   upgrade as billingUpgrade,
 } from '@/modules/billing/billing.service'
-import {
-  onPaymentApproved,
-  onPaymentRejected,
-} from '@/modules/billing/dunning.service'
+import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import {
   CANCELED_BLOCKED_DELETION_DAYS,
   CHURNED_DELETION_DAYS,
@@ -517,7 +502,9 @@ describe('Test F — downgrade court-count gate', () => {
     `
     await runDunningSweep()
 
-    const rows = await sql<{ plan_id: string; pending_plan_change: string | null; pending_change_at: Date | null }[]>`
+    const rows = await sql<
+      { plan_id: string; pending_plan_change: string | null; pending_change_at: Date | null }[]
+    >`
       SELECT plan_id, pending_plan_change, pending_change_at
       FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
     `
@@ -573,10 +560,12 @@ describe('subscribe → first webhook activates', () => {
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
     expect(mockGateway.preapprovalCalls[0]!.amount).toBe(6_300_000)
 
-    const subRowsBefore = await sql<{
-      mp_subscription_id: string | null
-      status: string
-    }[]>`
+    const subRowsBefore = await sql<
+      {
+        mp_subscription_id: string | null
+        status: string
+      }[]
+    >`
       SELECT mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
     `
     expect(subRowsBefore[0]!.mp_subscription_id).toBe(result.preapprovalId)
@@ -622,7 +611,9 @@ describe('reactivate', () => {
 
     // DB: plan y nuevo mp_subscription_id seteados; status SIGUE canceled
     // (recién se activa con el primer onPaymentApproved, no acá).
-    const rows = await sql<{ plan_id: string; mp_subscription_id: string | null; status: string }[]>`
+    const rows = await sql<
+      { plan_id: string; mp_subscription_id: string | null; status: string }[]
+    >`
       SELECT plan_id, mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
     `
     expect(rows[0]!.plan_id).toBe(plans.complejo)
@@ -669,7 +660,9 @@ describe('reactivate', () => {
 
     expect(result.checkoutUrl).toContain('mp.test')
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
-    const rows = await sql<{ plan_id: string; mp_subscription_id: string | null; status: string }[]>`
+    const rows = await sql<
+      { plan_id: string; mp_subscription_id: string | null; status: string }[]
+    >`
       SELECT plan_id, mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
     `
     expect(rows[0]!.plan_id).toBe(plans.complejo)
@@ -744,7 +737,9 @@ describe('dunning recovery — pago aprobado durante past_due', () => {
 
     expect(await fetchSubStatus(sql, tenantId)).toBe('active')
     expect(await fetchTenantStatus(sql, tenantId)).toBe('active')
-    const rows = await sql<{ dunning_started_at: Date | null; current_period_end: Date | string }[]>`
+    const rows = await sql<
+      { dunning_started_at: Date | null; current_period_end: Date | string }[]
+    >`
       SELECT dunning_started_at, current_period_end
       FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
     `
@@ -867,10 +862,12 @@ describe('cancel() limpia pending_plan_change stale (residuo B5)', () => {
       await billingCancel(tenantId, 'me arrepentí', mockGateway, tx)
     })
 
-    const rows = await sql<{
-      pending_plan_change: string | null
-      pending_change_at: Date | null
-    }[]>`
+    const rows = await sql<
+      {
+        pending_plan_change: string | null
+        pending_change_at: Date | null
+      }[]
+    >`
       SELECT pending_plan_change, pending_change_at
       FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
     `
@@ -903,10 +900,12 @@ describe('reactivate() limpia pending_plan_change stale (residuo B5)', () => {
       await billingReactivate(tenant.id, plans.complejo, 'monthly', mockGateway, tx)
     })
 
-    const rows = await sql<{
-      pending_plan_change: string | null
-      pending_change_at: Date | null
-    }[]>`
+    const rows = await sql<
+      {
+        pending_plan_change: string | null
+        pending_change_at: Date | null
+      }[]
+    >`
       SELECT pending_plan_change, pending_change_at
       FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
     `

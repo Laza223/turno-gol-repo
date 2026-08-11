@@ -45,9 +45,7 @@ async function readNotification(
   id: string,
 ): Promise<{ status: string; attempt_count: number; last_error: string | null }> {
   const sql = getSql()
-  const [row] = await sql<
-    { status: string; attempt_count: number; last_error: string | null }[]
-  >`
+  const [row] = await sql<{ status: string; attempt_count: number; last_error: string | null }[]>`
     SELECT status, attempt_count, last_error FROM notifications WHERE id = ${id}
   `
   return row

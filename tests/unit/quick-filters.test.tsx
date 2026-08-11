@@ -36,6 +36,8 @@ describe('QuickFilters', () => {
   it('refleja estado activo desde la URL (aria-pressed)', () => {
     current = new URLSearchParams('formats=5')
     render(<QuickFilters />)
-    expect(screen.getByRole('button', { name: 'Fútbol 5' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Fútbol 5' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    )
   })
 })

@@ -28,7 +28,7 @@ async function insertCourt(tenantId: string): Promise<string> {
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
     VALUES (
       ${tenantId}, ${'Cancha Rerun Test'}, ${10},
-      ${sql.json({ rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }] })},
+      ${sql.json({ rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 }] })},
       'online'
     )
     RETURNING id
@@ -64,16 +64,21 @@ describe('generate-abonado-slots.worker — el cron corrido 2 veces seguidas no 
     const courtId = await insertCourt(tenant.id)
 
     const { abonado } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(tenant.id, staff.id, {
-        courtId,
-        contactName: 'Rerun Idempotency Test',
-        contactPhone: '0000000099',
-        dayOfWeek: ABO_DOW,
-        timeStart: '11:00',
-        timeEnd: '12:00',
-        pricePerSession: 800000,
-        startsOn: ABO_START,
-      }, tx),
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Rerun Idempotency Test',
+          contactPhone: '0000000099',
+          dayOfWeek: ABO_DOW,
+          timeStart: '11:00',
+          timeEnd: '12:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+        },
+        tx,
+      ),
     )
     expect(await countFutureBookings(abonado.id)).toBe(8)
 

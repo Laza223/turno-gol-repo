@@ -62,7 +62,9 @@ describe('CancelSubscriptionSection — visibilidad por estado', () => {
   it('canceled: NO muestra el botón — muestra texto + link a /reactivar', () => {
     render(<CancelSubscriptionSection status="canceled" accessUntil={ACCESS_UNTIL} />)
     expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
-    expect(screen.getByText(/Suscripción cancelada — acceso hasta el 13 de septiembre de 2026/)).toBeTruthy()
+    expect(
+      screen.getByText(/Suscripción cancelada — acceso hasta el 13 de septiembre de 2026/),
+    ).toBeTruthy()
     const link = screen.getByRole('link', { name: /Reactivar/i })
     expect(link.getAttribute('href')).toBe('/reactivar')
   })
@@ -118,7 +120,10 @@ describe('CancelSubscriptionSection — modal de confirmación', () => {
   })
 
   it('409 del endpoint (INVALID_STATE) → mensaje inline, no refresca ni cierra', async () => {
-    mockFetch({ error: { code: 'INVALID_STATE', message: 'La suscripción ya no está activa.' } }, 409)
+    mockFetch(
+      { error: { code: 'INVALID_STATE', message: 'La suscripción ya no está activa.' } },
+      409,
+    )
     render(<CancelSubscriptionSection status="active" accessUntil={ACCESS_UNTIL} />)
     const dialog = await openDialog()
 
@@ -128,7 +133,9 @@ describe('CancelSubscriptionSection — modal de confirmación', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar suscripción' }))
 
     await waitFor(() => {
-      expect(within(dialog).getByRole('alert').textContent).toBe('La suscripción ya no está activa.')
+      expect(within(dialog).getByRole('alert').textContent).toBe(
+        'La suscripción ya no está activa.',
+      )
     })
     expect(refreshSpy).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog')).toBeTruthy()

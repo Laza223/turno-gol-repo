@@ -115,12 +115,10 @@ export const UbicaEnUnHuecoLibre: Story = {
 /** Un rechazo del servidor se muestra sin sacar al usuario del modo mover. */
 export const ErrorDelServidor: Story = {
   args: {
-    rescheduleAction: fn(
-      async (): Promise<TournamentActionResult> => ({
-        success: false,
-        error: 'Esa cancha ya tiene otro partido a esa hora.',
-      }),
-    ),
+    rescheduleAction: fn(async (): Promise<TournamentActionResult> => ({
+      success: false,
+      error: 'Esa cancha ya tiene otro partido a esa hora.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

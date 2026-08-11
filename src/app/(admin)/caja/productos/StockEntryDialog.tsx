@@ -122,7 +122,8 @@ export function StockEntryDialog({
           units: totalUnits,
           unitCost,
           updateProductCost: unitCost != null && updateCost,
-          expense: payFromCash && unitCost != null && unitCost > 0 ? { method: expenseMethod } : undefined,
+          expense:
+            payFromCash && unitCost != null && unitCost > 0 ? { method: expenseMethod } : undefined,
           note: note.trim() === '' ? null : note.trim(),
           clientIdempotencyKey: idempotencyKey,
         })
@@ -275,7 +276,11 @@ export function StockEntryDialog({
             </div>
           </div>
 
-          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
             <button

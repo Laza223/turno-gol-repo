@@ -79,7 +79,10 @@ export const ErrorGeneral: Story = {
 /** state.status === 'confirm': reemplaza la card entera por "Confirmá tu email". */
 export const Confirmar: Story = {
   args: {
-    action: fn(async () => ({ status: 'confirm' as const, email: 'marcelo@complejosanmartin.com' })),
+    action: fn(async () => ({
+      status: 'confirm' as const,
+      email: 'marcelo@complejosanmartin.com',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -92,7 +95,10 @@ export const Confirmar: Story = {
 /** state.status === 'existing': ya existe una cuenta con ese email → CTA a /login. */
 export const CuentaExistente: Story = {
   args: {
-    action: fn(async () => ({ status: 'existing' as const, email: 'marcelo@complejosanmartin.com' })),
+    action: fn(async () => ({
+      status: 'existing' as const,
+      email: 'marcelo@complejosanmartin.com',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

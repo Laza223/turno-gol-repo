@@ -62,7 +62,8 @@ export default async function TorneosPublicosPage(props: Props) {
           </div>
           <h2 className="text-lg font-bold text-foreground">Módulo de Torneos</h2>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground leading-relaxed">
-            {tenant.name} estará publicando los próximos torneos, tablas de posiciones y fixtures muy pronto.
+            {tenant.name} estará publicando los próximos torneos, tablas de posiciones y fixtures
+            muy pronto.
           </p>
         </div>
       ) : (

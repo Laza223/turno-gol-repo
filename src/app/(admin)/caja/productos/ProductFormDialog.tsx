@@ -223,7 +223,9 @@ export function ProductFormDialog({
             {/* Columna Derecha: Control de Stock */}
             <div className="space-y-3">
               <fieldset>
-                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Control de stock</legend>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Control de stock
+                </legend>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -254,7 +256,9 @@ export function ProductFormDialog({
               {trackStock && (
                 <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="space-y-1">
-                    <Label htmlFor="pf-stock">{stockLockedFromCatalog ? 'Stock actual' : 'Stock inicial'}</Label>
+                    <Label htmlFor="pf-stock">
+                      {stockLockedFromCatalog ? 'Stock actual' : 'Stock inicial'}
+                    </Label>
                     <Input
                       id="pf-stock"
                       type="number"
@@ -291,7 +295,11 @@ export function ProductFormDialog({
             </div>
           </div>
 
-          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
             <button

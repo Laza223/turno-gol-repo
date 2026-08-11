@@ -127,7 +127,9 @@ export const Invitado: Story = {
 
 /** Sin seña: el campo dice "Sin seña" en vez de un monto. */
 export const SinSena: Story = {
-  args: { booking: detail({ depositAmount: 0, depositStatus: 'not_required', paymentMethod: null }) },
+  args: {
+    booking: detail({ depositAmount: 0, depositStatus: 'not_required', paymentMethod: null }),
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Sin seña')).toBeVisible()

@@ -1,11 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { lockMpEvent } from '@/modules/payments/payment.service'
-import {
-  cleanupAll,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 let tenant: { id: string }
 

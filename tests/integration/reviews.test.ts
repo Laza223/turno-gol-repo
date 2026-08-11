@@ -1,10 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import {
-  closeSql,
-  getSql,
-  withContextRollback,
-  withPlayerContext,
-} from '@/shared/db/client'
+import { closeSql, getSql, withContextRollback, withPlayerContext } from '@/shared/db/client'
 import {
   canReview,
   createReview,
@@ -16,12 +11,7 @@ import {
   ReviewBookingNotCompletedError,
   ReviewBookingNotFoundError,
 } from '@/modules/reviews/review.errors'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { insertBooking } from '../helpers/factories'
 
 const PRICING = {
@@ -100,14 +90,10 @@ describe('reviews service', () => {
     const player = await createTestPlayer()
     const bookingId = await completedBooking(tenant.id, court, player.id)
 
-    await withPlayerContext(player.id, (tx) =>
-      createReview(player.id, bookingId, 4, null, tx),
-    )
+    await withPlayerContext(player.id, (tx) => createReview(player.id, bookingId, 4, null, tx))
 
     await expect(
-      withPlayerContext(player.id, (tx) =>
-        createReview(player.id, bookingId, 3, 'otra', tx),
-      ),
+      withPlayerContext(player.id, (tx) => createReview(player.id, bookingId, 3, 'otra', tx)),
     ).rejects.toBeInstanceOf(ReviewAlreadyExistsError)
   })
 
@@ -123,9 +109,7 @@ describe('reviews service', () => {
     })
 
     await expect(
-      withPlayerContext(player.id, (tx) =>
-        createReview(player.id, bookingId, 5, null, tx),
-      ),
+      withPlayerContext(player.id, (tx) => createReview(player.id, bookingId, 5, null, tx)),
     ).rejects.toBeInstanceOf(ReviewBookingNotCompletedError)
   })
 
@@ -137,9 +121,7 @@ describe('reviews service', () => {
     const bookingId = await completedBooking(tenant.id, court, owner.id)
 
     await expect(
-      withPlayerContext(intruder.id, (tx) =>
-        createReview(intruder.id, bookingId, 5, null, tx),
-      ),
+      withPlayerContext(intruder.id, (tx) => createReview(intruder.id, bookingId, 5, null, tx)),
     ).rejects.toBeInstanceOf(ReviewBookingNotFoundError)
   })
 
@@ -212,9 +194,7 @@ describe('reviews RLS', () => {
     const court = await insertCourt(tenant.id)
     const player = await createTestPlayer()
     const bookingId = await completedBooking(tenant.id, court, player.id)
-    await withPlayerContext(player.id, (tx) =>
-      createReview(player.id, bookingId, 5, null, tx),
-    )
+    await withPlayerContext(player.id, (tx) => createReview(player.id, bookingId, 5, null, tx))
 
     // Sin player context, como rol authenticated → la policy pública USING(true) deja leer.
     const rows = await withContextRollback(
@@ -253,8 +233,10 @@ describe('reviews RLS', () => {
     const bookingA = await completedBooking(tenant.id, court, a.id)
 
     await expect(
-      withContextRollback({ role: 'authenticated', playerId: a.id }, (tx) =>
-        tx`
+      withContextRollback(
+        { role: 'authenticated', playerId: a.id },
+        (tx) =>
+          tx`
           INSERT INTO reviews (tenant_id, player_id, booking_id, rating)
           VALUES (${tenant.id}, ${b.id}, ${bookingA}, 5)
         `,
@@ -274,8 +256,10 @@ describe('reviews RLS', () => {
     })
 
     await expect(
-      withContextRollback({ role: 'authenticated', playerId: player.id }, (tx) =>
-        tx`
+      withContextRollback(
+        { role: 'authenticated', playerId: player.id },
+        (tx) =>
+          tx`
           INSERT INTO reviews (tenant_id, player_id, booking_id, rating)
           VALUES (${tenant.id}, ${player.id}, ${pending}, 5)
         `,

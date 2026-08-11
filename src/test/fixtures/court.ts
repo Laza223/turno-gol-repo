@@ -14,7 +14,14 @@ export const pricingSynthetic = (): CourtPricingData => ({
 
 /** Una sola franja fija todo el día — cancha 11 al aire libre. */
 export const pricingFlat = (): CourtPricingData => ({
-  rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '09:00', to: '24:00', price: 1800000 }],
+  rules: [
+    {
+      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      from: '09:00',
+      to: '24:00',
+      price: 1800000,
+    },
+  ],
 })
 
 export const court = (overrides: Partial<CourtRow> = {}): CourtRow => ({
@@ -72,4 +79,9 @@ export const courtOffline = (): CourtRow =>
     status: 'offline',
   })
 
-export const courts = (): CourtRow[] => [courtFutbol5(), courtFutbol7(), courtFutbol11(), courtOffline()]
+export const courts = (): CourtRow[] => [
+  courtFutbol5(),
+  courtFutbol7(),
+  courtFutbol11(),
+  courtOffline(),
+]

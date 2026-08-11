@@ -85,7 +85,7 @@ describe('stories: ninguna promesa colgada fuera de la allowlist', () => {
       expect(
         tiene,
         `${norm} usa \`new Promise(() => {})\`. Usá \`pendingAction\` de ` +
-          '`src/test/pending-action.ts`, o agregá el archivo a ALLOWLIST con el motivo escrito.'
+          '`src/test/pending-action.ts`, o agregá el archivo a ALLOWLIST con el motivo escrito.',
       ).toBe(false)
     })
   }

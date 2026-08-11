@@ -1,9 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getBoss } from '@/shared/jobs/boss'
-import {
-  MP_WEBHOOK_SEND_OPTIONS,
-  QUEUE_PROCESS_MP_WEBHOOK,
-} from '@/shared/jobs/queue-names'
+import { MP_WEBHOOK_SEND_OPTIONS, QUEUE_PROCESS_MP_WEBHOOK } from '@/shared/jobs/queue-names'
 import { webhookPayloadSchema, webhookResponseSchema } from '@/modules/payments/payment.schema'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { verifyWebhookSignature } from '@/modules/payments/webhook-auth'
@@ -93,7 +90,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   } catch (err) {
     // Enqueue/processing failure → MP will retry. Return 5xx so MP doesn't mark delivered.
-    logger.error('webhook processing failed', { module: 'mp-webhook', error: err instanceof Error ? err.message : String(err) })
+    logger.error('webhook processing failed', {
+      module: 'mp-webhook',
+      error: err instanceof Error ? err.message : String(err),
+    })
     return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
   }
 

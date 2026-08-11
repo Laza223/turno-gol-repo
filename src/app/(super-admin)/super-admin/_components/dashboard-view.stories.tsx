@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { dashboardData, dashboardDataEmpty, dashboardDataQueuesDown } from '@/test/fixtures/super-admin'
+import {
+  dashboardData,
+  dashboardDataEmpty,
+  dashboardDataQueuesDown,
+} from '@/test/fixtures/super-admin'
 import { SuperAdminDashboardView } from './dashboard-view'
 
 /**

@@ -41,7 +41,9 @@ export const NuevoProducto: Story = {
     const dialog = within(dialogEl)
     // El Dialog entra con su propia animación (`data-[state=open]:animate-in
     // fade-in-0`): esperar a que asiente antes de leer visibilidad.
-    await waitFor(() => expect(dialog.getByRole('heading', { name: 'Nuevo producto' })).toBeVisible())
+    await waitFor(() =>
+      expect(dialog.getByRole('heading', { name: 'Nuevo producto' })).toBeVisible(),
+    )
 
     await userEvent.type(dialog.getByLabelText('Nombre del producto'), 'Sanguchito')
     await userEvent.type(dialog.getByLabelText('Precio (pesos)'), '3000')
@@ -68,7 +70,9 @@ export const EditarProducto: Story = {
     const dialog = within(await findCurrentDialog(body))
     // El Dialog entra con su propia animación (`data-[state=open]:animate-in
     // fade-in-0`): esperar a que asiente antes de leer visibilidad.
-    await waitFor(() => expect(dialog.getByRole('heading', { name: 'Editar producto' })).toBeVisible())
+    await waitFor(() =>
+      expect(dialog.getByRole('heading', { name: 'Editar producto' })).toBeVisible(),
+    )
     await expect(dialog.getByDisplayValue(PRODUCT.name)).toBeVisible()
 
     await userEvent.click(dialog.getByRole('button', { name: 'Guardar' }))

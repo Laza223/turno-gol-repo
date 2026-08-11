@@ -35,8 +35,8 @@ export default async function OnboardingListoPage() {
             ¡Tu complejo está online!
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {tenant.name} ya puede recibir reservas. Falta un solo paso: que tus
-            clientes conozcan el link.
+            {tenant.name} ya puede recibir reservas. Falta un solo paso: que tus clientes conozcan
+            el link.
           </p>
         </div>
 

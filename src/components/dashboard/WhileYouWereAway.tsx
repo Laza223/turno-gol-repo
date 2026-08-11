@@ -56,9 +56,15 @@ export function WhileYouWereAway({ items }: { items: WhileAwayItem[] }) {
                   className="flex min-h-11 items-center gap-3 px-4 py-3 hover:bg-accent/50 sm:px-5"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{lineFor(item)}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{clockLabel(item.at)}</span>
-                  <span className="shrink-0 truncate text-xs text-muted-foreground">{item.contactName}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                    {lineFor(item)}
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {clockLabel(item.at)}
+                  </span>
+                  <span className="shrink-0 truncate text-xs text-muted-foreground">
+                    {item.contactName}
+                  </span>
                 </Link>
               </li>
             )

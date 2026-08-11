@@ -56,7 +56,10 @@ export const ConFiltrosActivos: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('checkbox', { name: /techado/i })).toBeChecked()
     await expect(canvas.getByRole('checkbox', { name: /sintético/i })).toBeChecked()
-    await expect(canvas.getByRole('button', { name: 'Fútbol 5' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('button', { name: 'Fútbol 5' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await expect(canvas.getByRole('checkbox', { name: /solo con reserva online/i })).toBeChecked()
   },
 }
@@ -80,6 +83,8 @@ export const AplicarFiltros: Story = {
     await userEvent.click(canvas.getByRole('checkbox', { name: /techado/i }))
     await userEvent.click(canvas.getByRole('button', { name: 'Aplicar filtros' }))
     await expect(args.onApplied).toHaveBeenCalledTimes(1)
-    await expect(getRouter().push).toHaveBeenCalledWith(expect.stringContaining('amenities=techado'))
+    await expect(getRouter().push).toHaveBeenCalledWith(
+      expect.stringContaining('amenities=techado'),
+    )
   },
 }

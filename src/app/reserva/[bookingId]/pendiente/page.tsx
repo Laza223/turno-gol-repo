@@ -22,7 +22,7 @@ async function loadBooking(bookingId: string, playerId: string) {
 }
 
 export default async function ReservaPendientePage(props: Props) {
-  const params = await props.params;
+  const params = await props.params
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 
@@ -32,7 +32,9 @@ export default async function ReservaPendientePage(props: Props) {
     return (
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-          <p className="text-sm text-muted-foreground">No encontramos tu reserva. Revisá tus reservas en el panel.</p>
+          <p className="text-sm text-muted-foreground">
+            No encontramos tu reserva. Revisá tus reservas en el panel.
+          </p>
         </div>
       </ReservaDarkShell>
     )

@@ -1,12 +1,4 @@
-import {
-  boolean,
-  index,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { playerStatusEnum } from './enums'
 
@@ -37,9 +29,7 @@ export const players = pgTable(
     }),
     termsVersion: text('terms_version'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     lastLoginAt: timestamp('last_login_at', {
       withTimezone: true,
       mode: 'date',

@@ -40,10 +40,7 @@ export function apiError(
 /** Options accepted by every factory: override the default code or attach details. */
 export type ApiErrorOpts = { code?: string; details?: unknown }
 
-export function badRequest(
-  message = 'Solicitud inválida.',
-  opts: ApiErrorOpts = {},
-): NextResponse {
+export function badRequest(message = 'Solicitud inválida.', opts: ApiErrorOpts = {}): NextResponse {
   return apiError(400, opts.code ?? 'VALIDATION_ERROR', message, opts.details)
 }
 
@@ -61,17 +58,11 @@ export function forbidden(
   return apiError(403, opts.code ?? 'FORBIDDEN', message, opts.details)
 }
 
-export function notFound(
-  message = 'El recurso no existe.',
-  opts: ApiErrorOpts = {},
-): NextResponse {
+export function notFound(message = 'El recurso no existe.', opts: ApiErrorOpts = {}): NextResponse {
   return apiError(404, opts.code ?? 'NOT_FOUND', message, opts.details)
 }
 
-export function conflict(
-  message = 'Conflicto de estado.',
-  opts: ApiErrorOpts = {},
-): NextResponse {
+export function conflict(message = 'Conflicto de estado.', opts: ApiErrorOpts = {}): NextResponse {
   return apiError(409, opts.code ?? 'CONFLICT', message, opts.details)
 }
 

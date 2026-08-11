@@ -3,12 +3,7 @@ import { expect, fn, within } from 'storybook/test'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import { uid } from '@/test/fixtures/ids'
 import { daysFromNow } from '@/test/fixtures/clock'
-import type {
-  PlayerProfile,
-  PlayerStats,
-  PlayerBookingRow,
-  PlayerFixedSlotRow,
-} from '../queries'
+import type { PlayerProfile, PlayerStats, PlayerBookingRow, PlayerFixedSlotRow } from '../queries'
 import { JugadorProfileView } from './JugadorProfileView'
 
 /**
@@ -52,7 +47,13 @@ const bookingRow = (overrides: Partial<PlayerBookingRow> = {}): PlayerBookingRow
 
 const HISTORY: PlayerBookingRow[] = [
   bookingRow(),
-  bookingRow({ id: uid(1902), date: '2026-03-03', status: 'no_show', courtName: 'Cancha 2', priceSnapshot: 1_600_000 }),
+  bookingRow({
+    id: uid(1902),
+    date: '2026-03-03',
+    status: 'no_show',
+    courtName: 'Cancha 2',
+    priceSnapshot: 1_600_000,
+  }),
   bookingRow({
     id: uid(1903),
     date: '2026-02-24',

@@ -64,9 +64,7 @@ export function qualifiedSeeds(
   groups: readonly StandingsGroup[],
   advancePerGroup: number,
 ): QualifiedSeed[] {
-  const ordered = [...groups].sort((a, b) =>
-    (a.groupLabel ?? '').localeCompare(b.groupLabel ?? ''),
-  )
+  const ordered = [...groups].sort((a, b) => (a.groupLabel ?? '').localeCompare(b.groupLabel ?? ''))
 
   /** Por zona, los equipos elegibles ya ordenados por la tabla. */
   const eligibleByGroup = ordered.map((g) => {

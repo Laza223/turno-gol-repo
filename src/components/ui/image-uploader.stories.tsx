@@ -58,11 +58,21 @@ export const Presets: Story = {
       </div>
       <div>
         <p className="mb-2 text-xs font-semibold text-muted-foreground">cover</p>
-        <ImageUploader {...args} preset="cover" value={placeholder('#047857')} emptyLabel="Portada" />
+        <ImageUploader
+          {...args}
+          preset="cover"
+          value={placeholder('#047857')}
+          emptyLabel="Portada"
+        />
       </div>
       <div>
         <p className="mb-2 text-xs font-semibold text-muted-foreground">court</p>
-        <ImageUploader {...args} preset="court" value={placeholder('#065f46')} emptyLabel="Foto de cancha" />
+        <ImageUploader
+          {...args}
+          preset="court"
+          value={placeholder('#065f46')}
+          emptyLabel="Foto de cancha"
+        />
       </div>
     </div>
   ),
@@ -121,7 +131,9 @@ export const ErrorDeProcesamiento: Story = {
     // del navegador) y nunca llega a onChange, así que nunca se ejercita la
     // validación real de resizeToPreset. Acá se quiere probar esa validación.
     await userEvent.upload(input, textFile(), { applyAccept: false })
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('El archivo debe ser una imagen')
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'El archivo debe ser una imagen',
+    )
   },
 }
 

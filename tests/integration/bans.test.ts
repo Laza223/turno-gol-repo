@@ -202,7 +202,9 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     `
     expect(Number(rows[0]!.c)).toBe(1)
 
-    const checked = await withTenantContext(tenant.id, (tx) => checkPlayerBanned(player.id, tenant.id, tx))
+    const checked = await withTenantContext(tenant.id, (tx) =>
+      checkPlayerBanned(player.id, tenant.id, tx),
+    )
     expect(checked.banned).toBe(true)
     if (checked.banned) {
       expect(checked.bannedGlobal).toBe(false)
@@ -240,10 +242,24 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     const staff = await createTestStaffUser(sql)
 
     await withTenantContext(tenant.id, (tx) =>
-      banPlayerManually(tenant.id, player.id, staff.id, 'Primer motivo', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), tx),
+      banPlayerManually(
+        tenant.id,
+        player.id,
+        staff.id,
+        'Primer motivo',
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        tx,
+      ),
     )
     await withTenantContext(tenant.id, (tx) =>
-      banPlayerManually(tenant.id, player.id, staff.id, 'Segundo motivo', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), tx),
+      banPlayerManually(
+        tenant.id,
+        player.id,
+        staff.id,
+        'Segundo motivo',
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        tx,
+      ),
     )
 
     // El trigger enforce_single_active_ban (migración 005) ya rechazaría un
@@ -255,7 +271,9 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     `
     expect(Number(rows[0]!.c)).toBe(1)
 
-    const checked = await withTenantContext(tenant.id, (tx) => checkPlayerBanned(player.id, tenant.id, tx))
+    const checked = await withTenantContext(tenant.id, (tx) =>
+      checkPlayerBanned(player.id, tenant.id, tx),
+    )
     expect(checked.banned).toBe(true)
     if (checked.banned) expect(checked.reason).toBe('Segundo motivo')
   })
@@ -293,10 +311,14 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     }
     expect(blockedFirst).toBeInstanceOf(PlayerBannedError)
 
-    const lifted = await withTenantContext(tenant.id, (tx) => liftPlayerBan(tenant.id, player.id, tx))
+    const lifted = await withTenantContext(tenant.id, (tx) =>
+      liftPlayerBan(tenant.id, player.id, tx),
+    )
     expect(lifted).toBe(true)
 
-    const checked = await withTenantContext(tenant.id, (tx) => checkPlayerBanned(player.id, tenant.id, tx))
+    const checked = await withTenantContext(tenant.id, (tx) =>
+      checkPlayerBanned(player.id, tenant.id, tx),
+    )
     expect(checked.banned).toBe(false)
 
     // Mismo slot que el intento bloqueado: el intento fallido rollbackeó su
@@ -332,7 +354,9 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
       banPlayerManually(tenantA.id, player.id, staff.id, 'Ban solo en A', null, tx),
     )
 
-    const checkedB = await withTenantContext(tenantB.id, (tx) => checkPlayerBanned(player.id, tenantB.id, tx))
+    const checkedB = await withTenantContext(tenantB.id, (tx) =>
+      checkPlayerBanned(player.id, tenantB.id, tx),
+    )
     expect(checkedB.banned).toBe(false)
 
     const booking = await withTenantContext(tenantB.id, (tx) =>

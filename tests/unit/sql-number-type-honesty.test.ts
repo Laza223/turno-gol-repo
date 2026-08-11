@@ -51,10 +51,12 @@ const ROOT = path.resolve(__dirname, '..', '..')
 const rel = (f: string): string => path.relative(ROOT, f).replace(/\\/g, '/')
 
 /** Agregados cuyo tipo de retorno en Postgres NO es int4. */
-const RETURNS_NON_INT4 = /\b(COUNT|SUM|AVG)\s*\(|\bAS\s+(BIGINT|NUMERIC|DECIMAL)\b|::\s*(bigint|numeric|decimal)\b/i
+const RETURNS_NON_INT4 =
+  /\b(COUNT|SUM|AVG)\s*\(|\bAS\s+(BIGINT|NUMERIC|DECIMAL)\b|::\s*(bigint|numeric|decimal)\b/i
 
 /** Casts que SÍ dejan al driver devolver un number de verdad. */
-const SAFE_CAST = /::\s*(int|int2|int4|integer|smallint|float|float4|float8|real|double precision)\b|\bAS\s+(INT|INT2|INT4|INTEGER|SMALLINT|REAL|DOUBLE PRECISION)\b/i
+const SAFE_CAST =
+  /::\s*(int|int2|int4|integer|smallint|float|float4|float8|real|double precision)\b|\bAS\s+(INT|INT2|INT4|INTEGER|SMALLINT|REAL|DOUBLE PRECISION)\b/i
 
 /**
  * Extrae el cuerpo de cada `sql<number>\`...\`` de un archivo. El template

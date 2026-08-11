@@ -24,10 +24,7 @@ vi.mock('@/hooks/use-toast', () => ({
 }))
 
 import { PlanillaBoard } from '@/app/(admin)/torneos/[id]/fixture/PlanillaBoard'
-import type {
-  TournamentMatchView,
-  TournamentSlotRow,
-} from '@/modules/tournaments/tournament.types'
+import type { TournamentMatchView, TournamentSlotRow } from '@/modules/tournaments/tournament.types'
 
 const COURTS = [
   { id: 'court-1', name: 'Cancha 1' },
@@ -36,7 +33,9 @@ const COURTS = [
 
 /** 6 de marzo de 2027, en ART. */
 function at(hour: number, minute = 0): Date {
-  return new Date(`2027-03-06T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00-03:00`)
+  return new Date(
+    `2027-03-06T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00-03:00`,
+  )
 }
 
 function slot(bookingId: string, courtId: string, hour: number): TournamentSlotRow {
@@ -88,11 +87,7 @@ function match(overrides: Partial<TournamentMatchView> = {}): TournamentMatchVie
   }
 }
 
-const SLOTS = [
-  slot('b1', 'court-1', 20),
-  slot('b2', 'court-2', 20),
-  slot('b3', 'court-1', 21),
-]
+const SLOTS = [slot('b1', 'court-1', 20), slot('b2', 'court-2', 20), slot('b3', 'court-1', 21)]
 
 type Reschedule = React.ComponentProps<typeof PlanillaBoard>['rescheduleAction']
 
@@ -172,9 +167,7 @@ describe('PlanillaBoard — mover un partido', () => {
       }),
     )
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Partido movido' }),
-      ),
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Partido movido' })),
     )
   })
 
@@ -186,7 +179,9 @@ describe('PlanillaBoard — mover un partido', () => {
     fireEvent.click(board().getAllByRole('button', { name: /mover el partido acá/i })[0]!)
 
     await waitFor(() => expect(reschedule).toHaveBeenCalled())
-    expect(toastMock).toHaveBeenCalledWith(expect.not.objectContaining({ action: expect.anything() }))
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ action: expect.anything() }),
+    )
   })
 
   it('un partido que ya tenía lugar sí ofrece "Deshacer", y vuelve a donde estaba', async () => {

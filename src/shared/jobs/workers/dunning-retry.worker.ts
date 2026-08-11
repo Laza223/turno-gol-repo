@@ -142,9 +142,16 @@ export async function runDunningSweep(): Promise<void> {
           tx,
         )
       })
-      logger.info('tenant transitioned past_due → suspended', { module: 'dunning-retry', tenantId: id })
+      logger.info('tenant transitioned past_due → suspended', {
+        module: 'dunning-retry',
+        tenantId: id,
+      })
     } catch (err) {
-      logger.warn('failed past_due→suspended', { module: 'dunning-retry', tenantId: id, error: String(err) })
+      logger.warn('failed past_due→suspended', {
+        module: 'dunning-retry',
+        tenantId: id,
+        error: String(err),
+      })
     }
   }
 
@@ -165,9 +172,16 @@ export async function runDunningSweep(): Promise<void> {
           tx,
         )
       })
-      logger.info('tenant transitioned suspended → blocked', { module: 'dunning-retry', tenantId: id })
+      logger.info('tenant transitioned suspended → blocked', {
+        module: 'dunning-retry',
+        tenantId: id,
+      })
     } catch (err) {
-      logger.warn('failed suspended→blocked', { module: 'dunning-retry', tenantId: id, error: String(err) })
+      logger.warn('failed suspended→blocked', {
+        module: 'dunning-retry',
+        tenantId: id,
+        error: String(err),
+      })
     }
   }
 
@@ -191,9 +205,16 @@ export async function runDunningSweep(): Promise<void> {
           tx,
         )
       })
-      logger.info('tenant transitioned blocked → churned', { module: 'dunning-retry', tenantId: id })
+      logger.info('tenant transitioned blocked → churned', {
+        module: 'dunning-retry',
+        tenantId: id,
+      })
     } catch (err) {
-      logger.warn('failed blocked→churned', { module: 'dunning-retry', tenantId: id, error: String(err) })
+      logger.warn('failed blocked→churned', {
+        module: 'dunning-retry',
+        tenantId: id,
+        error: String(err),
+      })
     }
   }
 
@@ -217,9 +238,16 @@ export async function runDunningSweep(): Promise<void> {
           tx,
         )
       })
-      logger.info('tenant transitioned canceled → blocked (period ended)', { module: 'dunning-retry', tenantId: id })
+      logger.info('tenant transitioned canceled → blocked (period ended)', {
+        module: 'dunning-retry',
+        tenantId: id,
+      })
     } catch (err) {
-      logger.warn('failed canceled→blocked', { module: 'dunning-retry', tenantId: id, error: String(err) })
+      logger.warn('failed canceled→blocked', {
+        module: 'dunning-retry',
+        tenantId: id,
+        error: String(err),
+      })
     }
   }
 
@@ -244,7 +272,11 @@ export async function runDunningSweep(): Promise<void> {
       })
       logger.info('tenant downgrade applied', { module: 'dunning-retry', tenantId: item.tenant_id })
     } catch (err) {
-      logger.warn('failed downgrade', { module: 'dunning-retry', tenantId: item.tenant_id, error: String(err) })
+      logger.warn('failed downgrade', {
+        module: 'dunning-retry',
+        tenantId: item.tenant_id,
+        error: String(err),
+      })
     }
   }
 }

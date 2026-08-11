@@ -41,7 +41,9 @@ export const RadioChip = React.forwardRef<
     </span>
     <span className="flex-1">
       <span className="font-medium text-foreground">{children}</span>
-      {description ? <span className="block text-xs text-muted-foreground">{description}</span> : null}
+      {description ? (
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      ) : null}
     </span>
   </RadioGroupPrimitive.Item>
 ))

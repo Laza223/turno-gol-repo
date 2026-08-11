@@ -68,9 +68,7 @@ import {
 // Dinámica (hoy + 500 días): con fecha fija el test 4A se volvía out-of-policy
 // cuando la fecha quedaba a menos de 9999h. Con +500 días, la policy de 9999h
 // (~417 días) siempre da in-policy y la de 20000h (~833 días) siempre out-of-policy.
-const FUTURE_DATE = new Date(Date.now() + 500 * 24 * 60 * 60 * 1000)
-  .toISOString()
-  .slice(0, 10)
+const FUTURE_DATE = new Date(Date.now() + 500 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
 async function insertCourt(tenantId: string): Promise<string> {
   const sql = getSql()
@@ -78,7 +76,7 @@ async function insertCourt(tenantId: string): Promise<string> {
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
     VALUES (
       ${tenantId}, ${'Cancha Cancel Test'}, ${10},
-      ${sql.json({ rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }] })},
+      ${sql.json({ rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 }] })},
       'online'
     )
     RETURNING id
@@ -577,7 +575,11 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     })
     // El rastro guarda el tipo de cancelación y el reason crudo.
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled_by_admin')
-    expect(meta).toMatchObject({ reason: 'mantenimiento', cancellationType: 'complejo', shouldRefund: true })
+    expect(meta).toMatchObject({
+      reason: 'mantenimiento',
+      cancellationType: 'complejo',
+      shouldRefund: true,
+    })
 
     const audits = await getAuditLogs(bookingId)
     const cancelAudit = audits.find((a) => a.action === 'booking.canceled_by_admin')
@@ -607,7 +609,11 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     })
     const mpPaymentId = `mp-pay-4c-oop-${bookingId.slice(0, 8)}`
     const paymentId = await insertApprovedPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
@@ -620,7 +626,11 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled_by_admin')
-    expect(meta).toMatchObject({ cancellationType: 'complejo', inPolicy: false, shouldRefund: true })
+    expect(meta).toMatchObject({
+      cancellationType: 'complejo',
+      inPolicy: false,
+      shouldRefund: true,
+    })
   })
 })
 
@@ -636,13 +646,22 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
     await setTenantPolicy(tenant.id, 9999) // in-policy
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '15:00', timeEnd: '16:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '15:00',
+      timeEnd: '16:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     const mpPaymentId = `mp-pay-4c-jin-${bookingId.slice(0, 8)}`
     const paymentId = await insertApprovedPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
@@ -727,7 +746,11 @@ describe('handleNoShow — softban por ausencias reiteradas', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    const bookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+    })
 
     await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
 
@@ -774,7 +797,9 @@ describe('handleNoShow — softban por ausencias reiteradas', () => {
 
     const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: null })
 
-    const booking = await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
+    const booking = await withTenantContext(tenant.id, (tx) =>
+      handleNoShow(bookingId, staff.id, tx),
+    )
 
     expect(booking.status).toBe('no_show')
     expect(await getBookingStatus(bookingId)).toBe('no_show')
@@ -788,11 +813,19 @@ describe('handleNoShow — softban por ausencias reiteradas', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    const firstBookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    const firstBookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+    })
     await withTenantContext(tenant.id, (tx) => handleNoShow(firstBookingId, staff.id, tx))
     expect(await countAllBans(tenant.id, player.id)).toBe(0)
 
-    const secondBookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    const secondBookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+    })
     await withTenantContext(tenant.id, (tx) => handleNoShow(secondBookingId, staff.id, tx))
 
     expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(2)
@@ -817,7 +850,11 @@ describe('handleNoShow — softban por ausencias reiteradas', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    const bookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+    })
 
     await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
     expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
@@ -923,7 +960,11 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    const bookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+    })
     await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
     expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(1)
     expect(await getLastNoShowAt(tenant.id, player.id)).not.toBeNull()
@@ -952,7 +993,11 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     const first = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
     await withTenantContext(tenant.id, (tx) => handleNoShow(first, staff.id, tx))
     const second = await insertPastConfirmed({
-      tenantId: tenant.id, courtId, playerId: player.id, timeStart: '21:00', timeEnd: '22:00',
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      timeStart: '21:00',
+      timeEnd: '22:00',
     })
     await withTenantContext(tenant.id, (tx) => handleNoShow(second, staff.id, tx))
 
@@ -980,11 +1025,19 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    const times = [['18:00', '19:00'], ['20:00', '21:00'], ['21:00', '22:00']] as const
+    const times = [
+      ['18:00', '19:00'],
+      ['20:00', '21:00'],
+      ['21:00', '22:00'],
+    ] as const
     const ids: string[] = []
     for (const [timeStart, timeEnd] of times) {
       const id = await insertPastConfirmed({
-        tenantId: tenant.id, courtId, playerId: player.id, timeStart, timeEnd,
+        tenantId: tenant.id,
+        courtId,
+        playerId: player.id,
+        timeStart,
+        timeEnd,
       })
       await withTenantContext(tenant.id, (tx) => handleNoShow(id, staff.id, tx))
       ids.push(id)
@@ -1005,7 +1058,11 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    const bookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+    })
     await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
 
     // Ban de mostrador, con motivo y autor propios (banned_by seteado).
@@ -1031,8 +1088,11 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     const courtId = await insertCourt(tenant.id)
 
     const bookingId = await insertPastConfirmed({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staff.id, tx))
     expect(await getBookingDepositStatus(bookingId)).toBe('captured')
@@ -1073,7 +1133,10 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     const courtId = await insertCourt(tenant.id)
 
     const bookingId = await insertAgedNoShow({
-      tenantId: tenant.id, courtId, playerId: player.id, agedHours: 25,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      agedHours: 25,
     })
     await seedStrike(tenant.id, player.id, 25)
 
@@ -1094,7 +1157,10 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     const courtId = await insertCourt(tenant.id)
 
     const bookingId = await insertAgedNoShow({
-      tenantId: tenant.id, courtId, playerId: player.id, agedHours: 23,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      agedHours: 23,
     })
     await seedStrike(tenant.id, player.id, 23)
 
@@ -1112,7 +1178,11 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     await linkStaffToTenant(sql, tenant.id, staff.id)
     const courtId = await insertCourt(tenant.id)
 
-    const bookingId = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
+    const bookingId = await insertPastConfirmed({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+    })
 
     await expect(
       withTenantContext(tenant.id, (tx) => handleNoShowRevert(bookingId, staff.id, tx)),
@@ -1142,16 +1212,18 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     const first = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
     await withTenantContext(tenant.id, (tx) => handleNoShow(first, staff.id, tx))
     const second = await insertPastConfirmed({
-      tenantId: tenant.id, courtId, playerId: player.id, timeStart: '21:00', timeEnd: '22:00',
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      timeStart: '21:00',
+      timeEnd: '22:00',
     })
     await withTenantContext(tenant.id, (tx) => handleNoShow(second, staff.id, tx))
     expect(await getActiveBanUntil(tenant.id, player.id)).not.toBeNull()
 
     await getDb().transaction(async (tx) => {
       await tx.execute(drizzleSql`SET LOCAL ROLE turnogol_app`)
-      await tx.execute(
-        drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-      )
+      await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
       await handleNoShowRevert(second, staff.id, tx)
     })
 
@@ -1171,7 +1243,11 @@ describe('handleNoShowRevert — deshacer un "No vino" marcado por error', () =>
     const first = await insertPastConfirmed({ tenantId: tenant.id, courtId, playerId: player.id })
     await withTenantContext(tenant.id, (tx) => handleNoShow(first, staff.id, tx))
     const second = await insertPastConfirmed({
-      tenantId: tenant.id, courtId, playerId: player.id, timeStart: '21:00', timeEnd: '22:00',
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      timeStart: '21:00',
+      timeEnd: '22:00',
     })
     await withTenantContext(tenant.id, (tx) => handleNoShow(second, staff.id, tx))
     expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(2)
@@ -1199,8 +1275,12 @@ describe('Guard: cancel terminal booking', () => {
     const courtId = await insertCourt(tenant.id)
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '20:00', timeEnd: '21:00',
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '20:00',
+      timeEnd: '21:00',
     })
     // Force to expired bypassing trigger (which only blocks terminal→anything, not confirmed→terminal)
     // Confirmed → expired: set directly since it's a valid DB transition
@@ -1328,13 +1408,22 @@ describe('cancelByAdmin — inactive tenant guard (H8, paridad con cancelByPlaye
     const courtId = await insertCourt(tenant.id)
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '05:00', timeEnd: '06:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '05:00',
+      timeEnd: '06:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     const mpPaymentId = `mp-pay-admin-blocked-${bookingId.slice(0, 8)}`
     const paymentId = await insertApprovedPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
     await sql`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
@@ -1358,13 +1447,22 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     await setTenantPolicy(tenant.id, 9999) // in-policy
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '04:00', timeEnd: '05:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '04:00',
+      timeEnd: '05:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     const mpPaymentId = `mp-pay-nogw-${bookingId.slice(0, 8)}`
     const paymentId = await insertApprovedPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId) // seña MP (payment_id seteado)
 
@@ -1390,9 +1488,14 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
 
     // Seña paga sin payment_id MP (efectivo/transferencia): reembolso offline.
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '03:00', timeEnd: '04:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '03:00',
+      timeEnd: '04:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
 
     await withTenantContext(tenant.id, (tx) =>
@@ -1421,13 +1524,22 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     await setTenantPolicy(tenant.id, 9999) // in-policy
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '05:00', timeEnd: '06:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '05:00',
+      timeEnd: '06:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     const mpPaymentId = `mp-pay-pending-${bookingId.slice(0, 8)}`
     const paymentId = await insertPendingPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
@@ -1461,13 +1573,22 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     await setTenantPolicy(tenant.id, 9999) // in-policy
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '06:00', timeEnd: '07:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '06:00',
+      timeEnd: '07:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     const mpPaymentId = `mp-pay-pending-admin-${bookingId.slice(0, 8)}`
     const paymentId = await insertPendingPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
@@ -1501,13 +1622,22 @@ describe('cancelByPlayer — audit trail metadata', () => {
     await setTenantPolicy(tenant.id, 9999) // in-policy
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '02:00', timeEnd: '03:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '02:00',
+      timeEnd: '03:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     const mpPaymentId = `mp-pay-meta-${bookingId.slice(0, 8)}`
     const paymentId = await insertApprovedPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
@@ -1516,7 +1646,11 @@ describe('cancelByPlayer — audit trail metadata', () => {
     )
 
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
-    expect(meta).toMatchObject({ reason: 'reembolso ok', inPolicy: true, depositStatus: 'refunded' })
+    expect(meta).toMatchObject({
+      reason: 'reembolso ok',
+      inPolicy: true,
+      depositStatus: 'refunded',
+    })
     expect(await getBookingCanceledAt(bookingId)).not.toBeNull()
 
     // Regresión BUG #2 (jsonb single-encode): el metadata debe quedar como
@@ -1548,13 +1682,22 @@ describe('cancelByPlayer — audit trail metadata', () => {
     await setTenantPolicy(tenant.id, 20000) // out-of-policy
 
     const bookingId = await insertConfirmedBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      date: FUTURE_DATE, timeStart: '01:00', timeEnd: '02:00',
-      depositStatus: 'paid', depositAmount: 240_000,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '01:00',
+      timeEnd: '02:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
     })
     const mpPaymentId = `mp-pay-meta-oop-${bookingId.slice(0, 8)}`
     const paymentId = await insertApprovedPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
@@ -1628,7 +1771,10 @@ async function getNotificationsByTemplate(
   return rows.map((r) => ({
     recipient_type: r.recipient_type,
     recipient_id: r.recipient_id,
-    content: typeof r.content === 'string' ? (JSON.parse(r.content) as Record<string, unknown>) : r.content,
+    content:
+      typeof r.content === 'string'
+        ? (JSON.parse(r.content) as Record<string, unknown>)
+        : r.content,
   }))
 }
 
@@ -1701,7 +1847,9 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
     // Cuando cancela el jugador (aunque lo tipee el admin) NO es el template
     // "por el complejo".
-    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')).toHaveLength(0)
+    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')).toHaveLength(
+      0,
+    )
   })
 
   it('cancelByAdmin cancellationType=complejo encola booking_canceled_by_complex al jugador', async () => {
@@ -1725,7 +1873,11 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
     const mpPaymentId = `mp-pay-notif-complejo-${bookingId.slice(0, 8)}`
     const paymentId = await insertApprovedPayment({
-      tenantId: tenant.id, bookingId, playerId: player.id, amount: 240_000, mpPaymentId,
+      tenantId: tenant.id,
+      bookingId,
+      playerId: player.id,
+      amount: 240_000,
+      mpPaymentId,
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
@@ -1762,7 +1914,9 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     )
 
     expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled')).toHaveLength(0)
-    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')).toHaveLength(0)
+    expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')).toHaveLength(
+      0,
+    )
   })
 })
 
@@ -1819,7 +1973,14 @@ describe('cancelByAdmin — B3: turno ya terminado, nunca reembolsa (ni con comp
     })
 
     const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'se olvidaron de cerrar el turno', 'complejo', mockGateway, tx),
+      cancelByAdmin(
+        bookingId,
+        staff.id,
+        'se olvidaron de cerrar el turno',
+        'complejo',
+        mockGateway,
+        tx,
+      ),
     )
 
     // Guard B3 gana: aunque 'complejo' normalmente fuerza el reembolso, el

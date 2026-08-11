@@ -50,7 +50,8 @@ export function isMpInvalidPayerError(err: unknown): boolean {
   const e = err as { message?: unknown; cause?: unknown }
   if (typeof e.message === 'string' && INVALID_PAYER_RE.test(e.message)) return true
 
-  const cause = typeof e.cause === 'object' && e.cause !== null ? (e.cause as { message?: unknown }) : undefined
+  const cause =
+    typeof e.cause === 'object' && e.cause !== null ? (e.cause as { message?: unknown }) : undefined
   return typeof cause?.message === 'string' && INVALID_PAYER_RE.test(cause.message)
 }
 
@@ -79,7 +80,8 @@ export function isMpAlreadyCancelledPreapprovalError(err: unknown): boolean {
   const e = err as { message?: unknown; cause?: unknown }
   if (typeof e.message === 'string' && ALREADY_CANCELLED_PREAPPROVAL_RE.test(e.message)) return true
 
-  const cause = typeof e.cause === 'object' && e.cause !== null ? (e.cause as { message?: unknown }) : undefined
+  const cause =
+    typeof e.cause === 'object' && e.cause !== null ? (e.cause as { message?: unknown }) : undefined
   return typeof cause?.message === 'string' && ALREADY_CANCELLED_PREAPPROVAL_RE.test(cause.message)
 }
 

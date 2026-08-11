@@ -23,12 +23,7 @@ import { sendPushNotification } from '@/lib/web-push'
 import { handlePushSendJob } from '@/shared/jobs/workers/push.worker'
 import { closeSql, getSql } from '@/shared/db/client'
 import { type PushSendJobData } from '@/shared/jobs/definitions'
-import {
-  cleanupAll,
-  createTestStaffUser,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestStaffUser, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 beforeAll(async () => {
   const sql = getSql()

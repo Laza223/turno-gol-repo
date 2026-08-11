@@ -61,9 +61,7 @@ export async function getStaffRole(
  * patrón de acceso que getStaffTenant/getStaffRole: pool bypass-capable
  * (`getWorkerDb`), filtrado explícito por tenantId ya resuelto (no user-controlled).
  */
-export async function getFirstActiveAdminStaffUserId(
-  tenantId: string,
-): Promise<string | null> {
+export async function getFirstActiveAdminStaffUserId(tenantId: string): Promise<string | null> {
   const db = getWorkerDb()
   const rows = await db
     .select({ staffUserId: tenantStaffMembers.staffUserId })

@@ -4,11 +4,7 @@ import { playerTenantRelationships } from '@/shared/db/schema'
 import { NO_SHOW_STRIKE_WINDOW_DAYS, NO_SHOW_SOFTBAN_DAYS } from '@/shared/constants'
 import { normalizePlayerTags, type PlayerTag } from './player-tags'
 
-export async function ensurePTR(
-  playerId: string,
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
+export async function ensurePTR(playerId: string, tenantId: string, tx: DbTx): Promise<void> {
   await tx.execute(sql`
     INSERT INTO player_tenant_relationships (tenant_id, player_id, bookings_count, last_booking_at)
     VALUES (${tenantId}, ${playerId}, 1, NOW())

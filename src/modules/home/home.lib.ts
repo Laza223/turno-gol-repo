@@ -15,7 +15,8 @@ export function compareToLastWeek(
 ): { deltaCents: number; deltaPct: number | null; direction: 'up' | 'down' | 'flat' } {
   const deltaCents = todayCents - sameWeekdayLastWeekCents
   const direction = deltaCents > 0 ? 'up' : deltaCents < 0 ? 'down' : 'flat'
-  const deltaPct = sameWeekdayLastWeekCents === 0 ? null : (deltaCents / sameWeekdayLastWeekCents) * 100
+  const deltaPct =
+    sameWeekdayLastWeekCents === 0 ? null : (deltaCents / sameWeekdayLastWeekCents) * 100
   return { deltaCents, deltaPct, direction }
 }
 

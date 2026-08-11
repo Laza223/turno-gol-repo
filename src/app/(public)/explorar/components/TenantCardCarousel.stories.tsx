@@ -2,7 +2,15 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 import TenantCardCarousel from './TenantCardCarousel'
 
-const PHOTOS = ['/bg-hero.png', '/bg-hero-2.png', '/bg-owner.png', '/bg-how-it-works.png', '/hero-bg.png', '/bg-hero.png', '/bg-hero-2.png']
+const PHOTOS = [
+  '/bg-hero.png',
+  '/bg-hero-2.png',
+  '/bg-owner.png',
+  '/bg-how-it-works.png',
+  '/hero-bg.png',
+  '/bg-hero.png',
+  '/bg-hero-2.png',
+]
 
 /** Vive absolute-positioned dentro del `aspect-video` de la foto de TenantCard. */
 const meta = {

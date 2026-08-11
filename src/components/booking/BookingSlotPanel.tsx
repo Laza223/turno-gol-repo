@@ -21,7 +21,7 @@ import type { RenderCanteenDialog, SlotPanelActions } from './slot-panel/actions
 // slot-panel/actions.ts, self-contained: son la parte del "contrato" del panel
 // que use-slot-charges y SlotActionButtons también necesitan, sin depender de
 // este archivo (evita un import circular tipo-only).
-export type { RenderCanteenDialog,  SlotPanelActions } from './slot-panel/actions'
+export type { RenderCanteenDialog, SlotPanelActions } from './slot-panel/actions'
 
 // Se carga recién al abrirlo: el 90% de las veces que se abre el panel es para
 // cobrar, no para mover el turno.
@@ -192,9 +192,7 @@ export function BookingSlotPanel({
       <Sheet open onOpenChange={handleOpenChange}>
         <SheetContent side="right" aria-label="Acciones del turno" className="gap-0">
           <SheetHeader className="border-b border-border p-5 pr-12">
-            <SheetTitle className="font-display text-lg">
-              {displayName ?? visual.label}
-            </SheetTitle>
+            <SheetTitle className="font-display text-lg">{displayName ?? visual.label}</SheetTitle>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
               <CalendarClock aria-hidden className="h-3.5 w-3.5" />
               {courtName} · {booking.timeStart}–{booking.timeEnd}

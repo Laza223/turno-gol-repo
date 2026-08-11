@@ -104,9 +104,7 @@ export function MovementsList({
                 <td className="p-2.5">
                   <CategoryBadge type={cf.type} category={cf.category} />
                 </td>
-                <td className="p-2.5 text-foreground">
-                  {METHOD_LABELS[cf.method] ?? cf.method}
-                </td>
+                <td className="p-2.5 text-foreground">{METHOD_LABELS[cf.method] ?? cf.method}</td>
                 <td className="p-2.5 pr-4 text-right">
                   <SignedAmount type={cf.type} amount={cf.amount} />
                 </td>

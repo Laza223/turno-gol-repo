@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { appendCourtPhoto, removeCourtPhoto, reorderCourtPhotos } from '@/modules/courts/court.service'
+import {
+  appendCourtPhoto,
+  removeCourtPhoto,
+  reorderCourtPhotos,
+} from '@/modules/courts/court.service'
 
 function fakeTx(existingPhotos: string[], returningPhotos: string[]) {
   const returning = vi.fn().mockResolvedValue([{ photos: returningPhotos }])

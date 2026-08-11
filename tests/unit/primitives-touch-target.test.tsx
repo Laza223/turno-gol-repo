@@ -20,7 +20,11 @@ describe('Primitives mobile-first touch target cascade', () => {
   })
 
   it('Button icon has h-11 w-11 (mobile) + md:h-10 md:w-10 (desktop)', () => {
-    const { container } = render(<Button size="icon" aria-label="x">i</Button>)
+    const { container } = render(
+      <Button size="icon" aria-label="x">
+        i
+      </Button>,
+    )
     const btn = container.querySelector('button')!
     expect(btn.className).toMatch(/\bh-11\b/)
     expect(btn.className).toMatch(/\bw-11\b/)

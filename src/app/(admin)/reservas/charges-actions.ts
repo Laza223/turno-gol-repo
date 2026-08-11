@@ -6,8 +6,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { getBookingCharges } from './queries'
 
 export type GetBookingChargesResult =
-  | { ok: true; chargesTotal: number }
-  | { ok: false; error: string }
+  { ok: true; chargesTotal: number } | { ok: false; error: string }
 
 /**
  * Lectura de solo consulta: cobros de mostrador ya registrados para un
@@ -26,9 +25,7 @@ export type GetBookingChargesResult =
  * server sigue siendo quien revalida el monto real al cobrar
  * (completeAndChargeBookingAction ya recalcula `pending` server-side).
  */
-export async function getBookingChargesAction(
-  bookingId: string,
-): Promise<GetBookingChargesResult> {
+export async function getBookingChargesAction(bookingId: string): Promise<GetBookingChargesResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { ok: false, error: auth.error }
   const { tenant } = auth

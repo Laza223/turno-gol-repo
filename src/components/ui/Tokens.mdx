@@ -92,11 +92,11 @@ señas pendientes, abonados pausados, avisos neutros.
 
 `--radius: 0.5rem` (8px). `tailwind.config.ts` deriva 3 escalones:
 
-| Clase Tailwind | Valor | Uso |
-| --- | --- | --- |
-| `rounded-sm` | `calc(var(--radius) - 4px)` = 4px | chips, controles chicos |
-| `rounded-md` | `calc(var(--radius) - 2px)` = 6px | inputs, items de menú |
-| `rounded-lg` | `var(--radius)` = 8px | botones, cards |
+| Clase Tailwind | Valor                             | Uso                     |
+| -------------- | --------------------------------- | ----------------------- |
+| `rounded-sm`   | `calc(var(--radius) - 4px)` = 4px | chips, controles chicos |
+| `rounded-md`   | `calc(var(--radius) - 2px)` = 6px | inputs, items de menú   |
+| `rounded-lg`   | `var(--radius)` = 8px             | botones, cards          |
 
 Las recipes (`.card-premium`) suman `+ 0.25rem` sobre `--radius` (→ 12px) para
 que las superficies elevadas se vean un escalón más redondeadas que sus
@@ -107,16 +107,22 @@ controles internos.
 Self-hosted vía `next/font` (`src/app/layout.tsx`), expuestas como CSS vars
 que `tailwind.config.ts` mapea a utilidades:
 
-| Utilidad Tailwind | CSS var | Fuente | Uso |
-| --- | --- | --- | --- |
-| `font-sans` | `--font-inter` | Inter | Body copy, default de `<body>` |
-| `font-display` | `--font-archivo` | Archivo | Titulares (`h1`/`h2` de landing, `PageHeader`) |
-| `font-logo` | `--font-sora` | Sora | Wordmark (`Logo`), micro-labels uppercase (`SearchBar` `labelClass`) |
+| Utilidad Tailwind | CSS var          | Fuente  | Uso                                                                  |
+| ----------------- | ---------------- | ------- | -------------------------------------------------------------------- |
+| `font-sans`       | `--font-inter`   | Inter   | Body copy, default de `<body>`                                       |
+| `font-display`    | `--font-archivo` | Archivo | Titulares (`h1`/`h2` de landing, `PageHeader`)                       |
+| `font-logo`       | `--font-sora`    | Sora    | Wordmark (`Logo`), micro-labels uppercase (`SearchBar` `labelClass`) |
 
 <div style={{ display: 'grid', gap: 10 }}>
-  <p className="font-sans" style={{ fontSize: 20 }}>font-sans — Inter — Reservá tu cancha en segundos</p>
-  <p className="font-display" style={{ fontSize: 20 }}>font-display — Archivo — Reservá tu cancha en segundos</p>
-  <p className="font-logo" style={{ fontSize: 20 }}>font-logo — Sora — TurnoGol</p>
+  <p className="font-sans" style={{ fontSize: 20 }}>
+    font-sans — Inter — Reservá tu cancha en segundos
+  </p>
+  <p className="font-display" style={{ fontSize: 20 }}>
+    font-display — Archivo — Reservá tu cancha en segundos
+  </p>
+  <p className="font-logo" style={{ fontSize: 20 }}>
+    font-logo — Sora — TurnoGol
+  </p>
 </div>
 
 ## Recipes de `globals.css`
@@ -150,4 +156,4 @@ animación se apaga vía el bloque `@media` global).
 ---
 
 Componentes cubiertos por este paquete (`src/components/ui/*`): ver el resto
-de las stories de "Design System/*" y "Patterns/*" en el sidebar.
+de las stories de "Design System/_" y "Patterns/_" en el sidebar.

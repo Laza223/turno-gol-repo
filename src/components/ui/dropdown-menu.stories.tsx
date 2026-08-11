@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { MoreVertical } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './dropdown-menu'
 
 /**
  * @radix-ui/react-dropdown-menu puro. Reproduce QuickActions.tsx (acciones
@@ -47,7 +52,9 @@ function Menu({ disabledItem = false }: { disabledItem?: boolean }) {
         <DropdownMenuItem>Completar</DropdownMenuItem>
         <DropdownMenuItem>Marcar ausente</DropdownMenuItem>
         <DropdownMenuItem disabled={disabledItem}>Confirmar pago</DropdownMenuItem>
-        <DropdownMenuItem className="text-destructive focus:text-destructive">Cancelar</DropdownMenuItem>
+        <DropdownMenuItem className="text-destructive focus:text-destructive">
+          Cancelar
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </>
   )
@@ -111,6 +118,8 @@ export const AbrirConTeclado: Story = {
 
     const body = within(canvasElement.ownerDocument.body)
     const menu = await body.findByRole('menu')
-    await waitFor(() => expect(within(menu).getByRole('menuitem', { name: 'Completar' })).toBeVisible())
+    await waitFor(() =>
+      expect(within(menu).getByRole('menuitem', { name: 'Completar' })).toBeVisible(),
+    )
   },
 }

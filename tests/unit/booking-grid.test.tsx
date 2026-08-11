@@ -178,9 +178,7 @@ describe('BookingGrid — layout CSS Grid', () => {
 
   it('click en slot libre abre el modal con fecha y hora pre-llenadas', () => {
     renderGrid()
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' }))
     const dialog = screen.getByRole('dialog')
     expect(dialog.getAttribute('data-date')).toBe('2026-06-12')
     expect(dialog.getAttribute('data-time')).toBe('16:00')
@@ -194,16 +192,20 @@ describe('BookingGrid — layout CSS Grid', () => {
     expect(grid.getByText('Tomás García')).toBeTruthy()
     expect(grid.getByText('Confirmada')).toBeTruthy()
     // El slot ocupado no ofrece botón de reservar.
-    expect(
-      screen.queryByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' }),
-    ).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' })).toBeNull()
   })
 
   it('abonado se distingue de reserva y de bloqueo', () => {
     renderGrid({
       bookings: [
         booking({ id: 'b1', type: 'fixed', timeStart: '16:00', timeEnd: '17:00' }),
-        booking({ id: 'b2', type: 'block', timeStart: '18:00', timeEnd: '19:00', playerFirstName: null }),
+        booking({
+          id: 'b2',
+          type: 'block',
+          timeStart: '18:00',
+          timeEnd: '19:00',
+          playerFirstName: null,
+        }),
       ],
     })
     const grid = within(screen.getByTestId('booking-grid'))
@@ -220,20 +222,14 @@ describe('BookingGrid — layout CSS Grid', () => {
     // Fila de header = 1; slot 16:00 con apertura 08:00 es la fila 10.
     expect(cell.style.gridRow).toBe('10 / span 2')
     // El slot 17:00 de esa cancha quedó cubierto: no hay botón libre.
-    expect(
-      screen.queryByRole('button', { name: 'Reservar turno 17:00 en Cancha 1' }),
-    ).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Reservar turno 17:00 en Cancha 1' })).toBeNull()
   })
 
   it('los slots pasados no son clickeables', () => {
     // date = hoy (2026-06-10), artNow 12:00 → 08:00 pasado, 16:00 futuro.
     renderGrid({ date: '2026-06-10' })
-    expect(
-      screen.queryByRole('button', { name: 'Reservar turno 08:00 en Cancha 1' }),
-    ).toBeNull()
-    expect(
-      screen.getByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' }),
-    ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Reservar turno 08:00 en Cancha 1' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' })).toBeTruthy()
   })
 
   it('las flechas mueven el foco entre slots', () => {
@@ -430,7 +426,13 @@ describe('BookingGrid — panel de acciones del turno', () => {
   it('un bloqueo no ofrece cantina ni reprogramar: no es el turno de nadie', async () => {
     renderGrid({
       bookings: [
-        booking({ type: 'block', playerFirstName: null, guestName: null, pending: 0, totalPaid: 0 }),
+        booking({
+          type: 'block',
+          playerFirstName: null,
+          guestName: null,
+          pending: 0,
+          totalPaid: 0,
+        }),
       ],
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))

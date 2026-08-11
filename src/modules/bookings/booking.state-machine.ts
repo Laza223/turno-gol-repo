@@ -36,15 +36,8 @@ export const TRANSITIONS: Record<BookingStatus, ReadonlySet<BookingStatus>> = {
 const ACTOR_RULES: Record<string, ReadonlySet<CancellationActor>> = {
   'pending_payment->confirmed': new Set<CancellationActor>(['system', 'admin']),
   'pending_payment->expired': new Set<CancellationActor>(['system']),
-  'confirmed->canceled_refunded': new Set<CancellationActor>([
-    'player',
-    'admin',
-    'system',
-  ]),
-  'confirmed->canceled_no_refund': new Set<CancellationActor>([
-    'player',
-    'admin',
-  ]),
+  'confirmed->canceled_refunded': new Set<CancellationActor>(['player', 'admin', 'system']),
+  'confirmed->canceled_no_refund': new Set<CancellationActor>(['player', 'admin']),
   'confirmed->completed': new Set<CancellationActor>(['system', 'admin']),
   'confirmed->no_show': new Set<CancellationActor>(['admin']),
   // Corrección de 24h: sólo el admin del complejo, nunca system ni player.
@@ -73,10 +66,6 @@ export function assertTransition(
   ctx?: TransitionContext,
 ): void {
   if (!canTransition(from, to, ctx)) {
-    throw new InvalidTransitionError(
-      from,
-      to,
-      ctx ? `actor=${ctx.actor}` : undefined,
-    )
+    throw new InvalidTransitionError(from, to, ctx ? `actor=${ctx.actor}` : undefined)
   }
 }

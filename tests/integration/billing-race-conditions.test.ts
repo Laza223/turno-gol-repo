@@ -336,9 +336,7 @@ describe('billing race conditions', () => {
 
       const [cancelRes, reactivateRes] = await Promise.allSettled([
         withTenantContext(tenantId, (tx) => cancel(tenantId, 'race test', gateway, tx)),
-        withTenantContext(tenantId, (tx) =>
-          reactivate(tenantId, planId, 'monthly', gateway, tx),
-        ),
+        withTenantContext(tenantId, (tx) => reactivate(tenantId, planId, 'monthly', gateway, tx)),
       ])
 
       expect(cancelRes.status, `round ${i}: cancel() debe completar`).toBe('fulfilled')

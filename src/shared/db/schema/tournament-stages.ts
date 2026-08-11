@@ -36,18 +36,11 @@ export const tournamentStages = pgTable(
     groupsCount: smallint('groups_count'),
     teamsAdvancePerGroup: smallint('teams_advance_per_group'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    nameNonEmpty: check(
-      'chk_stage_name_nonempty',
-      sql`length(trim(${table.name})) > 0`,
-    ),
+    nameNonEmpty: check('chk_stage_name_nonempty', sql`length(trim(${table.name})) > 0`),
     legsValid: check('chk_stage_legs', sql`${table.legs} IN (1, 2)`),
     orderNonNeg: check('chk_stage_order', sql`${table.orderIndex} >= 0`),
     groupsRange: check(
@@ -63,10 +56,7 @@ export const tournamentStages = pgTable(
       sql`${table.kind} = 'group_stage' OR ${table.groupsCount} IS NULL`,
     ),
 
-    orderIdx: uniqueIndex('uq_tournament_stages_order').on(
-      table.tournamentId,
-      table.orderIndex,
-    ),
+    orderIdx: uniqueIndex('uq_tournament_stages_order').on(table.tournamentId, table.orderIndex),
     tournamentIdx: index('idx_tournament_stages_tournament').on(table.tournamentId),
     tenantIdx: index('idx_tournament_stages_tenant').on(table.tenantId),
   }),

@@ -41,9 +41,7 @@ test.describe('Player delete account (Ley 25.326)', () => {
     try {
       await page.goto('/eliminar-cuenta')
 
-      await expect(
-        page.getByRole('heading', { name: 'Eliminar mi cuenta' }),
-      ).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Eliminar mi cuenta' })).toBeVisible()
       await expect(page.getByText('Esta acción es irreversible')).toBeVisible()
 
       // Open ConfirmDialog via the page-level trigger button
@@ -56,9 +54,7 @@ test.describe('Player delete account (Ley 25.326)', () => {
 
       // The confirm button inside the dialog uses the same label "Eliminar mi cuenta".
       // Scope to the last one (dialog confirm) to avoid matching the trigger.
-      const confirmButton = page
-        .getByRole('button', { name: 'Eliminar mi cuenta' })
-        .last()
+      const confirmButton = page.getByRole('button', { name: 'Eliminar mi cuenta' }).last()
 
       // Must be disabled before typing the confirmation phrase
       await expect(confirmButton).toBeDisabled()

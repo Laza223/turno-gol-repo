@@ -44,7 +44,8 @@ const tl = JSON.parse(readFileSync(join(outDir, 'timeline.json'), 'utf8'))
 // Arrancamos 1.2s antes del primer click/caption POSTERIOR al primer goto real.
 const events = tl.timeline
 const firstReady = events.find((e) => e.type === 'ready')
-const firstAction = events.find((e) => e.type === 'click') ?? events.find((e) => e.type === 'caption' && e.t > 0)
+const firstAction =
+  events.find((e) => e.type === 'click') ?? events.find((e) => e.type === 'caption' && e.t > 0)
 const startMs = Math.max(0, firstReady ? firstReady.t - 300 : (firstAction?.t ?? 0) - 1200)
 const endMs = (events.find((e) => e.type === 'done')?.t ?? startMs) + 800
 
@@ -135,10 +136,34 @@ if (keep.length === 1) {
   args.push('-ss', String(keep[0][0] / 1000), '-to', String(keep[0][1] / 1000))
   // -ss/-to como opciones de OUTPUT no funcionan con -i ya dado; rearmamos:
   args.length = 0
-  args.push('-y', '-v', 'error', '-ss', String(keep[0][0] / 1000), '-to', String(keep[0][1] / 1000), '-i', raw)
+  args.push(
+    '-y',
+    '-v',
+    'error',
+    '-ss',
+    String(keep[0][0] / 1000),
+    '-to',
+    String(keep[0][1] / 1000),
+    '-i',
+    raw,
+  )
   if (audioPath) args.push('-i', audioPath)
-  args.push('-vf', vf, '-r', '30', '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', '-pix_fmt', 'yuv420p')
-  if (audioPath) args.push('-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '160k', '-shortest')
+  args.push(
+    '-vf',
+    vf,
+    '-r',
+    '30',
+    '-c:v',
+    'libx264',
+    '-preset',
+    'medium',
+    '-crf',
+    '19',
+    '-pix_fmt',
+    'yuv420p',
+  )
+  if (audioPath)
+    args.push('-map', '0:v:0', '-map', '1:a:0', '-c:a', 'aac', '-b:a', '160k', '-shortest')
   else args.push('-an')
   args.push(finalPath)
 } else {
@@ -152,11 +177,28 @@ if (keep.length === 1) {
     .join(';')
   const concat = keep.map((_s, i) => `[v${i}]`).join('') + `concat=n=${keep.length}:v=1:a=0[vc]`
   const graph = `${segs};${concat};[vc]${vf}[vout]`
-  args.push('-filter_complex', graph, '-map', '[vout]', '-r', '30', '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', '-pix_fmt', 'yuv420p')
+  args.push(
+    '-filter_complex',
+    graph,
+    '-map',
+    '[vout]',
+    '-r',
+    '30',
+    '-c:v',
+    'libx264',
+    '-preset',
+    'medium',
+    '-crf',
+    '19',
+    '-pix_fmt',
+    'yuv420p',
+  )
   if (audioPath) args.push('-map', '1:a:0', '-c:a', 'aac', '-b:a', '160k', '-shortest')
   else args.push('-an')
   args.push(finalPath)
 }
 
 execFileSync(FFMPEG, args, { stdio: 'inherit' })
-console.log(`final: ${finalPath} (keep: ${keep.map(([a, b]) => `${Math.round(a)}–${Math.round(b)}ms`).join(', ')})`)
+console.log(
+  `final: ${finalPath} (keep: ${keep.map(([a, b]) => `${Math.round(a)}–${Math.round(b)}ms`).join(', ')})`,
+)

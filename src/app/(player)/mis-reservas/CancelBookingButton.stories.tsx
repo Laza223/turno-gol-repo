@@ -64,7 +64,9 @@ export const Abierto: Story = {
     await expect(await screen.findByText('¿Cancelar esta reserva?')).toBeInTheDocument()
     await expect(screen.getByLabelText(/motivo \(opcional\)/i)).toBeInTheDocument()
     // ENS-2: la consecuencia concreta de cancelar AHORA (no más "en el plazo/fuera del plazo" en abstracto).
-    await expect(screen.getByText(hasText('Se te devuelve la seña de $ 1.500.'))).toBeInTheDocument()
+    await expect(
+      screen.getByText(hasText('Se te devuelve la seña de $ 1.500.')),
+    ).toBeInTheDocument()
   },
 }
 
@@ -98,7 +100,10 @@ export const AbiertoFueraDePlazo: Story = {
 
 export const ErrorAlCancelar: Story = {
   args: {
-    action: fn(async () => ({ success: false as const, error: 'La reserva no está en estado confirmado.' })),
+    action: fn(async () => ({
+      success: false as const,
+      error: 'La reserva no está en estado confirmado.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -118,7 +123,10 @@ export const CanceladoOk: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
-    await userEvent.type(within(dialog).getByLabelText(/motivo \(opcional\)/i), 'Se suspendió por lluvia')
+    await userEvent.type(
+      within(dialog).getByLabelText(/motivo \(opcional\)/i),
+      'Se suspendió por lluvia',
+    )
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
     await expect(getRouter().refresh).toHaveBeenCalled()
   },

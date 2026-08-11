@@ -14,7 +14,8 @@ import SiteFooter from '@/components/site/SiteFooter'
  * accidental removal of the legal links.
  */
 
-type ReactNodeLike = ReactElement | string | number | boolean | null | undefined | Iterable<ReactNodeLike>
+type ReactNodeLike =
+  ReactElement | string | number | boolean | null | undefined | Iterable<ReactNodeLike>
 
 function walkAll(
   node: ReactNodeLike,

@@ -89,9 +89,7 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
     })
 
     const state = makeState(tenant.id)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=auth-code-xyz&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=auth-code-xyz&state=${state}`)
 
     const res = await mpCallback(req)
 
@@ -142,14 +140,14 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
     stubMpToken({ error: 'invalid_grant' }, 400)
 
     const state = makeState(tenant.id)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=bad-code&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=bad-code&state=${state}`)
 
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_token_failed/)
 
-    const rows = await sql<{ mp_access_token: string | null; onboarding_completed: boolean | null }[]>`
+    const rows = await sql<
+      { mp_access_token: string | null; onboarding_completed: boolean | null }[]
+    >`
       SELECT mp_access_token, (settings->>'onboarding_completed')::boolean AS onboarding_completed
       FROM tenants WHERE id = ${tenant.id}
     `
@@ -166,9 +164,7 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
     vi.stubGlobal('fetch', fetchSpy)
 
     const state = makeState(tenant.id, Date.now() - (10 * 60 * 1000 + 1000))
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=auth-code&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=auth-code&state=${state}`)
 
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)

@@ -76,12 +76,17 @@ export const ErrorDeSubida: Story = {
   args: {
     logoUrl: null,
     coverUrl: null,
-    setImageAction: fn(async () => ({ success: false as const, error: 'La imagen no puede superar 2MB' })),
+    setImageAction: fn(async () => ({
+      success: false as const,
+      error: 'La imagen no puede superar 2MB',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText('Subí el logo de tu complejo')
     await userEvent.upload(input, tinyPngFile('logo.png'))
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('La imagen no puede superar 2MB')
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'La imagen no puede superar 2MB',
+    )
   },
 }

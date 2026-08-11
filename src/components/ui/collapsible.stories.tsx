@@ -46,9 +46,7 @@ export const Cerrado: Story = {
   render: () => <Demo />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByText('Contenido secundario, oculto por defecto.')
-    ).not.toBeVisible()
+    await expect(canvas.getByText('Contenido secundario, oculto por defecto.')).not.toBeVisible()
   },
 }
 
@@ -61,15 +59,13 @@ export const AbrirYCerrarPorClick: Story = {
 
     await userEvent.click(trigger)
     await waitFor(() =>
-      expect(canvas.getByText('Contenido secundario, oculto por defecto.')).toBeVisible()
+      expect(canvas.getByText('Contenido secundario, oculto por defecto.')).toBeVisible(),
     )
     await expect(trigger).toHaveAttribute('aria-expanded', 'true')
 
     await userEvent.click(trigger)
     await waitFor(() =>
-      expect(
-        canvas.getByText('Contenido secundario, oculto por defecto.')
-      ).not.toBeVisible()
+      expect(canvas.getByText('Contenido secundario, oculto por defecto.')).not.toBeVisible(),
     )
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   },

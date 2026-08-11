@@ -117,14 +117,19 @@ describe('matchOutcome', () => {
 
   it('un partido no cerrado o sin equipos no decide nada', () => {
     expect(matchOutcome(match({ id: 'm', status: 'scheduled' }))).toBeNull()
-    expect(matchOutcome(match({ id: 'm', homeTeamId: null, homeScore: 1, awayScore: 0 }))).toBeNull()
+    expect(
+      matchOutcome(match({ id: 'm', homeTeamId: null, homeScore: 1, awayScore: 0 })),
+    ).toBeNull()
     expect(matchOutcome(match({ id: 'm', status: 'played' }))).toBeNull()
   })
 })
 
 describe('qualifiedSeeds', () => {
   it('ordena rank-major: 1ºA, 1ºB, 2ºA, 2ºB', () => {
-    const seeds = qualifiedSeeds([group('A', ['a1', 'a2', 'a3']), group('B', ['b1', 'b2', 'b3'])], 2)
+    const seeds = qualifiedSeeds(
+      [group('A', ['a1', 'a2', 'a3']), group('B', ['b1', 'b2', 'b3'])],
+      2,
+    )
     expect(seeds.map((s) => s.teamId)).toEqual(['a1', 'b1', 'a2', 'b2'])
     expect(seeds.map((s) => s.seed)).toEqual([1, 2, 3, 4])
     expect(seeds.map((s) => s.rank)).toEqual([1, 1, 2, 2])

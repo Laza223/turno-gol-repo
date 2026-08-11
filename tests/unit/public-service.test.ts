@@ -99,8 +99,8 @@ describe('generateSlots', () => {
       date: '2026-04-27', // same as nowDateStr
       nowMins: 9 * 60,
     })
-    expect(slots[0].status).toBe('past')  // 08:00 < 09:00
-    expect(slots[1].status).toBe('free')  // 09:00 is not < 09:00
+    expect(slots[0].status).toBe('past') // 08:00 < 09:00
+    expect(slots[1].status).toBe('free') // 09:00 is not < 09:00
   })
 
   it('marks slot occupied when a booking overlaps it', () => {

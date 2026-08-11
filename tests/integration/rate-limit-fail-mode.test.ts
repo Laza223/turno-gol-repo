@@ -5,12 +5,20 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 // capture + restore.
 const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
-vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
+vi.mock('@upstash/redis', () => ({
+  Redis: class {
+    constructor(_: unknown) {}
+  },
+}))
 vi.mock('@upstash/ratelimit', () => {
   class FakeRatelimit {
-    static tokenBucket(limit: number) { return { limit } }
+    static tokenBucket(limit: number) {
+      return { limit }
+    }
     constructor(_: unknown) {}
-    async limit(_: string): Promise<never> { throw new Error('redis-down') }
+    async limit(_: string): Promise<never> {
+      throw new Error('redis-down')
+    }
   }
   return { Ratelimit: FakeRatelimit }
 })

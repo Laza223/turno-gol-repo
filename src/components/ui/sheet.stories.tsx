@@ -29,9 +29,15 @@ export const SideLeft: Story = {
           <SheetTitle>TurnoGol</SheetTitle>
         </SheetHeader>
         <nav className="mt-4 flex flex-col gap-1 text-sm">
-          <a className="rounded-lg px-3 py-2 hover:bg-accent" href="#dashboard">Dashboard</a>
-          <a className="rounded-lg px-3 py-2 hover:bg-accent" href="#grilla">Grilla</a>
-          <a className="rounded-lg px-3 py-2 hover:bg-accent" href="#reservas">Reservas</a>
+          <a className="rounded-lg px-3 py-2 hover:bg-accent" href="#dashboard">
+            Dashboard
+          </a>
+          <a className="rounded-lg px-3 py-2 hover:bg-accent" href="#grilla">
+            Grilla
+          </a>
+          <a className="rounded-lg px-3 py-2 hover:bg-accent" href="#reservas">
+            Reservas
+          </a>
         </nav>
       </SheetContent>
     </Sheet>
@@ -48,7 +54,9 @@ export const SideBottom: Story = {
         <SheetHeader>
           <SheetTitle>Filtros</SheetTitle>
         </SheetHeader>
-        <p className="mt-3 text-sm text-muted-foreground">Localidad, fecha, horario y formato de cancha.</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Localidad, fecha, horario y formato de cancha.
+        </p>
       </SheetContent>
     </Sheet>
   ),
@@ -63,7 +71,9 @@ export const SinBotonDeCierre: Story = {
       </SheetTrigger>
       <SheetContent side="left" hideClose>
         <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-        <p className="text-sm text-muted-foreground">Sin X visible — el contenido maneja su propio cierre.</p>
+        <p className="text-sm text-muted-foreground">
+          Sin X visible — el contenido maneja su propio cierre.
+        </p>
       </SheetContent>
     </Sheet>
   ),

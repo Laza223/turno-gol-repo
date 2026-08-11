@@ -14,7 +14,12 @@ import {
   ReactivationConflictError,
   CourtNotFoundError,
 } from './abonado.errors'
-import type { AbonadoRow, AbonadoStatus, AbonadoPaymentMethod, CreateAbonadoInput } from './abonado.types'
+import type {
+  AbonadoRow,
+  AbonadoStatus,
+  AbonadoPaymentMethod,
+  CreateAbonadoInput,
+} from './abonado.types'
 
 function rowToAbonadoRow(r: typeof abonados.$inferSelect): AbonadoRow {
   return {
@@ -98,13 +103,17 @@ async function insertBookingsForSlots(
   const conflictDates: string[] = []
   const validRows: Array<{ dateStr: string; startsAt: Date; endsAt: Date }> = []
 
-  const physicallyNextDay = slotDates.length > 0
-    ? await slotIsPhysicallyNextDay(tenantId, slotDates[0]!, abonado.timeStart, tx)
-    : false
+  const physicallyNextDay =
+    slotDates.length > 0
+      ? await slotIsPhysicallyNextDay(tenantId, slotDates[0]!, abonado.timeStart, tx)
+      : false
 
   for (const dateStr of slotDates) {
     const { startsAt, endsAt } = physicalRange({
-      date: dateStr, timeStart: abonado.timeStart, timeEnd: abonado.timeEnd, physicallyNextDay,
+      date: dateStr,
+      timeStart: abonado.timeStart,
+      timeEnd: abonado.timeEnd,
+      physicallyNextDay,
     })
     const hasConflict = await checkBookingOverlap(abonado.courtId, startsAt, endsAt, tx)
     if (hasConflict) {
@@ -413,24 +422,26 @@ export async function getAbonados(
     ORDER BY day_of_week, time_start
   `)
 
-  return (rows as unknown as Array<{
-    id: string
-    tenant_id: string
-    court_id: string
-    player_id: string | null
-    contact_name: string
-    contact_phone: string
-    day_of_week: number
-    time_start: string
-    time_end: string
-    price_per_session: number
-    starts_on: Date
-    ends_on: Date | null
-    status: AbonadoStatus
-    payment_method: AbonadoPaymentMethod
-    created_at: Date
-    updated_at: Date
-  }>).map((r) => ({
+  return (
+    rows as unknown as Array<{
+      id: string
+      tenant_id: string
+      court_id: string
+      player_id: string | null
+      contact_name: string
+      contact_phone: string
+      day_of_week: number
+      time_start: string
+      time_end: string
+      price_per_session: number
+      starts_on: Date
+      ends_on: Date | null
+      status: AbonadoStatus
+      payment_method: AbonadoPaymentMethod
+      created_at: Date
+      updated_at: Date
+    }>
+  ).map((r) => ({
     id: r.id,
     tenantId: r.tenant_id,
     courtId: r.court_id,

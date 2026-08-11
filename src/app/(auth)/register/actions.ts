@@ -16,7 +16,11 @@ const phoneRegex = /^\+?[1-9][0-9\s-]{7,24}$/
 
 const schema = z
   .object({
-    email: z.string().trim().toLowerCase().pipe(z.email({ message: 'Ingresá un email válido' })),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.email({ message: 'Ingresá un email válido' })),
     firstName: z.string().trim().min(2, 'Ingresá tu nombre').max(80),
     lastName: z.string().trim().min(2, 'Ingresá tu apellido').max(80),
     phone: z.string().trim().regex(phoneRegex, 'Ingresá un número de teléfono válido'),
@@ -28,7 +32,8 @@ const schema = z
     message: 'Las contraseñas no coinciden.',
   })
 
-type FieldKey = 'email' | 'firstName' | 'lastName' | 'phone' | 'password' | 'confirmPassword' | '_form'
+type FieldKey =
+  'email' | 'firstName' | 'lastName' | 'phone' | 'password' | 'confirmPassword' | '_form'
 
 /**
  * Campos que se devuelven al formulario cuando la validación falla, para que el
@@ -69,7 +74,7 @@ export async function registerAction(
   }
 
   // Alta de bajo volumen, sin captcha (v1): rate-limit por IP (fail closed).
-  const ip = parseClientIp(await headers() as unknown as Headers)
+  const ip = parseClientIp((await headers()) as unknown as Headers)
   const rl = await enforce('authRegister', ip)
   if (!rl.ok) {
     return {

@@ -53,9 +53,10 @@ function mockAuthedTenant() {
     tenant: { id: 'tenant-1' },
   } as never)
   vi.mocked(enforce).mockResolvedValue({ ok: true } as never)
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (t: never) => Promise<unknown>) => cb(FAKE_TX)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (t: never) => Promise<unknown>,
+  ) => cb(FAKE_TX)) as never)
 }
 
 beforeEach(() => {
@@ -94,7 +95,12 @@ describe('checkSlotAvailabilityAction', () => {
     ] as never)
     const res = await checkSlotAvailabilityAction(VALID_INPUT)
     expect(res).toEqual({ available: true })
-    expect(vi.mocked(getAvailableSlots)).toHaveBeenCalledWith('tenant-1', COURT_ID, '2026-07-20', FAKE_TX)
+    expect(vi.mocked(getAvailableSlots)).toHaveBeenCalledWith(
+      'tenant-1',
+      COURT_ID,
+      '2026-07-20',
+      FAKE_TX,
+    )
   })
 
   it('el slot pedido ya está ocupado en getAvailableSlots: available:false', async () => {

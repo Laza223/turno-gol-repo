@@ -20,18 +20,28 @@ const OK_INFO: GatewayPaymentInfo = {
 /** A fully-stubbed PaymentGateway whose methods succeed; override per test. */
 function makeInner(overrides: Partial<PaymentGateway> = {}): PaymentGateway {
   const base: PaymentGateway = {
-    createPreference: vi.fn(
-      async (): Promise<PreferenceResult> => ({ preferenceId: 'p', initPoint: 'ip', sandboxInitPoint: 'sip' }),
-    ),
+    createPreference: vi.fn(async (): Promise<PreferenceResult> => ({
+      preferenceId: 'p',
+      initPoint: 'ip',
+      sandboxInitPoint: 'sip',
+    })),
     getPaymentStatus: vi.fn(async (): Promise<GatewayPaymentInfo> => OK_INFO),
-    createRefund: vi.fn(async (): Promise<RefundResult> => ({ mpRefundId: 'r', status: 'approved' })),
+    createRefund: vi.fn(async (): Promise<RefundResult> => ({
+      mpRefundId: 'r',
+      status: 'approved',
+    })),
     searchPaymentsByReference: vi.fn(async (): Promise<GatewayPaymentInfo[]> => [OK_INFO]),
-    createPreapproval: vi.fn(async (): Promise<PreapprovalResult> => ({ preapprovalId: 'pa', initPoint: 'ip' })),
+    createPreapproval: vi.fn(async (): Promise<PreapprovalResult> => ({
+      preapprovalId: 'pa',
+      initPoint: 'ip',
+    })),
     cancelPreapproval: vi.fn(async (): Promise<void> => {}),
     updatePreapprovalAmount: vi.fn(async (): Promise<void> => {}),
-    createSaasUpgradePreference: vi.fn(
-      async (): Promise<PreferenceResult> => ({ preferenceId: 'u', initPoint: 'ip', sandboxInitPoint: 'sip' }),
-    ),
+    createSaasUpgradePreference: vi.fn(async (): Promise<PreferenceResult> => ({
+      preferenceId: 'u',
+      initPoint: 'ip',
+      sandboxInitPoint: 'sip',
+    })),
   }
   return { ...base, ...overrides }
 }
@@ -62,7 +72,11 @@ describe('withCircuitBreaker', () => {
         throw new Error('MP timeout')
       }),
     })
-    const gw = withCircuitBreaker(inner, 'k', new CircuitBreaker({ failureThreshold: 2, now: () => 0 }))
+    const gw = withCircuitBreaker(
+      inner,
+      'k',
+      new CircuitBreaker({ failureThreshold: 2, now: () => 0 }),
+    )
 
     await expect(gw.getPaymentStatus('1')).rejects.toThrow('MP timeout') // fail 1
     await expect(gw.getPaymentStatus('1')).rejects.toThrow('MP timeout') // fail 2 → opens
@@ -98,7 +112,11 @@ describe('withCircuitBreaker', () => {
         throw new Error(`boom-${calls}`)
       }),
     })
-    const gw = withCircuitBreaker(inner, 'k', new CircuitBreaker({ failureThreshold: 2, now: () => 0 }))
+    const gw = withCircuitBreaker(
+      inner,
+      'k',
+      new CircuitBreaker({ failureThreshold: 2, now: () => 0 }),
+    )
 
     await expect(gw.getPaymentStatus('1')).rejects.toThrow('boom-1') // failures = 1
     await expect(gw.getPaymentStatus('1')).resolves.toEqual(OK_INFO) // success → reset to 0

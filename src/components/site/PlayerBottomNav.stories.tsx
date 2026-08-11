@@ -16,7 +16,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div style={{ transform: 'translateZ(0)', height: 90 }} className="relative isolate overflow-hidden">
+      <div
+        style={{ transform: 'translateZ(0)', height: 90 }}
+        className="relative isolate overflow-hidden"
+      >
         <Story />
       </div>
     ),
@@ -30,7 +33,10 @@ export const RutaExplorar: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Explorar' })).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getByRole('link', { name: 'Explorar' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 
@@ -38,7 +44,10 @@ export const RutaMisReservas: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/mis-reservas' } } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Reservas' })).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getByRole('link', { name: 'Reservas' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 
@@ -46,6 +55,9 @@ export const RutaConfiguracion: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/configuracion' } } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Cuenta' })).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getByRole('link', { name: 'Cuenta' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }

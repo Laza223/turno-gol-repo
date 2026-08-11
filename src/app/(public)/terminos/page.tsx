@@ -38,7 +38,9 @@ export default function TerminosPage() {
 
       <section className="mt-10 space-y-4 text-foreground">
         <h2 className="text-xl font-semibold text-foreground">2. Responsabilidad del complejo</h2>
-        <p>El complejo deportivo, en su calidad de prestador del servicio físico, es responsable de:</p>
+        <p>
+          El complejo deportivo, en su calidad de prestador del servicio físico, es responsable de:
+        </p>
         <ul className="list-disc space-y-1 pl-6">
           <li>
             Tener la cancha disponible en el horario reservado, en condiciones razonables de uso.
@@ -49,8 +51,9 @@ export default function TerminosPage() {
           </li>
           <li>
             Cumplir con la normativa fiscal argentina aplicable: emisión de comprobantes y
-            facturación AFIP. Conforme al ADR-011, <strong>la facturación está fuera del alcance de
-            TurnoGol</strong> en la versión v1; cada complejo factura por sus propios medios.
+            facturación AFIP. Conforme al ADR-011,{' '}
+            <strong>la facturación está fuera del alcance de TurnoGol</strong> en la versión v1;
+            cada complejo factura por sus propios medios.
           </li>
           <li>
             Mantener actualizada la configuración de su predio en la plataforma (precios,
@@ -64,7 +67,9 @@ export default function TerminosPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">3. Declaración jurada de mayoría de edad</h2>
+        <h2 className="text-xl font-semibold text-foreground">
+          3. Declaración jurada de mayoría de edad
+        </h2>
         <p>
           Al crear una cuenta en TurnoGol como jugador, declarás bajo juramento ser mayor de 18
           años. Esta declaración se registra en tu perfil junto con la versión vigente de los
@@ -109,7 +114,9 @@ export default function TerminosPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">6. Suscripciones SaaS (clientes B2B)</h2>
+        <h2 className="text-xl font-semibold text-foreground">
+          6. Suscripciones SaaS (clientes B2B)
+        </h2>
         <p>
           TurnoGol ofrece tres planes de suscripción mensual para complejos, según la cantidad de
           canchas:
@@ -140,9 +147,7 @@ export default function TerminosPage() {
 
       <section className="mt-10 space-y-4 text-foreground">
         <h2 className="text-xl font-semibold text-foreground">7. Suspensión y baja de cuenta</h2>
-        <p>
-          TurnoGol puede suspender o dar de baja una cuenta de jugador en los siguientes casos:
-        </p>
+        <p>TurnoGol puede suspender o dar de baja una cuenta de jugador en los siguientes casos:</p>
         <ul className="list-disc space-y-1 pl-6">
           <li>Fraude o uso indebido de medios de pago.</li>
           <li>
@@ -157,7 +162,10 @@ export default function TerminosPage() {
         </ul>
         <p>
           Si considerás que una suspensión fue incorrecta, podés apelarla escribiendo a{' '}
-          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a
+            className="text-emerald-700 dark:text-emerald-300 hover:underline"
+            href="mailto:privacidad@turnogol.app"
+          >
             privacidad@turnogol.app
           </a>
           .
@@ -221,7 +229,10 @@ export default function TerminosPage() {
             turnogol.app/terminos
           </Link>
           . Para consultas, escribinos a{' '}
-          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a
+            className="text-emerald-700 dark:text-emerald-300 hover:underline"
+            href="mailto:privacidad@turnogol.app"
+          >
             privacidad@turnogol.app
           </a>
           .

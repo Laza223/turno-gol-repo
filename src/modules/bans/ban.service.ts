@@ -4,8 +4,7 @@ import type { DbTx } from '@/shared/db/client'
 import type { ManualBanDuration } from './ban.schema'
 
 export type BanCheckResult =
-  | { banned: false }
-  | { banned: true; bannedGlobal: boolean; reason: string; until: Date | null }
+  { banned: false } | { banned: true; bannedGlobal: boolean; reason: string; until: Date | null }
 
 /**
  * Fragmento de vigencia compartido por todo lector/escritor de

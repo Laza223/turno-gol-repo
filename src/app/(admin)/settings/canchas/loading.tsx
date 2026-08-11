@@ -20,7 +20,10 @@ export default function Loading() {
       {/* Cards de cancha */}
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="card-premium rounded-lg p-4 flex items-center justify-between gap-4">
+          <div
+            key={i}
+            className="card-premium rounded-lg p-4 flex items-center justify-between gap-4"
+          >
             <div className="min-w-0 space-y-2">
               <div className="flex items-center gap-2">
                 <Skeleton className="h-4 w-24" />

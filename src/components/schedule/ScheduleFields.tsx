@@ -10,11 +10,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { DAY_KEYS, DAY_LABELS_LONG, type DayKey } from '@/shared/time/week-days'
 import { effectiveCloseMins, END_OF_DAY_MINS } from '@/shared/time/operating-day'
-import {
-  effectiveDay,
-  needsNextDayHint,
-  type ScheduleView,
-} from '@/lib/schedule/schedule-view'
+import { effectiveDay, needsNextDayHint, type ScheduleView } from '@/lib/schedule/schedule-view'
 
 type Props = {
   view: ScheduleView
@@ -157,7 +153,7 @@ export function ScheduleFields({
                         // sobre --muted sólido) por debajo de AA (3.21:1/2.67:1 medidos).
                         // bg-muted/30 solo alcanza para transmitir "cerrado".
                         'border-border bg-muted/30'
-                      : 'border-border bg-card hover:border-emerald-600/30 hover:shadow-md'
+                      : 'border-border bg-card hover:border-emerald-600/30 hover:shadow-md',
                   )}
                 >
                   {/* Fila Principal */}
@@ -179,7 +175,7 @@ export function ScheduleFields({
                       <span
                         className={cn(
                           'text-sm font-semibold transition-colors',
-                          closed ? 'text-muted-foreground' : 'text-foreground'
+                          closed ? 'text-muted-foreground' : 'text-foreground',
                         )}
                       >
                         {label}

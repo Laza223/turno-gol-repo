@@ -17,11 +17,6 @@ const GRILLA_TABS = [
  */
 export function GrillaTabs({ active }: { active: string }) {
   return (
-    <ScrollTabs
-      tabs={GRILLA_TABS}
-      activeHref={active}
-      ariaLabel="Vistas de la grilla"
-      clientNav
-    />
+    <ScrollTabs tabs={GRILLA_TABS} activeHref={active} ariaLabel="Vistas de la grilla" clientNav />
   )
 }

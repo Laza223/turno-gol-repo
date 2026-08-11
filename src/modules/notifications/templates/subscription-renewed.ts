@@ -7,9 +7,7 @@ export type SubscriptionRenewedData = {
   periodEnd: string
 }
 
-export function renderSubscriptionRenewed(
-  data: SubscriptionRenewedData,
-): EmailContent {
+export function renderSubscriptionRenewed(data: SubscriptionRenewedData): EmailContent {
   const subject = `Suscripción renovada — ${data.tenantName}`
   const html = `
 <!DOCTYPE html>

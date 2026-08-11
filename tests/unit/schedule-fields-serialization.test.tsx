@@ -2,10 +2,7 @@
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import {
-  deriveScheduleView,
-  type ScheduleView,
-} from '@/lib/schedule/schedule-view'
+import { deriveScheduleView, type ScheduleView } from '@/lib/schedule/schedule-view'
 import { openingHours } from '@/test/fixtures/tenant'
 import { ScheduleFields } from '@/components/schedule/ScheduleFields'
 

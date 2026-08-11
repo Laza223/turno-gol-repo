@@ -45,9 +45,9 @@ const AUTH_OK = {
 }
 
 const runsCallback = () =>
-  vi.mocked(withTenantContext).mockImplementation(
-    async (_tenantId: string, cb: (tx: never) => unknown) => cb({} as never),
-  )
+  vi
+    .mocked(withTenantContext)
+    .mockImplementation(async (_tenantId: string, cb: (tx: never) => unknown) => cb({} as never))
 
 beforeEach(() => {
   vi.clearAllMocks()

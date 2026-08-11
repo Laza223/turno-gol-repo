@@ -44,11 +44,7 @@ export default function FavoritesList({
     <ul className="grid grid-cols-1 gap-4">
       {tenants.map((t) => (
         <li key={t.id}>
-          <TenantCard
-            tenant={t}
-            initialFavorited
-            photos={photosByTenant[t.id] ?? []}
-          />
+          <TenantCard tenant={t} initialFavorited photos={photosByTenant[t.id] ?? []} />
         </li>
       ))}
     </ul>

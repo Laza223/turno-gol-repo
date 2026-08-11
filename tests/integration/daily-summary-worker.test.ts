@@ -67,11 +67,20 @@ async function seedTenantWithYesterdayActivity(
     createCashFlow(
       tenant.id,
       staff.id,
-      { type: 'income', category: 'other', amount: 900000, method: 'cash', description: 'Ayer', occurredAt: yesterdayNoon },
+      {
+        type: 'income',
+        category: 'other',
+        amount: 900000,
+        method: 'cash',
+        description: 'Ayer',
+        occurredAt: yesterdayNoon,
+      },
       tx,
     ),
   )
-  await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, yesterdayDate, staff.id, {}, 0, tx))
+  await withTenantContext(tenant.id, (tx) =>
+    closeDailyRegister(tenant.id, yesterdayDate, staff.id, {}, 0, tx),
+  )
 
   return { tenant, staffId: staff.id, subId: subRows[0]!.id }
 }
@@ -88,14 +97,19 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
       SELECT data FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
     `
     expect(jobs).toHaveLength(1)
-    const jobData = jobs[0]!.data as { payload: { type: string; summaryLabel: string }; dedupeKey?: string }
+    const jobData = jobs[0]!.data as {
+      payload: { type: string; summaryLabel: string }
+      dedupeKey?: string
+    }
     expect(jobData.payload.type).toBe('daily_summary')
     expect(jobData.payload.summaryLabel).toContain('9.000')
     expect(jobData.payload.summaryLabel).toContain('caja cerrada sin diferencia')
     // Hallazgo de revisión adversarial: sin dedupeKey, un retry de pg-boss
     // (retryLimit=3 real en push-send) duplicaría el push visible al admin —
     // push.worker.ts solo reclama push_send_log si dedupeKey viene seteada.
-    expect(jobData.dedupeKey).toMatch(new RegExp(`^push:daily-summary:${tenant.id}:\\d{4}-\\d{2}-\\d{2}:${subId}$`))
+    expect(jobData.dedupeKey).toMatch(
+      new RegExp(`^push:daily-summary:${tenant.id}:\\d{4}-\\d{2}-\\d{2}:${subId}$`),
+    )
 
     const notifs = await sql<{ id: string }[]>`
       SELECT id FROM notifications WHERE tenant_id = ${tenant.id} AND template_name = 'daily_summary'

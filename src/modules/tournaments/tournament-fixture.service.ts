@@ -7,11 +7,7 @@ import { listTournamentSlots } from './tournament-slots.service'
 import { generateRoundRobin } from './fixture/round-robin'
 import { generateKnockout, type BracketMatch } from './fixture/knockout'
 import { distributeIntoGroups } from './fixture/groups'
-import {
-  scheduleMatches,
-  type OwnedSlot,
-  type SchedulableMatch,
-} from './fixture/scheduler'
+import { scheduleMatches, type OwnedSlot, type SchedulableMatch } from './fixture/scheduler'
 import {
   CourtSlotTakenError,
   FixtureAlreadyExistsError,
@@ -81,11 +77,7 @@ function rowToMatch(r: typeof tournamentMatches.$inferSelect): TournamentMatchRo
 }
 
 /** Equipos que siguen en carrera, en orden de siembra y después por nombre. */
-async function activeTeamIds(
-  tenantId: string,
-  tournamentId: string,
-  tx: DbTx,
-): Promise<string[]> {
+async function activeTeamIds(tenantId: string, tournamentId: string, tx: DbTx): Promise<string[]> {
   const rows = (await tx.execute(sql`
     SELECT id FROM tournament_teams
     WHERE tenant_id = ${tenantId}
@@ -96,11 +88,7 @@ async function activeTeamIds(
   return rows.map((r) => r.id)
 }
 
-async function countMatches(
-  tenantId: string,
-  tournamentId: string,
-  tx: DbTx,
-): Promise<number> {
+async function countMatches(tenantId: string, tournamentId: string, tx: DbTx): Promise<number> {
   const rows = (await tx.execute(sql`
     SELECT count(*)::int AS "count" FROM tournament_matches
     WHERE tenant_id = ${tenantId} AND tournament_id = ${tournamentId}
@@ -158,16 +146,16 @@ export async function generateFixture(
   }> = []
 
   /**
- * '__q0__' -> 1. Los genera la rama de groups_playoff más abajo; también
- * aparecen como homeTeamId en las rondas con BYE.
- */
-function seedOfPlaceholder(id: string | null): number | null {
-  if (id === null || !id.startsWith('__q')) return null
-  const n = Number(id.slice(3, -2))
-  return Number.isFinite(n) ? n + 1 : null
-}
+   * '__q0__' -> 1. Los genera la rama de groups_playoff más abajo; también
+   * aparecen como homeTeamId en las rondas con BYE.
+   */
+  function seedOfPlaceholder(id: string | null): number | null {
+    if (id === null || !id.startsWith('__q')) return null
+    const n = Number(id.slice(3, -2))
+    return Number.isFinite(n) ? n + 1 : null
+  }
 
-/** Empuja un bracket de llaves respetando sus índices locales. */
+  /** Empuja un bracket de llaves respetando sus índices locales. */
   function pushBracket(stageIndex: number, bracket: BracketMatch[]): void {
     for (const m of bracket) {
       plan.push({
@@ -317,9 +305,7 @@ function seedOfPlaceholder(id: string | null): number | null {
 
   // ── Persistir fases ──────────────────────────────────────────
   const insertedStages = await tx.insert(tournamentStages).values(stageRows).returning()
-  const stageIdByIndex = insertedStages
-    .sort((a, b) => a.orderIndex - b.orderIndex)
-    .map((s) => s.id)
+  const stageIdByIndex = insertedStages.sort((a, b) => a.orderIndex - b.orderIndex).map((s) => s.id)
 
   // ── Persistir partidos ───────────────────────────────────────
   // Los UUIDs se generan ACÁ, no en la DB. Con el id conocido de antemano, el
@@ -473,10 +459,7 @@ export async function listStages(
     .select()
     .from(tournamentStages)
     .where(
-      and(
-        eq(tournamentStages.tenantId, tenantId),
-        eq(tournamentStages.tournamentId, tournamentId),
-      ),
+      and(eq(tournamentStages.tenantId, tenantId), eq(tournamentStages.tournamentId, tournamentId)),
     )
     .orderBy(asc(tournamentStages.orderIndex))
   return rows.map(rowToStage)
@@ -562,9 +545,7 @@ export async function rescheduleMatch(
   if (!match) throw new MatchNotFoundError(matchId)
 
   const tournament = await getTournament(tenantId, match.tournamentId, tx)
-  const endsAt = new Date(
-    startsAt.getTime() + tournament.matchDurationMinutes * 60_000,
-  )
+  const endsAt = new Date(startsAt.getTime() + tournament.matchDurationMinutes * 60_000)
 
   // 1) Tiene que caber ENTERO en una hora que el torneo posee, en esa cancha.
   const containing = (await tx.execute(sql`
@@ -581,9 +562,7 @@ export async function rescheduleMatch(
   if (!booking) throw new MatchOutsideOwnedTimeError()
 
   // 2) Ningún equipo del partido puede estar jugando otro a esa hora.
-  const teamIds = [match.homeTeamId, match.awayTeamId].filter(
-    (t): t is string => t !== null,
-  )
+  const teamIds = [match.homeTeamId, match.awayTeamId].filter((t): t is string => t !== null)
   if (teamIds.length > 0) {
     const idList = sql.join(
       teamIds.map((id) => sql`${id}::uuid`),

@@ -60,9 +60,7 @@ test.describe('Player data export (ARCO)', () => {
       ])
 
       // Filename format: turnogol-mis-datos-YYYY-MM-DD.json
-      expect(download.suggestedFilename()).toMatch(
-        /^turnogol-mis-datos-\d{4}-\d{2}-\d{2}\.json$/,
-      )
+      expect(download.suggestedFilename()).toMatch(/^turnogol-mis-datos-\d{4}-\d{2}-\d{2}\.json$/)
 
       const path = await download.path()
       expect(path).toBeTruthy()

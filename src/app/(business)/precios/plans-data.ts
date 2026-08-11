@@ -63,7 +63,9 @@ export const PLANS: readonly PlanCard[] = [
  * ilimitado y siempre cierra la lista.
  */
 export function planForCourts(courts: number): PlanCard {
-  return PLANS.find((p) => p.maxCourts === null || courts <= p.maxCourts) ?? PLANS[PLANS.length - 1]!
+  return (
+    PLANS.find((p) => p.maxCourts === null || courts <= p.maxCourts) ?? PLANS[PLANS.length - 1]!
+  )
 }
 
 /** Ahorro en centavos por año pagando con ciclo anual (12 meses de diferencia). */

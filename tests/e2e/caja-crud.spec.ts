@@ -149,279 +149,295 @@ async function seedDailyClose(
 // TEST 1 — Happy: register a movement
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — happy: register movement', () => {
-  test(
-    '/caja?date=TEST_DATE → "+ Agregar movimiento" → fill → "Guardar" → row appears in table @critical',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+  test('/caja?date=TEST_DATE → "+ Agregar movimiento" → fill → "Guardar" → row appears in table @critical', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto(`/caja?date=${TEST_DATE_MOVE}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+      await page.goto(`/caja?date=${TEST_DATE_MOVE}`)
+      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Open the movement modal.
-        await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
+      // Open the movement modal.
+      await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
 
-        // Dialog title: "Agregar movimiento".
-        // Use heading role: the trigger button is "+ Agregar movimiento" so
-        // getByText would match both (strict mode).
-        await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
+      // Dialog title: "Agregar movimiento".
+      // Use heading role: the trigger button is "+ Agregar movimiento" so
+      // getByText would match both (strict mode).
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
 
-        // Chips (pages/caja.md §7): "Ingreso" y "Efectivo" ya vienen
-        // seleccionados por defecto; solo se elige la categoría "Otro ingreso".
-        const dialog = page.getByRole('dialog')
-        await dialog.getByRole('button', { name: 'Otro ingreso' }).click()
-        await page.locator('#cf-amount').fill('1000')
-        await page.locator('#cf-desc').fill('Pago E2E test movimiento')
+      // Chips (pages/caja.md §7): "Ingreso" y "Efectivo" ya vienen
+      // seleccionados por defecto; solo se elige la categoría "Otro ingreso".
+      const dialog = page.getByRole('dialog')
+      await dialog.getByRole('button', { name: 'Otro ingreso' }).click()
+      await page.locator('#cf-amount').fill('1000')
+      await page.locator('#cf-desc').fill('Pago E2E test movimiento')
 
-        // Submit.
-        await page.getByRole('button', { name: 'Guardar' }).click()
+      // Submit.
+      await page.getByRole('button', { name: 'Guardar' }).click()
 
-        // Dialog closes on success.
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      // Dialog closes on success.
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
 
-        // The new row should appear in the movements table.
-        await expect(page.getByRole('cell', { name: 'Pago E2E test movimiento' })).toBeVisible({ timeout: 10_000 })
+      // The new row should appear in the movements table.
+      await expect(page.getByRole('cell', { name: 'Pago E2E test movimiento' })).toBeVisible({
+        timeout: 10_000,
+      })
 
-        // El rediseño movió el resumen "Ingresos/Egresos" adentro del modal de
-        // cierre (CloseDayButton) y del recibo post-cierre (CierreCard) — ya no
-        // vive en la página principal. El equivalente visible acá es la sección
-        // "Desglose por método" (solo se renderiza cuando hay al menos un método
-        // con movimientos), que recalcula con el que acabamos de crear. Solo
-        // verificamos que la sección apareció; el monto exacto depende del
-        // formatter del server.
-        await expect(page.getByRole('heading', { name: 'Desglose por método' })).toBeVisible()
-      } finally {
-        await context.close()
-        // Clean up all cash_flows for this test date.
-        await cleanupCajaDate(supabase, TEST_DATE_MOVE)
-      }
-    },
-  )
+      // El rediseño movió el resumen "Ingresos/Egresos" adentro del modal de
+      // cierre (CloseDayButton) y del recibo post-cierre (CierreCard) — ya no
+      // vive en la página principal. El equivalente visible acá es la sección
+      // "Desglose por método" (solo se renderiza cuando hay al menos un método
+      // con movimientos), que recalcula con el que acabamos de crear. Solo
+      // verificamos que la sección apareció; el monto exacto depende del
+      // formatter del server.
+      await expect(page.getByRole('heading', { name: 'Desglose por método' })).toBeVisible()
+    } finally {
+      await context.close()
+      // Clean up all cash_flows for this test date.
+      await cleanupCajaDate(supabase, TEST_DATE_MOVE)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 2 — Edge: close day with type-to-confirm
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — edge: close day (type-to-confirm)', () => {
-  test(
-    '"Cerrar caja" → confirm button disabled until typing CERRAR → type it → confirm → "Caja cerrada" badge @critical',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const seedId = randomUUID()
-      const context = await browser.newContext()
-      try {
-        // Pre-seed a cash_flow so the day has a non-zero balance (makes it closeable with meaning).
-        await seedCashFlow(supabase, TEST_DATE_CLOSE, seedId)
+  test('"Cerrar caja" → confirm button disabled until typing CERRAR → type it → confirm → "Caja cerrada" badge @critical', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const seedId = randomUUID()
+    const context = await browser.newContext()
+    try {
+      // Pre-seed a cash_flow so the day has a non-zero balance (makes it closeable with meaning).
+      await seedCashFlow(supabase, TEST_DATE_CLOSE, seedId)
 
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto(`/caja?date=${TEST_DATE_CLOSE}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+      await page.goto(`/caja?date=${TEST_DATE_CLOSE}`)
+      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Open "Cerrar caja" dialog.
-        await page.getByRole('button', { name: 'Cerrar caja' }).click()
+      // Open "Cerrar caja" dialog.
+      await page.getByRole('button', { name: 'Cerrar caja' }).click()
 
-        // Dialog title starts with "Cerrar caja del"
-        await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByText(/Cerrar caja del/i)).toBeVisible()
+      // Dialog title starts with "Cerrar caja del"
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByText(/Cerrar caja del/i)).toBeVisible()
 
-        // Confirm button should be disabled before typing the phrase.
-        const confirmBtn = page.getByRole('button', { name: 'Cerrar caja' }).last()
-        await expect(confirmBtn).toBeDisabled()
+      // Confirm button should be disabled before typing the phrase.
+      const confirmBtn = page.getByRole('button', { name: 'Cerrar caja' }).last()
+      await expect(confirmBtn).toBeDisabled()
 
-        // The label contains "Escribí ... CERRAR".
-        await expect(page.getByText(/Escribí/i)).toBeVisible()
-        await expect(page.getByText(/CERRAR/)).toBeVisible()
+      // The label contains "Escribí ... CERRAR".
+      await expect(page.getByText(/Escribí/i)).toBeVisible()
+      await expect(page.getByText(/CERRAR/)).toBeVisible()
 
-        // Type an incorrect phrase — button still disabled.
-        await page.locator('#confirm-phrase').fill('cerrar')
-        await expect(confirmBtn).toBeDisabled()
+      // Type an incorrect phrase — button still disabled.
+      await page.locator('#confirm-phrase').fill('cerrar')
+      await expect(confirmBtn).toBeDisabled()
 
-        // Type the exact phrase.
-        await page.locator('#confirm-phrase').fill('CERRAR')
-        await expect(confirmBtn).not.toBeDisabled()
+      // Type the exact phrase.
+      await page.locator('#confirm-phrase').fill('CERRAR')
+      await expect(confirmBtn).not.toBeDisabled()
 
-        // Confirm.
-        await confirmBtn.click()
+      // Confirm.
+      await confirmBtn.click()
 
-        // Dialog closes and the "Caja cerrada" badge appears.
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible({ timeout: 10_000 })
-      } finally {
-        await context.close()
-        await cleanupCajaDate(supabase, TEST_DATE_CLOSE)
-      }
-    },
-  )
+      // Dialog closes and the "Caja cerrada" badge appears.
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible({ timeout: 10_000 })
+    } finally {
+      await context.close()
+      await cleanupCajaDate(supabase, TEST_DATE_CLOSE)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 3 — Edge: idempotency — adding movement to already-closed day
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — edge: closed-day guard (no writes on a closed day)', () => {
-  test(
-    'pre-closed day → "Caja cerrada" badge shown and write actions (movimiento / cerrar) are hidden',
-    async ({ browser, adminStorageState }) => {
-      // A closed day must not accept new movements or a second close. The UI enforces this by
-      // hiding CajaActions entirely (it returns null when isClosed=true), so there is no button
-      // to issue a write — that is the guard we assert here. The server-side guard
-      // ("La caja … ya fue cerrada", thrown by createCashFlow / closeDailyRegister) is covered
-      // by the integration test daily-close-idempotency.
-      const supabase = makeServiceClient()
-      const closeId = randomUUID()
-      const context = await browser.newContext()
-      try {
-        await seedDailyClose(supabase, TEST_DATE_CLOSED, closeId)
+  test('pre-closed day → "Caja cerrada" badge shown and write actions (movimiento / cerrar) are hidden', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    // A closed day must not accept new movements or a second close. The UI enforces this by
+    // hiding CajaActions entirely (it returns null when isClosed=true), so there is no button
+    // to issue a write — that is the guard we assert here. The server-side guard
+    // ("La caja … ya fue cerrada", thrown by createCashFlow / closeDailyRegister) is covered
+    // by the integration test daily-close-idempotency.
+    const supabase = makeServiceClient()
+    const closeId = randomUUID()
+    const context = await browser.newContext()
+    try {
+      await seedDailyClose(supabase, TEST_DATE_CLOSED, closeId)
 
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto(`/caja?date=${TEST_DATE_CLOSED}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+      await page.goto(`/caja?date=${TEST_DATE_CLOSED}`)
+      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // The "Caja cerrada" badge must appear — CajaActions is hidden (isClosed=true).
-        await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible()
+      // The "Caja cerrada" badge must appear — CajaActions is hidden (isClosed=true).
+      await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible()
 
-        // Write actions must NOT be present (CajaActions returns null when closed).
-        await expect(page.getByRole('button', { name: '+ Agregar movimiento' })).not.toBeVisible()
-        await expect(page.getByRole('button', { name: 'Cerrar caja' })).not.toBeVisible()
-      } finally {
-        await context.close()
-        await cleanupCajaDate(supabase, TEST_DATE_CLOSED)
-      }
-    },
-  )
+      // Write actions must NOT be present (CajaActions returns null when closed).
+      await expect(page.getByRole('button', { name: '+ Agregar movimiento' })).not.toBeVisible()
+      await expect(page.getByRole('button', { name: 'Cerrar caja' })).not.toBeVisible()
+    } finally {
+      await context.close()
+      await cleanupCajaDate(supabase, TEST_DATE_CLOSED)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 4 — Edge: close with difference requires note
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — edge: close with difference requires note', () => {
-  test(
-    'balance > 0, declared cash differs → note required → error without note → fill note → success',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const seedId = randomUUID()
-      const context = await browser.newContext()
-      try {
-        // Pre-seed a cash_flow so balance > 0.
-        await seedCashFlow(supabase, TEST_DATE_DIFF, seedId)
+  test('balance > 0, declared cash differs → note required → error without note → fill note → success', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const seedId = randomUUID()
+    const context = await browser.newContext()
+    try {
+      // Pre-seed a cash_flow so balance > 0.
+      await seedCashFlow(supabase, TEST_DATE_DIFF, seedId)
 
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto(`/caja?date=${TEST_DATE_DIFF}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+      await page.goto(`/caja?date=${TEST_DATE_DIFF}`)
+      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Open "Cerrar caja".
-        await page.getByRole('button', { name: 'Cerrar caja' }).click()
-        await expect(page.getByRole('dialog')).toBeVisible()
+      // Open "Cerrar caja".
+      await page.getByRole('button', { name: 'Cerrar caja' }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
 
-        // Enter a declared cash that differs from the real balance.
-        // Real balance is 1000 ARS (100000 centavos), declare 500 ARS → diff = -500.
-        await page.locator('#declared').fill('500')
+      // Enter a declared cash that differs from the real balance.
+      // Real balance is 1000 ARS (100000 centavos), declare 500 ARS → diff = -500.
+      await page.locator('#declared').fill('500')
 
-        // The difference warning must appear.
-        await expect(page.getByText(/Diferencia/i)).toBeVisible()
-        await expect(page.getByText(/nota es obligatoria/i)).toBeVisible()
+      // The difference warning must appear.
+      await expect(page.getByText(/Diferencia/i)).toBeVisible()
+      await expect(page.getByText(/nota es obligatoria/i)).toBeVisible()
 
-        // Type "CERRAR" to enable confirm.
-        await page.locator('#confirm-phrase').fill('CERRAR')
+      // Type "CERRAR" to enable confirm.
+      await page.locator('#confirm-phrase').fill('CERRAR')
 
-        // Confirm with empty note → should fail with error.
-        const confirmBtn = page.getByRole('button', { name: 'Cerrar caja' }).last()
-        await confirmBtn.click()
+      // Confirm with empty note → should fail with error.
+      const confirmBtn = page.getByRole('button', { name: 'Cerrar caja' }).last()
+      await confirmBtn.click()
 
-        // Error: "Hay diferencia: la nota es obligatoria."
-        await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 })
-        await expect(page.getByRole('alert')).toContainText(/nota es obligatoria/i)
+      // Error: "Hay diferencia: la nota es obligatoria."
+      await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByRole('alert')).toContainText(/nota es obligatoria/i)
 
-        // Dialog stays open.
-        await expect(page.getByRole('dialog')).toBeVisible()
+      // Dialog stays open.
+      await expect(page.getByRole('dialog')).toBeVisible()
 
-        // Now fill the note and try again.
-        await page.locator('#close-note').fill('Diferencia detectada en E2E')
-        await confirmBtn.click()
+      // Now fill the note and try again.
+      await page.locator('#close-note').fill('Diferencia detectada en E2E')
+      await confirmBtn.click()
 
-        // Success: dialog closes, badge appears.
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible({ timeout: 10_000 })
-      } finally {
-        await context.close()
-        await cleanupCajaDate(supabase, TEST_DATE_DIFF)
-      }
-    },
-  )
+      // Success: dialog closes, badge appears.
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/Caja cerrada/i).first()).toBeVisible({ timeout: 10_000 })
+    } finally {
+      await context.close()
+      await cleanupCajaDate(supabase, TEST_DATE_DIFF)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 5 — Happy: open day (fondo inicial) → close matches expected cash (v2)
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('caja — happy: apertura + cierre v2 (efectivo esperado)', () => {
-  test(
-    'abrir caja con fondo 1000 → ingreso en efectivo → cerrar declarando el esperado exacto → "el efectivo cuadró" + Fondo inicial',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+  test('abrir caja con fondo 1000 → ingreso en efectivo → cerrar declarando el esperado exacto → "el efectivo cuadró" + Fondo inicial', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await page.goto(`/caja?date=${TEST_DATE_OPEN}`)
-        await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({ timeout: 15_000 })
+      await page.goto(`/caja?date=${TEST_DATE_OPEN}`)
+      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // ── 1. Abrir caja con fondo $1000 ────────────────────────────────────
-        // TEST_DATE_OPEN es un día PASADO: la card muestra "Declarar fondo"
-        // (copy de días no-hoy, hallazgo UX del panel de Fase 5); el submit
-        // dentro del diálogo sigue siendo "Abrir caja".
-        await page.getByRole('button', { name: 'Declarar fondo' }).click()
-        const openDialog = page.getByRole('dialog')
-        await expect(openDialog).toBeVisible()
-        await page.locator('#opening-cash').fill('1000')
-        await openDialog.getByRole('button', { name: 'Abrir caja' }).click()
-        await expect(openDialog).not.toBeVisible({ timeout: 10_000 })
+      // ── 1. Abrir caja con fondo $1000 ────────────────────────────────────
+      // TEST_DATE_OPEN es un día PASADO: la card muestra "Declarar fondo"
+      // (copy de días no-hoy, hallazgo UX del panel de Fase 5); el submit
+      // dentro del diálogo sigue siendo "Abrir caja".
+      await page.getByRole('button', { name: 'Declarar fondo' }).click()
+      const openDialog = page.getByRole('dialog')
+      await expect(openDialog).toBeVisible()
+      await page.locator('#opening-cash').fill('1000')
+      await openDialog.getByRole('button', { name: 'Abrir caja' }).click()
+      await expect(openDialog).not.toBeVisible({ timeout: 10_000 })
 
-        // La card ahora muestra el fondo guardado y el botón pasa a "Corregir".
-        await expect(page.getByText(/Fondo inicial:/)).toBeVisible({ timeout: 10_000 })
-        await expect(page.getByRole('button', { name: 'Corregir' })).toBeVisible()
+      // La card ahora muestra el fondo guardado y el botón pasa a "Corregir".
+      await expect(page.getByText(/Fondo inicial:/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('button', { name: 'Corregir' })).toBeVisible()
 
-        // ── 2. Registrar un ingreso en efectivo de $1000 ─────────────────────
-        await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
-        const movDialog = page.getByRole('dialog')
-        await expect(movDialog).toBeVisible()
-        await movDialog.getByRole('button', { name: 'Otro ingreso' }).click()
-        await page.locator('#cf-amount').fill('1000')
-        await page.locator('#cf-desc').fill('Ingreso E2E apertura')
-        await page.getByRole('button', { name: 'Guardar' }).click()
-        await expect(movDialog).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.getByRole('cell', { name: 'Ingreso E2E apertura' })).toBeVisible({ timeout: 10_000 })
+      // ── 2. Registrar un ingreso en efectivo de $1000 ─────────────────────
+      await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
+      const movDialog = page.getByRole('dialog')
+      await expect(movDialog).toBeVisible()
+      await movDialog.getByRole('button', { name: 'Otro ingreso' }).click()
+      await page.locator('#cf-amount').fill('1000')
+      await page.locator('#cf-desc').fill('Ingreso E2E apertura')
+      await page.getByRole('button', { name: 'Guardar' }).click()
+      await expect(movDialog).not.toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('cell', { name: 'Ingreso E2E apertura' })).toBeVisible({
+        timeout: 10_000,
+      })
 
-        // ── 3. Cerrar declarando el efectivo esperado exacto: fondo 1000 + ────
-        //      ingreso cash 1000 = esperado 2000.
-        await page.getByRole('button', { name: 'Cerrar caja' }).click()
-        const closeDialog = page.getByRole('dialog')
-        await expect(closeDialog).toBeVisible()
-        await page.locator('#declared').fill('2000')
-        // Sin diferencia: la nota sigue opcional (no aparece el aviso ámbar).
-        await expect(page.getByText(/Diferencia de.*efectivo esperado/i)).not.toBeVisible()
-        await page.locator('#confirm-phrase').fill('CERRAR')
-        await closeDialog.getByRole('button', { name: 'Cerrar caja' }).click()
-        await expect(closeDialog).not.toBeVisible({ timeout: 10_000 })
+      // ── 3. Cerrar declarando el efectivo esperado exacto: fondo 1000 + ────
+      //      ingreso cash 1000 = esperado 2000.
+      await page.getByRole('button', { name: 'Cerrar caja' }).click()
+      const closeDialog = page.getByRole('dialog')
+      await expect(closeDialog).toBeVisible()
+      await page.locator('#declared').fill('2000')
+      // Sin diferencia: la nota sigue opcional (no aparece el aviso ámbar).
+      await expect(page.getByText(/Diferencia de.*efectivo esperado/i)).not.toBeVisible()
+      await page.locator('#confirm-phrase').fill('CERRAR')
+      await closeDialog.getByRole('button', { name: 'Cerrar caja' }).click()
+      await expect(closeDialog).not.toBeVisible({ timeout: 10_000 })
 
-        // ── 4. CierreCard v2: "el efectivo cuadró" + fila "Fondo inicial" ────
-        await expect(page.getByRole('heading', { name: 'Caja cerrada — el efectivo cuadró' })).toBeVisible({
-          timeout: 10_000,
-        })
-        await expect(page.getByText('Fondo inicial')).toBeVisible()
-      } finally {
-        await context.close()
-        await cleanupCajaDate(supabase, TEST_DATE_OPEN)
-      }
-    },
-  )
+      // ── 4. CierreCard v2: "el efectivo cuadró" + fila "Fondo inicial" ────
+      await expect(
+        page.getByRole('heading', { name: 'Caja cerrada — el efectivo cuadró' }),
+      ).toBeVisible({
+        timeout: 10_000,
+      })
+      await expect(page.getByText('Fondo inicial')).toBeVisible()
+    } finally {
+      await context.close()
+      await cleanupCajaDate(supabase, TEST_DATE_OPEN)
+    }
+  })
 })

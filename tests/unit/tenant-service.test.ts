@@ -61,12 +61,7 @@ describe('generateUniqueSlug', () => {
   })
 
   it('skips to -3 when both base and -2 exist', async () => {
-    mockGetDb.mockReturnValue(
-      makeDbMock([
-        { slug: 'futbol-amigos' },
-        { slug: 'futbol-amigos-2' },
-      ]),
-    )
+    mockGetDb.mockReturnValue(makeDbMock([{ slug: 'futbol-amigos' }, { slug: 'futbol-amigos-2' }]))
     const slug = await generateUniqueSlug('Fútbol Amigos')
     expect(slug).toBe('futbol-amigos-3')
   })

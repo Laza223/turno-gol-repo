@@ -39,7 +39,16 @@ export const TodosLosEstados: Story = {
     // El candado de la regla que los badges viejos rompían: cada estado tiene
     // que ser distinguible SIN mirar el color. Si alguien vuelve a pintar dos
     // estados del mismo tono, las etiquetas los siguen separando.
-    for (const label of ['Trial', 'Activo', 'Pago vencido', 'Suspendido', 'Bloqueado', 'Cancelado', 'Churned', 'Eliminado']) {
+    for (const label of [
+      'Trial',
+      'Activo',
+      'Pago vencido',
+      'Suspendido',
+      'Bloqueado',
+      'Cancelado',
+      'Churned',
+      'Eliminado',
+    ]) {
       await expect(canvas.getByText(label)).toBeVisible()
     }
   },

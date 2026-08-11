@@ -43,9 +43,7 @@ export const tournaments = pgTable(
 
     /** Duración del PARTIDO, independiente del turno de 60 min de la grilla. */
     matchDurationMinutes: integer('match_duration_minutes').notNull().default(60),
-    restBetweenMatchesMinutes: integer('rest_between_matches_minutes')
-      .notNull()
-      .default(0),
+    restBetweenMatchesMinutes: integer('rest_between_matches_minutes').notNull().default(0),
 
     /** Centavos ARS. */
     inscriptionFee: integer('inscription_fee').notNull().default(0),
@@ -65,12 +63,8 @@ export const tournaments = pgTable(
         sql`ARRAY['goal_diff', 'goals_for', 'head_to_head', 'fair_play', 'drawn_lots']::text[]`,
       ),
 
-    yellowCardsForSuspension: smallint('yellow_cards_for_suspension')
-      .notNull()
-      .default(3),
-    redCardSuspensionMatches: smallint('red_card_suspension_matches')
-      .notNull()
-      .default(1),
+    yellowCardsForSuspension: smallint('yellow_cards_for_suspension').notNull().default(3),
+    redCardSuspensionMatches: smallint('red_card_suspension_matches').notNull().default(1),
     /** Goles del equipo que sí se presentó, cuando el rival no aparece. */
     walkoverGoalsFor: smallint('walkover_goals_for').notNull().default(3),
 
@@ -78,18 +72,11 @@ export const tournaments = pgTable(
     notes: text('notes'),
 
     createdByStaff: uuid('created_by_staff').references(() => staffUsers.id),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    nameNonEmpty: check(
-      'chk_tournament_name_nonempty',
-      sql`length(trim(${table.name})) > 0`,
-    ),
+    nameNonEmpty: check('chk_tournament_name_nonempty', sql`length(trim(${table.name})) > 0`),
     slugFormat: check(
       'chk_tournament_slug_format',
       sql`${table.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`,
@@ -110,14 +97,8 @@ export const tournaments = pgTable(
       'chk_tournament_match_duration',
       sql`${table.matchDurationMinutes} BETWEEN 10 AND 120`,
     ),
-    rest: check(
-      'chk_tournament_rest',
-      sql`${table.restBetweenMatchesMinutes} BETWEEN 0 AND 240`,
-    ),
-    feeNonNeg: check(
-      'chk_tournament_fee_nonneg',
-      sql`${table.inscriptionFee} >= 0`,
-    ),
+    rest: check('chk_tournament_rest', sql`${table.restBetweenMatchesMinutes} BETWEEN 0 AND 240`),
+    feeNonNeg: check('chk_tournament_fee_nonneg', sql`${table.inscriptionFee} >= 0`),
     points: check(
       'chk_tournament_points',
       sql`${table.pointsWin} >= ${table.pointsDraw} AND ${table.pointsDraw} >= ${table.pointsLoss} AND ${table.pointsLoss} >= 0`,
@@ -134,23 +115,11 @@ export const tournaments = pgTable(
       'chk_tournament_red_matches',
       sql`${table.redCardSuspensionMatches} BETWEEN 0 AND 20`,
     ),
-    walkover: check(
-      'chk_tournament_walkover',
-      sql`${table.walkoverGoalsFor} BETWEEN 0 AND 20`,
-    ),
+    walkover: check('chk_tournament_walkover', sql`${table.walkoverGoalsFor} BETWEEN 0 AND 20`),
 
-    tenantSlugIdx: uniqueIndex('uq_tournaments_tenant_slug').on(
-      table.tenantId,
-      table.slug,
-    ),
-    tenantIdx: index('idx_tournaments_tenant').on(
-      table.tenantId,
-      table.startsOn.desc(),
-    ),
-    tenantStatusIdx: index('idx_tournaments_tenant_status').on(
-      table.tenantId,
-      table.status,
-    ),
+    tenantSlugIdx: uniqueIndex('uq_tournaments_tenant_slug').on(table.tenantId, table.slug),
+    tenantIdx: index('idx_tournaments_tenant').on(table.tenantId, table.startsOn.desc()),
+    tenantStatusIdx: index('idx_tournaments_tenant_status').on(table.tenantId, table.status),
     publicIdx: index('idx_tournaments_public')
       .on(table.tenantId, table.slug)
       .where(sql`is_public`),

@@ -58,14 +58,12 @@ function parsePage(raw: string | undefined): number {
   return Number.isInteger(n) && n > 0 ? n : 1
 }
 
-export default async function SuperAdminTenantDetailPage(
-  props: {
-    params: Promise<{ id: string }>
-    searchParams: Promise<{ tab?: string; actPage?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
-  const params = await props.params;
+export default async function SuperAdminTenantDetailPage(props: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string; actPage?: string }>
+}) {
+  const searchParams = await props.searchParams
+  const params = await props.params
   await requireSystemAdmin()
 
   if (!UUID_RE.test(params.id)) notFound()
@@ -122,11 +120,11 @@ export default async function SuperAdminTenantDetailPage(
         ))}
       </nav>
 
-      {tab === 'resumen' && <ResumenTab detail={detail} impersonateAction={startImpersonationAction} />}
-      {tab === 'suscripcion' && <SuscripcionTab detail={detail} plans={plansList} />}
-      {tab === 'actividad' && activity && (
-        <ActividadTab tenantId={tenant.id} activity={activity} />
+      {tab === 'resumen' && (
+        <ResumenTab detail={detail} impersonateAction={startImpersonationAction} />
       )}
+      {tab === 'suscripcion' && <SuscripcionTab detail={detail} plans={plansList} />}
+      {tab === 'actividad' && activity && <ActividadTab tenantId={tenant.id} activity={activity} />}
       {tab === 'acciones' && <AccionesTab detail={detail} plans={plansList} />}
     </div>
   )
@@ -166,9 +164,7 @@ function AccionesTab({ detail, plans }: { detail: TenantDetail; plans: PlanSumma
       status={tenant.status}
       forceableTargets={[...FORCEABLE_TRANSITIONS[tenant.status]]}
       destructiveTargets={[...DESTRUCTIVE_TARGET_STATUSES]}
-      canReactivate={
-        subscription !== null && REACTIVATABLE_STATUSES.includes(tenant.status)
-      }
+      canReactivate={subscription !== null && REACTIVATABLE_STATUSES.includes(tenant.status)}
       isTrialing={tenant.status === 'trialing'}
       hasSubscription={subscription !== null}
       currentPlanId={subscription?.planId ?? null}

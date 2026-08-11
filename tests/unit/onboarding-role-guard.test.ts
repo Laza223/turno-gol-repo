@@ -48,14 +48,21 @@ import {
   setWizardStepAction,
 } from '@/app/onboarding/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant, completeOnboarding, updateOnboardingStep } from '@/modules/tenants/tenant.service'
+import {
+  getStaffTenant,
+  completeOnboarding,
+  updateOnboardingStep,
+} from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
 import { createCourt } from '@/modules/courts/court.service'
 
 const STAFF_USER = { type: 'staff', id: 'auth-1', staffUserId: 'staff-1', email: 'staff@test.com' }
 const OPEN_ALL_WEEK = Object.fromEntries(
-  ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [d, { open: '08:00', close: '23:00' }]),
+  ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [
+    d,
+    { open: '08:00', close: '23:00' },
+  ]),
 )
 const TENANT = { id: 'tenant-1', openingHours: OPEN_ALL_WEEK, closesNextDay: false }
 
@@ -74,9 +81,10 @@ beforeEach(() => {
   vi.mocked(getStaffTenant).mockResolvedValue(TENANT as never)
   // Si el guard de rol deja pasar, la acción llega hasta acá y completa — el
   // punto es probar que el manager NUNCA llega a este mock.
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (tx: never) => Promise<unknown>) => cb({} as never)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (tx: never) => Promise<unknown>,
+  ) => cb({} as never)) as never)
 })
 
 describe('onboarding wizard actions — manager (rol no-admin) es rechazado (caza-bugs #7)', () => {
@@ -98,7 +106,15 @@ describe('onboarding wizard actions — manager (rol no-admin) es rechazado (caz
 
   it('createWizardCourtsAction no crea canchas para un manager', async () => {
     const res = await createWizardCourtsAction({
-      courts: [{ name: 'Cancha 1', format: 5, surfaceType: 'synthetic_grass', isCovered: false, priceCents: 100000 }],
+      courts: [
+        {
+          name: 'Cancha 1',
+          format: 5,
+          surfaceType: 'synthetic_grass',
+          isCovered: false,
+          priceCents: 100000,
+        },
+      ],
     })
     expect(res.success).toBe(false)
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
@@ -124,7 +140,15 @@ describe('onboarding wizard actions — admin sigue funcionando (paridad)', () =
 
   it('createWizardCourtsAction crea canchas para un admin', async () => {
     const res = await createWizardCourtsAction({
-      courts: [{ name: 'Cancha 1', format: 5, surfaceType: 'synthetic_grass', isCovered: false, priceCents: 100000 }],
+      courts: [
+        {
+          name: 'Cancha 1',
+          format: 5,
+          surfaceType: 'synthetic_grass',
+          isCovered: false,
+          priceCents: 100000,
+        },
+      ],
     })
     expect(res).toEqual({ success: true })
     expect(vi.mocked(createCourt)).toHaveBeenCalledTimes(1)

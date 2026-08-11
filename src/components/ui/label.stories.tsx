@@ -12,7 +12,13 @@ const meta = {
   component: Label,
   parameters: { layout: 'centered' },
   args: { children: 'Nombre del complejo' },
-  decorators: [(Story) => <div className="w-72 space-y-1.5"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-72 space-y-1.5">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof Label>
 
 export default meta

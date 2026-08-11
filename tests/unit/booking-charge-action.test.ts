@@ -61,9 +61,10 @@ function mockTx(responses: unknown[][]) {
   const execute = vi.fn()
   for (const r of responses) execute.mockResolvedValueOnce(r)
   const tx = { execute }
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (t: never) => Promise<unknown>) => cb(tx as never)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (t: never) => Promise<unknown>,
+  ) => cb(tx as never)) as never)
   return tx
 }
 
@@ -96,14 +97,22 @@ describe('addBookingChargeAction', () => {
 
   it('rechaza una reserva en estado no cobrable (cancelada)', async () => {
     mockTx([[{ status: 'canceled_no_refund' }]])
-    const res = await addBookingChargeAction({ bookingId: BOOKING_ID, amount: 20_000_00, method: 'cash' })
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      amount: 20_000_00,
+      method: 'cash',
+    })
     expect(res.success).toBe(false)
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
 
   it('rechaza una reserva inexistente', async () => {
     mockTx([[]])
-    const res = await addBookingChargeAction({ bookingId: BOOKING_ID, amount: 20_000_00, method: 'cash' })
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      amount: 20_000_00,
+      method: 'cash',
+    })
     expect(res.success).toBe(false)
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
@@ -205,7 +214,15 @@ describe('addBookingChargeAction', () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })],
       [], // FOR UPDATE lock del booking (Hallazgo C)
-      [{ id: 'cf-prev', amount: 80_00, method: 'cash', description: 'Cobro de turno', occurredAt: '2026-01-01' }],
+      [
+        {
+          id: 'cf-prev',
+          amount: 80_00,
+          method: 'cash',
+          description: 'Cobro de turno',
+          occurredAt: '2026-01-01',
+        },
+      ],
     ])
 
     const res = await addBookingChargeAction({
@@ -285,9 +302,7 @@ describe('addBookingChargeAction', () => {
     })
 
     expect(res.success).toBe(true)
-    const queries = vi
-      .mocked(tx.execute)
-      .mock.calls.map(([q]) => dialect.sqlToQuery(q as SQL))
+    const queries = vi.mocked(tx.execute).mock.calls.map(([q]) => dialect.sqlToQuery(q as SQL))
     const lockIdx = queries.findIndex((q) => q.sql.includes('FOR UPDATE'))
     const chargesIdx = queries.findIndex(
       (q) => /FROM cash_flows/i.test(q.sql) && /booking_id/i.test(q.sql),
@@ -316,9 +331,7 @@ describe('addBookingChargeAction', () => {
     })
 
     expect(res.success).toBe(true)
-    const queries = vi
-      .mocked(tx.execute)
-      .mock.calls.map(([q]) => dialect.sqlToQuery(q as SQL))
+    const queries = vi.mocked(tx.execute).mock.calls.map(([q]) => dialect.sqlToQuery(q as SQL))
     expect(queries.some((q) => q.sql.includes('FOR UPDATE'))).toBe(false)
   })
 })

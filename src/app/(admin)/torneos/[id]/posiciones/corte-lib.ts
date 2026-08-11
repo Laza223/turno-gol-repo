@@ -154,9 +154,7 @@ export function buildCorte({
 
   // Cualquier lado con equipo alcanza: `applySeeding` escribe home Y away según
   // el seed de cada uno, y en un cruce con BYE el sembrado puede ser el visitante.
-  const alreadySeeded = knockoutMatches.some(
-    (m) => m.homeTeamId !== null || m.awayTeamId !== null,
-  )
+  const alreadySeeded = knockoutMatches.some((m) => m.homeTeamId !== null || m.awayTeamId !== null)
 
   return { pendingGroupMatches, crosses, tie, alreadySeeded }
 }

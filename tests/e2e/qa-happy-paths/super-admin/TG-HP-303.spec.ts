@@ -32,7 +32,9 @@ test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
       await page.goto('/super-admin/tenants')
       await expect(page.getByRole('heading', { name: 'Tenants' })).toBeVisible({ timeout: 15_000 })
       await expect(
-        page.getByText(`${totalTenants} complejo${totalTenants === 1 ? '' : 's'} — vista global de soporte`),
+        page.getByText(
+          `${totalTenants} complejo${totalTenants === 1 ? '' : 's'} — vista global de soporte`,
+        ),
       ).toBeVisible()
 
       // ── Filtro Buscar (q) ────────────────────────────────────────────────
@@ -87,7 +89,8 @@ test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
         planFilterValue: planOptionValue,
         paginationVisible: hasPaging,
         dbWrites: 'ninguno (listTenants es lectura pura vía getWorkerDb, filtros 100% GET)',
-        notes: 'Estado/plan filtrados con el valor REAL del tenant Demo leído por runSql, no hardcodeado.',
+        notes:
+          'Estado/plan filtrados con el valor REAL del tenant Demo leído por runSql, no hardcodeado.',
       })
     } finally {
       await ctx.close()

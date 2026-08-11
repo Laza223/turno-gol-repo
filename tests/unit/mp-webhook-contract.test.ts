@@ -96,7 +96,8 @@ describe('MercadoPago webhook payload contract', () => {
   it('rejects a non-numeric mp payment id outside mock mode', () => {
     vi.stubEnv('MP_MOCK_MODE', '0')
     expect(
-      webhookPayloadSchema.safeParse({ ...MP_PAYMENT_WEBHOOK, data: { id: 'pref_abc123' } }).success,
+      webhookPayloadSchema.safeParse({ ...MP_PAYMENT_WEBHOOK, data: { id: 'pref_abc123' } })
+        .success,
     ).toBe(false)
   })
 

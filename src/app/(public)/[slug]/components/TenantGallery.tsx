@@ -52,7 +52,10 @@ export default function TenantGallery({ photos, name }: Props) {
 
   return (
     <>
-      <div className="grid grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl" style={{ height: 'clamp(220px, 38vw, 380px)' }}>
+      <div
+        className="grid grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl"
+        style={{ height: 'clamp(220px, 38vw, 380px)' }}
+      >
         <button
           type="button"
           onClick={() => openAt(0)}

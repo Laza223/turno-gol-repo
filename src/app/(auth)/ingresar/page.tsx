@@ -36,11 +36,17 @@ function ImagePane() {
       <div
         aria-hidden
         className="pointer-events-none absolute bottom-[-12%] left-[-8%] h-[460px] w-[460px] rounded-full blur-md"
-        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)' }}
+        style={{
+          background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)',
+        }}
       />
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
         <Link href="/">
-          <Logo variant="horizontal" textClassName="text-white" iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30" />
+          <Logo
+            variant="horizontal"
+            textClassName="text-white"
+            iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30"
+          />
         </Link>
         <div className="max-w-md">
           <div className="inline-flex items-center gap-2.5 font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-400">
@@ -52,7 +58,11 @@ function ImagePane() {
           </div>
           <h2
             className="mt-4 font-display font-black italic text-white"
-            style={{ fontSize: 'clamp(32px, 3vw, 44px)', lineHeight: '1', letterSpacing: '-0.03em' }}
+            style={{
+              fontSize: 'clamp(32px, 3vw, 44px)',
+              lineHeight: '1',
+              letterSpacing: '-0.03em',
+            }}
           >
             Tu próxima cancha
             <br />
@@ -83,7 +93,9 @@ function FormPane() {
       <div
         aria-hidden
         className="pointer-events-none absolute right-[-15%] top-[-10%] -z-10 h-[440px] w-[440px] rounded-full blur-md"
-        style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,.16), transparent 72%)' }}
+        style={{
+          background: 'radial-gradient(closest-side, rgba(16,185,129,.16), transparent 72%)',
+        }}
       />
       <Link
         href="/"
@@ -100,7 +112,10 @@ function FormPane() {
         <IngresarForm action={playerLoginAction} />
         <p className="mt-6 text-center text-sm text-slate-400">
           ¿Primera vez en TurnoGol?{' '}
-          <Link href="/explorar" className="font-semibold text-emerald-300 transition-colors hover:text-emerald-200">
+          <Link
+            href="/explorar"
+            className="font-semibold text-emerald-300 transition-colors hover:text-emerald-200"
+          >
             Descubrí complejos y reservá tu cancha
           </Link>
         </p>

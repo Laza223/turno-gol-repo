@@ -14,10 +14,16 @@ type PlayerLoginState = Awaited<ReturnType<PlayerLoginAction>>
 const meta = {
   title: 'Auth/IngresarForm',
   component: IngresarForm,
-  parameters: { layout: 'fullscreen', nextjs: { appDirectory: true, navigation: { pathname: '/ingresar' } } },
+  parameters: {
+    layout: 'fullscreen',
+    nextjs: { appDirectory: true, navigation: { pathname: '/ingresar' } },
+  },
   decorators: [
     (Story) => (
-      <div className="flex min-h-[560px] items-center justify-center px-4 py-12" style={{ background: '#020617' }}>
+      <div
+        className="flex min-h-[560px] items-center justify-center px-4 py-12"
+        style={{ background: '#020617' }}
+      >
         <div className="w-full max-w-md">
           <Story />
         </div>

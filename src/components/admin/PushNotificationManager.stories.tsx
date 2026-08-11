@@ -21,7 +21,9 @@ import { PushNotificationManager } from './PushNotificationManager'
  * runner.
  */
 type FakeSubscription = { endpoint: string }
-type FakeRegistration = { pushManager: { getSubscription: () => Promise<FakeSubscription | undefined> } }
+type FakeRegistration = {
+  pushManager: { getSubscription: () => Promise<FakeSubscription | undefined> }
+}
 
 type PushApiOverrides = {
   permission?: NotificationPermission
@@ -38,12 +40,17 @@ function stubPushApis(overrides: PushApiOverrides = {}) {
   Object.defineProperty(globalThis, 'Notification', {
     value: {
       permission: overrides.permission ?? 'default',
-      requestPermission: overrides.requestPermission ?? (async () => 'default' as NotificationPermission),
+      requestPermission:
+        overrides.requestPermission ?? (async () => 'default' as NotificationPermission),
     },
     writable: true,
     configurable: true,
   })
-  Object.defineProperty(globalThis, 'PushManager', { value: class {}, writable: true, configurable: true })
+  Object.defineProperty(globalThis, 'PushManager', {
+    value: class {},
+    writable: true,
+    configurable: true,
+  })
   Object.defineProperty(navigator, 'serviceWorker', {
     value: {
       getRegistration: overrides.getRegistration ?? (async () => undefined),
@@ -72,7 +79,10 @@ const meta = {
     // `fixed bottom-[...] left-4` escapa al viewport del canvas sin un
     // containing block propio — mismo truco que admin-header/admin-sidebar.
     (Story) => (
-      <div style={{ transform: 'translateZ(0)', height: 320 }} className="relative isolate overflow-hidden">
+      <div
+        style={{ transform: 'translateZ(0)', height: 320 }}
+        className="relative isolate overflow-hidden"
+      >
         <Story />
       </div>
     ),
@@ -89,7 +99,9 @@ let getRegistrationSpy: ReturnType<typeof fn>
 export const SinSuscribir: Story = {
   beforeEach: () => {
     getRegistrationSpy = fn(async () => undefined)
-    return stubPushApis({ getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'] })
+    return stubPushApis({
+      getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
+    })
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -124,7 +136,9 @@ export const Descartado: Story = {
   beforeEach: () => {
     localStorage.removeItem(DISMISS_KEY)
     getRegistrationSpy = fn(async () => undefined)
-    const restorePushApis = stubPushApis({ getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'] })
+    const restorePushApis = stubPushApis({
+      getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
+    })
     return () => {
       restorePushApis()
       localStorage.removeItem(DISMISS_KEY)
@@ -135,7 +149,9 @@ export const Descartado: Story = {
     const closeButton = await canvas.findByRole('button', { name: 'Cerrar' })
     await userEvent.click(closeButton)
     await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
-    await expect(canvas.queryByRole('button', { name: 'Habilitar notificaciones' })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('button', { name: 'Habilitar notificaciones' }),
+    ).not.toBeInTheDocument()
   },
 }
 
@@ -181,9 +197,13 @@ export const Pendiente: Story = {
 export const YaSuscripto: Story = {
   beforeEach: () => {
     getRegistrationSpy = fn(async () => ({
-      pushManager: { getSubscription: async () => ({ endpoint: 'https://fcm.googleapis.com/fake/abc123' }) },
+      pushManager: {
+        getSubscription: async () => ({ endpoint: 'https://fcm.googleapis.com/fake/abc123' }),
+      },
     }))
-    return stubPushApis({ getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'] })
+    return stubPushApis({
+      getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
+    })
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -195,7 +215,9 @@ export const YaSuscripto: Story = {
     // en camino de desmontarse (dismiss + 200ms de animación, ver
     // use-toast.ts) con su propio botón "Cerrar" — no es parte de este
     // componente.
-    await expect(canvas.queryByRole('button', { name: 'Habilitar notificaciones' })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('button', { name: 'Habilitar notificaciones' }),
+    ).not.toBeInTheDocument()
   },
 }
 
@@ -207,12 +229,17 @@ export const YaSuscripto: Story = {
 export const PermisoDenegado: Story = {
   beforeEach: () => {
     getRegistrationSpy = fn(async () => undefined)
-    return stubPushApis({ permission: 'denied', getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'] })
+    return stubPushApis({
+      permission: 'denied',
+      getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
+    })
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
-    await expect(canvas.queryByRole('button', { name: 'Habilitar notificaciones' })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('button', { name: 'Habilitar notificaciones' }),
+    ).not.toBeInTheDocument()
     await expect(getRegistrationSpy).not.toHaveBeenCalled()
   },
 }

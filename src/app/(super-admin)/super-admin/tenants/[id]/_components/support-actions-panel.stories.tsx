@@ -12,7 +12,9 @@ import { SupportActionsPanel } from './support-actions-panel'
 const plans = planSummaries()
 const settings = supportPanelSettings()
 
-function mockActions(overrides: Partial<Parameters<typeof SupportActionsPanel>[0]['actions']> = {}) {
+function mockActions(
+  overrides: Partial<Parameters<typeof SupportActionsPanel>[0]['actions']> = {},
+) {
   const ok = (message: string) => fn(async () => ({ success: true as const, message }))
   return {
     forceStatus: ok("Estado forzado: 'active' → 'past_due'."),
@@ -68,7 +70,9 @@ export const TenantEnTrial: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByText('El complejo no está en trial — no aplica.')).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByText('El complejo no está en trial — no aplica.'),
+    ).not.toBeInTheDocument()
     // Sin suscripción: ChangePlan y Cancel muestran el mismo aviso de "no aplica".
     await expect(canvas.getAllByText(/no tiene suscripción registrada/i).length).toBeGreaterThan(0)
   },
@@ -108,6 +112,8 @@ export const ExtenderTrialDePuntaAPunta: Story = {
     await userEvent.click(within(trialSection).getByRole('button', { name: 'Extender trial' }))
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Extender' }))
-    await expect(await within(trialSection).findByText(/trial extendido 7 días/i)).toBeInTheDocument()
+    await expect(
+      await within(trialSection).findByText(/trial extendido 7 días/i),
+    ).toBeInTheDocument()
   },
 }

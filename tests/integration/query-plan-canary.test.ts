@@ -103,9 +103,7 @@ function compactPlan(root: PlanNode): string {
 }
 
 function seqScanOn(root: PlanNode, relation: string): PlanNode | undefined {
-  return flatten(root).find(
-    (n) => n['Node Type'] === 'Seq Scan' && n['Relation Name'] === relation,
-  )
+  return flatten(root).find((n) => n['Node Type'] === 'Seq Scan' && n['Relation Name'] === relation)
 }
 
 function indexCondMentions(root: PlanNode, column: string): boolean {

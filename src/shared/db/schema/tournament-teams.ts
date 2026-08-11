@@ -66,22 +66,12 @@ export const tournamentTeams = pgTable(
 
     notes: text('notes'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    nameNonEmpty: check(
-      'chk_team_name_nonempty',
-      sql`length(trim(${table.name})) > 0`,
-    ),
-    seedPositive: check(
-      'chk_team_seed_positive',
-      sql`${table.seed} IS NULL OR ${table.seed} > 0`,
-    ),
+    nameNonEmpty: check('chk_team_name_nonempty', sql`length(trim(${table.name})) > 0`),
+    seedPositive: check('chk_team_seed_positive', sql`${table.seed} IS NULL OR ${table.seed} > 0`),
     groupLabelNonEmpty: check(
       'chk_team_group_label',
       sql`${table.groupLabel} IS NULL OR length(trim(${table.groupLabel})) > 0`,
@@ -93,23 +83,14 @@ export const tournamentTeams = pgTable(
 
     // Case-insensitive vía la columna generada: "Los Pibes" y "los pibes" son
     // el mismo equipo. Sobre columnas planas a propósito (D3-H1, migr. 063).
-    nameIdx: uniqueIndex('uq_tournament_teams_name').on(
-      table.tournamentId,
-      table.nameNormalized,
-    ),
-    tournamentIdx: index('idx_tournament_teams_tournament').on(
-      table.tournamentId,
-      table.status,
-    ),
+    nameIdx: uniqueIndex('uq_tournament_teams_name').on(table.tournamentId, table.nameNormalized),
+    tournamentIdx: index('idx_tournament_teams_tournament').on(table.tournamentId, table.status),
     tenantIdx: index('idx_tournament_teams_tenant').on(table.tenantId),
     playerIdx: index('idx_tournament_teams_player')
       .on(table.contactPlayerId)
       .where(sql`contact_player_id IS NOT NULL`),
 
     // Migr. 065: clave candidata para la FK compuesta del acta.
-    idTournamentUq: unique('uq_tournament_teams_id_tournament').on(
-      table.id,
-      table.tournamentId,
-    ),
+    idTournamentUq: unique('uq_tournament_teams_id_tournament').on(table.id, table.tournamentId),
   }),
 )

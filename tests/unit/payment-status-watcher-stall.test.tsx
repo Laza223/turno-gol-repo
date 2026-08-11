@@ -25,9 +25,7 @@ describe('PaymentStatusWatcher — no quedar colgado (#45/#46/#48)', () => {
     // expiró hace 6s → ms = -6000 + 5000 = -1000 ≤ 0 al montar
     const past = new Date(Date.now() - 6000).toISOString()
 
-    render(
-      <PaymentStatusWatcher bookingId="b1" initialStatus="pending_payment" expiresAt={past} />,
-    )
+    render(<PaymentStatusWatcher bookingId="b1" initialStatus="pending_payment" expiresAt={past} />)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10)
     })

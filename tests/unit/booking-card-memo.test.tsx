@@ -7,8 +7,6 @@ describe('BookingCard — React.memo wrapping', () => {
     // React.memo sets $$typeof on the wrapper object. This is a stable internal
     // contract React has maintained since 16.6; it is the recommended way to
     // assert memo wrapping without brittle render-count tests.
-    expect((BookingCard as unknown as { $$typeof: symbol }).$$typeof).toBe(
-      Symbol.for('react.memo'),
-    )
+    expect((BookingCard as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
   })
 })

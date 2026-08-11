@@ -14,7 +14,13 @@ const meta = {
   title: 'Public/ParaComplejos',
   component: ParaComplejosPage,
   parameters: { layout: 'fullscreen', backgrounds: { disable: true } },
-  decorators: [(Story) => <BusinessLayout><Story /></BusinessLayout>],
+  decorators: [
+    (Story) => (
+      <BusinessLayout>
+        <Story />
+      </BusinessLayout>
+    ),
+  ],
 } satisfies Meta<typeof ParaComplejosPage>
 
 export default meta
@@ -23,7 +29,9 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(/tu complejo, siempre lleno/i)
+    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /tu complejo, siempre lleno/i,
+    )
     // "Empezar gratis" se repite en header/hero/CTA final/footer — todas deben ir a /register.
     const ctas = canvas.getAllByRole('link', { name: /empezar gratis/i })
     await expect(ctas.length).toBeGreaterThan(1)

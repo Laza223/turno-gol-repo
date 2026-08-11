@@ -12,12 +12,14 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
   // lookup can't set app.current_tenant_id before it knows which tenant this
   // row belongs to, so it needs the service-role pool (Fable 5 P0).
   const sql = getWorkerSql()
-  const rows = await sql<{
-    id: string
-    endpoint: string
-    p256dh_key: string
-    auth_key: string
-  }[]>`
+  const rows = await sql<
+    {
+      id: string
+      endpoint: string
+      p256dh_key: string
+      auth_key: string
+    }[]
+  >`
     SELECT id, endpoint, p256dh_key, auth_key
     FROM push_subscriptions
     WHERE id = ${subscription_id}

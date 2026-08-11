@@ -143,7 +143,11 @@ async function refundNotifications(bookingId: string) {
   `
 }
 
-async function fireExternalRefund(tenantId: string, bookingId: string, suffix: string): Promise<void> {
+async function fireExternalRefund(
+  tenantId: string,
+  bookingId: string,
+  suffix: string,
+): Promise<void> {
   const mpPaymentId = `mp-extref-${suffix}`
   const mpEventId = `mp-evt-extref-${suffix}`
   mockGateway.statusByPaymentId[mpPaymentId] = {

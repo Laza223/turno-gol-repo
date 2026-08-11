@@ -30,29 +30,22 @@ export function SuspendidosPanel({ rows }: { rows: SuspendidoView[] }) {
         {pending.map((row) => (
           <li key={row.teamPlayerId} className="flex flex-wrap items-center gap-2 px-4 py-3">
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-foreground">
-                {row.playerName}
-              </span>
+              <span className="block text-sm font-medium text-foreground">{row.playerName}</span>
               <span className="block text-xs text-muted-foreground">
                 {row.teamName}
                 {row.reason ? ` · ${SUSPENSION_REASON_LABELS[row.reason]}` : ''}
-                {row.reason === 'yellow_accumulation'
-                  ? ` (${row.yellowCards} amarillas)`
-                  : ''}
+                {row.reason === 'yellow_accumulation' ? ` (${row.yellowCards} amarillas)` : ''}
               </span>
             </span>
             <span
               className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${suspensionBadgeClass}`}
             >
               <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-              {row.pendingMatches === 1
-                ? 'Debe 1 fecha'
-                : `Debe ${row.pendingMatches} fechas`}
+              {row.pendingMatches === 1 ? 'Debe 1 fecha' : `Debe ${row.pendingMatches} fechas`}
             </span>
             {row.suspendedMatchIds.length === 0 ? (
               <span className="w-full text-xs text-muted-foreground">
-                Sin partidos programados por delante: la cumple cuando se agende la próxima
-                fecha.
+                Sin partidos programados por delante: la cumple cuando se agende la próxima fecha.
               </span>
             ) : null}
           </li>

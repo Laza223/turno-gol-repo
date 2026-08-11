@@ -32,7 +32,9 @@ export const SinResultados: Story = {
   args: { rows: tenantListEmpty().rows },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('No hay tenants que coincidan con los filtros.')).toBeInTheDocument()
+    await expect(
+      canvas.getByText('No hay tenants que coincidan con los filtros.'),
+    ).toBeInTheDocument()
   },
 }
 
@@ -46,8 +48,14 @@ export const PaginaIntermedia: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Anterior' })).toHaveAttribute('href', '/super-admin/tenants?page=1')
-    await expect(canvas.getByRole('link', { name: 'Siguiente' })).toHaveAttribute('href', '/super-admin/tenants?page=3')
+    await expect(canvas.getByRole('link', { name: 'Anterior' })).toHaveAttribute(
+      'href',
+      '/super-admin/tenants?page=1',
+    )
+    await expect(canvas.getByRole('link', { name: 'Siguiente' })).toHaveAttribute(
+      'href',
+      '/super-admin/tenants?page=3',
+    )
   },
 }
 

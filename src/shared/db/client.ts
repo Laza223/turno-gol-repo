@@ -110,7 +110,9 @@ export type DbTx = Parameters<Parameters<Db['transaction']>[0]>[0]
  * pg-core, este restore la corrompe — usar siempre `../jsonb`.
  */
 function restoreJsonSerializers(client: Sql): void {
-  const opts = (client as unknown as { options: { serializers: Record<string, (v: unknown) => unknown> } }).options
+  const opts = (
+    client as unknown as { options: { serializers: Record<string, (v: unknown) => unknown> } }
+  ).options
   opts.serializers['114'] = (v) => JSON.stringify(v)
   opts.serializers['3802'] = (v) => JSON.stringify(v)
 }
@@ -203,9 +205,7 @@ export async function withTenantContext<T>(
 ): Promise<T> {
   const db = getDb()
   return db.transaction(async (tx) => {
-    await tx.execute(
-      drizzleSql`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`,
-    )
+    await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`)
     return fn(tx)
   })
 }
@@ -220,9 +220,7 @@ export async function withPlayerContext<T>(
 ): Promise<T> {
   const db = getDb()
   return db.transaction(async (tx) => {
-    await tx.execute(
-      drizzleSql`SELECT set_config('app.current_player_id', ${playerId}, true)`,
-    )
+    await tx.execute(drizzleSql`SELECT set_config('app.current_player_id', ${playerId}, true)`)
     return fn(tx)
   })
 }

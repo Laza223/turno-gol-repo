@@ -167,7 +167,10 @@ function SidebarContent({
       </div>
 
       {/* Nav */}
-      <nav aria-label="Navegación del panel" className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+      <nav
+        aria-label="Navegación del panel"
+        className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5"
+      >
         {navItems.map((item) => {
           const { href, icon: Icon, label, tourId } = item
           const isActive = isNavItemActive(item, pathname)
@@ -187,7 +190,10 @@ function SidebarContent({
               )}
             >
               {isActive && (
-                <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-emerald-500 shadow-sm shadow-emerald-500/40" aria-hidden />
+                <span
+                  className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-emerald-500 shadow-sm shadow-emerald-500/40"
+                  aria-hidden
+                />
               )}
               <Icon
                 className={cn(
@@ -218,7 +224,10 @@ function SidebarContent({
             )}
           >
             {isNavItemActive(CONFIG_ITEM, pathname) && (
-              <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-emerald-500 shadow-sm shadow-emerald-500/40" aria-hidden />
+              <span
+                className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-emerald-500 shadow-sm shadow-emerald-500/40"
+                aria-hidden
+              />
             )}
             <ConfigIcon
               className={cn(

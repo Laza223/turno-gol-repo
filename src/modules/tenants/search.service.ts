@@ -190,7 +190,10 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset),
-    db.select({ count: sql<number>`count(*)::int` }).from(tenants).where(where),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(tenants)
+      .where(where),
   ])
 
   const results: PublicTenantCard[] = rows.map((r) => ({
@@ -207,8 +210,7 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     amenities: (r.amenities ?? {}) as Record<string, boolean>,
     avgRating: Number(r.avgRating ?? 0),
     reviewCount: Number(r.reviewCount ?? 0),
-    distanceKm:
-      r.distanceKm == null ? null : Math.round(Number(r.distanceKm) * 10) / 10,
+    distanceKm: r.distanceKm == null ? null : Math.round(Number(r.distanceKm) * 10) / 10,
     latitude: r.latitude == null ? null : Number(r.latitude),
     longitude: r.longitude == null ? null : Number(r.longitude),
     courtSurfaces: r.courtSurfaces ?? [],

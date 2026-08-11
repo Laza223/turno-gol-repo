@@ -34,10 +34,7 @@ test.describe('TG-HP-111 — Exportar datos ARCO', () => {
       // player-data-export.spec.ts).
       await page.waitForLoadState('networkidle')
 
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        downloadBtn.click(),
-      ])
+      const [download] = await Promise.all([page.waitForEvent('download'), downloadBtn.click()])
       // Anti-doble-submit: disabled={status==='loading'}, texto "Generando..." —
       // ventana muy corta en dev para asertear en vivo de forma no-flaky.
 

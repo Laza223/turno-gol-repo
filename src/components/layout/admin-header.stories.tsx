@@ -13,7 +13,10 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div style={{ transform: 'translateZ(0)', height: 90 }} className="relative isolate overflow-hidden">
+      <div
+        style={{ transform: 'translateZ(0)', height: 90 }}
+        className="relative isolate overflow-hidden"
+      >
         <Story />
       </div>
     ),

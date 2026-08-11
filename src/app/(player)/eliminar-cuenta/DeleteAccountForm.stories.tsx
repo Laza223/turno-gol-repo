@@ -37,7 +37,10 @@ export const Abierto: Story = {
     const dialog = await screen.findByRole('dialog')
     const confirmButton = within(dialog).getByRole('button', { name: 'Eliminar mi cuenta' })
     await expect(confirmButton).toBeDisabled()
-    await userEvent.type(screen.getByLabelText(/tomas\.ibanez@example\.com/i), 'tomas.ibanez@example.com')
+    await userEvent.type(
+      screen.getByLabelText(/tomas\.ibanez@example\.com/i),
+      'tomas.ibanez@example.com',
+    )
     await expect(confirmButton).toBeEnabled()
   },
 }

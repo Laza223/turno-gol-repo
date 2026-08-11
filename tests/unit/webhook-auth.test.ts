@@ -72,7 +72,9 @@ describe('verifyWebhookSignature — MP_WEBHOOK_TEST_BYPASS_SECRET fallback (MP-
 
   it('rejects a bad signature even when a bypass secret is configured (not a blanket skip)', () => {
     env['MP_WEBHOOK_TEST_BYPASS_SECRET'] = TEST_BYPASS_SECRET
-    expect(verifyWebhookSignature(sign('some-other-garbage-secret'), REQUEST_ID, DATA_ID)).toBe(false)
+    expect(verifyWebhookSignature(sign('some-other-garbage-secret'), REQUEST_ID, DATA_ID)).toBe(
+      false,
+    )
   })
 
   it('does not consult the bypass secret at all when it is unset (unchanged prior behavior)', () => {

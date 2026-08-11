@@ -40,9 +40,7 @@ afterEach(() => {
 
 describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
   it('devuelve un error amigable cuando el complejo esta inactivo', async () => {
-    vi.mocked(cancelByPlayer).mockRejectedValueOnce(
-      new TenantInactiveError('tenant-1', 'blocked'),
-    )
+    vi.mocked(cancelByPlayer).mockRejectedValueOnce(new TenantInactiveError('tenant-1', 'blocked'))
     const result = await cancelMyBookingAction(VALID_UUID)
     expect(result).toEqual({
       success: false,

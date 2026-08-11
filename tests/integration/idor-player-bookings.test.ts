@@ -18,7 +18,8 @@ import { insertBooking } from '../helpers/factories'
 // posture of a production app role. The test DB connects as the postgres
 // superuser, which would otherwise bypass RLS entirely and make these tests lie.
 vi.mock('@/server/middleware/with-player', () => ({
-  withPlayer: (handler: (req: NextRequest, user: { playerId: string }, tx: unknown) => unknown) =>
+  withPlayer:
+    (handler: (req: NextRequest, user: { playerId: string }, tx: unknown) => unknown) =>
     async (req: NextRequest) => {
       const playerId = (globalThis as Record<string, unknown>).__AS_PLAYER__ as string
       const { getDb } = await import('@/shared/db/client')
@@ -66,8 +67,18 @@ beforeAll(async () => {
     depositAmount: 0,
   } as const
 
-  bookingOfB = await insertBooking(sql, { ...confirmed, playerId: playerB.id, timeStart: '21:00', timeEnd: '22:00' })
-  ownReadBookingA = await insertBooking(sql, { ...confirmed, playerId: playerA.id, timeStart: '20:00', timeEnd: '21:00' })
+  bookingOfB = await insertBooking(sql, {
+    ...confirmed,
+    playerId: playerB.id,
+    timeStart: '21:00',
+    timeEnd: '22:00',
+  })
+  ownReadBookingA = await insertBooking(sql, {
+    ...confirmed,
+    playerId: playerA.id,
+    timeStart: '20:00',
+    timeEnd: '21:00',
+  })
 }, 30_000)
 
 afterAll(async () => {

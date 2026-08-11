@@ -54,7 +54,9 @@ export const ExitoSignup: Story = {
 }
 
 export const ExitoBooking: Story = {
-  args: { searchParams: { status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' } },
+  args: {
+    searchParams: { status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Cuenta confirmada!')).toBeInTheDocument()
@@ -66,7 +68,9 @@ export const ErrorExpirado: Story = {
   args: { searchParams: { error: 'expired' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Este enlace expiró. Generá uno nuevo desde Iniciar sesión.')).toBeInTheDocument()
+    await expect(
+      canvas.getByText('Este enlace expiró. Generá uno nuevo desde Iniciar sesión.'),
+    ).toBeInTheDocument()
   },
 }
 
@@ -79,6 +83,8 @@ export const ErrorInvalido: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Código sin entrada en ERROR_COPY: cae al copy de 'invalid' (fallback).
-    await expect(canvas.getByText('No pudimos verificar el enlace. Probá de nuevo.')).toBeInTheDocument()
+    await expect(
+      canvas.getByText('No pudimos verificar el enlace. Probá de nuevo.'),
+    ).toBeInTheDocument()
   },
 }

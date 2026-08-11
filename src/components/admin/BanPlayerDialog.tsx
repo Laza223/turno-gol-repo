@@ -85,7 +85,10 @@ export function BanPlayerDialog({
       <div className="space-y-3">
         <fieldset className="space-y-1.5">
           <legend className="text-xs font-medium text-foreground">Duración</legend>
-          <RadioChipGroup value={duration} onValueChange={(v) => setDuration(v as ManualBanDuration)}>
+          <RadioChipGroup
+            value={duration}
+            onValueChange={(v) => setDuration(v as ManualBanDuration)}
+          >
             {DURATIONS.map((d) => (
               <RadioChip key={d} value={d}>
                 {DURATION_LABELS[d]}

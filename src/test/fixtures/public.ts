@@ -52,7 +52,9 @@ export type PublicTenantFixture = {
   longitude: number | null
 }
 
-export const publicTenant = (overrides: Partial<PublicTenantFixture> = {}): PublicTenantFixture => ({
+export const publicTenant = (
+  overrides: Partial<PublicTenantFixture> = {},
+): PublicTenantFixture => ({
   id: uid(1),
   slug: 'complejo-fenix',
   name: 'Complejo Fénix',
@@ -215,8 +217,22 @@ export const availabilityResponse = (
 ): AvailabilityResponseFixture => ({
   date: todayArt(),
   courts: [
-    { id: uid(101), name: 'Cancha 1', surfaceType: 'synthetic_grass', isCovered: false, hasLighting: true, slots: sampleSlots() },
-    { id: uid(102), name: 'Cancha 2', surfaceType: 'synthetic_grass', isCovered: true, hasLighting: true, slots: sampleSlots() },
+    {
+      id: uid(101),
+      name: 'Cancha 1',
+      surfaceType: 'synthetic_grass',
+      isCovered: false,
+      hasLighting: true,
+      slots: sampleSlots(),
+    },
+    {
+      id: uid(102),
+      name: 'Cancha 2',
+      surfaceType: 'synthetic_grass',
+      isCovered: true,
+      hasLighting: true,
+      slots: sampleSlots(),
+    },
   ],
   ...overrides,
 })
@@ -229,7 +245,14 @@ export const availabilityResponseNoCourts = (): AvailabilityResponseFixture =>
 export const availabilityResponseNoSlots = (): AvailabilityResponseFixture =>
   availabilityResponse({
     courts: [
-      { id: uid(101), name: 'Cancha 1', surfaceType: 'synthetic_grass', isCovered: false, hasLighting: true, slots: [] },
+      {
+        id: uid(101),
+        name: 'Cancha 1',
+        surfaceType: 'synthetic_grass',
+        isCovered: false,
+        hasLighting: true,
+        slots: [],
+      },
     ],
   })
 
@@ -248,10 +271,33 @@ export const weeklyAvailabilityResponse = (): WeeklyAvailabilityResponseFixture 
       date: dateStr,
       courts:
         i === 3
-          ? [{ id: uid(101), name: 'Cancha 1', surfaceType: 'synthetic_grass', isCovered: false, hasLighting: true, slots: [] }]
+          ? [
+              {
+                id: uid(101),
+                name: 'Cancha 1',
+                surfaceType: 'synthetic_grass',
+                isCovered: false,
+                hasLighting: true,
+                slots: [],
+              },
+            ]
           : [
-              { id: uid(101), name: 'Cancha 1', surfaceType: 'synthetic_grass', isCovered: false, hasLighting: true, slots: sampleSlots() },
-              { id: uid(102), name: 'Cancha 2', surfaceType: 'synthetic_grass', isCovered: true, hasLighting: true, slots: sampleSlots() },
+              {
+                id: uid(101),
+                name: 'Cancha 1',
+                surfaceType: 'synthetic_grass',
+                isCovered: false,
+                hasLighting: true,
+                slots: sampleSlots(),
+              },
+              {
+                id: uid(102),
+                name: 'Cancha 2',
+                surfaceType: 'synthetic_grass',
+                isCovered: true,
+                hasLighting: true,
+                slots: sampleSlots(),
+              },
             ],
     }
   })
@@ -260,7 +306,12 @@ export const weeklyAvailabilityResponse = (): WeeklyAvailabilityResponseFixture 
 
 // ─── Reseñas (review.service.ts) ───────────────────────────────────────────
 
-export type PublicReviewItem = { id: string; rating: number; comment: string | null; createdAt: string | Date }
+export type PublicReviewItem = {
+  id: string
+  rating: number
+  comment: string | null
+  createdAt: string | Date
+}
 
 export const reviewItem = (overrides: Partial<PublicReviewItem> = {}): PublicReviewItem => ({
   id: uid(801),
@@ -272,7 +323,12 @@ export const reviewItem = (overrides: Partial<PublicReviewItem> = {}): PublicRev
 
 export const reviews = (): PublicReviewItem[] => [
   reviewItem(),
-  reviewItem({ id: uid(802), rating: 4, comment: 'Buena superficie, un poco caro el estacionamiento.', createdAt: daysFromNow(-10) }),
+  reviewItem({
+    id: uid(802),
+    rating: 4,
+    comment: 'Buena superficie, un poco caro el estacionamiento.',
+    createdAt: daysFromNow(-10),
+  }),
   reviewItem({ id: uid(803), rating: 3, comment: null, createdAt: daysFromNow(-30) }),
 ]
 

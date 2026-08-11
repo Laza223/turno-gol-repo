@@ -11,7 +11,12 @@ describe('BanPlayerDialog — defaults (decisión del dueño 2026-08-01, 🔴 §
   it('arranca con 7 días seleccionado, nunca "Permanente" ni un motivo precargado', async () => {
     const banPlayerAction = vi.fn(async () => ({ success: true }))
     render(
-      <BanPlayerDialog open={true} onOpenChange={vi.fn()} playerId="p1" banPlayerAction={banPlayerAction} />,
+      <BanPlayerDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        playerId="p1"
+        banPlayerAction={banPlayerAction}
+      />,
     )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('radio', { name: '7 días' })).toBeChecked()
@@ -21,7 +26,12 @@ describe('BanPlayerDialog — defaults (decisión del dueño 2026-08-01, 🔴 §
   it('"Permanente" sigue disponible como opción manual', async () => {
     const banPlayerAction = vi.fn(async () => ({ success: true }))
     render(
-      <BanPlayerDialog open={true} onOpenChange={vi.fn()} playerId="p1" banPlayerAction={banPlayerAction} />,
+      <BanPlayerDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        playerId="p1"
+        banPlayerAction={banPlayerAction}
+      />,
     )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('radio', { name: 'Permanente' })).toBeTruthy()
@@ -30,7 +40,12 @@ describe('BanPlayerDialog — defaults (decisión del dueño 2026-08-01, 🔴 §
   it('sin motivo, no llama la action', async () => {
     const banPlayerAction = vi.fn(async () => ({ success: true }))
     render(
-      <BanPlayerDialog open={true} onOpenChange={vi.fn()} playerId="p1" banPlayerAction={banPlayerAction} />,
+      <BanPlayerDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        playerId="p1"
+        banPlayerAction={banPlayerAction}
+      />,
     )
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Bloquear jugador' }))

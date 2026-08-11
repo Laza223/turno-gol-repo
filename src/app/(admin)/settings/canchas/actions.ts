@@ -20,8 +20,7 @@ import { createCourtSchema, updateCourtSchema } from '@/modules/courts/court.sch
 import { bookings, abonados } from '@/shared/db/schema'
 
 export type CourtActionResult =
-  | { success: true; courtId?: string }
-  | { success: false; error: string }
+  { success: true; courtId?: string } | { success: false; error: string }
 
 // Checkbox/flag → boolean | undefined (ausente = undefined, usa default del schema).
 function formBool(v: FormDataEntryValue | null): boolean | undefined {
@@ -206,7 +205,13 @@ export async function getCourtDeactivationImpactAction(
     const [a] = await tx
       .select({ n: dsql<number>`count(*)::int` })
       .from(abonados)
-      .where(and(eq(abonados.tenantId, tenant.id), eq(abonados.courtId, courtId), eq(abonados.status, 'active')))
+      .where(
+        and(
+          eq(abonados.tenantId, tenant.id),
+          eq(abonados.courtId, courtId),
+          eq(abonados.status, 'active'),
+        ),
+      )
     return {
       success: true as const,
       futureBookings: b?.n ?? 0,
@@ -216,8 +221,7 @@ export async function getCourtDeactivationImpactAction(
 }
 
 export type CourtPhotoActionResult =
-  | { success: true; photos: string[] }
-  | { success: false; error: string }
+  { success: true; photos: string[] } | { success: false; error: string }
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024
 

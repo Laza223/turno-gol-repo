@@ -13,9 +13,10 @@ const HOURS = getOperativeHours(HOURS_)
 // mostrar el estado amber "sin precio" — la fixture sintética cubre 24hs.
 const GRID_WITH_GAP: PriceGrid = {
   ...GRID,
-  mon: Object.fromEntries(
-    Object.entries(GRID.mon).filter(([hour]) => hour !== '10'),
-  ) as Record<number, number>,
+  mon: Object.fromEntries(Object.entries(GRID.mon).filter(([hour]) => hour !== '10')) as Record<
+    number,
+    number
+  >,
 }
 
 /** Sin wrapper especial: en PricingGrid vive suelto dentro de `<div className="space-y-3">`, sin card. */

@@ -45,9 +45,10 @@ function mockTx(responses: unknown[][]) {
   const execute = vi.fn()
   for (const r of responses) execute.mockResolvedValueOnce(r)
   const tx = { execute }
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (t: never) => Promise<unknown>) => cb(tx as never)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (t: never) => Promise<unknown>,
+  ) => cb(tx as never)) as never)
   return tx
 }
 
@@ -110,11 +111,7 @@ describe('chargeDebtAction', () => {
   })
 
   it('acepta y registra un cobro dentro del saldo pendiente', async () => {
-    mockTx([
-      [bookingRow({ priceSnapshot: 100_00 })],
-      [],
-      [],
-    ])
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
     vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-1' }] as never)
 
     const res = await chargeDebtAction({
@@ -159,9 +156,7 @@ describe('chargeDebtAction', () => {
     })
 
     expect(res.success).toBe(true)
-    const queries = vi
-      .mocked(tx.execute)
-      .mock.calls.map(([q]) => dialect.sqlToQuery(q as SQL))
+    const queries = vi.mocked(tx.execute).mock.calls.map(([q]) => dialect.sqlToQuery(q as SQL))
     const lockIdx = queries.findIndex((q) => q.sql.includes('FOR UPDATE'))
     const chargesIdx = queries.findIndex(
       (q) => /FROM cash_flows/i.test(q.sql) && /booking_id/i.test(q.sql),

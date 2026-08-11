@@ -10,7 +10,9 @@ test.describe('TG-HP-008 — Términos', () => {
   test('renderiza términos y condiciones completos', async ({ page }) => {
     // Step 1-2: h1 "Términos y Condiciones"
     await page.goto('/terminos')
-    await expect(page.getByRole('heading', { level: 1, name: 'Términos y Condiciones' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Términos y Condiciones' }),
+    ).toBeVisible()
 
     // Step 3: timestamp
     await expect(page.getByText('Última actualización: 25 de mayo de 2026.')).toBeVisible()

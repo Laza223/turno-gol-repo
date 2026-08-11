@@ -83,8 +83,12 @@ export function RegisterMovementModal({
   const isValid = isValidMovement(amountCents, description)
 
   function reset() {
-    setType('income'); setCategory('booking'); setMethod('cash')
-    setAmountCents(null); setDescription(''); setError(null)
+    setType('income')
+    setCategory('booking')
+    setMethod('cash')
+    setAmountCents(null)
+    setDescription('')
+    setError(null)
     setIdempotencyKey(crypto.randomUUID())
   }
 
@@ -98,8 +102,14 @@ export function RegisterMovementModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (amountCents == null || amountCents <= 0) { setError('Ingresá un monto válido mayor a 0.'); return }
-    if (description.trim().length < 1) { setError('Ingresá una descripción.'); return }
+    if (amountCents == null || amountCents <= 0) {
+      setError('Ingresá un monto válido mayor a 0.')
+      return
+    }
+    if (description.trim().length < 1) {
+      setError('Ingresá una descripción.')
+      return
+    }
     startTransition(async () => {
       try {
         const res = await createCashFlowAction({
@@ -113,7 +123,9 @@ export function RegisterMovementModal({
         })
         if (res.success) {
           toast({ title: 'Movimiento registrado', variant: 'success' })
-          reset(); router.refresh(); onClose()
+          reset()
+          router.refresh()
+          onClose()
         } else setError(res.error)
       } catch (err) {
         // A thrown action must not leave the modal stuck on "Guardando…" — which
@@ -127,19 +139,26 @@ export function RegisterMovementModal({
 
   function handleOpenChange(next: boolean) {
     if (isPending) return
-    if (!next) { reset(); onClose() }
+    if (!next) {
+      reset()
+      onClose()
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl">
-        <DialogHeader><DialogTitle>Agregar movimiento</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Agregar movimiento</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Columna Izquierda: Tipo y Categoría */}
             <div className="space-y-4">
               <fieldset>
-                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</legend>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Tipo
+                </legend>
                 <div className="grid grid-cols-3 gap-2">
                   {TYPES.map((t) => (
                     <button
@@ -157,7 +176,9 @@ export function RegisterMovementModal({
               </fieldset>
 
               <fieldset>
-                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categoría</legend>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Categoría
+                </legend>
                 <div className="grid grid-cols-2 gap-2">
                   {CATEGORIES[type].map((c) => (
                     <button
@@ -178,7 +199,9 @@ export function RegisterMovementModal({
             {/* Columna Derecha: Método, Monto y Descripción */}
             <div className="space-y-3">
               <fieldset>
-                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Método de pago</legend>
+                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Método de pago
+                </legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {PAYMENT_METHOD_OPTIONS.map((m) => (
                     <button
@@ -196,7 +219,9 @@ export function RegisterMovementModal({
               </fieldset>
 
               <div className="space-y-1">
-                <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">Monto (pesos)</label>
+                <label htmlFor="cf-amount" className="text-xs font-medium text-foreground">
+                  Monto (pesos)
+                </label>
                 <MoneyInput
                   id="cf-amount"
                   valueCents={amountCents}
@@ -205,19 +230,36 @@ export function RegisterMovementModal({
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="cf-desc" className="text-xs font-medium text-foreground">Descripción</label>
-                <textarea id="cf-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+                <label htmlFor="cf-desc" className="text-xs font-medium text-foreground">
+                  Descripción
+                </label>
+                <textarea
+                  id="cf-desc"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
                   placeholder="ej: Pago de luz, hielo para cantina..."
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring resize-none" />
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring resize-none"
+                />
               </div>
             </div>
           </div>
 
-          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
-            <button type="button" disabled={isPending} onClick={() => handleOpenChange(false)}
-              className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60">Cancelar</button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => handleOpenChange(false)}
+              className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60"
+            >
+              Cancelar
+            </button>
             <Button type="submit" disabled={!isValid} isLoading={isPending} className="px-5">
               {isPending ? 'Guardando…' : 'Guardar'}
             </Button>

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { compareToLastWeek, sortAttentionItems, sortWhileAwayItems, ATTENTION_EMPTY_COPY } from './home.lib'
+import {
+  compareToLastWeek,
+  sortAttentionItems,
+  sortWhileAwayItems,
+  ATTENTION_EMPTY_COPY,
+} from './home.lib'
 import type { AttentionItem, WhileAwayItem } from './home.types'
 
 describe('compareToLastWeek', () => {
@@ -73,7 +78,11 @@ describe('sortAttentionItems', () => {
   })
 
   it('dentro de la misma prioridad, ordena por antigüedad ascendente (más vieja primero)', () => {
-    const booking2: AttentionItem = { ...booking, bookingId: 'b3', since: new Date('2026-08-02T08:00:00Z') }
+    const booking2: AttentionItem = {
+      ...booking,
+      bookingId: 'b3',
+      since: new Date('2026-08-02T08:00:00Z'),
+    }
     const sorted = sortAttentionItems([booking, booking2])
     expect(sorted.map((i) => (i as { bookingId: string }).bookingId)).toEqual(['b3', 'b1'])
   })

@@ -7,10 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/sentry', () => ({ captureMessage: vi.fn() }))
 
 import { captureMessage } from '@/lib/sentry'
-import {
-  handleCspReport,
-  __resetCspReportDedupeForTests,
-} from '@/shared/observability/csp-report'
+import { handleCspReport, __resetCspReportDedupeForTests } from '@/shared/observability/csp-report'
 
 const mockCapture = vi.mocked(captureMessage)
 

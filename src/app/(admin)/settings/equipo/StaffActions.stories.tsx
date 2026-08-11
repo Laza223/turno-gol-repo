@@ -79,8 +79,13 @@ export const MiembroActivo: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Opciones' }))
     const menu = within(document.body)
-    await expect(menu.findByRole('menuitem', { name: 'Cambiar a Administrador' })).resolves.toBeInTheDocument()
-    await expect(menu.getByRole('menuitem', { name: 'Desactivar' })).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(
+      menu.findByRole('menuitem', { name: 'Cambiar a Administrador' }),
+    ).resolves.toBeInTheDocument()
+    await expect(menu.getByRole('menuitem', { name: 'Desactivar' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   },
 }
 
@@ -105,7 +110,9 @@ export const MiembroInactivo: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Opciones' }))
     const menu = within(document.body)
-    await expect(menu.findByRole('menuitem', { name: 'Reenviar invitación' })).resolves.toBeInTheDocument()
+    await expect(
+      menu.findByRole('menuitem', { name: 'Reenviar invitación' }),
+    ).resolves.toBeInTheDocument()
     await expect(menu.queryByRole('menuitem', { name: /Cambiar a/ })).toBeNull()
   },
 }
@@ -121,7 +128,9 @@ export const DesactivarRequiereEmailExacto: Story = {
 
     // ConfirmDialog es un dynamic(ssr:false): findByRole espera el chunk async.
     await expect(
-      await body.findByRole('heading', { name: `Desactivar ${ACTIVE_MANAGER.firstName} ${ACTIVE_MANAGER.lastName}` }),
+      await body.findByRole('heading', {
+        name: `Desactivar ${ACTIVE_MANAGER.firstName} ${ACTIVE_MANAGER.lastName}`,
+      }),
     ).toBeInTheDocument()
 
     const confirmButtons = body.getAllByRole('button', { name: 'Desactivar' })

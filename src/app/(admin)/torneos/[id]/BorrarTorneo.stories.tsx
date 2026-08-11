@@ -46,10 +46,7 @@ export const Disponible: Story = {
     const confirmar = within(dialog).getByRole('button', { name: 'Borrar torneo' })
     await expect(confirmar).toBeDisabled()
 
-    await userEvent.type(
-      within(dialog).getByLabelText(/escribí/i),
-      tournamentDraft().name,
-    )
+    await userEvent.type(within(dialog).getByLabelText(/escribí/i), tournamentDraft().name)
     await expect(confirmar).toBeEnabled()
     await expect(args.deleteAction).not.toHaveBeenCalled()
   },
@@ -81,26 +78,19 @@ export const SinEquipos: Story = {
 /** El servidor tiene bloqueos que esta pantalla no conoce (fixture, cobros). */
 export const ErrorDelServidor: Story = {
   args: {
-    deleteAction: fn(
-      async (): Promise<TournamentActionResult> => ({
-        success: false,
-        error: 'El torneo ya tiene un fixture de 12 partidos. Borralo antes de eliminar el torneo.',
-      }),
-    ),
+    deleteAction: fn(async (): Promise<TournamentActionResult> => ({
+      success: false,
+      error: 'El torneo ya tiene un fixture de 12 partidos. Borralo antes de eliminar el torneo.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /borrar este torneo/i }))
 
     const dialog = await within(document.body).findByRole('dialog')
-    await userEvent.type(
-      within(dialog).getByLabelText(/escribí/i),
-      tournamentDraft().name,
-    )
+    await userEvent.type(within(dialog).getByLabelText(/escribí/i), tournamentDraft().name)
     await userEvent.click(within(dialog).getByRole('button', { name: 'Borrar torneo' }))
 
-    await expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      /ya tiene un fixture/i,
-    )
+    await expect(await within(dialog).findByRole('alert')).toHaveTextContent(/ya tiene un fixture/i)
   },
 }

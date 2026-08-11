@@ -10,10 +10,7 @@ import {
 import { insertCashFlow } from '../helpers/factories'
 import { getDayOpen, openDay } from '@/modules/cashflow/cash-open.service'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import {
-  DayAlreadyClosedError,
-  OpenDateInFutureError,
-} from '@/modules/cashflow/cashflow.errors'
+import { DayAlreadyClosedError, OpenDateInFutureError } from '@/modules/cashflow/cashflow.errors'
 import { todayART } from '@/shared/time/art-date'
 
 const TODAY = todayART()
@@ -72,7 +69,9 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
     // Trazabilidad del UPSERT (hallazgo del panel de Fase 5): la corrección
     // no deja historial propio, así que audit_logs debe registrar apertura
     // Y corrección con el valor previo.
-    const audits = await sql<{ action: string; metadata: { previousOpeningCash: number | null } }[]>`
+    const audits = await sql<
+      { action: string; metadata: { previousOpeningCash: number | null } }[]
+    >`
       SELECT action, metadata FROM audit_logs
       WHERE tenant_id = ${tenantId} AND resource_type = 'daily_cash_open'
       ORDER BY created_at ASC
@@ -139,9 +138,7 @@ describe('apertura de caja (migr. 049) — openDay/getDayOpen + snapshot en el c
       withTenantContext(tenantId, (tx) =>
         openDay(tenantId, staffId, { date: TODAY, openingCash: 70000 }, 0, tx),
       ),
-      withTenantContext(tenantId, (tx) =>
-        closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx),
-      ),
+      withTenantContext(tenantId, (tx) => closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx)),
     ])
 
     const [openRes, closeRes] = results

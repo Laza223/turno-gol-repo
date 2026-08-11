@@ -97,7 +97,9 @@ export const CopiarLink: Story = {
       configurable: true,
     })
     await userEvent.click(canvas.getByRole('button', { name: /copiar link/i }))
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Copiado!' })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Copiado!' })).toBeInTheDocument(),
+    )
     await expect(args.action).toHaveBeenCalledOnce()
   },
 }
@@ -124,7 +126,13 @@ export const ErrorAlPersistirPaso: Story = {
 /** Desplegar los pasos ya completados (plegados por default). */
 export const VerCompletados: Story = {
   args: {
-    state: { ...PENDING_STATE, hasCourts: true, hasSchedule: true, complexData: true, accountCreated: true },
+    state: {
+      ...PENDING_STATE,
+      hasCourts: true,
+      hasSchedule: true,
+      complexData: true,
+      accountCreated: true,
+    },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

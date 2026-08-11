@@ -21,24 +21,51 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  decorators: [(Story) => <div className="w-72"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
 }
 
 export const SeleccionaOscuro: Story = {
-  decorators: [(Story) => <div className="w-72"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: 'Oscuro' }))
-    await expect(canvas.getByRole('radio', { name: 'Oscuro' })).toHaveAttribute('aria-checked', 'true')
-    await expect(canvas.getByRole('radio', { name: 'Claro' })).toHaveAttribute('aria-checked', 'false')
+    await expect(canvas.getByRole('radio', { name: 'Oscuro' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await expect(canvas.getByRole('radio', { name: 'Claro' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
   },
 }
 
 export const SeleccionaSistema: Story = {
-  decorators: [(Story) => <div className="w-72"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: 'Sistema' }))
-    await expect(canvas.getByRole('radio', { name: 'Sistema' })).toHaveAttribute('aria-checked', 'true')
+    await expect(canvas.getByRole('radio', { name: 'Sistema' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   },
 }

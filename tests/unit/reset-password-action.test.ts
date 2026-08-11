@@ -5,7 +5,9 @@ const { getUser, updateUser, refreshSession, adminUpdateUserById, redirect } = v
   updateUser: vi.fn(async () => ({ error: null })),
   refreshSession: vi.fn(async () => ({ error: null })),
   adminUpdateUserById: vi.fn(async () => ({ error: null })),
-  redirect: vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`) }),
+  redirect: vi.fn((url: string) => {
+    throw new Error(`REDIRECT:${url}`)
+  }),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -52,7 +54,9 @@ describe('resetPasswordAction', () => {
   })
 
   it('recovery normal → actualiza la contraseña y redirige a /dashboard', async () => {
-    await expect(resetPasswordAction({ status: 'idle' }, fd())).rejects.toThrow('REDIRECT:/dashboard')
+    await expect(resetPasswordAction({ status: 'idle' }, fd())).rejects.toThrow(
+      'REDIRECT:/dashboard',
+    )
     expect(updateUser).toHaveBeenCalledWith({ password: 'unaClaveSegura' })
     expect(adminUpdateUserById).not.toHaveBeenCalled()
   })
@@ -62,10 +66,14 @@ describe('resetPasswordAction', () => {
       data: { user: { id: 'u1', app_metadata: { force_password_change: true, tenant_id: 't1' } } },
       error: null,
     })
-    await expect(resetPasswordAction({ status: 'idle' }, fd())).rejects.toThrow('REDIRECT:/dashboard')
+    await expect(resetPasswordAction({ status: 'idle' }, fd())).rejects.toThrow(
+      'REDIRECT:/dashboard',
+    )
     expect(adminUpdateUserById).toHaveBeenCalledWith(
       'u1',
-      expect.objectContaining({ app_metadata: expect.objectContaining({ force_password_change: null }) }),
+      expect.objectContaining({
+        app_metadata: expect.objectContaining({ force_password_change: null }),
+      }),
     )
     expect(refreshSession).toHaveBeenCalled()
   })

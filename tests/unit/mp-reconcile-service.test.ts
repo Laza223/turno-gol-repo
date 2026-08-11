@@ -30,9 +30,10 @@ const BOOKING_ID = '11111111-1111-4111-8111-111111111111'
 const TENANT_ID = 'tenant-1'
 
 function mockTx() {
-  mockWithTenantContext.mockImplementation(
-    (async (_id: string, cb: (t: never) => Promise<unknown>) => cb({} as never)) as never,
-  )
+  mockWithTenantContext.mockImplementation((async (
+    _id: string,
+    cb: (t: never) => Promise<unknown>,
+  ) => cb({} as never)) as never)
 }
 
 beforeEach(() => {
@@ -43,7 +44,13 @@ describe('reconcileApprovedPaymentForBooking', () => {
   it('sin pago approved en MP → confirmed:false, ni siquiera abre tx', async () => {
     const gateway = {
       searchPaymentsByReference: vi.fn().mockResolvedValue([
-        { mpPaymentId: 'p1', status: 'pending', amount: 100, externalReference: BOOKING_ID, paymentMethodId: 'x' },
+        {
+          mpPaymentId: 'p1',
+          status: 'pending',
+          amount: 100,
+          externalReference: BOOKING_ID,
+          paymentMethodId: 'x',
+        },
       ]),
     }
 
@@ -90,7 +97,11 @@ describe('reconcileApprovedPaymentForBooking', () => {
       expect.objectContaining({ mpEventId: 'reconcile-mp-pay-1' }),
       expect.anything(),
     )
-    expect(mockDispatchPaymentInfo).toHaveBeenCalledWith(approvedPayment, TENANT_ID, expect.anything())
+    expect(mockDispatchPaymentInfo).toHaveBeenCalledWith(
+      approvedPayment,
+      TENANT_ID,
+      expect.anything(),
+    )
   })
 
   it('(e) lockMpEvent devuelve false → no reprocesa (dispatchPaymentInfo NO se llama)', async () => {

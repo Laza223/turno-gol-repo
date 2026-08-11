@@ -16,7 +16,11 @@ import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { formatArs } from '@/lib/format'
 import { getChecklistState } from './queries'
-import { markPublicLinkSharedAction, markTourSeenAction, markChecklistDismissedAction } from './actions'
+import {
+  markPublicLinkSharedAction,
+  markTourSeenAction,
+  markChecklistDismissedAction,
+} from './actions'
 
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
@@ -87,7 +91,8 @@ export default async function DashboardPage() {
   // engañoso mostrando solo el numerador. dayIsClosed se recalcula acá (pura,
   // sin DB) porque getHoyData no distingue "día cerrado" de "0 disponible".
   const dayIsClosed =
-    daySlotsFor(date, tenant.openingHours, tenant.closedDates ?? [], tenant.closesNextDay).length === 0
+    daySlotsFor(date, tenant.openingHours, tenant.closedDates ?? [], tenant.closesNextDay)
+      .length === 0
   const noAvailability = !dayIsClosed && numbers.occupancy.available === 0
   const turnosValue = dayIsClosed
     ? 'Cerrado'
@@ -126,7 +131,10 @@ export default async function DashboardPage() {
           <MetricCard
             label="Cobrado hoy"
             value={formatArs(numbers.collectedTodayCents)}
-            sub={comparisonSub(numbers.collectedTodayCents, numbers.collectedSameWeekdayLastWeekCents)}
+            sub={comparisonSub(
+              numbers.collectedTodayCents,
+              numbers.collectedSameWeekdayLastWeekCents,
+            )}
             icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
             href="/caja"
           />

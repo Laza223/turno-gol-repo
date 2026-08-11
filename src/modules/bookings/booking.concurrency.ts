@@ -35,9 +35,7 @@ export async function transitionFromPendingPayment(
       ...(newStatus === 'confirmed' ? { depositStatus: 'paid' as const } : {}),
       updatedAt: new Date(),
     })
-    .where(
-      and(eq(bookings.id, bookingId), eq(bookings.status, 'pending_payment')),
-    )
+    .where(and(eq(bookings.id, bookingId), eq(bookings.status, 'pending_payment')))
     .returning()
 
   if (rows.length === 0) return { won: false }

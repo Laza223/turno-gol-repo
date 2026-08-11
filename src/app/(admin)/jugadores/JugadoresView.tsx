@@ -56,17 +56,21 @@ export function JugadoresView({ clients, q, searchAction, linkAction }: Jugadore
 
   return (
     <div className="p-6 space-y-6">
-      <PageHeader
-        title="Personas"
-        icon={<Contact className="h-6 w-6" aria-hidden="true" />}
-      />
+      <PageHeader title="Personas" icon={<Contact className="h-6 w-6" aria-hidden="true" />} />
 
       <div className="card-entrance" style={{ animationDelay: '80ms' }}>
         <ClientesTabs active="/jugadores" />
       </div>
 
-      <form method="GET" className="card-entrance relative max-w-md" style={{ animationDelay: '120ms' }}>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <form
+        method="GET"
+        className="card-entrance relative max-w-md"
+        style={{ animationDelay: '120ms' }}
+      >
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
         <input
           type="search"
           name="q"
@@ -194,7 +198,11 @@ export function JugadoresView({ clients, q, searchAction, linkAction }: Jugadore
                     <td className="px-4 py-3 text-muted-foreground">{c.phone ?? c.email}</td>
                     <td className="px-4 py-3 text-right text-foreground">{c.bookingsCount}</td>
                     <td className="px-4 py-3 text-right text-foreground">
-                      {c.fixedCount > 0 ? c.fixedCount : <span className="text-muted-foreground">—</span>}
+                      {c.fixedCount > 0 ? (
+                        c.fixedCount
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {c.noshowCount > 0 ? (

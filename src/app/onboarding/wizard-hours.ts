@@ -25,7 +25,13 @@ export function sanitizeWizardHours(
   for (const day of DAY_KEYS) {
     const d = hours?.[day]
     if (!d) continue
-    if (d.closed || !d.open || !d.close || d.close === '00:00' || toMins(d.close) > toMins(d.open)) {
+    if (
+      d.closed ||
+      !d.open ||
+      !d.close ||
+      d.close === '00:00' ||
+      toMins(d.close) > toMins(d.open)
+    ) {
       out[day] = d
     } else {
       out[day] = { ...d, close: '00:00' }

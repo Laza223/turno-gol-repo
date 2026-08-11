@@ -5,9 +5,7 @@ export default function NotFound() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="max-w-md text-center space-y-4">
         <h1 className="text-2xl font-semibold text-foreground">Complejo no encontrado</h1>
-        <p className="text-sm text-muted-foreground">
-          No encontramos este complejo. ¿Buscás otro?
-        </p>
+        <p className="text-sm text-muted-foreground">No encontramos este complejo. ¿Buscás otro?</p>
         <Link
           href="/"
           // emerald-700 (#047857) sobre `bg-background` (#e2e7ee, no blanco puro)

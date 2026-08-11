@@ -60,11 +60,7 @@ export function useNearestCity(opts?: { maxDistanceKm?: number }): NearestCitySt
         }
         const data = (await res.json()) as { results?: NearestResult[] }
         const nearest = data.results?.[0]
-        if (
-          nearest?.city &&
-          nearest.distanceKm != null &&
-          nearest.distanceKm <= maxDistanceKm
-        ) {
+        if (nearest?.city && nearest.distanceKm != null && nearest.distanceKm <= maxDistanceKm) {
           set({ status: 'found', city: nearest.city, province: nearest.province ?? '' })
         } else {
           set({ status: 'no_results' })

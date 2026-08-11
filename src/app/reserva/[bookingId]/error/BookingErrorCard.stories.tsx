@@ -14,7 +14,13 @@ const meta = {
   component: BookingErrorCard,
   parameters: { layout: 'fullscreen' },
   args: { bookingId: uid(1002), retryAction: fn(async () => undefined) },
-  decorators: [(Story) => <ReservaDarkShell><Story /></ReservaDarkShell>],
+  decorators: [
+    (Story) => (
+      <ReservaDarkShell>
+        <Story />
+      </ReservaDarkShell>
+    ),
+  ],
 } satisfies Meta<typeof BookingErrorCard>
 
 export default meta
@@ -46,7 +52,10 @@ export const FueraDeVentanaSinSlug: Story = {
   args: { tenantSlug: null, withinWindow: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Reservar de nuevo' })).toHaveAttribute('href', '/')
+    await expect(canvas.getByRole('link', { name: 'Reservar de nuevo' })).toHaveAttribute(
+      'href',
+      '/',
+    )
   },
 }
 

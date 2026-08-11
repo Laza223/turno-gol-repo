@@ -35,7 +35,13 @@ describe('ImageUploader — logo/cover (value: string)', () => {
   it('elegir un archivo llama onUpload con el blob redimensionado', async () => {
     const onUpload = vi.fn().mockResolvedValue(undefined)
     render(
-      <ImageUploader preset="logo" value="" onUpload={onUpload} onRemove={vi.fn()} emptyLabel="Subí el logo" />,
+      <ImageUploader
+        preset="logo"
+        value=""
+        onUpload={onUpload}
+        onRemove={vi.fn()}
+        emptyLabel="Subí el logo"
+      />,
     )
     const input = screen.getByLabelText(/subí el logo/i) as HTMLInputElement
     const file = new File(['x'], 'logo.png', { type: 'image/png' })
@@ -60,9 +66,19 @@ describe('ImageUploader — logo/cover (value: string)', () => {
 
 describe('ImageUploader — court (value: string[])', () => {
   it('respeta el máximo: oculta el dropzone al llegar a `max`', () => {
-    const photos = Array.from({ length: 6 }, (_, i) => `https://media.turnogol.com/t1/courts/c1/${i}.webp`)
+    const photos = Array.from(
+      { length: 6 },
+      (_, i) => `https://media.turnogol.com/t1/courts/c1/${i}.webp`,
+    )
     render(
-      <ImageUploader preset="court" value={photos} onUpload={vi.fn()} onRemove={vi.fn()} max={6} emptyLabel="Agregar foto" />,
+      <ImageUploader
+        preset="court"
+        value={photos}
+        onUpload={vi.fn()}
+        onRemove={vi.fn()}
+        max={6}
+        emptyLabel="Agregar foto"
+      />,
     )
     expect(screen.queryByLabelText(/agregar foto/i)).not.toBeInTheDocument()
   })
@@ -70,7 +86,14 @@ describe('ImageUploader — court (value: string[])', () => {
   it('muestra contador de fotos', () => {
     const photos = ['https://media.turnogol.com/t1/courts/c1/0.webp']
     render(
-      <ImageUploader preset="court" value={photos} onUpload={vi.fn()} onRemove={vi.fn()} max={6} emptyLabel="Agregar foto" />,
+      <ImageUploader
+        preset="court"
+        value={photos}
+        onUpload={vi.fn()}
+        onRemove={vi.fn()}
+        max={6}
+        emptyLabel="Agregar foto"
+      />,
     )
     expect(screen.getByText('1/6')).toBeInTheDocument()
   })
@@ -78,7 +101,15 @@ describe('ImageUploader — court (value: string[])', () => {
   it('con 1 sola foto no muestra botones de reordenar', () => {
     const photos = ['https://media.turnogol.com/t1/courts/c1/0.webp']
     render(
-      <ImageUploader preset="court" value={photos} onUpload={vi.fn()} onRemove={vi.fn()} onReorder={vi.fn()} max={6} emptyLabel="Agregar foto" />,
+      <ImageUploader
+        preset="court"
+        value={photos}
+        onUpload={vi.fn()}
+        onRemove={vi.fn()}
+        onReorder={vi.fn()}
+        max={6}
+        emptyLabel="Agregar foto"
+      />,
     )
     expect(screen.queryByRole('button', { name: /mover a la izquierda/i })).not.toBeInTheDocument()
   })
@@ -90,7 +121,15 @@ describe('ImageUploader — court (value: string[])', () => {
     ]
     const onReorder = vi.fn().mockResolvedValue(undefined)
     render(
-      <ImageUploader preset="court" value={photos} onUpload={vi.fn()} onRemove={vi.fn()} onReorder={onReorder} max={6} emptyLabel="Agregar foto" />,
+      <ImageUploader
+        preset="court"
+        value={photos}
+        onUpload={vi.fn()}
+        onRemove={vi.fn()}
+        onReorder={onReorder}
+        max={6}
+        emptyLabel="Agregar foto"
+      />,
     )
     const leftButtons = screen.getAllByRole('button', { name: /mover a la izquierda/i })
     fireEvent.click(leftButtons[0]!)

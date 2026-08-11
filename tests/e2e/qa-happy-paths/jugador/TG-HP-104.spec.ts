@@ -68,7 +68,9 @@ async function runFlow(page: Page, date: string): Promise<void> {
   const sb = makeServiceClient()
   const { data: booking, error: bookingErr } = await sb
     .from('bookings')
-    .select('status, deposit_status, deposit_amount, price_snapshot, tenant_id, court_id, payment_id')
+    .select(
+      'status, deposit_status, deposit_amount, price_snapshot, tenant_id, court_id, payment_id',
+    )
     .eq('id', bookingId)
     .single()
 

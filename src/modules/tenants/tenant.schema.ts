@@ -8,4 +8,3 @@ export const createTenantSchema = z.object({
   phone: z.string().min(8, 'Teléfono inválido').max(25),
   email: z.email('Email inválido'),
 })
-

@@ -37,16 +37,17 @@ describe('refreshTenantMpToken', () => {
 
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            access_token: 'fresh-access',
-            refresh_token: 'fresh-refresh',
-            user_id: 999,
-            public_key: 'fresh-pub',
-          }),
-          { status: 200 },
-        ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'fresh-access',
+              refresh_token: 'fresh-refresh',
+              user_id: 999,
+              public_key: 'fresh-pub',
+            }),
+            { status: 200 },
+          ),
       ),
     )
 
@@ -54,7 +55,12 @@ describe('refreshTenantMpToken', () => {
     expect(decrypt(returnedEncrypted)).toBe('fresh-access')
 
     const rows = await sql<
-      { mp_access_token: string; mp_refresh_token: string; mp_user_id: string; mp_connected_at: Date }[]
+      {
+        mp_access_token: string
+        mp_refresh_token: string
+        mp_user_id: string
+        mp_connected_at: Date
+      }[]
     >`
       SELECT mp_access_token, mp_refresh_token, mp_user_id, mp_connected_at
       FROM tenants WHERE id = ${tenant.id}
@@ -68,8 +74,6 @@ describe('refreshTenantMpToken', () => {
   it('throws when the tenant has no refresh token', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
-    await expect(refreshTenantMpToken(tenant.id)).rejects.toBeInstanceOf(
-      TenantMpNotConnectedError,
-    )
+    await expect(refreshTenantMpToken(tenant.id)).rejects.toBeInstanceOf(TenantMpNotConnectedError)
   })
 })

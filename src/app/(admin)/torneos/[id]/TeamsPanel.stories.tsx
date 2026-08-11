@@ -1,11 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import {
-  tournament,
-  tournamentLleno,
-  tournamentTeam,
-  tournamentTeams,
-} from '@/test/fixtures'
+import { tournament, tournamentLleno, tournamentTeam, tournamentTeams } from '@/test/fixtures'
 import { TeamsPanel } from './TeamsPanel'
 import type { SearchPlayersActionResult, TournamentActionResult } from '../actions'
 
@@ -82,12 +77,10 @@ export const CupoLleno: Story = {
 /** El nombre ya existe (case-insensitive): la base lo rechaza y se muestra. */
 export const ErrorNombreDuplicado: Story = {
   args: {
-    addAction: fn(
-      async (): Promise<TournamentActionResult> => ({
-        success: false,
-        error: 'Ya hay un equipo llamado "los pibes" en este torneo.',
-      }),
-    ),
+    addAction: fn(async (): Promise<TournamentActionResult> => ({
+      success: false,
+      error: 'Ya hay un equipo llamado "los pibes" en este torneo.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

@@ -30,17 +30,52 @@ export function centsToInputDisplay(cents: number | null | undefined): string {
 
 const UNITS = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve']
 const TEENS = [
-  'diez', 'once', 'doce', 'trece', 'catorce', 'quince',
-  'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
+  'diez',
+  'once',
+  'doce',
+  'trece',
+  'catorce',
+  'quince',
+  'dieciséis',
+  'diecisiete',
+  'dieciocho',
+  'diecinueve',
 ]
 const TWENTIES = [
-  'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro',
-  'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve',
+  'veinte',
+  'veintiuno',
+  'veintidós',
+  'veintitrés',
+  'veinticuatro',
+  'veinticinco',
+  'veintiséis',
+  'veintisiete',
+  'veintiocho',
+  'veintinueve',
 ]
-const TENS = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']
+const TENS = [
+  '',
+  '',
+  'veinte',
+  'treinta',
+  'cuarenta',
+  'cincuenta',
+  'sesenta',
+  'setenta',
+  'ochenta',
+  'noventa',
+]
 const HUNDREDS = [
-  '', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos',
-  'seiscientos', 'setecientos', 'ochocientos', 'novecientos',
+  '',
+  'ciento',
+  'doscientos',
+  'trescientos',
+  'cuatrocientos',
+  'quinientos',
+  'seiscientos',
+  'setecientos',
+  'ochocientos',
+  'novecientos',
 ]
 
 function twoDigitsToWords(n: number): string {

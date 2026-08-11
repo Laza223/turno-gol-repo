@@ -43,11 +43,7 @@ export function closeMinutes(hhmm: string): number {
  * interpreta como la madrugada del día siguiente y pasa a ser válido. Un cierre
  * 00:00 siempre cuenta como medianoche (fin del día), con o sin el flag.
  */
-export function isValidDayRange(
-  open: string,
-  close: string,
-  closesNextDay = false,
-): boolean {
+export function isValidDayRange(open: string, close: string, closesNextDay = false): boolean {
   return effectiveCloseMins(open, close, closesNextDay) > openMinutes(open)
 }
 

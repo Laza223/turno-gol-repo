@@ -1,11 +1,4 @@
-import {
-  boolean,
-  index,
-  pgTable,
-  timestamp,
-  unique,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { boolean, index, pgTable, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { staffUsers } from './staff-users'
 import { staffRoleEnum } from './enums'
@@ -24,20 +17,12 @@ export const tenantStaffMembers = pgTable(
     role: staffRoleEnum('role').notNull().default('admin'),
     addedBy: uuid('added_by').references(() => staffUsers.id),
     isActive: boolean('is_active').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    uqTenantStaff: unique('uq_tenant_staff').on(
-      table.tenantId,
-      table.staffUserId,
-    ),
+    uqTenantStaff: unique('uq_tenant_staff').on(table.tenantId, table.staffUserId),
     tenantIdx: index('idx_tenant_staff_tenant').on(table.tenantId),
     userIdx: index('idx_tenant_staff_user').on(table.staffUserId),
-    activeIdx: index('idx_tenant_staff_active').on(
-      table.tenantId,
-      table.isActive,
-    ),
+    activeIdx: index('idx_tenant_staff_active').on(table.tenantId, table.isActive),
   }),
 )

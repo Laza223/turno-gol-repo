@@ -90,7 +90,10 @@ export const BloquearJugadorCompleto: Story = {
     const dialogEl = await body.findByRole('dialog')
     const dialog = within(dialogEl)
     await userEvent.click(dialog.getByRole('radio', { name: '30 días' }))
-    await userEvent.type(dialog.getByLabelText('Motivo (obligatorio)'), 'Discusión con otro jugador')
+    await userEvent.type(
+      dialog.getByLabelText('Motivo (obligatorio)'),
+      'Discusión con otro jugador',
+    )
     await userEvent.click(dialog.getByRole('button', { name: 'Bloquear jugador' }))
 
     await waitFor(() =>

@@ -26,9 +26,7 @@ export class TournamentNotDeletableError extends Error {
 /** El torneo todavía posee horas en la grilla: hay que liberarlas primero. */
 export class TournamentHasBookingsError extends Error {
   constructor(public readonly bookingCount: number) {
-    super(
-      `Tournament still owns ${bookingCount} booked hour(s). Release them first.`,
-    )
+    super(`Tournament still owns ${bookingCount} booked hour(s). Release them first.`)
     this.name = 'TournamentHasBookingsError'
   }
 }

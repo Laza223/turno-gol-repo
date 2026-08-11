@@ -146,12 +146,14 @@ export async function notifyAdminBookingConfirmed(
         LIMIT 1
       `),
     )
-    const ctx = (bookingCtxRows as unknown as Array<{
-      court_name: string
-      date: string
-      time_start: string
-      time_end: string
-    }>)[0]
+    const ctx = (
+      bookingCtxRows as unknown as Array<{
+        court_name: string
+        date: string
+        time_start: string
+        time_end: string
+      }>
+    )[0]
     const ymd = ctx?.date?.slice(0, 10) ?? ''
     const dateLabel = ctx?.date
       ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('es-AR', {

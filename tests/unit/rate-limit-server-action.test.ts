@@ -16,14 +16,26 @@ describe('adminRateLimited', () => {
   })
 
   it('keys the adminCrud policy by tenant id and returns null when allowed', async () => {
-    mockEnforce.mockResolvedValue({ ok: true, limit: 100, remaining: 99, reset: 0, unavailable: false })
+    mockEnforce.mockResolvedValue({
+      ok: true,
+      limit: 100,
+      remaining: 99,
+      reset: 0,
+      unavailable: false,
+    })
     const result = await adminRateLimited('tenant-1')
     expect(result).toBeNull()
     expect(mockEnforce).toHaveBeenCalledWith('adminCrud', 'tenant-1')
   })
 
   it('returns the user-facing message when throttled', async () => {
-    mockEnforce.mockResolvedValue({ ok: false, limit: 100, remaining: 0, reset: 0, unavailable: false })
+    mockEnforce.mockResolvedValue({
+      ok: false,
+      limit: 100,
+      remaining: 0,
+      reset: 0,
+      unavailable: false,
+    })
     const result = await adminRateLimited('tenant-1')
     expect(result).toBe(ADMIN_RATE_LIMIT_MESSAGE)
   })
@@ -31,7 +43,13 @@ describe('adminRateLimited', () => {
   it('throttles (fail-closed message) when the limiter is unavailable AND denies', async () => {
     // adminCrud is fail-open, but the helper must surface whatever enforce decides:
     // if ok=false it blocks regardless of why.
-    mockEnforce.mockResolvedValue({ ok: false, limit: 100, remaining: 0, reset: 0, unavailable: true })
+    mockEnforce.mockResolvedValue({
+      ok: false,
+      limit: 100,
+      remaining: 0,
+      reset: 0,
+      unavailable: true,
+    })
     expect(await adminRateLimited('tenant-1')).toBe(ADMIN_RATE_LIMIT_MESSAGE)
   })
 })

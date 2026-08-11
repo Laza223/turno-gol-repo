@@ -71,9 +71,9 @@ describe('TenantHeader favorito (#40)', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Guardado' })).toBeTruthy()
     })
-    expect(
-      screen.getByRole('button', { name: 'Guardado' }).getAttribute('aria-pressed'),
-    ).toBe('true')
+    expect(screen.getByRole('button', { name: 'Guardado' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    )
   })
 
   it('sesión sin el tenant en favoritos → el botón queda en "Guardar"', async () => {

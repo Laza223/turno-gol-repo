@@ -211,7 +211,15 @@ describe('searchPublicTenants tenantIds filter', () => {
     const { results } = await searchPublicTenants({ q: TAG })
     const ids = results.map((r) => r.id)
     // All visible TAG tenants, including the ones with no availability at 20:00.
-    for (const id of [free, overlapped, closedDay, onlyF11Free, oneOfTwoFree, offlineCourt, canceledBooking]) {
+    for (const id of [
+      free,
+      overlapped,
+      closedDay,
+      onlyF11Free,
+      oneOfTwoFree,
+      offlineCourt,
+      canceledBooking,
+    ]) {
       expect(ids).toContain(id)
     }
     expect(ids).not.toContain(suspended)

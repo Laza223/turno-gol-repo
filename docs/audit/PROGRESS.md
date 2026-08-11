@@ -2507,3 +2507,66 @@ vincular contra un `player_id` de otro tenant —y ver su nombre en la lista—.
   de la Fase 4 completa, no de este bloque.
 - El `LIMIT 200` sin cursor sigue ahí y sigue siendo **B10**. Ahora trunca sobre
   un conjunto más grande.
+
+---
+
+## B8 (parte 1) — La suma que concatena no existía; el candado que faltaba, sí
+
+**La premisa del plan está REFUTADA.** El plan de B8 decía que de los ~193 casts
+de SQL crudo, *"al menos uno es donde Postgres puede devolver un número como
+texto y la suma concatena"*, y señalaba `payment.service.ts:968`. Se buscó la
+clase completa sobre los caminos de plata (5 slices, ~100 archivos) y **no hay
+ninguno**.
+
+Lo que sí se confirmó, contra el código y no contra el plan:
+
+- **El bug es posible en este repo.** `node_modules/postgres/src/types.js` parsea
+  a JS number solo los oids `[21, 23, 26, 700, 701]` — int2, int4, oid, float4,
+  float8. int8/bigint (20) y numeric (1700) llegan como **string**. Y los dos
+  pools de `src/shared/db/client.ts` (:54 y :151) se crean sin opción `types`,
+  así que ese default aplica en el runtime web y en los workers.
+- **No hay ningún caso sin cubrir.** `payment.service.ts:968` ya envuelve en
+  `Number(...)` y encima declara el tipo honesto (`string | number`), así que la
+  pista del plan apuntaba a un sitio que estaba bien.
+- Dos candidatos que un grep marca como sospechosos son falsos positivos:
+  `booking.debts.ts:61` **sí** tiene `::int`, pero cinco líneas más abajo, sobre
+  el `COALESCE` que envuelve al `SUM` — un grep line-local no lo ve. Y el de
+  `:79` vive dentro de un `HAVING`: es aritmética 100% en Postgres, nunca cruza
+  a JS.
+
+**Lo que sí estaba mal, y no era lo que se buscaba.** Seis `sql<number>` en
+`report.service.ts` (:58, :72, :73, :94, :111, :123) envuelven un
+`CAST(... AS BIGINT)`. El tipo mentía: en runtime son strings. No producían un
+bug **hoy** porque todos los consumidores llaman `Number()` — pero TypeScript
+estaba tapando el agujero en vez de señalarlo, y el próximo que escribiera
+`total + x` no iba a recibir ningún aviso.
+
+Pasaron a `sql<string>`. El `BIGINT` se deja como está y es deliberado: los
+montos son centavos de ARS e int4 se satura arriba de ~$21M de pesos, así que
+castear a `::int` sería el arreglo equivocado. **Typecheck en verde después del
+cambio es la prueba** de que todos los consumidores ya convertían: un
+`reduce((acc, r) => acc + r.total, 0)` con `total: string` no compila.
+
+**El candado:** `tests/unit/sql-number-type-honesty.test.ts` falla si un
+`sql<number>` envuelve un agregado que Postgres devuelve como bigint/numeric sin
+un cast que el driver sepa parsear. Hasta ahora el repo estaba limpio **por
+convención** — cada sitio se acordó de poner `::int` o de envolver en `Number()`
+—, y una convención sin candado dura hasta el primer despistado. Control
+negativo corrido: revirtiendo un solo sitio, el test lo caza con archivo:línea y
+el arreglo concreto.
+
+Alcance del candado, explícito: cubre `sql<number>`, donde el tipo y el SQL están
+pegados y se verifican leyendo una sola expresión. **No** cubre
+`tx.execute<{x: number}>` ni `as unknown as Array<{x: number}>` — ahí están
+separados, y adivinar qué columna corresponde a qué campo produce falsos
+positivos. Un candado con falsos positivos termina desactivado, así que se dejó
+ajustado en vez de amplio.
+
+### Lo que queda de B8
+
+Los **204** casts `as unknown as` (el plan decía 193; el número creció) siguen
+ahí. Con la premisa del bug refutada, lo que queda es higiene de tipos: pasarlos
+al genérico `tx.execute<T>()`, que Drizzle ya expone. Vale hacerlo, pero es
+churn mecánico sin defecto conocido detrás — conviene decidir explícitamente si
+paga las 3 sesiones que estimaba el plan. Falta también **B8d** (el gate de
+Prettier, que hoy no corre en CI).

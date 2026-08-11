@@ -166,13 +166,17 @@ describe('StaffActions — deactivate dialog', () => {
 
     const buttons = screen.getAllByRole('button', { name: 'Desactivar' })
     const confirmBtn = buttons[buttons.length - 1] as HTMLButtonElement
-    await waitFor(() => { expect(confirmBtn.disabled).toBe(false) })
+    await waitFor(() => {
+      expect(confirmBtn.disabled).toBe(false)
+    })
 
     fireEvent.click(confirmBtn)
 
     await waitFor(() => {
       const alert = screen.getByRole('alert')
-      expect(alert.textContent).toContain('El complejo debe tener al menos un administrador activo.')
+      expect(alert.textContent).toContain(
+        'El complejo debe tener al menos un administrador activo.',
+      )
     })
 
     // Dialog stays open
@@ -194,7 +198,9 @@ describe('StaffActions — deactivate dialog', () => {
 
     const buttons = screen.getAllByRole('button', { name: 'Desactivar' })
     const confirmBtn = buttons[buttons.length - 1] as HTMLButtonElement
-    await waitFor(() => { expect(confirmBtn.disabled).toBe(false) })
+    await waitFor(() => {
+      expect(confirmBtn.disabled).toBe(false)
+    })
 
     fireEvent.click(confirmBtn)
 
@@ -221,9 +227,7 @@ describe('StaffActions — resend invite', () => {
     })
 
     await waitFor(() => {
-      expect(vi.mocked(toast)).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'success' }),
-      )
+      expect(vi.mocked(toast)).toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }))
     })
   })
 

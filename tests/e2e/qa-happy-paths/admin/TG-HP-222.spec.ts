@@ -99,8 +99,10 @@ test.describe('TG-HP-222 — Settings reservas: seña + reservas online + antici
       await writeEvidence('TG-HP-222', {
         status: 'pass',
         dbRow: row,
-        dbWrites: 'tenants.settings (requires_deposit, deposit_percentage, allow_online_booking, cancellation_policy.hours_before)',
-        notes: 'no_show_penalty NO se persiste — softban por reincidencia sin config por complejo (actions.ts:50-51).',
+        dbWrites:
+          'tenants.settings (requires_deposit, deposit_percentage, allow_online_booking, cancellation_policy.hours_before)',
+        notes:
+          'no_show_penalty NO se persiste — softban por reincidencia sin config por complejo (actions.ts:50-51).',
       })
     } finally {
       await context.close()

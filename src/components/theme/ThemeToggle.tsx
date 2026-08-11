@@ -43,7 +43,10 @@ export default function ThemeToggle() {
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >
-            <Icon className={`h-3.5 w-3.5 shrink-0 transition-all duration-200 ${active ? 'scale-110 text-emerald-500' : 'text-muted-foreground'}`} aria-hidden />
+            <Icon
+              className={`h-3.5 w-3.5 shrink-0 transition-all duration-200 ${active ? 'scale-110 text-emerald-500' : 'text-muted-foreground'}`}
+              aria-hidden
+            />
             <span className="truncate">{label}</span>
           </button>
         )

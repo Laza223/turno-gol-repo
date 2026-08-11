@@ -94,7 +94,10 @@ export const PagaloDeLaCaja: Story = {
     // tildar el checkbox y entra animado, así que un assert síncrono puede leer
     // el primer frame en opacity 0 (pasa solo bajo la suite completa).
     await waitFor(() => expect(dialog.getByText(/registra gasto de.*9\.600/i)).toBeVisible())
-    await expect(dialog.getByRole('button', { name: 'Efectivo' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(dialog.getByRole('button', { name: 'Efectivo' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await userEvent.click(dialog.getByRole('button', { name: 'Transferencia' }))
 
     await userEvent.click(dialog.getByRole('button', { name: /registrar reposición/i }))

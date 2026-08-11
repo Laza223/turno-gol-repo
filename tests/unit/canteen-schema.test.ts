@@ -107,7 +107,9 @@ describe('createProductSchema', () => {
   })
 
   it('accepts null stock/minStock (sin control de stock / sin alerta)', () => {
-    expect(createProductSchema.safeParse({ ...base(), stock: null, minStock: null }).success).toBe(true)
+    expect(createProductSchema.safeParse({ ...base(), stock: null, minStock: null }).success).toBe(
+      true,
+    )
   })
 })
 

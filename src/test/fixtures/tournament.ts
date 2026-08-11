@@ -9,10 +9,7 @@ import type {
   TournamentTeamPlayerRow,
   TournamentTeamRow,
 } from '@/modules/tournaments/tournament.types'
-import type {
-  StandingRow,
-  StandingsGroup,
-} from '@/modules/tournaments/standings/types'
+import type { StandingRow, StandingsGroup } from '@/modules/tournaments/standings/types'
 import type { SuspensionRow } from '@/modules/tournaments/standings/suspensions'
 import { daysFromNow, hoursFromNow } from './clock'
 import { uid } from './ids'
@@ -95,9 +92,7 @@ export const tournamentRelampago = (): TournamentRow =>
 export const tournamentLleno = (): TournamentRow =>
   tournament({ id: uid(2004), name: 'Copa Chica', slug: 'copa-chica', maxTeams: 2 })
 
-export const tournamentTeam = (
-  overrides: Partial<TournamentTeamRow> = {},
-): TournamentTeamRow => ({
+export const tournamentTeam = (overrides: Partial<TournamentTeamRow> = {}): TournamentTeamRow => ({
   id: uid(2101),
   tenantId: tenant().id,
   tournamentId: tournament().id,
@@ -179,9 +174,7 @@ export const tournamentRoster = (): TournamentTeamPlayerRow[] => [
  * Horas que el torneo posee. Una fila por hora y cancha, que es como las
  * materializa `reserveTournamentSlots`.
  */
-export const tournamentSlot = (
-  overrides: Partial<TournamentSlotRow> = {},
-): TournamentSlotRow => ({
+export const tournamentSlot = (overrides: Partial<TournamentSlotRow> = {}): TournamentSlotRow => ({
   bookingId: uid(1801),
   courtId: courtFutbol5().id,
   date: isoDay(7),
@@ -414,15 +407,53 @@ export const tournamentMatchEvent = (
 })
 
 /** Una zona con tres equipos ya ordenados, para la tabla de posiciones. */
-export const standingsGroup = (
-  overrides: Partial<StandingsGroup> = {},
-): StandingsGroup => ({
+export const standingsGroup = (overrides: Partial<StandingsGroup> = {}): StandingsGroup => ({
   stageId: tournamentStage().id,
   groupLabel: null,
   rows: [
-    standingRow({ position: 1, teamId: uid(2101), teamName: 'Los Pibes', played: 3, won: 3, goalsFor: 7, goalsAgainst: 2, goalDiff: 5, points: 9, decidedBy: 'points' }),
-    standingRow({ position: 2, teamId: uid(2102), teamName: 'Deportivo Central', played: 3, won: 1, drawn: 1, lost: 1, goalsFor: 4, goalsAgainst: 4, goalDiff: 0, points: 4, yellowCards: 2, fairPlayPoints: 2, decidedBy: 'goal_diff' }),
-    standingRow({ position: 3, teamId: uid(2103), teamName: 'Racing de Barrio', played: 3, drawn: 1, lost: 2, goalsFor: 2, goalsAgainst: 7, goalDiff: -5, points: 1, yellowCards: 1, redCards: 1, fairPlayPoints: 4 }),
+    standingRow({
+      position: 1,
+      teamId: uid(2101),
+      teamName: 'Los Pibes',
+      played: 3,
+      won: 3,
+      goalsFor: 7,
+      goalsAgainst: 2,
+      goalDiff: 5,
+      points: 9,
+      decidedBy: 'points',
+    }),
+    standingRow({
+      position: 2,
+      teamId: uid(2102),
+      teamName: 'Deportivo Central',
+      played: 3,
+      won: 1,
+      drawn: 1,
+      lost: 1,
+      goalsFor: 4,
+      goalsAgainst: 4,
+      goalDiff: 0,
+      points: 4,
+      yellowCards: 2,
+      fairPlayPoints: 2,
+      decidedBy: 'goal_diff',
+    }),
+    standingRow({
+      position: 3,
+      teamId: uid(2103),
+      teamName: 'Racing de Barrio',
+      played: 3,
+      drawn: 1,
+      lost: 2,
+      goalsFor: 2,
+      goalsAgainst: 7,
+      goalDiff: -5,
+      points: 1,
+      yellowCards: 1,
+      redCards: 1,
+      fairPlayPoints: 4,
+    }),
   ],
   ...overrides,
 })
@@ -449,9 +480,30 @@ export const standingRow = (overrides: Partial<StandingRow> = {}): StandingRow =
 })
 
 export const scorerRows = (): ScorerRow[] => [
-  { teamPlayerId: uid(2201), playerName: 'Diego Fernández', shirtNumber: 10, teamId: uid(2101), teamName: 'Los Pibes', goals: 5 },
-  { teamPlayerId: uid(2202), playerName: 'Martín Sosa', shirtNumber: 9, teamId: uid(2102), teamName: 'Deportivo Central', goals: 3 },
-  { teamPlayerId: uid(2203), playerName: 'Bruno Aguirre', shirtNumber: null, teamId: uid(2101), teamName: 'Los Pibes', goals: 2 },
+  {
+    teamPlayerId: uid(2201),
+    playerName: 'Diego Fernández',
+    shirtNumber: 10,
+    teamId: uid(2101),
+    teamName: 'Los Pibes',
+    goals: 5,
+  },
+  {
+    teamPlayerId: uid(2202),
+    playerName: 'Martín Sosa',
+    shirtNumber: 9,
+    teamId: uid(2102),
+    teamName: 'Deportivo Central',
+    goals: 3,
+  },
+  {
+    teamPlayerId: uid(2203),
+    playerName: 'Bruno Aguirre',
+    shirtNumber: null,
+    teamId: uid(2101),
+    teamName: 'Los Pibes',
+    goals: 2,
+  },
 ]
 
 export const suspensionRows = (): SuspensionRow[] => [

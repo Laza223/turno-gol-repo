@@ -48,9 +48,7 @@ export const ConSugerencia: Story = {
     const dialog = await body.findByRole('dialog')
 
     await expect(dialog).toHaveTextContent('Vincular a Diego del lunes')
-    await expect(
-      await within(dialog).findByRole('radio', { name: /Diego Rossi/ }),
-    ).toBeChecked()
+    await expect(await within(dialog).findByRole('radio', { name: /Diego Rossi/ })).toBeChecked()
     // Estas dos frases llevan un <strong> adentro: quedan partidas en varios
     // nodos y `getByText` con string exacto no las encuentra nunca.
     await expect(dialog).toHaveTextContent('Coincide el teléfono con Diego Rossi')

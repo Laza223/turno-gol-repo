@@ -69,7 +69,9 @@ describe('URLs de navegación no incluyen nombres de route group', () => {
       source.split('\n').forEach((line, i) => {
         if (line.trimStart().startsWith('*') || line.trimStart().startsWith('//')) return
         if (urlLiteral.test(line)) {
-          offenders.push(`${path.relative(projectRoot, file)}:${i + 1}  ${line.trim().slice(0, 100)}`)
+          offenders.push(
+            `${path.relative(projectRoot, file)}:${i + 1}  ${line.trim().slice(0, 100)}`,
+          )
         }
       })
     }

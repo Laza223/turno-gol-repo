@@ -16,11 +16,7 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { getTournament } from './tournament.service'
 import { isForeignKeyViolation, isUniqueViolation } from './pg-errors'
 import { scoringTeamId } from './standings/standings'
-import {
-  loadMatch,
-  propagateResult,
-  type MatchWithStage,
-} from './tournament-bracket.service'
+import { loadMatch, propagateResult, type MatchWithStage } from './tournament-bracket.service'
 import { resyncPlayoffSeeds } from './tournament-standings.service'
 import {
   DuplicateCardError,
@@ -46,9 +42,7 @@ import type {
   TournamentMatchRow,
 } from './tournament.types'
 
-function rowToEvent(
-  r: typeof tournamentMatchEvents.$inferSelect,
-): TournamentMatchEventRow {
+function rowToEvent(r: typeof tournamentMatchEvents.$inferSelect): TournamentMatchEventRow {
   return {
     id: r.id,
     tenantId: r.tenantId,
@@ -375,7 +369,7 @@ export async function addMatchEvent(
     })
   }
 
-  let inserted: (typeof tournamentMatchEvents.$inferSelect) | undefined
+  let inserted: typeof tournamentMatchEvents.$inferSelect | undefined
   try {
     const rows = await tx
       .insert(tournamentMatchEvents)
@@ -442,24 +436,14 @@ export async function deleteMatchEvent(
   const found = await tx
     .select()
     .from(tournamentMatchEvents)
-    .where(
-      and(
-        eq(tournamentMatchEvents.id, eventId),
-        eq(tournamentMatchEvents.tenantId, tenantId),
-      ),
-    )
+    .where(and(eq(tournamentMatchEvents.id, eventId), eq(tournamentMatchEvents.tenantId, tenantId)))
     .limit(1)
   const ev = found[0]
   if (!ev) throw new MatchEventNotFoundError(eventId)
 
   await tx
     .delete(tournamentMatchEvents)
-    .where(
-      and(
-        eq(tournamentMatchEvents.id, eventId),
-        eq(tournamentMatchEvents.tenantId, tenantId),
-      ),
-    )
+    .where(and(eq(tournamentMatchEvents.id, eventId), eq(tournamentMatchEvents.tenantId, tenantId)))
 
   await insertAuditLog(tx, {
     tenantId,

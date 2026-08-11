@@ -49,7 +49,8 @@ test.describe('TG-HP-003 — Perfil público del complejo', () => {
 
     // Step 8: "Día siguiente" — refetch de disponibilidad
     const nextDayFetch = page.waitForResponse(
-      (r) => r.url().includes('/api/public/availability') && r.url().includes('slug=e2e-complejo-sena'),
+      (r) =>
+        r.url().includes('/api/public/availability') && r.url().includes('slug=e2e-complejo-sena'),
     )
     await page.getByRole('button', { name: 'Día siguiente' }).click()
     await nextDayFetch
@@ -70,7 +71,8 @@ test.describe('TG-HP-003 — Perfil público del complejo', () => {
       status: 'pass',
       finalUrl: page.url(),
       reservarParams: Object.fromEntries(reservarUrl.searchParams.entries()),
-      dbWrites: 'none (getPublicTenant/getPublicCourtCards + fetch client-side a /api/public/availability, ambos lectura)',
+      dbWrites:
+        'none (getPublicTenant/getPublicCourtCards + fetch client-side a /api/public/availability, ambos lectura)',
       notes:
         'Cómo llegar / tel: verificados por atributo href, sin click (evita abrir Google Maps real / protocol-handler tel: en CI). ' +
         'Round-trip perfil → disponibilidad → perfil confirmado antes de ejercer la grilla.',

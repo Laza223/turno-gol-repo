@@ -97,7 +97,9 @@ beforeEach(() => {
   vi.mocked(getTenantById)
     .mockReset()
     .mockResolvedValue({ id: TENANT, settings: {} } as never)
-  vi.mocked(extractAuthUser).mockReset().mockResolvedValue(ADMIN_USER as never)
+  vi.mocked(extractAuthUser)
+    .mockReset()
+    .mockResolvedValue(ADMIN_USER as never)
   vi.mocked(getStaffRole).mockReset().mockResolvedValue('admin')
 })
 
@@ -109,9 +111,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
   // completed. We now assert the full observable side effect.
   it('persiste tokens ENCRIPTADOS, activa la seña, completa onboarding y redirige a /onboarding/listo', async () => {
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
 
     const res = await mpCallback(req)
 
@@ -144,9 +144,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
       settings: { onboarding_completed: true },
     } as never)
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
 
     const res = await mpCallback(req)
 
@@ -159,9 +157,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
 
   it('intercambia el code en el endpoint de MP con grant_type y credenciales correctas', async () => {
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
 
     await mpCallback(req)
 
@@ -186,9 +182,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
     // The OAuth redirect_uri MUST stay pinned to APP_URL, otherwise an attacker
     // could redirect the code exchange and hijack the tenant's MP connection.
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `http://attacker.evil/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`http://attacker.evil/api/mp/callback?code=authcode&state=${state}`)
 
     await mpCallback(req)
 
@@ -199,9 +193,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
 describe('MP OAuth callback state CSRF (B6.6)', () => {
   it('state signed with WRONG secret → redirect mp_invalid_state, no token fetch', async () => {
     const state = makeState(TENANT, 'attacker-secret')
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -213,9 +205,7 @@ describe('MP OAuth callback state CSRF (B6.6)', () => {
     const [, sig] = state.split('.')
     const forgedPayload = Buffer.from('other-tenant:0', 'utf8').toString('base64url')
     const tampered = `${forgedPayload}.${sig}`
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${tampered}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${tampered}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -223,9 +213,7 @@ describe('MP OAuth callback state CSRF (B6.6)', () => {
   })
 
   it('state without dot separator → redirect mp_invalid_state', async () => {
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=noseparator`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=noseparator`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -249,18 +237,14 @@ describe('MP OAuth callback state CSRF (B6.6)', () => {
 
   it('missing code → mp_missing_params', async () => {
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_missing_params/)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('missing state → mp_missing_params', async () => {
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_missing_params/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -270,9 +254,7 @@ describe('MP OAuth callback state CSRF (B6.6)', () => {
 describe('MP OAuth callback state expiry (replay protection, #10)', () => {
   it('state older than 10 min → reject, no token fetch', async () => {
     const state = makeState(TENANT, SECRET, Date.now() - (10 * 60 * 1000 + 1000))
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -282,9 +264,7 @@ describe('MP OAuth callback state expiry (replay protection, #10)', () => {
     // Boundary: just inside the 10-min TTL must still succeed. Guards against an
     // off-by-one that would reject legitimate, slow OAuth round-trips.
     const state = makeState(TENANT, SECRET, Date.now() - (10 * 60 * 1000 - 1000))
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/\/onboarding\/listo$/)
     // Dos: el intercambio del code y /users/me para el apodo de la cuenta.
@@ -293,9 +273,7 @@ describe('MP OAuth callback state expiry (replay protection, #10)', () => {
 
   it('state with future timestamp (clock skew / forjado) → reject', async () => {
     const state = makeState(TENANT, SECRET, Date.now() + 60 * 60 * 1000)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -304,9 +282,7 @@ describe('MP OAuth callback state expiry (replay protection, #10)', () => {
   it('state firmado pero sin segmento de timestamp → reject', async () => {
     const payload = Buffer.from(TENANT, 'utf8').toString('base64url')
     const sig = createHmac('sha256', SECRET).update(payload).digest('base64url')
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${payload}.${sig}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${payload}.${sig}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -317,9 +293,7 @@ describe('MP OAuth callback state expiry (replay protection, #10)', () => {
     // that guard, NaN comparisons are all false and the state would pass.
     const payload = Buffer.from(`${TENANT}:abc`, 'utf8').toString('base64url')
     const sig = createHmac('sha256', SECRET).update(payload).digest('base64url')
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${payload}.${sig}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${payload}.${sig}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_invalid_state/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -331,9 +305,7 @@ describe('MP OAuth callback — sesión/rol revalidados (audit_report.md 3-15)',
   it('sin sesión de staff → redirect a /login, sin exchange ni persistencia', async () => {
     vi.mocked(extractAuthUser).mockResolvedValue(null)
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/\/login$/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -346,9 +318,7 @@ describe('MP OAuth callback — sesión/rol revalidados (audit_report.md 3-15)',
       tenantId: 'otro-tenant',
     } as never)
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/\/login$/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -358,9 +328,7 @@ describe('MP OAuth callback — sesión/rol revalidados (audit_report.md 3-15)',
   it('manager (Encargado) del tenant correcto → redirect mp_forbidden, no conecta MP', async () => {
     vi.mocked(getStaffRole).mockResolvedValue('manager')
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_forbidden/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -370,9 +338,7 @@ describe('MP OAuth callback — sesión/rol revalidados (audit_report.md 3-15)',
   it('membresía inactiva (rol null) → redirect mp_forbidden, no conecta MP', async () => {
     vi.mocked(getStaffRole).mockResolvedValue(null)
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_forbidden/)
     expect(connectMercadoPago).not.toHaveBeenCalled()
@@ -383,9 +349,7 @@ describe('MP OAuth callback error paths', () => {
   it('NEXT_PUBLIC_APP_URL ausente → mp_config_missing, sin fetch ni persistencia', async () => {
     delete process.env.NEXT_PUBLIC_APP_URL // restored by beforeEach
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_config_missing/)
     expect(fetchMock).not.toHaveBeenCalled()
@@ -397,9 +361,7 @@ describe('MP OAuth callback error paths', () => {
       new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400 }),
     )
     const state = makeState(TENANT, SECRET)
-    const req = new NextRequest(
-      `${APP_URL}/api/mp/callback?code=authcode&state=${state}`,
-    )
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_token_failed/)
     expect(connectMercadoPago).not.toHaveBeenCalled()

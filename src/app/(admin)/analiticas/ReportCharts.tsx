@@ -1,14 +1,6 @@
 'use client'
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useChartTheme } from '@/components/admin/useChartTheme'
 import { formatArs } from '@/lib/format'
 import type { CourtReport, PeriodTotals } from '@/modules/reports/report.types'
@@ -58,7 +50,12 @@ export function OccupancyChart({
               itemStyle={chart.tooltip.itemStyle}
               cursor={chart.tooltip.cursor}
             />
-            <Bar dataKey="occupancyPct" fill={chart.primary} radius={[0, 4, 4, 0]} isAnimationActive={isAnimationActive} />
+            <Bar
+              dataKey="occupancyPct"
+              fill={chart.primary}
+              radius={[0, 4, 4, 0]}
+              isAnimationActive={isAnimationActive}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -127,8 +124,20 @@ export function TrendChart({
               itemStyle={chart.tooltip.itemStyle}
               cursor={chart.tooltip.cursor}
             />
-            <Bar dataKey="actual" name="Este mes" fill={chart.series[0]} radius={[3, 3, 0, 0]} isAnimationActive={isAnimationActive} />
-            <Bar dataKey="anterior" name="Mes anterior" fill={chart.series[1]} radius={[3, 3, 0, 0]} isAnimationActive={isAnimationActive} />
+            <Bar
+              dataKey="actual"
+              name="Este mes"
+              fill={chart.series[0]}
+              radius={[3, 3, 0, 0]}
+              isAnimationActive={isAnimationActive}
+            />
+            <Bar
+              dataKey="anterior"
+              name="Mes anterior"
+              fill={chart.series[1]}
+              radius={[3, 3, 0, 0]}
+              isAnimationActive={isAnimationActive}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>

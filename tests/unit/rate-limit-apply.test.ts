@@ -6,7 +6,11 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 // must be off here. Capture and restore so we don't leak into later files.
 const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
-vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
+vi.mock('@upstash/redis', () => ({
+  Redis: class {
+    constructor(_: unknown) {}
+  },
+}))
 
 vi.mock('@upstash/ratelimit', () => {
   const counts = new Map<string, number>()
@@ -22,7 +26,10 @@ vi.mock('@upstash/ratelimit', () => {
       this._limit = opts.limiter.limit
     }
     async limit(key: string) {
-      if (throwOnNext) { throwOnNext = false; throw new Error('redis-down') }
+      if (throwOnNext) {
+        throwOnNext = false
+        throw new Error('redis-down')
+      }
       const k = `${this.prefix}:${key}`
       const n = (counts.get(k) ?? 0) + 1
       counts.set(k, n)
@@ -33,8 +40,13 @@ vi.mock('@upstash/ratelimit', () => {
         reset: Date.now() + 60_000,
       }
     }
-    static __throwOnNext() { throwOnNext = true }
-    static __reset() { counts.clear(); throwOnNext = false }
+    static __throwOnNext() {
+      throwOnNext = true
+    }
+    static __reset() {
+      counts.clear()
+      throwOnNext = false
+    }
   }
   return { Ratelimit: FakeRatelimit }
 })
@@ -90,7 +102,11 @@ describe('enforce', () => {
 describe('rateLimit429', () => {
   it('returns 429 with Retry-After', async () => {
     const res = rateLimit429({
-      ok: false, limit: 30, remaining: 0, reset: Date.now() + 60_000, unavailable: false,
+      ok: false,
+      limit: 30,
+      remaining: 0,
+      reset: Date.now() + 60_000,
+      unavailable: false,
     })
     expect(res.status).toBe(429)
     const retry = Number(res.headers.get('retry-after'))

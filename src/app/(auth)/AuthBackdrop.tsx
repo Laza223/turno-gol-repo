@@ -12,11 +12,15 @@ export function AuthBackdrop() {
       {/* Glows de marca */}
       <div
         className="absolute -right-[10%] -top-[15%] h-[480px] w-[480px] rounded-full"
-        style={{ background: 'radial-gradient(closest-side, rgba(16, 185, 129, 0.1), transparent 70%)' }}
+        style={{
+          background: 'radial-gradient(closest-side, rgba(16, 185, 129, 0.1), transparent 70%)',
+        }}
       />
       <div
         className="absolute -bottom-[18%] -left-[12%] h-[420px] w-[420px] rounded-full"
-        style={{ background: 'radial-gradient(closest-side, rgba(13, 148, 136, 0.08), transparent 72%)' }}
+        style={{
+          background: 'radial-gradient(closest-side, rgba(13, 148, 136, 0.08), transparent 72%)',
+        }}
       />
       {/* Campo de fútbol cenital: perímetro, línea media, círculo central, áreas
           y puntos de penal. Más grande que el viewport y levemente descentrado

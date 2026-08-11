@@ -40,7 +40,10 @@ async function fetchOrphanedMpAudit(
   `
   return rows.map((r) => ({
     ...r,
-    metadata: typeof r.metadata === 'string' ? (JSON.parse(r.metadata) as Record<string, unknown>) : r.metadata,
+    metadata:
+      typeof r.metadata === 'string'
+        ? (JSON.parse(r.metadata) as Record<string, unknown>)
+        : r.metadata,
   }))
 }
 

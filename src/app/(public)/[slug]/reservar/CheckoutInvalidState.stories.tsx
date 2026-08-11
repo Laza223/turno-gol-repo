@@ -33,7 +33,9 @@ export const TurnoYaNoDisponible: Story = {
   args: { message: 'Ese turno ya no está disponible. Elegí otro horario.' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Ese turno ya no está disponible. Elegí otro horario.')).toBeInTheDocument()
+    await expect(
+      canvas.getByText('Ese turno ya no está disponible. Elegí otro horario.'),
+    ).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Elegir otro turno' })).toHaveAttribute(
       'href',
       '/complejo-fenix',

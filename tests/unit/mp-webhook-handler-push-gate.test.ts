@@ -79,9 +79,10 @@ function makeDbChain(rows: unknown[]) {
  * SELECT tenant_id de la reserva, para el cross-check) devuelve `bookingRows`. */
 function mockTx(bookingRows: unknown[]) {
   const execute = vi.fn().mockResolvedValue(bookingRows)
-  h.withTenantContext.mockImplementation(
-    (async (_id: string, cb: (t: unknown) => Promise<unknown>) => cb({ execute })) as never,
-  )
+  h.withTenantContext.mockImplementation((async (
+    _id: string,
+    cb: (t: unknown) => Promise<unknown>,
+  ) => cb({ execute })) as never)
 }
 
 const baseJob: MpWebhookJob = {

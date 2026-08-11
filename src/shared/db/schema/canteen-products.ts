@@ -1,14 +1,5 @@
 import { sql } from 'drizzle-orm'
-import {
-  boolean,
-  check,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { boolean, check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 
 // Catálogo de cantina (migración 048): reemplaza el JSONB
@@ -36,23 +27,13 @@ export const canteenProducts = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     sortOrder: integer('sort_order').notNull().default(0),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    nameNonempty: check(
-      'chk_canteen_name_nonempty',
-      sql`length(trim(${table.name})) > 0`,
-    ),
+    nameNonempty: check('chk_canteen_name_nonempty', sql`length(trim(${table.name})) > 0`),
     pricePositive: check('chk_canteen_price_positive', sql`${table.price} > 0`),
-    costNonneg: check(
-      'chk_canteen_cost_nonneg',
-      sql`${table.cost} IS NULL OR ${table.cost} >= 0`,
-    ),
+    costNonneg: check('chk_canteen_cost_nonneg', sql`${table.cost} IS NULL OR ${table.cost} >= 0`),
     stockNonneg: check(
       'chk_canteen_stock_nonneg',
       sql`${table.stock} IS NULL OR ${table.stock} >= 0`,

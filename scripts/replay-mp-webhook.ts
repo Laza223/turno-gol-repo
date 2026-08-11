@@ -139,7 +139,11 @@ async function verifyProcessedWebhook(mpEventId: string): Promise<void> {
   }
 }
 
-async function verifyPaymentOwner(mpPaymentId: string, claimedTenant: string, ownerTenant: string): Promise<void> {
+async function verifyPaymentOwner(
+  mpPaymentId: string,
+  claimedTenant: string,
+  ownerTenant: string,
+): Promise<void> {
   if (!process.env.DATABASE_URL) {
     console.log('  (DATABASE_URL not set — skipping DB verification)')
     return
@@ -165,7 +169,9 @@ async function verifyPaymentOwner(mpPaymentId: string, claimedTenant: string, ow
       )
       return
     }
-    console.log(`  payments.tenant_id=${tenantId} for mp_payment_id=${mpPaymentId} (owner=${ownerTenant})`)
+    console.log(
+      `  payments.tenant_id=${tenantId} for mp_payment_id=${mpPaymentId} (owner=${ownerTenant})`,
+    )
   } finally {
     await closeSql()
   }
@@ -206,7 +212,9 @@ async function main(): Promise<void> {
 
   const scenario = process.env.MP_WEBHOOK_REPLAY_SCENARIO ?? 'normal'
   if (scenario !== 'normal' && scenario !== 'invalid-signature') {
-    throw new Error(`MP_WEBHOOK_REPLAY_SCENARIO must be 'normal' or 'invalid-signature', got '${scenario}'`)
+    throw new Error(
+      `MP_WEBHOOK_REPLAY_SCENARIO must be 'normal' or 'invalid-signature', got '${scenario}'`,
+    )
   }
 
   const confirmed = process.env.MP_WEBHOOK_REPLAY_CONFIRM === '1'
@@ -217,12 +225,15 @@ async function main(): Promise<void> {
   console.log(`  fixture:   ${fixtureName} (event id=${payload.id}, data.id=${dataId})`)
   console.log(`  scenario:  ${scenario}`)
   console.log(`  repeat:    ${repeat}`)
-  console.log(`  mode:      ${confirmed ? 'EXECUTE' : 'DRY-RUN (set MP_WEBHOOK_REPLAY_CONFIRM=1 to send)'}`)
+  console.log(
+    `  mode:      ${confirmed ? 'EXECUTE' : 'DRY-RUN (set MP_WEBHOOK_REPLAY_CONFIRM=1 to send)'}`,
+  )
 
   if (!confirmed) {
     const requestId = 'dry-run-request-id'
     const ts = String(Math.floor(Date.now() / 1000))
-    const secretUsed = scenario === 'invalid-signature' ? 'invalid-signature-for-negative-test' : testSecret
+    const secretUsed =
+      scenario === 'invalid-signature' ? 'invalid-signature-for-negative-test' : testSecret
     const xSignature = sign(secretUsed, dataId, requestId, ts)
     console.log('  would POST with headers:')
     console.log(`    x-request-id: ${requestId}`)
@@ -236,7 +247,8 @@ async function main(): Promise<void> {
   for (let i = 0; i < repeat; i++) {
     const requestId = `replay-${Date.now()}-${i}`
     const ts = String(Math.floor(Date.now() / 1000))
-    const secretUsed = scenario === 'invalid-signature' ? 'invalid-signature-for-negative-test' : testSecret
+    const secretUsed =
+      scenario === 'invalid-signature' ? 'invalid-signature-for-negative-test' : testSecret
     const xSignature = sign(secretUsed, dataId, requestId, ts)
 
     const res = await fetch(url, {
@@ -255,7 +267,11 @@ async function main(): Promise<void> {
 
   if (scenario === 'invalid-signature') {
     const allRejected = results.every((s) => s === 401)
-    console.log(allRejected ? '\nPASS — every attempt was rejected with 401.' : '\nFAIL — expected 401 on every attempt.')
+    console.log(
+      allRejected
+        ? '\nPASS — every attempt was rejected with 401.'
+        : '\nFAIL — expected 401 on every attempt.',
+    )
     if (!allRejected) process.exitCode = 1
     return
   }

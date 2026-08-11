@@ -4,14 +4,7 @@
  */
 
 export type TenantStatus =
-  | 'trialing'
-  | 'active'
-  | 'past_due'
-  | 'suspended'
-  | 'blocked'
-  | 'canceled'
-  | 'churned'
-  | 'deleted'
+  'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned' | 'deleted'
 
 /**
  * Los 8 estados de `tenant_status`, en el orden del FSM (doc4 §2). Vive acá

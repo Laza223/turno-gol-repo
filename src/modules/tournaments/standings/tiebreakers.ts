@@ -66,8 +66,7 @@ function headToHeadKeys(
         acc.get(m.homeTeamId!)!.pts += pointsLoss
         acc.get(m.awayTeamId!)!.pts += pointsLoss
       } else {
-        const loser =
-          m.walkoverWinnerTeamId === m.homeTeamId ? m.awayTeamId! : m.homeTeamId!
+        const loser = m.walkoverWinnerTeamId === m.homeTeamId ? m.awayTeamId! : m.homeTeamId!
         acc.get(m.walkoverWinnerTeamId)!.pts += pointsWin
         acc.get(loser)!.pts += pointsLoss
       }
@@ -93,10 +92,7 @@ function headToHeadKeys(
  * empatados: desempataría con información incompleta y castigaría al que menos
  * jugó. 'canceled' no bloquea (ese partido no se va a jugar nunca).
  */
-function headToHeadApplicable(
-  bucket: readonly StandingRow[],
-  ctx: TiebreakContext,
-): boolean {
+function headToHeadApplicable(bucket: readonly StandingRow[], ctx: TiebreakContext): boolean {
   const ids = new Set(bucket.map((r) => r.teamId))
   return !ctx.matches.some(
     (m) =>
@@ -140,10 +136,7 @@ function keyFor(
 }
 
 /** Orden terminal, total y determinista, cuando ningún criterio separó. */
-function terminalOrder(
-  bucket: readonly StandingRow[],
-  ctx: TiebreakContext,
-): StandingRow[] {
+function terminalOrder(bucket: readonly StandingRow[], ctx: TiebreakContext): StandingRow[] {
   return [...bucket].sort((a, b) => {
     const ta = ctx.teamById.get(a.teamId)
     const tb = ctx.teamById.get(b.teamId)
@@ -157,11 +150,7 @@ function terminalOrder(
   })
 }
 
-function resolve(
-  bucket: readonly StandingRow[],
-  i: number,
-  ctx: TiebreakContext,
-): StandingRow[] {
+function resolve(bucket: readonly StandingRow[], i: number, ctx: TiebreakContext): StandingRow[] {
   if (bucket.length <= 1) return [...bucket]
 
   const criteria = ctx.config.tiebreakers
@@ -221,9 +210,6 @@ function resolve(
  * TOTAL: si ningún criterio alcanza, cae al orden terminal y marca las filas
  * con `unresolvedTie`.
  */
-export function orderGroup(
-  bucket: readonly StandingRow[],
-  ctx: TiebreakContext,
-): StandingRow[] {
+export function orderGroup(bucket: readonly StandingRow[], ctx: TiebreakContext): StandingRow[] {
   return resolve(bucket, 0, ctx)
 }

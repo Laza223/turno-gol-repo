@@ -76,7 +76,9 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
                     {dateFmt.format(new Date(r.createdAt))}
                   </span>
                 </div>
-                {r.comment && <p className="mt-2 text-sm leading-relaxed text-foreground">{r.comment}</p>}
+                {r.comment && (
+                  <p className="mt-2 text-sm leading-relaxed text-foreground">{r.comment}</p>
+                )}
                 <p className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
                   <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
                   Reseña verificada

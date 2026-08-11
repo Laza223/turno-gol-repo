@@ -299,9 +299,7 @@ async function mpCredentialsProbe(): Promise<boolean> {
       )
       return false
     }
-    console.error(
-      `MP oauth probe returned HTTP ${res.status} (expected 400 for valid creds)`,
-    )
+    console.error(`MP oauth probe returned HTTP ${res.status} (expected 400 for valid creds)`)
     return false
   } catch (e) {
     console.error(`MP oauth probe failed: ${(e as Error).message}`)
@@ -310,7 +308,7 @@ async function mpCredentialsProbe(): Promise<boolean> {
 }
 
 const steps: Step[] = [
-  { name: 'env vars present',          check: async () => envCheck(),                                                              fatal: true  },
+  { name: 'env vars present', check: async () => envCheck(), fatal: true },
   {
     name: 'e2e bypass disabled',
     check: async () => {
@@ -320,11 +318,11 @@ const steps: Step[] = [
     },
     fatal: true,
   },
-  { name: 'bypassrls role check',      check: bypassRlsCheck,                                                                       fatal: true  },
-  { name: 'worker bypassrls role check', check: workerBypassRlsCheck,                                                               fatal: true  },
-  { name: 'role identity check',       check: roleIdentityCheck,                                                                    fatal: true  },
-  { name: 'role session timeouts',     check: roleSessionTimeoutCheck,                                                              fatal: true  },
-  { name: 'ssl in use',                check: sslInUseCheck,                                                                        fatal: true  },
+  { name: 'bypassrls role check', check: bypassRlsCheck, fatal: true },
+  { name: 'worker bypassrls role check', check: workerBypassRlsCheck, fatal: true },
+  { name: 'role identity check', check: roleIdentityCheck, fatal: true },
+  { name: 'role session timeouts', check: roleSessionTimeoutCheck, fatal: true },
+  { name: 'ssl in use', check: sslInUseCheck, fatal: true },
   {
     name: 'mp mock mode disabled',
     check: async () => {
@@ -352,16 +350,28 @@ const steps: Step[] = [
     },
     fatal: true,
   },
-  { name: 'mp credentials probe',      check: mpCredentialsProbe,                                                                   fatal: false },
-  { name: 'typecheck',                 cmd:   () => execSync('pnpm typecheck',         { stdio: 'inherit' }),                       fatal: true  },
-  { name: 'lint',                      cmd:   () => execSync('pnpm lint',              { stdio: 'inherit' }),                       fatal: true  },
-  { name: 'unit tests',                cmd:   () => execSync('pnpm test',              { stdio: 'inherit' }),                       fatal: true  },
-  { name: 'integration tests',         cmd:   () => execSync('pnpm test:integration',  { stdio: 'inherit' }),                       fatal: true  },
-  { name: 'isolation tests',           cmd:   () => execSync('pnpm test:isolation',    { stdio: 'inherit' }),                       fatal: true  },
-  { name: 'build',                     cmd:   () => execSync('pnpm build',             { stdio: 'inherit' }),                       fatal: true  },
-  { name: 'e2e',                       cmd:   () => execSync('pnpm test:e2e:ci',       { stdio: 'inherit' }),                       fatal: true  },
-  { name: 'stress (1 accepted)',       cmd:   () => execSync('pnpm stress:bookings',   { stdio: 'inherit' }),                       fatal: true  },
-  { name: '/api/status healthy',       check: statusCheck,                                                                          fatal: false },
+  { name: 'mp credentials probe', check: mpCredentialsProbe, fatal: false },
+  { name: 'typecheck', cmd: () => execSync('pnpm typecheck', { stdio: 'inherit' }), fatal: true },
+  { name: 'lint', cmd: () => execSync('pnpm lint', { stdio: 'inherit' }), fatal: true },
+  { name: 'unit tests', cmd: () => execSync('pnpm test', { stdio: 'inherit' }), fatal: true },
+  {
+    name: 'integration tests',
+    cmd: () => execSync('pnpm test:integration', { stdio: 'inherit' }),
+    fatal: true,
+  },
+  {
+    name: 'isolation tests',
+    cmd: () => execSync('pnpm test:isolation', { stdio: 'inherit' }),
+    fatal: true,
+  },
+  { name: 'build', cmd: () => execSync('pnpm build', { stdio: 'inherit' }), fatal: true },
+  { name: 'e2e', cmd: () => execSync('pnpm test:e2e:ci', { stdio: 'inherit' }), fatal: true },
+  {
+    name: 'stress (1 accepted)',
+    cmd: () => execSync('pnpm stress:bookings', { stdio: 'inherit' }),
+    fatal: true,
+  },
+  { name: '/api/status healthy', check: statusCheck, fatal: false },
 ]
 
 async function main(): Promise<void> {

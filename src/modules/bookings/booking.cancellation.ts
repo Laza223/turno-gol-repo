@@ -43,14 +43,9 @@ export function decideAdminRefund(opts: {
   policyHours: number
   nowMs: number
 }): { shouldRefund: boolean; inPolicy: boolean } {
-  const inPolicy =
-    opts.nowMs < opts.bookingStartUtcMs - opts.policyHours * 3_600_000
+  const inPolicy = opts.nowMs < opts.bookingStartUtcMs - opts.policyHours * 3_600_000
   const turnoTermino = opts.nowMs >= opts.bookingEndUtcMs
-  const shouldRefund = turnoTermino
-    ? false
-    : opts.cancellationType === 'complejo'
-      ? true
-      : inPolicy
+  const shouldRefund = turnoTermino ? false : opts.cancellationType === 'complejo' ? true : inPolicy
   return { shouldRefund, inPolicy }
 }
 
@@ -63,8 +58,8 @@ type LockedBooking = {
   deposit_status: string
   deposit_amount: number
   payment_id: string | null
-  date: string        // 'YYYY-MM-DD'
-  time_start: string  // 'HH:MM:SS'
+  date: string // 'YYYY-MM-DD'
+  time_start: string // 'HH:MM:SS'
   starts_at: Date
   ends_at: Date
 }
@@ -137,13 +132,19 @@ async function loadCancelEmailNames(
     FROM courts c, tenants t, players p
     WHERE c.id = ${courtId} AND t.id = ${tenantId} AND p.id = ${playerId}
   `)
-  const row = (rows as unknown as Array<{
-    court_name: string
-    tenant_name: string
-    player_first_name: string
-  }>)[0]
+  const row = (
+    rows as unknown as Array<{
+      court_name: string
+      tenant_name: string
+      player_first_name: string
+    }>
+  )[0]
   if (!row) return undefined
-  return { courtName: row.court_name, tenantName: row.tenant_name, playerFirstName: row.player_first_name }
+  return {
+    courtName: row.court_name,
+    tenantName: row.tenant_name,
+    playerFirstName: row.player_first_name,
+  }
 }
 
 export type CancellationOutcome = {

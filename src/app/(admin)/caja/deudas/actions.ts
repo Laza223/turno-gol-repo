@@ -52,7 +52,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
     result = await withTenantContext(tenant.id, async (tx) => {
       // 1. Fetch booking & current charges
       const bookingRes = await tx.execute(
-        sql`SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount", deposit_status AS "depositStatus", status FROM bookings WHERE id = ${bookingId} AND tenant_id = ${tenant.id}`
+        sql`SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount", deposit_status AS "depositStatus", status FROM bookings WHERE id = ${bookingId} AND tenant_id = ${tenant.id}`,
       )
       const booking = (
         bookingRes as unknown as Array<{

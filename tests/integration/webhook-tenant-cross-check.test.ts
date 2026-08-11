@@ -19,7 +19,8 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => ({
         mpPaymentId: id,
         status: 'approved' as const,
         amount: 100000,
-        externalReference: ((globalThis as Record<string, unknown>).__BOOKING_OF_B__ as string) ?? '',
+        externalReference:
+          ((globalThis as Record<string, unknown>).__BOOKING_OF_B__ as string) ?? '',
         paymentMethodId: 'account_money',
       }
     }

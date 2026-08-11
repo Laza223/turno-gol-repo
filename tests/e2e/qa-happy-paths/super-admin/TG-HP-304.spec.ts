@@ -66,9 +66,7 @@ test.describe('TG-HP-304 — Detalle tenant: 4 tabs', () => {
       await expect(page.getByText(`${tenant.slug} · ${tenant.email}`)).toBeVisible()
 
       await expect(page.getByRole('heading', { name: 'Soporte' })).toBeVisible()
-      await expect(
-        page.getByRole('button', { name: 'Entrar como este complejo' }),
-      ).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Entrar como este complejo' })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Datos del complejo' })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
       await expect(
@@ -97,20 +95,24 @@ test.describe('TG-HP-304 — Detalle tenant: 4 tabs', () => {
 
       // ── Tab Actividad ────────────────────────────────────────────────────
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=actividad`)
-      await expect(
-        page.getByRole('heading', { name: `Audit trail (${auditCount})` }),
-      ).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: `Audit trail (${auditCount})` })).toBeVisible({
+        timeout: 15_000,
+      })
       await expect(page.getByRole('heading', { name: 'Últimas 10 reservas' })).toBeVisible()
 
       // ── Tab Acciones ─────────────────────────────────────────────────────
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=acciones`)
-      await expect(
-        page.getByRole('heading', { name: 'Forzar transición de estado' }),
-      ).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Forzar transición de estado' })).toBeVisible({
+        timeout: 15_000,
+      })
       await expect(page.getByRole('heading', { name: 'Extender trial' })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Cambiar plan sin cobro' })).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'Editar settings del complejo' })).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'Resetear contraseña de staff' })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: 'Editar settings del complejo' }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: 'Resetear contraseña de staff' }),
+      ).toBeVisible()
 
       await writeEvidence('TG-HP-304', {
         status: 'pass',

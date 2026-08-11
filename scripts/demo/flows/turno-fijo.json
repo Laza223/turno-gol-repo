@@ -17,9 +17,18 @@
     { "action": "clickText", "text": "3" },
     { "action": "pause", "ms": 700 },
     { "action": "caption", "text": "…los datos del cliente…" },
-    { "action": "fill", "css": "#contactName, input[name='contactName'], input[placeholder*='ombre']", "text": "Daniel Aguirre" },
+    {
+      "action": "fill",
+      "css": "#contactName, input[name='contactName'], input[placeholder*='ombre']",
+      "text": "Daniel Aguirre"
+    },
     { "action": "fill", "css": "#contactPhone", "text": "1161234455", "fast": true },
-    { "action": "fill", "css": "#pricePerSession, input[name='pricePerSession'], input[inputmode='numeric']", "text": "40000", "fast": true },
+    {
+      "action": "fill",
+      "css": "#pricePerSession, input[name='pricePerSession'], input[inputmode='numeric']",
+      "text": "40000",
+      "fast": true
+    },
     { "action": "caption", "text": "…y TurnoGol genera todas las fechas" },
     { "action": "click", "name": "Continuar" },
     { "action": "pause", "ms": 2600 },

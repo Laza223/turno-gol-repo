@@ -136,10 +136,7 @@ export function computeSuspensions(input: SuspensionsInput): SuspensionRow[] {
         row.yellowCards += 1
         if (YELLOWS_CONSUMED_BY_RED && redsHere.has(playerId)) continue
         row.yellowsTowardNext += 1
-        if (
-          yellowCardsForSuspension > 0 &&
-          row.yellowsTowardNext >= yellowCardsForSuspension
-        ) {
+        if (yellowCardsForSuspension > 0 && row.yellowsTowardNext >= yellowCardsForSuspension) {
           row.pendingMatches += 1
           row.yellowsTowardNext -= yellowCardsForSuspension
           row.reason = 'yellow_accumulation'

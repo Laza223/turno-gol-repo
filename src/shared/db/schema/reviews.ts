@@ -33,24 +33,16 @@ export const reviews = pgTable(
       .references(() => bookings.id),
     rating: integer('rating').notNull(),
     comment: text('comment'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    ratingCheck: check(
-      'chk_review_rating_range',
-      sql`${table.rating} BETWEEN 1 AND 5`,
-    ),
+    ratingCheck: check('chk_review_rating_range', sql`${table.rating} BETWEEN 1 AND 5`),
     commentLenCheck: check(
       'chk_review_comment_length',
       sql`${table.comment} IS NULL OR char_length(${table.comment}) <= 500`,
     ),
     bookingUnique: uniqueIndex('uq_reviews_booking').on(table.bookingId),
-    tenantCreatedIdx: index('idx_reviews_tenant_created').on(
-      table.tenantId,
-      table.createdAt,
-    ),
+    tenantCreatedIdx: index('idx_reviews_tenant_created').on(table.tenantId, table.createdAt),
     playerIdx: index('idx_reviews_player').on(table.playerId),
   }),
 )

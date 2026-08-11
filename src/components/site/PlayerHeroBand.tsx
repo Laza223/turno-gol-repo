@@ -53,9 +53,7 @@ export default function PlayerHeroBand({
         </h1>
       )}
       {subtitle && (
-        <p className="mt-2.5 text-[14px] leading-relaxed text-muted-foreground">
-          {subtitle}
-        </p>
+        <p className="mt-2.5 text-[14px] leading-relaxed text-muted-foreground">{subtitle}</p>
       )}
       {children}
     </section>

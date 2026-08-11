@@ -73,7 +73,13 @@ test.describe('TG-HP-228 — Push admin (reserva online con seña) + quiet hours
     const [sub] = await runSql<{ id: string }>(
       `INSERT INTO push_subscriptions (tenant_id, staff_user_id, endpoint, p256dh_key, auth_key)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [DEPOSIT_TENANT_ID, E2E_STAFF_USER_ID, subscriptionEndpoint, 'qa-hp-228-p256dh-key', 'qa-hp-228-auth-key'],
+      [
+        DEPOSIT_TENANT_ID,
+        E2E_STAFF_USER_ID,
+        subscriptionEndpoint,
+        'qa-hp-228-p256dh-key',
+        'qa-hp-228-auth-key',
+      ],
     )
     const subscriptionId = sub?.id
     if (!subscriptionId) throw new Error('No se pudo sembrar push_subscriptions')

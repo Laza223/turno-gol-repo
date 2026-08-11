@@ -88,7 +88,10 @@ describe('stories: ninguna URL de red real fuera de la allowlist', () => {
       if (motivo) {
         // La allowlist no es un cajón: si el archivo ya no tiene ninguna URL
         // viva, la entrada sobra y hay que sacarla.
-        expect(matches.length, `${norm} está en la allowlist pero ya no tiene URLs http(s)`).toBeGreaterThan(0)
+        expect(
+          matches.length,
+          `${norm} está en la allowlist pero ya no tiene URLs http(s)`,
+        ).toBeGreaterThan(0)
         return
       }
 

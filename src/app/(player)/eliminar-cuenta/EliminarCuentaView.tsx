@@ -27,7 +27,9 @@ export function EliminarCuentaView({
       <div className="space-y-2 rounded-2xl border border-red-300 bg-red-50 p-4 dark:bg-red-500/10 dark:border-red-400/20">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-300 shrink-0" />
-          <p className="text-sm font-bold text-red-700 dark:text-red-300">Esta acción es irreversible</p>
+          <p className="text-sm font-bold text-red-700 dark:text-red-300">
+            Esta acción es irreversible
+          </p>
         </div>
         <p className="text-sm text-red-800 dark:text-red-300">
           Una vez eliminada, no podemos restaurar tu cuenta. Tus datos personales se anonimizan
@@ -52,7 +54,9 @@ export function EliminarCuentaView({
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">Se conserva (sin tu identidad)</p>
           <ul className="list-disc list-inside space-y-0.5">
-            <li className="text-sm text-foreground">Historial de reservas (para métricas del complejo)</li>
+            <li className="text-sm text-foreground">
+              Historial de reservas (para métricas del complejo)
+            </li>
             <li className="text-sm text-foreground">Pagos (requisito legal AFIP 5 años)</li>
             <li className="text-sm text-foreground">Logs de auditoría (Ley 25.326 Art. 22)</li>
           </ul>

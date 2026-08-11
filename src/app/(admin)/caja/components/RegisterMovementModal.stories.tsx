@@ -49,25 +49,23 @@ const meta = {
     date: artDateString(),
     cutoffMins: 0,
     onClose: fn(),
-    createCashFlowAction: fn(
-      async (): Promise<CashFlowActionResult> => ({
-        success: true,
-        cashFlow: {
-          id: 'cf-1',
-          tenantId: 't-1',
-          type: 'income',
-          category: 'booking',
-          amount: 450000,
-          method: 'cash',
-          description: 'Reserva 20:00',
-          bookingId: null,
-          tournamentTeamId: null,
-          registeredBy: 's-1',
-          occurredAt: new Date(),
-          createdAt: new Date(),
-        },
-      }),
-    ),
+    createCashFlowAction: fn(async (): Promise<CashFlowActionResult> => ({
+      success: true,
+      cashFlow: {
+        id: 'cf-1',
+        tenantId: 't-1',
+        type: 'income',
+        category: 'booking',
+        amount: 450000,
+        method: 'cash',
+        description: 'Reserva 20:00',
+        bookingId: null,
+        tournamentTeamId: null,
+        registeredBy: 's-1',
+        occurredAt: new Date(),
+        createdAt: new Date(),
+      },
+    })),
   },
 } satisfies Meta<typeof RegisterMovementModal>
 
@@ -78,8 +76,14 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    await expect(canvas.getByRole('button', { name: 'Ingreso' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(canvas.getByRole('button', { name: 'Reserva' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('button', { name: 'Ingreso' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(canvas.getByRole('button', { name: 'Reserva' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   },
 }
 
@@ -97,7 +101,10 @@ export const TipoGasto: Story = {
     // transición de Radix todavía tiene opacity:0 — el nodo existe pero
     // toBeVisible()/toHaveAttribute() lo leen como oculto/no listo.
     await waitFor(() =>
-      expect(canvas.getByRole('button', { name: 'Mercadería' })).toHaveAttribute('aria-pressed', 'true'),
+      expect(canvas.getByRole('button', { name: 'Mercadería' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
     )
     for (const label of ['Sueldos', 'Servicios', 'Mantenimiento', 'Otro gasto']) {
       await waitFor(() => expect(canvas.getByRole('button', { name: label })).toBeVisible())
@@ -172,12 +179,10 @@ export const GuardarOk: Story = {
 /** La action devuelve un error de negocio (ej. día ya cerrado): el modal se mantiene abierto. */
 export const ErrorDelServidor: Story = {
   args: {
-    createCashFlowAction: fn(
-      async (): Promise<CashFlowActionResult> => ({
-        success: false,
-        error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
-      }),
-    ),
+    createCashFlowAction: fn(async (): Promise<CashFlowActionResult> => ({
+      success: false,
+      error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)

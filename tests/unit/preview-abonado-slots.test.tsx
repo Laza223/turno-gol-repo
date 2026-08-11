@@ -198,12 +198,12 @@ describe('AbonadoForm — preview phase', () => {
 
     // Summary: badge de turnos libres + aviso de fechas en conflicto
     expect(screen.getByText('7 turnos libres')).toBeTruthy()
-    expect(
-      screen.getByText(/Hay 1 fecha que ya está ocupada por otra reserva\./),
-    ).toBeTruthy()
+    expect(screen.getByText(/Hay 1 fecha que ya está ocupada por otra reserva\./)).toBeTruthy()
 
     // Confirm button enabled
-    const confirmBtn = screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Confirmar y Crear Abonado',
+    }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(false)
 
     // Back button present
@@ -247,7 +247,9 @@ describe('AbonadoForm — preview phase', () => {
 
     expect(screen.getByText(/No se creará ningún turno/)).toBeTruthy()
 
-    const confirmBtn = screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Confirmar y Crear Abonado',
+    }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(true)
   })
 
@@ -362,8 +364,6 @@ describe('PreviewSlotsView — isolated', () => {
     expect(screen.getAllByText('Libre')).toHaveLength(7)
     expect(screen.getAllByText('Ocupado')).toHaveLength(1)
     expect(screen.getByText('7 turnos libres')).toBeTruthy()
-    expect(
-      screen.getByText(/Hay 1 fecha que ya está ocupada por otra reserva\./),
-    ).toBeTruthy()
+    expect(screen.getByText(/Hay 1 fecha que ya está ocupada por otra reserva\./)).toBeTruthy()
   })
 })

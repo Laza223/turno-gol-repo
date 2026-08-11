@@ -13,7 +13,9 @@ function stubGeolocation(getCurrentPosition: (success: GeoSuccess, error: GeoErr
   })
 }
 
-function stubFetchNearest(results: Array<{ city: string; province: string; distanceKm: number | null }>) {
+function stubFetchNearest(
+  results: Array<{ city: string; province: string; distanceKm: number | null }>,
+) {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
     json: async () => ({ results, total: results.length }),

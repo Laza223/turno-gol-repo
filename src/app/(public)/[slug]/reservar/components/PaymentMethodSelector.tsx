@@ -7,7 +7,16 @@ export type PayMethod = 'mercadopago' | 'cash' | 'transfer'
 // SVGs inline (sin imágenes externas), estilo lucide: 24x24, stroke currentColor.
 function MercadoPagoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+      aria-hidden
+    >
       {/* Billetera digital con onda contactless */}
       <rect x="2" y="6" width="17" height="13" rx="2.5" />
       <path d="M2 10.5h17" />
@@ -19,7 +28,16 @@ function MercadoPagoIcon() {
 
 function CashIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+      aria-hidden
+    >
       {/* Billete con valor al centro */}
       <rect x="2" y="6" width="20" height="12" rx="2" />
       <circle cx="12" cy="12" r="2.6" />
@@ -30,7 +48,16 @@ function CashIcon() {
 
 function TransferIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+      aria-hidden
+    >
       {/* Flechas de ida y vuelta entre cuentas */}
       <path d="M4 8h13" />
       <path d="m14 4 4 4-4 4" />
@@ -105,7 +132,9 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
               <span
                 className={`flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-accent peer-checked:ring-1 peer-focus-visible:outline-solid peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-emerald-500 dark:border-white/10 dark:bg-white/4 dark:hover:bg-white/[.07] ${def.checkedClass}`}
               >
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${def.iconClass}`}>
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${def.iconClass}`}
+                >
                   {def.icon}
                 </span>
                 <span className="min-w-0">

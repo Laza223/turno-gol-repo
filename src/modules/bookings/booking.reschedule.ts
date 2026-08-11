@@ -113,11 +113,7 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
  * Se calcula acá con SQL y no vía `getBookingCharges` porque esa función vive
  * en la capa `app/` y un módulo de dominio no puede importarla.
  */
-async function collectedSoFar(
-  tenantId: string,
-  booking: LockedBooking,
-  tx: DbTx,
-): Promise<number> {
+async function collectedSoFar(tenantId: string, booking: LockedBooking, tx: DbTx): Promise<number> {
   const rows = await tx.execute(sql`
     SELECT COALESCE(SUM(amount), 0)::int AS total
     FROM cash_flows
@@ -211,11 +207,13 @@ async function loadEmailNames(
     FROM courts c, tenants t, players p
     WHERE c.id = ${courtId} AND t.id = ${tenantId} AND p.id = ${playerId}
   `)
-  const row = (rows as unknown as Array<{
-    court_name: string
-    tenant_name: string
-    player_first_name: string
-  }>)[0]
+  const row = (
+    rows as unknown as Array<{
+      court_name: string
+      tenant_name: string
+      player_first_name: string
+    }>
+  )[0]
   if (!row) return undefined
   return {
     courtName: row.court_name,
@@ -327,12 +325,7 @@ export async function rescheduleBooking(
     }
   }
 
-  const physicallyNextDay = await slotIsPhysicallyNextDay(
-    tenantId,
-    input.date,
-    input.timeStart,
-    tx,
-  )
+  const physicallyNextDay = await slotIsPhysicallyNextDay(tenantId, input.date, input.timeStart, tx)
   const { startsAt, endsAt } = physicalRange({
     date: input.date,
     timeStart: input.timeStart,

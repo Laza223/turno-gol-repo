@@ -9,9 +9,7 @@ import { writeEvidence } from '../_qa/evidence'
  * Evidence anchors: src/app/home/Hero.tsx:64-67, src/components/site/HeroSearch.tsx:120-233.
  */
 test.describe('TG-HP-001 — Home + buscador', () => {
-  test('home renders hero + search navigates to /explorar with query params', async ({
-    page,
-  }) => {
+  test('home renders hero + search navigates to /explorar with query params', async ({ page }) => {
     // Step 1-2: home + h1
     await page.goto('/')
     await expect(

@@ -58,9 +58,7 @@ export function generateRoundRobin(
       // Alternar la localía por fecha: sin esto el equipo fijo (índice 0)
       // jugaría siempre de local y el reparto quedaría torcido.
       const swap = r % 2 === 1 && i === 0
-      pairings.push(
-        swap ? { homeTeamId: b, awayTeamId: a } : { homeTeamId: a, awayTeamId: b },
-      )
+      pairings.push(swap ? { homeTeamId: b, awayTeamId: a } : { homeTeamId: a, awayTeamId: b })
     }
     firstLeg.push({ round: r + 1, pairings })
 

@@ -71,7 +71,13 @@ async function seedTenantWithThreeDebts(): Promise<{ tenant: TestTenant; staffId
   // Origen 3: cuota de inscripción de torneo impaga (arancel propio del equipo, sin pagos).
   const tournamentId = await insertTournament(sql, tenant.id)
   await withTenantContext(tenant.id, (tx) =>
-    addTeam(tenant.id, staff.id, tournamentId, { name: 'Los Pibes FC', inscriptionFee: TOURNAMENT_FEE }, tx),
+    addTeam(
+      tenant.id,
+      staff.id,
+      tournamentId,
+      { name: 'Los Pibes FC', inscriptionFee: TOURNAMENT_FEE },
+      tx,
+    ),
   )
 
   return { tenant, staffId: staff.id }

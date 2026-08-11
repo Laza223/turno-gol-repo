@@ -27,9 +27,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const clientId = process.env.MP_CLIENT_ID
   if (!clientId) {
-    return NextResponse.redirect(
-      new URL('/onboarding?error=mp_not_configured', req.url),
-    )
+    return NextResponse.redirect(new URL('/onboarding?error=mp_not_configured', req.url))
   }
 
   const payload = Buffer.from(`${tenant.id}:${Date.now()}`).toString('base64url')

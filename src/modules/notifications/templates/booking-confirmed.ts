@@ -3,9 +3,9 @@ import type { EmailContent } from './index'
 export type BookingConfirmedData = {
   playerFirstName: string
   courtName: string
-  date: string       // "02/06/2031"
-  timeStart: string  // "10:00"
-  timeEnd: string    // "11:00"
+  date: string // "02/06/2031"
+  timeStart: string // "10:00"
+  timeEnd: string // "11:00"
   tenantName: string
   tenantAddress: string
 }

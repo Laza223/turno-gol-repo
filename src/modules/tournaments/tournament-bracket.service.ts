@@ -12,10 +12,7 @@ import type { tournamentMatches } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { matchOutcome } from './standings/bracket'
 import type { StandingsMatch } from './standings/types'
-import {
-  DownstreamMatchAlreadyPlayedError,
-  MatchNotFoundError,
-} from './tournament.errors'
+import { DownstreamMatchAlreadyPlayedError, MatchNotFoundError } from './tournament.errors'
 import type { TournamentMatchRow, TournamentStageKind } from './tournament.types'
 
 /** El partido más el `kind` de su fase, que decide varias validaciones. */

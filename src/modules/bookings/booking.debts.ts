@@ -86,27 +86,29 @@ export async function getDebts(tenantId: string, tx: DbTx): Promise<DebtRow[]> {
     ORDER BY b.date DESC, b.time_start DESC
   `)
 
-  return (rows as unknown as Array<{
-    id: string
-    date: string
-    timeStart: string
-    timeEnd: string
-    startsAt: string
-    endsAt: string
-    courtName: string
-    playerId: string | null
-    playerName: string | null
-    playerPhone: string | null
-    guestName: string | null
-    guestPhone: string | null
-    priceSnapshot: number
-    depositAmount: number
-    depositStatus: string
-    notesInternal: string | null
-    completedByStaff: string | null
-    completedByStaffName: string | null
-    chargesTotal: number
-  }>).map((r) => {
+  return (
+    rows as unknown as Array<{
+      id: string
+      date: string
+      timeStart: string
+      timeEnd: string
+      startsAt: string
+      endsAt: string
+      courtName: string
+      playerId: string | null
+      playerName: string | null
+      playerPhone: string | null
+      guestName: string | null
+      guestPhone: string | null
+      priceSnapshot: number
+      depositAmount: number
+      depositStatus: string
+      notesInternal: string | null
+      completedByStaff: string | null
+      completedByStaffName: string | null
+      chargesTotal: number
+    }>
+  ).map((r) => {
     const contactName = r.guestName || r.playerName || null
     const contactPhone = r.guestPhone || r.playerPhone || null
     const { depositCounted, totalPaid, pending } = summarizeBookingCharges({

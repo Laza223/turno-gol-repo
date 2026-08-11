@@ -9,7 +9,10 @@ const BOOKING_SLOTS = [
   { time: '23:00', state: 'occupied' },
 ] as const
 
-const SLOT_CLASSES: Record<(typeof BOOKING_SLOTS)[number]['state'], { box: string; time: string; label: string }> = {
+const SLOT_CLASSES: Record<
+  (typeof BOOKING_SLOTS)[number]['state'],
+  { box: string; time: string; label: string }
+> = {
   selected: {
     box: 'border border-emerald-500 bg-linear-to-br from-emerald-600 to-emerald-700 shadow-lg shadow-emerald-600/40 dark:from-emerald-500 dark:to-emerald-600 dark:shadow-emerald-500/40',
     time: 'text-white dark:text-slate-950',
@@ -72,9 +75,15 @@ export function BookingCardMockup() {
         <div className="p-[22px]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-display text-[19px] font-bold text-foreground">La Catedral F5</div>
+              <div className="font-display text-[19px] font-bold text-foreground">
+                La Catedral F5
+              </div>
               <div className="mt-[5px] flex items-center gap-[6px] text-[13px] text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" strokeWidth={2} aria-hidden />
+                <MapPin
+                  className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400"
+                  strokeWidth={2}
+                  aria-hidden
+                />
                 Palermo · a 1,2 km
               </div>
             </div>
@@ -89,7 +98,9 @@ export function BookingCardMockup() {
             <span className="font-logo text-[12px] font-bold uppercase tracking-[.06em] text-muted-foreground">
               Turnos · Hoy
             </span>
-            <span className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">4 libres</span>
+            <span className="text-[12px] font-semibold text-emerald-700 dark:text-emerald-400">
+              4 libres
+            </span>
           </div>
 
           {/* Grilla de slots */}
@@ -97,8 +108,13 @@ export function BookingCardMockup() {
             {BOOKING_SLOTS.map(({ time, state }) => {
               const c = SLOT_CLASSES[state]
               return (
-                <div key={time} className={`flex flex-col items-center gap-[2px] rounded-xl px-1 py-[11px] ${c.box}`}>
-                  <span className={`font-logo text-[15px] font-bold tabular-nums ${c.time}`}>{time}</span>
+                <div
+                  key={time}
+                  className={`flex flex-col items-center gap-[2px] rounded-xl px-1 py-[11px] ${c.box}`}
+                >
+                  <span className={`font-logo text-[15px] font-bold tabular-nums ${c.time}`}>
+                    {time}
+                  </span>
                   <span className={`text-[10px] uppercase tracking-[.04em] ${c.label}`}>
                     {state === 'selected' ? 'Elegido' : state === 'free' ? 'Libre' : 'Ocupado'}
                   </span>
@@ -110,8 +126,12 @@ export function BookingCardMockup() {
           {/* Pie de card */}
           <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/8">
             <div>
-              <div className="font-logo text-[11px] uppercase tracking-wider text-muted-foreground">Seña</div>
-              <div className="font-display text-[20px] font-bold tabular-nums text-foreground">$ 8.000</div>
+              <div className="font-logo text-[11px] uppercase tracking-wider text-muted-foreground">
+                Seña
+              </div>
+              <div className="font-display text-[20px] font-bold tabular-nums text-foreground">
+                $ 8.000
+              </div>
             </div>
             <div className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-[10px] text-[13.5px] font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 dark:shadow-emerald-500/30">
               Reservar 21:00

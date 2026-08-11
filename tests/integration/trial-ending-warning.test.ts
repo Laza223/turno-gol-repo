@@ -30,11 +30,7 @@ async function loadPredioPlanId(sql: Sql): Promise<string> {
 }
 
 /** Complejo en prueba con dueño activo (el aviso se dirige a `tenant_staff_members`). */
-async function seedTrialing(
-  sql: Sql,
-  planId: string,
-  trialEndsAt: Date,
-): Promise<{ id: string }> {
+async function seedTrialing(sql: Sql, planId: string, trialEndsAt: Date): Promise<{ id: string }> {
   const tenant = await createTestTenant(sql)
   const staff = await createTestStaffUser(sql)
   await linkStaffToTenant(sql, tenant.id, staff.id)

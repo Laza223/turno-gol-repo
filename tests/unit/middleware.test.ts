@@ -14,7 +14,7 @@ vi.mock('next/headers', () => ({
 // auth.middleware real (extractAuthUser está envuelto en cache()).
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
-  return { ...actual, cache: actual.cache ?? (<T,>(fn: T): T => fn) }
+  return { ...actual, cache: actual.cache ?? (<T>(fn: T): T => fn) }
 })
 
 // Mock Supabase server client to avoid env var requirement.
@@ -165,9 +165,7 @@ describe('withRole', () => {
 
   it('passes when role matches', async () => {
     vi.mocked(getStaffRole).mockResolvedValue('admin')
-    const handler = withRole('admin', async (_req, user) =>
-      NextResponse.json({ role: user.role }),
-    )
+    const handler = withRole('admin', async (_req, user) => NextResponse.json({ role: user.role }))
     const fakeUser: StaffUser = {
       type: 'staff',
       id: 'x',

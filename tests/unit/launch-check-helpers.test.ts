@@ -56,8 +56,7 @@ describe('encryptionKeyStrengthCheck', () => {
     // una clave de 65 pasaba el gate y reventaba en runtime — que es
     // exactamente lo que pasó en producción el 2026-07-31, en el callback de
     // OAuth de MercadoPago.
-    const key =
-      'a1b2c3d4e5f607182930415263748596a1b2c3d4e5f6071829304152637485ffa'
+    const key = 'a1b2c3d4e5f607182930415263748596a1b2c3d4e5f6071829304152637485ffa'
     expect(key).toHaveLength(65)
     const r = encryptionKeyStrengthCheck(key)
     expect(r.ok).toBe(false)
@@ -163,10 +162,7 @@ describe('launch-check.ts main() usa la lista filtrada', () => {
   // próximo que lo apunte a producción corre `pnpm test:integration` contra la
   // base del cliente. El test es textual a propósito: importar launch-check.ts
   // ejecutaría `void main()` y con él todos los checks contra una DB real.
-  const source = readFileSync(
-    path.resolve(process.cwd(), 'scripts/launch-check.ts'),
-    'utf8',
-  )
+  const source = readFileSync(path.resolve(process.cwd(), 'scripts/launch-check.ts'), 'utf8')
 
   it('itera la lista filtrada, no el array completo', () => {
     expect(source).toContain('for (const step of selected)')

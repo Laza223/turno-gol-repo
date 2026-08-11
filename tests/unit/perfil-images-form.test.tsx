@@ -7,7 +7,10 @@ import { PerfilImagesForm } from '@/app/(admin)/settings/perfil/PerfilImagesForm
 // Ya no hace falta un vi.mock de '.../perfil/actions' para evitar cargar
 // drizzle/postgres al importar el componente: las Server Actions entran por
 // prop (ver ReservasPolicyForm.tsx).
-const setImageAction = vi.fn(async () => ({ success: true as const, url: 'https://example.test/x.webp' }))
+const setImageAction = vi.fn(async () => ({
+  success: true as const,
+  url: 'https://example.test/x.webp',
+}))
 const removeImageAction = vi.fn(async () => ({ success: true as const }))
 
 describe('PerfilImagesForm', () => {

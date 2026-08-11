@@ -52,9 +52,7 @@ export const ListoParaSortear: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Así quedarían los cruces')).toBeVisible()
     await expect(canvas.getByText('1º Zona A')).toBeVisible()
-    await expect(
-      canvas.getByRole('button', { name: /cerrar zonas y sortear/i }),
-    ).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: /cerrar zonas y sortear/i })).toBeEnabled()
   },
 }
 
@@ -70,9 +68,7 @@ export const FaltanPartidosDeZona: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(/Faltan 3 partidos de zona/)).toBeVisible()
-    await expect(
-      canvas.getByRole('button', { name: /cerrar zonas y sortear/i }),
-    ).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: /cerrar zonas y sortear/i })).toBeDisabled()
     // Sin equipos resueltos el cuadro se dibuja igual, con los puestos.
     await expect(canvas.getByText('1º Zona A')).toBeVisible()
     await expect(canvas.getByText(/Los equipos se confirman al cerrar las zonas/)).toBeVisible()
@@ -106,9 +102,7 @@ export const EmpateEnElCorte: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(/están empatados justo en el puesto de corte/)).toBeVisible()
-    await expect(
-      canvas.getByRole('button', { name: /cerrar zonas y sortear/i }),
-    ).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: /cerrar zonas y sortear/i })).toBeDisabled()
 
     await userEvent.click(canvas.getByRole('button', { name: /definir el sorteo/i }))
     // waitFor: el diálogo de Radix todavía está animando cuando findByRole

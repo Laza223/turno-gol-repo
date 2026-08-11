@@ -58,8 +58,12 @@ export const SinMiembros: Story = {
   args: { members: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: /sin miembros de equipo/i })).toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: /invitar al primer miembro/i })).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('heading', { name: /sin miembros de equipo/i }),
+    ).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('button', { name: /invitar al primer miembro/i }),
+    ).toBeInTheDocument()
   },
 }
 

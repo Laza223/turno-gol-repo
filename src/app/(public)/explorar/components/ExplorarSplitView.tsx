@@ -24,7 +24,11 @@ export default function ExplorarSplitView({
     <div className="lg:grid lg:grid-cols-2 lg:gap-4">
       <div className="order-2 max-h-[calc(100vh-12rem)] space-y-3 overflow-y-auto pr-1 lg:order-1">
         {results.map((tn) => (
-          <div key={tn.id} onMouseEnter={() => setActiveId(tn.id)} onMouseLeave={() => setActiveId(null)}>
+          <div
+            key={tn.id}
+            onMouseEnter={() => setActiveId(tn.id)}
+            onMouseLeave={() => setActiveId(null)}
+          >
             <TenantCard tenant={tn} initialFavorited={favs.has(tn.id)} variant="compact" />
           </div>
         ))}

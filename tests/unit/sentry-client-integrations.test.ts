@@ -12,11 +12,7 @@ describe('filterReplay', () => {
   })
 
   it('also removes ReplayIntegration (alternate name used by some Sentry 7.x builds)', () => {
-    const input = [
-      { name: 'ReplayIntegration' },
-      { name: 'Replay' },
-      { name: 'BrowserTracing' },
-    ]
+    const input = [{ name: 'ReplayIntegration' }, { name: 'Replay' }, { name: 'BrowserTracing' }]
     const result = filterReplay(input)
     expect(result.some((i) => i.name === 'Replay')).toBe(false)
     expect(result.some((i) => i.name === 'ReplayIntegration')).toBe(false)

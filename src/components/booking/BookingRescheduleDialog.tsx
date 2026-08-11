@@ -28,7 +28,10 @@ export type RescheduleSlotOption = {
   available: boolean
 }
 
-export type ListRescheduleSlots = (input: { courtId: string; date: string }) => Promise<
+export type ListRescheduleSlots = (input: {
+  courtId: string
+  date: string
+}) => Promise<
   | { success: true; slots: RescheduleSlotOption[]; minDate: string; maxDate: string }
   | { success: false; error: string }
 >
@@ -289,12 +292,7 @@ export function BookingRescheduleDialog({
                         4.16:1 y AA pide 4.5 — misma clase de bug que el `/80`
                         de admin-sidebar.tsx. Sin elegir es texto casi negro
                         sobre `bg-card`, donde el 80% sobra. */}
-                    <span
-                      className={cn(
-                        'text-[10px] font-medium',
-                        !isSelected && 'opacity-80',
-                      )}
-                    >
+                    <span className={cn('text-[10px] font-medium', !isSelected && 'opacity-80')}>
                       {current
                         ? 'Actual'
                         : keepsContractPrice

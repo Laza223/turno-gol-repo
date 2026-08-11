@@ -43,9 +43,9 @@ test.describe('TG-HP-305 — Forzar estado: suspender', () => {
       const page = await ctx.newPage()
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=acciones`)
 
-      await expect(
-        page.getByRole('heading', { name: 'Forzar transición de estado' }),
-      ).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Forzar transición de estado' })).toBeVisible({
+        timeout: 15_000,
+      })
       await expect(page.getByText(/Estado actual: Pago vencido\./)).toBeVisible()
 
       // ── Componente: no destructiva, sin confirmación de nombre ──────────
@@ -57,9 +57,9 @@ test.describe('TG-HP-305 — Forzar estado: suspender', () => {
       await forceBtn.click()
 
       // ── Feedback inline real + UI-sin-reload (mismo tab, sin navegación) ─
-      await expect(
-        page.getByText("Estado forzado: 'past_due' → 'suspended'."),
-      ).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText("Estado forzado: 'past_due' → 'suspended'.")).toBeVisible({
+        timeout: 10_000,
+      })
       expect(page.url()).toContain('?tab=acciones')
       await expect(page.getByText(/Estado actual: Suspendido\./)).toBeVisible()
 
@@ -92,7 +92,8 @@ test.describe('TG-HP-305 — Forzar estado: suspender', () => {
         tenantRow,
         tenantSubscriptionRow: subRow,
         latestSupportAuditLog: auditRow ?? null,
-        dbWrites: 'tenants.status, tenant_subscriptions.status (lifecycle.service.ts:146-173) + audit_logs',
+        dbWrites:
+          'tenants.status, tenant_subscriptions.status (lifecycle.service.ts:146-173) + audit_logs',
         notes:
           'CASO DE PLATA: fila final (suspended) queda viva a propósito para el verificador y para TG-HP-306.',
       })

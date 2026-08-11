@@ -16,9 +16,10 @@ const meta = {
   args: {
     date: artDateString(),
     open: null,
-    openDayAction: fn(
-      async (): Promise<OpenDayActionResult> => ({ success: true, openingCash: 100000 }),
-    ),
+    openDayAction: fn(async (): Promise<OpenDayActionResult> => ({
+      success: true,
+      openingCash: 100000,
+    })),
   },
 } satisfies Meta<typeof OpenDayCard>
 
@@ -72,9 +73,7 @@ export const MontoVacio: Story = {
     // abierto se apila con el de la story siguiente y axe mide contraste
     // contra el overlay (falso positivo; la story aislada pasa).
     await userEvent.click(dialog.getByRole('button', { name: 'Cancelar' }))
-    await waitFor(() =>
-      expect(body.queryByRole('dialog')).not.toBeInTheDocument(),
-    )
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }
 
@@ -103,7 +102,9 @@ export const ConApertura: Story = {
     const dialog = within(await body.findByRole('dialog'))
     // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
     // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
-    await waitFor(() => expect(body.getByRole('heading', { name: /Corregir fondo del/ })).toBeVisible())
+    await waitFor(() =>
+      expect(body.getByRole('heading', { name: /Corregir fondo del/ })).toBeVisible(),
+    )
     await waitFor(() => expect(dialog.getByLabelText(/fondo inicial/i)).toHaveValue('5.000'))
     await expect(dialog.getByLabelText(/nota/i)).toHaveValue('Vuelto del día anterior')
 
@@ -123,9 +124,10 @@ export const ConApertura: Story = {
 /** La action rechaza (ej. día ya cerrado): mensaje inline, el diálogo sigue abierto. */
 export const ErrorDeServidor: Story = {
   args: {
-    openDayAction: fn(
-      async (): Promise<OpenDayActionResult> => ({ success: false, error: 'Ese día ya está cerrado.' }),
-    ),
+    openDayAction: fn(async (): Promise<OpenDayActionResult> => ({
+      success: false,
+      error: 'Ese día ya está cerrado.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -140,8 +142,6 @@ export const ErrorDeServidor: Story = {
 
     // Mismo cierre que MontoVacio: portal abierto + batch = falso positivo de axe.
     await userEvent.click(dialog.getByRole('button', { name: 'Cancelar' }))
-    await waitFor(() =>
-      expect(body.queryByRole('dialog')).not.toBeInTheDocument(),
-    )
+    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }

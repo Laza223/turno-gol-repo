@@ -85,9 +85,12 @@ export async function GET(): Promise<NextResponse> {
 
   const systemAdmin = await resolveSystemAdmin()
   if (!systemAdmin) {
-    return forbidden('Solo superadministradores de la plataforma pueden ver el estado del sistema.', {
-      code: 'SUPER_ADMIN_REQUIRED',
-    })
+    return forbidden(
+      'Solo superadministradores de la plataforma pueden ver el estado del sistema.',
+      {
+        code: 'SUPER_ADMIN_REQUIRED',
+      },
+    )
   }
 
   if (user.type === 'staff' && user.tenantId) {

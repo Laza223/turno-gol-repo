@@ -22,7 +22,11 @@ vi.mock('@/modules/staff/staff.service', () => ({
   getFirstActiveAdminStaffUserId: (id: string) => h.getFirstActiveAdminStaffUserId(id),
 }))
 
-const TENANT = { id: TENANT_ID, name: 'Complejo El Potrero', status: 'active' } as unknown as TenantRow
+const TENANT = {
+  id: TENANT_ID,
+  name: 'Complejo El Potrero',
+  status: 'active',
+} as unknown as TenantRow
 
 const SYSTEM_ADMIN_USER = {
   type: 'system_admin' as const,

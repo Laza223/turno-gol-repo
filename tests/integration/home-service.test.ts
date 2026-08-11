@@ -119,7 +119,14 @@ describe('home.service — números de Hoy', () => {
       createCashFlow(
         tenant.id,
         staffId,
-        { type: 'income', category: 'other', amount: 100000, method: 'cash', description: 'Hoy', occurredAt: midday(today) },
+        {
+          type: 'income',
+          category: 'other',
+          amount: 100000,
+          method: 'cash',
+          description: 'Hoy',
+          occurredAt: midday(today),
+        },
         tx,
       ),
     )
@@ -127,12 +134,21 @@ describe('home.service — números de Hoy', () => {
       createCashFlow(
         tenant.id,
         staffId,
-        { type: 'income', category: 'other', amount: 70000, method: 'cash', description: 'Semana pasada', occurredAt: midday(lastWeek) },
+        {
+          type: 'income',
+          category: 'other',
+          amount: 70000,
+          method: 'cash',
+          description: 'Semana pasada',
+          occurredAt: midday(lastWeek),
+        },
         tx,
       ),
     )
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     expect(data.numbers.collectedTodayCents).toBe(100000)
     expect(data.numbers.collectedSameWeekdayLastWeekCents).toBe(70000)
@@ -156,9 +172,18 @@ describe('home.service — números de Hoy', () => {
   it('occupancy cuenta el turno confirmado de hoy (wiring SQL de getOccupancy, no solo la matemática pura)', async () => {
     const { tenant, courtId } = await seedTenant()
     const today = artDateOf(new Date())
-    await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'confirmed', date: today, timeStart: '10:00', timeEnd: '11:00' })
+    await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'confirmed',
+      date: today,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     expect(data.numbers.occupancy.occupied).toBeGreaterThanOrEqual(1)
     expect(data.numbers.occupancy.available).toBeGreaterThan(0)
@@ -168,12 +193,18 @@ describe('home.service — números de Hoy', () => {
     const { tenant, staffId } = await seedTenant()
     const today = artDateOf(new Date())
 
-    const before = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const before = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
     expect(before.numbers.cashClosed).toBe(false)
 
-    await withTenantContext(tenant.id, (tx) => closeDailyRegister(tenant.id, today, staffId, {}, 0, tx))
+    await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(tenant.id, today, staffId, {}, 0, tx),
+    )
 
-    const after = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const after = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
     expect(after.numbers.cashClosed).toBe(true)
   })
 })
@@ -182,9 +213,16 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
   it('turno terminado sin cobrar hoy aparece como P1, con el mismo pendingCents que street-money', async () => {
     const { tenant, courtId } = await seedTenant()
     const today = artDateOf(new Date())
-    const bookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'completed', date: today })
+    const bookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'completed',
+      date: today,
+    })
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     const alert = data.needsAttention.find((a) => a.kind === 'unpaid_completed_booking')
     expect(alert).toBeDefined()
@@ -194,11 +232,17 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
 
   it('seña rechazada hoy aparece como alerta de seña fallida', async () => {
     const { tenant, courtId } = await seedTenant()
-    const bookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'pending_payment' })
+    const bookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'pending_payment',
+    })
     await insertDepositPayment(tenant.id, bookingId, 'rejected')
     const today = artDateOf(new Date())
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     const alert = data.needsAttention.find((a) => a.kind === 'failed_deposit')
     expect(alert).toBeDefined()
@@ -207,25 +251,37 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
 
   it('un reintento exitoso tras una seña rechazada NO deja la alerta colgada (hallazgo de revisión adversarial)', async () => {
     const { tenant, courtId } = await seedTenant()
-    const bookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'pending_payment' })
+    const bookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'pending_payment',
+    })
     await insertDepositPayment(tenant.id, bookingId, 'rejected')
     // Reintento: 2da fila de payments, bookings.payment_id se mueve a la nueva
     // (mismo efecto que retryDepositPaymentAction en producción).
     await insertDepositPayment(tenant.id, bookingId, 'approved', new Date())
     const today = artDateOf(new Date())
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     expect(data.needsAttention.some((a) => a.kind === 'failed_deposit')).toBe(false)
   })
 
   it('una seña aprobada NO genera alerta de seña fallida', async () => {
     const { tenant, courtId } = await seedTenant()
-    const bookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'confirmed' })
+    const bookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'confirmed',
+    })
     await insertDepositPayment(tenant.id, bookingId, 'approved', new Date())
     const today = artDateOf(new Date())
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     expect(data.needsAttention.some((a) => a.kind === 'failed_deposit')).toBe(false)
   })
@@ -239,19 +295,30 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
       createCashFlow(
         tenant.id,
         staffId,
-        { type: 'income', category: 'other', amount: 50000, method: 'cash', description: 'Ayer', occurredAt: midday(yesterday) },
+        {
+          type: 'income',
+          category: 'other',
+          amount: 50000,
+          method: 'cash',
+          description: 'Ayer',
+          occurredAt: midday(yesterday),
+        },
         tx,
       ),
     )
 
-    const before = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const before = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
     expect(before.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(true)
 
     await withTenantContext(tenant.id, (tx) =>
       closeDailyRegister(tenant.id, yesterday, staffId, {}, 0, tx),
     )
 
-    const after = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const after = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
     expect(after.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(false)
   })
 
@@ -263,9 +330,13 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
     // Apertura sin ningún cash_flow — createCashFlow/assertDayOpen nunca toca
     // daily_cash_opens, así que esto ejercita el operando IZQUIERDO del OR
     // (yesterdayOpen !== null) de forma aislada del derecho (yesterdayHadActivity).
-    await withTenantContext(tenant.id, (tx) => openDay(tenant.id, staffId, { date: yesterday, openingCash: 500000 }, 0, tx))
+    await withTenantContext(tenant.id, (tx) =>
+      openDay(tenant.id, staffId, { date: yesterday, openingCash: 500000 }, 0, tx),
+    )
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
     expect(data.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(true)
   })
 
@@ -278,21 +349,48 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
       createCashFlow(
         tenant.id,
         staffId,
-        { type: 'income', category: 'other', amount: 50000, method: 'cash', description: 'Ayer', occurredAt: midday(yesterday) },
+        {
+          type: 'income',
+          category: 'other',
+          amount: 50000,
+          method: 'cash',
+          description: 'Ayer',
+          occurredAt: midday(yesterday),
+        },
         tx,
       ),
     )
-    const failedBookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'pending_payment' })
+    const failedBookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'pending_payment',
+    })
     await insertDepositPayment(tenant.id, failedBookingId, 'rejected')
     // 2 turnos P1 con horarios distintos — since viene de starts_at
     // (street-money.service.ts), así que el más temprano debe listarse primero.
     // Prueba que sortAttentionItems se invoca de verdad: con ≤1 ítem por
     // categoría el orden de concatenación del código fuente ya "parecía"
     // correcto sin el sort (hallazgo de la revisión adversarial).
-    const laterBookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'completed', date: today, timeStart: '20:00', timeEnd: '21:00' })
-    const earlierBookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'completed', date: today, timeStart: '10:00', timeEnd: '11:00' })
+    const laterBookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'completed',
+      date: today,
+      timeStart: '20:00',
+      timeEnd: '21:00',
+    })
+    const earlierBookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'completed',
+      date: today,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     expect(data.needsAttention.map((a) => a.kind)).toEqual([
       'unpaid_completed_booking',
@@ -310,7 +408,9 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
     const { tenant } = await seedTenant()
     const today = artDateOf(new Date())
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     expect(data.needsAttention).toEqual([])
   })
@@ -321,28 +421,50 @@ describe('home.service — "Mientras no estabas"', () => {
     const { tenant, staffId, courtId } = await seedTenant()
     const today = artDateOf(new Date())
 
-    const onlineBookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'confirmed' })
+    const onlineBookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'confirmed',
+    })
 
     // Creadas por staff (no online) para aislar cada evento bajo prueba —
     // sin esto también contarían como "reserva online entrante" (created_by_staff
     // NULL es el default de insertBooking) y ensuciarían esta aserción puntual.
-    const canceledBookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, timeStart: '16:00', timeEnd: '17:00' })
+    const canceledBookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      timeStart: '16:00',
+      timeEnd: '17:00',
+    })
     await getSql()`
       UPDATE bookings SET status = 'canceled_no_refund', canceled_at = NOW(), canceled_by = 'player', created_by_staff = ${staffId}
       WHERE id = ${canceledBookingId}
     `
 
-    const paidBookingId = await insertBooking(getSql(), { tenantId: tenant.id, courtId, timeStart: '18:00', timeEnd: '19:00' })
+    const paidBookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      timeStart: '18:00',
+      timeEnd: '19:00',
+    })
     await getSql()`UPDATE bookings SET created_by_staff = ${staffId} WHERE id = ${paidBookingId}`
     await insertDepositPayment(tenant.id, paidBookingId, 'approved', new Date())
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     const kinds = data.whileYouWereAway.map((i) => i.kind).sort()
     expect(kinds).toEqual(['booking_online', 'cancellation', 'deposit_paid'])
-    expect(data.whileYouWereAway.find((i) => i.kind === 'booking_online')?.bookingId).toBe(onlineBookingId)
-    expect(data.whileYouWereAway.find((i) => i.kind === 'cancellation')?.bookingId).toBe(canceledBookingId)
-    expect(data.whileYouWereAway.find((i) => i.kind === 'deposit_paid')?.bookingId).toBe(paidBookingId)
+    expect(data.whileYouWereAway.find((i) => i.kind === 'booking_online')?.bookingId).toBe(
+      onlineBookingId,
+    )
+    expect(data.whileYouWereAway.find((i) => i.kind === 'cancellation')?.bookingId).toBe(
+      canceledBookingId,
+    )
+    expect(data.whileYouWereAway.find((i) => i.kind === 'deposit_paid')?.bookingId).toBe(
+      paidBookingId,
+    )
   })
 
   it('una cancelación hecha POR el admin no aparece (no es algo que pasó "sin él")', async () => {
@@ -355,7 +477,9 @@ describe('home.service — "Mientras no estabas"', () => {
       WHERE id = ${bookingId}
     `
 
-    const data = await withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today)))
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
 
     expect(data.whileYouWereAway.some((i) => i.kind === 'cancellation')).toBe(false)
   })
@@ -366,7 +490,12 @@ describe('home.service — aislamiento entre tenants', () => {
     const { tenant: tenantA, courtId: courtA } = await seedTenant()
     const { tenant: tenantB } = await seedTenant()
     const today = artDateOf(new Date())
-    await insertBooking(getSql(), { tenantId: tenantA.id, courtId: courtA, status: 'completed', date: today })
+    await insertBooking(getSql(), {
+      tenantId: tenantA.id,
+      courtId: courtA,
+      status: 'completed',
+      date: today,
+    })
 
     const [dataA, dataB] = await Promise.all([
       withTenantContext(tenantA.id, (tx) => getHoyData(tenantA.id, tx, hoyOpts(tenantA, today))),

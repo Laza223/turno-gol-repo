@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 
-const pkg = JSON.parse(
-  readFileSync(join(__dirname, '../../package.json'), 'utf8'),
-) as { scripts: Record<string, string> }
+const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8')) as {
+  scripts: Record<string, string>
+}
 
 const scripts = pkg.scripts
 

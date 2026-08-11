@@ -74,7 +74,6 @@ export const playerTagsSchema = z
   .array(playerTagSchema)
   .max(PLAYER_TAGS.length, 'Demasiadas etiquetas.')
   .transform(normalizePlayerTags)
-  .refine(
-    (tags) => !EXCLUSIVE_PAIRS.some(([a, b]) => tags.includes(a) && tags.includes(b)),
-    { message: 'No se puede marcar "Se le fía" y "No fiar" a la vez.' },
-  )
+  .refine((tags) => !EXCLUSIVE_PAIRS.some(([a, b]) => tags.includes(a) && tags.includes(b)), {
+    message: 'No se puede marcar "Se le fía" y "No fiar" a la vez.',
+  })

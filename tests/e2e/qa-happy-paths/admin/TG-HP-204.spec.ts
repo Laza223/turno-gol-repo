@@ -47,13 +47,11 @@ test.describe('TG-HP-204 — Subir logo del tenant a R2', () => {
       await expect(page.getByRole('heading', { name: 'Logo', exact: true })).toBeVisible()
 
       // Step 2-3: elegir archivo en el placeholder oculto (aria-label = emptyLabel).
-      await page
-        .getByLabel('Subí el logo de tu complejo')
-        .setInputFiles({
-          name: 'logo.png',
-          mimeType: 'image/png',
-          buffer: Buffer.from(LOGO_PNG_BASE64, 'base64'),
-        })
+      await page.getByLabel('Subí el logo de tu complejo').setInputFiles({
+        name: 'logo.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(LOGO_PNG_BASE64, 'base64'),
+      })
 
       // DB: setTenantImageAction sube a R2 y ESCRIBE logo_url ANTES de devolver
       // la url al cliente — pollear la fila es la señal autoritativa de éxito.
@@ -90,7 +88,8 @@ test.describe('TG-HP-204 — Subir logo del tenant a R2', () => {
         originalLogoUrl,
         newLogoUrl,
         dbWrites: 'tenants.logo_url (setTenantImageAction, actions.ts:73)',
-        notes: 'Upload real a R2 (isR2Configured()=true en este run); key = {tenantId}/logo-{uuid}.webp.',
+        notes:
+          'Upload real a R2 (isR2Configured()=true en este run); key = {tenantId}/logo-{uuid}.webp.',
       })
     } finally {
       await context.close()

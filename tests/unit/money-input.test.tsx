@@ -58,7 +58,9 @@ describe('MoneyInput', () => {
 
   it('modo no controlado: name + defaultValueCents renderiza hidden input en centavos', () => {
     const { container } = render(<MoneyInput name="amountPesos" defaultValueCents={800_000} />)
-    const hidden = container.querySelector('input[type="hidden"][name="amountPesos"]') as HTMLInputElement
+    const hidden = container.querySelector(
+      'input[type="hidden"][name="amountPesos"]',
+    ) as HTMLInputElement
     expect(hidden).toBeTruthy()
     expect(hidden.value).toBe('800000')
   })
@@ -67,7 +69,9 @@ describe('MoneyInput', () => {
     const { container } = render(<MoneyInput name="amountPesos" />)
     const visible = screen.getByRole('textbox')
     fireEvent.change(visible, { target: { value: '15000' } })
-    const hidden = container.querySelector('input[type="hidden"][name="amountPesos"]') as HTMLInputElement
+    const hidden = container.querySelector(
+      'input[type="hidden"][name="amountPesos"]',
+    ) as HTMLInputElement
     expect(hidden.value).toBe('1500000')
   })
 

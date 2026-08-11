@@ -8,11 +8,7 @@ import {
   ProductNotFoundError,
   SaleBookingNotFoundError,
 } from './canteen.errors'
-import type {
-  SellTicketInput,
-  SellTicketResult,
-  TicketLineInput,
-} from './canteen.types'
+import type { SellTicketInput, SellTicketResult, TicketLineInput } from './canteen.types'
 
 export type LockedProduct = {
   id: string
@@ -32,12 +28,8 @@ export function normalizeTicketLines(lines: TicketLineInput[]): TicketLineInput[
 }
 
 /** Descripción legible del cash_flow: "Cantina: Agua x2, Cerveza". Tope 500 (boundedText del feed). */
-export function ticketDescription(
-  lines: Array<{ name: string; qty: number }>,
-): string {
-  const body = lines
-    .map((l) => (l.qty === 1 ? l.name : `${l.name} x${l.qty}`))
-    .join(', ')
+export function ticketDescription(lines: Array<{ name: string; qty: number }>): string {
+  const body = lines.map((l) => (l.qty === 1 ? l.name : `${l.name} x${l.qty}`)).join(', ')
   const full = `Cantina: ${body}`
   return full.length <= 500 ? full : `${full.slice(0, 499)}…`
 }
@@ -173,9 +165,7 @@ export async function sellTicket(
       category: 'product_sale',
       amount: total,
       method: input.method,
-      description: ticketDescription(
-        resolved.map((r) => ({ name: r.product.name, qty: r.qty })),
-      ),
+      description: ticketDescription(resolved.map((r) => ({ name: r.product.name, qty: r.qty }))),
       clientIdempotencyKey: input.clientIdempotencyKey,
       // Etiqueta de origen, NO un pago del turno: la categoría sigue siendo
       // product_sale y todo lo que calcula saldo de reserva filtra por

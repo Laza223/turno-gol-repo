@@ -4,11 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Calendar, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
-import type {
-  AvailabilityResponse,
-  PublicTenant,
-  Slot,
-} from '@/modules/tenants/public.service'
+import type { AvailabilityResponse, PublicTenant, Slot } from '@/modules/tenants/public.service'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 import WeeklyAvailabilityModal from './WeeklyAvailabilityModal'
@@ -261,7 +257,9 @@ export default function AvailabilityGrid({ tenant }: Props) {
           horizontal. Envolver es preferible a achicar el selector, que ya está
           en el mínimo para que quepa la fecha larga. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-xl font-bold tracking-tight text-foreground">Disponibilidad</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
+          Disponibilidad
+        </h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -304,8 +302,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
           // text-red-600 sobre bg-red-50 mide 4.41:1 — bajo AA. text-red-700 da 5.9:1.
           className="text-sm text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20"
         >
-          No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e
-          intentá de nuevo.
+          No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e intentá de nuevo.
         </p>
       )}
 

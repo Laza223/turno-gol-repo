@@ -24,7 +24,13 @@ export default function ExplorarToolbar({ total }: Props) {
   const sort = params.get('sort') ?? 'name'
 
   function setView(next: 'list' | 'map') {
-    router.push(buildExplorarUrl(params, { view: next === 'list' ? undefined : 'map' }, { resetOffset: false }))
+    router.push(
+      buildExplorarUrl(
+        params,
+        { view: next === 'list' ? undefined : 'map' },
+        { resetOffset: false },
+      ),
+    )
   }
 
   function setSort(value: string) {
@@ -54,7 +60,13 @@ export default function ExplorarToolbar({ total }: Props) {
       )
       return
     }
-    router.push(buildExplorarUrl(params, { sort: value === 'name' ? undefined : value, lat: undefined, lng: undefined }))
+    router.push(
+      buildExplorarUrl(params, {
+        sort: value === 'name' ? undefined : value,
+        lat: undefined,
+        lng: undefined,
+      }),
+    )
   }
 
   // min-w-11: en mobile el label se oculta (`hidden sm:inline`) y quedaba solo
@@ -79,14 +91,22 @@ export default function ExplorarToolbar({ total }: Props) {
           className="h-11 md:h-9 rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           {SORTS.map((s) => (
-            <option key={s.value} value={s.value} className="bg-card text-foreground dark:bg-slate-900 dark:text-slate-100">
+            <option
+              key={s.value}
+              value={s.value}
+              className="bg-card text-foreground dark:bg-slate-900 dark:text-slate-100"
+            >
               {s.label}
             </option>
           ))}
         </select>
 
         {/* Toggle vista lista / mapa */}
-        <div className="inline-flex overflow-hidden rounded-lg border border-border bg-card shadow-xs" role="group" aria-label="Vista">
+        <div
+          className="inline-flex overflow-hidden rounded-lg border border-border bg-card shadow-xs"
+          role="group"
+          aria-label="Vista"
+        >
           <button
             type="button"
             onClick={() => setView('list')}

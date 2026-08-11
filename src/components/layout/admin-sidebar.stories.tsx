@@ -15,7 +15,10 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div style={{ transform: 'translateZ(0)', height: 640 }} className="relative isolate overflow-hidden">
+      <div
+        style={{ transform: 'translateZ(0)', height: 640 }}
+        className="relative isolate overflow-hidden"
+      >
         <Story />
       </div>
     ),
@@ -36,7 +39,10 @@ export const RutaDashboard: Story = {
   args: { staffRole: 'admin' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByRole('link', { name: 'Hoy' })[0]).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getAllByRole('link', { name: 'Hoy' })[0]).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 
@@ -44,7 +50,10 @@ export const RutaGrilla: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/grilla' } } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toHaveAttribute('aria-current', 'page')
+    await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   },
 }
 

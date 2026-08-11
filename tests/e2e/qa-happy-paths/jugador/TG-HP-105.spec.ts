@@ -93,7 +93,7 @@ async function runFlow(page: Page, date: string): Promise<void> {
     [bookingId],
   )
 
-  await page.reload();
+  await page.reload()
   await expect(page.getByRole('heading', { name: 'El pago no se procesó.' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Reservar de nuevo' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reintentar pago' })).not.toBeVisible()

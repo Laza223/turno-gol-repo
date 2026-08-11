@@ -4,10 +4,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import {
-  resolveStaffTenants,
-  setStaffTenantClaim,
-} from '@/modules/auth/auth.service'
+import { resolveStaffTenants, setStaffTenantClaim } from '@/modules/auth/auth.service'
 import { track } from '@/shared/observability'
 import { isMemberTenant } from './select-tenant.utils'
 

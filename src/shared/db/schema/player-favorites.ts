@@ -1,10 +1,4 @@
-import {
-  index,
-  pgTable,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { index, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { players } from './players'
 
@@ -21,9 +15,7 @@ export const playerFavorites = pgTable(
     tenantId: uuid('tenant_id')
       .notNull()
       .references(() => tenants.id),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     playerTenantUnique: uniqueIndex('uq_player_favorites_player_tenant').on(

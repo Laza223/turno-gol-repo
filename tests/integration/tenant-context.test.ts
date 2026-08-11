@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { sql as drizzleSql } from 'drizzle-orm'
-import {
-  closeSql,
-  getSql,
-  withPlayerContext,
-  withTenantContext,
-} from '@/shared/db/client'
+import { closeSql, getSql, withPlayerContext, withTenantContext } from '@/shared/db/client'
 import { bookings } from '@/shared/db/schema'
 import {
   cleanupAll,
@@ -95,7 +90,7 @@ describe('Drizzle tenant/player context helpers', () => {
     expect(rows[0].tenantId).toBe(tenantB.id)
   })
 
-  it('withPlayerContext returns only the player\'s own bookings (cross-tenant)', async () => {
+  it("withPlayerContext returns only the player's own bookings (cross-tenant)", async () => {
     const rows = await withPlayerContext(player.id, async (tx) => {
       await tx.execute(drizzleSql`SET LOCAL ROLE turnogol_app`)
       return tx.select().from(bookings)

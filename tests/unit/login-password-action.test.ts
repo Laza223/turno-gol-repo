@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { signInWithPassword, provisionAndRouteStaff, redirect } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   provisionAndRouteStaff: vi.fn(async () => ({ path: '/dashboard' })),
-  redirect: vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`) }),
+  redirect: vi.fn((url: string) => {
+    throw new Error(`REDIRECT:${url}`)
+  }),
 }))
 
 vi.mock('@/modules/auth/auth.service', () => ({
@@ -18,7 +20,13 @@ vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://lo
 // de enforce → sin este mock, cada acción devuelve "Demasiados intentos". El
 // rate-limit real se cubre en tests/integration/login-rate-limit.test.ts.
 vi.mock('@/shared/rate-limit/apply', () => ({
-  enforce: vi.fn(async () => ({ ok: true, limit: 100, remaining: 99, reset: 0, unavailable: false })),
+  enforce: vi.fn(async () => ({
+    ok: true,
+    limit: 100,
+    remaining: 99,
+    reset: 0,
+    unavailable: false,
+  })),
 }))
 
 import { loginAction } from '@/app/(auth)/login/actions'

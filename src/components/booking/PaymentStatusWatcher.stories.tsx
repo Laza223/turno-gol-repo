@@ -31,7 +31,13 @@ const meta = {
     fetchMock: [
       {
         match: `/api/player/bookings/${bookingId}/status`,
-        json: { data: { status: 'pending_payment', depositStatus: 'pending', expiresAt: minutesFromNow(6).toISOString() } },
+        json: {
+          data: {
+            status: 'pending_payment',
+            depositStatus: 'pending',
+            expiresAt: minutesFromNow(6).toISOString(),
+          },
+        },
       },
     ],
   },

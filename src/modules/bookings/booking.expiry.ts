@@ -131,9 +131,7 @@ const RECONCILE_PROCESS_ALERT_AFTER_MS = 60 * 60 * 1000
  * has elapsed (Hallazgo 1). While still inside the window the job is re-armed and
  * the booking is left untouched.
  */
-export async function expirePendingBookingWithPolicy(
-  bookingId: string,
-): Promise<ExpiryAction> {
+export async function expirePendingBookingWithPolicy(bookingId: string): Promise<ExpiryAction> {
   const state = await loadExpiryState(bookingId)
   if (!state || state.status !== 'pending_payment') return 'skipped'
 
@@ -283,7 +281,6 @@ export async function expirePendingBookingWithPolicy(
   return 'expired'
 }
 
-
 /**
  * Safety net (Hallazgo 1): sweep every pending_payment booking past its 6 min
  * window in case the per-booking pg-boss job never ran. Each one goes through the
@@ -307,7 +304,10 @@ export async function sweepExpiredPendingBookings(): Promise<number> {
     if (action === 'expired') expired += 1
   }
   if (expired > 0) {
-    logger.info('sweep expired bookings', { module: 'expire-pending-booking-sweep', count: expired })
+    logger.info('sweep expired bookings', {
+      module: 'expire-pending-booking-sweep',
+      count: expired,
+    })
   }
   return expired
 }

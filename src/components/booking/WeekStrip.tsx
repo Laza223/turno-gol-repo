@@ -74,9 +74,7 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
-                <span className="text-[10px] font-medium uppercase leading-none">
-                  {day.label}
-                </span>
+                <span className="text-[10px] font-medium uppercase leading-none">{day.label}</span>
                 <span className="mt-1 text-sm font-semibold leading-none tabular-nums">
                   {day.dayNum}
                 </span>

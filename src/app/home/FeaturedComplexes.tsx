@@ -31,7 +31,8 @@ export function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[]
                 Los mejor valorados
               </h2>
               <p className="mt-[14px] max-w-[540px] text-base leading-[1.55] text-muted-foreground">
-                Complejos con las mejores reseñas y disponibilidad en tiempo real. Elegí, reservá y jugá.
+                Complejos con las mejores reseñas y disponibilidad en tiempo real. Elegí, reservá y
+                jugá.
               </p>
             </div>
             <Link

@@ -6,8 +6,8 @@ vi.mock('postgres', () => {
   return {
     default: () => ({
       begin: async (cb: (tx: typeof fakeTx) => unknown) => cb(fakeTx),
-      end: async () => {}
-    })
+      end: async () => {},
+    }),
   }
 })
 
@@ -16,10 +16,7 @@ import { withContext } from '@/shared/db/client'
 describe('withContext role allowlist', () => {
   it('rejects role outside the AppRole allowlist (SQL injection guard)', async () => {
     await expect(
-      withContext(
-        { role: 'malicious; DROP TABLE users; --' as never },
-        async () => 'unreachable',
-      ),
+      withContext({ role: 'malicious; DROP TABLE users; --' as never }, async () => 'unreachable'),
     ).rejects.toThrow(/Invalid AppRole/i)
   })
 

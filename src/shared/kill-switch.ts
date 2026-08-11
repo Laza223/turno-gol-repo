@@ -31,9 +31,7 @@ export async function redirectIfTenantSuspended(tenantId: string): Promise<void>
   try {
     isSuspended = await Promise.race([
       isFeatureEnabled(TENANT_SUSPENDED_FLAG, tenantId),
-      new Promise<false>((resolve) =>
-        setTimeout(() => resolve(false), KILL_SWITCH_TIMEOUT_MS),
-      ),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), KILL_SWITCH_TIMEOUT_MS)),
     ])
   } catch (err) {
     logger.warn('kill_switch.check_failed', {

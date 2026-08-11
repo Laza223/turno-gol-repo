@@ -8,7 +8,11 @@ import {
   linkStaffToTenant,
 } from '../helpers/tenant'
 import { insertCourt } from '../helpers/factories'
-import { addTeam, addTeamPlayer, removeTeamPlayer } from '@/modules/tournaments/tournament-team.service'
+import {
+  addTeam,
+  addTeamPlayer,
+  removeTeamPlayer,
+} from '@/modules/tournaments/tournament-team.service'
 import {
   clearFixture,
   generateFixture,
@@ -164,9 +168,7 @@ describe('avance de llaves', () => {
       saveMatchResult(tenant.id, staff.id, { matchId: semi.id, homeScore: 2, awayScore: 0 }, tx),
     )
 
-    let after = await withTenantContext(tenant.id, (tx) =>
-      listFixture(tenant.id, tournamentId, tx),
-    )
+    let after = await withTenantContext(tenant.id, (tx) => listFixture(tenant.id, tournamentId, tx))
     const final = after.find((m) => m.homeSourceMatchId !== null || m.awaySourceMatchId !== null)!
     const slot = final.homeSourceMatchId === semi.id ? 'home' : 'away'
     expect(slot === 'home' ? final.homeTeamId : final.awayTeamId).toBe(semi.homeTeamId)
@@ -190,14 +192,14 @@ describe('avance de llaves', () => {
     await withTenantContext(tenant.id, (tx) =>
       saveMatchResult(tenant.id, staff.id, { matchId: semi.id, homeScore: 2, awayScore: 0 }, tx),
     )
-    await withTenantContext(tenant.id, (tx) =>
-      clearMatchResult(tenant.id, staff.id, semi.id, tx),
-    )
+    await withTenantContext(tenant.id, (tx) => clearMatchResult(tenant.id, staff.id, semi.id, tx))
 
     const after = await withTenantContext(tenant.id, (tx) =>
       listFixture(tenant.id, tournamentId, tx),
     )
-    const final = after.find((m) => m.homeSourceMatchId === semi.id || m.awaySourceMatchId === semi.id)!
+    const final = after.find(
+      (m) => m.homeSourceMatchId === semi.id || m.awaySourceMatchId === semi.id,
+    )!
     const slot = final.homeSourceMatchId === semi.id ? final.homeTeamId : final.awayTeamId
     expect(slot).toBeNull()
   })
@@ -356,9 +358,7 @@ describe('acta', () => {
       saveMatchResult(tenant.id, staff.id, { matchId: m.id, homeScore: 1, awayScore: 0 }, tx),
     )
 
-    await withTenantContext(tenant.id, (tx) =>
-      deleteMatchEvent(tenant.id, staff.id, ev.id, tx),
-    )
+    await withTenantContext(tenant.id, (tx) => deleteMatchEvent(tenant.id, staff.id, ev.id, tx))
 
     const after = await withTenantContext(tenant.id, (tx) =>
       getTopScorers(tenant.id, tournamentId, tx),
@@ -474,9 +474,7 @@ describe('borrados en cascada de las fases 1 y 2', () => {
     )
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        removeTeamPlayer(tenant.id, staff.id, player.id, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => removeTeamPlayer(tenant.id, staff.id, player.id, tx)),
     ).rejects.toThrow(TeamPlayerHasEventsError)
   })
 })
@@ -486,9 +484,7 @@ describe('tabla de posiciones sobre datos reales', () => {
     const { tenant, staff, tournamentId, matches, teamIds } = await setup({ teams: 4 })
 
     // Equipo 1 gana su primer partido 3-0.
-    const first = matches.find(
-      (m) => m.homeTeamId === teamIds[0] || m.awayTeamId === teamIds[0],
-    )!
+    const first = matches.find((m) => m.homeTeamId === teamIds[0] || m.awayTeamId === teamIds[0])!
     const isHome = first.homeTeamId === teamIds[0]
     await withTenantContext(tenant.id, (tx) =>
       saveMatchResult(

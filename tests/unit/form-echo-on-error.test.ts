@@ -30,7 +30,13 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://localhost:3000' }) }))
 vi.mock('@/shared/rate-limit/apply', () => ({
-  enforce: vi.fn(async () => ({ ok: true, limit: 100, remaining: 99, reset: 0, unavailable: false })),
+  enforce: vi.fn(async () => ({
+    ok: true,
+    limit: 100,
+    remaining: 99,
+    reset: 0,
+    unavailable: false,
+  })),
 }))
 vi.mock('@/modules/auth/auth.service', () => ({
   signInWithPassword,
@@ -65,10 +71,13 @@ describe('echoFields: qué vuelve al formulario y qué no', () => {
     f.set('newPassword', 'otra-456')
     f.set('token', 'tok_abc')
 
-    const out = echoFields(
-      f,
-      ['email', 'password', 'confirmPassword', 'newPassword', 'token'] as const,
-    )
+    const out = echoFields(f, [
+      'email',
+      'password',
+      'confirmPassword',
+      'newPassword',
+      'token',
+    ] as const)
 
     expect(out).toEqual({ email: 'marce@complejo.com' })
     // El eco viaja al cliente dentro del estado de la Server Action: cualquier

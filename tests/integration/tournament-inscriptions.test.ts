@@ -225,8 +225,9 @@ describe('registerInscriptionPayment', () => {
       ),
     ).rejects.toThrow(InscriptionOverpaidError)
 
-    expect(await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)))
-      .toBe(1)
+    expect(
+      await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)),
+    ).toBe(1)
   })
 
   /** Método mixto (D2, Fase 1): una sola llamada, varias líneas de {monto, método}. */
@@ -318,7 +319,11 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, charges: [{ amount: 2_000_000, method: 'cash' }], clientIdempotencyKey: key },
+        {
+          teamId: teamIds[0]!,
+          charges: [{ amount: 2_000_000, method: 'cash' }],
+          clientIdempotencyKey: key,
+        },
         tx,
       ),
     )
@@ -326,14 +331,19 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, charges: [{ amount: 2_000_000, method: 'cash' }], clientIdempotencyKey: key },
+        {
+          teamId: teamIds[0]!,
+          charges: [{ amount: 2_000_000, method: 'cash' }],
+          clientIdempotencyKey: key,
+        },
         tx,
       ),
     )
 
     expect(second[0]!.id).toBe(first[0]!.id)
-    expect(await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)))
-      .toBe(1)
+    expect(
+      await withTenantContext(tenant.id, (tx) => countTeamPayments(tenant.id, teamIds[0]!, tx)),
+    ).toBe(1)
   })
 
   /**
@@ -357,7 +367,11 @@ describe('registerInscriptionPayment', () => {
       registerInscriptionPayment(
         tenant.id,
         staff.id,
-        { teamId: teamIds[0]!, charges: [{ amount: 1_000_000, method: 'cash' }], clientIdempotencyKey: key },
+        {
+          teamId: teamIds[0]!,
+          charges: [{ amount: 1_000_000, method: 'cash' }],
+          clientIdempotencyKey: key,
+        },
         tx,
       ),
     )
@@ -514,9 +528,7 @@ describe('guards de borrado', () => {
     )
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        deleteTournament(tenant.id, staff.id, tournamentId, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => deleteTournament(tenant.id, staff.id, tournamentId, tx)),
     ).rejects.toThrow(TeamHasPaymentsError)
   })
 

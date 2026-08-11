@@ -68,7 +68,10 @@ function FormCard({ action }: { action: PlayerLoginAction }) {
     return (
       <div className="rounded-2xl p-8 text-center" style={cardStyle}>
         <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
-          <span aria-hidden className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden" />
+          <span
+            aria-hidden
+            className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden"
+          />
           <span
             className="relative flex h-16 w-16 items-center justify-center rounded-full text-emerald-300"
             style={{
@@ -80,9 +83,12 @@ function FormCard({ action }: { action: PlayerLoginAction }) {
             <Mail className="h-6 w-6" aria-hidden />
           </span>
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-white">Revisá tu email</h1>
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
+          Revisá tu email
+        </h1>
         <p className="mt-3 text-sm text-slate-400">
-          Te enviamos un enlace de acceso a <strong className="text-slate-200">{state.email}</strong>.
+          Te enviamos un enlace de acceso a{' '}
+          <strong className="text-slate-200">{state.email}</strong>.
         </p>
       </div>
     )
@@ -104,7 +110,9 @@ function FormCard({ action }: { action: PlayerLoginAction }) {
             cuenta
           </span>
         </h1>
-        <p className="text-sm text-slate-400">Te enviamos un enlace seguro de acceso a tu email. Sin contraseñas que recordar.</p>
+        <p className="text-sm text-slate-400">
+          Te enviamos un enlace seguro de acceso a tu email. Sin contraseñas que recordar.
+        </p>
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  generateRoundRobin,
-  roundRobinMatchCount,
-} from '@/modules/tournaments/fixture/round-robin'
+import { generateRoundRobin, roundRobinMatchCount } from '@/modules/tournaments/fixture/round-robin'
 import { FixtureGenerationError } from '@/modules/tournaments/tournament.errors'
 
 const teams = (n: number): string[] => Array.from({ length: n }, (_, i) => `t${i + 1}`)

@@ -17,12 +17,14 @@ type Props = {
 }
 
 export default async function SelectTenantPage(props: Props) {
-  const searchParams = await props.searchParams;
+  const searchParams = await props.searchParams
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
   const tenants = await resolveStaffTenants(user.staffUserId)
   if (tenants.length === 0) redirect('/onboarding')
 
-  return <SelectTenantList tenants={tenants} error={searchParams.error} action={selectTenantAction} />
+  return (
+    <SelectTenantList tenants={tenants} error={searchParams.error} action={selectTenantAction} />
+  )
 }

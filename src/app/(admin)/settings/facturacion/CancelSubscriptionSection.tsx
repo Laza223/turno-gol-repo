@@ -8,7 +8,11 @@ import { toast } from '@/hooks/use-toast'
 import type { SubscriptionStatus } from '@/modules/billing/billing.types'
 
 /** Estados desde los que `billing.cancel()` permite pedir la baja voluntaria (ver `lifecycle.service.transitionToCanceled`), MENOS `trialing` — todavía no eligió plan, no hay nada que cancelar (decisión explícita, no la del FSM). Exportado: `/reactivar` (Fix 2, R2-4 residual) lo reusa para decidir si muestra esta sección — es la única forma en que un `suspended` (el hard-lock del layout lo saca de `/settings/facturacion`) llega a un botón de baja. */
-export const CANCELABLE: ReadonlySet<SubscriptionStatus> = new Set(['active', 'past_due', 'suspended'])
+export const CANCELABLE: ReadonlySet<SubscriptionStatus> = new Set([
+  'active',
+  'past_due',
+  'suspended',
+])
 
 type Props = {
   status: SubscriptionStatus
@@ -30,7 +34,11 @@ type Props = {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
 /**

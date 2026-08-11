@@ -1,19 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Test crypto key — must be set before any module imports encrypt().
-process.env.ENCRYPTION_KEY =
-  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 process.env.MP_CLIENT_ID = 'test-client'
 process.env.MP_CLIENT_SECRET = 'test-secret'
 
 import { closeSql, getSql } from '@/shared/db/client'
 import { encrypt, decrypt } from '@/lib/crypto/encrypt'
 import { runRefreshMpTokens } from '@/shared/jobs/workers/refresh-mp-tokens.worker'
-import {
-  cleanupAll,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 let mpCallSeq = 0
 let mpCallDelayMs = 0
@@ -85,9 +80,7 @@ describe('refresh-mp-tokens advisory lock', () => {
     // are likely to serialize fast enough that all observe `locked=true`.
     mpCallDelayMs = 200
 
-    const results = await Promise.allSettled(
-      Array.from({ length: 5 }, () => runRefreshMpTokens()),
-    )
+    const results = await Promise.allSettled(Array.from({ length: 5 }, () => runRefreshMpTokens()))
 
     // All worker invocations succeed (failures are logged + swallowed per row).
     for (const r of results) {

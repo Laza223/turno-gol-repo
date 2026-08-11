@@ -29,7 +29,10 @@ export default function PrivacidadPage() {
         </p>
         <p>
           Para consultas sobre privacidad, ejercicio de derechos o reclamos, podés contactarnos en{' '}
-          <a className="text-emerald-700 dark:text-emerald-300 hover:underline" href="mailto:privacidad@turnogol.app">
+          <a
+            className="text-emerald-700 dark:text-emerald-300 hover:underline"
+            href="mailto:privacidad@turnogol.app"
+          >
             privacidad@turnogol.app
           </a>
           . Respondemos en un plazo máximo de 10 días hábiles.
@@ -38,7 +41,9 @@ export default function PrivacidadPage() {
 
       <section className="mt-10 space-y-4 text-foreground">
         <h2 className="text-xl font-semibold text-foreground">2. Qué datos recolectamos</h2>
-        <p>De los <strong>jugadores</strong> recolectamos:</p>
+        <p>
+          De los <strong>jugadores</strong> recolectamos:
+        </p>
         <ul className="list-disc space-y-1 pl-6">
           <li>Nombre y apellido (obligatorio para identificarte en las reservas).</li>
           <li>Email (obligatorio para autenticación vía magic link).</li>
@@ -61,9 +66,9 @@ export default function PrivacidadPage() {
         </p>
         <p>
           <strong>Nunca recolectamos</strong> números de tarjeta de crédito, CVV ni contraseñas. El
-          procesamiento de pagos lo realiza íntegramente MercadoPago bajo estándares PCI DSS. Tampoco
-          procesamos datos sensibles (salud, religión, orientación, biometría) según el artículo 2
-          de la Ley 25.326.
+          procesamiento de pagos lo realiza íntegramente MercadoPago bajo estándares PCI DSS.
+          Tampoco procesamos datos sensibles (salud, religión, orientación, biometría) según el
+          artículo 2 de la Ley 25.326.
         </p>
       </section>
 
@@ -94,7 +99,9 @@ export default function PrivacidadPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">4. Con quién compartimos tus datos</h2>
+        <h2 className="text-xl font-semibold text-foreground">
+          4. Con quién compartimos tus datos
+        </h2>
         <p>
           TurnoGol no vende, alquila ni comercializa tus datos personales. Trabajamos con los
           siguientes sub-encargados del tratamiento, cada uno con su propia política de privacidad y
@@ -139,7 +146,9 @@ export default function PrivacidadPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">5. Cuánto tiempo retenemos tus datos</h2>
+        <h2 className="text-xl font-semibold text-foreground">
+          5. Cuánto tiempo retenemos tus datos
+        </h2>
         <ul className="list-disc space-y-1 pl-6">
           <li>
             <strong>Cuenta del jugador</strong>: mientras esté activa. Tras 12 meses sin actividad,
@@ -169,20 +178,19 @@ export default function PrivacidadPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">6. Tus derechos (ARCO — Ley 25.326)</h2>
+        <h2 className="text-xl font-semibold text-foreground">
+          6. Tus derechos (ARCO — Ley 25.326)
+        </h2>
         <p>
           La Ley 25.326 te garantiza los derechos de <strong>Acceso</strong>,{' '}
-          <strong>Rectificación</strong>, <strong>Cancelación</strong> y{' '}
-          <strong>Oposición</strong> sobre tus datos personales:
+          <strong>Rectificación</strong>, <strong>Cancelación</strong> y <strong>Oposición</strong>{' '}
+          sobre tus datos personales:
         </p>
         <ul className="list-disc space-y-1 pl-6">
           <li>
             <strong>Acceso</strong>: podés solicitar copia de todos los datos que tenemos sobre vos.
-            Plazo de respuesta: 10 días hábiles. Gratuito una vez cada 6 meses. Endpoint
-            disponible:{' '}
-            <code className="rounded bg-muted px-1 py-0.5 text-sm">
-              /api/player/data-export
-            </code>{' '}
+            Plazo de respuesta: 10 días hábiles. Gratuito una vez cada 6 meses. Endpoint disponible:{' '}
+            <code className="rounded bg-muted px-1 py-0.5 text-sm">/api/player/data-export</code>{' '}
             (autenticado) o por mail a privacidad@turnogol.app.
           </li>
           <li>
@@ -213,8 +221,8 @@ export default function PrivacidadPage() {
         <p>
           TurnoGol usa <strong>únicamente cookies esenciales</strong> para el funcionamiento del
           servicio: sesión de autenticación gestionada por Supabase Auth, y la cookie de PIN gate
-          para zonas sensibles del panel del complejo. No utilizamos cookies de tracking publicitario
-          ni de analytics de terceros (Google Analytics, Facebook Pixel, etc.).
+          para zonas sensibles del panel del complejo. No utilizamos cookies de tracking
+          publicitario ni de analytics de terceros (Google Analytics, Facebook Pixel, etc.).
         </p>
         <p>
           Por eso no mostramos un banner de cookies: solo usamos cookies funcionales estrictamente
@@ -229,9 +237,7 @@ export default function PrivacidadPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">
-          8. Autoridad de aplicación (AAIP)
-        </h2>
+        <h2 className="text-xl font-semibold text-foreground">8. Autoridad de aplicación (AAIP)</h2>
         <p>
           La autoridad de control en materia de protección de datos personales en Argentina es la{' '}
           <strong>Agencia de Acceso a la Información Pública (AAIP)</strong>. Si considerás que tus
@@ -256,9 +262,12 @@ export default function PrivacidadPage() {
         <h2 className="text-xl font-semibold text-foreground">9. Cambios en esta política</h2>
         <p>
           Si modificamos esta política te lo informaremos por email (al menos 30 días antes para
-          cambios sustanciales) y publicaremos la fecha de actualización al inicio de este documento.
-          La versión vigente está siempre disponible en{' '}
-          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/privacidad">
+          cambios sustanciales) y publicaremos la fecha de actualización al inicio de este
+          documento. La versión vigente está siempre disponible en{' '}
+          <Link
+            className="text-emerald-700 dark:text-emerald-300 hover:underline"
+            href="/privacidad"
+          >
             turnogol.app/privacidad
           </Link>
           .

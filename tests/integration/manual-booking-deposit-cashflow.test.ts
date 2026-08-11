@@ -97,7 +97,12 @@ async function cashFlowsFor(bookingId: string) {
 async function bookingRow(bookingId: string) {
   const sql = getSql()
   const rows = await sql<
-    Array<{ payment_method: string | null; deposit_status: string; deposit_amount: number; status: string }>
+    Array<{
+      payment_method: string | null
+      deposit_status: string
+      deposit_amount: number
+      status: string
+    }>
   >`
     SELECT payment_method, deposit_status, deposit_amount, status
     FROM bookings WHERE id = ${bookingId}

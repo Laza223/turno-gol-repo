@@ -7,9 +7,7 @@ export type SubscriptionActivatedData = {
   periodEnd: string // "15/05/2026"
 }
 
-export function renderSubscriptionActivated(
-  data: SubscriptionActivatedData,
-): EmailContent {
+export function renderSubscriptionActivated(data: SubscriptionActivatedData): EmailContent {
   const subject = `Suscripción activada — ${data.tenantName}`
   const html = `
 <!DOCTYPE html>

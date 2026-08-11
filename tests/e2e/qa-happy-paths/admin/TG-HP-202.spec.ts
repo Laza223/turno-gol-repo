@@ -66,7 +66,8 @@ test.describe('TG-HP-202 — Register dueño nuevo', () => {
         email,
         authUserRow: authRows[0],
         staffUsersRowCount: staffRows.length,
-        dbWrites: 'auth.users (unconfirmed) via signUpStaff; staff_users NO se crea hasta el primer login',
+        dbWrites:
+          'auth.users (unconfirmed) via signUpStaff; staff_users NO se crea hasta el primer login',
         notes:
           'Confirmación de email + login + /onboarding quedan fuera de la UI (manual explícito, sin harness Inbucket en este repo).',
       })

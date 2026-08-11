@@ -12,7 +12,13 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } },
   },
   args: { cities: cityCounts() },
-  decorators: [(Story) => <div className="player-hero-band max-w-3xl rounded-3xl border p-6"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="player-hero-band max-w-3xl rounded-3xl border p-6">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof SearchBar>
 
 export default meta
@@ -35,7 +41,13 @@ export const Precargado: Story = {
     nextjs: {
       navigation: {
         pathname: '/explorar',
-        query: { q: 'Fénix', city: 'Córdoba', province: 'Córdoba', date: '2026-03-20', time: '19:00' },
+        query: {
+          q: 'Fénix',
+          city: 'Córdoba',
+          province: 'Córdoba',
+          date: '2026-03-20',
+          time: '19:00',
+        },
       },
     },
   },
@@ -52,7 +64,10 @@ export const Precargado: Story = {
 export const CiudadNoListada: Story = {
   parameters: {
     nextjs: {
-      navigation: { pathname: '/explorar', query: { city: 'Ushuaia', province: 'Tierra del Fuego' } },
+      navigation: {
+        pathname: '/explorar',
+        query: { city: 'Ushuaia', province: 'Tierra del Fuego' },
+      },
     },
   },
   play: async ({ canvasElement }) => {

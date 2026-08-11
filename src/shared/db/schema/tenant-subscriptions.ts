@@ -1,10 +1,4 @@
-import {
-  index,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { plans } from './plans'
 import { billingCycleEnum, subscriptionStatusEnum } from './enums'
@@ -65,19 +59,13 @@ export const tenantSubscriptions = pgTable(
       mode: 'date',
     }),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     tenantIdx: index('idx_tenant_subs_tenant').on(table.tenantId),
     statusIdx: index('idx_tenant_subs_status').on(table.status),
-    periodEndIdx: index('idx_tenant_subs_period_end').on(
-      table.currentPeriodEnd,
-    ),
+    periodEndIdx: index('idx_tenant_subs_period_end').on(table.currentPeriodEnd),
     dunningIdx: index('idx_tenant_subs_dunning').on(table.dunningStartedAt),
   }),
 )

@@ -55,6 +55,8 @@ export const CargaElDashboard: Story = {
     await expect(await canvas.findByText('Reservas por día')).toBeVisible()
     await expect(await canvas.findByText('Estado del sistema')).toBeVisible()
     // El skeleton ya no está: el Suspense soltó el fallback.
-    await expect(canvas.queryByRole('status', { name: 'Cargando métricas' })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('status', { name: 'Cargando métricas' }),
+    ).not.toBeInTheDocument()
   },
 }

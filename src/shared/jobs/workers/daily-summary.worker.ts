@@ -28,7 +28,9 @@ type SummaryTenant = {
 
 function dateLabelMedium(date: string): string {
   const d = new Date(`${date}T12:00:00Z`)
-  const weekday = d.toLocaleDateString('es-AR', { weekday: 'short', timeZone: ART_TZ }).replace('.', '')
+  const weekday = d
+    .toLocaleDateString('es-AR', { weekday: 'short', timeZone: ART_TZ })
+    .replace('.', '')
   const day = d.toLocaleDateString('es-AR', { day: 'numeric', timeZone: ART_TZ })
   const month = d.toLocaleDateString('es-AR', { month: 'long', timeZone: ART_TZ })
   return `${weekday} ${day} de ${month}`
@@ -107,7 +109,9 @@ async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {
 
   const collectedArs = formatArsNumber(data.numbers.collectedTodayCents)
   const occupiedLabel = `${data.numbers.occupancy.occupied}/${data.numbers.occupancy.available}`
-  const cajaLabel = data.numbers.cashClosed ? 'caja cerrada sin diferencia' : 'caja sin cerrar todavía'
+  const cajaLabel = data.numbers.cashClosed
+    ? 'caja cerrada sin diferencia'
+    : 'caja sin cerrar todavía'
   const summaryLabel = `${dateLabelMedium(yesterday)}: $${collectedArs} · ${occupiedLabel} · ${cajaLabel}`
 
   await notifyAdminPush(tenant.id, {

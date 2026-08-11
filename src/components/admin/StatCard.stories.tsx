@@ -54,12 +54,42 @@ export const SinIcono: Story = {
 export const Accents: Story = {
   render: () => (
     <div className="grid grid-cols-2 gap-3">
-      <StatCard label="Emerald" value="42" accent="emerald" icon={<Banknote className="h-5 w-5" aria-hidden="true" />} />
-      <StatCard label="Violet" value="42" accent="violet" icon={<Banknote className="h-5 w-5" aria-hidden="true" />} />
-      <StatCard label="Amber" value="42" accent="amber" icon={<Banknote className="h-5 w-5" aria-hidden="true" />} />
-      <StatCard label="Sky" value="42" accent="sky" icon={<Banknote className="h-5 w-5" aria-hidden="true" />} />
-      <StatCard label="Red" value="42" accent="red" icon={<Banknote className="h-5 w-5" aria-hidden="true" />} />
-      <StatCard label="Slate" value="42" accent="slate" icon={<Banknote className="h-5 w-5" aria-hidden="true" />} />
+      <StatCard
+        label="Emerald"
+        value="42"
+        accent="emerald"
+        icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
+      />
+      <StatCard
+        label="Violet"
+        value="42"
+        accent="violet"
+        icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
+      />
+      <StatCard
+        label="Amber"
+        value="42"
+        accent="amber"
+        icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
+      />
+      <StatCard
+        label="Sky"
+        value="42"
+        accent="sky"
+        icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
+      />
+      <StatCard
+        label="Red"
+        value="42"
+        accent="red"
+        icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
+      />
+      <StatCard
+        label="Slate"
+        value="42"
+        accent="slate"
+        icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
+      />
     </div>
   ),
   decorators: [

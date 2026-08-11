@@ -29,9 +29,7 @@ export type SaleMethod = (typeof METHOD_OPTIONS)[number]['value']
 export type MethodTotal = { key: MethodKey; label: string; total: number }
 
 /** Desglose neto por método en orden canónico; solo los métodos con movimientos. */
-export function methodBreakdown(
-  byMethod: Partial<Record<MethodKey, number>>,
-): MethodTotal[] {
+export function methodBreakdown(byMethod: Partial<Record<MethodKey, number>>): MethodTotal[] {
   return METHOD_ORDER.filter((key) => byMethod[key] !== undefined).map((key) => ({
     key,
     label: METHOD_LABELS[key],
@@ -193,7 +191,7 @@ export function buildDelta(
   const delta = current - reference
   const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral'
   const tone =
-    delta === 0 ? 'neutral' : (delta > 0) !== (opts.invert ?? false) ? 'positive' : 'negative'
+    delta === 0 ? 'neutral' : delta > 0 !== (opts.invert ?? false) ? 'positive' : 'negative'
   return { label: `${signedArs(delta)} ${compareLabel}`, direction, tone }
 }
 
@@ -247,10 +245,22 @@ export function closeView(
 
   const diff = close.diffAmount
   if (diff === 0 && close.declaredCash > 0) {
-    return { variant: 'v2', hasCashCount: true, hasDiff: false, tone: 'success', message: 'el efectivo cuadró' }
+    return {
+      variant: 'v2',
+      hasCashCount: true,
+      hasDiff: false,
+      tone: 'success',
+      message: 'el efectivo cuadró',
+    }
   }
   if (close.declaredCash === 0) {
-    return { variant: 'v2', hasCashCount: false, hasDiff: false, tone: 'neutral', message: 'sin arqueo declarado' }
+    return {
+      variant: 'v2',
+      hasCashCount: false,
+      hasDiff: false,
+      tone: 'neutral',
+      message: 'sin arqueo declarado',
+    }
   }
   if (diff > 0) {
     return {

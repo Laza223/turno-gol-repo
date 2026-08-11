@@ -93,10 +93,7 @@ async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   return row ?? null
 }
 
-async function loadTenantInfo(
-  tenantId: string,
-  tx: DbTx,
-): Promise<TenantOwnerInfo | null> {
+async function loadTenantInfo(tenantId: string, tx: DbTx): Promise<TenantOwnerInfo | null> {
   const rows = await tx.execute(sql`
     SELECT t.name AS "tenantName",
            (

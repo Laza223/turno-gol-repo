@@ -23,13 +23,31 @@ import { GET as citiesGET } from '@/app/api/public/cities/route'
 const ROOT = path.resolve(__dirname, '..', '..')
 
 const EXPECTED: Array<{ file: string; cacheControl: string }> = [
-  { file: 'src/app/api/public/availability/route.ts', cacheControl: 'public, s-maxage=30, stale-while-revalidate=60' },
-  { file: 'src/app/api/public/availability/week/route.ts', cacheControl: 'public, s-maxage=30, stale-while-revalidate=60' },
-  { file: 'src/app/api/public/search/route.ts', cacheControl: 'public, s-maxage=60, stale-while-revalidate=300' },
+  {
+    file: 'src/app/api/public/availability/route.ts',
+    cacheControl: 'public, s-maxage=30, stale-while-revalidate=60',
+  },
+  {
+    file: 'src/app/api/public/availability/week/route.ts',
+    cacheControl: 'public, s-maxage=30, stale-while-revalidate=60',
+  },
+  {
+    file: 'src/app/api/public/search/route.ts',
+    cacheControl: 'public, s-maxage=60, stale-while-revalidate=300',
+  },
   // Con filtro de disponibilidad (date+time) el search baja al TTL de availability.
-  { file: 'src/app/api/public/search/route.ts', cacheControl: 'public, s-maxage=30, stale-while-revalidate=60' },
-  { file: 'src/app/api/public/complex/[slug]/route.ts', cacheControl: 'public, s-maxage=60, stale-while-revalidate=120' },
-  { file: 'src/app/api/public/cities/route.ts', cacheControl: 'public, s-maxage=300, stale-while-revalidate=600' },
+  {
+    file: 'src/app/api/public/search/route.ts',
+    cacheControl: 'public, s-maxage=30, stale-while-revalidate=60',
+  },
+  {
+    file: 'src/app/api/public/complex/[slug]/route.ts',
+    cacheControl: 'public, s-maxage=60, stale-while-revalidate=120',
+  },
+  {
+    file: 'src/app/api/public/cities/route.ts',
+    cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
+  },
 ]
 
 describe('public endpoints declare inline SWR Cache-Control', () => {
@@ -45,7 +63,9 @@ describe('public endpoints actually emit the header (handler invocation)', () =>
   it('GET /api/public/cities responds with the SWR Cache-Control', async () => {
     const res = await citiesGET()
     expect(res.status).toBe(200)
-    expect(res.headers.get('cache-control')).toBe('public, s-maxage=300, stale-while-revalidate=600')
+    expect(res.headers.get('cache-control')).toBe(
+      'public, s-maxage=300, stale-while-revalidate=600',
+    )
   })
 
   it('GET /api/public/search responds with the SWR Cache-Control', async () => {

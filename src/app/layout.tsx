@@ -59,13 +59,13 @@ export const viewport: Viewport = {
   themeColor: '#059669',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" suppressHydrationWarning className={`${inter.variable} ${archivo.variable} ${sora.variable}`}>
+    <html
+      lang="es"
+      suppressHydrationWarning
+      className={`${inter.variable} ${archivo.variable} ${sora.variable}`}
+    >
       <body className="font-sans antialiased">
         <ThemeProvider>
           <NextTopLoader color="#059669" showSpinner={false} />

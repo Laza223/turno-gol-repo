@@ -43,31 +43,17 @@ export const dailyCashCloses = pgTable(
     closedBy: uuid('closed_by')
       .notNull()
       .references(() => staffUsers.id),
-    closedAt: timestamp('closed_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    closedAt: timestamp('closed_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    uqPerTenant: unique('uq_daily_close_per_tenant').on(
-      table.tenantId,
-      table.date,
-    ),
-    incomeNonNegative: check(
-      'chk_income_non_negative',
-      sql`${table.totalIncome} >= 0`,
-    ),
+    uqPerTenant: unique('uq_daily_close_per_tenant').on(table.tenantId, table.date),
+    incomeNonNegative: check('chk_income_non_negative', sql`${table.totalIncome} >= 0`),
     adjustmentsNonNegative: check(
       'chk_adjustments_non_negative',
       sql`${table.totalAdjustments} >= 0`,
     ),
-    expenseNonNegative: check(
-      'chk_expense_non_negative',
-      sql`${table.totalExpense} >= 0`,
-    ),
+    expenseNonNegative: check('chk_expense_non_negative', sql`${table.totalExpense} >= 0`),
     tenantIdx: index('idx_daily_closes_tenant').on(table.tenantId),
-    tenantDateIdx: index('idx_daily_closes_tenant_date').on(
-      table.tenantId,
-      table.date,
-    ),
+    tenantDateIdx: index('idx_daily_closes_tenant_date').on(table.tenantId, table.date),
   }),
 )

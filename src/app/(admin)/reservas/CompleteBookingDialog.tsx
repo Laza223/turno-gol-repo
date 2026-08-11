@@ -84,11 +84,13 @@ export default function CompleteBookingDialog({
       chargesTotal: booking.chargesTotal,
     })
     if (summary.pending > 0) {
-      setCharges([{
-        id: crypto.randomUUID(),
-        amountCents: summary.pending,
-        method: 'cash',
-      }])
+      setCharges([
+        {
+          id: crypto.randomUUID(),
+          amountCents: summary.pending,
+          method: 'cash',
+        },
+      ])
     } else {
       setCharges([])
     }
@@ -114,10 +116,7 @@ export default function CompleteBookingDialog({
   const contactPhone = booking.playerPhone || booking.guestPhone
 
   function addChargeLine() {
-    setCharges((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), amountCents: null, method: 'cash' },
-    ])
+    setCharges((prev) => [...prev, { id: crypto.randomUUID(), amountCents: null, method: 'cash' }])
   }
 
   function removeChargeLine(id: string) {
@@ -130,11 +129,13 @@ export default function CompleteBookingDialog({
 
   function quickAllCash() {
     if (summary.pending <= 0) return
-    setCharges([{
-      id: crypto.randomUUID(),
-      amountCents: summary.pending,
-      method: 'cash',
-    }])
+    setCharges([
+      {
+        id: crypto.randomUUID(),
+        amountCents: summary.pending,
+        method: 'cash',
+      },
+    ])
   }
 
   function handleClose(next: boolean) {
@@ -160,7 +161,9 @@ export default function CompleteBookingDialog({
 
     const totalCents = parsedCharges.reduce((s, c) => s + c.amount, 0)
     if (totalCents > summary.pending) {
-      setError(`El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(summary.pending)}).`)
+      setError(
+        `El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(summary.pending)}).`,
+      )
       return
     }
 
@@ -174,9 +177,7 @@ export default function CompleteBookingDialog({
         clientIdempotencyKey,
       })
       if (res.success) {
-        const desc = totalCents > 0
-          ? `${label} — cobrado ${formatArs(totalCents)}`
-          : label
+        const desc = totalCents > 0 ? `${label} — cobrado ${formatArs(totalCents)}` : label
         toast({
           title: hasDebt ? 'Completada con deuda pendiente' : 'Completada y cobrada',
           description: desc,
@@ -218,7 +219,9 @@ export default function CompleteBookingDialog({
               <dl className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Precio del turno</dt>
-                  <dd className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</dd>
+                  <dd className="font-semibold text-foreground">
+                    {formatArs(booking.priceSnapshot)}
+                  </dd>
                 </div>
                 {summary.depositCounted > 0 && (
                   <div className="flex items-center justify-between">
@@ -236,7 +239,9 @@ export default function CompleteBookingDialog({
                 )}
                 <div className="flex items-center justify-between border-t border-border/80 pt-2">
                   <dt className="font-medium text-foreground">Saldo a cobrar</dt>
-                  <dd className="font-bold text-base text-foreground">{formatArs(summary.pending)}</dd>
+                  <dd className="font-bold text-base text-foreground">
+                    {formatArs(summary.pending)}
+                  </dd>
                 </div>
               </dl>
 
@@ -284,7 +289,11 @@ export default function CompleteBookingDialog({
                               onClick={() => updateChargeLine(c.id, { method: m.value })}
                               className={chipClass(c.method === m.value)}
                             >
-                              {m.label === 'Transferencia' ? 'Transf.' : m.label === 'MercadoPago' ? 'MP' : m.label}
+                              {m.label === 'Transferencia'
+                                ? 'Transf.'
+                                : m.label === 'MercadoPago'
+                                  ? 'MP'
+                                  : m.label}
                             </button>
                           ))}
                         </div>
@@ -321,11 +330,15 @@ export default function CompleteBookingDialog({
                 <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total cobrado ahora</span>
-                    <span className="font-semibold text-foreground">{formatArs(totalChargingCents)}</span>
+                    <span className="font-semibold text-foreground">
+                      {formatArs(totalChargingCents)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Resta</span>
-                    <span className={`font-semibold ${hasDebt ? 'text-amber-800 dark:text-amber-400' : 'text-emerald-800 dark:text-emerald-400'}`}>
+                    <span
+                      className={`font-semibold ${hasDebt ? 'text-amber-800 dark:text-amber-400' : 'text-emerald-800 dark:text-emerald-400'}`}
+                    >
                       {hasDebt ? formatArs(remainingAfterCharge) : '✓ Pagado completo'}
                     </span>
                   </div>
@@ -349,7 +362,10 @@ export default function CompleteBookingDialog({
               />
               {contactName && (
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>📞 {contactName}{contactPhone ? ` — ${contactPhone}` : ''}</span>
+                  <span>
+                    📞 {contactName}
+                    {contactPhone ? ` — ${contactPhone}` : ''}
+                  </span>
                   {whatsappUrl && (
                     <a
                       href={whatsappUrl}
@@ -367,7 +383,11 @@ export default function CompleteBookingDialog({
           )}
 
           {/* Error */}
-          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {error}
+            </p>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">

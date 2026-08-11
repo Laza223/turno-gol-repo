@@ -367,7 +367,9 @@ describe('inviteStaffAction', () => {
     expect(res.success).toBe(true)
     expect(inviteUserByEmail).toHaveBeenCalledWith('nuevo@staff.local', expect.any(Object))
 
-    const su = await sql<{ id: string }[]>`SELECT id FROM staff_users WHERE email = 'nuevo@staff.local'`
+    const su = await sql<
+      { id: string }[]
+    >`SELECT id FROM staff_users WHERE email = 'nuevo@staff.local'`
     expect(su).toHaveLength(1)
     const tsm = await sql<{ id: string }[]>`
       SELECT id FROM tenant_staff_members

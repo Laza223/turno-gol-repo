@@ -48,11 +48,13 @@ export async function anonymizePlayer(playerId: string): Promise<void> {
     const rows = await tx.execute(sql`
       SELECT id, status, email FROM players WHERE id = ${playerId} FOR UPDATE
     `)
-    const player = (rows as unknown as Array<{
-      id: string
-      status: string
-      email: string
-    }>)[0]
+    const player = (
+      rows as unknown as Array<{
+        id: string
+        status: string
+        email: string
+      }>
+    )[0]
 
     if (!player) throw new PlayerNotFoundError(playerId)
     if (player.status === 'anonymized') throw new PlayerAlreadyAnonymizedError(playerId)

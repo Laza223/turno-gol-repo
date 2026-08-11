@@ -24,7 +24,10 @@ function withGeolocation(state: GeoState): Decorator {
     const [ready, setReady] = useState(false)
     useEffect(() => {
       if (state === 'unsupported') {
-        Object.defineProperty(window.navigator, 'geolocation', { value: undefined, configurable: true })
+        Object.defineProperty(window.navigator, 'geolocation', {
+          value: undefined,
+          configurable: true,
+        })
       } else {
         const mock: Pick<Geolocation, 'getCurrentPosition'> = {
           getCurrentPosition: (success, error) => {
@@ -34,7 +37,15 @@ function withGeolocation(state: GeoState): Decorator {
               return
             }
             success({
-              coords: { latitude: -34.92, longitude: -57.95, accuracy: 10, altitude: null, altitudeAccuracy: null, heading: null, speed: null },
+              coords: {
+                latitude: -34.92,
+                longitude: -57.95,
+                accuracy: 10,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                speed: null,
+              },
               timestamp: Date.now(),
             } as GeolocationPosition)
           },
@@ -121,7 +132,9 @@ export const SeleccionaHora: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Hora' }))
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('menuitem', { name: '19:00' }))
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Hora' })).toHaveTextContent('19:00'))
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Hora' })).toHaveTextContent('19:00'),
+    )
   },
 }
 

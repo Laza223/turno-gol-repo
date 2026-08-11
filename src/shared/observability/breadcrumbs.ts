@@ -21,10 +21,7 @@ type PaymentEvent =
   | 'payment.reconcile.drift_detected'
 
 type WebhookEvent =
-  | 'mp.webhook.received'
-  | 'mp.webhook.duplicate'
-  | 'mp.webhook.processed'
-  | 'mp.webhook.failed'
+  'mp.webhook.received' | 'mp.webhook.duplicate' | 'mp.webhook.processed' | 'mp.webhook.failed'
 
 type BookingCtx = {
   bookingId?: string
@@ -91,10 +88,7 @@ type AuthCtx = {
  *   cache. Las otras dos páginas del embudo son `force-dynamic`, así que sus
  *   eventos sí cuentan visitas reales.
  */
-type FunnelEvent =
-  | 'portal.viewed'
-  | 'profile.viewed'
-  | 'checkout.viewed'
+type FunnelEvent = 'portal.viewed' | 'profile.viewed' | 'checkout.viewed'
 
 type FunnelCtx = {
   tenantId?: string
@@ -112,10 +106,7 @@ type AvailabilityCtx = {
   courts?: number
 }
 
-type SearchEvent =
-  | 'search.public.query'
-  | 'search.availability.query'
-  | 'search.availability.pills'
+type SearchEvent = 'search.public.query' | 'search.availability.query' | 'search.availability.pills'
 
 type SearchCtx = {
   hasQuery?: boolean // never the raw query text — PII-safe (Ley 25.326)
@@ -133,9 +124,7 @@ type SearchCtx = {
   withPills?: number
 }
 
-type NotificationEvent =
-  | 'notification.push.sent'
-  | 'notification.push.failed'
+type NotificationEvent = 'notification.push.sent' | 'notification.push.failed'
 
 type NotificationCtx = {
   statusCode?: number
@@ -150,10 +139,7 @@ type NotificationCtx = {
  * calle: tendencia ↓ por tenant". Solo instrumentación — el baseline y el
  * dashboard se arman después con estos datos en Sentry, no acá.
  */
-type CashflowEvent =
-  | 'close.opened'
-  | 'close.confirmed'
-  | 'street_money.viewed'
+type CashflowEvent = 'close.opened' | 'close.confirmed' | 'street_money.viewed'
 
 type CashflowCtx = {
   tenantId?: string

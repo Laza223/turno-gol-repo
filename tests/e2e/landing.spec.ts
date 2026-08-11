@@ -6,7 +6,9 @@ test.describe('landing page', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
-  test('header logged-out muestra Ingresar → /ingresar y Para complejos → /para-complejos', async ({ page }) => {
+  test('header logged-out muestra Ingresar → /ingresar y Para complejos → /para-complejos', async ({
+    page,
+  }) => {
     await page.goto('/')
     // La home usa PortalHeader overlay: el CTA logged-out es "Ingresar" → /ingresar.
     // No hay CTA "Comenzá gratis" en la home; ese CTA vive en /para-complejos (BusinessHeader).
@@ -43,13 +45,14 @@ test.describe('landing page', () => {
     // Allow Next.js dev warnings; only fail on real errors that are not from Next overlay.
     // 'unsafe-eval'/EvalError is dev-only noise: Next's webpack HMR uses eval(), which the
     // app CSP (script-src 'self' 'unsafe-inline') blocks in dev; production builds don't eval.
-    const filtered = errors.filter((e) =>
-      !e.includes('Hydration') &&
-      !e.includes('Download the React DevTools') &&
-      !e.includes('[next-auth]') &&
-      !e.includes('unsafe-eval') &&
-      !e.includes('EvalError') &&
-      !e.includes('Content Security Policy'),
+    const filtered = errors.filter(
+      (e) =>
+        !e.includes('Hydration') &&
+        !e.includes('Download the React DevTools') &&
+        !e.includes('[next-auth]') &&
+        !e.includes('unsafe-eval') &&
+        !e.includes('EvalError') &&
+        !e.includes('Content Security Policy'),
     )
     expect(filtered, `Console errors: ${JSON.stringify(filtered)}`).toEqual([])
   })

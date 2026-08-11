@@ -58,8 +58,12 @@ test.describe('TG-HP-302 — Dashboard global', () => {
 
       // ── Secciones ────────────────────────────────────────────────────────
       await expect(page.getByRole('heading', { name: 'Tenants por estado' })).toBeVisible()
-      await expect(page.getByRole('heading', { name: /Trials por vencer \(≤7 días\)/ })).toBeVisible()
-      await expect(page.getByRole('heading', { name: /Signups recientes \(7 días\)/ })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: /Trials por vencer \(≤7 días\)/ }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: /Signups recientes \(7 días\)/ }),
+      ).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Colas de jobs (pg-boss)' })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Webhooks MP recientes' })).toBeVisible()
 
@@ -74,7 +78,8 @@ test.describe('TG-HP-302 — Dashboard global', () => {
         status: 'pass',
         groundTruth: { totalTenants, mrrCents, expectedMrrText },
         dbWrites: 'ninguno (vista read-only, export const dynamic = force-dynamic)',
-        notes: 'MRR y Tenants verificados contra SUM/COUNT directos (misma query shape que dashboard.service.ts).',
+        notes:
+          'MRR y Tenants verificados contra SUM/COUNT directos (misma query shape que dashboard.service.ts).',
       })
     } finally {
       await ctx.close()

@@ -35,7 +35,11 @@ const gateSchema = z.object({
   // DESPUÉS de las transformaciones invierte el orden — `z.email().trim()` valida
   // el formato ANTES de trimear, así que un email con un espacio de más falla.
   // `.pipe()` mantiene la semántica de v3: normalizar primero, validar después.
-  email: z.string().trim().toLowerCase().pipe(z.email({ message: 'Ingresá un email válido' })),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email({ message: 'Ingresá un email válido' })),
   firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80),
   lastName: z.string().trim().max(80).optional().default(''),
   terms: z.literal('on', { error: 'Tenés que aceptar los términos.' }),
@@ -51,7 +55,10 @@ export type GateState =
   | { status: 'sent'; email: string }
   | { status: 'error'; message: string; values?: GateValues }
 
-export async function sendPlayerMagicLink(_prev: GateState, formData: FormData): Promise<GateState> {
+export async function sendPlayerMagicLink(
+  _prev: GateState,
+  formData: FormData,
+): Promise<GateState> {
   // El jugador que se olvida de tildar el +18 perdía nombre, apellido y email.
   const values: GateValues = {
     ...echoFields(formData, GATE_ECHO),
@@ -65,14 +72,22 @@ export async function sendPlayerMagicLink(_prev: GateState, formData: FormData):
     next: formData.get('next'),
   })
   if (!parsed.success) {
-    return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.', values }
+    return {
+      status: 'error',
+      message: parsed.error.issues[0]?.message ?? 'Datos inválidos.',
+      values,
+    }
   }
 
   // authMagicLink (5/60s per email): same defense as staff loginAction — stops
   // a player's inbox being flooded with magic-link emails.
   const rl = await enforce('authMagicLink', parsed.data.email)
   if (!rl.ok) {
-    return { status: 'error', message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.', values }
+    return {
+      status: 'error',
+      message: 'Demasiados intentos. Esperá un minuto y probá de nuevo.',
+      values,
+    }
   }
 
   const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -85,7 +100,8 @@ export async function sendPlayerMagicLink(_prev: GateState, formData: FormData):
     agreedTerms: true,
     termsVersion: CURRENT_TERMS_VERSION,
   })
-  if (!result.ok) return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.', values }
+  if (!result.ok)
+    return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.', values }
   return { status: 'sent', email: parsed.data.email }
 }
 
@@ -93,7 +109,7 @@ const BLOCKED = ['deleted', 'blocked', 'canceled', 'churned', 'suspended']
 
 function addMins(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number)
-  const total = (h! * 60 + (m ?? 0)) + mins
+  const total = h! * 60 + (m ?? 0) + mins
   // El slot que termina en la medianoche calendario se guarda '24:00' (> '23:00'
   // → pasa chk_time_valid); las madrugadas vuelven a 01:00, 02:00…
   return endLabelFromMins(total)
@@ -112,7 +128,8 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   if (!isValidCalendarDate(date)) redirect(`${backTo}&error=invalid_date`)
 
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect(`/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`)
+  if (!user || user.type !== 'player')
+    redirect(`/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`)
 
   // publicBookingCreate (5/60s por ip+tenant): defensa de Denial-of-Inventory —
   // cubre el caso de múltiples cuentas de jugador desde el mismo origen contra
@@ -131,7 +148,12 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
 
   const db = getDb()
   const tRows = await db
-    .select({ id: tenants.id, status: tenants.status, settings: tenants.settings, mpAccessToken: tenants.mpAccessToken })
+    .select({
+      id: tenants.id,
+      status: tenants.status,
+      settings: tenants.settings,
+      mpAccessToken: tenants.mpAccessToken,
+    })
     .from(tenants)
     .where(eq(tenants.slug, slug))
     .limit(1)
@@ -203,7 +225,8 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       redirect(`${backTo}&error=banned${untilParam}`)
     }
     if (err instanceof TooManyActiveHoldsError) redirect(`${backTo}&error=too_many_holds`)
-    if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError) redirect(`${backTo}&error=unavailable`)
+    if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError)
+      redirect(`${backTo}&error=unavailable`)
     throw err
   }
 

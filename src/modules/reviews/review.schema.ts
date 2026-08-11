@@ -11,10 +11,7 @@ export const createReviewSchema = z.object({
     .int()
     .min(1, 'La calificación mínima es 1')
     .max(5, 'La calificación máxima es 5'),
-  comment: z
-    .string()
-    .max(500, 'El comentario no puede superar los 500 caracteres')
-    .optional(),
+  comment: z.string().max(500, 'El comentario no puede superar los 500 caracteres').optional(),
 })
 
 export const listReviewsQuerySchema = z.object({

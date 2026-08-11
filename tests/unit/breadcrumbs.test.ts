@@ -73,7 +73,12 @@ describe('track.availability', () => {
 
 describe('track.search', () => {
   it('emits breadcrumb with category=search and no raw query text (PII-safe)', () => {
-    track.search('search.public.query', { hasQuery: true, city: 'La Plata', onlineOnly: true, results: 7 })
+    track.search('search.public.query', {
+      hasQuery: true,
+      city: 'La Plata',
+      onlineOnly: true,
+      results: 7,
+    })
     expect(addBreadcrumb).toHaveBeenCalledWith({
       category: 'search',
       message: 'search.public.query',

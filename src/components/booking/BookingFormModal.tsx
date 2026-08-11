@@ -85,7 +85,13 @@ type Reason = {
 
 const REASONS: Reason[] = [
   { value: 'phone', label: 'Reserva Telefónica', kind: 'contact', icon: PhoneCall },
-  { value: 'maintenance', label: 'Mantenimiento', kind: 'internal', autoName: 'Mantenimiento', icon: Wrench },
+  {
+    value: 'maintenance',
+    label: 'Mantenimiento',
+    kind: 'internal',
+    autoName: 'Mantenimiento',
+    icon: Wrench,
+  },
   {
     value: 'school',
     label: 'Escuelita de Fútbol',
@@ -93,7 +99,13 @@ const REASONS: Reason[] = [
     autoName: 'Escuelita de Fútbol',
     icon: GraduationCap,
   },
-  { value: 'teachers', label: 'Profesores', kind: 'internal', autoName: 'Profesores', icon: UserCheck },
+  {
+    value: 'teachers',
+    label: 'Profesores',
+    kind: 'internal',
+    autoName: 'Profesores',
+    icon: UserCheck,
+  },
   { value: 'other', label: 'Otro', kind: 'contact', icon: MoreHorizontal },
 ]
 
@@ -109,8 +121,22 @@ function timeToMins(hhmm: string): number {
 }
 
 const BASE_HOURLY_START_TIMES = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00',
-  '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+  '13:00',
+  '14:00',
+  '15:00',
+  '16:00',
+  '17:00',
+  '18:00',
+  '19:00',
+  '20:00',
+  '21:00',
+  '22:00',
+  '23:00',
 ]
 
 export function BookingFormModal({
@@ -277,7 +303,9 @@ export function BookingFormModal({
     const priceOverrideRaw = ((fd.get('priceOverridePesos') as string) ?? '').trim()
     const priceOverrideCents = priceOverrideRaw === '' ? undefined : Number(priceOverrideRaw)
     const priceOverride =
-      priceOverrideCents !== undefined && Number.isFinite(priceOverrideCents) && priceOverrideCents >= 0
+      priceOverrideCents !== undefined &&
+      Number.isFinite(priceOverrideCents) &&
+      priceOverrideCents >= 0
         ? priceOverrideCents
         : undefined
 
@@ -289,7 +317,9 @@ export function BookingFormModal({
         : ''
     const depositAmountCents = depositAmountRaw === '' ? undefined : Number(depositAmountRaw)
     const depositAmount =
-      depositAmountCents !== undefined && Number.isFinite(depositAmountCents) && depositAmountCents > 0
+      depositAmountCents !== undefined &&
+      Number.isFinite(depositAmountCents) &&
+      depositAmountCents > 0
         ? depositAmountCents
         : undefined
 
@@ -385,7 +415,8 @@ export function BookingFormModal({
                 </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-semibold border border-emerald-500/30">
                   <Clock className="h-3 w-3 shrink-0" />
-                  {timeStart}–{timeEnd} ({effectiveDuration / 60} {effectiveDuration === 60 ? 'hr' : 'hrs'})
+                  {timeStart}–{timeEnd} ({effectiveDuration / 60}{' '}
+                  {effectiveDuration === 60 ? 'hr' : 'hrs'})
                 </span>
               </div>
             </Dialog.Description>
@@ -398,7 +429,10 @@ export function BookingFormModal({
                 <div className="grid grid-cols-2 gap-3">
                   {/* Horario de inicio */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="time-start-trigger" className="block text-xs font-semibold text-foreground">
+                    <Label
+                      htmlFor="time-start-trigger"
+                      className="block text-xs font-semibold text-foreground"
+                    >
                       Horario de inicio
                     </Label>
 
@@ -415,7 +449,10 @@ export function BookingFormModal({
                         const newStart = e.target.value
                         setTimeStart(newStart)
                         const newStartMins = timeToMins(newStart)
-                        const newMaxHours = Math.max(1, Math.floor((END_OF_DAY_MINS - newStartMins) / 60))
+                        const newMaxHours = Math.max(
+                          1,
+                          Math.floor((END_OF_DAY_MINS - newStartMins) / 60),
+                        )
                         if (duration / 60 > newMaxHours) {
                           setDuration(newMaxHours * 60)
                         }
@@ -441,12 +478,21 @@ export function BookingFormModal({
                             <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span>{timeStart} hs</span>
                           </div>
-                          <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isTimeStartOpen && "rotate-180")} />
+                          <ChevronDown
+                            className={cn(
+                              'h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200',
+                              isTimeStartOpen && 'rotate-180',
+                            )}
+                          />
                         </button>
                       </PopoverTrigger>
                       {/* Radix le pone role="dialog" al contenido del popover, y
                           un dialog sin nombre accesible es `aria-dialog-name`. */}
-                      <PopoverContent aria-label="Horarios de inicio" align="start" className="w-44 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
+                      <PopoverContent
+                        aria-label="Horarios de inicio"
+                        align="start"
+                        className="w-44 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50"
+                      >
                         {startTimes.map((t) => {
                           const isSelected = timeStart === t
                           return (
@@ -456,7 +502,10 @@ export function BookingFormModal({
                               onClick={() => {
                                 setTimeStart(t)
                                 const newStartMins = timeToMins(t)
-                                const newMaxHours = Math.max(1, Math.floor((END_OF_DAY_MINS - newStartMins) / 60))
+                                const newMaxHours = Math.max(
+                                  1,
+                                  Math.floor((END_OF_DAY_MINS - newStartMins) / 60),
+                                )
                                 if (duration / 60 > newMaxHours) {
                                   setDuration(newMaxHours * 60)
                                 }
@@ -466,7 +515,7 @@ export function BookingFormModal({
                                 'flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors cursor-pointer text-left',
                                 isSelected
                                   ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-semibold'
-                                  : 'hover:bg-accent text-foreground'
+                                  : 'hover:bg-accent text-foreground',
                               )}
                             >
                               <div className="flex items-center gap-2">
@@ -486,7 +535,10 @@ export function BookingFormModal({
 
                   {/* Horario de fin */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="time-end-trigger" className="block text-xs font-semibold text-foreground">
+                    <Label
+                      htmlFor="time-end-trigger"
+                      className="block text-xs font-semibold text-foreground"
+                    >
                       Horario de fin
                     </Label>
 
@@ -521,10 +573,19 @@ export function BookingFormModal({
                                 ({effectiveDuration / 60} {effectiveDuration === 60 ? 'hr' : 'hrs'})
                               </span>
                             </div>
-                            <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", isTimeEndOpen && "rotate-180")} />
+                            <ChevronDown
+                              className={cn(
+                                'h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200',
+                                isTimeEndOpen && 'rotate-180',
+                              )}
+                            />
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent aria-label="Horarios de fin" align="end" className="w-48 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50">
+                        <PopoverContent
+                          aria-label="Horarios de fin"
+                          align="end"
+                          className="w-48 p-1.5 max-h-60 overflow-y-auto rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50"
+                        >
                           {endOptions.map((opt) => {
                             const isSelected = duration === opt.durationMins
                             return (
@@ -539,7 +600,7 @@ export function BookingFormModal({
                                   'flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors cursor-pointer text-left',
                                   isSelected
                                     ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-semibold'
-                                    : 'hover:bg-accent text-foreground'
+                                    : 'hover:bg-accent text-foreground',
                                 )}
                               >
                                 <div className="flex items-center gap-2">
@@ -572,7 +633,10 @@ export function BookingFormModal({
 
                 {!isInternalBlock && (
                   <div className="relative space-y-1.5">
-                    <Label htmlFor="playerSearch" className="flex items-center justify-between text-sm font-medium text-foreground">
+                    <Label
+                      htmlFor="playerSearch"
+                      className="flex items-center justify-between text-sm font-medium text-foreground"
+                    >
                       <span>Jugador registrado</span>
                       <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
                     </Label>
@@ -599,7 +663,9 @@ export function BookingFormModal({
                       aria-expanded={playerSearchOpen}
                       aria-autocomplete="list"
                       aria-controls={
-                        playerSearchOpen && playerResults.length > 0 ? 'playerSearchResults' : undefined
+                        playerSearchOpen && playerResults.length > 0
+                          ? 'playerSearchResults'
+                          : undefined
                       }
                       className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-colors focus:border-emerald-500"
                     />
@@ -648,7 +714,10 @@ export function BookingFormModal({
 
                 {!isInternalBlock && !playerId && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="guestName" className="flex items-center justify-between text-sm font-medium text-foreground">
+                    <Label
+                      htmlFor="guestName"
+                      className="flex items-center justify-between text-sm font-medium text-foreground"
+                    >
                       <span>{reason === 'other' ? 'Nombre / Motivo' : 'Nombre del cliente'}</span>
                       <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
                     </Label>
@@ -659,7 +728,11 @@ export function BookingFormModal({
                       type="text"
                       maxLength={200}
                       autoComplete="name"
-                      placeholder={reason === 'other' ? 'Ej: Torneo nocturno, Cumpleaños, Juan...' : 'Ej: Juan Pérez'}
+                      placeholder={
+                        reason === 'other'
+                          ? 'Ej: Torneo nocturno, Cumpleaños, Juan...'
+                          : 'Ej: Juan Pérez'
+                      }
                       className="rounded-xl border-border/80 bg-background dark:bg-zinc-900/60 transition-colors focus:border-emerald-500"
                     />
                   </div>
@@ -686,10 +759,17 @@ export function BookingFormModal({
                             'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all duration-150 text-left cursor-pointer',
                             isSelected
                               ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-semibold shadow-2xs'
-                              : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground'
+                              : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground',
                           )}
                         >
-                          <Icon className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')} />
+                          <Icon
+                            className={cn(
+                              'h-3.5 w-3.5 shrink-0',
+                              isSelected
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-muted-foreground',
+                            )}
+                          />
                           <span className="truncate">{r.label}</span>
                         </button>
                       )
@@ -713,7 +793,10 @@ export function BookingFormModal({
                   {isInternalBlock && (
                     <p className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl font-medium mt-1.5">
                       <Info className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                      <span>Bloqueo interno sin costo. Se agenda como <strong>“{selectedReason.autoName}”</strong>.</span>
+                      <span>
+                        Bloqueo interno sin costo. Se agenda como{' '}
+                        <strong>“{selectedReason.autoName}”</strong>.
+                      </span>
                     </p>
                   )}
                 </div>
@@ -736,9 +819,14 @@ export function BookingFormModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {!isInternalBlock && !playerId && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="guestPhone" className="flex items-center justify-between text-sm font-medium text-foreground">
+                      <Label
+                        htmlFor="guestPhone"
+                        className="flex items-center justify-between text-sm font-medium text-foreground"
+                      >
                         <span>Teléfono del cliente</span>
-                        <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          (opcional)
+                        </span>
                       </Label>
                       <PhoneInput
                         id="guestPhone"
@@ -750,7 +838,10 @@ export function BookingFormModal({
                   )}
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="priceOverridePesos" className="flex items-center justify-between text-sm font-medium text-foreground">
+                    <Label
+                      htmlFor="priceOverridePesos"
+                      className="flex items-center justify-between text-sm font-medium text-foreground"
+                    >
                       <span>Precio del turno</span>
                       <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
                     </Label>
@@ -764,9 +855,14 @@ export function BookingFormModal({
 
                   {!isInternalBlock && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="depositMethod" className="flex items-center justify-between text-sm font-medium text-foreground">
+                      <Label
+                        htmlFor="depositMethod"
+                        className="flex items-center justify-between text-sm font-medium text-foreground"
+                      >
                         <span>Seña cobrada</span>
-                        <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          (opcional)
+                        </span>
                       </Label>
                       <select
                         id="depositMethod"
@@ -785,7 +881,10 @@ export function BookingFormModal({
 
                   {!isInternalBlock && depositMethod && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="depositAmountPesos" className="text-sm font-medium text-foreground">
+                      <Label
+                        htmlFor="depositAmountPesos"
+                        className="text-sm font-medium text-foreground"
+                      >
                         Monto de la seña
                       </Label>
                       <MoneyInput
@@ -797,8 +896,11 @@ export function BookingFormModal({
                     </div>
                   )}
 
-                  <div className={cn("space-y-1.5", (isInternalBlock || playerId) && "col-span-2")}>
-                    <Label htmlFor="notesInternal" className="flex items-center justify-between text-sm font-medium text-foreground">
+                  <div className={cn('space-y-1.5', (isInternalBlock || playerId) && 'col-span-2')}>
+                    <Label
+                      htmlFor="notesInternal"
+                      className="flex items-center justify-between text-sm font-medium text-foreground"
+                    >
                       <span>Notas internas</span>
                       <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
                     </Label>
@@ -816,7 +918,10 @@ export function BookingFormModal({
             </Collapsible>
 
             {isCourtOffline && (
-              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 text-xs font-medium">
+              <div
+                role="alert"
+                className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 text-xs font-medium"
+              >
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>Esta cancha está offline, no recibe reservas nuevas.</span>
               </div>
@@ -826,7 +931,10 @@ export function BookingFormModal({
                 en `error-state.tsx` — `text-destructive` (red-600) sobre su
                 propio tinte translúcido en superficie clara no llega a AA. */}
             {error && (
-              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-red-700 dark:text-destructive text-xs font-medium">
+              <div
+                role="alert"
+                className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-red-700 dark:text-destructive text-xs font-medium"
+              >
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>

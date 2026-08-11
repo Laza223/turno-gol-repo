@@ -66,30 +66,15 @@ export const depositStatusEnum = pgEnum('deposit_status', [
   'captured',
 ])
 
-export const cancellationActorEnum = pgEnum('cancellation_actor', [
-  'player',
-  'admin',
-  'system',
-])
+export const cancellationActorEnum = pgEnum('cancellation_actor', ['player', 'admin', 'system'])
 
 // ─── Abonado ────────────────────────────────────────────────────
-export const abonadoStatusEnum = pgEnum('abonado_status', [
-  'active',
-  'paused',
-  'canceled',
-])
+export const abonadoStatusEnum = pgEnum('abonado_status', ['active', 'paused', 'canceled'])
 
-export const abonadoPaymentMethodEnum = pgEnum('abonado_payment_method', [
-  'cash',
-  'transfer',
-])
+export const abonadoPaymentMethodEnum = pgEnum('abonado_payment_method', ['cash', 'transfer'])
 
 // ─── Player & Staff ─────────────────────────────────────────────
-export const playerStatusEnum = pgEnum('player_status', [
-  'active',
-  'banned',
-  'anonymized',
-])
+export const playerStatusEnum = pgEnum('player_status', ['active', 'banned', 'anonymized'])
 
 export const staffStatusEnum = pgEnum('staff_status', ['active', 'inactive'])
 
@@ -155,11 +140,7 @@ export const stockMovementKindEnum = pgEnum('stock_movement_kind', [
 ])
 
 // 'canceled' con una L (convención del repo).
-export const canteenTabStatusEnum = pgEnum('canteen_tab_status', [
-  'open',
-  'paid',
-  'canceled',
-])
+export const canteenTabStatusEnum = pgEnum('canteen_tab_status', ['open', 'paid', 'canceled'])
 
 // ─── Tournament (migración 062, módulo Torneos) ─────────────────
 // 'relámpago' NO está acá: es un preset de la UI sobre estos tres formatos
@@ -213,11 +194,7 @@ export const tournamentEventTypeEnum = pgEnum('tournament_event_type', [
 ])
 
 // ─── Notification ───────────────────────────────────────────────
-export const recipientTypeEnum = pgEnum('recipient_type', [
-  'player',
-  'staff',
-  'tenant_owner',
-])
+export const recipientTypeEnum = pgEnum('recipient_type', ['player', 'staff', 'tenant_owner'])
 
 export const notificationChannelEnum = pgEnum('notification_channel', ['email'])
 
@@ -230,11 +207,7 @@ export const notificationStatusEnum = pgEnum('notification_status', [
 ])
 
 // ─── Audit ──────────────────────────────────────────────────────
-export const auditActorTypeEnum = pgEnum('audit_actor_type', [
-  'staff',
-  'player',
-  'system',
-])
+export const auditActorTypeEnum = pgEnum('audit_actor_type', ['staff', 'player', 'system'])
 
 // ─── Etiquetas de cliente (B12 / decisión v2 D3, migr. 074) ─────
 // Set CERRADO a propósito: sin texto libre sobre personas (Ley 25.326). Los

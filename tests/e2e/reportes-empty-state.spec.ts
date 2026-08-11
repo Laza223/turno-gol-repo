@@ -20,7 +20,9 @@ test('reportes — mes sin movimientos muestra KPIs de ejemplo (primera-vez espe
 
   await expect(page.getByText('Así se verá tu mes cuando cargues reservas')).toBeVisible()
   await expect(page.getByText('Todavía no hay movimientos en este período.')).toBeVisible()
-  await expect(page.getByRole('link', { name: /Cargá tu primera reserva desde la grilla/ })).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: /Cargá tu primera reserva desde la grilla/ }),
+  ).toBeVisible()
 
   // CSV export hidden on an empty month
   await expect(page.getByRole('link', { name: /Exportar CSV/ })).toHaveCount(0)

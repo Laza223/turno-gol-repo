@@ -219,11 +219,11 @@ export const Confirmada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_CONFIRMADA) })
+      canvas.getByRole('article', { name: ariaLabelFor(ROW_CONFIRMADA) }),
     ).toBeInTheDocument()
     await expect(canvas.getByText(money(ROW_CONFIRMADA.priceSnapshot))).toBeVisible()
     await expect(
-      canvas.getByText(`Seña pagada (${money(ROW_CONFIRMADA.depositAmount)})`, { exact: false })
+      canvas.getByText(`Seña pagada (${money(ROW_CONFIRMADA.depositAmount)})`, { exact: false }),
     ).toBeVisible()
     // pending_payment/confirmed: la fila ofrece acciones rápidas.
     await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
@@ -236,7 +236,7 @@ export const PendientePago: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Esperando seña')).toBeVisible()
     await expect(
-      canvas.getByText(`Seña pendiente (${money(ROW_PENDIENTE.depositAmount)})`, { exact: false })
+      canvas.getByText(`Seña pendiente (${money(ROW_PENDIENTE.depositAmount)})`, { exact: false }),
     ).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Confirmar pago' })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
@@ -333,7 +333,7 @@ export const BloqueoAdministrativo: Story = {
     // "Bloqueo" de cuando el label del badge era esa misma palabra; Fase 3 lo
     // renombró en `SLOT_STATES.block` y quedó desalineada.
     await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_BLOQUEO) })
+      canvas.getByRole('article', { name: ariaLabelFor(ROW_BLOQUEO) }),
     ).toBeInTheDocument()
     await expect(canvas.getByText('Bloqueo')).toBeVisible()
     await expect(canvas.getByText('Bloqueado')).toBeVisible()
@@ -349,7 +349,7 @@ export const Abonado: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Abonado')).toBeVisible()
     await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_ABONADO) })
+      canvas.getByRole('article', { name: ariaLabelFor(ROW_ABONADO) }),
     ).toBeInTheDocument()
     await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
   },
@@ -363,7 +363,7 @@ export const Invitado: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Fernando Bianchi')).toBeVisible()
     await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_INVITADO) })
+      canvas.getByRole('article', { name: ariaLabelFor(ROW_INVITADO) }),
     ).toBeInTheDocument()
   },
 }
@@ -386,7 +386,7 @@ export const NombreYCanchaLargos: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(ROW_TEXTOS_LARGOS.guestName!)).toBeInTheDocument()
     await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_TEXTOS_LARGOS) })
+      canvas.getByRole('article', { name: ariaLabelFor(ROW_TEXTOS_LARGOS) }),
     ).toBeInTheDocument()
   },
 }

@@ -29,7 +29,8 @@ export async function playerLoginAction(
     .toLowerCase()
     .pipe(z.email({ message: 'Ingresá un email válido' }))
     .safeParse(formData.get('email'))
-  if (!email.success) return { status: 'error', message: 'Ingresá un email válido.', email: tipeado }
+  if (!email.success)
+    return { status: 'error', message: 'Ingresá un email válido.', email: tipeado }
 
   const rl = await enforce('authMagicLink', email.data)
   if (!rl.ok) {
@@ -41,7 +42,11 @@ export async function playerLoginAction(
   const redirectTo = `${await callbackOrigin()}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
   const result = await signInWithExistingPlayerMagicLink(email.data, redirectTo)
   if (!result.ok) {
-    return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.', email: tipeado }
+    return {
+      status: 'error',
+      message: 'No pudimos enviar el email. Probá de nuevo.',
+      email: tipeado,
+    }
   }
   return { status: 'sent', email: email.data }
 }

@@ -2,7 +2,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
-import { depositCashFlowDescription, summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import {
+  depositCashFlowDescription,
+  summarizeBookingCharges,
+} from '@/modules/bookings/booking.charges'
 import {
   cleanupAll,
   createTestPlayer,
@@ -58,7 +61,7 @@ async function insertCourt(tenantId: string): Promise<string> {
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
     VALUES (
       ${tenantId}, ${'Cancha Cobros'}, ${10},
-      ${sql.json({ rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }] })},
+      ${sql.json({ rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 }] })},
       'online'
     )
     RETURNING id
@@ -138,7 +141,14 @@ describe('Tarea #8 — cobros de turno vinculados al booking', () => {
       createCashFlow(
         tenant.id,
         staff.id,
-        { type: 'income', category: 'booking', amount: 20_000_00, method: 'cash', description: 'Cobro de turno', bookingId },
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 20_000_00,
+          method: 'cash',
+          description: 'Cobro de turno',
+          bookingId,
+        },
         tx,
       ),
     )
@@ -146,7 +156,14 @@ describe('Tarea #8 — cobros de turno vinculados al booking', () => {
       createCashFlow(
         tenant.id,
         staff.id,
-        { type: 'income', category: 'booking', amount: 18_500_00, method: 'transfer', description: 'Cobro de turno', bookingId },
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 18_500_00,
+          method: 'transfer',
+          description: 'Cobro de turno',
+          bookingId,
+        },
         tx,
       ),
     )
@@ -183,21 +200,64 @@ describe('Tarea #8 — cobros de turno vinculados al booking', () => {
     const courtId = await insertCourt(tenant.id)
 
     const bookingA = await insertBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      timeStart: '12:00', timeEnd: '13:00', price: 50_000_00,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      timeStart: '12:00',
+      timeEnd: '13:00',
+      price: 50_000_00,
     })
     const bookingB = await insertBooking({
-      tenantId: tenant.id, courtId, playerId: player.id,
-      timeStart: '13:00', timeEnd: '14:00', price: 50_000_00,
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      timeStart: '13:00',
+      timeEnd: '14:00',
+      price: 50_000_00,
     })
 
     await withTenantContext(tenant.id, async (tx) => {
       // Cobro del booking A.
-      await createCashFlow(tenant.id, staff.id, { type: 'income', category: 'booking', amount: 30_000_00, method: 'cash', description: 'Cobro de turno', bookingId: bookingA }, tx)
+      await createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 30_000_00,
+          method: 'cash',
+          description: 'Cobro de turno',
+          bookingId: bookingA,
+        },
+        tx,
+      )
       // Cobro de OTRO booking (B): no debe contar para A.
-      await createCashFlow(tenant.id, staff.id, { type: 'income', category: 'booking', amount: 50_000_00, method: 'cash', description: 'Cobro de turno', bookingId: bookingB }, tx)
+      await createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 50_000_00,
+          method: 'cash',
+          description: 'Cobro de turno',
+          bookingId: bookingB,
+        },
+        tx,
+      )
       // Ingreso de caja sin booking (cantina): no debe contar.
-      await createCashFlow(tenant.id, staff.id, { type: 'income', category: 'other', amount: 9_000_00, method: 'cash', description: 'gaseosa' }, tx)
+      await createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'income',
+          category: 'other',
+          amount: 9_000_00,
+          method: 'cash',
+          description: 'gaseosa',
+        },
+        tx,
+      )
     })
 
     const charges = await withTenantContext(tenant.id, (tx) =>
@@ -253,7 +313,14 @@ describe('Tarea #8 — cobros de turno vinculados al booking', () => {
       await createCashFlow(
         tenant.id,
         staff.id,
-        { type: 'income', category: 'booking', amount: 20_000_00, method: 'cash', description: 'Cobro de turno', bookingId },
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 20_000_00,
+          method: 'cash',
+          description: 'Cobro de turno',
+          bookingId,
+        },
         tx,
       )
     })

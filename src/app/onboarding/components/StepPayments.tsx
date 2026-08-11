@@ -82,7 +82,10 @@ export function StepPayments({
           <p className="text-sm text-muted-foreground mt-1">Cobro online con MercadoPago</p>
         </div>
         <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <CheckCircle2
+            className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+            aria-hidden
+          />
           <div className="text-emerald-900 dark:text-emerald-100">
             <p className="font-medium">
               {/* Decir CUÁL cuenta quedó conectada, no solo que hay una: es la
@@ -92,7 +95,9 @@ export function StepPayments({
             </p>
             <p className="mt-1 text-emerald-800 dark:text-emerald-200">
               Tus jugadores pagan la seña online al reservar y la plata va directo a tu cuenta.
-              {mpNickname ? ' Si esa no es la cuenta del complejo, cambiala desde Configuración.' : ''}
+              {mpNickname
+                ? ' Si esa no es la cuenta del complejo, cambiala desde Configuración.'
+                : ''}
             </p>
           </div>
         </div>
@@ -142,7 +147,9 @@ export function StepPayments({
           <Wallet
             className={cn(
               'mt-0.5 h-5 w-5 shrink-0',
-              choice === 'deposit' ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
+              choice === 'deposit'
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : 'text-muted-foreground',
             )}
             aria-hidden
           />
@@ -179,15 +186,17 @@ export function StepPayments({
           <ShieldCheck
             className={cn(
               'mt-0.5 h-5 w-5 shrink-0',
-              choice === 'none' ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
+              choice === 'none'
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : 'text-muted-foreground',
             )}
             aria-hidden
           />
           <span className="min-w-0">
             <span className="text-sm font-semibold text-foreground">Sin seña por ahora</span>
             <span className="mt-1 block text-sm text-muted-foreground">
-              Los jugadores reservan online y pagan al llegar. Activás la seña
-              cuando quieras desde Configuración.
+              Los jugadores reservan online y pagan al llegar. Activás la seña cuando quieras desde
+              Configuración.
             </span>
           </span>
         </label>
@@ -218,7 +227,13 @@ export function StepPayments({
       </div>
 
       <div className="flex justify-start">
-        <Button type="button" variant="ghost" size="sm" onClick={handleBack} isLoading={isGoingBack}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleBack}
+          isLoading={isGoingBack}
+        >
           Volver
         </Button>
       </div>

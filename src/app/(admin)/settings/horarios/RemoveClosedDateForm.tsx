@@ -72,7 +72,9 @@ export function RemoveClosedDateForm({
         Quitar
       </SubmitButton>
       {!state.success && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400">{state.error}</p>
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+          {state.error}
+        </p>
       )}
     </form>
   )

@@ -18,9 +18,7 @@ import type { GenerateFixtureActionResult, TournamentActionResult } from '../../
 import { FixtureListado } from './FixtureListado'
 import { PlanillaBoard, type RescheduleMatchAction } from './PlanillaBoard'
 
-export type GenerateFixtureAction = (
-  input: unknown,
-) => Promise<GenerateFixtureActionResult>
+export type GenerateFixtureAction = (input: unknown) => Promise<GenerateFixtureActionResult>
 export type ClearFixtureAction = (input: unknown) => Promise<TournamentActionResult>
 
 const LEGS_OPTIONS: ComboboxOption[] = [
@@ -169,8 +167,8 @@ export function FixturePanel({
               Generar el fixture
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Arma el calendario con los equipos anotados y lo reparte en las horas que el
-              torneo ya tiene tomadas. Después podés mover cualquier partido desde la Planilla.
+              Arma el calendario con los equipos anotados y lo reparte en las horas que el torneo ya
+              tiene tomadas. Después podés mover cualquier partido desde la Planilla.
             </p>
           </div>
 

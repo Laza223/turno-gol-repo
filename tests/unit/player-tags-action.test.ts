@@ -32,9 +32,9 @@ const AUTH_OK = {
 
 /** withTenantContext ejecuta el callback con un tx falso. */
 const runsCallback = () =>
-  vi.mocked(withTenantContext).mockImplementation(
-    async (_tenantId: string, cb: (tx: never) => unknown) => cb({} as never),
-  )
+  vi
+    .mocked(withTenantContext)
+    .mockImplementation(async (_tenantId: string, cb: (tx: never) => unknown) => cb({} as never))
 
 beforeEach(() => {
   vi.clearAllMocks()

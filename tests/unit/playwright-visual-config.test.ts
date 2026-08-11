@@ -22,7 +22,7 @@ describe('playwright.config — regresión visual', () => {
     const stylePath = toHaveScreenshot?.stylePath
     expect(
       stylePath,
-      'expect.toHaveScreenshot.stylePath desapareció: las fotos vuelven a depender de si el overlay de dev de Next apareció'
+      'expect.toHaveScreenshot.stylePath desapareció: las fotos vuelven a depender de si el overlay de dev de Next apareció',
     ).toBeDefined()
 
     const paths = Array.isArray(stylePath) ? stylePath : [stylePath!]
@@ -57,7 +57,7 @@ describe('playwright.config — regresión visual', () => {
     const withOwnExpect = (config.projects ?? []).filter((p) => p.expect).map((p) => p.name)
     expect(
       withOwnExpect,
-      'un project define `expect` y eso descarta el global entero (takeFirst, no merge): mové esas opciones al expect de arriba'
+      'un project define `expect` y eso descarta el global entero (takeFirst, no merge): mové esas opciones al expect de arriba',
     ).toEqual([])
   })
 
@@ -75,7 +75,7 @@ describe('playwright.config — regresión visual', () => {
         .replace('{arg}{ext}', '')
       expect(
         existsSync(path.resolve(dir)),
-        `no hay baselines linux para el project ${project} en ${dir} — si el workflow las dejó en otra carpeta, ver la "trampa del artifact" en docs/testing/VISUAL_REGRESSION.md`
+        `no hay baselines linux para el project ${project} en ${dir} — si el workflow las dejó en otra carpeta, ver la "trampa del artifact" en docs/testing/VISUAL_REGRESSION.md`,
       ).toBe(true)
     }
   })

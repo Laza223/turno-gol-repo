@@ -67,9 +67,7 @@ describe('OnboardingChecklist clipboard fallback', () => {
     const copyBtn = screen.getByRole('button', { name: /copiar/i })
     fireEvent.click(copyBtn)
 
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith('https://turnogol.app/test-slug'),
-    )
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://turnogol.app/test-slug'))
     expect(window.prompt).not.toHaveBeenCalled()
   })
 

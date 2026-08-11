@@ -80,9 +80,7 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
 
   const lastRow = pageRows[pageRows.length - 1]
   const nextCursor =
-    hasMore && lastRow
-      ? encodeCursor(lastRow.booking.id, lastRow.booking.createdAt)
-      : null
+    hasMore && lastRow ? encodeCursor(lastRow.booking.id, lastRow.booking.createdAt) : null
 
   // Saldo por turno: la grilla lo usa para su alarma de "terminado sin cobrar",
   // y este endpoint es el que la reconcilia después de un evento de Realtime
@@ -103,33 +101,33 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
       chargesTotal: chargesByBooking.get(r.booking.id) ?? 0,
     })
     return {
-    total_paid: totalPaid,
-    pending,
-    id: r.booking.id,
-    court_id: r.booking.courtId,
-    court: r.courtName ? { name: r.courtName } : null,
-    player_id: r.booking.playerId,
-    player: r.playerFirstName
-      ? {
-          first_name: r.playerFirstName,
-          last_name: r.playerLastName,
-          phone: r.playerPhone,
-        }
-      : null,
-    guest_name: r.booking.guestName,
-    guest_phone: r.booking.guestPhone,
-    date: r.booking.date,
-    time_start: r.booking.timeStart,
-    time_end: r.booking.timeEnd,
-    type: r.booking.type,
-    status: r.booking.status,
-    price_snapshot: r.booking.priceSnapshot,
-    deposit_amount: r.booking.depositAmount,
-    deposit_status: r.booking.depositStatus,
-    payment_method: r.booking.paymentMethod,
-    notes_internal: r.booking.notesInternal,
-    created_by_staff: r.booking.createdByStaff,
-    created_at: r.booking.createdAt,
+      total_paid: totalPaid,
+      pending,
+      id: r.booking.id,
+      court_id: r.booking.courtId,
+      court: r.courtName ? { name: r.courtName } : null,
+      player_id: r.booking.playerId,
+      player: r.playerFirstName
+        ? {
+            first_name: r.playerFirstName,
+            last_name: r.playerLastName,
+            phone: r.playerPhone,
+          }
+        : null,
+      guest_name: r.booking.guestName,
+      guest_phone: r.booking.guestPhone,
+      date: r.booking.date,
+      time_start: r.booking.timeStart,
+      time_end: r.booking.timeEnd,
+      type: r.booking.type,
+      status: r.booking.status,
+      price_snapshot: r.booking.priceSnapshot,
+      deposit_amount: r.booking.depositAmount,
+      deposit_status: r.booking.depositStatus,
+      payment_method: r.booking.paymentMethod,
+      notes_internal: r.booking.notesInternal,
+      created_by_staff: r.booking.createdByStaff,
+      created_at: r.booking.createdAt,
     }
   })
 

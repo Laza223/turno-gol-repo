@@ -48,7 +48,9 @@ export function BookingErrorCard({
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-100 dark:bg-red-500/15 dark:ring-red-500/10">
         <XCircle className="h-8 w-8 text-red-700 dark:text-red-300" aria-hidden />
       </div>
-      <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">El pago no se procesó.</h1>
+      <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
+        El pago no se procesó.
+      </h1>
       <p className="mt-3 text-sm text-muted-foreground">
         El pago fue rechazado o cancelado. Podés intentar de nuevo con otro medio.
       </p>

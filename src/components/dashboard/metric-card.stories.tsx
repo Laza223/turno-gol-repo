@@ -43,9 +43,19 @@ export const ConLink: Story = {
 }
 
 export const AccentAmber: Story = {
-  args: { accent: 'amber', label: 'Esperando seña', value: '3', sub: '$ 13.500 en señas por acreditar' },
+  args: {
+    accent: 'amber',
+    label: 'Esperando seña',
+    value: '3',
+    sub: '$ 13.500 en señas por acreditar',
+  },
 }
 
 export const AccentRed: Story = {
-  args: { accent: 'red', label: 'Jugadores bloqueados', value: '2', sub: 'Por ausencias reiteradas u otros motivos' },
+  args: {
+    accent: 'red',
+    label: 'Jugadores bloqueados',
+    value: '2',
+    sub: 'Por ausencias reiteradas u otros motivos',
+  },
 }

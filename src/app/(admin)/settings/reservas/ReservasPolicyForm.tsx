@@ -47,49 +47,49 @@ export function ReservasPolicyForm({
   const isPresetDeposit = [30, 50, 100].includes(initialDeposit)
   const isValidCustomDeposit = initialDeposit >= 10 && initialDeposit <= 100
   const [selectedPercentage, setSelectedPercentage] = useState<number | 'other'>(
-    isPresetDeposit ? initialDeposit : isValidCustomDeposit ? 'other' : 30
+    isPresetDeposit ? initialDeposit : isValidCustomDeposit ? 'other' : 30,
   )
   const [customPercentage, setCustomPercentage] = useState<string>(
-    isPresetDeposit || !isValidCustomDeposit ? '30' : String(initialDeposit)
+    isPresetDeposit || !isValidCustomDeposit ? '30' : String(initialDeposit),
   )
 
   // Cancellation hours states
   const initialHours = s.cancellation_policy?.hours_before ?? 12
   const isPresetHours = [0, 2, 6, 12, 24].includes(initialHours)
   const [selectedHours, setSelectedHours] = useState<number | 'other'>(
-    isPresetHours ? initialHours : 'other'
+    isPresetHours ? initialHours : 'other',
   )
   const [customHours, setCustomHours] = useState<string>(
-    isPresetHours ? '12' : String(initialHours)
+    isPresetHours ? '12' : String(initialHours),
   )
 
   return (
-    <form
-      action={formAction}
-      onSubmit={() => setDidSubmit(true)}
-      className="space-y-8 max-w-lg"
-    >
+    <form action={formAction} onSubmit={() => setDidSubmit(true)} className="space-y-8 max-w-lg">
       {/* SEÑA */}
       <fieldset className="space-y-4">
-        <legend className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90 mb-1">Seña</legend>
+        <legend className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90 mb-1">
+          Seña
+        </legend>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setRequiresDeposit(true)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${requiresDeposit
+            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
+              requiresDeposit
                 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-              }`}
+            }`}
           >
             Requerir seña
           </button>
           <button
             type="button"
             onClick={() => setRequiresDeposit(false)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${!requiresDeposit
+            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
+              !requiresDeposit
                 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-              }`}
+            }`}
           >
             Sin seña
           </button>
@@ -109,10 +109,11 @@ export function ReservasPolicyForm({
                     key={p}
                     type="button"
                     onClick={() => setSelectedPercentage(p)}
-                    className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${active
+                    className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
+                      active
                         ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                         : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                      }`}
+                    }`}
                   >
                     {p}%
                   </button>
@@ -121,10 +122,11 @@ export function ReservasPolicyForm({
               <button
                 type="button"
                 onClick={() => setSelectedPercentage('other')}
-                className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${selectedPercentage === 'other'
+                className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
+                  selectedPercentage === 'other'
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                     : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                  }`}
+                }`}
               >
                 Otro
               </button>
@@ -159,7 +161,9 @@ export function ReservasPolicyForm({
 
       {/* RESERVAS ONLINE */}
       <div className="space-y-3">
-        <Label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">Reservas online</Label>
+        <Label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
+          Reservas online
+        </Label>
         <p className="text-xs text-muted-foreground max-w-md">
           Permite que los jugadores reserven solos desde la página pública de tu complejo. Si las
           deshabilitás, solo vos podés cargar reservas desde el panel.
@@ -168,30 +172,39 @@ export function ReservasPolicyForm({
           <button
             type="button"
             onClick={() => setAllowOnlineBooking(true)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${allowOnlineBooking
+            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
+              allowOnlineBooking
                 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-              }`}
+            }`}
           >
             Habilitadas
           </button>
           <button
             type="button"
             onClick={() => setAllowOnlineBooking(false)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${!allowOnlineBooking
+            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
+              !allowOnlineBooking
                 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-              }`}
+            }`}
           >
             Deshabilitadas
           </button>
         </div>
-        <input type="hidden" name="allowOnlineBooking" value={allowOnlineBooking ? 'true' : 'false'} />
+        <input
+          type="hidden"
+          name="allowOnlineBooking"
+          value={allowOnlineBooking ? 'true' : 'false'}
+        />
       </div>
 
       {/* ANTICIPACION MAXIMA PARA RESERVAR */}
       <div className="space-y-3">
-        <Label htmlFor="bookingAdvanceDays" className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
+        <Label
+          htmlFor="bookingAdvanceDays"
+          className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
+        >
           Anticipación para reservar
         </Label>
         <p className="text-xs text-muted-foreground max-w-md">
@@ -216,7 +229,10 @@ export function ReservasPolicyForm({
 
       {/* ANTICIPACION MINIMA PARA CANCELAR */}
       <div className="space-y-3">
-        <Label htmlFor="cancellationHoursBefore" className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
+        <Label
+          htmlFor="cancellationHoursBefore"
+          className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
+        >
           Anticipación mínima para cancelar
         </Label>
         <div className="flex flex-wrap items-center gap-2">
@@ -233,10 +249,11 @@ export function ReservasPolicyForm({
                 key={item.value}
                 type="button"
                 onClick={() => setSelectedHours(item.value)}
-                className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${active
+                className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
+                  active
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                     : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                  }`}
+                }`}
               >
                 {item.label}
               </button>
@@ -245,10 +262,11 @@ export function ReservasPolicyForm({
           <button
             type="button"
             onClick={() => setSelectedHours('other')}
-            className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${selectedHours === 'other'
+            className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
+              selectedHours === 'other'
                 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
                 : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-              }`}
+            }`}
           >
             Otro
           </button>
@@ -271,7 +289,9 @@ export function ReservasPolicyForm({
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">Horas previas al turno permitidas para cancelar</p>
+        <p className="text-xs text-muted-foreground">
+          Horas previas al turno permitidas para cancelar
+        </p>
         <input
           type="hidden"
           name="cancellationHoursBefore"
@@ -281,12 +301,13 @@ export function ReservasPolicyForm({
 
       {/* AUSENCIAS */}
       <fieldset className="space-y-2">
-        <legend className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">Ausencias (no-show)</legend>
+        <legend className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
+          Ausencias (no-show)
+        </legend>
         <p className="text-xs text-muted-foreground max-w-md">
-          Cuando marcás a un jugador como ausente, si había pagado seña la
-          perdés a favor del complejo. La primera ausencia solo queda
-          registrada. Si vuelve a faltar dentro de los 90 días, queda bloqueado
-          para reservar online en tu complejo por 14 días. No requiere
+          Cuando marcás a un jugador como ausente, si había pagado seña la perdés a favor del
+          complejo. La primera ausencia solo queda registrada. Si vuelve a faltar dentro de los 90
+          días, queda bloqueado para reservar online en tu complejo por 14 días. No requiere
           configuración.
         </p>
       </fieldset>

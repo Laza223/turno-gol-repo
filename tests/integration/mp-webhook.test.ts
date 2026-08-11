@@ -176,9 +176,7 @@ async function getPaymentRow(
   mpPaymentId: string,
 ): Promise<{ status: string; amount: number; type: string; method: string } | undefined> {
   const sql = getSql()
-  const rows = await sql<
-    Array<{ status: string; amount: number; type: string; method: string }>
-  >`
+  const rows = await sql<Array<{ status: string; amount: number; type: string; method: string }>>`
     SELECT status, amount::int AS amount, type, method
     FROM payments
     WHERE booking_id = ${bookingId} AND mp_payment_id = ${mpPaymentId}
@@ -301,9 +299,7 @@ describe('handleMpWebhookJob — late payment attempt', () => {
     expect(await getBookingStatus(bookingId)).toBe('expired')
 
     const audits = await getAuditLogs(bookingId)
-    const lateEntries = audits.filter(
-      (a) => a.action === 'booking.late_payment_attempt',
-    )
+    const lateEntries = audits.filter((a) => a.action === 'booking.late_payment_attempt')
     expect(lateEntries).toHaveLength(1)
     expect(lateEntries[0]!.actor_type).toBe('system')
     const meta = metaOf(lateEntries[0]!)
@@ -313,9 +309,7 @@ describe('handleMpWebhookJob — late payment attempt', () => {
     })
 
     // Payment row still recorded as approved for audit trail.
-    const paymentRows = await sql<
-      Array<{ status: string; mp_payment_id: string }>
-    >`
+    const paymentRows = await sql<Array<{ status: string; mp_payment_id: string }>>`
       SELECT status, mp_payment_id
       FROM payments
       WHERE booking_id = ${bookingId} AND mp_payment_id = ${mpPaymentId}

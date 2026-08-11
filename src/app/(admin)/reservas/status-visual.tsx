@@ -1,10 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/status-badge'
-import {
-  UNPAID_ALARM_BADGE,
-  bookingBadgeVisual,
-  type SlotFacts,
-} from '@/lib/booking/slot-visual'
+import { UNPAID_ALARM_BADGE, bookingBadgeVisual, type SlotFacts } from '@/lib/booking/slot-visual'
 import { TONE_ACCENT, type StatusTone } from '@/lib/status-tone'
 
 export type ReservaStatusVisual = {

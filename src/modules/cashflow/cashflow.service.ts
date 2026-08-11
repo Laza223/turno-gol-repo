@@ -73,11 +73,7 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
  * antes de que commiteara, quedando fuera del cierre y aterrizando en un día
  * ya cerrado.
  */
-async function assertDayOpen(
-  tenantId: string,
-  occurredAt: Date,
-  tx: DbTx,
-): Promise<void> {
+async function assertDayOpen(tenantId: string, occurredAt: Date, tx: DbTx): Promise<void> {
   const lockKey = `daily_close:${tenantId}`
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`)
 
@@ -90,10 +86,12 @@ async function assertDayOpen(
     sql`SELECT opening_hours AS "openingHours", closes_next_day AS "closesNextDay"
         FROM tenants WHERE id = ${tenantId} LIMIT 1`,
   )
-  const tenantRow = (tenantRows as unknown as Array<{
-    openingHours: Record<string, { open: string; close: string; closed?: boolean }>
-    closesNextDay: boolean
-  }>)[0]
+  const tenantRow = (
+    tenantRows as unknown as Array<{
+      openingHours: Record<string, { open: string; close: string; closed?: boolean }>
+      closesNextDay: boolean
+    }>
+  )[0]
   const cutoffMins = tenantRow
     ? nightCutoffMins(tenantRow.openingHours, tenantRow.closesNextDay)
     : 0
@@ -203,7 +201,12 @@ export async function chargeSplitPayment(
       await createCashFlow(
         tenantId,
         staffUserId,
-        { ...build(charge, i), amount: charge.amount, method: charge.method, clientIdempotencyKey: lineKey },
+        {
+          ...build(charge, i),
+          amount: charge.amount,
+          method: charge.method,
+          clientIdempotencyKey: lineKey,
+        },
         tx,
       ),
     )
@@ -227,20 +230,22 @@ export async function getCashFlows(
           AND occurred_at < ${day.toUtc.toISOString()}
         ORDER BY occurred_at DESC`,
   )
-  return (rows as unknown as Array<{
-    id: string
-    tenant_id: string
-    type: CashFlowType
-    category: CashFlowCategory
-    amount: number
-    method: 'cash' | 'transfer' | 'mercadopago' | 'other'
-    description: string
-    booking_id: string | null
-    tournament_team_id: string | null
-    registered_by: string
-    occurred_at: Date
-    created_at: Date
-  }>).map((r) => ({
+  return (
+    rows as unknown as Array<{
+      id: string
+      tenant_id: string
+      type: CashFlowType
+      category: CashFlowCategory
+      amount: number
+      method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+      description: string
+      booking_id: string | null
+      tournament_team_id: string | null
+      registered_by: string
+      occurred_at: Date
+      created_at: Date
+    }>
+  ).map((r) => ({
     id: r.id,
     tenantId: r.tenant_id,
     type: r.type,
@@ -279,7 +284,12 @@ export async function getDaySummary(
   const byCategory: Partial<Record<CashFlowCategory, number>> = {}
   const byMethod: Partial<Record<'cash' | 'transfer' | 'mercadopago' | 'other', number>> = {}
 
-  for (const row of (aggRows as unknown as Array<{ type: string; category: string; method: string; total: number }>)) {
+  for (const row of aggRows as unknown as Array<{
+    type: string
+    category: string
+    method: string
+    total: number
+  }>) {
     const total = row.total ?? 0
     if (row.type === 'income') totalIncome += total
     else if (row.type === 'adjustment') totalAdjustments += total
@@ -299,22 +309,25 @@ export async function getDaySummary(
     sql`SELECT * FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
   )
 
-  const closeRaw = (closeRows as unknown as Array<{
-    id: string
-    tenant_id: string
-    date: Date
-    total_income: number
-    total_adjustments: number
-    total_expense: number
-    balance: number
-    declared_cash: number
-    diff_amount: number
-    opening_cash: number | null
-    expected_cash: number | null
-    note: string | null
-    closed_by: string
-    closed_at: Date
-  }>)[0] ?? null
+  const closeRaw =
+    (
+      closeRows as unknown as Array<{
+        id: string
+        tenant_id: string
+        date: Date
+        total_income: number
+        total_adjustments: number
+        total_expense: number
+        balance: number
+        declared_cash: number
+        diff_amount: number
+        opening_cash: number | null
+        expected_cash: number | null
+        note: string | null
+        closed_by: string
+        closed_at: Date
+      }>
+    )[0] ?? null
 
   const close = closeRaw
     ? {

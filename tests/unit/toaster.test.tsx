@@ -1,6 +1,14 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor, renderHook, act } from '@testing-library/react'
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+  renderHook,
+  act,
+} from '@testing-library/react'
 import { Toaster } from '@/components/ui/toaster'
 import { toast, useToast } from '@/hooks/use-toast'
 

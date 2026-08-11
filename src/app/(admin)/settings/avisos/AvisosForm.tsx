@@ -18,13 +18,7 @@ export type UpdateAvisosSettings = (
  * action llega por PROP, no por import — mismo motivo que ReservasPolicyForm
  * ('use server' arrastra drizzle/postgres al bundle de Storybook).
  */
-export function AvisosForm({
-  s,
-  action,
-}: {
-  s: TenantSettings
-  action: UpdateAvisosSettings
-}) {
+export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvisosSettings }) {
   const [state, formAction] = useActionState(action, INITIAL_STATE)
   const [optIn, setOptIn] = useState(s.daily_summary_email_opt_in === true)
   const [didSubmit, setDidSubmit] = useState(false)

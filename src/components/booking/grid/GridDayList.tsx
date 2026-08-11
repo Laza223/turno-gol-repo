@@ -426,7 +426,12 @@ function CourtPage({
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                   {name ?? visual.label}
                 </span>
-                <span className={cn('flex shrink-0 items-center gap-1 text-xs font-medium', visual.labelText)}>
+                <span
+                  className={cn(
+                    'flex shrink-0 items-center gap-1 text-xs font-medium',
+                    visual.labelText,
+                  )}
+                >
                   <Icon className="h-4 w-4" aria-hidden />
                   {visual.label}
                 </span>
@@ -453,7 +458,9 @@ function CourtPage({
               {rangeLabel(slotTime)}
             </span>
             <span className="min-w-0 flex-1 text-sm text-muted-foreground">Libre</span>
-            {clickable && <Plus className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden />}
+            {clickable && (
+              <Plus className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden />
+            )}
           </button>
         )
 
@@ -462,7 +469,13 @@ function CourtPage({
             {clickable && renderQuickForm && quickSlotKey === cellKey ? (
               <Popover open onOpenChange={(v) => !v && onQuickClose?.()}>
                 <PopoverTrigger asChild>{freeRow}</PopoverTrigger>
-                <PopoverContent align="start" side="bottom" sideOffset={4} collisionPadding={12} className="w-auto p-3">
+                <PopoverContent
+                  align="start"
+                  side="bottom"
+                  sideOffset={4}
+                  collisionPadding={12}
+                  className="w-auto p-3"
+                >
                   {renderQuickForm(court.id, court.name, slotTime)}
                 </PopoverContent>
               </Popover>

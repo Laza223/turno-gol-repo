@@ -31,7 +31,10 @@ type Story = StoryObj<typeof meta>
 function withSession(session: PortalSession | null): Decorator[] {
   return [
     (Story) => (
-      <div style={{ transform: 'translateZ(0)', height: 110 }} className="relative isolate overflow-hidden">
+      <div
+        style={{ transform: 'translateZ(0)', height: 110 }}
+        className="relative isolate overflow-hidden"
+      >
         <PortalSessionProvider initialValue={{ session, favoriteTenantIds: new Set() }}>
           <Story />
         </PortalSessionProvider>

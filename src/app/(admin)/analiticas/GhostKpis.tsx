@@ -13,10 +13,30 @@ import { StatCard } from '@/components/admin/StatCard'
  */
 export function GhostKpis() {
   const ghosts = [
-    { label: 'Ingresos', value: '$ 85.000,00', icon: <TrendingUp className="h-4 w-4 opacity-40" aria-hidden="true" />, accent: 'emerald' as const },
-    { label: 'Ajustes', value: '$ 0,00', icon: <SlidersHorizontal className="h-4 w-4 opacity-40" aria-hidden="true" />, accent: 'slate' as const },
-    { label: 'Saldo', value: '$ 85.000,00', icon: <Wallet className="h-4 w-4 opacity-40" aria-hidden="true" />, accent: 'emerald' as const },
-    { label: 'Reservas', value: '32', icon: <CalendarCheck className="h-4 w-4 opacity-40" aria-hidden="true" />, accent: 'slate' as const },
+    {
+      label: 'Ingresos',
+      value: '$ 85.000,00',
+      icon: <TrendingUp className="h-4 w-4 opacity-40" aria-hidden="true" />,
+      accent: 'emerald' as const,
+    },
+    {
+      label: 'Ajustes',
+      value: '$ 0,00',
+      icon: <SlidersHorizontal className="h-4 w-4 opacity-40" aria-hidden="true" />,
+      accent: 'slate' as const,
+    },
+    {
+      label: 'Saldo',
+      value: '$ 85.000,00',
+      icon: <Wallet className="h-4 w-4 opacity-40" aria-hidden="true" />,
+      accent: 'emerald' as const,
+    },
+    {
+      label: 'Reservas',
+      value: '32',
+      icon: <CalendarCheck className="h-4 w-4 opacity-40" aria-hidden="true" />,
+      accent: 'slate' as const,
+    },
   ]
 
   return (
@@ -24,10 +44,7 @@ export function GhostKpis() {
       <p className="text-sm font-medium text-muted-foreground">
         <span aria-hidden="true">✦ </span>Así se verá tu mes cuando cargues reservas
       </p>
-      <div
-        className="mt-4 grid grid-cols-2 gap-4 select-none sm:grid-cols-4"
-        aria-hidden="true"
-      >
+      <div className="mt-4 grid grid-cols-2 gap-4 select-none sm:grid-cols-4" aria-hidden="true">
         {ghosts.map((g) => (
           <StatCard
             key={g.label}
@@ -39,7 +56,9 @@ export function GhostKpis() {
           />
         ))}
       </div>
-      <p className="mt-4 text-sm text-muted-foreground">Todavía no hay movimientos en este período.</p>
+      <p className="mt-4 text-sm text-muted-foreground">
+        Todavía no hay movimientos en este período.
+      </p>
       <Link
         href="/grilla"
         className="mt-2 inline-block text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-400"

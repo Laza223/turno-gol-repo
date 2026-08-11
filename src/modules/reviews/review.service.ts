@@ -7,11 +7,7 @@ import {
   ReviewBookingNotCompletedError,
   ReviewBookingNotFoundError,
 } from './review.errors'
-import type {
-  RatingSummary,
-  ReviewRow,
-  ReviewsPage,
-} from './review.types'
+import type { RatingSummary, ReviewRow, ReviewsPage } from './review.types'
 
 function rowToReviewRow(r: typeof reviews.$inferSelect): ReviewRow {
   return {
@@ -83,11 +79,7 @@ export async function createReview(
  * True si el jugador puede reseñar el booking: es suyo, está 'completed' y no
  * tiene reseña previa.
  */
-export async function canReview(
-  playerId: string,
-  bookingId: string,
-  tx: DbTx,
-): Promise<boolean> {
+export async function canReview(playerId: string, bookingId: string, tx: DbTx): Promise<boolean> {
   const bk = await tx
     .select({ status: bookings.status, playerId: bookings.playerId })
     .from(bookings)

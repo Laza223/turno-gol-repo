@@ -28,9 +28,9 @@ vi.mock('@/modules/payments/mp-oauth', async () => {
 
 const sendEmailSpy = vi.fn(async (_id: string) => {})
 vi.mock('@/modules/notifications/notification.service', async () => {
-  const actual = await vi.importActual<typeof import('@/modules/notifications/notification.service')>(
-    '@/modules/notifications/notification.service',
-  )
+  const actual = await vi.importActual<
+    typeof import('@/modules/notifications/notification.service')
+  >('@/modules/notifications/notification.service')
   return {
     ...actual,
     dispatchEmail: async (id: string) => {
@@ -128,9 +128,7 @@ describe('reconcile-pending-payments idempotency', () => {
       },
     ]
 
-    const results = await Promise.all(
-      Array.from({ length: 5 }, () => reconcilePendingPayments()),
-    )
+    const results = await Promise.all(Array.from({ length: 5 }, () => reconcilePendingPayments()))
 
     const total = results.reduce((acc, n) => acc + n, 0)
     expect(total).toBe(1)

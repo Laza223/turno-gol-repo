@@ -4,14 +4,14 @@ Playwright. Requiere Supabase local corriendo + dev server en puerto 3000.
 
 ## Inventario de specs por project
 
-| Project | Patrón de match | Specs incluidos |
-|---|---|---|
-| `chromium` | `tests/e2e/*.spec.ts` (excluye `mobile/`, `a11y/`, `cross-browser/`) | `abonados-crud`, `admin-login`, `availability`, `booking-flow`, `caja-crud`, `canchas-crud`, `first-booking-aha`, `grilla-realtime`, `landing`, `onboarding`, `pin-lockout`, `player-bookings`, `player-data-export`, `player-delete-account`, `player-profile`, `portal-search`, `public-seo`, `push`, `reportes`, `reservas-crud`, `staff-crud` (21 specs) |
-| `mobile-chrome` | `tests/e2e/mobile/*.spec.ts` | `admin-mobile-smoke`, `touch-targets` |
-| `axe-audit` | `tests/e2e/a11y/*.spec.ts` | `admin`, `player`, `public`, `skip-link` |
-| `webkit` | `tests/e2e/cross-browser/*.spec.ts` | `login-smoke`, `public-smoke` |
-| `firefox` | `tests/e2e/cross-browser/*.spec.ts` | `login-smoke`, `public-smoke` |
-| `mobile-safari` | `tests/e2e/cross-browser/*.spec.ts` | `login-smoke`, `public-smoke` |
+| Project         | Patrón de match                                                      | Specs incluidos                                                                                                                                                                                                                                                                                                                                              |
+| --------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `chromium`      | `tests/e2e/*.spec.ts` (excluye `mobile/`, `a11y/`, `cross-browser/`) | `abonados-crud`, `admin-login`, `availability`, `booking-flow`, `caja-crud`, `canchas-crud`, `first-booking-aha`, `grilla-realtime`, `landing`, `onboarding`, `pin-lockout`, `player-bookings`, `player-data-export`, `player-delete-account`, `player-profile`, `portal-search`, `public-seo`, `push`, `reportes`, `reservas-crud`, `staff-crud` (21 specs) |
+| `mobile-chrome` | `tests/e2e/mobile/*.spec.ts`                                         | `admin-mobile-smoke`, `touch-targets`                                                                                                                                                                                                                                                                                                                        |
+| `axe-audit`     | `tests/e2e/a11y/*.spec.ts`                                           | `admin`, `player`, `public`, `skip-link`                                                                                                                                                                                                                                                                                                                     |
+| `webkit`        | `tests/e2e/cross-browser/*.spec.ts`                                  | `login-smoke`, `public-smoke`                                                                                                                                                                                                                                                                                                                                |
+| `firefox`       | `tests/e2e/cross-browser/*.spec.ts`                                  | `login-smoke`, `public-smoke`                                                                                                                                                                                                                                                                                                                                |
+| `mobile-safari` | `tests/e2e/cross-browser/*.spec.ts`                                  | `login-smoke`, `public-smoke`                                                                                                                                                                                                                                                                                                                                |
 
 **Projects CI** (instalan solo Chromium): `chromium`, `mobile-chrome`, `axe-audit`.
 
@@ -60,12 +60,12 @@ El `--grep @critical` en `test:e2e:flake-detect` hace match sobre ese sufijo.
 
 ### Comandos
 
-| Comando | Qué corre | Cuándo usar |
-|---|---|---|
-| `pnpm test:e2e` | Todos los projects (requiere webkit/firefox/safari instalados) | Full local, browsers instalados |
-| `pnpm test:e2e:ci` | `chromium` + `mobile-chrome` + `axe-audit` | Simular CI localmente |
-| `pnpm test:e2e:flake-detect` | `chromium`, solo `@critical`, 10× rerun, retries=0 | Verificar estabilidad antes de merge |
-| `pnpm test:e2e:cross-browser` | `webkit` + `firefox` + `mobile-safari` | Cross-browser manual o pre-release |
+| Comando                       | Qué corre                                                      | Cuándo usar                          |
+| ----------------------------- | -------------------------------------------------------------- | ------------------------------------ |
+| `pnpm test:e2e`               | Todos los projects (requiere webkit/firefox/safari instalados) | Full local, browsers instalados      |
+| `pnpm test:e2e:ci`            | `chromium` + `mobile-chrome` + `axe-audit`                     | Simular CI localmente                |
+| `pnpm test:e2e:flake-detect`  | `chromium`, solo `@critical`, 10× rerun, retries=0             | Verificar estabilidad antes de merge |
+| `pnpm test:e2e:cross-browser` | `webkit` + `firefox` + `mobile-safari`                         | Cross-browser manual o pre-release   |
 
 Para correr un spec específico:
 

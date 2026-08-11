@@ -39,10 +39,7 @@ const schema = z
     // pesos — z.coerce.number() porque FormData siempre entrega strings. El
     // parser dual pesos-string + Math.round(*100) que había acá antes era el
     // bug de auditoría §4.4 ("$25" en vez de "$25.000" via Number("25.000") === 25).
-    pricePerSessionCents: z.coerce
-      .number()
-      .int()
-      .positive('El precio por sesión es requerido'),
+    pricePerSessionCents: z.coerce.number().int().positive('El precio por sesión es requerido'),
     startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
     paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
   })
@@ -67,8 +64,7 @@ const previewSchema = z
 export type PreviewAbonadoSlotsInput = z.infer<typeof previewSchema>
 
 export type PreviewAbonadoSlotsResult =
-  | { success: true; dates: string[]; conflicts: string[] }
-  | { success: false; error: string }
+  { success: true; dates: string[]; conflicts: string[] } | { success: false; error: string }
 
 export async function previewAbonadoSlotsAction(
   input: PreviewAbonadoSlotsInput,

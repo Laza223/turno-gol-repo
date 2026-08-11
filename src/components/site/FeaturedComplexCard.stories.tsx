@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { publicTenantCard, publicTenantCardSinReservaOnline, publicTenantCardSinResenas } from '@/test/fixtures/tenant'
+import {
+  publicTenantCard,
+  publicTenantCardSinReservaOnline,
+  publicTenantCardSinResenas,
+} from '@/test/fixtures/tenant'
 import FeaturedComplexCard from './FeaturedComplexCard'
 
 /** `.card-premium` es una superficie opaca propia — se reproduce el grid de 3

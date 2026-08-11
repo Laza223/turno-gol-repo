@@ -28,7 +28,8 @@ test('admin /grilla — interactive elements meet 44px touch target', async ({
   const violations = await page.evaluate((min: number) => {
     function isVisible(el: Element): boolean {
       const style = getComputedStyle(el)
-      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0')
+        return false
       const rect = el.getBoundingClientRect()
       if (rect.width === 0 || rect.height === 0) return false
       // Off-screen: skip.

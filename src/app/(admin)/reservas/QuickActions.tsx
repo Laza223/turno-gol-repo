@@ -19,7 +19,11 @@ import { toast } from '@/hooks/use-toast'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { hasQuickActions } from './quick-actions-helpers'
 import CompleteBookingDialog from './CompleteBookingDialog'
-import type { BookingActionResult, CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
+import type {
+  BookingActionResult,
+  CompleteAndChargeInput,
+  CompleteAndChargeResult,
+} from './actions'
 import type { GetBookingChargesResult } from './charges-actions'
 
 type QuickActionsBooking = {
@@ -66,7 +70,6 @@ const DEPOSIT_METHOD_LABELS: Record<DepositMethod, string> = {
   other: 'Otro',
 }
 
-
 /**
  * Firma de las Server Actions que consume QuickActions. Se agrupan en un
  * solo tipo para que BookingListItem las reciba y reenvíe de un solo prop.
@@ -84,7 +87,9 @@ export type BookingQuickActions = {
   cancelBookingAction: CancelBookingFn
   confirmDepositPaymentAction: ConfirmDepositFn
   markNoShowAction: SimpleBookingFn
-  completeAndChargeBookingAction: (input: CompleteAndChargeInput) => Promise<CompleteAndChargeResult>
+  completeAndChargeBookingAction: (
+    input: CompleteAndChargeInput,
+  ) => Promise<CompleteAndChargeResult>
   /**
    * Inversa de `markNoShowAction` (ventana de 24hs, ver BookingActions.tsx).
    * Opcional (mismo criterio que `getBookingChargesAction`): sin ella
@@ -262,7 +267,9 @@ export function QuickActions({
   // datos (callers/stories/tests viejas) cae al mensaje genérico previo.
   const bookingStartUtcMs = booking.startsAt ? new Date(booking.startsAt).getTime() : null
   const inPolicy =
-    bookingStartUtcMs !== null && Number.isFinite(bookingStartUtcMs) && cancellationPolicyHours !== undefined
+    bookingStartUtcMs !== null &&
+    Number.isFinite(bookingStartUtcMs) &&
+    cancellationPolicyHours !== undefined
       ? nowMs < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
       : null
 
@@ -315,7 +322,10 @@ export function QuickActions({
               type="button"
               disabled={pending}
               onClick={openCompleteDialog}
-              className={cn(inlineBtn, 'border border-border bg-card text-foreground hover:bg-accent')}
+              className={cn(
+                inlineBtn,
+                'border border-border bg-card text-foreground hover:bg-accent',
+              )}
             >
               Completada
             </button>
@@ -323,7 +333,10 @@ export function QuickActions({
               type="button"
               disabled={pending}
               onClick={() => setNoShowOpen(true)}
-              className={cn(inlineBtn, 'border border-border bg-card text-foreground hover:bg-accent')}
+              className={cn(
+                inlineBtn,
+                'border border-border bg-card text-foreground hover:bg-accent',
+              )}
             >
               Ausente
             </button>
@@ -331,7 +344,10 @@ export function QuickActions({
               type="button"
               disabled={pending}
               onClick={openCancel}
-              className={cn(inlineBtn, 'border border-red-200 dark:border-red-500/30 bg-card text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10')}
+              className={cn(
+                inlineBtn,
+                'border border-red-200 dark:border-red-500/30 bg-card text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10',
+              )}
             >
               Cancelar
             </button>
@@ -361,20 +377,17 @@ export function QuickActions({
           </Tooltip>
           <DropdownMenuContent align="end">
             {isPendingPayment ? (
-              <DropdownMenuItem onSelect={openConfirmDeposit}>
-                Confirmar pago
-              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={openConfirmDeposit}>Confirmar pago</DropdownMenuItem>
             ) : (
               <>
-                <DropdownMenuItem
-                  onSelect={openCompleteDialog}
-                >
-                  Marcar completada
-                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={openCompleteDialog}>Marcar completada</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setNoShowOpen(true)}>
                   Marcar ausente
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={openCancel} className="text-red-600 dark:text-red-400 focus:text-red-700">
+                <DropdownMenuItem
+                  onSelect={openCancel}
+                  className="text-red-600 dark:text-red-400 focus:text-red-700"
+                >
                   Cancelar reserva
                 </DropdownMenuItem>
               </>
@@ -441,10 +454,16 @@ export function QuickActions({
               value={cancelType ?? ''}
               onValueChange={(v) => setCancelType(v as 'complejo' | 'jugador')}
             >
-              <RadioChip value="complejo" description="Rotura, mantenimiento o error. Reembolso automático.">
+              <RadioChip
+                value="complejo"
+                description="Rotura, mantenimiento o error. Reembolso automático."
+              >
                 El complejo necesita cancelar
               </RadioChip>
-              <RadioChip value="jugador" description="Se aplica la política de cancelación del complejo.">
+              <RadioChip
+                value="jugador"
+                description="Se aplica la política de cancelación del complejo."
+              >
                 El jugador pidió cancelar
               </RadioChip>
             </RadioChipGroup>
@@ -455,7 +474,10 @@ export function QuickActions({
             </div>
           )}
           <div className="space-y-1">
-            <label htmlFor={`cancel-reason-${booking.id}`} className="text-xs font-medium text-foreground">
+            <label
+              htmlFor={`cancel-reason-${booking.id}`}
+              className="text-xs font-medium text-foreground"
+            >
               Motivo (obligatorio)
             </label>
             <textarea

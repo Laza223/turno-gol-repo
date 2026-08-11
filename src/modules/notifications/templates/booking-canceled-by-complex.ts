@@ -10,9 +10,7 @@ export type BookingCanceledByComplexData = {
   refundConfirmed: boolean
 }
 
-export function renderBookingCanceledByComplex(
-  data: BookingCanceledByComplexData,
-): EmailContent {
+export function renderBookingCanceledByComplex(data: BookingCanceledByComplexData): EmailContent {
   const subject = `Tu turno en ${data.tenantName} fue cancelado`
   const refundLine = data.refundConfirmed
     ? '<p style="color:#16a34a"><strong>Reembolso confirmado:</strong> te devolvemos la seña de forma automática.</p>'

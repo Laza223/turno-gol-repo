@@ -4,17 +4,16 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { PublicTenant, WeeklyAvailabilityResponse } from '@/modules/tenants/public.service'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 
 const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
-const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', {
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+})
 
 function formatDayTab(dateStr: string): { dow: string; dm: string } {
   const dt = new Date(dateStr + 'T12:00:00Z')
@@ -77,7 +76,9 @@ export default function WeeklyAvailabilityModal({
     setLoading(true)
     setError(false)
 
-    fetch(`/api/public/availability/week?slug=${encodeURIComponent(tenant.slug)}&start=${weekStart}`)
+    fetch(
+      `/api/public/availability/week?slug=${encodeURIComponent(tenant.slug)}&start=${weekStart}`,
+    )
       .then(async (res) => {
         if (!res.ok) throw new Error('Fetch failed')
         return (await res.json()) as WeeklyAvailabilityResponse
@@ -123,7 +124,12 @@ export default function WeeklyAvailabilityModal({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <DialogContent className="max-w-3xl max-h-[85dvh] overflow-y-auto sm:rounded-2xl p-4 sm:p-6">
         <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b border-border">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
@@ -201,7 +207,8 @@ export default function WeeklyAvailabilityModal({
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between border-b border-border/60 pb-2">
                   <h3 className="text-sm font-semibold text-foreground">
-                    Canchas para el {formatDayTab(activeDay.date).dow} {formatDayTab(activeDay.date).dm}
+                    Canchas para el {formatDayTab(activeDay.date).dow}{' '}
+                    {formatDayTab(activeDay.date).dm}
                   </h3>
                 </div>
 
@@ -214,7 +221,10 @@ export default function WeeklyAvailabilityModal({
                     {activeDay.courts.map((court) => {
                       const free = court.slots.filter((s) => s.status === 'free')
                       return (
-                        <div key={court.id} className="rounded-xl border border-border bg-card p-4 shadow-xs">
+                        <div
+                          key={court.id}
+                          className="rounded-xl border border-border bg-card p-4 shadow-xs"
+                        >
                           <h4 className="mb-2.5 text-xs font-bold uppercase tracking-wider text-foreground">
                             {court.name}
                           </h4>

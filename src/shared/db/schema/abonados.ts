@@ -40,35 +40,17 @@ export const abonados = pgTable(
     endsOn: date('ends_on', { mode: 'date' }),
 
     status: abonadoStatusEnum('status').notNull().default('active'),
-    paymentMethod: abonadoPaymentMethodEnum('payment_method')
-      .notNull()
-      .default('cash'),
+    paymentMethod: abonadoPaymentMethodEnum('payment_method').notNull().default('cash'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    timeValid: check(
-      'chk_abonado_time_valid',
-      sql`${table.timeEnd} > ${table.timeStart}`,
-    ),
-    dayValid: check(
-      'chk_abonado_day_valid',
-      sql`${table.dayOfWeek} BETWEEN 0 AND 6`,
-    ),
-    pricePositive: check(
-      'chk_abonado_price_positive',
-      sql`${table.pricePerSession} > 0`,
-    ),
+    timeValid: check('chk_abonado_time_valid', sql`${table.timeEnd} > ${table.timeStart}`),
+    dayValid: check('chk_abonado_day_valid', sql`${table.dayOfWeek} BETWEEN 0 AND 6`),
+    pricePositive: check('chk_abonado_price_positive', sql`${table.pricePerSession} > 0`),
     tenantIdx: index('idx_abonados_tenant').on(table.tenantId),
-    tenantStatusIdx: index('idx_abonados_tenant_status').on(
-      table.tenantId,
-      table.status,
-    ),
+    tenantStatusIdx: index('idx_abonados_tenant_status').on(table.tenantId, table.status),
     courtIdx: index('idx_abonados_court').on(table.tenantId, table.courtId),
     playerIdx: index('idx_abonados_player')
       .on(table.playerId)

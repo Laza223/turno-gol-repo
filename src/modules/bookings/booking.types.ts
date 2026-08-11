@@ -12,12 +12,7 @@ export type BookingStatus =
 // 'fixed' lo hace el flujo de abonados y no el alta manual.
 export type BookingType = 'spontaneous' | 'fixed' | 'block' | 'tournament'
 
-export type DepositStatus =
-  | 'not_required'
-  | 'pending'
-  | 'paid'
-  | 'refunded'
-  | 'captured'
+export type DepositStatus = 'not_required' | 'pending' | 'paid' | 'refunded' | 'captured'
 
 export type PaymentMethodValue = 'cash' | 'transfer' | 'mercadopago' | 'other'
 
@@ -98,6 +93,4 @@ export type AvailableSlot = {
   available: boolean
 }
 
-export type TransitionResult =
-  | { won: true; row: BookingRow }
-  | { won: false }
+export type TransitionResult = { won: true; row: BookingRow } | { won: false }

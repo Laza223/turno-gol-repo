@@ -25,14 +25,14 @@
 
 @theme {
   --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    var(--font-inter), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
   --font-display:
-    var(--font-archivo), ui-sans-serif, system-ui, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-logo:
-    var(--font-sora), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    var(--font-archivo), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-logo:
+    var(--font-sora), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -208,26 +208,63 @@
   /* Shimmer sutil que recorre la banda del page-header — mueve un
      highlight diagonal a velocidad lenta para dar vida sin distraer. */
   @keyframes header-shimmer {
-    0% { background-position: -100% 0, 0 0, 0 0; }
-    50% { background-position: 200% 0, 0 0, 0 0; }
-    100% { background-position: 200% 0, 0 0, 0 0; }
+    0% {
+      background-position:
+        -100% 0,
+        0 0,
+        0 0;
+    }
+    50% {
+      background-position:
+        200% 0,
+        0 0,
+        0 0;
+    }
+    100% {
+      background-position:
+        200% 0,
+        0 0,
+        0 0;
+    }
   }
   /* Pelotita TG: bounce elástico vertical */
   @keyframes tg-ball-bounce {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    30% { transform: translateY(calc(var(--tg-bounce, -16px) * 0.75)) rotate(8deg); }
-    50% { transform: translateY(var(--tg-bounce, -16px)) rotate(-4deg); }
-    70% { transform: translateY(calc(var(--tg-bounce, -16px) * 0.625)) rotate(6deg); }
+    0%,
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    30% {
+      transform: translateY(calc(var(--tg-bounce, -16px) * 0.75)) rotate(8deg);
+    }
+    50% {
+      transform: translateY(var(--tg-bounce, -16px)) rotate(-4deg);
+    }
+    70% {
+      transform: translateY(calc(var(--tg-bounce, -16px) * 0.625)) rotate(6deg);
+    }
   }
   /* Pelotita TG: sombra que sigue el bounce */
   @keyframes tg-ball-shadow {
-    0%, 100% { transform: scaleX(1); opacity: 0.25; }
-    50% { transform: scaleX(0.7); opacity: 0.12; }
+    0%,
+    100% {
+      transform: scaleX(1);
+      opacity: 0.25;
+    }
+    50% {
+      transform: scaleX(0.7);
+      opacity: 0.12;
+    }
   }
   /* Stagger-fade para cards del dashboard */
   @keyframes card-fade-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   --animate-tg-ball-bounce: tg-ball-bounce 1.2s cubic-bezier(0.33, 1, 0.68, 1) infinite;
@@ -256,51 +293,51 @@
 @layer base {
   :root {
     /* TurnoGol Design System — Slate Surface (no more harsh white) */
-    --background: 214 25% 91%;        /* slate-200ish #DDE3EC — base surface, cards float above */
-    --foreground: 224 71% 4%;         /* slate-950 #020617 */
+    --background: 214 25% 91%; /* slate-200ish #DDE3EC — base surface, cards float above */
+    --foreground: 224 71% 4%; /* slate-950 #020617 */
 
-    --card: 0 0% 100%;                /* white — cards pop against the slate bg */
+    --card: 0 0% 100%; /* white — cards pop against the slate bg */
     --card-foreground: 224 71% 4%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
 
-    --primary: 163 94% 24%;           /* emerald-700 #047857 — CTA fill, AA vs white (5.5:1 — MASTER §2.4) */
-    --primary-foreground: 0 0% 100%;  /* white — 5.5:1 on emerald-700 */
+    --primary: 163 94% 24%; /* emerald-700 #047857 — CTA fill, AA vs white (5.5:1 — MASTER §2.4) */
+    --primary-foreground: 0 0% 100%; /* white — 5.5:1 on emerald-700 */
 
-    --secondary: 214 32% 85%;         /* slate-300ish — nested surfaces */
+    --secondary: 214 32% 85%; /* slate-300ish — nested surfaces */
     --secondary-foreground: 222 47% 11%; /* slate-900 */
 
-    --muted: 214 32% 85%;             /* slate-300ish */
+    --muted: 214 32% 85%; /* slate-300ish */
     /* 36% (no 40%): con 40% el par muted-foreground/muted daba 4.24:1 y NO llegaba
        al 4.5 de WCAG AA (MASTER §2.4) — lo detectó axe sobre los badges `bg-muted`
        ("Turno fijo", chips de estado). A 36% queda en 4.93:1 sobre bg-muted, 7.16
        sobre --card y 5.78 sobre --background. La diferencia visual es imperceptible;
        la de accesibilidad, no. */
-    --muted-foreground: 215 20% 36%;  /* slate-600 */
+    --muted-foreground: 215 20% 36%; /* slate-600 */
 
-    --accent: 214 32% 85%;            /* hover bg */
+    --accent: 214 32% 85%; /* hover bg */
     --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 72% 51%;         /* red-600 #DC2626 */
+    --destructive: 0 72% 51%; /* red-600 #DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 83%;            /* slate-300 — slightly more visible on slate bg */
+    --border: 214 32% 83%; /* slate-300 — slightly more visible on slate bg */
     --input: 214 32% 83%;
-    --ring: 160 84% 39%;              /* emerald-500 #10B981 */
+    --ring: 160 84% 39%; /* emerald-500 #10B981 */
 
     --radius: 0.5rem;
 
     /* Extra semantic tokens */
-    --success: 142 72% 29%;           /* green-700 #15803D */
+    --success: 142 72% 29%; /* green-700 #15803D */
     --success-foreground: 0 0% 100%;
-    --warning: 32 95% 44%;            /* amber-600 #D97706 */
+    --warning: 32 95% 44%; /* amber-600 #D97706 */
     --warning-foreground: 0 0% 100%;
-    --info: 221 83% 53%;              /* blue-600 #2563EB — informativo neutro (MASTER §2.2) */
-    --info-foreground: 0 0% 100%;     /* white — 5.2:1 on blue-600 */
+    --info: 221 83% 53%; /* blue-600 #2563EB — informativo neutro (MASTER §2.2) */
+    --info-foreground: 0 0% 100%; /* white — 5.2:1 on blue-600 */
 
     /* Layout shell — field texture overlay */
-    --shell-bg: 221 32% 14%;          /* slate-900 #1E2535 — dark shell bg */
+    --shell-bg: 221 32% 14%; /* slate-900 #1E2535 — dark shell bg */
     --shell-overlay: rgba(30, 37, 53, 0.82); /* overlay sobre la textura */
 
     /* Nav sidebar width */
@@ -313,40 +350,40 @@
 
   .dark {
     color-scheme: dark;
-    --background: 224 71% 4%;          /* #020617 slate-950 */
-    --foreground: 210 40% 98%;         /* slate-50 */
+    --background: 224 71% 4%; /* #020617 slate-950 */
+    --foreground: 210 40% 98%; /* slate-50 */
 
-    --card: 222 33% 9%;                /* superficie elevada ~#0d1424 */
+    --card: 222 33% 9%; /* superficie elevada ~#0d1424 */
     --card-foreground: 210 40% 98%;
 
     --popover: 222 33% 9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 160 84% 39%;            /* emerald-500 #10b981 — CTA fill dark, AA vs slate-950 (7.9:1 — MASTER §2.4) */
-    --primary-foreground: 224 71% 4%;  /* slate-950 — 7.9:1 on emerald-500 */
+    --primary: 160 84% 39%; /* emerald-500 #10b981 — CTA fill dark, AA vs slate-950 (7.9:1 — MASTER §2.4) */
+    --primary-foreground: 224 71% 4%; /* slate-950 — 7.9:1 on emerald-500 */
 
-    --secondary: 217 33% 14%;          /* nested surface */
+    --secondary: 217 33% 14%; /* nested surface */
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 65%;   /* más claro para legibilidad dark */
+    --muted-foreground: 215 20% 65%; /* más claro para legibilidad dark */
 
-    --accent: 217 33% 17%;             /* hover bg */
+    --accent: 217 33% 17%; /* hover bg */
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 72% 51%;          /* red-600 */
+    --destructive: 0 72% 51%; /* red-600 */
     --destructive-foreground: 0 0% 100%;
 
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 160 84% 39%;               /* emerald-500 */
+    --ring: 160 84% 39%; /* emerald-500 */
 
-    --success: 142 70% 45%;            /* green más vivo para dark */
+    --success: 142 70% 45%; /* green más vivo para dark */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;             /* amber más vivo para dark */
+    --warning: 38 92% 50%; /* amber más vivo para dark */
     --warning-foreground: 0 0% 100%;
-    --info: 217 91% 60%;               /* blue-500 #3B82F6 */
-    --info-foreground: 224 71% 4%;     /* slate-950 — 5.5:1 on blue-500 */
+    --info: 217 91% 60%; /* blue-500 #3B82F6 */
+    --info-foreground: 224 71% 4%; /* slate-950 — 5.5:1 on blue-500 */
   }
 }
 
@@ -356,7 +393,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
   /* Tabular numbers for data */
   .tabular {
@@ -382,15 +421,15 @@
    Excluidos: los type que no muestran texto tipeable ni disparan el zoom. */
 @media (width < 48rem) {
   input:not(
-      [type='checkbox'],
-      [type='radio'],
-      [type='range'],
-      [type='color'],
-      [type='file'],
-      [type='submit'],
-      [type='button'],
-      [type='reset']
-    ),
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='color'],
+    [type='file'],
+    [type='submit'],
+    [type='button'],
+    [type='reset']
+  ),
   textarea,
   select,
   [contenteditable]:not([contenteditable='false']) {
@@ -415,13 +454,18 @@ html {
 .shell-bg {
   background-color: hsl(214 25% 90%);
   background-image:
-    radial-gradient(ellipse 80% 60% at 85% 15%, rgba(5, 150, 105, 0.10), transparent),
+    radial-gradient(ellipse 80% 60% at 85% 15%, rgba(5, 150, 105, 0.1), transparent),
     radial-gradient(ellipse 70% 50% at 10% 85%, rgba(13, 148, 136, 0.08), transparent),
     radial-gradient(ellipse 50% 50% at 50% 50%, rgba(5, 150, 105, 0.04), transparent),
     url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%23059669' stroke-opacity='0.04' stroke-width='0.5'/%3E%3C/svg%3E"),
     linear-gradient(160deg, hsl(214 25% 92%) 0%, hsl(160 10% 91%) 50%, hsl(214 25% 89%) 100%);
   background-attachment: fixed;
-  background-size: 100% 100%, 100% 100%, 100% 100%, 60px 60px, 100% 100%;
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    60px 60px,
+    100% 100%;
 }
 .dark .shell-bg {
   background-color: hsl(var(--shell-bg));
@@ -432,16 +476,23 @@ html {
     url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%2334d399' stroke-opacity='0.03' stroke-width='0.5'/%3E%3C/svg%3E"),
     linear-gradient(160deg, hsl(222 47% 6%) 0%, hsl(224 60% 5%) 50%, hsl(220 40% 7%) 100%);
   background-attachment: fixed;
-  background-size: 100% 100%, 100% 100%, 100% 100%, 60px 60px, 100% 100%;
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    60px 60px,
+    100% 100%;
 }
 
 /* Player shell — clean, modern vector soccer pitch background */
 .player-shell-bg {
   background-color: #ecfdf5; /* emerald-50 */
-  background-image: 
+  background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMidYMid slice'%3E%3Cg stroke='%23059669' stroke-width='2' stroke-opacity='0.15' fill='none'%3E%3Cline x1='600' y1='0' x2='600' y2='800'/%3E%3Ccircle cx='600' cy='400' r='160'/%3E%3Ccircle cx='600' cy='400' r='4' fill='%23059669' fill-opacity='0.15'/%3E%3Crect x='-10' y='150' width='220' height='500' rx='8'/%3E%3Crect x='-10' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 210 300 A 130 130 0 0 1 210 500'/%3E%3Crect x='990' y='150' width='220' height='500' rx='8'/%3E%3Crect x='1140' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 990 300 A 130 130 0 0 0 990 500'/%3E%3C/g%3E%3C/svg%3E"),
     linear-gradient(to bottom right, #f0fdf4, #e6fced);
-  background-size: cover, 100% 100%;
+  background-size:
+    cover,
+    100% 100%;
   background-position: center;
   background-attachment: fixed;
 }
@@ -453,7 +504,10 @@ html {
     radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 42%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMidYMid slice'%3E%3Cg stroke='%2334d399' stroke-width='2' stroke-opacity='0.06' fill='none'%3E%3Cline x1='600' y1='0' x2='600' y2='800'/%3E%3Ccircle cx='600' cy='400' r='160'/%3E%3Ccircle cx='600' cy='400' r='4' fill='%2334d399' fill-opacity='0.06'/%3E%3Crect x='-10' y='150' width='220' height='500' rx='8'/%3E%3Crect x='-10' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 210 300 A 130 130 0 0 1 210 500'/%3E%3Crect x='990' y='150' width='220' height='500' rx='8'/%3E%3Crect x='1140' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 990 300 A 130 130 0 0 0 990 500'/%3E%3C/g%3E%3C/svg%3E"),
     linear-gradient(to bottom right, #07131d, #020617);
-  background-size: cover, cover, 100% 100%;
+  background-size:
+    cover,
+    cover,
+    100% 100%;
   background-position: center;
   background-attachment: fixed;
 }
@@ -488,13 +542,14 @@ html {
 .card-premium {
   background-color: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  border-top: 2px solid rgba(5, 150, 105, 0.20);
+  border-top: 2px solid rgba(5, 150, 105, 0.2);
   border-radius: calc(var(--radius) + 0.25rem);
   box-shadow:
     0 1px 2px rgba(2, 6, 23, 0.05),
     0 4px 12px -4px rgba(2, 6, 23, 0.08),
     0 12px 32px -12px rgba(2, 6, 23, 0.12);
-  transition: transform 250ms cubic-bezier(0.33, 1, 0.68, 1),
+  transition:
+    transform 250ms cubic-bezier(0.33, 1, 0.68, 1),
     box-shadow 250ms cubic-bezier(0.33, 1, 0.68, 1),
     border-color 250ms ease;
 }
@@ -515,15 +570,15 @@ html {
 .card-premium-interactive:hover {
   transform: translateY(-4px);
   border-color: rgba(16, 185, 129, 0.35);
-  border-top-color: rgba(16, 185, 129, 0.50);
+  border-top-color: rgba(16, 185, 129, 0.5);
   box-shadow:
     0 1px 2px rgba(2, 6, 23, 0.06),
     0 8px 20px -8px rgba(16, 185, 129, 0.14),
-    0 20px 44px -16px rgba(16, 185, 129, 0.20);
+    0 20px 44px -16px rgba(16, 185, 129, 0.2);
 }
 .dark .card-premium-interactive:hover {
   border-color: rgba(16, 185, 129, 0.45);
-  border-top-color: rgba(16, 185, 129, 0.60);
+  border-top-color: rgba(16, 185, 129, 0.6);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.05) inset,
     0 24px 50px -30px rgba(0, 0, 0, 0.9),
@@ -539,7 +594,10 @@ html {
     linear-gradient(105deg, transparent 30%, rgba(16, 185, 129, 0.08) 50%, transparent 70%),
     radial-gradient(120% 140% at 100% 0%, rgba(5, 150, 105, 0.12), transparent 50%),
     linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(160 12% 95%) 60%, hsl(214 25% 92%) 100%);
-  background-size: 200% 100%, 100% 100%, 100% 100%;
+  background-size:
+    200% 100%,
+    100% 100%,
+    100% 100%;
   animation: header-shimmer 8s ease-in-out infinite;
   border-bottom: 2px solid rgba(5, 150, 105, 0.15);
 }
@@ -548,9 +606,12 @@ html {
     linear-gradient(105deg, transparent 30%, rgba(16, 185, 129, 0.06) 50%, transparent 70%),
     radial-gradient(120% 140% at 100% 0%, rgba(16, 185, 129, 0.22), transparent 50%),
     linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(224 60% 5%) 100%);
-  background-size: 200% 100%, 100% 100%, 100% 100%;
+  background-size:
+    200% 100%,
+    100% 100%,
+    100% 100%;
   animation: header-shimmer 8s ease-in-out infinite;
-  border-bottom: 2px solid rgba(16, 185, 129, 0.20);
+  border-bottom: 2px solid rgba(16, 185, 129, 0.2);
 }
 
 /* Halo emerald reutilizable para icon-chips de StatCard / acciones.
@@ -558,12 +619,12 @@ html {
 .icon-halo {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(5, 150, 105, 0.14));
   color: hsl(var(--primary));
-  box-shadow: 0 2px 8px -2px rgba(16, 185, 129, 0.20);
+  box-shadow: 0 2px 8px -2px rgba(16, 185, 129, 0.2);
 }
 .dark .icon-halo {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.28), rgba(13, 148, 136, 0.16));
   color: hsl(160 84% 55%);
-  box-shadow: 0 2px 12px -2px rgba(16, 185, 129, 0.30);
+  box-shadow: 0 2px 12px -2px rgba(16, 185, 129, 0.3);
 }
 
 /* ─── Banda hero del jugador (theme-adaptive) ──────────────────────────────
@@ -576,7 +637,7 @@ html {
   border-color: rgba(16, 185, 129, 0.18);
   box-shadow:
     0 1px 2px rgba(2, 6, 23, 0.04),
-    0 22px 48px -30px rgba(16, 185, 129, 0.40);
+    0 22px 48px -30px rgba(16, 185, 129, 0.4);
 }
 .dark .player-hero-band {
   background: linear-gradient(135deg, #07131d 0%, #020617 58%);
@@ -634,9 +695,9 @@ html {
 
 /* Badge del ícono de éxito (glow esmeralda). */
 .reserva-success-badge {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.20), rgba(255, 255, 255, 0.55));
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.2), rgba(255, 255, 255, 0.55));
   border: 1px solid rgba(16, 185, 129, 0.35);
-  box-shadow: 0 0 40px rgba(16, 185, 129, 0.30);
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.3);
 }
 .dark .reserva-success-badge {
   background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
@@ -698,8 +759,13 @@ html {
    para que el headline y la search card centrados mantengan AA sobre la
    foto sin depender de un mask que la diluya como en el hero mobile. */
 .dark .hero-desktop-scrim {
-  background:
-    linear-gradient(180deg, rgba(2, 6, 23, 0.75) 0%, rgba(2, 6, 23, 0.35) 38%, rgba(2, 6, 23, 0.55) 78%, rgba(2, 6, 23, 0.88) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(2, 6, 23, 0.75) 0%,
+    rgba(2, 6, 23, 0.35) 38%,
+    rgba(2, 6, 23, 0.55) 78%,
+    rgba(2, 6, 23, 0.88) 100%
+  );
 }
 
 /* Nav flotante del hero (pill). Light = blanco elevado; dark = glass oscuro. */
@@ -773,12 +839,22 @@ html {
 }
 .mockup-cover {
   background:
-    radial-gradient(120% 140% at 80% 0%, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.08) 45%, transparent 75%),
+    radial-gradient(
+      120% 140% at 80% 0%,
+      rgba(16, 185, 129, 0.35),
+      rgba(5, 150, 105, 0.08) 45%,
+      transparent 75%
+    ),
     linear-gradient(135deg, #a7f3d0, #d1fae5);
 }
 .dark .mockup-cover {
   background:
-    radial-gradient(120% 140% at 80% 0%, rgba(16, 185, 129, 0.42), rgba(5, 150, 105, 0.12) 45%, rgba(2, 6, 23, 0) 75%),
+    radial-gradient(
+      120% 140% at 80% 0%,
+      rgba(16, 185, 129, 0.42),
+      rgba(5, 150, 105, 0.12) 45%,
+      rgba(2, 6, 23, 0) 75%
+    ),
     linear-gradient(135deg, #064e3b, #022c22);
 }
 
@@ -791,7 +867,12 @@ html {
     0 24px 50px -30px rgba(16, 185, 129, 0.35);
 }
 .dark .stats-band {
-  background: linear-gradient(120deg, rgba(6, 78, 59, 0.55), rgba(2, 6, 23, 0.35) 55%, rgba(6, 78, 59, 0.4));
+  background: linear-gradient(
+    120deg,
+    rgba(6, 78, 59, 0.55),
+    rgba(2, 6, 23, 0.35) 55%,
+    rgba(6, 78, 59, 0.4)
+  );
   border: 1px solid rgba(16, 185, 129, 0.22);
   box-shadow:
     0 0 70px rgba(16, 185, 129, 0.165),
@@ -884,7 +965,10 @@ html {
    Hover con escala sutil del icono + fondo que aparece con ease. El active
    state tiene un pill indicator con glow. */
 .sidebar-nav-item {
-  transition: background-color 200ms ease, color 200ms ease, transform 150ms ease;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    transform 150ms ease;
 }
 .sidebar-nav-item:hover {
   transform: translateX(2px);
@@ -900,8 +984,12 @@ html {
 
 /* Skeleton shimmer — premium gradient sweep con ease-in-out y emerald tint dark */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .skeleton {
@@ -1019,4 +1107,3 @@ html {
     width: 100%;
   }
 }
-

@@ -34,11 +34,15 @@ function bare(constraintName: string) {
 
 describe('isUniqueViolation', () => {
   it('reconoce el 23505 envuelto por Drizzle', () => {
-    expect(isUniqueViolation(drizzleWrapped('uq_tournament_teams_name'), 'uq_tournament_teams_name')).toBe(true)
+    expect(
+      isUniqueViolation(drizzleWrapped('uq_tournament_teams_name'), 'uq_tournament_teams_name'),
+    ).toBe(true)
   })
 
   it('reconoce el 23505 sin envolver', () => {
-    expect(isUniqueViolation(bare('uq_tournament_teams_name'), 'uq_tournament_teams_name')).toBe(true)
+    expect(isUniqueViolation(bare('uq_tournament_teams_name'), 'uq_tournament_teams_name')).toBe(
+      true,
+    )
   })
 
   it('distingue el constraint: no confunde dos únicos de la misma tabla', () => {

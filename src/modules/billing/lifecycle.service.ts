@@ -158,10 +158,7 @@ export async function transitionPastDueToActive(
 
 // ─── past_due → suspended (sweep, ≥ 7d in past_due) ─────────────────────────
 
-export async function transitionPastDueToSuspended(
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
+export async function transitionPastDueToSuspended(tenantId: string, tx: DbTx): Promise<void> {
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET status = 'suspended'::subscription_status, updated_at = NOW()
@@ -189,10 +186,7 @@ export async function transitionPastDueToSuspended(
 
 // ─── suspended → blocked (sweep, ≥ 14d in dunning) ──────────────────────────
 
-export async function transitionSuspendedToBlocked(
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
+export async function transitionSuspendedToBlocked(tenantId: string, tx: DbTx): Promise<void> {
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET status = 'blocked'::subscription_status, updated_at = NOW()
@@ -220,10 +214,7 @@ export async function transitionSuspendedToBlocked(
 
 // ─── blocked → churned (sweep, ≥ 90d in dunning; sets deletion_at = +90d) ──
 
-export async function transitionBlockedToChurned(
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
+export async function transitionBlockedToChurned(tenantId: string, tx: DbTx): Promise<void> {
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET status = 'churned'::subscription_status,
@@ -303,10 +294,7 @@ export async function transitionToCanceled(
 
 // ─── canceled → blocked (sweep when period_end < NOW; sets deletion_at +67d)
 
-export async function transitionCanceledToBlocked(
-  tenantId: string,
-  tx: DbTx,
-): Promise<void> {
+export async function transitionCanceledToBlocked(tenantId: string, tx: DbTx): Promise<void> {
   // B5 (huérfano MP↔DB): NO nulear `mp_subscription_id` acá. El único camino
   // a `status='canceled'` es `cancel()`/`cancelSubscriptionForSupport`, que ya
   // dejan `mp_subscription_id = NULL` al cancelar voluntariamente. Por lo

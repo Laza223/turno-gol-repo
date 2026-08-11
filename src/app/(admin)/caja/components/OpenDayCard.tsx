@@ -17,9 +17,7 @@ import type { OpenDayActionResult, OpenDayInput } from '../actions'
  * y arrastra drizzle/postgres → `node:async_hooks`, que rompe Storybook si se
  * importa como valor (mismo patrón que CloseDayButton/RegisterMovementModal).
  */
-export type OpenDayAction = (
-  input: OpenDayInput,
-) => Promise<OpenDayActionResult>
+export type OpenDayAction = (input: OpenDayInput) => Promise<OpenDayActionResult>
 
 /**
  * Apertura de caja (migr. 049, Fase 5). openDayAction es UPSERT a propósito:
@@ -75,7 +73,9 @@ export function OpenDayCard({
         const res = await openDayAction({ date, openingCash, note: note.trim() || undefined })
         if (res.success) {
           toast({
-            title: open ? 'Fondo actualizado' : `Caja abierta — fondo ${formatArsContable(openingCash)}`,
+            title: open
+              ? 'Fondo actualizado'
+              : `Caja abierta — fondo ${formatArsContable(openingCash)}`,
             variant: 'success',
           })
           router.refresh()
@@ -100,9 +100,13 @@ export function OpenDayCard({
           <div className="min-w-0 flex-1">
             <p className="text-sm text-foreground">
               Fondo inicial:{' '}
-              <span className="font-semibold tabular-nums">{formatArsContable(open.openingCash)}</span>
+              <span className="font-semibold tabular-nums">
+                {formatArsContable(open.openingCash)}
+              </span>
             </p>
-            {open.note && <p className="mt-0.5 truncate text-xs text-muted-foreground">{open.note}</p>}
+            {open.note && (
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{open.note}</p>
+            )}
           </div>
         ) : (
           <p className="flex-1 text-sm text-foreground">

@@ -3,11 +3,7 @@ import { canteenProducts } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { ProductNotFoundError, StockNotEditableFromCatalogError } from './canteen.errors'
 import { lockProduct } from './stock.service'
-import type {
-  CanteenProductRow,
-  CreateProductInput,
-  UpdateProductInput,
-} from './canteen.types'
+import type { CanteenProductRow, CreateProductInput, UpdateProductInput } from './canteen.types'
 
 function rowToProduct(r: typeof canteenProducts.$inferSelect): CanteenProductRow {
   return {

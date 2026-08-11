@@ -86,7 +86,9 @@ test.describe('TG-HP-102 — Login jugador existente /ingresar', () => {
       await expect(page.getByRole('heading', { name: 'Revisá tu email', level: 1 })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(`Te enviamos un enlace de acceso a ${E2E_PLAYER_EMAIL}.`)).toBeVisible()
+      await expect(
+        page.getByText(`Te enviamos un enlace de acceso a ${E2E_PLAYER_EMAIL}.`),
+      ).toBeVisible()
 
       const link = await fetchMagicLinkFromInbucket(E2E_PLAYER_EMAIL, sinceMs)
       await page.goto(link)

@@ -87,7 +87,12 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
     })
 
     const rows = await sql<
-      { recipient_type: string; recipient_id: string; status: string; content: Record<string, unknown> }[]
+      {
+        recipient_type: string
+        recipient_id: string
+        status: string
+        content: Record<string, unknown>
+      }[]
     >`
       SELECT recipient_type, recipient_id, status, content
       FROM notifications

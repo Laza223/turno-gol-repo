@@ -8,9 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 
-export type PolicyActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type PolicyActionResult = { success: true } | { success: false; error: string }
 
 const reservasPolicySchema = z
   .object({
@@ -60,8 +58,11 @@ export async function updateReservasPolicyAction(
   }
 
   const {
-    requiresDeposit, depositPercentage, allowOnlineBooking,
-    cancellationHoursBefore, bookingAdvanceDays,
+    requiresDeposit,
+    depositPercentage,
+    allowOnlineBooking,
+    cancellationHoursBefore,
+    bookingAdvanceDays,
   } = parsed.data
 
   // Ya no se persiste no_show_penalty: el no-show captura la seña y aplica

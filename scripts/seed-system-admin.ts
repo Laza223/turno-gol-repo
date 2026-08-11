@@ -123,7 +123,9 @@ async function main(): Promise<void> {
   }
   assertSameEnvironment(url, process.env.WORKER_DATABASE_URL)
   const supabase = createClient(url, key, { auth: { persistSession: false } })
-  console.log(`Target: auth=${new URL(url).hostname} db=${new URL(process.env.WORKER_DATABASE_URL ?? url).hostname}`)
+  console.log(
+    `Target: auth=${new URL(url).hostname} db=${new URL(process.env.WORKER_DATABASE_URL ?? url).hostname}`,
+  )
 
   try {
     // (a) Auth user: buscar por email; crear con email_confirm si no existe

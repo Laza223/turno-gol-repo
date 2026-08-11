@@ -9,7 +9,9 @@ describe('EmptyResults', () => {
   it('sin búsqueda temporal muestra el mensaje genérico + reset', () => {
     render(<EmptyResults avail={null} />)
     expect(screen.getByText(/No encontramos complejos/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Limpiar búsqueda' }).getAttribute('href')).toBe('/explorar')
+    expect(screen.getByRole('link', { name: 'Limpiar búsqueda' }).getAttribute('href')).toBe(
+      '/explorar',
+    )
   })
 
   it('con fecha+hora muestra el mensaje de disponibilidad formateado', () => {

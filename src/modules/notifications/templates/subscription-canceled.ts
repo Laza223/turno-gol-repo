@@ -6,9 +6,7 @@ export type SubscriptionCanceledData = {
   accessUntil: string // "15/05/2026"
 }
 
-export function renderSubscriptionCanceled(
-  data: SubscriptionCanceledData,
-): EmailContent {
+export function renderSubscriptionCanceled(data: SubscriptionCanceledData): EmailContent {
   const subject = `Cancelaste tu suscripción — ${data.tenantName}`
   const html = `
 <!DOCTYPE html>

@@ -67,7 +67,13 @@ const meta = {
   component: ResponsiveList,
   parameters: { layout: 'fullscreen' },
   args: { cards: <Cards />, table: <Table /> },
-  decorators: [(Story) => <div className="max-w-2xl p-6"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-2xl p-6">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof ResponsiveList>
 
 export default meta

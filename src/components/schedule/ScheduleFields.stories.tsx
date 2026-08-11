@@ -112,9 +112,10 @@ export const ConfigAvanzadaArrancaAbierta: Story = {
   render: () => <Controlled initialView={deriveScheduleView(openingHours())} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByRole('button', { name: ADVANCED_TRIGGER_NAME }),
-    ).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvas.getByRole('button', { name: ADVANCED_TRIGGER_NAME })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
     await expect(canvas.getByLabelText(/Lunes abierto/)).toBeVisible()
   },
 }
@@ -134,7 +135,7 @@ export const DiaPersonalizado: Story = {
     // Sábado, que es el día que esta story personaliza.
     const saturdayItem = (await canvas.findByText('Sábado')).closest('li') as HTMLElement
     await expect(
-      within(saturdayItem).getByRole('button', { name: 'Restablecer' })
+      within(saturdayItem).getByRole('button', { name: 'Restablecer' }),
     ).toBeInTheDocument()
   },
 }

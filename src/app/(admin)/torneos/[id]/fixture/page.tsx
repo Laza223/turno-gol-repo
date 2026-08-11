@@ -8,10 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { getTournament } from '@/modules/tournaments/tournament.service'
-import {
-  listFixture,
-  listStages,
-} from '@/modules/tournaments/tournament-fixture.service'
+import { listFixture, listStages } from '@/modules/tournaments/tournament-fixture.service'
 import { listTournamentSlots } from '@/modules/tournaments/tournament-slots.service'
 import { listCourts } from '@/modules/courts/court.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
@@ -20,9 +17,7 @@ import { FORMAT_SHORT, formatDateRange } from '../../torneos-lib'
 import { TorneoTabs } from '../TorneoTabs'
 import { FixturePanel } from './FixturePanel'
 
-export default async function TorneoFixturePage(props: {
-  params: Promise<{ id: string }>
-}) {
+export default async function TorneoFixturePage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
 
   const user = await extractAuthUser()

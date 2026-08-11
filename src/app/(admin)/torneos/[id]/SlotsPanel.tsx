@@ -72,10 +72,7 @@ export function SlotsPanel({
   const [timeEnd, setTimeEnd] = useState('18:00')
   const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false)
 
-  const releasingCount = useMemo(
-    () => slots.filter((s) => s.date >= todayIso()).length,
-    [slots],
-  )
+  const releasingCount = useMemo(() => slots.filter((s) => s.date >= todayIso()).length, [slots])
 
   const dates = useMemo(
     () => weeklyDates(firstDate, Math.max(1, Number(weeks) || 1)),
@@ -83,9 +80,7 @@ export function SlotsPanel({
   )
 
   function toggleCourt(id: string) {
-    setSelectedCourts((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
-    )
+    setSelectedCourts((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
   }
 
   function handleReserve() {
@@ -133,12 +128,10 @@ export function SlotsPanel({
     <section className="space-y-4">
       <div className="rounded-xl border border-border bg-card p-5 space-y-5">
         <div>
-          <h2 className="font-display text-lg font-semibold text-foreground">
-            Tomar horarios
-          </h2>
+          <h2 className="font-display text-lg font-semibold text-foreground">Tomar horarios</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Las horas que elijas quedan reservadas en la grilla a nombre del torneo.
-            Si alguna ya está ocupada, se saltea y te la mostramos.
+            Las horas que elijas quedan reservadas en la grilla a nombre del torneo. Si alguna ya
+            está ocupada, se saltea y te la mostramos.
           </p>
         </div>
 
@@ -250,14 +243,13 @@ export function SlotsPanel({
             {conflicts && conflicts.length > 0 && (
               <div className="mt-2 text-muted-foreground">
                 <p className="font-medium text-amber-800 dark:text-amber-300">
-                  {conflicts.length} {conflicts.length === 1 ? 'hora' : 'horas'} ya
-                  estaban ocupadas y se saltearon:
+                  {conflicts.length} {conflicts.length === 1 ? 'hora' : 'horas'} ya estaban ocupadas
+                  y se saltearon:
                 </p>
                 <ul className="mt-1 space-y-0.5">
                   {conflicts.slice(0, 8).map((c, i) => (
                     <li key={`${c.courtId}-${c.date}-${c.timeStart}-${i}`}>
-                      {formatDate(c.date)} · {c.timeStart} ·{' '}
-                      {courtNames[c.courtId] ?? 'Cancha'}
+                      {formatDate(c.date)} · {c.timeStart} · {courtNames[c.courtId] ?? 'Cancha'}
                     </li>
                   ))}
                   {conflicts.length > 8 && <li>y {conflicts.length - 8} más…</li>}
@@ -281,9 +273,7 @@ export function SlotsPanel({
       <div className="rounded-xl border border-border bg-card p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-lg font-semibold text-foreground">
-              Horarios tomados
-            </h2>
+            <h2 className="font-display text-lg font-semibold text-foreground">Horarios tomados</h2>
             <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
               {summarizeSlots(slots)}
             </p>
@@ -302,7 +292,10 @@ export function SlotsPanel({
         </div>
 
         {slots.length === 0 ? (
-          <EmptyState title="Todavía no reservaste ningún horario para este torneo." className="py-6" />
+          <EmptyState
+            title="Todavía no reservaste ningún horario para este torneo."
+            className="py-6"
+          />
         ) : (
           <ul className="divide-y divide-border text-sm">
             {slots.slice(0, 40).map((s) => (
@@ -310,15 +303,11 @@ export function SlotsPanel({
                 <span className="text-foreground tabular-nums">
                   {formatDate(s.date)} · {s.timeStart}–{s.timeEnd}
                 </span>
-                <span className="text-muted-foreground">
-                  {courtNames[s.courtId] ?? 'Cancha'}
-                </span>
+                <span className="text-muted-foreground">{courtNames[s.courtId] ?? 'Cancha'}</span>
               </li>
             ))}
             {slots.length > 40 && (
-              <li className="py-2 text-muted-foreground">
-                y {slots.length - 40} horas más…
-              </li>
+              <li className="py-2 text-muted-foreground">y {slots.length - 40} horas más…</li>
             )}
           </ul>
         )}

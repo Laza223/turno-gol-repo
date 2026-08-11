@@ -111,9 +111,7 @@ test.describe('TG-HP-225 — Settings perfil: logo + portada en un solo flujo', 
       await expect(page.locator(`img[src="${newCoverUrl}"]`)).toBeVisible({ timeout: 5_000 })
       // Next monta '__next-route-announcer__' con role="alert" SIEMPRE (App Router,
       // ajeno a este flujo) — excluirlo para no contar un falso positivo.
-      await expect(
-        page.locator('[role="alert"]:not(#__next-route-announcer__)'),
-      ).toHaveCount(0)
+      await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0)
 
       await writeEvidence('TG-HP-225', {
         status: 'pass',
@@ -129,11 +127,10 @@ test.describe('TG-HP-225 — Settings perfil: logo + portada en un solo flujo', 
       })
     } finally {
       await context.close()
-      await runSql('UPDATE tenants SET logo_url = $1, cover_url = $2, updated_at = now() WHERE id = $3', [
-        originalLogoUrl,
-        originalCoverUrl,
-        E2E_TENANT_ID,
-      ])
+      await runSql(
+        'UPDATE tenants SET logo_url = $1, cover_url = $2, updated_at = now() WHERE id = $3',
+        [originalLogoUrl, originalCoverUrl, E2E_TENANT_ID],
+      )
     }
   })
 })

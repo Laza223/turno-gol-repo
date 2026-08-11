@@ -93,7 +93,15 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
     return dayPriceCents != null && nightPriceCents != null
       ? { mode, cutHour, dayPrice: dayPriceCents, nightPrice: nightPriceCents }
       : null
-  }, [mode, uniformPriceCents, weekPriceCents, weekendPriceCents, dayPriceCents, nightPriceCents, cutHour])
+  }, [
+    mode,
+    uniformPriceCents,
+    weekPriceCents,
+    weekendPriceCents,
+    dayPriceCents,
+    nightPriceCents,
+    cutHour,
+  ])
 
   function applyTemplate() {
     if (!template) return
@@ -267,7 +275,9 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
             <li key={i} className="flex flex-wrap items-center gap-x-2 px-3 py-2">
               <span className="font-medium text-foreground">{row.daysLabel}</span>
               <span className="text-muted-foreground">· {row.rangeLabel} ·</span>
-              <span className="tabular-nums font-medium text-foreground">{formatArs(row.price)}</span>
+              <span className="tabular-nums font-medium text-foreground">
+                {formatArs(row.price)}
+              </span>
             </li>
           ))}
         </ul>

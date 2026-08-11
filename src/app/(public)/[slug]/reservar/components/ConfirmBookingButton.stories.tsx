@@ -49,7 +49,9 @@ export const ConSena: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: /pagar seña y reservar/i })).toBeInTheDocument()
-    await expect(canvas.getByText('Este complejo pide seña online para confirmar la reserva.')).toBeInTheDocument()
+    await expect(
+      canvas.getByText('Este complejo pide seña online para confirmar la reserva.'),
+    ).toBeInTheDocument()
     await expect(canvas.getByText('Pagás la seña online ahora')).toBeInTheDocument()
   },
 }

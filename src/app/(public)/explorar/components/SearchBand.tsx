@@ -26,7 +26,10 @@ export default function SearchBand({ cities }: { cities: CityCount[] }) {
 
       <div className="mb-6 max-w-2xl">
         <div className="live-pill inline-flex items-center gap-2.5 rounded-full px-3.5 py-1.5 font-logo text-[12px] font-bold uppercase tracking-widest">
-          <span aria-hidden className="inline-flex h-[8px] w-[8px] rounded-full bg-emerald-500 dark:bg-emerald-400" />
+          <span
+            aria-hidden
+            className="inline-flex h-[8px] w-[8px] rounded-full bg-emerald-500 dark:bg-emerald-400"
+          />
           Disponibilidad en tiempo real
         </div>
         <h1
@@ -36,7 +39,8 @@ export default function SearchBand({ cities }: { cities: CityCount[] }) {
           Encontrá tu cancha <span className="hero-accent-text">ideal</span>
         </h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-          Filtrá por formato, superficie, servicios y precio. Consultá disponibilidad en tiempo real y reservá al instante.
+          Filtrá por formato, superficie, servicios y precio. Consultá disponibilidad en tiempo real
+          y reservá al instante.
         </p>
       </div>
 

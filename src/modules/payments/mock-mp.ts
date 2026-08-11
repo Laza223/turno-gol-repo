@@ -47,9 +47,7 @@ export function buildMockPaymentId(outcome: MockOutcome, bookingId: string): str
   return `MOCK-${outcome.toUpperCase()}-${bookingId}`
 }
 
-export function parseMockPaymentId(
-  id: string,
-): { outcome: MockOutcome; bookingId: string } | null {
+export function parseMockPaymentId(id: string): { outcome: MockOutcome; bookingId: string } | null {
   const m = /^MOCK-(APPROVED|REJECTED)-([0-9a-fA-F-]{36})$/.exec(id)
   if (!m) return null
   return { outcome: m[1]!.toLowerCase() as MockOutcome, bookingId: m[2]! }

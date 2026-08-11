@@ -2,10 +2,7 @@ import { withPlayer } from '@/server/middleware/with-player'
 import { guard } from '@/shared/rate-limit/route-guard'
 import { badRequest, businessRule, conflict, notFound, validationError } from '@/shared/api-error'
 import { validatedJson } from '@/shared/api-output'
-import {
-  createReviewResponseSchema,
-  createReviewSchema,
-} from '@/modules/reviews/review.schema'
+import { createReviewResponseSchema, createReviewSchema } from '@/modules/reviews/review.schema'
 import { createReview } from '@/modules/reviews/review.service'
 import {
   ReviewAlreadyExistsError,
@@ -40,12 +37,9 @@ export const POST = withPlayer(async (req, user, tx) => {
       parsed.data.comment ?? null,
       tx,
     )
-    return validatedJson(
-      createReviewResponseSchema,
-      { data: review },
-      'POST /api/player/reviews',
-      { status: 201 },
-    )
+    return validatedJson(createReviewResponseSchema, { data: review }, 'POST /api/player/reviews', {
+      status: 201,
+    })
   } catch (e) {
     if (e instanceof ReviewBookingNotFoundError) return notFound(e.message)
     if (e instanceof ReviewBookingNotCompletedError) return businessRule(e.message)

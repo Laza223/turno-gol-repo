@@ -41,7 +41,12 @@ export const Default: Story = {}
 /** Seña más alta (cancha de Fútbol 11, precio flat). */
 export const SeñaAlta: Story = {
   args: {
-    booking: bookingSummary({ deposit_amount: 540000, court_name: 'Cancha 3 - Fútbol 11', time_start: '11:00:00', time_end: '12:00:00' }),
+    booking: bookingSummary({
+      deposit_amount: 540000,
+      court_name: 'Cancha 3 - Fútbol 11',
+      time_start: '11:00:00',
+      time_end: '12:00:00',
+    }),
   },
 }
 

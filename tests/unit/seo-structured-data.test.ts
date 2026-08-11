@@ -25,9 +25,9 @@ const FIXTURE_TENANT: PublicTenant = {
     tue: { open: '08:00', close: '23:00' },
     wed: { open: '08:00', close: '23:00' },
     thu: { open: '08:00', close: '23:00' },
-    fri: { open: '08:00', close: '00:00' },  // midnight → must map to 23:59
+    fri: { open: '08:00', close: '00:00' }, // midnight → must map to 23:59
     sat: { open: '08:00', close: '00:00' },
-    sun: { open: '08:00', close: '23:00', closed: true },  // closed → filtered
+    sun: { open: '08:00', close: '23:00', closed: true }, // closed → filtered
   },
   closedDates: [],
   closesNextDay: false,
@@ -140,7 +140,7 @@ describe('renderStructuredData', () => {
   it('still serializes to valid JSON that round-trips to the original data', () => {
     const node = buildLocalBusiness({
       ...FIXTURE_TENANT,
-      name: "Cancha</script><script>alert(1)</script>",
+      name: 'Cancha</script><script>alert(1)</script>',
       address: 'Av. Libertador 1234',
     })
     const html = renderStructuredData(node)

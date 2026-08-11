@@ -57,15 +57,10 @@ async function loadFavorites(playerId: string): Promise<{
   return { tenants, photosByTenant }
 }
 
-export default async function PerfilPage(
-  props: {
-    searchParams: Promise<{ tab?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function PerfilPage(props: { searchParams: Promise<{ tab?: string }> }) {
+  const searchParams = await props.searchParams
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player')
-    redirect(`/ingresar?next=${encodeURIComponent('/perfil')}`)
+  if (!user || user.type !== 'player') redirect(`/ingresar?next=${encodeURIComponent('/perfil')}`)
 
   const tab: ProfileTabKey = PROFILE_TABS.some((t) => t.key === searchParams.tab)
     ? (searchParams.tab as ProfileTabKey)
@@ -124,10 +119,7 @@ export default async function PerfilPage(
       )}
 
       {tab === 'favoritos' && favorites && (
-        <FavoritesList
-          tenants={favorites.tenants}
-          photosByTenant={favorites.photosByTenant}
-        />
+        <FavoritesList tenants={favorites.tenants} photosByTenant={favorites.photosByTenant} />
       )}
 
       {tab === 'actividad' && activity && (

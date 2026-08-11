@@ -1,12 +1,5 @@
 import { sql } from 'drizzle-orm'
-import {
-  boolean,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { jsonb } from '../jsonb'
 
 export const plans = pgTable('plans', {
@@ -23,7 +16,5 @@ export const plans = pgTable('plans', {
   priceAnnual: integer('price_annual').notNull(),
   isActive: boolean('is_active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 })

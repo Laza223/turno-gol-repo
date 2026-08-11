@@ -154,7 +154,7 @@ export const ConfirmarPagoLlamaLaAction: Story = {
     // Efectivo preseleccionado por default — confirmar sin tocar los radios.
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     await waitFor(() =>
-      expect(args.confirmDepositPaymentAction).toHaveBeenCalledWith(PENDIENTE_PAGO.id, 'cash')
+      expect(args.confirmDepositPaymentAction).toHaveBeenCalledWith(PENDIENTE_PAGO.id, 'cash'),
     )
     await closeToast('Pago confirmado')
     await waitFor(() => expect(getRouter().refresh).toHaveBeenCalled())
@@ -225,12 +225,10 @@ export const AusenteConfirmadoOfreceDeshacer: Story = {
 export const AccionFallidaMuestraError: Story = {
   args: {
     booking: PENDIENTE_PAGO,
-    confirmDepositPaymentAction: fn(
-      async (): Promise<BookingActionResult> => ({
-        success: false,
-        error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
-      })
-    ),
+    confirmDepositPaymentAction: fn(async (): Promise<BookingActionResult> => ({
+      success: false,
+      error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -239,7 +237,7 @@ export const AccionFallidaMuestraError: Story = {
     await body.findByRole('heading', { name: 'Confirmar pago' })
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
-      'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).'
+      'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
     )
     await expect(getRouter().refresh).not.toHaveBeenCalled()
   },
@@ -258,7 +256,7 @@ export const CancelarSinDatosMuestraError: Story = {
 
     await userEvent.click(body.getByRole('button', { name: 'Cancelar reserva' }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
-      'Indicá quién cancela la reserva.'
+      'Indicá quién cancela la reserva.',
     )
     await expect(args.cancelBookingAction).not.toHaveBeenCalled()
   },
@@ -277,14 +275,14 @@ export const CancelarPorElComplejoConSenaMercadoPago: Story = {
     await waitFor(() =>
       expect(
         body.getByText(
-          `Se reembolsará la seña de ${money(CONFIRMADA_SENA_MP.depositAmount)} vía MercadoPago.`
-        )
-      ).toBeVisible()
+          `Se reembolsará la seña de ${money(CONFIRMADA_SENA_MP.depositAmount)} vía MercadoPago.`,
+        ),
+      ).toBeVisible(),
     )
 
     await userEvent.type(
       body.getByLabelText('Motivo (obligatorio)'),
-      'Cancha rota, mantenimiento urgente.'
+      'Cancha rota, mantenimiento urgente.',
     )
     await userEvent.click(body.getByRole('button', { name: 'Cancelar reserva' }))
 
@@ -292,11 +290,11 @@ export const CancelarPorElComplejoConSenaMercadoPago: Story = {
       expect(args.cancelBookingAction).toHaveBeenCalledWith(
         CONFIRMADA_SENA_MP.id,
         'Cancha rota, mantenimiento urgente.',
-        'complejo'
-      )
+        'complejo',
+      ),
     )
     await waitFor(() =>
-      expect(body.queryByRole('heading', { name: 'Cancelar reserva' })).not.toBeInTheDocument()
+      expect(body.queryByRole('heading', { name: 'Cancelar reserva' })).not.toBeInTheDocument(),
     )
     await closeToast('Reserva cancelada')
   },
@@ -314,9 +312,9 @@ export const CancelarPorElComplejoConSenaEnEfectivo: Story = {
     await waitFor(() =>
       expect(
         body.getByText(
-          `Coordiná el reembolso de ${money(CONFIRMADA_SENA_MP.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
-        )
-      ).toBeVisible()
+          `Coordiná el reembolso de ${money(CONFIRMADA_SENA_MP.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`,
+        ),
+      ).toBeVisible(),
     )
   },
 }
@@ -333,28 +331,28 @@ export const CancelarPorElJugadorConSenaPagada: Story = {
     await waitFor(() =>
       expect(
         body.getByText(
-          `Se aplica la política de cancelación: reembolso de ${money(CONFIRMADA_SENA_MP.depositAmount)} si está dentro del plazo, retención si no.`
-        )
-      ).toBeVisible()
+          `Se aplica la política de cancelación: reembolso de ${money(CONFIRMADA_SENA_MP.depositAmount)} si está dentro del plazo, retención si no.`,
+        ),
+      ).toBeVisible(),
     )
 
     await userEvent.type(
       body.getByLabelText('Motivo (obligatorio)'),
-      'El jugador avisó que no puede ir.'
+      'El jugador avisó que no puede ir.',
     )
     await userEvent.click(body.getByRole('button', { name: 'Cancelar reserva' }))
     await waitFor(() =>
       expect(args.cancelBookingAction).toHaveBeenCalledWith(
         uid(1015),
         'El jugador avisó que no puede ir.',
-        'jugador'
-      )
+        'jugador',
+      ),
     )
     // El Dialog es modal (a diferencia del DropdownMenu de acciones): mientras sigue
     // montado, `hideOthers()` marca aria-hidden el viewport de toasts. Hay que
     // esperar a que cierre antes de poder clickear "Cerrar" del toast.
     await waitFor(() =>
-      expect(body.queryByRole('heading', { name: 'Cancelar reserva' })).not.toBeInTheDocument()
+      expect(body.queryByRole('heading', { name: 'Cancelar reserva' })).not.toBeInTheDocument(),
     )
     await closeToast('Reserva cancelada')
   },
@@ -379,8 +377,8 @@ export const CancelarSinSenaPagada: Story = {
     await userEvent.click(body.getByRole('radio', { name: /El complejo necesita cancelar/ }))
     await waitFor(() =>
       expect(
-        body.getByText('Esta reserva no tiene seña pagada. Solo se libera el turno.')
-      ).toBeVisible()
+        body.getByText('Esta reserva no tiene seña pagada. Solo se libera el turno.'),
+      ).toBeVisible(),
     )
   },
 }
@@ -408,7 +406,7 @@ export const MenuMobileAbiertoConfirmada: Story = {
     await userEvent.click(canvas.getByRole('button', { name: `Acciones para ${args.label}` }))
     const menu = within(document.body)
     await expect(
-      menu.findByRole('menuitem', { name: 'Marcar completada' })
+      menu.findByRole('menuitem', { name: 'Marcar completada' }),
     ).resolves.toBeInTheDocument()
     await expect(menu.getByRole('menuitem', { name: 'Marcar ausente' })).toBeInTheDocument()
     await expect(menu.getByRole('menuitem', { name: 'Cancelar reserva' })).toBeInTheDocument()
@@ -424,7 +422,7 @@ export const MenuMobileAbiertoPendientePago: Story = {
     await userEvent.click(canvas.getByRole('button', { name: `Acciones para ${args.label}` }))
     const menu = within(document.body)
     await expect(
-      menu.findByRole('menuitem', { name: 'Confirmar pago' })
+      menu.findByRole('menuitem', { name: 'Confirmar pago' }),
     ).resolves.toBeInTheDocument()
     await expect(menu.queryByRole('menuitem', { name: 'Marcar completada' })).toBeNull()
     await expect(menu.queryByRole('menuitem', { name: 'Marcar ausente' })).toBeNull()

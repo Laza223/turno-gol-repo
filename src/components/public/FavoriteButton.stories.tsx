@@ -51,7 +51,9 @@ export const ToggleOptimista: Story = {
     // Variant 'inline': sin aria-label, el nombre accesible es el texto visible
     // ("Guardar"/"Guardado"), no "Guardar en favoritos" (eso es del overlay).
     await userEvent.click(canvas.getByRole('button', { name: 'Guardar' }))
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Guardado' })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Guardado' })).toBeInTheDocument(),
+    )
   },
 }
 

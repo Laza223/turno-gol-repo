@@ -3,10 +3,10 @@ import type { LucideIcon } from 'lucide-react'
 
 export interface EmptyStateProps {
   icon?: LucideIcon
-  illustration?: React.ReactNode  // decorative inline SVG; takes precedence over icon
+  illustration?: React.ReactNode // decorative inline SVG; takes precedence over icon
   title: string
   description?: string
-  action?: React.ReactNode  // typically <Link> or <Button>
+  action?: React.ReactNode // typically <Link> or <Button>
   className?: string
 }
 
@@ -26,7 +26,10 @@ export function EmptyState({
       )}
     >
       {/* Decorative radial glow */}
-      <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_0%,_rgba(16,185,129,0.06),transparent)]" aria-hidden />
+      <span
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_0%,_rgba(16,185,129,0.06),transparent)]"
+        aria-hidden
+      />
 
       {illustration ? (
         <div className="relative mb-5" aria-hidden="true">
@@ -34,7 +37,10 @@ export function EmptyState({
         </div>
       ) : Icon ? (
         <div className="relative mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/8 ring-1 ring-inset ring-emerald-500/15 dark:bg-emerald-500/10 dark:ring-emerald-500/20">
-          <Icon className="h-7 w-7 text-emerald-600/60 dark:text-emerald-400/60" aria-hidden="true" />
+          <Icon
+            className="h-7 w-7 text-emerald-600/60 dark:text-emerald-400/60"
+            aria-hidden="true"
+          />
         </div>
       ) : null}
       {/* Vive dentro de páginas con un <h1> de PageHeader y sin h2 intermedio
@@ -51,4 +57,3 @@ export function EmptyState({
     </div>
   )
 }
-

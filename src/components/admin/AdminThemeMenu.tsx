@@ -21,13 +21,7 @@ export function AdminThemeMenu() {
   const { theme, resolvedTheme } = useTheme()
   const mounted = useHydrated()
 
-  const Icon = !mounted
-    ? Sun
-    : theme === 'system'
-      ? Monitor
-      : resolvedTheme === 'dark'
-        ? Moon
-        : Sun
+  const Icon = !mounted ? Sun : theme === 'system' ? Monitor : resolvedTheme === 'dark' ? Moon : Sun
 
   return (
     <Popover>
@@ -40,7 +34,12 @@ export function AdminThemeMenu() {
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} aria-label="Cambiar tema" className="w-72 p-2.5 overflow-x-hidden">
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        aria-label="Cambiar tema"
+        className="w-72 p-2.5 overflow-x-hidden"
+      >
         <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Tema
         </p>

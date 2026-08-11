@@ -66,9 +66,7 @@ export type PublicTournamentView = {
  */
 const PUBLIC_STATUSES = ['registration', 'in_progress', 'finished'] as const
 
-export async function listPublicTournaments(
-  tenantId: string,
-): Promise<PublicTournamentCard[]> {
+export async function listPublicTournaments(tenantId: string): Promise<PublicTournamentCard[]> {
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenantId))) return []
 
   return withTenantContext(tenantId, async (tx) => {
@@ -134,9 +132,7 @@ export async function getPublicTournamentView(
 }
 
 /** Slugs de los torneos públicos de un complejo, para `generateStaticParams`. */
-export async function listPublicTournamentSlugs(
-  tenantId: string,
-): Promise<string[]> {
+export async function listPublicTournamentSlugs(tenantId: string): Promise<string[]> {
   return (await listPublicTournaments(tenantId)).map((t) => t.slug)
 }
 

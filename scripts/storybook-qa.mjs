@@ -314,9 +314,12 @@ async function main() {
         const shot = path.join(shotDir, `${story.id}.png`)
         ab(['screenshot', shot])
 
-        const raw = ab(['eval', '-b', Buffer.from(STRUCTURAL_CHECKS).toString('base64'), '--json'], {
-          allowFail: true,
-        })
+        const raw = ab(
+          ['eval', '-b', Buffer.from(STRUCTURAL_CHECKS).toString('base64'), '--json'],
+          {
+            allowFail: true,
+          },
+        )
         // agent-browser eval --json devuelve { success, data: { origin, result }, error }
         let structural = null
         try {

@@ -244,22 +244,24 @@ export async function getLedger(
     ORDER BY sm.occurred_at DESC
     LIMIT ${limit}
   `)
-  return (rows as unknown as Array<{
-    id: string
-    tenant_id: string
-    product_id: string
-    kind: StockMovementKind
-    qty: number
-    unit_cost: number | null
-    unit_price: number | null
-    note: string | null
-    cash_flow_id: string | null
-    tab_id: string | null
-    created_by: string
-    occurred_at: Date | string
-    created_at: Date | string
-    product_name: string
-  }>).map((r) => ({
+  return (
+    rows as unknown as Array<{
+      id: string
+      tenant_id: string
+      product_id: string
+      kind: StockMovementKind
+      qty: number
+      unit_cost: number | null
+      unit_price: number | null
+      note: string | null
+      cash_flow_id: string | null
+      tab_id: string | null
+      created_by: string
+      occurred_at: Date | string
+      created_at: Date | string
+      product_name: string
+    }>
+  ).map((r) => ({
     id: r.id,
     tenantId: r.tenant_id,
     productId: r.product_id,

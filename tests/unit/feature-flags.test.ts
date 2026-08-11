@@ -13,7 +13,9 @@ afterEach(() => {
 
 describe('resolveFeatureFlag', () => {
   it('returns the loaded value and passes (flag, tenant) to the loader', async () => {
-    const loader = vi.fn(async (_f: string, _t: string | null): Promise<boolean | undefined> => true)
+    const loader = vi.fn(
+      async (_f: string, _t: string | null): Promise<boolean | undefined> => true,
+    )
     expect(await resolveFeatureFlag('online_booking', null, loader)).toBe(true)
     expect(loader).toHaveBeenCalledWith('online_booking', null)
   })
@@ -26,7 +28,9 @@ describe('resolveFeatureFlag', () => {
   })
 
   it('memoizes within the TTL — the loader runs only once', async () => {
-    const loader = vi.fn(async (_f: string, _t: string | null): Promise<boolean | undefined> => true)
+    const loader = vi.fn(
+      async (_f: string, _t: string | null): Promise<boolean | undefined> => true,
+    )
     await resolveFeatureFlag('f', null, loader)
     await resolveFeatureFlag('f', null, loader)
     expect(loader).toHaveBeenCalledTimes(1)
@@ -58,7 +62,9 @@ describe('resolveFeatureFlag', () => {
   it('does not reload before the TTL boundary', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(0)
-    const loader = vi.fn(async (_f: string, _t: string | null): Promise<boolean | undefined> => true)
+    const loader = vi.fn(
+      async (_f: string, _t: string | null): Promise<boolean | undefined> => true,
+    )
     await resolveFeatureFlag('f', null, loader)
     vi.setSystemTime(59_000)
     await resolveFeatureFlag('f', null, loader)
@@ -66,7 +72,9 @@ describe('resolveFeatureFlag', () => {
   })
 
   it('clearFeatureFlagCache forces the next call to reload', async () => {
-    const loader = vi.fn(async (_f: string, _t: string | null): Promise<boolean | undefined> => true)
+    const loader = vi.fn(
+      async (_f: string, _t: string | null): Promise<boolean | undefined> => true,
+    )
     await resolveFeatureFlag('f', null, loader)
     clearFeatureFlagCache()
     await resolveFeatureFlag('f', null, loader)
@@ -88,11 +96,9 @@ describe('resolveFeatureFlag', () => {
 
   it('on loader error with nothing cached defaults to false and logs a warning', async () => {
     const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
-    const loader = vi.fn(
-      async (_f: string, _t: string | null): Promise<boolean | undefined> => {
-        throw new Error('db down')
-      },
-    )
+    const loader = vi.fn(async (_f: string, _t: string | null): Promise<boolean | undefined> => {
+      throw new Error('db down')
+    })
     expect(await resolveFeatureFlag('whatever', 'tenant-x', loader)).toBe(false)
     expect(warn).toHaveBeenCalledOnce()
     expect(warn.mock.calls[0]![0]).toBe('feature_flags.load_failed')

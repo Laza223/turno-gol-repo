@@ -15,7 +15,12 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'Complejo no encontrado' })).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: /volver al inicio/i })).toHaveAttribute('href', '/')
+    await expect(
+      canvas.getByRole('heading', { name: 'Complejo no encontrado' }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: /volver al inicio/i })).toHaveAttribute(
+      'href',
+      '/',
+    )
   },
 }

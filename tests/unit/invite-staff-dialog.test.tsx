@@ -34,9 +34,7 @@ afterEach(() => {
 })
 
 function renderDialog() {
-  return render(
-    <InviteStaffDialog inviteAction={vi.fn()} onClose={vi.fn()} />,
-  )
+  return render(<InviteStaffDialog inviteAction={vi.fn()} onClose={vi.fn()} />)
 }
 
 describe('InviteStaffDialog — selección de rol', () => {

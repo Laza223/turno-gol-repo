@@ -3,10 +3,7 @@ import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts } from '@/shared/db/schema'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { track, withSpan } from '@/shared/observability'
-import {
-  effectiveCloseMins,
-  normalizeRangeToOpenDay,
-} from '@/shared/time/operating-day'
+import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -111,9 +108,9 @@ export type GenerateSlotsParams = {
   closesNextDay?: boolean
   courtBookings: BookingRange[]
   durationMins: number
-  date: string       // YYYY-MM-DD
+  date: string // YYYY-MM-DD
   nowDateStr: string // YYYY-MM-DD in ART
-  nowMins: number    // minutes from midnight in ART
+  nowMins: number // minutes from midnight in ART
 }
 
 // ─── Pure helpers (exported for testing) ─────────────────────────────────────
@@ -182,16 +179,12 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
       status = 'past'
     } else {
       const overlapping = courtBookings.find(
-        (b) =>
-          b.courtId === p.courtId &&
-          start < b.timeEndMins &&
-          slotEnd > b.timeStartMins,
+        (b) => b.courtId === p.courtId && start < b.timeEndMins && slotEnd > b.timeStartMins,
       )
       if (!overlapping) status = 'free'
       // El torneo posee la hora: para el jugador no es reservable, igual que un
       // bloqueo del admin. Explícito y no por el else, que daría 'occupied'.
-      else if (overlapping.type === 'block' || overlapping.type === 'tournament')
-        status = 'blocked'
+      else if (overlapping.type === 'block' || overlapping.type === 'tournament') status = 'blocked'
       else if (overlapping.type === 'fixed') status = 'fixed'
       else status = 'occupied'
     }
@@ -364,44 +357,41 @@ async function getPublicAvailabilityImpl(
 
   const dayHours = tenant.openingHours[dayKey]
   const closedDatesSet = new Set(tenant.closedDates)
-  const closedDay = (dayHours?.closed === true) || closedDatesSet.has(dateStr)
+  const closedDay = dayHours?.closed === true || closedDatesSet.has(dateStr)
 
   const durationMins = SLOT_DURATION_MINUTES
 
-  const { courtsData, bookingsData } = await withTenantContext(
-    tenant.id,
-    async (tx) => {
-      const courtsData = await tx
-        .select({
-          id: courts.id,
-          name: courts.name,
-          surfaceType: courts.surfaceType,
-          isCovered: courts.isCovered,
-          hasLighting: courts.hasLighting,
-          pricing: courts.pricing,
-        })
-        .from(courts)
-        .where(and(eq(courts.tenantId, tenant.id), eq(courts.status, 'online')))
+  const { courtsData, bookingsData } = await withTenantContext(tenant.id, async (tx) => {
+    const courtsData = await tx
+      .select({
+        id: courts.id,
+        name: courts.name,
+        surfaceType: courts.surfaceType,
+        isCovered: courts.isCovered,
+        hasLighting: courts.hasLighting,
+        pricing: courts.pricing,
+      })
+      .from(courts)
+      .where(and(eq(courts.tenantId, tenant.id), eq(courts.status, 'online')))
 
-      const bookingsData = await tx
-        .select({
-          courtId: bookings.courtId,
-          timeStart: bookings.timeStart,
-          timeEnd: bookings.timeEnd,
-          type: bookings.type,
-        })
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.tenantId, tenant.id),
-            sql`${bookings.date} = ${dateStr}::date`,
-            notInArray(bookings.status, ['canceled_refunded', 'canceled_no_refund', 'expired']),
-          ),
-        )
+    const bookingsData = await tx
+      .select({
+        courtId: bookings.courtId,
+        timeStart: bookings.timeStart,
+        timeEnd: bookings.timeEnd,
+        type: bookings.type,
+      })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.tenantId, tenant.id),
+          sql`${bookings.date} = ${dateStr}::date`,
+          notInArray(bookings.status, ['canceled_refunded', 'canceled_no_refund', 'expired']),
+        ),
+      )
 
-      return { courtsData, bookingsData }
-    },
-  )
+    return { courtsData, bookingsData }
+  })
 
   const bookingRanges: BookingRange[] = bookingsData.map((b) => {
     const endMins = timeToMins(b.timeEnd.slice(0, 5))

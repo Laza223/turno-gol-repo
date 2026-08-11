@@ -1,5 +1,12 @@
 import { z } from 'zod'
-import { uuid, dateStr, hhmm, hhmmEnd, moneyCents, boundedText } from '@/shared/validation/primitives'
+import {
+  uuid,
+  dateStr,
+  hhmm,
+  hhmmEnd,
+  moneyCents,
+  boundedText,
+} from '@/shared/validation/primitives'
 
 // timeEnd usa hhmmEnd (no hhmm): un abonado puede terminar exactamente a
 // medianoche ('24:00', ENS-13 — misma clase que ENS-12 en reservas comunes).

@@ -27,9 +27,7 @@ type ToggleCourtStatusAction = (
   courtId: string,
   status: 'online' | 'offline',
 ) => Promise<CourtActionResult>
-type GetCourtDeactivationImpactAction = (
-  courtId: string,
-) => Promise<CourtDeactivationImpactResult>
+type GetCourtDeactivationImpactAction = (courtId: string) => Promise<CourtDeactivationImpactResult>
 
 // The deactivate confirmation pulls in the Radix AlertDialog; only needed once an
 // admin clicks "Desactivar", so lazy-load and mount it on demand.
@@ -326,25 +324,28 @@ function CourtCard({
       </div>
 
       {confirmOpen && (
-      <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={`Desactivar ${court.name}`}
-        description={
-          <div className="space-y-2">
-            <p>Una cancha offline no recibe reservas nuevas.</p>
-            {warningLines.map((l, i) => (
-              <p key={i} className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
-                {l}
-              </p>
-            ))}
-          </div>
-        }
-        variant="destructive"
-        confirmLabel="Desactivar"
-        cancelLabel="Volver"
-        onConfirm={onConfirmDeactivate}
-      />
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`Desactivar ${court.name}`}
+          description={
+            <div className="space-y-2">
+              <p>Una cancha offline no recibe reservas nuevas.</p>
+              {warningLines.map((l, i) => (
+                <p
+                  key={i}
+                  className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30"
+                >
+                  {l}
+                </p>
+              ))}
+            </div>
+          }
+          variant="destructive"
+          confirmLabel="Desactivar"
+          cancelLabel="Volver"
+          onConfirm={onConfirmDeactivate}
+        />
       )}
     </div>
   )

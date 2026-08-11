@@ -55,7 +55,9 @@ test.describe('TG-HP-226 — Equipo: invitar Encargado + gate solo-admin', () =>
 
       // exact:true: 'Invitación enviada' matchea el toast <div> Y el <span role="status"
       // aria-live> del announcer ("Notification Invitación enviada…") → strict violation.
-      await expect(page.getByText('Invitación enviada', { exact: true })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('Invitación enviada', { exact: true })).toBeVisible({
+        timeout: 10_000,
+      })
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 })
 
       // Lista dual tabla+cards: .first() = la tabla, visible en desktop (mismo patrón que staff-crud.spec.ts).

@@ -23,10 +23,8 @@ const withSystemAdminContextMock = vi.fn(
 )
 
 vi.mock('@/shared/db/client', () => ({
-  withSystemAdminContext: (
-    _id: string,
-    fn: (tx: unknown) => Promise<unknown>,
-  ): Promise<unknown> => withSystemAdminContextMock(_id, fn),
+  withSystemAdminContext: (_id: string, fn: (tx: unknown) => Promise<unknown>): Promise<unknown> =>
+    withSystemAdminContextMock(_id, fn),
   getDb: vi.fn(),
 }))
 
@@ -112,9 +110,7 @@ describe('SuperAdminLayoutShell', () => {
       </SuperAdminLayoutShell>,
     )
 
-    const hrefs = screen
-      .getAllByRole('link', { hidden: true })
-      .map((a) => a.getAttribute('href'))
+    const hrefs = screen.getAllByRole('link', { hidden: true }).map((a) => a.getAttribute('href'))
     expect(hrefs).toContain('/super-admin')
     expect(hrefs).toContain('/super-admin/tenants')
   })

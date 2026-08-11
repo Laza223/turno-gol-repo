@@ -67,17 +67,14 @@ test.describe('TG-HP-106 — Pago PENDIENTE → watcher', () => {
       // Webhook fuera de banda (simula que MP confirma mientras el jugador ya
       // está en /pendiente) — mismo patrón probado en booking-flow.spec.ts S3.
       const webhookSecret = process.env.MP_WEBHOOK_SECRET ?? 'test-webhook-secret'
-      const webhookResp = await request.post(
-        `/api/webhooks/mercadopago?tenant=${SENA_TENANT_ID}`,
-        {
-          headers: { 'x-webhook-secret': webhookSecret },
-          data: {
-            id: `mock-evt-approved-${bookingId}`,
-            type: 'payment',
-            data: { id: `MOCK-APPROVED-${bookingId}` },
-          },
+      const webhookResp = await request.post(`/api/webhooks/mercadopago?tenant=${SENA_TENANT_ID}`, {
+        headers: { 'x-webhook-secret': webhookSecret },
+        data: {
+          id: `mock-evt-approved-${bookingId}`,
+          type: 'payment',
+          data: { id: `MOCK-APPROVED-${bookingId}` },
         },
-      )
+      })
       expect(webhookResp.ok()).toBeTruthy()
 
       // UI-sin-reload: el watcher hace polling cada 3s (backoff hasta 30s) y

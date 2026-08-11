@@ -33,7 +33,9 @@ export const ErrorSeleccionInvalida: Story = {
   args: { tenants: staffTenantRows(), error: 'invalid', action: fn(async () => {}) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('alert')).toHaveTextContent('No pudimos seleccionar ese complejo.')
+    await expect(canvas.getByRole('alert')).toHaveTextContent(
+      'No pudimos seleccionar ese complejo.',
+    )
   },
 }
 

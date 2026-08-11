@@ -38,11 +38,7 @@ export default function RatingStars({ rating, count, variant = 'compact', classN
   }
 
   return (
-    <span
-      role="img"
-      aria-label={label}
-      className={cn('inline-flex items-center gap-1', className)}
-    >
+    <span role="img" aria-label={label} className={cn('inline-flex items-center gap-1', className)}>
       <span className="flex gap-0.5">
         {[0, 1, 2, 3, 4].map((i) => {
           const filled = rating >= i + 1

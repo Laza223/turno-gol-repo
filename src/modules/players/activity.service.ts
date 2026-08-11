@@ -18,10 +18,7 @@ export type PlayerActivity = {
  * futuro, cancelados y no-shows quedan afuera. Las semanas vienen como
  * date_trunc('week') (lunes ISO), pocas filas aunque haya cientos de partidos.
  */
-export async function getPlayerActivity(
-  playerId: string,
-  tx: DbTx,
-): Promise<PlayerActivity> {
+export async function getPlayerActivity(playerId: string, tx: DbTx): Promise<PlayerActivity> {
   const totals = (await tx.execute(sql`
     SELECT COUNT(*)::int AS played,
            COUNT(DISTINCT tenant_id)::int AS venues
@@ -63,10 +60,7 @@ function prevWeek(weekStart: string): string {
  * arranca a contar desde la anterior (el jugador puede tener el partido de
  * esta semana aún por jugarse).
  */
-export function computeStreakWeeks(
-  weeksWithGames: string[],
-  todayWeekStart: string,
-): number {
+export function computeStreakWeeks(weeksWithGames: string[], todayWeekStart: string): number {
   const weeks = new Set(weeksWithGames)
   let cursor = weeks.has(todayWeekStart) ? todayWeekStart : prevWeek(todayWeekStart)
   let streak = 0

@@ -5,10 +5,7 @@ import {
   canTransition,
 } from '@/modules/bookings/booking.state-machine'
 import { InvalidTransitionError } from '@/modules/bookings/booking.errors'
-import type {
-  BookingStatus,
-  CancellationActor,
-} from '@/modules/bookings/booking.types'
+import type { BookingStatus, CancellationActor } from '@/modules/bookings/booking.types'
 
 const ALL_STATUSES: BookingStatus[] = [
   'pending_payment',
@@ -193,9 +190,7 @@ describe('invariantes matriz ↔ actor', () => {
     // prod (todos los callers reales pasan ctx) mientras la matriz sin ctx
     // seguiría verde. Esto lo detecta.
     for (const [from, to] of VALID_PAIRS) {
-      const reachable = ALL_ACTORS.some((actor) =>
-        canTransition(from, to, { actor }),
-      )
+      const reachable = ALL_ACTORS.some((actor) => canTransition(from, to, { actor }))
       expect(reachable).toBe(true)
     }
   })
@@ -227,18 +222,16 @@ describe('completed → no_show (corrección de 24h, P5)', () => {
   })
 
   it('assertTransition no lanza para admin', () => {
-    expect(() =>
-      assertTransition('completed', 'no_show', { actor: 'admin' }),
-    ).not.toThrow()
+    expect(() => assertTransition('completed', 'no_show', { actor: 'admin' })).not.toThrow()
   })
 
   it('assertTransition lanza para player/system', () => {
-    expect(() =>
-      assertTransition('completed', 'no_show', { actor: 'player' }),
-    ).toThrow(InvalidTransitionError)
-    expect(() =>
-      assertTransition('completed', 'no_show', { actor: 'system' }),
-    ).toThrow(InvalidTransitionError)
+    expect(() => assertTransition('completed', 'no_show', { actor: 'player' })).toThrow(
+      InvalidTransitionError,
+    )
+    expect(() => assertTransition('completed', 'no_show', { actor: 'system' })).toThrow(
+      InvalidTransitionError,
+    )
   })
 })
 
@@ -260,14 +253,12 @@ describe('no_show → completed (corrección inversa de 24h, RI #1)', () => {
   })
 
   it('assertTransition no lanza para admin y lanza para player/system', () => {
-    expect(() =>
-      assertTransition('no_show', 'completed', { actor: 'admin' }),
-    ).not.toThrow()
-    expect(() =>
-      assertTransition('no_show', 'completed', { actor: 'player' }),
-    ).toThrow(InvalidTransitionError)
-    expect(() =>
-      assertTransition('no_show', 'completed', { actor: 'system' }),
-    ).toThrow(InvalidTransitionError)
+    expect(() => assertTransition('no_show', 'completed', { actor: 'admin' })).not.toThrow()
+    expect(() => assertTransition('no_show', 'completed', { actor: 'player' })).toThrow(
+      InvalidTransitionError,
+    )
+    expect(() => assertTransition('no_show', 'completed', { actor: 'system' })).toThrow(
+      InvalidTransitionError,
+    )
   })
 })

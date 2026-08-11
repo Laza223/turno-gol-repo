@@ -17,18 +17,13 @@ import { logger } from '@/shared/lib/logger'
  *     (re-armed to 48h when an in_process transfer is detected);
  *   - a 5-minute sweep cron as a safety net for jobs that never ran.
  */
-export async function registerExpirePendingBookingWorker(
-  boss: PgBoss,
-): Promise<void> {
-  await boss.work<ExpirePendingBookingJobData>(
-    QUEUE_EXPIRE_PENDING_BOOKING,
-    async (job) => {
-      const j = Array.isArray(job) ? job[0] : job
-      const bookingId = j?.data?.bookingId
-      if (!bookingId) return
-      await expirePendingBookingWithPolicy(bookingId)
-    },
-  )
+export async function registerExpirePendingBookingWorker(boss: PgBoss): Promise<void> {
+  await boss.work<ExpirePendingBookingJobData>(QUEUE_EXPIRE_PENDING_BOOKING, async (job) => {
+    const j = Array.isArray(job) ? job[0] : job
+    const bookingId = j?.data?.bookingId
+    if (!bookingId) return
+    await expirePendingBookingWithPolicy(bookingId)
+  })
 
   await boss.schedule(QUEUE_EXPIRE_PENDING_BOOKING_SWEEP, '*/5 * * * *', {})
   await boss.work(QUEUE_EXPIRE_PENDING_BOOKING_SWEEP, CRON_WORK_OPTIONS, async () => {

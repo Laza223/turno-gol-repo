@@ -21,7 +21,11 @@ export function ResumenTab({
   return (
     <div className="space-y-4">
       <Card title="Soporte">
-        <ImpersonateButton tenantId={tenant.id} tenantName={tenant.name} action={impersonateAction} />
+        <ImpersonateButton
+          tenantId={tenant.id}
+          tenantName={tenant.name}
+          action={impersonateAction}
+        />
       </Card>
 
       <Card title="Datos del complejo">
@@ -40,7 +44,9 @@ export function ResumenTab({
           </Dt>
           {tenant.scheduledDeletionAt && (
             <Dt label="Eliminación programada">
-              <span className="text-red-600 dark:text-red-400">{formatDateTimeArt(tenant.scheduledDeletionAt)}</span>
+              <span className="text-red-600 dark:text-red-400">
+                {formatDateTimeArt(tenant.scheduledDeletionAt)}
+              </span>
             </Dt>
           )}
           {tenant.description && <Dt label="Descripción">{tenant.description}</Dt>}

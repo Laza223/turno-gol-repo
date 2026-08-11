@@ -38,9 +38,7 @@ export type GridBooking = {
 }
 
 export type CellState =
-  | { kind: 'free' }
-  | { kind: 'booking'; booking: GridBooking; rowSpan: number }
-  | { kind: 'skip' }
+  { kind: 'free' } | { kind: 'booking'; booking: GridBooking; rowSpan: number } | { kind: 'skip' }
 
 // ---------------------------------------------------------------------------
 // Constants

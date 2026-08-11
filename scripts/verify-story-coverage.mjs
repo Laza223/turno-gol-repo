@@ -21,20 +21,27 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-const COVERED = new Set(['DIRECT_STORY_REQUIRED', 'PRESENTATIONAL_EXTRACTION_REQUIRED', 'STORY_COMPLETED'])
+const COVERED = new Set([
+  'DIRECT_STORY_REQUIRED',
+  'PRESENTATIONAL_EXTRACTION_REQUIRED',
+  'STORY_COMPLETED',
+])
 
 // `--others --exclude-standard` además de los trackeados: si no, una story recién escrita
 // y todavía sin commitear es INVISIBLE para el script, y este reporta un hueco que no
 // existe. (Pasó: las 10 stories nuevas seguían saliendo como faltantes después de
 // escritas.) `-c` = cached/trackeados, `-o` = untracked, `--exclude-standard` respeta el
 // .gitignore para no barrer node_modules ni storybook-static.
-const git = (...args) =>
-  execFileSync('git', args, { encoding: 'utf8' }).split('\n').filter(Boolean)
+const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).split('\n').filter(Boolean)
 
 const inventory = JSON.parse(readFileSync('docs/storybook/storybook-coverage.json', 'utf8'))
-const entries = Array.isArray(inventory) ? inventory : (inventory.files ?? inventory.components ?? [])
+const entries = Array.isArray(inventory)
+  ? inventory
+  : (inventory.files ?? inventory.components ?? [])
 
-const storyFiles = [...new Set(git('ls-files', '-c', '-o', '--exclude-standard', 'src/**/*.stories.tsx'))]
+const storyFiles = [
+  ...new Set(git('ls-files', '-c', '-o', '--exclude-standard', 'src/**/*.stories.tsx')),
+]
 
 // Un solo blob con TODOS los imports de TODAS las stories. Se matchea contra los
 // specifiers de import, no contra el texto entero del archivo: una mención en un
@@ -46,7 +53,9 @@ for (const f of storyFiles) {
   for (const m of src.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)) {
     const spec = m[1]
     if (spec.startsWith('.')) {
-      importSpecifiers.add(path.posix.normalize(path.posix.join(path.posix.dirname(f.replace(/\\/g, '/')), spec)))
+      importSpecifiers.add(
+        path.posix.normalize(path.posix.join(path.posix.dirname(f.replace(/\\/g, '/')), spec)),
+      )
     } else if (spec.startsWith('@/')) {
       importSpecifiers.add(path.posix.normalize(spec.replace(/^@\//, 'src/')))
     }
@@ -82,7 +91,9 @@ const totalStories = storyFiles.reduce(
 )
 
 console.log(`archivos .stories.tsx:  ${storyFiles.length}   (${totalStories} stories)`)
-console.log(`declarados con story:   ${entries.filter((e) => COVERED.has(e.classification)).length}`)
+console.log(
+  `declarados con story:   ${entries.filter((e) => COVERED.has(e.classification)).length}`,
+)
 console.log(`SIN story real:         ${uncovered.length}`)
 
 if (uncovered.length) {

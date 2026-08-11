@@ -6,10 +6,7 @@ import type { AuthUser } from '@/modules/auth/types'
 import { unauthorized } from '@/shared/api-error'
 import { runRequestObservability } from '@/shared/middleware/observability'
 
-export type AuthHandler = (
-  req: NextRequest,
-  user: AuthUser,
-) => Promise<NextResponse> | NextResponse
+export type AuthHandler = (req: NextRequest, user: AuthUser) => Promise<NextResponse> | NextResponse
 
 export function withAuth(handler: AuthHandler): (req: NextRequest) => Promise<NextResponse> {
   const run = async (req: NextRequest): Promise<NextResponse> => {

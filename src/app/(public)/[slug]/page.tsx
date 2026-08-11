@@ -38,13 +38,7 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return slugs.map((slug) => ({ slug }))
 }
 
-const UNAVAILABLE_STATUSES = new Set([
-  'suspended',
-  'blocked',
-  'canceled',
-  'churned',
-  'deleted',
-])
+const UNAVAILABLE_STATUSES = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
 
 export default async function PublicComplexPage(props: Props) {
   const tenant = await getPublicTenant((await props.params).slug)
@@ -102,7 +96,10 @@ export default async function PublicComplexPage(props: Props) {
         {courtCards.length > 0 && (
           <section aria-label="Canchas" className="space-y-3.5">
             <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
-              Canchas <span className="font-sans text-sm font-normal text-muted-foreground">({courtCards.length})</span>
+              Canchas{' '}
+              <span className="font-sans text-sm font-normal text-muted-foreground">
+                ({courtCards.length})
+              </span>
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {courtCards.map((court) => (
@@ -127,10 +124,7 @@ export default async function PublicComplexPage(props: Props) {
                     href={`/${tenant.slug}/torneos/${t.slug}`}
                     className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-accent/50"
                   >
-                    <Trophy
-                      className="h-5 w-5 shrink-0 text-muted-foreground"
-                      aria-hidden="true"
-                    />
+                    <Trophy className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-foreground">
                         {t.name}
@@ -173,7 +167,7 @@ export default async function PublicComplexPage(props: Props) {
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
-  const params = await props.params;
+  const params = await props.params
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
   if (UNAVAILABLE_STATUSES.has(tenant.status)) {

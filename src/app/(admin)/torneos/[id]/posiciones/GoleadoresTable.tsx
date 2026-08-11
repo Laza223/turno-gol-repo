@@ -64,8 +64,8 @@ export function GoleadoresTable({ scorers }: { scorers: TopScorersResult }) {
       </div>
       {scorers.unattributedGoals > 0 ? (
         <p className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
-          Faltan {scorers.unattributedGoals} gol(es) sin autor: están en el marcador pero
-          todavía no se cargó quién los hizo.
+          Faltan {scorers.unattributedGoals} gol(es) sin autor: están en el marcador pero todavía no
+          se cargó quién los hizo.
         </p>
       ) : null}
     </div>

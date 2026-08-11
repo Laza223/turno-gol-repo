@@ -3,10 +3,7 @@
 import { useCallback, useState, useTransition } from 'react'
 import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import {
-  countEmptyCells,
-  expandRulesToGrid,
-} from '@/modules/courts/pricing-grid'
+import { countEmptyCells, expandRulesToGrid } from '@/modules/courts/pricing-grid'
 import type { CourtActionResult, CourtPhotoActionResult } from '../actions'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
 import { Button } from '@/components/ui/button'
@@ -24,7 +21,10 @@ export type UploadCourtPhotoAction = (
   courtId: string,
   formData: FormData,
 ) => Promise<CourtPhotoActionResult>
-export type RemoveCourtPhotoAction = (courtId: string, url: string) => Promise<CourtPhotoActionResult>
+export type RemoveCourtPhotoAction = (
+  courtId: string,
+  url: string,
+) => Promise<CourtPhotoActionResult>
 export type ReorderCourtPhotosAction = (
   courtId: string,
   urls: string[],
@@ -130,9 +130,7 @@ export function CourtForm({
     formData.set('pricing', JSON.stringify({ rules }))
 
     startTransition(async () => {
-      const result = isEdit
-        ? await updateAction(court.id, formData)
-        : await createAction(formData)
+      const result = isEdit ? await updateAction(court.id, formData) : await createAction(formData)
 
       if (!result.success) {
         setError(result.error)
@@ -160,7 +158,10 @@ export function CourtForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card rounded-lg border border-border shadow-xs p-6 space-y-6">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-card rounded-lg border border-border shadow-xs p-6 space-y-6"
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">
           {isEdit ? 'Editar cancha' : 'Nueva cancha'}
@@ -273,11 +274,7 @@ export function CourtForm({
         </p>
       )}
 
-      <Button
-        type="submit"
-        isLoading={isPending}
-        className="w-full h-11"
-      >
+      <Button type="submit" isLoading={isPending} className="w-full h-11">
         {isEdit ? 'Guardar cambios' : 'Crear cancha'}
       </Button>
     </form>

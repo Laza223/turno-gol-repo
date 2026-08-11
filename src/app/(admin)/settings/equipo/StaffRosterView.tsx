@@ -4,7 +4,12 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import type { StaffRole } from '@/modules/staff/roles'
 import { InviteStaffButton } from './InviteStaffButton'
-import { StaffActions, type DeactivateStaffAction, type ResendInviteAction, type UpdateStaffRoleAction } from './StaffActions'
+import {
+  StaffActions,
+  type DeactivateStaffAction,
+  type ResendInviteAction,
+  type UpdateStaffRoleAction,
+} from './StaffActions'
 import { StaffRoleBadge, StaffStatusBadge } from './status-visual'
 import type { StaffActionResult } from './actions'
 
@@ -108,65 +113,65 @@ export function StaffRosterView({
             </ul>
           }
           table={
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Nombre
-                </th>
-                <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Email
-                </th>
-                <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Rol
-                </th>
-                <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Estado
-                </th>
-                <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {members.map((m) => (
-                <tr key={m.memberId} className="hover:bg-accent/50 transition-colors">
-                  <td className="p-3 text-sm font-medium text-foreground">
-                    {m.firstName} {m.lastName}
-                    {m.staffUserId === staffUserId && (
-                      <span className="ml-2 text-xs text-muted-foreground">(vos)</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-sm text-muted-foreground">{m.email}</td>
-                  <td className="p-3">
-                    <StaffRoleBadge role={m.role} />
-                  </td>
-                  <td className="p-3">
-                    <StaffStatusBadge isActive={m.isActive} />
-                  </td>
-                  <td className="p-3 text-right">
-                    {m.staffUserId !== staffUserId && (
-                      <StaffActions
-                        member={{
-                          memberId: m.memberId,
-                          email: m.email,
-                          firstName: m.firstName,
-                          lastName: m.lastName,
-                          isActive: m.isActive,
-                          role: m.role,
-                        }}
-                        currentUserStaffId={staffUserId}
-                        activeAdminCount={activeAdminCount}
-                        deactivateAction={deactivateAction}
-                        resendInviteAction={resendInviteAction}
-                        updateRoleAction={updateRoleAction}
-                      />
-                    )}
-                  </td>
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Nombre
+                  </th>
+                  <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Email
+                  </th>
+                  <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Rol
+                  </th>
+                  <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Estado
+                  </th>
+                  <th className="p-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Acciones
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {members.map((m) => (
+                  <tr key={m.memberId} className="hover:bg-accent/50 transition-colors">
+                    <td className="p-3 text-sm font-medium text-foreground">
+                      {m.firstName} {m.lastName}
+                      {m.staffUserId === staffUserId && (
+                        <span className="ml-2 text-xs text-muted-foreground">(vos)</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-sm text-muted-foreground">{m.email}</td>
+                    <td className="p-3">
+                      <StaffRoleBadge role={m.role} />
+                    </td>
+                    <td className="p-3">
+                      <StaffStatusBadge isActive={m.isActive} />
+                    </td>
+                    <td className="p-3 text-right">
+                      {m.staffUserId !== staffUserId && (
+                        <StaffActions
+                          member={{
+                            memberId: m.memberId,
+                            email: m.email,
+                            firstName: m.firstName,
+                            lastName: m.lastName,
+                            isActive: m.isActive,
+                            role: m.role,
+                          }}
+                          currentUserStaffId={staffUserId}
+                          activeAdminCount={activeAdminCount}
+                          deactivateAction={deactivateAction}
+                          resendInviteAction={resendInviteAction}
+                          updateRoleAction={updateRoleAction}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           }
         />
       )}

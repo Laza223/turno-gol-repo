@@ -38,12 +38,8 @@ async function loadBookingSummary(bookingId: string): Promise<MockBookingSummary
   return rows[0] ?? null
 }
 
-export default async function MockMpCheckoutPage(
-  props: {
-    searchParams: Promise<SearchParams>
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function MockMpCheckoutPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams
   // 404 in production — this page must never be reachable outside mock mode.
   if (process.env.MP_MOCK_MODE !== '1') notFound()
 

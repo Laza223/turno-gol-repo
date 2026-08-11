@@ -32,7 +32,11 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
       <header className="fixed top-0 z-50 w-full px-3 pt-3.5 sm:px-6 sm:pt-[18px]">
         <div className="mx-auto max-w-[1240px]">
           <div className="overlay-nav flex items-center justify-between gap-2 rounded-full py-2 pl-4 pr-2 sm:gap-6 sm:py-3 sm:pl-6 sm:pr-3.5">
-            <Link href="/" aria-label="TurnoGol — inicio" className="inline-flex min-h-11 shrink-0 items-center transition-opacity hover:opacity-90 md:min-h-0">
+            <Link
+              href="/"
+              aria-label="TurnoGol — inicio"
+              className="inline-flex min-h-11 shrink-0 items-center transition-opacity hover:opacity-90 md:min-h-0"
+            >
               <Logo variant="horizontal" textClassName="text-foreground" />
             </Link>
             <div className="flex items-center gap-1 sm:gap-1.5">
@@ -50,7 +54,10 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
                 <Building2 className="h-[17px] w-[17px]" aria-hidden />
                 Para complejos
               </Link>
-              <span aria-hidden className="mx-1 hidden h-[22px] w-px bg-border sm:mx-1.5 sm:block dark:bg-white/10" />
+              <span
+                aria-hidden
+                className="mx-1 hidden h-[22px] w-px bg-border sm:mx-1.5 sm:block dark:bg-white/10"
+              />
               {session ? (
                 <AccountMenu
                   firstName={session.firstName}
@@ -78,8 +85,16 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
   return (
     <header className="sticky top-0 z-50 w-full px-4 py-3 bg-transparent">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full border border-border bg-card/80 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] backdrop-blur-md sm:px-6 lg:px-8">
-        <Link href="/" aria-label="TurnoGol — inicio" className="inline-flex min-h-11 items-center transition-opacity hover:opacity-90 md:min-h-0">
-          <Logo variant="horizontal" textClassName="text-foreground font-bold" iconClassName="bg-card border-border" />
+        <Link
+          href="/"
+          aria-label="TurnoGol — inicio"
+          className="inline-flex min-h-11 items-center transition-opacity hover:opacity-90 md:min-h-0"
+        >
+          <Logo
+            variant="horizontal"
+            textClassName="text-foreground font-bold"
+            iconClassName="bg-card border-border"
+          />
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">
           <Link

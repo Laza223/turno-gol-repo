@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
-import { VerificationCard, VerificationNotFound, type VerificationBooking } from './VerificationCard'
+import {
+  VerificationCard,
+  VerificationNotFound,
+  type VerificationBooking,
+} from './VerificationCard'
 
 const booking: VerificationBooking = {
   tenantName: 'Complejo Fénix',
@@ -42,7 +46,9 @@ export const SenaPendiente: Story = {
   args: { status: 'pending_payment' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'Seña pendiente de pago' })).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('heading', { name: 'Seña pendiente de pago' }),
+    ).toBeInTheDocument()
   },
 }
 

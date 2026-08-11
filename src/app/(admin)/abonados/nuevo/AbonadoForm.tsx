@@ -163,15 +163,25 @@ export function PreviewSlotsView({
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-800 dark:text-amber-300">
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
           <div>
-            <span className="font-semibold">Atención:</span> Hay {conflicts.length} fecha{conflicts.length !== 1 ? 's' : ''} que ya {conflicts.length === 1 ? 'está ocupada' : 'están ocupadas'} por otra reserva. {conflicts.length === 1 ? 'Esa fecha se saltará' : 'Esas fechas se saltarán'} al crear el abonado.
+            <span className="font-semibold">Atención:</span> Hay {conflicts.length} fecha
+            {conflicts.length !== 1 ? 's' : ''} que ya{' '}
+            {conflicts.length === 1 ? 'está ocupada' : 'están ocupadas'} por otra reserva.{' '}
+            {conflicts.length === 1 ? 'Esa fecha se saltará' : 'Esas fechas se saltarán'} al crear
+            el abonado.
           </div>
         </div>
       )}
 
       {noSlots && (
-        <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-700 dark:text-red-300">
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-700 dark:text-red-300"
+        >
           <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
-          <span>No se creará ningún turno porque todas las fechas coinciden con reservas existentes. Elegí otro horario o cancha.</span>
+          <span>
+            No se creará ningún turno porque todas las fechas coinciden con reservas existentes.
+            Elegí otro horario o cancha.
+          </span>
         </div>
       )}
 
@@ -179,7 +189,10 @@ export function PreviewSlotsView({
         {dates.map((d) => {
           const isConflict = conflictSet.has(d)
           return (
-            <div key={d} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/40 transition-colors">
+            <div
+              key={d}
+              className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/40 transition-colors"
+            >
               <span className="text-sm font-medium text-foreground">{d}</span>
               {isConflict ? (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 dark:text-amber-400 bg-amber-500/15 px-2.5 py-0.5 rounded-full">
@@ -385,13 +398,18 @@ export default function AbonadoForm({
               </div>
               <div>
                 <h2 className="text-base font-semibold text-foreground">Turno Fijo Recurrente</h2>
-                <p className="text-xs text-muted-foreground">Definí el día, horario y cancha de la reserva fija.</p>
+                <p className="text-xs text-muted-foreground">
+                  Definí el día, horario y cancha de la reserva fija.
+                </p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="courtId" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <label
+                  htmlFor="courtId"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                >
                   <MapPin className="h-3.5 w-3.5 text-primary" /> Cancha
                 </label>
                 <Combobox
@@ -407,7 +425,10 @@ export default function AbonadoForm({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="dayOfWeek" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <label
+                    htmlFor="dayOfWeek"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                  >
                     <CalendarDays className="h-3.5 w-3.5 text-primary" /> Día semanal
                   </label>
                   <Combobox
@@ -443,7 +464,10 @@ export default function AbonadoForm({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="timeStart" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <label
+                    htmlFor="timeStart"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                  >
                     <Clock className="h-3.5 w-3.5 text-primary" /> Hora inicio
                   </label>
                   <Combobox
@@ -465,7 +489,10 @@ export default function AbonadoForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="timeEnd" className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <label
+                    htmlFor="timeEnd"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                  >
                     <Clock className="h-3.5 w-3.5 text-primary" /> Hora fin
                   </label>
                   <Combobox
@@ -494,7 +521,9 @@ export default function AbonadoForm({
               </div>
               <div>
                 <h2 className="text-base font-semibold text-foreground">Cliente y Facturación</h2>
-                <p className="text-xs text-muted-foreground">Datos de contacto y tarifa por sesión.</p>
+                <p className="text-xs text-muted-foreground">
+                  Datos de contacto y tarifa por sesión.
+                </p>
               </div>
             </div>
 
@@ -526,7 +555,8 @@ export default function AbonadoForm({
                     htmlFor="pricePerSessionCents"
                     className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
                   >
-                    <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Precio por turno (pesos)
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{' '}
+                    Precio por turno (pesos)
                   </label>
                   <MoneyInput
                     id="pricePerSessionCents"
@@ -537,7 +567,6 @@ export default function AbonadoForm({
                   />
                 </div>
               </div>
-
             </div>
           </div>
 
@@ -597,9 +626,7 @@ export default function AbonadoForm({
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <CalendarCheck2 className="h-3.5 w-3.5 text-primary" /> Inicia
                 </span>
-                <span className="font-semibold text-foreground">
-                  {formattedStartsOn}
-                </span>
+                <span className="font-semibold text-foreground">{formattedStartsOn}</span>
               </div>
 
               <div className="flex items-center justify-between py-1 border-b border-border/40">
@@ -613,11 +640,10 @@ export default function AbonadoForm({
 
               <div className="flex items-center justify-between py-1 border-b border-border/40">
                 <span className="text-muted-foreground flex items-center gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Tarifa / turno
+                  <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{' '}
+                  Tarifa / turno
                 </span>
-                <span className="font-bold text-foreground text-sm">
-                  {formattedPrice}
-                </span>
+                <span className="font-bold text-foreground text-sm">{formattedPrice}</span>
               </div>
 
               <div className="rounded-xl bg-accent/40 p-3 space-y-1">

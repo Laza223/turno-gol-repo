@@ -25,16 +25,17 @@ function mockFetch(impl: () => Promise<Response> | Response) {
 
 describe('refreshMpAccessToken', () => {
   it('posts grant_type=refresh_token with the decrypted token and maps the response', async () => {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
-      new Response(
-        JSON.stringify({
-          access_token: 'new-access',
-          refresh_token: 'new-refresh',
-          user_id: 777,
-          public_key: 'pub-key',
-        }),
-        { status: 200 },
-      ),
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            access_token: 'new-access',
+            refresh_token: 'new-refresh',
+            user_id: 777,
+            public_key: 'pub-key',
+          }),
+          { status: 200 },
+        ),
     )
     vi.stubGlobal('fetch', fetchMock)
 

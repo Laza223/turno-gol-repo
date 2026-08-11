@@ -1,14 +1,5 @@
 import { sql } from 'drizzle-orm'
-import {
-  check,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { check, index, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { players } from './players'
 import { playerTagEnum } from './enums'
@@ -59,16 +50,10 @@ export const playerTenantRelationships = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    statusCheck: check(
-      'chk_ptr_status_valid',
-      sql`${table.status} IN ('active', 'blocked')`,
-    ),
+    statusCheck: check('chk_ptr_status_valid', sql`${table.status} IN ('active', 'blocked')`),
     uqPlayerTenant: unique('uq_player_tenant').on(table.playerId, table.tenantId),
     tenantIdx: index('idx_ptr_tenant').on(table.tenantId),
     playerIdx: index('idx_ptr_player').on(table.playerId),
-    tenantStatusIdx: index('idx_ptr_tenant_status').on(
-      table.tenantId,
-      table.status,
-    ),
+    tenantStatusIdx: index('idx_ptr_tenant_status').on(table.tenantId, table.status),
   }),
 )

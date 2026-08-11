@@ -97,7 +97,13 @@ describe('canteen sale — happy path (control positivo de la venta normal)', ()
     expect(cashFlows[0]!.description).toBe('Cantina: Agua x2, Gaseosa sin control')
 
     const movements = await sql<
-      { product_id: string; qty: number; unit_price: number | null; cash_flow_id: string | null; kind: string }[]
+      {
+        product_id: string
+        qty: number
+        unit_price: number | null
+        cash_flow_id: string | null
+        kind: string
+      }[]
     >`SELECT product_id, qty, unit_price, cash_flow_id, kind FROM stock_movements WHERE tenant_id = ${tenant.id}`
     expect(movements).toHaveLength(2)
 
@@ -174,8 +180,12 @@ describe('canteen sale — idempotencia', () => {
       clientIdempotencyKey: key,
     }
 
-    const first = await withTenantContext(tenant.id, (tx) => sellTicket(tenant.id, staff.id, input, tx))
-    const second = await withTenantContext(tenant.id, (tx) => sellTicket(tenant.id, staff.id, input, tx))
+    const first = await withTenantContext(tenant.id, (tx) =>
+      sellTicket(tenant.id, staff.id, input, tx),
+    )
+    const second = await withTenantContext(tenant.id, (tx) =>
+      sellTicket(tenant.id, staff.id, input, tx),
+    )
 
     expect(first.duplicate).toBe(false)
     expect(second.duplicate).toBe(true)
@@ -240,7 +250,8 @@ describe('canteen sale — carrera de stock (keys distintas)', () => {
     ])
 
     const fulfilled = results.filter(
-      (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof sellTicket>>> => r.status === 'fulfilled',
+      (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof sellTicket>>> =>
+        r.status === 'fulfilled',
     )
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 

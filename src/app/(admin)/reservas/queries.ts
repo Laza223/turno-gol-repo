@@ -286,9 +286,7 @@ export async function sumBookingChargesByBooking(
   //
   // ANY(ARRAY[...]) con sql.join (patrón de canteen-sale/abonado.service):
   // interpolar el array de JS directo rompe con drizzle+postgres-js.
-  const pairs = bookingIds.map(
-    (id) => sql`(${id}::uuid, ${depositCashFlowDescription(id)}::text)`,
-  )
+  const pairs = bookingIds.map((id) => sql`(${id}::uuid, ${depositCashFlowDescription(id)}::text)`)
   const rows = await tx.execute(sql`
     WITH wanted (booking_id, deposit_desc) AS (
       VALUES ${sql.join(pairs, sql`, `)}

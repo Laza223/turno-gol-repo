@@ -6,10 +6,7 @@ const projectRoot = path.resolve(__dirname, '..', '..')
 
 describe('inputMode coverage (regression guard)', () => {
   it('PhoneInput component has inputMode="tel"', () => {
-    const file = readFileSync(
-      path.join(projectRoot, 'src/components/ui/phone-input.tsx'),
-      'utf8',
-    )
+    const file = readFileSync(path.join(projectRoot, 'src/components/ui/phone-input.tsx'), 'utf8')
     const phoneTypeIdx = file.indexOf('type="tel"')
     expect(phoneTypeIdx).toBeGreaterThan(-1)
     const windowAround = file.slice(phoneTypeIdx, phoneTypeIdx + 200)

@@ -10,12 +10,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { listTournaments } from '@/modules/tournaments/tournament.service'
-import {
-  FORMAT_SHORT,
-  STATUS_LABELS,
-  formatDateRange,
-  statusBadgeClass,
-} from './torneos-lib'
+import { FORMAT_SHORT, STATUS_LABELS, formatDateRange, statusBadgeClass } from './torneos-lib'
 
 export default async function TorneosPage() {
   const user = await extractAuthUser()
@@ -33,9 +28,7 @@ export default async function TorneosPage() {
   // el botón para no mandarlo a un rebote sin explicación.
   const role = await getStaffRole(tenant.id, user.staffUserId)
 
-  const tournaments = await withTenantContext(tenant.id, (tx) =>
-    listTournaments(tenant.id, tx),
-  )
+  const tournaments = await withTenantContext(tenant.id, (tx) => listTournaments(tenant.id, tx))
 
   const total = tournaments.length
 
@@ -78,7 +71,11 @@ export default async function TorneosPage() {
           {tournaments.map((t, i) => (
             // Delay capeado: sin cota, en listas largas los últimos ítems quedan
             // invisibles (opacity 0) más de un segundo aunque ya sean focuseables.
-            <li key={t.id} className="card-entrance" style={{ animationDelay: `${80 + Math.min(i, 8) * 50}ms` }}>
+            <li
+              key={t.id}
+              className="card-entrance"
+              style={{ animationDelay: `${80 + Math.min(i, 8) * 50}ms` }}
+            >
               <Link
                 href={`/torneos/${t.id}`}
                 className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent/40 sm:flex-row sm:items-center sm:justify-between"

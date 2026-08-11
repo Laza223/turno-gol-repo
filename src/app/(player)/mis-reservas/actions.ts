@@ -39,7 +39,7 @@ async function requirePlayer() {
 
 export async function cancelMyBookingAction(
   bookingId: string,
-  reason?: string
+  reason?: string,
 ): Promise<PlayerBookingActionResult> {
   const parsed = cancelSchema.safeParse({ bookingId, reason })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
@@ -83,7 +83,7 @@ export async function cancelMyBookingAction(
   let outcome: CancellationOutcome
   try {
     outcome = await withTenantContext(pre.tenant_id, (tx) =>
-      cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx)
+      cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx),
     )
   } catch (err) {
     if (err instanceof BookingNotOwnedByPlayerError) {

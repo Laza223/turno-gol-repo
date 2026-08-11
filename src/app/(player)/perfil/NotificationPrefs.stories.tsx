@@ -60,7 +60,10 @@ export const ErrorAlGuardar: Story = {
   args: {
     initialEmail: true,
     initialPush: true,
-    action: fn(async () => ({ success: false as const, error: 'No pudimos guardar tu preferencia. Intentá de nuevo.' })),
+    action: fn(async () => ({
+      success: false as const,
+      error: 'No pudimos guardar tu preferencia. Intentá de nuevo.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

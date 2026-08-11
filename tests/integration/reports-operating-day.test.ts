@@ -62,7 +62,14 @@ async function seedTenant(sql: Sql, hours: OpeningHours, closesNextDay: boolean)
   await sql`
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
     VALUES (${tenant.id}, ${'Cancha 1'}, ${10}, ${sql.json({
-      rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 }],
+      rules: [
+        {
+          days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+          from: '08:00',
+          to: '23:00',
+          price: 800000,
+        },
+      ],
     })}, 'online')
   `
   return { tenant, staff }

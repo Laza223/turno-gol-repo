@@ -36,10 +36,10 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
     const productName = `Agua QA ${productId.slice(0, 8)}`
     const pricePerUnit = 150_000 // $1500 en centavos
 
-    await runSql(
-      `DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`,
-      [E2E_TENANT_ID, today],
-    )
+    await runSql(`DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`, [
+      E2E_TENANT_ID,
+      today,
+    ])
 
     // Reemplaza el catálogo de canteen_products por un único producto
     // determinístico (tabla real desde la migración 048, ya no JSONB).

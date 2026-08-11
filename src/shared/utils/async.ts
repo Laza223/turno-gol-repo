@@ -58,7 +58,7 @@ export function fetchWithTimeout(
     const signal =
       init.signal && typeof AbortSignal.any === 'function'
         ? AbortSignal.any([init.signal, timeoutSignal])
-        : init.signal ?? timeoutSignal
+        : (init.signal ?? timeoutSignal)
     return fetch(input, { ...init, signal })
   }
 
@@ -67,7 +67,10 @@ export function fetchWithTimeout(
   const timer = setTimeout(() => controller.abort(new TimeoutError()), ms)
   if (init.signal) {
     if (init.signal.aborted) controller.abort(init.signal.reason)
-    else init.signal.addEventListener('abort', () => controller.abort(init.signal?.reason), { once: true })
+    else
+      init.signal.addEventListener('abort', () => controller.abort(init.signal?.reason), {
+        once: true,
+      })
   }
   return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer))
 }

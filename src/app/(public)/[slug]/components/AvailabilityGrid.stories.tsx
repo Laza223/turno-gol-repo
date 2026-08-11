@@ -37,7 +37,9 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect((await canvas.findAllByRole('link', { name: /^Reservar/ })).length).toBeGreaterThan(0)
+    await expect(
+      (await canvas.findAllByRole('link', { name: /^Reservar/ })).length,
+    ).toBeGreaterThan(0)
     // "Turno fijo"/"Bloqueado" aparecen 2 veces c/u: en la celda del slot y en la leyenda.
     await expect(canvas.getAllByText('Turno fijo').length).toBeGreaterThan(1)
     await expect(canvas.getAllByText('Bloqueado').length).toBeGreaterThan(1)
@@ -105,7 +107,10 @@ export const FiltroPorCancha: Story = {
     const canvas = within(canvasElement)
     const group = within(await canvas.findByRole('group', { name: 'Filtrar por cancha' }))
     await userEvent.click(group.getByRole('button', { name: 'Cancha 2' }))
-    await expect(group.getByRole('button', { name: 'Cancha 2' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(group.getByRole('button', { name: 'Cancha 2' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await expect(canvas.queryByRole('columnheader', { name: 'Cancha 1' })).not.toBeInTheDocument()
   },
 }

@@ -179,12 +179,20 @@ describe('renderTrialWelcome', () => {
 
 describe('renderTrialEnding', () => {
   it('subject includes days remaining', () => {
-    const { subject } = renderTrialEnding({ ownerName: 'Marcelo', tenantName: 'Norte', daysLeft: 3 })
+    const { subject } = renderTrialEnding({
+      ownerName: 'Marcelo',
+      tenantName: 'Norte',
+      daysLeft: 3,
+    })
     expect(subject).toContain('3')
   })
 
   it('singular form for 1 day', () => {
-    const { subject } = renderTrialEnding({ ownerName: 'Marcelo', tenantName: 'Norte', daysLeft: 1 })
+    const { subject } = renderTrialEnding({
+      ownerName: 'Marcelo',
+      tenantName: 'Norte',
+      daysLeft: 1,
+    })
     expect(subject).toContain('1 día ')
     expect(subject).not.toContain('días')
   })

@@ -21,8 +21,13 @@ beforeAll(async () => {
   sql = getSql()
   await ensureRoles(sql)
 })
-beforeEach(async () => { await cleanupAll(sql) })
-afterAll(async () => { await cleanupAll(sql); await closeSql() })
+beforeEach(async () => {
+  await cleanupAll(sql)
+})
+afterAll(async () => {
+  await cleanupAll(sql)
+  await closeSql()
+})
 
 // Seed a court for a tenant. Used to build bookings/payments that must survive
 // anonymization with their player_id severed but financial data intact.
@@ -93,20 +98,22 @@ describe('anonymizePlayer', () => {
 
     await anonymizePlayer(player.id)
 
-    const rows = await sql<Array<{
-      status: string
-      email: string
-      first_name: string
-      last_name: string
-      phone: string | null
-      avatar_url: string | null
-      preferred_area: string | null
-      ban_reason: string | null
-      ban_until: Date | null
-      agreed_to_terms_at: Date | null
-      terms_version: string | null
-      last_login_at: Date | null
-    }>>`SELECT status, email, first_name, last_name, phone, avatar_url, preferred_area,
+    const rows = await sql<
+      Array<{
+        status: string
+        email: string
+        first_name: string
+        last_name: string
+        phone: string | null
+        avatar_url: string | null
+        preferred_area: string | null
+        ban_reason: string | null
+        ban_until: Date | null
+        agreed_to_terms_at: Date | null
+        terms_version: string | null
+        last_login_at: Date | null
+      }>
+    >`SELECT status, email, first_name, last_name, phone, avatar_url, preferred_area,
         ban_reason, ban_until, agreed_to_terms_at, terms_version, last_login_at
         FROM players WHERE id = ${player.id}`
 
@@ -133,12 +140,14 @@ describe('anonymizePlayer', () => {
     await linkPlayerToTenant(sql, t1.id, player.id)
     await linkPlayerToTenant(sql, t2.id, player.id)
 
-    const before = await sql`SELECT id FROM player_tenant_relationships WHERE player_id = ${player.id}`
+    const before =
+      await sql`SELECT id FROM player_tenant_relationships WHERE player_id = ${player.id}`
     expect(before).toHaveLength(2)
 
     await anonymizePlayer(player.id)
 
-    const after = await sql`SELECT id FROM player_tenant_relationships WHERE player_id = ${player.id}`
+    const after =
+      await sql`SELECT id FROM player_tenant_relationships WHERE player_id = ${player.id}`
     expect(after).toHaveLength(0)
   })
 
@@ -169,7 +178,9 @@ describe('anonymizePlayer', () => {
 
     await anonymizePlayer(player.id)
 
-    const bookings = await sql<{ player_id: string | null; price_snapshot: number; status: string }[]>`
+    const bookings = await sql<
+      { player_id: string | null; price_snapshot: number; status: string }[]
+    >`
       SELECT player_id, price_snapshot, status FROM bookings WHERE tenant_id = ${tenant.id}
     `
     expect(bookings).toHaveLength(1)

@@ -28,8 +28,6 @@ export function artDayRangeUtc(
   toDate: string = fromDate,
 ): { fromUtc: Date; toUtc: Date } {
   const fromUtc = new Date(new Date(`${fromDate}T00:00:00Z`).getTime() + ART_OFFSET_MS)
-  const toUtc = new Date(
-    new Date(`${toDate}T00:00:00Z`).getTime() + ART_OFFSET_MS + 24 * 3600_000,
-  )
+  const toUtc = new Date(new Date(`${toDate}T00:00:00Z`).getTime() + ART_OFFSET_MS + 24 * 3600_000)
   return { fromUtc, toUtc }
 }

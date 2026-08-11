@@ -44,7 +44,11 @@ describe('FavoritesList (perfil del jugador)', () => {
   it('con 3 favoritos renderiza 3 TenantCards', () => {
     render(
       <FavoritesList
-        tenants={[tenant('t1', 'El Potrero'), tenant('t2', 'La Bombonerita'), tenant('t3', 'Goleada FC')]}
+        tenants={[
+          tenant('t1', 'El Potrero'),
+          tenant('t2', 'La Bombonerita'),
+          tenant('t3', 'Goleada FC'),
+        ]}
         photosByTenant={{}}
       />,
     )
@@ -67,8 +71,8 @@ describe('FavoritesList (perfil del jugador)', () => {
     render(<FavoritesList tenants={[]} photosByTenant={{}} />)
     expect(screen.queryAllByRole('article')).toHaveLength(0)
     expect(screen.getByText(/no marcaste complejos favoritos/i)).toBeTruthy()
-    expect(
-      screen.getByRole('link', { name: 'Explorar complejos' }).getAttribute('href'),
-    ).toBe('/explorar')
+    expect(screen.getByRole('link', { name: 'Explorar complejos' }).getAttribute('href')).toBe(
+      '/explorar',
+    )
   })
 })

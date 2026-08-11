@@ -14,7 +14,10 @@ vi.mock('@/hooks/use-toast', () => ({
 }))
 
 import { TeamsPanel } from '@/app/(admin)/torneos/[id]/TeamsPanel'
-import type { TournamentTeamPlayerRow, TournamentTeamRow } from '@/modules/tournaments/tournament.types'
+import type {
+  TournamentTeamPlayerRow,
+  TournamentTeamRow,
+} from '@/modules/tournaments/tournament.types'
 
 const addAction = vi.fn(async () => ({ success: true as const }))
 const removeAction = vi.fn(async () => ({ success: true as const }))
@@ -82,7 +85,9 @@ describe('TeamsPanel — borrar equipo (Clase B: ConfirmDialog con consecuencias
     expect(removeAction).not.toHaveBeenCalled()
 
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('Se borra el plantel completo junto con el equipo.')).toBeTruthy()
+    expect(
+      within(dialog).getByText('Se borra el plantel completo junto con el equipo.'),
+    ).toBeTruthy()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Borrar equipo' }))
     await waitFor(() => expect(removeAction).toHaveBeenCalledWith({ id: 'team-1' }))
@@ -166,7 +171,10 @@ describe('TeamsPanel — sacar del plantel (Clase A: ejecuta ya + Deshacer)', ()
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Sacado del plantel', action: expect.objectContaining({ label: 'Deshacer' }) }),
+        expect.objectContaining({
+          title: 'Sacado del plantel',
+          action: expect.objectContaining({ label: 'Deshacer' }),
+        }),
       ),
     )
     const call = toastMock.mock.calls.find((c) => c[0]?.title === 'Sacado del plantel')
@@ -270,10 +278,7 @@ describe('TeamsPanel — estado del equipo (updateTeamAction)', () => {
     fireEvent.click(await screen.findByRole('radio', { name: /Inscripto/ }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/cupo de 12 equipos/)
-    expect(screen.getByRole('radio', { name: /Se bajó/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
+    expect(screen.getByRole('radio', { name: /Se bajó/ })).toHaveAttribute('aria-checked', 'true')
   })
 })
 
@@ -296,7 +301,9 @@ describe('TeamsPanel — editar datos del equipo (updateTeamAction)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Los Pibes/ }))
     fireEvent.click(await screen.findByRole('button', { name: /Editar datos/ }))
 
-    const nombre = await screen.findByLabelText('Nombre del equipo', { selector: '#equipo-team-1-nombre' })
+    const nombre = await screen.findByLabelText('Nombre del equipo', {
+      selector: '#equipo-team-1-nombre',
+    })
     fireEvent.change(nombre, { target: { value: 'Los Pibes FC' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))

@@ -1,12 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { sql as drizzleSql } from 'drizzle-orm'
 import type { ReservedSql } from 'postgres'
-import {
-  closeSql,
-  getSql,
-  withContext,
-  withTenantContext,
-} from '@/shared/db/client'
+import { closeSql, getSql, withContext, withTenantContext } from '@/shared/db/client'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { seedIsolationData, type IsolationSeed } from '../helpers/seed'
 
@@ -43,10 +38,7 @@ afterAll(async () => closeSql())
 // dos invocaciones consecutivas usen el MISMO backend (clave del test de
 // poisoning: el pool por defecto entregaría conexiones distintas y el leak
 // pasaría inadvertido).
-async function txOn<T>(
-  conn: ReservedSql,
-  fn: (tx: ReservedSql) => Promise<T>,
-): Promise<T> {
+async function txOn<T>(conn: ReservedSql, fn: (tx: ReservedSql) => Promise<T>): Promise<T> {
   await conn`BEGIN`
   try {
     const result = await fn(conn)
@@ -58,10 +50,7 @@ async function txOn<T>(
   }
 }
 
-async function courtIdsAsApp(
-  conn: ReservedSql,
-  tenantId?: string,
-): Promise<string[]> {
+async function courtIdsAsApp(conn: ReservedSql, tenantId?: string): Promise<string[]> {
   return txOn(conn, async (tx) => {
     await tx`SET LOCAL ROLE turnogol_app`
     if (tenantId) {
@@ -224,16 +213,14 @@ describe('RLS pool poisoning: SET LOCAL es transaction-scoped', () => {
     try {
       const asApp = await txOn(conn, async (tx) => {
         await tx`SET LOCAL ROLE turnogol_app`
-        const [{ current_user: who }] =
-          await tx<{ current_user: string }[]>`SELECT current_user`
+        const [{ current_user: who }] = await tx<{ current_user: string }[]>`SELECT current_user`
         return who
       })
       expect(asApp).toBe('turnogol_app')
 
       // Misma conexión, sin SET ROLE: debe haber vuelto al rol base (superusuario).
       const after = await txOn(conn, async (tx) => {
-        const [{ current_user: who }] =
-          await tx<{ current_user: string }[]>`SELECT current_user`
+        const [{ current_user: who }] = await tx<{ current_user: string }[]>`SELECT current_user`
         // Superusuario bypassa RLS → ve canchas de AMBOS tenants sin contexto.
         const rows = await tx<{ id: string }[]>`SELECT id FROM courts`
         return { who, ids: rows.map((r) => r.id) }

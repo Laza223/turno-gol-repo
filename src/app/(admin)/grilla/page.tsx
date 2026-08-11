@@ -21,10 +21,7 @@ import {
   rescheduleBookingAction,
 } from '@/app/(admin)/reservas/actions'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
-import {
-  listCanteenForBookingAction,
-  sellTicketAction,
-} from '@/app/(admin)/caja/cantina/actions'
+import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { artTodayStr } from '@/shared/dates/art'
@@ -35,11 +32,7 @@ import type {
   PaymentMethodValue,
 } from '@/modules/bookings/booking.types'
 
-export default async function GrillaPage(
-  props: {
-    searchParams: Promise<{ date?: string }>
-  }
-) {
+export default async function GrillaPage(props: { searchParams: Promise<{ date?: string }> }) {
   const searchParams = await props.searchParams
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
@@ -50,47 +43,50 @@ export default async function GrillaPage(
   const todayArt = artTodayStr()
   const dateStr = safeDateParam(searchParams.date, todayArt)
 
-  const { courts, rawBookings, chargesByBooking } = await withTenantContext(tenant.id, async (tx) => {
-    const [courtList, bookingRows] = await Promise.all([
-      listCourts(tenant.id, tx),
-      tx
-        .select({
-          id: bookings.id,
-          courtId: bookings.courtId,
-          date: bookings.date,
-          timeStart: bookings.timeStart,
-          timeEnd: bookings.timeEnd,
-          status: bookings.status,
-          type: bookings.type,
-          guestName: bookings.guestName,
-          priceSnapshot: bookings.priceSnapshot,
-          paymentMethod: bookings.paymentMethod,
-          depositStatus: bookings.depositStatus,
-          depositAmount: bookings.depositAmount,
-          playerFirstName: players.firstName,
-          playerLastName: players.lastName,
-        })
-        .from(bookings)
-        .leftJoin(players, eq(bookings.playerId, players.id))
-        .where(
-          and(
-            eq(bookings.tenantId, tenant.id),
-            sql`${bookings.date} = ${dateStr}::date`,
-            sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+  const { courts, rawBookings, chargesByBooking } = await withTenantContext(
+    tenant.id,
+    async (tx) => {
+      const [courtList, bookingRows] = await Promise.all([
+        listCourts(tenant.id, tx),
+        tx
+          .select({
+            id: bookings.id,
+            courtId: bookings.courtId,
+            date: bookings.date,
+            timeStart: bookings.timeStart,
+            timeEnd: bookings.timeEnd,
+            status: bookings.status,
+            type: bookings.type,
+            guestName: bookings.guestName,
+            priceSnapshot: bookings.priceSnapshot,
+            paymentMethod: bookings.paymentMethod,
+            depositStatus: bookings.depositStatus,
+            depositAmount: bookings.depositAmount,
+            playerFirstName: players.firstName,
+            playerLastName: players.lastName,
+          })
+          .from(bookings)
+          .leftJoin(players, eq(bookings.playerId, players.id))
+          .where(
+            and(
+              eq(bookings.tenantId, tenant.id),
+              sql`${bookings.date} = ${dateStr}::date`,
+              sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+            ),
           ),
-        ),
-    ])
+      ])
 
-    // Los cobros de mostrador se piden DESPUÉS de saber qué turnos hay: es una
-    // sola query agregada para todo el día, no una por celda.
-    const charges = await sumBookingChargesByBooking(
-      tenant.id,
-      bookingRows.map((r) => r.id),
-      tx,
-    )
+      // Los cobros de mostrador se piden DESPUÉS de saber qué turnos hay: es una
+      // sola query agregada para todo el día, no una por celda.
+      const charges = await sumBookingChargesByBooking(
+        tenant.id,
+        bookingRows.map((r) => r.id),
+        tx,
+      )
 
-    return { courts: courtList, rawBookings: bookingRows, chargesByBooking: charges }
-  })
+      return { courts: courtList, rawBookings: bookingRows, chargesByBooking: charges }
+    },
+  )
 
   const initialBookings: GridBooking[] = rawBookings.map((r) => {
     // La alarma "sin cobrar" de Fase 3 necesita plata, no estado: el saldo sale

@@ -119,7 +119,7 @@ async function migrationsAppliedCheck(): Promise<boolean> {
     `
     if (!rows[0]?.exists) {
       console.error(
-        "tenants.closes_next_day missing — migration 035_closes_next_day.sql not applied. " +
+        'tenants.closes_next_day missing — migration 035_closes_next_day.sql not applied. ' +
           'Run the migration loop from .github/workflows/ci.yml against this DATABASE_URL.',
       )
       return false

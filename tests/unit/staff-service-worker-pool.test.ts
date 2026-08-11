@@ -57,7 +57,9 @@ function makeChain(rows: FakeRow[]) {
 // getWorkerDb(), el rol/valor devuelto sería este centinela reconocible, no
 // el real — la RLS real bajo turnogol_app daría 0 filas, pero acá el valor
 // distinto alcanza para detectar la regresión sin depender de una DB real.
-const RESTRICTED_POOL_TRAP: FakeRow[] = [{ role: 'TRAP_FROM_RESTRICTED_POOL', staffUserId: 'TRAP_FROM_RESTRICTED_POOL' }]
+const RESTRICTED_POOL_TRAP: FakeRow[] = [
+  { role: 'TRAP_FROM_RESTRICTED_POOL', staffUserId: 'TRAP_FROM_RESTRICTED_POOL' },
+]
 
 beforeEach(() => {
   vi.clearAllMocks()

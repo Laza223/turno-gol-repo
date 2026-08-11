@@ -39,8 +39,8 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
             {title}
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Cerrada a las {closedTime} hs. El día quedó bloqueado: los movimientos ya no se
-            pueden tocar.
+            Cerrada a las {closedTime} hs. El día quedó bloqueado: los movimientos ya no se pueden
+            tocar.
           </p>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-4">
             <div>

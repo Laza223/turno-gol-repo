@@ -39,12 +39,8 @@ type RawMisReservasRow = {
   cancellation_policy_hours: number
 }
 
-export default async function MisReservasPage(
-  props: {
-    searchParams: Promise<{ tab?: string }>
-  }
-) {
-  const searchParams = await props.searchParams;
+export default async function MisReservasPage(props: { searchParams: Promise<{ tab?: string }> }) {
+  const searchParams = await props.searchParams
   const user = await extractAuthUser()
   if (!user || user.type !== 'player')
     redirect(`/ingresar?next=${encodeURIComponent('/mis-reservas')}`)

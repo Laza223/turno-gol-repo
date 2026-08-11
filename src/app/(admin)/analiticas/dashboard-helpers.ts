@@ -67,9 +67,7 @@ export function groupRevenue(
     }))
 }
 
-export type NoShowTrend =
-  | { kind: 'no_prev' }
-  | { kind: 'up' | 'down' | 'flat'; deltaPts: number }
+export type NoShowTrend = { kind: 'no_prev' } | { kind: 'up' | 'down' | 'flat'; deltaPts: number }
 
 /**
  * Tendencia de la tasa de ausencias vs la ventana anterior, en puntos
@@ -99,4 +97,3 @@ export function relativeTimeEs(iso: string, nowMs: number): string {
   const days = Math.floor(hours / 24)
   return days === 1 ? 'hace 1 día' : `hace ${days} días`
 }
-

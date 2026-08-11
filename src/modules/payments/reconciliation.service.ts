@@ -171,13 +171,15 @@ async function findCashflowAmountMismatch(sql: Sql): Promise<DriftFinding[]> {
  * Habría cazado el bug mock amount=1 aun sin mirar cash_flows.
  */
 async function findBookingAmountMismatch(sql: Sql): Promise<DriftFinding[]> {
-  const rows = await sql<{
-    id: string
-    tenantId: string
-    bookingId: string
-    paymentAmount: number
-    bookingDepositAmount: number
-  }[]>`
+  const rows = await sql<
+    {
+      id: string
+      tenantId: string
+      bookingId: string
+      paymentAmount: number
+      bookingDepositAmount: number
+    }[]
+  >`
     SELECT p.id, p.tenant_id AS "tenantId", p.booking_id AS "bookingId",
            p.amount AS "paymentAmount", b.deposit_amount AS "bookingDepositAmount"
     FROM payments p
@@ -232,14 +234,16 @@ async function findBookingAmountMismatch(sql: Sql): Promise<DriftFinding[]> {
  * (huella de checkout MP abandonado + confirmación manual, causa conocida).
  */
 async function findBookingsWithoutApprovedPayment(sql: Sql): Promise<DriftFinding[]> {
-  const rows = await sql<{
-    id: string
-    tenantId: string
-    depositStatus: string
-    depositAmount: number
-    latestPaymentStatus: string | null
-    latestPaymentMpPreferenceId: string | null
-  }[]>`
+  const rows = await sql<
+    {
+      id: string
+      tenantId: string
+      depositStatus: string
+      depositAmount: number
+      latestPaymentStatus: string | null
+      latestPaymentMpPreferenceId: string | null
+    }[]
+  >`
     SELECT b.id, b.tenant_id AS "tenantId", b.deposit_status AS "depositStatus",
            b.deposit_amount AS "depositAmount",
            latest_payment.status AS "latestPaymentStatus",
@@ -286,12 +290,14 @@ async function findBookingsWithoutApprovedPayment(sql: Sql): Promise<DriftFindin
  * approved (externo o local) cuyo booking no llegó a `refunded`.
  */
 async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> {
-  const rows = await sql<{
-    id: string
-    tenantId: string
-    bookingId: string
-    currentDepositStatus: string
-  }[]>`
+  const rows = await sql<
+    {
+      id: string
+      tenantId: string
+      bookingId: string
+      currentDepositStatus: string
+    }[]
+  >`
     SELECT p.id, p.tenant_id AS "tenantId", p.booking_id AS "bookingId",
            b.deposit_status AS "currentDepositStatus"
     FROM payments p
@@ -321,12 +327,14 @@ async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> {
  * en caja sin origen rastreable en `payments`).
  */
 async function findOrphanCashflows(sql: Sql): Promise<DriftFinding[]> {
-  const rows = await sql<{
-    id: string
-    tenantId: string
-    bookingId: string
-    amount: number
-  }[]>`
+  const rows = await sql<
+    {
+      id: string
+      tenantId: string
+      bookingId: string
+      amount: number
+    }[]
+  >`
     SELECT cf.id, cf.tenant_id AS "tenantId", cf.booking_id AS "bookingId", cf.amount
     FROM cash_flows cf
     WHERE cf.category = 'booking'

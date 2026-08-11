@@ -49,7 +49,7 @@ async function insertCourt(tenantId: string): Promise<string> {
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
     VALUES (
       ${tenantId}, ${'Cancha Caja Test'}, ${10},
-      ${sql.json({ rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }] })},
+      ${sql.json({ rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 }] })},
       'online'
     )
     RETURNING id
@@ -67,12 +67,14 @@ async function countCashFlows(tenantId: string): Promise<number> {
 
 async function getDailyCashClose(tenantId: string, date: string) {
   const sql = getSql()
-  const rows = await sql<{
-    id: string
-    total_income: number
-    total_adjustments: number
-    balance: number
-  }[]>`
+  const rows = await sql<
+    {
+      id: string
+      total_income: number
+      total_adjustments: number
+      balance: number
+    }[]
+  >`
     SELECT id, total_income, total_adjustments, balance
     FROM daily_cash_closes
     WHERE tenant_id = ${tenantId} AND date = ${date}::date
@@ -99,13 +101,18 @@ describe('cashflow service', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
     const cf = await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(tenant.id, staff.id, {
-        type: 'income',
-        category: 'booking',
-        amount: 800000,
-        method: 'cash',
-        description: 'Cobro turno 14:00',
-      }, tx),
+      createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 800000,
+          method: 'cash',
+          description: 'Cobro turno 14:00',
+        },
+        tx,
+      ),
     )
 
     expect(cf.type).toBe('income')
@@ -123,13 +130,18 @@ describe('cashflow service', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
     const cf = await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(tenant.id, staff.id, {
-        type: 'adjustment',
-        category: 'no_show_correction',
-        amount: 200000,
-        method: 'other',
-        description: 'Ajuste por no-show',
-      }, tx),
+      createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'adjustment',
+          category: 'no_show_correction',
+          amount: 200000,
+          method: 'other',
+          description: 'Ajuste por no-show',
+        },
+        tx,
+      ),
     )
 
     expect(cf.type).toBe('adjustment')
@@ -148,13 +160,18 @@ describe('cashflow service', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
     const cf = await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(tenant.id, staff.id, {
-        type: 'expense',
-        category: 'operating_expense',
-        amount: 350000,
-        method: 'cash',
-        description: 'Compra de pelotas',
-      }, tx),
+      createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'expense',
+          category: 'operating_expense',
+          amount: 350000,
+          method: 'cash',
+          description: 'Compra de pelotas',
+        },
+        tx,
+      ),
     )
 
     expect(cf.type).toBe('expense')
@@ -179,13 +196,18 @@ describe('cashflow service', () => {
         await linkStaffToTenant(sql, tenant.id, staff.id)
 
         const cf = await withTenantContext(tenant.id, (tx) =>
-          createCashFlow(tenant.id, staff.id, {
-            type: 'expense',
-            category,
-            amount: 150000,
-            method: 'cash',
-            description: `Gasto ${category}`,
-          }, tx),
+          createCashFlow(
+            tenant.id,
+            staff.id,
+            {
+              type: 'expense',
+              category,
+              amount: 150000,
+              method: 'cash',
+              description: `Gasto ${category}`,
+            },
+            tx,
+          ),
         )
 
         expect(cf.type).toBe('expense')
@@ -202,13 +224,18 @@ describe('cashflow service', () => {
 
       await expect(
         withTenantContext(tenant.id, (tx) =>
-          createCashFlow(tenant.id, staff.id, {
-            type: 'income',
-            category: 'merchandise',
-            amount: 100000,
-            method: 'cash',
-            description: 'Combo inválido (income + merchandise)',
-          }, tx),
+          createCashFlow(
+            tenant.id,
+            staff.id,
+            {
+              type: 'income',
+              category: 'merchandise',
+              amount: 100000,
+              method: 'cash',
+              description: 'Combo inválido (income + merchandise)',
+            },
+            tx,
+          ),
         ),
       ).rejects.toBeInstanceOf(InvalidCashFlowCategoryError)
 
@@ -222,13 +249,18 @@ describe('cashflow service', () => {
       await linkStaffToTenant(sql, tenant.id, staff.id)
 
       const cf = await withTenantContext(tenant.id, (tx) =>
-        createCashFlow(tenant.id, staff.id, {
-          type: 'expense',
-          category: 'operating_expense',
-          amount: 90000,
-          method: 'cash',
-          description: 'Gasto legacy',
-        }, tx),
+        createCashFlow(
+          tenant.id,
+          staff.id,
+          {
+            type: 'expense',
+            category: 'operating_expense',
+            amount: 90000,
+            method: 'cash',
+            description: 'Gasto legacy',
+          },
+          tx,
+        ),
       )
 
       expect(cf.category).toBe('operating_expense')
@@ -278,18 +310,21 @@ describe('cashflow service', () => {
     await linkStaffToTenant(sql, tenant.id, staff.id)
 
     const created = await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(tenant.id, staff.id, {
-        type: 'income',
-        category: 'product_sale',
-        amount: 500000, // Gatorade $2.500 x2
-        method: 'cash',
-        description: 'Gatorade x2',
-      }, tx),
+      createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'income',
+          category: 'product_sale',
+          amount: 500000, // Gatorade $2.500 x2
+          method: 'cash',
+          description: 'Gatorade x2',
+        },
+        tx,
+      ),
     )
 
-    const list = await withTenantContext(tenant.id, (tx) =>
-      getCashFlows(tenant.id, TODAY, 0, tx),
-    )
+    const list = await withTenantContext(tenant.id, (tx) => getCashFlows(tenant.id, TODAY, 0, tx))
     const sale = list.find((cf) => cf.id === created.id)
     expect(sale).toBeDefined()
     expect(sale!.type).toBe('income')
@@ -366,13 +401,18 @@ describe('cashflow service', () => {
     // Try insert cashflow for the same day
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        createCashFlow(tenant.id, staff.id, {
-          type: 'income',
-          category: 'other',
-          amount: 100000,
-          method: 'cash',
-          description: 'Late entry',
-        }, tx),
+        createCashFlow(
+          tenant.id,
+          staff.id,
+          {
+            type: 'income',
+            category: 'other',
+            amount: 100000,
+            method: 'cash',
+            description: 'Late entry',
+          },
+          tx,
+        ),
       ),
     ).rejects.toBeInstanceOf(DayAlreadyClosedError)
   })
@@ -506,9 +546,7 @@ describe('cashflow service', () => {
     expect(summary.totalIncome).toBe(100000)
     expect(summary.balance).toBe(100000)
 
-    const list = await withTenantContext(tenantA.id, (tx) =>
-      getCashFlows(tenantA.id, TODAY, 0, tx),
-    )
+    const list = await withTenantContext(tenantA.id, (tx) => getCashFlows(tenantA.id, TODAY, 0, tx))
     expect(list).toHaveLength(1)
     expect(list[0]!.description).toBe('Mi turno')
     expect(list.some((cf) => cf.description === 'Caja vecino')).toBe(false)
@@ -571,13 +609,18 @@ describe('cashflow service', () => {
 
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        createCashFlow(tenant.id, staff.id, {
-          type: 'income',
-          category: 'operating_expense', // combo inválido
-          amount: 100000,
-          method: 'cash',
-          description: 'Combo inválido',
-        }, tx),
+        createCashFlow(
+          tenant.id,
+          staff.id,
+          {
+            type: 'income',
+            category: 'operating_expense', // combo inválido
+            amount: 100000,
+            method: 'cash',
+            description: 'Combo inválido',
+          },
+          tx,
+        ),
       ),
     ).rejects.toBeInstanceOf(InvalidCashFlowCategoryError)
 
@@ -621,15 +664,17 @@ describe('cashflow service', () => {
       closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 400000 }, 0, tx),
     )
 
-    const audit = await sql<{
-      action: string
-      resource_id: string
-      actor_id: string
-      actor_type: string
-      // BUG #2 fix: el metadata ahora se guarda single-encode → el driver
-      // postgres-js lo devuelve como OBJETO (antes era un string doble-codificado).
-      metadata: { balance: number; declaredCash: number }
-    }[]>`
+    const audit = await sql<
+      {
+        action: string
+        resource_id: string
+        actor_id: string
+        actor_type: string
+        // BUG #2 fix: el metadata ahora se guarda single-encode → el driver
+        // postgres-js lo devuelve como OBJETO (antes era un string doble-codificado).
+        metadata: { balance: number; declaredCash: number }
+      }[]
+    >`
       SELECT action, resource_id, actor_id, actor_type, metadata
       FROM audit_logs
       WHERE tenant_id = ${tenant.id} AND action = 'cashflow.daily_close'

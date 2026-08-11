@@ -85,7 +85,14 @@ describe('desempate — criterios simples', () => {
     const teams = [team('A'), team('B'), team('C'), team('D')]
     const matches = [played('m1', 'A', 'C', 1, 0), played('m2', 'B', 'D', 1, 0)]
     const events: StandingsEvent[] = [
-      { id: 'e1', matchId: 'm2', teamId: 'B', teamPlayerId: 'p', type: 'yellow_card', suspensionMatches: null },
+      {
+        id: 'e1',
+        matchId: 'm2',
+        teamId: 'B',
+        teamPlayerId: 'p',
+        type: 'yellow_card',
+        suspensionMatches: null,
+      },
     ]
     expect(order(teams, matches, ['fair_play'], events)).toEqual(['A', 'B', 'C', 'D'])
   })

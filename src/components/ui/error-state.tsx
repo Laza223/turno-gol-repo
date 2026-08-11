@@ -8,12 +8,12 @@ import { cn } from '@/lib/utils'
 type ErrorStateVariant = 'full' | 'contained' | 'inline'
 
 export interface ErrorStateProps {
-  variant?: ErrorStateVariant  // default 'contained'
+  variant?: ErrorStateVariant // default 'contained'
   title: string
   description?: string
   digest?: string
   onRetry?: () => void
-  retryLabel?: string  // default 'Reintentar'
+  retryLabel?: string // default 'Reintentar'
   secondaryHref?: string
   secondaryLabel?: string
   secondaryIcon?: LucideIcon
@@ -46,7 +46,10 @@ export function ErrorState({
           superficie clara): el idiom correcto es un tono más oscuro en claro,
           el token original en oscuro (donde sí pasa).
         */}
-        <p className="text-sm text-red-700 dark:text-destructive">{title}{description ? `. ${description}` : ''}</p>
+        <p className="text-sm text-red-700 dark:text-destructive">
+          {title}
+          {description ? `. ${description}` : ''}
+        </p>
         {onRetry ? (
           <button
             onClick={onRetry}
@@ -65,7 +68,12 @@ export function ErrorState({
   if (variant === 'contained') {
     return (
       <div className={wrapper}>
-        <div className={cn('w-full max-w-md rounded-xl border border-border bg-card p-8 text-center', cardShadow)}>
+        <div
+          className={cn(
+            'w-full max-w-md rounded-xl border border-border bg-card p-8 text-center',
+            cardShadow,
+          )}
+        >
           <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-inset ring-destructive/20 dark:bg-destructive/15">
             <AlertTriangle className="h-7 w-7 text-destructive" aria-hidden="true" />
           </div>
@@ -75,8 +83,7 @@ export function ErrorState({
           ) : null}
           {digest ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              Código de referencia:{' '}
-              <span className="font-mono tabular-nums">{digest}</span>
+              Código de referencia: <span className="font-mono tabular-nums">{digest}</span>
             </p>
           ) : null}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -107,7 +114,12 @@ export function ErrorState({
 
   return (
     <main className={wrapper}>
-      <div className={cn('w-full max-w-md rounded-xl border border-border bg-card p-8 text-center', cardShadow)}>
+      <div
+        className={cn(
+          'w-full max-w-md rounded-xl border border-border bg-card p-8 text-center',
+          cardShadow,
+        )}
+      >
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-inset ring-destructive/20 dark:bg-destructive/15">
           <AlertTriangle className="h-7 w-7 text-destructive" aria-hidden="true" />
         </div>
@@ -117,8 +129,7 @@ export function ErrorState({
         ) : null}
         {digest ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            Código de referencia:{' '}
-            <span className="font-mono tabular-nums">{digest}</span>
+            Código de referencia: <span className="font-mono tabular-nums">{digest}</span>
           </p>
         ) : null}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">

@@ -111,7 +111,9 @@ describe('calcAvailableMinutes', () => {
 
   it('excluye los días de closedDates', () => {
     // 2026-05-04 (lun) a 2026-05-06 (mié) = 2 días; se cierra el 05 (mar)
-    expect(calcAvailableMinutes('2026-05-04', '2026-05-06', ALL_DAY_HOURS, 1, ['2026-05-05'])).toBe(960)
+    expect(calcAvailableMinutes('2026-05-04', '2026-05-06', ALL_DAY_HOURS, 1, ['2026-05-05'])).toBe(
+      960,
+    )
   })
 
   it('REGRESIÓN: un complejo que cierra 02:00 no da 0 minutos disponibles', () => {
@@ -196,9 +198,7 @@ describe('aggregateByMethod (#43)', () => {
   })
 
   it('devuelve vacío cuando solo hay adjustments', () => {
-    expect(
-      aggregateByMethod([{ type: 'adjustment', method: 'cash', total: 5000 }]),
-    ).toEqual([])
+    expect(aggregateByMethod([{ type: 'adjustment', method: 'cash', total: 5000 }])).toEqual([])
   })
 
   it('normaliza totales string (BIGINT de Postgres) y descarta <= 0', () => {

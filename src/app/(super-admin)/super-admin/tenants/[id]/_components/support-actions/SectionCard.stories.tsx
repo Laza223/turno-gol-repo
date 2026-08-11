@@ -26,7 +26,8 @@ export const Default: Story = {}
 export const ConFormulario: Story = {
   args: {
     title: 'Resetear contraseña de staff',
-    description: 'Genera una contraseña temporal para un miembro del complejo (soporte telefónico).',
+    description:
+      'Genera una contraseña temporal para un miembro del complejo (soporte telefónico).',
     children: (
       <div className="flex flex-wrap items-center gap-3">
         <input
@@ -34,7 +35,10 @@ export const ConFormulario: Story = {
           placeholder="staff@complejo.com"
           className="h-10 w-64 rounded-md border border-border px-3 text-sm"
         />
-        <button type="button" className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white">
+        <button
+          type="button"
+          className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white"
+        >
           Resetear contraseña
         </button>
       </div>

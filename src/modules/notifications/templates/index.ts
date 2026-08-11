@@ -2,7 +2,10 @@ export type EmailContent = { subject: string; html: string; text?: string }
 
 import { renderBookingConfirmed, type BookingConfirmedData } from './booking-confirmed'
 import { renderBookingCanceled, type BookingCanceledData } from './booking-canceled'
-import { renderBookingCanceledByComplex, type BookingCanceledByComplexData } from './booking-canceled-by-complex'
+import {
+  renderBookingCanceledByComplex,
+  type BookingCanceledByComplexData,
+} from './booking-canceled-by-complex'
 import { renderBookingRescheduled, type BookingRescheduledData } from './booking-rescheduled'
 import { renderAdminNewBooking, type AdminNewBookingData } from './admin-new-booking'
 import { renderTrialWelcome, type TrialWelcomeData } from './trial-welcome'
@@ -11,18 +14,30 @@ import { renderDunningPaymentFailed, type DunningPaymentFailedData } from './dun
 import { renderDepositExpired, type DepositExpiredData } from './deposit-expired'
 import { renderAdminTransferExpired, type AdminTransferExpiredData } from './admin-transfer-expired'
 import { renderAdminLatePayment, type AdminLatePaymentData } from './admin-late-payment'
-import { renderAdminDepositAfterClose, type AdminDepositAfterCloseData } from './admin-deposit-after-close'
+import {
+  renderAdminDepositAfterClose,
+  type AdminDepositAfterCloseData,
+} from './admin-deposit-after-close'
 import { renderAdminRefundFailed, type AdminRefundFailedData } from './admin-refund-failed'
 import {
   renderAdminExternalRefundDetected,
   type AdminExternalRefundDetectedData,
 } from './admin-external-refund-detected'
-import { renderSubscriptionActivated, type SubscriptionActivatedData } from './subscription-activated'
+import {
+  renderSubscriptionActivated,
+  type SubscriptionActivatedData,
+} from './subscription-activated'
 import { renderSubscriptionRenewed, type SubscriptionRenewedData } from './subscription-renewed'
 import { renderSubscriptionCanceled, type SubscriptionCanceledData } from './subscription-canceled'
-import { renderSubscriptionSuspended, type SubscriptionSuspendedData } from './subscription-suspended'
+import {
+  renderSubscriptionSuspended,
+  type SubscriptionSuspendedData,
+} from './subscription-suspended'
 import { renderSubscriptionBlocked, type SubscriptionBlockedData } from './subscription-blocked'
-import { renderTenantDeletionWarning, type TenantDeletionWarningData } from './tenant-deletion-warning'
+import {
+  renderTenantDeletionWarning,
+  type TenantDeletionWarningData,
+} from './tenant-deletion-warning'
 import { renderDailySummary, type DailySummaryData } from './daily-summary'
 
 export {

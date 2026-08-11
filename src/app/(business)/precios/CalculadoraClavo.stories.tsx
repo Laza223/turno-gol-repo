@@ -33,9 +33,13 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: `$${nbsp}30.000`, pressed: true })).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('button', { name: `$${nbsp}30.000`, pressed: true }),
+    ).toBeInTheDocument()
     await expect(canvas.getByText(money(`$${nbsp}240.000`))).toBeInTheDocument()
-    await expect(canvas.getByText(/menos que lo que te llevan los turnos colgados/i)).toBeInTheDocument()
+    await expect(
+      canvas.getByText(/menos que lo que te llevan los turnos colgados/i),
+    ).toBeInTheDocument()
   },
 }
 
@@ -71,6 +75,8 @@ export const PerdidaMenorAlPlan: Story = {
     // "$ 40.000" también es uno de los presets de turno: acotamos al resultado (role "status" del <output>).
     const resultado = within(canvas.getByRole('status'))
     await expect(resultado.getByText(money(`$${nbsp}40.000`))).toBeInTheDocument()
-    await expect(canvas.queryByText(/menos que lo que te llevan los turnos colgados/i)).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByText(/menos que lo que te llevan los turnos colgados/i),
+    ).not.toBeInTheDocument()
   },
 }

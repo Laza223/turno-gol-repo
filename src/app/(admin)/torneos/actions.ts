@@ -299,7 +299,7 @@ export async function createTournamentAction(input: unknown): Promise<Tournament
   let id: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      createTournament(tenant.id, user.staffUserId, parsed.data, tx)
+      createTournament(tenant.id, user.staffUserId, parsed.data, tx),
     )
     id = row.id
   } catch (err) {
@@ -330,7 +330,7 @@ export async function updateTournamentAction(input: unknown): Promise<Tournament
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      updateTournament(tenant.id, user.staffUserId, parsed.data, tx)
+      updateTournament(tenant.id, user.staffUserId, parsed.data, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -366,7 +366,7 @@ export async function deleteTournamentAction(input: unknown): Promise<Tournament
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      deleteTournament(tenant.id, user.staffUserId, parsed.data.id, tx)
+      deleteTournament(tenant.id, user.staffUserId, parsed.data.id, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -402,7 +402,7 @@ export async function addTeamAction(input: unknown): Promise<TournamentActionRes
   let id: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      addTeam(tenant.id, user.staffUserId, tournamentId, team, tx)
+      addTeam(tenant.id, user.staffUserId, tournamentId, team, tx),
     )
     id = row.id
   } catch (err) {
@@ -421,7 +421,7 @@ export async function addTeamAction(input: unknown): Promise<TournamentActionRes
  * no revalida ninguna ruta.
  */
 export async function searchPlayersForCaptainAction(
-  input: unknown
+  input: unknown,
 ): Promise<SearchPlayersActionResult> {
   const parsed = searchPlayersForCaptainSchema.safeParse(input)
   if (!parsed.success) {
@@ -439,7 +439,7 @@ export async function searchPlayersForCaptainAction(
   if (limited) return { success: false, error: limited }
 
   const players = await withTenantContext(tenant.id, (tx) =>
-    searchTenantPlayers(tenant.id, parsed.data.query, tx)
+    searchTenantPlayers(tenant.id, parsed.data.query, tx),
   )
 
   return { success: true, players }
@@ -474,7 +474,7 @@ export async function updateTeamAction(input: unknown): Promise<TournamentAction
   let tournamentId: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      updateTeam(tenant.id, user.staffUserId, parsed.data, tx)
+      updateTeam(tenant.id, user.staffUserId, parsed.data, tx),
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -505,7 +505,7 @@ export async function removeTeamAction(input: unknown): Promise<TournamentAction
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      removeTeam(tenant.id, user.staffUserId, parsed.data.id, tx)
+      removeTeam(tenant.id, user.staffUserId, parsed.data.id, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -536,7 +536,7 @@ export async function addTeamPlayerAction(input: unknown): Promise<TournamentAct
   const { teamId, ...player } = parsed.data
   try {
     await withTenantContext(tenant.id, (tx) =>
-      addTeamPlayer(tenant.id, user.staffUserId, teamId, player, tx)
+      addTeamPlayer(tenant.id, user.staffUserId, teamId, player, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -566,7 +566,7 @@ export async function removeTeamPlayerAction(input: unknown): Promise<Tournament
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      removeTeamPlayer(tenant.id, user.staffUserId, parsed.data.id, tx)
+      removeTeamPlayer(tenant.id, user.staffUserId, parsed.data.id, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -600,7 +600,7 @@ export async function reserveSlotsAction(input: unknown): Promise<ReserveSlotsAc
   let result: { reserved: number; conflicts: SlotConflict[] }
   try {
     result = await withTenantContext(tenant.id, (tx) =>
-      reserveTournamentSlots(tenant.id, tournamentId, user.staffUserId, slots, tx)
+      reserveTournamentSlots(tenant.id, tournamentId, user.staffUserId, slots, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -636,7 +636,7 @@ export async function generateFixtureAction(input: unknown): Promise<GenerateFix
   let result: { matches: number; unscheduled: number }
   try {
     result = await withTenantContext(tenant.id, (tx) =>
-      generateFixture(tenant.id, user.staffUserId, tournamentId, opts, tx)
+      generateFixture(tenant.id, user.staffUserId, tournamentId, opts, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -668,7 +668,7 @@ export async function clearFixtureAction(input: unknown): Promise<TournamentActi
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      clearFixture(tenant.id, user.staffUserId, parsed.data.tournamentId, tx)
+      clearFixture(tenant.id, user.staffUserId, parsed.data.tournamentId, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -714,8 +714,8 @@ export async function rescheduleMatchAction(input: unknown): Promise<TournamentA
         parsed.data.matchId,
         new Date(parsed.data.startsAt),
         parsed.data.courtId,
-        tx
-      )
+        tx,
+      ),
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -751,8 +751,8 @@ export async function releaseSlotsAction(input: unknown): Promise<TournamentActi
         parsed.data.tournamentId,
         user.staffUserId,
         parsed.data.fromDate,
-        tx
-      )
+        tx,
+      ),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -786,7 +786,7 @@ export async function saveMatchResultAction(input: unknown): Promise<TournamentA
   let tournamentId: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      saveMatchResult(tenant.id, user.staffUserId, parsed.data, tx)
+      saveMatchResult(tenant.id, user.staffUserId, parsed.data, tx),
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -818,7 +818,7 @@ export async function markWalkoverAction(input: unknown): Promise<TournamentActi
   let tournamentId: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      markWalkover(tenant.id, user.staffUserId, parsed.data, tx)
+      markWalkover(tenant.id, user.staffUserId, parsed.data, tx),
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -850,7 +850,7 @@ export async function clearMatchResultAction(input: unknown): Promise<Tournament
   let tournamentId: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      clearMatchResult(tenant.id, user.staffUserId, parsed.data.matchId, tx)
+      clearMatchResult(tenant.id, user.staffUserId, parsed.data.matchId, tx),
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -882,7 +882,7 @@ export async function addMatchEventAction(input: unknown): Promise<TournamentAct
   let tournamentId: string
   try {
     const row = await withTenantContext(tenant.id, (tx) =>
-      addMatchEvent(tenant.id, user.staffUserId, parsed.data, tx)
+      addMatchEvent(tenant.id, user.staffUserId, parsed.data, tx),
     )
     tournamentId = row.tournamentId
   } catch (err) {
@@ -914,7 +914,7 @@ export async function deleteMatchEventAction(input: unknown): Promise<Tournament
   let tournamentId: string
   try {
     const res = await withTenantContext(tenant.id, (tx) =>
-      deleteMatchEvent(tenant.id, user.staffUserId, parsed.data.eventId, tx)
+      deleteMatchEvent(tenant.id, user.staffUserId, parsed.data.eventId, tx),
     )
     tournamentId = res.tournamentId
   } catch (err) {
@@ -953,7 +953,7 @@ export async function seedPlayoffsAction(input: unknown): Promise<TournamentActi
 
   try {
     await withTenantContext(tenant.id, (tx) =>
-      seedPlayoffs(tenant.id, user.staffUserId, parsed.data.tournamentId, tx)
+      seedPlayoffs(tenant.id, user.staffUserId, parsed.data.tournamentId, tx),
     )
   } catch (err) {
     const mapped = mapTournamentError(err)
@@ -970,7 +970,7 @@ export async function seedPlayoffsAction(input: unknown): Promise<TournamentActi
 // inscripción el sábado a la mañana igual que cobra un turno.
 
 export async function registerInscriptionPaymentAction(
-  input: unknown
+  input: unknown,
 ): Promise<TournamentActionResult> {
   const parsed = registerInscriptionPaymentSchema.safeParse(input)
   if (!parsed.success) {

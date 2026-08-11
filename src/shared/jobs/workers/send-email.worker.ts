@@ -49,7 +49,13 @@ async function processSingleNotification(notif: NotificationRow): Promise<void> 
     logger.info('sent notification', { module: 'send-email', notificationId: notif.id })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    logger.error('failed notification', { module: 'send-email', notificationId: notif.id, attempt: thisAttempt, maxAttempts: MAX_ATTEMPTS, error: msg })
+    logger.error('failed notification', {
+      module: 'send-email',
+      notificationId: notif.id,
+      attempt: thisAttempt,
+      maxAttempts: MAX_ATTEMPTS,
+      error: msg,
+    })
     if (isLastAttempt) {
       await markNotificationFailed(notif.id, msg)
       return

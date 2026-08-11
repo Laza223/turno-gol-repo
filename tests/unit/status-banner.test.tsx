@@ -28,7 +28,12 @@ describe('StatusBanner — canceled (ENS-26)', () => {
 
   it('sin periodEnd no rompe: no renderiza el banner de canceled', () => {
     render(
-      <StatusBanner tenantStatus="canceled" trialEndsAt={null} periodEnd={null} serviceDegraded={false} />,
+      <StatusBanner
+        tenantStatus="canceled"
+        trialEndsAt={null}
+        periodEnd={null}
+        serviceDegraded={false}
+      />,
     )
     expect(screen.queryByText(/Cancelaste tu suscripción/)).toBeNull()
   })
@@ -51,14 +56,24 @@ describe('StatusBanner — ramas existentes (regresión)', () => {
   it('trialing con trialEndsAt: muestra días restantes y "Elegir plan"', () => {
     const future = new Date(Date.now() + 3 * 86_400_000).toISOString()
     render(
-      <StatusBanner tenantStatus="trialing" trialEndsAt={future} periodEnd={null} serviceDegraded={false} />,
+      <StatusBanner
+        tenantStatus="trialing"
+        trialEndsAt={future}
+        periodEnd={null}
+        serviceDegraded={false}
+      />,
     )
     expect(screen.getByRole('link', { name: 'Elegir plan' })).toBeTruthy()
   })
 
   it('past_due: avisa que el pago falló y linkea a /reactivar', () => {
     render(
-      <StatusBanner tenantStatus="past_due" trialEndsAt={null} periodEnd={PERIOD_END} serviceDegraded={false} />,
+      <StatusBanner
+        tenantStatus="past_due"
+        trialEndsAt={null}
+        periodEnd={PERIOD_END}
+        serviceDegraded={false}
+      />,
     )
     const link = screen.getByRole('link', { name: 'Actualizar pago' })
     expect(link.getAttribute('href')).toBe('/reactivar')
@@ -66,14 +81,24 @@ describe('StatusBanner — ramas existentes (regresión)', () => {
 
   it('suspended: avisa la suspensión sin fecha', () => {
     render(
-      <StatusBanner tenantStatus="suspended" trialEndsAt={null} periodEnd={null} serviceDegraded={false} />,
+      <StatusBanner
+        tenantStatus="suspended"
+        trialEndsAt={null}
+        periodEnd={null}
+        serviceDegraded={false}
+      />,
     )
     expect(screen.getByText(/cuenta está suspendida/)).toBeTruthy()
   })
 
   it('active: no renderiza ningún banner', () => {
     const { container } = render(
-      <StatusBanner tenantStatus="active" trialEndsAt={null} periodEnd={PERIOD_END} serviceDegraded={false} />,
+      <StatusBanner
+        tenantStatus="active"
+        trialEndsAt={null}
+        periodEnd={PERIOD_END}
+        serviceDegraded={false}
+      />,
     )
     expect(container.firstChild).toBeNull()
   })

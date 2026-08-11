@@ -70,7 +70,10 @@ export function PortalPanel({
         <div>
           <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-foreground">
             {live ? (
-              <Globe className="h-5 w-5 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+              <Globe
+                className="h-5 w-5 text-emerald-700 dark:text-emerald-400"
+                aria-hidden="true"
+              />
             ) : (
               <Lock className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
             )}
@@ -108,8 +111,8 @@ export function PortalPanel({
 
       {isPublic && !publishable && (
         <p className="text-sm text-amber-800 dark:text-amber-300">
-          El torneo está marcado como público pero sigue en borrador: no se
-          publica hasta que abras la inscripción.
+          El torneo está marcado como público pero sigue en borrador: no se publica hasta que abras
+          la inscripción.
         </p>
       )}
 

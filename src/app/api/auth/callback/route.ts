@@ -55,14 +55,20 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   const otpType: EmailOtpType = ALLOWED_OTP_TYPES.has(rawType as EmailOtpType)
     ? (rawType as EmailOtpType)
     : 'email'
-  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash.data, type: otpType })
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash.data,
+    type: otpType,
+  })
   // El otro lado de `magiclink.sent`: sin este par la tasa de apertura del mail
   // es invisible, y un mail que cae en spam se ve igual que un usuario que
   // abandonó. `ok` distingue el click que abrió sesión del que llegó con el
   // código vencido o ya consumido.
   track.auth('magiclink.clicked', { ok: !error && !!data?.user })
   if (error || !data?.user) {
-    logger.error('Supabase verifyOtp error', { module: 'auth-callback', error: error instanceof Error ? error.message : String(error) })
+    logger.error('Supabase verifyOtp error', {
+      module: 'auth-callback',
+      error: error instanceof Error ? error.message : String(error),
+    })
     track.auth('auth.exchange_failed', {})
     // otp_expired cubre tanto "venció por tiempo" como "ya fue consumido" (GoTrue
     // no distingue los dos casos con códigos separados) — mismo patrón que
@@ -92,7 +98,8 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     const firstName = firstNameMeta || email.split('@')[0] || 'Jugador'
     const lastName = lastNameMeta ?? ''
     const agreedTerms = userMeta.agreed_terms === true || meta.agreed_terms === true
-    const termsVersion = typeof userMeta.terms_version === 'string' ? userMeta.terms_version : CURRENT_TERMS_VERSION
+    const termsVersion =
+      typeof userMeta.terms_version === 'string' ? userMeta.terms_version : CURRENT_TERMS_VERSION
 
     const player = await getOrCreatePlayer(email, firstName, lastName, {
       agreedToTerms: agreedTerms,

@@ -121,7 +121,10 @@ export const AntesDeIntersectar: Story = {
         style={{ height: 220, overflow: 'auto' }}
         className="rounded-lg border border-dashed border-border"
       >
-        <div style={{ height: 600 }} className="flex items-center justify-center text-xs text-muted-foreground">
+        <div
+          style={{ height: 600 }}
+          className="flex items-center justify-center text-xs text-muted-foreground"
+        >
           Scrolleá para ver el contenido
         </div>
         <Story />
@@ -156,7 +159,10 @@ export const RevelaTrasSaltoDeScrollRapido: Story = {
         style={{ height: 220, overflow: 'auto' }}
         className="rounded-lg border border-dashed border-border"
       >
-        <div style={{ height: 600 }} className="flex items-center justify-center text-xs text-muted-foreground">
+        <div
+          style={{ height: 600 }}
+          className="flex items-center justify-center text-xs text-muted-foreground"
+        >
           Scrolleá para ver el contenido
         </div>
         <Story />

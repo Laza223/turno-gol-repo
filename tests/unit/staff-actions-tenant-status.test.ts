@@ -98,7 +98,9 @@ beforeEach(() => {
   h.inviteUserByEmail.mockResolvedValue({ data: { user: { id: 'auth-new' } }, error: null })
   h.updateUserById.mockResolvedValue({ data: {}, error: null })
   h.staffUserInsert.mockReturnValue({
-    values: () => ({ onConflictDoUpdate: () => ({ returning: async () => [{ id: 'staff-new' }] }) }),
+    values: () => ({
+      onConflictDoUpdate: () => ({ returning: async () => [{ id: 'staff-new' }] }),
+    }),
   })
   h.tsmInsert.mockReturnValue({
     values: () => ({ onConflictDoUpdate: async () => undefined }),

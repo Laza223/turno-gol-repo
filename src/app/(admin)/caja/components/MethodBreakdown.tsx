@@ -1,10 +1,4 @@
-import {
-  ArrowRightLeft,
-  Banknote,
-  Coins,
-  CreditCard,
-  type LucideIcon,
-} from 'lucide-react'
+import { ArrowRightLeft, Banknote, Coins, CreditCard, type LucideIcon } from 'lucide-react'
 import { formatArsContable } from '@/lib/format'
 import type { MethodKey, MethodTotal } from '../caja-lib'
 

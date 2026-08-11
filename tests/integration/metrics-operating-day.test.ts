@@ -28,9 +28,12 @@ beforeAll(async () => {
   await sql`
     UPDATE tenants SET closes_next_day = true,
       opening_hours = ${sql.json({
-        mon: { open: '20:00', close: '02:00' }, tue: { open: '20:00', close: '02:00' },
-        wed: { open: '20:00', close: '02:00' }, thu: { open: '20:00', close: '02:00' },
-        fri: { open: '20:00', close: '02:00' }, sat: { open: '20:00', close: '02:00' },
+        mon: { open: '20:00', close: '02:00' },
+        tue: { open: '20:00', close: '02:00' },
+        wed: { open: '20:00', close: '02:00' },
+        thu: { open: '20:00', close: '02:00' },
+        fri: { open: '20:00', close: '02:00' },
+        sat: { open: '20:00', close: '02:00' },
         sun: { open: '20:00', close: '02:00' },
       })}
     WHERE id = ${tenant.id}

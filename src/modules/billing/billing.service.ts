@@ -159,11 +159,15 @@ async function loadTenantOwner(
     WHERE t.id = ${tenantId}
     LIMIT 1
   `)
-  return (rows as unknown as Array<{
-    tenantName: string
-    ownerName: string | null
-    ownerEmail: string | null
-  }>)[0] ?? null
+  return (
+    (
+      rows as unknown as Array<{
+        tenantName: string
+        ownerName: string | null
+        ownerEmail: string | null
+      }>
+    )[0] ?? null
+  )
 }
 
 function planAmount(plan: PlanRow, cycle: BillingCycle): number {
@@ -719,10 +723,7 @@ export async function reactivate(
 
 // ─── read: subscription state ───────────────────────────────────────────────
 
-export async function getSubscriptionState(
-  tenantId: string,
-  tx: DbTx,
-): Promise<SubscriptionState> {
+export async function getSubscriptionState(tenantId: string, tx: DbTx): Promise<SubscriptionState> {
   const rows = await tx.execute(sql`
     SELECT ts.tenant_id AS "tenantId",
            ts.status,

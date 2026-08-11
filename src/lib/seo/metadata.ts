@@ -13,7 +13,11 @@ export const SITE_NAME = 'TurnoGol'
  */
 function resolveSiteUrl(): string {
   const FALLBACK = 'http://localhost:3000'
-  const raw = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? FALLBACK).trim()
+  const raw = (
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    FALLBACK
+  ).trim()
   const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
   try {
     // `.origin` normaliza: descarta path/query/barra final y garantiza un valor
@@ -53,7 +57,9 @@ export type OgInput = {
 export function buildMetadata(input: OgInput): Metadata {
   const url = absoluteUrl(input.path)
   const image = input.image
-    ? (input.image.startsWith('http') ? input.image : absoluteUrl(input.image))
+    ? input.image.startsWith('http')
+      ? input.image
+      : absoluteUrl(input.image)
     : absoluteUrl(DEFAULT_OG_IMAGE)
 
   return {

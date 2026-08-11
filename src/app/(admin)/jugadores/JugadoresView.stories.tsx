@@ -209,8 +209,6 @@ export const NombresLargos: Story = {
   },
   play: async ({ canvasElement }) => {
     const table = within(within(canvasElement).getByRole('table'))
-    await expect(
-      table.getByText('María Fernanda Etcheverry Balcarce Domínguez'),
-    ).toBeVisible()
+    await expect(table.getByText('María Fernanda Etcheverry Balcarce Domínguez')).toBeVisible()
   },
 }

@@ -74,10 +74,19 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
   it('devuelve filas leídas del pool worker, nunca del pool restringido', async () => {
     const rows: FakeRow[] = [
       {
-        id: 't1', name: 'Complejo 1', slug: 'c1', email: 'c1@test.com', status: 'active',
-        trialEndsAt: null, createdAt: new Date('2026-01-01'),
-        planName: 'Complejo', planSlug: 'complejo', priceMonthly: 55000, priceAnnual: 550000,
-        billingCycle: 'monthly', subscriptionStatus: 'active',
+        id: 't1',
+        name: 'Complejo 1',
+        slug: 'c1',
+        email: 'c1@test.com',
+        status: 'active',
+        trialEndsAt: null,
+        createdAt: new Date('2026-01-01'),
+        planName: 'Complejo',
+        planSlug: 'complejo',
+        priceMonthly: 55000,
+        priceAnnual: 550000,
+        billingCycle: 'monthly',
+        subscriptionStatus: 'active',
       },
     ]
     h.getWorkerDb.mockReturnValue(makeChain(rows))
@@ -95,18 +104,41 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
 describe('getTenantDetail (tenants.service) — subscription vía getWorkerDb, tenant vía getDb', () => {
   it('el tenant sale del pool restringido (tabla global) y la suscripción del pool worker', async () => {
     const tenantRow: FakeRow = {
-      id: 't1', slug: 'c1', name: 'Complejo 1', description: null,
-      address: 'Calle 1', city: 'CABA', province: 'Buenos Aires', phone: '11', email: 'c1@test.com',
-      status: 'active', trialEndsAt: null, scheduledDeletionAt: null, mpConnectedAt: null,
-      createdAt: new Date('2026-01-01'), settings: {},
+      id: 't1',
+      slug: 'c1',
+      name: 'Complejo 1',
+      description: null,
+      address: 'Calle 1',
+      city: 'CABA',
+      province: 'Buenos Aires',
+      phone: '11',
+      email: 'c1@test.com',
+      status: 'active',
+      trialEndsAt: null,
+      scheduledDeletionAt: null,
+      mpConnectedAt: null,
+      createdAt: new Date('2026-01-01'),
+      settings: {},
     }
     const subRow: FakeRow = {
-      status: 'active', planId: 'p1', planName: 'Complejo', planSlug: 'complejo',
-      priceMonthly: 55000, priceAnnual: 550000, billingCycle: 'monthly',
-      currentPeriodStart: new Date(), currentPeriodEnd: new Date(),
-      mpSubscriptionId: null, pendingPlanChange: null, pendingChangeAt: null,
-      canceledAt: null, cancellationReason: null, scheduledDeletionAt: null,
-      dunningStartedAt: null, lastPaymentAt: null, lastPaymentFailedAt: null,
+      status: 'active',
+      planId: 'p1',
+      planName: 'Complejo',
+      planSlug: 'complejo',
+      priceMonthly: 55000,
+      priceAnnual: 550000,
+      billingCycle: 'monthly',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(),
+      mpSubscriptionId: null,
+      pendingPlanChange: null,
+      pendingChangeAt: null,
+      canceledAt: null,
+      cancellationReason: null,
+      scheduledDeletionAt: null,
+      dunningStartedAt: null,
+      lastPaymentAt: null,
+      lastPaymentFailedAt: null,
     }
     h.getDb.mockReturnValue(makeChain([tenantRow]))
     h.getWorkerDb.mockReturnValue(makeChain([subRow]))

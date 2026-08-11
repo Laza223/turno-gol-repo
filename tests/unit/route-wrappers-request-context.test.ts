@@ -128,10 +128,7 @@ describe('los 4 wrappers de route handler llaman a runRequestObservability', () 
 
   for (const { file, wrappers } of CASES) {
     it(`${file} — ${wrappers.join(' + ')}`, () => {
-      const source = readFileSync(
-        join(process.cwd(), 'src/server/middleware', file),
-        'utf-8',
-      )
+      const source = readFileSync(join(process.cwd(), 'src/server/middleware', file), 'utf-8')
 
       for (const wrapper of wrappers) {
         expect(source, `falta \`export function ${wrapper}\` en ${file}`).toContain(

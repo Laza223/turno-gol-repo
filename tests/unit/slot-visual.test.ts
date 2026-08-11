@@ -66,13 +66,17 @@ describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
 
   it('ausente con la seña capturada NO alarma: en un no-show la seña es lo único cobrable', () => {
     expect(
-      slotStateKey(facts({ status: 'no_show', depositStatus: 'captured', pending: 16800, totalPaid: 7200 })),
+      slotStateKey(
+        facts({ status: 'no_show', depositStatus: 'captured', pending: 16800, totalPaid: 7200 }),
+      ),
     ).toBe('no_show')
   })
 
   it('ausente sin un peso cobrado SÍ alarma', () => {
     expect(
-      slotStateKey(facts({ status: 'no_show', depositStatus: 'not_required', pending: 24000, totalPaid: 0 })),
+      slotStateKey(
+        facts({ status: 'no_show', depositStatus: 'not_required', pending: 24000, totalPaid: 0 }),
+      ),
     ).toBe('unpaid_alarm')
   })
 
@@ -100,15 +104,21 @@ describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
 
 describe('gridSlotVisual — la celda', () => {
   it('marca alarm solo en el estado de alarma', () => {
-    expect(gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 })).alarm).toBe(true)
-    expect(gridSlotVisual(facts({ status: 'completed', pending: 0, totalPaid: 100 })).alarm).toBe(false)
+    expect(gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 })).alarm).toBe(
+      true,
+    )
+    expect(gridSlotVisual(facts({ status: 'completed', pending: 0, totalPaid: 100 })).alarm).toBe(
+      false,
+    )
     expect(gridSlotVisual(facts({ status: 'no_show' })).alarm).toBe(false)
   })
 
   it('rayado solo en torneo y bloqueo', () => {
     expect(gridSlotVisual(facts({ type: 'tournament' })).cell).toContain('slot-blocked-stripes')
     expect(gridSlotVisual(facts({ type: 'block' })).cell).toContain('slot-blocked-stripes')
-    expect(gridSlotVisual(facts({ status: 'completed' })).cell).not.toContain('slot-blocked-stripes')
+    expect(gridSlotVisual(facts({ status: 'completed' })).cell).not.toContain(
+      'slot-blocked-stripes',
+    )
   })
 
   it('Jugada usa un tinte más fuerte que Señada — remate de ciclo, no un estado más', () => {

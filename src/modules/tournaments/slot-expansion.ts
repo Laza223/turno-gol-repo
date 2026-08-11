@@ -1,8 +1,4 @@
-import {
-  END_OF_DAY_MINS,
-  endLabelFromMins,
-  startLabelFromMins,
-} from '@/shared/time/operating-day'
+import { END_OF_DAY_MINS, endLabelFromMins, startLabelFromMins } from '@/shared/time/operating-day'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { TournamentSlotRangeError } from './tournament.errors'
 
@@ -73,14 +69,10 @@ export function expandRangeToHourSlots(args: {
   }
 
   if (end <= start) {
-    throw new TournamentSlotRangeError(
-      'La hora de fin tiene que ser posterior a la de inicio.',
-    )
+    throw new TournamentSlotRangeError('La hora de fin tiene que ser posterior a la de inicio.')
   }
   if (end - start > MAX_RANGE_MINS) {
-    throw new TournamentSlotRangeError(
-      'La franja no puede abarcar más de 24 horas.',
-    )
+    throw new TournamentSlotRangeError('La franja no puede abarcar más de 24 horas.')
   }
   if ((end - start) % SLOT_DURATION_MINUTES !== 0) {
     throw new TournamentSlotRangeError(

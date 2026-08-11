@@ -52,9 +52,7 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
 
       // Con actividad en el mes, no se muestra el estado fantasma.
       await expect(page.getByText('Ingresos').first()).toBeVisible()
-      await expect(
-        page.getByText('Así se verá tu mes cuando cargues reservas'),
-      ).not.toBeVisible()
+      await expect(page.getByText('Así se verá tu mes cuando cargues reservas')).not.toBeVisible()
 
       const exportLink = page.getByRole('link', { name: /Exportar CSV/i })
       await expect(exportLink).toBeVisible()
@@ -75,11 +73,22 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
       const csvText = await res.text()
       const lines = csvText.split('\r\n').filter((l) => l.length > 0)
       const header = lines[0]!.split(',')
-      expect(header).toEqual(['fecha', 'tipo', 'categoria', 'monto_ars', 'metodo', 'descripcion', 'cancha'])
+      expect(header).toEqual([
+        'fecha',
+        'tipo',
+        'categoria',
+        'monto_ars',
+        'metodo',
+        'descripcion',
+        'cancha',
+      ])
 
       const montoArsIdx = header.indexOf('monto_ars')
       const descIdx = header.indexOf('descripcion')
-      const ourRow = lines.slice(1).map((l) => l.split(',')).find((cols) => cols[descIdx] === description)
+      const ourRow = lines
+        .slice(1)
+        .map((l) => l.split(','))
+        .find((cols) => cols[descIdx] === description)
       expect(ourRow, `fila del CSV para "${description}" no encontrada`).toBeDefined()
 
       const montoArsField = ourRow![montoArsIdx]!

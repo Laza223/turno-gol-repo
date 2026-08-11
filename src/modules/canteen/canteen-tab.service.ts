@@ -111,7 +111,13 @@ export async function createTab(
   if (postRow) return { tab: rowToTab(postRow), duplicate: true }
 
   let total = 0
-  const resolved: Array<{ id: string; name: string; price: number; stock: number | null; qty: number }> = []
+  const resolved: Array<{
+    id: string
+    name: string
+    price: number
+    stock: number | null
+    qty: number
+  }> = []
   for (const line of lines) {
     const product = products.get(line.productId)
     if (!product) throw new ProductNotFoundError(line.productId)

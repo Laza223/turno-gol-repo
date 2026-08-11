@@ -61,14 +61,16 @@ const info: GatewayPaymentInfo = {
  *      matcheó, vacío si el booking estaba en un estado que no admite el cambio
  *   5. SOLO si 4 devolvió vacío: SELECT del status para el mail
  */
-function mockTx(options?: { hasLocalRefund?: boolean; reconciled?: boolean; bookingStatus?: string }) {
+function mockTx(options?: {
+  hasLocalRefund?: boolean
+  reconciled?: boolean
+  bookingStatus?: string
+}) {
   const reconciled = options?.reconciled ?? true
   const execute = vi.fn()
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // upsertPaymentRow: relink OK
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // lookup del paymentId para el audit
-  execute.mockResolvedValueOnce(
-    options?.hasLocalRefund ? [{ id: 'refund-pay-1' }] : [],
-  ) // lookup de refund local conocido (fix H1)
+  execute.mockResolvedValueOnce(options?.hasLocalRefund ? [{ id: 'refund-pay-1' }] : []) // lookup de refund local conocido (fix H1)
   execute.mockResolvedValueOnce(reconciled ? [{ id: BOOKING_ID }] : []) // UPDATE de reconciliación
   if (!reconciled) {
     execute.mockResolvedValueOnce([{ status: options?.bookingStatus ?? 'no_show' }])
@@ -144,7 +146,9 @@ describe('dispatchPaymentInfo — reconciliación del refund externo (decisión 
     // El 4to execute es el UPDATE: se comprueba que filtra por estado — sin ese
     // WHERE, un refund sobre un turno terminal aborta la tx entera por el
     // trigger `enforce_booking_invariants_fn` (migr. 070).
-    const updateSql = JSON.stringify(vi.mocked(tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute.mock.calls[3])
+    const updateSql = JSON.stringify(
+      vi.mocked(tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute.mock.calls[3],
+    )
     expect(updateSql).toContain('deposit_status')
     expect(updateSql).toContain('confirmed')
     expect(updateSql).toContain('pending_payment')
@@ -206,6 +210,8 @@ describe('dispatchPaymentInfo — reconciliación del refund externo (decisión 
 
     expect(vi.mocked(enqueueTenantOwnerNotification)).not.toHaveBeenCalled()
     // Solo 3 execute: upsert + los dos lookups. Nunca se intenta el UPDATE.
-    expect((tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute).toHaveBeenCalledTimes(3)
+    expect((tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute).toHaveBeenCalledTimes(
+      3,
+    )
   })
 })

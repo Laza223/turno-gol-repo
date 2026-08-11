@@ -65,10 +65,7 @@ class FakeStore implements SlotsCacheStore {
 
 const DATE = '2026-06-11'
 const TIME = '20:00'
-const TENANT_IDS = [
-  '22222222-2222-2222-2222-222222222222',
-  '33333333-3333-3333-3333-333333333333',
-]
+const TENANT_IDS = ['22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333']
 
 let store: FakeStore
 
@@ -87,12 +84,8 @@ describe('availSearchKey', () => {
   })
 
   it('sorts formats so [7,5] and [5,7] share the same key', () => {
-    expect(availSearchKey(DATE, TIME, [7, 5])).toBe(
-      'avail-search:2026-06-11:20:00:5-7',
-    )
-    expect(availSearchKey(DATE, TIME, [5, 7])).toBe(
-      availSearchKey(DATE, TIME, [7, 5]),
-    )
+    expect(availSearchKey(DATE, TIME, [7, 5])).toBe('avail-search:2026-06-11:20:00:5-7')
+    expect(availSearchKey(DATE, TIME, [5, 7])).toBe(availSearchKey(DATE, TIME, [7, 5]))
   })
 })
 
@@ -127,9 +120,7 @@ describe('readThroughAvailSearch', () => {
     await readThroughAvailSearch(DATE, TIME, [5], async () => TENANT_IDS)
 
     const tracking = availSearchTrackingKey(DATE)
-    expect(await store.smembers(tracking)).toContain(
-      availSearchKey(DATE, TIME, [5]),
-    )
+    expect(await store.smembers(tracking)).toContain(availSearchKey(DATE, TIME, [5]))
     const setTtl = store.expirations.get(tracking)
     expect(setTtl).toBeGreaterThan(AVAIL_SEARCH_TTL_SECONDS)
   })

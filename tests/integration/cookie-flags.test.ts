@@ -29,8 +29,12 @@ describe('cookie flags', () => {
         // (e.g. @supabase/ssr); the flags are set by the library, not us.
         if (/\.\.\.options/.test(b)) continue
         expect(b, `${rel}: cookie .set must include httpOnly: true`).toMatch(/httpOnly:\s*true/)
-        expect(b, `${rel}: cookie .set must include sameSite`).toMatch(/sameSite:\s*['"](lax|strict)['"]/)
-        expect(b, `${rel}: cookie .set must include secure based on NODE_ENV`).toMatch(/secure:\s*process\.env\.NODE_ENV/)
+        expect(b, `${rel}: cookie .set must include sameSite`).toMatch(
+          /sameSite:\s*['"](lax|strict)['"]/,
+        )
+        expect(b, `${rel}: cookie .set must include secure based on NODE_ENV`).toMatch(
+          /secure:\s*process\.env\.NODE_ENV/,
+        )
       }
     })
   }

@@ -100,8 +100,10 @@ test.describe('TG-HP-206 — Crear cancha + subir fotos a R2', () => {
         courtId: createdCourtId,
         courtName,
         photos,
-        dbWrites: 'courts (INSERT) + courts.photos (appendCourtPhoto ×3, canchas/actions.ts:266-269)',
-        notes: 'Upload real a R2; el uploader de fotos solo existe en modo edición (CourtForm.tsx:250-268).',
+        dbWrites:
+          'courts (INSERT) + courts.photos (appendCourtPhoto ×3, canchas/actions.ts:266-269)',
+        notes:
+          'Upload real a R2; el uploader de fotos solo existe en modo edición (CourtForm.tsx:250-268).',
       })
     } finally {
       await context.close()

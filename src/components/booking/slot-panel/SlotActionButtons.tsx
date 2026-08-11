@@ -82,8 +82,8 @@ export function SlotActionButtons({
 
       {isTournament && (
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Esta hora la ocupa un torneo. La plata del torneo entra por la inscripción, no por
-          turno — se gestiona desde la pantalla del torneo.
+          Esta hora la ocupa un torneo. La plata del torneo entra por la inscripción, no por turno —
+          se gestiona desde la pantalla del torneo.
         </p>
       )}
     </>

@@ -108,7 +108,8 @@ test.describe('TG-HP-310 — Cancelar suscripción (destructiva)', () => {
         tenantSubscriptionRow: subRow,
         confirmedName: tenantRowBefore.name,
         reason,
-        dbWrites: 'tenants.status, tenant_subscriptions.status/canceled_at/cancellation_reason (lifecycle.service.ts:271-302) + audit_logs',
+        dbWrites:
+          'tenants.status, tenant_subscriptions.status/canceled_at/cancellation_reason (lifecycle.service.ts:271-302) + audit_logs',
         notes:
           'CASO DE PLATA: fila final (canceled) queda viva para el verificador. Probado con motivo <3 chars ' +
           'y nombre incorrecto primero (botón sigue disabled en ambos casos).',

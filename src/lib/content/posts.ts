@@ -38,7 +38,7 @@ export function getAllPosts(type: 'blog' | 'pages' = 'blog'): MdxPost[] {
   try {
     const contentDir = path.join(process.cwd(), 'content', type)
     const files = fs.readdirSync(contentDir)
-    
+
     return files
       .filter((file) => file.endsWith('.mdx'))
       .map((file) => {
@@ -46,7 +46,9 @@ export function getAllPosts(type: 'blog' | 'pages' = 'blog'): MdxPost[] {
         return getPostBySlug(slug, type)
       })
       .filter((post): post is MdxPost => post !== null)
-      .sort((a, b) => new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime())
+      .sort(
+        (a, b) => new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime(),
+      )
   } catch {
     return []
   }

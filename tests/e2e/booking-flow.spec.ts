@@ -51,7 +51,10 @@ async function cleanupBookings(bookingIds: string[]): Promise<void> {
     const supabase = makeSupabase()
     // NULL bookings.payment_id first — fk_bookings_payment blocks DELETE FROM
     // payments otherwise (createDepositPayment sets bookings.payment_id).
-    await supabase.from('bookings').update({ payment_id: null, payment_method: null }).in('id', bookingIds)
+    await supabase
+      .from('bookings')
+      .update({ payment_id: null, payment_method: null })
+      .in('id', bookingIds)
     await supabase.from('payments').delete().in('booking_id', bookingIds)
     await supabase.from('bookings').delete().in('id', bookingIds)
   } catch {

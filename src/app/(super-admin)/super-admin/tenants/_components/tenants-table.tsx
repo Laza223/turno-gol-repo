@@ -83,20 +83,32 @@ export function TenantsTable({
           </span>
           <div className="flex gap-2">
             {prevHref ? (
-              <Link href={prevHref} className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent">
+              <Link
+                href={prevHref}
+                className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
+              >
                 Anterior
               </Link>
             ) : (
-              <span aria-disabled="true" className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
+              <span
+                aria-disabled="true"
+                className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
+              >
                 Anterior
               </span>
             )}
             {nextHref ? (
-              <Link href={nextHref} className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent">
+              <Link
+                href={nextHref}
+                className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
+              >
                 Siguiente
               </Link>
             ) : (
-              <span aria-disabled="true" className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40">
+              <span
+                aria-disabled="true"
+                className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
+              >
                 Siguiente
               </span>
             )}

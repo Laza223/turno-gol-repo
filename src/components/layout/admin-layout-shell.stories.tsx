@@ -32,7 +32,11 @@ type Story = StoryObj<typeof meta>
 
 export const Trialing: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
-  args: { tenantStatus: 'trialing', trialEndsAt: new Date('2026-03-23').toISOString(), periodEnd: null },
+  args: {
+    tenantStatus: 'trialing',
+    trialEndsAt: new Date('2026-03-23').toISOString(),
+    periodEnd: null,
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(/período de prueba/i)).toBeInTheDocument()
@@ -41,7 +45,11 @@ export const Trialing: Story = {
 
 export const PastDue: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
-  args: { tenantStatus: 'past_due', trialEndsAt: null, periodEnd: new Date('2026-03-16').toISOString() },
+  args: {
+    tenantStatus: 'past_due',
+    trialEndsAt: null,
+    periodEnd: new Date('2026-03-16').toISOString(),
+  },
 }
 
 export const Suspended: Story = {

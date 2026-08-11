@@ -48,7 +48,8 @@ beforeAll(async () => {
       const courtId = courtRows[0]!.id
       // Día cargado: 4 bookings por cancha; en la mitad de los tenants una de
       // ellas pisa el horario buscado.
-      const hours = t % 2 === 0 ? ['18:00', '19:00', '20:00', '21:00'] : ['14:00', '15:00', '16:00', '17:00']
+      const hours =
+        t % 2 === 0 ? ['18:00', '19:00', '20:00', '21:00'] : ['14:00', '15:00', '16:00', '17:00']
       for (const h of hours) {
         const end = `${String(Number(h.slice(0, 2)) + 1).padStart(2, '0')}:00`
         await sql`

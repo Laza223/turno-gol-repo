@@ -51,8 +51,8 @@ export function ImpersonateButton({
         Entrar como este complejo
       </button>
       <p className="text-xs text-muted-foreground">
-        Abre el panel del complejo como soporte. Un banner rojo te recordará que
-        estás impersonando; toda acción se audita como super admin.
+        Abre el panel del complejo como soporte. Un banner rojo te recordará que estás impersonando;
+        toda acción se audita como super admin.
       </p>
 
       <ConfirmDialog

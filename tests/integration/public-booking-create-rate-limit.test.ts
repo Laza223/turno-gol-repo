@@ -2,11 +2,17 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
-vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
+vi.mock('@upstash/redis', () => ({
+  Redis: class {
+    constructor(_: unknown) {}
+  },
+}))
 vi.mock('@upstash/ratelimit', () => {
   const counts = new Map<string, number>()
   class FakeRatelimit {
-    static tokenBucket(limit: number) { return { limit } }
+    static tokenBucket(limit: number) {
+      return { limit }
+    }
     private prefix: string
     private _limit: number
     constructor(opts: { redis: unknown; limiter: { limit: number }; prefix: string }) {
@@ -24,7 +30,9 @@ vi.mock('@upstash/ratelimit', () => {
         reset: Date.now() + 60_000,
       }
     }
-    static __reset() { counts.clear() }
+    static __reset() {
+      counts.clear()
+    }
   }
   return { Ratelimit: FakeRatelimit }
 })
@@ -64,7 +72,8 @@ describe('publicBookingCreate rate limit (5/min por ip+tenant)', () => {
     const ip = '3.3.3.3'
     const slugA = 'complejo-a'
     const slugB = 'complejo-b'
-    for (let i = 0; i < 5; i++) expect(await guard('publicBookingCreate', `${ip}:${slugA}`)).toBeNull()
+    for (let i = 0; i < 5; i++)
+      expect(await guard('publicBookingCreate', `${ip}:${slugA}`)).toBeNull()
     expect(await guard('publicBookingCreate', `${ip}:${slugA}`)).not.toBeNull()
     expect(await guard('publicBookingCreate', `${ip}:${slugB}`)).toBeNull()
   })

@@ -46,11 +46,7 @@ const MP_ID_RE = /^\d{1,32}$/
  * Excluded from booking-deposit preferences so v1 only accepts instant
  * payments (cards, account_money) — see createPreference below.
  */
-const DEPOSIT_EXCLUDED_PAYMENT_TYPES = [
-  { id: 'ticket' },
-  { id: 'atm' },
-  { id: 'bank_transfer' },
-]
+const DEPOSIT_EXCLUDED_PAYMENT_TYPES = [{ id: 'ticket' }, { id: 'atm' }, { id: 'bank_transfer' }]
 
 /**
  * Explicit per-call timeout for getPaymentStatus (deposit-confirmation polling).
@@ -100,35 +96,35 @@ export class MercadoPagoGateway implements PaymentGateway {
     try {
       const res = await this.withRefresh(() =>
         new Preference(this.config).create({
-        body: {
-          items: [
-            {
-              id: input.bookingId,
-              title: input.description,
-              unit_price: centsToPesos(input.amount),
-              quantity: 1,
-              currency_id: 'ARS',
+          body: {
+            items: [
+              {
+                id: input.bookingId,
+                title: input.description,
+                unit_price: centsToPesos(input.amount),
+                quantity: 1,
+                currency_id: 'ARS',
+              },
+            ],
+            back_urls: {
+              success: normalizeUrl(input.successUrl),
+              failure: normalizeUrl(input.failureUrl),
+              pending: normalizeUrl(input.pendingUrl),
             },
-          ],
-          back_urls: {
-            success: normalizeUrl(input.successUrl),
-            failure: normalizeUrl(input.failureUrl),
-            pending: normalizeUrl(input.pendingUrl),
+            auto_return: 'approved',
+            external_reference: input.bookingId,
+            notification_url: normalizeUrl(input.notificationUrl),
+            expires: true,
+            expiration_date_to: input.expiresAt.toISOString(),
+            // Fable 5 P0: a booking deposit only has a 6min hold — deferred
+            // methods (ticket=Rapipago/PagoFácil, atm, bank_transfer=CBU) settle
+            // in 24-48h and land as `in_process`, long after the hold already
+            // freed the slot. Excluding them here (not "managing a 48h window")
+            // makes in_process rare instead of routine for this flow.
+            payment_methods: {
+              excluded_payment_types: DEPOSIT_EXCLUDED_PAYMENT_TYPES,
+            },
           },
-          auto_return: 'approved',
-          external_reference: input.bookingId,
-          notification_url: normalizeUrl(input.notificationUrl),
-          expires: true,
-          expiration_date_to: input.expiresAt.toISOString(),
-          // Fable 5 P0: a booking deposit only has a 6min hold — deferred
-          // methods (ticket=Rapipago/PagoFácil, atm, bank_transfer=CBU) settle
-          // in 24-48h and land as `in_process`, long after the hold already
-          // freed the slot. Excluding them here (not "managing a 48h window")
-          // makes in_process rare instead of routine for this flow.
-          payment_methods: {
-            excluded_payment_types: DEPOSIT_EXCLUDED_PAYMENT_TYPES,
-          },
-        },
         }),
       )
 
@@ -143,10 +139,7 @@ export class MercadoPagoGateway implements PaymentGateway {
       }
     } catch (err) {
       if (err instanceof MpGatewayError) throw err
-      throw new MpGatewayError(
-        `Failed to create MP preference for booking ${input.bookingId}`,
-        err,
-      )
+      throw new MpGatewayError(`Failed to create MP preference for booking ${input.bookingId}`, err)
     }
   }
 
@@ -179,16 +172,11 @@ export class MercadoPagoGateway implements PaymentGateway {
         // booking-deposit normales — dunning.service.ts distingue
         // "undefined = no lo sé" de "null/otro id = confirmé que no matchea".
         preapprovalId: (
-          res.point_of_interaction?.transaction_data as
-            | { subscription_id?: string }
-            | undefined
+          res.point_of_interaction?.transaction_data as { subscription_id?: string } | undefined
         )?.subscription_id,
       }
     } catch (err) {
-      throw new MpGatewayError(
-        `Failed to fetch MP payment ${mpPaymentId}`,
-        err,
-      )
+      throw new MpGatewayError(`Failed to fetch MP payment ${mpPaymentId}`, err)
     }
   }
 
@@ -215,10 +203,7 @@ export class MercadoPagoGateway implements PaymentGateway {
         status,
       }
     } catch (err) {
-      throw new MpGatewayError(
-        `Failed to refund MP payment ${mpPaymentId}`,
-        err,
-      )
+      throw new MpGatewayError(`Failed to refund MP payment ${mpPaymentId}`, err)
     }
   }
 
@@ -248,10 +233,7 @@ export class MercadoPagoGateway implements PaymentGateway {
         paymentMethodId: r.payment_method_id ?? 'unknown',
       }))
     } catch (err) {
-      throw new MpGatewayError(
-        `Failed to search MP payments for ref ${externalReference}`,
-        err,
-      )
+      throw new MpGatewayError(`Failed to search MP payments for ref ${externalReference}`, err)
     }
   }
 
@@ -299,10 +281,7 @@ export class MercadoPagoGateway implements PaymentGateway {
       }
     } catch (err) {
       if (err instanceof MpGatewayError) throw err
-      throw new MpGatewayError(
-        `Failed to create MP preapproval for tenant ${input.tenantId}`,
-        err,
-      )
+      throw new MpGatewayError(`Failed to create MP preapproval for tenant ${input.tenantId}`, err)
     }
   }
 
@@ -314,17 +293,11 @@ export class MercadoPagoGateway implements PaymentGateway {
         body: { status: 'cancelled' },
       })
     } catch (err) {
-      throw new MpGatewayError(
-        `Failed to cancel MP preapproval ${preapprovalId}`,
-        err,
-      )
+      throw new MpGatewayError(`Failed to cancel MP preapproval ${preapprovalId}`, err)
     }
   }
 
-  async updatePreapprovalAmount(
-    preapprovalId: string,
-    amount: number,
-  ): Promise<void> {
+  async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {
     const preapproval = new PreApproval(this.config)
     try {
       await preapproval.update({
@@ -337,10 +310,7 @@ export class MercadoPagoGateway implements PaymentGateway {
         },
       })
     } catch (err) {
-      throw new MpGatewayError(
-        `Failed to update MP preapproval amount ${preapprovalId}`,
-        err,
-      )
+      throw new MpGatewayError(`Failed to update MP preapproval amount ${preapprovalId}`, err)
     }
   }
 

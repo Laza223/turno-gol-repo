@@ -3,10 +3,7 @@
 import type { ComponentProps } from 'react'
 import dynamic from 'next/dynamic'
 import { BookingGrid } from '@/components/booking/BookingGrid'
-import type {
-  ListCanteenCatalog,
-  SellTicketForBooking,
-} from './_components/BookingCanteenDialog'
+import type { ListCanteenCatalog, SellTicketForBooking } from './_components/BookingCanteenDialog'
 
 /**
  * Capa mínima entre la página (server) y la grilla (client) cuya única razón de

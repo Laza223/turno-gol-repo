@@ -12,7 +12,5 @@ export const featureFlags = pgTable('feature_flags', {
   key: text('key').notNull(),
   value: boolean('value').notNull().default(false),
   tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 })

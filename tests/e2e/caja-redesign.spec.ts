@@ -22,7 +22,11 @@
 import { test, expect } from './fixtures'
 
 /** Crea un producto de cantina vía /caja/productos (ProductsTable + ProductFormDialog). */
-async function createCanteenProduct(page: import('@playwright/test').Page, name: string, pesos: string) {
+async function createCanteenProduct(
+  page: import('@playwright/test').Page,
+  name: string,
+  pesos: string,
+) {
   await page.getByRole('button', { name: 'Agregar producto' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -65,7 +69,10 @@ test.describe('Caja redesign', () => {
     await page.goto('/caja', { waitUntil: 'networkidle' })
     // Anclar a la fila de la tabla desktop: getByText pelado puede resolver la
     // card mobile (oculta en viewport desktop) o el toast efímero.
-    const saleRow = page.getByRole('row').filter({ hasText: `${productName} x2` }).first()
+    const saleRow = page
+      .getByRole('row')
+      .filter({ hasText: `${productName} x2` })
+      .first()
     await expect(saleRow).toBeVisible({ timeout: 10_000 })
     await expect(saleRow.getByText('Cantina/Bar', { exact: true })).toBeVisible()
 

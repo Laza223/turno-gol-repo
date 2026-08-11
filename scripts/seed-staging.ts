@@ -58,7 +58,12 @@ async function findAuthUserByEmail(client: SupabaseClient, email: string): Promi
 async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
   const pricing = {
     rules: [
-      { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '00:00', to: '23:59', price: 10000 },
+      {
+        days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+        from: '00:00',
+        to: '23:59',
+        price: 10000,
+      },
     ],
   }
   const openingHours = {

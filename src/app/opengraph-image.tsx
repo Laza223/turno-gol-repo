@@ -7,30 +7,30 @@ export const alt = 'TurnoGol — La plataforma de reservas para el fútbol argen
 
 export default function OpenGraphImage() {
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          padding: 80,
-        }}
-      >
-        <span style={{ color: "white", fontWeight: 900, fontSize: "60%", fontStyle: "italic" }}>TG</span>
-        <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: -2 }}>TurnoGol</div>
-        <div style={{ fontSize: 36, fontWeight: 500, marginTop: 24, opacity: 0.95 }}>
-          La plataforma de reservas del fútbol argentino
-        </div>
-        <div style={{ fontSize: 24, fontWeight: 400, marginTop: 12, opacity: 0.85 }}>
-          Complejos verificados · Reserva online · Disponibilidad en tiempo real
-        </div>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        padding: 80,
+      }}
+    >
+      <span style={{ color: 'white', fontWeight: 900, fontSize: '60%', fontStyle: 'italic' }}>
+        TG
+      </span>
+      <div style={{ fontSize: 96, fontWeight: 800, letterSpacing: -2 }}>TurnoGol</div>
+      <div style={{ fontSize: 36, fontWeight: 500, marginTop: 24, opacity: 0.95 }}>
+        La plataforma de reservas del fútbol argentino
       </div>
-    ),
+      <div style={{ fontSize: 24, fontWeight: 400, marginTop: 12, opacity: 0.85 }}>
+        Complejos verificados · Reserva online · Disponibilidad en tiempo real
+      </div>
+    </div>,
     size,
   )
 }

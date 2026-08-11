@@ -97,9 +97,7 @@ try {
   for (const { nombre, usuario, password } of objetivos) {
     const [existe] = await sql`SELECT 1 FROM pg_roles WHERE rolname = ${usuario}`
     if (!existe) {
-      console.error(
-        `✗ ${usuario} no existe. Corré las migraciones primero (pnpm supabase:reset).`,
-      )
+      console.error(`✗ ${usuario} no existe. Corré las migraciones primero (pnpm supabase:reset).`)
       process.exitCode = 1
       continue
     }

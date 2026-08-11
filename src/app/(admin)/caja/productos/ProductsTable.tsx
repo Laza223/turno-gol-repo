@@ -47,7 +47,8 @@ function marginLabel(price: number, cost: number | null): string | null {
 }
 
 function StockCell({ badge }: { badge: StockBadge | null }) {
-  if (!badge) return <span className="text-xs text-muted-foreground">Sin control (Servicio / Alquiler)</span>
+  if (!badge)
+    return <span className="text-xs text-muted-foreground">Sin control (Servicio / Alquiler)</span>
   return (
     <span className={`text-xs font-medium ${stockBadgeToneClass(badge.tone)}`}>{badge.label}</span>
   )

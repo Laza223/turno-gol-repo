@@ -27,8 +27,7 @@ import {
   linkStaffToTenant,
 } from '../helpers/tenant'
 
-const asUser = (user: AuthUser | null) =>
-  vi.mocked(extractAuthUser).mockResolvedValue(user)
+const asUser = (user: AuthUser | null) => vi.mocked(extractAuthUser).mockResolvedValue(user)
 
 // Shared test data created in beforeAll.
 let tenantId: string
@@ -84,7 +83,7 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
     const req = new Request('http://localhost/api/admin/push/test', { method: 'POST' })
     const res = await testPush(req as never)
     expect(res.status).toBe(200)
-    const json = await res.json() as { success: boolean; dispatched: number }
+    const json = (await res.json()) as { success: boolean; dispatched: number }
     expect(json.success).toBe(true)
     expect(json.dispatched).toBe(0)
   })
@@ -111,7 +110,7 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
     const req = new Request('http://localhost/api/admin/push/test', { method: 'POST' })
     const res = await testPush(req as never)
     expect(res.status).toBe(200)
-    const json = await res.json() as { success: boolean; dispatched: number }
+    const json = (await res.json()) as { success: boolean; dispatched: number }
     expect(json.success).toBe(true)
     expect(json.dispatched).toBe(2)
 

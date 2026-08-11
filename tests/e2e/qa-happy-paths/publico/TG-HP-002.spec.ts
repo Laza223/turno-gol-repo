@@ -21,9 +21,7 @@ test.describe('TG-HP-002 — Explorar + filtros', () => {
   }) => {
     // Step 1-2: /explorar + banda "Encontrá tu cancha ideal"
     await page.goto('/explorar')
-    await expect(
-      page.getByRole('heading', { name: 'Encontrá tu cancha ideal' }),
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Encontrá tu cancha ideal' })).toBeVisible()
 
     // Step 3-4: SearchBar (aria-label "Buscar canchas") → #exp-q + submit "Buscar" → router.push
     const searchForm = page.locator('form[aria-label="Buscar canchas"]')

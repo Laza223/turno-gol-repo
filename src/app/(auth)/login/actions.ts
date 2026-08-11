@@ -30,10 +30,7 @@ async function callbackOrigin(): Promise<string> {
   return (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
 }
 
-export async function loginAction(
-  _prev: LoginState,
-  formData: FormData,
-): Promise<LoginState> {
+export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   // El email se devuelve SIEMPRE que haya error, para no obligar a retipearlo.
   // La contraseña nunca: `echoFields` la bloquea por nombre.
   const { email } = echoFields(formData, ['email'] as const)
@@ -113,9 +110,7 @@ export async function loginAction(
 // ── Reenvío de confirmación de alta (caso email no confirmado) ──────────────
 
 export type ResendState =
-  | { status: 'idle' }
-  | { status: 'sent' }
-  | { status: 'error'; message: string }
+  { status: 'idle' } | { status: 'sent' } | { status: 'error'; message: string }
 
 export async function resendConfirmationAction(
   _prev: ResendState,

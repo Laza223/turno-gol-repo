@@ -28,8 +28,7 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => ({
     constructor(_: string) {}
     async getPaymentStatus(id: string) {
       const registry = (globalThis as Record<string, unknown>).__MP_REGISTRY__ as
-        | Map<string, MpEntry>
-        | undefined
+        Map<string, MpEntry> | undefined
       const entry = registry?.get(id)
       return {
         mpPaymentId: id,

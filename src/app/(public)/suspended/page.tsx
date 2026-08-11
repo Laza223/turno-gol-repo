@@ -20,7 +20,8 @@ export default function SuspendedPage() {
 
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         El acceso al panel de tu complejo está pausado por el momento. Tus datos están a salvo y no
-        se perdió nada. En cuanto se regularice la situación vas a poder volver a operar normalmente.
+        se perdió nada. En cuanto se regularice la situación vas a poder volver a operar
+        normalmente.
       </p>
 
       <Link
@@ -37,7 +38,10 @@ export default function SuspendedPage() {
         Contactar a soporte
       </a>
 
-      <Link href="/" className="mt-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+      <Link
+        href="/"
+        className="mt-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
         Volver al inicio
       </Link>
     </section>

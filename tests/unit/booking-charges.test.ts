@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { depositCashFlowDescription, summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import {
+  depositCashFlowDescription,
+  summarizeBookingCharges,
+} from '@/modules/bookings/booking.charges'
 
 describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
   it('seña paga + sin cobros extra → pendiente = precio - seña', () => {

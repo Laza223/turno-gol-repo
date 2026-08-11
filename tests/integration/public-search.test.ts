@@ -16,8 +16,14 @@ async function seed() {
   `
 }
 
-beforeAll(async () => { await ensureRoles(); await seed() })
-afterAll(async () => { await cleanupAll(); await closeSql() })
+beforeAll(async () => {
+  await ensureRoles()
+  await seed()
+})
+afterAll(async () => {
+  await cleanupAll()
+  await closeSql()
+})
 
 describe('searchPublicTenants', () => {
   it('returns only active/trialing matching the name query', async () => {

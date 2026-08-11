@@ -42,7 +42,13 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
 
-const STAFF_USER = { type: 'staff', staffUserId: 'staff-1', tenantId: 't-1', id: 'auth-1', email: 'a@b.com' }
+const STAFF_USER = {
+  type: 'staff',
+  staffUserId: 'staff-1',
+  tenantId: 't-1',
+  id: 'auth-1',
+  email: 'a@b.com',
+}
 
 function tenant() {
   return { id: 't-1', mpConnectedAt: null }

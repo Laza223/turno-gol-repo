@@ -21,10 +21,7 @@ export type RoleInnerHandler = (
  * viene hardcodeado a 'admin' para todo el staff (ver StaffUser/extractAuthUser),
  * así que comparar contra ese claim no rechaza a nadie (audit_report.md 3-14).
  */
-export function withRole(
-  required: Role,
-  handler: RoleInnerHandler,
-): RoleInnerHandler {
+export function withRole(required: Role, handler: RoleInnerHandler): RoleInnerHandler {
   return async (req, user, tx) => {
     if (!user.tenantId || !user.staffUserId) {
       return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
@@ -46,10 +43,7 @@ export function withRole(
  * que el encargado ve igual que grilla/caja/reportes. El rol real se lee de
  * `tenant_staff_members` (nunca del claim del JWT).
  */
-export function withAnyRole(
-  allowed: readonly Role[],
-  handler: RoleInnerHandler,
-): RoleInnerHandler {
+export function withAnyRole(allowed: readonly Role[], handler: RoleInnerHandler): RoleInnerHandler {
   return async (req, user, tx) => {
     if (!user.tenantId || !user.staffUserId) {
       return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })

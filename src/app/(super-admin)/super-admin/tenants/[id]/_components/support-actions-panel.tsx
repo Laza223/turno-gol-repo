@@ -86,7 +86,12 @@ export function SupportActionsPanel({
       />
 
       {canReactivate && (
-        <ReactivateSection tenantId={tenantId} pending={pending} run={run} action={actions.reactivate} />
+        <ReactivateSection
+          tenantId={tenantId}
+          pending={pending}
+          run={run}
+          action={actions.reactivate}
+        />
       )}
 
       <ExtendTrialSection
@@ -115,7 +120,12 @@ export function SupportActionsPanel({
         action={actions.updateSettings}
       />
 
-      <ResetPasswordSection tenantId={tenantId} pending={pending} run={run} action={actions.resetPassword} />
+      <ResetPasswordSection
+        tenantId={tenantId}
+        pending={pending}
+        run={run}
+        action={actions.resetPassword}
+      />
 
       <CancelSection
         tenantId={tenantId}

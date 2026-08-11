@@ -29,12 +29,7 @@ export async function getChecklistState(
       tx
         .select({ id: bookings.id })
         .from(bookings)
-        .where(
-          and(
-            eq(bookings.tenantId, tenantId),
-            isNull(bookings.createdByStaff),
-          ),
-        )
+        .where(and(eq(bookings.tenantId, tenantId), isNull(bookings.createdByStaff)))
         .limit(1)
         .then((r) => r[0] ?? null),
     ])

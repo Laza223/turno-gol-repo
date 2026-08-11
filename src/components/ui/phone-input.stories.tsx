@@ -13,7 +13,13 @@ const meta = {
   component: PhoneInput,
   parameters: { layout: 'centered' },
   args: { label: 'Teléfono', name: 'phone' },
-  decorators: [(Story) => <div className="w-80"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-80">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof PhoneInput>
 
 export default meta

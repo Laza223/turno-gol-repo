@@ -28,12 +28,10 @@ export default function GlobalError({
             <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-red-50 ring-1 ring-inset ring-red-600/20">
               <AlertTriangle className="h-7 w-7 text-red-600" aria-hidden="true" />
             </div>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Algo salió mal
-            </h1>
+            <h1 className="text-2xl font-semibold text-slate-900">Algo salió mal</h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              Ocurrió un error y no pudimos cargar la aplicación. Ya quedó
-              registrado. Probá recargar la página.
+              Ocurrió un error y no pudimos cargar la aplicación. Ya quedó registrado. Probá
+              recargar la página.
             </p>
             <button
               type="button"

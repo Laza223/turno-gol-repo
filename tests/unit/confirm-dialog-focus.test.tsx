@@ -22,14 +22,7 @@ describe('ConfirmDialog focus-visible rings', () => {
   })
 
   it('cancel + confirm buttons use focus-visible:ring', () => {
-    render(
-      <ConfirmDialog
-        open
-        onOpenChange={() => {}}
-        title="Test"
-        onConfirm={async () => {}}
-      />,
-    )
+    render(<ConfirmDialog open onOpenChange={() => {}} title="Test" onConfirm={async () => {}} />)
     const cancel = screen.getByRole('button', { name: /cancelar/i })
     const confirm = screen.getByRole('button', { name: /confirmar/i })
     expect(cancel.className).toContain('focus-visible:ring-2')

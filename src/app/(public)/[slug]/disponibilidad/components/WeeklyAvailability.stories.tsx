@@ -9,7 +9,13 @@ const meta = {
   component: WeeklyAvailability,
   parameters: { layout: 'padded' },
   args: { slug: 'complejo-fenix', week: weeklyAvailabilityResponse() },
-  decorators: [(Story) => <div className="mx-auto max-w-3xl"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="mx-auto max-w-3xl">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof WeeklyAvailability>
 
 export default meta

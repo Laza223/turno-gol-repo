@@ -61,7 +61,9 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       await page.getByRole('button', { name: 'Confirmar' }).click()
 
       // Toast + cierre del modal.
-      await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({
+        timeout: 10_000,
+      })
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 })
 
       // Booking visible en la grilla (BookingCard renderiza el guest name).

@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { within, expect } from 'storybook/test'
-import { tenantActivity, tenantActivityEmpty, tenantActivityPage2 } from '@/test/fixtures/super-admin'
+import {
+  tenantActivity,
+  tenantActivityEmpty,
+  tenantActivityPage2,
+} from '@/test/fixtures/super-admin'
 import { ActividadTab } from './actividad-tab'
 
 /**
@@ -14,7 +18,10 @@ const meta = {
   component: ActividadTab,
   parameters: {
     layout: 'padded',
-    nextjs: { appDirectory: true, navigation: { pathname: '/super-admin/tenants/1', query: { tab: 'actividad' } } },
+    nextjs: {
+      appDirectory: true,
+      navigation: { pathname: '/super-admin/tenants/1', query: { tab: 'actividad' } },
+    },
   },
   args: {
     tenantId: '00000000-0000-4000-8000-000000000001',

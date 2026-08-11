@@ -59,7 +59,10 @@ export default function ShareButton({ url, message, label = 'Compartir', classNa
             className,
           )}
         >
-          <Share2 className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" aria-hidden />
+          <Share2
+            className="h-4 w-4 transition-transform duration-200 group-hover:scale-110"
+            aria-hidden
+          />
           {label}
         </button>
       </DropdownMenuTrigger>

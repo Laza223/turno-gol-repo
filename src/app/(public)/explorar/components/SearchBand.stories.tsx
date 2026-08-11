@@ -12,7 +12,13 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } },
   },
   args: { cities: cityCounts() },
-  decorators: [(Story) => <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof SearchBand>
 
 export default meta

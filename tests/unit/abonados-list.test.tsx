@@ -141,7 +141,9 @@ describe('AbonadosList — Cancel action', () => {
     })
 
     // Find the confirm button inside the dialog (not the row button)
-    const confirmBtn = screen.getByRole('button', { name: 'Cancelar turno fijo' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Cancelar turno fijo',
+    }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(true)
 
     // Type the phrase
@@ -162,13 +164,17 @@ describe('AbonadosList — Cancel action', () => {
     renderList([ACTIVE_ABONADO])
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy())
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy(),
+    )
 
     // Type phrase to enable confirm
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
     fireEvent.change(phraseInput, { target: { value: 'CANCELAR' } })
 
-    const confirmBtn = screen.getByRole('button', { name: 'Cancelar turno fijo' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Cancelar turno fijo',
+    }) as HTMLButtonElement
 
     await waitFor(() => {
       expect(confirmBtn.disabled).toBe(false)
@@ -194,13 +200,17 @@ describe('AbonadosList — Cancel action', () => {
     renderList([ACTIVE_ABONADO])
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy())
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy(),
+    )
 
     // Type phrase
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
     fireEvent.change(phraseInput, { target: { value: 'CANCELAR' } })
 
-    const confirmBtn = screen.getByRole('button', { name: 'Cancelar turno fijo' }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Cancelar turno fijo',
+    }) as HTMLButtonElement
 
     await waitFor(() => {
       expect(confirmBtn.disabled).toBe(false)

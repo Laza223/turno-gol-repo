@@ -17,15 +17,18 @@ function mk(body: { data: { id: string } } & Record<string, unknown>): NextReque
   const requestId = 'req-ssrf-test'
   const manifest = `id:${body.data.id.toLowerCase()};request-id:${requestId};ts:${ts};`
   const v1 = createHmac('sha256', SECRET).update(manifest).digest('hex')
-  return new NextRequest('http://localhost/api/webhooks/mercadopago?tenant=11111111-1111-1111-1111-111111111111', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-request-id': requestId,
-      'x-signature': `ts=${ts},v1=${v1}`,
+  return new NextRequest(
+    'http://localhost/api/webhooks/mercadopago?tenant=11111111-1111-1111-1111-111111111111',
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': requestId,
+        'x-signature': `ts=${ts},v1=${v1}`,
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  })
+  )
 }
 
 describe('webhook route rejects non-numeric mpPaymentId', () => {

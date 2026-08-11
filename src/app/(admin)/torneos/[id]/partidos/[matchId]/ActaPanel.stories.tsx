@@ -112,12 +112,10 @@ export const ConJugadorSuspendido: Story = {
 /** El error del servidor se muestra arriba, no se pierde. */
 export const ErrorDelServidor: Story = {
   args: {
-    saveResultAction: fn(
-      async (): Promise<TournamentActionResult> => ({
-        success: false,
-        error: 'Una llave no puede terminar empatada: cargá la definición por penales.',
-      }),
-    ),
+    saveResultAction: fn(async (): Promise<TournamentActionResult> => ({
+      success: false,
+      error: 'Una llave no puede terminar empatada: cargá la definición por penales.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

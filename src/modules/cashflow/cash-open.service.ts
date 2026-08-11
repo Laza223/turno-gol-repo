@@ -60,7 +60,8 @@ export async function openDay(
   cutoffMins: number,
   tx: DbTx,
 ): Promise<DailyCashOpenRow> {
-  if (input.date > operatingDateOf(new Date(), cutoffMins)) throw new OpenDateInFutureError(input.date)
+  if (input.date > operatingDateOf(new Date(), cutoffMins))
+    throw new OpenDateInFutureError(input.date)
 
   const lockKey = `daily_close:${tenantId}`
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`)

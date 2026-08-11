@@ -1,11 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { runDunningSweep } from '@/shared/jobs/workers/dunning-retry.worker'
-import {
-  cleanupAll,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 let tenant: { id: string }
 

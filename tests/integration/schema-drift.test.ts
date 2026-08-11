@@ -227,7 +227,10 @@ describe('D5 #6 — schema drift Drizzle vs DB migrada', () => {
       const missing = drizzleTables
         .map(([exportName, table]) => ({ exportName, name: getTableConfig(table).name }))
         .filter(({ name }) => !dbTableNames.has(name))
-        .map(({ exportName, name }) => `${exportName} (tabla '${name}') declarada en Drizzle, ausente en la DB`)
+        .map(
+          ({ exportName, name }) =>
+            `${exportName} (tabla '${name}') declarada en Drizzle, ausente en la DB`,
+        )
       expect(missing).toEqual([])
     })
 
@@ -292,7 +295,10 @@ describe('D5 #6 — schema drift Drizzle vs DB migrada', () => {
     for (const en of drizzleEnums) {
       it(`enum ${en.enumName}: labels coinciden con pg_enum`, () => {
         const dbLabels = dbEnumsByName.get(en.enumName)
-        expect(dbLabels, `enum '${en.enumName}' no existe en la DB (pg_enum, schema public)`).toBeDefined()
+        expect(
+          dbLabels,
+          `enum '${en.enumName}' no existe en la DB (pg_enum, schema public)`,
+        ).toBeDefined()
         expect([...en.enumValues]).toEqual(dbLabels)
       })
     }

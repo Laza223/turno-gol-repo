@@ -45,7 +45,7 @@ async function aggregateTotals(
   let totalAdjustments = 0
   let totalExpense = 0
   let cashNet = 0
-  for (const row of (rows as unknown as Array<{ type: string; method: string; total: number }>)) {
+  for (const row of rows as unknown as Array<{ type: string; method: string; total: number }>) {
     const total = row.total ?? 0
     if (row.type === ('income' as CashFlowType)) totalIncome += total
     if (row.type === ('adjustment' as CashFlowType)) totalAdjustments += total
@@ -82,7 +82,12 @@ export async function closeDailyRegister(
     throw new DayAlreadyCloseExistsError(date)
   }
 
-  const { totalIncome, totalAdjustments, totalExpense, cashNet } = await aggregateTotals(tenantId, date, cutoffMins, tx)
+  const { totalIncome, totalAdjustments, totalExpense, cashNet } = await aggregateTotals(
+    tenantId,
+    date,
+    cutoffMins,
+    tx,
+  )
   const balance = totalIncome + totalAdjustments - totalExpense
 
   // Apertura de caja (migr. 049): snapshot del fondo inicial al cerrar, así
@@ -160,22 +165,24 @@ export async function getDailyClose(
   const rows = await tx.execute(
     sql`SELECT * FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
   )
-  const r = (rows as unknown as Array<{
-    id: string
-    tenant_id: string
-    date: Date
-    total_income: number
-    total_adjustments: number
-    total_expense: number
-    balance: number
-    declared_cash: number
-    diff_amount: number
-    opening_cash: number | null
-    expected_cash: number | null
-    note: string | null
-    closed_by: string
-    closed_at: Date
-  }>)[0]
+  const r = (
+    rows as unknown as Array<{
+      id: string
+      tenant_id: string
+      date: Date
+      total_income: number
+      total_adjustments: number
+      total_expense: number
+      balance: number
+      declared_cash: number
+      diff_amount: number
+      opening_cash: number | null
+      expected_cash: number | null
+      note: string | null
+      closed_by: string
+      closed_at: Date
+    }>
+  )[0]
   if (!r) return null
   return {
     id: r.id,

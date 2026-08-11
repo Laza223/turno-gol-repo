@@ -15,9 +15,7 @@ import { FORMAT_SHORT, formatDateRange } from '../../torneos-lib'
 import { TorneoTabs } from '../TorneoTabs'
 import { InscripcionesPanel } from './InscripcionesPanel'
 
-export default async function TorneoInscripcionesPage(props: {
-  params: Promise<{ id: string }>
-}) {
+export default async function TorneoInscripcionesPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
 
   const user = await extractAuthUser()
@@ -58,10 +56,7 @@ export default async function TorneoInscripcionesPage(props: {
         icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
       />
 
-      <TorneoTabs
-        tournamentId={tournament.id}
-        active={`/torneos/${tournament.id}/inscripciones`}
-      />
+      <TorneoTabs tournamentId={tournament.id} active={`/torneos/${tournament.id}/inscripciones`} />
 
       <InscripcionesPanel rows={rows} registerAction={registerInscriptionPaymentAction} />
     </div>

@@ -64,7 +64,10 @@ export function AccountEmailForm({
         </div>
 
         <div>
-          <label htmlFor="newEmail" className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <label
+            htmlFor="newEmail"
+            className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
             Nuevo email
           </label>
           <input

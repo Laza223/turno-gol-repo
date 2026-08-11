@@ -12,7 +12,13 @@ const meta = {
   component: Input,
   parameters: { layout: 'centered' },
   args: { placeholder: 'Nombre del complejo' },
-  decorators: [(Story) => <div className="w-72"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof Input>
 
 export default meta

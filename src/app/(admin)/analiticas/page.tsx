@@ -33,7 +33,12 @@ import { OccupancyChart, TrendChart } from './ReportCharts'
 /** Formato contable con signo (§2.5/§8.2): negativos en `−$ X,00` + `text-destructive`. */
 function signedArsContable(cents: number): ReactNode {
   if (cents < 0) {
-    return <span className="text-destructive">{'−'}{formatArsContable(-cents)}</span>
+    return (
+      <span className="text-destructive">
+        {'−'}
+        {formatArsContable(-cents)}
+      </span>
+    )
   }
   return formatArsContable(cents)
 }
@@ -105,8 +110,12 @@ export default async function AnaliticasPage(props: {
     .toISOString()
     .slice(0, 10)
 
-  const incomeDelta = report.prevPeriod ? computeDelta(report.income, report.prevPeriod.income) : null
-  const balanceDelta = report.prevPeriod ? computeDelta(report.balance, report.prevPeriod.balance) : null
+  const incomeDelta = report.prevPeriod
+    ? computeDelta(report.income, report.prevPeriod.income)
+    : null
+  const balanceDelta = report.prevPeriod
+    ? computeDelta(report.balance, report.prevPeriod.balance)
+    : null
 
   return (
     <div className="space-y-6">
@@ -122,7 +131,10 @@ export default async function AnaliticasPage(props: {
 
       <div className="space-y-6">
         {/* Reporte mensual: header + navegación mes a mes */}
-        <div className="card-entrance flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: '160ms' }}>
+        <div
+          className="card-entrance flex flex-wrap items-center justify-between gap-3"
+          style={{ animationDelay: '160ms' }}
+        >
           <h2 className="text-lg font-semibold text-foreground">Reporte mensual</h2>
           <div className="flex items-center gap-2">
             <form method="get" action="/analiticas">
@@ -159,7 +171,10 @@ export default async function AnaliticasPage(props: {
         ) : (
           <>
             {/* KPI cards */}
-            <div className="card-entrance grid grid-cols-2 gap-4 sm:grid-cols-4" style={{ animationDelay: '200ms' }}>
+            <div
+              className="card-entrance grid grid-cols-2 gap-4 sm:grid-cols-4"
+              style={{ animationDelay: '200ms' }}
+            >
               <StatCard
                 label="Ingresos"
                 value={formatArsContable(report.income)}
@@ -191,7 +206,10 @@ export default async function AnaliticasPage(props: {
 
             {/* Tendencia mensual */}
             {report.prevPeriod && (
-              <TrendChart current={{ income: report.income, balance: report.balance }} prev={report.prevPeriod} />
+              <TrendChart
+                current={{ income: report.income, balance: report.balance }}
+                prev={report.prevPeriod}
+              />
             )}
 
             {/* Ocupación por cancha */}
@@ -209,9 +227,14 @@ export default async function AnaliticasPage(props: {
                 cards={
                   <ul className="divide-y divide-border">
                     {report.byCourt.map((c) => (
-                      <li key={c.courtId} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <li
+                        key={c.courtId}
+                        className="flex items-center justify-between gap-3 px-4 py-3"
+                      >
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{c.courtName}</p>
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {c.courtName}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {c.bookingCount} reservas · {c.occupancyPct}% ocupación
                           </p>
@@ -256,7 +279,10 @@ export default async function AnaliticasPage(props: {
 
             {/* By payment method */}
             {report.byMethod.length > 0 && (
-              <div className="card-entrance overflow-hidden rounded-lg border border-border bg-card shadow-xs" style={{ animationDelay: '360ms' }}>
+              <div
+                className="card-entrance overflow-hidden rounded-lg border border-border bg-card shadow-xs"
+                style={{ animationDelay: '360ms' }}
+              >
                 <div className="border-b border-border px-6 py-4">
                   <h2 className="text-sm font-semibold text-foreground">Por método de pago</h2>
                 </div>
@@ -271,7 +297,9 @@ export default async function AnaliticasPage(props: {
                     <tbody className="divide-y divide-border">
                       {report.byMethod.map((m) => (
                         <tr key={m.method} className="transition-colors hover:bg-accent/40">
-                          <td className="px-6 py-3 text-foreground">{formatMethodLabel(m.method)}</td>
+                          <td className="px-6 py-3 text-foreground">
+                            {formatMethodLabel(m.method)}
+                          </td>
                           <td className="px-6 py-3 text-right tabular-nums text-foreground">
                             {formatArsContable(m.total)}
                           </td>

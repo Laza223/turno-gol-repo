@@ -6,9 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { passwordSchema } from '@/modules/auth/password'
 
-export type ResetState =
-  | { status: 'idle' }
-  | { status: 'error'; message: string }
+export type ResetState = { status: 'idle' } | { status: 'error'; message: string }
 
 const schema = z
   .object({ password: passwordSchema, confirmPassword: z.string() })
@@ -40,7 +38,8 @@ export async function resetPasswordAction(
   if (getErr || !data?.user) {
     return {
       status: 'error',
-      message: 'El enlace expiró o la sesión no es válida. Pedí uno nuevo desde "Olvidé mi contraseña".',
+      message:
+        'El enlace expiró o la sesión no es válida. Pedí uno nuevo desde "Olvidé mi contraseña".',
     }
   }
   const user = data.user

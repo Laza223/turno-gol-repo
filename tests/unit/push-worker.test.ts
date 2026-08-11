@@ -73,10 +73,7 @@ function makeSqlSequence(results: unknown[][]) {
   return fn as unknown as ReturnType<typeof getWorkerSql>
 }
 
-function makeJobWithDedupe(
-  dedupeKey: string,
-  subscriptionId = 'sub-uuid-1',
-): Job<PushSendJobData> {
+function makeJobWithDedupe(dedupeKey: string, subscriptionId = 'sub-uuid-1'): Job<PushSendJobData> {
   return {
     id: 'job-dedupe-1',
     name: 'push-send',
@@ -138,11 +135,14 @@ describe('handlePushSendJob', () => {
   it('throws on non-gone failure so pg-boss retries', async () => {
     const sql = makeSqlStub([SUB_ROW])
     mockGetSql.mockReturnValue(sql)
-    mockSendPush.mockResolvedValue({ success: false, gone: false, statusCode: 500, error: 'internal error' })
+    mockSendPush.mockResolvedValue({
+      success: false,
+      gone: false,
+      statusCode: 500,
+      error: 'internal error',
+    })
 
-    await expect(handlePushSendJob(makeJob())).rejects.toThrow(
-      /push send failed: statusCode=500/,
-    )
+    await expect(handlePushSendJob(makeJob())).rejects.toThrow(/push send failed: statusCode=500/)
   })
 
   // ─── F3 (hallazgo D4): idempotencia por dedupeKey ────────────────────

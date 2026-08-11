@@ -157,7 +157,11 @@ export function StockExitDialog({
               className="min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm"
             />
           </div>
-          {error && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {error}
+            </p>
+          )}
           <button
             type="button"
             onClick={submit}

@@ -2,12 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { closeSql, getSql, withContext, withPlayerContext } from '@/shared/db/client'
 import { players } from '@/shared/db/schema'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const FUTURE_DATE = '2031-06-02'
 const PAST_DATE = '2020-06-01'
@@ -18,7 +13,7 @@ async function insertCourt(tenantId: string): Promise<string> {
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
     VALUES (
       ${tenantId}, ${'Cancha Player Test'}, ${10},
-      ${db.json({ rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }] })},
+      ${db.json({ rules: [{ days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '08:00', to: '23:00', price: 800000 }] })},
       'online'
     )
     RETURNING id
@@ -73,9 +68,30 @@ describe('player app — RLS isolation', () => {
     const courtA = await insertCourt(tenantA.id)
     const courtB = await insertCourt(tenantB.id)
 
-    await insertBooking({ tenantId: tenantA.id, courtId: courtA, playerId: playerA.id, date: FUTURE_DATE, timeStart: '10:00', timeEnd: '11:00' })
-    await insertBooking({ tenantId: tenantB.id, courtId: courtB, playerId: playerA.id, date: FUTURE_DATE, timeStart: '12:00', timeEnd: '13:00' })
-    await insertBooking({ tenantId: tenantA.id, courtId: courtA, playerId: playerB.id, date: FUTURE_DATE, timeStart: '14:00', timeEnd: '15:00' })
+    await insertBooking({
+      tenantId: tenantA.id,
+      courtId: courtA,
+      playerId: playerA.id,
+      date: FUTURE_DATE,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
+    await insertBooking({
+      tenantId: tenantB.id,
+      courtId: courtB,
+      playerId: playerA.id,
+      date: FUTURE_DATE,
+      timeStart: '12:00',
+      timeEnd: '13:00',
+    })
+    await insertBooking({
+      tenantId: tenantA.id,
+      courtId: courtA,
+      playerId: playerB.id,
+      date: FUTURE_DATE,
+      timeStart: '14:00',
+      timeEnd: '15:00',
+    })
 
     const rowsA = await withContext(
       { role: 'authenticated', playerId: playerA.id },
@@ -98,8 +114,12 @@ describe('player app — RLS isolation', () => {
     const court = await insertCourt(tenant.id)
 
     const bookingId = await insertBooking({
-      tenantId: tenant.id, courtId: court, playerId: playerA.id,
-      date: FUTURE_DATE, timeStart: '16:00', timeEnd: '17:00',
+      tenantId: tenant.id,
+      courtId: court,
+      playerId: playerA.id,
+      date: FUTURE_DATE,
+      timeStart: '16:00',
+      timeEnd: '17:00',
     })
 
     const rows = await withContext(
@@ -118,8 +138,22 @@ describe('player app — upcoming vs history', () => {
     const player = await createTestPlayer(db)
     const court = await insertCourt(tenant.id)
 
-    await insertBooking({ tenantId: tenant.id, courtId: court, playerId: player.id, date: FUTURE_DATE, timeStart: '10:00', timeEnd: '11:00' })
-    await insertBooking({ tenantId: tenant.id, courtId: court, playerId: player.id, date: PAST_DATE, timeStart: '10:00', timeEnd: '11:00' })
+    await insertBooking({
+      tenantId: tenant.id,
+      courtId: court,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
+    await insertBooking({
+      tenantId: tenant.id,
+      courtId: court,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
 
     const upcoming = await withContext(
       { role: 'authenticated', playerId: player.id },
@@ -141,10 +175,7 @@ describe('player app — profile update', () => {
     const player = await createTestPlayer(db)
 
     await withPlayerContext(player.id, (tx) =>
-      tx
-        .update(players)
-        .set({ firstName: 'Actualizado' })
-        .where(eq(players.id, player.id)),
+      tx.update(players).set({ firstName: 'Actualizado' }).where(eq(players.id, player.id)),
     )
 
     const rows = await db<{ first_name: string }[]>`

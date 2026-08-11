@@ -36,8 +36,5 @@ export function scrubObject(obj: unknown, depth = 0): unknown {
 }
 
 export function scrubQueryString(qs: string): string {
-  return qs.replace(
-    /([?&])(email|token|access_token|refresh_token)=[^&]*/gi,
-    '$1$2=[REDACTED]',
-  )
+  return qs.replace(/([?&])(email|token|access_token|refresh_token)=[^&]*/gi, '$1$2=[REDACTED]')
 }

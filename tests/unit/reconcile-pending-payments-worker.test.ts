@@ -68,19 +68,23 @@ beforeEach(() => {
 
 describe('reconcilePendingPayments — loop pending_payment (ENS-15 push)', () => {
   it('(f) confirma un booking stuck → dispara push al admin además del email', async () => {
-    mockTwoQueries(
-      [{ bookingId: BOOKING_ID, tenantId: TENANT_ID, mpAccessToken: 'tok' }],
-      [],
-    )
+    mockTwoQueries([{ bookingId: BOOKING_ID, tenantId: TENANT_ID, mpAccessToken: 'tok' }], [])
     const fakeGateway = {
       searchPaymentsByReference: vi.fn().mockResolvedValue([
-        { mpPaymentId: 'mp-1', status: 'approved', amount: 100, externalReference: BOOKING_ID, paymentMethodId: 'x' },
+        {
+          mpPaymentId: 'mp-1',
+          status: 'approved',
+          amount: 100,
+          externalReference: BOOKING_ID,
+          paymentMethodId: 'x',
+        },
       ]),
     }
     mockResolveGateway.mockReturnValue(fakeGateway)
-    mockWithTenantContext.mockImplementation(
-      (async (_id: string, cb: (t: never) => Promise<unknown>) => cb({} as never)) as never,
-    )
+    mockWithTenantContext.mockImplementation((async (
+      _id: string,
+      cb: (t: never) => Promise<unknown>,
+    ) => cb({} as never)) as never)
     mockLockMpEvent.mockResolvedValue(true)
     mockDispatchPaymentInfo.mockResolvedValue({
       alreadyProcessed: false,
@@ -103,19 +107,23 @@ describe('reconcilePendingPayments — loop pending_payment (ENS-15 push)', () =
   // sin mirar won, mismo bug que mp-webhook.handler.ts y que el rescate
   // post-terminal de este mismo archivo.
   it('(g) R1-B: won:false (booking ya salió de pending_payment por otro camino) → NO dispara push, pero el email SÍ sale', async () => {
-    mockTwoQueries(
-      [{ bookingId: BOOKING_ID, tenantId: TENANT_ID, mpAccessToken: 'tok' }],
-      [],
-    )
+    mockTwoQueries([{ bookingId: BOOKING_ID, tenantId: TENANT_ID, mpAccessToken: 'tok' }], [])
     const fakeGateway = {
       searchPaymentsByReference: vi.fn().mockResolvedValue([
-        { mpPaymentId: 'mp-1', status: 'approved', amount: 100, externalReference: BOOKING_ID, paymentMethodId: 'x' },
+        {
+          mpPaymentId: 'mp-1',
+          status: 'approved',
+          amount: 100,
+          externalReference: BOOKING_ID,
+          paymentMethodId: 'x',
+        },
       ]),
     }
     mockResolveGateway.mockReturnValue(fakeGateway)
-    mockWithTenantContext.mockImplementation(
-      (async (_id: string, cb: (t: never) => Promise<unknown>) => cb({} as never)) as never,
-    )
+    mockWithTenantContext.mockImplementation((async (
+      _id: string,
+      cb: (t: never) => Promise<unknown>,
+    ) => cb({} as never)) as never)
     mockLockMpEvent.mockResolvedValue(true)
     mockDispatchPaymentInfo.mockResolvedValue({
       alreadyProcessed: false,

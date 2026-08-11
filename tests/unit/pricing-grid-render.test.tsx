@@ -26,9 +26,7 @@ const OPENING: OpeningHours = Object.fromEntries(
   DAYS.map((d) => [d, { open: '08:00', close: '12:00', closed: false }]),
 ) as OpeningHours
 
-const RULES: PricingRule[] = [
-  { days: [...DAYS], from: '08:00', to: '12:00', price: 1000000 },
-]
+const RULES: PricingRule[] = [{ days: [...DAYS], from: '08:00', to: '12:00', price: 1000000 }]
 
 // La grilla es controlada (spec §3.3): el harness cumple el rol de PricingSection.
 function GridHarness({

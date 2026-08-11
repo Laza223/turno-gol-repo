@@ -1,14 +1,11 @@
-import type {
-  CashFlowRow,
-  DailyCashCloseRow,
-  DaySummary,
-} from '@/modules/cashflow/cashflow.types'
+import type { CashFlowRow, DailyCashCloseRow, DaySummary } from '@/modules/cashflow/cashflow.types'
 import { artDateString, daysFromNow, FROZEN_NOW, hoursFromNow } from './clock'
 import { uid } from './ids'
 import { staffManager, staffMember } from './staff'
 import { tenant } from './tenant'
 
-const dateAt = (offsetDays: number): Date => new Date(`${artDateString(daysFromNow(offsetDays))}T00:00:00.000Z`)
+const dateAt = (offsetDays: number): Date =>
+  new Date(`${artDateString(daysFromNow(offsetDays))}T00:00:00.000Z`)
 
 /** Default: ingreso de una seña de reserva, cobrada por MercadoPago. */
 export const cashFlow = (overrides: Partial<CashFlowRow> = {}): CashFlowRow => ({

@@ -46,7 +46,9 @@ export const SinHorasOperativas: Story = {
     // Sin horas operativas el componente retorna null: nada que renderizar.
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('table')).not.toBeInTheDocument()
-    await expect(canvas.queryByRole('button', { name: 'Seleccionar bloque' })).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByRole('button', { name: 'Seleccionar bloque' }),
+    ).not.toBeInTheDocument()
   },
 }
 

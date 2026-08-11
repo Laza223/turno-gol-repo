@@ -2,12 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withContext, withPlayerContext } from '@/shared/db/client'
 import { searchPublicTenants } from '@/modules/tenants/search.service'
 import { createReview } from '@/modules/reviews/review.service'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { insertBooking } from '../helpers/factories'
 
 type Pricing = {
@@ -119,16 +114,20 @@ describe('search upgrade: filtros', () => {
     await insertCourt(tenant.id, { surface: 'tile', format: 11 }) // trigger denormaliza facets
 
     // Facets en tenants (tabla global, sin RLS) → legibles sin tenant context.
-    const byFacet = await withContext({ role: 'authenticated' }, (tx) =>
-      tx`SELECT id FROM tenants WHERE id = ${tenant.id} AND court_surfaces && ARRAY['tile']::text[] AND court_formats && ARRAY[11]::integer[]` as unknown as Promise<
-        unknown[]
-      >,
+    const byFacet = await withContext(
+      { role: 'authenticated' },
+      (tx) =>
+        tx`SELECT id FROM tenants WHERE id = ${tenant.id} AND court_surfaces && ARRAY['tile']::text[] AND court_formats && ARRAY[11]::integer[]` as unknown as Promise<
+          unknown[]
+        >,
     )
     expect((byFacet as unknown as unknown[]).length).toBe(1)
 
     // En cambio courts NO es legible sin tenant context (por eso el viejo EXISTS daba 0 en prod).
-    const courtsVisible = await withContext({ role: 'authenticated' }, (tx) =>
-      tx`SELECT 1 FROM courts WHERE tenant_id = ${tenant.id}` as unknown as Promise<unknown[]>,
+    const courtsVisible = await withContext(
+      { role: 'authenticated' },
+      (tx) =>
+        tx`SELECT 1 FROM courts WHERE tenant_id = ${tenant.id}` as unknown as Promise<unknown[]>,
     )
     expect((courtsVisible as unknown as unknown[]).length).toBe(0)
   })

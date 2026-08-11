@@ -30,7 +30,10 @@ export const ConDigest: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('No pudimos cargar tus reservas')).toBeInTheDocument()
     await expect(canvas.getByText('3f9a21bc')).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Mis reservas' })).toHaveAttribute('href', '/mis-reservas')
+    await expect(canvas.getByRole('link', { name: 'Mis reservas' })).toHaveAttribute(
+      'href',
+      '/mis-reservas',
+    )
   },
 }
 

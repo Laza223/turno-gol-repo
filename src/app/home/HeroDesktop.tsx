@@ -25,10 +25,16 @@ export function HeroDesktop({ cities }: { cities: CityCount[] }) {
         }}
       />
       {/* Scrim oscuro sobre la foto: garantiza AA del headline/texto centrado */}
-      <div aria-hidden className="hero-desktop-scrim pointer-events-none absolute inset-0 z-[1] hidden dark:block" />
+      <div
+        aria-hidden
+        className="hero-desktop-scrim pointer-events-none absolute inset-0 z-[1] hidden dark:block"
+      />
 
       {/* Ambiente light: líneas de cal, reposicionadas para el layout centrado */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-[-6%] z-0 h-[55%] text-emerald-600/[.14] dark:hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-[-6%] z-0 h-[55%] text-emerald-600/[.14] dark:hidden"
+      >
         <div className="mx-auto h-full max-w-[1400px]">
           <PitchLines className="h-full w-full" />
         </div>
@@ -59,7 +65,11 @@ export function HeroDesktop({ cities }: { cities: CityCount[] }) {
       <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-col items-center px-4 text-center">
         <h1
           className="font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.6)]"
-          style={{ fontSize: 'clamp(48px, 5.6vw, 88px)', lineHeight: '0.95', letterSpacing: '-0.035em' }}
+          style={{
+            fontSize: 'clamp(48px, 5.6vw, 88px)',
+            lineHeight: '0.95',
+            letterSpacing: '-0.035em',
+          }}
         >
           Reservá tu cancha
           <br />
@@ -71,8 +81,8 @@ export function HeroDesktop({ cities }: { cities: CityCount[] }) {
           style={{ fontSize: 'clamp(17px, 1.3vw, 21px)', lineHeight: '1.55' }}
         >
           Explorá complejos verificados, compará horarios en tiempo real y{' '}
-          <span className="font-semibold text-foreground">asegurá tu cancha</span>{' '}
-          con confirmación inmediata.
+          <span className="font-semibold text-foreground">asegurá tu cancha</span> con confirmación
+          inmediata.
         </p>
 
         <div className="relative mt-9 w-full max-w-[1140px]">
@@ -80,12 +90,21 @@ export function HeroDesktop({ cities }: { cities: CityCount[] }) {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5">
-          {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map((t) => (
-            <span key={t} className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-              <Check className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" strokeWidth={2.4} aria-hidden />
-              {t}
-            </span>
-          ))}
+          {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map(
+            (t) => (
+              <span
+                key={t}
+                className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground"
+              >
+                <Check
+                  className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400"
+                  strokeWidth={2.4}
+                  aria-hidden
+                />
+                {t}
+              </span>
+            ),
+          )}
         </div>
       </div>
     </section>

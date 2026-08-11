@@ -55,9 +55,10 @@ beforeEach(() => {
   vi.mocked(getStaffTenant).mockResolvedValue({ id: 'tenant-1', settings: {} } as never)
   vi.mocked(getStaffRole).mockResolvedValue('manager')
   vi.mocked(adminRateLimited).mockResolvedValue(null as never)
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (t: never) => Promise<unknown>) => cb(FAKE_TX)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (t: never) => Promise<unknown>,
+  ) => cb(FAKE_TX)) as never)
 })
 
 describe('sellTicketAction — mapeo de errores es-AR', () => {

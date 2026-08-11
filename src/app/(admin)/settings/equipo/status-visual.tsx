@@ -24,6 +24,14 @@ export function StaffRoleBadge({ role, className }: { role: StaffRole; className
 }
 
 /** Badge de estado de cuenta (§6.5), mismo patrón success/muted que abonados/canchas. */
-export function StaffStatusBadge({ isActive, className }: { isActive: boolean; className?: string }) {
-  return <StatusBadge visual={STATUS_VISUALS[isActive ? 'active' : 'inactive']} className={className} />
+export function StaffStatusBadge({
+  isActive,
+  className,
+}: {
+  isActive: boolean
+  className?: string
+}) {
+  return (
+    <StatusBadge visual={STATUS_VISUALS[isActive ? 'active' : 'inactive']} className={className} />
+  )
 }

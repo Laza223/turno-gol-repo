@@ -14,7 +14,9 @@ export type SignInResult = { ok: true } | { ok: false; error: string }
  */
 export class OrphanedStaffSessionError extends Error {
   constructor(staffUserId: string) {
-    super(`provisionAndRouteStaff: staff_user_id ${staffUserId} en metadata no existe en staff_users`)
+    super(
+      `provisionAndRouteStaff: staff_user_id ${staffUserId} en metadata no existe en staff_users`,
+    )
     this.name = 'OrphanedStaffSessionError'
   }
 }
@@ -76,8 +78,7 @@ export async function signInWithExistingPlayerMagicLink(
 }
 
 export type PasswordSignInResult =
-  | { ok: true; user: User }
-  | { ok: false; code: 'invalid_credentials' | 'email_not_confirmed' }
+  { ok: true; user: User } | { ok: false; code: 'invalid_credentials' | 'email_not_confirmed' }
 
 /**
  * Login de staff por email + contraseña. No revela al caller si el email existe:
@@ -91,7 +92,8 @@ export async function signInWithPassword(
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error || !data?.user) {
-    const code = error?.code === 'email_not_confirmed' ? 'email_not_confirmed' : 'invalid_credentials'
+    const code =
+      error?.code === 'email_not_confirmed' ? 'email_not_confirmed' : 'invalid_credentials'
     return { ok: false, code }
   }
   return { ok: true, user: data.user }
@@ -131,9 +133,7 @@ export type StaffTenantRow = {
   role: string
 }
 
-export async function resolveStaffTenants(
-  staffUserId: string,
-): Promise<StaffTenantRow[]> {
+export async function resolveStaffTenants(staffUserId: string): Promise<StaffTenantRow[]> {
   // Runs before any tenant_id is known (that's what it's resolving) — RLS on
   // staff_users/tenant_staff_members requires app.current_tenant_id, which
   // doesn't exist yet here. Needs a bypass-capable pool, same as background

@@ -37,9 +37,7 @@ export type SystemAdminAuth = {
  * Resultado del guard para Server Actions: sin redirect — la action devuelve
  * el error genérico y la UI lo muestra (mismo patrón que StaffActionAuth).
  */
-export type SystemAdminActionAuth =
-  | ({ ok: true } & SystemAdminAuth)
-  | { ok: false; error: string }
+export type SystemAdminActionAuth = ({ ok: true } & SystemAdminAuth) | { ok: false; error: string }
 
 function parseAllowlist(raw: string | undefined): string[] {
   if (!raw) return []

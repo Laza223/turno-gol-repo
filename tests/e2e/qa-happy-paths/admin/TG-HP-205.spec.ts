@@ -45,13 +45,11 @@ test.describe('TG-HP-205 — Subir portada/cover del tenant a R2', () => {
       })
       await expect(page.getByRole('heading', { name: 'Portada', exact: true })).toBeVisible()
 
-      await page
-        .getByLabel('Subí una portada')
-        .setInputFiles({
-          name: 'cover.png',
-          mimeType: 'image/png',
-          buffer: Buffer.from(COVER_PNG_BASE64, 'base64'),
-        })
+      await page.getByLabel('Subí una portada').setInputFiles({
+        name: 'cover.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(COVER_PNG_BASE64, 'base64'),
+      })
 
       // DB: setTenantImageAction('cover', ...) escribe cover_url ANTES de responder.
       await expect
@@ -86,7 +84,8 @@ test.describe('TG-HP-205 — Subir portada/cover del tenant a R2', () => {
         originalCoverUrl,
         newCoverUrl,
         dbWrites: 'tenants.cover_url (setTenantImageAction, actions.ts:73)',
-        notes: 'Upload real a R2; key = {tenantId}/cover-{uuid}.webp; aspect-video (16:9) en el uploader.',
+        notes:
+          'Upload real a R2; key = {tenantId}/cover-{uuid}.webp; aspect-video (16:9) en el uploader.',
       })
     } finally {
       await context.close()

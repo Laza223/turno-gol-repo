@@ -2,7 +2,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Loading() {
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8" aria-busy="true">
+    <div
+      className="mx-auto w-full max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8"
+      aria-busy="true"
+    >
       <div className="rounded-3xl border border-border/80 bg-muted/40 p-4 shadow-xs backdrop-blur-xs sm:p-6 lg:p-8 space-y-6">
         {/* Header skeleton */}
         <div className="space-y-4">

@@ -20,12 +20,9 @@ const buttonVariants = cva(
           'bg-destructive text-destructive-foreground shadow-md shadow-red-600/20 hover:bg-destructive/90 hover:-translate-y-0.5',
         outline:
           'border border-input bg-card text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
-        secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost:
-          'text-foreground hover:bg-accent hover:text-accent-foreground',
-        link:
-          'text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
+        link: 'text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline',
       },
       size: {
         default: 'h-11 px-4 py-2 md:h-10',
@@ -43,8 +40,7 @@ const buttonVariants = cva(
 
 /** @public Superficie vendorizada de shadcn/ui: la reintroduce cualquier `npx shadcn add`. */
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   isLoading?: boolean
 }
 

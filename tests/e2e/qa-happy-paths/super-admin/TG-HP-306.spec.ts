@@ -45,9 +45,9 @@ test.describe('TG-HP-306 — Forzar estado: bloquear (destructiva)', () => {
       const page = await ctx.newPage()
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=acciones`)
 
-      await expect(
-        page.getByRole('heading', { name: 'Forzar transición de estado' }),
-      ).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Forzar transición de estado' })).toBeVisible({
+        timeout: 15_000,
+      })
       await expect(page.getByText(/Estado actual: Suspendido\./)).toBeVisible()
 
       await page.locator('#force-target').selectOption('blocked')
@@ -74,9 +74,9 @@ test.describe('TG-HP-306 — Forzar estado: bloquear (destructiva)', () => {
 
       await forceBtn.click()
 
-      await expect(
-        page.getByText("Estado forzado: 'suspended' → 'blocked'."),
-      ).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText("Estado forzado: 'suspended' → 'blocked'.")).toBeVisible({
+        timeout: 10_000,
+      })
       expect(page.url()).toContain('?tab=acciones')
       await expect(page.getByText(/Estado actual: Bloqueado\./)).toBeVisible()
 
@@ -100,7 +100,8 @@ test.describe('TG-HP-306 — Forzar estado: bloquear (destructiva)', () => {
         tenantRow,
         tenantSubscriptionRow: subRow,
         confirmedName: tenantRowBefore.name,
-        dbWrites: 'tenants.status, tenant_subscriptions.status (lifecycle.service.ts:177-204) + audit_logs',
+        dbWrites:
+          'tenants.status, tenant_subscriptions.status (lifecycle.service.ts:177-204) + audit_logs',
         notes:
           'CASO DE PLATA: fila final (blocked) queda viva para el verificador y para TG-HP-307. ' +
           'Confirmación server-side re-validada (confirmNameMatches) — se probó primero con nombre incorrecto (botón sigue disabled).',

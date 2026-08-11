@@ -75,13 +75,11 @@ const meta = {
   args: {
     courts: COURTS,
     submitAction: fn(async (): Promise<NewAbonadoState> => ({ status: 'idle' })),
-    previewAction: fn(
-      async (): Promise<PreviewAbonadoSlotsResult> => ({
-        success: true,
-        dates: ['2026-03-16', '2026-03-23', '2026-03-30'],
-        conflicts: [],
-      }),
-    ),
+    previewAction: fn(async (): Promise<PreviewAbonadoSlotsResult> => ({
+      success: true,
+      dates: ['2026-03-16', '2026-03-23', '2026-03-30'],
+      conflicts: [],
+    })),
   },
 } satisfies Meta<typeof AbonadoForm>
 
@@ -98,13 +96,11 @@ export const FaseFormulario: Story = {
 /** Enviar el form pide la vista previa: fechas libres/ocupadas antes de confirmar. */
 export const VistaPreviaConFechas: Story = {
   args: {
-    previewAction: fn(
-      async (): Promise<PreviewAbonadoSlotsResult> => ({
-        success: true,
-        dates: ['2026-03-16', '2026-03-23', '2026-03-30', '2026-04-06'],
-        conflicts: ['2026-03-23'],
-      }),
-    ),
+    previewAction: fn(async (): Promise<PreviewAbonadoSlotsResult> => ({
+      success: true,
+      dates: ['2026-03-16', '2026-03-23', '2026-03-30', '2026-04-06'],
+      conflicts: ['2026-03-23'],
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -121,13 +117,11 @@ export const VistaPreviaConFechas: Story = {
 /** Todas las fechas ocupadas: el botón de confirmar queda deshabilitado con aviso. */
 export const VistaPreviaSinTurnosDisponibles: Story = {
   args: {
-    previewAction: fn(
-      async (): Promise<PreviewAbonadoSlotsResult> => ({
-        success: true,
-        dates: ['2026-03-16', '2026-03-23'],
-        conflicts: ['2026-03-16', '2026-03-23'],
-      }),
-    ),
+    previewAction: fn(async (): Promise<PreviewAbonadoSlotsResult> => ({
+      success: true,
+      dates: ['2026-03-16', '2026-03-23'],
+      conflicts: ['2026-03-16', '2026-03-23'],
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -142,12 +136,10 @@ export const VistaPreviaSinTurnosDisponibles: Story = {
 /** El preview falla (ej. ya hay un turno fijo en ese horario): error inline, sigue en el form. */
 export const ErrorDePreview: Story = {
   args: {
-    previewAction: fn(
-      async (): Promise<PreviewAbonadoSlotsResult> => ({
-        success: false,
-        error: 'Ya existe un turno fijo activo en ese horario.',
-      }),
-    ),
+    previewAction: fn(async (): Promise<PreviewAbonadoSlotsResult> => ({
+      success: false,
+      error: 'Ya existe un turno fijo activo en ese horario.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

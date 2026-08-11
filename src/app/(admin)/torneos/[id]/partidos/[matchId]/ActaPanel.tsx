@@ -71,7 +71,10 @@ export function ActaPanel({
   const [eventPlayerId, setEventPlayerId] = useState('')
   const [eventType, setEventType] = useState<TournamentEventType>('goal')
   const [minute, setMinute] = useState('')
-  const [walkoverConfirm, setWalkoverConfirm] = useState<{ teamId: string; teamName: string } | null>(null)
+  const [walkoverConfirm, setWalkoverConfirm] = useState<{
+    teamId: string
+    teamName: string
+  } | null>(null)
   const [clearResultConfirmOpen, setClearResultConfirmOpen] = useState(false)
 
   const isKnockout = stageKind === 'knockout'
@@ -95,7 +98,11 @@ export function ActaPanel({
     if (!walkoverConfirm) return { success: false, error: 'No hay equipo seleccionado.' }
     const res = await walkoverAction({ matchId: match.id, winnerTeamId: walkoverConfirm.teamId })
     if (res.success) {
-      toast({ title: 'Walkover cargado', description: `Ganó ${walkoverConfirm.teamName}`, variant: 'success' })
+      toast({
+        title: 'Walkover cargado',
+        description: `Ganó ${walkoverConfirm.teamName}`,
+        variant: 'success',
+      })
       router.refresh()
     }
     return res
@@ -158,8 +165,7 @@ export function ActaPanel({
 
       {undefinedTeams ? (
         <p className="rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-muted-foreground">
-          Todavía no se sabe qué equipos juegan este partido: primero se tiene que definir la
-          llave.
+          Todavía no se sabe qué equipos juegan este partido: primero se tiene que definir la llave.
         </p>
       ) : null}
 
@@ -167,8 +173,8 @@ export function ActaPanel({
         <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            Hay {suspendedInActa.length} jugador(es) en el acta que arrastran fechas de
-            suspensión. Es un aviso: si el árbitro los dejó jugar, el resultado vale.
+            Hay {suspendedInActa.length} jugador(es) en el acta que arrastran fechas de suspensión.
+            Es un aviso: si el árbitro los dejó jugar, el resultado vale.
           </span>
         </p>
       ) : null}
@@ -224,9 +230,7 @@ export function ActaPanel({
               />
             </label>
             <label className="flex-1 min-w-[140px]">
-              <span className="mb-1 block text-xs text-muted-foreground">
-                Penales visitante
-              </span>
+              <span className="mb-1 block text-xs text-muted-foreground">Penales visitante</span>
               <input
                 type="number"
                 min={0}
@@ -298,8 +302,7 @@ export function ActaPanel({
         <div className="border-b border-border px-4 py-3">
           <h2 className="font-medium text-foreground">Acta del partido</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Goles y tarjetas. Un evento cargado por error se borra; queda registro en la
-            auditoría.
+            Goles y tarjetas. Un evento cargado por error se borra; queda registro en la auditoría.
           </p>
         </div>
 
@@ -424,7 +427,9 @@ export function ActaPanel({
           if (!open) setWalkoverConfirm(null)
         }}
         title="Cargar walkover"
-        description={walkoverConfirm ? `Ganó ${walkoverConfirm.teamName} por no presentación.` : undefined}
+        description={
+          walkoverConfirm ? `Ganó ${walkoverConfirm.teamName} por no presentación.` : undefined
+        }
         consequences={[
           'El resultado queda definido por no presentación, no por marcador.',
           'Se puede corregir después borrando el resultado.',
@@ -442,7 +447,9 @@ export function ActaPanel({
         consequences={[
           'La tabla de posiciones y los goleadores se recalculan sin este partido.',
           'El acta (goles y tarjetas) no se borra, solo el marcador.',
-          ...(isKnockout ? ['Si este partido alimentaba la siguiente llave, ese equipo vuelve a "A definir".'] : []),
+          ...(isKnockout
+            ? ['Si este partido alimentaba la siguiente llave, ese equipo vuelve a "A definir".']
+            : []),
         ]}
         variant="destructive"
         confirmLabel="Borrar resultado"

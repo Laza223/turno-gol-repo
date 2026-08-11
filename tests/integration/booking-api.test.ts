@@ -1,21 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { eq, and, sql as drizzleSql } from 'drizzle-orm'
-import {
-  closeSql,
-  getDb,
-  getSql,
-  withPlayerContext,
-  withTenantContext,
-} from '@/shared/db/client'
+import { closeSql, getDb, getSql, withPlayerContext, withTenantContext } from '@/shared/db/client'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { PlayerBannedError } from '@/modules/bookings/booking.errors'
 import { bookings, courts, playerTenantRelationships } from '@/shared/db/schema'
-import {
-  cleanupAll,
-  createTestPlayer,
-  createTestTenant,
-  ensureRoles,
-} from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 
 const PRICING = {
@@ -76,9 +65,7 @@ describe('createOnlineBooking — PTR upsert', () => {
 
     // Use withPlayerContext + set tenant_id context to satisfy RLS
     const booking = await withPlayerContext(player.id, async (tx) => {
-      await tx.execute(
-        drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-      )
+      await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
       return createOnlineBooking(
         tenant.id,
         {
@@ -110,9 +97,7 @@ describe('createOnlineBooking — PTR upsert', () => {
     const courtId = await insertCourt(tenant.id)
 
     const booking = await withPlayerContext(player.id, async (tx) => {
-      await tx.execute(
-        drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-      )
+      await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
       return createOnlineBooking(
         tenant.id,
         {
@@ -154,9 +139,7 @@ describe('createOnlineBooking — PTR upsert', () => {
     }
 
     await withPlayerContext(player.id, async (tx) => {
-      await tx.execute(
-        drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-      )
+      await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
       await createOnlineBooking(
         tenant.id,
         { ...baseInput, timeStart: '14:00', timeEnd: '15:00' },
@@ -165,9 +148,7 @@ describe('createOnlineBooking — PTR upsert', () => {
     })
 
     await withPlayerContext(player.id, async (tx) => {
-      await tx.execute(
-        drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-      )
+      await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
       await createOnlineBooking(
         tenant.id,
         { ...baseInput, timeStart: '15:00', timeEnd: '16:00' },
@@ -193,9 +174,7 @@ describe('createOnlineBooking — PTR upsert', () => {
 
     await expect(
       withPlayerContext(player.id, async (tx) => {
-        await tx.execute(
-          drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-        )
+        await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
         return createOnlineBooking(
           tenant.id,
           {
@@ -222,7 +201,11 @@ describe('GET bookings list — cursor pagination', () => {
     const courtId = await insertCourt(tenant.id)
 
     // Create 3 bookings via SQL directly (bypass service for speed)
-    for (const [start, end] of [['08:00', '09:00'], ['09:00', '10:00'], ['10:00', '11:00']]) {
+    for (const [start, end] of [
+      ['08:00', '09:00'],
+      ['09:00', '10:00'],
+      ['10:00', '11:00'],
+    ]) {
       await sql`
         INSERT INTO bookings (
           tenant_id, court_id, player_id, date, time_start, time_end,
@@ -247,10 +230,7 @@ describe('GET bookings list — cursor pagination', () => {
         .from(bookings)
         .leftJoin(courts, eq(bookings.courtId, courts.id))
         .where(
-          and(
-            eq(bookings.tenantId, tenant.id),
-            drizzleSql`${bookings.date} = ${dateStr}::date`,
-          ),
+          and(eq(bookings.tenantId, tenant.id), drizzleSql`${bookings.date} = ${dateStr}::date`),
         )
         .orderBy(drizzleSql`${bookings.createdAt} DESC, ${bookings.id} DESC`)
         .limit(3),

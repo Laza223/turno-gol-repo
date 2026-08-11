@@ -27,7 +27,10 @@ function descriptionFor(item: AttentionItem): string {
 function actionFor(item: AttentionItem): { label: string; href: string } {
   switch (item.kind) {
     case 'unpaid_completed_booking':
-      return { label: `Cobrar ${formatArs(item.pendingCents)}`, href: `/reservas/${item.bookingId}` }
+      return {
+        label: `Cobrar ${formatArs(item.pendingCents)}`,
+        href: `/reservas/${item.bookingId}`,
+      }
     case 'failed_deposit':
       return { label: 'Ver reserva', href: `/reservas/${item.bookingId}` }
     case 'yesterday_cash_unclosed':
@@ -56,7 +59,11 @@ export function NeedsAttention({ items }: { items: AttentionItem[] }) {
         Necesita tu atención
       </h2>
       {items.length === 0 ? (
-        <EmptyState icon={CheckCircle2} title={ATTENTION_EMPTY_COPY} className="rounded-t-none border-0 py-10" />
+        <EmptyState
+          icon={CheckCircle2}
+          title={ATTENTION_EMPTY_COPY}
+          className="rounded-t-none border-0 py-10"
+        />
       ) : (
         <ul className="divide-y divide-border">
           {items.map((item) => {
@@ -69,8 +76,13 @@ export function NeedsAttention({ items }: { items: AttentionItem[] }) {
                 className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <Icon className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                  <span className="min-w-0 truncate text-sm text-foreground">{descriptionFor(item)}</span>
+                  <Icon
+                    className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0 truncate text-sm text-foreground">
+                    {descriptionFor(item)}
+                  </span>
                 </div>
                 <Link href={action.href} className={cn(buttonVariants({ size: 'sm' }), 'shrink-0')}>
                   {action.label}

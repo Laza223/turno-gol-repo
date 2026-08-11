@@ -90,10 +90,9 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         if (cancelled) return
         void (async () => {
           try {
-            const res = await fetch(
-              `/api/player/bookings/${bookingId}/status?t=${Date.now()}`,
-              { cache: 'no-store' },
-            )
+            const res = await fetch(`/api/player/bookings/${bookingId}/status?t=${Date.now()}`, {
+              cache: 'no-store',
+            })
             if (!res.ok) {
               failuresRef.current += 1
               if (failuresRef.current >= 5) {
@@ -134,7 +133,9 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
           <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">¡Reserva confirmada!</h1>
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
+          ¡Reserva confirmada!
+        </h1>
         <p className="mt-3 text-sm text-muted-foreground">Tu pago fue acreditado.</p>
         <Link
           href="/mis-reservas"
@@ -152,7 +153,9 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-500/15 ring-8 ring-slate-500/10">
           <XCircle className="h-8 w-8 text-muted-foreground" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">La reserva expiró</h1>
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
+          La reserva expiró
+        </h1>
         <p className="mt-3 text-sm text-muted-foreground">
           No se completó el pago a tiempo. El turno quedó liberado.
         </p>
@@ -172,7 +175,9 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
         <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 ring-8 ring-red-500/10">
           <XCircle className="h-8 w-8 text-red-600 dark:text-red-300" aria-hidden />
         </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">Reserva cancelada</h1>
+        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
+          Reserva cancelada
+        </h1>
         <Link
           href="/mis-reservas"
           className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
@@ -214,7 +219,9 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
       {/* aria-hidden: el wrapper ya es región live — un role="status" anidado
           duplica el anuncio en lectores de pantalla. */}
       <TgBallSpinner size="lg" aria-hidden />
-      <h2 className="font-display text-2xl font-black italic tracking-tight text-foreground">Confirmando tu pago…</h2>
+      <h2 className="font-display text-2xl font-black italic tracking-tight text-foreground">
+        Confirmando tu pago…
+      </h2>
       <p className="mt-3 text-sm text-muted-foreground">Esto puede tardar unos segundos.</p>
       <p className="mt-4 text-sm text-muted-foreground">
         Te queda{' '}

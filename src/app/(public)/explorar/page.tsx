@@ -36,7 +36,8 @@ import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 // (5 min) en vez de pegarle a la DB de búsqueda en cada visita.
 export const metadata = buildMetadata({
   title: 'Complejos de fútbol con reserva online',
-  description: 'Descubrí complejos de fútbol en tu ciudad con disponibilidad en tiempo real. Filtrá por superficie, formato y precio. Reservá al instante.',
+  description:
+    'Descubrí complejos de fútbol en tu ciudad con disponibilidad en tiempo real. Filtrá por superficie, formato y precio. Reservá al instante.',
   path: '/explorar',
 })
 
@@ -54,11 +55,9 @@ const getDefaultSearchCached = unstable_cache(
 )
 
 // El listado de ciudades no depende de filtros ni de sesión: cacheado siempre.
-const listPublicCitiesCached = unstable_cache(
-  () => listPublicCities(),
-  ['explorar-cities'],
-  { revalidate: 300 },
-)
+const listPublicCitiesCached = unstable_cache(() => listPublicCities(), ['explorar-cities'], {
+  revalidate: 300,
+})
 
 type SP = Record<string, string | undefined>
 
@@ -84,7 +83,10 @@ function pageUrl(sp: SP, offset: number): string {
 async function getPlayerFavoriteIds(playerId: string): Promise<Set<string>> {
   try {
     const rows = await withPlayerContext(playerId, (tx) =>
-      tx.select({ tenantId: playerFavorites.tenantId }).from(playerFavorites).where(eq(playerFavorites.playerId, playerId)),
+      tx
+        .select({ tenantId: playerFavorites.tenantId })
+        .from(playerFavorites)
+        .where(eq(playerFavorites.playerId, playerId)),
     )
     return new Set(rows.map((r) => r.tenantId))
   } catch {
@@ -93,7 +95,7 @@ async function getPlayerFavoriteIds(playerId: string): Promise<Set<string>> {
 }
 
 export default async function ExplorarPage(props: { searchParams: Promise<SP> }) {
-  const searchParams = await props.searchParams;
+  const searchParams = await props.searchParams
   const offset = Math.max(num(searchParams.offset) ?? 0, 0)
   const view = searchParams.view === 'map' ? 'map' : 'list'
   const sort = SORTS.includes(searchParams.sort as SortOption)
@@ -176,7 +178,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
   const [photosByTenant, pillsByTenant] = await Promise.all([
     wantCardExtras
       ? getCourtPhotosByTenant(results.map((t) => t.id)).catch(
-          () => (({}) as Record<string, string[]>),
+          () => ({}) as Record<string, string[]>,
         )
       : ({} as Record<string, string[]>),
     wantCardExtras && avail
@@ -188,7 +190,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
           date: avail.date,
           time: avail.time,
           ...(formats.length ? { formats } : {}),
-        }).catch(() => (({}) as Record<string, SlotPill[]>))
+        }).catch(() => ({}) as Record<string, SlotPill[]>)
       : ({} as Record<string, SlotPill[]>),
   ])
 
@@ -231,10 +233,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
 
         <div className="min-w-0">
           {view === 'map' ? (
-            <ExplorarSplitView
-              results={results}
-              favoritedIds={Array.from(favoriteIds)}
-            />
+            <ExplorarSplitView results={results} favoritedIds={Array.from(favoriteIds)} />
           ) : results.length === 0 ? (
             <EmptyResults avail={avail ? { date: avail.date, time: avail.time } : null} />
           ) : (
@@ -256,20 +255,20 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
                 })}
               </div>
 
-                {hasMore && (
-                  <div className="mt-10 flex justify-center">
-                    <Link
-                      href={pageUrl(searchParams, offset + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0"
-                    >
-                      Ver más complejos
-                    </Link>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              {hasMore && (
+                <div className="mt-10 flex justify-center">
+                  <Link
+                    href={pageUrl(searchParams, offset + PAGE_SIZE)}
+                    className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0"
+                  >
+                    Ver más complejos
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
         </div>
+      </div>
 
       {/* FAB mobile: solo visible en vista mapa en pantallas < lg */}
       {view === 'map' && (

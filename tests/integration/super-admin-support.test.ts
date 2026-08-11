@@ -212,9 +212,7 @@ describe('extendTrial', () => {
     const stored = await sql<{ trial_ends_at: Date | string }[]>`
       SELECT trial_ends_at FROM tenants WHERE id = ${tenantId}
     `
-    expect(
-      Math.abs(new Date(stored[0]!.trial_ends_at).getTime() - expected),
-    ).toBeLessThan(60_000)
+    expect(Math.abs(new Date(stored[0]!.trial_ends_at).getTime() - expected)).toBeLessThan(60_000)
 
     const audits = await fetchSupportAudits(sql, tenantId)
     expect(audits).toHaveLength(1)
@@ -297,9 +295,9 @@ describe('forceTenantStatus', () => {
     const tenantId = await seedTenantWithStaff(sql)
     await seedSubscription(sql, tenantId, 'active', 'predio')
 
-    await expect(
-      forceTenantStatus(tenantId, 'suspended', systemAdminId),
-    ).rejects.toBeInstanceOf(InvalidTransitionError)
+    await expect(forceTenantStatus(tenantId, 'suspended', systemAdminId)).rejects.toBeInstanceOf(
+      InvalidTransitionError,
+    )
 
     expect(await fetchTenantStatus(sql, tenantId)).toBe('active')
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
@@ -312,9 +310,9 @@ describe('forceTenantStatus', () => {
       dunningStartedAt: new Date(), // recién arrancó el dunning — gate de 7d no cumplido
     })
 
-    await expect(
-      forceTenantStatus(tenantId, 'suspended', systemAdminId),
-    ).rejects.toBeInstanceOf(InvalidTransitionError)
+    await expect(forceTenantStatus(tenantId, 'suspended', systemAdminId)).rejects.toBeInstanceOf(
+      InvalidTransitionError,
+    )
 
     expect(await fetchTenantStatus(sql, tenantId)).toBe('past_due')
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
@@ -369,9 +367,9 @@ describe('forceTenantStatus', () => {
     const sql = getSql()
     const tenantId = await seedTenantWithStaff(sql) // trialing, sin tenant_subscriptions
 
-    await expect(
-      forceTenantStatus(tenantId, 'active', systemAdminId),
-    ).rejects.toBeInstanceOf(SubscriptionNotFoundError)
+    await expect(forceTenantStatus(tenantId, 'active', systemAdminId)).rejects.toBeInstanceOf(
+      SubscriptionNotFoundError,
+    )
 
     expect(await fetchTenantStatus(sql, tenantId)).toBe('trialing')
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
@@ -398,9 +396,9 @@ describe('forceTenantStatus', () => {
         UPDATE tenants SET scheduled_deletion_at = NOW() - INTERVAL '1 day' WHERE id = ${tenantId}
       `
 
-      await expect(
-        forceTenantStatus(tenantId, 'deleted', systemAdminId),
-      ).rejects.toBeInstanceOf(InvalidTransitionError)
+      await expect(forceTenantStatus(tenantId, 'deleted', systemAdminId)).rejects.toBeInstanceOf(
+        InvalidTransitionError,
+      )
 
       expect(await fetchTenantStatus(sql, tenantId)).toBe(fromStatus)
       expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
@@ -474,12 +472,7 @@ describe('changePlanForSupport', () => {
       mpSubscriptionId: 'mp-preapp-test-1',
     })
 
-    const result = await changePlanForSupport(
-      tenantId,
-      plans.complejo,
-      systemAdminId,
-      mockGateway,
-    )
+    const result = await changePlanForSupport(tenantId, plans.complejo, systemAdminId, mockGateway)
     expect(result).toEqual({ fromPlanId: plans.predio, toPlanId: plans.complejo })
 
     expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.complejo)
@@ -533,12 +526,7 @@ describe('changePlanForSupport', () => {
     const tenantId = await seedTenantWithStaff(sql)
     await seedSubscription(sql, tenantId, 'active', 'predio') // sin mpSubscriptionId
 
-    const result = await changePlanForSupport(
-      tenantId,
-      plans.complejo,
-      systemAdminId,
-      mockGateway,
-    )
+    const result = await changePlanForSupport(tenantId, plans.complejo, systemAdminId, mockGateway)
     expect(result).toEqual({ fromPlanId: plans.predio, toPlanId: plans.complejo })
 
     expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.complejo)

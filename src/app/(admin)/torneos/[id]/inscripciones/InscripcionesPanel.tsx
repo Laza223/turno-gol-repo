@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { AlertTriangle, CircleCheck, Users, Wallet } from 'lucide-react'
 import type { TeamInscriptionStatus } from '@/modules/tournaments/tournament.types'
-import { SplitPaymentFields, newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
+import {
+  SplitPaymentFields,
+  newChargeLine,
+  type ChargeLine,
+} from '@/components/admin/SplitPaymentFields'
 import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../../torneos-lib'
 import { formatArs } from '@/lib/format'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -55,7 +59,12 @@ export function InscripcionesPanel({
     setIdempotencyKey(crypto.randomUUID())
   }
 
-  function handleSubmit(e: React.FormEvent, teamId: string, teamName: string, pendingAmount: number) {
+  function handleSubmit(
+    e: React.FormEvent,
+    teamId: string,
+    teamName: string,
+    pendingAmount: number,
+  ) {
     e.preventDefault()
     setError(null)
 
@@ -69,7 +78,9 @@ export function InscripcionesPanel({
     }
     const totalCents = charges.reduce((s, c) => s + c.amount, 0)
     if (totalCents > pendingAmount) {
-      setError(`El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(pendingAmount)}).`)
+      setError(
+        `El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(pendingAmount)}).`,
+      )
       return
     }
 
@@ -83,7 +94,11 @@ export function InscripcionesPanel({
         setError(result.error)
         return
       }
-      toast({ title: 'Cobro registrado', description: `${teamName} · ${formatArs(totalCents)}`, variant: 'success' })
+      toast({
+        title: 'Cobro registrado',
+        description: `${teamName} · ${formatArs(totalCents)}`,
+        variant: 'success',
+      })
       setOpenTeamId(null)
       setLines([])
       router.refresh()
@@ -95,8 +110,7 @@ export function InscripcionesPanel({
       <div>
         <h2 className="font-display text-lg font-semibold text-foreground">Inscripciones</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Cada cobro entra a Caja como ingreso del día. Un cobro registrado no se
-          puede borrar.
+          Cada cobro entra a Caja como ingreso del día. Un cobro registrado no se puede borrar.
         </p>
       </div>
 

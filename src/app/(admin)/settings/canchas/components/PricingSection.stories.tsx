@@ -41,7 +41,9 @@ type Story = StoryObj<typeof meta>
 export const SinPreciosTodavia: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Sin precios todavía. Empezá por la plantilla rápida.')).toBeVisible()
+    await expect(
+      canvas.getByText('Sin precios todavía. Empezá por la plantilla rápida.'),
+    ).toBeVisible()
   },
 }
 
@@ -62,7 +64,9 @@ export const AplicarPlantillaUniforme: Story = {
     await userEvent.type(canvas.getByLabelText('Precio por turno'), '20000')
     await userEvent.click(canvas.getByRole('button', { name: 'Aplicar a toda la semana' }))
 
-    await expect(canvas.queryByText('Sin precios todavía. Empezá por la plantilla rápida.')).not.toBeInTheDocument()
+    await expect(
+      canvas.queryByText('Sin precios todavía. Empezá por la plantilla rápida.'),
+    ).not.toBeInTheDocument()
     await expect(args.onRulesChange).toHaveBeenLastCalledWith(
       expect.arrayContaining([expect.objectContaining({ price: 2000000 })]),
       { emptyCount: 0 },

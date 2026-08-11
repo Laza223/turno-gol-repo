@@ -7,13 +7,26 @@ import {
 } from '@/app/(admin)/reservas/queries'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
-const PRICING = { rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 900000 }] }
+const PRICING = {
+  rules: [
+    {
+      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      from: '08:00',
+      to: '23:00',
+      price: 900000,
+    },
+  ],
+}
 
 // Los seeds usan fechas 2099 (siempre futuras): con today fijo anterior, todo
 // cae en scope 'proximas'.
 const TODAY = '2099-08-01'
 
-async function seedBooking(tenantId: string, date: string, overrides: { status?: string; guestName?: string } = {}) {
+async function seedBooking(
+  tenantId: string,
+  date: string,
+  overrides: { status?: string; guestName?: string } = {},
+) {
   const sql = getSql()
   const court = await sql<{ id: string }[]>`
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)
@@ -36,8 +49,13 @@ async function seedBooking(tenantId: string, date: string, overrides: { status?:
   return booking[0]!.id
 }
 
-beforeAll(async () => { await ensureRoles() })
-afterAll(async () => { await cleanupAll(); await closeSql() })
+beforeAll(async () => {
+  await ensureRoles()
+})
+afterAll(async () => {
+  await cleanupAll()
+  await closeSql()
+})
 
 describe('reservas queries', () => {
   it('listTenantBookings returns rows for the tenant with court + guest name', async () => {

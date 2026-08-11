@@ -6,10 +6,7 @@ import type { PaymentGateway } from './mp-gateway'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
 import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
-import {
-  onPaymentApproved,
-  onPaymentRejected,
-} from '@/modules/billing/dunning.service'
+import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
@@ -174,14 +171,7 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           info.preapprovalId,
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
-        await onPaymentRejected(
-          job.tenantId,
-          job.mpEventId,
-          job.eventType,
-          job.rawPayload,
-          at,
-          tx,
-        )
+        await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)
       }
       // pending / in_process: no-op until next event.
       return
@@ -236,12 +226,7 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
         )
       }
       if (info.status === 'approved') {
-        await handleUpgradeApproved(
-          upgrade.tenantId,
-          upgrade.targetPlanId,
-          gateway,
-          tx,
-        )
+        await handleUpgradeApproved(upgrade.tenantId, upgrade.targetPlanId, gateway, tx)
       }
       return
     }
@@ -254,9 +239,7 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     const claimed = (bookingRow as unknown as Array<{ tenant_id: string }>)[0]?.tenant_id
     if (!claimed) return // not found / RLS-filtered: nothing to do for this tenant.
     if (claimed !== job.tenantId) {
-      throw new Error(
-        `webhook tenant mismatch: claimed=${job.tenantId} actual=${claimed}`,
-      )
+      throw new Error(`webhook tenant mismatch: claimed=${job.tenantId} actual=${claimed}`)
     }
 
     const depositOutcome = await dispatchPaymentInfo(info, job.tenantId, tx)
@@ -268,11 +251,7 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     // que booking.expiry.ts ya lo expiró). Ese caso ya dispara el email
     // admin_late_payment correcto (notificationIds más abajo); pushear
     // "Nueva reserva" además sería un falso positivo.
-    if (
-      depositOutcome &&
-      !depositOutcome.alreadyProcessed &&
-      depositOutcome.won === true
-    ) {
+    if (depositOutcome && !depositOutcome.alreadyProcessed && depositOutcome.won === true) {
       confirmedBookingId = info.externalReference
     }
     return depositOutcome

@@ -84,7 +84,9 @@ export default function NotificationPrefs({
           >
             <span
               className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                on ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-muted text-muted-foreground'
+                on
+                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               <Icon className="h-4 w-4" aria-hidden />

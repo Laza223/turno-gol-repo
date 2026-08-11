@@ -26,9 +26,7 @@ export const createManualBookingSchema = z
     priceOverride: z.number().int().nonnegative().optional(),
     depositAmount: z.number().int().nonnegative().optional(),
     depositMethod: z.enum(['cash', 'transfer', 'mercadopago', 'other']).optional(),
-    depositStatus: z
-      .enum(['not_required', 'pending', 'paid', 'refunded', 'captured'])
-      .optional(),
+    depositStatus: z.enum(['not_required', 'pending', 'paid', 'refunded', 'captured']).optional(),
     notesInternal: z.string().max(1000).optional(),
     notesPlayer: z.string().max(1000).optional(),
   })
@@ -43,8 +41,7 @@ export const createManualBookingSchema = z
       return true
     },
     {
-      message:
-        'Reserva manual: no combinar un jugador registrado con datos de invitado.',
+      message: 'Reserva manual: no combinar un jugador registrado con datos de invitado.',
     },
   )
 

@@ -75,9 +75,7 @@ async function loadActions() {
 beforeEach(() => {
   process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
   // Por defecto el tenant tiene un admin para delegar (proxy de FKs).
-  h.getFirstActiveAdminStaffUserId.mockResolvedValue(
-    '44444444-4444-4444-8444-444444444444',
-  )
+  h.getFirstActiveAdminStaffUserId.mockResolvedValue('44444444-4444-4444-8444-444444444444')
 })
 
 afterEach(() => {

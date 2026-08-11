@@ -87,12 +87,7 @@ export function ProfileForm({ defaultValues, action }: Props) {
         </div>
       </div>
 
-      <PhoneInput
-        id="phone"
-        name="phone"
-        label="Teléfono"
-        defaultValue={defaultValues.phone}
-      />
+      <PhoneInput id="phone" name="phone" label="Teléfono" defaultValue={defaultValues.phone} />
 
       <div className="space-y-1">
         <label htmlFor="preferred_area" className="text-sm font-medium text-foreground">

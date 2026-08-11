@@ -59,12 +59,10 @@ export const FormularioPrecargado: Story = {
 /** El error del servidor se muestra arriba y el formulario queda abierto. */
 export const ErrorDelServidor: Story = {
   args: {
-    registerAction: fn(
-      async (): Promise<TournamentActionResult> => ({
-        success: false,
-        error: 'La caja de hoy ya fue cerrada. Registrá el cobro mañana o como ajuste en Caja.',
-      }),
-    ),
+    registerAction: fn(async (): Promise<TournamentActionResult> => ({
+      success: false,
+      error: 'La caja de hoy ya fue cerrada. Registrá el cobro mañana o como ajuste en Caja.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

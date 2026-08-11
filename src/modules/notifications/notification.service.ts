@@ -87,10 +87,8 @@ export async function enqueueTenantOwnerNotification(
   tx: DbTx,
   opts?: { onlyRole?: StaffRole },
 ): Promise<string[]> {
-  const roleFilter = opts?.onlyRole
-    ? drizzleSql`AND tsm.role = ${opts.onlyRole}`
-    : drizzleSql``
-  const rows = await tx.execute(
+  const roleFilter = opts?.onlyRole ? drizzleSql`AND tsm.role = ${opts.onlyRole}` : drizzleSql``
+  const rows = (await tx.execute(
     drizzleSql`
       SELECT tsm.staff_user_id AS id
       FROM tenant_staff_members tsm
@@ -99,7 +97,7 @@ export async function enqueueTenantOwnerNotification(
         ${roleFilter}
       LIMIT 5
     `,
-  ) as unknown as Array<{ id: string }>
+  )) as unknown as Array<{ id: string }>
 
   const ids: string[] = []
   for (const row of rows) {
@@ -126,11 +124,7 @@ export async function dispatchEmail(notificationId: string): Promise<void> {
 
 export async function getNotificationById(id: string): Promise<NotificationRow | null> {
   const db = getWorkerDb()
-  const rows = await db
-    .select()
-    .from(notifications)
-    .where(eq(notifications.id, id))
-    .limit(1)
+  const rows = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1)
   return (rows[0] as NotificationRow | undefined) ?? null
 }
 

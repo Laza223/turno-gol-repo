@@ -8,9 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 
-export type AvisosActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type AvisosActionResult = { success: true } | { success: false; error: string }
 
 const avisosSchema = z.object({
   dailySummaryEmailOptIn: z.boolean(),

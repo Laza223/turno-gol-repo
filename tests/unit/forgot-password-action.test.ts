@@ -12,7 +12,13 @@ vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://lo
 // enforce fail-closea sin Upstash y NODE_ENV='test' no dispara su bypass; sin
 // este mock devuelve "Demasiados intentos". Rate-limit real → integration.
 vi.mock('@/shared/rate-limit/apply', () => ({
-  enforce: vi.fn(async () => ({ ok: true, limit: 100, remaining: 99, reset: 0, unavailable: false })),
+  enforce: vi.fn(async () => ({
+    ok: true,
+    limit: 100,
+    remaining: 99,
+    reset: 0,
+    unavailable: false,
+  })),
 }))
 
 import { forgotPasswordAction } from '@/app/(auth)/forgot-password/actions'

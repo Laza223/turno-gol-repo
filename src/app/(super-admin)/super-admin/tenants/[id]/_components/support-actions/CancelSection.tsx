@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
-import { destructiveBtn, inputCls, type Feedback, type RunAction, type SupportAction } from './constants'
+import {
+  destructiveBtn,
+  inputCls,
+  type Feedback,
+  type RunAction,
+  type SupportAction,
+} from './constants'
 
 type Props = {
   tenantId: string
@@ -18,7 +24,14 @@ type Props = {
  * Cancelar suscripción: cancela el preapproval de MP y pasa a 'canceled'. El
  * acceso sigue hasta el fin del período pagado. Exige tipear el nombre exacto.
  */
-export function CancelSection({ tenantId, tenantName, hasSubscription, pending, run, action }: Props) {
+export function CancelSection({
+  tenantId,
+  tenantName,
+  hasSubscription,
+  pending,
+  run,
+  action,
+}: Props) {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelConfirm, setCancelConfirm] = useState('')
   const [cancelFeedback, setCancelFeedback] = useState<Feedback>(null)
@@ -47,8 +60,12 @@ export function CancelSection({ tenantId, tenantName, hasSubscription, pending, 
             />
           </div>
           <div className="space-y-1 rounded-md bg-red-50 dark:bg-red-500/10 p-3 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30">
-            <label htmlFor="cancel-confirm" className="block text-xs font-medium text-red-700 dark:text-red-400">
-              Acción destructiva. Escribí el nombre exacto del complejo (<span className="font-semibold">{tenantName}</span>) para confirmar:
+            <label
+              htmlFor="cancel-confirm"
+              className="block text-xs font-medium text-red-700 dark:text-red-400"
+            >
+              Acción destructiva. Escribí el nombre exacto del complejo (
+              <span className="font-semibold">{tenantName}</span>) para confirmar:
             </label>
             <input
               id="cancel-confirm"

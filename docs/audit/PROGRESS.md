@@ -2570,3 +2570,63 @@ al genérico `tx.execute<T>()`, que Drizzle ya expone. Vale hacerlo, pero es
 churn mecánico sin defecto conocido detrás — conviene decidir explícitamente si
 paga las 3 sesiones que estimaba el plan. Falta también **B8d** (el gate de
 Prettier, que hoy no corre en CI).
+---
+## B8d — El gate de Prettier, que estaba configurado y no corría ✅ CERRADO
+
+`.prettierrc` existía desde siempre y `ci.yml` **confesaba por escrito** que
+`pnpm format:check` no estaba cableado, "porque enchufarlo exige un reformateo
+masivo, que es un esfuerzo aparte". Ese esfuerzo es este. Un gate configurado
+que no corre no es una convención floja: es deriva creciendo sin nada que la
+frene, y el número lo muestra — el comentario decía ~716 archivos y al medirlo
+hoy eran **1071**.
+
+### Tres cosas antes de reformatear, no una
+
+1. **La config peleaba con el código.** `.prettierrc` fijaba
+   `trailingComma: "es5"` contra un repo escrito en estilo `"all"` — que además
+   es el **default de Prettier 3**. Se alineó la config al código, no al revés:
+   nadie eligió `es5` deliberadamente. Medido: baja el diff de 770 a 668
+   archivos sobre `src/`. Solo el 13%, así que el reformateo masivo era
+   inevitable igual — pero peleaba de gratis.
+2. **No existía `.prettierignore`.** Se creó, cubriendo generados (`.next/`,
+   `coverage/`, `e2e-results/`, `visual-results/`, `semgrep-sarif/`,
+   `playwright-report/`, `scripts/demo/out/`, `**/*-snapshots/`) y el lockfile.
+   Y, a propósito, **las migraciones**: `src/shared/db/migrations/` y
+   `supabase/migrations/` quedan afuera porque por regla del repo no se editan
+   una vez aplicadas — reformatearlas sería tocar archivos inmutables.
+3. **El scope estaba desalineado.** `format` cubría `src/` mientras `lint`
+   cubría `src/ tests/ scripts/`. Ahora los tres scripts miran lo mismo: un gate
+   que ignora `tests/` deja crecer la deriva justo donde más archivos hay.
+
+### Lo único que el reformateo rompió
+
+`tests/unit/use-booking-realtime.test.ts`: un objeto que estaba en una línea pasó
+a cinco, y el `// eslint-disable-next-line @typescript-eslint/no-explicit-any` de
+arriba **dejó de cubrir** los dos `as any`, que ahora viven en las líneas 14 y 15.
+ESLint lo cazó (2 errores). Se pasó a un par
+`/* eslint-disable */ … /* eslint-enable */` alrededor del bloque: misma
+supresión que ya había, con el alcance correcto.
+
+Vale como gotcha general: **un reformateo masivo mueve las directivas de
+supresión de una sola línea**. El detector es correr ESLint después de Prettier,
+no antes.
+
+### Evidencia
+
+1071 archivos reformateados. `pnpm format:check` limpio · `pnpm lint` limpio ·
+`pnpm typecheck` limpio · `pnpm knip` limpio · **3234** unit · **907**
+integración · **166** isolation · **1066** stories en 264 archivos (con axe).
+
+El gate quedó como primer step del job `Lint & Types`, antes de lint y typecheck:
+es el más rápido de los tres y el de arreglo más barato (`pnpm format`), así que
+no tiene sentido hacer esperar a nadie detrás de un typecheck para avisarle que
+le faltó una coma.
+
+### Observación aparte, sin relación con B8d
+
+`pnpm test` falló **una vez de tres corridas** en esta sesión, con 1 test
+distinto cada vez y verde al re-correr. Uno se identificó
+(`tests/unit/e2e-endpoint-guard.test.ts`, que muta `process.env` y se pisa bajo
+paralelismo); los otros dos no se llegaron a capturar. No lo causa este cambio
+—pasaba antes— pero es un flake real bajo carga y conviene fichar el archivo
+exacto la próxima vez que aparezca, no re-correr y seguir.

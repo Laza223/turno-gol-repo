@@ -45,9 +45,7 @@ export const tournamentMatchEvents = pgTable(
     suspensionMatches: smallint('suspension_matches'),
     notes: text('notes'),
     createdByStaff: uuid('created_by_staff').references(() => staffUsers.id),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     // Sin updatedAt a propósito: la fila no se edita nunca.
   },
   (table) => ({

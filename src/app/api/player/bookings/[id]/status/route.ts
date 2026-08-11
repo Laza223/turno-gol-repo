@@ -25,8 +25,7 @@ export const GET = withPlayer(async (req, user, tx) => {
   `)
 
   const row = (rows as unknown[])[0] as
-    | { status: string; depositStatus: string; createdAt: string }
-    | undefined
+    { status: string; depositStatus: string; createdAt: string } | undefined
 
   if (!row) {
     // RLS hides other players' bookings → null → 404 (desired behavior).

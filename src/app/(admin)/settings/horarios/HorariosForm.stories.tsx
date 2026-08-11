@@ -35,7 +35,11 @@ type Story = StoryObj<typeof meta>
 
 /** Todos los días con el mismo par (view derivado: "general"). */
 export const HorarioUniforme: Story = {
-  args: { hours: openingHours(), closesNextDay: false, action: fn(async () => ({ success: true as const })) },
+  args: {
+    hours: openingHours(),
+    closesNextDay: false,
+    action: fn(async () => ({ success: true as const })),
+  },
 }
 
 /** viernes/sábado cierran 02:00 (día operativo) — closesNextDay activado y esos 2 días en "custom". */

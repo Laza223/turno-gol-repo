@@ -131,8 +131,7 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
   })
 
   it.each(adminPageUrls())('%s tiene un camino de navegación declarado', (url) => {
-    const reachable =
-      navHrefs.has(url) || url in CONTEXTUAL_ROUTES || stubs.has(url)
+    const reachable = navHrefs.has(url) || url in CONTEXTUAL_ROUTES || stubs.has(url)
 
     expect(
       reachable,

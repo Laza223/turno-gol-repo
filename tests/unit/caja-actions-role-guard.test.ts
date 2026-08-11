@@ -121,9 +121,10 @@ beforeEach(() => {
   vi.mocked(extractAuthUser).mockResolvedValue(STAFF_USER as never)
   vi.mocked(getStaffTenant).mockResolvedValue(TENANT as never)
   vi.mocked(adminRateLimited).mockResolvedValue(null as never)
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (tx: never) => Promise<unknown>) => cb(FAKE_TX)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (tx: never) => Promise<unknown>,
+  ) => cb(FAKE_TX)) as never)
 })
 
 describe('caja/cantina/productos — staff sin membresía activa (rol null) es rechazado (cruce #2)', () => {
@@ -221,7 +222,10 @@ describe('caja/cantina — manager (Encargado) opera la caja y la cantina (cruce
   })
 
   it('settleTabAction funciona para manager (cobrar fiado es operativo)', async () => {
-    vi.mocked(settleTab).mockResolvedValue({ tab: { totalAmount: 125000 } as never, duplicate: false })
+    vi.mocked(settleTab).mockResolvedValue({
+      tab: { totalAmount: 125000 } as never,
+      duplicate: false,
+    })
     const res = await settleTabAction(SETTLE_TAB)
     expect(res).toEqual({ success: true, total: 125000 })
   })

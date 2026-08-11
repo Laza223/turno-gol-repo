@@ -82,9 +82,7 @@ export const tournamentMatches = pgTable(
      * dos. El resultado de un walkover nunca se infiere del marcador: con
      * walkover_goals_for = 0 sería un 0-0 y se leería como empate.
      */
-    walkoverWinnerTeamId: uuid('walkover_winner_team_id').references(
-      () => tournamentTeams.id,
-    ),
+    walkoverWinnerTeamId: uuid('walkover_winner_team_id').references(() => tournamentTeams.id),
     /**
      * Migr. 065. De qué PUESTO de zona sale cada lado del cuadro (1-based).
      * Lo escribe generateFixture; lo consume seedPlayoffs.
@@ -94,12 +92,8 @@ export const tournamentMatches = pgTable(
     playedAt: timestamp('played_at', { withTimezone: true, mode: 'date' }),
     notes: text('notes'),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     roundPositive: check('chk_match_round_positive', sql`${table.round} >= 1`),
@@ -173,10 +167,7 @@ export const tournamentMatches = pgTable(
       sql`${table.startsAt} IS NULL OR ${table.endsAt} > ${table.startsAt}`,
     ),
 
-    tournamentIdx: index('idx_tournament_matches_tournament').on(
-      table.tournamentId,
-      table.round,
-    ),
+    tournamentIdx: index('idx_tournament_matches_tournament').on(table.tournamentId, table.round),
     stageIdx: index('idx_tournament_matches_stage').on(
       table.stageId,
       table.round,
@@ -198,9 +189,6 @@ export const tournamentMatches = pgTable(
 
     // Migr. 065: clave candidata para la FK compuesta del acta. Redundante con
     // la PK, pero Postgres exige un UNIQUE sobre las columnas exactas.
-    idTournamentUq: unique('uq_tournament_matches_id_tournament').on(
-      table.id,
-      table.tournamentId,
-    ),
+    idTournamentUq: unique('uq_tournament_matches_id_tournament').on(table.id, table.tournamentId),
   }),
 )

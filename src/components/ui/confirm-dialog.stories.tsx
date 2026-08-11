@@ -142,7 +142,9 @@ export const ErrorControlado: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Confirmar' }))
-    await expect(await body.findByRole('alert')).toHaveTextContent('El monto supera el saldo pendiente.')
+    await expect(await body.findByRole('alert')).toHaveTextContent(
+      'El monto supera el saldo pendiente.',
+    )
     // waitFor: la actualización que agrega el alert puede coincidir con un
     // tick en el que toBeVisible() lee opacity de la transición en curso.
     await waitFor(() => expect(body.getByRole('dialog')).toBeVisible())
@@ -163,6 +165,8 @@ export const ErrorInesperado: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Confirmar' }))
-    await expect(await body.findByRole('alert')).toHaveTextContent(/no se pudo completar la acción/i)
+    await expect(await body.findByRole('alert')).toHaveTextContent(
+      /no se pudo completar la acción/i,
+    )
   },
 }

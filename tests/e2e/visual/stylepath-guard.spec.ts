@@ -67,13 +67,13 @@ test('screenshot.css borra el overlay de dev del pixel @visual', async ({ page }
   // (shadow root vacío, caja fuera del viewport) haría pasar el test por nada.
   expect(
     overlayVisible.equals(overlayAbsent),
-    'El fixture no pintó nada: el control positivo de abajo sería vacuo'
+    'El fixture no pintó nada: el control positivo de abajo sería vacuo',
   ).toBe(false)
 
   // Lo que importa: con el CSS aplicado, el pixel es idéntico a que el overlay
   // no existiera. Eso es lo que un `mask` no daba — pintaba una caja magenta.
   expect(
     overlayHiddenByCss.equals(overlayAbsent),
-    'screenshot.css dejó de ocultar el overlay de dev: revisá los selectores contra la versión de Next'
+    'screenshot.css dejó de ocultar el overlay de dev: revisá los selectores contra la versión de Next',
   ).toBe(true)
 })

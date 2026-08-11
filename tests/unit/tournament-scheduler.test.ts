@@ -56,11 +56,7 @@ describe('scheduleMatches — partidos de una hora', () => {
   })
 
   it('sin horas tomadas no agenda nada y lo dice', () => {
-    const { scheduled, unscheduled } = scheduleMatches(
-      [match('m1', 1, 'A', 'B')],
-      [],
-      HOUR_MATCH,
-    )
+    const { scheduled, unscheduled } = scheduleMatches([match('m1', 1, 'A', 'B')], [], HOUR_MATCH)
     expect(scheduled).toHaveLength(0)
     expect(unscheduled).toHaveLength(1)
   })
@@ -248,11 +244,7 @@ describe('scheduleMatches — relámpago (partidos cortos)', () => {
 describe('scheduleMatches — determinismo', () => {
   it('dos corridas con la misma entrada dan el mismo reparto', () => {
     const slots = [slot('b2', 'c2', 14), slot('b1', 'c1', 14), slot('b3', 'c1', 15)]
-    const matches = [
-      match('m1', 1, 'A', 'B'),
-      match('m2', 1, 'C', 'D'),
-      match('m3', 2, 'A', 'C'),
-    ]
+    const matches = [match('m1', 1, 'A', 'B'), match('m2', 1, 'C', 'D'), match('m3', 2, 'A', 'C')]
     const a = scheduleMatches(matches, slots, HOUR_MATCH)
     const b = scheduleMatches(matches, slots, HOUR_MATCH)
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))

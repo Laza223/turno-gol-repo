@@ -28,11 +28,7 @@ export const dynamic = 'force-dynamic'
  * player_data_exports table is planned for v1.5 if AAIP inspection requires it.
  */
 export const GET = withPlayer(async (_req, user, tx) => {
-  const profileRows = await tx
-    .select()
-    .from(players)
-    .where(eq(players.id, user.playerId))
-    .limit(1)
+  const profileRows = await tx.select().from(players).where(eq(players.id, user.playerId)).limit(1)
 
   if (!profileRows[0]) {
     return notFound('Player no encontrado.')

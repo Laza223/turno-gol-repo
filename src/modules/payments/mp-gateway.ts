@@ -30,7 +30,5 @@ export interface PaymentGateway {
    * `saas-upgrade:<tenantId>:<targetPlanId>` so the webhook dispatcher can
    * route the resulting payment to `billing.handleUpgradePayment`.
    */
-  createSaasUpgradePreference(
-    input: CreateSaasUpgradePreferenceInput,
-  ): Promise<PreferenceResult>
+  createSaasUpgradePreference(input: CreateSaasUpgradePreferenceInput): Promise<PreferenceResult>
 }

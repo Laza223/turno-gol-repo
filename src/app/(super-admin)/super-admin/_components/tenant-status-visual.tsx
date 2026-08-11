@@ -64,9 +64,6 @@ export function TenantStatusBadge({
   if (count === undefined) return <StatusBadge visual={visual} className={className} />
 
   return (
-    <StatusBadge
-      visual={{ ...visual, label: `${visual.label} ${count}` }}
-      className={className}
-    />
+    <StatusBadge visual={{ ...visual, label: `${visual.label} ${count}` }} className={className} />
   )
 }

@@ -35,8 +35,18 @@ import {
 // tiene un cambio de precio observable, que es justo lo que la 070 habilita.
 const PRICING = {
   rules: [
-    { days: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'], from: '08:00', to: '18:00', price: 500000 },
-    { days: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'], from: '18:00', to: '23:00', price: 900000 },
+    {
+      days: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
+      from: '08:00',
+      to: '18:00',
+      price: 500000,
+    },
+    {
+      days: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
+      from: '18:00',
+      to: '23:00',
+      price: 900000,
+    },
   ],
 }
 const MANANA = 500000
@@ -230,7 +240,13 @@ describe('rescheduleBooking — mover el turno', () => {
     const target = dateIn(4)
     const id = await insertBooking({ courtId: courtA, date, timeStart: '10:00', timeEnd: '11:00' })
 
-    await move({ bookingId: id, courtId: courtB, date: target, timeStart: '21:00', timeEnd: '22:00' })
+    await move({
+      bookingId: id,
+      courtId: courtB,
+      date: target,
+      timeStart: '21:00',
+      timeEnd: '22:00',
+    })
 
     const b = await readBooking(id)
     expect(b.court_id).toBe(courtB)
@@ -251,7 +267,13 @@ describe('rescheduleBooking — mover el turno', () => {
     const id = await insertBooking({ courtId: courtA, date, timeStart: '10:00', timeEnd: '11:00' })
     expect((await readBooking(id)).price_snapshot).toBe(MANANA)
 
-    const out = await move({ bookingId: id, courtId: courtA, date, timeStart: '20:00', timeEnd: '21:00' })
+    const out = await move({
+      bookingId: id,
+      courtId: courtA,
+      date,
+      timeStart: '20:00',
+      timeEnd: '21:00',
+    })
 
     expect((await readBooking(id)).price_snapshot).toBe(NOCHE)
     expect(out.priceChanged).toBe(true)
@@ -260,11 +282,19 @@ describe('rescheduleBooking — mover el turno', () => {
   it('respeta un precio pactado a mano en vez de devolverlo a la tarifa de lista', async () => {
     const date = dateIn(6)
     const id = await insertBooking({
-      courtId: courtA, date, timeStart: '10:00', timeEnd: '11:00', price: 123456,
+      courtId: courtA,
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      price: 123456,
     })
 
     await move({
-      bookingId: id, courtId: courtA, date, timeStart: '20:00', timeEnd: '21:00',
+      bookingId: id,
+      courtId: courtA,
+      date,
+      timeStart: '20:00',
+      timeEnd: '21:00',
       priceOverride: 123456,
     })
 
@@ -286,8 +316,18 @@ describe('rescheduleBooking — mover el turno', () => {
 
   it('rechaza mover encima de otro turno activo', async () => {
     const date = dateIn(8)
-    const ocupado = await insertBooking({ courtId: courtA, date, timeStart: '16:00', timeEnd: '17:00' })
-    const aMover = await insertBooking({ courtId: courtA, date, timeStart: '10:00', timeEnd: '11:00' })
+    const ocupado = await insertBooking({
+      courtId: courtA,
+      date,
+      timeStart: '16:00',
+      timeEnd: '17:00',
+    })
+    const aMover = await insertBooking({
+      courtId: courtA,
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
     expect(ocupado).toBeTruthy()
 
     await expect(
@@ -301,9 +341,18 @@ describe('rescheduleBooking — mover el turno', () => {
   it('SÍ deja mover encima del hueco que dejó un turno cancelado', async () => {
     const date = dateIn(9)
     await insertBooking({
-      courtId: courtB, date, timeStart: '16:00', timeEnd: '17:00', status: 'canceled_no_refund',
+      courtId: courtB,
+      date,
+      timeStart: '16:00',
+      timeEnd: '17:00',
+      status: 'canceled_no_refund',
     })
-    const aMover = await insertBooking({ courtId: courtB, date, timeStart: '10:00', timeEnd: '11:00' })
+    const aMover = await insertBooking({
+      courtId: courtB,
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
 
     await move({ bookingId: aMover, courtId: courtB, date, timeStart: '16:00', timeEnd: '17:00' })
 
@@ -314,7 +363,11 @@ describe('rescheduleBooking — mover el turno', () => {
     const date = dateIn(10)
     for (const status of ['completed', 'no_show', 'canceled_refunded', 'expired']) {
       const id = await insertBooking({
-        courtId: courtA, date, timeStart: '08:00', timeEnd: '09:00', status,
+        courtId: courtA,
+        date,
+        timeStart: '08:00',
+        timeEnd: '09:00',
+        status,
       })
       await expect(
         move({ bookingId: id, courtId: courtA, date, timeStart: '12:00', timeEnd: '13:00' }),
@@ -325,8 +378,13 @@ describe('rescheduleBooking — mover el turno', () => {
   it('rechaza mover una hora de torneo o un bloqueo — no son reservas de un cliente', async () => {
     const date = dateIn(11)
     const bloqueo = await insertBooking({
-      courtId: courtA, date, timeStart: '08:00', timeEnd: '09:00', type: 'block',
-      price: 0, withPlayer: false,
+      courtId: courtA,
+      date,
+      timeStart: '08:00',
+      timeEnd: '09:00',
+      type: 'block',
+      price: 0,
+      withPlayer: false,
     })
     await expect(
       move({ bookingId: bloqueo, courtId: courtA, date, timeStart: '12:00', timeEnd: '13:00' }),
@@ -539,12 +597,24 @@ describe('rescheduleBooking — mover el turno', () => {
     const id = await insertBooking({ courtId: courtA, date, timeStart: '10:00', timeEnd: '11:00' })
 
     await expect(
-      move({ bookingId: id, courtId: courtA, date: dateIn(-1), timeStart: '10:00', timeEnd: '11:00' }),
+      move({
+        bookingId: id,
+        courtId: courtA,
+        date: dateIn(-1),
+        timeStart: '10:00',
+        timeEnd: '11:00',
+      }),
     ).rejects.toBeInstanceOf(BookingDateOutOfRangeError)
 
     // El default del producto son 6 días de anticipación.
     await expect(
-      move({ bookingId: id, courtId: courtA, date: dateIn(400), timeStart: '10:00', timeEnd: '11:00' }),
+      move({
+        bookingId: id,
+        courtId: courtA,
+        date: dateIn(400),
+        timeStart: '10:00',
+        timeEnd: '11:00',
+      }),
     ).rejects.toBeInstanceOf(BookingDateOutOfRangeError)
   }, 30_000)
 
@@ -558,15 +628,34 @@ describe('rescheduleBooking — mover el turno', () => {
 
   it('rechaza un horario sin tarifa configurada en vez de inventar un precio', async () => {
     const sinTarifaDeMadrugada = await insertCourt({
-      pricing: { rules: [{ days: ['sun','mon','tue','wed','thu','fri','sat'], from: '08:00', to: '12:00', price: 100000 }] },
+      pricing: {
+        rules: [
+          {
+            days: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
+            from: '08:00',
+            to: '12:00',
+            price: 100000,
+          },
+        ],
+      },
     })
     const date = dateIn(3)
     const id = await insertBooking({
-      courtId: sinTarifaDeMadrugada, date, timeStart: '09:00', timeEnd: '10:00', price: 100000,
+      courtId: sinTarifaDeMadrugada,
+      date,
+      timeStart: '09:00',
+      timeEnd: '10:00',
+      price: 100000,
     })
 
     await expect(
-      move({ bookingId: id, courtId: sinTarifaDeMadrugada, date, timeStart: '20:00', timeEnd: '21:00' }),
+      move({
+        bookingId: id,
+        courtId: sinTarifaDeMadrugada,
+        date,
+        timeStart: '20:00',
+        timeEnd: '21:00',
+      }),
     ).rejects.toBeInstanceOf(PriceUnavailableError)
   }, 30_000)
 
@@ -589,17 +678,34 @@ describe('rescheduleBooking — mover el turno', () => {
 
   it('encola el aviso al jugador, y no encola nada si la reserva es de un invitado', async () => {
     const date = dateIn(5)
-    const conJugador = await insertBooking({ courtId: courtB, date, timeStart: '09:00', timeEnd: '10:00' })
+    const conJugador = await insertBooking({
+      courtId: courtB,
+      date,
+      timeStart: '09:00',
+      timeEnd: '10:00',
+    })
     const out1 = await move({
-      bookingId: conJugador, courtId: courtB, date, timeStart: '11:00', timeEnd: '12:00',
+      bookingId: conJugador,
+      courtId: courtB,
+      date,
+      timeStart: '11:00',
+      timeEnd: '12:00',
     })
     expect(out1.notificationIds).toHaveLength(1)
 
     const invitado = await insertBooking({
-      courtId: courtB, date, timeStart: '13:00', timeEnd: '14:00', withPlayer: false,
+      courtId: courtB,
+      date,
+      timeStart: '13:00',
+      timeEnd: '14:00',
+      withPlayer: false,
     })
     const out2 = await move({
-      bookingId: invitado, courtId: courtB, date, timeStart: '15:00', timeEnd: '16:00',
+      bookingId: invitado,
+      courtId: courtB,
+      date,
+      timeStart: '15:00',
+      timeEnd: '16:00',
     })
     expect(out2.notificationIds).toHaveLength(0)
   }, 30_000)
@@ -637,7 +743,11 @@ describe('rescheduleBooking — mover el turno', () => {
   it('también mueve un turno que todavía espera la seña', async () => {
     const date = dateIn(6)
     const id = await insertBooking({
-      courtId: courtB, date, timeStart: '08:00', timeEnd: '09:00', status: 'pending_payment',
+      courtId: courtB,
+      date,
+      timeStart: '08:00',
+      timeEnd: '09:00',
+      status: 'pending_payment',
     })
 
     await move({ bookingId: id, courtId: courtB, date, timeStart: '19:00', timeEnd: '20:00' })

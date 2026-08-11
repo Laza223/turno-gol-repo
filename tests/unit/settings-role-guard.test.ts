@@ -9,10 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 describe('settings — acceso solo admin (roles 026)', () => {
   it('settings/layout.tsx existe y aplica requireAdminStaff', () => {
-    const src = readFileSync(
-      join(process.cwd(), 'src/app/(admin)/settings/layout.tsx'),
-      'utf8',
-    )
+    const src = readFileSync(join(process.cwd(), 'src/app/(admin)/settings/layout.tsx'), 'utf8')
     expect(src).toContain('requireAdminStaff')
     expect(src).toMatch(/await requireAdminStaff\(\)/)
   })
@@ -28,10 +25,7 @@ describe('settings — acceso solo admin (roles 026)', () => {
   })
 
   it('staff/page.tsx redirige a /settings/equipo (no duplica el guard)', () => {
-    const src = readFileSync(
-      join(process.cwd(), 'src/app/(admin)/staff/page.tsx'),
-      'utf8',
-    )
+    const src = readFileSync(join(process.cwd(), 'src/app/(admin)/staff/page.tsx'), 'utf8')
     expect(src).toContain("redirect('/settings/equipo')")
   })
 })

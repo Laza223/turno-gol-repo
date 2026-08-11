@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  pushSendOptions,
-  quietHoursReleaseAt,
-} from '@/modules/notifications/push-quiet-hours'
+import { pushSendOptions, quietHoursReleaseAt } from '@/modules/notifications/push-quiet-hours'
 import { PUSH_SEND_SEND_OPTIONS } from '@/shared/jobs/definitions'
 
 // ART = UTC-3 (no DST). Quiet window = [00:00, 08:00) local → release at 08:00 local.

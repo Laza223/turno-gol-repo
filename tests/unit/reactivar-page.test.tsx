@@ -50,9 +50,22 @@ import { getStaffRole } from '@/modules/staff/staff.service'
 import { getDb } from '@/shared/db/client'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
 
-const STAFF_USER = { type: 'staff', staffUserId: 'staff-1', tenantId: 't-1', id: 'auth-1', email: 'a@b.com' }
+const STAFF_USER = {
+  type: 'staff',
+  staffUserId: 'staff-1',
+  tenantId: 't-1',
+  id: 'auth-1',
+  email: 'a@b.com',
+}
 const PLANS = [
-  { id: 'plan-predio', slug: 'predio', name: 'Predio', maxCourts: 2, priceMonthly: 5_500_000, priceAnnual: 4_400_000 },
+  {
+    id: 'plan-predio',
+    slug: 'predio',
+    name: 'Predio',
+    maxCourts: 2,
+    priceMonthly: 5_500_000,
+    priceAnnual: 4_400_000,
+  },
 ]
 
 function tenant(status: string) {

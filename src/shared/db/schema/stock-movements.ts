@@ -53,9 +53,7 @@ export const stockMovements = pgTable(
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 
     // Idempotencia para movimientos SIN cash_flow (reposición, merma, ajuste).
     clientIdempotencyKey: uuid('client_idempotency_key'),
@@ -78,14 +76,8 @@ export const stockMovements = pgTable(
     idempotencyIdx: uniqueIndex('uq_stock_movements_idem')
       .on(table.clientIdempotencyKey)
       .where(sql`${table.clientIdempotencyKey} IS NOT NULL`),
-    tenantDayIdx: index('idx_stock_movements_tenant_day').on(
-      table.tenantId,
-      table.occurredAt,
-    ),
-    productIdx: index('idx_stock_movements_product').on(
-      table.tenantId,
-      table.productId,
-    ),
+    tenantDayIdx: index('idx_stock_movements_tenant_day').on(table.tenantId, table.occurredAt),
+    productIdx: index('idx_stock_movements_product').on(table.tenantId, table.productId),
     cashFlowIdx: index('idx_stock_movements_cash_flow')
       .on(table.cashFlowId)
       .where(sql`${table.cashFlowId} IS NOT NULL`),

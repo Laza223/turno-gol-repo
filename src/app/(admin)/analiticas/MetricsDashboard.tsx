@@ -56,12 +56,16 @@ function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
         {metrics.noShow.noShow} ausencias sobre {metrics.noShow.finished} turnos terminados
       </p>
       <div className="mt-2 text-xs">
-        {trend.kind === 'no_prev' && <span className="text-muted-foreground">sin datos previos</span>}
-        {trend.kind === 'flat' && <span className="text-muted-foreground">sin cambios vs período anterior</span>}
+        {trend.kind === 'no_prev' && (
+          <span className="text-muted-foreground">sin datos previos</span>
+        )}
+        {trend.kind === 'flat' && (
+          <span className="text-muted-foreground">sin cambios vs período anterior</span>
+        )}
         {trend.kind === 'up' && (
           <span className="inline-flex items-center gap-1 font-medium text-red-600 dark:text-red-400">
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-            +{String(trend.deltaPts).replace('.', ',')} pts vs período anterior
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />+
+            {String(trend.deltaPts).replace('.', ',')} pts vs período anterior
           </span>
         )}
         {trend.kind === 'down' && (
@@ -117,7 +121,11 @@ function RevenueChart({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: chart.axis }} interval="preserveStartEnd" />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: chart.axis }}
+              interval="preserveStartEnd"
+            />
             <YAxis
               tick={{ fontSize: 11, fill: chart.axis }}
               tickFormatter={(v: number) => formatARS(v)}
@@ -126,9 +134,15 @@ function RevenueChart({
             <Tooltip
               formatter={(value) => [formatARS(Number(value)), 'Ingresos']}
               labelStyle={chart.tooltip.labelStyle}
-              contentStyle={chart.tooltip.contentStyle} itemStyle={chart.tooltip.itemStyle}
+              contentStyle={chart.tooltip.contentStyle}
+              itemStyle={chart.tooltip.itemStyle}
             />
-            <Bar dataKey="amountCents" fill={chart.primary} radius={[3, 3, 0, 0]} isAnimationActive={isAnimationActive} />
+            <Bar
+              dataKey="amountCents"
+              fill={chart.primary}
+              radius={[3, 3, 0, 0]}
+              isAnimationActive={isAnimationActive}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -162,7 +176,9 @@ function GhostTopSlots() {
       <ul className="space-y-2 select-none" aria-hidden="true">
         {ghosts.map((g) => (
           <li key={g.time} className="flex items-center gap-3 text-sm">
-            <span className="w-12 shrink-0 font-medium tabular-nums text-muted-foreground">{g.time}</span>
+            <span className="w-12 shrink-0 font-medium tabular-nums text-muted-foreground">
+              {g.time}
+            </span>
             <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
               <span
                 className="block h-full rounded-full bg-emerald-500 opacity-40"
@@ -341,7 +357,11 @@ export default function MetricsDashboard({
 
   if (!metrics) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Cargando métricas">
+      <div
+        className="flex min-h-[40vh] items-center justify-center"
+        role="status"
+        aria-label="Cargando métricas"
+      >
         {/* aria-hidden: el wrapper ya anuncia la carga — un role="status"
             anidado duplica el anuncio en lectores de pantalla. */}
         <TgBallSpinner size="lg" text="Cargando métricas…" aria-hidden />
@@ -376,11 +396,16 @@ export default function MetricsDashboard({
                     tick={{ fontSize: 11, fill: chart.axis }}
                     interval="preserveStartEnd"
                   />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: chart.axis }} width={32} />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 11, fill: chart.axis }}
+                    width={32}
+                  />
                   <Tooltip
                     formatter={(value) => [String(value), 'Reservas']}
                     labelStyle={chart.tooltip.labelStyle}
-                    contentStyle={chart.tooltip.contentStyle} itemStyle={chart.tooltip.itemStyle}
+                    contentStyle={chart.tooltip.contentStyle}
+                    itemStyle={chart.tooltip.itemStyle}
                   />
                   <Line
                     type="monotone"

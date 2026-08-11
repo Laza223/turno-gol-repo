@@ -99,10 +99,7 @@ async function takeSlots(
 describe('generateFixture — liga', () => {
   it('genera todos contra todos y los agenda en las horas tomadas', async () => {
     const { tenant, staff, courtIds, tournamentId } = await setupTournament({ teams: 4 })
-    await takeSlots(tenant.id, tournamentId, staff.id, courtIds, [
-      '2027-03-06',
-      '2027-03-13',
-    ])
+    await takeSlots(tenant.id, tournamentId, staff.id, courtIds, ['2027-03-06', '2027-03-13'])
 
     const result = await withTenantContext(tenant.id, (tx) =>
       generateFixture(tenant.id, staff.id, tournamentId, {}, tx),
@@ -170,15 +167,7 @@ describe('generateFixture — liga', () => {
   it('avisa cuántos partidos no entraron en vez de agendarlos a medias', async () => {
     const { tenant, staff, courtIds, tournamentId } = await setupTournament({ teams: 4 })
     // Una sola fecha de 2 horas: entran 2 partidos de los 6.
-    await takeSlots(
-      tenant.id,
-      tournamentId,
-      staff.id,
-      courtIds,
-      ['2027-06-05'],
-      '14:00',
-      '16:00',
-    )
+    await takeSlots(tenant.id, tournamentId, staff.id, courtIds, ['2027-06-05'], '14:00', '16:00')
 
     const result = await withTenantContext(tenant.id, (tx) =>
       generateFixture(tenant.id, staff.id, tournamentId, {}, tx),
@@ -443,9 +432,7 @@ describe('clearFixture', () => {
     await withTenantContext(tenant.id, (tx) =>
       generateFixture(tenant.id, staff.id, tournamentId, {}, tx),
     )
-    await withTenantContext(tenant.id, (tx) =>
-      clearFixture(tenant.id, staff.id, tournamentId, tx),
-    )
+    await withTenantContext(tenant.id, (tx) => clearFixture(tenant.id, staff.id, tournamentId, tx))
     const result = await withTenantContext(tenant.id, (tx) =>
       generateFixture(tenant.id, staff.id, tournamentId, { legs: 2 }, tx),
     )
@@ -504,8 +491,7 @@ describe('rescheduleMatch', () => {
     // los cuatro equipos no se repite ninguno.
     const first = matches.find((m) => m.startsAt !== null)!
     const twin = matches.find(
-      (m) =>
-        m.id !== first.id && m.startsAt?.getTime() === first.startsAt!.getTime(),
+      (m) => m.id !== first.id && m.startsAt?.getTime() === first.startsAt!.getTime(),
     )!
 
     await expect(

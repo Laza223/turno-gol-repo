@@ -61,17 +61,14 @@ export async function mockPay(formData: FormData): Promise<void> {
   let webhookOk = false
   for (let attempt = 0; attempt < 3 && !webhookOk; attempt++) {
     try {
-      const res = await fetch(
-        `${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'x-webhook-secret': secret,
-          },
-          body,
+      const res = await fetch(`${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-webhook-secret': secret,
         },
-      )
+        body,
+      })
       if (res.ok) {
         webhookOk = true
       } else {
@@ -114,17 +111,14 @@ export async function mockReject(formData: FormData): Promise<void> {
   })
 
   try {
-    const res = await fetch(
-      `${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-webhook-secret': secret,
-        },
-        body,
+    const res = await fetch(`${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-secret': secret,
       },
-    )
+      body,
+    })
     if (!res.ok) {
       logger.warn('mock webhook POST returned non-2xx', {
         module: 'mock-mp',

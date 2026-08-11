@@ -99,12 +99,22 @@ async function seedTenant(sql: SqlClient): Promise<void> {
   // Precios reales 2026 en centavos: F5 $40.000/h, F7 $55.000/h.
   const pricingF5 = {
     rules: [
-      { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '00:00', to: '23:59', price: 4000000 },
+      {
+        days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+        from: '00:00',
+        to: '23:59',
+        price: 4000000,
+      },
     ],
   }
   const pricingF7 = {
     rules: [
-      { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], from: '00:00', to: '23:59', price: 5500000 },
+      {
+        days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+        from: '00:00',
+        to: '23:59',
+        price: 5500000,
+      },
     ],
   }
   const openingHours = {
@@ -198,16 +208,77 @@ async function seedBookingsAndCaja(sql: SqlClient): Promise<void> {
     status?: string
     price: number
   }> = [
-    { court: DEMO.courtIds[0]!, start: '18:00:00', end: '19:00:00', guest: 'Los Pibes del Fondo', price: 4000000 },
-    { court: DEMO.courtIds[0]!, start: '20:00:00', end: '21:00:00', guest: 'Cristian Ledesma', price: 4000000 },
-    { court: DEMO.courtIds[0]!, start: '21:00:00', end: '22:00:00', guest: 'Ferretería San Martín FC', price: 4000000 },
-    { court: DEMO.courtIds[1]!, start: '19:00:00', end: '20:00:00', guest: 'Equipo de Nico', price: 4000000 },
-    { court: DEMO.courtIds[1]!, start: '21:00:00', end: '22:00:00', guest: 'Martina y amigas', price: 4000000 },
-    { court: DEMO.courtIds[2]!, start: '18:00:00', end: '19:00:00', guest: 'Colegio Don Bosco', price: 4000000 },
-    { court: DEMO.courtIds[2]!, start: '20:00:00', end: '21:00:00', guest: 'Los Lunes Nunca Más', price: 4000000, status: 'pending_payment' },
-    { court: DEMO.courtIds[2]!, start: '22:00:00', end: '23:00:00', guest: 'Banco Provincia', price: 4000000 },
-    { court: DEMO.courtIds[3]!, start: '19:00:00', end: '20:00:00', guest: 'La Redonda Veteranos', price: 5500000 },
-    { court: DEMO.courtIds[3]!, start: '21:00:00', end: '22:00:00', guest: 'Panadería El Trigal', price: 5500000 },
+    {
+      court: DEMO.courtIds[0]!,
+      start: '18:00:00',
+      end: '19:00:00',
+      guest: 'Los Pibes del Fondo',
+      price: 4000000,
+    },
+    {
+      court: DEMO.courtIds[0]!,
+      start: '20:00:00',
+      end: '21:00:00',
+      guest: 'Cristian Ledesma',
+      price: 4000000,
+    },
+    {
+      court: DEMO.courtIds[0]!,
+      start: '21:00:00',
+      end: '22:00:00',
+      guest: 'Ferretería San Martín FC',
+      price: 4000000,
+    },
+    {
+      court: DEMO.courtIds[1]!,
+      start: '19:00:00',
+      end: '20:00:00',
+      guest: 'Equipo de Nico',
+      price: 4000000,
+    },
+    {
+      court: DEMO.courtIds[1]!,
+      start: '21:00:00',
+      end: '22:00:00',
+      guest: 'Martina y amigas',
+      price: 4000000,
+    },
+    {
+      court: DEMO.courtIds[2]!,
+      start: '18:00:00',
+      end: '19:00:00',
+      guest: 'Colegio Don Bosco',
+      price: 4000000,
+    },
+    {
+      court: DEMO.courtIds[2]!,
+      start: '20:00:00',
+      end: '21:00:00',
+      guest: 'Los Lunes Nunca Más',
+      price: 4000000,
+      status: 'pending_payment',
+    },
+    {
+      court: DEMO.courtIds[2]!,
+      start: '22:00:00',
+      end: '23:00:00',
+      guest: 'Banco Provincia',
+      price: 4000000,
+    },
+    {
+      court: DEMO.courtIds[3]!,
+      start: '19:00:00',
+      end: '20:00:00',
+      guest: 'La Redonda Veteranos',
+      price: 5500000,
+    },
+    {
+      court: DEMO.courtIds[3]!,
+      start: '21:00:00',
+      end: '22:00:00',
+      guest: 'Panadería El Trigal',
+      price: 5500000,
+    },
   ]
   for (const b of bookings) {
     const instants = bookingInstants({ date, timeStart: b.start, timeEnd: b.end })

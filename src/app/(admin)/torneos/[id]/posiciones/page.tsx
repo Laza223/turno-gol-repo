@@ -26,9 +26,7 @@ import { PosicionesTable } from './PosicionesTable'
 import { GoleadoresTable } from './GoleadoresTable'
 import { SuspendidosPanel, type SuspendidoView } from './SuspendidosPanel'
 
-export default async function TorneoPosicionesPage(props: {
-  params: Promise<{ id: string }>
-}) {
+export default async function TorneoPosicionesPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
 
   const user = await extractAuthUser()
@@ -50,8 +48,8 @@ export default async function TorneoPosicionesPage(props: {
       getStaffRole(tenant.id, user.staffUserId),
       withTenantContext(tenant.id, async (tx) => {
         // Ninguna de las siete alimenta a las otras: todas toman `id` directo.
-        const [tournament, groups, scorers, discipline, stages, teams, matches] =
-          await Promise.all([
+        const [tournament, groups, scorers, discipline, stages, teams, matches] = await Promise.all(
+          [
             getTournament(tenant.id, id, tx),
             getStandings(tenant.id, id, tx),
             getTopScorers(tenant.id, id, tx),
@@ -59,7 +57,8 @@ export default async function TorneoPosicionesPage(props: {
             listStages(tenant.id, id, tx),
             listTeams(tenant.id, id, tx),
             listFixture(tenant.id, id, tx),
-          ])
+          ],
+        )
         return { tournament, groups, scorers, discipline, stages, teams, matches }
       }),
     ])
@@ -99,10 +98,7 @@ export default async function TorneoPosicionesPage(props: {
         icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
       />
 
-      <TorneoTabs
-        tournamentId={tournament.id}
-        active={`/torneos/${tournament.id}/posiciones`}
-      />
+      <TorneoTabs tournamentId={tournament.id} active={`/torneos/${tournament.id}/posiciones`} />
 
       {corte && (
         <CorteZonasCard
@@ -117,10 +113,7 @@ export default async function TorneoPosicionesPage(props: {
         />
       )}
 
-      <PosicionesTable
-        groups={groups}
-        advancePerGroup={groupStage?.teamsAdvancePerGroup ?? null}
-      />
+      <PosicionesTable groups={groups} advancePerGroup={groupStage?.teamsAdvancePerGroup ?? null} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <GoleadoresTable scorers={scorers} />

@@ -13,10 +13,24 @@ import ExplorarSplitView from '@/app/(public)/explorar/components/ExplorarSplitV
 afterEach(() => cleanup())
 
 const t = (id: string, name: string): PublicTenantCard => ({
-  id, slug: id, name, address: '', city: 'Rosario', province: 'SF',
-  logoUrl: null, coverUrl: null, allowOnlineBooking: true, fromPriceCents: 900000,
-  amenities: {}, avgRating: 0, reviewCount: 0, distanceKm: null,
-  latitude: -32.9, longitude: -60.6, courtSurfaces: [], courtFormats: [],
+  id,
+  slug: id,
+  name,
+  address: '',
+  city: 'Rosario',
+  province: 'SF',
+  logoUrl: null,
+  coverUrl: null,
+  allowOnlineBooking: true,
+  fromPriceCents: 900000,
+  amenities: {},
+  avgRating: 0,
+  reviewCount: 0,
+  distanceKm: null,
+  latitude: -32.9,
+  longitude: -60.6,
+  courtSurfaces: [],
+  courtFormats: [],
 })
 
 describe('ExplorarSplitView', () => {

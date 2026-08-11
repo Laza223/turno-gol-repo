@@ -88,7 +88,9 @@ export async function listInscriptionStatus(
 export async function listTenantInscriptionDebts(
   tenantId: string,
   tx: DbTx,
-): Promise<Array<TeamInscriptionStatus & { tournamentId: string; tournamentName: string; createdAt: Date }>> {
+): Promise<
+  Array<TeamInscriptionStatus & { tournamentId: string; tournamentName: string; createdAt: Date }>
+> {
   const rows = (await tx.execute(sql`
     SELECT t.id                             AS "teamId",
            t.name                           AS "teamName",
@@ -216,9 +218,7 @@ export async function registerInscriptionPayment(
   // algo incomprensible ("supera lo pendiente de $0").
   if (team.inscriptionFee <= 0) throw new TeamHasNoFeeError(team.name)
 
-  await tx.execute(
-    sql`SELECT id FROM tournament_teams WHERE id = ${input.teamId} FOR UPDATE`,
-  )
+  await tx.execute(sql`SELECT id FROM tournament_teams WHERE id = ${input.teamId} FOR UPDATE`)
 
   const lineKeys = input.clientIdempotencyKey
     ? input.charges.map((_, i) => `${input.clientIdempotencyKey}-${i}`)
@@ -278,11 +278,7 @@ export async function registerInscriptionPayment(
   }))
 }
 
-async function sumTeamPayments(
-  tenantId: string,
-  teamId: string,
-  tx: DbTx,
-): Promise<number> {
+async function sumTeamPayments(tenantId: string, teamId: string, tx: DbTx): Promise<number> {
   const rows = (await tx.execute(sql`
     SELECT COALESCE(SUM(amount), 0)::int AS paid FROM cash_flows
     WHERE tenant_id = ${tenantId} AND tournament_team_id = ${teamId}

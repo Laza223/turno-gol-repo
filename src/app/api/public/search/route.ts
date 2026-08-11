@@ -31,12 +31,14 @@ const csvAllowed = (
 ): string[] | undefined => {
   if (!raw) return undefined
   const allowedSet = new Set(allowed.map(String))
-  const vals = Array.from(new Set(
-    raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter((v) => v && allowedSet.has(v)),
-  ))
+  const vals = Array.from(
+    new Set(
+      raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter((v) => v && allowedSet.has(v)),
+    ),
+  )
   return vals.length ? vals : undefined
 }
 

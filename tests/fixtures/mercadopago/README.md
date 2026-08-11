@@ -35,16 +35,16 @@ el harness (`--data-id <id>`) con uno de estos dos caminos:
 
 ## Archivos
 
-| Fixture | Escenario pensado | Uso típico |
-|---|---|---|
-| `payment-approved.json` | pago aprobado → confirma seña / booking | smoke test feliz |
-| `payment-pending.json` | pago pendiente → sin efectos, no-op | confirma que no hay side effects prematuros |
-| `payment-refunded.json` | pago devuelto | ruta de reembolso/dunning |
-| `payment-invalid-signature.json` | mismo shape que "approved" | el harness lo firma A PROPÓSITO con un secret incorrecto (`--scenario invalid-signature`) para asertar 401 |
+| Fixture                          | Escenario pensado                       | Uso típico                                                                                                 |
+| -------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `payment-approved.json`          | pago aprobado → confirma seña / booking | smoke test feliz                                                                                           |
+| `payment-pending.json`           | pago pendiente → sin efectos, no-op     | confirma que no hay side effects prematuros                                                                |
+| `payment-refunded.json`          | pago devuelto                           | ruta de reembolso/dunning                                                                                  |
+| `payment-invalid-signature.json` | mismo shape que "approved"              | el harness lo firma A PROPÓSITO con un secret incorrecto (`--scenario invalid-signature`) para asertar 401 |
 
 ## Idempotencia / tenant cruzado
 
-No son fixtures separados — son *modos* del harness sobre estos mismos
+No son fixtures separados — son _modos_ del harness sobre estos mismos
 archivos:
 
 - `--repeat N` reenvía el mismo `id` de evento N veces (idempotencia).

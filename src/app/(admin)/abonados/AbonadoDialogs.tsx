@@ -52,7 +52,9 @@ export function AbonadoDialogs({
     <>
       <ConfirmDialog
         open={dialog === 'pause'}
-        onOpenChange={(open) => { if (!open) onClose() }}
+        onOpenChange={(open) => {
+          if (!open) onClose()
+        }}
         title="Pausar turno fijo"
         consequences={[
           'Elimina todas las reservas futuras de este turno fijo.',
@@ -66,7 +68,9 @@ export function AbonadoDialogs({
 
       <ConfirmDialog
         open={dialog === 'reactivate'}
-        onOpenChange={(open) => { if (!open) onClose() }}
+        onOpenChange={(open) => {
+          if (!open) onClose()
+        }}
         title="Reactivar turno fijo"
         description={
           <ReactivatePreview
@@ -84,11 +88,16 @@ export function AbonadoDialogs({
 
       <ConfirmDialog
         open={dialog === 'cancel'}
-        onOpenChange={(open) => { if (!open) onClose() }}
+        onOpenChange={(open) => {
+          if (!open) onClose()
+        }}
         title="Cancelar turno fijo"
         description={
           <div className="space-y-2">
-            <p>Esta acción es permanente. Se eliminarán todas las reservas futuras desde la fecha elegida.</p>
+            <p>
+              Esta acción es permanente. Se eliminarán todas las reservas futuras desde la fecha
+              elegida.
+            </p>
             <p className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
               Las reservas futuras desde esa fecha serán borradas sin posibilidad de recuperación.
             </p>
@@ -101,7 +110,10 @@ export function AbonadoDialogs({
         onConfirm={onConfirmCancel}
       >
         <div className="space-y-1.5">
-          <label htmlFor={`cancel-date-${abonadoId}`} className="text-xs font-medium text-foreground">
+          <label
+            htmlFor={`cancel-date-${abonadoId}`}
+            className="text-xs font-medium text-foreground"
+          >
             Cancelar desde
           </label>
           <DatePicker
@@ -116,20 +128,29 @@ export function AbonadoDialogs({
 
       <ConfirmDialog
         open={dialog === 'cancel-single'}
-        onOpenChange={(open) => { if (!open) onClose() }}
+        onOpenChange={(open) => {
+          if (!open) onClose()
+        }}
         title="Cancelar una fecha puntual"
         description={
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Para cancelar únicamente el turno de una fecha específica (ej: este martes) sin dar de baja el turno fijo permanente:
+              Para cancelar únicamente el turno de una fecha específica (ej: este martes) sin dar de
+              baja el turno fijo permanente:
             </p>
             <ol className="list-decimal list-inside space-y-1.5 text-xs text-foreground bg-muted/40 p-3 rounded-xl border border-border">
-              <li>Ingresá a la <strong>Grilla</strong> o a la lista de <strong>Reservas</strong>.</li>
+              <li>
+                Ingresá a la <strong>Grilla</strong> o a la lista de <strong>Reservas</strong>.
+              </li>
               <li>Buscá la fecha del día que avisaron que no asistirán.</li>
-              <li>Hacé clic en el turno de ese horario y seleccioná <strong>“Cancelar reserva”</strong>.</li>
+              <li>
+                Hacé clic en el turno de ese horario y seleccioná{' '}
+                <strong>“Cancelar reserva”</strong>.
+              </li>
             </ol>
             <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-              ✓ La cancha quedará libre para esa fecha puntual y el turno fijo continuará activo para todas las demás semanas.
+              ✓ La cancha quedará libre para esa fecha puntual y el turno fijo continuará activo
+              para todas las demás semanas.
             </p>
           </div>
         }
@@ -167,7 +188,11 @@ function ReactivatePreview({
     )
   }
   if (dates.length === 0) {
-    return <p className="text-sm text-muted-foreground">No se encontraron fechas futuras para generar.</p>
+    return (
+      <p className="text-sm text-muted-foreground">
+        No se encontraron fechas futuras para generar.
+      </p>
+    )
   }
 
   const available = dates.filter((d) => !conflicts.includes(d))
@@ -181,9 +206,11 @@ function ReactivatePreview({
         {conflicts.length > 0 && (
           <span className="text-amber-700 dark:text-amber-300">
             {' '}
-            ({conflicts.length === 1
+            (
+            {conflicts.length === 1
               ? '1 fecha ya ocupada se va a saltar'
-              : `${conflicts.length} fechas ya ocupadas se van a saltar`})
+              : `${conflicts.length} fechas ya ocupadas se van a saltar`}
+            )
           </span>
         )}
         .

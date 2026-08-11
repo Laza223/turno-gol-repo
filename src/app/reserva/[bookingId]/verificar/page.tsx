@@ -63,8 +63,10 @@ async function loadVerification(bookingId: string): Promise<VerifyRow | null> {
   return row
 }
 
-export default async function VerificarReservaPage(props: { params: Promise<{ bookingId: string }> }) {
-  const params = await props.params;
+export default async function VerificarReservaPage(props: {
+  params: Promise<{ bookingId: string }>
+}) {
+  const params = await props.params
   const booking = UUID_RE.test(params.bookingId)
     ? await loadVerification(params.bookingId).catch(() => null)
     : null

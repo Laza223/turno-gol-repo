@@ -68,9 +68,9 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
       // Anti-doble-submit: disabled={isPending} en confirm-dialog.tsx:41,119 (useTransition).
       // Feedback: sin toast — el dialog se cierra y router.refresh() reactualiza la lista.
 
-      await expect(
-        page.getByRole('heading', { name: '¿Cancelar esta reserva?' }),
-      ).not.toBeVisible({ timeout: 8_000 })
+      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible({
+        timeout: 8_000,
+      })
 
       // UI-sin-reload: revalidatePath + router.refresh(), sin recarga manual.
       await expect(card.getByText('Cancelado (con reembolso)')).toBeVisible({ timeout: 8_000 })

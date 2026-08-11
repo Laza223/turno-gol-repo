@@ -13,40 +13,40 @@ import { E2E_PLAYER_EMAIL } from '../_helpers/player-seed'
  */
 
 test.describe('player magic link (acceso directo en /ingresar)', () => {
-  test(
-    'player pide magic link desde /ingresar → mensaje de enlace enviado @critical',
-    async ({ browser }) => {
-      const ctx = await browser.newContext()
-      try {
-        const page = await ctx.newPage()
-        await page.goto('/ingresar')
+  test('player pide magic link desde /ingresar → mensaje de enlace enviado @critical', async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext()
+    try {
+      const page = await ctx.newPage()
+      await page.goto('/ingresar')
 
-        await page.getByLabel(/email/i).fill(E2E_PLAYER_EMAIL)
-        await page.getByRole('button', { name: /enviarme el enlace/i }).click()
+      await page.getByLabel(/email/i).fill(E2E_PLAYER_EMAIL)
+      await page.getByRole('button', { name: /enviarme el enlace/i }).click()
 
-        await expect(page.getByText(/te enviamos un enlace de acceso/i)).toBeVisible({ timeout: 10_000 })
-        await expect(page).not.toHaveURL(/\/mis-reservas/)
-      } finally {
-        await ctx.close()
-      }
-    },
-  )
+      await expect(page.getByText(/te enviamos un enlace de acceso/i)).toBeVisible({
+        timeout: 10_000,
+      })
+      await expect(page).not.toHaveURL(/\/mis-reservas/)
+    } finally {
+      await ctx.close()
+    }
+  })
 
-  test(
-    'player envía email vacío → error, sigue en /ingresar',
-    async ({ browser }) => {
-      const ctx = await browser.newContext()
-      try {
-        const page = await ctx.newPage()
-        await page.goto('/ingresar')
+  test('player envía email vacío → error, sigue en /ingresar', async ({ browser }) => {
+    const ctx = await browser.newContext()
+    try {
+      const page = await ctx.newPage()
+      await page.goto('/ingresar')
 
-        await page.getByRole('button', { name: /enviarme el enlace/i }).click()
+      await page.getByRole('button', { name: /enviarme el enlace/i }).click()
 
-        await expect(page.getByText(/te enviamos un enlace de acceso/i)).not.toBeVisible({ timeout: 2_000 })
-        await expect(page).toHaveURL(/\/ingresar/)
-      } finally {
-        await ctx.close()
-      }
-    },
-  )
+      await expect(page.getByText(/te enviamos un enlace de acceso/i)).not.toBeVisible({
+        timeout: 2_000,
+      })
+      await expect(page).toHaveURL(/\/ingresar/)
+    } finally {
+      await ctx.close()
+    }
+  })
 })

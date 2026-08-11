@@ -51,15 +51,17 @@ const REFUND_PAYMENT_ID = 'refund-payment-1'
 const BOOKING_ID = 'booking-1'
 const ORIGINAL_MP_PAYMENT_ID = 'mp-original-1'
 
-function baseRow(overrides: Partial<{
-  refundPaymentId: string
-  tenantId: string
-  bookingId: string | null
-  refundAmount: number
-  createdAt: Date
-  originalMpPaymentId: string | null
-  mpAccessToken: string
-}> = {}) {
+function baseRow(
+  overrides: Partial<{
+    refundPaymentId: string
+    tenantId: string
+    bookingId: string | null
+    refundAmount: number
+    createdAt: Date
+    originalMpPaymentId: string | null
+    mpAccessToken: string
+  }> = {},
+) {
   return {
     refundPaymentId: REFUND_PAYMENT_ID,
     tenantId: TENANT_ID,
@@ -82,9 +84,10 @@ function mockSqlRows(rows: unknown[]) {
 function mockTenantTx(responses: unknown[][]) {
   const execute = vi.fn()
   for (const r of responses) execute.mockResolvedValueOnce(r)
-  mockWithTenantContext.mockImplementation(
-    (async (_id: string, cb: (t: unknown) => Promise<unknown>) => cb({ execute })) as never,
-  )
+  mockWithTenantContext.mockImplementation((async (
+    _id: string,
+    cb: (t: unknown) => Promise<unknown>,
+  ) => cb({ execute })) as never)
 }
 
 beforeEach(() => {

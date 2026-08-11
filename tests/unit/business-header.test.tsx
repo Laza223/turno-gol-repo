@@ -19,7 +19,9 @@ describe('BusinessHeader', () => {
   it('linkea Ingresar -> /login y Empezar gratis -> /register', () => {
     render(<BusinessHeader />)
     expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe('/login')
-    expect(screen.getByRole('link', { name: /empezar gratis/i }).getAttribute('href')).toBe('/register')
+    expect(screen.getByRole('link', { name: /empezar gratis/i }).getAttribute('href')).toBe(
+      '/register',
+    )
   })
 
   it('no muestra navegación de jugador (Explorar)', () => {

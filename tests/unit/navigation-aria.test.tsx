@@ -34,13 +34,7 @@ describe('PlayerBottomNav a11y', () => {
 describe('AdminSidebar a11y', () => {
   it('nav has aria-label="Navegación del panel"', () => {
     vi.mocked(usePathname).mockReturnValue('/grilla')
-    render(
-      <AdminSidebar
-        tenantName="Test Club"
-        mobileOpen={false}
-        onClose={() => {}}
-      />,
-    )
+    render(<AdminSidebar tenantName="Test Club" mobileOpen={false} onClose={() => {}} />)
     // Two navs render (desktop + mobile) — both should have same aria-label
     const navs = screen.getAllByRole('navigation', { name: /navegación del panel/i })
     expect(navs.length).toBeGreaterThanOrEqual(1)
@@ -48,13 +42,7 @@ describe('AdminSidebar a11y', () => {
 
   it('active link has aria-current="page"', () => {
     vi.mocked(usePathname).mockReturnValue('/grilla')
-    render(
-      <AdminSidebar
-        tenantName="Test Club"
-        mobileOpen={false}
-        onClose={() => {}}
-      />,
-    )
+    render(<AdminSidebar tenantName="Test Club" mobileOpen={false} onClose={() => {}} />)
     const activeLinks = screen.getAllByRole('link', { name: /grilla/i })
     // At least one of them (desktop or mobile) is active
     const hasCurrent = activeLinks.some((l) => l.getAttribute('aria-current') === 'page')
@@ -100,9 +88,9 @@ describe('AdminSidebar — los 6 espacios', () => {
   it('al manager Configuración se le bloquea con candado, no se le esconde', () => {
     renderSidebar('/grilla', 'manager')
     expect(screen.queryByRole('link', { name: 'Configuración' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Configuración' }).getAttribute('aria-disabled')).toBe(
-      'true',
-    )
+    expect(
+      screen.getByRole('button', { name: 'Configuración' }).getAttribute('aria-disabled'),
+    ).toBe('true')
   })
 
   it('al admin Configuración le queda como link navegable', () => {
@@ -116,9 +104,7 @@ describe('AdminSidebar — los 6 espacios', () => {
 describe('AdminBottomNav', () => {
   function renderBottomNav(pathname: string, staffRole: 'admin' | 'manager') {
     vi.mocked(usePathname).mockReturnValue(pathname)
-    render(
-      <AdminBottomNav onOpenMore={() => {}} moreOpen={false} staffRole={staffRole} />,
-    )
+    render(<AdminBottomNav onOpenMore={() => {}} moreOpen={false} staffRole={staffRole} />)
   }
 
   it('el dueño ve Hoy · Grilla · Caja · Más', () => {

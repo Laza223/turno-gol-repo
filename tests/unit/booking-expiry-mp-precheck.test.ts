@@ -104,9 +104,10 @@ function mockLoadExpiryState(rows: unknown[]) {
 
 /** El flujo normal de expiración corre dentro de `withTenantContext`. */
 function mockExpireTx(won: boolean) {
-  mockWithTenantContext.mockImplementation(
-    (async (_id: string, cb: (t: never) => Promise<unknown>) => cb({} as never)) as never,
-  )
+  mockWithTenantContext.mockImplementation((async (
+    _id: string,
+    cb: (t: never) => Promise<unknown>,
+  ) => cb({} as never)) as never)
   mockExpirePendingBooking.mockResolvedValue(won ? { won: true } : { won: false })
 }
 

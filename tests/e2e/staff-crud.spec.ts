@@ -129,10 +129,7 @@ test.describe('Staff CRUD', () => {
     }
   })
 
-  test('#3 edge — sole-admin self row has no dropdown', async ({
-    page,
-    adminStorageState,
-  }) => {
+  test('#3 edge — sole-admin self row has no dropdown', async ({ page, adminStorageState }) => {
     await addAdminCookies(page, adminStorageState)
     await page.goto('/settings/equipo')
 
@@ -147,7 +144,10 @@ test.describe('Staff CRUD', () => {
   })
 
   test('#4 edge — reenviar invitación shows toast', async ({ page, adminStorageState }) => {
-    test.skip(!process.env.E2E_RESEND_EMAIL, 'Skipped — set E2E_RESEND_EMAIL=1 to test Supabase invite delivery')
+    test.skip(
+      !process.env.E2E_RESEND_EMAIL,
+      'Skipped — set E2E_RESEND_EMAIL=1 to test Supabase invite delivery',
+    )
     const supabase = makeServiceClient()
     const email = `e2e-staff-resend-${Date.now()}@turnogol.test`
     const staffUserId = randomUUID()

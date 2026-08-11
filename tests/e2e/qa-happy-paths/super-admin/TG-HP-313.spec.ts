@@ -91,7 +91,8 @@ test.describe('TG-HP-313 — Impersonar / detener', () => {
         tenantName: tenantRow.name,
         dialogMessage,
         impersonationAuditLogs: auditRows,
-        dbWrites: 'audit_logs (support.impersonation.started/ended) — sin cambios de estado en tenants/tenant_subscriptions',
+        dbWrites:
+          'audit_logs (support.impersonation.started/ended) — sin cambios de estado en tenants/tenant_subscriptions',
         notes:
           'Cookie tg_sa_impersonate httpOnly verificada presente durante la impersonación y ausente tras salir. ' +
           'Bypasea el hard-lock de billing: no depende del tenants.status dejado por los casos FSM previos (305-310).',

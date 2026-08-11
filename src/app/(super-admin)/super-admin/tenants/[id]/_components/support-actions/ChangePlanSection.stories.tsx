@@ -7,7 +7,11 @@ import { ChangePlanSection } from './ChangePlanSection'
 function fakeRun(): RunAction {
   return (fn2, setFeedback: (f: Feedback) => void) => {
     void fn2().then((res) =>
-      setFeedback(res.success ? { kind: 'ok', text: res.message ?? 'Acción ejecutada.' } : { kind: 'error', text: res.error }),
+      setFeedback(
+        res.success
+          ? { kind: 'ok', text: res.message ?? 'Acción ejecutada.' }
+          : { kind: 'error', text: res.error },
+      ),
     )
   }
 }
@@ -19,8 +23,10 @@ function fakeRun(): RunAction {
  * queda pinneado a ese shape en vez de al `SupportAction` genérico del prop.
  */
 type ActionResult = Awaited<ReturnType<SupportAction>>
-const okAction = (message: string) => fn(async (): Promise<ActionResult> => ({ success: true, message }))
-const errorAction = (error: string) => fn(async (): Promise<ActionResult> => ({ success: false, error }))
+const okAction = (message: string) =>
+  fn(async (): Promise<ActionResult> => ({ success: true, message }))
+const errorAction = (error: string) =>
+  fn(async (): Promise<ActionResult> => ({ success: false, error }))
 
 const plans = planSummaries()
 

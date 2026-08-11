@@ -20,7 +20,11 @@ test.describe('TG-HP-112 — Favoritos', () => {
   }) => {
     const sb = makeServiceClient()
     // Defensivo: barre cualquier favorito residual de una corrida previa.
-    await sb.from('player_favorites').delete().eq('player_id', E2E_PLAYER_ID).eq('tenant_id', E2E_TENANT_ID)
+    await sb
+      .from('player_favorites')
+      .delete()
+      .eq('player_id', E2E_PLAYER_ID)
+      .eq('tenant_id', E2E_TENANT_ID)
 
     const ctx = await browser.newContext()
     await ctx.addCookies(JSON.parse(playerStorageState).cookies)
@@ -39,7 +43,8 @@ test.describe('TG-HP-112 — Favoritos', () => {
       // DB — si no, el SELECT corre en carrera con el insert server-side en vuelo.
       const [toggleRes] = await Promise.all([
         page.waitForResponse(
-          (r) => r.url().includes('/api/player/favorites/toggle') && r.request().method() === 'POST',
+          (r) =>
+            r.url().includes('/api/player/favorites/toggle') && r.request().method() === 'POST',
         ),
         heartBtn.click(),
       ])
@@ -61,14 +66,18 @@ test.describe('TG-HP-112 — Favoritos', () => {
       // /perfil?tab=favoritos lista el tenant recién marcado.
       await page.goto('/perfil?tab=favoritos')
       await expect(page.getByRole('heading', { name: 'Mi perfil', level: 1 })).toBeVisible()
-      await expect(page.getByRole('link', { name: 'Favoritos' })).toHaveAttribute('aria-current', 'page')
+      await expect(page.getByRole('link', { name: 'Favoritos' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      )
       const profileCard = page.locator('article').filter({ hasText: TENANT_NAME })
       await expect(profileCard.getByRole('heading', { name: TENANT_NAME })).toBeVisible()
 
       // Destogglear desde /perfil?tab=favoritos (mismo patrón optimista → esperar POST).
       const [untoggleRes] = await Promise.all([
         page.waitForResponse(
-          (r) => r.url().includes('/api/player/favorites/toggle') && r.request().method() === 'POST',
+          (r) =>
+            r.url().includes('/api/player/favorites/toggle') && r.request().method() === 'POST',
         ),
         profileCard.getByRole('button', { name: 'Quitar de favoritos' }).click(),
       ])
@@ -104,7 +113,11 @@ test.describe('TG-HP-112 — Favoritos', () => {
       })
     } finally {
       await ctx.close()
-      await sb.from('player_favorites').delete().eq('player_id', E2E_PLAYER_ID).eq('tenant_id', E2E_TENANT_ID)
+      await sb
+        .from('player_favorites')
+        .delete()
+        .eq('player_id', E2E_PLAYER_ID)
+        .eq('tenant_id', E2E_TENANT_ID)
     }
   })
 })

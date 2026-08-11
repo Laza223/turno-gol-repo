@@ -24,6 +24,8 @@ describe('CajaTabs', () => {
     render(<CajaTabs active="/caja/cantina" />)
     expect(screen.getByRole('link', { name: 'Cantina' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Caja del día' })).not.toHaveAttribute('aria-current')
-    expect(screen.getByRole('link', { name: 'Productos y stock' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Productos y stock' })).not.toHaveAttribute(
+      'aria-current',
+    )
   })
 })

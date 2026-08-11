@@ -44,9 +44,7 @@ function FormCard({
   return (
     <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <header className="mb-6 space-y-1">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-          Creá tu cuenta
-        </h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Creá tu cuenta</h1>
         <p className="text-sm text-muted-foreground">
           Registrá tu complejo y empezá a recibir reservas online.
         </p>
@@ -117,7 +115,10 @@ function FormCard({
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         ¿Ya tenés cuenta?{' '}
-        <Link href="/login" className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline">
+        <Link
+          href="/login"
+          className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline"
+        >
           Ingresar
         </Link>
       </p>
@@ -131,16 +132,17 @@ function ConfirmState({ email }: { email: string }) {
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
         <Mail className="h-6 w-6 text-emerald-700 dark:text-emerald-400" aria-hidden />
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-        Confirmá tu email
-      </h1>
+      <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Confirmá tu email</h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Te enviamos un email a <strong className="text-foreground">{email}</strong>.
-        Hacé click en el enlace para activar tu cuenta; después entrás con tu contraseña.
+        Te enviamos un email a <strong className="text-foreground">{email}</strong>. Hacé click en
+        el enlace para activar tu cuenta; después entrás con tu contraseña.
       </p>
       <p className="mt-6 text-xs text-muted-foreground">
         ¿No llegó? Revisá spam. Podés volver a{' '}
-        <Link href="/register" className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline">
+        <Link
+          href="/register"
+          className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+        >
           registrarte
         </Link>
         .
@@ -159,8 +161,8 @@ function ExistingState({ email }: { email: string }) {
         Ya tenés una cuenta
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Ya existe una cuenta con <strong className="text-foreground">{email}</strong>.
-        ¿Querés agregar otro complejo? Iniciá sesión y sumalo desde tu panel.
+        Ya existe una cuenta con <strong className="text-foreground">{email}</strong>. ¿Querés
+        agregar otro complejo? Iniciá sesión y sumalo desde tu panel.
       </p>
       <Link
         href="/login"

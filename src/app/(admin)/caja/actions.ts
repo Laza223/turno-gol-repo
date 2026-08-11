@@ -79,18 +79,15 @@ const openDaySchema = z.object({
 })
 
 export type CashFlowActionResult =
-  | { success: true; cashFlow: CashFlowRow }
-  | { success: false; error: string }
+  { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
 
 export type CloseDayActionResult =
-  | { success: true; close: DailyCashCloseRow }
-  | { success: false; error: string }
+  { success: true; close: DailyCashCloseRow } | { success: false; error: string }
 
 export type OpenDayInput = { date: string; openingCash: number; note?: string }
 
 export type OpenDayActionResult =
-  | { success: true; openingCash: number }
-  | { success: false; error: string }
+  { success: true; openingCash: number } | { success: false; error: string }
 
 export async function createCashFlowAction(
   input: CreateCashFlowInput,
@@ -119,7 +116,10 @@ export async function createCashFlowAction(
       return { success: false, error: (err as Error).message }
     }
     if (err instanceof DayAlreadyClosedError) {
-      return { success: false, error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.' }
+      return {
+        success: false,
+        error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
+      }
     }
     throw err
   }
@@ -177,9 +177,7 @@ export async function closeDayAction(
   return { success: true, close }
 }
 
-export async function openDayAction(
-  input: OpenDayInput,
-): Promise<OpenDayActionResult> {
+export async function openDayAction(input: OpenDayInput): Promise<OpenDayActionResult> {
   const parsed = openDaySchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   // Abrir/corregir el fondo es operación de caja: mismo gate que el resto (admin+manager).

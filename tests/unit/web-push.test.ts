@@ -22,7 +22,12 @@ vi.mock('@/shared/lib/logger', () => ({
 
 import webpush from 'web-push'
 import { track } from '@/shared/observability'
-import { sendPushNotification, _resetVapidForTests, type PushSubscriptionLike, type PushPayload } from '@/lib/web-push'
+import {
+  sendPushNotification,
+  _resetVapidForTests,
+  type PushSubscriptionLike,
+  type PushPayload,
+} from '@/lib/web-push'
 
 const mockWebpush = webpush as unknown as {
   setVapidDetails: ReturnType<typeof vi.fn>
@@ -43,7 +48,8 @@ const validPayload: PushPayload = {
 
 function setVapidEnv() {
   process.env.VAPID_SUBJECT = 'mailto:test@turnogol.local'
-  process.env.VAPID_PUBLIC_KEY = 'BJzYxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+  process.env.VAPID_PUBLIC_KEY =
+    'BJzYxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
   process.env.VAPID_PRIVATE_KEY = 'AAAAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 }
 
@@ -166,7 +172,10 @@ describe('410 gone', () => {
 
 describe('5xx errors', () => {
   it('returns gone=false with the error statusCode on 500', async () => {
-    mockWebpush.sendNotification.mockRejectedValueOnce({ statusCode: 500, body: 'Internal Server Error' })
+    mockWebpush.sendNotification.mockRejectedValueOnce({
+      statusCode: 500,
+      body: 'Internal Server Error',
+    })
     const result = await sendPushNotification(validSub, validPayload)
     expect(result).toEqual({
       success: false,
@@ -187,9 +196,17 @@ describe('5xx errors', () => {
   })
 
   it('uses message as fallback error when body is absent', async () => {
-    mockWebpush.sendNotification.mockRejectedValueOnce({ statusCode: 503, message: 'service unavailable' })
+    mockWebpush.sendNotification.mockRejectedValueOnce({
+      statusCode: 503,
+      message: 'service unavailable',
+    })
     const result = await sendPushNotification(validSub, validPayload)
-    expect(result).toMatchObject({ success: false, gone: false, statusCode: 503, error: 'service unavailable' })
+    expect(result).toMatchObject({
+      success: false,
+      gone: false,
+      statusCode: 503,
+      error: 'service unavailable',
+    })
   })
 
   it('uses "unknown" when neither body nor message present', async () => {

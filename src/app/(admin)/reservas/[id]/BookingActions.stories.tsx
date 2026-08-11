@@ -252,14 +252,18 @@ export const CancelarValidaMotivoYQuienCancela: Story = {
 
     const dialog = within(await body.findByRole('dialog'))
     await userEvent.click(dialog.getByRole('button', { name: 'Cancelar reserva' }))
-    await expect(await dialog.findByRole('alert')).toHaveTextContent('Indicá quién cancela la reserva.')
+    await expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'Indicá quién cancela la reserva.',
+    )
 
     await userEvent.click(dialog.getByRole('radio', { name: /El complejo necesita cancelar/i }))
     await userEvent.click(dialog.getByRole('button', { name: 'Cancelar reserva' }))
     // El mismo <p role="alert"> se reutiliza entre intentos: esperar el texto
     // nuevo, no solo la presencia del rol (que ya estaba desde el intento anterior).
     await waitFor(() =>
-      expect(dialog.getByRole('alert')).toHaveTextContent('Ingresá un motivo (mínimo 3 caracteres).'),
+      expect(dialog.getByRole('alert')).toHaveTextContent(
+        'Ingresá un motivo (mínimo 3 caracteres).',
+      ),
     )
 
     await expect(args.cancelBookingAction).not.toHaveBeenCalled()
@@ -269,12 +273,10 @@ export const CancelarValidaMotivoYQuienCancela: Story = {
 /** El servidor rechaza la cancelación (ej. la reserva ya no está confirmada): el diálogo queda abierto con el error. */
 export const ErrorDelServidorAlCancelar: Story = {
   args: {
-    cancelBookingAction: fn(
-      async (): Promise<BookingActionResult> => ({
-        success: false,
-        error: 'La reserva no está en estado confirmado.',
-      }),
-    ),
+    cancelBookingAction: fn(async (): Promise<BookingActionResult> => ({
+      success: false,
+      error: 'La reserva no está en estado confirmado.',
+    })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

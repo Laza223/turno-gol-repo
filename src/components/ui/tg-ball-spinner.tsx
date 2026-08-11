@@ -112,9 +112,7 @@ export function TgBallSpinner({
         </svg>
       </div>
       {text && (
-        <p className={cn('font-medium text-muted-foreground animate-pulse', s.text)}>
-          {text}
-        </p>
+        <p className={cn('font-medium text-muted-foreground animate-pulse', s.text)}>{text}</p>
       )}
     </div>
   )

@@ -30,7 +30,13 @@ type Props = {
  * `/deudas/ManualBanDialog.tsx` — misma action, mismos defaults, 🔴 auditoría
  * 2026-08-01 §4.11).
  */
-export function BanPlayerControls({ playerId, playerName, ban, banPlayerAction, liftPlayerBanAction }: Props) {
+export function BanPlayerControls({
+  playerId,
+  playerName,
+  ban,
+  banPlayerAction,
+  liftPlayerBanAction,
+}: Props) {
   const [banOpen, setBanOpen] = useState(false)
   const [liftOpen, setLiftOpen] = useState(false)
 

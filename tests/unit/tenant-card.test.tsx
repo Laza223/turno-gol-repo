@@ -91,20 +91,14 @@ describe('TenantCard — carrusel de fotos', () => {
 
   it('deduplica el cover repetido entre las fotos de canchas', () => {
     const { container } = render(
-      <TenantCard
-        tenant={{ ...baseTenant, coverUrl: '/a.jpg' }}
-        photos={['/a.jpg', '/b.jpg']}
-      />,
+      <TenantCard tenant={{ ...baseTenant, coverUrl: '/a.jpg' }} photos={['/a.jpg', '/b.jpg']} />,
     )
     expect(imgs(container)).toHaveLength(2)
   })
 
   it('todas las imágenes pasan por next/image (no <img> crudo) y con lazy loading', () => {
     const { container } = render(
-      <TenantCard
-        tenant={{ ...baseTenant, coverUrl: '/1.jpg' }}
-        photos={['/2.jpg', '/3.jpg']}
-      />,
+      <TenantCard tenant={{ ...baseTenant, coverUrl: '/1.jpg' }} photos={['/2.jpg', '/3.jpg']} />,
     )
     const images = imgs(container)
     expect(images.length).toBeGreaterThan(0)
@@ -131,9 +125,7 @@ describe('TenantCard — píldoras de turnos libres', () => {
       '/el-potrero/reservar?court=c9&date=2026-06-15&time=18:00&dur=60',
     )
     expect(screen.getByRole('link', { name: 'Reservar a las 19:00' })).toBeTruthy()
-    expect(
-      screen.getByRole('group', { name: 'Turnos libres el 15/06/2026' }),
-    ).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Turnos libres el 15/06/2026' })).toBeTruthy()
   })
 
   it('sin búsqueda temporal (sin slotPills) la card no muestra turnos', () => {
@@ -143,9 +135,7 @@ describe('TenantCard — píldoras de turnos libres', () => {
   })
 
   it('si el complejo no acepta reserva online no muestra píldoras aunque lleguen', () => {
-    render(
-      <TenantCard tenant={{ ...baseTenant, allowOnlineBooking: false }} slotPills={pills} />,
-    )
+    render(<TenantCard tenant={{ ...baseTenant, allowOnlineBooking: false }} slotPills={pills} />)
     expect(screen.queryByText('18:00')).toBeNull()
   })
 })
@@ -189,7 +179,9 @@ describe('TenantCard — variante compact', () => {
         variant="compact"
       />,
     )
-    expect(screen.getByRole('link', { name: /El Potrero/ }).getAttribute('href')).toBe('/el-potrero')
+    expect(screen.getByRole('link', { name: /El Potrero/ }).getAttribute('href')).toBe(
+      '/el-potrero',
+    )
     expect(screen.getByText(/\$\s?9\.500/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Foto siguiente' })).toBeNull()
   })

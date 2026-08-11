@@ -7,5 +7,4 @@
  *
  * Can also be overridden at runtime via TERMS_VERSION env var without redeploy.
  */
-export const CURRENT_TERMS_VERSION: string =
-  process.env.TERMS_VERSION ?? 'v1'
+export const CURRENT_TERMS_VERSION: string = process.env.TERMS_VERSION ?? 'v1'

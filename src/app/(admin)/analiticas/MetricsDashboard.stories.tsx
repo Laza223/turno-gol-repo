@@ -125,7 +125,9 @@ export const TendenciaAusenciasEnAlza: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/pts vs período anterior/)).toHaveTextContent('+8 pts vs período anterior')
+    await expect(await canvas.findByText(/pts vs período anterior/)).toHaveTextContent(
+      '+8 pts vs período anterior',
+    )
   },
 }
 
@@ -156,6 +158,9 @@ export const CambiarGranularidad: Story = {
     const monthBtn = canvas.getByRole('button', { name: 'Mes' })
     await userEvent.click(monthBtn)
     await waitFor(() => expect(monthBtn).toHaveAttribute('aria-pressed', 'true'))
-    await expect(canvas.getByRole('button', { name: 'Día' })).toHaveAttribute('aria-pressed', 'false')
+    await expect(canvas.getByRole('button', { name: 'Día' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   },
 }

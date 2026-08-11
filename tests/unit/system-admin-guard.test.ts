@@ -29,10 +29,7 @@ vi.mock('@/shared/db/client', () => ({ withSystemAdminContext: vi.fn() }))
 vi.mock('@/shared/rate-limit/apply', () => ({ enforce: vi.fn() }))
 
 import { redirect } from 'next/navigation'
-import {
-  requireSystemAdmin,
-  requireSystemAdminAction,
-} from '@/modules/auth/system-admin.guards'
+import { requireSystemAdmin, requireSystemAdminAction } from '@/modules/auth/system-admin.guards'
 import { extractRealAuthUser } from '@/modules/auth/auth.middleware'
 import { withSystemAdminContext } from '@/shared/db/client'
 import { enforce } from '@/shared/rate-limit/apply'
@@ -61,9 +58,10 @@ beforeEach(() => {
   h.state.dbRows = []
   process.env.SYSTEM_ADMIN_EMAILS = 'owner@turnogol.test'
   vi.mocked(extractRealAuthUser).mockResolvedValue(SYSTEM_ADMIN_USER as never)
-  vi.mocked(withSystemAdminContext).mockImplementation(
-    (async (_id: string, fn: (tx: never) => Promise<unknown>) => fn(h.tx as never)) as never,
-  )
+  vi.mocked(withSystemAdminContext).mockImplementation((async (
+    _id: string,
+    fn: (tx: never) => Promise<unknown>,
+  ) => fn(h.tx as never)) as never)
   vi.mocked(enforce).mockResolvedValue(ENFORCE_OK)
 })
 
@@ -136,10 +134,7 @@ describe('requireSystemAdmin — happy path', () => {
       firstName: 'Marce',
       lastName: 'Dueño',
     })
-    expect(vi.mocked(withSystemAdminContext)).toHaveBeenCalledWith(
-      'sa-row-1',
-      expect.any(Function),
-    )
+    expect(vi.mocked(withSystemAdminContext)).toHaveBeenCalledWith('sa-row-1', expect.any(Function))
     expect(vi.mocked(redirect)).not.toHaveBeenCalled()
   })
 

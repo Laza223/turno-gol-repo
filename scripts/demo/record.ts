@@ -31,7 +31,14 @@ type Step =
   | { action: 'caption'; text: string }
   | { action: 'click'; role?: string; name?: string; css?: string; nth?: number }
   | { action: 'clickText'; text: string }
-  | { action: 'fill'; css?: string; label?: string; placeholder?: string; text: string; fast?: boolean }
+  | {
+      action: 'fill'
+      css?: string
+      label?: string
+      placeholder?: string
+      text: string
+      fast?: boolean
+    }
   | { action: 'select'; label?: string; css?: string; value: string }
   | { action: 'press'; key: string }
   | { action: 'waitText'; text: string }
@@ -47,7 +54,8 @@ type Flow = {
 
 type TimelineEvent = {
   t: number
-  type: 'goto' | 'ready' | 'caption' | 'click' | 'fill' | 'waitText' | 'done' | 'cutStart' | 'cutEnd'
+  type:
+    'goto' | 'ready' | 'caption' | 'click' | 'fill' | 'waitText' | 'done' | 'cutStart' | 'cutEnd'
   text?: string
   x?: number
   y?: number
@@ -104,8 +112,12 @@ const CURSOR_JS = `
 // {day+N} (día del mes, para celdas de calendario).
 function resolveTokens(s: string): string {
   return s
-    .replace(/\{date\+(\d+)\}/g, (_m, n) => formatInTimeZone(addDays(new Date(), Number(n)), ART, 'yyyy-MM-dd'))
-    .replace(/\{day\+(\d+)\}/g, (_m, n) => formatInTimeZone(addDays(new Date(), Number(n)), ART, 'd'))
+    .replace(/\{date\+(\d+)\}/g, (_m, n) =>
+      formatInTimeZone(addDays(new Date(), Number(n)), ART, 'yyyy-MM-dd'),
+    )
+    .replace(/\{day\+(\d+)\}/g, (_m, n) =>
+      formatInTimeZone(addDays(new Date(), Number(n)), ART, 'd'),
+    )
 }
 
 function toLocator(page: Page, step: Extract<Step, { action: 'click' }>): Locator {
@@ -130,9 +142,21 @@ async function animatedClick(page: Page, loc: Locator): Promise<{ x: number; y: 
   const x = box.x + box.width / 2
   const y = box.y + box.height / 2
   await ensureCursor(page)
-  await page.evaluate(([cx, cy]) => (window as never as { __demoCursor: { moveTo(x: number, y: number): void } }).__demoCursor.moveTo(cx!, cy!), [x, y])
+  await page.evaluate(
+    ([cx, cy]) =>
+      (
+        window as never as { __demoCursor: { moveTo(x: number, y: number): void } }
+      ).__demoCursor.moveTo(cx!, cy!),
+    [x, y],
+  )
   await page.waitForTimeout(520)
-  await page.evaluate(([cx, cy]) => (window as never as { __demoCursor: { ripple(x: number, y: number): void } }).__demoCursor.ripple(cx!, cy!), [x, y])
+  await page.evaluate(
+    ([cx, cy]) =>
+      (
+        window as never as { __demoCursor: { ripple(x: number, y: number): void } }
+      ).__demoCursor.ripple(cx!, cy!),
+    [x, y],
+  )
   await page.waitForTimeout(120)
   await loc.click()
   return { x, y }
@@ -171,85 +195,87 @@ async function main(): Promise<void> {
   }
 
   try {
-  for (const step of flow.steps) {
-    switch (step.action) {
-      case 'goto': {
-        // {date+N} → fecha ART a N días (para URLs de reserva dentro de la
-        // ventana de anticipación).
-        const url = step.url.replace(/\{date\+(\d+)\}/g, (_m, n) =>
-          formatInTimeZone(addDays(new Date(), Number(n)), ART, 'yyyy-MM-dd'),
-        )
-        mark({ type: 'goto', text: url })
-        await page.goto(BASE_URL + url, { waitUntil: 'networkidle' })
-        await ensureCursor(page)
-        mark({ type: 'ready', text: url })
-        break
-      }
-      case 'caption': {
-        mark({ type: 'caption', text: step.text })
-        break
-      }
-      case 'click': {
-        const { x, y } = await animatedClick(page, toLocator(page, step))
-        mark({ type: 'click', x, y, text: step.name ?? step.css })
-        break
-      }
-      case 'clickText': {
-        // {day+N} → número de día del mes (para celdas de calendario).
-        const text = step.text.replace(/\{day\+(\d+)\}/g, (_m, n) =>
-          formatInTimeZone(addDays(new Date(), Number(n)), ART, 'd'),
-        )
-        const loc = page.getByText(text, { exact: true }).first()
-        const { x, y } = await animatedClick(page, loc)
-        mark({ type: 'click', x, y, text })
-        break
-      }
-      case 'fill': {
-        const loc = step.css
-          ? page.locator(step.css).first()
-          : step.placeholder
-            ? page.getByPlaceholder(new RegExp(step.placeholder)).first()
+    for (const step of flow.steps) {
+      switch (step.action) {
+        case 'goto': {
+          // {date+N} → fecha ART a N días (para URLs de reserva dentro de la
+          // ventana de anticipación).
+          const url = step.url.replace(/\{date\+(\d+)\}/g, (_m, n) =>
+            formatInTimeZone(addDays(new Date(), Number(n)), ART, 'yyyy-MM-dd'),
+          )
+          mark({ type: 'goto', text: url })
+          await page.goto(BASE_URL + url, { waitUntil: 'networkidle' })
+          await ensureCursor(page)
+          mark({ type: 'ready', text: url })
+          break
+        }
+        case 'caption': {
+          mark({ type: 'caption', text: step.text })
+          break
+        }
+        case 'click': {
+          const { x, y } = await animatedClick(page, toLocator(page, step))
+          mark({ type: 'click', x, y, text: step.name ?? step.css })
+          break
+        }
+        case 'clickText': {
+          // {day+N} → número de día del mes (para celdas de calendario).
+          const text = step.text.replace(/\{day\+(\d+)\}/g, (_m, n) =>
+            formatInTimeZone(addDays(new Date(), Number(n)), ART, 'd'),
+          )
+          const loc = page.getByText(text, { exact: true }).first()
+          const { x, y } = await animatedClick(page, loc)
+          mark({ type: 'click', x, y, text })
+          break
+        }
+        case 'fill': {
+          const loc = step.css
+            ? page.locator(step.css).first()
+            : step.placeholder
+              ? page.getByPlaceholder(new RegExp(step.placeholder)).first()
+              : page.getByLabel(step.label!).first()
+          const text = step.text.replace(/\{date\+(\d+)\}/g, (_m, n) =>
+            formatInTimeZone(addDays(new Date(), Number(n)), ART, 'yyyy-MM-dd'),
+          )
+          await loc.waitFor({ state: 'visible' })
+          await loc.click()
+          mark({ type: 'fill', text })
+          // fast: inputs date/time donde tipear por teclas es frágil.
+          if (step.fast) await loc.fill(text)
+          else await loc.pressSequentially(text, { delay: 55 })
+          break
+        }
+        case 'select': {
+          const loc = step.css
+            ? page.locator(step.css).first()
             : page.getByLabel(step.label!).first()
-        const text = step.text.replace(/\{date\+(\d+)\}/g, (_m, n) =>
-          formatInTimeZone(addDays(new Date(), Number(n)), ART, 'yyyy-MM-dd'),
-        )
-        await loc.waitFor({ state: 'visible' })
-        await loc.click()
-        mark({ type: 'fill', text })
-        // fast: inputs date/time donde tipear por teclas es frágil.
-        if (step.fast) await loc.fill(text)
-        else await loc.pressSequentially(text, { delay: 55 })
-        break
-      }
-      case 'select': {
-        const loc = step.css ? page.locator(step.css).first() : page.getByLabel(step.label!).first()
-        await loc.waitFor({ state: 'visible' })
-        await animatedClick(page, loc)
-        await loc.selectOption({ label: step.value }).catch(() => loc.selectOption(step.value))
-        mark({ type: 'fill', text: `${step.label} = ${step.value}` })
-        break
-      }
-      case 'press': {
-        await page.keyboard.press(step.key)
-        break
-      }
-      case 'waitText': {
-        await page.getByText(step.text).first().waitFor({ state: 'visible', timeout: 15_000 })
-        mark({ type: 'waitText', text: step.text })
-        break
-      }
-      case 'pause': {
-        await page.waitForTimeout(step.ms)
-        break
-      }
-      case 'cut': {
-        // Marca un rango a EXCLUIR del corte final (ej: el checkout mock de MP,
-        // que muestra "SIMULADOR" y no puede salir en un video público).
-        mark({ type: step.mode === 'start' ? 'cutStart' : 'cutEnd' })
-        break
+          await loc.waitFor({ state: 'visible' })
+          await animatedClick(page, loc)
+          await loc.selectOption({ label: step.value }).catch(() => loc.selectOption(step.value))
+          mark({ type: 'fill', text: `${step.label} = ${step.value}` })
+          break
+        }
+        case 'press': {
+          await page.keyboard.press(step.key)
+          break
+        }
+        case 'waitText': {
+          await page.getByText(step.text).first().waitFor({ state: 'visible', timeout: 15_000 })
+          mark({ type: 'waitText', text: step.text })
+          break
+        }
+        case 'pause': {
+          await page.waitForTimeout(step.ms)
+          break
+        }
+        case 'cut': {
+          // Marca un rango a EXCLUIR del corte final (ej: el checkout mock de MP,
+          // que muestra "SIMULADOR" y no puede salir en un video público).
+          mark({ type: step.mode === 'start' ? 'cutStart' : 'cutEnd' })
+          break
+        }
       }
     }
-  }
   } catch (err) {
     // Congelar la evidencia del fallo antes de cerrar el context.
     await page.screenshot({ path: join(outDir, 'error.png'), fullPage: false }).catch(() => {})
@@ -268,7 +294,10 @@ async function main(): Promise<void> {
     renameSync(rawPath, finalPath)
     console.log(`video:    ${finalPath}`)
   }
-  writeFileSync(join(outDir, 'timeline.json'), JSON.stringify({ flow: flow.name, viewport, timeline }, null, 2))
+  writeFileSync(
+    join(outDir, 'timeline.json'),
+    JSON.stringify({ flow: flow.name, viewport, timeline }, null, 2),
+  )
   console.log(`timeline: ${join(outDir, 'timeline.json')}`)
 }
 

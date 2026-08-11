@@ -4,7 +4,13 @@ import { useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SectionCard } from './SectionCard'
 import { FeedbackText } from './FeedbackText'
-import { inputCls, primaryBtn, type Feedback, type RunAction, type SupportAction } from './constants'
+import {
+  inputCls,
+  primaryBtn,
+  type Feedback,
+  type RunAction,
+  type SupportAction,
+} from './constants'
 
 type Props = {
   tenantId: string
@@ -26,9 +32,7 @@ export function ExtendTrialSection({ tenantId, isTrialing, pending, run, action 
       description="Mueve el fin de trial a max(hoy, fin actual) + días. Solo para tenants en trial."
     >
       {!isTrialing ? (
-        <p className="text-sm text-muted-foreground">
-          El complejo no está en trial — no aplica.
-        </p>
+        <p className="text-sm text-muted-foreground">El complejo no está en trial — no aplica.</p>
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">

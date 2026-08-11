@@ -1,9 +1,6 @@
 import type PgBoss from 'pg-boss'
 import { QUEUE_PROCESS_MP_WEBHOOK } from '../queue-names'
-import {
-  handleMpWebhookJob,
-  type MpWebhookJob,
-} from '@/modules/payments/mp-webhook.handler'
+import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { track } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
 

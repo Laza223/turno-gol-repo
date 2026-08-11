@@ -51,57 +51,57 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
   // is registered. We re-post inside expect().toPass() until the toast renders;
   // the manager dedupes by id, so re-posting the same id is a no-op once
   // delivered. Production is unaffected (a real SW push fires long after mount).
-  test(
-    'BroadcastChannel message triggers payload-specific toast on /admin/grilla @critical',
-    async ({ browser, adminStorageState }) => {
-      const context = await browser.newContext({
-        storageState: JSON.parse(adminStorageState),
-        // Grant notification permission so the page does not block on the
-        // Notification.permission === 'denied' branch inside PushNotificationManager.
-        permissions: ['notifications'],
-      })
+  test('BroadcastChannel message triggers payload-specific toast on /admin/grilla @critical', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const context = await browser.newContext({
+      storageState: JSON.parse(adminStorageState),
+      // Grant notification permission so the page does not block on the
+      // Notification.permission === 'denied' branch inside PushNotificationManager.
+      permissions: ['notifications'],
+    })
 
-      try {
-        const page = await context.newPage()
-        // /grilla — the (admin) folder is a Next.js route group, not part of
-        // the URL. Hitting /admin/grilla returns 404 and the test times out
-        // waiting for the table.
-        await page.goto('/grilla')
+    try {
+      const page = await context.newPage()
+      // /grilla — the (admin) folder is a Next.js route group, not part of
+      // the URL. Hitting /admin/grilla returns 404 and the test times out
+      // waiting for the table.
+      await page.goto('/grilla')
 
-        // Wait for the page to be interactive (grid rendered after the redesign
-        // dropped the literal <table> markup).
-        await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
+      // Wait for the page to be interactive (grid rendered after the redesign
+      // dropped the literal <table> markup).
+      await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
 
-        // Re-post a BroadcastChannel message from the page's JS context until the
-        // toast renders. This simulates what public/sw.js broadcasts on a real
-        // Web Push, and survives the hydration race (see note above): the manager
-        // dedupes by id, so re-posting the same id after delivery is a no-op.
-        // PushNotificationManager.onmessage acks first, then calls
-        // toast({ title: 'Nueva reserva — Cancha 1', ... }). exact:true because
-        // the aria-live announcement also contains the title.
-        await expect(async () => {
-          await page.evaluate(() => {
-            const bc = new BroadcastChannel('notif-dedupe')
-            bc.postMessage({
-              id: 'e2e-push-test-001',
-              courtName: 'Cancha 1',
-              dateLabel: 'mañana',
-              timeLabel: '20:00',
-            })
-            bc.close()
+      // Re-post a BroadcastChannel message from the page's JS context until the
+      // toast renders. This simulates what public/sw.js broadcasts on a real
+      // Web Push, and survives the hydration race (see note above): the manager
+      // dedupes by id, so re-posting the same id after delivery is a no-op.
+      // PushNotificationManager.onmessage acks first, then calls
+      // toast({ title: 'Nueva reserva — Cancha 1', ... }). exact:true because
+      // the aria-live announcement also contains the title.
+      await expect(async () => {
+        await page.evaluate(() => {
+          const bc = new BroadcastChannel('notif-dedupe')
+          bc.postMessage({
+            id: 'e2e-push-test-001',
+            courtName: 'Cancha 1',
+            dateLabel: 'mañana',
+            timeLabel: '20:00',
           })
-          await expect(
-            page.getByText('Nueva reserva — Cancha 1', { exact: true }),
-          ).toBeVisible({ timeout: 1_000 })
-        }).toPass({ timeout: 15_000 })
-
-        // Also assert the date+time description is rendered.
-        await expect(page.getByText('mañana · 20:00', { exact: true })).toBeVisible({
-          timeout: 10_000,
+          bc.close()
         })
-      } finally {
-        await context.close()
-      }
-    },
-  )
+        await expect(page.getByText('Nueva reserva — Cancha 1', { exact: true })).toBeVisible({
+          timeout: 1_000,
+        })
+      }).toPass({ timeout: 15_000 })
+
+      // Also assert the date+time description is rendered.
+      await expect(page.getByText('mañana · 20:00', { exact: true })).toBeVisible({
+        timeout: 10_000,
+      })
+    } finally {
+      await context.close()
+    }
+  })
 })

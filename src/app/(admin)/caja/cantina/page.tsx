@@ -45,7 +45,10 @@ export default async function CajaCantinaPage() {
         <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground shadow-xs">
           La caja de hoy ya está cerrada. Podés anotar fiados; las ventas y cobros se habilitan con
           la caja abierta.{' '}
-          <Link href="/caja" className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+          <Link
+            href="/caja"
+            className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+          >
             Ver caja
           </Link>
         </div>

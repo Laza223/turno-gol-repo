@@ -4,11 +4,23 @@ import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const PRICING = {
-  rules: [{ days: ['mon','tue','wed','thu','fri','sat','sun'], from: '08:00', to: '23:00', price: 800000 }],
+  rules: [
+    {
+      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      from: '08:00',
+      to: '23:00',
+      price: 800000,
+    },
+  ],
 }
 
-beforeAll(async () => { await ensureRoles() })
-afterAll(async () => { await cleanupAll(); await closeSql() })
+beforeAll(async () => {
+  await ensureRoles()
+})
+afterAll(async () => {
+  await cleanupAll()
+  await closeSql()
+})
 
 describe('getPublicWeeklyAvailability', () => {
   it('returns 7 consecutive days each with the online court', async () => {

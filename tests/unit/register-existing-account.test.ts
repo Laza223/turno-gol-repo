@@ -26,7 +26,13 @@ vi.mock('@/shared/db/client', () => ({
 // enforce fail-closea sin Upstash y NODE_ENV='test' no dispara su bypass; sin
 // este mock cada alta devuelve "Demasiados intentos". Rate-limit real → integration.
 vi.mock('@/shared/rate-limit/apply', () => ({
-  enforce: vi.fn(async () => ({ ok: true, limit: 100, remaining: 99, reset: 0, unavailable: false })),
+  enforce: vi.fn(async () => ({
+    ok: true,
+    limit: 100,
+    remaining: 99,
+    reset: 0,
+    unavailable: false,
+  })),
 }))
 
 import { registerAction, type RegisterState } from '@/app/(auth)/register/actions'
@@ -90,7 +96,10 @@ describe('registerAction email+password (#41 / auth migration)', () => {
   })
 
   it('password corta (<8) devuelve error de campo y no crea cuenta', async () => {
-    const res = await registerAction(idle, makeForm({ password: 'corta', confirmPassword: 'corta' }))
+    const res = await registerAction(
+      idle,
+      makeForm({ password: 'corta', confirmPassword: 'corta' }),
+    )
 
     expect(res.status).toBe('error')
     if (res.status === 'error') expect(res.fieldErrors.password).toBeTruthy()

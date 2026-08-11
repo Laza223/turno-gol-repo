@@ -40,9 +40,7 @@ export function Toaster() {
           ) : null}
           <div className="grid flex-1 gap-1">
             {t.title ? <ToastTitle>{t.title}</ToastTitle> : null}
-            {t.description ? (
-              <ToastDescription>{t.description}</ToastDescription>
-            ) : null}
+            {t.description ? <ToastDescription>{t.description}</ToastDescription> : null}
           </div>
           {t.action ? (
             <ToastAction

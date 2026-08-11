@@ -19,10 +19,7 @@ export default async function PerfilPage() {
 
       <SettingsTabs active="/settings/perfil" />
 
-      <AccountEmailForm
-        currentEmail={user.email}
-        updateEmailAction={updateUserEmailAction}
-      />
+      <AccountEmailForm currentEmail={user.email} updateEmailAction={updateUserEmailAction} />
 
       <div className="card-premium rounded-lg p-6">
         <h2 className="mb-6 text-base font-semibold text-foreground">Perfil público</h2>

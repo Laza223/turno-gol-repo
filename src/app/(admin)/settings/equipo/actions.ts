@@ -42,9 +42,7 @@ async function findAuthUserByEmail(
   return null
 }
 
-export type StaffActionResult =
-  | { success: true }
-  | { success: false; error: string }
+export type StaffActionResult = { success: true } | { success: false; error: string }
 
 /**
  * Estados de tenant que bloquean la gestión de staff (Fase 3 #14).
@@ -133,9 +131,7 @@ async function assertActorIsAdmin(
   return null
 }
 
-export async function inviteStaffAction(
-  formData: FormData,
-): Promise<StaffActionResult> {
+export async function inviteStaffAction(formData: FormData): Promise<StaffActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
@@ -216,13 +212,15 @@ export async function inviteStaffAction(
       })
 
     const adminClient = createAdminClient()
-    const { data: inviteData, error: inviteError } =
-      await adminClient.auth.admin.inviteUserByEmail(lowerEmail, {
+    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
+      lowerEmail,
+      {
         // Mismo patrón token_hash que signup/recovery/magic-link (ADR-002):
         // el link tiene que apuntar a /api/auth/callback, no directo a
         // /dashboard — invite.html arma `{{ .RedirectTo }}&token_hash=...`.
         redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
-      })
+      },
+    )
 
     if (inviteError && !inviteError.message.includes('already been registered')) {
       return { success: false as const, error: `Error enviando invitación: ${inviteError.message}` }
@@ -261,9 +259,7 @@ export async function inviteStaffAction(
   return result
 }
 
-export async function deactivateStaffAction(
-  staffMemberId: string,
-): Promise<StaffActionResult> {
+export async function deactivateStaffAction(staffMemberId: string): Promise<StaffActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
 
@@ -281,10 +277,7 @@ export async function deactivateStaffAction(
       .select({ role: tenantStaffMembers.role })
       .from(tenantStaffMembers)
       .where(
-        and(
-          eq(tenantStaffMembers.id, staffMemberId),
-          eq(tenantStaffMembers.tenantId, tenant.id),
-        ),
+        and(eq(tenantStaffMembers.id, staffMemberId), eq(tenantStaffMembers.tenantId, tenant.id)),
       )
       .limit(1)
 
@@ -317,10 +310,7 @@ export async function deactivateStaffAction(
       .update(tenantStaffMembers)
       .set({ isActive: false })
       .where(
-        and(
-          eq(tenantStaffMembers.id, staffMemberId),
-          eq(tenantStaffMembers.tenantId, tenant.id),
-        ),
+        and(eq(tenantStaffMembers.id, staffMemberId), eq(tenantStaffMembers.tenantId, tenant.id)),
       )
       .returning({ id: tenantStaffMembers.id })
 
@@ -361,10 +351,7 @@ export async function updateStaffRoleAction(
       .select({ staffUserId: tenantStaffMembers.staffUserId })
       .from(tenantStaffMembers)
       .where(
-        and(
-          eq(tenantStaffMembers.id, staffMemberId),
-          eq(tenantStaffMembers.tenantId, tenant.id),
-        ),
+        and(eq(tenantStaffMembers.id, staffMemberId), eq(tenantStaffMembers.tenantId, tenant.id)),
       )
       .limit(1)
 
@@ -380,10 +367,7 @@ export async function updateStaffRoleAction(
       .update(tenantStaffMembers)
       .set({ role: newRole })
       .where(
-        and(
-          eq(tenantStaffMembers.id, staffMemberId),
-          eq(tenantStaffMembers.tenantId, tenant.id),
-        ),
+        and(eq(tenantStaffMembers.id, staffMemberId), eq(tenantStaffMembers.tenantId, tenant.id)),
       )
 
     return { success: true as const }

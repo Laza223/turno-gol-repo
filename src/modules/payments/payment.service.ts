@@ -81,59 +81,58 @@ export async function createDepositPayment(
 ): Promise<PreferenceResult> {
   track.payment('payment.deposit.create', { bookingId })
 
-  const { depositAmount, createdAt, paymentId } = await withTenantContext(
-    tenantId,
-    async (tx) => {
-      const lockRows = await tx.execute(sql`
+  const { depositAmount, createdAt, paymentId } = await withTenantContext(tenantId, async (tx) => {
+    const lockRows = await tx.execute(sql`
         SELECT id, player_id AS "playerId",
                deposit_amount AS "depositAmount", status, created_at AS "createdAt"
         FROM bookings
         WHERE id = ${bookingId}
         FOR UPDATE
       `)
-      const booking = (lockRows as unknown as Array<{
+    const booking = (
+      lockRows as unknown as Array<{
         id: string
         playerId: string | null
         depositAmount: number
         status: string
         createdAt: Date
-      }>)[0]
-      if (!booking) throw new PaymentNotFoundError(bookingId)
-      if (booking.status !== 'pending_payment') {
-        throw new BookingNotPendingPaymentError(bookingId)
-      }
-      if (booking.depositAmount <= 0) {
-        throw new BookingNotPendingPaymentError(bookingId)
-      }
+      }>
+    )[0]
+    if (!booking) throw new PaymentNotFoundError(bookingId)
+    if (booking.status !== 'pending_payment') {
+      throw new BookingNotPendingPaymentError(bookingId)
+    }
+    if (booking.depositAmount <= 0) {
+      throw new BookingNotPendingPaymentError(bookingId)
+    }
 
-      const inserted = await tx
-        .insert(payments)
-        .values({
-          tenantId,
-          bookingId,
-          playerId: booking.playerId,
-          amount: booking.depositAmount,
-          currency: 'ARS',
-          type: 'deposit',
-          method: 'mercadopago',
-          status: 'pending',
-          description: `Seña reserva ${bookingId.slice(0, 8)}`,
-        })
-        .returning({ id: payments.id })
-      const insertedPaymentId = inserted[0]!.id
+    const inserted = await tx
+      .insert(payments)
+      .values({
+        tenantId,
+        bookingId,
+        playerId: booking.playerId,
+        amount: booking.depositAmount,
+        currency: 'ARS',
+        type: 'deposit',
+        method: 'mercadopago',
+        status: 'pending',
+        description: `Seña reserva ${bookingId.slice(0, 8)}`,
+      })
+      .returning({ id: payments.id })
+    const insertedPaymentId = inserted[0]!.id
 
-      await tx
-        .update(bookings)
-        .set({ paymentMethod: 'mercadopago', paymentId: insertedPaymentId, updatedAt: new Date() })
-        .where(eq(bookings.id, bookingId))
+    await tx
+      .update(bookings)
+      .set({ paymentMethod: 'mercadopago', paymentId: insertedPaymentId, updatedAt: new Date() })
+      .where(eq(bookings.id, bookingId))
 
-      return {
-        depositAmount: booking.depositAmount,
-        createdAt: booking.createdAt,
-        paymentId: insertedPaymentId,
-      }
-    },
-  )
+    return {
+      depositAmount: booking.depositAmount,
+      createdAt: booking.createdAt,
+      paymentId: insertedPaymentId,
+    }
+  })
 
   const holdExpiresAtMs = new Date(createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000
   const preferredExpiresAtMs = holdExpiresAtMs - MP_PREFERENCE_SAFETY_BUFFER_SECONDS * 1000
@@ -191,10 +190,7 @@ export async function processWebhook(
  * Returns true if this event is fresh (insert succeeded), false if a row
  * already exists.
  */
-export async function lockMpEvent(
-  event: WebhookEvent,
-  tx: DbTx,
-): Promise<boolean> {
+export async function lockMpEvent(event: WebhookEvent, tx: DbTx): Promise<boolean> {
   // `payload` va como OBJETO crudo, NO `JSON.stringify(...)`: el serializer del
   // OID jsonb 3802 lo serializa una sola vez (con stringify previo quedaba
   // double-encoded). Ver [[audit-logs-metadata-double-encoded]] + dunning.service.
@@ -351,16 +347,19 @@ export async function dispatchPaymentInfo(
           bookingStatus,
         },
       })
-      captureMessage('external refund detected: MP status=refunded without a local prepareRefund/settleRefund flow', {
-        level: 'warning',
-        extra: {
-          paymentId: refundedPaymentId,
-          mpPaymentId: info.mpPaymentId,
-          bookingId: info.externalReference,
-          amount: info.amount,
-          tenantId,
+      captureMessage(
+        'external refund detected: MP status=refunded without a local prepareRefund/settleRefund flow',
+        {
+          level: 'warning',
+          extra: {
+            paymentId: refundedPaymentId,
+            mpPaymentId: info.mpPaymentId,
+            bookingId: info.externalReference,
+            amount: info.amount,
+            tenantId,
+          },
         },
-      })
+      )
 
       // Solo al rol admin: es plata y MP, el mismo criterio con el que
       // `requireAdminStaffAction` le cierra facturación al encargado. Los ids
@@ -420,7 +419,8 @@ async function handleApproved(
     WHERE id = ${info.externalReference}
     LIMIT 1
   `)
-  const depositAmount = (depRows as unknown as Array<{ depositAmount: number }>)[0]?.depositAmount ?? info.amount
+  const depositAmount =
+    (depRows as unknown as Array<{ depositAmount: number }>)[0]?.depositAmount ?? info.amount
 
   await upsertPaymentRow(info, tenantId, 'approved', tx)
 
@@ -438,11 +438,7 @@ async function handleApproved(
     })
   }
 
-  const result = await transitionFromPendingPayment(
-    info.externalReference,
-    'confirmed',
-    tx,
-  )
+  const result = await transitionFromPendingPayment(info.externalReference, 'confirmed', tx)
   if (result.won) {
     const wonNotificationIds: string[] = []
     wonNotificationIds.push(...(await recordDepositCashFlow(info, tenantId, tx)))
@@ -460,12 +456,14 @@ async function handleApproved(
         WHERE b.id = ${info.externalReference}
         LIMIT 1
       `)
-      const ctx = (ctxRows as unknown as Array<{
-        court_name: string
-        tenant_name: string
-        tenant_address: string
-        player_first_name: string
-      }>)[0]
+      const ctx = (
+        ctxRows as unknown as Array<{
+          court_name: string
+          tenant_name: string
+          tenant_address: string
+          player_first_name: string
+        }>
+      )[0]
       if (ctx) {
         const id = await enqueueNotification(
           {
@@ -502,11 +500,13 @@ async function handleApproved(
     JOIN courts c ON c.id = b.court_id
     WHERE b.id = ${info.externalReference}
   `)
-  const row = (cur as unknown as Array<{
-    status: string
-    court_name: string
-    date: string
-  }>)[0]
+  const row = (
+    cur as unknown as Array<{
+      status: string
+      court_name: string
+      date: string
+    }>
+  )[0]
   const notificationIds: string[] = []
 
   // Booking not found: money received but cannot be credited — alert ops (#66).
@@ -563,8 +563,7 @@ async function handleApproved(
 export type ManualDepositMethod = 'cash' | 'transfer' | 'other'
 
 export type ConfirmManualDepositOutcome =
-  | { won: false }
-  | { won: true; booking: BookingRow; notificationIds: string[] }
+  { won: false } | { won: true; booking: BookingRow; notificationIds: string[] }
 
 /**
  * Confirmación MANUAL de una seña (efectivo/transferencia/otro), disparada por
@@ -608,7 +607,13 @@ export async function confirmManualDepositPayment(
     .returning()
   const booking = rowToBookingRow(updatedRows[0]!)
 
-  const notificationIds = await recordManualDepositCashFlow(booking, method, staffUserId, tenantId, tx)
+  const notificationIds = await recordManualDepositCashFlow(
+    booking,
+    method,
+    staffUserId,
+    tenantId,
+    tx,
+  )
 
   return { won: true, booking, notificationIds }
 }
@@ -928,16 +933,18 @@ export async function prepareRefund(
     WHERE id = ${paymentId}
     FOR UPDATE
   `)
-  const original = (lockRows as unknown as Array<{
-    id: string
-    tenantId: string
-    bookingId: string | null
-    playerId: string | null
-    amount: number
-    type: string
-    status: string
-    mpPaymentId: string | null
-  }>)[0]
+  const original = (
+    lockRows as unknown as Array<{
+      id: string
+      tenantId: string
+      bookingId: string | null
+      playerId: string | null
+      amount: number
+      type: string
+      status: string
+      mpPaymentId: string | null
+    }>
+  )[0]
   if (!original) throw new PaymentNotFoundError(paymentId)
   if (!original.mpPaymentId) {
     throw new RefundInvalidStateError(paymentId, 'no mp_payment_id')
@@ -1030,4 +1037,3 @@ export async function settleRefund(
 
   return { status }
 }
-

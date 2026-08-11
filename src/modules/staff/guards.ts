@@ -91,10 +91,7 @@ async function requireStaffWithRole(
  * (Encargado) pasan. Rebota con error si no hay membresía activa.
  */
 export async function requireOperatorStaff(): Promise<StaffActionAuth> {
-  return requireStaffWithRole(
-    ['admin', 'manager'],
-    'Tu rol no permite realizar esta acción.',
-  )
+  return requireStaffWithRole(['admin', 'manager'], 'Tu rol no permite realizar esta acción.')
 }
 
 /**
@@ -102,10 +99,7 @@ export async function requireOperatorStaff(): Promise<StaffActionAuth> {
  * solo admin. A diferencia de requireAdminStaff, no redirige al rechazar.
  */
 export async function requireAdminStaffAction(): Promise<StaffActionAuth> {
-  return requireStaffWithRole(
-    ['admin'],
-    'Solo el administrador puede modificar la configuración.',
-  )
+  return requireStaffWithRole(['admin'], 'Solo el administrador puede modificar la configuración.')
 }
 
 /**

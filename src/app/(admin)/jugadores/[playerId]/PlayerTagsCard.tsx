@@ -35,13 +35,10 @@ export function PlayerTagsCard({ playerId, tags, setPlayerTagsAction }: Props) {
   const [saved, setSaved] = useState<PlayerTag[]>(tags)
   const [pending, startTransition] = useTransition()
 
-  const dirty =
-    selected.length !== saved.length || selected.some((t) => !saved.includes(t))
+  const dirty = selected.length !== saved.length || selected.some((t) => !saved.includes(t))
 
   function toggle(tag: PlayerTag) {
-    setSelected((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    )
+    setSelected((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
   }
 
   function onSave() {

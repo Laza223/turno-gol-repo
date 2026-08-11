@@ -25,8 +25,7 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-const pressed = (name: string) =>
-  screen.getByRole('button', { name }).getAttribute('aria-pressed')
+const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed')
 
 describe('RegisterMovementModal — chips', () => {
   // migr. 050: 'operating_expense' ya no es la única categoría de gasto — la

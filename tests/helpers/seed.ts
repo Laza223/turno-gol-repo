@@ -1,5 +1,10 @@
 import type { Sql } from 'postgres'
-import { createTestPlayer, createTestStaffUser, linkPlayerToTenant, linkStaffToTenant } from './tenant'
+import {
+  createTestPlayer,
+  createTestStaffUser,
+  linkPlayerToTenant,
+  linkStaffToTenant,
+} from './tenant'
 import {
   getOrCreatePlanId,
   insertAbonado,
@@ -49,10 +54,7 @@ export type IsolationSeed = {
  * Run as superuser (no SET ROLE) — bypasses RLS so seed always succeeds.
  * Returns the IDs needed by isolation tests.
  */
-export async function seedIsolationData(
-  sql: Sql,
-  tenantId: string,
-): Promise<IsolationSeed> {
+export async function seedIsolationData(sql: Sql, tenantId: string): Promise<IsolationSeed> {
   const staff = await createTestStaffUser(sql)
   const staffMemberId = await linkStaffToTenant(sql, tenantId, staff.id)
 

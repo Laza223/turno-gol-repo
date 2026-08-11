@@ -79,7 +79,11 @@ describe('QuickActions — confirmar pago con picker de método', () => {
   it('pending_payment: click en Confirmar pago abre el picker con Efectivo preseleccionado y confirma', async () => {
     render(
       <QuickActions
-        booking={booking({ status: 'pending_payment', depositStatus: 'pending', depositAmount: 500000 })}
+        booking={booking({
+          status: 'pending_payment',
+          depositStatus: 'pending',
+          depositAmount: 500000,
+        })}
         label="Juan Pérez · 14:00–15:00"
         {...quickActions}
       />,
@@ -101,7 +105,11 @@ describe('QuickActions — confirmar pago con picker de método', () => {
   it('permite elegir Transferencia u Otro antes de confirmar', async () => {
     render(
       <QuickActions
-        booking={booking({ status: 'pending_payment', depositStatus: 'pending', depositAmount: 500000 })}
+        booking={booking({
+          status: 'pending_payment',
+          depositStatus: 'pending',
+          depositAmount: 500000,
+        })}
         label="Juan Pérez · 14:00–15:00"
         {...quickActions}
       />,
@@ -121,7 +129,11 @@ describe('QuickActions — confirmar pago con picker de método', () => {
       error: 'La reserva ya no está pendiente de pago (pudo confirmarse o expirar).',
     } as never)
     render(
-      <QuickActions booking={booking({ status: 'pending_payment' })} label="Juan · 14:00" {...quickActions} />,
+      <QuickActions
+        booking={booking({ status: 'pending_payment' })}
+        label="Juan · 14:00"
+        {...quickActions}
+      />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar pago' }))
@@ -217,7 +229,9 @@ describe('QuickActions — confirmed', () => {
 
     // Radix DropdownMenu: el pointerdown real de un mouse no se simula bien en
     // happy-dom (mismo patrón que staff-actions-role-menu.test.tsx) — abre con teclado.
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Acciones para Juan · 14:00' }), { key: 'Enter' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Acciones para Juan · 14:00' }), {
+      key: 'Enter',
+    })
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Marcar ausente' }))
     expect(noShowMock).not.toHaveBeenCalled()
 
@@ -227,7 +241,14 @@ describe('QuickActions — confirmed', () => {
   })
 
   it('al confirmar, el toast de éxito ofrece "Deshacer" (revertNoShowAction)', async () => {
-    render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} revertNoShowAction={revertNoShowMock} />)
+    render(
+      <QuickActions
+        booking={booking()}
+        label="Juan · 14:00"
+        {...quickActions}
+        revertNoShowAction={revertNoShowMock}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Ausente' }))
     const dialog = await screen.findByRole('dialog')
@@ -257,7 +278,9 @@ describe('QuickActions — confirmed', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar ausente' }))
 
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Marcada como ausente' })),
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Marcada como ausente' }),
+      ),
     )
     const call = toastMock.mock.calls.find((c) => c[0]?.title === 'Marcada como ausente')
     expect(call?.[0]?.action).toBeUndefined()
@@ -328,7 +351,9 @@ describe('QuickActions — turno ya terminado nunca promete reembolso (clase B3)
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(screen.getAllByRole('radio')[0]!) // complejo
 
-    expect(dialog).toHaveTextContent('El turno ya se jugó: la seña queda para el complejo (sin reembolso).')
+    expect(dialog).toHaveTextContent(
+      'El turno ya se jugó: la seña queda para el complejo (sin reembolso).',
+    )
     expect(dialog).not.toHaveTextContent('Se reembolsará vía MercadoPago')
   })
 

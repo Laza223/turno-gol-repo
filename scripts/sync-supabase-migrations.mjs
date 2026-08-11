@@ -12,7 +12,7 @@ import { join } from 'node:path'
 
 const SOURCE_DIR = 'src/shared/db/migrations'
 const TARGET_DIR = 'supabase/migrations'
-const TIMESTAMP_BASE = '20260424'  // YYYYMMDD del lanzamiento del schema
+const TIMESTAMP_BASE = '20260424' // YYYYMMDD del lanzamiento del schema
 
 async function main() {
   // 1) Limpiar copias previas en TARGET_DIR (no borra .gitkeep).
@@ -25,9 +25,7 @@ async function main() {
   }
 
   // 2) Leer todos los .sql canónicos en orden.
-  const sources = (await readdir(SOURCE_DIR))
-    .filter((f) => f.endsWith('.sql'))
-    .sort()
+  const sources = (await readdir(SOURCE_DIR)).filter((f) => f.endsWith('.sql')).sort()
 
   if (sources.length === 0) {
     console.error(`No .sql files found in ${SOURCE_DIR}`)
@@ -43,7 +41,7 @@ async function main() {
       console.warn(`Skipping ${file} (no NNN_ prefix)`)
       continue
     }
-    const seq = idx.padStart(6, '0')  // "000001"
+    const seq = idx.padStart(6, '0') // "000001"
     const targetName = `${TIMESTAMP_BASE}${seq}_${file.slice(4)}`
     const content = await readFile(join(SOURCE_DIR, file), 'utf8')
     await writeFile(join(TARGET_DIR, targetName), content, 'utf8')

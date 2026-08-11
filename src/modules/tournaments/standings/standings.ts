@@ -81,10 +81,7 @@ function emptyRow(team: StandingsTeam): StandingRow {
  * Resultado de un partido computable desde el punto de vista de cada lado.
  * 'loss' para los dos en un doble walkover: no se presentó nadie, no es empate.
  */
-function outcomeFor(
-  m: StandingsMatch,
-  teamId: string,
-): 'win' | 'draw' | 'loss' {
+function outcomeFor(m: StandingsMatch, teamId: string): 'win' | 'draw' | 'loss' {
   if (m.status === 'walkover') {
     if (m.walkoverWinnerTeamId === null) return 'loss'
     return m.walkoverWinnerTeamId === teamId ? 'win' : 'loss'
@@ -170,9 +167,7 @@ export function computeStandings(input: StandingsInput): StandingsGroup[] {
     for (const row of rowByTeam.values()) {
       row.goalDiff = row.goalsFor - row.goalsAgainst
       row.points =
-        row.won * config.pointsWin +
-        row.drawn * config.pointsDraw +
-        row.lost * config.pointsLoss
+        row.won * config.pointsWin + row.drawn * config.pointsDraw + row.lost * config.pointsLoss
       row.fairPlayPoints =
         row.yellowCards * FAIR_PLAY_YELLOW_POINTS + row.redCards * FAIR_PLAY_RED_POINTS
     }
@@ -186,9 +181,7 @@ export function computeStandings(input: StandingsInput): StandingsGroup[] {
       while (j < all.length && all[j]!.points === all[i]!.points) j++
       const bucket = all.slice(i, j)
       const resolved =
-        bucket.length === 1
-          ? bucket
-          : orderGroup(bucket, { matches, teamById, config })
+        bucket.length === 1 ? bucket : orderGroup(bucket, { matches, teamById, config })
       // La última fila de un bucket de puntos queda separada de la siguiente
       // por los puntos, no por un criterio de desempate.
       if (j < all.length) resolved[resolved.length - 1]!.decidedBy = 'points'

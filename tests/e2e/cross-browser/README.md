@@ -37,10 +37,10 @@ pnpm playwright test tests/e2e/cross-browser/public-smoke.spec.ts --project webk
 
 Cada spec corre 3 veces (una por project), efectivamente cubriendo:
 
-| Spec | Coverage |
-|------|----------|
-| `public-smoke.spec.ts` | Landing `/`, `/explorar`, skip-to-content link |
-| `login-smoke.spec.ts` | `/login` input attributes, HTML5 validation, no horizontal scroll |
+| Spec                   | Coverage                                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| `public-smoke.spec.ts` | Landing `/`, `/explorar`, skip-to-content link                    |
+| `login-smoke.spec.ts`  | `/login` input attributes, HTML5 validation, no horizontal scroll |
 
 Total: 6 tests × 3 projects = 18 test runs.
 
@@ -55,6 +55,7 @@ Total: 6 tests × 3 projects = 18 test runs.
 ## Storage state strategy
 
 Cross-browser specs **NO usan storage state**. Razón: el seed F2 entrega `adminStorageState` via worker fixture que mintea Supabase session real en chromium context. Reusar a webkit/firefox requiere:
+
 1. Mintear session real en cada browser context (complejo, requiere refactor de fixture)
 2. O dispatch shared storage state JSON entre projects (Playwright soporta pero requiere paths cross-platform handling)
 

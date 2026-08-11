@@ -11,6 +11,5 @@ export function countUpcomingPlayable(
   bookings: Array<{ date: string; status: string }>,
   today: string,
 ): number {
-  return bookings.filter((b) => b.date >= today && UPCOMING_PLAYABLE_STATUSES.has(b.status))
-    .length
+  return bookings.filter((b) => b.date >= today && UPCOMING_PLAYABLE_STATUSES.has(b.status)).length
 }

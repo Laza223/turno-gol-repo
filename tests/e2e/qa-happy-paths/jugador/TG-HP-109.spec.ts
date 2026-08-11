@@ -1,6 +1,11 @@
 import { test, expect } from '../../fixtures'
 import { writeEvidence } from '../_qa/evidence'
-import { makeServiceClient, resetPlayer, E2E_PLAYER_ID, E2E_PLAYER_EMAIL } from '../../_helpers/player-seed'
+import {
+  makeServiceClient,
+  resetPlayer,
+  E2E_PLAYER_ID,
+  E2E_PLAYER_EMAIL,
+} from '../../_helpers/player-seed'
 
 /**
  * TG-HP-109 — Editar perfil /perfil (nombre/apellido/teléfono/zona).
@@ -66,7 +71,8 @@ test.describe('TG-HP-109 — Editar perfil', () => {
       await writeEvidence('TG-HP-109', {
         status: 'pass',
         db: row,
-        notes: 'UPDATE persistido bajo withPlayerContext; revalidatePath confirmado por el header server-rendered.',
+        notes:
+          'UPDATE persistido bajo withPlayerContext; revalidatePath confirmado por el header server-rendered.',
       })
     } finally {
       await ctx.close()

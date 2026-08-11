@@ -102,10 +102,7 @@ function priceForCell(rules: PricingRule[], day: DayKey, hour: number): number |
 }
 
 /** Reglas comprimidas → grilla de celdas individuales (solo celdas activas). */
-export function expandRulesToGrid(
-  rules: PricingRule[],
-  openingHours: OpeningHours,
-): PriceGrid {
+export function expandRulesToGrid(rules: PricingRule[], openingHours: OpeningHours): PriceGrid {
   const grid = {} as PriceGrid
   for (const day of DAY_KEYS) {
     grid[day] = {}
@@ -124,10 +121,7 @@ export function expandRulesToGrid(
  * Solo se consideran celdas activas con precio; las vacías se omiten (quedan
  * como hueco de cobertura, lo valida el server).
  */
-export function compressGridToRules(
-  grid: PriceGrid,
-  openingHours: OpeningHours,
-): PricingRule[] {
+export function compressGridToRules(grid: PriceGrid, openingHours: OpeningHours): PricingRule[] {
   type Entry = { day: DayKey; from: string; to: string; price: number }
   const entries: Entry[] = []
 
@@ -165,7 +159,9 @@ export function compressGridToRules(
 
   const toMins = (hhmm: string) => (hhmm === '00:00' ? 24 * 60 : hourToMins(openHour(hhmm)))
   return Array.from(groups.values())
-    .sort((a, b) => toMins(a.from) - toMins(b.from) || toMins(a.to) - toMins(b.to) || a.price - b.price)
+    .sort(
+      (a, b) => toMins(a.from) - toMins(b.from) || toMins(a.to) - toMins(b.to) || a.price - b.price,
+    )
     .map((g) => ({ days: g.days, from: g.from, to: g.to, price: g.price }))
 }
 

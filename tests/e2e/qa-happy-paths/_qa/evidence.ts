@@ -14,8 +14,7 @@ import postgres from 'postgres'
 
 const QA_EVIDENCE_DIR = path.resolve('test-results/qa/evidence')
 
-const SUPERUSER_DSN =
-  process.env.DBQ_DSN ?? 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
+const SUPERUSER_DSN = process.env.DBQ_DSN ?? 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
 /** A short-lived superuser SQL client. Caller must `await sql.end()`. */
 export function getSql() {

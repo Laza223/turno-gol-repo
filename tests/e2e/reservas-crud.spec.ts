@@ -119,326 +119,332 @@ async function deleteBooking(
 // TEST 1 — Happy: mark booking as completed
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — happy: mark completed', () => {
-  test(
-    'INSERT past confirmed booking → detail → Marcar completada → shows Completada status',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const bookingId = randomUUID()
+  test('INSERT past confirmed booking → detail → Marcar completada → shows Completada status', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const bookingId = randomUUID()
 
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        // Insert a confirmed booking in the past (time_end is past → completeBooking allowed).
-        await insertBooking(supabase, {
-          id: bookingId,
-          date: PAST_DATE,
-          timeStart: '10:00',
-          timeEnd: '11:00',
-        })
+      // Insert a confirmed booking in the past (time_end is past → completeBooking allowed).
+      await insertBooking(supabase, {
+        id: bookingId,
+        date: PAST_DATE,
+        timeStart: '10:00',
+        timeEnd: '11:00',
+      })
 
-        // Navigate to the booking detail page.
-        await page.goto(`/reservas/${bookingId}`)
-        await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
-          timeout: 15_000,
-        })
+      // Navigate to the booking detail page.
+      await page.goto(`/reservas/${bookingId}`)
+      await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // The booking must be confirmed for the action buttons to appear.
-        await expect(page.getByText('Confirmada')).toBeVisible()
+      // The booking must be confirmed for the action buttons to appear.
+      await expect(page.getByText('Confirmada')).toBeVisible()
 
-        // "Marcar completada" ya NO completa de una: desde Fase 3 abre
-        // `CompleteBookingDialog` (Completar + Cobrar). Este test venía midiendo
-        // el flujo viejo y fallaba esperando el badge que nunca llegaba — no era
-        // un flake, era un contrato desactualizado.
-        await page.getByRole('button', { name: 'Marcar completada' }).click()
-        await expect(page.getByRole('heading', { name: 'Completar turno' })).toBeVisible({
-          timeout: 15_000,
-        })
+      // "Marcar completada" ya NO completa de una: desde Fase 3 abre
+      // `CompleteBookingDialog` (Completar + Cobrar). Este test venía midiendo
+      // el flujo viejo y fallaba esperando el badge que nunca llegaba — no era
+      // un flake, era un contrato desactualizado.
+      await page.getByRole('button', { name: 'Marcar completada' }).click()
+      await expect(page.getByRole('heading', { name: 'Completar turno' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // El label del submit depende de si queda saldo: con `price_snapshot`
-        // 10000 y sin seña queda deuda, pero el regex cubre las tres variantes
-        // para no atarse a esa aritmética.
-        await page
-          .getByRole('button', { name: /^Completar (con deuda|y cobrar|sin cobrar)$/ })
-          .click()
+      // El label del submit depende de si queda saldo: con `price_snapshot`
+      // 10000 y sin seña queda deuda, pero el regex cubre las tres variantes
+      // para no atarse a esa aritmética.
+      await page
+        .getByRole('button', { name: /^Completar (con deuda|y cobrar|sin cobrar)$/ })
+        .click()
 
-        // After router.refresh() the status badge should update to "Jugada" (§8.5).
-        await expect(page.getByText('Jugada')).toBeVisible({ timeout: 15_000 })
+      // After router.refresh() the status badge should update to "Jugada" (§8.5).
+      await expect(page.getByText('Jugada')).toBeVisible({ timeout: 15_000 })
 
-        // The action buttons must disappear (BookingActions returns null when status != 'confirmed').
-        await expect(page.getByRole('button', { name: 'Marcar completada' })).not.toBeVisible()
-      } finally {
-        await context.close()
-        await deleteBooking(supabase, bookingId)
-      }
-    },
-  )
+      // The action buttons must disappear (BookingActions returns null when status != 'confirmed').
+      await expect(page.getByRole('button', { name: 'Marcar completada' })).not.toBeVisible()
+    } finally {
+      await context.close()
+      await deleteBooking(supabase, bookingId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 2 — Edge: cancel with paid cash deposit shows refund radios
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — edge: cancel with paid deposit', () => {
-  test(
-    'INSERT confirmed booking with cash deposit → "Cancelar" → refund radios visible → cancel with reason → canceled status @critical',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const bookingId = randomUUID()
+  test('INSERT confirmed booking with cash deposit → "Cancelar" → refund radios visible → cancel with reason → canceled status @critical', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const bookingId = randomUUID()
 
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        // cash payment_method → no real MercadoPago call on refund.
-        await insertBooking(supabase, {
-          id: bookingId,
-          date: FUTURE_DATE,
-          timeStart: '14:00',
-          timeEnd: '15:00',
-          depositStatus: 'paid',
-          depositAmount: 50000, // 500 ARS in centavos
-          paymentMethod: 'cash',
-        })
+      // cash payment_method → no real MercadoPago call on refund.
+      await insertBooking(supabase, {
+        id: bookingId,
+        date: FUTURE_DATE,
+        timeStart: '14:00',
+        timeEnd: '15:00',
+        depositStatus: 'paid',
+        depositAmount: 50000, // 500 ARS in centavos
+        paymentMethod: 'cash',
+      })
 
-        await page.goto(`/reservas/${bookingId}`)
-        await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto(`/reservas/${bookingId}`)
+      await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Open the cancel dialog.
-        await page.getByRole('button', { name: 'Cancelar' }).click()
+      // Open the cancel dialog.
+      await page.getByRole('button', { name: 'Cancelar' }).click()
 
-        // ConfirmDialog should open with title "Cancelar reserva".
-        // Use heading role: the dialog also contains a confirm button labelled
-        // "Cancelar reserva", so getByText would resolve 2 elements (strict mode).
-        await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
+      // ConfirmDialog should open with title "Cancelar reserva".
+      // Use heading role: the dialog also contains a confirm button labelled
+      // "Cancelar reserva", so getByText would resolve 2 elements (strict mode).
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
 
-        // "¿Quién cancela?" radios must be shown — Tarea #3: el motivo decide el
-        // reembolso, ya no hay radios Sin/Con reembolso.
-        await expect(page.getByText('¿Quién cancela?')).toBeVisible()
-        await expect(page.getByRole('radio', { name: /El complejo necesita cancelar/i })).toBeVisible()
-        await expect(page.getByRole('radio', { name: /El jugador pidió cancelar/i })).toBeVisible()
+      // "¿Quién cancela?" radios must be shown — Tarea #3: el motivo decide el
+      // reembolso, ya no hay radios Sin/Con reembolso.
+      await expect(page.getByText('¿Quién cancela?')).toBeVisible()
+      await expect(
+        page.getByRole('radio', { name: /El complejo necesita cancelar/i }),
+      ).toBeVisible()
+      await expect(page.getByRole('radio', { name: /El jugador pidió cancelar/i })).toBeVisible()
 
-        // The reason textarea must be present.
-        await expect(page.locator('#cancel-reason')).toBeVisible()
+      // The reason textarea must be present.
+      await expect(page.locator('#cancel-reason')).toBeVisible()
 
-        // Choose "jugador" — future date is well within any cancellation policy
-        // window, so this refunds (cash → informational, not automatic). ENS-2:
-        // the preview box is visible as soon as the dialog opens (default
-        // preview under the "jugador" policy); picking a radio just refines
-        // the copy (e.g. mentions the payment method once cancelType is set).
-        await page.getByRole('radio', { name: /El jugador pidió cancelar/i }).click()
+      // Choose "jugador" — future date is well within any cancellation policy
+      // window, so this refunds (cash → informational, not automatic). ENS-2:
+      // the preview box is visible as soon as the dialog opens (default
+      // preview under the "jugador" policy); picking a radio just refines
+      // the copy (e.g. mentions the payment method once cancelType is set).
+      await page.getByRole('radio', { name: /El jugador pidió cancelar/i }).click()
 
-        // Refund preview text must mention the deposit amount.
-        // Amount is 500 ARS — formatted as "$ 500" or similar by Intl.NumberFormat es-AR.
-        await expect(page.locator('.rounded-md.bg-amber-50')).toBeVisible()
-        await expect(page.getByText(/Coordiná el reembolso/i)).toBeVisible()
+      // Refund preview text must mention the deposit amount.
+      // Amount is 500 ARS — formatted as "$ 500" or similar by Intl.NumberFormat es-AR.
+      await expect(page.locator('.rounded-md.bg-amber-50')).toBeVisible()
+      await expect(page.getByText(/Coordiná el reembolso/i)).toBeVisible()
 
-        await page.locator('#cancel-reason').fill('Cancelación de prueba E2E con reembolso')
-        await page.getByRole('button', { name: 'Cancelar reserva' }).click()
+      await page.locator('#cancel-reason').fill('Cancelación de prueba E2E con reembolso')
+      await page.getByRole('button', { name: 'Cancelar reserva' }).click()
 
-        // After success the dialog closes and status updates to Cancelada.
-        // Use dd filter — getByText(/Cancelada/i) also matches the toast
-        // ("Reserva cancelada") + aria-live announcement (strict mode).
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.locator('dd').filter({ hasText: /Cancelada/i })).toBeVisible({ timeout: 10_000 })
+      // After success the dialog closes and status updates to Cancelada.
+      // Use dd filter — getByText(/Cancelada/i) also matches the toast
+      // ("Reserva cancelada") + aria-live announcement (strict mode).
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('dd').filter({ hasText: /Cancelada/i })).toBeVisible({
+        timeout: 10_000,
+      })
 
-        // Action buttons must disappear.
-        await expect(page.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()
-      } finally {
-        await context.close()
-        await deleteBooking(supabase, bookingId)
-      }
-    },
-  )
+      // Action buttons must disappear.
+      await expect(page.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()
+    } finally {
+      await context.close()
+      await deleteBooking(supabase, bookingId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 3 — Edge: cancel blocked without reason
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — edge: cancel blocked without reason', () => {
-  test(
-    'INSERT confirmed booking → cancel dialog → empty reason → confirm → error shown, dialog stays open',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      // Use a distinct time slot to avoid exclusion constraint conflicts.
-      const bookingId = randomUUID()
+  test('INSERT confirmed booking → cancel dialog → empty reason → confirm → error shown, dialog stays open', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    // Use a distinct time slot to avoid exclusion constraint conflicts.
+    const bookingId = randomUUID()
 
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        await insertBooking(supabase, {
-          id: bookingId,
-          date: FUTURE_DATE,
-          timeStart: '16:00',
-          timeEnd: '17:00',
-        })
+      await insertBooking(supabase, {
+        id: bookingId,
+        date: FUTURE_DATE,
+        timeStart: '16:00',
+        timeEnd: '17:00',
+      })
 
-        await page.goto(`/reservas/${bookingId}`)
-        await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto(`/reservas/${bookingId}`)
+      await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        // Open the cancel dialog.
-        await page.getByRole('button', { name: 'Cancelar' }).click()
-        await expect(page.getByRole('dialog')).toBeVisible()
+      // Open the cancel dialog.
+      await page.getByRole('button', { name: 'Cancelar' }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
 
-        // Pick "¿Quién cancela?" (required first) so the reason check below is
-        // the one that actually trips — onConfirmCancel validates cancelType
-        // before reason, and skipping it would surface a different error.
-        await page.getByRole('radio', { name: /El complejo necesita cancelar/i }).click()
+      // Pick "¿Quién cancela?" (required first) so the reason check below is
+      // the one that actually trips — onConfirmCancel validates cancelType
+      // before reason, and skipping it would surface a different error.
+      await page.getByRole('radio', { name: /El complejo necesita cancelar/i }).click()
 
-        // Leave #cancel-reason empty and click confirm.
-        // (We don't fill the textarea — it's blank by default)
-        await page.getByRole('button', { name: 'Cancelar reserva' }).click()
+      // Leave #cancel-reason empty and click confirm.
+      // (We don't fill the textarea — it's blank by default)
+      await page.getByRole('button', { name: 'Cancelar reserva' }).click()
 
-        // Error message should appear (onConfirmCancel returns { success: false, error: 'Ingresá un motivo...' }).
-        await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 })
-        await expect(page.getByRole('alert')).toContainText(/Ingresá un motivo/i)
+      // Error message should appear (onConfirmCancel returns { success: false, error: 'Ingresá un motivo...' }).
+      await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByRole('alert')).toContainText(/Ingresá un motivo/i)
 
-        // Dialog must stay open — booking still confirmed.
-        // Use heading role (dialog also has confirm button with same label).
-        await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
-      } finally {
-        await context.close()
-        await deleteBooking(supabase, bookingId)
-      }
-    },
-  )
+      // Dialog must stay open — booking still confirmed.
+      // Use heading role (dialog also has confirm button with same label).
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Cancelar reserva' })).toBeVisible()
+    } finally {
+      await context.close()
+      await deleteBooking(supabase, bookingId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 4 — Edge: no-show
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — edge: no-show', () => {
-  test(
-    'INSERT past confirmed booking → "Marcar ausente" → confirm → status = Ausente',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const bookingId = randomUUID()
+  test('INSERT past confirmed booking → "Marcar ausente" → confirm → status = Ausente', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const bookingId = randomUUID()
 
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        // Insert a past booking (time in the past → no-show allowed by the service).
-        await insertBooking(supabase, {
-          id: bookingId,
-          date: PAST_DATE,
-          timeStart: '12:00',
-          timeEnd: '13:00',
-        })
+      // Insert a past booking (time in the past → no-show allowed by the service).
+      await insertBooking(supabase, {
+        id: bookingId,
+        date: PAST_DATE,
+        timeStart: '12:00',
+        timeEnd: '13:00',
+      })
 
-        await page.goto(`/reservas/${bookingId}`)
-        await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
-          timeout: 15_000,
-        })
+      await page.goto(`/reservas/${bookingId}`)
+      await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-        await expect(page.getByText('Confirmada')).toBeVisible()
+      await expect(page.getByText('Confirmada')).toBeVisible()
 
-        // Click "Marcar ausente" to open the no-show ConfirmDialog.
-        await page.getByRole('button', { name: 'Marcar ausente' }).click()
+      // Click "Marcar ausente" to open the no-show ConfirmDialog.
+      await page.getByRole('button', { name: 'Marcar ausente' }).click()
 
-        // Dialog title: "Marcar como ausente"
-        await expect(page.getByRole('dialog')).toBeVisible()
-        await expect(page.getByText('Marcar como ausente')).toBeVisible()
+      // Dialog title: "Marcar como ausente"
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page.getByText('Marcar como ausente')).toBeVisible()
 
-        // Confirm by clicking the dialog's confirm button "Marcar ausente".
-        await page.getByRole('button', { name: 'Marcar ausente' }).last().click()
+      // Confirm by clicking the dialog's confirm button "Marcar ausente".
+      await page.getByRole('button', { name: 'Marcar ausente' }).last().click()
 
-        // After router.refresh() the status badge should update to "Ausente".
-        // Use the dd badge selector specifically: getByText('Ausente') also matches
-        // the success toast ("Marcada como ausente", case-insensitive substring).
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-        await expect(page.locator('dd').filter({ hasText: 'Ausente' })).toBeVisible({ timeout: 10_000 })
+      // After router.refresh() the status badge should update to "Ausente".
+      // Use the dd badge selector specifically: getByText('Ausente') also matches
+      // the success toast ("Marcada como ausente", case-insensitive substring).
+      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await expect(page.locator('dd').filter({ hasText: 'Ausente' })).toBeVisible({
+        timeout: 10_000,
+      })
 
-        // Action buttons must disappear (status != 'confirmed').
-        await expect(page.getByRole('button', { name: 'Marcar ausente' })).not.toBeVisible()
-      } finally {
-        await context.close()
-        await deleteBooking(supabase, bookingId)
-      }
-    },
-  )
+      // Action buttons must disappear (status != 'confirmed').
+      await expect(page.getByRole('button', { name: 'Marcar ausente' })).not.toBeVisible()
+    } finally {
+      await context.close()
+      await deleteBooking(supabase, bookingId)
+    }
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
 // TEST 5 — Quick action: confirm deposit payment inline from the list
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — quick action: confirmar pago inline', () => {
-  test(
-    'lista Hoy → "Confirmar pago" inline → badge Confirmada sin full reload @critical',
-    async ({ browser, adminStorageState }) => {
-      const supabase = makeServiceClient()
-      const bookingId = randomUUID()
+  test('lista Hoy → "Confirmar pago" inline → badge Confirmada sin full reload @critical', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const supabase = makeServiceClient()
+    const bookingId = randomUUID()
 
-      // Today in ART (UTC-3, same formula as src/shared/dates/art.ts) so the
-      // booking shows up in the default "Hoy" scope of /reservas.
-      const todayArt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    // Today in ART (UTC-3, same formula as src/shared/dates/art.ts) so the
+    // booking shows up in the default "Hoy" scope of /reservas.
+    const todayArt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
-      const context = await browser.newContext()
-      try {
-        await context.addCookies(JSON.parse(adminStorageState).cookies)
-        const page = await context.newPage()
+    const context = await browser.newContext()
+    try {
+      await context.addCookies(JSON.parse(adminStorageState).cookies)
+      const page = await context.newPage()
 
-        // 06:00 is far from other seeds (grilla-realtime uses tomorrow; CRUD
-        // tests use 2020/2099), avoiding the bookings exclusion constraint.
-        await insertBooking(supabase, {
-          id: bookingId,
-          date: todayArt,
-          timeStart: '06:00',
-          timeEnd: '07:00',
-          status: 'pending_payment',
-          depositStatus: 'pending',
-          depositAmount: 5000,
-        })
+      // 06:00 is far from other seeds (grilla-realtime uses tomorrow; CRUD
+      // tests use 2020/2099), avoiding the bookings exclusion constraint.
+      await insertBooking(supabase, {
+        id: bookingId,
+        date: todayArt,
+        timeStart: '06:00',
+        timeEnd: '07:00',
+        status: 'pending_payment',
+        depositStatus: 'pending',
+        depositAmount: 5000,
+      })
 
-        await page.goto('/reservas')
-        const article = page.getByRole('article', { name: /E2E Reservas Guest/ })
-        await expect(article).toBeVisible({ timeout: 15_000 })
-        await expect(article.getByText('Esperando seña')).toBeVisible()
+      await page.goto('/reservas')
+      const article = page.getByRole('article', { name: /E2E Reservas Guest/ })
+      await expect(article).toBeVisible({ timeout: 15_000 })
+      await expect(article.getByText('Esperando seña')).toBeVisible()
 
-        // Marker that survives RSC refreshes but dies on a full page load.
-        await page.evaluate(() => {
-          ;(window as unknown as Record<string, unknown>).__e2eNoReload = true
-        })
+      // Marker that survives RSC refreshes but dies on a full page load.
+      await page.evaluate(() => {
+        ;(window as unknown as Record<string, unknown>).__e2eNoReload = true
+      })
 
-        await article.getByRole('button', { name: 'Confirmar pago' }).click()
+      await article.getByRole('button', { name: 'Confirmar pago' }).click()
 
-        // El staff elige el medio de cobro (picker de método, Efectivo
-        // preseleccionado) antes de confirmar — ya no es un click directo.
-        const dialog = page.getByRole('dialog')
-        await expect(dialog.getByRole('heading', { name: 'Confirmar pago' })).toBeVisible()
-        await dialog.getByRole('button', { name: 'Confirmar' }).click()
+      // El staff elige el medio de cobro (picker de método, Efectivo
+      // preseleccionado) antes de confirmar — ya no es un click directo.
+      const dialog = page.getByRole('dialog')
+      await expect(dialog.getByRole('heading', { name: 'Confirmar pago' })).toBeVisible()
+      await dialog.getByRole('button', { name: 'Confirmar' }).click()
 
-        // After the server action + router.refresh() the same article re-renders
-        // with the new status — no navigation, no reload.
-        await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })
-        await expect(article.getByText('Esperando seña')).not.toBeVisible()
-        const marker = await page.evaluate(
-          () => (window as unknown as Record<string, unknown>).__e2eNoReload,
-        )
-        expect(marker).toBe(true)
+      // After the server action + router.refresh() the same article re-renders
+      // with the new status — no navigation, no reload.
+      await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })
+      await expect(article.getByText('Esperando seña')).not.toBeVisible()
+      const marker = await page.evaluate(
+        () => (window as unknown as Record<string, unknown>).__e2eNoReload,
+      )
+      expect(marker).toBe(true)
 
-        // The deposit transition must have hit the DB (race-safe primitive).
-        const { data } = await supabase
-          .from('bookings')
-          .select('status, deposit_status')
-          .eq('id', bookingId)
-          .single()
-        expect(data?.status).toBe('confirmed')
-        expect(data?.deposit_status).toBe('paid')
-      } finally {
-        await context.close()
-        await deleteBooking(supabase, bookingId)
-      }
-    },
-  )
+      // The deposit transition must have hit the DB (race-safe primitive).
+      const { data } = await supabase
+        .from('bookings')
+        .select('status, deposit_status')
+        .eq('id', bookingId)
+        .single()
+      expect(data?.status).toBe('confirmed')
+      expect(data?.deposit_status).toBe('paid')
+    } finally {
+      await context.close()
+      await deleteBooking(supabase, bookingId)
+    }
+  })
 })

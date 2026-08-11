@@ -8,7 +8,9 @@ import { InviteStaffDialog } from './InviteStaffDialog'
 // importar NADA de ahí, ni siquiera un `import type` (no-restricted-imports
 // no distingue type-only para el patrón '**/actions'). Se deriva el tipo del
 // propio prop del componente en vez de importarlo directo.
-type InviteActionResult = Awaited<ReturnType<ComponentProps<typeof InviteStaffDialog>['inviteAction']>>
+type InviteActionResult = Awaited<
+  ReturnType<ComponentProps<typeof InviteStaffDialog>['inviteAction']>
+>
 
 /**
  * `inviteAction` ya llegaba por PROP antes de esta auditoría — es el

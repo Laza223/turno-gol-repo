@@ -109,7 +109,10 @@ test.describe('campos ≥16px — con overlays abiertos', () => {
     const page = await ctx.newPage()
     await page.goto('/caja', { waitUntil: 'networkidle' })
 
-    await page.getByRole('button', { name: /movimiento/i }).first().click()
+    await page
+      .getByRole('button', { name: /movimiento/i })
+      .first()
+      .click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     const small = await collectSmallFields(page)

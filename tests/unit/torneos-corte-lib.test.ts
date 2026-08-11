@@ -235,7 +235,13 @@ describe('buildCorte — cuadro sin BYE (2 zonas × 2 = 4 clasificados)', () => 
   ]
 
   it('muestra los dos cruces sembrables y NO la final', () => {
-    const corte = buildCorte({ tournament: tournament(), stages: stages(2, 2), groups, teams, matches })!
+    const corte = buildCorte({
+      tournament: tournament(),
+      stages: stages(2, 2),
+      groups,
+      teams,
+      matches,
+    })!
 
     expect(corte.crosses).toHaveLength(2)
     expect(corte.crosses.map((c) => c.id)).toEqual(['sf1', 'sf2'])
@@ -244,14 +250,26 @@ describe('buildCorte — cuadro sin BYE (2 zonas × 2 = 4 clasificados)', () => 
   })
 
   it('resuelve el nombre del equipo que va a caer en cada puesto', () => {
-    const corte = buildCorte({ tournament: tournament(), stages: stages(2, 2), groups, teams, matches })!
+    const corte = buildCorte({
+      tournament: tournament(),
+      stages: stages(2, 2),
+      groups,
+      teams,
+      matches,
+    })!
 
     expect(corte.crosses[0]!.homeTeamName).toBe('Los Pibes')
     expect(corte.crosses[0]!.awayTeamName).toBe('FC Cerveza')
   })
 
   it('con una sola ronda sembrada todas las etiquetas de ronda son iguales', () => {
-    const corte = buildCorte({ tournament: tournament(), stages: stages(2, 2), groups, teams, matches })!
+    const corte = buildCorte({
+      tournament: tournament(),
+      stages: stages(2, 2),
+      groups,
+      teams,
+      matches,
+    })!
     expect(new Set(corte.crosses.map((c) => c.round)).size).toBe(1)
   })
 })
@@ -399,7 +417,13 @@ describe('buildCorte — alreadySeeded', () => {
     const corte = buildCorte({
       ...base,
       matches: [
-        match({ id: 'sf1', homeSourceSeed: 1, awaySourceSeed: 4, homeTeamId: 'a1', homeTeamName: 'A1' }),
+        match({
+          id: 'sf1',
+          homeSourceSeed: 1,
+          awaySourceSeed: 4,
+          homeTeamId: 'a1',
+          homeTeamName: 'A1',
+        }),
       ],
     })!
     expect(corte.alreadySeeded).toBe(true)

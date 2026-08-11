@@ -10,9 +10,7 @@ import { z } from 'zod'
  * de texto contra el teléfono normalizado. No es inyección (va parametrizado)
  * pero sí es una forma de sondear qué teléfonos existen en el complejo.
  */
-const contactKeySchema = z
-  .string()
-  .regex(/^(id:[0-9a-fA-F-]{36}|\d{6,10})$/, 'Contacto inválido.')
+const contactKeySchema = z.string().regex(/^(id:[0-9a-fA-F-]{36}|\d{6,10})$/, 'Contacto inválido.')
 
 export const linkContactInputSchema = z.object({
   contactKey: contactKeySchema,

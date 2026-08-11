@@ -2,7 +2,12 @@
 import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { PhoneInput, parsePhoneNumber, formatFullPhone, COUNTRIES } from '@/components/ui/phone-input'
+import {
+  PhoneInput,
+  parsePhoneNumber,
+  formatFullPhone,
+  COUNTRIES,
+} from '@/components/ui/phone-input'
 
 afterEach(() => cleanup())
 
@@ -95,7 +100,9 @@ describe('PhoneInput & Helpers', () => {
 
     it('updates hidden input value for form submission', () => {
       const { container } = render(<PhoneInput name="phone" defaultValue="+54 11 9999 8888" />)
-      const hiddenInput = container.querySelector('input[type="hidden"][name="phone"]') as HTMLInputElement
+      const hiddenInput = container.querySelector(
+        'input[type="hidden"][name="phone"]',
+      ) as HTMLInputElement
       expect(hiddenInput).toBeTruthy()
       expect(hiddenInput.value).toBe('+54 11 9999 8888')
     })

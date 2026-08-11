@@ -66,9 +66,7 @@ type TournamentStreetMoneyRow = {
 }
 
 export type StreetMoneyRow =
-  | BookingStreetMoneyRow
-  | CanteenStreetMoneyRow
-  | TournamentStreetMoneyRow
+  BookingStreetMoneyRow | CanteenStreetMoneyRow | TournamentStreetMoneyRow
 
 /**
  * Los 3 orígenes, unidos y ordenados por antigüedad ascendente (más vieja
@@ -91,42 +89,36 @@ export async function getStreetMoney(tenantId: string, tx: DbTx): Promise<Street
   ])
 
   const rows: StreetMoneyRow[] = [
-    ...debts.map(
-      (d): BookingStreetMoneyRow => ({
-        origin: 'booking',
-        refId: d.id,
-        debtorName: d.contactName ?? 'Sin nombre',
-        pendingCents: d.pending,
-        since: new Date(d.startsAt),
-        courtName: d.courtName,
-        date: d.date,
-        timeStart: d.timeStart,
-        timeEnd: d.timeEnd,
-        playerId: d.playerId,
-        contactPhone: d.contactPhone,
-      }),
-    ),
-    ...tabs.map(
-      (t): CanteenStreetMoneyRow => ({
-        origin: 'canteen_tab',
-        refId: t.id,
-        debtorName: t.debtorName,
-        pendingCents: t.totalAmount,
-        since: t.createdAt,
-        note: t.note,
-      }),
-    ),
-    ...teams.map(
-      (t): TournamentStreetMoneyRow => ({
-        origin: 'tournament',
-        refId: t.teamId,
-        debtorName: t.teamName,
-        pendingCents: t.pending,
-        since: t.createdAt,
-        tournamentId: t.tournamentId,
-        tournamentName: t.tournamentName,
-      }),
-    ),
+    ...debts.map((d): BookingStreetMoneyRow => ({
+      origin: 'booking',
+      refId: d.id,
+      debtorName: d.contactName ?? 'Sin nombre',
+      pendingCents: d.pending,
+      since: new Date(d.startsAt),
+      courtName: d.courtName,
+      date: d.date,
+      timeStart: d.timeStart,
+      timeEnd: d.timeEnd,
+      playerId: d.playerId,
+      contactPhone: d.contactPhone,
+    })),
+    ...tabs.map((t): CanteenStreetMoneyRow => ({
+      origin: 'canteen_tab',
+      refId: t.id,
+      debtorName: t.debtorName,
+      pendingCents: t.totalAmount,
+      since: t.createdAt,
+      note: t.note,
+    })),
+    ...teams.map((t): TournamentStreetMoneyRow => ({
+      origin: 'tournament',
+      refId: t.teamId,
+      debtorName: t.teamName,
+      pendingCents: t.pending,
+      since: t.createdAt,
+      tournamentId: t.tournamentId,
+      tournamentName: t.tournamentName,
+    })),
   ]
 
   return rows.sort((a, b) => a.since.getTime() - b.since.getTime())

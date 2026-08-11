@@ -44,5 +44,7 @@ export const SinPrecio: Story = {
 }
 
 export const VariasCanchas: Story = {
-  args: { courts: [courtFutbol5(), courtFutbol7(), { ...courtFutbol11(), pricing: { rules: [] } }] },
+  args: {
+    courts: [courtFutbol5(), courtFutbol7(), { ...courtFutbol11(), pricing: { rules: [] } }],
+  },
 }

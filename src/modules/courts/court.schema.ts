@@ -28,8 +28,8 @@ export const createCourtSchema = z.object({
   format: z
     .number()
     .int()
-    .refine((v): v is (typeof VALID_FORMATS)[number] =>
-      (VALID_FORMATS as readonly number[]).includes(v),
+    .refine(
+      (v): v is (typeof VALID_FORMATS)[number] => (VALID_FORMATS as readonly number[]).includes(v),
       'Formato inválido: debe ser Fútbol 4 a 11',
     ),
   pricing: courtPricingSchema,

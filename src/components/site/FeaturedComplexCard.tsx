@@ -67,7 +67,10 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
       <div className="p-[18px_20px_20px]">
         <h3 className="font-display text-[18px] font-bold text-foreground">{tenant.name}</h3>
         <div className="mt-[6px] flex items-center gap-[6px] text-[13px] text-muted-foreground">
-          <MapPin className="h-[14px] w-[14px] shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
+          <MapPin
+            className="h-[14px] w-[14px] shrink-0 text-emerald-700 dark:text-emerald-400"
+            aria-hidden
+          />
           <span className="truncate">
             {tenant.address ? `${tenant.address} · ` : ''}
             {tenant.city}
@@ -99,7 +102,10 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
           </div>
           <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[13.5px] font-bold text-emerald-700 dark:text-emerald-400">
             Ver turnos
-            <ArrowRight className="h-[15px] w-[15px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0" aria-hidden />
+            <ArrowRight
+              className="h-[15px] w-[15px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
+              aria-hidden
+            />
           </span>
         </div>
       </div>

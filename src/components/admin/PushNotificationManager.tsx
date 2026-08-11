@@ -50,7 +50,8 @@ function isDismissedRecently(): boolean {
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const rawData = typeof atob === 'function' ? atob(base64) : Buffer.from(base64, 'base64').toString('binary')
+  const rawData =
+    typeof atob === 'function' ? atob(base64) : Buffer.from(base64, 'base64').toString('binary')
   const arr = new Uint8Array(rawData.length)
   for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i)
   return arr
@@ -94,7 +95,11 @@ export function PushNotificationManager() {
   // Initial: detect support + permission state.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    if (
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window) ||
+      !('Notification' in window)
+    ) {
       // Detección de capacidades del browser: corre una vez al montar y no
       // encadena renders (el efecto tiene deps vacías y no lee `status`). No es
       // candidato a useClientValue porque `status` es una máquina de estados
@@ -161,8 +166,8 @@ export function PushNotificationManager() {
           : 'Nueva reserva'
       const description = isDailySummary
         ? data.summaryLabel || ''
-        : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ')
-          || 'Tenés una nueva reserva confirmada en la grilla.'
+        : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ') ||
+          'Tenés una nueva reserva confirmada en la grilla.'
       toast({
         title,
         description,
@@ -201,10 +206,19 @@ export function PushNotificationManager() {
         return
       }
       // User gesture present: enable sound playback for future broadcasts.
-      try { localStorage.setItem(SOUND_ENABLED_KEY, '1') } catch { /* noop */ }
+      try {
+        localStorage.setItem(SOUND_ENABLED_KEY, '1')
+      } catch {
+        /* noop */
+      }
       // Preload audio so play() works without further gestures.
       if (audioRef.current) {
-        try { await audioRef.current.play(); audioRef.current.pause() } catch { /* noop */ }
+        try {
+          await audioRef.current.play()
+          audioRef.current.pause()
+        } catch {
+          /* noop */
+        }
       }
       const reg = await navigator.serviceWorker.register(SW_PATH, { scope: SW_SCOPE })
       // Esperar a que el service worker se active.
@@ -237,7 +251,11 @@ export function PushNotificationManager() {
       const vapidKey = await fetchVapidKey()
       if (!vapidKey) {
         setStatus('unsubscribed')
-        toast({ title: 'No pudimos habilitar notificaciones', description: 'Falta la clave del servidor.', variant: 'destructive' })
+        toast({
+          title: 'No pudimos habilitar notificaciones',
+          description: 'Falta la clave del servidor.',
+          variant: 'destructive',
+        })
         return
       }
       const sub = await ready.pushManager.subscribe({
@@ -247,15 +265,27 @@ export function PushNotificationManager() {
       const ok = await subscribeOnServer(sub)
       if (!ok) {
         setStatus('unsubscribed')
-        toast({ title: 'No pudimos guardar tu suscripción', description: 'Intentá de nuevo.', variant: 'destructive' })
+        toast({
+          title: 'No pudimos guardar tu suscripción',
+          description: 'Intentá de nuevo.',
+          variant: 'destructive',
+        })
         return
       }
       setStatus('subscribed')
-      toast({ title: 'Notificaciones habilitadas', description: 'Vas a recibir un aviso cuando llegue una reserva.', variant: 'success' })
+      toast({
+        title: 'Notificaciones habilitadas',
+        description: 'Vas a recibir un aviso cuando llegue una reserva.',
+        variant: 'success',
+      })
     } catch (e) {
       setStatus('unsubscribed')
       const msg = e instanceof Error ? e.message : 'Error desconocido'
-      toast({ title: 'No pudimos habilitar notificaciones', description: msg, variant: 'destructive' })
+      toast({
+        title: 'No pudimos habilitar notificaciones',
+        description: msg,
+        variant: 'destructive',
+      })
     }
   }
 
@@ -268,7 +298,13 @@ export function PushNotificationManager() {
     setDismissed(true)
   }
 
-  if (dismissed || status === 'unsupported' || status === 'denied' || status === 'subscribed' || status === 'idle') {
+  if (
+    dismissed ||
+    status === 'unsupported' ||
+    status === 'denied' ||
+    status === 'subscribed' ||
+    status === 'idle'
+  ) {
     // Render audio always (for autoplay-ready when subscribed). Hide button if
     // already subscribed / not supported / denied / dismissed. Idle hides until
     // detection. `dismissed` unmounts the whole card (not just hides it), so it
@@ -301,7 +337,8 @@ export function PushNotificationManager() {
       </button>
       <p className="pr-6 text-sm font-semibold text-foreground">¿Habilitar notificaciones?</p>
       <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
-        Recibí un aviso cuando se confirma una reserva online, incluso si no tenés la grilla abierta.
+        Recibí un aviso cuando se confirma una reserva online, incluso si no tenés la grilla
+        abierta.
       </p>
       <button
         type="button"

@@ -20,8 +20,25 @@ interface MetricCardProps {
  * (theme-adaptive, icon-halo, hover-lift) y, con `href`, envuelve la card en
  * un Link block (pages/dashboard.md §2).
  */
-export function MetricCard({ label, value, icon, sub, accent = 'emerald', href, ariaLabel }: MetricCardProps) {
-  const card = <StatCard label={label} value={value} icon={icon} sub={sub} accent={accent} className="h-full" />
+export function MetricCard({
+  label,
+  value,
+  icon,
+  sub,
+  accent = 'emerald',
+  href,
+  ariaLabel,
+}: MetricCardProps) {
+  const card = (
+    <StatCard
+      label={label}
+      value={value}
+      icon={icon}
+      sub={sub}
+      accent={accent}
+      className="h-full"
+    />
+  )
   if (!href) return card
   return (
     <Link

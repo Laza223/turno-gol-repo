@@ -27,9 +27,10 @@ const PLAYER_ID = '11111111-1111-4111-8111-111111111111'
 
 function mockTx() {
   const tx = {}
-  vi.mocked(withTenantContext).mockImplementation(
-    (async (_id: string, cb: (t: never) => Promise<unknown>) => cb(tx as never)) as never,
-  )
+  vi.mocked(withTenantContext).mockImplementation((async (
+    _id: string,
+    cb: (t: never) => Promise<unknown>,
+  ) => cb(tx as never)) as never)
   return tx
 }
 
@@ -92,7 +93,10 @@ describe('banPlayerAction', () => {
 
 describe('liftPlayerBanAction', () => {
   it('rebota si el guard rechaza', async () => {
-    vi.mocked(requireOperatorStaff).mockResolvedValue({ ok: false, error: 'no autorizado' } as never)
+    vi.mocked(requireOperatorStaff).mockResolvedValue({
+      ok: false,
+      error: 'no autorizado',
+    } as never)
     const res = await liftPlayerBanAction(PLAYER_ID)
     expect(res.success).toBe(false)
     expect(vi.mocked(liftPlayerBan)).not.toHaveBeenCalled()

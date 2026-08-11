@@ -112,9 +112,7 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
       return closeDailyRegister(tenantId, TODAY, staffId, {}, 0, tx)
     })
 
-    const fetched = await getDb().transaction(async (tx) =>
-      getDailyClose(tenantId, TODAY, tx),
-    )
+    const fetched = await getDb().transaction(async (tx) => getDailyClose(tenantId, TODAY, tx))
     expect(fetched?.id).toBe(created.id)
     expect(fetched?.balance).toBe(created.balance)
   })

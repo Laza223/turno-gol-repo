@@ -71,7 +71,8 @@ test.describe('TG-HP-308 — Extender trial', () => {
         originalTrialEnd: originalTrialEnd.toISOString(),
         newTrialEnd: newTrialEnd.toISOString(),
         daysExtended: days,
-        dbWrites: 'tenants.trial_ends_at (support.service.ts:190-220) + audit_logs support.tenant.trial_extended',
+        dbWrites:
+          'tenants.trial_ends_at (support.service.ts:190-220) + audit_logs support.tenant.trial_extended',
         notes: 'CASO DE PLATA: trial_ends_at extendido queda vivo para el verificador.',
       })
     } finally {

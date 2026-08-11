@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeSuspensions } from '@/modules/tournaments/standings/suspensions'
-import type {
-  StandingsEvent,
-  StandingsMatch,
-} from '@/modules/tournaments/standings/types'
+import type { StandingsEvent, StandingsMatch } from '@/modules/tournaments/standings/types'
 
 const CONFIG = { yellowCardsForSuspension: 3, redCardSuspensionMatches: 1 }
 
@@ -205,11 +202,7 @@ describe('computeSuspensions — orden y proyección', () => {
   it('con el fixture sin agendar el orden sigue siendo determinista', () => {
     // Ningún startsAt y las fechas llegan desordenadas: el orden tiene que
     // salir de (stageOrderIndex, round, …) y no del orden del array.
-    const matches = [
-      fecha(3, { status: 'scheduled' }),
-      fecha(1),
-      fecha(2, { status: 'scheduled' }),
-    ]
+    const matches = [fecha(3, { status: 'scheduled' }), fecha(1), fecha(2, { status: 'scheduled' })]
     const events = [card('e1', 'f1', 'red_card')]
     const a = computeSuspensions({ matches, events, config: CONFIG })
     const b = computeSuspensions({ matches, events, config: CONFIG })

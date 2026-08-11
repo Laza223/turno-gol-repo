@@ -20,8 +20,5 @@ export function getBillingGateway(): PaymentGateway {
   const token = process.env.MP_TURNOGOL_ACCESS_TOKEN ?? ''
   // ENS-22: el token master vive en el env EN CLARO (no es un token de tenant
   // cifrado en DB) — sin el flag, el constructor lo mandaba a decrypt().
-  return withCircuitBreaker(
-    new MercadoPagoGateway(token, { plaintextToken: true }),
-    'saas-master',
-  )
+  return withCircuitBreaker(new MercadoPagoGateway(token, { plaintextToken: true }), 'saas-master')
 }

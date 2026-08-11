@@ -100,7 +100,8 @@ export function ConfirmDialog({
         {confirmationPhrase ? (
           <div className="space-y-1">
             <label htmlFor="confirm-phrase" className="text-xs font-medium text-foreground">
-              Escribí <span className="font-mono font-semibold">{confirmationPhrase}</span> para confirmar
+              Escribí <span className="font-mono font-semibold">{confirmationPhrase}</span> para
+              confirmar
             </label>
             <input
               id="confirm-phrase"

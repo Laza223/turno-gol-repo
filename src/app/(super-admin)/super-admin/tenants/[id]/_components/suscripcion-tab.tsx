@@ -14,14 +14,13 @@ export function SuscripcionTab({ detail, plans }: { detail: TenantDetail; plans:
     return (
       <Card title="Suscripción">
         <p className="text-sm text-muted-foreground">
-          El complejo no tiene fila en tenant_subscriptions (todavía no inició la
-          suscripción SaaS).
+          El complejo no tiene fila en tenant_subscriptions (todavía no inició la suscripción SaaS).
         </p>
       </Card>
     )
   }
   const pendingPlanName = sub.pendingPlanChange
-    ? plans.find((p) => p.id === sub.pendingPlanChange)?.name ?? sub.pendingPlanChange
+    ? (plans.find((p) => p.id === sub.pendingPlanChange)?.name ?? sub.pendingPlanChange)
     : null
   return (
     <div className="space-y-4">
@@ -67,14 +66,16 @@ export function SuscripcionTab({ detail, plans }: { detail: TenantDetail; plans:
           )}
           {sub.scheduledDeletionAt && (
             <Dt label="Eliminación programada">
-              <span className="text-red-600 dark:text-red-400">{formatDateTimeArt(sub.scheduledDeletionAt)}</span>
+              <span className="text-red-600 dark:text-red-400">
+                {formatDateTimeArt(sub.scheduledDeletionAt)}
+              </span>
             </Dt>
           )}
         </dl>
         <p className="mt-4 text-xs text-muted-foreground">
-          No existe tabla de pagos SaaS en v1: el historial se reduce a los anclajes de
-          la suscripción (último pago / fallo / dunning). Los eventos completos están en
-          la pestaña Actividad (audit trail).
+          No existe tabla de pagos SaaS en v1: el historial se reduce a los anclajes de la
+          suscripción (último pago / fallo / dunning). Los eventos completos están en la pestaña
+          Actividad (audit trail).
         </p>
       </Card>
     </div>

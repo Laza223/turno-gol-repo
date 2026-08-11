@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto'
 
 // Mock the mock-mp module so we can control MP_MOCK_ENABLED
 vi.mock('@/modules/payments/mock-mp', () => ({
-  MP_MOCK_ENABLED: false
+  MP_MOCK_ENABLED: false,
 }))
 
 describe('verifyWebhookSignature', () => {

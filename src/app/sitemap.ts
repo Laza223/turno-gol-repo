@@ -26,10 +26,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: absoluteUrl('/'), lastModified: now, changeFrequency: 'weekly', priority: 1.0 },
     { url: absoluteUrl('/explorar'), lastModified: now, changeFrequency: 'daily', priority: 0.8 },
-    { url: absoluteUrl('/para-complejos'), lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    {
+      url: absoluteUrl('/para-complejos'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
     { url: absoluteUrl('/precios'), lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: absoluteUrl('/blog'), lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
-    { url: absoluteUrl('/privacidad'), lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    {
+      url: absoluteUrl('/privacidad'),
+      lastModified: now,
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
     { url: absoluteUrl('/terminos'), lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ]
 
@@ -43,12 +53,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...CONTENT_PAGES.flatMap(({ slug, path }) => {
       const page = getContentPage(slug)
       if (!page) return []
-      return [{
-        url: absoluteUrl(path),
-        lastModified: lastModified(page),
-        changeFrequency: 'monthly' as const,
-        priority: 0.7,
-      }]
+      return [
+        {
+          url: absoluteUrl(path),
+          lastModified: lastModified(page),
+          changeFrequency: 'monthly' as const,
+          priority: 0.7,
+        },
+      ]
     }),
   ]
 

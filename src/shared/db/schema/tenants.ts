@@ -30,12 +30,12 @@ export const tenants = pgTable(
     phone: text('phone').notNull(),
     whatsapp: text('whatsapp'),
     email: text('email').notNull(),
-    timezone: text('timezone')
-      .notNull()
-      .default('America/Argentina/Buenos_Aires'),
+    timezone: text('timezone').notNull().default('America/Argentina/Buenos_Aires'),
 
-    openingHours: jsonb('opening_hours').notNull().default(
-      sql`'{
+    openingHours: jsonb('opening_hours')
+      .notNull()
+      .default(
+        sql`'{
         "mon": {"open": "08:00", "close": "00:00"},
         "tue": {"open": "08:00", "close": "00:00"},
         "wed": {"open": "08:00", "close": "00:00"},
@@ -44,9 +44,11 @@ export const tenants = pgTable(
         "sat": {"open": "09:00", "close": "01:00"},
         "sun": {"open": "09:00", "close": "23:00"}
       }'::jsonb`,
-    ),
+      ),
 
-    closedDates: date('closed_dates').array().default(sql`'{}'::date[]`),
+    closedDates: date('closed_dates')
+      .array()
+      .default(sql`'{}'::date[]`),
 
     // Día operativo: cuando true, el `close` de un día que sea <= `open` (ej.
     // open 08:00, close 02:00) se interpreta como la madrugada del día siguiente.
@@ -63,8 +65,10 @@ export const tenants = pgTable(
     // sin esta columna recibiría el mismo mail todos los días (migr. 068).
     trialWarningDaysSent: integer('trial_warning_days_sent'),
 
-    settings: jsonb('settings').notNull().default(
-      sql`'{
+    settings: jsonb('settings')
+      .notNull()
+      .default(
+        sql`'{
         "requires_deposit": true,
         "deposit_percentage": 30,
         "cancellation_policy": {"hours_before": 12, "penalty_type": "deposit", "penalty_amount": null},
@@ -75,7 +79,7 @@ export const tenants = pgTable(
         "booking_advance_days": 6,
         "auto_complete_minutes": 30
       }'::jsonb`,
-    ),
+      ),
 
     featureOverrides: jsonb('feature_overrides')
       .notNull()
@@ -83,7 +87,9 @@ export const tenants = pgTable(
 
     // Servicios del complejo para filtros/badges de la interfaz pública.
     // { duchas, estacionamiento, bar, parrilla, vestuario, wifi, techado, iluminacion }
-    amenities: jsonb('amenities').notNull().default(sql`'{}'::jsonb`),
+    amenities: jsonb('amenities')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
 
     // Precio mínimo denormalizado (centavos ARS) para mostrar "Desde $X" en cards.
     // Mantenido por el trigger courts_recalc_from_price (recalcula el MIN de los
@@ -122,12 +128,8 @@ export const tenants = pgTable(
       mode: 'date',
     }),
 
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     slugIdx: index('idx_tenants_slug').on(table.slug),

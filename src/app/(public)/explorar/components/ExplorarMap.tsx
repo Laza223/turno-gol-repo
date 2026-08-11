@@ -20,7 +20,8 @@ function isLocated(t: PublicTenantCard): t is Located {
 // el bug de los íconos por defecto de Leaflet con bundlers.
 // active=true → color más oscuro + leve escala para resaltar en split view.
 function priceIcon(t: Located, active = false): L.DivIcon {
-  const label = t.fromPriceCents != null ? formatArs(t.fromPriceCents) : t.name.slice(0, 2).toUpperCase()
+  const label =
+    t.fromPriceCents != null ? formatArs(t.fromPriceCents) : t.name.slice(0, 2).toUpperCase()
   // Texto blanco bold de 12px: eso es "texto normal" para WCAG (12px no califica como
   // grande ni en bold), así que el fondo tiene que dar 4.5:1 contra #fff.
   //   #059669  emerald-600  3.76:1  ✗   <- era el pin por defecto, o sea CASI TODOS
@@ -31,9 +32,17 @@ function priceIcon(t: Located, active = false): L.DivIcon {
   // El sweep de contraste previo no lo agarró porque estos colores viven en el html crudo
   // de un `L.divIcon`, no en clases de Tailwind — un grep no los ve.
   const bg = active ? '#065f46' : '#047857'
-  const scale = active ? 'transform:translate(-50%,-100%) scale(1.12);' : 'transform:translate(-50%,-100%);'
+  const scale = active
+    ? 'transform:translate(-50%,-100%) scale(1.12);'
+    : 'transform:translate(-50%,-100%);'
   const html = `<div style="${scale}white-space:nowrap;background:${bg};color:#fff;font-weight:700;font-size:12px;line-height:1;padding:6px 10px;border-radius:9999px;box-shadow:0 2px 8px rgba(2,6,23,.35);border:2px solid #fff">${label}</div>`
-  return L.divIcon({ html, className: '', iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -28] })
+  return L.divIcon({
+    html,
+    className: '',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -28],
+  })
 }
 
 function FitBounds({ points }: { points: [number, number][] }) {
@@ -88,7 +97,11 @@ export default function ExplorarMap({
         />
         <FitBounds points={points} />
         {located.map((t) => (
-          <Marker key={t.id} position={[t.latitude, t.longitude]} icon={priceIcon(t, t.id === activeId)}>
+          <Marker
+            key={t.id}
+            position={[t.latitude, t.longitude]}
+            icon={priceIcon(t, t.id === activeId)}
+          >
             <Popup>
               <div className="w-52">
                 <p className="text-sm font-semibold text-foreground">{t.name}</p>
@@ -98,7 +111,11 @@ export default function ExplorarMap({
                 </p>
                 <div className="mt-2 flex items-center justify-between">
                   {t.reviewCount > 0 ? (
-                    <RatingStars rating={t.avgRating} count={t.reviewCount} className="text-muted-foreground" />
+                    <RatingStars
+                      rating={t.avgRating}
+                      count={t.reviewCount}
+                      className="text-muted-foreground"
+                    />
                   ) : (
                     <span className="text-xs text-muted-foreground">Sin reseñas</span>
                   )}

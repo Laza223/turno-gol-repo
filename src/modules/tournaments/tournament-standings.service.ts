@@ -14,11 +14,7 @@ import { computeStandings } from './standings/standings'
 import { computeSuspensions, type SuspensionRow } from './standings/suspensions'
 import { qualifiedSeeds, type QualifiedSeed } from './standings/bracket'
 import { propagateResult } from './tournament-bracket.service'
-import type {
-  StandingsGroup,
-  StandingsInput,
-  StandingsMatch,
-} from './standings/types'
+import type { StandingsGroup, StandingsInput, StandingsMatch } from './standings/types'
 import {
   GroupStageNotFinishedError,
   NotAGroupsTournamentError,

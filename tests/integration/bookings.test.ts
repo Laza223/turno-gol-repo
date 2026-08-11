@@ -1,11 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import {
-  closeSql,
-  getDb,
-  getSql,
-  getWorkerDb,
-  withTenantContext,
-} from '@/shared/db/client'
+import { closeSql, getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import {
   autoCompleteOverdueBookings,
   completeBooking,
@@ -423,9 +417,7 @@ describe('createOnlineBooking', () => {
     // Hallazgo 1: a pending_payment booking MUST arm the TTL expiry timer for
     // exactly this booking, with a positive delay (otherwise the slot would be
     // locked forever when the player abandons the MP checkout).
-    expect(armedExpiries).toEqual([
-      expect.objectContaining({ bookingId: booking.id }),
-    ])
+    expect(armedExpiries).toEqual([expect.objectContaining({ bookingId: booking.id })])
     expect(armedExpiries[0]!.startAfter).toBeGreaterThan(0)
   })
 })
@@ -625,9 +617,7 @@ describe('terminal state inmutabilidad', () => {
         tx,
       ),
     )
-    const marked = await withTenantContext(tenant.id, (tx) =>
-      markNoShow(created.id, staff.id, tx),
-    )
+    const marked = await withTenantContext(tenant.id, (tx) => markNoShow(created.id, staff.id, tx))
     expect(marked.status).toBe('no_show')
 
     await expect(
@@ -659,9 +649,7 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
       ),
     )
     // completeBooking sets updated_at = NOW(), so we are inside the 24h window.
-    await withTenantContext(tenant.id, (tx) =>
-      completeBooking(created.id, 'admin', tx),
-    )
+    await withTenantContext(tenant.id, (tx) => completeBooking(created.id, 'admin', tx))
 
     const corrected = await withTenantContext(tenant.id, (tx) =>
       markNoShow(created.id, staff.id, tx),
@@ -734,9 +722,9 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
       timeEnd: '11:00',
       agedHours: 25,
     })
-    await expect(
-      sql`UPDATE bookings SET status = 'no_show' WHERE id = ${stale}`,
-    ).rejects.toThrow(/terminal/i)
+    await expect(sql`UPDATE bookings SET status = 'no_show' WHERE id = ${stale}`).rejects.toThrow(
+      /terminal/i,
+    )
   })
 
   // RI #1 (migración 060): la corrección INVERSA no_show → completed, con el
@@ -775,9 +763,9 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
       timeEnd: '15:00',
       agedHours: 25,
     })
-    await expect(
-      sql`UPDATE bookings SET status = 'completed' WHERE id = ${stale}`,
-    ).rejects.toThrow(/terminal/i)
+    await expect(sql`UPDATE bookings SET status = 'completed' WHERE id = ${stale}`).rejects.toThrow(
+      /terminal/i,
+    )
   })
 
   // Control de que la excepción nueva es QUIRÚRGICA: dentro de la ventana sólo
@@ -888,9 +876,7 @@ describe('markNoShow', () => {
       ),
     )
 
-    const updated = await withTenantContext(tenant.id, (tx) =>
-      markNoShow(created.id, staff.id, tx),
-    )
+    const updated = await withTenantContext(tenant.id, (tx) => markNoShow(created.id, staff.id, tx))
 
     expect(updated.status).toBe('no_show')
 
@@ -932,7 +918,7 @@ describe('markNoShow', () => {
 
   // Caso límite: apenas pasó ends_at, ya se puede marcar (no hace falta
   // esperar más allá del fin real del turno).
-  it("acepta un turno que apenas terminó (ends_at hace instantes)", async () => {
+  it('acepta un turno que apenas terminó (ends_at hace instantes)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
@@ -948,9 +934,7 @@ describe('markNoShow', () => {
       endsAt: new Date(Date.now() - 2_000),
     })
 
-    const marked = await withTenantContext(tenant.id, (tx) =>
-      markNoShow(bookingId, staff.id, tx),
-    )
+    const marked = await withTenantContext(tenant.id, (tx) => markNoShow(bookingId, staff.id, tx))
     expect(marked.status).toBe('no_show')
   })
 
@@ -1094,9 +1078,7 @@ describe('expirePendingBooking', () => {
       timeEnd: '12:00',
     })
 
-    const result = await withTenantContext(tenant.id, (tx) =>
-      expirePendingBooking(bookingId, tx),
-    )
+    const result = await withTenantContext(tenant.id, (tx) => expirePendingBooking(bookingId, tx))
     expect(result.won).toBe(true)
     if (result.won) expect(result.row.status).toBe('expired')
   })
@@ -1123,9 +1105,7 @@ describe('expirePendingBooking', () => {
       ),
     )
 
-    const result = await withTenantContext(tenant.id, (tx) =>
-      expirePendingBooking(created.id, tx),
-    )
+    const result = await withTenantContext(tenant.id, (tx) => expirePendingBooking(created.id, tx))
     expect(result.won).toBe(false)
   })
 })
@@ -1151,9 +1131,7 @@ describe('Race condition (Fix #9): only one worker wins', () => {
     const db = getDb()
     const runner = async (newStatus: 'confirmed' | 'expired') => {
       return db.transaction(async (tx) => {
-        await tx.execute(
-          drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`,
-        )
+        await tx.execute(drizzleSql`SELECT set_config('app.current_tenant_id', ${tenant.id}, true)`)
         const result = await transitionFromPendingPayment(bookingId, newStatus, tx)
         if (result.won) sideEffectCounter += 1
         return result

@@ -206,7 +206,7 @@ export const generateFixtureSchema = z
     {
       message: 'Tienen que clasificar al menos 2 equipos en total.',
       path: ['teamsAdvancePerGroup'],
-    }
+    },
   )
 
 export const clearFixtureSchema = z.object({ tournamentId: uuid })
@@ -295,7 +295,7 @@ export const addMatchEventSchema = z
   // Una tarjeta necesita sujeto: sin jugador no hay a quién suspender.
   .refine(
     (v) => (v.type !== 'yellow_card' && v.type !== 'red_card') || (v.teamPlayerId ?? null) !== null,
-    { message: 'Elegí al jugador que vio la tarjeta.', path: ['teamPlayerId'] }
+    { message: 'Elegí al jugador que vio la tarjeta.', path: ['teamPlayerId'] },
   )
   // El override de fechas solo aplica a una roja.
   .refine((v) => (v.suspensionMatches ?? null) === null || v.type === 'red_card', {

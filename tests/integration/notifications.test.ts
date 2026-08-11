@@ -1,12 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
-import {
-  closeSql,
-  getSql,
-  withTenantContext,
-} from '@/shared/db/client'
-import {
-  enqueueNotification,
-} from '@/modules/notifications/notification.service'
+import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
+import { enqueueNotification } from '@/modules/notifications/notification.service'
 import { processQueuedNotifications as sweepNotifications } from '@/shared/jobs/workers/send-email.worker'
 import {
   setEmailProvider,

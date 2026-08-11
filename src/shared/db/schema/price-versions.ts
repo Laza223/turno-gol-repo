@@ -1,12 +1,4 @@
-import {
-  date,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { date, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { plans } from './plans'
 
 export const priceVersions = pgTable(
@@ -21,9 +13,7 @@ export const priceVersions = pgTable(
     validFrom: date('valid_from', { mode: 'date' }).notNull(),
     validUntil: date('valid_until', { mode: 'date' }),
     reason: text('reason'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
     planIdx: index('idx_price_versions_plan').on(table.planId, table.validFrom),

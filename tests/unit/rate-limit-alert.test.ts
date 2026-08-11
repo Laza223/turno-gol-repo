@@ -7,7 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
 
 vi.mock('@/lib/sentry', () => ({ captureMessage: vi.fn() }))
-vi.mock('@upstash/redis', () => ({ Redis: class { constructor(_: unknown) {} } }))
+vi.mock('@upstash/redis', () => ({
+  Redis: class {
+    constructor(_: unknown) {}
+  },
+}))
 vi.mock('@upstash/ratelimit', () => {
   class FakeRatelimit {
     static tokenBucket(): { kind: string } {

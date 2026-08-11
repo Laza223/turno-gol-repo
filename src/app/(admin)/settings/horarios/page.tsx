@@ -21,40 +21,54 @@ export default async function HorariosPage() {
 
   return (
     <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
 
-        <SettingsTabs active="/settings/horarios" />
+      <SettingsTabs active="/settings/horarios" />
 
-        <div className="card-premium rounded-lg p-6">
-          <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>
-          <HorariosForm hours={hours} closesNextDay={tenant.closesNextDay} action={updateHorariosAction} />
-        </div>
+      <div className="card-premium rounded-lg p-6">
+        <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>
+        <HorariosForm
+          hours={hours}
+          closesNextDay={tenant.closesNextDay}
+          action={updateHorariosAction}
+        />
+      </div>
 
-        <div className="card-premium rounded-lg p-6">
-          <h2 className="mb-4 text-base font-semibold text-foreground">Días cerrados</h2>
+      <div className="card-premium rounded-lg p-6">
+        <h2 className="mb-4 text-base font-semibold text-foreground">Días cerrados</h2>
 
-          {closedDates.filter((d) => d >= minDate).length > 0 ? (
-            <ul className="mb-4 space-y-2">
-              {[...closedDates].filter((d) => d >= minDate).sort().map((date) => (
+        {closedDates.filter((d) => d >= minDate).length > 0 ? (
+          <ul className="mb-4 space-y-2">
+            {[...closedDates]
+              .filter((d) => d >= minDate)
+              .sort()
+              .map((date) => (
                 <li
                   key={date}
                   className="flex items-center justify-between rounded-md border border-border px-4 py-2"
                 >
                   <span className="text-sm text-foreground">
                     {new Date(date + 'T12:00:00').toLocaleDateString('es-AR', {
-                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
                     })}
                   </span>
-                  <RemoveClosedDateForm date={date} action={removeClosedDateAction} addAction={addClosedDateAction} />
+                  <RemoveClosedDateForm
+                    date={date}
+                    action={removeClosedDateAction}
+                    addAction={addClosedDateAction}
+                  />
                 </li>
               ))}
-            </ul>
-          ) : (
-            <p className="mb-4 text-sm text-muted-foreground">No hay días cerrados configurados.</p>
-          )}
+          </ul>
+        ) : (
+          <p className="mb-4 text-sm text-muted-foreground">No hay días cerrados configurados.</p>
+        )}
 
-          <AddClosedDateForm minDate={minDate} action={addClosedDateAction} />
-        </div>
+        <AddClosedDateForm minDate={minDate} action={addClosedDateAction} />
       </div>
+    </div>
   )
 }

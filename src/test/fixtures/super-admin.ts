@@ -14,14 +14,7 @@ import { tenant, tenantSettings } from './tenant'
  */
 
 export type SaTenantStatus =
-  | 'trialing'
-  | 'active'
-  | 'past_due'
-  | 'suspended'
-  | 'blocked'
-  | 'canceled'
-  | 'churned'
-  | 'deleted'
+  'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned' | 'deleted'
 
 /** Los 8 estados de `tenant_status`, en el orden del FSM (doc4 §2). */
 export const SA_TENANT_STATUSES: readonly SaTenantStatus[] = [
@@ -107,17 +100,44 @@ export const dashboardData = (overrides: Partial<SaDashboardData> = {}): SaDashb
     churned: 1,
   },
   expiringTrials: [
-    { id: uid(7001), name: 'Canchas del Sur', slug: 'canchas-del-sur', trialEndsAt: daysFromNow(3) },
-    { id: uid(7002), name: 'Polideportivo Once', slug: 'polideportivo-once', trialEndsAt: daysFromNow(6) },
+    {
+      id: uid(7001),
+      name: 'Canchas del Sur',
+      slug: 'canchas-del-sur',
+      trialEndsAt: daysFromNow(3),
+    },
+    {
+      id: uid(7002),
+      name: 'Polideportivo Once',
+      slug: 'polideportivo-once',
+      trialEndsAt: daysFromNow(6),
+    },
   ],
   recentSignups: [
-    { id: uid(7003), name: 'Fútbol Norte', slug: 'futbol-norte', status: 'trialing', createdAt: hoursFromNow(-20) },
-    { id: uid(7004), name: 'La Redonda FC', slug: 'la-redonda-fc', status: 'active', createdAt: daysFromNow(-2) },
+    {
+      id: uid(7003),
+      name: 'Fútbol Norte',
+      slug: 'futbol-norte',
+      status: 'trialing',
+      createdAt: hoursFromNow(-20),
+    },
+    {
+      id: uid(7004),
+      name: 'La Redonda FC',
+      slug: 'la-redonda-fc',
+      status: 'active',
+      createdAt: daysFromNow(-2),
+    },
   ],
   signupsLast7Days: 6,
   queues: SA_QUEUES.map((queue, i) => ({ queue, depth: i % 5 === 0 ? 0 : i })),
   recentWebhooks: [
-    { id: uid(7005), mpEventId: 'mp-evt-99231', eventType: 'payment.updated', processedAt: hoursFromNow(-1) },
+    {
+      id: uid(7005),
+      mpEventId: 'mp-evt-99231',
+      eventType: 'payment.updated',
+      processedAt: hoursFromNow(-1),
+    },
     {
       id: uid(7006),
       mpEventId: 'mp-evt-99187',
@@ -180,9 +200,30 @@ export type SaPlanSummary = {
 
 /** Los 3 planes SaaS vigentes (migr. 043 / CLAUDE.md): Predio/Complejo/Estadio. */
 export const planSummaries = (): SaPlanSummary[] => [
-  { id: uid(7010), slug: 'predio', name: 'Predio', maxCourts: 2, priceMonthly: 5_500_000, priceAnnual: 52_800_000 },
-  { id: uid(7011), slug: 'complejo', name: 'Complejo', maxCourts: 5, priceMonthly: 8_500_000, priceAnnual: 81_600_000 },
-  { id: uid(7012), slug: 'estadio', name: 'Estadio', maxCourts: null, priceMonthly: 11_500_000, priceAnnual: 110_400_000 },
+  {
+    id: uid(7010),
+    slug: 'predio',
+    name: 'Predio',
+    maxCourts: 2,
+    priceMonthly: 5_500_000,
+    priceAnnual: 52_800_000,
+  },
+  {
+    id: uid(7011),
+    slug: 'complejo',
+    name: 'Complejo',
+    maxCourts: 5,
+    priceMonthly: 8_500_000,
+    priceAnnual: 81_600_000,
+  },
+  {
+    id: uid(7012),
+    slug: 'estadio',
+    name: 'Estadio',
+    maxCourts: null,
+    priceMonthly: 11_500_000,
+    priceAnnual: 110_400_000,
+  },
 ]
 
 export const tenantListRow = (overrides: Partial<SaTenantListRow> = {}): SaTenantListRow => ({
@@ -473,7 +514,11 @@ export const auditLogRow = (overrides: Partial<SaAuditLogRow> = {}): SaAuditLogR
   actorId: uid(7100),
   resourceType: 'tenant',
   resourceId: t.id,
-  metadata: { days: 7, before: { trialEndsAt: null }, after: { trialEndsAt: daysFromNow(9).toISOString() } },
+  metadata: {
+    days: 7,
+    before: { trialEndsAt: null },
+    after: { trialEndsAt: daysFromNow(9).toISOString() },
+  },
   createdAt: hoursFromNow(-2),
   ...overrides,
 })
@@ -537,7 +582,13 @@ export const tenantActivityEmpty = (): SaTenantActivity => ({
 /** Segunda página del audit trail — para storear la paginación (page 2 de 2). */
 export const tenantActivityPage2 = (): SaTenantActivity =>
   tenantActivity({
-    logs: [auditLogRow({ id: uid(7105), action: 'support.tenant.settings_updated', createdAt: daysFromNow(-40) })],
+    logs: [
+      auditLogRow({
+        id: uid(7105),
+        action: 'support.tenant.settings_updated',
+        createdAt: daysFromNow(-40),
+      }),
+    ],
     totalLogs: 26,
     page: 2,
     pageSize: 25,

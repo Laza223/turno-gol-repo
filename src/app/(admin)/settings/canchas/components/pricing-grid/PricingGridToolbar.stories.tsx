@@ -9,7 +9,10 @@ import { PricingGridToolbar } from './PricingGridToolbar'
 // resetea antes del siguiente, y userEvent.type termina emitiendo solo el
 // último carácter. Un wrapper con estado local reproduce el dueño real.
 function ControlledToolbar(
-  props: Omit<React.ComponentProps<typeof PricingGridToolbar>, 'bulkValueCents' | 'onBulkValueChange'> & {
+  props: Omit<
+    React.ComponentProps<typeof PricingGridToolbar>,
+    'bulkValueCents' | 'onBulkValueChange'
+  > & {
     bulkValueCents: number | null
     onBulkValueChange: (cents: number | null) => void
   },

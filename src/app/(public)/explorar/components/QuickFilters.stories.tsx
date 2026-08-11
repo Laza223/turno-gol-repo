@@ -19,8 +19,13 @@ type Story = StoryObj<typeof meta>
 export const ChipsInactivos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Fútbol 5' })).toHaveAttribute('aria-pressed', 'false')
-    await expect(canvas.getByRole('button', { name: /todos los filtros/i })).not.toHaveTextContent(/\d/)
+    await expect(canvas.getByRole('button', { name: 'Fútbol 5' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    await expect(canvas.getByRole('button', { name: /todos los filtros/i })).not.toHaveTextContent(
+      /\d/,
+    )
   },
 }
 
@@ -36,9 +41,18 @@ export const ChipsActivosConBadge: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Fútbol 5' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(canvas.getByRole('button', { name: /techado/i })).toHaveAttribute('aria-pressed', 'true')
-    await expect(canvas.getByRole('button', { name: /online/i })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('button', { name: 'Fútbol 5' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(canvas.getByRole('button', { name: /techado/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(canvas.getByRole('button', { name: /online/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await expect(canvas.getByText('3')).toBeInTheDocument()
   },
 }
@@ -58,7 +72,9 @@ export const DrawerAbierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /todos los filtros/i }))
     // El drawer (Radix Dialog) se porta a document.body: se busca con `screen`.
-    await expect(await screen.findByRole('heading', { name: 'Todos los filtros' })).toBeInTheDocument()
+    await expect(
+      await screen.findByRole('heading', { name: 'Todos los filtros' }),
+    ).toBeInTheDocument()
     await expect(screen.getByRole('button', { name: 'Aplicar filtros' })).toBeInTheDocument()
   },
 }

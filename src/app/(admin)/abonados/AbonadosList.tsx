@@ -18,10 +18,9 @@ import { toast } from '@/hooks/use-toast'
 // are only needed once an admin clicks a row action. Lazy-load the whole subtree
 // and mount it only while a dialog is open, so ConfirmDialog stays out of the
 // initial Abonados chunk.
-const AbonadoDialogs = dynamic(
-  () => import('./AbonadoDialogs').then((m) => m.AbonadoDialogs),
-  { ssr: false },
-)
+const AbonadoDialogs = dynamic(() => import('./AbonadoDialogs').then((m) => m.AbonadoDialogs), {
+  ssr: false,
+})
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -121,29 +120,59 @@ export function AbonadosList({
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
           <span>
-            <strong>¿El cliente avisa que no viene un día puntual?</strong> Cancelá únicamente el turno de ese día desde la <strong>Grilla</strong> o <strong>Reservas</strong> sin dar de baja el turno fijo permanente.
+            <strong>¿El cliente avisa que no viene un día puntual?</strong> Cancelá únicamente el
+            turno de ese día desde la <strong>Grilla</strong> o <strong>Reservas</strong> sin dar de
+            baja el turno fijo permanente.
           </span>
         </div>
-        <Link href="/grilla" className="shrink-0 font-semibold underline text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100">
+        <Link
+          href="/grilla"
+          className="shrink-0 font-semibold underline text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
+        >
           Ir a Grilla →
         </Link>
       </div>
 
       <ResponsiveList
         table={
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Día / horario</th>
-              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Contacto</th>
-              <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Precio por turno</th>
-              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Estado</th>
-              <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Día / horario
+                </th>
+                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Contacto
+                </th>
+                <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Precio por turno
+                </th>
+                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Estado
+                </th>
+                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {abonados.map((a) => (
+                <AbonadoTableRow
+                  key={a.id}
+                  abonado={a}
+                  pauseAction={pauseAction}
+                  reactivateAction={reactivateAction}
+                  cancelAction={cancelAction}
+                  previewSlotsAction={previewSlotsAction}
+                />
+              ))}
+            </tbody>
+          </table>
+        }
+        cards={
+          <ul className="divide-y divide-border">
             {abonados.map((a) => (
-              <AbonadoTableRow
+              <AbonadoCard
                 key={a.id}
                 abonado={a}
                 pauseAction={pauseAction}
@@ -152,24 +181,9 @@ export function AbonadosList({
                 previewSlotsAction={previewSlotsAction}
               />
             ))}
-          </tbody>
-        </table>
-      }
-      cards={
-        <ul className="divide-y divide-border">
-          {abonados.map((a) => (
-            <AbonadoCard
-              key={a.id}
-              abonado={a}
-              pauseAction={pauseAction}
-              reactivateAction={reactivateAction}
-              cancelAction={cancelAction}
-              previewSlotsAction={previewSlotsAction}
-            />
-          ))}
-        </ul>
-      }
-    />
+          </ul>
+        }
+      />
     </div>
   )
 }
@@ -412,9 +426,7 @@ function AbonadoCard({
         </div>
         <AbonadoStatusBadge status={a.status} />
       </div>
-      <p className="text-sm text-muted-foreground">
-        Turno {formatArs(a.pricePerSession)}
-      </p>
+      <p className="text-sm text-muted-foreground">Turno {formatArs(a.pricePerSession)}</p>
       {(isActive || isPaused) && (
         <div className="flex flex-wrap gap-2">
           {isActive && (

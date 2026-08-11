@@ -332,8 +332,8 @@ export async function wipeTenant(
       FOR UPDATE
     `)
     mpSubscriptionId =
-      (subRows as unknown as Array<{ mp_subscription_id: string | null }>)[0]
-        ?.mp_subscription_id ?? null
+      (subRows as unknown as Array<{ mp_subscription_id: string | null }>)[0]?.mp_subscription_id ??
+      null
 
     // Ya con el lock de tenant_subscriptions tomado: releer el estado FRESCO
     // de tenants. Misma condición que el `targets` query original — el
@@ -348,8 +348,7 @@ export async function wipeTenant(
       FROM tenants
       WHERE id = ${tenantId}
     `)
-    const eligible =
-      (tenantRows as unknown as Array<{ eligible: boolean }>)[0]?.eligible ?? false
+    const eligible = (tenantRows as unknown as Array<{ eligible: boolean }>)[0]?.eligible ?? false
 
     if (!eligible) {
       logger.info('skipped wipe, tenant no longer eligible', {
@@ -367,7 +366,9 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM analytics_events WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tenant_player_bans WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tenant_staff_members WHERE tenant_id = ${tenantId}`)
-    await tx.execute(drizzleSql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${tenantId}`)
+    await tx.execute(
+      drizzleSql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${tenantId}`,
+    )
     await tx.execute(drizzleSql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tenantId}`)
     // Apertura de caja (migr. 049): FK a tenants sin CASCADE + tenant
     // soft-anonimizado = limpieza manual obligatoria (gate de release lo cazó;

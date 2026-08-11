@@ -9,9 +9,7 @@ import { MoneyInput } from '@/components/ui/money-input'
 import type { TournamentActionResult } from '../actions'
 import { FORMAT_LABELS } from '../torneos-lib'
 
-export type CreateTournamentAction = (
-  input: unknown,
-) => Promise<TournamentActionResult>
+export type CreateTournamentAction = (input: unknown) => Promise<TournamentActionResult>
 
 const FORMAT_OPTIONS: ComboboxOption[] = [
   {
@@ -133,8 +131,7 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
           </div>
           <div className="space-y-1.5">
             <label htmlFor="torneo-fin" className="text-sm font-medium text-foreground">
-              Termina el{' '}
-              <span className="font-normal text-muted-foreground">(opcional)</span>
+              Termina el <span className="font-normal text-muted-foreground">(opcional)</span>
             </label>
             <DatePicker
               id="torneo-fin"
@@ -159,16 +156,15 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
             leadingIcon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
           />
           <p className="text-xs text-muted-foreground">
-            El torneo reserva horas enteras en la grilla. Con partidos de 30 minutos
-            o menos entran dos por hora.
+            El torneo reserva horas enteras en la grilla. Con partidos de 30 minutos o menos entran
+            dos por hora.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label htmlFor="torneo-cupo" className="text-sm font-medium text-foreground">
-              Cupo de equipos{' '}
-              <span className="font-normal text-muted-foreground">(opcional)</span>
+              Cupo de equipos <span className="font-normal text-muted-foreground">(opcional)</span>
             </label>
             <div className="relative">
               <Users

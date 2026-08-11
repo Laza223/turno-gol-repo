@@ -157,19 +157,27 @@ describe('upcomingForDay', () => {
 
 describe('relativeStartLabel', () => {
   it("en curso → 'ahora'", () => {
-    expect(relativeStartLabel({ timeStart: '15:00', timeEnd: '16:00' }, '15:30', '08:00', false)).toBe('ahora')
+    expect(
+      relativeStartLabel({ timeStart: '15:00', timeEnd: '16:00' }, '15:30', '08:00', false),
+    ).toBe('ahora')
   })
 
   it("arranca dentro de la hora → 'en X min'", () => {
-    expect(relativeStartLabel({ timeStart: '16:00', timeEnd: '17:00' }, '15:20', '08:00', false)).toBe('en 40 min')
+    expect(
+      relativeStartLabel({ timeStart: '16:00', timeEnd: '17:00' }, '15:20', '08:00', false),
+    ).toBe('en 40 min')
   })
 
   it('más de 60 min → null (alcanza la hora absoluta)', () => {
-    expect(relativeStartLabel({ timeStart: '18:00', timeEnd: '19:00' }, '15:30', '08:00', false)).toBeNull()
+    expect(
+      relativeStartLabel({ timeStart: '18:00', timeEnd: '19:00' }, '15:30', '08:00', false),
+    ).toBeNull()
   })
 
   it('madrugada operativa: 00:30 con apertura 08:00 y flag → en 30 min desde las 24:00', () => {
-    expect(relativeStartLabel({ timeStart: '00:30', timeEnd: '01:30' }, '24:00', '08:00', true)).toBe('en 30 min')
+    expect(
+      relativeStartLabel({ timeStart: '00:30', timeEnd: '01:30' }, '24:00', '08:00', true),
+    ).toBe('en 30 min')
   })
 })
 
@@ -204,15 +212,17 @@ describe('rowDisplayName', () => {
   it('guest primero, después jugador, después fallback', () => {
     expect(rowDisplayName(makeRow({ guestName: 'Cacho' }))).toBe('Cacho')
     expect(rowDisplayName(makeRow({}))).toBe('Tomás García')
-    expect(
-      rowDisplayName(makeRow({ playerFirstName: null, playerLastName: null })),
-    ).toBe('Sin nombre')
+    expect(rowDisplayName(makeRow({ playerFirstName: null, playerLastName: null }))).toBe(
+      'Sin nombre',
+    )
   })
 })
 
 describe('badgeKindForRow', () => {
   it('prioridad: esperando > señada > abonado > confirmada (pages/grilla.md §2)', () => {
-    expect(badgeKindForRow(makeRow({ status: 'pending_payment', depositStatus: 'pending' }))).toBe('esperando')
+    expect(badgeKindForRow(makeRow({ status: 'pending_payment', depositStatus: 'pending' }))).toBe(
+      'esperando',
+    )
     expect(badgeKindForRow(makeRow({ depositStatus: 'paid', type: 'fixed' }))).toBe('senada')
     expect(badgeKindForRow(makeRow({ depositStatus: 'captured' }))).toBe('senada')
     expect(badgeKindForRow(makeRow({ type: 'fixed' }))).toBe('abonado')

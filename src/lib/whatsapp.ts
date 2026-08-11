@@ -6,10 +6,7 @@
  * code, since the stored format varies per complejo. Returns null when there
  * is nothing dial-able so callers can hide the button.
  */
-export function buildWhatsappUrl(
-  raw: string | null | undefined,
-  message?: string,
-): string | null {
+export function buildWhatsappUrl(raw: string | null | undefined, message?: string): string | null {
   if (!raw) return null
   const digits = raw.replace(/\D/g, '')
   if (digits.length === 0) return null

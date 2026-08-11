@@ -25,8 +25,14 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByPlaceholderText('Buscar nombre o nº de reserva')).toHaveValue('')
-    await expect(canvas.getByRole('button', { name: 'Vista detallada' })).toHaveAttribute('aria-pressed', 'true')
-    await expect(canvas.getByRole('button', { name: 'Vista compacta' })).toHaveAttribute('aria-pressed', 'false')
+    await expect(canvas.getByRole('button', { name: 'Vista detallada' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(canvas.getByRole('button', { name: 'Vista compacta' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
     // Sin texto: el botón de limpiar todavía no existe.
     await expect(canvas.queryByRole('button', { name: 'Limpiar búsqueda' })).not.toBeInTheDocument()
   },
@@ -35,11 +41,17 @@ export const Default: Story = {
 /** `?vista=compacta` en la URL: el toggle arranca en modo compacto. */
 export const VistaCompacta: Story = {
   parameters: {
-    nextjs: { appDirectory: true, navigation: { pathname: '/reservas', query: { vista: 'compacta' } } },
+    nextjs: {
+      appDirectory: true,
+      navigation: { pathname: '/reservas', query: { vista: 'compacta' } },
+    },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Vista compacta' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(canvas.getByRole('button', { name: 'Vista compacta' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   },
 }
 
@@ -62,7 +74,10 @@ export const Buscar: Story = {
     const input = canvas.getByPlaceholderText('Buscar nombre o nº de reserva')
     await userEvent.type(input, 'Julián')
     await waitFor(
-      () => expect(getRouter().replace).toHaveBeenCalledWith('/reservas?q=Juli%C3%A1n', { scroll: false }),
+      () =>
+        expect(getRouter().replace).toHaveBeenCalledWith('/reservas?q=Juli%C3%A1n', {
+          scroll: false,
+        }),
       { timeout: 1000 },
     )
   },
@@ -77,7 +92,9 @@ export const Limpiar: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Limpiar búsqueda' }))
     await expect(canvas.getByPlaceholderText('Buscar nombre o nº de reserva')).toHaveValue('')
-    await waitFor(() => expect(getRouter().replace).toHaveBeenCalledWith('/reservas', { scroll: false }))
+    await waitFor(() =>
+      expect(getRouter().replace).toHaveBeenCalledWith('/reservas', { scroll: false }),
+    )
   },
 }
 
@@ -86,6 +103,8 @@ export const CambiarADensidadCompacta: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Vista compacta' }))
-    await expect(getRouter().replace).toHaveBeenCalledWith('/reservas?vista=compacta', { scroll: false })
+    await expect(getRouter().replace).toHaveBeenCalledWith('/reservas?vista=compacta', {
+      scroll: false,
+    })
   },
 }

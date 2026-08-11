@@ -6,7 +6,11 @@ import { ResetPasswordSection } from './ResetPasswordSection'
 function fakeRun(): RunAction {
   return (fn2, setFeedback: (f: Feedback) => void) => {
     void fn2().then((res) =>
-      setFeedback(res.success ? { kind: 'ok', text: res.message ?? 'Acción ejecutada.' } : { kind: 'error', text: res.error }),
+      setFeedback(
+        res.success
+          ? { kind: 'ok', text: res.message ?? 'Acción ejecutada.' }
+          : { kind: 'error', text: res.error },
+      ),
     )
   }
 }
@@ -18,8 +22,10 @@ function fakeRun(): RunAction {
  * queda pinneado a ese shape en vez de al `SupportAction` genérico del prop.
  */
 type ActionResult = Awaited<ReturnType<SupportAction>>
-const okAction = (message: string) => fn(async (): Promise<ActionResult> => ({ success: true, message }))
-const errorAction = (error: string) => fn(async (): Promise<ActionResult> => ({ success: false, error }))
+const okAction = (message: string) =>
+  fn(async (): Promise<ActionResult> => ({ success: true, message }))
+const errorAction = (error: string) =>
+  fn(async (): Promise<ActionResult> => ({ success: false, error }))
 
 const meta = {
   title: 'SuperAdmin/TenantDetail/AccionesSoporte/ResetPasswordSection',
@@ -29,7 +35,9 @@ const meta = {
     tenantId: '00000000-0000-4000-8000-000000000001',
     pending: false,
     run: fakeRun(),
-    action: okAction('Contraseña temporal: TG-a1b2c3d4e5 — dictásela al titular. Deberá cambiarla al entrar.'),
+    action: okAction(
+      'Contraseña temporal: TG-a1b2c3d4e5 — dictásela al titular. Deberá cambiarla al entrar.',
+    ),
   },
 } satisfies Meta<typeof ResetPasswordSection>
 
@@ -63,7 +71,10 @@ export const NoEsMiembroActivo: Story = {
   args: { action: errorAction('Ese email no es un miembro activo del complejo.') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.type(canvas.getByLabelText('Email del staff'), 'exempleado@complejofenix.com.ar')
+    await userEvent.type(
+      canvas.getByLabelText('Email del staff'),
+      'exempleado@complejofenix.com.ar',
+    )
     await userEvent.click(canvas.getByRole('button', { name: 'Resetear contraseña' }))
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Confirmar reseteo' }))

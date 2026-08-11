@@ -45,7 +45,10 @@ export async function getBoss(): Promise<PgBoss> {
     maintenanceIntervalSeconds: 120, // default real: applyMaintenanceConfig() → 120
   })
   boss.on('error', (err) => {
-    logger.error('pg-boss error', { module: 'pg-boss', error: err instanceof Error ? err.message : String(err) })
+    logger.error('pg-boss error', {
+      module: 'pg-boss',
+      error: err instanceof Error ? err.message : String(err),
+    })
   })
   await boss.start()
   _boss = boss

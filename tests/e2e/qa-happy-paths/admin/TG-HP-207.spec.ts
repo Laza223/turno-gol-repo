@@ -105,18 +105,17 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
         afterOnline: afterOnlineRows[0],
         dbWrites:
           'courts.name (updateCourtAction) + courts.status ×2 (toggleCourtStatusAction offline→online)',
-        notes: 'Estado restaurado a "Cancha E2E 1"/online en finally — fixture compartida por la corrida QA.',
+        notes:
+          'Estado restaurado a "Cancha E2E 1"/online en finally — fixture compartida por la corrida QA.',
       })
     } finally {
       await context.close()
       // jsonParam(), NO JSON.stringify()+::jsonb — doble-codifica el objeto
       // (ver TG-HP-215, mismo bug de postgres.js confirmado con jsonb_typeof()).
-      await runSql('UPDATE courts SET name = $1, status = $2::court_status, pricing = $3 WHERE id = $4', [
-        original!.name,
-        original!.status,
-        jsonParam(original!.pricing),
-        E2E_COURT_ID,
-      ])
+      await runSql(
+        'UPDATE courts SET name = $1, status = $2::court_status, pricing = $3 WHERE id = $4',
+        [original!.name, original!.status, jsonParam(original!.pricing), E2E_COURT_ID],
+      )
     }
   })
 })

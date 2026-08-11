@@ -1,6 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { canteenDailyTotalsLargo, canteenDailyTotals, canteenMethodTotals, salesRanking } from '@/test/fixtures'
+import {
+  canteenDailyTotalsLargo,
+  canteenDailyTotals,
+  canteenMethodTotals,
+  salesRanking,
+} from '@/test/fixtures'
 import { CanteenReport } from './CanteenReport'
 
 const meta = {
@@ -35,12 +40,13 @@ export const ConDatos: Story = {
     await expect(canvas.getByText('MercadoPago')).toBeVisible()
 
     // Nota al pie obligatoria (explica la asimetría ranking vs. cobrado).
-    await expect(
-      canvas.getByText(/El ranking cuenta lo entregado/),
-    ).toBeVisible()
+    await expect(canvas.getByText(/El ranking cuenta lo entregado/)).toBeVisible()
 
     // El chip de 7 días es el activo.
-    await expect(canvas.getByRole('link', { name: '7 días' })).toHaveAttribute('aria-current', 'true')
+    await expect(canvas.getByRole('link', { name: '7 días' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
     await expect(canvas.getByRole('link', { name: '30 días' })).not.toHaveAttribute('aria-current')
   },
 }
@@ -61,7 +67,10 @@ export const Rango30: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ventas de cantina — últimos 30 días')).toBeVisible()
-    await expect(canvas.getByRole('link', { name: '30 días' })).toHaveAttribute('aria-current', 'true')
+    await expect(canvas.getByRole('link', { name: '30 días' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
     await expect(canvas.getByRole('link', { name: '7 días' })).not.toHaveAttribute('aria-current')
   },
 }

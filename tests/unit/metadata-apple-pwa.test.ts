@@ -13,7 +13,11 @@ import { metadata } from '@/app/layout'
 describe('appleWebApp metadata', () => {
   it('exports appleWebApp with capable=true', () => {
     expect(metadata.appleWebApp).toBeDefined()
-    const apple = metadata.appleWebApp as { capable: boolean; statusBarStyle: string; title: string }
+    const apple = metadata.appleWebApp as {
+      capable: boolean
+      statusBarStyle: string
+      title: string
+    }
     expect(apple.capable).toBe(true)
   })
 

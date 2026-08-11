@@ -100,12 +100,19 @@ export async function reconcilePendingPayments(): Promise<number> {
         })
       }
     } catch (err) {
-      logger.error('failed reconcile for booking', { module: 'reconcile-pending-payments', bookingId: row.bookingId, error: err instanceof Error ? err.message : String(err) })
+      logger.error('failed reconcile for booking', {
+        module: 'reconcile-pending-payments',
+        bookingId: row.bookingId,
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 
   if (reconciled > 0) {
-    logger.info('confirmed bookings via reconcile', { module: 'reconcile-pending-payments', count: reconciled })
+    logger.info('confirmed bookings via reconcile', {
+      module: 'reconcile-pending-payments',
+      count: reconciled,
+    })
   }
 
   const rescued = await reconcileExpiredOrphanedPayments()
@@ -190,9 +197,7 @@ async function reconcileExpiredOrphanedPayments(): Promise<number> {
   return rescued
 }
 
-export async function registerReconcilePendingPaymentsWorker(
-  boss: PgBoss,
-): Promise<void> {
+export async function registerReconcilePendingPaymentsWorker(boss: PgBoss): Promise<void> {
   await boss.schedule(QUEUE_RECONCILE_PENDING_PAYMENTS, '*/5 * * * *', {})
   await boss.work(QUEUE_RECONCILE_PENDING_PAYMENTS, CRON_WORK_OPTIONS, async () => {
     await reconcilePendingPayments()

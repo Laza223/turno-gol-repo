@@ -85,7 +85,13 @@ export default function FavoriteButton({
           className,
         )}
       >
-        <Heart className={cn('h-4 w-4 transition-all duration-200 group-hover:scale-110', fav ? 'fill-current text-red-700 dark:text-red-400' : 'text-current')} aria-hidden />
+        <Heart
+          className={cn(
+            'h-4 w-4 transition-all duration-200 group-hover:scale-110',
+            fav ? 'fill-current text-red-700 dark:text-red-400' : 'text-current',
+          )}
+          aria-hidden
+        />
         {fav ? 'Guardado' : 'Guardar'}
       </button>
     )
@@ -105,7 +111,13 @@ export default function FavoriteButton({
         className,
       )}
     >
-      <Heart className={cn('h-[18px] w-[18px] transition-all duration-200 group-hover:scale-110', fav && 'fill-current')} aria-hidden />
+      <Heart
+        className={cn(
+          'h-[18px] w-[18px] transition-all duration-200 group-hover:scale-110',
+          fav && 'fill-current',
+        )}
+        aria-hidden
+      />
     </button>
   )
 }

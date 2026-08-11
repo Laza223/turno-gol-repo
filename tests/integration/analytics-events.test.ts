@@ -28,7 +28,12 @@ beforeEach(async () => {
   await getWorkerSql()`DELETE FROM analytics_events`
 })
 
-type Row = { category: string; event: string; tenant_id: string | null; data: Record<string, unknown> }
+type Row = {
+  category: string
+  event: string
+  tenant_id: string | null
+  data: Record<string, unknown>
+}
 
 /**
  * `recordEvent` es fire-and-forget a propósito (una falla de instrumentación no
@@ -65,7 +70,9 @@ describe('scrub — la disciplina anti-PII', () => {
   })
 
   it('descarta los undefined (los *Ctx son todos opcionales y ensuciarían el jsonb)', () => {
-    expect(scrub({ tenantId: 't-1', courtId: undefined, date: undefined })).toEqual({ tenantId: 't-1' })
+    expect(scrub({ tenantId: 't-1', courtId: undefined, date: undefined })).toEqual({
+      tenantId: 't-1',
+    })
   })
 
   it('PII_KEYS cubre las tres claves identificatorias que hoy existen en los *Ctx', () => {

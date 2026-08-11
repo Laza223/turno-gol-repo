@@ -139,10 +139,13 @@ export default function DatePicker({
               // Sin /70: esa opacidad extra sobre --muted-foreground (ya afinado
               // contra --muted) baja a 3.06:1 contra bg-background y viola AA
               // (color-contrast). Full opacity da 5.77:1.
-              !value && 'text-muted-foreground'
+              !value && 'text-muted-foreground',
             )}
           >
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10" aria-hidden />
+            <CalendarDays
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary z-10"
+              aria-hidden
+            />
             <span className="truncate">{formattedDisplay || placeholder}</span>
           </button>
         </PopoverTrigger>
@@ -220,7 +223,7 @@ export default function DatePicker({
                     isSelected
                       ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
                       : 'hover:bg-accent hover:text-accent-foreground text-foreground/90',
-                    isDisabled && 'opacity-25 pointer-events-none'
+                    isDisabled && 'opacity-25 pointer-events-none',
                   )}
                 >
                   {day}
@@ -249,7 +252,11 @@ export default function DatePicker({
                 let m = today.getMonth()
                 let d = today.getDate()
 
-                if (allowedDayOfWeek !== undefined && allowedDayOfWeek !== null && allowedDayOfWeek >= 0) {
+                if (
+                  allowedDayOfWeek !== undefined &&
+                  allowedDayOfWeek !== null &&
+                  allowedDayOfWeek >= 0
+                ) {
                   const target = new Date(y, m, d)
                   while (target.getDay() !== allowedDayOfWeek) {
                     target.setDate(target.getDate() + 1)

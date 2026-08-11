@@ -53,18 +53,30 @@ export function BookingSuccessCard({
         ¡Reserva <span className="hero-accent-text">confirmada!</span>
       </h1>
       <p className="mt-3 text-sm text-muted-foreground tabular-nums">
-        <span className="font-semibold text-foreground">{booking.tenantName}</span> · {booking.courtName}
+        <span className="font-semibold text-foreground">{booking.tenantName}</span> ·{' '}
+        {booking.courtName}
         <br />
-        {formatDateLong(booking.date)} · {booking.timeStart.slice(0, 5)}–{booking.timeEnd.slice(0, 5)}
+        {formatDateLong(booking.date)} · {booking.timeStart.slice(0, 5)}–
+        {booking.timeEnd.slice(0, 5)}
       </p>
       {booking.depositStatus === 'not_required' ? (
         <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-          Pagás <span className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</span> al llegar al complejo.
+          Pagás{' '}
+          <span className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</span>{' '}
+          al llegar al complejo.
         </p>
       ) : (
         <div className="mt-4 space-y-1 text-sm text-muted-foreground tabular-nums">
-          <p>Seña pagada: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{formatArs(booking.depositAmount)}</span></p>
-          <p>Resta abonar en el complejo: <span className="text-foreground">{formatArs(remainingAmount)}</span></p>
+          <p>
+            Seña pagada:{' '}
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+              {formatArs(booking.depositAmount)}
+            </span>
+          </p>
+          <p>
+            Resta abonar en el complejo:{' '}
+            <span className="text-foreground">{formatArs(remainingAmount)}</span>
+          </p>
         </div>
       )}
       <section

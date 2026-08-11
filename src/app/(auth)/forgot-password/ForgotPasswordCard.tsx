@@ -72,15 +72,16 @@ function SentState() {
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
         <Mail className="h-6 w-6 text-emerald-700 dark:text-emerald-400" aria-hidden />
       </div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-        Revisá tu email
-      </h1>
+      <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Revisá tu email</h1>
       <p className="mt-3 text-sm text-muted-foreground">
         Si existe una cuenta con ese email, te enviamos un enlace para cambiar la contraseña.
       </p>
       <p className="mt-6 text-xs text-muted-foreground">
         ¿No llegó? Revisá spam o{' '}
-        <Link href="/forgot-password" className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline">
+        <Link
+          href="/forgot-password"
+          className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
+        >
           probá de nuevo
         </Link>
         .

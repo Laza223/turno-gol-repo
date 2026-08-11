@@ -88,12 +88,7 @@ describe('reserveTournamentSlots', () => {
 
     const rows = await bookingsOf(tournamentId)
     expect(rows).toHaveLength(4)
-    expect(rows.map((r) => r.time_start.slice(0, 5))).toEqual([
-      '14:00',
-      '15:00',
-      '16:00',
-      '17:00',
-    ])
+    expect(rows.map((r) => r.time_start.slice(0, 5))).toEqual(['14:00', '15:00', '16:00', '17:00'])
     // La plata del torneo entra por la inscripción, no por hora: precio 0 y sin
     // jugador, igual que un bloqueo.
     expect(rows.every((r) => r.type === 'tournament')).toBe(true)
@@ -350,12 +345,7 @@ describe('reserveTournamentSlots — complejo que cierra después de medianoche'
     // Las 4 filas llevan el MISMO día operativo, aunque dos sucedan el día
     // calendario siguiente.
     expect(rows.every((r) => r.date === '2027-07-03')).toBe(true)
-    expect(rows.map((r) => r.time_start.slice(0, 5))).toEqual([
-      '22:00',
-      '23:00',
-      '00:00',
-      '01:00',
-    ])
+    expect(rows.map((r) => r.time_start.slice(0, 5))).toEqual(['22:00', '23:00', '00:00', '01:00'])
     // El slot 23:00→24:00 se guarda con '24:00': '00:00' violaría chk_time_valid.
     expect(rows[1]!.time_end.slice(0, 5)).toBe('24:00')
   })
@@ -485,9 +475,7 @@ describe('listTournamentSlots y guard de borrado', () => {
     ).toBe(1)
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        deleteTournament(tenant.id, staff.id, tournamentId, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => deleteTournament(tenant.id, staff.id, tournamentId, tx)),
     ).rejects.toThrow(TournamentHasBookingsError)
 
     // Liberadas las horas, el borrado pasa.
@@ -495,9 +483,7 @@ describe('listTournamentSlots y guard de borrado', () => {
       releaseTournamentSlots(tenant.id, tournamentId, staff.id, '2000-01-01', tx),
     )
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        deleteTournament(tenant.id, staff.id, tournamentId, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => deleteTournament(tenant.id, staff.id, tournamentId, tx)),
     ).resolves.toBeUndefined()
   })
 })

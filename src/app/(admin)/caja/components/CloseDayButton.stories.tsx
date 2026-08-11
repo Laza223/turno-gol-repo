@@ -21,27 +21,25 @@ const meta = {
     // de las stories que comparan "37000"/"36500" contra este valor).
     expectedCash: 3700000,
     openingCash: null,
-    closeDayAction: fn(
-      async (): Promise<CloseDayActionResult> => ({
-        success: true,
-        close: {
-          id: 'close-1',
-          tenantId: 't-1',
-          date: new Date(),
-          totalIncome: 4500000,
-          totalAdjustments: 0,
-          totalExpense: 800000,
-          balance: 3700000,
-          declaredCash: 0,
-          diffAmount: 3700000,
-          openingCash: null,
-          expectedCash: null,
-          note: null,
-          closedBy: 's-1',
-          closedAt: new Date(),
-        },
-      }),
-    ),
+    closeDayAction: fn(async (): Promise<CloseDayActionResult> => ({
+      success: true,
+      close: {
+        id: 'close-1',
+        tenantId: 't-1',
+        date: new Date(),
+        totalIncome: 4500000,
+        totalAdjustments: 0,
+        totalExpense: 800000,
+        balance: 3700000,
+        declaredCash: 0,
+        diffAmount: 3700000,
+        openingCash: null,
+        expectedCash: null,
+        note: null,
+        closedBy: 's-1',
+        closedAt: new Date(),
+      },
+    })),
   },
 } satisfies Meta<typeof CloseDayButton>
 
@@ -87,7 +85,9 @@ export const DiffRequiereNota: Story = {
     await userEvent.type(dialog.getByLabelText(/efectivo contado/i), '36500')
 
     // Pinneado a la dirección (falta/sobra): un refactor que la pierda debe fallar acá.
-    await expect(dialog.getByText(/diferencia de.*efectivo esperado.*(falta|sobra) plata/i)).toBeVisible()
+    await expect(
+      dialog.getByText(/diferencia de.*efectivo esperado.*(falta|sobra) plata/i),
+    ).toBeVisible()
     await expect(dialog.getByText(/nota \(obligatoria\)/i)).toBeVisible()
 
     // El type-to-confirm (fase "CERRAR") solo depende de la frase, no de la
@@ -124,12 +124,10 @@ export const ConFondoInicial: Story = {
 /** La action rechaza el cierre (ej. día ya cerrado): mensaje inline, el diálogo sigue abierto. */
 export const ErrorDeCierre: Story = {
   args: {
-    closeDayAction: fn(
-      async (): Promise<CloseDayActionResult> => ({
-        success: false,
-        error: `La caja del ${artDateString()} ya fue cerrada.`,
-      }),
-    ),
+    closeDayAction: fn(async (): Promise<CloseDayActionResult> => ({
+      success: false,
+      error: `La caja del ${artDateString()} ya fue cerrada.`,
+    })),
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)

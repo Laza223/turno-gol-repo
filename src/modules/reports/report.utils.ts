@@ -14,7 +14,11 @@ export type TrendDelta = { direction: 'up' | 'down'; label: string }
  * % de cambio de `prev` a `current`, listo para `StatCard.delta` (§6.4). `null`
  * cuando no hay período previo comparable (`prev === 0`) — evita un "↑ Infinity%".
  */
-export function computeDelta(current: number, prev: number, suffix = 'vs mes ant.'): TrendDelta | null {
+export function computeDelta(
+  current: number,
+  prev: number,
+  suffix = 'vs mes ant.',
+): TrendDelta | null {
   if (prev === 0) return null
   const pct = Math.round(((current - prev) / prev) * 100)
   return { direction: pct >= 0 ? 'up' : 'down', label: `${Math.abs(pct)}% ${suffix}` }

@@ -73,9 +73,7 @@ afterAll(async () => {
   await closeSql()
 })
 
-type Attempt =
-  | { outcome: 'won'; booking: BookingRow }
-  | { outcome: 'lost'; error: unknown }
+type Attempt = { outcome: 'won'; booking: BookingRow } | { outcome: 'lost'; error: unknown }
 
 // Clave del refactor: NO tragamos el tipo de error (el `catch {}` original lo
 // descartaba). Lo devolvemos para poder EXIGIR que el rechazo sea SlotTakenError

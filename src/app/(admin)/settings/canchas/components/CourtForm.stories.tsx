@@ -36,7 +36,9 @@ export const NuevaCancha: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
-    await expect(canvas.getByText('Sin precios todavía. Empezá por la plantilla rápida.')).toBeVisible()
+    await expect(
+      canvas.getByText('Sin precios todavía. Empezá por la plantilla rápida.'),
+    ).toBeVisible()
     await expect(canvas.queryByText('Fotos')).not.toBeInTheDocument()
   },
 }

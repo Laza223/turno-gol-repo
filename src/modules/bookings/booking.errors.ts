@@ -76,9 +76,7 @@ export class TenantInactiveError extends Error {
 // la plata quedaría en MP sin devolverse y sin payment row de refund).
 export class RefundUnavailableError extends Error {
   constructor(public readonly bookingId: string) {
-    super(
-      `Booking ${bookingId} cannot be refunded: payment gateway is unavailable`,
-    )
+    super(`Booking ${bookingId} cannot be refunded: payment gateway is unavailable`)
     this.name = 'RefundUnavailableError'
   }
 }

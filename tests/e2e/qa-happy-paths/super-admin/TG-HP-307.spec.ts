@@ -61,9 +61,9 @@ test.describe('TG-HP-307 — Reactivar tenant', () => {
 
       await reactivateBtn.click()
 
-      await expect(
-        page.getByText("Complejo reactivado (estaba 'blocked')."),
-      ).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText("Complejo reactivado (estaba 'blocked').")).toBeVisible({
+        timeout: 10_000,
+      })
       expect(page.url()).toContain('?tab=acciones')
       await expect(page.getByText(/Estado actual: Activo\./)).toBeVisible()
 

@@ -168,10 +168,7 @@ async function setupStuckBooking(
 }
 
 /** Drive `key` to OPEN by forcing `failures` consecutive failures through the real breaker. */
-async function openBreakerFor(
-  call: () => Promise<unknown>,
-  failures = 3,
-): Promise<void> {
+async function openBreakerFor(call: () => Promise<unknown>, failures = 3): Promise<void> {
   for (let i = 0; i < failures; i++) {
     await expect(call()).rejects.toThrow('MP 500')
   }
@@ -282,7 +279,9 @@ describe('circuit breaker transient-error contract', () => {
     const gwA = resolveTenantGateway(a.tenantId, 'dummy-encrypted-token')
     await openBreakerFor(() => gwA.searchPaymentsByReference('prime-A'))
     // Precondition: A is now open — a real call short-circuits with CircuitOpenError.
-    await expect(gwA.searchPaymentsByReference(a.bookingId)).rejects.toBeInstanceOf(CircuitOpenError)
+    await expect(gwA.searchPaymentsByReference(a.bookingId)).rejects.toBeInstanceOf(
+      CircuitOpenError,
+    )
 
     const innerBefore = mockCtl.innerSearchCalls
     const reconciled = await reconcilePendingPayments()

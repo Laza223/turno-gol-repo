@@ -86,14 +86,8 @@ function normalizeDate(date: string | Date): string {
 // El set de tracking tiene que sobrevivir a las entradas que trackea; 120s ≫ 30s con margen.
 const AVAIL_SEARCH_TRACKING_TTL_SECONDS = 120
 
-export function availSearchKey(
-  date: string | Date,
-  time: string,
-  formats?: number[],
-): string {
-  const formatsKey = formats?.length
-    ? [...formats].sort((a, b) => a - b).join('-')
-    : 'all'
+export function availSearchKey(date: string | Date, time: string, formats?: number[]): string {
+  const formatsKey = formats?.length ? [...formats].sort((a, b) => a - b).join('-') : 'all'
   return `avail-search:${normalizeDate(date)}:${time}:${formatsKey}`
 }
 

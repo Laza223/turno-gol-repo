@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { publicCourtCard, publicCourtCardNoPhoto, publicCourtCardNoPrice } from '@/test/fixtures/public'
+import {
+  publicCourtCard,
+  publicCourtCardNoPhoto,
+  publicCourtCardNoPrice,
+} from '@/test/fixtures/public'
 import CourtCard from './CourtCard'
 
 /**

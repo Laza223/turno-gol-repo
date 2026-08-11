@@ -179,10 +179,7 @@ export async function getStaffTenant(staffUserId: string): Promise<TenantRow | n
     .from(tenants)
     .innerJoin(tenantStaffMembers, eq(tenantStaffMembers.tenantId, tenants.id))
     .where(
-      and(
-        eq(tenantStaffMembers.staffUserId, staffUserId),
-        eq(tenantStaffMembers.isActive, true),
-      ),
+      and(eq(tenantStaffMembers.staffUserId, staffUserId), eq(tenantStaffMembers.isActive, true)),
     )
     .orderBy(tenantStaffMembers.createdAt)
     .limit(1)
@@ -201,10 +198,7 @@ export async function getTenantById(tenantId: string): Promise<TenantRow | null>
   return rowToTenantRow(rows[0])
 }
 
-export async function updateTenant(
-  tenantId: string,
-  data: UpdateTenantInput,
-): Promise<void> {
+export async function updateTenant(tenantId: string, data: UpdateTenantInput): Promise<void> {
   const db = getDb()
   await db
     .update(tenants)
@@ -236,10 +230,7 @@ export async function updateTenantSettings(
   `
 }
 
-export async function updateOnboardingStep(
-  tenantId: string,
-  step: number,
-): Promise<void> {
+export async function updateOnboardingStep(tenantId: string, step: number): Promise<void> {
   // Mismo bug de doble-encode jsonb que updateTenantSettings: el write via
   // drizzle `.set({ settings })` guardaba la columna como JSON-string escalar.
   // Se escribe con porsager + sql.json() (single-encode).

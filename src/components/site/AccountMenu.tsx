@@ -82,7 +82,11 @@ export function AccountMenu({
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/20 border border-border/40 mb-1.5">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-500/10" />
+            <img
+              src={avatarUrl}
+              alt=""
+              className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-500/10"
+            />
           ) : (
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-xs">
               {initials(firstName, lastName)}
@@ -97,17 +101,29 @@ export function AccountMenu({
         </div>
 
         <Link href="/mis-reservas" className={itemClass}>
-          <Calendar className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
-          <span className="group-hover:translate-x-0.5 transition-transform duration-200">Mis reservas</span>
+          <Calendar
+            className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors"
+            aria-hidden
+          />
+          <span className="group-hover:translate-x-0.5 transition-transform duration-200">
+            Mis reservas
+          </span>
         </Link>
         <Link href="/configuracion" className={itemClass}>
-          <Settings className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
-          <span className="group-hover:translate-x-0.5 transition-transform duration-200">Cuenta</span>
+          <Settings
+            className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors"
+            aria-hidden
+          />
+          <span className="group-hover:translate-x-0.5 transition-transform duration-200">
+            Cuenta
+          </span>
         </Link>
 
         <div className="my-1.5 h-px bg-border" />
         <div className="px-2 py-1.5">
-          <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tema</p>
+          <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Tema
+          </p>
           <ThemeToggle />
         </div>
 
@@ -115,8 +131,13 @@ export function AccountMenu({
 
         <form action={signOutAction}>
           <button type="submit" className={cn(itemClass, 'text-left')}>
-            <LogOut className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors" aria-hidden />
-            <span className="group-hover:translate-x-0.5 transition-transform duration-200">Salir</span>
+            <LogOut
+              className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors"
+              aria-hidden
+            />
+            <span className="group-hover:translate-x-0.5 transition-transform duration-200">
+              Salir
+            </span>
           </button>
         </form>
       </PopoverContent>

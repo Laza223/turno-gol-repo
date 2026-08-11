@@ -50,9 +50,7 @@ export function parsePhoneNumber(rawPhone?: string | null): {
 
   if (trimmed.startsWith('+')) {
     // Sort dial codes by length descending so +598 is tested before +5
-    const sortedCountries = [...COUNTRIES].sort(
-      (a, b) => b.dialCode.length - a.dialCode.length,
-    )
+    const sortedCountries = [...COUNTRIES].sort((a, b) => b.dialCode.length - a.dialCode.length)
     for (const c of sortedCountries) {
       if (trimmed.startsWith(c.dialCode)) {
         let national = trimmed.slice(c.dialCode.length).trim()
@@ -193,65 +191,68 @@ export function PhoneInput({
           if (open) setSearchQuery('')
         }}
       >
-      <div className="relative flex rounded-lg shadow-xs">
-        {/* Country Selector Button */}
-        <PopoverTrigger asChild>
-          <button
-            type="button"
+        <div className="relative flex rounded-lg shadow-xs">
+          {/* Country Selector Button */}
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              aria-label={`Seleccionar código de país. Actual: ${country.name} (${country.dialCode})`}
+              className={cn(
+                'flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 h-11 md:h-10 select-none',
+                error && 'border-red-500 dark:border-red-400',
+              )}
+            >
+              <span className="text-base leading-none" role="img" aria-label={country.name}>
+                {country.flag}
+              </span>
+              <span className="font-semibold text-xs text-muted-foreground">
+                {country.dialCode}
+              </span>
+              <ChevronDown
+                className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200"
+                style={{ transform: isOpen ? 'rotate(180deg)' : undefined }}
+              />
+            </button>
+          </PopoverTrigger>
+
+          {/* National Number Input */}
+          <input
+            ref={numberInputRef}
+            id={inputId}
+            type="tel"
+            inputMode="tel"
+            autoComplete={autoComplete}
             disabled={disabled}
-            aria-label={`Seleccionar código de país. Actual: ${country.name} (${country.dialCode})`}
+            placeholder={placeholder}
+            value={nationalNumber}
+            onChange={handleNumberChange}
             className={cn(
-              'flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 h-11 md:h-10 select-none',
-              error && 'border-red-500 dark:border-red-400',
+              // text-base en mobile: < 16px dispara el zoom de iOS al enfocar.
+              'flex h-11 md:h-10 w-full rounded-r-lg border border-border bg-card px-3.5 py-2 text-base md:text-sm text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground hover:border-border/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50',
+              error &&
+                'border-red-500 dark:border-red-400 focus-visible:ring-red-500 dark:focus-visible:ring-red-400',
+              inputClassName,
             )}
-          >
-            <span className="text-base leading-none" role="img" aria-label={country.name}>
-              {country.flag}
-            </span>
-            <span className="font-semibold text-xs text-muted-foreground">{country.dialCode}</span>
-            <ChevronDown
-              className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200"
-              style={{ transform: isOpen ? 'rotate(180deg)' : undefined }}
-            />
-          </button>
-        </PopoverTrigger>
+          />
 
-        {/* National Number Input */}
-        <input
-          ref={numberInputRef}
-          id={inputId}
-          type="tel"
-          inputMode="tel"
-          autoComplete={autoComplete}
-          disabled={disabled}
-          placeholder={placeholder}
-          value={nationalNumber}
-          onChange={handleNumberChange}
-          className={cn(
-            // text-base en mobile: < 16px dispara el zoom de iOS al enfocar.
-            'flex h-11 md:h-10 w-full rounded-r-lg border border-border bg-card px-3.5 py-2 text-base md:text-sm text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground hover:border-border/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50',
-            error && 'border-red-500 dark:border-red-400 focus-visible:ring-red-500 dark:focus-visible:ring-red-400',
-            inputClassName,
-          )}
-        />
-
-        {/* Country Picker: Popover portaled (Radix) — no se clipea dentro de
+          {/* Country Picker: Popover portaled (Radix) — no se clipea dentro de
             modales con overflow (ej. BookingFormModal). */}
-        <PopoverContent
-          align="start"
-          sideOffset={6}
-          className="w-72 overflow-hidden p-0"
-          // Radix rinde el Content con role="dialog": sin nombre accesible, axe lo
-          // marca (aria-dialog-name) y el lector de pantalla solo anuncia "diálogo".
-          aria-label="Elegir país"
-          // El foco inicial va al buscador, no al primer item.
-          onOpenAutoFocus={(e) => {
-            e.preventDefault()
-            searchInputRef.current?.focus()
-          }}
-          // Al elegir país devolvemos el foco al input del número a mano.
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
+          <PopoverContent
+            align="start"
+            sideOffset={6}
+            className="w-72 overflow-hidden p-0"
+            // Radix rinde el Content con role="dialog": sin nombre accesible, axe lo
+            // marca (aria-dialog-name) y el lector de pantalla solo anuncia "diálogo".
+            aria-label="Elegir país"
+            // El foco inicial va al buscador, no al primer item.
+            onOpenAutoFocus={(e) => {
+              e.preventDefault()
+              searchInputRef.current?.focus()
+            }}
+            // Al elegir país devolvemos el foco al input del número a mano.
+            onCloseAutoFocus={(e) => e.preventDefault()}
+          >
             <div className="p-2 border-b border-border bg-muted/20">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -287,38 +288,38 @@ export function PhoneInput({
               className="max-h-56 overflow-y-auto p-1 scrollbar-thin focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               {filteredCountries.map((c) => {
-                  const isSelected = c.code === country.code
-                  return (
-                    <li
-                      key={c.code}
-                      role="option"
-                      aria-selected={isSelected}
-                      onClick={() => handleCountrySelect(c)}
-                      className={cn(
-                        'flex items-center justify-between rounded-lg px-2.5 py-2 text-xs cursor-pointer transition-colors select-none',
-                        isSelected
-                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold'
-                          : 'hover:bg-muted/80 text-foreground',
+                const isSelected = c.code === country.code
+                return (
+                  <li
+                    key={c.code}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => handleCountrySelect(c)}
+                    className={cn(
+                      'flex items-center justify-between rounded-lg px-2.5 py-2 text-xs cursor-pointer transition-colors select-none',
+                      isSelected
+                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold'
+                        : 'hover:bg-muted/80 text-foreground',
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base leading-none">{c.flag}</span>
+                      <span>{c.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-muted-foreground font-normal">
+                        {c.dialCode}
+                      </span>
+                      {isSelected && (
+                        <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                       )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base leading-none">{c.flag}</span>
-                        <span>{c.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-muted-foreground font-normal">
-                          {c.dialCode}
-                        </span>
-                        {isSelected && (
-                          <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                        )}
-                      </div>
-                    </li>
-                  )
-                })}
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
-        </PopoverContent>
-      </div>
+          </PopoverContent>
+        </div>
       </Popover>
 
       {/* red-600 sobre bg-background da 3.89:1 y viola AA (color-contrast);

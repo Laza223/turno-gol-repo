@@ -61,7 +61,12 @@ const FILTERS = [
 const ALLOWED_STATUS = new Set(FILTERS.map((f) => f.value).filter(Boolean))
 
 /** Arma /reservas?… omitiendo defaults para URLs limpias y compartibles. */
-function buildHref(params: { dia: ReservaScope; status: string; q: string; compact: boolean }): string {
+function buildHref(params: {
+  dia: ReservaScope
+  status: string
+  q: string
+  compact: boolean
+}): string {
   const search = new URLSearchParams()
   if (params.dia !== 'hoy') search.set('dia', params.dia)
   if (params.status) search.set('status', params.status)
@@ -85,7 +90,10 @@ function countFor(counts: Record<string, number>, filterValue: string): number {
 }
 
 /** Agrupa preservando el orden de llegada (la query ya ordena). */
-function groupBy(rows: ReservaListRow[], key: (r: ReservaListRow) => string): Array<[string, ReservaListRow[]]> {
+function groupBy(
+  rows: ReservaListRow[],
+  key: (r: ReservaListRow) => string,
+): Array<[string, ReservaListRow[]]> {
   const groups = new Map<string, ReservaListRow[]>()
   for (const row of rows) {
     const k = key(row)
@@ -96,10 +104,12 @@ function groupBy(rows: ReservaListRow[], key: (r: ReservaListRow) => string): Ar
   return Array.from(groups.entries())
 }
 
-type Props = { searchParams: Promise<{ dia?: string; status?: string; q?: string; vista?: string }> }
+type Props = {
+  searchParams: Promise<{ dia?: string; status?: string; q?: string; vista?: string }>
+}
 
 export default async function ReservasPage(props: Props) {
-  const searchParams = await props.searchParams;
+  const searchParams = await props.searchParams
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
   const tenant = await getStaffTenant(user.staffUserId)
@@ -112,7 +122,9 @@ export default async function ReservasPage(props: Props) {
 
   const today = artTodayStr()
   const requestedScope = searchParams.dia ?? ''
-  const scope: ReservaScope = ALLOWED_SCOPES.has(requestedScope) ? (requestedScope as ReservaScope) : 'hoy'
+  const scope: ReservaScope = ALLOWED_SCOPES.has(requestedScope)
+    ? (requestedScope as ReservaScope)
+    : 'hoy'
   const requestedStatus = searchParams.status ?? ''
   const status = ALLOWED_STATUS.has(requestedStatus) ? requestedStatus : ''
   const q = (searchParams.q ?? '').trim().slice(0, 80)
@@ -159,15 +171,11 @@ export default async function ReservasPage(props: Props) {
 
   // Hoy: secciones por cancha (la query ordena cancha, hora). Próximas e
   // historial: secciones por fecha para que el día sea escaneable.
-  const groups =
-    scope === 'hoy'
-      ? groupBy(rows, (r) => r.courtName)
-      : groupBy(rows, (r) => r.date)
+  const groups = scope === 'hoy' ? groupBy(rows, (r) => r.courtName) : groupBy(rows, (r) => r.date)
 
   const total = status ? countFor(counts, status) : countFor(counts, '')
   const reservaWord = total === 1 ? '1 reserva' : `${total} reservas`
-  const headerSubtitle =
-    scope === 'hoy' ? `${formatDateLong(today)} · ${reservaWord}` : reservaWord
+  const headerSubtitle = scope === 'hoy' ? `${formatDateLong(today)} · ${reservaWord}` : reservaWord
 
   return (
     <div className="space-y-5">
@@ -183,7 +191,10 @@ export default async function ReservasPage(props: Props) {
         icon={<CalendarCheck className="h-6 w-6" aria-hidden="true" />}
       />
 
-      <div className="card-entrance flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: '80ms' }}>
+      <div
+        className="card-entrance flex flex-wrap items-center justify-between gap-3"
+        style={{ animationDelay: '80ms' }}
+      >
         <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-muted p-1">
           {SCOPES.map((s) => {
             const active = scope === s.value
@@ -194,7 +205,9 @@ export default async function ReservasPage(props: Props) {
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'inline-flex min-h-11 items-center rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-8',
-                  active ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                  active
+                    ? 'bg-card text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {s.label}
@@ -202,12 +215,18 @@ export default async function ReservasPage(props: Props) {
             )
           })}
         </nav>
-        <Suspense fallback={<div className="h-10 w-full rounded-lg bg-muted sm:w-72" aria-hidden />}>
+        <Suspense
+          fallback={<div className="h-10 w-full rounded-lg bg-muted sm:w-72" aria-hidden />}
+        >
           <ReservasToolbar />
         </Suspense>
       </div>
 
-      <nav aria-label="Filtro por estado" className="card-entrance flex flex-wrap gap-2" style={{ animationDelay: '120ms' }}>
+      <nav
+        aria-label="Filtro por estado"
+        className="card-entrance flex flex-wrap gap-2"
+        style={{ animationDelay: '120ms' }}
+      >
         {FILTERS.map((f) => {
           const active = status === f.value
           const count = countFor(counts, f.value)
@@ -227,7 +246,9 @@ export default async function ReservasPage(props: Props) {
               <span
                 className={cn(
                   'rounded-full px-1.5 py-px text-[11px] font-semibold tabular-nums',
-                  active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
+                  active
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-muted text-muted-foreground',
                 )}
               >
                 {count}
@@ -261,7 +282,10 @@ export default async function ReservasPage(props: Props) {
       ) : (
         <div className="card-entrance space-y-6" style={{ animationDelay: '200ms' }}>
           {groups.map(([groupKey, groupRows]) => (
-            <section key={groupKey} aria-label={scope === 'hoy' ? groupKey : formatDateLong(groupKey)}>
+            <section
+              key={groupKey}
+              aria-label={scope === 'hoy' ? groupKey : formatDateLong(groupKey)}
+            >
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 {scope === 'hoy' ? groupKey : formatDateLong(groupKey)}
               </h2>

@@ -111,10 +111,13 @@ describe('subscribe — cancela el preapproval viejo antes de crear el nuevo (Fi
   it('si cancelar el viejo devuelve "ya estaba cancelado en MP", tolera y sigue creando el nuevo', async () => {
     const tx = makeTx(makeSubRow({ mp_subscription_id: 'mp-old-1' }))
     const gateway = new MockGateway()
-    gateway.cancelPreapprovalError = new MpGatewayError('Failed to cancel MP preapproval mp-old-1', {
-      message: 'You can not modify a cancelled preapproval.',
-      status: 400,
-    })
+    gateway.cancelPreapprovalError = new MpGatewayError(
+      'Failed to cancel MP preapproval mp-old-1',
+      {
+        message: 'You can not modify a cancelled preapproval.',
+        status: 400,
+      },
+    )
 
     await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
 

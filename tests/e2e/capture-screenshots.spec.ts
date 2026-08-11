@@ -8,7 +8,6 @@ import postgres from 'postgres'
 import { bookingInstants } from './_helpers/booking-instants'
 import { SEED_ADMIN_URL, deleteFreshAdminTenants } from './_helpers/fresh-tenant-cleanup'
 
-
 // Seeding constants
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const COURT_ID = '00000000-0000-4000-8000-000000000010'
@@ -235,13 +234,17 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     // Booking flow - no deposit selection
     const demoTime = isMobile ? '19:00' : '15:00'
-    await playerPage.goto(`/e2e-complejo-demo/reservar?court=${COURT_ID}&date=${date}&time=${demoTime}&dur=60`)
+    await playerPage.goto(
+      `/e2e-complejo-demo/reservar?court=${COURT_ID}&date=${date}&time=${demoTime}&dur=60`,
+    )
     await expect(playerPage.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
     await takeShot(playerPage, 'public', 'reserva_formulario_sin_sena')
 
     // Booking flow - deposit selection
     const senaTime = isMobile ? '17:00' : '16:00'
-    await playerPage.goto(`/e2e-complejo-sena/reservar?court=${DEPOSIT_COURT_ID}&date=${date}&time=${senaTime}&dur=60`)
+    await playerPage.goto(
+      `/e2e-complejo-sena/reservar?court=${DEPOSIT_COURT_ID}&date=${date}&time=${senaTime}&dur=60`,
+    )
     await expect(playerPage.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
     await takeShot(playerPage, 'public', 'reserva_formulario_con_sena')
 
@@ -253,12 +256,16 @@ test.describe('UX Audit Screenshot Capturer', () => {
     // Pay (approved)
     const bookingId = /booking=([0-9a-f-]{36})/i.exec(playerPage.url())?.[1]
     await playerPage.getByRole('button', { name: 'Pagar (aprobado)' }).click()
-    await expect(playerPage).toHaveURL(new RegExp(`/reserva/${bookingId}/exito`), { timeout: 15000 })
+    await expect(playerPage).toHaveURL(new RegExp(`/reserva/${bookingId}/exito`), {
+      timeout: 15000,
+    })
     await takeShot(playerPage, 'public', 'reserva_exito')
 
     // Go to error route for the confirmed booking (since booking is no longer pending, it acts as expired)
     await playerPage.goto(`/reserva/${bookingId}/error`)
-    await expect(playerPage.getByRole('heading', { name: /el pago no se procesó|reservar de nuevo/i })).toBeVisible()
+    await expect(
+      playerPage.getByRole('heading', { name: /el pago no se procesó|reservar de nuevo/i }),
+    ).toBeVisible()
     await takeShot(playerPage, 'public', 'reserva_expirada')
 
     // ───────────────────────────────────────────────────────────────────────
@@ -284,17 +291,19 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     // 4-Step Onboarding Wizard (using fresh admin context)
     const freshAdminPage = await freshAdminCtx.newPage()
-    freshAdminPage.on('console', msg => {
+    freshAdminPage.on('console', (msg) => {
       console.log(`[FreshAdmin Browser Console] ${msg.type()}: ${msg.text()}`)
     })
-    freshAdminPage.on('pageerror', err => {
+    freshAdminPage.on('pageerror', (err) => {
       console.log(`[FreshAdmin Unhandled Error] ${err.message}`)
     })
 
     await freshAdminPage.goto('/onboarding')
 
     // Step 1: complex identity
-    await expect(freshAdminPage.getByRole('heading', { name: /tu complejo/i })).toBeVisible({ timeout: 20000 })
+    await expect(freshAdminPage.getByRole('heading', { name: /tu complejo/i })).toBeVisible({
+      timeout: 20000,
+    })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_1')
     await freshAdminPage.locator('#identity-name').fill('Complejo UX Audit')
     await freshAdminPage.locator('#identity-address').fill('Calle Audit 555')
@@ -310,14 +319,20 @@ test.describe('UX Audit Screenshot Capturer', () => {
     // primero es el del aside, que en viewport mobile está oculto, asi que `.first()` daba
     // "resolved to <p>...</p>" pero hidden. Este spec corre en chromium Y en mobile-chrome.
     await expect(
-      freshAdminPage.getByText(/paso 2 de 4/i).filter({ visible: true }).first(),
+      freshAdminPage
+        .getByText(/paso 2 de 4/i)
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible({ timeout: 15000 })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_2')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 3: canchas inline (nombre precargado; solo falta el precio)
     await expect(
-      freshAdminPage.getByText(/paso 3 de 4/i).filter({ visible: true }).first(),
+      freshAdminPage
+        .getByText(/paso 3 de 4/i)
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible({ timeout: 15000 })
     await freshAdminPage.getByPlaceholder(/20\.000/).fill('20.000')
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_3')
@@ -326,12 +341,15 @@ test.describe('UX Audit Screenshot Capturer', () => {
     // Step 4: señas (cards de decisión)
     try {
       await expect(
-        freshAdminPage.getByText(/paso 4 de 4/i).filter({ visible: true }).first(),
+        freshAdminPage
+          .getByText(/paso 4 de 4/i)
+          .filter({ visible: true })
+          .first(),
       ).toBeVisible({ timeout: 15000 })
     } catch (err) {
-      console.log("=== STEP 4 VISIBILITY FAILURE DETAILS ===")
-      console.log("Current URL:", freshAdminPage.url())
-      console.log("HTML Body Content:")
+      console.log('=== STEP 4 VISIBILITY FAILURE DETAILS ===')
+      console.log('Current URL:', freshAdminPage.url())
+      console.log('HTML Body Content:')
       console.log(await freshAdminPage.locator('body').innerHTML())
       throw err
     }
@@ -347,7 +365,9 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     // El primer /dashboard post-wizard dispara el tour de coachmarks (Fase 1
     // UX): se lo descarta antes de capturar, o el globo tapa el estado vacío.
-    await freshAdminPage.getByRole('button', { name: /omitir recorrido/i }).click({ timeout: 15000 })
+    await freshAdminPage
+      .getByRole('button', { name: /omitir recorrido/i })
+      .click({ timeout: 15000 })
     await expect(freshAdminPage.getByText(/abrí la grilla desde acá/i)).toBeHidden()
 
     await takeShot(freshAdminPage, 'special_states', 'dashboard_vacio')
@@ -387,7 +407,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     // Grilla creation modal - Click on an interactive cell
     const slotButton = adminPage.locator('button[role="button"]:has-text(":")').first()
-    if (await slotButton.count() > 0) {
+    if ((await slotButton.count()) > 0) {
       await slotButton.click()
       await expect(adminPage.getByRole('dialog')).toBeVisible()
       await takeShot(adminPage, 'admin', 'reservas_creacion_modal')
@@ -455,7 +475,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     // Staff Invitation modal
     const inviteStaffBtn = adminPage.getByRole('button', { name: /agregar miembro/i }).first()
-    if (await inviteStaffBtn.count() > 0) {
+    if ((await inviteStaffBtn.count()) > 0) {
       await inviteStaffBtn.click()
       await expect(adminPage.getByRole('dialog')).toBeVisible()
       await takeShot(adminPage, 'admin', 'staff_invitacion_modal')
@@ -536,10 +556,10 @@ test.describe('UX Audit Screenshot Capturer', () => {
       renamed = true
 
       const errorPage = await adminCtx.newPage()
-      errorPage.on('console', msg => {
+      errorPage.on('console', (msg) => {
         console.log(`[ErrorPage Browser Console] ${msg.type()}: ${msg.text()}`)
       })
-      errorPage.on('pageerror', err => {
+      errorPage.on('pageerror', (err) => {
         console.log(`[ErrorPage Unhandled Error] ${err.message}`)
       })
 
@@ -547,7 +567,9 @@ test.describe('UX Audit Screenshot Capturer', () => {
       await errorPage.goto('/grilla')
 
       // Wait for the error component to catch and render
-      await expect(errorPage.getByRole('button', { name: /intentar/i }).first()).toBeVisible({ timeout: 15000 })
+      await expect(errorPage.getByRole('button', { name: /intentar/i }).first()).toBeVisible({
+        timeout: 15000,
+      })
       await takeShot(errorPage, 'special_states', 'grilla_error')
     } finally {
       // Si el rename-back falla, la tabla `bookings` queda como `bookings_temp` y la

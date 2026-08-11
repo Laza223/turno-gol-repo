@@ -46,10 +46,7 @@ async function recordLastLogin(systemAdminId: string): Promise<void> {
         .where(
           and(
             eq(systemAdmins.id, systemAdminId),
-            or(
-              isNull(systemAdmins.lastLoginAt),
-              lt(systemAdmins.lastLoginAt, LAST_LOGIN_THROTTLE),
-            ),
+            or(isNull(systemAdmins.lastLoginAt), lt(systemAdmins.lastLoginAt, LAST_LOGIN_THROTTLE)),
           ),
         )
     })
@@ -62,19 +59,14 @@ async function recordLastLogin(systemAdminId: string): Promise<void> {
   }
 }
 
-export default async function SuperAdminLayout({
-  children,
-}: {
-  children: ReactNode
-}) {
+export default async function SuperAdminLayout({ children }: { children: ReactNode }) {
   // Triple chequeo (claim JWT + fila activa en DB + allowlist de email);
   // cualquier fallo redirige a /login sin diferenciar motivo.
   const auth = await requireSystemAdmin()
 
   await recordLastLogin(auth.admin.id)
 
-  const adminName =
-    `${auth.admin.firstName} ${auth.admin.lastName}`.trim() || auth.admin.email
+  const adminName = `${auth.admin.firstName} ${auth.admin.lastName}`.trim() || auth.admin.email
 
   return (
     <SuperAdminLayoutShell

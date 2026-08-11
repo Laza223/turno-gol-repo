@@ -97,7 +97,10 @@ describe('FixturePanel — borrar fixture (Clase B: ConfirmDialog, avisa resulta
         tournamentId="tour-1"
         format="league"
         stages={[]}
-        matches={[match({ id: 'm1', status: 'played', homeScore: 2, awayScore: 1 }), match({ id: 'm2' })]}
+        matches={[
+          match({ id: 'm1', status: 'played', homeScore: 2, awayScore: 1 }),
+          match({ id: 'm2' }),
+        ]}
         {...planillaProps}
         generateAction={generateAction}
         clearAction={clearAction}

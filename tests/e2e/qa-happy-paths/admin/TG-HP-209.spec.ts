@@ -1,6 +1,11 @@
 import { test, expect } from '../../fixtures'
 import { writeEvidence } from '../_qa/evidence'
-import { tomorrowDateIsoArt, makeServiceClient, E2E_TENANT_ID, E2E_COURT_ID } from '../../_helpers/booking-seed'
+import {
+  tomorrowDateIsoArt,
+  makeServiceClient,
+  E2E_TENANT_ID,
+  E2E_COURT_ID,
+} from '../../_helpers/booking-seed'
 import { suppressPushPrompt } from '../_qa/session'
 import { openQuickBookingPopover } from '../../_helpers/grid'
 
@@ -72,7 +77,9 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
       await pageA.getByRole('button', { name: 'Opciones avanzadas' }).click()
       await pageA.fill('#guestPhone', '+5491100000209')
       await pageA.getByRole('button', { name: 'Confirmar' }).click()
-      await expect(pageA.getByText('Reserva creada', { exact: true })).toBeVisible({ timeout: 10_000 })
+      await expect(pageA.getByText('Reserva creada', { exact: true })).toBeVisible({
+        timeout: 10_000,
+      })
 
       // Admin B, SIN reload: la celda pasa a ocupada + el anuncio aria-live aparece.
       // Timeout generoso (best-effort, ver caveat arriba) en vez de <2s estricto.
@@ -111,7 +118,8 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
         date: tomorrow,
         dbRow: data,
         realtimeArrived,
-        dbWrites: 'none adicional — misma fila de TG-HP-208-style INSERT, propagada por postgres_changes',
+        dbWrites:
+          'none adicional — misma fila de TG-HP-208-style INSERT, propagada por postgres_changes',
         notes:
           'SLA <2s NO asertado (best-effort, timeout 15s) — los e2e multi-browser existentes del repo están test.fixme por la misma razón de infra local (grilla-realtime.spec.ts:110-176).' +
           (realtimeArrived

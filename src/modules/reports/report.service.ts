@@ -55,7 +55,7 @@ async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<Pe
           .select({
             type: cashFlows.type,
             method: cashFlows.method,
-            total: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
+            total: sql<string>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
           })
           .from(cashFlows)
           .where(and(eq(cashFlows.tenantId, tenantId), gte(cashFlows.occurredAt, from), lt(cashFlows.occurredAt, to)))
@@ -69,8 +69,8 @@ async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<Pe
           .select({
             courtId: courts.id,
             courtName: courts.name,
-            income: sql<number>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
-            bookingCount: sql<number>`CAST(COUNT(DISTINCT ${cashFlows.bookingId}) AS BIGINT)`,
+            income: sql<string>`CAST(COALESCE(SUM(${cashFlows.amount}), 0) AS BIGINT)`,
+            bookingCount: sql<string>`CAST(COUNT(DISTINCT ${cashFlows.bookingId}) AS BIGINT)`,
           })
           .from(cashFlows)
           .innerJoin(bookings, eq(cashFlows.bookingId, bookings.id))
@@ -91,7 +91,7 @@ async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<Pe
         tx
           .select({
             courtId: bookings.courtId,
-            bookedMinutes: sql<number>`CAST(COALESCE(
+            bookedMinutes: sql<string>`CAST(COALESCE(
               SUM(EXTRACT(EPOCH FROM (${bookings.timeEnd}::time - ${bookings.timeStart}::time)) / 60),
               0
             ) AS BIGINT)`,
@@ -108,7 +108,7 @@ async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<Pe
 
         // Q3: total booking count (non-canceled statuses) in the period
         tx
-          .select({ count: sql<number>`CAST(COUNT(*) AS BIGINT)` })
+          .select({ count: sql<string>`CAST(COUNT(*) AS BIGINT)` })
           .from(bookings)
           .where(
             and(
@@ -120,7 +120,7 @@ async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<Pe
 
         // Q4: number of online courts (occupancy denominator)
         tx
-          .select({ count: sql<number>`CAST(COUNT(*) AS BIGINT)` })
+          .select({ count: sql<string>`CAST(COUNT(*) AS BIGINT)` })
           .from(courts)
           .where(and(eq(courts.tenantId, tenantId), eq(courts.status, 'online'))),
       ])

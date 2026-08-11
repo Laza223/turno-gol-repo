@@ -39,24 +39,30 @@ export default async function TorneoPosicionesPage(props: {
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
 
-  // El corte es configuración (solo el dueño lo puede cerrar), pero el estado
-  // lo ve todo el staff: por eso el rol se lee acá y no se esconde la tarjeta.
-  const role = await getStaffRole(tenant.id, user.staffUserId)
-
+  let role
   let data
   try {
-    data = await withTenantContext(tenant.id, async (tx) => {
-      const tournament = await getTournament(tenant.id, id, tx)
-      const [groups, scorers, discipline, stages, teams, matches] = await Promise.all([
-        getStandings(tenant.id, id, tx),
-        getTopScorers(tenant.id, id, tx),
-        getDisciplineBoard(tenant.id, id, tx),
-        listStages(tenant.id, id, tx),
-        listTeams(tenant.id, id, tx),
-        listFixture(tenant.id, id, tx),
-      ])
-      return { tournament, groups, scorers, discipline, stages, teams, matches }
-    })
+    // El corte es configuración (solo el dueño lo puede cerrar), pero el estado
+    // lo ve todo el staff: por eso el rol se lee y no se esconde la tarjeta.
+    // Va en paralelo con los datos del torneo — `getStaffRole` usa el pool
+    // worker, no el contexto de tenant, así que no depende de nada de acá.
+    ;[role, data] = await Promise.all([
+      getStaffRole(tenant.id, user.staffUserId),
+      withTenantContext(tenant.id, async (tx) => {
+        // Ninguna de las siete alimenta a las otras: todas toman `id` directo.
+        const [tournament, groups, scorers, discipline, stages, teams, matches] =
+          await Promise.all([
+            getTournament(tenant.id, id, tx),
+            getStandings(tenant.id, id, tx),
+            getTopScorers(tenant.id, id, tx),
+            getDisciplineBoard(tenant.id, id, tx),
+            listStages(tenant.id, id, tx),
+            listTeams(tenant.id, id, tx),
+            listFixture(tenant.id, id, tx),
+          ])
+        return { tournament, groups, scorers, discipline, stages, teams, matches }
+      }),
+    ])
   } catch (err) {
     if (err instanceof TournamentNotFoundError) notFound()
     throw err

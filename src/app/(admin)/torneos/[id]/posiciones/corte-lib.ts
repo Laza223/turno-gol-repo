@@ -100,17 +100,18 @@ export function buildCorte({
     // El error trae nombres, no ids: los equipos empatados se reconstruyen
     // contra la tabla, que es de donde salieron esos nombres.
     const seedByTeamId = new Map(teams.map((t) => [t.id, t.seed]))
+    const tiedNames = new Set(err.teamNames)
     const rows = groups.find((g) => (g.groupLabel ?? '') === err.groupLabel)?.rows ?? []
-    tie = {
-      groupLabel: err.groupLabel,
-      teams: rows
-        .filter((r) => err.teamNames.includes(r.teamName))
-        .map((r) => ({
-          teamId: r.teamId,
-          teamName: r.teamName,
-          seed: seedByTeamId.get(r.teamId) ?? null,
-        })),
+    const tiedTeams: TiedTeam[] = []
+    for (const row of rows) {
+      if (!tiedNames.has(row.teamName)) continue
+      tiedTeams.push({
+        teamId: row.teamId,
+        teamName: row.teamName,
+        seed: seedByTeamId.get(row.teamId) ?? null,
+      })
     }
+    tie = { groupLabel: err.groupLabel, teams: tiedTeams }
   }
 
   const teamNameById = new Map(teams.map((t) => [t.id, t.name]))

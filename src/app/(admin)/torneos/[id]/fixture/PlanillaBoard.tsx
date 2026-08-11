@@ -44,6 +44,15 @@ export type RescheduleMatchAction = (input: unknown) => Promise<TournamentAction
 
 type Opening = MatchOpening<TournamentSlotRow>
 
+/** Un día del tablero, ya resuelto: qué canchas, qué horas y qué hay en cada celda. */
+type BoardDay = {
+  date: string
+  dayCourts: Array<{ id: string; name: string }>
+  times: number[]
+  byCell: Map<string, Opening>
+  chronological: Opening[]
+}
+
 type Props = {
   tournamentId: string
   slots: TournamentSlotRow[]
@@ -294,110 +303,156 @@ export function PlanillaBoard({
       />
 
       {days.map((day) => (
-        <ResponsiveList
+        <PlanillaDay
           key={day.date}
-          header={
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3">
-              <h3 className="font-medium text-foreground">{formatDateLong(day.date)}</h3>
-              <p className="text-xs text-muted-foreground tabular-nums">
-                {day.chronological.length}{' '}
-                {day.chronological.length === 1 ? 'lugar' : 'lugares'} ·{' '}
-                {day.dayCourts.length}{' '}
-                {day.dayCourts.length === 1 ? 'cancha' : 'canchas'}
-              </p>
-            </div>
-          }
-          table={
-            <table className="w-full text-sm" style={{ minWidth: `${8 + day.dayCourts.length * 13}rem` }}>
-              <caption className="sr-only">
-                Horas del torneo el {formatDateLong(day.date)}, por cancha
-              </caption>
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th
-                    scope="col"
-                    className="w-24 p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                  >
-                    Hora
-                  </th>
-                  {day.dayCourts.map((court) => (
-                    <th
-                      key={court.id}
-                      scope="col"
-                      className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                    >
-                      {court.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {day.times.map((time) => (
-                  <tr key={time}>
-                    <th
-                      scope="row"
-                      className="p-2.5 pl-4 text-left align-top text-sm font-medium text-muted-foreground tabular-nums"
-                    >
-                      {formatArtTime(new Date(time))}
-                    </th>
-                    {day.dayCourts.map((court) => {
-                      const opening = day.byCell.get(cellKey(court.id, time))
-                      return (
-                        <td key={court.id} className="p-2 align-top">
-                          {opening ? (
-                            <OpeningCell
-                              opening={opening}
-                              chip={chipAt.get(`${day.date}|${cellKey(court.id, time)}`)}
-                              tournamentId={tournamentId}
-                              courtLabel={court.name}
-                              isMoving={movingId !== null}
-                              disabled={pending}
-                              onMove={setMovingId}
-                              onPlace={moveTo}
-                            />
-                          ) : (
-                            <span className="block px-1 py-2 text-xs text-muted-foreground">
-                              El torneo no tiene esta hora
-                            </span>
-                          )}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          }
-          cards={
-            <ul className="divide-y divide-border">
-              {day.chronological.map((opening) => (
-                <li
-                  key={`${opening.slot.courtId}-${opening.startsAt.getTime()}`}
-                  className="space-y-1.5 px-4 py-3"
-                >
-                  <p className="text-xs font-medium text-muted-foreground tabular-nums">
-                    {formatArtTime(opening.startsAt)} ·{' '}
-                    {courtName.get(opening.slot.courtId) ?? 'Cancha'}
-                  </p>
-                  <OpeningCell
-                    opening={opening}
-                    chip={chipAt.get(
-                      `${day.date}|${cellKey(opening.slot.courtId, opening.startsAt.getTime())}`,
-                    )}
-                    tournamentId={tournamentId}
-                    courtLabel={courtName.get(opening.slot.courtId) ?? 'Cancha'}
-                    isMoving={movingId !== null}
-                    disabled={pending}
-                    onMove={setMovingId}
-                    onPlace={moveTo}
-                  />
-                </li>
-              ))}
-            </ul>
-          }
+          day={day}
+          chipAt={chipAt}
+          courtName={courtName}
+          tournamentId={tournamentId}
+          isMoving={movingId !== null}
+          disabled={pending}
+          onMove={setMovingId}
+          onPlace={moveTo}
         />
       ))}
     </div>
+  )
+}
+
+/**
+ * Un día del tablero: matriz hora × cancha en `sm+`, lista cronológica en
+ * mobile. Una matriz de dos dimensiones a 360px es ilegible, así que abajo de
+ * `sm` la cancha pasa de ser una columna a ser una etiqueta de la fila.
+ */
+function PlanillaDay({
+  day,
+  chipAt,
+  courtName,
+  tournamentId,
+  isMoving,
+  disabled,
+  onMove,
+  onPlace,
+}: {
+  day: BoardDay
+  chipAt: Map<string, TournamentMatchView>
+  courtName: Map<string, string>
+  tournamentId: string
+  isMoving: boolean
+  disabled: boolean
+  onMove: (id: string) => void
+  onPlace: (opening: Opening) => void
+}) {
+  const cellFor = (courtId: string, time: number) => ({
+    opening: day.byCell.get(cellKey(courtId, time)),
+    chip: chipAt.get(`${day.date}|${cellKey(courtId, time)}`),
+  })
+
+  return (
+    <ResponsiveList
+      header={
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3">
+          <h3 className="font-medium text-foreground">{formatDateLong(day.date)}</h3>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {day.chronological.length} {day.chronological.length === 1 ? 'lugar' : 'lugares'} ·{' '}
+            {day.dayCourts.length} {day.dayCourts.length === 1 ? 'cancha' : 'canchas'}
+          </p>
+        </div>
+      }
+      table={
+        <table
+          className="w-full text-sm"
+          style={{ minWidth: `${8 + day.dayCourts.length * 13}rem` }}
+        >
+          <caption className="sr-only">
+            Horas del torneo el {formatDateLong(day.date)}, por cancha
+          </caption>
+          <thead>
+            <tr className="border-b border-border text-left">
+              <th
+                scope="col"
+                className="w-24 p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Hora
+              </th>
+              {day.dayCourts.map((court) => (
+                <th
+                  key={court.id}
+                  scope="col"
+                  className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  {court.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {day.times.map((time) => (
+              <tr key={time}>
+                <th
+                  scope="row"
+                  className="p-2.5 pl-4 text-left align-top text-sm font-medium text-muted-foreground tabular-nums"
+                >
+                  {formatArtTime(new Date(time))}
+                </th>
+                {day.dayCourts.map((court) => {
+                  const { opening, chip } = cellFor(court.id, time)
+                  return (
+                    <td key={court.id} className="p-2 align-top">
+                      {opening ? (
+                        <OpeningCell
+                          opening={opening}
+                          chip={chip}
+                          tournamentId={tournamentId}
+                          courtLabel={court.name}
+                          isMoving={isMoving}
+                          disabled={disabled}
+                          onMove={onMove}
+                          onPlace={onPlace}
+                        />
+                      ) : (
+                        <span className="block px-1 py-2 text-xs text-muted-foreground">
+                          El torneo no tiene esta hora
+                        </span>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      }
+      cards={
+        <ul className="divide-y divide-border">
+          {day.chronological.map((opening) => {
+            const label = courtName.get(opening.slot.courtId) ?? 'Cancha'
+            return (
+              <li
+                key={`${opening.slot.courtId}-${opening.startsAt.getTime()}`}
+                className="space-y-1.5 px-4 py-3"
+              >
+                <p className="text-xs font-medium text-muted-foreground tabular-nums">
+                  {formatArtTime(opening.startsAt)} · {label}
+                </p>
+                <OpeningCell
+                  opening={opening}
+                  chip={
+                    cellFor(opening.slot.courtId, opening.startsAt.getTime()).chip
+                  }
+                  tournamentId={tournamentId}
+                  courtLabel={label}
+                  isMoving={isMoving}
+                  disabled={disabled}
+                  onMove={onMove}
+                  onPlace={onPlace}
+                />
+              </li>
+            )
+          })}
+        </ul>
+      }
+    />
   )
 }
 

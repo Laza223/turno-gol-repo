@@ -36,10 +36,14 @@ export default async function TorneoFixturePage(props: {
   let data
   try {
     data = await withTenantContext(tenant.id, async (tx) => {
-      const tournament = await getTournament(tenant.id, id, tx)
+      // `getTournament` no alimenta a las otras cuatro (todas toman `id`
+      // directo), así que va adentro del mismo Promise.all: esperarlo primero
+      // le sumaba un round-trip a la carga de la pantalla. Si el torneo no
+      // existe, su rechazo sigue saliendo por el catch de abajo.
       // `slots` y `courts` son para la Planilla: los destinos legales de un
       // partido son exactamente las horas que el torneo posee.
-      const [stages, matches, slots, courts] = await Promise.all([
+      const [tournament, stages, matches, slots, courts] = await Promise.all([
+        getTournament(tenant.id, id, tx),
         listStages(tenant.id, id, tx),
         listFixture(tenant.id, id, tx),
         listTournamentSlots(tenant.id, id, tx),

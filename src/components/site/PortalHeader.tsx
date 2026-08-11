@@ -63,7 +63,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
               ) : (
                 <Link
                   href="/ingresar"
-                  className="inline-flex h-11 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent active:scale-95 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap"
+                  className="inline-flex h-11 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-[background-color,scale] hover:bg-accent active:scale-95 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap"
                 >
                   Ingresar
                 </Link>
@@ -118,7 +118,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
               </Link>
               <Link
                 href="/ingresar"
-                className="inline-flex h-11 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent active:scale-95 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap"
+                className="inline-flex h-11 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-[background-color,scale] hover:bg-accent active:scale-95 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap"
               >
                 Ingresar
               </Link>

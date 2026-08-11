@@ -61,7 +61,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] motion-reduce:active:scale-100"
+          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-emerald-700 dark:text-emerald-400 transition-[background-color,scale] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] motion-reduce:active:scale-100"
         >
           <Star className="h-4 w-4" aria-hidden />
           Dejar reseña
@@ -121,7 +121,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
             type="button"
             onClick={submit}
             disabled={pending}
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 motion-reduce:active:scale-100"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 motion-reduce:active:scale-100"
           >
             {pending ? 'Enviando…' : 'Publicar reseña'}
           </button>

@@ -180,7 +180,7 @@ export function InscripcionesPanel({
                       <button
                         type="submit"
                         disabled={pending}
-                        className="inline-flex h-[38px] w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 sm:w-auto"
+                        className="inline-flex h-[38px] w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 sm:w-auto"
                       >
                         Registrar cobro
                       </button>

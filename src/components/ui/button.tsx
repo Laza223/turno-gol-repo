@@ -3,8 +3,14 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 
+// Propiedades nombradas en vez de `transition-all`: el anillo de foco tiene que
+// aparecer al instante. En Tailwind v4 el `ring-*` se dibuja con `box-shadow`, así
+// que la única forma de no animarlo es dejar `box-shadow` fuera de la lista —
+// a costa de que el `hover:shadow-*` de las variantes aparezca de golpe.
+// `scale` y `translate` van explícitos: en v4 son propiedades independientes de
+// `transform`, y sin nombrarlas el `active:scale-[0.97]` no anima.
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] motion-reduce:active:scale-100',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-[color,background-color,border-color,opacity,translate,scale] duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] motion-reduce:active:scale-100',
   {
     variants: {
       variant: {

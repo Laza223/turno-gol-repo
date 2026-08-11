@@ -133,7 +133,7 @@ export default function TenantCard({
                 key={s.time}
                 href={`/${tenant.slug}/reservar?court=${s.courtId}&date=${slotPills.date}&time=${s.time}&dur=${s.durationMins}`}
                 aria-label={`Reservar a las ${s.time}`}
-                className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold tabular-nums text-primary-foreground shadow-xs transition-[background-color,transform] hover:bg-primary/90 active:scale-95 motion-reduce:active:scale-100"
+                className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold tabular-nums text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-95 motion-reduce:active:scale-100"
               >
                 {s.time}
               </Link>

@@ -5,6 +5,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { players, bookings } from '@/shared/db/schema'
 import { buildMetadata } from '@/lib/seo/metadata'
+import { artTodayStr } from '@/shared/dates/art'
 import { EliminarCuentaView } from './EliminarCuentaView'
 import { requestDeleteAccountAction } from './actions'
 
@@ -23,7 +24,7 @@ export default async function EliminarCuentaPage() {
     redirect(`/ingresar?next=${encodeURIComponent('/eliminar-cuenta')}`)
 
   const [playerRows, futureBookingRows] = await withPlayerContext(user.playerId, async (tx) => {
-    const todayDate = new Date(new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10) + 'T00:00:00Z')
+    const todayDate = new Date(`${artTodayStr()}T00:00:00Z`)
     return Promise.all([
       tx.select().from(players).where(eq(players.id, user.playerId)).limit(1),
       tx

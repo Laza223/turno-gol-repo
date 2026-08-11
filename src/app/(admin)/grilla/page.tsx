@@ -27,6 +27,7 @@ import {
 } from '@/app/(admin)/caja/cantina/actions'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { artTodayStr } from '@/shared/dates/art'
 import type {
   BookingStatus,
   BookingType,
@@ -46,7 +47,7 @@ export default async function GrillaPage(
   const tenant = await getStaffTenant(user.staffUserId)
   if (!tenant) redirect('/onboarding')
 
-  const todayArt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const todayArt = artTodayStr()
   const dateStr = safeDateParam(searchParams.date, todayArt)
 
   const { courts, rawBookings, chargesByBooking } = await withTenantContext(tenant.id, async (tx) => {

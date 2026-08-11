@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useClientValue } from './use-client-value'
 
 export type NearestCityState =
   | { status: 'locating' }
@@ -17,6 +18,15 @@ type NearestResult = { city: string; province: string; distanceKm: number | null
 const DEFAULT_MAX_DISTANCE_KM = 50
 
 /**
+ * ¿El browser tiene Geolocation API? Se lee con `useClientValue` y no con un
+ * setState adentro del efecto: "este browser no soporta geolocalización" no es
+ * un estado que evolucione, es un dato del entorno. `true` como valor de
+ * servidor deja el primer render en 'locating', igual que antes.
+ */
+const readGeolocationSupported = (): boolean =>
+  typeof navigator === 'undefined' ? true : Boolean(navigator.geolocation)
+
+/**
  * Detecta la ciudad del usuario con la Geolocation API nativa + el endpoint
  * público de búsqueda existente (sort=distance, limit=1): la ciudad sugerida es
  * la del complejo visible más cercano. Sin geocoding externo — solo datos propios.
@@ -24,13 +34,11 @@ const DEFAULT_MAX_DISTANCE_KM = 50
  */
 export function useNearestCity(opts?: { maxDistanceKm?: number }): NearestCityState {
   const maxDistanceKm = opts?.maxDistanceKm ?? DEFAULT_MAX_DISTANCE_KM
+  const supported = useClientValue(readGeolocationSupported, true)
   const [state, setState] = useState<NearestCityState>({ status: 'locating' })
 
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setState({ status: 'unsupported' })
-      return
-    }
+    if (!supported) return
 
     let cancelled = false
     const set = (next: NearestCityState) => {
@@ -80,7 +88,9 @@ export function useNearestCity(opts?: { maxDistanceKm?: number }): NearestCitySt
     return () => {
       cancelled = true
     }
-  }, [maxDistanceKm])
+  }, [maxDistanceKm, supported])
 
-  return state
+  return supported ? state : UNSUPPORTED
 }
+
+const UNSUPPORTED: NearestCityState = { status: 'unsupported' }

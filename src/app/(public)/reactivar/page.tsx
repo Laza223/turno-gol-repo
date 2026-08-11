@@ -118,6 +118,11 @@ export default async function ReactivarPage() {
 
   const copy = STATUS_COPY[tenant.status] ?? DEFAULT_COPY
   const deadline = sub?.scheduledDeletionAt ?? null
+  // Server Component: el cuerpo corre UNA vez por request, en el servidor. La
+  // regla del React Compiler apunta a renders de CLIENTE, que se pueden
+  // re-ejecutar en cualquier momento — ahí sí una lectura del reloj da
+  // resultados distintos entre renders del mismo componente. Acá no.
+  // eslint-disable-next-line react-hooks/purity
   const deadlinePassed = deadline ? new Date(deadline).getTime() <= Date.now() : false
   const canReactivate = REACTIVATE_ELIGIBLE.has(tenant.status) && !deadlinePassed
 

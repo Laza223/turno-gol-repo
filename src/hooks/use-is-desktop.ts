@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useSyncExternalStore } from 'react'
+import { useMediaQuery } from './use-client-value'
 
 /** `lg` de Tailwind — el mismo punto donde aparece el rail del sidebar. */
 const DESKTOP_QUERY = '(min-width: 1024px)'
@@ -24,17 +24,5 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
  * hoy y porque en tests sin `matchMedia` es el comportamiento previo.
  */
 export function useIsDesktop(): boolean {
-  const subscribe = useCallback((onChange: () => void) => {
-    if (typeof window === 'undefined' || !window.matchMedia) return () => {}
-    const mql = window.matchMedia(DESKTOP_QUERY)
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [])
-
-  const getSnapshot = useCallback(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return true
-    return window.matchMedia(DESKTOP_QUERY).matches
-  }, [])
-
-  return useSyncExternalStore(subscribe, getSnapshot, () => true)
+  return useMediaQuery(DESKTOP_QUERY, true)
 }

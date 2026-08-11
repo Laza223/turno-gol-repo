@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Monitor, Moon, Sun } from 'lucide-react'
+import { useHydrated } from '@/hooks/use-client-value'
 
 const OPTIONS = [
   { value: 'system', label: 'Sistema', Icon: Monitor },
@@ -12,13 +12,12 @@ const OPTIONS = [
 
 /**
  * Segmented control de tema (Sistema/Claro/Oscuro). Guardia `mounted` porque
- * el tema resuelto solo se conoce client-side: hasta montar, render neutro
+ * el tema resuelto solo se conoce client-side: hasta hidratar, render neutro
  * para no romper la hidratación (next-themes).
  */
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useHydrated()
 
   const current = mounted ? theme : undefined
 

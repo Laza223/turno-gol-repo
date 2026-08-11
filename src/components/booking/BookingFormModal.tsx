@@ -201,14 +201,25 @@ export function BookingFormModal({
     }
   }
 
-  useEffect(() => {
+  // Al cambiar de slot, los campos vuelven a los valores de ESE turno. Ajuste
+  // durante el render (patrón de React para adaptar estado a un cambio de prop)
+  // en vez de un efecto: con el efecto, abrir otro turno mostraba por un frame
+  // la duración y la hora del anterior.
+  const slotKey = `${slot.courtId}|${slot.date}|${slot.timeStart}|${slot.durationMins}`
+  const [lastSlotKey, setLastSlotKey] = useState(slotKey)
+  if (slotKey !== lastSlotKey) {
+    setLastSlotKey(slotKey)
     setDuration(slot.durationMins)
     setTimeStart(slot.timeStart)
-  }, [slot.courtId, slot.date, slot.timeStart, slot.durationMins])
+  }
 
   useEffect(() => {
     if (!open || !checkAvailabilityAction) return
     let cancelled = false
+    // Arranque de una operación asincrónica: limpia el error anterior antes de
+    // volver a chequear disponibilidad. No encadena renders (el efecto no
+    // depende de `error`).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null)
     checkAvailabilityAction({
       courtId: slot.courtId,

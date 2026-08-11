@@ -95,6 +95,12 @@ export function PushNotificationManager() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      // Detección de capacidades del browser: corre una vez al montar y no
+      // encadena renders (el efecto tiene deps vacías y no lee `status`). No es
+      // candidato a useClientValue porque `status` es una máquina de estados
+      // que después escriben el alta/baja de suscripción y el listener del SW —
+      // derivarlo dejaría dos fuentes de verdad para el mismo valor.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('unsupported')
       return
     }

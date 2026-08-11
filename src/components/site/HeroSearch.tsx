@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
+import { useClientSnapshot } from '@/hooks/use-client-value'
 import { useNearestCity } from '@/hooks/use-nearest-city'
 import type { CityCount } from '@/modules/tenants/search.service'
 import {
@@ -44,7 +45,7 @@ function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
  */
 export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const router = useRouter()
-  const today = useMemo(todayLocal, [])
+  const today = useClientSnapshot(todayLocal, todayLocal)
   const [q, setQ] = useState('')
   const [city, setCity] = useState('')
   const [cityTouched, setCityTouched] = useState(false)
@@ -61,6 +62,11 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
     // Foco pre-hidratación: si el usuario ya está parado en el campo (el focus
     // ocurrió antes de que React montara, onFocusCapture no se enteró), no pisarlo.
     if (typeof document !== 'undefined' && document.activeElement?.id === 'hero-city') {
+      // Este efecto NO adapta estado a un cambio de prop (ahí iría el ajuste
+      // durante el render): reacciona a un EVENTO asincrónico —la geolocalización
+      // resolvió— y decide consultando el DOM real (`document.activeElement`),
+      // que en render no existe. Dispara una vez y no encadena renders.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCityTouched(true)
       return
     }

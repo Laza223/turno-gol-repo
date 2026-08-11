@@ -86,23 +86,34 @@ export default tseslint.config(
   },
 
   {
-    // Reglas NUEVAS que trae eslint-config-next@16 vía react-hooks v6 (el linter
-    // del React Compiler). No existían bajo eslint-config-next@14, así que el
-    // código nunca se escribió contra ellas: 27 hallazgos de entrada.
+    // Reglas que trae eslint-config-next@16 vía react-hooks v6 (el linter del
+    // React Compiler). Entraron en `warn` con 38 hallazgos porque el código
+    // nunca se había escrito contra ellas; B7 las llevó a 0 y acá quedan en
+    // `error` como trinquete.
     //
-    // Quedan en `warn`, no `error`, A PROPÓSITO. La mayoría de los
-    // `set-state-in-effect` son el patrón SSR-safe de siempre (leer localStorage
-    // / window en un useEffect y setState para no romper la hidratación).
-    // Reescribirlos a useSyncExternalStore o lazy-init es un refactor real que
-    // toca hidratación — no es algo que corresponda meter adentro de un upgrade
-    // de ESLint. Se paga aparte, con su propio gate.
+    // Las tres herramientas que resolvieron el 90%, por si aparece un caso nuevo:
+    //  · `@/hooks/use-client-value` — valores que solo existen en el browser
+    //    (localStorage, matchMedia, `mounted`) sin el `useState` + `useEffect`
+    //    que pinta un frame con el fallback.
+    //  · `@/hooks/use-now` — el reloj como store externo. `Date.now()` en el
+    //    render de un componente cliente es impuro DE VERDAD: decide UI y queda
+    //    congelado en el último render.
+    //  · Ajuste durante el render contra el valor anterior, para adaptar estado
+    //    a una prop que cambió (el patrón que documenta React), en vez de
+    //    `useEffect(() => setX(prop), [prop])`.
     //
-    // Estado: 19 set-state-in-effect, 6 purity, 2 use-memo.
-    name: 'turnogol/react-compiler-rules-pendientes',
+    // Los ~8 `eslint-disable` que quedan en el repo son todos deliberados y
+    // llevan el motivo escrito al lado. Caen en tres familias: Server
+    // Components (el cuerpo corre una vez por request, la regla apunta a
+    // renders de cliente), arranque de una operación asincrónica
+    // (`setLoading(true)` antes de un fetch, que no encadena renders), y
+    // efectos que deciden consultando el DOM real (`document.activeElement`,
+    // `querySelector`), imposible durante el render.
+    name: 'turnogol/react-compiler-rules',
     rules: {
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/use-memo': 'warn',
+      'react-hooks/set-state-in-effect': 'error',
+      'react-hooks/purity': 'error',
+      'react-hooks/use-memo': 'error',
     },
   },
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -32,6 +32,19 @@ const MONTH_NAMES = [
 
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
+/**
+ * Primer día del mes de un `YYYY-MM-DD`, o del mes en curso si no hay valor.
+ * Fuera del componente: adentro sería una lectura del reloj en scope de render.
+ */
+function monthStartOf(value: string | undefined): Date {
+  if (value) {
+    const [y, m] = value.split('-').map(Number)
+    return new Date(y, m - 1, 1)
+  }
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+}
+
 export default function DatePicker({
   id,
   value,
@@ -43,22 +56,21 @@ export default function DatePicker({
 }: Props) {
   const [open, setOpen] = useState(false)
 
-  // Determinar en qué mes/año arrancar la visualización del calendario
-  const [viewDate, setViewDate] = useState(() => {
-    if (value) {
-      const [y, m] = value.split('-').map(Number)
-      return new Date(y, m - 1, 1)
-    }
-    return new Date()
-  })
-
-  // Sincronizar mes visible con el value seleccionado si cambia externamente
-  useEffect(() => {
-    if (value) {
-      const [y, m] = value.split('-').map(Number)
-      setViewDate(new Date(y, m - 1, 1))
-    }
-  }, [value])
+  // Mes/año visible del calendario. Es estado propio porque el usuario navega
+  // con las flechas, pero tiene que seguir al `value` cuando cambia desde
+  // afuera (chips de fecha, back/forward del browser).
+  //
+  // El ajuste va DURANTE el render comparando contra el value anterior, no en
+  // un efecto: es el patrón que documenta React para "adaptar estado cuando
+  // cambia una prop". Con el efecto, React pintaba el mes viejo, corría el
+  // efecto y volvía a pintar — un frame con el mes equivocado en cada cambio
+  // externo, además del setState encadenado que marca el linter.
+  const [viewDate, setViewDate] = useState(() => monthStartOf(value))
+  const [lastValue, setLastValue] = useState(value)
+  if (value !== lastValue) {
+    setLastValue(value)
+    if (value) setViewDate(monthStartOf(value))
+  }
 
   // Cierre por click-afuera y Esc: los maneja Radix Popover (portaled, ya no
   // se clipea contra el overflow de contenedores ancestros).

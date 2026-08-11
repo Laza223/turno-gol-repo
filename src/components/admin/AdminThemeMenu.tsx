@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import { useHydrated } from '@/hooks/use-client-value'
 
 /**
  * Switch de tema para el header admin. Botón compacto (icono = tema activo)
@@ -19,8 +19,7 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
  */
 export function AdminThemeMenu() {
   const { theme, resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useHydrated()
 
   const Icon = !mounted
     ? Sun

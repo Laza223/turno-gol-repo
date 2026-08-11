@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect, useId } from 'react'
+import React, { useState, useRef, useId } from 'react'
 import { ChevronDown, Search, Check } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
@@ -128,14 +128,18 @@ export function PhoneInput({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const numberInputRef = useRef<HTMLInputElement>(null)
 
-  // Update when controlled value changes
-  useEffect(() => {
-    if (controlledValue !== undefined) {
-      const parsed = parsePhoneNumber(controlledValue)
-      setCountry(parsed.country)
-      setNationalNumber(parsed.nationalNumber)
-    }
-  }, [controlledValue])
+  // Sincroniza el estado interno cuando el `value` controlado cambia desde
+  // afuera. Va DURANTE el render comparando contra el valor anterior (el patrón
+  // que documenta React para adaptar estado a un cambio de prop) y no en un
+  // efecto: con el efecto, un value nuevo pintaba primero el teléfono viejo y
+  // se corregía en un segundo render.
+  const [lastControlledValue, setLastControlledValue] = useState(controlledValue)
+  if (controlledValue !== undefined && controlledValue !== lastControlledValue) {
+    const parsed = parsePhoneNumber(controlledValue)
+    setLastControlledValue(controlledValue)
+    setCountry(parsed.country)
+    setNationalNumber(parsed.nationalNumber)
+  }
 
   // El panel es un Radix Popover portaled: cierre por click-afuera y Esc los
   // maneja Radix (el listener manual de mousedown cerraría el panel al

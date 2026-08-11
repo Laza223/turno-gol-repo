@@ -315,10 +315,17 @@ export default function MetricsDashboard({
         setSystem(null)
       }
     }
+    // Sello de "cuándo se cargaron estos números", que la UI muestra como
+    // "actualizado hace X": el instante del fetch, no el del render.
     setNowMs(Date.now())
   }, [canSeeSystem])
 
   useEffect(() => {
+    // `load` es asincrónica y escribe estado recién después de sus `await`
+    // (métricas, estado del sistema, sello de hora). El linter no puede
+    // distinguir eso de un setState sincrónico, así que ve la llamada como si
+    // encadenara un render. No lo hace: el efecto solo depende de `load`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
     const id = setInterval(() => void load(), REFRESH_INTERVAL_MS)
     return () => clearInterval(id)

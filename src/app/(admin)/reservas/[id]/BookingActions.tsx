@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
+import { useNowMs } from '@/hooks/use-now'
 import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
@@ -119,6 +120,11 @@ export default function BookingActions({
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
   const [cancelType, setCancelType] = useState<CancellationType | null>(null)
   const [reason, setReason] = useState('')
+  // Reloj reactivo (ver use-now.ts). Las tres lecturas de abajo deciden UI:
+  // si todavía se puede deshacer la ausencia, si la cancelación entra en
+  // política, y si el turno ya terminó. Con `Date.now()` en el render, una
+  // pestaña abierta cruzaba cualquiera de esos límites sin enterarse.
+  const nowMs = useNowMs()
 
   async function onConfirmRevertNoShow(): Promise<{ success: boolean; error?: string }> {
     const res = await revertNoShowAction(bookingId)
@@ -137,7 +143,7 @@ export default function BookingActions({
     const withinWindow =
       markedAtMs !== null &&
       Number.isFinite(markedAtMs) &&
-      Date.now() - markedAtMs < CORRECTION_WINDOW_MS
+      nowMs - markedAtMs < CORRECTION_WINDOW_MS
     if (!withinWindow) return null
 
     const depositWarning =
@@ -173,7 +179,7 @@ export default function BookingActions({
   const hasPaidDeposit = depositStatus === 'paid' && depositAmount > 0
   const bookingStartUtcMs = startsAt ? new Date(startsAt).getTime() : bookingStartMs(bookingDate, timeStart)
   const bookingEndUtcMs = endsAt ? new Date(endsAt).getTime() : bookingStartUtcMs + SLOT_DURATION_MINUTES * 60_000
-  const inPolicy = Date.now() < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
+  const inPolicy = nowMs < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
 
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
@@ -212,7 +218,7 @@ export default function BookingActions({
       ? `Corresponde devolver la seña de ${formatArs(depositAmount)} (dentro del plazo de cancelación).`
       : `La seña de ${formatArs(depositAmount)} quedó fuera de la ventana de devolución (política de ${cancellationPolicyHours}h).`
   } else {
-    const turnoEnded = Date.now() >= bookingEndUtcMs
+    const turnoEnded = nowMs >= bookingEndUtcMs
     const willRefund = turnoEnded ? false : cancelType === 'complejo' ? true : inPolicy
     if (willRefund) {
       refundPreview =

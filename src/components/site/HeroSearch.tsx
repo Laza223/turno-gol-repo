@@ -269,7 +269,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.2fr_1.05fr_1.05fr_auto] lg:items-end">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.3fr_1.1fr_1fr_1.15fr_auto] lg:items-end lg:gap-5">
         {/* Complejo */}
         <div className="sm:col-span-2 lg:col-span-1">
           <label htmlFor="hero-q" className={labelClass}>
@@ -350,12 +350,12 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
                 <button
                   type="button"
                   id="hero-time"
-                  className={`${fieldClass} flex items-center justify-between text-left pr-10`}
+                  className={`${fieldClass} flex items-center justify-between gap-1 text-left pr-9`}
                 >
-                  <span className={!time ? 'text-muted-foreground' : 'text-foreground'}>
+                  <span className={`truncate ${!time ? 'text-muted-foreground' : 'text-foreground'}`}>
                     {time || 'Cualquier horario'}
                   </span>
-                  <ChevronDown className="pointer-events-none absolute right-4 h-5 w-5 text-muted-foreground" aria-hidden />
+                  <ChevronDown className="pointer-events-none absolute right-3 h-4.5 w-4.5 text-muted-foreground" aria-hidden />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">

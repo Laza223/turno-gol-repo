@@ -694,6 +694,14 @@ html {
   background: #020617;
 }
 
+/* Scrim del hero desktop (foto full-bleed, dark-only): oscurece arriba/abajo
+   para que el headline y la search card centrados mantengan AA sobre la
+   foto sin depender de un mask que la diluya como en el hero mobile. */
+.dark .hero-desktop-scrim {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.75) 0%, rgba(2, 6, 23, 0.35) 38%, rgba(2, 6, 23, 0.55) 78%, rgba(2, 6, 23, 0.88) 100%);
+}
+
 /* Nav flotante del hero (pill). Light = blanco elevado; dark = glass oscuro. */
 .overlay-nav {
   background: rgba(255, 255, 255, 0.88);

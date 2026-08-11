@@ -2386,3 +2386,41 @@ mención a "Notas".
 B13 (la fusión de las dos listas de personas, con el abonado de `player_id NULL`
 que hoy `/jugadores` nunca muestra) es la segunda mitad de Fase 4 y queda para el
 próximo bloque. El orden lo fijan los docs: B12 destraba B13, no al revés.
+
+### Postmortem del DROP: la ventana que zafó por tener 0 filas
+
+El `DROP COLUMN abonados.notes` viajó en la **misma** migración que sacó el
+código que la usaba. Eso es lo que `db-migrate.yml` prohíbe por escrito
+("renombrar o dropear algo que el código viejo todavía usa NO es seguro y va en
+dos releases") y la razón por la que la regla existe: ya pasó tres veces —
+048–051 dejó la caja rota ~10 h, 059/061, y 060–066.
+
+**Por qué es una ventana real.** `db-migrate.yml` corre en el push a `main`,
+pero Vercel deploya por integración Git y no desde ese workflow. Nada los
+ordena, y el Environment `Production` no tiene protection rules (verificado con
+`gh api repos/…/environments`), así que la migración —checkout + CLI + push, ~1
+min— le gana al build de Next, que tarda varios. En esos minutos el código VIEJO
+sigue sirviendo tráfico contra el schema NUEVO.
+
+**Qué habría roto, que no es lo obvio.** Un `SELECT *` sobrevive a una columna
+que desaparece; el query builder de Drizzle no. `getAbonados` zafaba (usa SQL
+crudo con `SELECT *`), pero `createAbonado` nombra `notes` en el
+`.insert().values()`, y `pause`/`reactivate`/`cancelAbonado` la traen en el
+**`.returning()` sin argumentos**, que Drizzle expande a todas las columnas del
+schema viejo. O sea: crear o pausar un turno fijo habría tirado error.
+
+**Qué pasó de verdad.** La ventana se detectó después de abrir el PR. El split
+en dos releases (074 aditiva + 075 con el DROP) se preparó, pero el merge llegó
+unos minutos antes que el push. Salió **sin daño por suerte, no por diseño**:
+`abonados` tenía 0 filas en producción, así que las funciones que rompían no
+tenían quién las llamara.
+
+Verificado después del merge, no asumido: `db-migrate` en verde
+(`11a701d7`), `abonados.notes` ya no existe en prod, `tags` y el ENUM
+`player_tag` sí, `/api/status` y `/` en 200, y **cero errores nuevos en Sentry**
+(el más reciente es de dos días antes del deploy).
+
+**Lo que queda como regla, no como anécdota:** el split se decide ANTES de abrir
+el PR, no después. Una vez que el PR está listo y anunciado, el merge puede
+llegar en cualquier momento — y llegó. Y el detector barato antes de dropear
+cualquier columna es buscar `.returning()` pelado, no leer los `SELECT`.

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
 import { LinkContactDialog } from './LinkContactDialog'
 
@@ -41,9 +41,12 @@ export const ConSugerencia: Story = {
     await expect(within(dialog).getByText('Vincular a Diego del lunes')).toBeVisible()
     await expect(within(dialog).getByRole('radio', { name: /Diego Rossi/ })).toBeChecked()
     // Las frases con <strong> adentro quedan partidas en varios nodos:
-    // getByText no las encuentra, textContent sí.
-    await expect(dialog.textContent).toContain('Se vinculará con Diego Rossi.')
-    await expect(dialog.textContent).toContain('Coincide el teléfono con Diego Rossi')
+    // getByText no las encuentra, textContent sí. Con `waitFor` por el mismo
+    // motivo que en `SinSugerencia`: el diálogo entra con animación.
+    await waitFor(async () => {
+      await expect(dialog.textContent).toContain('Se vinculará con Diego Rossi.')
+      await expect(dialog.textContent).toContain('Coincide el teléfono con Diego Rossi')
+    })
   },
 }
 
@@ -64,12 +67,19 @@ export const SinSugerencia: Story = {
 
     const dialog = within(document.body).getByRole('dialog')
     const inDialog = within(dialog)
-    await expect(dialog.textContent).toContain('3 turnos fijos')
+    await waitFor(() => expect(dialog.textContent).toContain('3 turnos fijos'))
     await expect(inDialog.queryByRole('radio')).not.toBeInTheDocument()
     await expect(dialog.textContent).not.toContain('Coincide el teléfono')
 
     await userEvent.click(inDialog.getByRole('button', { name: 'Vincular' }))
-    await expect(inDialog.getByText('Elegí una cuenta para vincular.')).toBeVisible()
+    // `waitFor` sobre el contenedor y no `getByText(...).toBeVisible()`: el
+    // error de ConfirmDialog llega desde un `startTransition` async, y en un
+    // runner lento React vuelve a renderizar entre la query y la aserción — el
+    // nodo que capturó `getByText` queda desmontado y vacío. Releer el
+    // `textContent` del diálogo en cada reintento no tiene ese problema.
+    await waitFor(() =>
+      expect(dialog.textContent).toContain('Elegí una cuenta para vincular.'),
+    )
     await expect(args.linkAction).not.toHaveBeenCalled()
   },
 }

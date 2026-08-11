@@ -59,7 +59,7 @@ export default function WeeklyAvailability({ slug, week }: { slug: string; week:
                       <Link
                         key={s.time}
                         href={`/${slug}/reservar?court=${court.id}&date=${day.date}&time=${s.time}&dur=${s.duration}`}
-                        className="flex min-h-11 flex-col items-center justify-center rounded-lg bg-green-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-emerald-300 ring-1 ring-inset ring-green-600/20 dark:ring-emerald-400/20 hover:bg-green-100 dark:hover:bg-emerald-500/15 active:scale-[0.98] transition-colors"
+                        className="flex min-h-11 flex-col items-center justify-center rounded-lg bg-green-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-emerald-300 ring-1 ring-inset ring-green-600/20 dark:ring-emerald-400/20 hover:bg-green-100 dark:hover:bg-emerald-500/15 active:scale-[0.98] transition-[background-color,scale]"
                       >
                         <span className="tabular-nums">{s.time}</span>
                         {/* text-green-600 sobre bg-green-50 mide 3.14:1 — bajo AA. text-green-700 (igual que el resto del link) da 4.79:1. */}

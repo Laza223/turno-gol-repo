@@ -72,7 +72,7 @@ export function CancelBookingButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-150 h-11 px-3 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-[0.98]"
+        className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-[color,background-color,scale] h-11 px-3 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-[0.98]"
       >
         Cancelar
       </button>

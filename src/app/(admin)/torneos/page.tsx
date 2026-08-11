@@ -49,7 +49,7 @@ export default async function TorneosPage() {
           role === 'admin' ? (
             <Link
               href="/torneos/nuevo"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               Nuevo torneo
@@ -66,7 +66,7 @@ export default async function TorneosPage() {
           action={
             <Link
               href="/torneos/nuevo"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               Crear el primero

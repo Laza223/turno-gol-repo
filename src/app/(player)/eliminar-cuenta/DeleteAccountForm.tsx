@@ -30,7 +30,7 @@ export function DeleteAccountForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white shadow-md shadow-red-600/25 transition-colors hover:bg-red-700 active:scale-[0.98]"
+        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white shadow-md shadow-red-600/25 transition-[background-color,scale] hover:bg-red-700 active:scale-[0.98]"
       >
         Eliminar mi cuenta
       </button>

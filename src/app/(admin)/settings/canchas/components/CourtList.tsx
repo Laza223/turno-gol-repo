@@ -139,7 +139,7 @@ export function CourtList({
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-colors duration-150 hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
           >
             + Nueva cancha
           </button>

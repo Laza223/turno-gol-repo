@@ -223,7 +223,7 @@ export function ChangePlanSection({
                     disabled={phase === 'loading'}
                     // Propiedades nombradas en vez de `transition-all`: el anillo
                     // de foco tiene que aparecer al instante, no animarse.
-                    className="group inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-card text-xs font-bold text-foreground transition-[background-color,transform] duration-300 hover:bg-accent active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                    className="group inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-card text-xs font-bold text-foreground transition-[background-color,scale] duration-300 hover:bg-accent active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                   >
                     {busy
                       ? 'Procesando…'

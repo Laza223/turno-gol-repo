@@ -55,7 +55,7 @@ export default async function AbonadosPage(
         actions={
           <Link
             href="/abonados/nuevo"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
           >
             <UserPlus className="h-4 w-4" aria-hidden="true" />
             Nuevo turno fijo

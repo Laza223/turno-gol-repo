@@ -93,7 +93,7 @@ export function CorteZonasCard({
               type="button"
               onClick={() => setConfirmOpen(true)}
               disabled={!ready || pending}
-              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[color,background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 md:min-h-10"
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 md:min-h-10"
             >
               <Shuffle className="h-4 w-4" aria-hidden="true" />
               Cerrar zonas y sortear

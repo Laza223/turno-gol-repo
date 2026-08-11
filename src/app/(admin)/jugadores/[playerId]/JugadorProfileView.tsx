@@ -3,9 +3,15 @@ import { ChevronLeft } from 'lucide-react'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import type { ManualBanDuration } from '@/modules/bans/ban.schema'
-import type { PlayerProfile, PlayerStats, PlayerBookingRow } from '../queries'
+import type {
+  PlayerProfile,
+  PlayerStats,
+  PlayerBookingRow,
+  PlayerFixedSlotRow,
+} from '../queries'
 import { BanPlayerControls } from './BanPlayerControls'
 import { PlayerTagsCard, type SetPlayerTagsFn } from './PlayerTagsCard'
+import { PlayerFixedSlotsCard, type UnlinkContactFn } from './PlayerFixedSlotsCard'
 
 const STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -52,6 +58,7 @@ type Props = {
   stats: PlayerStats
   history: PlayerBookingRow[]
   ban: BanCheckResult
+  fixedSlots: PlayerFixedSlotRow[]
   banPlayerAction: (
     playerId: string,
     reason: string,
@@ -59,6 +66,7 @@ type Props = {
   ) => Promise<ActionResult>
   liftPlayerBanAction: (playerId: string) => Promise<ActionResult>
   setPlayerTagsAction: SetPlayerTagsFn
+  unlinkContactAction: UnlinkContactFn
 }
 
 /**
@@ -72,9 +80,11 @@ export function JugadorProfileView({
   stats,
   history,
   ban,
+  fixedSlots,
   banPlayerAction,
   liftPlayerBanAction,
   setPlayerTagsAction,
+  unlinkContactAction,
 }: Props) {
   const statCards: Array<[string, string]> = [
     ['Reservas totales', String(stats.total)],
@@ -89,7 +99,7 @@ export function JugadorProfileView({
         href="/jugadores"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ChevronLeft className="h-4 w-4" aria-hidden /> Jugadores
+        <ChevronLeft className="h-4 w-4" aria-hidden /> Personas
       </Link>
 
       <div className="card-premium rounded-xl p-6">
@@ -145,6 +155,13 @@ export function JugadorProfileView({
         playerId={profile.playerId}
         tags={profile.tags}
         setPlayerTagsAction={setPlayerTagsAction}
+      />
+
+      <PlayerFixedSlotsCard
+        playerId={profile.playerId}
+        playerName={profile.name}
+        slots={fixedSlots}
+        unlinkContactAction={unlinkContactAction}
       />
 
       <section className="card-premium rounded-xl p-6">

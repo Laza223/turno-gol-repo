@@ -1,30 +1,53 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
-import type { PlayerListRow } from './queries'
-import { JugadoresView } from './JugadoresView'
+import type { ClientListRow } from './queries'
+import { JugadoresView, type JugadoresViewProps } from './JugadoresView'
 
 /**
- * `PlayerListRow` viene de `./queries.ts` (route-local, sin *.types.ts propio,
+ * `ClientListRow` viene de `./queries.ts` (route-local, sin *.types.ts propio,
  * como `ReservaDetail` en reservas/[id]/BookingDetailCard.stories.tsx) —
  * `import type` se borra al compilar, no arrastra drizzle al bundle.
  */
-const jugador = (overrides: Partial<PlayerListRow> = {}): PlayerListRow => ({
+const jugador = (overrides: Partial<ClientListRow> = {}): ClientListRow => ({
+  key: uid(221),
+  kind: 'player',
   playerId: uid(221),
   name: 'Tomás Ibáñez',
   email: 'tomas.ibanez@example.com',
   phone: '+54 9 11 3344-5566',
   bookingsCount: 12,
   noshowCount: 0,
-  status: 'active',
-  lastBookingAt: '2026-03-10T19:00:00.000Z',
+  lastBookingAt: '2026-03-10',
   tags: [],
+  fixedCount: 0,
+  suggestedPlayerId: null,
+  suggestedPlayerName: null,
   ...overrides,
 })
 
-const JUGADORES: PlayerListRow[] = [
+/** Persona sin cuenta: existe solo como titular de un turno fijo (B13). */
+const contacto = (overrides: Partial<ClientListRow> = {}): ClientListRow => ({
+  ...jugador(),
+  key: '1122334455',
+  kind: 'contact',
+  playerId: null,
+  name: 'Diego Sosa',
+  email: null,
+  phone: '11 2233-4455',
+  bookingsCount: 8,
+  noshowCount: 0,
+  tags: [],
+  fixedCount: 1,
+  suggestedPlayerId: null,
+  suggestedPlayerName: null,
+  ...overrides,
+})
+
+const CLIENTES: ClientListRow[] = [
   jugador(),
   jugador({
+    key: uid(222),
     playerId: uid(222),
     name: 'Julián Álvarez',
     email: 'julian.alvarez@example.com',
@@ -33,25 +56,39 @@ const JUGADORES: PlayerListRow[] = [
     noshowCount: 2,
   }),
   jugador({
+    key: uid(223),
     playerId: uid(223),
     name: 'Juan Ignacio Rodríguez Etchegoyen',
     email: 'juan.ignacio.rodriguez.etchegoyen@example.com',
     phone: '+54 9 11 5566-7788',
     bookingsCount: 40,
     noshowCount: 1,
+    fixedCount: 2,
   }),
 ]
 
+const noop: JugadoresViewProps['linkAction'] = async () => ({ success: true })
+const noopSearch: JugadoresViewProps['searchAction'] = async () => ({
+  success: true,
+  candidates: [],
+})
+
 /**
- * Vista Jugadores (listado, admin+manager). `content-area-gradient` reproduce
- * el fondo real del `<main>` del shell admin (admin-layout-shell.tsx), donde
- * vive esta vista sin ningún wrapper propio — mismo patrón que StaffRosterView.
+ * Vista Personas (lista única de clientes, admin+manager).
+ * `content-area-gradient` reproduce el fondo real del `<main>` del shell admin
+ * (admin-layout-shell.tsx), donde vive esta vista sin ningún wrapper propio —
+ * mismo patrón que StaffRosterView.
  */
 const meta = {
   title: 'Admin/Jugadores/JugadoresView',
   component: JugadoresView,
   parameters: { layout: 'fullscreen' },
-  args: { players: JUGADORES, q: undefined },
+  args: {
+    clients: CLIENTES,
+    q: undefined,
+    searchAction: noopSearch,
+    linkAction: noop,
+  },
   decorators: [
     (Story) => (
       <div className="content-area-gradient min-h-screen w-full px-4 py-8 sm:px-6 lg:px-8">
@@ -77,14 +114,45 @@ export const ConJugadores: Story = {
   },
 }
 
-/** Complejo recién onboardeado: sin jugadores vinculados todavía (ningún guest). */
+/**
+ * El caso que justifica B13: el "Diego del fijo de los lunes" no tiene cuenta y
+ * antes no aparecía en ninguna lista de personas. Ahora aparece, marcado, y con
+ * la acción de vincularlo.
+ */
+export const ConPersonasSinCuenta: Story = {
+  args: {
+    clients: [
+      jugador(),
+      contacto(),
+      contacto({
+        key: '1155667788',
+        name: 'Marcos Peralta',
+        phone: '+54 9 11 5566-7788',
+        fixedCount: 2,
+        bookingsCount: 16,
+        suggestedPlayerId: uid(223),
+        suggestedPlayerName: 'Juan Ignacio Rodríguez Etchegoyen',
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const table = within(within(canvasElement).getByRole('table'))
+    await expect(table.getByText('Diego Sosa')).toBeVisible()
+    await expect(table.getAllByText('Sin cuenta')).toHaveLength(2)
+    // La sugerencia por teléfono se muestra, pero NUNCA vincula sola.
+    await expect(
+      table.getByText('Mismo teléfono que Juan Ignacio Rodríguez Etchegoyen'),
+    ).toBeVisible()
+    await expect(table.getAllByRole('button', { name: 'Vincular' })).toHaveLength(2)
+  },
+}
+
+/** Complejo recién onboardeado: sin clientes todavía. */
 export const Vacio: Story = {
-  args: { players: [] },
+  args: { clients: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByText('Todavía no tenés jugadores vinculados'),
-    ).toBeInTheDocument()
+    await expect(canvas.getByText('Todavía no tenés clientes')).toBeInTheDocument()
     await expect(
       canvas.getByRole('link', { name: 'Compartí tu link desde el panel' }),
     ).toHaveAttribute('href', '/dashboard')
@@ -93,20 +161,21 @@ export const Vacio: Story = {
 
 /** `q` con resultados vacíos: el copy de empty state cambia respecto del listado sin filtro. */
 export const BusquedaSinResultados: Story = {
-  args: { players: [], q: 'nombre-inexistente' },
+  args: { clients: [], q: 'nombre-inexistente' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByText('No se encontraron jugadores que coincidan con la búsqueda.'),
+      canvas.getByText('No se encontraron personas que coincidan con la búsqueda.'),
     ).toBeInTheDocument()
   },
 }
 
-/** 50 registros: la tabla no se rompe con volumen (LIMIT 200 real en listTenantPlayers). */
+/** 50 registros: la tabla no se rompe con volumen (LIMIT 200 real en listTenantClients). */
 export const MuchosRegistros: Story = {
   args: {
-    players: Array.from({ length: 50 }, (_, i) =>
+    clients: Array.from({ length: 50 }, (_, i) =>
       jugador({
+        key: uid(240 + i),
         playerId: uid(240 + i),
         name: `Jugador ${String(i + 1).padStart(2, '0')}`,
         email: `jugador${i + 1}@example.com`,
@@ -126,8 +195,9 @@ export const MuchosRegistros: Story = {
 /** Nombre real largo (compuesto + doble apellido): no debe romper el layout de la fila. */
 export const NombresLargos: Story = {
   args: {
-    players: [
+    clients: [
       jugador({
+        key: uid(225),
         playerId: uid(225),
         name: 'María Fernanda Etcheverry Balcarce Domínguez',
         email: 'maria.fernanda.etcheverry.balcarce.dominguez@example.com',

@@ -1,23 +1,51 @@
 import { sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { normalizePlayerTags, type PlayerTag } from '@/modules/relationships/player-tags'
+import {
+  significantPhoneSql,
+  suggestionPhoneSql,
+} from '@/modules/relationships/contact-identity'
 
-export type PlayerListRow = {
-  playerId: string
+/**
+ * Una persona vista por este complejo (B13). Dos orígenes, una sola lista:
+ *
+ * - `player`  — tiene cuenta: sale de `player_tenant_relationships ⋈ players`.
+ * - `contact` — no tiene cuenta: se deriva de los `abonados` con `player_id`
+ *               NULL, agrupados por teléfono. Es el "Diego del fijo de los
+ *               lunes", que ocupa una cancha todas las semanas y hasta B13 no
+ *               figuraba en ninguna lista de personas.
+ */
+export type ClientListRow = {
+  /** Clave estable de la fila: el playerId si tiene cuenta, si no la del grupo. */
+  key: string
+  kind: 'player' | 'contact'
+  /** NULL en las filas `contact`: todavía no hay cuenta a la cual apuntar. */
+  playerId: string | null
   name: string
-  email: string
+  email: string | null
   phone: string | null
   bookingsCount: number
   noshowCount: number
-  status: string
   lastBookingAt: string | null
   tags: PlayerTag[]
+  /** Turnos fijos vigentes (activos + pausados) de esta persona. */
+  fixedCount: number
+  /**
+   * Solo en filas `contact`: jugador con cuenta de este complejo cuyo teléfono
+   * coincide. Es una SUGERENCIA para el staff, nunca una vinculación: el
+   * sistema propone, la persona decide (decisión de fase v2 §1).
+   */
+  suggestedPlayerId: string | null
+  suggestedPlayerName: string | null
 }
 
-function searchCond(q: string | undefined): SQL {
+function likeArg(q: string): string {
+  return `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`
+}
+
+function playerSearchCond(q: string | undefined): SQL {
   if (!q) return sql``
-  const escaped = q.replace(/[\\%_]/g, (m) => `\\${m}`)
-  const like = `%${escaped}%`
+  const like = likeArg(q)
   return sql`AND (
     (p.first_name || ' ' || p.last_name) ILIKE ${like}
     OR p.email ILIKE ${like}
@@ -25,35 +53,185 @@ function searchCond(q: string | undefined): SQL {
   )`
 }
 
+function contactSearchCond(q: string | undefined): SQL {
+  if (!q) return sql``
+  const like = likeArg(q)
+  return sql`AND (a.contact_name ILIKE ${like} OR a.contact_phone ILIKE ${like})`
+}
+
+/** Clave de agrupación (últimos 10 dígitos): estricta, agrupa sin confirmación. */
+const ABONADO_PHONE = sql.raw(significantPhoneSql('a.contact_phone'))
+/** Cola de sugerencia (últimos 8): más laxa, pero siempre la confirma un humano. */
+const ABONADO_HINT = sql.raw(suggestionPhoneSql('a.contact_phone'))
+const PLAYER_HINT = sql.raw(suggestionPhoneSql('sp.phone'))
+
 /**
- * Jugadores vinculados a ESTE complejo (player_tenant_relationships). Por
- * decisión de producto (#10 cancelada) el módulo muestra solo perfiles reales,
- * nunca invitados telefónicos (guest_name de bookings).
+ * La lista única de personas del complejo (B13). Reemplaza a
+ * `listTenantPlayers`, que solo veía la mitad registrada.
+ *
+ * Lo que sigue afuera, por decisión de producto y no por olvido: los invitados
+ * telefónicos de una reserva suelta (`bookings.guest_name`, cambio #10
+ * cancelado) y los deudores de cantina (`canteen_tabs.debtor_name`). Un turno
+ * fijo es un vínculo estable con el complejo; un invitado de una noche no.
+ *
+ * El `LIMIT 200` es el que ya tenía la query de jugadores. Sigue truncando en
+ * silencio y sigue fichado en B10 (paginación) — no se arregla acá para no
+ * mezclar dos bloques, pero ahora trunca sobre un conjunto más grande.
  */
-export async function listTenantPlayers(
+export async function listTenantClients(
   tenantId: string,
   filters: { q?: string },
   tx: DbTx,
-): Promise<PlayerListRow[]> {
-  const rows = await tx.execute(sql`
-    SELECT p.id AS "playerId",
+): Promise<ClientListRow[]> {
+  const rows = await tx.execute<{
+    key: string
+    kind: 'player' | 'contact'
+    playerId: string | null
+    name: string
+    email: string | null
+    phone: string | null
+    bookingsCount: number
+    noshowCount: number
+    lastBookingAt: string | null
+    tags: PlayerTag[] | null
+    fixedCount: number
+    suggestedPlayerId: string | null
+    suggestedPlayerName: string | null
+  }>(sql`
+    WITH registered AS (
+      SELECT p.id::text AS key,
+             'player'::text AS kind,
+             p.id::text AS "playerId",
+             (p.first_name || ' ' || p.last_name) AS name,
+             p.email, p.phone,
+             r.bookings_count::int AS "bookingsCount",
+             r.noshow_count::int AS "noshowCount",
+             r.last_booking_at::date::text AS "lastBookingAt",
+             r.tags,
+             (SELECT COUNT(*)::int FROM abonados fa
+               WHERE fa.tenant_id = r.tenant_id
+                 AND fa.player_id = r.player_id
+                 AND fa.status <> 'canceled') AS "fixedCount",
+             NULL::text AS "suggestedPlayerId",
+             NULL::text AS "suggestedPlayerName"
+      FROM player_tenant_relationships r
+      JOIN players p ON p.id = r.player_id
+      WHERE r.tenant_id = ${tenantId}
+        ${playerSearchCond(filters.q)}
+    ),
+    -- Los fijos sin cuenta. La clave de grupo es el teléfono normalizado; si no
+    -- llega al mínimo de dígitos cae al id de la fila, para no fusionar en una
+    -- sola persona a todos los que tienen el teléfono mal cargado.
+    unlinked AS (
+      SELECT a.id, a.contact_name, a.contact_phone, a.status, a.created_at,
+             ${ABONADO_HINT} AS hint_phone,
+             COALESCE(${ABONADO_PHONE}, 'id:' || a.id::text) AS group_key
+      FROM abonados a
+      WHERE a.tenant_id = ${tenantId}
+        AND a.player_id IS NULL
+        ${contactSearchCond(filters.q)}
+    ),
+    grouped AS (
+      SELECT u.group_key,
+             MAX(u.hint_phone) AS hint_phone,
+             (ARRAY_AGG(u.contact_name ORDER BY u.created_at DESC))[1] AS name,
+             (ARRAY_AGG(u.contact_phone ORDER BY u.created_at DESC))[1] AS phone,
+             COUNT(*) FILTER (WHERE u.status <> 'canceled')::int AS fixed_count
+      FROM unlinked u
+      GROUP BY u.group_key
+    ),
+    -- Las reservas que generaron esos fijos: son turnos jugados por la persona
+    -- aunque no tenga cuenta, así que cuentan igual que las de un registrado.
+    group_bookings AS (
+      SELECT u.group_key,
+             COUNT(b.id)::int AS bookings_count,
+             MAX(b.date)::text AS last_booking_at
+      FROM unlinked u
+      LEFT JOIN bookings b ON b.abonado_id = u.id
+      GROUP BY u.group_key
+    ),
+    contacts AS (
+      SELECT g.group_key AS key,
+             'contact'::text AS kind,
+             NULL::text AS "playerId",
+             g.name, NULL::text AS email, g.phone,
+             COALESCE(gb.bookings_count, 0) AS "bookingsCount",
+             0 AS "noshowCount",
+             gb.last_booking_at AS "lastBookingAt",
+             NULL::player_tag[] AS tags,
+             g.fixed_count AS "fixedCount",
+             s.id::text AS "suggestedPlayerId",
+             s.name AS "suggestedPlayerName"
+      FROM grouped g
+      LEFT JOIN group_bookings gb ON gb.group_key = g.group_key
+      -- Sugerencia: un jugador YA vinculado a este complejo cuyo teléfono
+      -- termina igual. Match por la cola CORTA (8 dígitos), que es la que
+      -- tolera el 0...15 con que medio país escribe su celular — puede
+      -- hacerlo porque no vincula nada sola, solo preselecciona.
+      -- LATERAL + LIMIT 1 porque dos cuentas pueden compartir teléfono
+      -- (familia, mismo celular) y una sugerencia ambigua es peor que
+      -- ninguna: se ofrece la más reciente y el staff confirma.
+      LEFT JOIN LATERAL (
+        SELECT sp.id, (sp.first_name || ' ' || sp.last_name) AS name
+        FROM player_tenant_relationships sr
+        JOIN players sp ON sp.id = sr.player_id
+        WHERE sr.tenant_id = ${tenantId}
+          AND g.hint_phone IS NOT NULL
+          AND ${PLAYER_HINT} = g.hint_phone
+        ORDER BY sr.last_booking_at DESC NULLS LAST
+        LIMIT 1
+      ) s ON TRUE
+    )
+    SELECT * FROM registered
+    UNION ALL
+    SELECT * FROM contacts
+    ORDER BY "lastBookingAt" DESC NULLS LAST, name ASC
+    LIMIT 200
+  `)
+
+  return [...rows].map((r) => ({ ...r, tags: normalizePlayerTags(r.tags ?? []) }))
+}
+
+export type LinkCandidate = {
+  playerId: string
+  name: string
+  phone: string | null
+}
+
+/**
+ * Candidatos para vincular con una persona sin cuenta (B13).
+ *
+ * Solo jugadores YA vinculados a este complejo: buscar sobre `players` (que es
+ * global, cross-tenant) dejaría a cualquier encargado tantear nombres del
+ * sistema entero desde un buscador. `player_tenant_relationships` es el límite
+ * correcto y es el mismo que ya aplica la lista.
+ *
+ * Se busca on-demand en vez de mandar los candidatos con la lista: la página
+ * puede tener 200 personas y no tiene sentido serializar sus nombres en cada
+ * fila de contacto por si alguien abre el diálogo.
+ */
+export async function searchLinkCandidates(
+  tenantId: string,
+  q: string,
+  tx: DbTx,
+): Promise<LinkCandidate[]> {
+  const like = likeArg(q)
+  const rows = await tx.execute<LinkCandidate>(sql`
+    SELECT p.id::text AS "playerId",
            (p.first_name || ' ' || p.last_name) AS name,
-           p.email, p.phone,
-           r.bookings_count AS "bookingsCount",
-           r.noshow_count AS "noshowCount", r.status,
-           r.last_booking_at::text AS "lastBookingAt",
-           r.tags
+           p.phone
     FROM player_tenant_relationships r
     JOIN players p ON p.id = r.player_id
     WHERE r.tenant_id = ${tenantId}
-      ${searchCond(filters.q)}
+      AND (
+        (p.first_name || ' ' || p.last_name) ILIKE ${like}
+        OR p.phone ILIKE ${like}
+        OR p.email ILIKE ${like}
+      )
     ORDER BY r.last_booking_at DESC NULLS LAST, name ASC
-    LIMIT 200
+    LIMIT 8
   `)
-  return (rows as unknown as PlayerListRow[]).map((r) => ({
-    ...r,
-    tags: normalizePlayerTags(r.tags ?? []),
-  }))
+  return [...rows]
 }
 
 export type PlayerProfile = {
@@ -90,6 +268,42 @@ export async function getPlayerProfile(
   // Normalizar acá y no en la vista: el orden canónico es el de presentación, y
   // una fila vieja podría traer las etiquetas en cualquier orden.
   return { ...row, tags: normalizePlayerTags(row.tags ?? []) }
+}
+
+export type PlayerFixedSlotRow = {
+  id: string
+  courtName: string
+  dayOfWeek: number
+  timeStart: string
+  timeEnd: string
+  status: string
+  contactName: string
+}
+
+/**
+ * Turnos fijos a nombre de este jugador en este complejo (B13). La ficha los
+ * muestra para que "desvincular" no sea un botón a ciegas: antes de despegar a
+ * la persona de sus fijos, el staff ve exactamente cuáles son.
+ */
+export async function getPlayerFixedSlots(
+  tenantId: string,
+  playerId: string,
+  tx: DbTx,
+): Promise<PlayerFixedSlotRow[]> {
+  const rows = await tx.execute<PlayerFixedSlotRow>(sql`
+    SELECT a.id::text AS id,
+           c.name AS "courtName",
+           a.day_of_week AS "dayOfWeek",
+           a.time_start::text AS "timeStart",
+           a.time_end::text AS "timeEnd",
+           a.status,
+           a.contact_name AS "contactName"
+    FROM abonados a
+    JOIN courts c ON c.id = a.court_id
+    WHERE a.tenant_id = ${tenantId} AND a.player_id = ${playerId}
+    ORDER BY a.day_of_week, a.time_start
+  `)
+  return [...rows]
 }
 
 export type PlayerStats = {

@@ -19,7 +19,11 @@ listados sin paginación.
 `player_tenant_relationships`, ficha + chips en la lista, y `abonados.notes` **eliminada** — decisión
 del dueño, verificada contra producción antes del DROP (0 filas). Destraba B13.
 
-Quedan **B8 · B10 (resto) · B11 · B13 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
+**B13 cerrado** (2026-08-11): `/jugadores` pasa a ser la lista ÚNICA de personas — los titulares de
+turnos fijos sin cuenta se derivan de `abonados` (sin tabla nueva) y se vinculan a mano, con inverso.
+Sin migración.
+
+Quedan **B8 · B10 (resto) · B11 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
 lo de abajo es la reconstrucción, medida contra el código de hoy.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
@@ -214,7 +218,13 @@ a una persona con nombre y teléfono. **Es exactamente lo que D3 prohíbe** y ho
 
 ---
 
-## B13 — Merge de Clientes
+## B13 — Merge de Clientes ✅ CERRADO (2026-08-11)
+
+> Implementado derivando la persona sin cuenta de `abonados` en vez de darle tabla propia, con
+> agrupación por los últimos 10 dígitos del teléfono (estricta, porque fusiona sin confirmación) y
+> sugerencia por los últimos 8 (laxa, porque la confirma un humano). `linkContactToPlayer` /
+> `unlinkContactFromPlayer` + guard de pertenencia al tenant, con control negativo corrido.
+> Detalle y evidencia en `docs/audit/PROGRESS.md`.
 
 Sí: unificar `/jugadores` + `/abonados` en **una** lista de personas. Lo dice el propio código —
 `src/app/(admin)/jugadores/ClientesTabs.tsx:13-16`:

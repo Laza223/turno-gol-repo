@@ -6,8 +6,14 @@ import {
   getPlayerProfile,
   getPlayerStats,
   getPlayerBookingHistory,
+  getPlayerFixedSlots,
 } from '../queries'
-import { banPlayerAction, liftPlayerBanAction, setPlayerTagsAction } from '../actions'
+import {
+  banPlayerAction,
+  liftPlayerBanAction,
+  setPlayerTagsAction,
+  unlinkContactAction,
+} from '../actions'
 import { JugadorProfileView } from './JugadorProfileView'
 
 type Props = { params: Promise<{ playerId: string }> }
@@ -21,12 +27,13 @@ export default async function JugadorProfilePage(props: Props) {
   const data = await withTenantContext(tenant.id, async (tx) => {
     const profile = await getPlayerProfile(tenant.id, params.playerId, tx)
     if (!profile) return null
-    const [stats, history, ban] = await Promise.all([
+    const [stats, history, ban, fixedSlots] = await Promise.all([
       getPlayerStats(tenant.id, params.playerId, tx),
       getPlayerBookingHistory(tenant.id, params.playerId, tx),
       checkPlayerBanned(params.playerId, tenant.id, tx),
+      getPlayerFixedSlots(tenant.id, params.playerId, tx),
     ])
-    return { profile, stats, history, ban }
+    return { profile, stats, history, ban, fixedSlots }
   })
 
   if (!data) notFound()
@@ -37,6 +44,7 @@ export default async function JugadorProfilePage(props: Props) {
       banPlayerAction={banPlayerAction}
       liftPlayerBanAction={liftPlayerBanAction}
       setPlayerTagsAction={setPlayerTagsAction}
+      unlinkContactAction={unlinkContactAction}
     />
   )
 }

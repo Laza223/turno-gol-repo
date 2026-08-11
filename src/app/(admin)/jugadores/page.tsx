@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
-import { listTenantPlayers } from './queries'
+import { listTenantClients } from './queries'
 import { JugadoresView } from './JugadoresView'
+import { linkContactAction, searchLinkCandidatesAction } from './actions'
 
 export default async function JugadoresPage(
   props: {
@@ -16,9 +17,16 @@ export default async function JugadoresPage(
   const { tenant } = auth
 
   const q = searchParams.q?.trim() || undefined
-  const players = await withTenantContext(tenant.id, (tx) =>
-    listTenantPlayers(tenant.id, { q }, tx),
+  const clients = await withTenantContext(tenant.id, (tx) =>
+    listTenantClients(tenant.id, { q }, tx),
   )
 
-  return <JugadoresView players={players} q={q} />
+  return (
+    <JugadoresView
+      clients={clients}
+      q={q}
+      searchAction={searchLinkCandidatesAction}
+      linkAction={linkContactAction}
+    />
+  )
 }

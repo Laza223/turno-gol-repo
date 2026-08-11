@@ -1,8 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { tournamentDraft } from '@/test/fixtures'
 import { BorrarTorneo } from './BorrarTorneo'
 import type { TournamentActionResult } from '../actions'
+
+/**
+ * El contenido de un diálogo recién abierto se afirma dentro de `waitFor`.
+ * `findByRole('dialog')` resuelve apenas monta, pero Radix todavía está en el
+ * primer frame de su animación de entrada (opacity 0), así que un `toBeVisible`
+ * inmediato es una carrera: pasa en una máquina rápida y pierde en los 2 cores
+ * del runner de CI.
+ */
+async function expectVisible(el: () => HTMLElement) {
+  await waitFor(() => expect(el()).toBeVisible())
+}
 
 const meta = {
   title: 'Admin/Torneos/BorrarTorneo',
@@ -27,9 +38,9 @@ export const Disponible: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /borrar este torneo/i }))
 
     const dialog = await within(document.body).findByRole('dialog')
-    await expect(
+    await expectVisible(() =>
       within(dialog).getByText('Se borran los 3 equipos anotados y sus planteles.'),
-    ).toBeVisible()
+    )
 
     // Clase C: hasta que no se escribe el nombre, confirmar está bloqueado.
     const confirmar = within(dialog).getByRole('button', { name: 'Borrar torneo' })
@@ -61,8 +72,9 @@ export const SinEquipos: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /borrar este torneo/i }))
     const dialog = await within(document.body).findByRole('dialog')
+    await expectVisible(() => within(dialog).getByText('No se puede deshacer.'))
+    // Sin equipos anotados no se inventa una consecuencia sobre planteles.
     await expect(within(dialog).queryByText(/planteles/)).toBeNull()
-    await expect(within(dialog).getByText('No se puede deshacer.')).toBeVisible()
   },
 }
 

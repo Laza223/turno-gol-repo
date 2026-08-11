@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import {
   tournament,
   tournamentLleno,
@@ -125,10 +125,15 @@ export const MarcarQueSeBajo: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /^Los Pibes/ }))
     await userEvent.click(await canvas.findByRole('radio', { name: /Se bajó/ }))
 
+    // Dentro de waitFor: Radix está en el primer frame de su animación de
+    // entrada cuando findByRole ya resolvió, y un toBeVisible inmediato pierde
+    // la carrera en los 2 cores del runner de CI.
     const dialog = await within(document.body).findByRole('dialog')
-    await expect(
-      within(dialog).getByText('Deja de ocupar un lugar del cupo del torneo.'),
-    ).toBeVisible()
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText('Deja de ocupar un lugar del cupo del torneo.'),
+      ).toBeVisible(),
+    )
     await expect(
       within(dialog).getByText('Los partidos que ya jugó quedan como están, con sus resultados.'),
     ).toBeVisible()

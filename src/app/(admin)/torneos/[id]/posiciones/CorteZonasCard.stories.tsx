@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { tournament } from '@/test/fixtures'
 import { CorteZonasCard } from './CorteZonasCard'
 import type { CrossPreview } from './corte-lib'
@@ -111,8 +111,10 @@ export const EmpateEnElCorte: Story = {
     ).toBeDisabled()
 
     await userEvent.click(canvas.getByRole('button', { name: /definir el sorteo/i }))
+    // waitFor: el diálogo de Radix todavía está animando cuando findByRole
+    // resuelve, y en CI (2 cores) los inputs no están listos para leerse.
     const dialog = await within(document.body).findByRole('dialog')
-    await expect(within(dialog).getByLabelText('Los Pibes')).toHaveValue(1)
+    await waitFor(() => expect(within(dialog).getByLabelText('Los Pibes')).toHaveValue(1))
     await expect(within(dialog).getByLabelText('Atlético Fondo')).toHaveValue(2)
   },
 }
@@ -133,7 +135,7 @@ export const SorteoConNumerosRepetidos: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /definir el sorteo/i }))
 
     const dialog = await within(document.body).findByRole('dialog')
-    const segundo = within(dialog).getByLabelText('Atlético Fondo')
+    const segundo = await within(dialog).findByLabelText('Atlético Fondo')
     await userEvent.clear(segundo)
     await userEvent.type(segundo, '1')
 

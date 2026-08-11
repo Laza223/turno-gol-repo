@@ -10,6 +10,13 @@ const SUGGESTED_ID = uid(271)
  * `play`: si se quedaran en el botón cerrado, el estado que importa —el que
  * muestra datos de una persona y dispara una escritura— nunca entraría al
  * árbol y axe no lo mediría nunca.
+ *
+ * Nada de `toBeVisible()` acá adentro, y no es cosmético: el DialogContent de
+ * Radix entra con `animate-in fade-in-0`, o sea `opacity: 0` durante la
+ * animación, y `toBeVisible` mira la opacidad. En un runner lento el assert
+ * cae en el medio del fade y falla contra una UI que está perfectamente bien.
+ * Se asserta PRESENCIA + TEXTO (`findBy*` + `toHaveTextContent`), que es el
+ * patrón que ya usa `BanPlayerControls.stories.tsx` sobre este mismo diálogo.
  */
 const meta = {
   title: 'Admin/Jugadores/LinkContactDialog',
@@ -37,16 +44,17 @@ export const ConSugerencia: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Vincular' }))
 
     // El diálogo va a un portal fuera del canvas.
-    const dialog = within(document.body).getByRole('dialog')
-    await expect(within(dialog).getByText('Vincular a Diego del lunes')).toBeVisible()
-    await expect(within(dialog).getByRole('radio', { name: /Diego Rossi/ })).toBeChecked()
-    // Las frases con <strong> adentro quedan partidas en varios nodos:
-    // getByText no las encuentra, textContent sí. Con `waitFor` por el mismo
-    // motivo que en `SinSugerencia`: el diálogo entra con animación.
-    await waitFor(async () => {
-      await expect(dialog.textContent).toContain('Se vinculará con Diego Rossi.')
-      await expect(dialog.textContent).toContain('Coincide el teléfono con Diego Rossi')
-    })
+    const body = within(document.body)
+    const dialog = await body.findByRole('dialog')
+
+    await expect(dialog).toHaveTextContent('Vincular a Diego del lunes')
+    await expect(
+      await within(dialog).findByRole('radio', { name: /Diego Rossi/ }),
+    ).toBeChecked()
+    // Estas dos frases llevan un <strong> adentro: quedan partidas en varios
+    // nodos y `getByText` con string exacto no las encuentra nunca.
+    await expect(dialog).toHaveTextContent('Coincide el teléfono con Diego Rossi')
+    await expect(dialog).toHaveTextContent('Se vinculará con Diego Rossi.')
   },
 }
 
@@ -65,20 +73,23 @@ export const SinSugerencia: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Vincular' }))
 
-    const dialog = within(document.body).getByRole('dialog')
+    const body = within(document.body)
+    const dialog = await body.findByRole('dialog')
     const inDialog = within(dialog)
-    await waitFor(() => expect(dialog.textContent).toContain('3 turnos fijos'))
+
+    await expect(dialog).toHaveTextContent('3 turnos fijos')
+    await expect(dialog).not.toHaveTextContent('Coincide el teléfono')
     await expect(inDialog.queryByRole('radio')).not.toBeInTheDocument()
-    await expect(dialog.textContent).not.toContain('Coincide el teléfono')
 
     await userEvent.click(inDialog.getByRole('button', { name: 'Vincular' }))
-    // `waitFor` sobre el contenedor y no `getByText(...).toBeVisible()`: el
-    // error de ConfirmDialog llega desde un `startTransition` async, y en un
-    // runner lento React vuelve a renderizar entre la query y la aserción — el
-    // nodo que capturó `getByText` queda desmontado y vacío. Releer el
-    // `textContent` del diálogo en cada reintento no tiene ese problema.
-    await waitFor(() =>
-      expect(dialog.textContent).toContain('Elegí una cuenta para vincular.'),
+
+    // El error llega desde el `startTransition` async de ConfirmDialog: hay que
+    // esperarlo, y hay que releer el nodo en cada intento — el que devuelve una
+    // query previa puede quedar desmontado por el re-render de la transición.
+    await waitFor(async () =>
+      expect(await inDialog.findByRole('alert')).toHaveTextContent(
+        'Elegí una cuenta para vincular.',
+      ),
     )
     await expect(args.linkAction).not.toHaveBeenCalled()
   },

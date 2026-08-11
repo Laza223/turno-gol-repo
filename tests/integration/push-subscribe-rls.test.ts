@@ -2,7 +2,7 @@
  * Integration test: push subscribe / unsubscribe scoping.
  *
  * Requires a running Supabase instance (`supabase start`) with DATABASE_URL set.
- * If the DB is not available, the test is skipped gracefully.
+ * Falla si la DB no está disponible: sin base no hay señal que dar.
  *
  * Key invariant: the DELETE WHERE clause includes tenant_id + staff_user_id,
  * so Admin B cannot delete Admin A's subscription row.
@@ -17,31 +17,22 @@ import {
   ensureRoles,
 } from '../helpers/tenant'
 
-let dbAvailable = false
-
 beforeAll(async () => {
-  try {
-    const sql = getSql()
-    await sql`SELECT 1`
-    dbAvailable = true
-    await ensureRoles(sql)
-    await cleanupAll(sql)
-    // Also clean push_subscriptions (not in cleanupAll TRUNCATE list).
-    await sql`DELETE FROM push_subscriptions`
-  } catch {
-    dbAvailable = false
-  }
+  const sql = getSql()
+  await sql`SELECT 1`
+  await ensureRoles(sql)
+  await cleanupAll(sql)
+  // Also clean push_subscriptions (not in cleanupAll TRUNCATE list).
+  await sql`DELETE FROM push_subscriptions`
 }, 30_000)
 
 afterAll(async () => {
-  if (dbAvailable) {
-    try {
-      const sql = getSql()
-      await sql`DELETE FROM push_subscriptions`
-      await closeSql()
-    } catch {
-      // best-effort cleanup
-    }
+  try {
+    const sql = getSql()
+    await sql`DELETE FROM push_subscriptions`
+    await closeSql()
+  } catch {
+    // best-effort cleanup
   }
 })
 
@@ -50,11 +41,6 @@ const ENDPOINT_A2 = 'https://push.example.com/sub/admin-a-endpoint-2'
 
 describe('push subscribe / unsubscribe RLS (F9 T4)', () => {
   it('Case 1: Admin A subscribe → DB row exists with correct tenant_id + staff_user_id', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running')
-      return
-    }
-
     const sql = getSql()
     const tenantA = await createTestTenant(sql)
     const staffA = await createTestStaffUser(sql)
@@ -79,11 +65,6 @@ describe('push subscribe / unsubscribe RLS (F9 T4)', () => {
   })
 
   it('Case 2: Admin A subscribe with same endpoint → UPSERT replaces (1 row total, updated last_used_at)', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running')
-      return
-    }
-
     const sql = getSql()
 
     // First, ensure ENDPOINT_A has a row (from Case 1 or fresh insert).
@@ -128,11 +109,6 @@ describe('push subscribe / unsubscribe RLS (F9 T4)', () => {
   })
 
   it('Case 3: Admin B DELETE on Admin A endpoint → returns 0 deleted (cross-tenant isolation)', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running')
-      return
-    }
-
     const sql = getSql()
 
     // Create Admin B.
@@ -158,11 +134,6 @@ describe('push subscribe / unsubscribe RLS (F9 T4)', () => {
   })
 
   it('Case 4: Admin A DELETE own endpoint → row gone', async () => {
-    if (!dbAvailable) {
-      console.warn('Skipping: Supabase not running')
-      return
-    }
-
     const sql = getSql()
 
     // Get Admin A's subscription to retrieve tenant_id + staff_user_id.

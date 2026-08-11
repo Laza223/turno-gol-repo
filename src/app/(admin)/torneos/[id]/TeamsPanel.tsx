@@ -174,7 +174,7 @@ export function TeamsPanel({
           <button
             type="submit"
             disabled={pending || name.trim() === '' || isFull}
-            className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 sm:w-auto md:h-[38px]"
+            className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[color,background-color,transform] hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100 sm:w-auto md:h-[38px]"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Anotar

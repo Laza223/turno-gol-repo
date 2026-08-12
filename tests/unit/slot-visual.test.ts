@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   GRID_LEGEND_ITEMS,
@@ -210,6 +212,16 @@ describe('bookingBadgeVisual — el listado', () => {
   it('un status desconocido nunca se lee como Jugada', () => {
     expect(bookingBadgeVisual(facts({ status: 'lo_que_sea' })).label).toBe('Estado desconocido')
   })
+
+  // Era el ÚNICO label del mapa sin un assert acá, y fue justo el que B15
+  // renombró (decisión v2 D1: "Esperando seña" se leía como una espera
+  // indefinida; el hold es una ventana de 6 min que se libera sola). El listado
+  // NO agrega el contador — ese vive solo en la celda de la grilla.
+  it('el turno con hold dice "Pagando ahora" en las dos superficies', () => {
+    const f = facts({ status: 'pending_payment' })
+    expect(gridSlotVisual(f).label).toBe('Pagando ahora')
+    expect(bookingBadgeVisual(f).label).toBe('Pagando ahora')
+  })
 })
 
 describe('leyenda derivada', () => {
@@ -232,6 +244,67 @@ describe('leyenda derivada', () => {
     expect(keys).not.toContain('canceled')
     expect(keys).not.toContain('expired')
     expect(keys).not.toContain('unknown')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Candado: los labels que los e2e afirman con texto literal
+// ---------------------------------------------------------------------------
+
+/**
+ * Por qué existe este bloque.
+ *
+ * Los specs de Playwright no importan de `@/`: afirman el texto del badge como
+ * string pelado (`getByText('Pagando ahora')`). Cuando B15 renombró el label de
+ * `pending_payment`, nada en el job bloqueante se enteró — el spec siguió
+ * buscando "Esperando seña" y el job de e2e quedó rojo cinco merges seguidos,
+ * tapado por los otros workflows que sí estaban verdes.
+ *
+ * Este test cierra el lazo desde el lado barato: si el label vigente de un
+ * estado que los e2e afirman no aparece literal en ningún spec, es que el mapa
+ * se movió y los specs quedaron atrás. Rompe en `pnpm test`, o sea antes de que
+ * nadie levante un browser.
+ *
+ * NO cubre los estados sin cobertura e2e (torneo, bloqueo, alarma, señada,
+ * expirada, desconocido): exigirles presencia inventaría un requisito que nunca
+ * existió.
+ */
+const LABELS_AFIRMADOS_EN_E2E: ReadonlyArray<[string, SlotFacts]> = [
+  ['pending_payment', facts({ status: 'pending_payment' })],
+  ['confirmed', facts({ depositStatus: 'not_required' })],
+  ['completed', facts({ status: 'completed', pending: 0, totalPaid: 100 })],
+  ['no_show', facts({ status: 'no_show', totalPaid: 100 })],
+  ['canceled', facts({ status: 'canceled_no_refund' })],
+]
+
+const E2E_DIR = join(process.cwd(), 'tests', 'e2e')
+
+function specFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) specFiles(full, out)
+    else if (entry.endsWith('.spec.ts')) out.push(full)
+  }
+  return out
+}
+
+describe('candado — el texto que los e2e buscan sigue siendo el que el código pinta', () => {
+  const corpus = specFiles(E2E_DIR).map((f) => readFileSync(f, 'utf8'))
+
+  it('hay specs que leer (si no, todo lo de abajo pasa por vacuidad)', () => {
+    expect(corpus.length).toBeGreaterThan(20)
+  })
+
+  it.each(LABELS_AFIRMADOS_EN_E2E)('el label de %s aparece en algún spec', (_key, sample) => {
+    const label = bookingBadgeVisual(sample).label
+    // Substring pelado y no `'label'`: hay specs que lo afirman por regex
+    // (`filter({ hasText: /Cancelada/i })`, porque el toast también matchea).
+    const found = corpus.some((source) => source.includes(label))
+    expect(found, `ningún spec e2e busca "${label}" — ¿lo renombraste sin tocarlos?`).toBe(true)
+  })
+
+  it('control negativo: un label que nadie pinta no se encuentra', () => {
+    expect(corpus.some((source) => source.includes('Esperando seña'))).toBe(false)
   })
 })
 

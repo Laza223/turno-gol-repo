@@ -10,6 +10,7 @@ import {
 } from '../helpers/tenant'
 import {
   createAbonado,
+  getAbonados,
   pauseAbonado,
   reactivateAbonado,
   cancelAbonado,
@@ -385,5 +386,77 @@ describe('abonado service', () => {
     )
 
     expect(await countPtrRows(player.id, tenant.id)).toBe(1)
+  })
+
+  /**
+   * B10 — `getAbonados` hacía `SELECT *` y después casteaba a una forma exacta
+   * de fila. El cast prometía columnas que la query no garantizaba: un renombre
+   * o un DROP se convertían en un campo `undefined` con tipo no-nullable
+   * llegando a la UI, en vez de un error de Postgres en el deploy.
+   * (`abonados.notes` se dropeó en la 074 y este `SELECT *` no se enteró.)
+   *
+   * Sigue SIN `LIMIT`, a propósito: el total de la pantalla sale de `.length`
+   * sobre estas mismas filas, así que el número nunca puede contradecir la
+   * lista — no es la clase "la UI miente" que se cerró en /reservas.
+   */
+  it('getAbonados trae todas las columnas que promete el tipo, y filtra por estado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const { abonado } = await withTenantContext(tenant.id, (tx) =>
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Grupo Columnas',
+          contactPhone: '1199887766',
+          dayOfWeek: ABO_DOW,
+          timeStart: '21:00',
+          timeEnd: '22:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+          paymentMethod: 'cash',
+        },
+        tx,
+      ),
+    )
+
+    const todos = await withTenantContext(tenant.id, (tx) => getAbonados(tenant.id, {}, tx))
+    const fila = todos.find((a) => a.id === abonado.id)
+
+    // Ninguna columna puede llegar undefined: eso es exactamente lo que el
+    // `SELECT *` + cast dejaba pasar en silencio.
+    expect(fila).toBeDefined()
+    for (const campo of [
+      'id',
+      'tenantId',
+      'courtId',
+      'contactName',
+      'contactPhone',
+      'dayOfWeek',
+      'timeStart',
+      'timeEnd',
+      'pricePerSession',
+      'startsOn',
+      'status',
+      'paymentMethod',
+      'createdAt',
+      'updatedAt',
+    ] as const) {
+      expect(fila![campo], campo).not.toBeUndefined()
+    }
+    expect(fila!.startsOn).toBeInstanceOf(Date)
+    expect(fila!.pricePerSession).toBe(800000)
+
+    // El filtro de estado sigue vivo (la pantalla lo usa para no arrastrar los
+    // `canceled` acumulados).
+    const cancelados = await withTenantContext(tenant.id, (tx) =>
+      getAbonados(tenant.id, { status: 'canceled' }, tx),
+    )
+    expect(cancelados.find((a) => a.id === abonado.id)).toBeUndefined()
   })
 })

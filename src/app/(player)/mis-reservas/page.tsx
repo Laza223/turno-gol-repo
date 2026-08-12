@@ -5,7 +5,7 @@ import { withPlayerContext } from '@/shared/db/client'
 import { getCancellationPreview } from '@/modules/bookings/cancellation-preview'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
 import { cancelMyBookingAction } from './actions'
-import { countUpcomingPlayable } from './upcoming-count'
+import { UPCOMING_PLAYABLE_STATUSES } from './upcoming-count'
 
 function artToday(): string {
   return new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
@@ -39,7 +39,18 @@ type RawMisReservasRow = {
   cancellation_policy_hours: number
 }
 
-export default async function MisReservasPage(props: { searchParams: Promise<{ tab?: string }> }) {
+/** Reservas por página. El jugador lee esto en el celular: 50 sobra. */
+export const MIS_RESERVAS_PAGE_SIZE = 50
+
+/** `?pagina=` es 1-based en la URL y 0-based adentro. Basura → página 1. */
+function parsePage(raw: string | undefined): number {
+  const n = Number.parseInt(raw ?? '', 10)
+  return Number.isFinite(n) && n > 1 ? n - 1 : 0
+}
+
+export default async function MisReservasPage(props: {
+  searchParams: Promise<{ tab?: string; pagina?: string }>
+}) {
   const searchParams = await props.searchParams
   const user = await extractAuthUser()
   if (!user || user.type !== 'player')
@@ -47,9 +58,18 @@ export default async function MisReservasPage(props: { searchParams: Promise<{ t
 
   const today = artToday()
   const tab = searchParams.tab === 'historial' ? 'historial' : 'proximos'
+  const page = parsePage(searchParams.pagina)
 
-  const rows = await withPlayerContext(user.playerId, (tx) =>
-    tx.execute(sql`
+  // B10 — el corte próximos/historial vivía en JS sobre un `LIMIT 200` global.
+  // Como el orden es `date DESC`, esas 200 SIEMPRE contenían todo lo futuro y lo
+  // que se perdía era la cola del HISTORIAL: un jugador de años no podía llegar
+  // a sus reservas más viejas, y nada en pantalla lo decía. Ahora el corte está
+  // en SQL y cada tab pagina por su lado.
+  const tabCond =
+    tab === 'proximos' ? sql`AND b.date >= ${today}::date` : sql`AND b.date < ${today}::date`
+
+  const { rows, upcoming } = await withPlayerContext(user.playerId, async (tx) => {
+    const paged = await tx.execute(sql`
       SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
              b.type, b.status, b.price_snapshot,
              b.deposit_status, b.deposit_amount, b.starts_at,
@@ -60,12 +80,32 @@ export default async function MisReservasPage(props: { searchParams: Promise<{ t
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.player_id = ${user.playerId}
+        ${tabCond}
       ORDER BY b.date DESC, b.time_start DESC
-      LIMIT 200
-    `),
-  )
+      LIMIT ${MIS_RESERVAS_PAGE_SIZE + 1} OFFSET ${page * MIS_RESERVAS_PAGE_SIZE}
+    `)
+    // "Tenés N turnos por jugar" ya no se puede derivar de las filas en
+    // pantalla: parado en Historial no hay ninguna próxima a la vista. Los
+    // estados salen de `UPCOMING_PLAYABLE_STATUSES` en vez de repetirse acá,
+    // para que agregar uno no deje los dos caminos diciendo cosas distintas —
+    // y `mis-reservas-pagination.test.ts` compara las dos rutas, con control
+    // negativo corrido.
+    const counted = await tx.execute<{ n: string | number }>(sql`
+      SELECT COUNT(*) AS n
+      FROM bookings b
+      WHERE b.player_id = ${user.playerId}
+        AND b.date >= ${today}::date
+        AND b.status IN (${sql.join(
+          UPCOMING_PLAYABLE_STATUSES.map((s) => sql`${s}::booking_status`),
+          sql`, `,
+        )})
+    `)
+    return { rows: paged, upcoming: Number([...counted][0]?.n ?? 0) }
+  })
 
-  const rawRows = rows as unknown as RawMisReservasRow[]
+  const pageRows = rows as unknown as RawMisReservasRow[]
+  const hasMore = pageRows.length > MIS_RESERVAS_PAGE_SIZE
+  const rawRows = hasMore ? pageRows.slice(0, MIS_RESERVAS_PAGE_SIZE) : pageRows
 
   // ENS-2: consecuencia concreta de cancelar AHORA, calculada server-side con
   // la misma política que cancelByPlayer (getCancellationPreview reusa
@@ -74,7 +114,7 @@ export default async function MisReservasPage(props: { searchParams: Promise<{ t
   // artToday() más arriba: react-compiler no marca "impuro" un Date.now()
   // envuelto en su propia función).
   const now = nowMs()
-  const allBookings: MisReservasBookingRow[] = rawRows.map((r) => {
+  const pageBookings: MisReservasBookingRow[] = rawRows.map((r) => {
     const preview = getCancellationPreview({
       depositStatus: r.deposit_status,
       depositAmountCents: r.deposit_amount,
@@ -99,16 +139,13 @@ export default async function MisReservasPage(props: { searchParams: Promise<{ t
     }
   })
 
-  const bookings = allBookings.filter((b) =>
-    tab === 'proximos' ? b.date >= today : b.date < today,
-  )
-  const upcomingCount = countUpcomingPlayable(allBookings, today)
-
   return (
     <MisReservasView
-      bookings={bookings}
+      bookings={pageBookings}
       tab={tab}
-      upcomingCount={upcomingCount}
+      page={page}
+      hasMore={hasMore}
+      upcomingCount={upcoming}
       cancelAction={cancelMyBookingAction}
     />
   )

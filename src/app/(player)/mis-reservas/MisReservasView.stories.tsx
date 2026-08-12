@@ -149,3 +149,53 @@ export const HistorialVacio: Story = {
     await expect(canvas.getByText('Historial vacío')).toBeInTheDocument()
   },
 }
+
+/**
+ * B10 — el historial paginado. Antes la query traía 200 reservas y el corte
+ * próximos/historial se hacía en JS; como el orden es por fecha descendente, lo
+ * que se perdía era la COLA DEL HISTORIAL: un jugador de años no llegaba a sus
+ * reservas más viejas y nada se lo decía.
+ */
+export const HistorialPaginado: Story = {
+  args: {
+    tab: 'historial',
+    upcomingCount: 2,
+    page: 1,
+    hasMore: true,
+    bookings: [row({ id: 'h1', date: artDateString(daysFromNow(-40)), status: 'completed' })],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const pager = canvas.getByRole('navigation', { name: 'Paginación de reservas' })
+    await expect(pager).toHaveTextContent('Página 2')
+    // Los dos links preservan el tab; la página 1 va sin `?pagina=`.
+    await expect(within(pager).getByRole('link', { name: /Anteriores/ })).toHaveAttribute(
+      'href',
+      '/mis-reservas?tab=historial',
+    )
+    await expect(within(pager).getByRole('link', { name: /Siguientes/ })).toHaveAttribute(
+      'href',
+      '/mis-reservas?tab=historial&pagina=3',
+    )
+  },
+}
+
+/**
+ * El caso normal: una sola página, sin paginador. Y el contador del hero sigue
+ * diciendo la verdad aunque estemos parados en Historial — desde B10 sale de su
+ * propia query, no de las filas en pantalla.
+ */
+export const SinPaginador: Story = {
+  args: {
+    tab: 'historial',
+    upcomingCount: 3,
+    bookings: [row({ id: 'h1', date: artDateString(daysFromNow(-5)), status: 'completed' })],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.queryByRole('navigation', { name: 'Paginación de reservas' }),
+    ).not.toBeInTheDocument()
+    await expect(canvas.getByText('Tenés 3 turnos por jugar.')).toBeInTheDocument()
+  },
+}

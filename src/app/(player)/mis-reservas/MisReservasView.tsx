@@ -2,6 +2,8 @@ import Link from 'next/link'
 import {
   CalendarX,
   CheckCheck,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Clock,
   Compass,
@@ -107,6 +109,18 @@ const DATE_BLOCK_CLASSES: Record<string, string> = {
 }
 const DATE_BLOCK_MUTED = 'bg-muted text-muted-foreground ring-border'
 
+/** `/mis-reservas?…` preservando el tab. `?pagina=` es 1-based en la URL. */
+function pageHref(tab: 'proximos' | 'historial', page: number): string {
+  const search = new URLSearchParams()
+  if (tab === 'historial') search.set('tab', tab)
+  if (page > 0) search.set('pagina', String(page + 1))
+  const qs = search.toString()
+  return qs ? `/mis-reservas?${qs}` : '/mis-reservas'
+}
+
+const PAGER_LINK =
+  'inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+
 /**
  * Vista presentacional de /mis-reservas: banda hero, tabs próximos/historial,
  * empty state y la lista de tarjetas de reserva. Extraída de page.tsx (que
@@ -117,11 +131,17 @@ export function MisReservasView({
   tab,
   upcomingCount,
   cancelAction,
+  page = 0,
+  hasMore = false,
 }: {
   bookings: MisReservasBookingRow[]
   tab: 'proximos' | 'historial'
   upcomingCount: number
   cancelAction: CancelMyBookingAction
+  /** Página 0-based que se está viendo (B10). */
+  page?: number
+  /** Hay al menos una reserva más después de esta página (B10). */
+  hasMore?: boolean
 }) {
   const tabClass = (active: boolean) =>
     `flex min-h-11 md:min-h-9 flex-1 items-center justify-center rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
@@ -301,6 +321,35 @@ export function MisReservasView({
             )
           })}
         </ul>
+      )}
+
+      {/* B10 — antes la query traía 200 reservas y el corte próximos/historial
+          se hacía en JS. Como el orden es por fecha descendente, lo que se
+          perdía era la COLA DEL HISTORIAL: un jugador de años no llegaba a sus
+          reservas más viejas y nada se lo decía. */}
+      {(page > 0 || hasMore) && (
+        <nav
+          aria-label="Paginación de reservas"
+          className="flex items-center justify-between gap-3 pt-1"
+        >
+          {page > 0 ? (
+            <Link href={pageHref(tab, page - 1)} rel="prev" className={PAGER_LINK}>
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Anteriores
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-xs text-muted-foreground tabular-nums">Página {page + 1}</span>
+          {hasMore ? (
+            <Link href={pageHref(tab, page + 1)} rel="next" className={PAGER_LINK}>
+              Siguientes
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
       )}
     </div>
   )

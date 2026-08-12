@@ -2815,3 +2815,68 @@ real se toca.
 
 Ninguno de los dos es la clase que se cerró acá (mentir o volver inalcanzable un
 dato). Se dejan fichados, no resueltos.
+
+---
+
+## B10 (parte 3) — CERRADO: los dos listados que quedaban
+
+**PR**: `fix/b10-cierre` · **Fecha**: 2026-08-11
+
+### `/mis-reservas` — lo que se perdía era la cola del historial
+
+La parte 2 lo dejó fichado porque "paginar exige mover el corte a SQL". Medido,
+la forma exacta del defecto es más específica de lo que decía el plan:
+
+La query traía `LIMIT 200` **global** con `ORDER BY date DESC`, y el corte
+próximos/historial se hacía **en JS**. Como el orden es descendente, esas 200
+**siempre** contenían todo lo futuro: el tab "Próximos" nunca estuvo truncado, y
+el contador del hero ("Tenés N turnos por jugar") siempre fue correcto. Lo que se
+perdía era la **cola del historial** — un jugador de años no llegaba a sus
+reservas más viejas y nada en pantalla se lo decía.
+
+Ahora el corte está en SQL y cada tab pagina por su lado (50 por página, que es
+lo que se lee en un celular).
+
+**La duplicación que esto introdujo, y cómo se paga.** "Tenés N turnos por jugar"
+ya no se puede derivar de las filas en pantalla: parado en Historial no hay
+ninguna próxima a la vista. Lo cuenta una query aparte, y si esa query y
+`countUpcomingPlayable` divergen, el hero miente. Dos defensas:
+
+1. El vocabulario de estados vive en **un solo lugar**
+   (`UPCOMING_PLAYABLE_STATUSES`, exportado desde `upcoming-count.ts`) y la SQL
+   lo interpola en vez de repetir la lista de enums.
+2. `tests/integration/mis-reservas-pagination.test.ts` compara las dos rutas.
+   **Control negativo corrido**: sacando el filtro de estado del COUNT, el test
+   se pone rojo con `expected 12 to be 8`.
+
+Misma clase que el total de plata en calle (parte 1), mismo remedio.
+
+### `getAbonados` — sigue sin `LIMIT`, y está bien
+
+**No se paginó, a propósito.** El total que muestra la pantalla sale de `.length`
+sobre estas mismas filas, así que el número **nunca puede contradecir la lista**:
+no es la clase "la UI miente" que se cerró en `/reservas` y `/jugadores`. El
+conjunto además está acotado por la capacidad física del complejo (una fila por
+slot semanal por cancha) más los `canceled` acumulados, y la pantalla ya filtra
+por estado. Paginar 40 turnos fijos sería ceremonia.
+
+Lo que **sí** se arregló es el `SELECT *`: el cast prometía una forma exacta de
+fila que la query no garantizaba. Nombrar las columnas convierte un renombre o un
+DROP en un error de Postgres —ruidoso, en el deploy— en vez de un campo
+`undefined` con tipo no-nullable llegando a la UI. Precedente concreto:
+`abonados.notes` se dropeó en la 074 y este `SELECT *` no se enteró; la próxima
+puede no ser tan barata. Cubierto con un test que verifica que ninguna columna
+prometida llegue `undefined` (la función no tenía **ningún** test antes).
+
+### B10 cerrado — resumen de las tres partes
+
+| Parte | Qué |
+|---|---|
+| 1 (#137) | `/caja` materializaba toda la deuda impaga para mostrar un número |
+| 2 (#138) | 🔴 `mock-mp/checkout` con portón más débil que sus actions · `/api/status` sin auth · `/api/e2e/create-booking` · la UI que mentía en `/reservas` · `/jugadores` · techo del export CSV · test estático de cadena de guards |
+| 3 (este) | `/mis-reservas` por tab en SQL · `getAbonados` sin `SELECT *` |
+
+**Premisas del plan refutadas en el camino** (3): el bug de concatenación de B8
+no existía · `with-auth.ts` no es código muerto · el gate de
+`/api/e2e/create-booking` no dependía del inlining de `NEXT_PUBLIC_E2E` sino de
+`NODE_ENV`. Más un 🔴 que el plan no tenía y encontró un test.

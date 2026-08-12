@@ -152,6 +152,33 @@ resuelve el caso general — por eso va como nota y no como fix.
   cargan en la UI de Sentry (decisión ya tomada, no es código), pero ahora los números a copiar
   están bien.
 
+## Actualización (mismo día): `/deudas` acotado
+
+El dueño decidió **acotar la consulta a 12 meses, sin vencer la deuda**. Se evaluó vencerla a los 6
+meses con aviso previo y se descartó: esconder plata que a alguien le deben y dejar de deberla son
+cosas distintas. Como en la práctica nadie debe más de 6 meses, 12 ya muestra el 100% de la deuda
+real con el doble de margen — y `?todas=1` trae todo.
+
+La ventana viaja a los **tres** orígenes (turnos, fiados, inscripciones) y por las **dos** rutas
+(lista y total) desde una sola constante (`street-money-window.ts`). Aplicarla a una sola dejaría el
+encabezado de `/caja` diciendo un número y `/caja/deudas` otro. Control negativo corrido: sacándola
+del total, `street-money-total.test.ts` da `expected 1100000 to be 300000`.
+
+**Medición.** El seed abarca 1 año exacto, así que sobre él la cota no poda nada — su valor es
+impedir el crecimiento. Envejeciendo 7.000 turnos 2 años (simulando ~3 años de operación, dentro de
+`BEGIN…ROLLBACK`):
+
+|              | Filas procesadas | Memoria de sort | Tiempo      |
+| ------------ | ---------------- | --------------- | ----------- |
+| Sin cota     | 10.922           | 2.300 kB        | **95,5 ms** |
+| Con 12 meses | 3.922            | 783 kB          | **35,1 ms** |
+
+2,7×. Y lo estructural: el costo deja de escalar con la vida del complejo y queda atado a 12 meses
+de actividad.
+
+El resto de las auditorías de base que aparecieron midiendo quedaron mapeadas, sin ejecutar, en
+`docs/audit/BACKLOG-PERFORMANCE-DB.md` — decisión del dueño.
+
 ## Qué queda abierto
 
 1. **Carga HTTP con k6** — bloqueada por entorno (k6 sin instalar + sin env en el worktree).

@@ -15,6 +15,11 @@ import type { DbTx } from '@/shared/db/client'
 import { getDebts } from '@/modules/bookings/booking.debts'
 import { listOpenTabs } from '@/modules/canteen/canteen-tab.service'
 import { listTenantInscriptionDebts } from '@/modules/tournaments/tournament-payment.service'
+import {
+  DEFAULT_STREET_MONEY_WINDOW,
+  streetMoneyCutoffDate,
+  type StreetMoneyWindow,
+} from './street-money-window'
 
 export type StreetMoneyOrigin = 'booking' | 'canteen_tab' | 'tournament'
 
@@ -82,11 +87,17 @@ export type StreetMoneyRow =
  * turno/fiado/equipo aparece en uno solo), así que esto nunca duplica ni
  * pierde plata dentro de una misma respuesta.
  */
-export async function getStreetMoney(tenantId: string, tx: DbTx): Promise<StreetMoneyRow[]> {
+export async function getStreetMoney(
+  tenantId: string,
+  tx: DbTx,
+  window: StreetMoneyWindow = DEFAULT_STREET_MONEY_WINDOW,
+): Promise<StreetMoneyRow[]> {
+  // La MISMA ventana a los tres orígenes (B11). Aplicarla a uno solo dejaría el
+  // rótulo de la pantalla mintiendo y el total sin coincidir con la lista.
   const [debts, tabs, teams] = await Promise.all([
-    getDebts(tenantId, tx),
-    listOpenTabs(tenantId, tx),
-    listTenantInscriptionDebts(tenantId, tx),
+    getDebts(tenantId, tx, window),
+    listOpenTabs(tenantId, tx, window),
+    listTenantInscriptionDebts(tenantId, tx, window),
   ])
 
   const rows: StreetMoneyRow[] = [
@@ -154,7 +165,20 @@ export type StreetMoneyTotal = {
  * los tres orígenes y falla si las dos rutas no dan exactamente lo mismo. La
  * duplicación pasa de riesgo silencioso a regresión que se ve.
  */
-export async function getStreetMoneyTotal(tenantId: string, tx: DbTx): Promise<StreetMoneyTotal> {
+export async function getStreetMoneyTotal(
+  tenantId: string,
+  tx: DbTx,
+  window: StreetMoneyWindow = DEFAULT_STREET_MONEY_WINDOW,
+): Promise<StreetMoneyTotal> {
+  // Los mismos tres cortes que aplica `getStreetMoney`, con la misma constante.
+  // Si esta ruta y la de la lista usaran ventanas distintas, el encabezado de
+  // /caja diría un número y /caja/deudas mostraría otro — que es exactamente lo
+  // que `street-money-total.test.ts` no deja pasar.
+  const cutoff = streetMoneyCutoffDate(window, new Date())
+  const bookingBound = cutoff ? sql`AND b.date >= ${cutoff}::date` : sql``
+  const tabBound = cutoff ? sql`AND created_at >= ${cutoff}::date` : sql``
+  const teamBound = cutoff ? sql`AND t.created_at >= ${cutoff}::date` : sql``
+
   const rows = await tx.execute<{ total: string | number; count: string | number }>(sql`
     WITH booking_debts AS (
       SELECT (
@@ -172,6 +196,7 @@ export async function getStreetMoneyTotal(tenantId: string, tx: DbTx): Promise<S
       LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
       WHERE b.tenant_id = ${tenantId}
         AND b.status = 'completed'
+        ${bookingBound}
       GROUP BY b.id
       HAVING (
         b.price_snapshot
@@ -189,6 +214,7 @@ export async function getStreetMoneyTotal(tenantId: string, tx: DbTx): Promise<S
       SELECT total_amount AS pending
       FROM canteen_tabs
       WHERE tenant_id = ${tenantId} AND status = 'open'
+        ${tabBound}
     ),
     team_debts AS (
       SELECT (t.inscription_fee - COALESCE(SUM(cf.amount), 0)) AS pending
@@ -196,6 +222,7 @@ export async function getStreetMoneyTotal(tenantId: string, tx: DbTx): Promise<S
       LEFT JOIN cash_flows cf
         ON cf.tournament_team_id = t.id AND cf.tenant_id = t.tenant_id
       WHERE t.tenant_id = ${tenantId}
+        ${teamBound}
       GROUP BY t.id
       HAVING t.inscription_fee - COALESCE(SUM(cf.amount), 0) > 0
     ),

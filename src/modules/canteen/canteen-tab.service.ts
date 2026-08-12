@@ -1,6 +1,11 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { chargeSplitPayment, type SplitCharge } from '@/modules/cashflow/cashflow.service'
+import {
+  DEFAULT_STREET_MONEY_WINDOW,
+  streetMoneyCutoffDate,
+  type StreetMoneyWindow,
+} from '@/modules/cashflow/street-money-window'
 import { insertAuditLog } from '@/shared/db/audit'
 import {
   EmptyTicketError,
@@ -323,10 +328,21 @@ export async function cancelTab(
 }
 
 /** Fiados abiertos del tenant, más viejos primero (los que hay que perseguir). */
-export async function listOpenTabs(tenantId: string, tx: DbTx): Promise<CanteenTabRow[]> {
+export async function listOpenTabs(
+  tenantId: string,
+  tx: DbTx,
+  window: StreetMoneyWindow = DEFAULT_STREET_MONEY_WINDOW,
+): Promise<CanteenTabRow[]> {
+  // B11: la cota acá NO es por costo (la tabla es chica) sino por coherencia —
+  // los tres orígenes de "Plata en la calle" comparten ventana, si no el rótulo
+  // de la pantalla miente y el total deja de coincidir con la lista.
+  const cutoff = streetMoneyCutoffDate(window, new Date())
+  const dateBound = cutoff ? sql`AND created_at >= ${cutoff}::date` : sql``
+
   const rows = await tx.execute(sql`
     SELECT * FROM canteen_tabs
     WHERE tenant_id = ${tenantId} AND status = 'open'
+      ${dateBound}
     ORDER BY created_at ASC
   `)
   return (rows as unknown as TabRowRaw[]).map(rowToTab)

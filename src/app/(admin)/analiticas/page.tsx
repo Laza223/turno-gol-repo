@@ -11,8 +11,7 @@ import {
 import { PageHeader } from '@/components/admin/PageHeader'
 import { StatCard } from '@/components/admin/StatCard'
 import { ResponsiveList } from '@/components/ui/responsive-list'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { MetricsDashboardLoader } from '@/app/(admin)/analiticas/MetricsDashboardLoader'
 import { getRevenueReport } from '@/modules/reports/report.service'
@@ -76,11 +75,9 @@ export default async function AnaliticasPage(props: {
   searchParams: Promise<{ month?: string | string[] }>
 }) {
   const searchParams = await props.searchParams
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant } = auth
 
   const systemAdmin = await resolveSystemAdmin()
   const canSeeSystem = systemAdmin !== null

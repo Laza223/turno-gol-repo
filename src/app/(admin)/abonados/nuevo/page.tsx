@@ -1,18 +1,16 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import AbonadoForm from './AbonadoForm'
 import { submitNewAbonado, previewAbonadoSlotsAction } from './actions'
 
 export default async function NuevoAbonadoPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant } = auth
 
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
   const courtOptions = courts.map((c) => ({ id: c.id, name: c.name }))

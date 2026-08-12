@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation'
 import { Banknote, Clock, LayoutDashboard } from 'lucide-react'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { getStaffRole } from '@/modules/staff/staff.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { daySlotsFor } from '@/lib/dashboard/day-bookings'
@@ -43,13 +41,14 @@ function comparisonSub(collectedCents: number, lastWeekCents: number): string {
 }
 
 export default async function DashboardPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
-
-  const staffRole = await getStaffRole(tenant.id, user.staffUserId)
+  // B10 — `requireOperatorStaff` y no `requireAdminStaff`, aunque la pantalla
+  // sea solo-admin: `requireAdminStaff` rebota al manager A `/dashboard`, que es
+  // ESTA página, así que sería un loop de redirects. El guard operator deja
+  // pasar a los dos y devuelve el rol ya leído, que es justo lo que hace falta
+  // para el rebote de abajo — y ahorra el `getStaffRole` suelto que había acá.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant, role } = auth
 
   // D5 (docs/planning/2026-08-01-decisiones-de-fase-v2.md): "Hoy" es solo del
   // admin — no existe versión manager. Mismo patrón que requireAdminStaff
@@ -57,7 +56,7 @@ export default async function DashboardPage() {
   // rebotar DESDE ella. Los 9 call-sites que hacen redirect('/dashboard')
   // genérico (login, onboarding, etc.) siguen aterrizando acá sin tocarlos —
   // el rebote ocurre en el primer render de esta página.
-  if (staffRole !== 'admin') redirect('/grilla')
+  if (role !== 'admin') redirect('/grilla')
 
   const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
   const date = operatingDateOf(new Date(), cutoffMins)
@@ -122,7 +121,7 @@ export default async function DashboardPage() {
           appUrl={appUrl}
           action={markPublicLinkSharedAction}
           onDismiss={markChecklistDismissedAction}
-          staffRole={staffRole}
+          staffRole={role}
         />
       )}
 

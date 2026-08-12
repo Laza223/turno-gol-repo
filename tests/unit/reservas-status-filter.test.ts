@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Server Component: aislamos auth/tenant/db para verificar la unica logica del
 // #30 — que el ?status se valide contra el allowlist antes de tocar la query.
-vi.mock('@/modules/auth/auth.middleware', () => ({
-  extractAuthUser: vi.fn(async () => ({ type: 'staff', staffUserId: 'staff-1' })),
-}))
-vi.mock('@/modules/tenants/tenant.service', () => ({
-  getStaffTenant: vi.fn(async () => ({ id: 'tenant-1' })),
+// B10 — la page pasó a `requireOperatorStaff()`, que además del tenant lee el rol
+// contra `tenant_staff_members`. Se mockea el guard, no las dos funciones que
+// usaba antes por separado.
+vi.mock('@/modules/staff/guards', () => ({
+  requireOperatorStaff: vi.fn(async () => ({
+    ok: true,
+    user: { type: 'staff', staffUserId: 'staff-1' },
+    role: 'admin',
+    tenant: { id: 'tenant-1' },
+  })),
 }))
 // withTenantContext invoca el callback con un tx dummy: deja correr la llamada
 // a listTenantBookings (mockeada) sin tocar la DB real.

@@ -12,8 +12,10 @@ vi.mock('next/navigation', () => ({
   }),
   useRouter: () => ({ refresh: vi.fn() }),
 }))
-vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
-vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
+// B10 — la page pasó de `extractAuthUser` + `getStaffTenant` a mano al guard
+// `requireAdminStaff()`, que además lee el rol contra `tenant_staff_members`.
+// Se mockea el guard y no las dos funciones de abajo: es lo que la page llama.
+vi.mock('@/modules/staff/guards', () => ({ requireAdminStaff: vi.fn() }))
 // listCourts (llamada desde FacturacionPage para defaultCourts) hace
 // tx.select().from(courts).where(...).orderBy(...) — el tx fake tiene que
 // implementar esa cadena, no un objeto vacío.
@@ -38,8 +40,7 @@ vi.mock('@/modules/billing/billing.service', () => ({
 }))
 
 import FacturacionPage from '@/app/(admin)/settings/facturacion/page'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { getSubscriptionState } from '@/modules/billing/billing.service'
 
 const STAFF_USER = {
@@ -78,8 +79,10 @@ function sub(status: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(extractAuthUser).mockResolvedValue(STAFF_USER as never)
-  vi.mocked(getStaffTenant).mockResolvedValue(tenant() as never)
+  vi.mocked(requireAdminStaff).mockResolvedValue({
+    user: STAFF_USER,
+    tenant: tenant(),
+  } as never)
 })
 
 describe('/settings/facturacion — CancelSubscriptionSection por estado', () => {

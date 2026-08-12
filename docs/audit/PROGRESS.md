@@ -3330,3 +3330,135 @@ texto que saca del DOM —colapsa `\s+`, que incluye el NBSP— pero **no normal
 Con el NBSP en el matcher se comparan dos strings que se ven idénticos y no lo son. El matcher
 va con espacio común. Queda escrito en el docblock de `formatArs`, que hasta ahora decía
 `"$12.500"` sin espacio y mandaba en la dirección contraria.
+
+---
+
+## B10 (parte 4) — El guard que faltaba, y el wrapper que no estaba muerto (2026-08-12)
+
+**Rama**: `worktree-b10-resto`
+
+### Empecé con el estado equivocado, y vale escribirlo
+
+Esta parte arrancó creyendo que quedaban 5 bloques abiertos y 6 ítems de B10 sin cerrar. **Nada de
+eso era cierto**: el plan ya decía "los 17 bloques cerrados" y B10 ya estaba declarado CERRADO con
+sus correcciones escritas. El error tuvo una sola causa, y me la comí **tres veces**: leí
+`docs/planning/…` y `src/modules/abonados/…` desde el **árbol de trabajo principal, atrasado
+respecto a `origin/main`**. Así "encontré" un `SELECT *` en `getAbonados` que ya no existía y un
+plan que ya estaba actualizado.
+
+El cuarto falso hallazgo fue de otra clase: el `LIMIT 200` de `/mis-reservas` que reportó el grep
+estaba **dentro del comentario de B10** que describe cómo era antes. Misma familia que el harness
+desactualizado de B11 — el instrumento midió el pasado. Se corrige leyendo el código vigente en el
+árbol correcto, no el grep.
+
+**Lo que sí quedaba, y no era lo que yo pensaba**: el plan había **decidido** no hacer el barrido
+de las páginas ("tampoco eran un agujero, los layouts las cubren") y poner el candado estático en
+su lugar. Esa decisión era correcta en lo que evaluó. Lo que no había visto —y es lo que justifica
+esta parte 4— son dos cosas que el candado de entonces no podía ver.
+
+### El barrido, y el caso 20 que el grep no veía
+
+Las 19 páginas de `(admin)` pasaron a `requireOperatorStaff()` / `requireAdminStaff()` según
+corresponda. **El barrido en sí es cosmético y el plan tenía razón**: el layout `(admin)` resuelve
+el tenant con `getStaffTenant`, que exige `isActive = true`, así que un staff dado de baja rebota;
+y `settings/layout.tsx` ya tenía `requireAdminStaff()`. Lo que compra es que la autorización quede
+local a la página y que el rol se lea donde se usa.
+
+El valor real apareció al buscar la CLASE, no la instancia. Primero, el caso que faltaba:
+**`requireCajaContext`**
+(`src/app/(admin)/caja/queries.ts`) hacía `extractAuthUser` + `getStaffTenant` a mano y nunca
+leía el rol — y lo comparten las 4 pantallas de Caja y Cantina. El grep sobre `page.tsx` no lo
+veía porque esas páginas no nombran `extractAuthUser`: lo delegan. Un helper compartido que
+autentica a mano es peor que una página que lo hace, porque arrastra a las cuatro de una.
+
+**Queries que el barrido saca, no agrega**: `dashboard`, `torneos`, `torneos/[id]`,
+`torneos/[id]/posiciones` y `caja/productos` pedían un `getStaffRole` propio **además** del que
+el guard iba a hacer. Ahora sale del guard. En `posiciones` eso además deshace un `Promise.all`
+que existía solo para paralelizar la lectura que ya no está.
+
+**Dos destinos de rechazo que NO se armonizaron, a propósito**: `dashboard` es solo-admin pero
+usa `requireOperatorStaff` + rebote a `/grilla`, porque `requireAdminStaff` rebota al manager a
+`/dashboard` — que es esa misma página, o sea un loop de redirects. `torneos/nuevo` igual, con
+rebote a `/torneos` para no perder el contexto del módulo.
+
+### `with-auth.ts` no era código muerto: era un wrapper sin enchufar
+
+El plan ya había corregido "es código muerto" por "lo usa `route-wrappers-request-context.test.ts`
+como implementación de referencia". Cierto, pero incompleto: también tenía un consumidor de
+producción, escrito a mano. `api/admin/system-status/route.ts:81-84` tenía **letra por letra** el
+bloque de `withAuth`: mismo mensaje, mismo `AUTH_REQUIRED`.
+
+Y al ser un `export async function GET()` pelado, esa ruta se quedaba **sin
+`runRequestObservability`**: sus 401/403 volvían con `meta.request_id: null` y sus líneas de log
+sin requestId. Es exactamente la regresión que B5 cerró para los otros tres wrappers. Borrar el
+wrapper habría dejado el bug adentro y encima tirado los 5 tests de comportamiento que
+`route-wrappers-request-context.test.ts` corre a través suyo (los otros wrappers exigen montar
+Supabase + pool + RLS para ejercitarse).
+
+Pasó a `export const GET = withAuth(...)`: resuelve la duplicación y el request-context de una.
+
+### Lo que ahora está atado
+
+`tests/unit/app-page-guard-chain.test.ts` aceptaba `extractAuthUser` como guard válido en
+cualquier parte del árbol — correcto **antes** del barrido, porque exigir un guard de staff
+habría sido 19 tests rojos. Ahora exige, para toda página bajo `(admin)`, que nombre
+`requireAdminStaff` / `requireOperatorStaff` / `requireCajaContext` **en su propio archivo**.
+
+Dos cosas para que la regla no se pueda vaciar:
+
+- Los 7 redirects de compat de la Fase 4 (`/metricas`, `/reportes`, `/deudas`, `/canchas`,
+  `/staff`, `/settings`, `/jugadores/deudas`) están exentos **enumerados a mano**, y un test
+  verifica que cada uno siga siendo un redirect pelado (sin JSX, sin `withTenantContext`) — la
+  lista no puede servir de tapadera de una pantalla real.
+- `requireCajaContext` es el único indirecto aceptado, y otro test verifica que adentro llame
+  `requireOperatorStaff()` de verdad.
+
+**Control negativo corrido**: sacándole el guard a `requireCajaContext`, el candado se pone rojo
+con el diff exacto (`expected 'import { redirect } …' to contain 'requireOperatorStaff()'`).
+
+**Un falso positivo propio, arreglado**: la primera versión del chequeo usaba
+`not.toContain('extractAuthUser')` y se ponía roja por el **docblock** que explica que ya no se
+usa. Va contra la forma de llamada (`/await\s+extractAuthUser\(/`). Tercera vez que aparece esta
+clase en el esfuerzo (ya pasó en el candado de totales de B14 y en
+`sql-number-type-honesty.test.ts`).
+
+### Los 27 tests que se cayeron, y por qué estaba bien que se caigan
+
+4 archivos mockeaban `extractAuthUser` + `getStaffTenant` a mano; con el guard nuevo la page
+también llama `getStaffRole`, que usa `getWorkerDb()` — no mockeado. Se movieron a mockear
+`@/modules/staff/guards`, que es lo que la página llama hoy. Mockear la capa de abajo era lo que
+hacía que el test no notara el cambio de contrato.
+
+### Fuera de alcance, flagueado
+
+**16 route handlers se exportan pelados** y por lo tanto ninguno pasa por
+`runRequestObservability`: `api/admin/jobs` (autentica bien con `resolveSystemAdmin` y devuelve
+`forbidden(...)` sin id de correlación), los 6 de `api/public/*`, `webhooks/mercadopago`,
+`auth/callback`, `player/session`, `csp-report`, `mp/callback`, `mp/oauth-start`, `status`,
+`e2e/create-booking`, `admin/push/vapid`. Es la misma clase que `system-status` pero más ancha
+que B10 y sin relación con auth (la auth de esas rutas está donde corresponde). Queda como
+esfuerzo propio, no metido acá.
+
+**No verificado en la app**: el cambio es de capa de guards en Server Components. No se corrió el
+dev server — `.env*` está denegado por permisos en esta sesión, así que no había forma de
+levantarlo desde el worktree. Lo cubren typecheck, el candado estático y los 27 tests de página.
+
+---
+
+## Fase 4 del rediseño v2 — CERRADA (2026-08-11)
+
+Los 4 criterios de `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3 están cumplidos, en dos
+tandas. **Nadie lo había escrito**: la entrada de arriba sigue diciendo "2 de 4 criterios", que
+era cierto el 2026-08-06 y dejó de serlo el 2026-08-11.
+
+- [x] Navegación de 6 espacios activa; cero rutas huérfanas — 2026-08-06 ([#112](https://github.com/Laza223/turno-gol-repo/pull/112))
+- [x] Grilla-lista mobile reemplazando a la matriz — 2026-08-06
+- [x] Clientes fusionado (UNA lista de personas) — **B13**, 2026-08-11
+- [x] Etiquetas D3 operativas en la ficha — **B12**, 2026-08-11 (migr. 074)
+
+Los dos últimos estaban marcados "bloqueado por D3"; D3 lo resolvió el dueño el 2026-08-11
+(set cerrado de 5 etiquetas, sin texto libre sobre personas) y B12 → B13 los ejecutaron en ese
+orden.
+
+**Cerrar Fase 4 no arranca la Fase 5.** El criterio de entrada que falta no es de código: el plan
+(§"Advertencia de secuencia") deja escrito que la otra condición es comercial.

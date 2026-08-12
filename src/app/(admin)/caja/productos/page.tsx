@@ -1,6 +1,5 @@
 import { Banknote } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
 import { getLedger } from '@/modules/canteen/stock.service'
@@ -31,13 +30,16 @@ export default async function CajaProductosPage(props: {
   // (basura, ausente) degrada a 7.
   const range: 7 | 30 = searchParams.range === '30' ? 30 : 7
 
-  const { tenant, staffUserId, cutoffMins, today } = await requireCajaContext()
+  // `role` viene del contexto de Caja, que ya lo leyó en su guard: antes esta
+  // página pedía un `getStaffRole` propio en paralelo, sobre la misma fila de
+  // `tenant_staff_members` que el guard acababa de mirar.
+  const { tenant, role, cutoffMins, today } = await requireCajaContext()
 
   const reportRange = { from: addDays(today, -(range - 1)), to: today }
 
-  const [role, { products, ledger, ranking, byMethod, daily }] = await Promise.all([
-    getStaffRole(tenant.id, staffUserId),
-    withTenantContext(tenant.id, async (tx) => {
+  const { products, ledger, ranking, byMethod, daily } = await withTenantContext(
+    tenant.id,
+    async (tx) => {
       const [p, l, rk, bm, dl] = await Promise.all([
         listProducts(tenant.id, tx, { includeInactive: true }),
         getLedger(tenant.id, tx, { limit: 20 }),
@@ -46,8 +48,8 @@ export default async function CajaProductosPage(props: {
         getCanteenDailyTotals(tenant.id, tx, reportRange, cutoffMins),
       ])
       return { products: p, ledger: l, ranking: rk, byMethod: bm, daily: dl }
-    }),
-  ])
+    },
+  )
 
   return (
     <div className="space-y-6">

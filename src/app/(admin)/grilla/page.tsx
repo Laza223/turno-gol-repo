@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { and, eq, sql } from 'drizzle-orm'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
@@ -34,11 +33,11 @@ import type {
 
 export default async function GrillaPage(props: { searchParams: Promise<{ date?: string }> }) {
   const searchParams = await props.searchParams
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/onboarding')
+  // `/onboarding` y no `/login` en el rechazo: es el destino que esta página ya
+  // tenía para "sin complejo resuelto" y se preserva tal cual.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/onboarding')
+  const { tenant } = auth
 
   const todayArt = artTodayStr()
   const dateStr = safeDateParam(searchParams.date, todayArt)

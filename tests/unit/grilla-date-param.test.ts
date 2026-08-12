@@ -3,17 +3,22 @@ import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 
 // El page es un Server Component: mockeamos auth/tenant/db para aislar la
 // unica logica relevante al #28 (la sanitizacion del ?date antes de la query).
-vi.mock('@/modules/auth/auth.middleware', () => ({
-  extractAuthUser: vi.fn(async () => ({ type: 'staff', staffUserId: 'staff-1' })),
-}))
-vi.mock('@/modules/tenants/tenant.service', () => ({
-  getStaffTenant: vi.fn(async () => ({
-    id: 'tenant-1',
-    openingHours: {},
-    closedDates: [],
-    // `TenantRow.settings` no es opcional en producción; el mock lo omitía y el
-    // page empezó a leerlo (deposit_percentage, Fase 3 T6).
-    settings: { deposit_percentage: 30 },
+// B10 — la page pasó a `requireOperatorStaff()`, que además del tenant lee el rol
+// contra `tenant_staff_members`. Se mockea el guard, no `extractAuthUser` +
+// `getStaffTenant` por separado: es lo que la page llama hoy.
+vi.mock('@/modules/staff/guards', () => ({
+  requireOperatorStaff: vi.fn(async () => ({
+    ok: true,
+    user: { type: 'staff', staffUserId: 'staff-1' },
+    role: 'admin',
+    tenant: {
+      id: 'tenant-1',
+      openingHours: {},
+      closedDates: [],
+      // `TenantRow.settings` no es opcional en producción; el mock lo omitía y el
+      // page empezó a leerlo (deposit_percentage, Fase 3 T6).
+      settings: { deposit_percentage: 30 },
+    },
   })),
 }))
 // withTenantContext NO invoca el callback: evita la query drizzle/SQL real.

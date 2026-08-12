@@ -2,21 +2,27 @@
  * B10 — toda página autenticada tiene que estar cubierta por un guard, y las
  * zonas solo-admin tienen que estar cubiertas por el guard de ADMIN.
  *
- * Por qué estático y no un test de runtime: la cobertura acá no la da la página,
- * la da el layout que tiene encima. Eso funciona (Next corre el layout y su
- * `redirect()` aborta el render), pero es invisible desde el archivo de la
- * página — 12 de ellas leen `extractAuthUser` crudo sin nombrar ningún guard, y
- * quien las lee no tiene forma de saber si están protegidas o si alguien se
- * olvidó. La protección es una propiedad del ÁRBOL, así que el chequeo también.
+ * Por qué estático y no un test de runtime: parte de la cobertura no la da la
+ * página, la da el layout que tiene encima. Eso funciona (Next corre el layout y
+ * su `redirect()` aborta el render), pero es invisible desde el archivo de la
+ * página. La protección es una propiedad del ÁRBOL, así que el chequeo también.
  *
  * Lo que este test frena, concretamente:
  *   1. Una página nueva bajo `(admin)`/`(player)`/`(super-admin)` en un lugar
  *      donde ningún layout guarda.
- *   2. `settings/layout.tsx` perdiendo su `requireAdminStaff()` — hoy es lo
- *      ÚNICO que impide que un Encargado entre a Configuración, y ninguna de las
- *      páginas de adentro lo repite.
+ *   2. `settings/layout.tsx` perdiendo su `requireAdminStaff()` — es lo que
+ *      rebota al Encargado de Configuración.
  *   3. Un route group nuevo que nace público sin que nadie lo haya decidido:
  *      los públicos están enumerados a mano abajo.
+ *   4. Una página nueva bajo `(admin)` que autentica a mano con
+ *      `extractAuthUser` en vez de nombrar un guard de staff.
+ *
+ * El punto 4 se pudo apretar recién cuando el barrido de B10 dejó las 19 páginas
+ * que leían `extractAuthUser` crudo pasando por `requireOperatorStaff` /
+ * `requireAdminStaff`. Antes de eso la regla habría sido 19 tests rojos, así que
+ * la versión anterior de este archivo aceptaba `extractAuthUser` como guard en
+ * cualquier parte del árbol — y con eso una página admin nueva podía nacer sin
+ * chequeo de rol y pasar igual.
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -52,6 +58,38 @@ const MOCK_GATE = 'computeMpMockEnabled'
 
 /** Zonas donde el rol `manager` (Encargado) no entra — CLAUDE.md, roles 026. */
 const ADMIN_ONLY_PREFIXES = [join('(admin)', 'settings')] as const
+
+/**
+ * Guards que sí miran el rol contra `tenant_staff_members`. `extractAuthUser` NO
+ * es uno: devuelve el usuario staff sin leer el rol (el claim del JWT está
+ * hardcodeado en 'admin' y nunca es protección).
+ *
+ * `requireCajaContext` (`src/app/(admin)/caja/queries.ts`) entra porque envuelve
+ * a `requireOperatorStaff` y le suma el día operativo — es el contexto compartido
+ * de las 4 pantallas de Caja. Si alguien le saca el guard adentro, lo que se pone
+ * rojo es el test de más abajo que verifica justamente eso.
+ */
+const STAFF_GUARDS = ['requireAdminStaff', 'requireOperatorStaff', 'requireCajaContext'] as const
+
+/** El panel del complejo: acá el rol siempre existe, así que siempre se lee. */
+const STAFF_TREE = '(admin)'
+
+/**
+ * Redirects de compatibilidad de la Fase 4 (renombres de rutas): no renderizan
+ * nada, así que no tienen a quién autenticar. Enumerados a mano, mismo criterio
+ * que `PUBLIC_ROOTS`: una página nueva NO hereda la excepción. El test de abajo
+ * verifica que cada una siga siendo un redirect pelado, para que la lista no
+ * sirva de tapadera de una pantalla real.
+ */
+const REDIRECT_STUBS = [
+  join('(admin)', 'metricas', 'page.tsx'),
+  join('(admin)', 'reportes', 'page.tsx'),
+  join('(admin)', 'deudas', 'page.tsx'),
+  join('(admin)', 'canchas', 'page.tsx'),
+  join('(admin)', 'staff', 'page.tsx'),
+  join('(admin)', 'settings', 'page.tsx'),
+  join('(admin)', 'jugadores', 'deudas', 'page.tsx'),
+] as const
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -142,4 +180,62 @@ describe('cadena de guards de las páginas', () => {
       expect(guardChain(file as string)).toContain('requireAdminStaff')
     },
   )
+
+  const stubs = PAGES.filter((p) =>
+    REDIRECT_STUBS.includes(p.rel as (typeof REDIRECT_STUBS)[number]),
+  )
+
+  it('los 7 redirects de compat existen (si alguien borra uno, la lista miente)', () => {
+    expect(stubs.map((s) => s.rel).sort()).toEqual([...REDIRECT_STUBS].sort())
+  })
+
+  it.each(stubs.map((p) => [p.rel, p.file]))(
+    '%s sigue siendo un redirect pelado, no una pantalla exenta de guard',
+    (_rel, file) => {
+      const source = readFileSync(file as string, 'utf8')
+      expect(source).toContain('redirect(')
+      // Sin JSX y sin tocar la base: si a alguno le crece contenido, deja de ser
+      // un stub y tiene que salir de la lista y pasar por un guard.
+      expect(source).not.toContain('withTenantContext')
+      expect(source).not.toMatch(/return\s*\(/)
+    },
+  )
+
+  const delPanel = PAGES.filter(
+    (p) =>
+      p.rel.startsWith(STAFF_TREE + sep) &&
+      !REDIRECT_STUBS.includes(p.rel as (typeof REDIRECT_STUBS)[number]),
+  )
+
+  it('hay páginas del panel que verificar', () => {
+    expect(delPanel.length).toBeGreaterThan(20)
+  })
+
+  it.each(delPanel.map((p) => [p.rel, p.file]))(
+    '%s nombra un guard de staff en su PROPIO archivo',
+    (_rel, file) => {
+      // En su propio archivo y no en la cadena: heredarlo del layout alcanza para
+      // estar protegido, pero deja la página sin decir con qué. El barrido de B10
+      // dejó las 19 que leían `extractAuthUser` crudo pasando por un guard, y esta
+      // regla es lo que impide que la 20ª nazca de nuevo así.
+      const source = readFileSync(file as string, 'utf8')
+      const encontrados = STAFF_GUARDS.filter((g) => source.includes(g))
+      expect(
+        encontrados,
+        `usá requireOperatorStaff() o requireAdminStaff() en vez de extractAuthUser crudo`,
+      ).not.toHaveLength(0)
+    },
+  )
+
+  it('requireCajaContext envuelve un guard de staff de verdad', () => {
+    // Es el único indirecto que acepta STAFF_GUARDS: las 4 pantallas de Caja lo
+    // nombran a él y no al guard. Sin este chequeo, vaciarlo dejaría a las cuatro
+    // pasando el test de arriba sin ningún chequeo de rol detrás.
+    const source = readFileSync(join(APP_DIR, '(admin)', 'caja', 'queries.ts'), 'utf8')
+    expect(source).toContain('requireOperatorStaff()')
+    // La forma de LLAMADA, no la palabra: el docblock de arriba nombra
+    // `extractAuthUser` justamente para contar que ya no se usa, y un
+    // `toContain` pelado se pondría rojo por el comentario que lo explica.
+    expect(source, 'volvió a autenticar a mano').not.toMatch(/await\s+extractAuthUser\(/)
+  })
 })

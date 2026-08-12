@@ -694,3 +694,108 @@ describe('cashflow service', () => {
     expect(byField[0]!.balance).toBe(400000)
   })
 })
+
+/**
+ * B8 — el camino con `clientIdempotencyKey` es el único de `createCashFlow` que
+ * usa SQL crudo (`INSERT … RETURNING *` y, si ya existía, `SELECT *`). Estaba
+ * casteado a `typeof cashFlows.$inferSelect`, que es el tipo del query builder:
+ * claves camelCase. El crudo devuelve snake_case, así que el mapper leía
+ * `r.tenantId`/`r.occurredAt` y ponía `undefined` en la fila que sale del
+ * servicio — con TypeScript en verde y sin que nadie lo viera, porque los dos
+ * consumidores de hoy solo usan `.id`.
+ *
+ * Los dos ramos (insert nuevo y fila ya existente) se prueban por separado: son
+ * dos queries crudas distintas y cada una tenía su propio cast.
+ */
+describe('createCashFlow con idempotency key devuelve la fila completa (B8)', () => {
+  it('el insert nuevo y el reintento devuelven los MISMOS datos, sin undefined', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const key = crypto.randomUUID()
+
+    const input = {
+      type: 'income' as const,
+      category: 'other' as const,
+      amount: 123400,
+      method: 'cash' as const,
+      description: 'Cobro con clave de idempotencia',
+      clientIdempotencyKey: key,
+    }
+
+    const primero = await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(tenant.id, staff.id, input, tx),
+    )
+    // Mismo key: ON CONFLICT DO NOTHING, cae al SELECT del segundo ramo.
+    const reintento = await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(tenant.id, staff.id, input, tx),
+    )
+
+    for (const [ramo, row] of [
+      ['insert', primero],
+      ['reintento', reintento],
+    ] as const) {
+      expect(row.id, ramo).toBeTruthy()
+      // Los multi-palabra: exactamente los que llegaban undefined.
+      expect(row.tenantId, ramo).toBe(tenant.id)
+      expect(row.registeredBy, ramo).toBe(staff.id)
+      expect(row.bookingId, ramo).toBeNull()
+      expect(row.tournamentTeamId, ramo).toBeNull()
+      expect(row.occurredAt, ramo).toBeInstanceOf(Date)
+      expect(row.createdAt, ramo).toBeInstanceOf(Date)
+      expect(Number.isNaN(row.occurredAt.getTime()), ramo).toBe(false)
+      expect(row.amount, ramo).toBe(123400)
+    }
+
+    // Idempotencia de verdad: una sola fila, y la segunda llamada devuelve ESA.
+    expect(reintento.id).toBe(primero.id)
+    const count = await sql<{ n: string }[]>`
+      SELECT count(*) AS n FROM cash_flows WHERE client_idempotency_key = ${key}
+    `
+    expect(Number(count[0]!.n)).toBe(1)
+  })
+
+  it('conserva bookingId cuando el movimiento va atado a un turno', async () => {
+    // `bookingId` se leía como `r.bookingId` (undefined) y el `?? null` lo
+    // convertía en null: un cobro atado a un turno volvía diciendo que no lo
+    // estaba. El `?? null` era justo lo que hacía invisible al bug.
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingRows = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at, type, status, price_snapshot, deposit_amount, deposit_status
+      ) VALUES (
+        ${tenant.id}, ${courtId}, ${player.id}, ${TODAY}::date, '15:00'::time, '16:00'::time,
+        (${TODAY}::date + '15:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (${TODAY}::date + '16:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        'spontaneous', 'confirmed', 900000, 0, 'not_required'
+      ) RETURNING id
+    `
+    const bookingId = bookingRows[0]!.id
+
+    const row = await withTenantContext(tenant.id, (tx) =>
+      createCashFlow(
+        tenant.id,
+        staff.id,
+        {
+          type: 'income',
+          category: 'booking',
+          amount: 900000,
+          method: 'cash',
+          description: 'Cobro de turno',
+          bookingId,
+          clientIdempotencyKey: crypto.randomUUID(),
+        },
+        tx,
+      ),
+    )
+
+    expect(row.bookingId).toBe(bookingId)
+  })
+})

@@ -157,33 +157,32 @@ export async function closeDailyRegister(
   }
 }
 
-export async function getDailyClose(
-  tenantId: string,
-  date: string,
-  tx: DbTx,
-): Promise<DailyCashCloseRow | null> {
-  const rows = await tx.execute(
-    sql`SELECT * FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
-  )
-  const r = (
-    rows as unknown as Array<{
-      id: string
-      tenant_id: string
-      date: Date
-      total_income: number
-      total_adjustments: number
-      total_expense: number
-      balance: number
-      declared_cash: number
-      diff_amount: number
-      opening_cash: number | null
-      expected_cash: number | null
-      note: string | null
-      closed_by: string
-      closed_at: Date
-    }>
-  )[0]
-  if (!r) return null
+/**
+ * B8 — la fila cruda de `daily_cash_closes` tal cual la entrega `tx.execute()`:
+ * claves snake_case y fechas como STRING (`date` es 'YYYY-MM-DD', `closed_at`
+ * es un timestamptz sin parsear). Declararlas `Date` acá compilaba y dejaba a
+ * `r.closed_at.getTime()` explotando en runtime. Vive exportado porque la MISMA
+ * query se repite en `getDaySummary` — dos copias del tipo eran dos lugares
+ * donde equivocarse.
+ */
+export type DailyCashCloseRawRow = {
+  id: string
+  tenant_id: string
+  date: string
+  total_income: number
+  total_adjustments: number
+  total_expense: number
+  balance: number
+  declared_cash: number
+  diff_amount: number
+  opening_cash: number | null
+  expected_cash: number | null
+  note: string | null
+  closed_by: string
+  closed_at: string
+}
+
+export function rawRowToDailyCloseRow(r: DailyCashCloseRawRow): DailyCashCloseRow {
   return {
     id: r.id,
     tenantId: r.tenant_id,
@@ -200,4 +199,16 @@ export async function getDailyClose(
     closedBy: r.closed_by,
     closedAt: new Date(r.closed_at),
   }
+}
+
+export async function getDailyClose(
+  tenantId: string,
+  date: string,
+  tx: DbTx,
+): Promise<DailyCashCloseRow | null> {
+  const rows = await tx.execute<DailyCashCloseRawRow>(
+    sql`SELECT * FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
+  )
+  const r = [...rows][0]
+  return r ? rawRowToDailyCloseRow(r) : null
 }

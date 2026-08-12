@@ -442,12 +442,15 @@ export async function getAbonados(
     time_start: string
     time_end: string
     price_per_session: number
-    starts_on: Date
-    ends_on: Date | null
+    // B8: `date`/`timestamptz` por `tx.execute` llegan STRING, no Date (tabla de
+    // tipos en `src/shared/db/client.ts`). El `new Date(...)` de abajo ya era
+    // correcto; los tipos eran los que mentían.
+    starts_on: string
+    ends_on: string | null
     status: AbonadoStatus
     payment_method: AbonadoPaymentMethod
-    created_at: Date
-    updated_at: Date
+    created_at: string
+    updated_at: string
   }>(sql`
     SELECT id, tenant_id, court_id, player_id, contact_name, contact_phone,
            day_of_week, time_start, time_end, price_per_session,

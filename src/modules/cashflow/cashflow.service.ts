@@ -7,6 +7,7 @@ import {
   DayAlreadyClosedError,
 } from './cashflow.errors'
 import { nightCutoffMins, operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
+import { rawRowToDailyCloseRow, type DailyCashCloseRawRow } from './daily-close.service'
 import type {
   CashFlowType,
   CashFlowCategory,
@@ -43,6 +44,7 @@ export function validateCashFlowCombo(type: string, category: string): void {
   }
 }
 
+/** Fila que devuelve el query builder de Drizzle: camelCase, fechas ya parseadas. */
 function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
   return {
     id: r.id,
@@ -57,6 +59,45 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
     registeredBy: r.registeredBy,
     occurredAt: r.occurredAt,
     createdAt: r.createdAt,
+  }
+}
+
+/**
+ * B8 — la MISMA tabla leída con SQL crudo NO devuelve esto. `tx.execute()`
+ * entrega las claves tal cual las nombra Postgres (snake_case) y las fechas
+ * como string, no como Date. `typeof cashFlows.$inferSelect` describe la salida
+ * del query builder y NADA más: usarlo sobre un `SELECT *`/`RETURNING *` crudo
+ * hace que `r.tenantId` compile y valga `undefined` en runtime.
+ */
+type CashFlowRawRow = {
+  id: string
+  tenant_id: string
+  type: CashFlowType
+  category: CashFlowCategory
+  amount: number
+  method: CashFlowRow['method']
+  description: string
+  booking_id: string | null
+  tournament_team_id: string | null
+  registered_by: string
+  occurred_at: string
+  created_at: string
+}
+
+function rawRowToCashFlowRow(r: CashFlowRawRow): CashFlowRow {
+  return {
+    id: r.id,
+    tenantId: r.tenant_id,
+    type: r.type,
+    category: r.category,
+    amount: r.amount,
+    method: r.method,
+    description: r.description,
+    bookingId: r.booking_id,
+    tournamentTeamId: r.tournament_team_id,
+    registeredBy: r.registered_by,
+    occurredAt: new Date(r.occurred_at),
+    createdAt: new Date(r.created_at),
   }
 }
 
@@ -120,7 +161,7 @@ export async function createCashFlow(
   // Fix #55: si el cliente envía una idempotency key, usar ON CONFLICT DO NOTHING
   // para ignorar el segundo insert en caso de doble-submit o reintento de red.
   if (input.clientIdempotencyKey) {
-    const result = await tx.execute(sql`
+    const result = await tx.execute<CashFlowRawRow>(sql`
       INSERT INTO cash_flows (
         tenant_id, type, category, amount, method, description,
         booking_id, tournament_team_id, registered_by, occurred_at, client_idempotency_key
@@ -134,16 +175,16 @@ export async function createCashFlow(
       ON CONFLICT (client_idempotency_key) WHERE client_idempotency_key IS NOT NULL DO NOTHING
       RETURNING *
     `)
-    const inserted = (result as unknown as Array<typeof cashFlows.$inferSelect>)[0]
-    if (inserted) return rowToCashFlowRow(inserted)
+    const inserted = [...result][0]
+    if (inserted) return rawRowToCashFlowRow(inserted)
 
     // Row already existed — fetch it to return a consistent result.
-    const existing = await tx.execute(sql`
+    const existing = await tx.execute<CashFlowRawRow>(sql`
       SELECT * FROM cash_flows
       WHERE client_idempotency_key = ${input.clientIdempotencyKey}
       LIMIT 1
     `)
-    return rowToCashFlowRow((existing as unknown as Array<typeof cashFlows.$inferSelect>)[0]!)
+    return rawRowToCashFlowRow([...existing][0]!)
   }
 
   const rows = await tx
@@ -223,42 +264,14 @@ export async function getCashFlows(
   // Rango UTC sargable en vez de expresión AT TIME ZONE: ver operatingDayRangeUtc
   // (bajo RLS la expresión no entra al índice — hallazgo D3).
   const day = operatingDayRangeUtc(date, cutoffMins)
-  const rows = await tx.execute(
+  const rows = await tx.execute<CashFlowRawRow>(
     sql`SELECT * FROM cash_flows
         WHERE tenant_id = ${tenantId}
           AND occurred_at >= ${day.fromUtc.toISOString()}
           AND occurred_at < ${day.toUtc.toISOString()}
         ORDER BY occurred_at DESC`,
   )
-  return (
-    rows as unknown as Array<{
-      id: string
-      tenant_id: string
-      type: CashFlowType
-      category: CashFlowCategory
-      amount: number
-      method: 'cash' | 'transfer' | 'mercadopago' | 'other'
-      description: string
-      booking_id: string | null
-      tournament_team_id: string | null
-      registered_by: string
-      occurred_at: Date
-      created_at: Date
-    }>
-  ).map((r) => ({
-    id: r.id,
-    tenantId: r.tenant_id,
-    type: r.type,
-    category: r.category,
-    amount: r.amount,
-    method: r.method,
-    description: r.description,
-    bookingId: r.booking_id,
-    tournamentTeamId: r.tournament_team_id,
-    registeredBy: r.registered_by,
-    occurredAt: new Date(r.occurred_at),
-    createdAt: new Date(r.created_at),
-  }))
+  return [...rows].map(rawRowToCashFlowRow)
 }
 
 export async function getDaySummary(
@@ -305,48 +318,12 @@ export async function getDaySummary(
     byMethod[meth] = (byMethod[meth] ?? 0) + signed
   }
 
-  const closeRows = await tx.execute(
+  const closeRows = await tx.execute<DailyCashCloseRawRow>(
     sql`SELECT * FROM daily_cash_closes WHERE tenant_id = ${tenantId} AND date = ${date}::date LIMIT 1`,
   )
 
-  const closeRaw =
-    (
-      closeRows as unknown as Array<{
-        id: string
-        tenant_id: string
-        date: Date
-        total_income: number
-        total_adjustments: number
-        total_expense: number
-        balance: number
-        declared_cash: number
-        diff_amount: number
-        opening_cash: number | null
-        expected_cash: number | null
-        note: string | null
-        closed_by: string
-        closed_at: Date
-      }>
-    )[0] ?? null
-
-  const close = closeRaw
-    ? {
-        id: closeRaw.id,
-        tenantId: closeRaw.tenant_id,
-        date: new Date(closeRaw.date),
-        totalIncome: closeRaw.total_income,
-        totalAdjustments: closeRaw.total_adjustments,
-        totalExpense: closeRaw.total_expense,
-        balance: closeRaw.balance,
-        declaredCash: closeRaw.declared_cash,
-        diffAmount: closeRaw.diff_amount,
-        openingCash: closeRaw.opening_cash,
-        expectedCash: closeRaw.expected_cash,
-        note: closeRaw.note,
-        closedBy: closeRaw.closed_by,
-        closedAt: new Date(closeRaw.closed_at),
-      }
-    : null
+  const closeRaw = [...closeRows][0] ?? null
+  const close = closeRaw ? rawRowToDailyCloseRow(closeRaw) : null
 
   return {
     date,

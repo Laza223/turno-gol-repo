@@ -239,8 +239,11 @@ export async function listTournamentSlots(
     date: string
     timeStart: string
     timeEnd: string
-    startsAt: Date
-    endsAt: Date
+    // B8: `starts_at`/`ends_at` salen sin castear de `tx.execute`, o sea string
+    // (tabla de tipos en `src/shared/db/client.ts`). El `new Date(...)` de abajo
+    // ya hacía lo correcto; el tipo era el que mentía.
+    startsAt: string
+    endsAt: string
   }>
 
   return rows.map((r) => ({

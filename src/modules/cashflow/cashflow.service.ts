@@ -8,6 +8,7 @@ import {
 } from './cashflow.errors'
 import { nightCutoffMins, operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { rawRowToDailyCloseRow, type DailyCashCloseRawRow } from './daily-close.service'
+import { balanceFrom, collectedFrom } from './totals'
 import type {
   CashFlowType,
   CashFlowCategory,
@@ -330,7 +331,10 @@ export async function getDaySummary(
     totalIncome,
     totalAdjustments,
     totalExpense,
-    balance: totalIncome + totalAdjustments - totalExpense,
+    // B14: las dos cuentas salen de `totals.ts`, no se escriben acá. Ver el
+    // comentario del campo `collected` en cashflow.types.ts.
+    collected: collectedFrom({ totalIncome, totalAdjustments }),
+    balance: balanceFrom({ totalIncome, totalAdjustments, totalExpense }),
     byCategory,
     byMethod,
     isClosed: close !== null,

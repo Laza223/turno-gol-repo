@@ -12,7 +12,18 @@ import { AdminSidebar } from './admin-sidebar'
 const meta = {
   title: 'Admin/Layout/AdminSidebar',
   component: AdminSidebar,
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    // El "Hoy: $X" del header (B14) pide su propio dato. Declararlo acá evita
+    // que estas stories salgan a la red de verdad y midan el placeholder sin
+    // querer; el badge tiene sus propias stories en DayTotalBadge.
+    fetchMock: [
+      {
+        match: '/api/admin/day-total',
+        json: { data: { date: '2026-08-12', collectedCents: 1250000 } },
+      },
+    ],
+  },
   decorators: [
     (Story) => (
       <div

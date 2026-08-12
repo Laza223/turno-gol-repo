@@ -3201,3 +3201,132 @@ Los dos guards por reloj de la suite pasan de `return` mudo a
 `ctx.skip(condición, nota)`: un salteo invisible pinta ✓ verde sin ejercitar
 nada, misma clase que cerró B9. No es teórico — el hermano se saltea de 00:00 a
 00:59 ART, y esa hora venía contando como caso probado.
+
+---
+
+## B14 — "Hoy: $X" en el sidebar, y las seis copias de la misma suma
+
+**Rama**: `worktree-b14-hoy` · **Fecha**: 2026-08-12 · **Origen**: visión v2 §3.3 / P2
+
+### El pedido, y lo que en realidad costaba
+
+La única mención literal en el repo (`vision-producto-turnogol-v2.md:157`): _"el número de
+'Hoy: $X' acompaña en la barra, visible desde cualquier espacio (P2)"_. Un pedido de
+**navegación** para el admin: no volver a la pantalla "Hoy" cada vez que quiere saber cómo
+viene el día.
+
+Mostrar el número era la parte fácil. Lo caro era que fuera **EL** número.
+
+### Tres premisas del plan, medidas
+
+| Premisa del plan                                                                            | Medido                                                                                            |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `getDaySummary` está en `cashflow.service.ts:259`                                           | **277**                                                                                           |
+| "Único caller hoy: `/caja`"                                                                 | **Dos**: `/caja` y `home.service.ts:314-315`, que lo llama **dos veces** (hoy y la semana pasada) |
+| "una sola query agregada"                                                                   | **Dos**: el agregado + un lookup a `daily_cash_closes`                                            |
+| "`AdminSidebar` recibe todo por props desde `layout.tsx`, que hoy no consulta un solo peso" | Cierto en lo de la plata, pero el layout **sí** consulta: 3 queries en un `Promise.all`           |
+
+Ninguna cambia la conclusión, pero la segunda sí cambia el trabajo: el riesgo que el propio
+plan marca ("un 'Hoy: $X' es una segunda superficie del mismo número") era peor de lo escrito,
+porque ya eran dos.
+
+### Seis copias de dos cuentas
+
+Barrido sistemático de `totalIncome`:
+
+- **`ingresos + ajustes`** ("lo cobrado") escrito a mano en **4** lugares, sobre **2 tipos
+  distintos**: `caja/page.tsx`, `home.service.ts` (×2, hoy y la semana pasada) y
+  `CierreCard.tsx` — este último sobre el snapshot del cierre, no sobre el resumen vivo.
+- **`ingresos + ajustes − egresos`** ("el saldo") en **2**: `cashflow.service.ts` y
+  `daily-close.service.ts`.
+
+El sidebar iba a ser la quinta copia de la primera. Y el fixture `daySummary()` tipeaba
+`balance: 3700000` a mano, así que podía codificar un par que la base nunca produciría.
+
+Ahora las dos cuentas viven en `src/modules/cashflow/totals.ts` (módulo puro, sin imports, para
+que lo puedan usar tanto los services como los Server Components que muestran el cierre), el
+fixture las **deriva**, y `DaySummary` expone `collected` al lado de `balance`.
+
+**El candado es lo que sostiene esto**, no la buena voluntad: `tests/unit/cashflow-totals.test.ts`
+recorre los archivos trackeados y falla si la suma vuelve a aparecer escrita a mano fuera de
+`totals.ts`. El tipo no puede impedirlo — es una suma de dos `number`.
+
+### Por qué un endpoint y no un prop del layout
+
+El número podía bajar de `(admin)/layout.tsx`, que ya corre server-side por request. Dos cosas
+lo desaconsejan, y solo la segunda es decisiva:
+
+1. Un layout de Next **no se re-renderiza** al navegar entre rutas hermanas con `<Link>`. Los
+   mutadores de caja llaman `router.refresh()`, que sí lo re-renderiza, así que este problema
+   es parcial.
+2. **La plata entra desde AFUERA de la pestaña**: una seña que confirma el webhook de
+   MercadoPago, otro empleado cobrando desde su teléfono. Ningún render del layout se entera.
+
+Un número de plata que envejece sin avisar no se lee como "viejo": se lee como plata que falta.
+Por eso el dato tiene su propio camino de refresco — `GET /api/admin/day-total`, y el badge lo
+pide al montar, al cambiar de ruta, cada 60 s y al volver a la pestaña (piso de 5 s entre
+pedidos para que una ráfaga de navegación no dispare N).
+
+Límite conocido y **aceptado**: si el admin cobra desde `/caja` y se queda ahí, el encabezado de
+esa pantalla se actualiza al instante y el sidebar puede tardar hasta 60 s. Los dos salen de la
+misma cuenta, así que difieren en el momento, nunca en el criterio.
+
+### Balde de rate limit propio
+
+`adminDayTotal` (120/60s por tenant, fail open) y no `adminCrud`. El repo ya había tomado esta
+decisión una vez con `adminAvailabilityCheck`, y por el mismo motivo: `adminCrud` (100/60s) lo
+comparten **todas las mutaciones de plata del staff**, y una lectura que dispara la navegación
+le comería el presupuesto. Con tres empleados navegando, el que pierde es el cobro.
+
+`tests/unit/rate-limit-admin-coverage.test.ts` exigía `adminCrud` literal. Se generalizó a una
+lista explícita de baldes de admin — aceptar "cualquier policy" dejaría pasar un endpoint de
+admin protegido con el balde público. Nota: `adminAvailabilityCheck` pasaba ese guard solo
+porque **comparte archivo** con actions que sí usan `adminCrud`; el guard es file-level.
+
+### Roles: no es una exposición nueva
+
+La decisión v2 D5 dejó la PANTALLA "Hoy" solo para el admin (`dashboard/page.tsx:59` rebota al
+manager a `/grilla`). Pero `/caja` **no tiene gate de rol** más allá de "es staff"
+(`requireCajaContext`), así que el encargado ya ve exactamente este número. El endpoint es
+operador (admin + manager), igual que `/api/admin/metrics`.
+
+### Verificación
+
+```
+pnpm typecheck    ✓
+pnpm lint         ✓
+pnpm knip         ✓
+pnpm format:check ✓
+pnpm test              → 3348/3348 (326 archivos)
+pnpm test:integration  → 940/940   (136 archivos)
+pnpm test:storybook    → 1076/1076 (265 archivos)
+```
+
+**Dos controles negativos corridos:**
+
+1. Cableando `summary.balance` en vez de `summary.collected` en el endpoint, el test de
+   consistencia y el de egresos se ponen rojos: `expected 125000 to be 1025000`. Este es el
+   caso que importa — con egresos en 0 los dos números coinciden, así que el cableado
+   equivocado pasaría desapercibido hasta el primer día que el complejo paga algo.
+2. Reintroduciendo la suma a mano en `home.service.ts`, el candado de fuente única falla con
+   el archivo, la línea y el código exacto:
+   `src/modules/home/home.service.ts:371: collectedTodayCents: todaySummary.totalIncome + todaySummary.totalAdjustments,`
+
+**Un falso positivo del candado, arreglado**: la primera versión marcaba un docblock de
+`CajaHeaderStats` que describía la cuenta en prosa. Ahora saltea comentarios — misma clase de
+falso positivo ya documentada en `sql-number-type-honesty.test.ts`. El comentario, que además
+había quedado desactualizado, se corrigió.
+
+**Un flake, con nombre**: `StockExitDialog > Salida Por Merma` falló una vez en la corrida
+completa de storybook; aislado da 2/2 y la corrida completa del MISMO árbol da 1076/1076. No lo
+toca este esfuerzo.
+
+### Gotcha nuevo: el NBSP de `formatArs`
+
+Los tres asserts de monto del badge fallaban con "Unable to find an element with the text", que
+se lee como si el componente no renderizara. Renderizaba perfecto. `formatArs` produce `$` +
+**U+00A0** + el número (verificado en Chromium, no solo en Node), y testing-library normaliza el
+texto que saca del DOM —colapsa `\s+`, que incluye el NBSP— pero **no normaliza el matcher**.
+Con el NBSP en el matcher se comparan dos strings que se ven idénticos y no lo son. El matcher
+va con espacio común. Queda escrito en el docblock de `formatArs`, que hasta ahora decía
+`"$12.500"` sin espacio y mandaba en la dirección contraria.

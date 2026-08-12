@@ -5,6 +5,7 @@ import type { DbTx } from '@/shared/db/client'
 import { operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { CloseDateInFutureError, DayAlreadyCloseExistsError } from './cashflow.errors'
 import type { DailyCashCloseRow, CashFlowType } from './cashflow.types'
+import { balanceFrom } from './totals'
 
 function isUniqueViolation(err: unknown): boolean {
   return (
@@ -88,7 +89,7 @@ export async function closeDailyRegister(
     cutoffMins,
     tx,
   )
-  const balance = totalIncome + totalAdjustments - totalExpense
+  const balance = balanceFrom({ totalIncome, totalAdjustments, totalExpense })
 
   // Apertura de caja (migr. 049): snapshot del fondo inicial al cerrar, así
   // el recibo queda autocontenido e inmutable. Sin apertura, fondo 0.

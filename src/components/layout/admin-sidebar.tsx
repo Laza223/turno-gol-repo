@@ -19,6 +19,7 @@ import type { StaffRole } from '@/modules/staff/roles'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { DayTotalBadge } from './day-total-badge'
 
 interface SidebarProps {
   tenantName: string
@@ -164,6 +165,10 @@ function SidebarContent({
             </p>
           </div>
         </div>
+
+        {/* B14 — "Hoy: $X" acompaña en la barra, visible desde cualquier espacio
+            (visión v2 §3.3 / P2). Trae su propio dato: ver day-total-badge.tsx. */}
+        <DayTotalBadge />
       </div>
 
       {/* Nav */}

@@ -22,14 +22,25 @@ const ROOT = path.resolve(__dirname, '..', '..')
 const rel = (f: string): string => path.relative(ROOT, f).replace(/\\/g, '/')
 const read = (f: string): string => readFileSync(f, 'utf8')
 
-// adminCrud is applied three idiomatic ways: guard() in route handlers,
-// enforce() directly (raw handlers / super-admin), or adminRateLimited() in
-// Server Actions. Any one counts as coverage.
+// El rate limit se aplica de tres formas idiomáticas: guard() en route
+// handlers, enforce() directo (handlers crudos / super-admin), o
+// adminRateLimited() en Server Actions. Cualquiera cuenta como cobertura.
+//
+// Y con más de UN balde. `adminCrud` (100/60s por tenant) lo comparten todas
+// las mutaciones de plata del staff, así que las lecturas automáticas —las que
+// dispara navegar, no un click— van a baldes propios para no comerle el
+// presupuesto: `adminAvailabilityCheck` (chequeo al abrir el modal de reserva)
+// y `adminDayTotal` (el "Hoy: $X" del sidebar, B14). Exigir `adminCrud` a secas
+// empujaría cada lectura nueva justo al balde que hay que proteger.
+//
+// La lista es explícita a propósito: aceptar "cualquier policy" dejaría pasar
+// un endpoint de admin protegido con, por ejemplo, el balde público.
+const ADMIN_POLICIES = ['adminCrud', 'adminAvailabilityCheck', 'adminDayTotal'] as const
+
 function hasAdminRateLimit(src: string): boolean {
-  return (
-    /adminRateLimited\s*\(/.test(src) ||
-    /\bguard\(\s*['"]adminCrud['"]/.test(src) ||
-    /\benforce\(\s*['"]adminCrud['"]/.test(src)
+  if (/adminRateLimited\s*\(/.test(src)) return true
+  return ADMIN_POLICIES.some((policy) =>
+    new RegExp(String.raw`\b(?:guard|enforce)\(\s*['"]${policy}['"]`).test(src),
   )
 }
 

@@ -410,7 +410,13 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
       await page.goto('/reservas')
       const article = page.getByRole('article', { name: /E2E Reservas Guest/ })
       await expect(article).toBeVisible({ timeout: 15_000 })
-      await expect(article.getByText('Esperando seña')).toBeVisible()
+      // El label de `pending_payment` lo manda `lib/booking/slot-visual.ts`,
+      // fuente única de la grilla Y del listado; B15 (decisión v2 D1) lo
+      // renombró y este assert quedó con el texto viejo, dejando el job de e2e
+      // rojo cinco merges. El candado que lo caza ahora vive en
+      // `tests/unit/slot-visual.test.ts` — no pegues acá el texto anterior, el
+      // control negativo de ese candado verifica que no sobreviva en ningún spec.
+      await expect(article.getByText('Pagando ahora')).toBeVisible()
 
       // Marker that survives RSC refreshes but dies on a full page load.
       await page.evaluate(() => {
@@ -428,7 +434,7 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
       // After the server action + router.refresh() the same article re-renders
       // with the new status — no navigation, no reload.
       await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })
-      await expect(article.getByText('Esperando seña')).not.toBeVisible()
+      await expect(article.getByText('Pagando ahora')).not.toBeVisible()
       const marker = await page.evaluate(
         () => (window as unknown as Record<string, unknown>).__e2eNoReload,
       )

@@ -28,6 +28,10 @@ import {
   getStreetMoneyTotal,
   sumStreetMoney,
 } from '@/modules/cashflow/street-money.service'
+import {
+  DEFAULT_STREET_MONEY_WINDOW,
+  type StreetMoneyWindow,
+} from '@/modules/cashflow/street-money-window'
 
 async function insertCourt(tenantId: string): Promise<string> {
   const sql = getSql()
@@ -232,5 +236,99 @@ describe('getStreetMoneyTotal — el número de SQL y el de la lista no pueden d
     expect(totalA.desdeSql.totalCents).toBe(0)
     expect(totalB.desdeSql.totalCents).toBe(850000)
     expect(totalB.desdeSql.totalCents).toBe(totalB.desdeLaLista)
+  })
+})
+
+/**
+ * B11 — la ventana de 12 meses. Acota la CONSULTA, no la deuda: la fila vieja
+ * sigue existiendo y `'all'` la trae.
+ *
+ * Lo que estos casos protegen es que la ventana llegue a los TRES orígenes por
+ * las DOS rutas. Aplicarla solo en la lista (y no en el total) dejaría el
+ * encabezado de /caja diciendo un número y /caja/deudas mostrando otro — que es
+ * el mismo agujero que este archivo viene tapando desde B10, ahora con un
+ * parámetro más por donde se puede escapar.
+ */
+describe('ventana de 12 meses (B11)', () => {
+  /** Fecha ART de hace `months` meses, en YYYY-MM-DD. */
+  const monthsAgo = (months: number): string => {
+    const d = new Date()
+    d.setUTCMonth(d.getUTCMonth() - months)
+    return d.toISOString().slice(0, 10)
+  }
+
+  const withWindow = (tenantId: string, window: StreetMoneyWindow) =>
+    withTenantContext(tenantId, async (tx) => {
+      const rows = await getStreetMoney(tenantId, tx, window)
+      const total = await getStreetMoneyTotal(tenantId, tx, window)
+      return { desdeLaLista: sumStreetMoney(rows), desdeSql: total, filas: rows.length }
+    })
+
+  it('una deuda de hace 18 meses queda FUERA por defecto y aparece con "all"', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+    await insertCompletedBooking(tenant.id, courtId, player.id, 800000, {
+      date: monthsAgo(18),
+    })
+
+    const porDefecto = await withWindow(tenant.id, DEFAULT_STREET_MONEY_WINDOW)
+    expect(porDefecto.filas).toBe(0)
+    expect(porDefecto.desdeSql.totalCents).toBe(0)
+
+    const todas = await withWindow(tenant.id, 'all')
+    expect(todas.filas).toBe(1)
+    expect(todas.desdeSql.totalCents).toBe(800000)
+  })
+
+  it('una deuda de hace 3 meses entra en las dos ventanas', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+    await insertCompletedBooking(tenant.id, courtId, player.id, 500000, { date: monthsAgo(3) })
+
+    expect((await withWindow(tenant.id, DEFAULT_STREET_MONEY_WINDOW)).desdeSql.totalCents).toBe(
+      500000,
+    )
+    expect((await withWindow(tenant.id, 'all')).desdeSql.totalCents).toBe(500000)
+  })
+
+  it('la lista y el total coinciden en LAS DOS ventanas, con deuda vieja y nueva mezcladas', async () => {
+    // El caso que de verdad importa: si la ventana llegara a una ruta y no a la
+    // otra, acá los dos números se separan.
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+    await insertCompletedBooking(tenant.id, courtId, player.id, 800000, { date: monthsAgo(20) })
+    await insertCompletedBooking(tenant.id, courtId, player.id, 300000, { date: monthsAgo(2) })
+
+    const porDefecto = await withWindow(tenant.id, DEFAULT_STREET_MONEY_WINDOW)
+    expect(porDefecto.desdeSql.totalCents).toBe(porDefecto.desdeLaLista)
+    expect(porDefecto.desdeSql.totalCents).toBe(300000)
+
+    const todas = await withWindow(tenant.id, 'all')
+    expect(todas.desdeSql.totalCents).toBe(todas.desdeLaLista)
+    expect(todas.desdeSql.totalCents).toBe(1_100_000)
+  })
+
+  it('un fiado de cantina viejo también respeta la ventana (los 3 orígenes, no solo turnos)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staffId = await staffFor(tenant.id)
+    await insertOpenTab(tenant.id, 45000, staffId)
+    // El helper inserta con NOW(); lo envejecemos para cruzar la ventana.
+    await sql`
+      UPDATE canteen_tabs SET created_at = NOW() - INTERVAL '20 months'
+      WHERE tenant_id = ${tenant.id}
+    `
+
+    expect((await withWindow(tenant.id, DEFAULT_STREET_MONEY_WINDOW)).desdeSql.totalCents).toBe(0)
+
+    const todas = await withWindow(tenant.id, 'all')
+    expect(todas.desdeSql.totalCents).toBe(45000)
+    expect(todas.desdeSql.totalCents).toBe(todas.desdeLaLista)
   })
 })

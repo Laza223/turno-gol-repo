@@ -1,5 +1,8 @@
 import { CheckCircle2 } from 'lucide-react'
 import { formatArsContable } from '@/lib/format'
+// B14 — el snapshot del cierre usa la MISMA cuenta que el resumen vivo del día:
+// si divergen, el complejo ve un número al cerrar y otro en la pantalla.
+import { collectedFrom } from '@/modules/cashflow/totals'
 import { closeView, formatTimeArt } from '../caja-lib'
 import type { DailyCashCloseRow } from '@/modules/cashflow/cashflow.types'
 
@@ -50,7 +53,7 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
                   (~#d7e1e6), por debajo del piso AA de 4.5. emerald-800 sube a
                   ~5.79:1 sobre ese mismo fondo (medido). */}
               <dd className="font-medium tabular-nums text-emerald-800 dark:text-emerald-400">
-                +{formatArsContable(close.totalIncome + close.totalAdjustments)}
+                +{formatArsContable(collectedFrom(close))}
               </dd>
             </div>
             <div>

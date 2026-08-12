@@ -20,7 +20,7 @@ export function CajaHeaderStats({
   openedAt,
   closedAt,
 }: {
-  /** Ingresos netos del día (summary.totalIncome + totalAdjustments). */
+  /** Lo cobrado en el día: `summary.collected` (ver `cashflow/totals.ts`). */
   collectedTodayCents: number
   streetMoneyCents: number
   isClosed: boolean

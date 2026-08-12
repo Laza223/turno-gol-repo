@@ -365,9 +365,11 @@ export async function getHoyData(
   return {
     date,
     numbers: {
-      collectedTodayCents: todaySummary.totalIncome + todaySummary.totalAdjustments,
-      collectedSameWeekdayLastWeekCents:
-        lastWeekSummary.totalIncome + lastWeekSummary.totalAdjustments,
+      // B14: `collected` es la cuenta única (cashflow/totals.ts). La comparación
+      // contra la semana pasada solo tiene sentido si los dos lados se calculan
+      // igual — sumarlo a mano de este lado es cómo una comparación miente.
+      collectedTodayCents: todaySummary.collected,
+      collectedSameWeekdayLastWeekCents: lastWeekSummary.collected,
       occupancy,
       streetMoneyCents: sumStreetMoney(streetMoneyRows),
       cashClosed: todayClose !== null,

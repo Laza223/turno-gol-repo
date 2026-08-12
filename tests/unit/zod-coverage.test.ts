@@ -44,6 +44,12 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/admin/jobs/route.ts',
   // Business metrics (Fase 5): GET, no input. tenant_id from session via withTenant.
   'src/app/api/admin/metrics/route.ts',
+  // "Hoy: $X" del sidebar (B14): GET sin body, params ni query. El tenant sale
+  // de la sesión vía withTenant, y la fecha + el cutoff del día operativo los
+  // calcula el handler leyendo `tenants` — a propósito NO son parámetros: un
+  // valor del cliente que decide sobre qué ventana se suma plata es un valor
+  // que se puede pisar.
+  'src/app/api/admin/day-total/route.ts',
   // System status del dashboard /metricas: GET, no input. Identidad de session;
   // rol verificado contra DB con getStaffRole.
   'src/app/api/admin/system-status/route.ts',

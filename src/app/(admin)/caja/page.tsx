@@ -49,7 +49,9 @@ export default async function CajaPage(props: {
     },
   )
 
-  const ingresos = summary.totalIncome + summary.totalAdjustments
+  // B14: la suma ya viene hecha desde `getDaySummary` (fuente única). Repetirla
+  // acá es cómo el mismo "cobrado hoy" termina distinto en dos pantallas.
+  const ingresos = summary.collected
   // B10 — solo el número: /caja muestra el total en el encabezado, y traer la
   // lista entera de deuda impaga (3 queries sin LIMIT) para sumarla hacía que
   // el costo de esta pantalla creciera con el negocio. Las filas se ven en

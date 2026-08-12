@@ -1,4 +1,5 @@
 import type { CashFlowRow, DailyCashCloseRow, DaySummary } from '@/modules/cashflow/cashflow.types'
+import { balanceFrom, collectedFrom } from '@/modules/cashflow/totals'
 import { artDateString, daysFromNow, FROZEN_NOW, hoursFromNow } from './clock'
 import { uid } from './ids'
 import { staffManager, staffMember } from './staff'
@@ -95,19 +96,30 @@ export const dailyCashClose = (overrides: Partial<DailyCashCloseRow> = {}): Dail
   ...overrides,
 })
 
-/** Resumen del día ya cerrado — cifras consistentes con `dailyCashClose()`. */
-export const daySummary = (overrides: Partial<DaySummary> = {}): DaySummary => ({
-  date: artDateString(FROZEN_NOW),
-  totalIncome: 4500000,
-  totalAdjustments: 0,
-  totalExpense: 800000,
-  balance: 3700000,
-  byCategory: { booking: 3600000, product_sale: 900000, operating_expense: 800000 },
-  byMethod: { cash: 2000000, mercadopago: 2000000, transfer: 500000 },
-  isClosed: true,
-  close: dailyCashClose(),
-  ...overrides,
-})
+/**
+ * Resumen del día ya cerrado — cifras consistentes con `dailyCashClose()`.
+ *
+ * B14: `collected` y `balance` se DERIVAN de las partes con los mismos helpers
+ * que usa producción, en vez de escribirse a mano. Un fixture con los totales
+ * tipeados puede codificar un par imposible (ingresos que no suman su total) y
+ * entonces el test pasa contra una realidad que la base nunca podría producir.
+ * Los overrides se aplican antes de derivar, así que pisar `totalIncome`
+ * recalcula los dos totales solo.
+ */
+export const daySummary = (overrides: Partial<DaySummary> = {}): DaySummary => {
+  const base = {
+    date: artDateString(FROZEN_NOW),
+    totalIncome: 4500000,
+    totalAdjustments: 0,
+    totalExpense: 800000,
+    byCategory: { booking: 3600000, product_sale: 900000, operating_expense: 800000 },
+    byMethod: { cash: 2000000, mercadopago: 2000000, transfer: 500000 },
+    isClosed: true,
+    close: dailyCashClose(),
+    ...overrides,
+  }
+  return { ...base, collected: collectedFrom(base), balance: balanceFrom(base) }
+}
 
 /** Día en curso, todavía sin cerrar — solo movimientos de la mañana/mediodía. */
 export const daySummaryOpen = (): DaySummary =>
@@ -115,7 +127,6 @@ export const daySummaryOpen = (): DaySummary =>
     totalIncome: 1800000,
     totalAdjustments: 0,
     totalExpense: 0,
-    balance: 1800000,
     byCategory: { booking: 1500000, product_sale: 300000 },
     byMethod: { mercadopago: 900000, cash: 600000, transfer: 300000 },
     isClosed: false,

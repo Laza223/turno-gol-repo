@@ -11,7 +11,17 @@ const arsFormatter = new Intl.NumberFormat('es-AR', {
   maximumFractionDigits: 0,
 })
 
-/** Centavos de ARS → string de moneda. Ej: 1250000 → "$12.500". */
+/**
+ * Centavos de ARS → string de moneda. Ej: 1250000 → `"$ 12.500"`.
+ *
+ * El separador entre el `$` y el número es un **NBSP** (U+00A0), no un espacio
+ * común y no nada. Al testear, el matcher de testing-library va con un espacio
+ * COMÚN: la librería normaliza el texto que saca del DOM (colapsa `\s+`, que
+ * incluye el NBSP) y NO normaliza el matcher, así que escribirlo con el NBSP
+ * compara dos strings que se ven iguales y no lo son. El error que tira
+ * —"Unable to find an element with the text"— se lee como si el componente no
+ * hubiera renderizado, cuando renderizó perfecto.
+ */
 export function formatArs(cents: number): string {
   return arsFormatter.format(Math.round(cents) / 100)
 }

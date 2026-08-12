@@ -47,7 +47,15 @@ corrido), la grilla del staff dice "Pagando ahora" con tiempo restante, y la cue
 —copiada a mano en cinco lugares, origen de caza-bugs #12— vive en `src/lib/booking/hold.ts`. De las
 3 superficies que pedía el plan, medido, **una** lo necesitaba.
 
-Quedan **B11 · B14**. Ninguno tiene el alcance escrito en ningún lado;
+**B14 cerrado** (2026-08-12): "Hoy: $X" en la barra lateral. Lo caro no era mostrarlo sino que fuera
+EL número: la suma `ingresos + ajustes` estaba escrita a mano en **cuatro** lugares (el plan decía
+uno) sobre dos tipos distintos, más dos copias del saldo, y el sidebar iba a ser la quinta. Ahora
+las dos cuentas viven en `src/modules/cashflow/totals.ts` con un candado estático que falla si
+alguien vuelve a sumarlas a mano. El número lo trae un endpoint propio y no un prop del layout,
+porque la plata entra desde afuera de la pestaña (webhook de MP, otro empleado cobrando) y un total
+viejo se lee como plata que falta.
+
+Queda **B11**. No tiene el alcance escrito en ningún lado;
 lo de abajo es la reconstrucción, medida contra el código de hoy.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
@@ -291,7 +299,11 @@ clientes y la más cara de hacer con ellos… la ventana expira con el primer co
 
 ---
 
-## B14 — "Hoy: $X" en el sidebar
+## B14 — "Hoy: $X" en el sidebar ✅ CERRADO (2026-08-12)
+
+> Tres correcciones al plano de abajo, medidas contra el código: `getDaySummary` está en la línea
+> **277**, no la 259; sus callers son **dos**, no uno (`/caja` y `home.service.ts`, que lo llama dos
+> veces); y hace **dos** queries, no una. Ver `docs/audit/PROGRESS.md` § "B14".
 
 Origen (única mención literal en el repo, `vision-producto-turnogol-v2.md:157`): _"el número de
 'Hoy: $X' acompaña en la barra, visible desde cualquier espacio (P2)"_. Es un pedido de

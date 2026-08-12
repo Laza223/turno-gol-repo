@@ -54,6 +54,13 @@ export const POLICIES = {
   // el `adminCrud` (100/60s por tenant) que comparten TODAS las mutaciones
   // reales de dinero del staff. Fail open: es solo un aviso temprano.
   adminAvailabilityCheck: { limit: 120, window: '60 s', keyBy: 'tenant', failMode: 'open' },
+  // "Hoy: $X" del sidebar (B14): lectura automática que dispara la navegación y
+  // un intervalo de 60 s, no un click. Balde propio por el mismo motivo que
+  // `adminAvailabilityCheck` — con varios empleados navegando, ponerlo en
+  // `adminCrud` (100/60s por tenant) le come el presupuesto a las mutaciones
+  // reales de dinero. Fail open: si Upstash cae, mostrar el número no es un
+  // riesgo, y esconderlo sí es una regresión visible.
+  adminDayTotal: { limit: 120, window: '60 s', keyBy: 'tenant', failMode: 'open' },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

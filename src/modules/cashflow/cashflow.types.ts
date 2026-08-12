@@ -73,6 +73,21 @@ export type DaySummary = {
   totalIncome: number
   totalAdjustments: number
   totalExpense: number
+  /**
+   * B14 — lo COBRADO en el día: ingresos + ajustes, sin restar egresos. Es el
+   * número que el complejo llama "lo de hoy", y el que muestran `/caja`, la
+   * pantalla "Hoy" y el sidebar.
+   *
+   * Existe como campo (y no como una suma en cada pantalla) porque el criterio
+   * de salida de Fase 1 pide **fuente única de agregados**: el mismo número en
+   * toda superficie que lo muestre, verificado con test de consistencia y no a
+   * ojo. Antes de B14 la suma estaba escrita a mano en dos lugares, y el
+   * sidebar iba a ser el tercero.
+   *
+   * NO confundir con `balance`: ese resta los egresos y contesta otra pregunta
+   * ("cuánto queda"), no "cuánto entró".
+   */
+  collected: number
   /** Saldo neto del día: ingresos + ajustes - egresos. */
   balance: number
   byCategory: Partial<Record<CashFlowCategory, number>>

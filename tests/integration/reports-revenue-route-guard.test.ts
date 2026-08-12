@@ -142,4 +142,46 @@ describe('GET /api/reports/revenue — guard de rol + lifecycle (B10)', () => {
     const res = await exportRevenue(bad)
     expect(res.status).toBe(400)
   })
+
+  /**
+   * B10 — `getCashFlowsForExport` no tiene `LIMIT` y está BIEN que no lo tenga:
+   * un export de plata truncado en silencio es peor que uno que falla, porque
+   * el complejo cierra su contabilidad con un CSV al que le faltan filas. Pero
+   * sin techo de rango, un `?from=1900-01-01` trae TODOS los movimientos a
+   * memoria dentro de una función serverless. Se rechaza el pedido, no se
+   * recorta el resultado.
+   */
+  describe('techo del rango', () => {
+    const rango = (from: string, to: string) =>
+      new Request(
+        `http://localhost/api/reports/revenue?from=${from}&to=${to}&format=csv`,
+      ) as unknown as Parameters<typeof exportRevenue>[0]
+
+    it('rechaza un rango absurdo con 400, sin devolver medio CSV', async () => {
+      asUser(makeStaffUser(adminStaffId))
+      const res = await exportRevenue(rango('1900-01-01', '2999-12-31'))
+      expect(res.status).toBe(400)
+      expect(await res.text()).not.toContain('fecha,tipo')
+    })
+
+    it('rechaza "hasta" anterior a "desde"', async () => {
+      asUser(makeStaffUser(adminStaffId))
+      const res = await exportRevenue(rango('2026-05-31', '2026-05-01'))
+      expect(res.status).toBe(400)
+    })
+
+    it('un año completo sigue entrando (es el caso real de cierre anual)', async () => {
+      asUser(makeStaffUser(adminStaffId))
+      const res = await exportRevenue(rango('2026-01-01', '2026-12-31'))
+      expect(res.status).toBe(200)
+    })
+
+    it('un día solo también', async () => {
+      // Control del borde inferior: `spanDays` es inclusivo, así que from==to
+      // vale 1 y no 0.
+      asUser(makeStaffUser(adminStaffId))
+      const res = await exportRevenue(rango('2026-05-10', '2026-05-10'))
+      expect(res.status).toBe(200)
+    })
+  })
 })

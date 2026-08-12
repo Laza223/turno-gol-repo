@@ -2,6 +2,7 @@ import { getSql, getWorkerSql } from '@/shared/db/client'
 import { ENCRYPTION_KEY_PATTERN } from '@/shared/env'
 import { getBoss } from '@/shared/jobs/boss'
 import { getRedis } from '@/shared/rate-limit/client'
+import { secretMatches } from '@/shared/security/secret-compare'
 import { captureException } from '@/lib/sentry'
 
 export const dynamic = 'force-dynamic'
@@ -11,6 +12,9 @@ export const runtime = 'nodejs'
 // excepción NUNCA sale en la respuesta (audit_report.md 3-13) — se loguea acá
 // para diagnóstico interno y el caller solo recibe este texto genérico.
 const GENERIC_CHECK_ERROR = 'No se pudo verificar.'
+
+/** Header con el que un caller de confianza pide el detalle de los checks. */
+export const STATUS_TOKEN_HEADER = 'x-status-token'
 
 type CheckStatus = 'ok' | 'degraded' | 'down'
 
@@ -186,7 +190,34 @@ function overallFrom(checks: Check[]): CheckStatus {
   return 'degraded'
 }
 
-export async function GET(): Promise<Response> {
+/**
+ * ¿Este caller puede ver el detalle por subsistema, o solo el semáforo?
+ *
+ * B10 — el endpoint es público a propósito (lo consulta un monitor de uptime
+ * externo sin credenciales), pero el `checks[]` completo le contaba a cualquiera
+ * qué pieza está caída. El caso que obliga a cerrarlo no es de principio:
+ * `upstash: down` anuncia que el rate limiter quedó degradado, o sea publica la
+ * ventana exacta para probar contraseñas y magic links a mano suelta. Lo mismo,
+ * más suave, con `mercadopago`/`email` sin configurar (deploy a medio hacer).
+ *
+ * El semáforo (`status` + 200/503) SÍ sigue siendo público: es el contrato
+ * mínimo del monitor y no dice qué subsistema falló.
+ *
+ * Fuera de producción devuelve el detalle sin configurar nada: `next dev`, CI y
+ * el gate de readiness de Playwright son justamente donde se lo mira para
+ * diagnosticar, y exigirles un token sería ceremonia sin defensa (ese servidor
+ * no está expuesto). En cualquier artefacto buildeado —`next build` fija
+ * NODE_ENV=production, también en los previews— el detalle exige `STATUS_TOKEN`.
+ */
+function canSeeDetail(req: Request): boolean {
+  if (process.env.NODE_ENV !== 'production') return true
+  const expected = process.env.STATUS_TOKEN
+  if (!expected) return false
+  const provided = req.headers.get(STATUS_TOKEN_HEADER)
+  return provided !== null && secretMatches(provided, expected)
+}
+
+export async function GET(req: Request): Promise<Response> {
   const [db, workerPool, pgboss, upstash] = await Promise.all([
     checkDb(),
     checkWorkerPool(),
@@ -204,8 +235,7 @@ export async function GET(): Promise<Response> {
   ]
   const status = overallFrom(checks)
   const httpStatus = status === 'ok' ? 200 : 503
-  return Response.json(
-    { status, checks, timestamp: new Date().toISOString() },
-    { status: httpStatus },
-  )
+  const timestamp = new Date().toISOString()
+  const body = canSeeDetail(req) ? { status, checks, timestamp } : { status, timestamp }
+  return Response.json(body, { status: httpStatus })
 }

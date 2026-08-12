@@ -33,8 +33,17 @@ const countsMock = vi.fn(async (): Promise<Record<string, number>> => ({}))
  * price_snapshot menos la seña, que es lo que quieren estos casos.
  */
 const chargesMock = vi.fn(async (): Promise<Map<string, number>> => new Map())
+/** `hasMore` de la página actual — mutable para poder renderizar el paginador. */
+const hasMore = { value: false }
 vi.mock('@/app/(admin)/reservas/queries', () => ({
-  listTenantBookings: (...args: unknown[]) => listMock(...(args as [])),
+  // El seam sigue devolviendo un array crudo para que cada caso arme su lista
+  // con `listMock.mockResolvedValue([...])`; la envoltura de página (B10) se
+  // agrega acá una sola vez.
+  listTenantBookings: async (...args: unknown[]) => ({
+    rows: await listMock(...(args as [])),
+    hasMore: hasMore.value,
+  }),
+  RESERVAS_PAGE_SIZE: 100,
   countTenantBookingsByStatus: (...args: unknown[]) => countsMock(...(args as [])),
   sumBookingChargesByBooking: (...args: unknown[]) => chargesMock(...(args as [])),
 }))
@@ -64,6 +73,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   listMock.mockResolvedValue([])
   countsMock.mockResolvedValue({})
+  hasMore.value = false
 })
 
 describe('ReservasPage — render', () => {
@@ -163,11 +173,97 @@ describe('ReservasPage — render', () => {
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', q: 'maría' },
       expect.anything(),
+      0,
     )
     expect(countsMock).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', q: 'maría' },
       expect.anything(),
     )
+  })
+})
+
+/**
+ * B10 — la UI que mentía: las píldoras y el subtítulo salen de un COUNT sin
+ * techo mientras la lista se cortaba en 200 sin decirlo. Podía decir
+ * "740 reservas" y mostrar 200, sin aviso y sin forma de llegar al resto.
+ */
+describe('ReservasPage — paginación', () => {
+  it('sin páginas siguientes NO muestra paginador (ruido en el caso normal)', async () => {
+    listMock.mockResolvedValue([row({})])
+    countsMock.mockResolvedValue({ confirmed: 1 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
+
+    expect(screen.queryByRole('navigation', { name: 'Paginación de reservas' })).toBeNull()
+  })
+
+  it('con más páginas dice qué rango se está viendo y sobre qué total', async () => {
+    hasMore.value = true
+    listMock.mockResolvedValue([row({ id: 'b1' }), row({ id: 'b2' })])
+    countsMock.mockResolvedValue({ confirmed: 740 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial' }) }))
+
+    const aviso = screen.getByRole('status')
+    expect(aviso.textContent).toContain('1–2')
+    expect(aviso.textContent).toContain('740')
+  })
+
+  it('el link "Siguientes" preserva scope, filtro y búsqueda', async () => {
+    hasMore.value = true
+    listMock.mockResolvedValue([row({})])
+    countsMock.mockResolvedValue({ completed: 740 })
+
+    render(
+      await ReservasPage({
+        searchParams: Promise.resolve({ dia: 'historial', status: 'completed', q: 'juan' }),
+      }),
+    )
+
+    const pager = screen.getByRole('navigation', { name: 'Paginación de reservas' })
+    expect(
+      within(pager)
+        .getByRole('link', { name: /Siguientes/ })
+        .getAttribute('href'),
+    ).toBe('/reservas?dia=historial&status=completed&q=juan&pagina=2')
+    // En la página 1 no hay "Anteriores".
+    expect(within(pager).queryByRole('link', { name: /Anteriores/ })).toBeNull()
+  })
+
+  it('en la página 2 el rango arranca en 101 y "Anteriores" vuelve a la 1', async () => {
+    hasMore.value = false
+    listMock.mockResolvedValue([row({ id: 'b1' }), row({ id: 'b2' })])
+    countsMock.mockResolvedValue({ confirmed: 102 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', pagina: '2' }) }))
+
+    expect(screen.getByRole('status').textContent).toContain('101–102')
+    const pager = screen.getByRole('navigation', { name: 'Paginación de reservas' })
+    // Sin `?pagina=` — la página 1 es la URL limpia.
+    expect(
+      within(pager)
+        .getByRole('link', { name: /Anteriores/ })
+        .getAttribute('href'),
+    ).toBe('/reservas?dia=historial')
+    expect(within(pager).queryByRole('link', { name: /Siguientes/ })).toBeNull()
+  })
+
+  it('un ?pagina basura no rompe: cae a la primera', async () => {
+    listMock.mockResolvedValue([row({})])
+    countsMock.mockResolvedValue({ confirmed: 1 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({ pagina: 'seis' }) }))
+
+    expect(listMock).toHaveBeenCalledWith('tenant-1', expect.anything(), expect.anything(), 0)
+  })
+
+  it('un ?pagina negativo tampoco: OFFSET nunca puede ser negativo', async () => {
+    listMock.mockResolvedValue([row({})])
+    countsMock.mockResolvedValue({ confirmed: 1 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({ pagina: '-4' }) }))
+
+    expect(listMock).toHaveBeenCalledWith('tenant-1', expect.anything(), expect.anything(), 0)
   })
 })

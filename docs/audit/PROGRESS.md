@@ -2690,3 +2690,128 @@ trabajo aparte. `/caja` es la pantalla frecuente y es la que gana acá.
   `getCashFlowsForExport` y `getAbonados`.
 - Las 12 páginas con `extractAuthUser` crudo (hoy no es un agujero: son
   pantallas operator-level donde admin y manager pasan igual).
+
+---
+
+## B10 (parte 2) — Guards que no guardaban y listas que truncaban en silencio
+
+**PR**: `fix/b10-guards` · **Fecha**: 2026-08-11
+
+### El hallazgo que no estaba en el plan
+
+🔴 **`mock-mp/checkout/page.tsx` tenía el portón MÁS DÉBIL que sus propias
+Server Actions.** La página cerraba con `process.env.MP_MOCK_MODE !== '1'` a
+secas; sus actions (`actions.ts:22`) además exigen `NODE_ENV !== 'production'`, y
+el gateway (`computeMpMockEnabled`) tiene un docstring que dice textualmente que
+tiene que ser **imposible de activar en producción aunque `MP_MOCK_MODE=1` se
+filtre a un deploy prod**.
+
+Con esa filtración las actions seguían devolviendo 404 — pero la página
+renderizaba. Y `loadBookingSummary` lee `bookings`/`courts`/`tenants`
+**cross-tenant con el pool BYPASSRLS y sin auth**: publicaba fecha, hora, cancha,
+nombre del complejo y monto de seña de cualquier `bookingId` que se adivinara.
+
+No lo encontré leyendo: lo encontró el test estático nuevo
+(`tests/unit/app-page-guard-chain.test.ts`) la primera vez que corrió, junto con
+la `page.tsx` del landing. Ahora usa `computeMpMockEnabled()`, con el escenario
+exacto cubierto en `mock-mp-checkout-booking.test.ts`.
+
+### 🟡 `/api/status` — el detalle detrás de un token
+
+El endpoint es público a propósito (monitor de uptime externo sin credenciales),
+pero el `checks[]` completo le contaba a cualquiera **qué pieza está caída**. El
+caso que obliga a cerrarlo no es de principio: `upstash: down` anuncia que el
+rate limiter quedó degradado, o sea publica la ventana exacta para probar
+contraseñas y magic links sin freno.
+
+Ahora el semáforo (`status` + 200/503) sigue público —es el contrato del
+monitor y no dice qué subsistema falló— y el desglose exige `STATUS_TOKEN` en el
+header `x-status-token` (comparación en tiempo constante,
+`src/shared/security/secret-compare.ts`). **Fuera de producción sale sin token**:
+`next dev`, CI y el gate de readiness de Playwright son donde se lo mira, y
+exigirles un token sería ceremonia sin defensa.
+
+Sin `STATUS_TOKEN` configurado el detalle queda CERRADO, no abierto — hay un test
+dedicado a ese modo de falla, que es la variante cómoda que dejaría producción
+igual que antes. `launch-check`/`staging-check` mandan el token si está en su env
+file; `doc19_runbook.md §3.0` documenta cómo leerlo.
+
+### 🟡 `/api/e2e/create-booking` — un secreto server-only, no una variable pública
+
+El plan decía que el gate `NEXT_PUBLIC_E2E === '1'` "se inlinea en build".
+Cierto, pero **ese no era el problema real**: la barrera efectiva era
+`NODE_ENV !== 'production'`, y en cualquier `next build` (previews incluidos) la
+función colapsa a `false`. O sea el endpoint ya estaba cerrado en todo artefacto
+desplegado.
+
+Lo que sí está mal es que esa barrera —una propiedad implícita de Next que nadie
+re-verifica— fuera la ÚNICA sosteniendo una ruta que escribe reservas reales sin
+sesión, sin ban y sin seña, con el `playerId` saliendo de un header. Ahora el
+portón es `E2E_ENDPOINT_SECRET` (server-only, mínimo 16 chars) que además hay que
+presentar en `x-e2e-secret`; `NODE_ENV` queda como segunda barrera, no como la
+única. Rechaza con **404, no 401**: un secreto que no matchea no debe confirmar
+que la ruta existe. `launch:check`/`staging:check` fallan si la variable existe
+en producción.
+
+`pnpm stress:bookings` lo manda y corta con un mensaje claro si falta — sin eso
+el síntoma sería "50 de 50 fallaron con 404", que se lee como "el endpoint no
+existe".
+
+### Las 12 páginas con `extractAuthUser` crudo: regla, no refactor
+
+Están cubiertas por sus layouts (`(admin)/layout.tsx` para staff,
+`settings/layout.tsx` con `requireAdminStaff` para lo solo-admin). O sea el plan
+tenía razón: **no es un agujero**. Pero la cobertura es una propiedad del ÁRBOL,
+invisible desde el archivo de la página.
+
+Reescribir 12 archivos sin cambiar comportamiento habría sido churn. En su lugar,
+`app-page-guard-chain.test.ts` verifica la cadena entera: toda página autenticada
+tiene guard arriba, `settings/**` exige `requireAdminStaff` en su cadena, los
+route groups públicos están **enumerados a mano** (uno nuevo no hereda la
+excepción), y las páginas mock-only exigen el portón de no-producción. La
+convención pasó a ser regla — y ya pagó, encontrando el 🔴 de arriba.
+
+### La UI que miente — CERRADO
+
+`/reservas` decía "740 reservas" en el subtítulo y las píldoras (COUNT sin techo)
+mientras listaba 200 (`LIMIT` mudo). El defecto no era el techo sino el
+**silencio**: nada en pantalla decía que faltaban 540 ni había forma de llegar a
+ellas. En el scope `historial`, que crece para siempre, esa es la vista normal de
+cualquier complejo con unos meses de uso.
+
+Ahora hay páginas de 100 con paginador, y el rango visible se dice explícito
+("Mostrando 101–200 de 740"). Lo mismo en `/jugadores` (`listTenantClients`), que
+B13 dejó fichado acá: ahí no había número que contradijera, pero la persona 201
+simplemente no existía para la pantalla y el único modo de alcanzarla era adivinar
+su nombre en el buscador.
+
+**Offset y no keyset, a sabiendas**: el orden cambia según el scope (tres
+`ORDER BY` distintos en reservas), y un cursor por scope serían tres codificadores
+con tres oportunidades de perder una fila en un empate. Sobre el historial de UN
+complejo el offset no es un problema de performance. `LIMIT n+1` para detectar la
+página siguiente, sin pagar un COUNT extra.
+
+### `getCashFlowsForExport` — se rechaza el pedido, no se recorta el resultado
+
+No tiene `LIMIT` y está BIEN que no lo tenga: un export de plata truncado en
+silencio es peor que uno que falla, porque el complejo cierra su contabilidad con
+un CSV al que le faltan filas y nada se lo dice. El problema era el rango:
+`?from=1900-01-01&to=2999-12-31` traía TODOS los movimientos a memoria dentro de
+una función serverless. Ahora hay techo de 366 días (un año fiscal con bisiesto)
+con 400 explícito. La UI de `/analiticas` solo exporta un mes, así que ningún uso
+real se toca.
+
+### Lo que queda de B10 (y por qué)
+
+- **`/mis-reservas`** (`LIMIT 200`): la page trae todo y parte
+  próximos/historial **en JS**, así que paginar exige mover ese corte a SQL — no
+  es la misma línea que los otros dos. Trunca en silencio pero sin número que lo
+  contradiga, y el techo se alcanza recién a ~4 años de reservar todas las
+  semanas.
+- **`getAbonados`** (sin `LIMIT`, `SELECT *`): el total se calcula con `.length`,
+  o sea **es honesto** — no miente, solo no tiene techo. Acotado por la capacidad
+  física del complejo (una fila por slot semanal por cancha) más los `canceled`
+  acumulados; la pantalla ya filtra por estado.
+
+Ninguno de los dos es la clase que se cerró acá (mentir o volver inalcanzable un
+dato). Se dejan fichados, no resueltos.

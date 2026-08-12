@@ -61,3 +61,48 @@ describe('MockMpCheckoutPage — ?booking UUID (#32)', () => {
     expect(h.execute).toHaveBeenCalledTimes(1)
   })
 })
+
+/**
+ * B10 — el portón de esta página era `MP_MOCK_MODE !== '1'` a secas: más débil
+ * que el de sus propias Server Actions (`actions.ts`, que además exige
+ * NODE_ENV) y que el del gateway, cuyo docstring pide explícitamente que sea
+ * imposible de activar en producción aunque la variable se filtre.
+ */
+describe('MockMpCheckoutPage — portón de no-producción', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('404 sin tocar la DB si MP_MOCK_MODE=1 se filtra a producción', async () => {
+    // El escenario exacto: con la variable filtrada, las actions ya devolvían
+    // 404 pero la página renderizaba, y `loadBookingSummary` lee
+    // bookings/courts/tenants CROSS-TENANT con el pool BYPASSRLS y sin auth.
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('VERCEL_ENV', 'production')
+
+    await expect(
+      MockMpCheckoutPage({ searchParams: Promise.resolve({ booking: VALID_UUID }) }),
+    ).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(h.execute).not.toHaveBeenCalled()
+  })
+
+  it('un preview de Vercel sí la abre (ahí se corren los E2E)', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    h.execute.mockResolvedValueOnce([
+      {
+        deposit_amount: 5000,
+        date: '2026-06-10',
+        time_start: '10:00:00',
+        time_end: '11:00:00',
+        court_name: 'Cancha 1',
+        tenant_name: 'Rincón',
+        tenant_id: 'tenant-1',
+      },
+    ])
+
+    const el = await MockMpCheckoutPage({ searchParams: Promise.resolve({ booking: VALID_UUID }) })
+
+    expect(el).toBeTruthy()
+  })
+})

@@ -71,15 +71,28 @@ const PLAYER_HINT = sql.raw(suggestionPhoneSql('sp.phone'))
  * cancelado) y los deudores de cantina (`canteen_tabs.debtor_name`). Un turno
  * fijo es un vínculo estable con el complejo; un invitado de una noche no.
  *
- * El `LIMIT 200` es el que ya tenía la query de jugadores. Sigue truncando en
- * silencio y sigue fichado en B10 (paginación) — no se arregla acá para no
- * mezclar dos bloques, pero ahora trunca sobre un conjunto más grande.
+ * B10 — el `LIMIT 200` heredado truncaba en SILENCIO: la persona 201 no existía
+ * para la pantalla y no había nada que lo dijera ni forma de alcanzarla salvo
+ * adivinar el nombre en el buscador. Ahora devuelve páginas y avisa que hay más.
+ * Offset y no keyset por el mismo motivo que en `/reservas`: el orden mezcla
+ * `lastBookingAt` (nullable) con `name`, y un cursor sobre eso son tres campos
+ * de desempate para ahorrar un `OFFSET` sobre la lista de clientes de UN
+ * complejo.
  */
+export const CLIENTES_PAGE_SIZE = 100
+
+export type ClientListPage = {
+  rows: ClientListRow[]
+  hasMore: boolean
+}
+
 export async function listTenantClients(
   tenantId: string,
   filters: { q?: string },
   tx: DbTx,
-): Promise<ClientListRow[]> {
+  page = 0,
+): Promise<ClientListPage> {
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 0
   const rows = await tx.execute<{
     key: string
     kind: 'player' | 'contact'
@@ -183,10 +196,12 @@ export async function listTenantClients(
     UNION ALL
     SELECT * FROM contacts
     ORDER BY "lastBookingAt" DESC NULLS LAST, name ASC
-    LIMIT 200
+    LIMIT ${CLIENTES_PAGE_SIZE + 1} OFFSET ${safePage * CLIENTES_PAGE_SIZE}
   `)
 
-  return [...rows].map((r) => ({ ...r, tags: normalizePlayerTags(r.tags ?? []) }))
+  const list = [...rows].map((r) => ({ ...r, tags: normalizePlayerTags(r.tags ?? []) }))
+  const hasMore = list.length > CLIENTES_PAGE_SIZE
+  return { rows: hasMore ? list.slice(0, CLIENTES_PAGE_SIZE) : list, hasMore }
 }
 
 export type LinkCandidate = {

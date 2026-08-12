@@ -79,6 +79,31 @@ SEV-1 → All hands. Email + llamada telefónica. Rollback inmediato si es deplo
 
 ## 3. Procedimientos de Emergencia
 
+### 3.0 Leer el health check (`/api/status`, alias `/api/health`)
+
+**En producción el endpoint público devuelve SOLO el semáforo.** Eso alcanza para
+UptimeRobot (que mira el código HTTP: 200 = ok, 503 = algo caído), pero **no dice
+qué se cayó**. El desglose por subsistema (`database`, `worker-pool`, `pg-boss`,
+`upstash`, `encryption-key`, `storage`, MP/email/Sentry) exige un token:
+
+```bash
+curl -H "x-status-token: $STATUS_TOKEN" https://turnogol.app/api/status
+```
+
+- `STATUS_TOKEN` se configura en Vercel (Production). **Si no está seteada, el
+  detalle no sale por ningún lado en producción** — el `curl` de arriba devuelve
+  el semáforo pelado y hay que caer a los logs de Vercel + Sentry.
+- `launch:check` y `staging:check` lo mandan solo si está en su env file.
+- Fuera de producción (`pnpm dev`, CI, Playwright) el detalle sale sin token.
+
+**Por qué está cerrado** (B10): el payload completo le anunciaba a cualquiera qué
+pieza estaba caída. El caso que obligó a cerrarlo: `upstash: down` significa que
+el rate limiter quedó degradado, o sea publicaba la ventana exacta para probar
+contraseñas y magic links sin freno.
+
+Los síntomas que este runbook describe como "health check reporta `database:
+unhealthy`" se leen con el token puesto.
+
 ### 3.1 La App No Responde (SEV-1)
 
 **Síntoma**: Los usuarios reportan que la app no carga. UptimeRobot envía alerta "DOWN". El health check `/api/health` no responde.

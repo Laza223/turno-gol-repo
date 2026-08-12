@@ -6,6 +6,15 @@ import { closeSql, getSql } from '@/shared/db/client'
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
 const SLOT_COUNT = 50
 
+/**
+ * B10 — `/api/e2e/create-booking` dejó de abrirse con `NEXT_PUBLIC_E2E=1` y pasó
+ * a exigir este secreto compartido (server-only, no se inlinea en build). Sin él
+ * la ruta devuelve 404, igual que si no existiera: este script tiene que
+ * presentarlo, y el dev server tiene que arrancar con la MISMA variable en su
+ * entorno.
+ */
+const E2E_SECRET = process.env.E2E_ENDPOINT_SECRET ?? ''
+
 const E2E_TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const E2E_COURT_ID = '00000000-0000-4000-8000-000000000010'
 
@@ -26,6 +35,7 @@ async function attemptBooking(
       headers: {
         'content-type': 'application/json',
         'x-e2e-player-id': playerId,
+        'x-e2e-secret': E2E_SECRET,
       },
       body: JSON.stringify(slot),
     })
@@ -79,6 +89,18 @@ function tomorrowIso(): string {
 }
 
 async function main(): Promise<void> {
+  // Cortar acá y no descubrirlo como "50 de 50 fallaron con 404": ese resultado
+  // se lee como "el endpoint no existe" y manda a debuggear la ruta, cuando lo
+  // único que falta es la variable.
+  if (E2E_SECRET.length < 16) {
+    console.error(
+      'Falta E2E_ENDPOINT_SECRET (mínimo 16 caracteres) en el entorno.\n' +
+        'Tiene que estar seteada acá Y en el dev server contra el que corre esto:\n' +
+        '  E2E_ENDPOINT_SECRET=<secreto> pnpm dev',
+    )
+    process.exit(1)
+  }
+
   const slot = {
     tenantId: E2E_TENANT_ID,
     courtId: E2E_COURT_ID,

@@ -410,38 +410,55 @@ export async function getAbonadoSlotConflicts(
   return dates.filter((d) => conflictSet.has(d)).sort()
 }
 
+/**
+ * Los turnos fijos del complejo.
+ *
+ * B10 — **sin `LIMIT`, y a propósito**. El total que muestra la pantalla sale de
+ * `.length` sobre estas mismas filas, así que el número nunca puede contradecir
+ * a la lista: no es la clase "la UI miente" que se cerró en `/reservas` y
+ * `/jugadores`. El conjunto además está acotado por la capacidad física del
+ * complejo (una fila por slot semanal por cancha) más los `canceled` que se
+ * acumulan, y la pantalla ya filtra por estado. Paginar acá sería ceremonia.
+ *
+ * Lo que sí se arregló es el `SELECT *`: el cast prometía una forma exacta de
+ * fila que la query no garantizaba. Nombrar las columnas convierte un renombre
+ * o un DROP en un error de Postgres —ruidoso, en el deploy— en vez de un campo
+ * `undefined` con tipo no-nullable llegando a la UI. `abonados.notes` se dropeó
+ * en la 074 y este `SELECT *` no se enteró; la próxima puede no ser tan barata.
+ */
 export async function getAbonados(
   tenantId: string,
   filters: { status?: AbonadoStatus },
   tx: DbTx,
 ): Promise<AbonadoRow[]> {
-  const rows = await tx.execute(sql`
-    SELECT * FROM abonados
+  const rows = await tx.execute<{
+    id: string
+    tenant_id: string
+    court_id: string
+    player_id: string | null
+    contact_name: string
+    contact_phone: string
+    day_of_week: number
+    time_start: string
+    time_end: string
+    price_per_session: number
+    starts_on: Date
+    ends_on: Date | null
+    status: AbonadoStatus
+    payment_method: AbonadoPaymentMethod
+    created_at: Date
+    updated_at: Date
+  }>(sql`
+    SELECT id, tenant_id, court_id, player_id, contact_name, contact_phone,
+           day_of_week, time_start, time_end, price_per_session,
+           starts_on, ends_on, status, payment_method, created_at, updated_at
+    FROM abonados
     WHERE tenant_id = ${tenantId}
     ${filters.status ? sql`AND status = ${filters.status}` : sql``}
     ORDER BY day_of_week, time_start
   `)
 
-  return (
-    rows as unknown as Array<{
-      id: string
-      tenant_id: string
-      court_id: string
-      player_id: string | null
-      contact_name: string
-      contact_phone: string
-      day_of_week: number
-      time_start: string
-      time_end: string
-      price_per_session: number
-      starts_on: Date
-      ends_on: Date | null
-      status: AbonadoStatus
-      payment_method: AbonadoPaymentMethod
-      created_at: Date
-      updated_at: Date
-    }>
-  ).map((r) => ({
+  return [...rows].map((r) => ({
     id: r.id,
     tenantId: r.tenant_id,
     courtId: r.court_id,

@@ -11,9 +11,17 @@ operativo) · **B3** (stories + candado) · **B4** (analytics_events) · **B5** 
 (capas `@/shared`) · **B7** (react-hooks en `error`) · **B16** (Torneos, [#126](https://github.com/Laza223/turno-gol-repo/pull/126)).
 
 **B9 cerrado** y el **🔴 de B10** también (2026-08-11, ver `docs/audit/PROGRESS.md`): `pnpm test`
-colecta `src/`, los 14 guards `dbAvailable` salieron, y el export CSV pasó a `withTenant`. Del resto
-de B10 quedan los 2 🟡, las 12 páginas con `extractAuthUser` crudo, `with-auth.ts` muerto y los 7
-listados sin paginación.
+colecta `src/`, los 14 guards `dbAvailable` salieron, y el export CSV pasó a `withTenant`.
+
+**B10 CERRADO** (2026-08-11, PRs #137/#138/#139). Tres correcciones al plan en el camino:
+`with-auth.ts` **no** es código muerto (lo usa `route-wrappers-request-context.test.ts` como
+implementación de referencia); el gate de `/api/e2e/create-booking` **no** dependía del inlining de
+`NEXT_PUBLIC_E2E` sino de `NODE_ENV`; y `getAbonados` **no se paginó** porque su total sale de
+`.length` sobre las mismas filas — no miente. Las 12 páginas con `extractAuthUser` crudo tampoco
+eran un agujero (los layouts las cubren): en vez del refactor quedó
+`tests/unit/app-page-guard-chain.test.ts`, que verifica la cadena entera del árbol — y encontró un
+🔴 que el plan no tenía: `mock-mp/checkout/page.tsx` tenía el portón más débil que sus propias
+Server Actions.
 
 **B12 cerrado** (2026-08-11, migr. 074): ENUM `player_tag` con las 5 etiquetas sobre
 `player_tenant_relationships`, ficha + chips en la lista, y `abonados.notes` **eliminada** — decisión
@@ -23,7 +31,7 @@ del dueño, verificada contra producción antes del DROP (0 filas). Destraba B13
 turnos fijos sin cuenta se derivan de `abonados` (sin tabla nueva) y se vinculan a mano, con inverso.
 Sin migración.
 
-Quedan **B8 · B10 (resto) · B11 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
+Quedan **B8 (resto) · B11 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
 lo de abajo es la reconstrucción, medida contra el código de hoy.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
@@ -116,7 +124,7 @@ aplique el fix" cuando el `.skip` ya no está.
 
 ---
 
-## B10 — Route-guard + paginación
+## B10 — Route-guard + paginación ✅ CERRADO (2026-08-11, PRs #137/#138/#139)
 
 ### Guards
 

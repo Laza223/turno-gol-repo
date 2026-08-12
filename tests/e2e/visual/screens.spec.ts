@@ -42,6 +42,13 @@ test.describe('visual — público', () => {
     // julio traía "29/07/2026" y en agosto el campo decía otra cosa. El diff que
     // eso mete es chico (unos glifos), pero es ruido permanente en la única
     // pieza del repo cuyo trabajo es que un diff signifique algo.
+    //
+    // Precio conocido, y NO es un bug del producto: el servidor sigue con la
+    // fecha real, así que el log del job trae un "Hydration failed … server
+    // rendered text didn't match" de esta pantalla (medido: 0 antes de esta
+    // línea, 1 después). React regenera en el cliente y la foto sale bien.
+    // Aparece solo con el reloj del test congelado — en producción los dos
+    // lados leen el mismo día.
     await page.clock.setFixedTime(FROZEN_NOW)
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()

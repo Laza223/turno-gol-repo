@@ -61,6 +61,14 @@ El project `visual` lista **9** tests y no 8: el noveno es
 | La línea roja de "ahora" se mueve | Sale gratis: `useNowLine` devuelve `null` cuando `artNow.date !== date` (`src/hooks/use-now-line.ts:28`). Con la fecha pinneada a una distinta de hoy, no se dibuja |
 | `useArtNow` / `ExpiryCountdown` leen `Date.now()` en el cliente | `page.clock.setFixedTime(FROZEN_NOW)`. Misma constante que Storybook |
 | El campo FECHA del buscador de la landing arranca en **hoy** | Mismo `setFixedTime`. `HeroSearch` es `'use client'` y lo lee con `useClientSnapshot(todayLocal, …)`, o sea del reloj del browser: sin congelarlo la baseline caduca sola (la de julio quedó con "29/07/2026" adentro). El diff que mete queda muy por debajo del umbral, así que **no rompe el gate: lo ensucia** — es ruido permanente en la única pieza cuyo trabajo es que un diff signifique algo |
+
+> **El log del job trae un `Hydration failed` de la landing, y es el precio del
+> punto anterior, no un bug.** El reloj congelado es el del browser; el servidor
+> sigue renderizando la fecha real, así que los dos textos difieren y React
+> regenera esa parte en el cliente. Medido: 0 ocurrencias antes de congelarlo, 1
+> después. La foto sale bien igual (9/9 verde) y en producción no existe, porque
+> ahí los dos lados leen el mismo día. Si algún día se agrega un gate de "cero
+> errores de consola", esta es la excepción que hay que contemplar.
 | Los seeds funcionales usan fechas relativas | Seed propio (`tests/e2e/visual/_seed.ts`) con UUIDs, horarios y fecha **absolutos**, idempotente |
 | Animaciones | `reducedMotion: 'reduce'` engancha el `@media` que ya existe en `globals.css`. Cero CSS nuevo, y de paso se fotografía el camino accesible |
 | Banner de push (`fixed bottom-left z-40`) | `addInitScript` + `localStorage` antes del primer `goto` |

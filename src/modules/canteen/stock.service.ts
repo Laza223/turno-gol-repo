@@ -257,8 +257,10 @@ export async function getLedger(
       cash_flow_id: string | null
       tab_id: string | null
       created_by: string
-      occurred_at: Date | string
-      created_at: Date | string
+      // B8: no es `Date | string`, es string y punto — ver la tabla de tipos en
+      // `src/shared/db/client.ts`. La unión escondía que nunca llega un Date.
+      occurred_at: string
+      created_at: string
       product_name: string
     }>
   ).map((r) => ({
@@ -273,7 +275,6 @@ export async function getLedger(
     cashFlowId: r.cash_flow_id,
     tabId: r.tab_id,
     createdBy: r.created_by,
-    // tx.execute crudo puede devolver Date como string (gotcha del repo).
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),
     productName: r.product_name,

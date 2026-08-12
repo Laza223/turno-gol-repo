@@ -1317,3 +1317,55 @@ describe('createManualBooking — type=block', () => {
     expect(booking.type).toBe('block')
   })
 })
+
+/**
+ * B8 — `autoCompleteOverdueBookings` devolvía filas cuyos campos multi-palabra
+ * valían `undefined`: el `RETURNING b.*` crudo entrega claves snake_case y el
+ * cast prometía `typeof bookings.$inferSelect` (camelCase, del query builder),
+ * así que `rowToBookingRow` leía `row.tenantId` y recibía nada. TypeScript en
+ * verde todo el tiempo, y el worker no se enteró porque solo usa `.length`.
+ *
+ * Este test mira el CONTENIDO de lo que vuelve, no la cantidad — que es
+ * exactamente lo que nadie estaba mirando.
+ */
+describe('autoCompleteOverdueBookings devuelve filas completas (B8)', () => {
+  it('cada campo del BookingRow tiene el valor de la base, no undefined', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
+    const courtId = await insertCourt(tenant.id)
+
+    // Un turno confirmado que ya terminó hace rato: el cron lo tiene que agarrar.
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
+    await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
+
+    const db = getWorkerDb()
+    const completed = await db.transaction((tx) => autoCompleteOverdueBookings(tx))
+
+    const row = completed.find((b) => b.id === bookingId)
+    expect(row).toBeDefined()
+    // snake_case -> camelCase: estos son los que llegaban undefined.
+    expect(row!.tenantId).toBe(tenant.id)
+    expect(row!.courtId).toBe(courtId)
+    expect(row!.playerId).toBe(player.id)
+    expect(row!.timeStart).toBe('10:00:00')
+    expect(row!.timeEnd).toBe('11:00:00')
+    expect(row!.priceSnapshot).toBeTypeOf('number')
+    expect(row!.depositStatus).toBeTruthy()
+    expect(row!.status).toBe('completed')
+    // Fechas: el SQL crudo las manda como string, el mapper las tiene que
+    // convertir. Un `undefined` acá pasaba el typecheck con tipo `Date`.
+    expect(row!.date).toBeInstanceOf(Date)
+    expect(row!.createdAt).toBeInstanceOf(Date)
+    expect(row!.updatedAt).toBeInstanceOf(Date)
+    expect(Number.isNaN(row!.createdAt.getTime())).toBe(false)
+  })
+})

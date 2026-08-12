@@ -95,7 +95,12 @@ export async function createDepositPayment(
         playerId: string | null
         depositAmount: number
         status: string
-        createdAt: Date
+        // B8: `tx.execute` no parsea timestamptz — llega string, no Date
+        // (tabla de tipos en `src/shared/db/client.ts`). Lo salva que el
+        // consumidor hace `new Date(createdAt).getTime()`; con el tipo mintiendo,
+        // un `.getTime()` directo compilaba y daba NaN, o sea un hold que nunca
+        // vence.
+        createdAt: string
       }>
     )[0]
     if (!booking) throw new PaymentNotFoundError(bookingId)

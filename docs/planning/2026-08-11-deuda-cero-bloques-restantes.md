@@ -31,6 +31,22 @@ del dueño, verificada contra producción antes del DROP (0 filas). Destraba B13
 turnos fijos sin cuenta se derivan de `abonados` (sin tabla nueva) y se vinculan a mano, con inverso.
 Sin migración.
 
+**B8 cerrado en lo que importaba** (2026-08-11, PRs #135/#136 + parte 2): la premisa del bloque
+—"convertir 193 casts al genérico de Drizzle"— **no se sostuvo**: esa conversión no atrapa nada,
+porque el genérico es la misma aserción sin chequear. Lo que sí faltaba era medir qué devuelve el
+driver, y ahí aparecieron 3 filas que prometían camelCase sobre SQL crudo (campos multi-palabra
+valiendo `undefined` con TypeScript en verde) y 12 campos `Date` que son string. Cero bugs vivos,
+verificado consumidor por consumidor. Tabla de tipos en `src/shared/db/client.ts`, candado en
+`tests/unit/raw-sql-row-shape.test.ts`. El barrido mecánico de los ~190 restantes queda sin hacer,
+a propósito.
+
+**B15 cerrado** (2026-08-11): un slot con hold ajeno se veía igual que uno vendido, así que el
+jugador siguiente se iba creyendo la cancha ocupada seis minutos antes de que se liberara. Ahora
+`SlotStatus` tiene `'held'` con instante ABSOLUTO de vencimiento (relativo + caché = contador
+corrido), la grilla del staff dice "Pagando ahora" con tiempo restante, y la cuenta del vencimiento
+—copiada a mano en cinco lugares, origen de caza-bugs #12— vive en `src/lib/booking/hold.ts`. De las
+3 superficies que pedía el plan, medido, **una** lo necesitaba.
+
 Quedan **B11 · B14**. Ninguno tiene el alcance escrito en ningún lado;
 lo de abajo es la reconstrucción, medida contra el código de hoy.
 
@@ -38,11 +54,11 @@ lo de abajo es la reconstrucción, medida contra el código de hoy.
 
 Esto ya me hizo mapear mal dos bloques. Las tres conviven:
 
-| Serie | Dónde vive | Ejemplo |
-|---|---|---|
-| **Bloques B0–B16** de este esfuerzo | solo en `docs/audit/PROGRESS.md` (secciones `## B5`, `## B6`, `## B7`, `## B16`) y en el `git log` | B16 = Torneos |
-| **Auditoría de datos D1–D8** | `docs/audit/STATE.md`, `MASTER_PLAN.md` | D1 = schema e índices |
-| **Decisiones de fase v2 D1–D8** | `docs/planning/2026-08-01-decisiones-de-fase-v2.md` | D1 = política del hold |
+| Serie                               | Dónde vive                                                                                         | Ejemplo                |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------- |
+| **Bloques B0–B16** de este esfuerzo | solo en `docs/audit/PROGRESS.md` (secciones `## B5`, `## B6`, `## B7`, `## B16`) y en el `git log` | B16 = Torneos          |
+| **Auditoría de datos D1–D8**        | `docs/audit/STATE.md`, `MASTER_PLAN.md`                                                            | D1 = schema e índices  |
+| **Decisiones de fase v2 D1–D8**     | `docs/planning/2026-08-01-decisiones-de-fase-v2.md`                                                | D1 = política del hold |
 
 Y `docs/audit/STATE.md:52-53` usa `B10`/`B11` para **la auditoría vieja de mayo** (Observabilidad /
 Operativo), que no tiene nada que ver con los bloques de acá.
@@ -52,31 +68,46 @@ Mapeo correcto de los que citan una "D": **B11 → auditoría D6** · **B12 → 
 
 ---
 
-## B8 — Tipos de SQL crudo
+## B8 — Tipos de SQL crudo ✅ CERRADO en lo que importaba (2026-08-11, PRs #135/#136 + parte 2)
 
-**193 casts a mano** del resultado de un SQL crudo, en **55 archivos**. La forma es siempre
-`(rows as unknown as Array<{…}>)`.
+Lo de abajo es el plan original, con lo que **medirlo refutó** marcado. Ver
+`docs/audit/PROGRESS.md` § "B8 (parte 2)".
 
-Lo que hace este bloque barato: **183 de los 193 (95%) están sobre `tx.execute()` de Drizzle**, y
-Drizzle **ya expone el genérico** — `tx.execute<{ id: string }>(sql\`…\`)` compila hoy
-(`node_modules/drizzle-orm/pg-core/db.d.ts:280`). El repo tiene **0 usos** de `.execute<`. No hace
-falta escribir ningún helper. El patrón bueno ya se usa en 43 sitios, pero con el genérico de
-postgres-js (`sql<T[]>\`…\``), que es otra API y no es copy-paste.
+**193 casts a mano** del resultado de un SQL crudo, en **55 archivos** (hoy 205; el número crece
+con cada feature). La forma es siempre `(rows as unknown as Array<{…}>)`.
 
-**70 de los 193 tocan caminos de plata.** Los tres de mayor riesgo, por lo que hacen y no por
-cuántos son:
+> **La premisa central del bloque no se sostuvo.** El plan asume que convertir esos casts al
+> genérico de Drizzle (`tx.execute<T>(sql\`…\`)`) es el trabajo. **Esa conversión no atrapa ni un
+> bug**: el genérico es la MISMA aserción sin chequear, escrita más corto. Lo que atrapa algo es
+> comparar la forma prometida contra lo que el driver devuelve — y eso nadie lo había medido.
+>
+> Medido: **las dos APIs del repo parsean distinto el mismo SQL**. Por `tx.execute` un
+> `timestamptz` llega **string**; por el template de postgres-js llega **Date**. Y el SQL crudo
+> devuelve claves **snake_case**, mientras `$inferSelect` es camelCase. Tabla completa escrita en
+> `src/shared/db/client.ts`.
+>
+> Encontrado con esa tabla en la mano: **3 sitios** que prometían camelCase sobre SQL crudo
+> (`autoCompleteOverdueBookings` y los dos ramos de `createCashFlow` con idempotency key) y **12
+> campos** declarados `Date` que son string. **Cero bugs vivos** — verificado consumidor por
+> consumidor: todos leen `.id`/`.length` o envuelven en `new Date()`. El sistema andaba por
+> casualidad. Candado nuevo: `tests/unit/raw-sql-row-shape.test.ts`.
 
-- `payment.service.ts:968` — `Array<{ total: string | number }>` sobre reembolsos previos. Si
-  Postgres devuelve `numeric` como string, la aritmética de abajo **concatena en vez de sumar**.
-  El cast documenta la ambigüedad en lugar de resolverla.
-- `cashflow.service.ts:139,148` — castea a `typeof cashFlows.$inferSelect`, o sea promete la fila
-  **completa** del schema desde un `RETURNING` parcial. TypeScript miente y el consumidor lee
-  `undefined` con tipo no-nullable.
-- `billing.service.ts:469` y `super-admin/support.service.ts:356` — `!` encima del cast, sobre el
-  conteo de canchas que decide límites de plan.
+**Las tres "de mayor riesgo" del plan, verificadas una por una:**
 
-**Corte en 3 PRs** (el que sale de los números): torneos (42, autocontenido, sirve de piloto) ·
-caminos de plata (~85, revisión línea por línea) · resto (~66).
+- `payment.service.ts:968` — `Array<{ total: string | number }>` sobre reembolsos previos.
+  **REFUTADA en la parte 1 (#135)**: la concatenación no existía.
+- `cashflow.service.ts:139,148` — `typeof cashFlows.$inferSelect` sobre un `RETURNING`.
+  **CONFIRMADA, y peor de lo escrito**: no es "fila completa desde un RETURNING parcial", es
+  camelCase sobre claves snake_case. Arreglada en la parte 2.
+- `billing.service.ts:469` y `super-admin/support.service.ts:356` — `!` encima del conteo de
+  canchas que decide límites de plan. **REFUTADA**: los dos usan `COUNT(*)::int` (que sí llega
+  como number) y un `COUNT` sin `GROUP BY` devuelve siempre exactamente una fila, así que el `!`
+  es correcto.
+
+**El corte en 3 PRs (torneos / caminos de plata / resto) queda SIN hacer, a propósito.** Es churn
+mecánico sin defecto detrás, y el candado nuevo ya lee las dos formas (`as unknown as` y
+`.execute<…>`), así que no lo necesita para funcionar. Si algún día se hace, es por consistencia
+de estilo, no por seguridad — y conviene decirlo así en el PR.
 
 ### B8d — Prettier
 
@@ -117,7 +148,7 @@ Playwright tiene 4 `test.fixme` + 3 `test.skip`, de los cuales el peor es
 auto-saltea y pinta verde** en vez de fallar). `playwright.config.ts:13` tiene `retries: 2` en CI
 (ya fichado como "enmascara flakiness" en un plan de mayo). Las 3 suites de axe e2e desactivan
 `color-contrast` — por eso las stories son el único lugar del repo que mide contraste. 388
-`toBeTruthy()` (el número de tests *débiles* de verdad es menor, no se puede separar
+`toBeTruthy()` (el número de tests _débiles_ de verdad es menor, no se puede separar
 automáticamente "única aserción" de "una de varias"). 2 `continue-on-error` (semgrep, rotulado
 ADVISORY). Un comentario stale en `cancellations.test.ts:1318` que dice "quitar `.skip` cuando se
 aplique el fix" cuando el `.skip` ya no está.
@@ -181,7 +212,7 @@ parecido es `pnpm stress:bookings` (`scripts/stress-test.ts`), que **no es un lo
 `doc5_rnf.md:54-64` declara 6 presupuestos, no uno solo (grilla 500/800ms, reserva admin
 1500/2500, reserva online 2000/3500, dashboard 800/1500, búsqueda 600/1000, reportes 2000/4000), y
 dice cómo medirlos. **Nada de eso se mide.** Los únicos 2 hits de "p95" en `src/` son comentarios
-que *citan* el requisito para justificar un timeout.
+que _citan_ el requisito para justificar un timeout.
 
 Lo que sí está resuelto: el seed. `scripts/audit/seed-d3-volume.sql` es reusable tal cual (15.695
 bookings, 22.431 cash_flows, 25.000 audit_logs, 200 tenants de fondo, `setseed` fijo, idempotente),
@@ -206,13 +237,13 @@ etiqueta es del complejo.
 
 La decisión (`decisiones-de-fase-v2.md:41-45`): **solo etiquetas de un set predefinido, sin texto
 libre sobre personas**. El motivo es legal, no de UI — lo que un cliente puede leer ejerciendo
-derecho de acceso (Ley 25.326) queda controlado en origen: *"nunca aparece un 'chanta, no atenderle
-el teléfono' escrito a las 2 AM"*.
+derecho de acceso (Ley 25.326) queda controlado en origen: _"nunca aparece un 'chanta, no atenderle
+el teléfono' escrito a las 2 AM"_.
 
 **El set final ya está cerrado** (`2026-08-07-analisis-rubro-y-decisiones.md:129-166`, sección
-titulada literalmente *"El set de etiquetas D3 (destraba B12 → B13)"*): `Se le fía` · `No fiar` ·
-`Organiza el grupo` · `Tiene precio acordado` · `Trato conflictivo`. Descartadas *VIP* (categoría
-sin consecuencia = decoración que igual es dato personal) y *Paga tarde* (el sistema ya lo mide con
+titulada literalmente _"El set de etiquetas D3 (destraba B12 → B13)"_): `Se le fía` · `No fiar` ·
+`Organiza el grupo` · `Tiene precio acordado` · `Trato conflictivo`. Descartadas _VIP_ (categoría
+sin consecuencia = decoración que igual es dato personal) y _Paga tarde_ (el sistema ya lo mide con
 deuda real). La regla que lo gobierna: **una etiqueta solo se justifica si captura algo que el
 sistema no puede medir solo**.
 
@@ -237,36 +268,36 @@ a una persona con nombre y teléfono. **Es exactamente lo que D3 prohíbe** y ho
 Sí: unificar `/jugadores` + `/abonados` en **una** lista de personas. Lo dice el propio código —
 `src/app/(admin)/jugadores/ClientesTabs.tsx:13-16`:
 
-> *"OJO — esto es la CÁSCARA de navegación, no la fusión de Clientes: por dentro siguen siendo dos
-> listas de personas distintas."*
+> _"OJO — esto es la CÁSCARA de navegación, no la fusión de Clientes: por dentro siguen siendo dos
+> listas de personas distintas."_
 
 El solape concreto: `/jugadores` sale de `player_tenant_relationships ⋈ players` (**solo perfiles
 registrados**, por decisión de producto), mientras `/abonados` sale de `abonados`, donde
 `playerId` es **nullable** y `contactName`/`contactPhone` son NOT NULL. O sea: un abonado con
 `player_id = NULL` **es una persona que existe solo como nombre+teléfono y que `/jugadores` nunca
-muestra**. Es literalmente el caso que el pase crítico anticipó: *"el 'Diego' del fijo de los
-lunes, que quizás no tiene cuenta — o peor, quizás ES el 'Diego R.' que reserva online"*.
+muestra**. Es literalmente el caso que el pase crítico anticipó: _"el 'Diego' del fijo de los
+lunes, que quizás no tiene cuenta — o peor, quizás ES el 'Diego R.' que reserva online"_.
 
 La política ya está decidida (`decisiones-de-fase-v2.md:12`): **ficha ligera para no registrados +
-vinculación manual por el staff, nunca merge automático**. Criterio de salida de Fase 4: *"UNA lista
-de personas; fijos como pestaña; ficha-panel abrible desde Grilla, Caja y deudas sin navegar"*.
+vinculación manual por el staff, nunca merge automático**. Criterio de salida de Fase 4: _"UNA lista
+de personas; fijos como pestaña; ficha-panel abrible desde Grilla, Caja y deudas sin navegar"_.
 
 Orden explícito en los docs: **B12 destraba B13**. Primero el ENUM y la ficha, después la fusión
 encima de esa ficha.
 
 ⏳ **Este bloque tiene ventana que se cierra.** El pase crítico
-(`2026-08-01-vision-v2-pase-critico.md:5`) dice que Fase 4 *"es la cirugía más barata de hacer sin
-clientes y la más cara de hacer con ellos… la ventana expira con el primer contrato"*.
+(`2026-08-01-vision-v2-pase-critico.md:5`) dice que Fase 4 _"es la cirugía más barata de hacer sin
+clientes y la más cara de hacer con ellos… la ventana expira con el primer contrato"_.
 
 ---
 
 ## B14 — "Hoy: $X" en el sidebar
 
-Origen (única mención literal en el repo, `vision-producto-turnogol-v2.md:157`): *"el número de
-'Hoy: $X' acompaña en la barra, visible desde cualquier espacio (P2)"*. Es un pedido de
+Origen (única mención literal en el repo, `vision-producto-turnogol-v2.md:157`): _"el número de
+'Hoy: $X' acompaña en la barra, visible desde cualquier espacio (P2)"_. Es un pedido de
 **navegación** para el admin (no volver a `/dashboard` cada vez), no una compensación para el
-manager — aunque de paso también le sirve, y es compatible con la regla de roles (*el manager ve
-toda la plata del día que opera, nada de la plata del negocio*).
+manager — aunque de paso también le sirve, y es compatible con la regla de roles (_el manager ve
+toda la plata del día que opera, nada de la plata del negocio_).
 
 La función ya existe: **`getDaySummary`** (`cashflow.service.ts:259`) devuelve `balance`,
 `totalIncome`, `totalAdjustments`, `byMethod`, `isClosed` — todo en centavos, una sola query
@@ -277,8 +308,8 @@ Bloqueante estructural: `AdminSidebar` es `'use client'` y recibe todo por props
 `(admin)/layout.tsx`, que **hoy no consulta un solo peso**. El número tiene que entrar por ahí o
 por un endpoint.
 
-Riesgo a vigilar: el criterio de salida de Fase 1 exige *"fuente única de agregados: el mismo
-número en toda superficie que lo muestre… verificado con test de consistencia, no a ojo"*. Un
+Riesgo a vigilar: el criterio de salida de Fase 1 exige _"fuente única de agregados: el mismo
+número en toda superficie que lo muestre… verificado con test de consistencia, no a ojo"_. Un
 "Hoy: $X" en el sidebar es una segunda superficie del mismo número que ya muestran `/caja` y
 `/dashboard`.
 
@@ -295,14 +326,14 @@ Un hold = una fila de `bookings` en `status='pending_payment'`. **TTL 6 minutos*
 **Dos de los tres entregables del gate ya están cumplidos**, y la propia decisión lo dice
 ("formaliza y hace **visible** una mecánica de expiración que el sistema ya tiene"):
 
-| Ítem del gate | Estado |
-|---|---|
-| El hold nace al iniciar el pago | ✅ ya cumple — el INSERT ocurre al hacer submit, mirar el slot no escribe nada |
-| Liberación automática | ✅ ya cumple, y robusta: job por-booking + barrido de respaldo + precheck contra MP antes de expirar + tope de 3 holds simultáneos por jugador |
-| Countdown visible al jugador | 🟡 existe, pero **solo después de volver de MercadoPago** |
-| "Pagando ahora" en la grilla del staff | 🔴 dice "Esperando seña", sin tiempo restante |
-| El hold ajeno, legible por otro jugador | 🔴 **no existe el concepto** |
-| Copy "la cancha es tuya cuando empezás a señar" | 🔴 ausente |
+| Ítem del gate                                   | Estado                                                                                                                                         |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| El hold nace al iniciar el pago                 | ✅ ya cumple — el INSERT ocurre al hacer submit, mirar el slot no escribe nada                                                                 |
+| Liberación automática                           | ✅ ya cumple, y robusta: job por-booking + barrido de respaldo + precheck contra MP antes de expirar + tope de 3 holds simultáneos por jugador |
+| Countdown visible al jugador                    | 🟡 existe, pero **solo después de volver de MercadoPago**                                                                                      |
+| "Pagando ahora" en la grilla del staff          | 🔴 dice "Esperando seña", sin tiempo restante                                                                                                  |
+| El hold ajeno, legible por otro jugador         | 🔴 **no existe el concepto**                                                                                                                   |
+| Copy "la cancha es tuya cuando empezás a señar" | 🔴 ausente                                                                                                                                     |
 
 🔴 **El agujero más caro: un slot con hold de otro jugador se ve idéntico a uno vendido.** El tipo
 ni siquiera tiene el estado: `SlotStatus = 'free' | 'occupied' | 'fixed' | 'blocked' | 'past'`
@@ -320,9 +351,9 @@ Bloqueante técnico para el lado del staff: la query de la grilla **no trae `boo
 (`grilla/page.tsx:56-71` selecciona 15 columnas y no está), así que hoy la grilla no tiene el dato
 para calcular el tiempo restante aunque quisiera.
 
-Cicatriz que prueba que esto ya mordió (`reserva/[bookingId]/pendiente/page.tsx:41-43`): *"el hold
+Cicatriz que prueba que esto ya mordió (`reserva/[bookingId]/pendiente/page.tsx:41-43`): _"el hold
 real vence a los 6 min, no a los 15 que este contador mostraba antes — el jugador confiaba en un
-margen que ya no existía y perdía el slot sin darse cuenta"*.
+margen que ya no existía y perdía el slot sin darse cuenta"_.
 
 ---
 
@@ -334,9 +365,9 @@ margen que ya no existía y perdía el slot sin darse cuenta"*.
 > menos un complejo real compartiendo su link** — antes de eso no hay embudo que optimizar ni datos
 > para validarlo.
 
-Y el mismo documento es explícito: *"el flujo jugador baja al final. Sin tráfico online real,
-optimizar conversión es pulir una puerta por la que no pasa nadie"*. En "qué NO hacer primero"
-lista *"cualquier optimización del embudo jugador anterior al primer complejo con tráfico real"*.
+Y el mismo documento es explícito: _"el flujo jugador baja al final. Sin tráfico online real,
+optimizar conversión es pulir una puerta por la que no pasa nadie"_. En "qué NO hacer primero"
+lista _"cualquier optimización del embudo jugador anterior al primer complejo con tráfico real"_.
 
 Al 2026-08-01 **no había ningún cliente real** — todos los tenants de prod eran pruebas del propio
 dueño. El registro es público desde el 2026-07-30, así que esto hay que **re-verificar**, no
@@ -349,8 +380,8 @@ tráfico.
 
 ## Y lo que tiene ventana de verdad
 
-Fase 4 (**B12 + B13**) es *"la cirugía más barata de hacer sin clientes y la más cara de hacer con
-ellos"*, y la ventana **expira con el primer contrato**. Es el único grupo de este backlog cuyo
+Fase 4 (**B12 + B13**) es _"la cirugía más barata de hacer sin clientes y la más cara de hacer con
+ellos"_, y la ventana **expira con el primer contrato**. Es el único grupo de este backlog cuyo
 costo sube con el tiempo.
 
 ## Fuera de los bloques, abierto y con plata de por medio

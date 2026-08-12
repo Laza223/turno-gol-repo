@@ -9,7 +9,7 @@ import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
-import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
+import { holdExpiresAtMs } from '@/lib/booking/hold'
 import type { PaymentGateway } from './mp-gateway'
 import type {
   CreatePreferenceInput,
@@ -134,8 +134,8 @@ export async function createDepositPayment(
     }
   })
 
-  const holdExpiresAtMs = new Date(createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000
-  const preferredExpiresAtMs = holdExpiresAtMs - MP_PREFERENCE_SAFETY_BUFFER_SECONDS * 1000
+  const preferredExpiresAtMs =
+    holdExpiresAtMs(createdAt) - MP_PREFERENCE_SAFETY_BUFFER_SECONDS * 1000
   const expiresAt = new Date(
     Math.max(preferredExpiresAtMs, Date.now() + MP_PREFERENCE_MIN_WINDOW_SECONDS * 1000),
   )

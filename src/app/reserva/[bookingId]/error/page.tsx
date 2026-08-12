@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
-import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
+import { holdExpiresAtMs } from '@/lib/booking/hold'
 import { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 import { BookingErrorCard, BookingErrorNotFound } from './BookingErrorCard'
@@ -46,12 +46,11 @@ export default async function ReservaErrorPage(props: Props) {
   // re-ejecutar en cualquier momento.
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now()
-  // caza-bugs #12: el hold real vence a DEFAULT_EXPIRY_SECONDS (6 min), no 15
-  // — con 15 esta página ofrecía "Reintentar pago" sobre un booking que el
-  // worker de expiración ya había liberado, y el retry fallaba confuso.
+  // caza-bugs #12: con 15 min esta página ofrecía "Reintentar pago" sobre un
+  // booking que el worker de expiración ya había liberado, y el retry fallaba
+  // confuso.
   const withinWindow =
-    booking.status === 'pending_payment' &&
-    new Date(booking.createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000 > now
+    booking.status === 'pending_payment' && holdExpiresAtMs(booking.createdAt) > now
 
   return (
     <ReservaDarkShell>

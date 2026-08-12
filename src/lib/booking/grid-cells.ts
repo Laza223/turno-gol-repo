@@ -28,6 +28,13 @@ export type GridBooking = {
   paymentMethod?: PaymentMethodValue | null
   depositStatus?: DepositStatus | null
   depositAmount?: number | null
+  // B15: ancla del hold. Un `pending_payment` retiene la cancha 6 min desde acá
+  // (`modules/bookings/hold`), y sin este dato la grilla decía "Esperando seña"
+  // sin poder mostrar cuánto falta — el encargado no sabía si atender el
+  // teléfono o esperar. Opcional por la misma razón que los de arriba: el
+  // payload de Realtime puede no traerlo, y ahí simplemente no se muestra
+  // el contador en vez de inventar uno.
+  createdAt?: string | Date | null
   // Plata efectivamente cobrada del turno (seña contada + cobros de mostrador)
   // y lo que falta, ambos en centavos. Los calcula summarizeBookingCharges en
   // el server. Sin ellos la grilla no puede saber si un turno terminado quedó

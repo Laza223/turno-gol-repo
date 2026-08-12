@@ -4,6 +4,7 @@ import { bookings, courts } from '@/shared/db/schema'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
+import { holdExpiresAtIso } from '@/lib/booking/hold'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -51,8 +52,22 @@ export type PublicCourtCard = {
   fromPriceCents: number | null
 }
 
-// 'occupied' = reserva espontánea, 'fixed' = turno fijo/abonado, 'blocked' = bloqueado por el admin
-export type SlotStatus = 'free' | 'occupied' | 'fixed' | 'blocked' | 'past'
+/**
+ * 'occupied' = reserva espontánea vendida · 'fixed' = turno fijo/abonado ·
+ * 'blocked' = bloqueado por el admin o poseído por un torneo · 'past' = ya pasó.
+ *
+ * **'held' = otro jugador está pagando la seña AHORA** (decisión v2 D1). Antes
+ * no existía: un `pending_payment` ajeno caía en el `else` final y salía
+ * `'occupied'`, o sea **idéntico a vendido**. Viernes 20:30, el jugador B ve
+ * "ocupada" y se va a otro complejo; seis minutos después el hold de A expira y
+ * el slot vuelve a estar libre, pero B ya no está. Eso es inventario que se
+ * pierde por una pantalla que no dice la verdad — lo contrario de lo que pide
+ * D1 ("la ansiedad se responde con estados explícitos, no con inventario
+ * congelado").
+ *
+ * Un slot `held` **no es pisable**: sigue ocupando el exclusion constraint.
+ */
+export type SlotStatus = 'free' | 'occupied' | 'held' | 'fixed' | 'blocked' | 'past'
 
 type PublicBookingType = 'spontaneous' | 'fixed' | 'block' | 'tournament'
 
@@ -61,6 +76,17 @@ export type Slot = {
   duration: number
   status: SlotStatus
   price: number | null
+  /**
+   * Solo en `held`: instante ISO en que el hold deja de retener la cancha.
+   *
+   * Va **absoluto y no "segundos restantes"** a propósito. La respuesta de
+   * `/api/public/availability` se cachea 30s en el CDN (`s-maxage=30`,
+   * `stale-while-revalidate=60`): un relativo servido desde caché llega corrido
+   * por hasta 90 segundos sobre una ventana de 360, y el jugador vuelve a
+   * confiar en un margen que no existe — el mismo modo de falla de caza-bugs
+   * #12. Un instante absoluto sale bien de la caché siempre.
+   */
+  heldUntil?: string
 }
 
 type PublicCourt = {
@@ -95,6 +121,10 @@ type BookingRange = {
   timeStartMins: number
   timeEndMins: number
   type: PublicBookingType
+  /** `pending_payment` = hold vivo. El resto de los estados ya vienen filtrados. */
+  status?: string
+  /** Ancla del vencimiento del hold (`created_at`); solo importa si es un hold. */
+  createdAt?: Date | string
 }
 
 export type GenerateSlotsParams = {
@@ -172,6 +202,7 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
     const timeStr = minsToTime(start)
 
     let status: SlotStatus
+    let heldUntil: string | undefined
     // start está en el eje continuo: un slot de madrugada (start ≥ 1440) supera
     // a nowMins de hoy, así que NO se marca pasado aunque su hora de pared ya
     // pasó (ocurre físicamente mañana, mismo día operativo).
@@ -186,11 +217,26 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
       // bloqueo del admin. Explícito y no por el else, que daría 'occupied'.
       else if (overlapping.type === 'block' || overlapping.type === 'tournament') status = 'blocked'
       else if (overlapping.type === 'fixed') status = 'fixed'
-      else status = 'occupied'
+      // Alguien está pagando la seña AHORA (D1). Antes esto caía en el else y
+      // salía 'occupied' — indistinguible de vendido, que es el agujero que
+      // quema inventario. No se compara contra el reloj acá: si el hold ya
+      // venció y el worker todavía no lo barrió, la fila SIGUE bloqueando el
+      // exclusion constraint, así que decir "libre" sería la misma mentira al
+      // revés. Se manda el instante y el cliente dice "se está liberando".
+      else if (overlapping.status === 'pending_payment' && overlapping.createdAt) {
+        status = 'held'
+        heldUntil = holdExpiresAtIso(overlapping.createdAt)
+      } else status = 'occupied'
     }
 
     const price = getPriceForSlot(p.pricing.rules, p.dayKey, timeStr)
-    slots.push({ time: timeStr, duration: p.durationMins, status, price })
+    slots.push({
+      time: timeStr,
+      duration: p.durationMins,
+      status,
+      price,
+      ...(heldUntil && { heldUntil }),
+    })
   }
   return slots
 }
@@ -380,6 +426,10 @@ async function getPublicAvailabilityImpl(
         timeStart: bookings.timeStart,
         timeEnd: bookings.timeEnd,
         type: bookings.type,
+        // status + createdAt entran para distinguir un hold vivo de una venta:
+        // sin ellos los dos se ven igual y el slot sale 'occupied'.
+        status: bookings.status,
+        createdAt: bookings.createdAt,
       })
       .from(bookings)
       .where(
@@ -400,6 +450,8 @@ async function getPublicAvailabilityImpl(
       timeStartMins: timeToMins(b.timeStart.slice(0, 5)),
       timeEndMins: endMins === 0 ? 24 * 60 : endMins,
       type: b.type,
+      status: b.status,
+      createdAt: b.createdAt,
     }
   })
 
@@ -466,21 +518,27 @@ export async function getPublicWeeklyAvailability(
       .from(courts)
       .where(and(eq(courts.tenantId, tenant.id), eq(courts.status, 'online')))
 
-    const rows = (await tx.execute(sql`
-      SELECT court_id AS "courtId", date::text AS "date",
-             time_start::text AS "timeStart", time_end::text AS "timeEnd",
-             type::text AS "type"
-      FROM bookings
-      WHERE tenant_id = ${tenant.id}::uuid
-        AND date >= ${startDateStr}::date AND date <= ${endDateStr}::date
-        AND status NOT IN ('canceled_refunded', 'canceled_no_refund', 'expired')
-    `)) as unknown as Array<{
+    // B8: `created_at` sale como STRING por `tx.execute`, no como Date — el
+    // tipo lo dice para que nadie le haga `.getTime()` directo (tabla en
+    // `src/shared/db/client.ts`). `holdExpiresAtIso` acepta las dos formas.
+    const rows = await tx.execute<{
       courtId: string
       date: string
       timeStart: string
       timeEnd: string
       type: PublicBookingType
-    }>
+      status: string
+      createdAt: string
+    }>(sql`
+      SELECT court_id AS "courtId", date::text AS "date",
+             time_start::text AS "timeStart", time_end::text AS "timeEnd",
+             type::text AS "type", status::text AS "status",
+             created_at AS "createdAt"
+      FROM bookings
+      WHERE tenant_id = ${tenant.id}::uuid
+        AND date >= ${startDateStr}::date AND date <= ${endDateStr}::date
+        AND status NOT IN ('canceled_refunded', 'canceled_no_refund', 'expired')
+    `)
 
     const bookingsByDate = new Map<string, BookingRange[]>()
     for (const r of rows) {
@@ -490,6 +548,8 @@ export async function getPublicWeeklyAvailability(
         timeStartMins: timeToMins(r.timeStart.slice(0, 5)),
         timeEndMins: endMins === 0 ? 24 * 60 : endMins,
         type: r.type,
+        status: r.status,
+        createdAt: r.createdAt,
       }
       const key = r.date.slice(0, 10)
       const list = bookingsByDate.get(key) ?? []

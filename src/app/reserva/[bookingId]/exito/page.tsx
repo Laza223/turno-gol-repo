@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
-import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
+import { holdExpiresAtIso } from '@/lib/booking/hold'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 import { BookingSuccessCard, BookingSuccessNotFound } from './BookingSuccessCard'
@@ -73,10 +73,7 @@ export default async function ReservaExitoPage(props: Props) {
 
   // Player returned from MP before webhook landed — hand off to watcher
   if (booking.status !== 'confirmed') {
-    // caza-bugs #12: el hold real vence a DEFAULT_EXPIRY_SECONDS (6 min), no 15.
-    const expiresAt = new Date(
-      new Date(booking.createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000,
-    ).toISOString()
+    const expiresAt = holdExpiresAtIso(booking.createdAt)
     return (
       <ReservaDarkShell>
         <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">

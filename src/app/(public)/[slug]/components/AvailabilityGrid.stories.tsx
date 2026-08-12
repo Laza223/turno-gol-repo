@@ -4,6 +4,7 @@ import {
   availabilityResponse,
   availabilityResponseNoCourts,
   availabilityResponseNoSlots,
+  availabilityResponseWithHold,
   publicTenant,
   publicTenantNoOnlineBooking,
 } from '@/test/fixtures/public'
@@ -112,5 +113,43 @@ export const FiltroPorCancha: Story = {
       'true',
     )
     await expect(canvas.queryByRole('columnheader', { name: 'Cancha 1' })).not.toBeInTheDocument()
+  },
+}
+
+/**
+ * B15 — otro jugador está pagando la seña AHORA.
+ *
+ * Antes esto se renderizaba "Ocupado", idéntico a una cancha vendida: el
+ * jugador se iba a otro complejo sin saber que en unos minutos podía quedar
+ * libre. Ahora dice cuánto falta, y NO es clickeable (el hold retiene la cancha
+ * de verdad hasta que expira).
+ */
+export const SlotSenandoOtroJugador: Story = {
+  args: { tenant: publicTenant() },
+  parameters: {
+    fetchMock: [{ match: '/api/public/availability', json: availabilityResponseWithHold() }],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText(/^Señando \d+:\d{2}$/)).toBeVisible()
+    // Lo que importa del cambio: NO dice "Ocupado" en ese slot, y no se puede
+    // clickear para reservarlo.
+    const senando = await canvas.findByText(/^Señando/)
+    await expect(senando.closest('a')).toBeNull()
+  },
+}
+
+/** Vencido por reloj: se está liberando, pero todavía no se promete "libre". */
+export const SlotHoldVencido: Story = {
+  args: { tenant: publicTenant() },
+  parameters: {
+    fetchMock: [{ match: '/api/public/availability', json: availabilityResponseWithHold() }],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const liberando = await canvas.findByText('Liberando…')
+    await expect(liberando).toBeVisible()
+    // Sigue sin ser un link: la fila todavía bloquea el exclusion constraint.
+    await expect(liberando.closest('a')).toBeNull()
   },
 }

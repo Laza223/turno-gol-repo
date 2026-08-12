@@ -7,6 +7,7 @@ import { Calendar, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
 import type { AvailabilityResponse, PublicTenant, Slot } from '@/modules/tenants/public.service'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capitalizeFirst, formatArs } from '@/lib/format'
+import { holdRemainingLabel } from '@/lib/booking/hold'
 import WeeklyAvailabilityModal from './WeeklyAvailabilityModal'
 
 type Props = {
@@ -57,6 +58,27 @@ function buildTimeRows(courts: AvailabilityResponse['courts']): TimeRow[] {
   }))
 }
 
+/**
+ * Reloj que solo corre si hay algún hold en pantalla.
+ *
+ * Un `setInterval` permanente por una grilla que casi nunca tiene holds es
+ * trabajo puro: el intervalo se arma cuando aparece el primer `held` y se
+ * desarma cuando no queda ninguno.
+ */
+function useTickWhile(active: boolean): number {
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    if (!active) return
+    // Sin setState de arranque: el primer tick llega en 1 s y la etiqueta es
+    // mm:ss, así que un desfasaje de menos de un segundo en el primer pintado
+    // no se ve. Hacerlo acá dispararía renders en cascada (react-hooks/
+    // set-state-in-effect), que es una regla del repo, no una preferencia.
+    const id = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [active])
+  return nowMs
+}
+
 function SlotCell({
   slot,
   slug,
@@ -64,6 +86,7 @@ function SlotCell({
   date,
   allowOnlineBooking,
   phone,
+  nowMs,
 }: {
   slot: Slot
   slug: string
@@ -71,6 +94,7 @@ function SlotCell({
   date: string
   allowOnlineBooking: boolean
   phone: string
+  nowMs: number
 }) {
   if (slot.status === 'past') {
     return (
@@ -94,6 +118,28 @@ function SlotCell({
     return (
       <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground ring-1 ring-inset ring-border">
         <span>Ocupado</span>
+        {priceLine}
+      </span>
+    )
+  }
+
+  // Otro jugador está señando esta cancha AHORA (decisión v2 D1). Antes esto
+  // salía "Ocupado", igual que una cancha vendida, y el jugador se iba a otro
+  // complejo sin saber que en unos minutos podía quedar libre. No es
+  // clickeable: el hold retiene la cancha de verdad.
+  if (slot.status === 'held' && slot.heldUntil) {
+    const remaining = holdRemainingLabel(slot.heldUntil, nowMs)
+    const label = remaining.expired ? 'Liberando…' : `Señando ${remaining.label}`
+    const explain = remaining.expired
+      ? 'Alguien no completó la seña; la cancha se está liberando. Actualizá en unos segundos.'
+      : `Alguien está pagando la seña. Si no la completa en ${remaining.label}, la cancha se libera.`
+    return (
+      <span
+        aria-label={explain}
+        title={explain}
+        className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/30"
+      >
+        <span className="tabular-nums">{label}</span>
         {priceLine}
       </span>
     )
@@ -245,6 +291,9 @@ export default function AvailabilityGrid({ tenant }: Props) {
 
   const timeRows = buildTimeRows(visibleCourts)
   const noCourts = availability !== null && availability.courts.length === 0
+  // El reloj de los holds solo corre si hay alguno a la vista.
+  const hasHeld = visibleCourts.some((c) => c.slots.some((s) => s.status === 'held'))
+  const nowMs = useTickWhile(hasHeld)
 
   return (
     <section
@@ -400,6 +449,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
                           date={date}
                           allowOnlineBooking={tenant.allowOnlineBooking}
                           phone={tenant.phone}
+                          nowMs={nowMs}
                         />
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>

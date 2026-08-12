@@ -45,7 +45,7 @@ export const ConLink: Story = {
 export const AccentAmber: Story = {
   args: {
     accent: 'amber',
-    label: 'Esperando seña',
+    label: 'Pagando ahora',
     value: '3',
     sub: '$ 13.500 en señas por acreditar',
   },

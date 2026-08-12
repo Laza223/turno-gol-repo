@@ -234,7 +234,7 @@ export const PendientePago: Story = {
   args: { booking: ROW_PENDIENTE },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Esperando seña')).toBeVisible()
+    await expect(canvas.getByText('Pagando ahora')).toBeVisible()
     await expect(
       canvas.getByText(`Seña pendiente (${money(ROW_PENDIENTE.depositAmount)})`, { exact: false }),
     ).toBeVisible()

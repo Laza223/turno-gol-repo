@@ -2880,3 +2880,98 @@ prometida llegue `undefined` (la función no tenía **ningún** test antes).
 no existía · `with-auth.ts` no es código muerto · el gate de
 `/api/e2e/create-booking` no dependía del inlining de `NEXT_PUBLIC_E2E` sino de
 `NODE_ENV`. Más un 🔴 que el plan no tenía y encontró un test.
+
+---
+
+## B15 — Un slot con hold ajeno se veía igual que uno vendido
+
+**Rama**: `worktree-b15-hold` · **Fecha**: 2026-08-11 · **Decisión de fondo**: v2 D1
+
+### El agujero, en una escena
+
+Viernes 20:30. El jugador A entra a pagar la seña: nace un hold de 6 minutos
+(`bookings.status = 'pending_payment'`). El jugador B abre el perfil del mismo
+complejo y ve ese slot como **"Ocupado"**, exactamente igual que una cancha
+vendida. B se va a otro complejo. Seis minutos después el hold de A expira, la
+cancha vuelve a estar libre — y B ya no está.
+
+Eso es inventario que se pierde por una pantalla que no dice la verdad, que es
+literalmente lo contrario de lo que pide D1: *"la ansiedad se responde con
+estados explícitos, no con inventario congelado"*.
+
+Causa exacta: `SlotStatus` no tenía el estado. Un `pending_payment` caía en el
+`else` final de la derivación (`public.service.ts`) y salía `'occupied'`.
+
+### Las 4 premisas del plan: verificadas
+
+A diferencia de B8, acá el plan estaba **bien** en todo lo que afirmaba:
+`SlotStatus` sin `'held'` ✅ · `DEFAULT_EXPIRY_SECONDS` = 6 min ✅ · la query de
+`grilla/page.tsx` selecciona 15 columnas y **no** trae `created_at` ✅ · la
+grilla del staff dice "Esperando seña" sin tiempo ✅.
+
+Lo que **no** se sostuvo fue el alcance: el plan pide el mismo tratamiento en
+"las 3 superficies de disponibilidad". Medido, **solo una lo necesitaba**:
+
+| Superficie | Qué hace hoy | Veredicto |
+|---|---|---|
+| `public.service.ts` (perfil) | `pending_payment` → `'occupied'` | 🔴 **el agujero**, arreglado |
+| `availability-search.service.ts` (buscador cross-tenant, 2 spots) | trata el hold como ocupado | ✅ **correcto y se deja**: un buscador no puede mandar a alguien a un complejo prometiendo una cancha que no va a poder entregar. Y como es query viva, el complejo reaparece solo cuando el hold expira |
+| `booking.service.ts getAvailableSlots` | el hold no aparece | ✅ **no aplica**: devuelve `AvailableSlot[]` para el selector del **admin**, no tiene concepto de estado, y un hold correctamente no es reservable |
+
+### Un problema de caché que decidió la forma del dato
+
+El perfil `/[slug]` es ISR 300s y el hold dura 360s — parecía que el estado no
+podía ser confiable. **No aplica**: la grilla es 100% client-side (`fetch` a
+`/api/public/availability`, dicho por escrito en `page.tsx:151`). Esa ruta es
+`force-dynamic` con `s-maxage=30, stale-while-revalidate=60`.
+
+Pero eso sí decidió **cómo viaja el dato**: `Slot.heldUntil` es un **instante
+absoluto**, nunca "segundos restantes". Un relativo servido desde la caché llega
+corrido por hasta 90 s sobre una ventana de 360 — el mismísimo modo de falla de
+caza-bugs #12, donde el contador prometía 15 minutos sobre un hold de 6 y el
+jugador perdía el slot confiando en un margen inexistente.
+
+### Cinco copias de la misma cuenta
+
+`new Date(createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000` estaba escrito a
+mano en **cinco** lugares (las 3 páginas de `/reserva/[id]`, el endpoint de
+estado del jugador y `payment.service`) más una versión SQL en
+`booking.expiry.ts`. Esa duplicación **ya mordió una vez** — es el origen de la
+cicatriz de caza-bugs #12. Ahora la cuenta vive en `src/lib/booking/hold.ts` y
+los cinco la importan.
+
+Vive en `@/lib/booking` y no en `@/modules/bookings` porque lo consume
+`BookingCard`, y la regla `no-restricted-imports` del repo prohíbe que un
+componente reusable dependa del dominio como VALOR. La regla tenía razón: el
+primer intento la violó y el lint lo frenó.
+
+### Lo entregado, contra el gate de D1
+
+| Ítem | Antes | Ahora |
+|---|---|---|
+| Hold nace al iniciar el pago | ✅ ya cumplía | — |
+| Liberación automática | ✅ ya cumplía | — |
+| Countdown al jugador | 🟡 solo al volver de MP | 🟡 igual (fuera de alcance) |
+| "Pagando ahora" en la grilla del staff | 🔴 "Esperando seña", sin tiempo | ✅ etiqueta D1 + contador vivo |
+| Hold ajeno legible por otro jugador | 🔴 no existía el concepto | ✅ `'held'` + `heldUntil`, no pisable |
+| Copy "la cancha es tuya cuando empezás a señar" | 🔴 ausente | ✅ en el selector de pago |
+
+Detalles que importan:
+
+- **Vencido por reloj ≠ libre.** Si el worker todavía no barrió la fila, sigue
+  en `pending_payment` y sigue rechazando el INSERT por el exclusion constraint.
+  Por eso la UI dice "Liberando…" y no "libre": prometer libre algo que rebota
+  es la misma mentira al revés.
+- **El reloj solo corre si hay un hold en pantalla** (`useTickWhile`), y en la
+  grilla del staff el contador es un componente propio que solo se monta en las
+  celdas con hold. Una grilla de sábado tiene decenas de celdas y ninguna otra
+  necesita tickear.
+
+### Verificación
+
+- `pnpm typecheck` · `pnpm lint` · `pnpm knip` · `pnpm format:check` limpios
+- `pnpm test` → **3333/3333**
+- `pnpm test:integration` → **929/929** (135 archivos)
+- `pnpm test:storybook` → **1072/1072** (264 archivos)
+- **Control negativo corrido**: sacando la rama `'held'` de la derivación, tres
+  tests se ponen rojos, el primero con `expected 'occupied' to be 'held'`.

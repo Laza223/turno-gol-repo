@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
-import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
+import { holdExpiresAtIso } from '@/lib/booking/hold'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
 
@@ -40,12 +40,11 @@ export default async function ReservaPendientePage(props: Props) {
     )
   }
 
-  // caza-bugs #12: el hold real vence a los DEFAULT_EXPIRY_SECONDS (6 min), no
-  // a los 15 min que este contador mostraba antes — el jugador confiaba en un
-  // margen que ya no existía y perdía el slot sin darse cuenta.
-  const expiresAt = new Date(
-    new Date(booking.createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000,
-  ).toISOString()
+  // caza-bugs #12: el hold real vence a los 6 min, no a los 15 que este
+  // contador mostraba antes — el jugador confiaba en un margen que ya no
+  // existía y perdía el slot sin darse cuenta. La cuenta vive en un solo lugar
+  // (`modules/bookings/hold`) justamente para que no vuelva a divergir.
+  const expiresAt = holdExpiresAtIso(booking.createdAt)
 
   return (
     <ReservaDarkShell>

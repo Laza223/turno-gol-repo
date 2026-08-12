@@ -168,13 +168,15 @@ export const publicCourtCards = (): PublicCourtCardFixture[] => [
 
 // ─── Slots / disponibilidad (public.service.ts#Slot/AvailabilityResponse) ─────
 
-export type SlotStatusFixture = 'free' | 'occupied' | 'fixed' | 'blocked' | 'past'
+export type SlotStatusFixture = 'free' | 'occupied' | 'held' | 'fixed' | 'blocked' | 'past'
 
 export type SlotFixture = {
   time: string
   duration: number
   status: SlotStatusFixture
   price: number | null
+  /** Solo en 'held': instante ISO en que el hold suelta la cancha. */
+  heldUntil?: string
 }
 
 export const slot = (overrides: Partial<SlotFixture> = {}): SlotFixture => ({
@@ -238,6 +240,42 @@ export const availabilityResponse = (
 })
 
 /** Complejo sin canchas online todavía. */
+/**
+ * B15: otro jugador está señando. `heldUntil` se calcula relativo al momento de
+ * armar la fixture para que el contador de la story corra de verdad; el segundo
+ * slot ya venció por reloj, que es el borde donde la UI dice "Liberando…" en vez
+ * de mentir con "libre" (la fila sigue reteniendo la cancha hasta que la barre
+ * el worker).
+ */
+export const availabilityResponseWithHold = (): AvailabilityResponseFixture =>
+  availabilityResponse({
+    courts: [
+      {
+        id: uid(101),
+        name: 'Cancha 1',
+        surfaceType: 'synthetic_grass',
+        isCovered: false,
+        hasLighting: true,
+        slots: [
+          slot({ time: '10:00', status: 'free', price: 900000 }),
+          slot({
+            time: '20:00',
+            status: 'held',
+            price: 1300000,
+            heldUntil: new Date(Date.now() + 4 * 60 * 1000 + 12_000).toISOString(),
+          }),
+          slot({
+            time: '21:00',
+            status: 'held',
+            price: 1300000,
+            heldUntil: new Date(Date.now() - 5_000).toISOString(),
+          }),
+          slot({ time: '22:00', status: 'occupied', price: 1300000 }),
+        ],
+      },
+    ],
+  })
+
 export const availabilityResponseNoCourts = (): AvailabilityResponseFixture =>
   availabilityResponse({ courts: [] })
 

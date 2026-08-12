@@ -82,7 +82,10 @@ type SlotStateMeta = {
 
 const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
   pending_payment: {
-    label: 'Esperando seña',
+    // Decisión v2 D1: la grilla del staff marca "pagando ahora". "Esperando
+    // seña" se leía como una espera indefinida; esto es una ventana de 6 min
+    // que se libera sola, y el encargado necesita saber cuál de las dos es.
+    label: 'Pagando ahora',
     icon: Clock,
     tone: 'warning',
     inLegend: true,

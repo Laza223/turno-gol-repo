@@ -148,7 +148,17 @@ export default function PaymentMethodSelector({ methods }: { methods: PayMethod[
       </div>
       {depositOnly && (
         <p className="text-xs text-muted-foreground">
-          Este complejo pide seña online para confirmar la reserva.
+          Este complejo pide seña online para confirmar la reserva.{' '}
+          {/* Decisión v2 D1: la promesa NO es "te guardamos la cancha 10
+              minutos" — es "la cancha es tuya cuando empezás a señar". El hold
+              nace al entrar a pagar, no al elegir el slot ni al completar los
+              datos, y esa es justamente la razón por la que mirar
+              disponibilidad no congela inventario de nadie. Decirlo acá evita
+              la lectura de que el slot ya quedó reservado por haber llegado a
+              esta pantalla. */}
+          <span className="font-medium text-foreground">
+            La cancha es tuya cuando empezás a señar.
+          </span>
         </p>
       )}
     </fieldset>

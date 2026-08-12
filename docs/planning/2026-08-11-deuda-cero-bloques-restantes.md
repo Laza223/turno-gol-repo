@@ -31,7 +31,7 @@ del dueño, verificada contra producción antes del DROP (0 filas). Destraba B13
 turnos fijos sin cuenta se derivan de `abonados` (sin tabla nueva) y se vinculan a mano, con inverso.
 Sin migración.
 
-Quedan **B8 (resto) · B11 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
+Quedan **B11 · B14**. Ninguno tiene el alcance escrito en ningún lado;
 lo de abajo es la reconstrucción, medida contra el código de hoy.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
@@ -284,7 +284,7 @@ número en toda superficie que lo muestre… verificado con test de consistencia
 
 ---
 
-## B15 — Visibilidad del hold (decisión v2 D1)
+## B15 — Visibilidad del hold (decisión v2 D1) ✅ CERRADO (2026-08-11)
 
 **Es el criterio de entrada a la Fase 5** — pero ver la advertencia de secuencia más abajo.
 

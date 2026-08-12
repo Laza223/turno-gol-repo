@@ -3,13 +3,41 @@ import { z } from 'zod'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { SlotTakenError } from '@/modules/bookings/booking.errors'
 import { withTenantContext } from '@/shared/db/client'
+import { secretMatches } from '@/shared/security/secret-compare'
 import { notFound, badRequest, validationError, conflict, internal } from '@/shared/api-error'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function isE2EAllowed(): boolean {
-  return process.env.NEXT_PUBLIC_E2E === '1' && process.env.NODE_ENV !== 'production'
+/** Header con el secreto compartido. Server-only: NO empieza con NEXT_PUBLIC_. */
+export const E2E_SECRET_HEADER = 'x-e2e-secret'
+
+/** Largo mínimo del secreto — un valor corto no es un secreto, es un adorno. */
+const MIN_SECRET_LENGTH = 16
+
+/**
+ * Este endpoint crea reservas reales saltando TODO: sesión, bans, softbans,
+ * seña. El `playerId` sale de un header sin verificar, así que quien lo alcanza
+ * reserva en nombre de cualquier jugador. Existe únicamente para
+ * `pnpm stress:bookings`, que necesita 50 POST concurrentes de verdad contra el
+ * exclusion constraint.
+ *
+ * B10 — antes el portón era `NEXT_PUBLIC_E2E === '1'`, y eso tiene dos
+ * problemas. El chico: `NEXT_PUBLIC_*` se INLINEA en build, así que el valor que
+ * decide es el del momento de compilar y no el del runtime. El grande: la única
+ * barrera efectiva terminaba siendo `NODE_ENV !== 'production'` — cierta hoy
+ * (todo `next build` fija `production`, previews incluidos, y ahí la función
+ * colapsa a `false`), pero es una propiedad implícita de Next que nadie
+ * re-verifica, sosteniendo sola un endpoint que escribe en la base sin auth.
+ *
+ * Ahora el portón es un secreto server-only que además hay que presentar: sin
+ * `E2E_ENDPOINT_SECRET` configurado la ruta no existe, y conocer la URL no
+ * alcanza. `NODE_ENV` se mantiene como segunda barrera, no como la única.
+ */
+function e2eSecret(): string | null {
+  if (process.env.NODE_ENV === 'production') return null
+  const secret = process.env.E2E_ENDPOINT_SECRET
+  return secret && secret.length >= MIN_SECRET_LENGTH ? secret : null
 }
 
 const bodySchema = z.object({
@@ -21,9 +49,13 @@ const bodySchema = z.object({
 })
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  if (!isE2EAllowed()) {
-    return notFound('No encontrado.')
-  }
+  const secret = e2eSecret()
+  if (!secret) return notFound('No encontrado.')
+  // 404 y no 401 a propósito: un secreto que no matchea no debe confirmar que
+  // la ruta existe. La respuesta es idéntica a la de un endpoint inexistente.
+  const provided = req.headers.get(E2E_SECRET_HEADER)
+  if (provided === null || !secretMatches(provided, secret)) return notFound('No encontrado.')
+
   const playerId = req.headers.get('x-e2e-player-id')
   if (!playerId) {
     return badRequest('Falta el header del jugador.', { code: 'MISSING_PLAYER_HEADER' })

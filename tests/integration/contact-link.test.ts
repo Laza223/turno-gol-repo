@@ -18,7 +18,7 @@ import {
   ensureRoles,
   linkPlayerToTenant,
 } from '../helpers/tenant'
-import { listTenantClients } from '@/app/(admin)/jugadores/queries'
+import { CLIENTES_PAGE_SIZE, listTenantClients } from '@/app/(admin)/jugadores/queries'
 import {
   linkContactToPlayer,
   unlinkContactFromPlayer,
@@ -112,8 +112,9 @@ async function ptrCounters(tenantId: string, playerId: string) {
   return rows[0]!
 }
 
-const list = (tenantId: string, q?: string) =>
-  withTenantContext(tenantId, (tx) => listTenantClients(tenantId, { q }, tx))
+/** Solo las filas de la primera página — lo que asertan los casos de acá. */
+const list = async (tenantId: string, q?: string) =>
+  (await withTenantContext(tenantId, (tx) => listTenantClients(tenantId, { q }, tx))).rows
 
 beforeAll(async () => {
   const sql = getSql()
@@ -124,6 +125,69 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await closeSql()
+})
+
+/**
+ * B10 — la lista se cortaba en 200 SIN decirlo: la persona 201 no existía para
+ * `/jugadores` y el único modo de alcanzarla era adivinar su nombre.
+ */
+describe('listTenantClients — paginación (B10)', () => {
+  /** N personas registradas con relación en el tenant. */
+  async function seedPersonas(tenantId: string, n: number): Promise<void> {
+    const sql = getSql()
+    await sql`
+      WITH nuevos AS (
+        INSERT INTO players (email, first_name, last_name, status, agreed_to_terms_at, terms_version)
+        SELECT
+          'b10_page_' || i || '_' || ${tenantId} || '@test.local',
+          'Persona', LPAD(i::text, 4, '0'), 'active', NOW(), 'v1'
+        FROM generate_series(1, ${n}) i
+        RETURNING id
+      )
+      INSERT INTO player_tenant_relationships (tenant_id, player_id, bookings_count)
+      SELECT ${tenantId}, id, 0 FROM nuevos
+    `
+  }
+
+  it('devuelve una página completa y avisa que hay más', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await seedPersonas(tenant.id, CLIENTES_PAGE_SIZE + 3)
+
+    const primera = await withTenantContext(tenant.id, (tx) => listTenantClients(tenant.id, {}, tx))
+
+    // El `LIMIT n+1` es para DETECTAR, no para devolver una fila de más.
+    expect(primera.rows).toHaveLength(CLIENTES_PAGE_SIZE)
+    expect(primera.hasMore).toBe(true)
+  })
+
+  it('las páginas no se pisan ni se saltean personas', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const total = CLIENTES_PAGE_SIZE + 3
+    await seedPersonas(tenant.id, total)
+
+    const p0 = await withTenantContext(tenant.id, (tx) => listTenantClients(tenant.id, {}, tx, 0))
+    const p1 = await withTenantContext(tenant.id, (tx) => listTenantClients(tenant.id, {}, tx, 1))
+    const keys = new Set([...p0.rows, ...p1.rows].map((r) => r.key))
+
+    expect(p1.rows).toHaveLength(3)
+    expect(p1.hasMore).toBe(false)
+    expect(keys.size).toBe(total)
+  })
+
+  it('una página fuera de rango devuelve vacío, no la primera', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await seedPersonas(tenant.id, 2)
+
+    const lejos = await withTenantContext(tenant.id, (tx) =>
+      listTenantClients(tenant.id, {}, tx, 9),
+    )
+
+    expect(lejos.rows).toHaveLength(0)
+    expect(lejos.hasMore).toBe(false)
+  })
 })
 
 describe('listTenantClients — la lista única de personas (B13)', () => {

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
+import { computeMpMockEnabled } from '@/modules/payments/mock-mp'
 import { uuid } from '@/shared/validation/primitives'
 import { mockPay, mockReject, mockCancel } from './actions'
 import { MockCheckoutView, type MockBookingSummary } from './MockCheckoutView'
@@ -40,8 +41,18 @@ async function loadBookingSummary(bookingId: string): Promise<MockBookingSummary
 
 export default async function MockMpCheckoutPage(props: { searchParams: Promise<SearchParams> }) {
   const searchParams = await props.searchParams
-  // 404 in production — this page must never be reachable outside mock mode.
-  if (process.env.MP_MOCK_MODE !== '1') notFound()
+  // B10 — el portón de esta página era `MP_MOCK_MODE !== '1'` A SECAS, más débil
+  // que el de sus propias Server Actions (`actions.ts:22`, que además exige
+  // `NODE_ENV !== 'production'`) y que el del gateway (`computeMpMockEnabled`,
+  // cuyo docstring dice textualmente que tiene que ser imposible de activar en
+  // producción aunque `MP_MOCK_MODE=1` se filtre a un deploy prod).
+  //
+  // Con esa filtración las actions seguían devolviendo 404, pero ESTA página
+  // renderizaba: `loadBookingSummary` lee bookings/courts/tenants cross-tenant
+  // con el pool BYPASSRLS y sin auth, o sea publicaba fecha, hora, cancha,
+  // complejo y monto de seña de cualquier bookingId que se adivinara. Ahora usa
+  // el mismo cálculo que el gateway.
+  if (!computeMpMockEnabled()) notFound()
 
   const bookingId = searchParams.booking
   // #32: un ?booking= no-UUID llegaba al WHERE b.id = $1 (columna uuid) y Postgres

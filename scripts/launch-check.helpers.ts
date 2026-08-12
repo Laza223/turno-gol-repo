@@ -152,6 +152,39 @@ export function e2eBypassDisabledCheck(value: string | undefined): CheckResult {
 }
 
 /**
+ * Header con el que launch-check/staging-check le piden a `/api/status` el
+ * detalle por subsistema (B10). Vacío si no hay `STATUS_TOKEN` configurado: el
+ * semáforo se lee igual, solo se pierde el desglose al diagnosticar.
+ */
+export function statusTokenHeader(): Record<string, string> {
+  const token = process.env.STATUS_TOKEN
+  return token ? { 'x-status-token': token } : {}
+}
+
+/**
+ * Fails if E2E_ENDPOINT_SECRET is set in the launch environment.
+ *
+ * Es el portón de `/api/e2e/create-booking` (B10), que crea reservas reales sin
+ * sesión, sin ban y sin seña, tomando el `playerId` de un header. En producción
+ * `NODE_ENV` ya lo cierra por su cuenta; este check existe para que esa segunda
+ * barrera no sea la única que lo sostiene — la variable no tiene ningún motivo
+ * legítimo para estar seteada en un entorno productivo, y verlo acá es más
+ * barato que confiar en una propiedad implícita del build de Next.
+ *
+ * Pure (no I/O): safe to import from tests.
+ */
+export function e2eEndpointSecretAbsentCheck(value: string | undefined): CheckResult {
+  if (value !== undefined && value !== '') {
+    return {
+      ok: false,
+      error:
+        'E2E_ENDPOINT_SECRET abre /api/e2e/create-booking (crea reservas sin auth) — no debe existir en producción',
+    }
+  }
+  return { ok: true }
+}
+
+/**
  * MP-WEBHOOK-001: fails if MP_MOCK_MODE=1 at the moment of a production
  * launch. That flag routes every MP webhook through the inline mock gateway
  * (mock-mp.ts) instead of real payment processing — safe for local/E2E/

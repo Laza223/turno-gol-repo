@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarX, CalendarCheck, CalendarDays } from 'lucide-react'
+import { CalendarX, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import {
   countTenantBookingsByStatus,
   listTenantBookings,
+  RESERVAS_PAGE_SIZE,
   sumBookingChargesByBooking,
   type ReservaListRow,
   type ReservaScope,
@@ -66,12 +67,15 @@ function buildHref(params: {
   status: string
   q: string
   compact: boolean
+  /** Página 0-based; se omite en la 1 (`?pagina=` es 1-based, como se lee). */
+  page?: number
 }): string {
   const search = new URLSearchParams()
   if (params.dia !== 'hoy') search.set('dia', params.dia)
   if (params.status) search.set('status', params.status)
   if (params.q) search.set('q', params.q)
   if (params.compact) search.set('vista', 'compacta')
+  if (params.page && params.page > 0) search.set('pagina', String(params.page + 1))
   const qs = search.toString()
   return qs ? `/reservas?${qs}` : '/reservas'
 }
@@ -105,7 +109,19 @@ function groupBy(
 }
 
 type Props = {
-  searchParams: Promise<{ dia?: string; status?: string; q?: string; vista?: string }>
+  searchParams: Promise<{
+    dia?: string
+    status?: string
+    q?: string
+    vista?: string
+    pagina?: string
+  }>
+}
+
+/** `?pagina=` es 1-based en la URL y 0-based adentro. Basura → página 1. */
+function parsePage(raw: string | undefined): number {
+  const n = Number.parseInt(raw ?? '', 10)
+  return Number.isFinite(n) && n > 1 ? n - 1 : 0
 }
 
 export default async function ReservasPage(props: Props) {
@@ -129,13 +145,15 @@ export default async function ReservasPage(props: Props) {
   const status = ALLOWED_STATUS.has(requestedStatus) ? requestedStatus : ''
   const q = (searchParams.q ?? '').trim().slice(0, 80)
   const compact = searchParams.vista === 'compacta'
+  const page = parsePage(searchParams.pagina)
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
-  const { rows, counts } = await withTenantContext(tenant.id, async (tx) => {
-    const list = await listTenantBookings(
+  const { rows, counts, hasMore } = await withTenantContext(tenant.id, async (tx) => {
+    const { rows: list, hasMore: more } = await listTenantBookings(
       tenant.id,
       { scope, today, ...(status ? { status } : {}), ...(q ? { q } : {}) },
       tx,
+      page,
     )
     const byStatus = await countTenantBookingsByStatus(
       tenant.id,
@@ -166,7 +184,7 @@ export default async function ReservasPage(props: Props) {
           }
         : r,
     )
-    return { rows: withMoney, counts: byStatus }
+    return { rows: withMoney, counts: byStatus, hasMore: more }
   })
 
   // Hoy: secciones por cancha (la query ordena cancha, hora). Próximas e
@@ -176,6 +194,14 @@ export default async function ReservasPage(props: Props) {
   const total = status ? countFor(counts, status) : countFor(counts, '')
   const reservaWord = total === 1 ? '1 reserva' : `${total} reservas`
   const headerSubtitle = scope === 'hoy' ? `${formatDateLong(today)} · ${reservaWord}` : reservaWord
+
+  // B10 — el subtítulo y las píldoras salen de un COUNT sin techo, y la lista
+  // venía de un `LIMIT 200` mudo: podía decir "740 reservas" y mostrar 200, sin
+  // avisar ni dar forma de llegar al resto. Ahora el rango que se está viendo se
+  // dice explícito y las páginas siguientes son alcanzables.
+  const firstIndex = page * RESERVAS_PAGE_SIZE + 1
+  const lastIndex = page * RESERVAS_PAGE_SIZE + rows.length
+  const paginado = page > 0 || hasMore
 
   return (
     <div className="space-y-5">
@@ -281,6 +307,15 @@ export default async function ReservasPage(props: Props) {
         />
       ) : (
         <div className="card-entrance space-y-6" style={{ animationDelay: '200ms' }}>
+          {paginado && (
+            <p className="text-sm text-muted-foreground" role="status">
+              Mostrando{' '}
+              <span className="font-medium tabular-nums text-foreground">
+                {firstIndex}–{lastIndex}
+              </span>{' '}
+              de <span className="font-medium tabular-nums text-foreground">{total}</span>
+            </p>
+          )}
           {groups.map(([groupKey, groupRows]) => (
             <section
               key={groupKey}
@@ -302,6 +337,39 @@ export default async function ReservasPage(props: Props) {
               </ul>
             </section>
           ))}
+
+          {paginado && (
+            <nav
+              aria-label="Paginación de reservas"
+              className="flex items-center justify-between gap-3 border-t border-border pt-4"
+            >
+              {page > 0 ? (
+                <Link
+                  href={buildHref({ dia: scope, status, q, compact, page: page - 1 })}
+                  rel="prev"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  Anteriores
+                </Link>
+              ) : (
+                <span />
+              )}
+              <span className="text-xs text-muted-foreground tabular-nums">Página {page + 1}</span>
+              {hasMore ? (
+                <Link
+                  href={buildHref({ dia: scope, status, q, compact, page: page + 1 })}
+                  rel="next"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Siguientes
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )}
         </div>
       )}
     </div>

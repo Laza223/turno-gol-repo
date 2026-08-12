@@ -1,38 +1,84 @@
-import { describe, expect, it, afterEach } from 'vitest'
+/**
+ * `/api/e2e/create-booking` crea reservas REALES salteando sesión, bans,
+ * softbans y seña, con el `playerId` saliendo de un header sin verificar. Existe
+ * solo para `pnpm stress:bookings`. Este archivo es lo único que verifica que
+ * esté cerrado.
+ *
+ * B10 — el portón dejó de ser `NEXT_PUBLIC_E2E === '1'` (que se INLINEA en
+ * build, así que decide el valor de compilación y no el de runtime) y pasó a ser
+ * un secreto server-only que además hay que presentar en un header.
+ */
+import { describe, expect, it, vi, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const ORIGINAL_E2E = process.env.NEXT_PUBLIC_E2E
-const ORIGINAL_NODE = process.env.NODE_ENV
+const SECRETO = 'secreto-de-stress-test-largo'
 
 afterEach(() => {
-  process.env.NEXT_PUBLIC_E2E = ORIGINAL_E2E
-  ;(process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE
+  vi.unstubAllEnvs()
 })
 
+function pedir(headers: Record<string, string> = {}): NextRequest {
+  return new NextRequest('http://localhost/api/e2e/create-booking', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...headers },
+    body: JSON.stringify({}),
+  })
+}
+
+async function postear(headers: Record<string, string> = {}): Promise<Response> {
+  const { POST } = await import('@/app/api/e2e/create-booking/route')
+  return POST(pedir(headers))
+}
+
 describe('/api/e2e/create-booking guards', () => {
-  it('returns 404 when NEXT_PUBLIC_E2E is not "1"', async () => {
-    process.env.NEXT_PUBLIC_E2E = ''
-    ;(process.env as Record<string, string>).NODE_ENV = 'development'
-    const { POST } = await import('@/app/api/e2e/create-booking/route')
-    const req = new NextRequest('http://localhost/api/e2e/create-booking', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const res = await POST(req)
-    expect(res.status).toBe(404)
+  it('404 sin E2E_ENDPOINT_SECRET configurado', async () => {
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubEnv('E2E_ENDPOINT_SECRET', '')
+
+    expect((await postear({ 'x-e2e-secret': SECRETO })).status).toBe(404)
   })
 
-  it('returns 404 when NODE_ENV is "production" even with E2E=1', async () => {
-    process.env.NEXT_PUBLIC_E2E = '1'
-    ;(process.env as Record<string, string>).NODE_ENV = 'production'
-    const { POST } = await import('@/app/api/e2e/create-booking/route')
-    const req = new NextRequest('http://localhost/api/e2e/create-booking', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-    const res = await POST(req)
-    expect(res.status).toBe(404)
+  it('404 en producción aunque el secreto esté configurado y sea correcto', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('E2E_ENDPOINT_SECRET', SECRETO)
+
+    expect((await postear({ 'x-e2e-secret': SECRETO })).status).toBe(404)
+  })
+
+  it('404 con el secreto configurado pero sin presentarlo', async () => {
+    // El caso que cierra la brecha vieja: antes, con el portón abierto, conocer
+    // la URL alcanzaba para reservar en nombre de cualquier jugador.
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubEnv('E2E_ENDPOINT_SECRET', SECRETO)
+
+    expect((await postear()).status).toBe(404)
+  })
+
+  it('404 con un secreto equivocado', async () => {
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubEnv('E2E_ENDPOINT_SECRET', SECRETO)
+
+    expect((await postear({ 'x-e2e-secret': 'no-es' })).status).toBe(404)
+  })
+
+  it('404 con un secreto demasiado corto para ser un secreto', async () => {
+    // Sin mínimo, un `E2E_ENDPOINT_SECRET=1` de copy-paste abriría la ruta con
+    // un valor adivinable al primer intento.
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubEnv('E2E_ENDPOINT_SECRET', 'corto')
+
+    expect((await postear({ 'x-e2e-secret': 'corto' })).status).toBe(404)
+  })
+
+  it('control positivo: con el secreto correcto YA NO rebota en el portón', async () => {
+    // Sin este caso, los 5 de arriba pasarían igual con un `return notFound()`
+    // incondicional — o sea, con el endpoint roto para stress-test.
+    // Pasa el guard y muere en la validación del body ({}), que es 400.
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubEnv('E2E_ENDPOINT_SECRET', SECRETO)
+
+    const res = await postear({ 'x-e2e-secret': SECRETO, 'x-e2e-player-id': 'p1' })
+
+    expect(res.status).toBe(400)
   })
 })

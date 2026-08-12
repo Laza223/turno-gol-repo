@@ -17,6 +17,8 @@ config({ path: process.env.ENV_FILE ?? '.env.staging' })
 import {
   encryptionKeyStrengthCheck,
   e2eBypassDisabledCheck,
+  e2eEndpointSecretAbsentCheck,
+  statusTokenHeader,
   REQUIRED_ENV,
 } from './launch-check.helpers'
 
@@ -42,14 +44,20 @@ async function statusCheck(): Promise<boolean> {
     return false
   }
   try {
-    const res = await fetch(`${base}/api/status`)
+    // B10 — en un deploy (NODE_ENV=production) `/api/status` publica solo el
+    // semáforo; el detalle por subsistema sale con el token. Sin él este check
+    // sigue funcionando, pero al fallar solo puede decir "down" sin decir qué.
+    const res = await fetch(`${base}/api/status`, { headers: statusTokenHeader() })
     if (res.status !== 200) {
       console.error(`/api/status returned ${res.status}`)
       return false
     }
-    const body = (await res.json()) as { status: string }
+    const body = (await res.json()) as { status: string; checks?: unknown }
     if (body.status !== 'ok') {
       console.error(`/api/status body: ${JSON.stringify(body)}`)
+      if (!body.checks) {
+        console.error('(seteá STATUS_TOKEN en este env file para ver qué subsistema falló)')
+      }
       return false
     }
     return true
@@ -200,6 +208,15 @@ const steps: Step[] = [
     name: 'e2e bypass disabled',
     check: async () => {
       const r = e2eBypassDisabledCheck(process.env.NEXT_PUBLIC_E2E)
+      if (!r.ok) console.error(r.error)
+      return r.ok
+    },
+    fatal: true,
+  },
+  {
+    name: 'e2e booking endpoint closed',
+    check: async () => {
+      const r = e2eEndpointSecretAbsentCheck(process.env.E2E_ENDPOINT_SECRET)
       if (!r.ok) console.error(r.error)
       return r.ok
     },

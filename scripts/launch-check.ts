@@ -15,6 +15,8 @@ import { execSync } from 'node:child_process'
 import {
   encryptionKeyStrengthCheck,
   e2eBypassDisabledCheck,
+  e2eEndpointSecretAbsentCheck,
+  statusTokenHeader,
   mpMockModeDisabledCheck,
   webhookTestBypassSecretAbsentCheck,
   selectSteps,
@@ -40,7 +42,10 @@ function envCheck(): boolean {
 async function statusCheck(): Promise<boolean> {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   try {
-    const res = await fetch(`${base}/api/status`)
+    // B10 — contra un deploy real (NODE_ENV=production) el detalle por
+    // subsistema sale solo con STATUS_TOKEN; el semáforo que este check mira
+    // es público igual.
+    const res = await fetch(`${base}/api/status`, { headers: statusTokenHeader() })
     if (res.status !== 200) {
       console.error(`/api/status returned ${res.status}`)
       return false
@@ -313,6 +318,15 @@ const steps: Step[] = [
     name: 'e2e bypass disabled',
     check: async () => {
       const r = e2eBypassDisabledCheck(process.env.NEXT_PUBLIC_E2E)
+      if (!r.ok) console.error(r.error)
+      return r.ok
+    },
+    fatal: true,
+  },
+  {
+    name: 'e2e booking endpoint closed',
+    check: async () => {
+      const r = e2eEndpointSecretAbsentCheck(process.env.E2E_ENDPOINT_SECRET)
       if (!r.ok) console.error(r.error)
       return r.ok
     },

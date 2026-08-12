@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { dateStr } from '@/shared/validation/primitives'
 import { guard } from '@/shared/rate-limit/route-guard'
-import { validationError } from '@/shared/api-error'
+import { badRequest, validationError } from '@/shared/api-error'
 import { withTenant } from '@/server/middleware/with-tenant'
 import { getCashFlowsForExport } from '@/modules/reports/report.service'
 import { toCsv } from '@/modules/reports/report.utils'
@@ -15,6 +15,22 @@ const querySchema = z.object({
   to: dateStr,
   format: z.literal('csv'),
 })
+
+/**
+ * Techo del rango exportable, en días (B10).
+ *
+ * `getCashFlowsForExport` no tiene `LIMIT` —correctamente: un export de plata
+ * truncado en silencio es peor que uno que falla, porque el complejo cierra su
+ * contabilidad con un CSV al que le faltan filas y nada se lo dice. Pero sin
+ * techo de rango, `?from=1900-01-01&to=2999-12-31` trae TODOS los movimientos
+ * del complejo a memoria y arma un string CSV con ellos, dentro de una función
+ * serverless. La respuesta correcta es rechazar el pedido, no recortarlo.
+ *
+ * 366 días cubre un año fiscal completo (con bisiesto), que es el rango real
+ * para el que se usa esto. Más que eso se pide en tramos.
+ */
+const MAX_EXPORT_DAYS = 366
+const MS_PER_DAY = 86_400_000
 
 /**
  * Export CSV de los cash_flows del complejo en un rango de días operativos.
@@ -40,6 +56,22 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
     return validationError(parsed.error) as unknown as NextResponse
   }
   const { from, to } = parsed.data
+
+  // Antes del rate-limit y antes de tocar la DB: un rango imposible no merece
+  // ni una conexión.
+  const spanDays =
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / MS_PER_DAY + 1
+  if (!Number.isFinite(spanDays) || spanDays < 1) {
+    return badRequest('El rango es inválido: "hasta" no puede ser anterior a "desde".', {
+      code: 'INVALID_RANGE',
+    }) as unknown as NextResponse
+  }
+  if (spanDays > MAX_EXPORT_DAYS) {
+    return badRequest(
+      `El rango no puede superar los ${MAX_EXPORT_DAYS} días. Descargá el período en tramos.`,
+      { code: 'RANGE_TOO_LARGE' },
+    ) as unknown as NextResponse
+  }
 
   const tenantId = user.tenantId!
   const throttled = await guard('adminCrud', tenantId)

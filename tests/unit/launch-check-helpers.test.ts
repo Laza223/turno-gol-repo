@@ -5,6 +5,7 @@ import {
   ENCRYPTION_KEY_PLACEHOLDER,
   encryptionKeyStrengthCheck,
   e2eBypassDisabledCheck,
+  e2eEndpointSecretAbsentCheck,
   mpMockModeDisabledCheck,
   webhookTestBypassSecretAbsentCheck,
   selectSteps,
@@ -82,6 +83,28 @@ describe('e2eBypassDisabledCheck', () => {
   it('accepts "0" and other non-"1" values', () => {
     expect(e2eBypassDisabledCheck('0').ok).toBe(true)
     expect(e2eBypassDisabledCheck('false').ok).toBe(true)
+  })
+})
+
+describe('e2eEndpointSecretAbsentCheck (B10)', () => {
+  it('rechaza CUALQUIER valor: a diferencia del bypass, no hay uno "apagado"', () => {
+    // El de arriba se apaga con '0' porque el código compara contra '1'. Este es
+    // un secreto: si existe, `/api/e2e/create-booking` (crea reservas sin auth)
+    // se abre con presentarlo. El único valor correcto en prod es que no esté.
+    for (const valor of ['1', '0', 'false', 'un-secreto-cualquiera']) {
+      expect(e2eEndpointSecretAbsentCheck(valor).ok).toBe(false)
+    }
+  })
+
+  it('el error nombra el riesgo, no solo la variable', () => {
+    const r = e2eEndpointSecretAbsentCheck('un-secreto-cualquiera')
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/reservas sin auth|producción/i)
+  })
+
+  it('acepta undefined y vacío (lo correcto en producción)', () => {
+    expect(e2eEndpointSecretAbsentCheck(undefined).ok).toBe(true)
+    expect(e2eEndpointSecretAbsentCheck('').ok).toBe(true)
   })
 })
 

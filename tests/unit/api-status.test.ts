@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
 // Mocks must be declared before importing the route module.
 vi.mock('@/shared/db/client', () => ({
@@ -12,10 +12,19 @@ vi.mock('@/shared/rate-limit/client', () => ({
   getRedis: vi.fn(),
 }))
 
-import { GET } from '@/app/api/status/route'
+import { GET, STATUS_TOKEN_HEADER } from '@/app/api/status/route'
 import { getSql, getWorkerSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { getRedis } from '@/shared/rate-limit/client'
+
+/**
+ * Un GET al endpoint. Bajo vitest `NODE_ENV` es 'test', así que sin header el
+ * detalle sale igual — que es exactamente lo que asumen los tests de checks de
+ * abajo, escritos antes de que el detalle se cerrara (B10).
+ */
+function pedir(headers: Record<string, string> = {}): Request {
+  return new Request('http://localhost/api/status', { headers })
+}
 
 /** El pool de workers responde que su rol SÍ puede saltear RLS (caso sano). */
 function workerPoolSano() {
@@ -47,7 +56,7 @@ describe('GET /api/status', () => {
       getQueueSize: vi.fn().mockResolvedValue(0),
     })
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.status).toBe('ok')
@@ -64,7 +73,7 @@ describe('GET /api/status', () => {
       getQueueSize: vi.fn().mockResolvedValue(0),
     })
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(503)
     const body = await res.json()
     expect(body.status).toBe('down')
@@ -79,7 +88,7 @@ describe('GET /api/status', () => {
       getQueueSize: vi.fn().mockRejectedValue(new Error('permission denied for schema pgboss')),
     })
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(200)
     const body = await res.json()
     const pgboss = body.checks.find((c: { name: string }) => c.name === 'pg-boss')
@@ -93,7 +102,7 @@ describe('GET /api/status', () => {
       new Error('Connection terminated unexpectedly'),
     )
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(503)
     const body = await res.json()
     const pgboss = body.checks.find((c: { name: string }) => c.name === 'pg-boss')
@@ -108,7 +117,7 @@ describe('GET /api/status', () => {
       getQueueSize: vi.fn().mockResolvedValue(0),
     })
 
-    const res = await GET()
+    const res = await GET(pedir())
     const body = await res.json()
     const mp = body.checks.find((c: { name: string }) => c.name === 'mercadopago')
     expect(mp.status).toBe('down')
@@ -121,7 +130,7 @@ describe('GET /api/status', () => {
       getQueueSize: vi.fn().mockResolvedValue(0),
     })
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(200)
     const body = await res.json()
     const upstash = body.checks.find((c: { name: string }) => c.name === 'upstash')
@@ -138,7 +147,7 @@ describe('GET /api/status', () => {
       ping: vi.fn().mockRejectedValue(new Error('redis unreachable')),
     })
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(503)
     const body = await res.json()
     const upstash = body.checks.find((c: { name: string }) => c.name === 'upstash')
@@ -154,7 +163,7 @@ describe('GET /api/status', () => {
       getQueueSize: vi.fn().mockResolvedValue(0),
     })
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(200)
     const body = await res.json()
     const upstash = body.checks.find((c: { name: string }) => c.name === 'upstash')
@@ -179,7 +188,7 @@ describe('GET /api/status', () => {
   it('reporta worker-pool ok cuando el rol puede saltear RLS', async () => {
     dbYBossSanos()
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(200)
     const body = await res.json()
     const worker = body.checks.find((c: { name: string }) => c.name === 'worker-pool')
@@ -192,7 +201,7 @@ describe('GET /api/status', () => {
       vi.fn().mockResolvedValue([{ ok: false }]),
     )
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(503)
     const body = await res.json()
     expect(body.status).toBe('down')
@@ -208,7 +217,7 @@ describe('GET /api/status', () => {
       vi.fn().mockRejectedValue(new Error('connect ETIMEDOUT')),
     )
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(503)
     const body = await res.json()
     const worker = body.checks.find((c: { name: string }) => c.name === 'worker-pool')
@@ -224,7 +233,7 @@ describe('GET /api/status', () => {
     const sqlSpy = vi.fn().mockResolvedValue([{ ok: true }])
     ;(getWorkerSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlSpy)
 
-    await GET()
+    await GET(pedir())
 
     const consulta = (sqlSpy.mock.calls[0]?.[0] as string[]).join(' ')
     expect(consulta).toMatch(/rolbypassrls/)
@@ -246,7 +255,7 @@ describe('GET /api/status', () => {
     if (key === undefined) delete process.env.ENCRYPTION_KEY
     else process.env.ENCRYPTION_KEY = key
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(503)
     const body = await res.json()
     const check = body.checks.find((c: { name: string }) => c.name === 'encryption-key')
@@ -259,7 +268,7 @@ describe('GET /api/status', () => {
     dbYBossSanos()
     process.env.ENCRYPTION_KEY = 'A1B2C3D4E5F6'.repeat(5) + 'A1B2'
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(200)
     const body = await res.json()
     const check = body.checks.find((c: { name: string }) => c.name === 'encryption-key')
@@ -282,7 +291,7 @@ describe('GET /api/status', () => {
       delete process.env[k]
     }
 
-    const res = await GET()
+    const res = await GET(pedir())
     expect(res.status).toBe(200)
     const body = await res.json()
     const check = body.checks.find((c: { name: string }) => c.name === 'storage')
@@ -298,11 +307,98 @@ describe('GET /api/status', () => {
     process.env.R2_BUCKET = 'bucket'
     process.env.R2_PUBLIC_BASE_URL = 'https://media.example.com'
 
-    const res = await GET()
+    const res = await GET(pedir())
     const body = await res.json()
     const check = body.checks.find((c: { name: string }) => c.name === 'storage')
     expect(check.status).toBe('ok')
     expect(check.note).toBeUndefined()
+  })
+
+  // ─── detalle detrás de token (B10) ────────────────────────────────────────
+  // El endpoint es público a propósito (monitor de uptime externo sin
+  // credenciales), pero el `checks[]` le contaba a cualquiera QUÉ pieza está
+  // caída. El caso que obliga: `upstash: down` anuncia que el rate limiter
+  // quedó degradado, o sea publica la ventana para probar contraseñas.
+  describe('en producción el detalle exige STATUS_TOKEN', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    /** Producción con un `upstash: down` real esperando a ser filtrado. */
+    function prodConUpstashCaido() {
+      vi.stubEnv('NODE_ENV', 'production')
+      ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+        vi.fn().mockResolvedValue([{ '?column?': 1 }]),
+      )
+      ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        getQueueSize: vi.fn().mockResolvedValue(0),
+      })
+      ;(getRedis as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        ping: vi.fn().mockRejectedValue(new Error('redis unreachable')),
+      })
+    }
+
+    it('sin token: semáforo sí, detalle no', async () => {
+      prodConUpstashCaido()
+      vi.stubEnv('STATUS_TOKEN', 'un-token-suficientemente-largo')
+
+      const res = await GET(pedir())
+      const body = await res.json()
+
+      // El semáforo sigue siendo público: es el contrato del monitor.
+      expect(res.status).toBe(503)
+      expect(body.status).toBe('down')
+      // Pero no dice QUÉ se cayó.
+      expect(body.checks).toBeUndefined()
+      expect(JSON.stringify(body)).not.toMatch(/upstash|database|pg-boss|encryption/)
+    })
+
+    it('con el token equivocado: tampoco', async () => {
+      prodConUpstashCaido()
+      vi.stubEnv('STATUS_TOKEN', 'un-token-suficientemente-largo')
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: 'otro-token-cualquiera' }))
+      const body = await res.json()
+
+      expect(body.checks).toBeUndefined()
+    })
+
+    it('con el token correcto: detalle completo', async () => {
+      prodConUpstashCaido()
+      vi.stubEnv('STATUS_TOKEN', 'un-token-suficientemente-largo')
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: 'un-token-suficientemente-largo' }))
+      const body = await res.json()
+
+      expect(res.status).toBe(503)
+      const upstash = body.checks.find((c: { name: string }) => c.name === 'upstash')
+      expect(upstash.status).toBe('down')
+    })
+
+    it('sin STATUS_TOKEN configurado NO se abre sola: el detalle queda cerrado', async () => {
+      // El modo de falla que este caso descarta: implementar el gate como "si no
+      // hay token configurado, dejá pasar", que es la variante cómoda y deja
+      // producción exactamente como estaba.
+      prodConUpstashCaido()
+      vi.stubEnv('STATUS_TOKEN', '')
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: '' }))
+      const body = await res.json()
+
+      expect(body.checks).toBeUndefined()
+    })
+
+    it('fuera de producción el detalle sale sin token', async () => {
+      // next dev, CI y el gate de readiness de Playwright: exigirles un token
+      // sería ceremonia sin defensa, y romperia la suite E2E entera.
+      vi.stubEnv('NODE_ENV', 'development')
+      dbYBossSanos()
+
+      const res = await GET(pedir())
+      const body = await res.json()
+
+      expect(body.checks).toBeDefined()
+    })
   })
 
   it('falta UNA sola credencial de R2 y ya cuenta como no configurado', async () => {
@@ -315,7 +411,7 @@ describe('GET /api/status', () => {
     process.env.R2_BUCKET = 'bucket'
     delete process.env.R2_PUBLIC_BASE_URL
 
-    const res = await GET()
+    const res = await GET(pedir())
     const body = await res.json()
     const check = body.checks.find((c: { name: string }) => c.name === 'storage')
     expect(check.note).toMatch(/not configured/i)

@@ -14,7 +14,8 @@ vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
 }))
 vi.mock('@/app/(admin)/reservas/queries', () => ({
-  listTenantBookings: vi.fn(async () => []),
+  listTenantBookings: vi.fn(async () => ({ rows: [], hasMore: false })),
+  RESERVAS_PAGE_SIZE: 100,
   countTenantBookingsByStatus: vi.fn(async () => ({})),
   // La page la usa para derivar el saldo de los turnos terminados (píldora
   // "Sin cobrar"). Acá la lista siempre viene vacía, así que devuelve un Map
@@ -45,6 +46,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
       expect.anything(),
+      0,
     )
   })
 
@@ -54,6 +56,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
       expect.anything(),
+      0,
     )
   })
 
@@ -63,6 +66,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', status: 'confirmed' },
       expect.anything(),
+      0,
     )
   })
 
@@ -72,6 +76,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', status: 'canceladas' },
       expect.anything(),
+      0,
     )
   })
 
@@ -81,6 +86,7 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
       expect.anything(),
+      0,
     )
   })
 })
@@ -92,6 +98,7 @@ describe('ReservasPage — ?dia allowlist', () => {
       'tenant-1',
       expect.objectContaining({ scope: 'hoy' }),
       expect.anything(),
+      0,
     )
   })
 
@@ -101,12 +108,14 @@ describe('ReservasPage — ?dia allowlist', () => {
       'tenant-1',
       expect.objectContaining({ scope: 'proximas' }),
       expect.anything(),
+      0,
     )
     await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial' }) })
     expect(listTenantBookings).toHaveBeenLastCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'historial' }),
       expect.anything(),
+      0,
     )
   })
 
@@ -116,6 +125,7 @@ describe('ReservasPage — ?dia allowlist', () => {
       'tenant-1',
       expect.objectContaining({ scope: 'hoy' }),
       expect.anything(),
+      0,
     )
   })
 })

@@ -86,11 +86,42 @@ function searchCond(q: string | undefined): SQL {
   )`
 }
 
+/** Cuántas reservas entran en una página de la lista. */
+export const RESERVAS_PAGE_SIZE = 100
+
+export type ReservaListPage = {
+  rows: ReservaListRow[]
+  /** Hay al menos una fila más después de esta página. */
+  hasMore: boolean
+}
+
+/**
+ * Una página de la lista de reservas.
+ *
+ * B10 — antes esto era un `LIMIT 200` pelado, y el defecto no era el techo sino
+ * el SILENCIO: `countTenantBookingsByStatus` cuenta sin techo, así que la
+ * píldora podía decir "Completadas (740)" mientras la lista mostraba 200, sin
+ * nada en pantalla que dijera que faltaban 540 ni forma de llegar a ellas. En
+ * el scope `historial`, que crece para siempre, eso es la vista normal de
+ * cualquier complejo con unos meses de uso.
+ *
+ * Paginación por OFFSET y no keyset, a sabiendas: el orden cambia según el
+ * scope (tres `ORDER BY` distintos), y un cursor por scope serían tres
+ * codificadores de cursor con tres oportunidades de perder una fila en un
+ * empate. Sobre el historial de UN complejo el offset no es un problema de
+ * performance, y "página 3" es además el modelo mental correcto para revisar
+ * historial. El costo real del offset —que una reserva creada entre dos páginas
+ * corra el borde— es intrascendente en una lista que se scrollea, no se procesa.
+ *
+ * `LIMIT n+1` en vez de un `COUNT` extra: alcanza para saber si hay otra página
+ * y no paga una segunda pasada por la tabla.
+ */
 export async function listTenantBookings(
   tenantId: string,
   filters: ReservaListFilters,
   tx: DbTx,
-): Promise<ReservaListRow[]> {
+  page = 0,
+): Promise<ReservaListPage> {
   // Hoy: agrupable por cancha con horarios ascendentes. Próximas: lo más
   // cercano primero. Historial: lo más reciente primero.
   const orderBy =
@@ -99,6 +130,7 @@ export async function listTenantBookings(
       : filters.scope === 'proximas'
         ? sql`ORDER BY b.date ASC, b.time_start ASC, c.name ASC`
         : sql`ORDER BY b.date DESC, b.time_start DESC, c.name ASC`
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 0
   const rows = await tx.execute(sql`
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
@@ -115,9 +147,11 @@ export async function listTenantBookings(
       ${statusCond(filters.status)}
       ${searchCond(filters.q)}
     ${orderBy}
-    LIMIT 200
+    LIMIT ${RESERVAS_PAGE_SIZE + 1} OFFSET ${safePage * RESERVAS_PAGE_SIZE}
   `)
-  return rows as unknown as ReservaListRow[]
+  const list = rows as unknown as ReservaListRow[]
+  const hasMore = list.length > RESERVAS_PAGE_SIZE
+  return { rows: hasMore ? list.slice(0, RESERVAS_PAGE_SIZE) : list, hasMore }
 }
 
 /**

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Search, Contact, Users } from 'lucide-react'
+import { Search, Contact, Users, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -22,7 +22,23 @@ export type JugadoresViewProps = {
   q?: string
   searchAction: LinkContactDialogProps['searchAction']
   linkAction: LinkContactDialogProps['linkAction']
+  /** Página 0-based que se está viendo (B10). */
+  page?: number
+  /** Hay al menos una persona más después de esta página (B10). */
+  hasMore?: boolean
 }
+
+/** `/jugadores?…` preservando la búsqueda. `?pagina=` es 1-based en la URL. */
+function pageHref(q: string | undefined, page: number): string {
+  const search = new URLSearchParams()
+  if (q) search.set('q', q)
+  if (page > 0) search.set('pagina', String(page + 1))
+  const qs = search.toString()
+  return qs ? `/jugadores?${qs}` : '/jugadores'
+}
+
+const PAGER_LINK =
+  'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
 
 /** "3 reservas · 1 fijo". Las unidades en singular cuando corresponde. */
 function metaLine(c: ClientListRow): string {
@@ -39,7 +55,14 @@ function SinCuentaBadge() {
   )
 }
 
-export function JugadoresView({ clients, q, searchAction, linkAction }: JugadoresViewProps) {
+export function JugadoresView({
+  clients,
+  q,
+  searchAction,
+  linkAction,
+  page = 0,
+  hasMore = false,
+}: JugadoresViewProps) {
   const renderLinkButton = (c: ClientListRow) =>
     c.kind === 'contact' ? (
       <LinkContactDialog
@@ -220,6 +243,34 @@ export function JugadoresView({ clients, q, searchAction, linkAction }: Jugadore
             </table>
           }
         />
+      )}
+
+      {/* B10 — antes la lista se cortaba en 200 SIN decirlo: la persona 201 no
+          existía para esta pantalla y el único modo de alcanzarla era adivinar
+          su nombre en el buscador. */}
+      {(page > 0 || hasMore) && (
+        <nav
+          aria-label="Paginación de personas"
+          className="flex items-center justify-between gap-3 border-t border-border pt-4"
+        >
+          {page > 0 ? (
+            <Link href={pageHref(q, page - 1)} rel="prev" className={PAGER_LINK}>
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              Anteriores
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-xs text-muted-foreground tabular-nums">Página {page + 1}</span>
+          {hasMore ? (
+            <Link href={pageHref(q, page + 1)} rel="next" className={PAGER_LINK}>
+              Siguientes
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
       )}
     </div>
   )

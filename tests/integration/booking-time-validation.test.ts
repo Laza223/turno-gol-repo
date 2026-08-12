@@ -152,10 +152,13 @@ describe('createOnlineBooking: date window validation (BK-04)', () => {
     ).rejects.toBeInstanceOf(BookingDateOutOfRangeError)
   }, 10_000)
 
-  it('rejects today slot whose start time has already passed in ART', async () => {
+  it('rejects today slot whose start time has already passed in ART', async (ctx) => {
     const now = artNow()
-    // Only run if it's past the first hour of the day in ART
-    if (now.getUTCHours() < 1) return
+    // Entre las 00:00 y las 00:59 ART no existe una "hora que ya pasó" dentro
+    // del mismo día, así que el caso no se puede montar. La condición está
+    // bien; lo que se cambia es que el salteo se REPORTE — con `return` esto
+    // salía ✓ verde una hora por día sin haber ejercitado nada.
+    ctx.skip(now.getUTCHours() < 1, 'antes de la 01:00 ART no hay hora pasada del mismo día')
     const today = artTodayStr()
     const pastHour = now.getUTCHours() - 1
     const timeStart = `${String(pastHour).padStart(2, '0')}:00`
@@ -229,21 +232,31 @@ describe('createOnlineBooking: date window validation (BK-04)', () => {
   // se rechazaba como past_date sin mirar la hora — un slot todavía futuro
   // (ej. la noche de ayer sigue abierta) era irreservable por API aunque la
   // grilla lo mostrara disponible.
-  it('día operativo: no rechaza como past_date un slot de "ayer operativo" que sigue físicamente en el futuro', async () => {
-    // Evita el wrap de medianoche del slot sintético: abajo el slot arranca en
-    // `ahora + 10'` y dura 60', así que si `ahora + 70'` cruza las 24:00 el
-    // timeEnd wrapea a "00:xx", queda MENOR que el timeStart y viola
-    // `chk_time_valid` — un fallo del andamiaje del test, no de lo que quiere
-    // ejercitar.
+  it('día operativo: no rechaza como past_date un slot de "ayer operativo" que sigue físicamente en el futuro', async (ctx) => {
+    // El slot sintético de abajo arranca en `ahora + 10'` y dura 60'. Cerca del
+    // final del día ART eso se rompe de DOS maneras distintas, y el `% 1440` de
+    // la versión anterior de este guard escondía la segunda:
     //
-    // El guard viejo (`hora === 23 && minutos > 49`) tenía la condición al
-    // revés: salteaba 23:50–23:59, que es justo la franja donde NO hay wrap
-    // (ahí start ya arranca pasada la medianoche), y dejaba correr 22:50–23:49,
-    // que es donde el wrap efectivamente pasa. O sea el test venía roto ~1 hora
-    // por día desde que se escribió, y solo se veía si la corrida caía ahí.
+    //   22:50–23:49 → wrapea el FIN. timeEnd sale '00:xx', queda MENOR que
+    //                 timeStart y viola `chk_time_valid`.
+    //   23:50–23:59 → wrapea el ARRANQUE. timeStart sale '00:0x' y el servicio
+    //                 lo compara contra la hora de pared de HOY
+    //                 (booking.service.ts:437), donde 00:0x pasó hace ~24 h →
+    //                 BookingDateOutOfRangeError('past_slot').
+    //
+    // Aplicar el módulo ANTES de mirar el wrap hacía que un arranque wrapeado
+    // (00:0x) pareciera sano, así que el guard cubría los 59 minutos del primer
+    // caso y dejaba correr justo los 10 del segundo. Corrida real que lo
+    // destapó: 2026-08-12 02:57 UTC = 23:57 ART, con timeStart '00:07'.
+    //
+    // La cuenta ahora va SIN módulo (cubre los dos wraps de una) y el salteo se
+    // REPORTA: un `return` mudo pinta verde sin haber ejercitado nada.
     const nowGuard = artNow()
-    const startMins = (nowGuard.getUTCHours() * 60 + nowGuard.getUTCMinutes() + 10) % (24 * 60)
-    if (startMins + 60 > 24 * 60) return
+    const nowMins = nowGuard.getUTCHours() * 60 + nowGuard.getUTCMinutes()
+    ctx.skip(
+      nowMins + 10 + 60 >= 24 * 60,
+      `no queda hora de pared futura hoy: "ahora + 10'" cruzaría la medianoche ART`,
+    )
 
     const sql = getSql()
     const cndTenant = await createTestTenant(sql)

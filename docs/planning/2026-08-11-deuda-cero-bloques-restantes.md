@@ -55,8 +55,18 @@ alguien vuelve a sumarlas a mano. El número lo trae un endpoint propio y no un 
 porque la plata entra desde afuera de la pestaña (webhook de MP, otro empleado cobrando) y un total
 viejo se lee como plata que falta.
 
-Queda **B11**. No tiene el alcance escrito en ningún lado;
-lo de abajo es la reconstrucción, medida contra el código de hoy.
+**B11 cerrado en la capa que se podía medir** (2026-08-12, report en
+`docs/audit/reports/2026-08-12-b11-carga-hot-paths.md`): 16 hot paths con `EXPLAIN (ANALYZE,
+BUFFERS)` bajo rol real y volumen (15.695 bookings, 22.431 cash_flows). 15 de 16 por debajo de 3 ms.
+Dos premisas del plano de abajo NO se sostuvieron: ya se medía uno de los 6 presupuestos
+(`availability-search-perf.test.ts`) y la instrumentación de prod ya existía (`tracesSampler`). El
+harness estaba desactualizado en dos lugares y medía queries que la app ya no ejecuta. Un 🟡 real:
+`/deudas` procesa toda la historia del complejo para devolver la deuda vigente. **La carga HTTP con
+k6 quedó SIN hacer** (k6 no instalado + sin env en el worktree) y el p95 de producción necesita
+tráfico que hoy no existe.
+
+**Deuda cero: los 17 bloques cerrados.** Lo de abajo es la reconstrucción del plan original,
+medida contra el código de entonces.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
 
@@ -207,7 +217,14 @@ sigue el cursor.
 
 ---
 
-## B11 — Load testing (auditoría D6)
+## B11 — Load testing (auditoría D6) ✅ CERRADO en la capa DB (2026-08-12)
+
+> Report: `docs/audit/reports/2026-08-12-b11-carga-hot-paths.md`. Dos correcciones al plano de
+> abajo: **"nada de eso se mide" es falso** (`availability-search-perf.test.ts` ya hace cumplir el
+> presupuesto de búsqueda en cada PR, y `query-plan-canary.test.ts` protege la clase que hace
+> colapsar la latencia con volumen), y la instrumentación de prod **ya existía**. Lo que faltaba
+> eran los umbrales: había UNA alerta global de `p95 > 2s`, el presupuesto más flojo de los 6, con
+> lo cual la grilla podía correr a 4× sus 500 ms sin alertar.
 
 Lo que pedía D6 (`MASTER_PLAN.md:300-305`): medir de verdad el p95 <500ms de `doc5`, con k6, sobre
 el seed de D3, en los 2 endpoints calientes (disponibilidad pública y webhook MP), con carga de

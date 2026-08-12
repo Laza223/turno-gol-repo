@@ -13,6 +13,11 @@ import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
+import {
+  DEFAULT_STREET_MONEY_WINDOW,
+  streetMoneyCutoffDate,
+  type StreetMoneyWindow,
+} from '@/modules/cashflow/street-money-window'
 import { getTeam } from './tournament-team.service'
 import {
   InscriptionOverpaidError,
@@ -88,9 +93,15 @@ export async function listInscriptionStatus(
 export async function listTenantInscriptionDebts(
   tenantId: string,
   tx: DbTx,
+  window: StreetMoneyWindow = DEFAULT_STREET_MONEY_WINDOW,
 ): Promise<
   Array<TeamInscriptionStatus & { tournamentId: string; tournamentName: string; createdAt: Date }>
 > {
+  // B11: los tres orígenes de "Plata en la calle" comparten ventana. Ver
+  // street-money-window.ts — acota la consulta, no la deuda.
+  const cutoff = streetMoneyCutoffDate(window, new Date())
+  const dateBound = cutoff ? sql`AND t.created_at >= ${cutoff}::date` : sql``
+
   const rows = (await tx.execute(sql`
     SELECT t.id                             AS "teamId",
            t.name                           AS "teamName",
@@ -108,6 +119,7 @@ export async function listTenantInscriptionDebts(
       ON cf.tournament_team_id = t.id
      AND cf.tenant_id = t.tenant_id
     WHERE t.tenant_id = ${tenantId}
+      ${dateBound}
     GROUP BY t.id, t.name, t.status, t.inscription_fee, t.tournament_id, t.created_at, tr.name
     HAVING t.inscription_fee - COALESCE(SUM(cf.amount), 0) > 0
     ORDER BY t.name

@@ -21,6 +21,28 @@ SELECT array_agg(id)::text AS cand_ids
 FROM tenants WHERE slug LIKE 'd3-%' AND status IN ('active', 'trialing') \gset
 
 -- ────────────────────────────────────────────────────────────────────────────
+-- Ventana del día operativo, en la MISMA forma que la arma el código (B11).
+--
+-- Q2–Q5 medían `(occurred_at AT TIME ZONE '…')::date = …`, que es la forma
+-- ANTERIOR al fix de D3. Ese fix migró los callers a un rango UTC sargable
+-- (`operatingDayRangeUtc`, src/shared/time/operating-day.ts) y la migración 054
+-- DROPEÓ los dos índices de expresión, así que hoy esa forma solo puede dar Seq
+-- Scan — mide una query que la aplicación ya no ejecuta. El harness quedó
+-- documentando el problema viejo en vez del código vivo.
+--
+-- La expresión va del lado de la CONSTANTE: `occurred_at` queda pelado y entra
+-- por `idx_cash_flows_tenant_date`. Ese es exactamente el punto del fix.
+--
+-- El día se calcula en ART y no con `CURRENT_DATE` (que Postgres evalúa en la
+-- TZ de la sesión = UTC acá): entre las 21 y las 24 ART, el "ayer" de UTC es el
+-- HOY de Argentina y la ventana cae sobre el día equivocado.
+SELECT
+  ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - 1)::text AS art_day
+\gset
+\set day_from '(:''art_day''::date::timestamp AT TIME ZONE ''America/Argentina/Buenos_Aires'')'
+\set day_to '((:''art_day''::date + 1)::timestamp AT TIME ZONE ''America/Argentina/Buenos_Aires'')'
+
+-- ────────────────────────────────────────────────────────────────────────────
 \echo ''
 \echo '=== Q1: grilla del día — bookings+players (turnogol_app, tenant ctx) ==='
 BEGIN;
@@ -45,8 +67,8 @@ SELECT set_config('app.current_tenant_id', :'heavy_id', true);
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT * FROM cash_flows
 WHERE tenant_id = :'heavy_id'
-  AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
-      = (CURRENT_DATE - 1)
+  AND occurred_at >= :day_from
+  AND occurred_at <  :day_to
 ORDER BY occurred_at DESC;
 ROLLBACK;
 
@@ -59,23 +81,26 @@ EXPLAIN (ANALYZE, BUFFERS)
 SELECT type, category, method, SUM(amount)::int AS total
 FROM cash_flows
 WHERE tenant_id = :'heavy_id'
-  AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
-      = (CURRENT_DATE - 1)
+  AND occurred_at >= :day_from
+  AND occurred_at <  :day_to
 GROUP BY type, category, method;
 ROLLBACK;
 
 \echo ''
-\echo '=== Q4: getDayComparisons — 7 días por expresión ART (turnogol_app) ==='
+\echo '=== Q4: getDayComparisons — ventana de 7 días (turnogol_app) ==='
 BEGIN;
 SET LOCAL ROLE turnogol_app;
 SELECT set_config('app.current_tenant_id', :'heavy_id', true);
 EXPLAIN (ANALYZE, BUFFERS)
+-- El GROUP BY sigue agrupando POR la expresión ART (es display, no filtro), y
+-- eso está bien: lo que tiene que ser sargable es el WHERE, que es lo que
+-- decide cuántas filas se leen.
 SELECT (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS day,
        type, SUM(amount)::int AS total
 FROM cash_flows
 WHERE tenant_id = :'heavy_id'
-  AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
-      BETWEEN (CURRENT_DATE - 8) AND (CURRENT_DATE - 2)
+  AND occurred_at >= ((:'art_day'::date - 7)::timestamp AT TIME ZONE 'America/Argentina/Buenos_Aires')
+  AND occurred_at <  (:'art_day'::date::timestamp AT TIME ZONE 'America/Argentina/Buenos_Aires')
 GROUP BY 1, 2;
 ROLLBACK;
 
@@ -88,8 +113,8 @@ EXPLAIN (ANALYZE, BUFFERS)
 SELECT count(*), COALESCE(SUM(amount), 0)::int
 FROM cash_flows
 WHERE tenant_id = :'heavy_id'
-  AND (occurred_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
-      = (CURRENT_DATE - 1)
+  AND occurred_at >= :day_from
+  AND occurred_at <  :day_to
   AND category = 'product_sale';
 ROLLBACK;
 
@@ -202,7 +227,7 @@ SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
        b.price_snapshot, b.deposit_amount, b.deposit_status,
        COALESCE(SUM(cf.amount) FILTER (
          WHERE cf.type = 'income' AND cf.category = 'booking'
-           AND cf.description <> ('Seña MercadoPago — turno ' || b.id::text)
+           AND cf.description <> ('Seña — turno ' || b.id::text)
        ), 0)::int AS charges_total
 FROM bookings b
 JOIN courts c ON b.court_id = c.id
@@ -216,7 +241,7 @@ HAVING (b.price_snapshot
         - CASE WHEN b.deposit_status IN ('paid', 'captured') THEN b.deposit_amount ELSE 0 END
         - COALESCE(SUM(cf.amount) FILTER (
             WHERE cf.type = 'income' AND cf.category = 'booking'
-              AND cf.description <> ('Seña MercadoPago — turno ' || b.id::text)
+              AND cf.description <> ('Seña — turno ' || b.id::text)
           ), 0)) > 0
 ORDER BY b.date DESC, b.time_start DESC;
 ROLLBACK;

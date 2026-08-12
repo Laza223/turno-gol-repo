@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { AddClosedDateForm } from './AddClosedDateForm'
 import { HorariosForm } from './HorariosForm'
 import { RemoveClosedDateForm } from './RemoveClosedDateForm'
@@ -9,11 +7,7 @@ import { addClosedDateAction, removeClosedDateAction, updateHorariosAction } fro
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function HorariosPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const { tenant } = await requireAdminStaff()
 
   const hours = tenant.openingHours as LooseOpeningHours
   const closedDates = (tenant.closedDates ?? []) as unknown as string[]

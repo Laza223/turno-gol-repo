@@ -1,16 +1,10 @@
-import { redirect } from 'next/navigation'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { ReservasPolicyForm } from './ReservasPolicyForm'
 import { updateReservasPolicyAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function ReservasPolicyPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const { tenant } = await requireAdminStaff()
 
   const s = tenant.settings
 

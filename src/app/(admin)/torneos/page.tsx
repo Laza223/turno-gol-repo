@@ -3,9 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { Plus, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { getStaffRole } from '@/modules/staff/staff.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
@@ -13,20 +11,17 @@ import { listTournaments } from '@/modules/tournaments/tournament.service'
 import { FORMAT_SHORT, STATUS_LABELS, formatDateRange, statusBadgeClass } from './torneos-lib'
 
 export default async function TorneosPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  // Crear un torneo es configuración: solo el dueño (mismo criterio que
+  // /torneos/nuevo, que ya rebota server-side al manager). El botón se oculta
+  // según `role` para no mandarlo a un rebote sin explicación — y el rol lo
+  // devuelve el guard, sin una segunda lectura de tenant_staff_members.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant, role } = auth
 
   // La ruta también está detrás del flag: esconder el item del menú no alcanza,
   // alguien puede entrar por URL.
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
-
-  // Crear un torneo es configuración: solo el dueño (mismo criterio que
-  // /torneos/nuevo, que ya rebota server-side al manager). Acá solo ocultamos
-  // el botón para no mandarlo a un rebote sin explicación.
-  const role = await getStaffRole(tenant.id, user.staffUserId)
 
   const tournaments = await withTenantContext(tenant.id, (tx) => listTournaments(tenant.id, tx))
 

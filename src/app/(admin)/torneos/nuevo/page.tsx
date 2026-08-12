@@ -2,26 +2,21 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { getStaffRole } from '@/modules/staff/staff.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { createTournamentAction } from '../actions'
 import { TorneoForm } from './TorneoForm'
 
 export default async function NuevoTorneoPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+  // `requireOperatorStaff` y no `requireAdminStaff` pese a ser solo-dueño: el
+  // rebote del manager va a `/torneos` (mantener el contexto del módulo), no al
+  // `/dashboard` que impone `requireAdminStaff`.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant, role } = auth
 
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
-
-  const [enabled, role] = await Promise.all([
-    isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id),
-    getStaffRole(tenant.id, user.staffUserId),
-  ])
-  if (!enabled) notFound()
+  if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
   // Crear un torneo es configuración: solo el dueño. La action lo re-chequea
   // con requireAdminStaffAction — esto es para no mostrar un form que va a fallar.
   if (role !== 'admin') redirect('/torneos')

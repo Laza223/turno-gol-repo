@@ -5,11 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/app/(admin)/abonados/actions', () => ({
   createAbonadoAction: vi.fn(async () => ({ success: true, abonado: {} })),
 }))
-vi.mock('@/modules/auth/auth.middleware', () => ({
-  extractAuthUser: vi.fn(async () => ({ type: 'staff', staffUserId: 'staff-1' })),
-}))
-vi.mock('@/modules/tenants/tenant.service', () => ({
-  getStaffTenant: vi.fn(async () => ({ id: 'tenant-1', closedDates: [] })),
+// B10 — la action pasó a `requireOperatorStaff()`, el mismo guard que
+// `createAbonadoAction`: una Server Action no hereda nada del layout de (admin).
+vi.mock('@/modules/staff/guards', () => ({
+  requireOperatorStaff: vi.fn(async () => ({
+    ok: true,
+    user: { type: 'staff', staffUserId: 'staff-1' },
+    role: 'admin',
+    tenant: { id: 'tenant-1', closedDates: [] },
+  })),
 }))
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),

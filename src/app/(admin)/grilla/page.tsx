@@ -62,6 +62,9 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
             paymentMethod: bookings.paymentMethod,
             depositStatus: bookings.depositStatus,
             depositAmount: bookings.depositAmount,
+            // B15: sin created_at la grilla no puede decir cuánto le queda al
+            // hold. Eran 15 columnas y esta no estaba.
+            createdAt: bookings.createdAt,
             playerFirstName: players.firstName,
             playerLastName: players.lastName,
           })

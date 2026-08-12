@@ -1,11 +1,13 @@
 # Auditoría TurnoGol — Progreso
 
 ## Estado: EN CURSO
+
 **Inicio:** 2026-06-30
 **Objetivo:** Veredicto go/no-go para lanzamiento en ~2 semanas
 **Focos:** (1) Aislamiento multi-tenant, (2) Caja/plata correcta, (3) Deuda técnica/bugs
 
 ### Entrevista de alineación (2026-06-30, antes de retomar Capa 2)
+
 - **Lanzamiento:** soft — pocos tenants piloto conocidos, hay margen para ajustar sobre la marcha (no es un hard deadline con clientes ya comprometidos).
 - **Mayor miedo:** que un flujo crítico (reserva/pago/cancelación) se rompa y deje trabado a jugador o admin. NO es el miedo principal la fuga cross-tenant ni un error de caja (aunque siguen siendo focos).
 - **Criterio de éxito:** go/no-go priorizado por severidad — está bien cerrar con hallazgos menores pendientes, no hace falta cero-críticos ni cobertura total de las 6 capas para considerar la auditoría exitosa.
@@ -13,6 +15,7 @@
 - **Implicancia:** priorizar dentro de Capa 3-6 lo que toca flujos críticos (reserva/pago/cancelación) por sobre hallazgos cosméticos; los "REQUIERE INPUT" de negocio se consolidan y se preguntan juntos al final de Capa 2 en vez de interrumpir doc por doc.
 
 ## Capas
+
 - [/] Capa 1 — Schema vs Código (completada parcialmente en sesión anterior con Opus 4.8)
 - [x] Capa 2 — Documentación vs Código (19/19 docs, 82 hallazgos confirmados totales, 3 BLOQUEANTES: 2-43, 2-53, 2-76 — ver audit_report.md)
 - [x] Capa 3 — Reglas de negocio y permisos (22 hallazgos confirmados, 6 BLOQUEANTES — manager puede tocar MP OAuth/billing SaaS/seña/horarios/canchas por falta de chequeo de rol; staff desactivado conserva acceso API indefinido — ver audit_report.md)
@@ -21,11 +24,14 @@
 - [ ] Capa 6 — Seguridad (RLS/Auth)
 
 ## Hallazgos pendientes de decisión (REQUIERE INPUT)
+
 <!-- Los que necesitan intervención del dueño del producto -->
+
 - Capa 4 grupo 4 (5 items sin veredicto mecánico: PremiumCard/table.tsx sin adoptar, boilerplate shadcn sin consumidor, getAvailableSlotsCached sin cablear, processSingleNotification, runRequestObservability) — ver audit_report.md.
 - Capa 5 restante en backlog (ver audit_report.md): SA-09 (billing huérfano), SA-08 (favorites/reviews vía fetch), SA-10 (push unsubscribe/test), C5-G1/G2 (guards ad-hoc), F1-F7+DATE-01..16 (ART/fechas duplicadas), L5-LABELS-01/03 + naming F1-F9 (cosmético). C5-G3, L5-LABELS-02 y la "Shadow API" (6 clusters) ya se aplicaron — ver "Fixes aplicados".
 
 ## Fixes aplicados automáticamente
+
 - D1: open_matches/open_match_status eliminados del CLAUDE.md (migr. 028 ya los había borrado)
 - D2+D3: read_only quitado del doc + manager corregido a restringido (decisión: sin config/equipo)
 - D4: doc9 marcado como eliminado, bullet borrado
@@ -65,15 +71,19 @@
   - Grupo 4 (5 items) queda en backlog por decisión del usuario — ver audit_report.md.
 
 ## Intentos fallidos (fix reverted)
+
 <!-- Cambios que rompieron typecheck/lint y fueron revertidos -->
 
 ## Log de sesiones
+
 ### Sesión 1 — 2026-06-29 (Opus 4.8)
+
 - Auditoría de CLAUDE.md vs código: 5 discrepancias corregidas (D1-D5)
 - Capa 1 parcial: 14 hallazgos de schema (columnas/tablas sin uso), pendientes de decisión drop/implementar
 - Type-drift: 1 fix aplicado, 2 falsos positivos descartados
 
 ### Sesión 2 — 2026-06-30/07-01 (Sonnet 5, Método Karpathy)
+
 - Auditoría completa con ultracode + verificación adversarial
 - Foco: multi-tenant, caja/plata, deuda técnica, go/no-go
 - Entrevista de alineación antes de retomar Capa 2 (ver arriba)
@@ -96,7 +106,9 @@
 - EN CURSO: arrancando Capa 6 (Seguridad RLS/Auth) — última capa de la auditoría.
 
 ### Sesión — 2026-07-04 (Opus 4.8) — React Doctor top-3 pass
+
 Herramienta nueva: `npx react-doctor@latest` (v0.7.1) — 327 hallazgos. Prompt: arreglar top-3 (no-dynamic-import-path ×1, only-export-components ×13, async-await-in-loop ×24), verificar contra el tool real, no suprimir a ciegas. Triage con 26 subagentes Sonnet (workflow read-only, ~104s): la mayoría del top-3 son FALSOS POSITIVOS. Receta oficial confirma: async-await-in-loop es FP si el loop comparte conexión/tx o depende del orden.
+
 - **Fixes reales (6 sitios, `Promise.all` — SAFE porque pg-boss usa pool propio, no getWorkerSql):** `push.service.ts` (notifyAdminPush + notifyStaffPush, boss.send), `booking.expiry.ts:156` + `mp-webhook.handler.ts:166` + `reconcile-pending-payments.worker.ts:73` (dispatchEmail→boss.send), `dlq.ts:81` (attachFailureHandlers, boss.onComplete → Promise.all con try/catch por queue).
 - **Falsos positivos → `doctor.config.mjs` (`ignore.overrides`, rule-scoped):** only-export-components (13 — shadcn cva + helpers puros co-ubicados, DEV-ONLY Fast Refresh, cero impacto usuario); async-await-in-loop (11 FP — loops sobre getWorkerSql compartido / `tx` / orden → `Promise.all` CRASHEA postgres-js, verificado leyendo cada uno); no-dynamic-import-path (1 — build-dist.mjs es script node, no bundle). `dunning-retry.worker.ts:40` con inline `react-doctor-disable-next-line` (archivo mixto: preserva visibles los bounded).
 - **Diferido a follow-up (NO suprimido, 6 bounded):** dunning-retry ×5 (126-224) + booking.expiry:181 — cada iteración abre su propia tx (pool max 3) → necesitan bounded-concurrency (p-limit), no `Promise.all`. Es perf, no correctitud.
@@ -104,14 +116,18 @@ Herramienta nueva: `npx react-doctor@latest` (v0.7.1) — 327 hallazgos. Prompt:
 - **Verificación:** typecheck verde; mis 7 archivos lintean limpio (lint global sigue con el preexistente `facturacion/page.tsx:37` prefer-const, NO mío — ya figuraba en la lista de 9 lint errors preexistentes); `pnpm test` 1510/1510. Re-run tool real: no-dynamic-import 1→0, only-export 13→0, async-await 24→6 (los 6 bounded diferidos), server-auth-actions 34→34 (cero colateral), total 327→296.
 
 ### Sesión — 2026-07-04 (Opus 4.8) — React Doctor batch 2: Accessibility
+
 Batch 2 de los 296 restantes. Categoría Accessibility (38). Security (25) + server-auth-actions (34) NO tocados: territorio de la auditoría en curso (Capa 3/5/6, ya marcados REQUIERE INPUT — no duplicar). Triage: 17 subagentes Sonnet (~71s) → 8 reales, 22 FP, 2 defer (+ phone-input:269 reclasificado a defer: el fix ingenuo mete ~50 tab-stops = peor a11y).
+
 - **Fixes reales (7):** `CourtForm.tsx` wiring `htmlFor`↔`id` (Nombre/Superficie/Formato ×3), `phone-input.tsx:248` aria-label "Buscar país o código", `jugadores/page.tsx:41` aria-label "Buscar jugadores", `ProfileForm.tsx:98` `<label>`→`<span>` (rotulaba un div read-only, no un control).
 - **Falsos positivos → `doctor.config.mjs` (9 overrides):** react-doctor lintea en aislamiento y no ve htmlFor por template-literal (StepCourts/AbonadoDialogs/AbonadoCreditLoader/QuickActions/register), patrón ARIA combobox APG (combobox/phone-input listbox+option), primitivos que forwardean (label.tsx, combobox), `<audio>` beep sin diálogo (PushNotificationManager), labels de grupo vía aria-labelledby (BookingFormModal/LeaveReviewButton/BookingGrid). + test-files (`tests/**`).
 - **Diferido (3, NO suprimido):** PricingGrid:308 (autoFocus en edición inline = UX correcta), TenantGallery:92 (prefer-html-dialog = Radix→native, arquitectónico), phone-input:269 (necesita keyboard-nav de listbox real).
 - **Verificación:** typecheck verde, `pnpm test` 1510/1510, archivos limpios. Re-run tool: Accessibility 38→3, server-auth-actions 34→34 (globs con paréntesis matchean bien), total 296→**261**.
 
 ### Sesión — 2026-07-04 (Opus 4.8) — React Doctor batch 3: State/Effect correctness
+
 Batch 3: cluster de correctitud React state/effect (53 findings, 28 archivos). Triage: 28 subagentes Sonnet (~129s) → 2 reales, 37 FP, 13 defer. Confirma que el codebase está bien hecho: casi todo FP.
+
 - **Fixes reales (2, effect-needs-cleanup):** `BookingGrid.tsx:262` (timer del pulso Realtime sin cleanup → leak si llega otra reserva o desmonta) + `phone-input.tsx:152` (setTimeout de focus sin cleanup) → capturar id + `return () => clearTimeout(...)`. 23/23 tests de esos componentes verdes.
 - **Falsos positivos → config (14 overrides):** no-initialize-state = patrón SSR `mounted` (lazy-init rompería hydration); no-derived-useState = form-seed-then-edit mount-once; no-derived-state = controlado/no-controlado híbrido; no-fetch-in-effect = polling/geo/session client-only que no puede ir a server (ISR); prefer-useReducer = estilo; rendering-hydration-mismatch-time = año copyright en Server Component. Verificado leyendo cada componente.
 - **BACKLOG — refactors genuinos diferidos (NO son FP; se difieren por riesgo de regresión, suprimidos en config con nota):**
@@ -121,28 +137,36 @@ Batch 3: cluster de correctitud React state/effect (53 findings, 28 archivos). T
 - **Verificación:** typecheck verde, tests 23/23 (componentes tocados), archivos limpios. Re-run tool: state/effect 53→0, server-auth-actions 34→34 (cero colateral), total 261→**207**.
 
 ### Sesión — 2026-07-04 (Opus 4.8) — React Doctor batch 4: Performance
+
 Batch 4: Performance (74; excluidos los 6 async-await-in-loop bounded ya triados en batch 1). Triage: 51 subagentes Sonnet (~4min; 1 retry por bug de `args` que llega como string JSON al Workflow → parse defensivo `typeof args==='string'?JSON.parse:args`). 19 mecánicos, 32 FP, 16 defer.
+
 - **Fixes reales (16):** js-hoist-intl ×11 (hoist `new Intl.NumberFormat/DateTimeFormat` a module scope, se recreaban por render/call: AbonadoCreditLoader, DebtPayment, jugadores/[playerId]/page, jugadores/page, dashboard-helpers ×2, AvailabilityGrid ×2, WeeklyAvailability ×3, BookingPopover), js-combine-iterations ×3 (explorar/page ×2, report.utils — filter+map → una pasada; **gotcha: `for..of Map` exige downlevelIteration, usé `Array.from(map)`**), rerender-lazy-state-init (SearchBar `useState(fn)`→`useState(()=>fn)`), no-usememo-simple-expression (useChartTheme: sacar useMemo inútil + su import).
 - **Falsos positivos → config (14 overrides):** js-set-map-lookups (String.indexOf / arrays acotados), js-tosorted-immutable (array ya es copia fresca), js-combine-iterations (2 pasos sobre arrays chicos), async-parallel (getWorkerSql/tx compartido → crash, o pg-boss ya indep), rerender-* (React 18 batchea / el estado sí driva render).
 - **BACKLOG (suprimido, worth-doing):** data-export async-parallel (4 SELECTs ARCO → Promise.all, getSql pooled — diferido: solo verificable en integration, no unit); prefer-dynamic-import de charts recharts (MetricsDashboard/ReportCharts, bundle win); PricingGrid anchor useState→useRef.
 - **Verificación:** typecheck verde (tras fix Array.from), `pnpm test` 1510/1510. Re-run tool: Performance 74→6 (los 6 bounded async), server-auth-actions 34→34, total 207→**139**.
 
 ### Sesión — 2026-07-04 (Opus 4.8) — React Doctor batch 5: Frontend bugs
+
 Batch 5: Bugs de frontend Next.js (15; excluidos los server-* = territorio auditoría). Triage: 12 subagentes Sonnet (~58s) → 6 reales, 6 FP, 3 defer.
+
 - **Fixes reales (6):** Suspense wraps de useSearchParams (explorar/page — QuickFilters+ExplorarToolbar en un boundary + ExplorarFilters en otro; reservas/page — ReservasToolbar), evita el bailout a client-render del route; `<a>`→`<Link>` en abonados/page (ruta interna); `<img>`→`next/image <Image fill sizes>` en TenantCard (coverUrl, host ya en remotePatterns).
 - **FP + defer → config (4 overrides):** nextjs-no-a-element facturacion/StepPayments (`/api/mp/oauth-start` = redirect OAuth externo, debe ser `<a>`); no-event-handler ×3 (HeroSearch/date-picker/phone-input — el effect sincroniza estado DESDE el prop, no llama onChange); nextjs-no-img-element image-uploader (blob preview) + AccountMenu (avatar host arbitrario → BACKLOG remotePatterns); nextjs-no-edge-og-runtime (edge intencional).
 - **Verificación:** typecheck + lint verdes, `pnpm test` 1510/1510. Re-run tool: Bugs 68→53 (solo server-*), total 139→**124**.
 
 ## React Doctor — cierre del barrido mecánico (2026-07-04)
+
 5 batches: **327 → 124** (203 findings resueltos). **39 fixes reales de código** (~28 archivos + `doctor.config.mjs`), ~120 FP/by-design suprimidos con rationale rule-scoped (NUNCA `ignore.files` — está roto en 0.7.1). `server-auth-actions` intacto en 34 en las 5 verificaciones (cero colateral). Todo verde por batch (typecheck + 1510 tests + re-run del tool real). **NADA COMMITEADO.**
 Queda (124), todo NO-mecánico o fuera de scope:
+
 - **78 territorio auditoría:** server-auth-actions 34 + server-sequential-independent-await 15 + server-after-nonblocking 4 + Security 25. Ya son BLOQUEANTES/REQUIERE INPUT de Capa 3/5/6 (no duplicar acá).
 - **37 Maintainability:** unused-export/unused-file (borrar = OK explícito del usuario), no-multi-comp/no-giant-component (refactors de estructura).
 - **9 deferidos (suprimidos en config con nota):** 6 bounded async (p-limit), 3 a11y arquitectónicos (native dialog, listbox keyboard, autofocus inline).
 - **Backlog worth-doing (suprimido, documentado acá):** data-export 4 SELECTs→Promise.all; prefer-dynamic-import charts recharts; PricingGrid anchor useState→useRef; 3 refactors state (HeroSearch merge setState, BookingFormModal key-remount, InviteStaffDialog async-wrapper); AccountMenu avatar `<img>`→`<Image>` (+remotePatterns).
 
 ### Sesión — 2026-07-04 (Opus 4.8) — React Doctor batch 6: Maintainability (unused-export/unused-file)
+
 Batches 1-5 ya commiteados por el usuario aparte. Batch 6: 14 findings `unused-*` (9 export + 5 file). Triage: 13 investigadores general-purpose en paralelo (~7min, grep exhaustivo: imports directos, barrels, tests, dynamic import, `import type`/`z.infer`, convención Next.js, uso same-file). El usuario autorizó explícitamente borrar código muerto ("borralo tranquilo") pidiendo un listadito previo.
+
 - **Borrados reales (2 archivos):** `src/components/admin/PremiumCard.tsx` + `src/components/admin/table.tsx` — primitives UI abandonados (0 refs; reemplazados por la clase CSS `.card-premium` que usan 19 páginas inline). Resuelve la decisión abierta de auditoría **4-25** ("¿refactorizar las páginas o borrar la duplicación muerta?") hacia borrar. Doc `MASTER.md:347` actualizado (sacado el ref a `PremiumCard`, queda `.card-premium`). Sacado el ref stale a `table.tsx` del override `only-export-components`.
 - **Borrados de bloque muerto (2):** `formatDateShort` + su `dateShortFormatter` huérfano (`lib/format.ts:55-65`, 0 refs); re-export `export { InvalidTransitionError }` (`booking.state-machine.ts:77`) — la clase vive intacta en `booking.errors.ts` y todos los consumidores importan de ahí; solo sobraba el re-export.
 - **FP arreglados en código (4, sin borrar):** despojada la palabra `export` de símbolos usados SOLO dentro de su propio archivo → `abonadoStatusVisual` (abonados/status-visual:33, usado line 45), `courtStatusVisual` (canchas/status-visual:31, usado 43), `WIZARD_STEPS` (WizardShell:7, usado 49/101), `DEFAULT_COUNTRY` (phone-input:35, usado 42/47/75).
@@ -155,31 +179,38 @@ Batches 1-5 ya commiteados por el usuario aparte. Batch 6: 14 findings `unused-*
 - **Verificación:** typecheck 0 (filtrado audit-f02), mis 6 archivos lint 0 (el único rojo de lint es `facturacion/page.tsx:37` prefer-const, PRE-EXISTENTE ajeno, sin diff vs HEAD), `pnpm test` **1510/1510**. Re-run tool real: `unused-export` 9→3, `unused-file` 5→3, total **124→116**, `server-auth-actions` intacto en 34.
 
 ### Sesión — 2026-07-04 — TICKET 2: validadores huérfanos (item 1/5 — `parseRouteUuid`)
+
 Verificación previa (paso 1 protocolo-fixes): universo real = 32 `route.ts`, solo 3 con segmento dinámico. 2 de los 3 (`[slug]`, `[tenantId]`) ya validan bien vía `{ params }` + schema/regex propios — no aplica `parseRouteUuid` (firma pathname-based) sin refactor, decisión del usuario: afuera de este ticket. El único candidato real era `player/bookings/[id]/status/route.ts`, que ya validaba (con `uuid.safeParse` inline duplicando la lógica del helper) — **no había 500 sin proteger**, el hallazgo real era duplicación/orfandad, no vulnerabilidad activa.
+
 - **Fix aplicado:** `src/app/api/player/bookings/[id]/status/route.ts` — reemplazado el parseo manual (`req.nextUrl.pathname.split('/').at(-2)` + `uuid.safeParse` + `badRequest` inline) por `parseRouteUuid(req, 'second-last')`. Mismo comportamiento (400 `INVALID_ID`), saca imports `badRequest`/`uuid` sin uso.
 - **Verificación:** typecheck ✅, lint del archivo tocado 0 (lint global sigue con el mismo `facturacion/page.tsx:37` preexistente, confirmado con `git stash` que ya estaba en `main` limpio), `pnpm test` **1510/1510**.
 - **Pendiente item 1:** ninguno — `parseRouteUuid` ya no es huérfano (1 call site real).
 
 ### Sesión — 2026-07-04 — TICKET 2: validadores huérfanos (items 2-3/5 — `bookingResponseSchema` + `cashFlowResponseSchema`)
+
 Verificación previa: doc15 documenta mutaciones de booking/cashflow como Route Handlers REST, pero el código real las implementa como Server Actions (`reservas/actions.ts`, `caja/actions.ts`) — divergencia doc-vs-código ya conocida, no bug nuevo. `validateApiOutput` es agnóstico de transporte (solo `schema.safeParse` + log warn, nunca throw), así que aplica igual sobre el payload de una Server Action.
+
 - **Fix aplicado (`bookingResponseSchema`, 5 sitios en `reservas/actions.ts`):** `createBookingAction`, `confirmDepositPaymentAction`, `completeBookingAction`, `markNoShowAction`, `cancelBookingAction` — agregado `validateApiOutput(bookingResponseSchema, { data: result.booking }, '<actionName>')` en el branch `if (result.success)`, antes del revalidate. Campo por campo `BookingRow` calza 1:1 con el schema, cero drift esperado.
 - **Fix aplicado (`cashFlowResponseSchema`, 1 sitio en `caja/actions.ts`):** antes de cablear, `cashflow.schema.ts:11-26` (`cashFlowRowResponseSchema`, `.strict()`) le faltaba el campo `abonadoId` que sí existe en `CashFlowRow` (agregado con la feature de saldo de abonados) → hubiera disparado falso "contract_mismatch" en cada llamada. Agregado `abonadoId: uuid.nullable()` al schema. Después, wiring en `createCashFlowAction`: `validateApiOutput(cashFlowResponseSchema, { data: result.cashFlow }, 'createCashFlowAction')`. `category` del schema sigue sin `'abonado_payment'` a propósito — el input schema de esta action ya restringe a los mismos 4 valores, ese category se crea por otro path (carga de saldo abonado), no por acá.
 - **Verificación:** typecheck ✅, lint archivos tocados ✅ (0), `pnpm test` **1510/1510**, `tests/integration/cashflow.test.ts` **17/17**. `push-test-endpoint.test.ts` (2 fails, 403 vs 200) confirmado PRE-EXISTENTE vía `git stash` en `main` limpio — sin relación con este diff, no bloqueante.
 - **Borrado (item 3, OK explícito del usuario):** `daySummaryResponseSchema` — `getDaySummary()` solo se consume desde Server Components (`caja/page.tsx`, `dashboard/queries.ts`), nunca es una respuesta HTTP → no hay dónde cablear `validateApiOutput` con sentido. Borrado junto con `dailyCashCloseResponseSchema` (const privada, único consumidor era el schema borrado, quedaba huérfana igual). `cashflow.schema.ts` queda con `cashFlowResponseSchema` (ahora cableado) como único export de output.
 - **Verificación borrado:** typecheck ✅, lint ✅, `pnpm test` **1510/1510**, `cashflow.test.ts` **17/17**.
+
 ### Sesión — 2026-07-04 — TICKET 2: validadores huérfanos (items 4-5/5 — cierre)
+
 - **`openingHoursSchema` (`tenant.schema.ts:11-19`) — NO REPRODUCE, borrado.** Finding #36 (horarios invertidos sin validar) ya estaba resuelto por `horariosSchema` (`src/modules/tenants/opening-hours.schema.ts:95`, del rediseño horarios+precios 89b652a + Día Operativo migr.035) — sí valida `cierre > apertura` por día vía `superRefine`/`isValidDayRange`, aware de `closesNextDay`. `updateScheduleAction` (`onboarding/actions.ts:131`) usa ese, nunca el viejo. `openingHoursSchema` (solo regex de formato, sin coherencia de rango, sin noción de día operativo) tenía 0 imports reales en `src` — cablearlo hubiera sido regresión (rechaza/acepta mal horarios de madrugada). Borrado con OK explícito del usuario; `createTenantSchema` (mismo archivo) queda intacto.
-- **`runRequestObservability` (`shared/middleware/observability.ts:6`) — sin tocar, por decisión.** Ya evaluado en auditoría previa (finding **4-29**, `audit_report.md:397`): *"infra deliberada esperando adopción, no descuido... dejar como está (no es hallazgo real)"* (fase-b10-observabilidad-report.md). Adoptarlo implicaría envolver los 32 route handlers — retrofit grande, explícitamente fuera de scope B10. Usuario confirmó respetar la decisión vieja: no tocar.
+- **`runRequestObservability` (`shared/middleware/observability.ts:6`) — sin tocar, por decisión.** Ya evaluado en auditoría previa (finding **4-29**, `audit_report.md:397`): _"infra deliberada esperando adopción, no descuido... dejar como está (no es hallazgo real)"_ (fase-b10-observabilidad-report.md). Adoptarlo implicaría envolver los 32 route handlers — retrofit grande, explícitamente fuera de scope B10. Usuario confirmó respetar la decisión vieja: no tocar.
 - **Verificación borrado openingHoursSchema:** typecheck ✅, lint ✅, `pnpm test` **1510/1510**.
 
 ## TICKET 2 — CERRADO 100% (5/5 validadores huérfanos revisados)
-| # | Validador | Resultado |
-|---|---|---|
-| 1 | `parseRouteUuid` | Cableado en `player/bookings/[id]/status/route.ts` |
-| 2 | `bookingResponseSchema` | Cableado en 5 Server Actions de `reservas/actions.ts` |
-| 3 | `cashFlowResponseSchema` | Fix de schema (`abonadoId` faltante) + cableado en `createCashFlowAction`; `daySummaryResponseSchema`+`dailyCashCloseResponseSchema` borrados (sin surface HTTP posible) |
-| 4 | `openingHoursSchema` | Borrado — NO REPRODUCE, finding #36 ya resuelto por `horariosSchema` |
-| 5 | `runRequestObservability` | Sin tocar — decisión de auditoría previa (4-29), retrofit grande fuera de scope |
+
+| #   | Validador                 | Resultado                                                                                                                                                                |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `parseRouteUuid`          | Cableado en `player/bookings/[id]/status/route.ts`                                                                                                                       |
+| 2   | `bookingResponseSchema`   | Cableado en 5 Server Actions de `reservas/actions.ts`                                                                                                                    |
+| 3   | `cashFlowResponseSchema`  | Fix de schema (`abonadoId` faltante) + cableado en `createCashFlowAction`; `daySummaryResponseSchema`+`dailyCashCloseResponseSchema` borrados (sin surface HTTP posible) |
+| 4   | `openingHoursSchema`      | Borrado — NO REPRODUCE, finding #36 ya resuelto por `horariosSchema`                                                                                                     |
+| 5   | `runRequestObservability` | Sin tocar — decisión de auditoría previa (4-29), retrofit grande fuera de scope                                                                                          |
 
 Nada commiteado. Archivos tocados: `src/app/api/player/bookings/[id]/status/route.ts`, `src/app/(admin)/reservas/actions.ts`, `src/app/(admin)/caja/actions.ts`, `src/modules/cashflow/cashflow.schema.ts`, `src/modules/tenants/tenant.schema.ts`.
 
@@ -190,20 +221,24 @@ Nada commiteado. Archivos tocados: `src/app/api/player/bookings/[id]/status/rout
 **Alcance aprobado:** 2 peores infractores (1 por regla). Resto queda como follow-up.
 
 ### Fix 1 — BookingGrid (no-giant-component, 559 → orquestador ~120 líneas)
+
 - Hooks extraídos → `src/hooks/`: `use-persisted-density.ts`, `use-dismissible-hint.ts`, `use-realtime-pulse.ts`, `use-grid-layout.ts`, `use-now-line.ts`.
 - Subcomponentes extraídos → `src/components/booking/grid/`: `GridToolbar.tsx`, `GridScroller.tsx`, `GridLegend.tsx`, `FirstBookingHint.tsx`, `MorningCollapseBand.tsx`.
 - `BookingGrid.tsx` conserva export público + re-export `GridBooking` + `BookingFormModal`. Cero cambio de comportamiento/API.
 
 ### Fix 2 — HorariosForms (no-multi-comp, 3 comps → 3 archivos)
+
 - Split limpio → `HorariosForm.tsx`, `AddClosedDateForm.tsx`, `RemoveClosedDateForm.tsx` (misma carpeta). `HorariosForms.tsx` eliminado.
 - Importers actualizados: `settings/horarios/page.tsx`, `tests/unit/horarios-forms.test.tsx`. Sin barrels.
 
 ### Verificación
+
 - `pnpm typecheck` ✅
 - Lint de archivos tocados (`src/`) ✅. Tests: `booking-grid` 13, `grilla-date-param` 3, `use-booking-realtime` 7, `horarios-forms` 4 → todos verdes.
 - Re-scan react-doctor: no-giant-component 4→3 (BookingGrid eliminado), no-multi-comp 8→6 (HorariosForms eliminado; restan solo `.design-sync/previews/*` = FP tooling). Ningún subcomponente nuevo quedó giant.
 
 ### Pendiente / no tocado
+
 - **PRE-EXISTENTE arreglado (con OK del usuario):** `src/app/(admin)/settings/facturacion/page.tsx:37` — `let mpConnected` (solo lectura, líneas 103/109) → `const`. Venía de a377479, rompía el gate. Fix de 1 línea. `bash scripts/audit-verify.sh` ahora 🟢 completo (typecheck + lint + **1510 tests**).
 - **Follow-up giants:** SupportActionsPanel (426), StepCourts (386), PricingGrid (309).
 - **Config:** agregar override `no-multi-comp` para `.design-sync/previews/**` en `doctor.config.mjs` (FP tooling).
@@ -215,16 +250,19 @@ Nada commiteado.
 ## Ticket 3 (cont.) — SupportActionsPanel (no-giant-component) — 2026-07-04
 
 **Fix — SupportActionsPanel (426 → orquestador ~110 líneas)**
+
 - Compartidos → `_components/support-actions/`: `constants.ts` (tipos + STATUS_LABELS + consts de clases), `FeedbackText.tsx`, `SectionCard.tsx` (separados en archivos propios para NO reintroducir no-multi-comp; el sketch original los ponía juntos en shared.tsx).
 - 7 secciones → archivo propio: `ForceStatusSection`, `ReactivateSection`, `ExtendTrialSection`, `ChangePlanSection`, `SettingsSection`, `ResetPasswordSection`, `CancelSection`. Cada una dueña de su estado local + feedback.
 - Parent conserva `Props` idéntico + re-export `SupportPanelSettings`; un único `useTransition`/`run` compartido baja como prop `pending`+`run` (mismo comportamiento: todos los botones se deshabilitan durante cualquier acción).
 - Importer `page.tsx` intacto (mismo entry + tipo). Sin tests que dependan del panel.
 
 ### Verificación
+
 - `bash scripts/audit-verify.sh` 🟢 completo: typecheck + lint + **1510 tests**.
 - Re-scan react-doctor: no-giant-component 3→2 (SupportActionsPanel fuera). Ningún archivo nuevo quedó giant ni multi-comp.
 
 ### Cola restante
+
 - **Giants:** StepCourts (386), PricingGrid (309).
 - **Config:** override `no-multi-comp` para `.design-sync/previews/**` en `doctor.config.mjs` (FP tooling, único no-multi-comp restante = 6).
 
@@ -233,9 +271,11 @@ Nada commiteado.
 ## Ticket 3 (cont.) — StepCourts + config design-sync (no-giant-component / no-multi-comp) — 2026-07-04
 
 **Config — `doctor.config.mjs`**
+
 - Override `no-multi-comp` para `.design-sync/previews/**` (fixtures de preview del tooling: co-ubican varias muestras por archivo a propósito; fuera de `src/`, no shippea). Re-scan: no-multi-comp **6→0**.
 
 **Fix — StepCourts (386 → orquestador ~90 líneas)**
+
 - Subcarpeta `src/app/onboarding/components/step-courts/` (self-contained, hook incluido por decisión del dueño):
   - `constants.ts` — `FORMATS`, `SURFACE_OPTIONS`, tipos `SurfaceType`/`Draft`, helper puro `minPrice()`.
   - `use-court-drafts.ts` — hook: estado de drafts (`drafts`/`expandedKeys`/`nextKey`) + `toggleExpand`/`expand`/`updateDraft`/`addDraft`/`removeDraft` + derivado `canRemove`.
@@ -245,10 +285,12 @@ Nada commiteado.
 - Importer `onboarding/page.tsx:12` intacto. Sin tests que toquen internals.
 
 ### Verificación
+
 - `bash scripts/audit-verify.sh` 🟢 completo: typecheck + lint + **1510 tests**.
 - Re-scan react-doctor: no-giant-component **2→1** (sólo PricingGrid), no-multi-comp **0**. Ningún archivo nuevo quedó giant ni multi-comp.
 
 ### Cola restante
+
 - **Giant:** PricingGrid (309) — último de `src/`.
 
 Nada commiteado.
@@ -258,6 +300,7 @@ Nada commiteado.
 ## Ticket 3 (cont.) — PricingGrid (no-giant-component) — 2026-07-04
 
 **Fix — PricingGrid (309 → orquestador ~85 líneas)**
+
 - Subcarpeta `src/app/(admin)/canchas/components/pricing-grid/`:
   - `cell-utils.ts` — puros (sin JSX): `cellKey`/`parseCellKey` (encode/decode de clave celda) + `heatStyle` + rampas HEAT_*.
   - `use-cell-selection.ts` — hook: modelo de interacción (selección click/arrastre/Shift, modo bloque, edición inline, asignación masiva) + `setCells`/`rectCells` + pointerup effect. Recibe la grilla controlada (`grid`/`onGridChange`), nunca muta precios propios.
@@ -267,14 +310,17 @@ Nada commiteado.
 - Importers intactos: `PricingSection.tsx:24` + `tests/unit/pricing-grid-render.test.tsx:5`. Comportamiento y aria-labels (`Lun 08:00` / `Precio Lun 08:00`) preservados exactos → test verde sin tocarlo.
 
 **Config — parity de FP reubicados**
+
 - `no-aria-hidden-on-focusable`: el `<td aria-hidden>·</td>` (inactiva, no focuseable — FP verificado) se mudó a `PricingGridTable.tsx`; el override glob `**/PricingGrid.tsx` no lo matcheaba → extendido con `**/PricingGridTable.tsx`. Re-suprimido, count 0.
 - `no-autofocus` (editor inline, autofocus deliberado): preexistente y VISIBLE (nunca suprimido) en PricingGrid.tsx:308 → ahora PricingGridTable.tsx:106. Count 1→1, sin cambio; se deja visible igual que antes (no se introduce supresión nueva).
 
 ### Verificación
+
 - `bash scripts/audit-verify.sh` 🟢 completo: typecheck + lint + **1510 tests**.
 - Re-scan react-doctor: no-giant-component **1→0** (último giant de `src/` cerrado), no-multi-comp **0**. Parity de las otras reglas confirmada (aria-hidden 0, autofocus 1 = pre-refactor).
 
 ### Estado Ticket 3
+
 - **no-giant-component: 0** en `src/` (HorariosForms, BookingGrid, SupportActionsPanel, StepCourts, PricingGrid).
 - **no-multi-comp: 0** (design-sync previews suprimidos por config).
 
@@ -303,6 +349,7 @@ Nada aplicado (auditar ≠ fixear). Nada commiteado.
 **Test agregado:** `tests/integration/payments.test.ts` — describe `createDepositPayment → webhook approval → cancelByPlayer — re-link (caza-bugs #1)`. Ejercita el camino real completo (createDepositPayment → processWebhook aprobado → cancelByPlayer) que ningún test anterior cubría; `cancellations.test.ts` seguía linkeando el pago a mano (`linkPaymentToBooking`), lo cual queda intacto porque testea `cancelByPlayer`/`cancelByAdmin` de forma aislada (no el bug, que estaba upstream en el webhook).
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢
 - `pnpm exec vitest run tests/integration/payments.test.ts` → 11/11 🟢 (incluye el test nuevo)
 - `pnpm exec vitest run tests/integration/cancellations.test.ts tests/integration/reconcile-pending-payments-idempotency.test.ts tests/integration/webhook-notification-url.test.ts tests/integration/booking-checkout.test.ts` → 26/26 🟢 (sin regresión)
@@ -317,12 +364,14 @@ Nada commiteado.
 **Problema:** `createRefund` llamaba a `gateway.createRefund` (I/O externo a MercadoPago) DENTRO de la misma transacción de cancelación. Un fallo posterior en esa tx (timeout de lock, throw downstream, crash antes del commit) hacía rollback del registro local mientras MP ya había devuelto la plata — un reintento volvía a reembolsar.
 
 **Cambio — saga de dos fases** (mismo patrón ya usado por `createDepositPayment`):
+
 - `src/modules/payments/payment.service.ts`: `createRefund` partido en `prepareRefund` (fase 1, corre DENTRO de la tx del caller: lockea, valida, chequea over-refund, inserta fila `payments` type='refund' status='pending' — sin tocar MP) + `settleRefund` (fase 2, SIN tx abierta: llama a `gateway.createRefund(mpPaymentId, amount, idempotencyKey)` y persiste el resultado en una tx corta propia). Idempotency key = `refund:${refundPaymentId}` (id de la fila de refund, no del pago original — evita colisión entre refunds parciales distintos del mismo pago; estable ante reintentos de la MISMA liquidación).
 - `PaymentGateway.createRefund` (interfaz + `MercadoPagoGateway` + `MockGateway` + `withCircuitBreaker`): tercer parámetro opcional `idempotencyKey`, pasado a MP via `requestOptions.idempotencyKey` (confirmado en el SDK: `PaymentRefund.create({payment_id, body, requestOptions})` mergea `requestOptions` en `config.options`, que `RestClient.fetch` lee como header `X-Idempotency-Key` — mismo patrón que `getPaymentStatus` ya usa para `timeout`).
 - `src/modules/bookings/booking.cancellation.ts`: `cancelByPlayer`/`cancelByAdmin` ahora llaman `prepareRefund` (no I/O) y devuelven `CancellationOutcome = { booking, pendingRefund? }` en vez de `BookingRow` plano.
 - `src/app/(player)/mis-reservas/actions.ts` y `src/app/(admin)/reservas/actions.ts`: después de que la tx de cancelación commitea, si hay `pendingRefund` llaman `settleRefund` (best-effort: si falla, la cancelación YA es válida — no hay rollback — pero se loguea con `captureMessage` nivel error para seguimiento manual; no se agregó worker de reconciliación, queda como backlog).
 
 **Tests actualizados** (ninguno testeaba timing de I/O, solo resultado final — todos adaptados a two-phase):
+
 - `tests/integration/mp-refund-validation.test.ts`: `createRefund`→`prepareRefund` (guards de over-refund/double-refund intactos, corren ANTES de tocar MP igual que antes).
 - `tests/integration/payments.test.ts`: test de refund reescrito para fase 1 (sin llamar gateway) + fase 2 (`settleRefund` aprueba); test de guards renombrado a `prepareRefund`; mi test de #1 (re-link) extendido con `settleRefund`.
 - `tests/integration/cancellations.test.ts`, `concurrent-cancellation.test.ts` (5 tests de carrera, incluye el ganador de `Promise.allSettled` liquidando su `pendingRefund`), `cashflow.test.ts`: agregado el `settleRefund` explícito donde antes se asumía refund síncrono.
@@ -330,6 +379,7 @@ Nada commiteado.
 - `tests/unit/mp-breaker.gateway.test.ts`: assertion de forwarding de argumentos incluye el 3er parámetro.
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢
 - Integración dirigida (9 archivos, 74 tests): payments, mp-refund-validation, cancellations, concurrent-cancellation, cashflow, reconcile-pending-payments-idempotency, webhook-notification-url, booking-checkout, mp-webhook → 74/74 🟢
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint + 1517 unit tests)
@@ -343,6 +393,7 @@ Nada commiteado.
 **Problema:** `autoCompleteOverdueBookings`, `completeBooking` (guard admin) y `markNoShow` comparaban `date + time_end`/`date + time_start` directo contra `NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires'`. Para un slot de madrugada (`date`=día operativo, `time_start`/`time_end` < hora de apertura, `closes_next_day=true`) eso computa la hora de pared sobre el día OPERATIVO, no el día físico real (que es el calendario siguiente). Resultado: un turno 00:00–01:00 cargado la noche anterior aparecía "ya terminado" ~20h antes de tiempo (auto-complete lo completaba solo) y "ya empezado" apenas creado (no-show/complete admin lo daban por válido sin esperar la hora real).
 
 **Cambio — `src/modules/bookings/booking.service.ts`:** 3 constantes SQL reusables (`PHYSICALLY_NEXT_DAY_SQL`, `PHYSICAL_START_SQL`, `PHYSICAL_END_SQL`), gemelas en SQL crudo de la función JS `slotIsPhysicallyNextDay` ya existente (misma condición: `closes_next_day` + `time_start` antes de la apertura del día de semana vía `opening_hours` JSONB + `EXTRACT(DOW FROM date)`), que suman `INTERVAL '1 day'` cuando corresponde:
+
 - `completeBooking` (guard admin, línea ~547): `SELECT` ahora JOINea `tenants t` y usa `PHYSICAL_END_SQL > NOW()` en vez de `date + time_end`.
 - `autoCompleteOverdueBookings` (línea ~593): `UPDATE bookings b ... FROM tenants t WHERE t.id=b.tenant_id AND ...` usa `PHYSICAL_END_SQL` en el WHERE.
 - `markNoShow` (línea ~615): mismo JOIN, `PHYSICAL_START_SQL > NOW()` como `not_yet_started`.
@@ -352,6 +403,7 @@ Para tenants con `closes_next_day=false` (default), `PHYSICALLY_NEXT_DAY_SQL` es
 **Tests agregados** (`tests/integration/bookings.test.ts`, describe `día operativo (closes_next_day) — instante físico del slot`): tenant con `closes_next_day=true` + `opening_hours` del día de HOY (ART) seteado a `open=20:00/close=02:00`, booking `date=hoy`, `time_start=00:00`, `time_end=01:00` (madrugada). 3 tests: auto-complete NO completa el turno; `completeBooking('admin')` lanza `BookingNotYetEndedError`; `markNoShow` lanza `BookingNotYetStartedError`. **Verificado que los 3 fallan contra el código pre-fix** (`git stash` del archivo de producción, correr, confirmar 3 failures reales, `git stash pop`) — no son falsos positivos.
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢
 - `pnpm exec vitest run tests/integration/bookings.test.ts tests/integration/booking-time-validation.test.ts tests/unit/auto-complete-advisory-lock.test.ts` → 39/39 🟢 (sin regresión en tenants `closes_next_day=false`)
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint + 1517 unit tests)
@@ -365,16 +417,19 @@ Nada commiteado.
 **Problema:** `requireWizardTenant()` (helper local en `src/app/onboarding/actions.ts`) solo chequeaba "es staff con membresía en este tenant" — sin mirar el rol. Un manager (Encargado) podía invocar directo las Server Actions del wizard (`saveWizardScheduleAction`, `createWizardCourtsAction`, `setWizardStepAction`, `finishOnboardingAction`) y reescribir horarios/canchas o cerrar el onboarding — acciones de Configuración que deberían ser solo-admin, igual que `/settings` y `/canchas` fuera del wizard.
 
 **Cambio:** `requireWizardTenant` reemplazado por los guards compartidos ya existentes en `src/modules/staff/guards.ts`:
+
 - `setWizardStepAction`, `saveWizardScheduleAction`, `createWizardCourtsAction` → `requireAdminStaffAction()` (no redirige, devuelve `{ok:false,error}` — mismo contrato `WizardActionResult` que ya tenían) + `adminRateLimited(tenant.id)` preservado explícitamente (antes vivía dentro del helper local).
 - `finishOnboardingAction` (firma `Promise<void>`, siempre redirige) → `requireAdminStaff()` (redirige a `/dashboard` si el rol no es admin, a `/login` si no hay sesión — mismo patrón que el resto de las zonas solo-admin).
 - `createTenantAction` (Paso 1, crea el tenant) queda con su guard actual sin cambios — es la creación misma del tenant, todavía no hay rol que chequear.
 - Ambos guards resuelven tenant y rol por DB (`getStaffTenant`/`getStaffRole`), nunca por el claim del JWT — no reintroduce el problema que el comentario original de `requireWizardTenant` advertía (claim `tenant_id` no propagado aún tras el Paso 1).
 
 **Tests:**
+
 - `tests/unit/onboarding-schedule-validation.test.ts`: agregado mock de `getStaffRole` (`@/modules/staff/staff.service`) → `'admin'`, necesario porque `saveWizardScheduleAction` ahora pasa por ese lookup.
 - `tests/unit/onboarding-role-guard.test.ts` (nuevo, 7 tests): un manager es rechazado en las 4 actions (incluyendo `finishOnboardingAction` → redirect a `/dashboard`, no completa el onboarding); un admin sigue funcionando en paridad. Mocks de `withTenantContext`/`getCourtCountAndLimit`/`createCourt` configurados para que la action LLEGUE hasta el final si el guard falla — así "manager bloqueado" es una aserción real, no un falso positivo por un mock a medio configurar. **Verificado con `git stash` del archivo de producción**: 4/4 tests de manager fallan contra el código viejo (uno de ellos revela además que sin el guard, el manager llegaba hasta el `tx.update()` real de `tenants`).
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢 · `pnpm lint` 🟢
 - `pnpm exec vitest run tests/unit/onboarding-schedule-validation.test.ts tests/unit/onboarding-role-guard.test.ts` → 13/13 🟢
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint + 1524 unit tests)
@@ -388,22 +443,26 @@ Nada commiteado.
 Mismo patrón sistémico de las 4 oleadas previas (ver `pr30-turnogol-app-fallout` en memoria): código que llama `getSql()`/`getDb()` (pool restringido, FORCE RLS) fuera de `withTenantContext`/`withPlayerContext`, sobre una tabla con RLS, devuelve SIEMPRE 0 filas en producción. Local lo enmascara (`DATABASE_URL`/`WORKER_DATABASE_URL` apuntan al mismo superusuario).
 
 **5ta oleada (hallazgos #8/#9/#10 del report caza-bugs):**
+
 - `src/app/api/player/data-export/route.ts` — export ARCO: `getSql()` → `getWorkerSql()` para el dump de bookings/payments/relaciones/bans.
 - `src/modules/super-admin/dashboard.service.ts` — `getMrrCents` (única función del archivo que toca `tenant_subscriptions`, RLS+FORCE — las otras 4 funciones leen tablas genuinamente globales y quedan en `getDb()`): `getDb()` → `getWorkerDb()`. Comentario de cabecera corregido (decía "tenant_subscriptions es global sin RLS", es falso).
 - `src/modules/super-admin/tenants.service.ts` — `listTenants` completo (scan cross-tenant) + la query de `tenant_subscriptions` dentro de `getTenantDetail` (el resto del archivo, que lee `tenants`/`plans` puros o ya usa `withTenantContext`, queda igual): `getDb()` → `getWorkerDb()`. Mismo comentario corregido.
 
 **6ta oleada (encontrada por grep sistemático dedicado, agente en background, 39 call sites de `getSql`/`getDb` revisados en 25 archivos):**
+
 - `src/app/(auth)/register/actions.ts` — el pre-check "¿ya existe cuenta con este email?" contra `staff_users` (que SÍ tiene RLS relacional vía `staff_see_same_tenant_staff`, pese al comentario "es global sin RLS") corría con `getDb()` ANTES de que exista tenant_id alguno → devolvía 0 filas siempre → un registro duplicado nunca detectaba la cuenta existente, Supabase hacía signup silencioso (anti-enumeración) sin reenviar el email, y el usuario quedaba en "revisá tu correo" sin que llegara nada. Fix: `getDb()` → `getWorkerDb()`, mismo patrón que el precedente exacto `getOrCreateStaffUser` en `auth.service.ts`. Comentario corregido.
 - 2 notas menores investigadas y descartadas (no son bugs): `refresh-mp-tokens.worker.ts` usa `getSql`/`getDb` en vez de las versiones worker pero `tenants` no tiene RLS, cosmético; `public.service.ts listTopPublicTenantSlugs` degrada a orden alfabético sin contexto pero está documentado/aceptado explícitamente y no corrompe datos.
 - **Confirmado: las 5 oleadas previas siguen cerradas**, cero regresiones encontradas en el resto de los 39 call sites revisados.
 
 **Tests (todos con patrón "trap" — mockean el POOL, no la función, siguiendo `tests/unit/staff-service-worker-pool.test.ts`; los integration tests existentes NO detectan esta clase porque local no tiene un rol restringido real):**
+
 - `tests/unit/data-export-worker-pool.test.ts` (nuevo): confirma `getWorkerSql` llamado, `getSql` nunca.
 - `tests/unit/super-admin-worker-pool.test.ts` (nuevo, 3 tests): `getMrrCents`, `listTenants`, `getTenantDetail` — confirman el pool correcto por función.
 - `tests/unit/register-existing-account.test.ts`: `getDb()` mockeado como trampa que explota si se llama; agregado `getWorkerDb()` real. Un test existente ahora también asserta `expect(getDb).not.toHaveBeenCalled()`.
 - **Los 4 tests trap nuevos/actualizados verificados con `git stash` de cada archivo de producción: los 4 fallan contra el código viejo** (MRR=0, rows vacías/undefined, subscription sin match, register no detecta email existente) — no son falsos positivos.
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢 · `pnpm lint` 🟢
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint + 1529 unit tests)
 
@@ -420,6 +479,7 @@ Mismo patrón sistémico de las 4 oleadas previas (ver `pr30-turnogol-app-fallou
 **Test agregado:** `tests/unit/public-service.test.ts` — caso `cierre a medianoche (00:00 = fin del día) cubre toda la franja, no solo el minuto 0`. Verificado con `git stash` que falla contra el código viejo (`null` en vez de `900000`).
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢
 - `pnpm exec vitest run tests/unit/public-service.test.ts tests/unit/generate-slots.test.ts` → 22/22 🟢
 - `bash scripts/audit-verify.sh` → 🟢 completo
@@ -433,6 +493,7 @@ Nada commiteado.
 **Problema:** 4 archivos calculaban `expiresAt`/una ventana de retry usando literales `15 * 60 * 1000` / `DEPOSIT_TIMER_MINUTES = 15`, pero el hold real del backend es `DEFAULT_EXPIRY_SECONDS = 6 * 60` (`src/shared/jobs/definitions.ts`) — el comentario en uno de los 4 ("Mirrors DEPOSIT_TIMER_MINUTES in payment.service.ts") apuntaba a una constante que no existe ahí. El jugador veía "14:30 restantes" mientras el worker de expiración ya había liberado el slot a los 6 minutos.
 
 **Cambio (mismo patrón, 4 archivos, ahora derivan de `DEFAULT_EXPIRY_SECONDS`):**
+
 - `src/app/reserva/[bookingId]/pendiente/page.tsx` — `expiresAt` del `PaymentStatusWatcher`.
 - `src/app/reserva/[bookingId]/exito/page.tsx` — mismo `expiresAt` cuando el booking todavía no está `confirmed` (esperando webhook).
 - `src/app/reserva/[bookingId]/error/page.tsx` — `withinWindow` (funcional, no solo cosmético: con 15 min mostraba el botón "Reintentar pago" sobre un booking que el worker ya había expirado, y el retry fallaba confuso en vez de mandar a "Reservar de nuevo").
@@ -441,6 +502,7 @@ Nada commiteado.
 **Test agregado:** `tests/unit/booking-status-expiry.test.ts` (route handler, el más testeable de los 4 — las 3 páginas son Server Components idénticos mecánicamente, verificados por inspección). Verificado con `git stash` que falla contra el código viejo (`...T12:15:00` en vez de `...T12:06:00`).
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢
 - `pnpm exec vitest run tests/unit/booking-status-expiry.test.ts` → 1/1 🟢
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint + 1530 unit tests)
@@ -458,6 +520,7 @@ Nada commiteado.
 **Test agregado:** `tests/integration/booking-time-validation.test.ts` — tenant con `closes_next_day=true` y apertura sintética a las 23:59 (para que el test sea determinístico sin importar la hora real de ejecución) + cancha con precio uniforme 24hs (usa el fix #11). Slot sintético "ahora+10min" (siempre futuro). Verificado con `git stash` que falla contra el código viejo (`BookingDateOutOfRangeError: past_date`).
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢
 - `pnpm exec vitest run tests/integration/booking-time-validation.test.ts` → 8/8 🟢 (sin regresión en los 7 tests previos)
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint + 1530 unit tests)
@@ -471,6 +534,7 @@ Nada commiteado.
 **Problema:** `closeDailyRegister` leía los totales del día (`aggregateTotals`) y recién DESPUÉS insertaba la fila `daily_cash_closes` — sin ningún lock entre ambos pasos. Un `createCashFlow`/`registerDebtPayment`/`loadAbonadoCredit` (que insertan `cash_flows` vía el guard compartido `assertDayOpen`) podía commitear un movimiento en esa ventana: el alta pasa (el día todavía no tenía cierre cuando `assertDayOpen` la dejó pasar), pero el cierre ya había leído los totales ANTES de ese commit — el cierre queda con un total que NO incluye el movimiento, y como el día ya está cerrado, ese movimiento queda huérfano sin forma de recuperarse.
 
 **Cambio:** `pg_advisory_xact_lock(hashtext('daily_close:'||tenantId))` (mismo patrón ya usado en el repo para `mp_refresh`/`auto_complete_bookings`) agregado en DOS puntos:
+
 - `assertDayOpen` (`src/modules/cashflow/cashflow.service.ts`) — el guard COMPARTIDO por `createCashFlow` y todo insert directo de `cash_flows` (`registerDebtPayment`/`loadAbonadoCredit` en `ptr.service.ts`), así que un solo cambio cubre TODOS los caminos de alta sin tocar cada call site.
 - `closeDailyRegister` (`src/modules/cashflow/daily-close.service.ts`) — como primera sentencia, antes de chequear si el día ya está cerrado.
 
@@ -479,6 +543,7 @@ Al ser transaction-scoped y bloqueante (no `pg_try_`), la segunda transacción q
 **Test agregado:** `tests/integration/daily-close-concurrent-cashflow.test.ts` — 5 rondas de `createCashFlow` + `closeDailyRegister` genuinamente concurrentes (`Promise.allSettled`, tenant nuevo por ronda) verificando el invariante: nunca "alta exitosa + cierre que no la cuenta". **Verificado con `git stash`: falla consistente 3/3 corridas contra el código viejo** (reproduce el split-brain exacto: `flowCount=1` pero `close.totalIncome=0`) — no es una carrera rara, se dispara fácil en local.
 
 **Verificación:**
+
 - `pnpm typecheck` 🟢
 - `pnpm exec vitest run tests/integration/cashflow.test.ts tests/integration/daily-close-date-guard.test.ts tests/integration/daily-close-idempotency.test.ts tests/unit/cashflow-service.test.ts tests/integration/daily-close-concurrent-cashflow.test.ts` → 42/42 🟢 (sin regresión; test de concurrencia estable en 3 corridas repetidas)
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint + 1530 unit tests)
@@ -492,6 +557,7 @@ Nada commiteado.
 Los 13 hallazgos locales (todo excepto #6, que requiere push/PR) quedaron fixeados, testeados y verificados con `git stash` uno por uno contra el código viejo. Estado final: `docs/audit/PROGRESS.md` tiene una entrada por hallazgo con archivo/línea, evidencia, test y comando de verificación. `bash scripts/audit-verify.sh` 🟢 en cada cierre — el último corrido deja **1530 unit tests pasando, typecheck y lint limpios**.
 
 **Pendiente (requiere decisión/acción del usuario, no de código):**
+
 - **#2** (`credit_applied` de abonado se pierde al cancelar) — REQUIERE INPUT de negocio, no aplicado (usuario indicó que el módulo de abonados se va a refactorizar).
 - **#6** (mergear `chore/claude-fixes` — retention worker) — el fix ya existe en la rama, solo falta push + PR (acción de riesgo, pendiente de confirmación).
 
@@ -506,6 +572,7 @@ Los 13 hallazgos locales (todo excepto #6, que requiere push/PR) quedaron fixead
 ### Errores (11)
 
 **4 Bugs — NO cubiertos por overrides existentes, candidatos a triage real:**
+
 - `src/app/(admin)/abonados/AbonadosList.tsx:249` — `no-unguarded-browser-global-in-render-or-hook-init`: `document` leído durante render (SSR rompe).
 - `src/components/booking/PaymentStatusWatcher.tsx:67` — `effect-needs-cleanup`: `setTimeout` en `useEffect` sin cleanup.
 - `src/hooks/use-booking-realtime.ts:110` — `effect-needs-cleanup`: `subscribe` en `useEffect` sin cleanup.
@@ -535,6 +602,7 @@ Los 13 hallazgos locales (todo excepto #6, que requiere push/PR) quedaron fixead
 **Contexto:** encargo /copywriting sobre las 5 desalineaciones del doc de product marketing. Durante el planning se detectó una SESIÓN PARALELA editando el mismo branch (`chore/storybook-complete`): 4 de los 5 hallazgos ya estaban fixeados en el working tree (sin commitear) por esa sesión. Esta sesión cubrió el residuo. Estado verificado en disco archivo por línea (no por mensajes).
 
 **Resuelto por la sesión paralela (verificado por esta sesión, sin tocar):**
+
 1. "cobrados automáticamente" (abonados) → `para-complejos/page.tsx:62` ahora "Registrás quién pagó cada sesión".
 2. "miles de jugadores" ×3 → metadata y hero de `para-complejos/page.tsx` + `home/OwnerBanner.tsx:60` reescritos sin la promesa.
 3. "queda con deuda" → `precios/page.tsx:21` ahora modelo softban ("si reincide, queda 14 días sin poder reservarte online"); `:26` "historial, stats y ausencias".
@@ -542,12 +610,14 @@ Los 13 hallazgos locales (todo excepto #6, que requiere push/PR) quedaron fixead
 5. "plataforma líder" → `layout.tsx:34` ahora "Sistema de reservas online y gestión…".
 
 **Aplicado por esta sesión:**
+
 - **A. Email muerto del modelo de deuda borrado** (OK explícito del dueño): `src/modules/notifications/templates/no-show-debt-created.ts` eliminado + 4 referencias en `templates/index.ts` (import, re-export, type map, RENDERERS) + 4 bloques en `tests/unit/notification-templates.test.ts` (import, describe, routing, array `valid`). Estaba registrado pero sin ningún enqueue (`git grep no_show_debt_created` fuera de templates/: cero) — huérfano del revert de deuda (migr. 044).
 - **B. Barrido de palabras prohibidas restante:** `para-complejos/page.tsx:42` 'Dashboard en tiempo real' → 'Métricas en tiempo real'; `home/OwnerBanner.tsx:47` 'Solución para complejos' → 'Para dueños de complejo'.
 
 **REQUIERE INPUT resuelto por el dueño (registrado):** el testimonio fabricado duplicado en `/login` (`src/app/(auth)/login/page.tsx:42-47`, "Marcelo Pérez · Complejo San Martín, Mendoza") se CONSERVA por decisión explícita del dueño. Esta sesión declinó redactar o mejorar testimonios fabricados (publicidad engañosa; viola la regla dura del GTM y expone bajo Ley 24.240) y no restauró la sección eliminada. Riesgo documentado.
 
 **Verificación (por paso):**
+
 - Paso A: `pnpm typecheck` 🟢, `pnpm lint` 🟢, `vitest run tests/unit/notification-templates.test.ts` → 28/28 🟢
 - Paso B: `pnpm typecheck` 🟢, `pnpm lint` 🟢
 - Grep de cierre sobre src/+tests/: cero matches de "miles de jugadores" / "cobrados automáticamente" / "queda con deuda" / "+10.000" / "plataforma líder" / "Solución para complejos" / "NoShowDebtCreated" (los hits de "Dashboard" restantes son identificadores internos y el panel super-admin, no copy de marketing).
@@ -612,6 +682,7 @@ Sin código tocado. Nada commiteado (report + esta entrada solamente).
 Triage y cierre de los pendientes registrados en la sesión 2026-07-12 (4 candidatos Bugs sin triage + 7 Security `supabase-table-missing-rls` sin verificar tabla por tabla). 2 agentes de exploración (evidencia archivo:línea), fixes mínimos con precedente del propio repo, overrides con rationale honesto, verificación completa.
 
 **Veredictos y acciones (los 11 + 1 colateral):**
+
 - **`AbonadosList.tsx:249` (hoy :294, línea corrida por #39) `no-unguarded-browser-global-in-render-or-hook-init`** → FALSO POSITIVO: el único `document` del archivo es el `document.body` del `createPortal` en `AbonadoActionDialogs`, detrás de `if (actions.state.dialog === null) return null` (dialog arranca null y solo cambia por click — en SSR retorna antes de tocar document) + `AbonadoDialogs` carga con `dynamic({ssr:false})`. Override en config.
 - **`PaymentStatusWatcher.tsx:67` `effect-needs-cleanup`** → FP técnico (cleanup real vía flag `cancelled`, idiom de setTimeout recursivo con backoff) + **hardening aplicado igual**: `timerId` trackeado en el scope del effect y `clearTimeout(timerId)` en el cleanup (libera el timer pendiente al desmontar en vez de dejarlo no-opear), guard `if (cancelled) return` antes del `setStatus` post-await (fetch en vuelo), eliminado el `return id` sin uso. La regla SIGUE flagueando post-hardening (no sigue la asignación dentro de `scheduleNext`; su mensaje "without returning cleanup" es literalmente falso contra el código actual) → override con ese rationale.
 - **`use-booking-realtime.ts:110` `effect-needs-cleanup`** → FALSO POSITIVO, código sin tocar: el subscribe se limpia vía `teardown` → `supabase.removeChannel(channel)` (L186-193) + clearInterval/clearTimeout de poll y reconcile; cubierto por el test case 7 (`use-booking-realtime.test.ts:284-325`: removeChannel 1× + 0 fetches post-unmount). Un "fix" naïve rompería ese test. Override.
@@ -626,6 +697,7 @@ Triage y cierre de los pendientes registrados en la sesión 2026-07-12 (4 candid
 **PRE-EXISTENTE arreglado (1 línea, fuera de scope, para desbloquear el juez):** `PortalHeader.tsx:7` — import `LogIn` (lucide) sin uso, error de lint llegado con PRs recientes de main (post-baseline "0 errors" del 2026-07-17). Rompía `audit-verify.sh` (`set -e` aborta en [2/3] Lint antes de correr los tests). Confirmado pre-existente vía `git stash` (árbol limpio: mismos 34 problemas, 1 error + 33 warnings). Mismo precedente que `facturacion/page.tsx:37` (2026-07-04). Revertible si preferís dejarlo al PR que lo introdujo.
 
 **Verificación:**
+
 - Dirigidos: density 4 + payment-status-watcher-stall 3 + use-booking-realtime 7 + abonados-list 15 + booking-grid 13 → **42/42 🟢**
 - `bash scripts/audit-verify.sh` → 🟢 completo (typecheck + lint 0 errores + **1861 unit tests / 251 archivos**)
 - Re-run `npx react-doctor@0.7.6 --json` (pinneado a la versión exacta del baseline): **errorCount 11 → 0** — los 4 Bugs + 7 supabase-rls del baseline TODOS resueltos (2 fixes en código + 9 FP/by-design suprimidos con rationale), más los 2 `server-auth-actions` nuevos de main. Quedan **87 warnings**, todo backlog/territorio-auditoría pre-existente; el total warnings creció 57→87 respecto del baseline por código nuevo de main (`server-sequential-independent-await` 14→32; `prefer-use-effect-event` ×3 y `unsafe-json-in-html` ×2 son reglas/hallazgos nuevos de main), **cero hallazgos en archivos tocados por esta sesión**.
@@ -653,6 +725,7 @@ Nada commiteado (pendiente de decisión del dueño).
 **🔴 D5-H1 (cazado, fix operativo pendiente del dueño):** pg-boss del worker Railway conecta a prod como `postgres` (owner) — pg_stat_activity mostró las 10 conexiones del poller con usename=postgres; la env DATABASE_URL de Railway apunta al superusuario en vez de turnogol_app (diseño migr. 037/039 violado por config de deploy). Clase colateral: `bypassRlsCheck` de launch-check no la caza (postgres tiene rolbypassrls=false pero es OWNER → bypassa RLS donde no hay FORCE). Hardening aplicado: check nuevo `role identity check` asserta current_user esperado por DSN. Falta confirmar el usuario del DSN de Vercel (pull de env denegado en sesión).
 
 **Implementado (4 sonnet-implementers en zonas disjuntas + gate):**
+
 - Migr. 055: timeouts por rol — turnogol_app 15s/3s/30s (statement/lock/idle-in-tx), turnogol_worker 120s/10s/120s; log_min_duration_statement 300ms best-effort (EXCEPTION insufficient_privilege, supautils puede negarlo). Antes: rolconfig NULL, lock e idle INFINITOS. Test por catálogo `role-timeouts.test.ts` (gotcha ALTER ROLE SET aplica al LOGIN, no a SET ROLE).
 - Migr. 056: search_path='public' fijo en 5 funciones trigger (cuerpos leídos; '' rompería 4) + REVOKE recalc_tenant_from_price(uuid) de PUBLIC/anon/authenticated — era SECURITY DEFINER invocable como RPC PostgREST por anónimos (advisor D2-H3); GRANT explícito a turnogol_app/worker.
 - pg-boss deliberado (boss.ts): max 5, archiveCompletedAfterSeconds 43200, deleteAfterDays 7, maintenanceIntervalSeconds 120 (defaults 9.0.3 verificados en la lib, ahora elegidos) + CRON_WORK_OPTIONS newJobCheckIntervalSeconds 30 en 10 colas cron (poller era la top query absoluta de prod: 2,08M calls / 46,7s; latency-sensitive quedan en 2s).
@@ -678,6 +751,7 @@ Nada commiteado (pendiente de decisión del dueño).
 **Decisión (ADR `docs/decisions/2026-07-23-wipe-retencion-sin-replica-role.md`):** eliminar la necesidad del replica role en vez de recuperarlo vía SECURITY DEFINER. Censo empírico (pg_trigger/pg_constraint contra DB real): ningún trigger de usuario bloquea DELETE en las 20 tablas del wipe (la inmutabilidad de bookings terminales es BEFORE UPDATE; daily_cash_closes es append-only por REVOKE, resuelto en 057), y de las 11 aristas de FK entre ellas el orden de DELETEs solo viola UNA: la circular `bookings.payment_id → payments`.
 
 **Implementado:**
+
 - Migr. 058 (`058_wipe_deferrable_fk.sql` + espejo): `fk_bookings_payment` DEFERRABLE INITIALLY IMMEDIATE (semántica idéntica en operación normal) + re-afirmación idempotente de los GRANT DELETE de 057 (057 está aplicada en prod/local pero vive sin commitear en `claude/practical-kilby-322fa9` — sin esto el CI de esta rama no los tendría).
 - `wipeTenant`: `SET CONSTRAINTS fk_bookings_payment DEFERRED` (per-tx, sin privilegios — verificado bajo turnogol_worker) reemplaza al GUC. Bonus de seguridad: la FK enforcement queda ACTIVA durante el wipe — una tabla futura olvidada en la lista hace fallar la tx loud en vez de dejar huérfanos silenciosos (complementa la trampa CASCADE documentada).
 - Seed compartido `tests/helpers/retention.ts` (extraído del test existente) con upgrade: booking TERMINAL + FK circular REALMENTE poblada (antes el seed no la ejercitaba — un wipe roto en ese camino pasaba igual).
@@ -694,6 +768,7 @@ Nada commiteado (pendiente de decisión del dueño).
 **Método:** 6 recon Sonnet paralelos (Saga MP-en-tx / idempotencia workers / multi-tabla+tx-catch / carreras canteen+día operativo / state machine / reconciliación) → síntesis → 3 implementers paralelos + fixes del orquestador → verificación adversarial fresca (APROBADO CON FIXES MENORES, 2 🟡 fixeados) → gate completo por release verifier.
 
 **Fixes en fase (6 commits `audit(d4):`):**
+
 - **F1 — clase tx-catch CERRADA en main:** rescatados los 4 fixes varados en `claude/wizardly-gates-df7198` (nunca mergeada; base a99dd94, aplicó limpio). Bug activo con daño demostrable: `completeAndChargeBookingAction` commiteaba el complete + cobros parciales ante `DayAlreadyClosedError` a mitad del loop. + `chargeDebtAction`, abonados, mis-reservas (preventivos, services fail-fast). Recon confirmó: caja limpia post-PR#50, cero instancias nuevas en 138 call sites / 71 archivos.
 - **F2 — Saga D4-A1:** `getPaymentStatus` fuera de la tx del webhook MP (fase SEARCH/PROCESS, patrón mp-reconcile) + pre-check read-only de `processed_webhooks` antes del fetch (entrega repetida no repaga el GET; TOCTOU benigno, el lock transaccional decide). Asserts originales de idempotencia intactos (webhook storm 8x → 1 confirmación).
 - **F3 — push-send idempotente (migr. 059):** tabla `push_send_log` (RLS ENABLE+FORCE deny-all app + REVOKE; bloque P nuevo en isolation) + claim atómico INSERT..ON CONFLICT DO NOTHING RETURNING antes de enviar + `dedupeKey` determinística `push:booking-confirmed:<bookingId>:<subId>` + purga >30d en data-retention. El comentario "the worker is idempotent" era FALSO — ahora es verdad. Espejo supabase byte-idéntico (sha256 verificado por el adversarial).
@@ -711,6 +786,7 @@ Nada commiteado (pendiente de decisión del dueño).
 **Nota de estado del repo:** la rama cambió de `main` a `feat/visual-upgrade-admin-panel` (a96ca3f) a mitad de sesión sin acción propia — probablemente otra sesión/terminal del dueño. `git stash list` confirma el hook `epitaxy` auto-stasheó al menos un pre-switch ajeno (`fix/seguridad-xss-jsonld-hijack-abonados`), sin tocar nada de esto. No se tocó ningún stash. `main` local está desactualizada vs `origin/main` (faltan varios merges, incluida esta misma rama vía PR #94). Pendiente decidir con el dueño la rama base antes de commitear Fase 0 — hoy todo sigue sin commitear.
 
 **Implementado (T0):**
+
 - `src/lib/money.ts` (nuevo): fuente única de parseo/formato de plata para inputs — `parsePesosToCents` (movido desde `modules/courts/pricing-grid.ts`, re-exportado ahí para no romper call sites/tests), `centsToInputDisplay`, y `integerToWordsEsAr`/`centsToWordsEsAr` (conversión a palabras es-AR con apócope "veintiún" antes de mil/millones) + `MONEY_WORDS_THRESHOLD_CENTS` ($10.000).
 - `src/components/ui/money-input.tsx` (nuevo) + stories: control de plata único (visión §6.3) — controlado (`valueCents`/`onValueChange`) o no controlado (`name`+`defaultValueCents`, hidden input en centavos, mismo patrón que `PhoneInput`), formatea con miles mientras se tipea, cursor al final, relectura en palabras arriba del umbral, clamp de min/max solo en blur (nunca trunca mientras se tipea).
 - Toast con acción "Deshacer": `use-toast.ts` (`ToastAction`/`action?`, duración 10s con acción vs 4s default), `toast.tsx` (`ToastAction` sobre `ToastPrimitives.Action`), `toaster.tsx` (renderiza el botón, ejecuta + descarta al click).
@@ -731,6 +807,7 @@ Nada commiteado (pendiente de decisión del dueño).
 ## 2026-08-01 — TurnoGol v2 Fase 0 (T1/6): matriz en reservas
 
 **Implementado:**
+
 - **"Marcar ausente" unificado a un solo `ConfirmDialog`** en las 3 superficies donde existía (`QuickActions.tsx` desktop — antes arm-pattern de 2 clics sin texto de consecuencias; `QuickActions.tsx` menú mobile — antes ejecutaba DIRECTO sin ningún paso, 🔴 auditoría §4.5; `BookingActions.tsx` detalle — ya lo tenía bien, ahora comparte el mismo texto). `NO_SHOW_CONSEQUENCES` (mismo array literal en ambos archivos) vía la prop `consequences` nueva de T0.
 - **Toast con "Deshacer"** en las 3 superficies: `revertNoShowAction` se agregó como prop OPCIONAL a `BookingQuickActions` (mismo criterio que `getBookingChargesAction`) y se cableó en `reservas/page.tsx` (`QUICK_ACTIONS`). Sin la prop (stories/tests viejos), el toast de éxito simplemente no ofrece Deshacer — no rompe nada.
 - **Radios nativos ~20px → chips h-11** (🔴 auditoría §4.5): nuevo primitive `src/components/ui/radio-chip.tsx` sobre `@radix-ui/react-radio-group` (dependencia nueva, ya en la misma familia de Radix que Dialog/DropdownMenu/Toast/Tooltip) — roving tabindex + navegación con flechas + "primer ítem tabbable si nada está seleccionado" vienen gratis de Radix en vez de reimplementar el patrón ARIA a mano. Reemplaza: deposit-method (3 opciones, `QuickActions.tsx`) y cancel-type (2 opciones, en `QuickActions.tsx` Y `BookingActions.tsx`).
@@ -747,6 +824,7 @@ Nada commiteado (pendiente de decisión del dueño).
 ## 2026-08-01 — TurnoGol v2 Fase 0 (T2/6): matriz en torneos
 
 **Implementado (4 archivos, ~16 mutaciones):**
+
 - **`TeamsPanel.tsx`**: borrar equipo → ConfirmDialog (consequences: plantel completo + "no se puede deshacer") + toast éxito; sacar jugador del plantel → Clase A, ejecuta ya + toast con Deshacer (recrea vía `addPlayerAction` con `fullName/playerId/dni/shirtNumber` — fidelidad completa salvo id/timestamps nuevos); alta de equipo/jugador → toasts de éxito nuevos (antes silenciosos); ambos vacíos artesanales → `EmptyState`.
 - **`SlotsPanel.tsx`**: liberar horarios (🔴 auditoría §4.5, "Liberar de hoy en adelante" ejecutaba con un click) → ConfirmDialog con el CONTEO real de horas que se liberan (`slots.filter(date>=hoy).length`) + toast éxito. Sin Deshacer: recuperarlas exige re-tomarlas y podrían estar ocupadas — Clase B genuina. Vacío → `EmptyState`.
 - **`FixturePanel.tsx`**: borrar fixture → ConfirmDialog con conteo de partidos y, condicional, cuántos YA tienen resultado cargado (se pierden) + toast éxito. El vacío "Todavía no hay fixture" ya usaba `EmptyState` (sin cambios).
@@ -764,6 +842,7 @@ Nada commiteado (pendiente de decisión del dueño).
 ## 2026-08-01 — TurnoGol v2 Fase 0 (T3/6): matriz en el resto
 
 **Implementado:**
+
 - **Impersonar** (`impersonate-button.tsx`, 🔴 auditoría §4.7/§8): `window.confirm()` nativo → `ConfirmDialog` con consecuencias. Era la acción más sensible del panel con la confirmación más débil.
 - **`alert()` de onboarding** (`CourtDraftCard.tsx:249,257`): los 2 casos (subir/borrar foto) → `toast` destructive. `<Toaster/>` vive en el layout raíz, onboarding no tiene layout propio que lo excluya.
 - **Ban manual unificado** (🔴 auditoría §4.11 — el hallazgo más delicado de T3): existían DOS diálogos de ban con DOS Server Actions distintas. `deudas/ManualBanDialog.tsx` llamaba `deudas/actions.ts::banPlayerAction` — **sin audit log**, motivo precargado `"Deuda incobrable de reserva"` + default 30 días (reintroducía con un click el modelo no-show=deuda revertido el 2026-07-11). `jugadores/[playerId]/BanPlayerControls.tsx` llamaba `jugadores/actions.ts::banPlayerAction` — con audit log, sin precargar nada. Unificado en un componente compartido nuevo, `src/components/admin/BanPlayerDialog.tsx` (ConfirmDialog + RadioChip, misma acción auditada en las dos superficies). Decisión del dueño 2026-08-01: **motivo vacío obligatorio + default 7 días**; "Permanente" sigue disponible, nunca sugerido. `deudas/ManualBanDialog.tsx` pasó a ser un adaptador fino (`key={player.id}` para no arrastrar datos del jugador anterior si se cambia de selección sin cerrar). `deudas/actions.ts` perdió su `banPlayerAction`/tipos/imports ahora muertos. `BanPlayerControls` ganó `playerName?` (wireado desde `JugadorProfileView.tsx` con `profile.name`) para que la confirmación nombre al jugador.
@@ -781,6 +860,7 @@ Nada commiteado (pendiente de decisión del dueño).
 ## 2026-08-01 — TurnoGol v2 Fase 0 (T4/6): jerarquía única de acciones de plata
 
 **Implementado:**
+
 - **15 sitios `bg-emerald-600` → `<Button>`/par `bg-primary`+`text-primary-foreground`** (🔴 auditoría §4.1): `RegisterMovementModal.tsx`, `ProductFormDialog.tsx`, `StockEntryDialog.tsx`, `ChargeDebtDialog.tsx`, `CompleteBookingDialog.tsx` (+`h-10`→`h-11`), `DebtListClient.tsx` (queda `<a>`, es link externo de WhatsApp, con el mismo par de clases), `BookingFormModal.tsx` (className override que reintroducía emerald-600, eliminado), `TicketPanel.tsx` (2 badges + botón "Cobrar $X"), `ActivatePlanSection.tsx` (solo el hover estaba mal), `WeeklyAvailabilityModal.tsx` (pill día activo + hover de chip horario), `QuickBookingButton.tsx`/`DashboardCanteenButton.tsx` (mismo fix duplicado en los dos). `grep -rn "bg-emerald-600" src/` = 0.
 - **`BookingErrorCard.tsx`**: `<button>` crudo → `<SubmitButton>` (usa `useFormStatus`, `pendingLabel="Reintentando…"`). Ganó `md:h-12` explícito porque `size="default"` de `<Button>` deja un `md:h-10` residual que twMerge no deduplica cross-breakpoint contra un `h-12` sin prefijo.
 - **Regla ESLint `no-restricted-syntax`** (`eslint.config.mjs`) contra el literal `bg-emerald-600` (string y template literal) — evita que vuelva. Verificada con control positivo (archivo temporal con la violación, detectada y borrada).
@@ -797,6 +877,7 @@ Nada commiteado (pendiente de decisión del dueño).
 **Método:** ejecutado vía Workflow (6 sub-lotes secuenciales, cada uno implementado por un agente y verificado por un segundo agente con contexto fresco que re-corrió typecheck/lint/test por su cuenta, sin confiar en el reporte del implementador). Primera corrida: 5 de 12 agentes murieron por un error transitorio de acceso de la organización (no relacionado al código); se resumió el workflow desde cache (`resumeFromRunId`) y los 5 restantes corrieron limpios en el segundo intento.
 
 **Implementado (18 archivos de producción + tests/stories):**
+
 - **Cluster A — canchas/pricing + onboarding**: `PricingSection.tsx` (5 campos: uniforme/semana/finde/día/noche), `PricingGrid.tsx` + `use-cell-selection.ts` + `PricingGridToolbar.tsx` + `PricingGridTable.tsx` (editor de celda y barra de lote de la grilla de precios — `bulkValue`/`editValue` string pasaron a `bulkValueCents`/`editValueCents`), `step-courts/{constants,use-court-drafts,CourtDraftCard,StepCourts}.tsx` (onboarding, `Draft.price:string` → `Draft.priceCents:number|null`). De paso, `src/modules/courts/pricing-grid.ts` perdió su propio `parsePesosToCents` duplicado (era `Number(digits)*100` local) y ahora re-exporta el de `@/lib/money`.
 - **Cluster B — caja movimientos**: `RegisterMovementModal.tsx`, `is-valid-movement.ts` (firma pasó a `(amountCents: number|null, description: string)`), `OpenDayCard.tsx`, `CloseDayButton.tsx` (el campo "Efectivo contado" admite vacío = no declarado, preservado como `null`).
 - **Cluster C — caja productos**: `ProductFormDialog.tsx` (Precio/Costo — NO Stock/Stock mínimo, esos quedan en unidades), `StockEntryDialog.tsx` (Costo por unidad — NO Packs/Unidades por pack). El schema server (`canteen.schema.ts`) ya esperaba centavos, cero fricción.
@@ -809,6 +890,7 @@ Nada commiteado (pendiente de decisión del dueño).
 **Gate final (corrido por mí, combinando los 6 lotes en el mismo working tree — no hubo aislamiento de worktree, ejecución secuencial a propósito para no correr typecheck/test contra un estado a medio editar):** typecheck ✅ / lint 0 errores, 45 warnings preexistentes ✅ / unit 295 archivos, 2365 tests ✅ (2366→2365: el caso "rechaza monto no numérico" de `is-valid-movement.test.ts` dejó de aplicar, `amountCents` nunca es un string inválido por construcción — no es una pérdida de cobertura real).
 
 **Storybook — 1 regresión real encontrada y arreglada, 2 fallas confirmadas preexistentes (no tocadas):**
+
 - `OpenDayCard.stories.tsx:107` hacía `toHaveValue(5000)` sobre el input viejo; con `MoneyInput` (type=text, muestra "5.000" formateado) el assert correcto es `toHaveValue('5.000')` — corregido, las 16 stories de caja (Register/OpenDay/CloseDay) pasan.
 - `ProductFormDialog.stories.tsx`/`StockEntryDialog.stories.tsx` tienen 2 queries desalineadas con el copy actual del componente ("Nombre" vs "Nombre del producto"; "= 24 unidades" vs "Total a ingresar: 24 unidades") — confirmado con `git show HEAD` que ya fallaban ANTES de esta sesión, sin relación a MoneyInput. No se tocaron (fuera de scope); flageado como tarea aparte.
 
@@ -817,10 +899,12 @@ Nada commiteado (pendiente de decisión del dueño).
 ## 2026-08-01 — TurnoGol v2 Fase 0 (T6/6): callback /verify + doc + cierre
 
 **Implementado:**
+
 - **§4.6 (copy 'expired' muerto)**: `src/app/api/auth/callback/route.ts` ahora inspecciona `error?.code === 'otp_expired'` (código real de GoTrue, confirmado en `@supabase/auth-js/src/lib/error-codes.ts` — cubre tanto "venció por tiempo" como "ya fue consumido", GoTrue no distingue los dos con códigos separados) antes de caer al `'exchange_failed'` genérico. Mismo patrón que `reset-password/actions.ts:50` (`error.code === 'same_password'`). Test nuevo `tests/unit/auth-callback-verify-errors.test.ts` (3 casos: otp_expired→expired, otro código→exchange_failed, sin code→exchange_failed sin explotar).
 - **`docs/spec/design-system/gramatica-interaccion.md`** (nuevo): matriz completa deshacer/confirmar (Clase A/B/C con inventario real de acciones), contrato de `MoneyInput`, plantillas de vacío/error, consolidación de verdad única, checklist para código nuevo. Referenciado desde `MASTER.md` (doc20) como la fuente de verdad de INTERACCIÓN, complementaria a la de diseño visual.
 
 **Verificación final — panel de 5 verificadores independientes (uno por criterio de aceptación), vía Workflow:**
+
 - **Criterio 1** (cero CTA de plata fuera del sistema): **FAIL en la primera pasada** — el grep original (`bg-emerald-600`) no agarra variantes del mismo problema con otro matiz de la escala. El verificador hizo el grep de CLASE (no de instancia) que pide el propio protocolo de auditoría y encontró 2 sitios reales sin migrar: `ConfirmBookingButton.tsx` (🔴 el botón que inicia el pago de la seña en el portal público — el CTA de plata más transitado del producto) y `ActivatePlanSection.tsx` (🔴 "Activar plan", dispara una suscripción paga real) con `bg-gradient-to-r from-emerald-500 to-teal-500`/`bg-emerald-700 text-white` crudos; más `BookingErrorCard.tsx` (🟡 "Reintentar pago" — SÍ usa `SubmitButton` con loading state, pero el color seguía siendo el gradiente crudo). Los tres se migraron a `<Button>`/`bg-primary`+`text-primary-foreground` (ver diffs). Se descartaron explícitamente 6 archivos más con el mismo gradiente (`LoginGate.tsx`, `PaymentStatusWatcher.tsx`, `BookingSuccessCard.tsx`, `home/OwnerBanner.tsx`, `explorar/page.tsx`, `AvailabilityGrid.tsx`) por ser CTAs de navegación/decoración que no mueven ni cobran plata — tocarlos hubiera sido scope creep de Fase 0. Re-verificado tras el fix: `grep` limpio en los 3 archivos, gate completo (typecheck/lint/test) verde, y e2e real `booking-flow.spec.ts` (las 4 escenas S1-S4, incluye clickear "Pagar seña y reservar" y llegar a `/mock-mp/checkout`) + `TG-HP-101`/`TG-HP-103` (jugador) todos ✅.
 - **Criterio 2** (matriz deshacer/confirmar): CONFIRMED — 34 tests de reservas+torneos re-corridos, `consequences=` en 10 sitios distintos, cero `window.confirm()`/`alert()` ejecutables.
 - **Criterio 3** (100% MoneyInput): CONFIRMED — los 22 `type="number"` restantes son todos no-plata (goles, cupos, stock, días, %, minutos, un prop de Recharts); 3 diffs completos releídos confirman centavos de punta a punta.
@@ -858,6 +942,7 @@ Los 5 criterios de aceptación del contrato (`docs/planning/2026-08-01-decisione
 ### T7 — Test de consistencia + revisión adversarial + gate final
 
 **Tests nuevos:**
+
 - `tests/integration/street-money-consistency.test.ts` (7 casos, nuevo): seedea los 3 orígenes (turno `completed` sin cobrar $8.000, fiado abierto $3.000, cuota de torneo impaga $4.500) y verifica que `getStreetMoney`/`sumStreetMoney` traen los 3, ordenan por antigüedad ascendente, dan el MISMO total en dos lecturas consecutivas, aíslan por tenant, y bajan el total al cobrar un origen sin tocar los otros dos. Es la verificación literal que pide el criterio #5 ("garantizado por diseño y verificado con test de consistencia — no a ojo").
 - `tests/integration/tournament-inscriptions.test.ts`: +4 casos — método mixto de verdad en una sola llamada (2 líneas, 2 métodos), carrera de 2 cobros concurrentes que juntos superan lo pendiente (mismo patrón `Promise.allSettled` que `daily-close-concurrent-cashflow.test.ts`: uno gana, el otro `InscriptionOverpaidError`, nunca sobre-cobra) con guard `EFFECTIVE_POOL_MAX>=2`, y la regresión del hallazgo crítico de abajo.
 
@@ -884,6 +969,7 @@ Contrato: `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3, Fase 2. Evolu
 **Hallazgo colateral P0, no relacionado a Fase 2, arreglado en el camino:** `public/sw.js` tenía un error de sintaxis real desde el commit `adb1729` (2026-07-25, ya en main) — un fragmento de texto corrupto pegado al inicio del archivo (residuo de un sed/reemplazo mal hecho en ese commit) rompía el parseo completo del Service Worker. Confirmado con `node --check`: `SyntaxError: Unexpected token ')'`. El push de notificaciones (feature documentada en CLAUDE.md) estuvo **completamente roto en producción** desde esa fecha — el SW nunca se registra en el navegador. Nadie lo detectó porque ningún test carga/parsea el archivo real (`tests/e2e/push.spec.ts` inyecta mensajes por BroadcastChannel a propósito, documentado en su propio header, para no depender de VAPID+FCM real en CI). Arreglado (se borró el prefijo corrupto). Chip spawneado para agregar cobertura de regresión (parse-check de `public/sw.js`).
 
 **Implementación:**
+
 - `src/modules/home/` (nuevo): `home.types.ts`/`home.lib.ts`/`home.service.ts` — agregador único `getHoyData`, reusa `getStreetMoney` (Fase 1) sin recalcular, reusa `daySlotsFor`/`occupancyForDay` (day-bookings.ts).
 - `docs/decisions/2026-08-02-taxonomia-alertas-hoy.md` (nuevo, criterio de entrada del contrato): 3 alertas v1, prioridad P1→P3, umbrales confirmados por Lazar.
 - Guard D5: `dashboard/page.tsx` rebota manager→`/grilla`; `admin-sidebar.tsx` con `requiresAdmin`. Reconciliado a mano con PR #98 (fix de anchor `tour-grilla`, mergeado a origin/main durante la sesión por un agente spawneado en paralelo).
@@ -967,6 +1053,7 @@ El `bookingId` se valida con `AND tenant_id = ...` explícito además de RLS (co
 **Frontera de arquitectura:** el diálogo de cantina reusa el `TicketPanel` real de /caja/cantina, y un componente de `@/components` no puede importar de `@/app` (regla de lint). Mover `TicketPanel` habría arrastrado `caja-lib` y sus 17 consumidores, o sea un cambio estructural. En su lugar el diálogo vive en `app/(admin)/grilla/_components/` y `GrillaView` (client wrapper mínimo) lo inyecta como `renderCanteenDialog` — una Server Component no puede pasar un componente por prop, solo elementos y Server Actions.
 
 **Verificación en la app real** (dev server + Playwright headless contra ese mismo server, no solo tests):
+
 - El panel del turno ofrece: Cobrar y cerrar turno / Cargar cantina / Reprogramar / Marcar ausente.
 - Cantina: catálogo cargado bajo demanda, 2 Cervezas → CTA "Cobrar $ 5.000" → venta registrada. DB: `income | product_sale | 500000 | cash | Cantina: Cerveza x2 | booking_id no nulo`; stock 24→22; ledger `sale | -2 | 250000`.
 - 🟢 **La invariante que importa**: el panel del turno sigue mostrando **"Precio del turno $100 · Cobrado $0 · Pendiente $100"** con $15.000 de cantina cargados. La cantina no toca el saldo del turno.
@@ -999,6 +1086,7 @@ Sin `depositPercentage` (stories, tests viejos) la grilla se comporta como antes
 **Dos e2e rotos en `main`, arreglados de paso.** `TG-HP-208` y `TG-HP-209` llenaban `#guestPhone` directo, pero el modal lo colapsó bajo "Opciones avanzadas" en un rediseño anterior — fallaban con "element is not visible". Verificado que es preexistente: `BookingFormModal.tsx` no tiene cambios respecto de `main` en esta rama, y en `main` esos specs no abren el colapsable mientras el modal sí lo tiene. Se les agregó el click que faltaba.
 
 **Verificación en la app real** (dev server + Playwright headless contra ese mismo server):
+
 - Popover: "Cancha E2E 1 | 15:00–16:00 | **$ 100** | ¿A nombre de quién? | Seña | Sin seña | Efectivo | Transfer | MP | Confirmar reserva | Más opciones".
 - Enter confirma: **1.0 s** desde el click de la celda hasta el toast (criterio #4 pide ≤10 s).
 - "Más opciones" abre el modal completo con sus campos intactos (`#guestName` presente).
@@ -1085,6 +1173,7 @@ Preexistente, pero los chips de seña del popover de Fase 3 lo volvieron el cami
 **El fix.** Helper privado `recordManualBookingDepositCashFlow` en `booking.service.ts`, duplicando deliberadamente el patrón de `recordManualDepositCashFlow` en vez de extraerlo: allá el tipo del método es `ManualDepositMethod`, que excluye `'mercadopago'` A PROPÓSITO (esa seña la confirma el webhook), y acá hace falta el `PaymentMethodValue` completo porque el staff puede cobrar con el QR de MP y anotar la reserva a mano. Unificar habría obligado a ensanchar ese tipo y desarmado el guard que impide que `confirmDepositPaymentAction` acepte `'mercadopago'`. El repo ya había tomado y documentado esta misma decisión en `payment.service.ts:560-562`.
 
 Tres guards, cada uno con su razón:
+
 - `depositIsCounted` (`paid` o `captured`) es EL MISMO predicado que `summarizeBookingCharges` usa para `depositCounted`. La invariante que queda escrita: **existe fila en `cash_flows` ⟺ el resumen del turno cuenta la seña**. Con cualquier otro criterio, Caja y el detalle del turno divergen. Y una seña `pending` es una promesa, no un ingreso: si entrara, el cierre esperaría efectivo que nadie puso en el cajón — el bug espejo.
 - `depositAmount > 0`: `chk_cashflow_amount_positive` rechaza 0, y el schema admite `paid` sin monto.
 - `input.depositMethod` presente: `cash_flows.method` es NOT NULL.
@@ -1103,15 +1192,15 @@ El unit test que el plan pedía para `createManualBooking` se descartó: habría
 
 **7 rupturas controladas ejecutadas** (neutralizar → confirmar el test nombrado en rojo → restaurar → verde):
 
-| # | Neutralización | Cayó |
-|---|---|---|
-| R1 | Borrar la llamada al helper | 6 tests, incl. "el cierre del día cuadra" |
-| R2 | Descripción → `'Seña'` a secas | "descripción canónica" + "no infla el cobrado" |
-| R3 | `input.depositMethod` → `created.paymentMethod` | "mercadopago" — `null value in column "method"`, y se lleva puesta la reserva |
-| R4 | Sacar guard `depositAmount > 0` | "monto 0" — `chk_cashflow_amount_positive`, ídem se lleva la reserva |
-| R5 | Sacar guard `depositIsCounted` | "seña PENDIENTE no toca Caja" |
-| R6 | Sacar el catch de `DayAlreadyClosedError` | "caja ya cerrada" |
-| R7 | `category:'booking'` → `'other'` | "descripción canónica" |
+| #   | Neutralización                                  | Cayó                                                                          |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------- |
+| R1  | Borrar la llamada al helper                     | 6 tests, incl. "el cierre del día cuadra"                                     |
+| R2  | Descripción → `'Seña'` a secas                  | "descripción canónica" + "no infla el cobrado"                                |
+| R3  | `input.depositMethod` → `created.paymentMethod` | "mercadopago" — `null value in column "method"`, y se lleva puesta la reserva |
+| R4  | Sacar guard `depositAmount > 0`                 | "monto 0" — `chk_cashflow_amount_positive`, ídem se lleva la reserva          |
+| R5  | Sacar guard `depositIsCounted`                  | "seña PENDIENTE no toca Caja"                                                 |
+| R6  | Sacar el catch de `DayAlreadyClosedError`       | "caja ya cerrada"                                                             |
+| R7  | `category:'booking'` → `'other'`                | "descripción canónica"                                                        |
 
 R5 destapó un hueco propio: ningún test cubría una seña `pending`, así que la ruptura no habría fallado. Se agregó el caso ANTES de romper.
 
@@ -1128,15 +1217,18 @@ Sin verificación en la app: el cambio es 100% de capa de servicio y no toca una
 **Decisión del dueño (2026-08-05): indicador APARTE.** El badge de estado no cambia; se agrega una píldora "Sin cobrar" al lado, solo cuando hay saldo.
 
 **La forma del cambio.** `BookingBadgeVisual` gana `unpaid: boolean` y `bookingBadgeVisual` recupera el estado real re-preguntando **sin** los datos de plata:
+
 ```ts
 const unpaid = raw === 'unpaid_alarm'
 const base = unpaid ? slotStateKey({ ...facts, pending: null, totalPaid: null }) : raw
 ```
+
 `isUnpaidAlarm` degrada a false con los dos nulos, así que devuelve exactamente el key que `slotStateKey` habría dado sin alarma. **No se toca `slotStateKey` ni `isUnpaidAlarm`**: la grilla queda literalmente intacta (hay un test que lo prueba). La alternativa —refactorizar `slotStateKey` para devolver `{base, alarm}`— habría movido la superficie que Fase 3 acaba de estabilizar.
 
 La píldora sale de `UNPAID_ALARM_BADGE`, derivado de la MISMA fila de `SLOT_STATES` que pinta la alarma de la grilla: las dos superficies no pueden desincronizarse. Y no es un componente nuevo — es el mismo `StatusBadge` con otro visual, así que hereda los tokens de tono ya verificados en contraste.
 
 **Dos decisiones de diseño que el plan dejó abiertas:**
+
 - **El `accent` SÍ toma el tono de alarma.** MASTER §2.6 asigna el COLOR al estado de la plata y el ícono+label a qué es la cosa: una tira verde al lado de una píldora roja rompería esa partición.
 - **La píldora SÍ entra al `aria-label`.** La fila entera es un `<Link>` estirado con ese mismo `aria-label` (`BookingListItem.tsx:105,152`): quien navega por links con lector de pantalla escucha SOLO ese string, y dejar la plata afuera se la escondería justo a quien no puede ver la píldora roja. En la vista compacta la píldora va **sin** el `hidden sm:inline-flex` del badge: en mobile se oculta el estado por espacio, pero la alarma de plata es exactamente lo que no puede esconderse.
 
@@ -1150,15 +1242,16 @@ La píldora sale de `UNPAID_ALARM_BADGE`, derivado de la MISMA fila de `SLOT_STA
 
 **5 rupturas controladas, y una limitación honesta:**
 
-| # | Neutralización | Cayó |
-|---|---|---|
-| R2 | `key: raw` (que la alarma pise el label) | los 2 unit de "el badge sigue diciendo Jugada/Ausente" |
-| R3 | Sacar `unpaid` del `aria-label` | story `BookingListItem > Jugada Sin Cobrar` |
-| R4 | `accent` siempre por tono base | unit del accent destructivo |
+| #   | Neutralización                           | Cayó                                                   |
+| --- | ---------------------------------------- | ------------------------------------------------------ |
+| R2  | `key: raw` (que la alarma pise el label) | los 2 unit de "el badge sigue diciendo Jugada/Ausente" |
+| R3  | Sacar `unpaid` del `aria-label`          | story `BookingListItem > Jugada Sin Cobrar`            |
+| R4  | `accent` siempre por tono base           | unit del accent destructivo                            |
 
 R1 y R5 (wiring de la página) **no los cubre ninguna story ni unit test** — son Server Components. Se verificaron corriendo la app, que es donde ese wiring existe.
 
 **Verificación en la app real** (dev server + Playwright headless contra ese mismo server; la pane del navegador embebido volvió a no compositar, rects en 0×0):
+
 - Listado, jugada con saldo: `Jugada` + `Sin cobrar`, `aria-label = "Reserva 08:00–09:00, Cancha E2E 1, Deudor Jugada, Jugada, sin cobrar"`.
 - Listado, ausente sin cobrar: `Ausente` + `Sin cobrar` — **los dos estados se siguen distinguiendo**, que era el punto entero.
 - Listado, jugada COBRADA (control negativo): `Jugada` sola, sin píldora.
@@ -1229,6 +1322,7 @@ Con los 66 cerrados archivo por archivo, la suite completa dio **2 rojos**. La c
 Las 8 fallas acumuladas eran **dos clases**, no ocho problemas:
 
 **Clase 1 — `waitForElementToBeRemoved` (18 usos, 7 archivos).** No sirve para esperar que algo desaparezca, y falla en las dos direcciones opuestas:
+
 - llega tarde → tira `"element is already removed"` (hace un chequeo de existencia al entrar);
 - llega temprano sobre un DESCENDIENTE → cuelga hasta el timeout completo, porque resuelve la raíz de búsqueda una sola vez al invocarla caminando `parentElement`. Si el contenedor ya se desprendió, la raíz capturada es ese contenedor huérfano y `contenedor.contains(nieto)` sigue dando `true` para siempre sobre el subárbol intacto.
 
@@ -1248,7 +1342,7 @@ Job `stories` en `ci.yml`, **BLOQUEANTE y sin `continue-on-error`**, en paralelo
 
 **Cero retries**, también a propósito: la contaminación entre stories es determinística en la corrida completa y desaparece al reintentar — un retry esconde exactamente la clase de bug que este gate existe para atrapar.
 
-⚠️ **Falta un paso que NO se puede hacer desde el repo:** marcar `Stories (BLOCKING)` como *required status check* en la protección de rama de `main`. Sin eso el job corre y se ve rojo, pero no impide el merge.
+⚠️ **Falta un paso que NO se puede hacer desde el repo:** marcar `Stories (BLOCKING)` como _required status check_ en la protección de rama de `main`. Sin eso el job corre y se ve rojo, pero no impide el merge.
 
 ---
 
@@ -1256,11 +1350,11 @@ Job `stories` en `ci.yml`, **BLOQUEANTE y sin `continue-on-error`**, en paralelo
 
 Refactor de **forma solamente**: cero cambio de comportamiento, cero cambio de copy, cero cambio en las props públicas ni en los tipos que exportan. Va DESPUÉS del gate de Storybook a propósito — la red que hace seguro mover 900 líneas de JSX es esa suite, no la de unit.
 
-| Archivo | Antes | Después |
-|---|---|---|
-| `src/components/booking/BookingGrid.tsx` | 484 | **290** |
-| `src/components/booking/BookingSlotPanel.tsx` | 541 | **287** |
-| `src/components/booking/QuickBookingForm.tsx` | 414 | **283** |
+| Archivo                                       | Antes | Después |
+| --------------------------------------------- | ----- | ------- |
+| `src/components/booking/BookingGrid.tsx`      | 484   | **290** |
+| `src/components/booking/BookingSlotPanel.tsx` | 541   | **287** |
+| `src/components/booking/QuickBookingForm.tsx` | 414   | **283** |
 
 Convención seguida: la ya establecida por el Ticket 3 (ver arriba) — el orquestador conserva `Props` y el export público, los hooks van a `src/hooks/` o a la subcarpeta del componente, y las piezas de JSX a una subcarpeta propia.
 
@@ -1281,12 +1375,12 @@ Convención seguida: la ya establecida por el Ticket 3 (ver arriba) — el orque
 
 **Verificación (misma base, antes y después):**
 
-| Suite | Resultado |
-|---|---|
-| `pnpm typecheck` | 0 errores |
-| `pnpm lint` | 0 errores (44 warnings preexistentes de `no-restricted-imports`) |
-| `pnpm test` | **2454/2454** en 301 archivos |
-| `pnpm test:storybook:ci` | **1024/1024** en 258 archivos |
+| Suite                                  | Resultado                                                            |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `pnpm typecheck`                       | 0 errores                                                            |
+| `pnpm lint`                            | 0 errores (44 warnings preexistentes de `no-restricted-imports`)     |
+| `pnpm test`                            | **2454/2454** en 301 archivos                                        |
+| `pnpm test:storybook:ci`               | **1024/1024** en 258 archivos                                        |
 | e2e de grilla (6 specs, `--workers=1`) | **9 passed / 2 skipped** (los dos `test.fixme` de `grilla-realtime`) |
 
 El primer lote de e2e dio 1 rojo en `TG-HP-209` que **no reprodujo**: el mismo test pasó solo (24.3s) y el lote completo repetido pasó entero. El snapshot de la falla muestra el modal abierto, el formulario lleno, sin `role="alert"` y con el botón en "Confirmar" (no "Guardando…") — o sea `handleSubmit` nunca corrió: el click no tomó efecto. Es la clase ya documentada de clicks no-op de esta máquina, no una regresión; los dos hermanos de ese mismo spec ya están marcados `test.fixme` por la misma infra de Realtime local.
@@ -1317,11 +1411,11 @@ Ese filtro por `status` **protege gratis la seña capturada de un no-show**: `de
 
 **3 rupturas controladas** (neutralizar → confirmar el test nombrado en rojo → restaurar → verde):
 
-| # | Neutralización | Cayó |
-|---|---|---|
-| R1 | Sacar el filtro `status IN ('confirmed','pending_payment')` | el caso de no_show, con `PostgresError: Booking en estado terminal (no_show) no puede modificarse` — exactamente el modo de falla que el filtro previene |
-| R2 | Sacar `{ onlyRole: 'admin' }` | "avisa SOLO al admin": 2 notificaciones en vez de 1, el encargado también recibía |
-| R3 | Sacar el filtro `deposit_status IN ('paid','captured')` | el de idempotencia: el 2do evento volvía a reconciliar |
+| #   | Neutralización                                              | Cayó                                                                                                                                                     |
+| --- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Sacar el filtro `status IN ('confirmed','pending_payment')` | el caso de no_show, con `PostgresError: Booking en estado terminal (no_show) no puede modificarse` — exactamente el modo de falla que el filtro previene |
+| R2  | Sacar `{ onlyRole: 'admin' }`                               | "avisa SOLO al admin": 2 notificaciones en vez de 1, el encargado también recibía                                                                        |
+| R3  | Sacar el filtro `deposit_status IN ('paid','captured')`     | el de idempotencia: el 2do evento volvía a reconciliar                                                                                                   |
 
 ### (2) Torneos — la amarilla del partido de la roja: CONFIRMADO, cero código
 
@@ -1331,12 +1425,12 @@ Ese filtro por `status` **protege gratis la seña capturada de un no-show**: `de
 
 El enunciado decía que `audit_logs` y `notifications` crecían SIN TECHO. No es así desde el 2026-07-23 (wave 2 D5, `PROGRESS.md:672`):
 
-| Afirmación | Evidencia |
-|---|---|
-| `audit_logs` 24 meses | `data-retention-cleanup.worker.ts:188-198` — `INTERVAL '24 months'` |
-| `notifications` 6 meses | `data-retention-cleanup.worker.ts:206-216` — `INTERVAL '6 months'` |
-| Corren de verdad | `runDataRetentionCleanup:449-465`, cron `0 10 * * 0` (domingo 07:00 ART) |
-| Bajo test contra DB real | `tests/integration/retention-age-purges.test.ts:99` y `:155` |
+| Afirmación               | Evidencia                                                                |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `audit_logs` 24 meses    | `data-retention-cleanup.worker.ts:188-198` — `INTERVAL '24 months'`      |
+| `notifications` 6 meses  | `data-retention-cleanup.worker.ts:206-216` — `INTERVAL '6 months'`       |
+| Corren de verdad         | `runDataRetentionCleanup:449-465`, cron `0 10 * * 0` (domingo 07:00 ART) |
+| Bajo test contra DB real | `tests/integration/retention-age-purges.test.ts:99` y `:155`             |
 
 **Evidencia pedida, corrida el 2026-08-05:** `pnpm test:integration tests/integration/retention-age-purges.test.ts` → **4/4**, con los logs del worker mostrando `purged audit_logs count:1` y en la segunda pasada `count:0` (idempotencia), ídem `notifications`. Cero código.
 
@@ -1358,10 +1452,10 @@ Consecuencias verificadas, ninguna necesitó código: el guard `price_below_paid
 
 **2 rupturas controladas:**
 
-| # | Neutralización | Cayó |
-|---|---|---|
-| R1 | Desactivar la rama `type === 'fixed'` | "conservando el del contrato": `expected 900000 to be 777777` — el precio de lista pisando al pactado, el bug exacto que el guard tapaba |
-| R2 | Mover el check de `fixed` DESPUÉS del de `priceOverride` | "ignora un priceOverride explícito": `expected 1 to be 777777` |
+| #   | Neutralización                                           | Cayó                                                                                                                                     |
+| --- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Desactivar la rama `type === 'fixed'`                    | "conservando el del contrato": `expected 900000 to be 777777` — el precio de lista pisando al pactado, el bug exacto que el guard tapaba |
+| R2  | Mover el check de `fixed` DESPUÉS del de `priceOverride` | "ignora un priceOverride explícito": `expected 1 to be 777777`                                                                           |
 
 **Gate:** typecheck ✅ / lint 0 errores, 44 warnings (mismo baseline) ✅ / unit 302 archivos, **2463 tests** ✅ / integration 128 archivos, **1023 tests** ✅ / isolation **162/162** ✅ / storybook de los componentes tocados 13/13 ✅.
 
@@ -1419,19 +1513,20 @@ Al investigar 3 cuelgues seguidos de `Stories (BLOCKING)` en CI (PR #109 y #110 
 ```
 git grep -lE "new Promise(<[^>]*>)?\(\(\) => \{\}\)" -- "*.stories.tsx"
 ```
+
 da 12 archivos; de esos, `StepCourts`/`StepPayments` ya migraron al helper `pendingAction` en el Bloque 1, y `StepIdentity` es el falso amigo ya documentado (variable local llamada `pendingAction` sin importar el helper).
 
 De los 9 reales, la mayoría tiene la story colgada **antes** del final del archivo — el caso de riesgo que el docstring marcaba como "no seguro":
 
-| Archivo | Story colgada | Stories después (en riesgo) |
-|---|---|---|
-| `src/components/booking/BookingFormModal.stories.tsx` | `Guardando` (4/8) | 4 (`ErrorDelServidor`, `Cerrado`, `AvisoDeColisionOptimista`, `ExitoLlamaOnSuccess`) |
-| `src/components/ui/confirm-dialog.stories.tsx` | `Procesando` (5/7) | 2 (`ErrorControlado`, `ErrorInesperado`) |
-| `src/components/ui/image-uploader.stories.tsx` | `Subiendo` (7/9) | 2 (`ErrorDeProcesamiento`, `SubidaExitosa`) |
-| `src/app/(super-admin)/super-admin/tenants/[id]/_components/impersonate-button.stories.tsx` | `ConfirmaYEntra` (2/4) | 2 (`CancelaLaConfirmacion`, `SinAdminActivo`) |
-| `src/components/ui/submit-button.stories.tsx` | `Enviando` (2/3) | 1 (`Destructivo`) |
-| `src/app/(player)/configuracion/DataExportButton.stories.tsx` | `Cargando` (2/4) | 2 (`ErrorDeServidor`, `RespuestaSinData`) |
-| `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.stories.tsx` | `Enviando` (3/3, última) | — seguro hoy |
+| Archivo                                                                                     | Story colgada            | Stories después (en riesgo)                                                          |
+| ------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------ |
+| `src/components/booking/BookingFormModal.stories.tsx`                                       | `Guardando` (4/8)        | 4 (`ErrorDelServidor`, `Cerrado`, `AvisoDeColisionOptimista`, `ExitoLlamaOnSuccess`) |
+| `src/components/ui/confirm-dialog.stories.tsx`                                              | `Procesando` (5/7)       | 2 (`ErrorControlado`, `ErrorInesperado`)                                             |
+| `src/components/ui/image-uploader.stories.tsx`                                              | `Subiendo` (7/9)         | 2 (`ErrorDeProcesamiento`, `SubidaExitosa`)                                          |
+| `src/app/(super-admin)/super-admin/tenants/[id]/_components/impersonate-button.stories.tsx` | `ConfirmaYEntra` (2/4)   | 2 (`CancelaLaConfirmacion`, `SinAdminActivo`)                                        |
+| `src/components/ui/submit-button.stories.tsx`                                               | `Enviando` (2/3)         | 1 (`Destructivo`)                                                                    |
+| `src/app/(player)/configuracion/DataExportButton.stories.tsx`                               | `Cargando` (2/4)         | 2 (`ErrorDeServidor`, `RespuestaSinData`)                                            |
+| `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.stories.tsx`              | `Enviando` (3/3, última) | — seguro hoy                                                                         |
 
 `admin-layout-shell.stories.tsx` y `super-admin-layout-shell.stories.tsx` tienen el patrón en forma distinta: `NEVER_RESOLVES` es el `signOut` por defecto de `meta.args` para TODAS las stories del archivo, no una story puntual — ninguna `play` lo dispara hoy, así que no encajan en la tabla de riesgo por posición, pero siguen siendo la misma promesa que nunca resuelve.
 
@@ -1458,32 +1553,33 @@ ser la pestaña Lista de Grilla · grilla mobile = swipe por cancha **más** una
 
 ### Mapa de navegación, antes y después
 
-| Antes (9 ítems planos) | Después |
-|---|---|
-| Hoy → `/dashboard` | **Hoy** → `/dashboard` (sin cambios) |
-| Grilla → `/grilla` | **Grilla** → `/grilla`, pestañas *Calendario* / *Lista* |
-| Reservas → `/reservas` | pestaña *Lista* de Grilla (deja de ser ítem) |
-| Turnos fijos → `/abonados` | pestaña *Turnos fijos* de Clientes (deja de ser ítem) |
-| Torneos → `/torneos` | **Torneos** → `/torneos` (sin cambios, sigue tras el flag) |
-| Jugadores → `/jugadores` | **Clientes** → `/jugadores`, pestañas *Jugadores* / *Turnos fijos* |
-| Caja y Cantina → `/caja` | **Caja** → `/caja` (4 pestañas existentes) |
-| Analíticas → `/analiticas` | **Métricas** → `/analiticas` |
-| Configuración → `/settings` | **Configuración**, separada al pie; candado para el manager |
+| Antes (9 ítems planos)      | Después                                                            |
+| --------------------------- | ------------------------------------------------------------------ |
+| Hoy → `/dashboard`          | **Hoy** → `/dashboard` (sin cambios)                               |
+| Grilla → `/grilla`          | **Grilla** → `/grilla`, pestañas _Calendario_ / _Lista_            |
+| Reservas → `/reservas`      | pestaña _Lista_ de Grilla (deja de ser ítem)                       |
+| Turnos fijos → `/abonados`  | pestaña _Turnos fijos_ de Clientes (deja de ser ítem)              |
+| Torneos → `/torneos`        | **Torneos** → `/torneos` (sin cambios, sigue tras el flag)         |
+| Jugadores → `/jugadores`    | **Clientes** → `/jugadores`, pestañas _Jugadores_ / _Turnos fijos_ |
+| Caja y Cantina → `/caja`    | **Caja** → `/caja` (4 pestañas existentes)                         |
+| Analíticas → `/analiticas`  | **Métricas** → `/analiticas`                                       |
+| Configuración → `/settings` | **Configuración**, separada al pie; candado para el manager        |
 
 Mobile: la hamburguesa se retira; la navegación primaria es `AdminBottomNav` (3 accesos del rol
-+ "Más", que abre el mismo drawer).
+
+- "Más", que abre el mismo drawer).
 
 ### Rutas huérfanas cerradas
 
-| Qué | Estado antes | Ahora |
-|---|---|---|
-| `(admin)/canchas/*` | redirect con TODA la implementación adentro (+ error/loading sobre un redirect) | código en `settings/canchas/`, stub de 5 líneas |
-| `(admin)/staff/*` | ídem | código en `settings/equipo/`, stub |
-| `(admin)/metricas/*` | ídem | código en `analiticas/`, stub |
-| `(admin)/deudas/*` | ídem | `chargeDebtAction` a `caja/deudas/`; el resto era dead code |
-| `/jugadores/deudas` | 2ª lista de deuda con su propio total | redirect a `/caja/deudas` |
-| `revalidatePath('/deudas')` | apuntaba a un stub: la lista real nunca se refrescaba tras cobrar | `/caja/deudas` |
-| `robots.ts` | sin `/torneos` ni las rutas legacy | completo |
+| Qué                         | Estado antes                                                                    | Ahora                                                       |
+| --------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `(admin)/canchas/*`         | redirect con TODA la implementación adentro (+ error/loading sobre un redirect) | código en `settings/canchas/`, stub de 5 líneas             |
+| `(admin)/staff/*`           | ídem                                                                            | código en `settings/equipo/`, stub                          |
+| `(admin)/metricas/*`        | ídem                                                                            | código en `analiticas/`, stub                               |
+| `(admin)/deudas/*`          | ídem                                                                            | `chargeDebtAction` a `caja/deudas/`; el resto era dead code |
+| `/jugadores/deudas`         | 2ª lista de deuda con su propio total                                           | redirect a `/caja/deudas`                                   |
+| `revalidatePath('/deudas')` | apuntaba a un stub: la lista real nunca se refrescaba tras cobrar               | `/caja/deudas`                                              |
+| `robots.ts`                 | sin `/torneos` ni las rutas legacy                                              | completo                                                    |
 
 **Por qué muere `/jugadores/deudas`:** mostraba `getDebts` (sólo turnos) mientras `/caja/deudas`
 muestra `getStreetMoney`, que **llama a `getDebts` por dentro** y suma además fiados y cuotas de
@@ -1522,14 +1618,14 @@ confirm-dialog.tsx      3      image-uploader.tsx        0
 BookingFormModal.tsx    3      submit-button.tsx         0 (pero useFormStatus → <form action>)
 ```
 
-| Archivo | Mecanismo real | Resultado |
-|---|---|---|
-| `BookingFormModal.stories.tsx` | `useTransition` en el componente | ✅ migrado, 8/8 |
-| `confirm-dialog.stories.tsx` | `useTransition` en el componente | ✅ migrado, 7/7 |
-| `submit-button.stories.tsx` | `<form action>` de React 19 = transición | ✅ migrado, 3/3 |
-| `impersonate-button.stories.tsx` | hereda la transición de `ConfirmDialog` | ✅ migrado, 4/4 |
-| `image-uploader.stories.tsx` | **ninguno** — `busy` es `useState` puro | ❌ NO APLICA, revertido |
-| `DataExportButton.stories.tsx` | **ninguno** — `useState` + `spyOn(window,'fetch')` | ❌ NO APLICA, otra clase |
+| Archivo                          | Mecanismo real                                     | Resultado                |
+| -------------------------------- | -------------------------------------------------- | ------------------------ |
+| `BookingFormModal.stories.tsx`   | `useTransition` en el componente                   | ✅ migrado, 8/8          |
+| `confirm-dialog.stories.tsx`     | `useTransition` en el componente                   | ✅ migrado, 7/7          |
+| `submit-button.stories.tsx`      | `<form action>` de React 19 = transición           | ✅ migrado, 3/3          |
+| `impersonate-button.stories.tsx` | hereda la transición de `ConfirmDialog`            | ✅ migrado, 4/4          |
+| `image-uploader.stories.tsx`     | **ninguno** — `busy` es `useState` puro            | ❌ NO APLICA, revertido  |
+| `DataExportButton.stories.tsx`   | **ninguno** — `useState` + `spyOn(window,'fetch')` | ❌ NO APLICA, otra clase |
 
 **`image-uploader` no es una omisión: migrarlo ROMPE.** Aplicado el helper, `Subiendo` muere con
 `Test timed out in 30000ms`. El componente resuelve el upload con `setBusy(false)` en un `finally`
@@ -1567,10 +1663,10 @@ el 2026-08-07 ~03:20 UTC y ahí arrancó la medición.)
 
 **Mediciones de `Stories (BLOCKING)` tras la recuperación:**
 
-| # | PR | sha | ¿tiene la migración? | Resultado |
-|---|---|---|---|---|
-| 1 | #113 | `4f3b18f` | sí | ✅ pass |
-| 2 | #112 | `afe34b0` | **no** | ✅ pass |
+| #   | PR   | sha       | ¿tiene la migración? | Resultado |
+| --- | ---- | --------- | -------------------- | --------- |
+| 1   | #113 | `4f3b18f` | sí                   | ✅ pass   |
+| 2   | #112 | `afe34b0` | **no**               | ✅ pass   |
 
 La #2 importa más que la #1: `afe34b0` **no** lleva la migración a `pendingAction` y el job pasó
 igual. Es evidencia directa contra la hipótesis de que las transiciones sin cerrar causaban los
@@ -1619,17 +1715,17 @@ arranca su loop con `480 < 60` y devuelve `[]`. Con `slotsCount = 0`, `occupancy
 
 **No era un bug de producción, y se verificó antes de alarmar.** Ningún tenant real está en ese
 estado: `sanitizeWizardHours` (`src/app/onboarding/wizard-hours.ts`) baja esos cierres a `00:00`
-durante el onboarding, y su comentario nombra el problema exacto — *"una madrugada sin flag = 0
-celdas → día sin precio silencioso"*. El fixture ahora refleja lo que el wizard produce, que es lo
+durante el onboarding, y su comentario nombra el problema exacto — _"una madrugada sin flag = 0
+celdas → día sin precio silencioso"_. El fixture ahora refleja lo que el wizard produce, que es lo
 que el suite debe simular.
 
 **Barrido de clase, en dos pasos:**
 
-1. *Cierre de madrugada en tests* — 6 archivos más (`canteen-report-operating-day`,
+1. _Cierre de madrugada en tests_ — 6 archivos más (`canteen-report-operating-day`,
    `booking-physical-overlap`, `cashflow-operating-day`, `home-service-operating-day`,
    `metrics-operating-day`, `caja-actions-role-guard`). **Los 6 pasan `closesNextDay: true`; ninguno
    pasa `false`.**
-2. *Fecha real del sistema en vez de fija* — 7 archivos usan `artDateOf(new Date())`. De los otros 6,
+2. _Fecha real del sistema en vez de fija_ — 7 archivos usan `artDateOf(new Date())`. De los otros 6,
    **ninguno** referencia `openingHours` / `daySlotsFor` / `occupancy`: usan la fecha real para
    movimientos de caja, stock y cierres, que no generan slots.
 
@@ -1652,10 +1748,10 @@ frenara nada.
 `continue-on-error` — `gh run view --log-failed` devuelve VACÍO en un job así, hay que pedir el log
 completo (misma trampa que [[continue-on-error-step-podrido-en-silencio]]):
 
-| Baseline | Píxeles distintos | Ratio |
-|---|---|---|
-| `admin-grilla.png` | 13.466 | 0.02 |
-| `admin-grilla-mobile.png` | 16.841 | 0.06 |
+| Baseline                  | Píxeles distintos | Ratio |
+| ------------------------- | ----------------- | ----- |
+| `admin-grilla.png`        | 13.466            | 0.02  |
+| `admin-grilla-mobile.png` | 16.841            | 0.06  |
 
 **Los ratios engañan y casi me hacen buscar un bug que no existía.** La grilla mobile pasó de matriz
 a lista por hora con swipe — un rediseño completo — y aun así mueve solo el 6% de los píxeles,
@@ -1664,10 +1760,10 @@ bajo NO significa "cambio menor".
 
 **Verificado mirando las imágenes, no deduciendo.** Descargadas del artifact del run 31146421146:
 
-- *mobile*: hamburguesa → logo; aparecen pestañas Calendario/Lista, chips Todas/Cancha y la lista
+- _mobile_: hamburguesa → logo; aparecen pestañas Calendario/Lista, chips Todas/Cancha y la lista
   por hora (`08:00–09:00` + botón por cancha); la leyenda al pie se reemplaza por `AdminBottomNav`
   (Hoy · Grilla · Caja · Más).
-- *desktop*: el contenido baja ~53px por las pestañas nuevas, y el sidebar muestra el renombrado de
+- _desktop_: el contenido baja ~53px por las pestañas nuevas, y el sidebar muestra el renombrado de
   la Fase 4 (Métricas→Analíticas, Turnos fijos→Clientes, Caja y Cantina→Caja) — 6 espacios con
   Configuración separada al pie.
 
@@ -1704,7 +1800,7 @@ respondía `"meta": {"request_id": null}` en TODOS los errores HTTP, mientras do
 id para correlacionar. `tagSession` tampoco hacía nada (`updateRequestContext` no-opea sin store).
 Cableada en los 4 wrappers (`withTenant`, `withBillingTenant`, `withPlayer`, `withAuth`).
 
-*Por qué no lo vio la suite que ya existía:* `observability-middleware.test.ts` prueba `tagSession`
+_Por qué no lo vio la suite que ya existía:_ `observability-middleware.test.ts` prueba `tagSession`
 abriendo el contexto **a mano** con `runWithRequestContext`. La pieza andaba perfecto; lo que
 faltaba era el cable entre la pieza y el request real. El candado nuevo
 (`tests/unit/route-wrappers-request-context.test.ts`) prueba el WRAPPER: 5 de sus 8 casos fallan si
@@ -1772,10 +1868,10 @@ de retención las habría borrado igual. La **migración 073** las corrige.
 
 **Dos deltas distintos, no uno** — el plan original decía "+83 días" para todas y habría estado mal:
 
-| Camino | Escribía | Falta | Total |
-|---|---|---|---|
-| `churned` (`transitionBlockedToChurned`) | `NOW() + 7d` | +83d | 90 |
-| `blocked` (`transitionCanceledToBlocked`) | `NOW() + 67d` | +30d | 97 |
+| Camino                                    | Escribía      | Falta | Total |
+| ----------------------------------------- | ------------- | ----- | ----- |
+| `churned` (`transitionBlockedToChurned`)  | `NOW() + 7d`  | +83d  | 90    |
+| `blocked` (`transitionCanceledToBlocked`) | `NOW() + 67d` | +30d  | 97    |
 
 Un +83 uniforme habría dejado a los `blocked` en 150 días. El filtro por status alcanza para
 separarlos porque `suspended → blocked` (dunning día 14) no toca `scheduled_deletion_at`: los únicos
@@ -1787,7 +1883,7 @@ idempotente.
 
 - `retention-matches-legal-promise.test.ts` **lee el número del texto legal publicado** y lo compara
   con la constante que ejecuta el borrado, en las dos direcciones: falla si alguien baja la
-  constante *y* si alguien reescribe el texto sin tocar el código.
+  constante _y_ si alguien reescribe el texto sin tocar el código.
 - `billing.test.ts` tenía los plazos pegados (`toBeLessThan(7.5)`, `toBeLessThan(68)`). Ahora los
   toma de las constantes: el test de integración prueba que la transición **aplique** el plazo, y
   cuál es el plazo correcto lo custodia el candado legal.
@@ -1820,8 +1916,8 @@ para compartir, `wa.me/${telefonoDelCliente}` en Caja y en el cierre de reserva)
   8 estados y las mismas etiquetas, cada uno con su tabla de clases hardcodeada — y ya habían
   divergido: `suspended` era ámbar en uno y rojo en el otro, `churned` gris en uno y rojo en el otro.
   El mismo complejo se veía de dos colores según la pantalla del panel. Encima **ninguno pasaba por
-  `StatusBadge`**, que existe justamente para imponer MASTER §1.4 (*color + ícono + texto siempre
-  juntos, nunca color solo* — daltonismo): los dos distinguían los 8 estados solo por color.
+  `StatusBadge`**, que existe justamente para imponer MASTER §1.4 (_color + ícono + texto siempre
+  juntos, nunca color solo_ — daltonismo): los dos distinguían los 8 estados solo por color.
   Fusionados en `_components/tenant-status-visual.tsx` sobre `StatusBadge` + `TONE_BADGE`, con ícono
   por estado y `count` opcional. 4 importadores repuntados, 2 archivos de stories fusionados en 1.
 
@@ -1830,14 +1926,14 @@ para compartir, `wa.me/${telefonoDelCliente}` en Caja y en el cierre de reserva)
 ## B6 — `@/shared` deja de conocer `@/modules` (2026-08-10)
 
 La regla `turnogol/capas-shared` estaba en `warn` con 6 violaciones de VALOR y un comentario que
-prescribía el fix: *"inyección de dependencias (pasar la función como parámetro)"*. Leídas las 6
+prescribía el fix: _"inyección de dependencias (pasar la función como parámetro)"_. Leídas las 6
 aristas, **ninguna era eso**. Eran dos problemas distintos, y los dos se resolvían moviendo archivos,
 sin tocar una línea de lógica.
 
 ### Arista 1 — `shared/db/audit.ts` → `@/modules/auth/impersonation`
 
 El módulo importado es **puro `node:crypto`**: un códec de cookie firmada HMAC, auto-documentado como
-*"Este módulo es PURO... lo importan workers, audit.ts y tests sin arrastrar `next/headers`"*. No es
+_"Este módulo es PURO... lo importan workers, audit.ts y tests sin arrastrar `next/headers`"_. No es
 dominio. Estaba **mal ubicado**: con el archivo del lado de `modules/`, una dependencia de
 infraestructura sobre infraestructura se veía como acoplamiento al dominio.
 
@@ -1848,7 +1944,7 @@ importadores. `impersonation.server.ts` (que sí usa `next/headers`) se queda en
 
 `with-auth`, `with-player`, `with-role`, `with-tenant` importaban `extractAuthUser` ×3 y
 `getStaffRole` ×2. **No son infraestructura**: son el composition root del runtime web — orquestar
-auth + rol + lifecycle de tenant + contexto de DB *es* su función.
+auth + rol + lifecycle de tenant + contexto de DB _es_ su función.
 
 El propio `eslint.config.mjs` ya había escrito ese argumento para eximir `src/shared/jobs/**`
 ("los workers son el composition root del runtime de background... igual que src/app/ lo hace para el
@@ -1860,7 +1956,7 @@ un `ignores` sobre el directorio entero le habría abierto la puerta a cualquier
 se queda donde estaba.
 
 **Por qué no DI:** inyectar `{ extractAuthUser, getStaffRole }` habría metido boilerplate en ~18
-route handlers y, peor, habría hecho *posible* inyectar un resolver equivocado en el borde de
+route handlers y, peor, habría hecho _posible_ inyectar un resolver equivocado en el borde de
 aislamiento de tenants. Un movimiento de archivo no puede introducir ese bug.
 
 ### `src/server` como capa
@@ -2046,13 +2142,13 @@ DB en B6.
 Las 4 Server Actions huérfanas que B5 dejó marcadas `@public` no eran higiene de knip. Eran cuatro
 promesas escritas que la aplicación no podía cumplir, y las cinco están citadas textuales:
 
-| Dónde lo dice el producto | Qué hacía falta |
-|---|---|
-| `FixturePanel.tsx` — *"Después podés mover cualquier partido a mano."* | `rescheduleMatchAction` |
-| `FixturePanel.tsx` — *"…quedaron sin día ni hora … movelos a mano."* | `rescheduleMatchAction` |
-| `mapTournamentError` ×2 — *'marcalo como "se bajó"'* | `updateTeamAction` (`status`) |
-| `PosicionesTable.tsx` + `StandingsTieUnresolvedError` — *"cargales el número de siembra"* | `updateTeamAction` (`seed`) |
-| `tournament-standings.service.ts:319` — `/** Botón "Cerrar zonas y sortear cruces". */` | `seedPlayoffsAction` |
+| Dónde lo dice el producto                                                                 | Qué hacía falta               |
+| ----------------------------------------------------------------------------------------- | ----------------------------- |
+| `FixturePanel.tsx` — _"Después podés mover cualquier partido a mano."_                    | `rescheduleMatchAction`       |
+| `FixturePanel.tsx` — _"…quedaron sin día ni hora … movelos a mano."_                      | `rescheduleMatchAction`       |
+| `mapTournamentError` ×2 — _'marcalo como "se bajó"'_                                      | `updateTeamAction` (`status`) |
+| `PosicionesTable.tsx` + `StandingsTieUnresolvedError` — _"cargales el número de siembra"_ | `updateTeamAction` (`seed`)   |
+| `tournament-standings.service.ts:319` — `/** Botón "Cerrar zonas y sortear cruces". */`   | `seedPlayoffsAction`          |
 
 El nombre del botón estaba escrito en el código desde julio. El botón no existía.
 
@@ -2078,6 +2174,7 @@ generador no usaría. Es afordancia, no control de acceso — el service revalid
 muestra inline sin cerrar nada.
 
 Dos casos que el tablero no puede esconder, y que tienen su propio riel:
+
 - **Sin agendar** (`startsAt = null`): los que no entraron al generar.
 - **Fuera de las horas del torneo**: tienen día y hora pero el torneo ya liberó esa hora. Sin este
   riel, el partido desaparecía de la pantalla sin aviso.
@@ -2134,8 +2231,8 @@ simplemente no se ofrece.
 ### 🔴 Lo que encontró la revisión adversarial (con el gate 100% verde)
 
 **`buildCorte` escondía a los dos equipos con BYE.** La primera versión filtraba
-los cruces por "la primera ronda del cuadro", con un comentario que decía *"el
-resto sale de los ganadores, no de las zonas"*. Es falso en cuanto hay BYE, y el
+los cruces por "la primera ronda del cuadro", con un comentario que decía _"el
+resto sale de los ganadores, no de las zonas"_. Es falso en cuanto hay BYE, y el
 propio repo ya lo documentaba en `tournament-fixture.service.ts:160-162`.
 
 Un torneo de **3 zonas × 2 clasificados** son 6 clasificados en un cuadro de 8:
@@ -2349,13 +2446,10 @@ hacer.
 ### Lo que encontraron los tests
 
 - 🔴 **Un array de UN elemento se serializa como escalar en `tx.execute(sql\`\`)`.**
-  `setPlayerTags` escribía `player_tag[]` por SQL crudo y Postgres respondía
-  `malformed array literal: "no_credit"` (`22P02`). Con 2+ elementos el síntoma
-  cambia, así que un test que solo probara el caso multi-elemento no lo hubiera
-  visto. Reescrito con el query builder, que conoce el tipo de la columna — y de
-  paso es lo que pide B8. El `before` del audit log sale de un
-  `SELECT ... FOR UPDATE` en la misma tx, que da la misma garantía que el
-  `RETURNING` de la fila vieja que se intentaba primero.
+`setPlayerTags`escribía`player_tag[]`por SQL crudo y Postgres respondía`malformed array literal: "no_credit"` (`22P02`). Con 2+ elementos el síntoma
+cambia, así que un test que solo probara el caso multi-elemento no lo hubiera
+visto. Reescrito con el query builder, que conoce el tipo de la columna — y de
+paso es lo que pide B8. El `before`del audit log sale de un`SELECT ... FOR UPDATE`en la misma tx, que da la misma garantía que el`RETURNING` de la fila vieja que se intentaba primero.
 - **El barrido de `notes` no terminaba en `src/`**: 3 fixtures y un test unitario
   lo seguían pasando. Los levantó `pnpm typecheck`, no el grep — que estaba
   acotado a `src/`. Misma lección ya fichada: barrer callers desde la RAÍZ.
@@ -2433,9 +2527,9 @@ cualquier columna es buscar `.returning()` pelado, no leer los `SELECT`.
 sea **solo perfiles registrados**. Pero `abonados.player_id` es nullable y
 `contact_name`/`contact_phone` son NOT NULL: el titular de un turno fijo cargado
 de mostrador existe como nombre + teléfono y **no aparecía en ninguna lista de
-personas**. Es el caso que anticipó el pase crítico: *"el 'Diego' del fijo de los
+personas**. Es el caso que anticipó el pase crítico: _"el 'Diego' del fijo de los
 lunes, que quizás no tiene cuenta — o peor, quizás ES el 'Diego R.' que reserva
-online"*. El propio `ClientesTabs.tsx` lo confesaba por escrito.
+online"_. El propio `ClientesTabs.tsx` lo confesaba por escrito.
 
 ### La decisión de diseño: derivar, no crear tabla
 
@@ -2513,8 +2607,8 @@ vincular contra un `player_id` de otro tenant —y ver su nombre en la lista—.
 ## B8 (parte 1) — La suma que concatena no existía; el candado que faltaba, sí
 
 **La premisa del plan está REFUTADA.** El plan de B8 decía que de los ~193 casts
-de SQL crudo, *"al menos uno es donde Postgres puede devolver un número como
-texto y la suma concatena"*, y señalaba `payment.service.ts:968`. Se buscó la
+de SQL crudo, _"al menos uno es donde Postgres puede devolver un número como
+texto y la suma concatena"_, y señalaba `payment.service.ts:968`. Se buscó la
 clase completa sobre los caminos de plata (5 slices, ~100 archivos) y **no hay
 ninguno**.
 
@@ -2571,6 +2665,7 @@ churn mecánico sin defecto conocido detrás — conviene decidir explícitament
 paga las 3 sesiones que estimaba el plan. Falta también **B8d** (el gate de
 Prettier, que hoy no corre en CI).
 ---
+
 ## B8d — El gate de Prettier, que estaba configurado y no corría ✅ CERRADO
 
 `.prettierrc` existía desde siempre y `ci.yml` **confesaba por escrito** que
@@ -2870,11 +2965,11 @@ prometida llegue `undefined` (la función no tenía **ningún** test antes).
 
 ### B10 cerrado — resumen de las tres partes
 
-| Parte | Qué |
-|---|---|
-| 1 (#137) | `/caja` materializaba toda la deuda impaga para mostrar un número |
+| Parte    | Qué                                                                                                                                                                                                                         |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 (#137) | `/caja` materializaba toda la deuda impaga para mostrar un número                                                                                                                                                           |
 | 2 (#138) | 🔴 `mock-mp/checkout` con portón más débil que sus actions · `/api/status` sin auth · `/api/e2e/create-booking` · la UI que mentía en `/reservas` · `/jugadores` · techo del export CSV · test estático de cadena de guards |
-| 3 (este) | `/mis-reservas` por tab en SQL · `getAbonados` sin `SELECT *` |
+| 3 (este) | `/mis-reservas` por tab en SQL · `getAbonados` sin `SELECT *`                                                                                                                                                               |
 
 **Premisas del plan refutadas en el camino** (3): el bug de concatenación de B8
 no existía · `with-auth.ts` no es código muerto · el gate de
@@ -2898,15 +2993,15 @@ primero hay que saber qué devuelve.
 
 No estaba escrito en ningún lado. Medido contra Postgres real:
 
-| SQL | `getSql()` (template de postgres-js) | `tx.execute(sql\`…\`)` (Drizzle) |
-|---|---|---|
-| `timestamptz` / `now()` | **Date** | **string** |
-| `date` | **Date** | **string** (`'YYYY-MM-DD'`) |
-| `time` | string | string |
-| `count(*)` / `sum(int)` | string (bigint) | string |
-| `numeric` | string | string |
-| `integer` / `::int` | number | number |
-| `boolean` | boolean | boolean |
+| SQL                     | `getSql()` (template de postgres-js) | `tx.execute(sql\`…\`)` (Drizzle) |
+| ----------------------- | ------------------------------------ | -------------------------------- |
+| `timestamptz` / `now()` | **Date**                             | **string**                       |
+| `date`                  | **Date**                             | **string** (`'YYYY-MM-DD'`)      |
+| `time`                  | string                               | string                           |
+| `count(*)` / `sum(int)` | string (bigint)                      | string                           |
+| `numeric`               | string                               | string                           |
+| `integer` / `::int`     | number                               | number                           |
+| `boolean`               | boolean                              | boolean                          |
 
 **Las dos APIs del repo parsean distinto el mismo SQL.** El template tag va por
 el protocolo extendido (tipado); Drizzle manda todo por `unsafe()` (texto). Los
@@ -2916,7 +3011,7 @@ alguien la va a buscar.
 
 Y una segunda: **el SQL crudo devuelve las claves snake_case**, tal cual las
 nombra Postgres. `typeof <tabla>.$inferSelect` es camelCase porque describe la
-salida del *query builder*. Los dos se ven iguales en el editor.
+salida del _query builder_. Los dos se ven iguales en el editor.
 
 ### Lo que estaba roto
 
@@ -2924,11 +3019,11 @@ Barrido completo de los 205 casts. **3 sitios prometían camelCase sobre SQL
 crudo**, o sea que todo campo multi-palabra valía `undefined` con TypeScript en
 verde:
 
-| Sitio | Qué devolvía |
-|---|---|
+| Sitio                                              | Qué devolvía                                                                                                     |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `booking.service.ts` `autoCompleteOverdueBookings` | `RETURNING b.*` → `rowToBookingRow` leía `row.tenantId`, `row.timeStart`, `row.priceSnapshot`: todos `undefined` |
-| `cashflow.service.ts` `createCashFlow` (insert) | `RETURNING *` con `clientIdempotencyKey` → `tenantId`/`registeredBy`/`occurredAt` `undefined` |
-| `cashflow.service.ts` `createCashFlow` (reintento) | ídem por el `SELECT *` del segundo ramo |
+| `cashflow.service.ts` `createCashFlow` (insert)    | `RETURNING *` con `clientIdempotencyKey` → `tenantId`/`registeredBy`/`occurredAt` `undefined`                    |
+| `cashflow.service.ts` `createCashFlow` (reintento) | ídem por el `SELECT *` del segundo ramo                                                                          |
 
 Más **12 campos declarados `Date`** que en runtime son string, en 6 archivos
 (`abonado.service`, `stock.service`, `payment.service`, `tournament-slots`,
@@ -2979,3 +3074,130 @@ turno".
   `raw-sql-row-shape` se pone rojo; el test de bookings da
   `expected undefined to be '4718f890-…'`; el de cashflow da
   `insert: expected undefined to be 'a8ea87e6-…'` y `expected null to be 'd86b81b8-…'`.
+
+---
+
+## B15 — Un slot con hold ajeno se veía igual que uno vendido
+
+**Rama**: `worktree-b15-hold` · **Fecha**: 2026-08-11 · **Decisión de fondo**: v2 D1
+
+### El agujero, en una escena
+
+Viernes 20:30. El jugador A entra a pagar la seña: nace un hold de 6 minutos
+(`bookings.status = 'pending_payment'`). El jugador B abre el perfil del mismo
+complejo y ve ese slot como **"Ocupado"**, exactamente igual que una cancha
+vendida. B se va a otro complejo. Seis minutos después el hold de A expira, la
+cancha vuelve a estar libre — y B ya no está.
+
+Eso es inventario que se pierde por una pantalla que no dice la verdad, que es
+literalmente lo contrario de lo que pide D1: _"la ansiedad se responde con
+estados explícitos, no con inventario congelado"_.
+
+Causa exacta: `SlotStatus` no tenía el estado. Un `pending_payment` caía en el
+`else` final de la derivación (`public.service.ts`) y salía `'occupied'`.
+
+### Las 4 premisas del plan: verificadas
+
+A diferencia de B8, acá el plan estaba **bien** en todo lo que afirmaba:
+`SlotStatus` sin `'held'` ✅ · `DEFAULT_EXPIRY_SECONDS` = 6 min ✅ · la query de
+`grilla/page.tsx` selecciona 15 columnas y **no** trae `created_at` ✅ · la
+grilla del staff dice "Esperando seña" sin tiempo ✅.
+
+Lo que **no** se sostuvo fue el alcance: el plan pide el mismo tratamiento en
+"las 3 superficies de disponibilidad". Medido, **solo una lo necesitaba**:
+
+| Superficie                                                        | Qué hace hoy                     | Veredicto                                                                                                                                                                                                |
+| ----------------------------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public.service.ts` (perfil)                                      | `pending_payment` → `'occupied'` | 🔴 **el agujero**, arreglado                                                                                                                                                                             |
+| `availability-search.service.ts` (buscador cross-tenant, 2 spots) | trata el hold como ocupado       | ✅ **correcto y se deja**: un buscador no puede mandar a alguien a un complejo prometiendo una cancha que no va a poder entregar. Y como es query viva, el complejo reaparece solo cuando el hold expira |
+| `booking.service.ts getAvailableSlots`                            | el hold no aparece               | ✅ **no aplica**: devuelve `AvailableSlot[]` para el selector del **admin**, no tiene concepto de estado, y un hold correctamente no es reservable                                                       |
+
+### Un problema de caché que decidió la forma del dato
+
+El perfil `/[slug]` es ISR 300s y el hold dura 360s — parecía que el estado no
+podía ser confiable. **No aplica**: la grilla es 100% client-side (`fetch` a
+`/api/public/availability`, dicho por escrito en `page.tsx:151`). Esa ruta es
+`force-dynamic` con `s-maxage=30, stale-while-revalidate=60`.
+
+Pero eso sí decidió **cómo viaja el dato**: `Slot.heldUntil` es un **instante
+absoluto**, nunca "segundos restantes". Un relativo servido desde la caché llega
+corrido por hasta 90 s sobre una ventana de 360 — el mismísimo modo de falla de
+caza-bugs #12, donde el contador prometía 15 minutos sobre un hold de 6 y el
+jugador perdía el slot confiando en un margen inexistente.
+
+### Cinco copias de la misma cuenta
+
+`new Date(createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000` estaba escrito a
+mano en **cinco** lugares (las 3 páginas de `/reserva/[id]`, el endpoint de
+estado del jugador y `payment.service`) más una versión SQL en
+`booking.expiry.ts`. Esa duplicación **ya mordió una vez** — es el origen de la
+cicatriz de caza-bugs #12. Ahora la cuenta vive en `src/lib/booking/hold.ts` y
+los cinco la importan.
+
+Vive en `@/lib/booking` y no en `@/modules/bookings` porque lo consume
+`BookingCard`, y la regla `no-restricted-imports` del repo prohíbe que un
+componente reusable dependa del dominio como VALOR. La regla tenía razón: el
+primer intento la violó y el lint lo frenó.
+
+### Lo entregado, contra el gate de D1
+
+| Ítem                                            | Antes                           | Ahora                                 |
+| ----------------------------------------------- | ------------------------------- | ------------------------------------- |
+| Hold nace al iniciar el pago                    | ✅ ya cumplía                   | —                                     |
+| Liberación automática                           | ✅ ya cumplía                   | —                                     |
+| Countdown al jugador                            | 🟡 solo al volver de MP         | 🟡 igual (fuera de alcance)           |
+| "Pagando ahora" en la grilla del staff          | 🔴 "Esperando seña", sin tiempo | ✅ etiqueta D1 + contador vivo        |
+| Hold ajeno legible por otro jugador             | 🔴 no existía el concepto       | ✅ `'held'` + `heldUntil`, no pisable |
+| Copy "la cancha es tuya cuando empezás a señar" | 🔴 ausente                      | ✅ en el selector de pago             |
+
+Detalles que importan:
+
+- **Vencido por reloj ≠ libre.** Si el worker todavía no barrió la fila, sigue
+  en `pending_payment` y sigue rechazando el INSERT por el exclusion constraint.
+  Por eso la UI dice "Liberando…" y no "libre": prometer libre algo que rebota
+  es la misma mentira al revés.
+- **El reloj solo corre si hay un hold en pantalla** (`useTickWhile`), y en la
+  grilla del staff el contador es un componente propio que solo se monta en las
+  celdas con hold. Una grilla de sábado tiene decenas de celdas y ninguna otra
+  necesita tickear.
+
+### Verificación
+
+- `pnpm typecheck` · `pnpm lint` · `pnpm knip` · `pnpm format:check` limpios
+- `pnpm test` → **3333/3333**
+- `pnpm test:integration` → **929/929** (135 archivos)
+- `pnpm test:storybook` → **1072/1072** (264 archivos)
+- **Control negativo corrido**: sacando la rama `'held'` de la derivación, tres
+  tests se ponen rojos, el primero con `expected 'occupied' to be 'held'`.
+
+### Un rojo de CI ajeno, arreglado de paso
+
+La primera corrida del PR se puso roja en `Integration & Isolation` con UN test
+que este esfuerzo no toca: `booking-time-validation` →
+`BookingDateOutOfRangeError: past_slot`. Preexistente en `main` y dependiente
+del reloj — el job cayó a las **02:57:50 UTC = 23:57 ART**.
+
+El test monta un slot sintético en `ahora + 10'` y su guard de medianoche
+aplicaba `% 1440` **antes** de mirar el wrap, lo que esconde uno de los dos
+casos: el wrap del FIN (22:50–23:49, `timeEnd` sale `'00:xx'` y viola
+`chk_time_valid`) y el wrap del ARRANQUE (23:50–23:59, `timeStart` sale
+`'00:0x'` y el servicio lo compara contra la hora de pared de HOY, donde ya
+pasó hace ~24 h). Con el módulo primero, un arranque wrapeado parece sano: el
+guard salteaba 59 minutos por día y dejaba correr justo los 10 que rompen.
+
+Simulado minuto a minuto sobre el día entero (misma aritmética del test):
+
+```
+── guard viejo ──          ── guard nuevo ──
+salteados      59 min      salteados      70 min
+chk_time_valid  1 min      chk_time_valid  0 min
+past_slot      10 min      past_slot       0 min
+```
+
+El minuto de `chk_time_valid` (22:50 exactas, slot `23:00`→`00:00`) tampoco lo
+cubría el viejo y nadie lo había visto.
+
+Los dos guards por reloj de la suite pasan de `return` mudo a
+`ctx.skip(condición, nota)`: un salteo invisible pinta ✓ verde sin ejercitar
+nada, misma clase que cerró B9. No es teórico — el hermano se saltea de 00:00 a
+00:59 ART, y esa hora venía contando como caso probado.

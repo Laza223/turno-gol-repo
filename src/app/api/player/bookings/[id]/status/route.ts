@@ -5,7 +5,7 @@ import { notFound } from '@/shared/api-error'
 import { validatedJson } from '@/shared/api-output'
 import { paymentStatusResponseSchema } from '@/modules/payments/payment.schema'
 import { parseRouteUuid } from '@/shared/api/route-params'
-import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
+import { holdExpiresAtIso } from '@/lib/booking/hold'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,9 +33,7 @@ export const GET = withPlayer(async (req, user, tx) => {
   }
 
   const { status, depositStatus, createdAt } = row
-  const expiresAt = new Date(
-    new Date(createdAt).getTime() + DEFAULT_EXPIRY_SECONDS * 1000,
-  ).toISOString()
+  const expiresAt = holdExpiresAtIso(createdAt)
 
   return validatedJson(
     paymentStatusResponseSchema,

@@ -5,6 +5,7 @@ import {
   type CourtPricingData,
   type GenerateSlotsParams,
 } from '@/modules/tenants/public.service'
+import { holdExpiresAtIso } from '@/lib/booking/hold'
 
 const SAMPLE_PRICING: CourtPricingData = {
   rules: [
@@ -135,5 +136,82 @@ describe('generateSlots', () => {
     })
     expect(slots[0].status).toBe('free')
     expect(slots[1].status).toBe('blocked')
+  })
+})
+
+/**
+ * B15 — el agujero que quema inventario.
+ *
+ * Un `pending_payment` de OTRO jugador caía en el `else` final de la derivación
+ * y salía `'occupied'`: en pantalla, idéntico a una cancha vendida. Viernes
+ * 20:30, el jugador B lee "Ocupado" y se va a otro complejo; seis minutos
+ * después el hold de A expira, el slot vuelve a estar libre y B ya no está.
+ *
+ * El control negativo de esto es directo: si se borra la rama `'held'`, el
+ * primer test de acá vuelve a decir `'occupied'` y se pone rojo.
+ */
+describe('generateSlots — hold de otro jugador (B15)', () => {
+  const CREATED_AT = '2026-04-28T23:30:00.000Z'
+  const held = {
+    courtId: 'court-1',
+    timeStartMins: 8 * 60,
+    timeEndMins: 9 * 60,
+    type: 'spontaneous' as const,
+    status: 'pending_payment',
+    createdAt: CREATED_AT,
+  }
+
+  it('un pending_payment sale "held" y NO "occupied"', () => {
+    const slots = generateSlots({ ...BASE_PARAMS, courtBookings: [held] })
+    expect(slots[0].status).toBe('held')
+    // El slot de al lado no se contagia.
+    expect(slots[1].status).toBe('free')
+  })
+
+  it('viaja el instante ABSOLUTO de vencimiento, no los segundos restantes', () => {
+    // Un relativo servido desde la caché del CDN (s-maxage=30) llega corrido
+    // por hasta 90 s sobre una ventana de 360: el mismo modo de falla que ya
+    // hizo perder slots (caza-bugs #12). Absoluto sale bien de la caché siempre.
+    const slots = generateSlots({ ...BASE_PARAMS, courtBookings: [held] })
+    expect(slots[0].heldUntil).toBe(holdExpiresAtIso(CREATED_AT))
+  })
+
+  it('una reserva confirmada sigue siendo "occupied"', () => {
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      courtBookings: [{ ...held, status: 'confirmed', createdAt: undefined }],
+    })
+    expect(slots[0].status).toBe('occupied')
+    expect(slots[0].heldUntil).toBeUndefined()
+  })
+
+  it('un hold ya vencido por reloj sigue "held", no "free"', () => {
+    // La fila sigue en pending_payment hasta que la barre el worker, o sea que
+    // el exclusion constraint la sigue rechazando. Decir "libre" sería la misma
+    // mentira al revés: el jugador clickea y le rebota.
+    const viejo = { ...held, createdAt: '2020-01-01T00:00:00.000Z' }
+    const slots = generateSlots({ ...BASE_PARAMS, courtBookings: [viejo] })
+    expect(slots[0].status).toBe('held')
+    expect(slots[0].heldUntil).toBe(holdExpiresAtIso('2020-01-01T00:00:00.000Z'))
+  })
+
+  it('un turno fijo o un bloqueo NO se confunden con un hold', () => {
+    for (const type of ['fixed', 'block', 'tournament'] as const) {
+      const slots = generateSlots({
+        ...BASE_PARAMS,
+        courtBookings: [{ ...held, type }],
+      })
+      expect(slots[0].status).toBe(type === 'fixed' ? 'fixed' : 'blocked')
+      expect(slots[0].heldUntil).toBeUndefined()
+    }
+  })
+
+  it('un slot pasado gana sobre el hold (no se muestra contador de algo que ya pasó)', () => {
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      date: '2026-04-26',
+      courtBookings: [held],
+    })
+    expect(slots[0].status).toBe('past')
   })
 })

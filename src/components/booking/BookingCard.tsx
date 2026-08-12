@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
+import { holdExpiresAtIso, holdRemainingLabel } from '@/lib/booking/hold'
 import type { GridBooking } from './BookingGrid'
 
 type BookingCardProps = {
@@ -50,6 +51,31 @@ function placement(col: number, row: number, span: number, rowOffset: number): R
  * La regla de lectura no cambió (pages/grilla.md §2, MASTER §2.6): el COLOR
  * comunica el estado de la plata, el ÍCONO + label comunican qué es.
  */
+
+/**
+ * Cuánto le queda al hold, en la celda de la grilla del staff (B15 / decisión
+ * v2 D1: "marca «pagando ahora» en la grilla del staff").
+ *
+ * Es un componente propio, y no un valor calculado arriba, para que el
+ * `setInterval` exista SOLO mientras hay un hold en pantalla: la grilla de un
+ * sábado tiene decenas de celdas y ninguna otra necesita tickear.
+ *
+ * Sin esto el encargado leía "Esperando seña" sin saber si faltaban 10
+ * segundos o si el jugador ya había abandonado — o sea, si atender el teléfono
+ * del que llama por esa cancha o hacerlo esperar.
+ */
+function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
+  const heldUntil = holdExpiresAtIso(createdAt)
+  const [nowMs, setNowMs] = React.useState(() => Date.now())
+  React.useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const remaining = holdRemainingLabel(heldUntil, nowMs)
+  // Vencido por reloj: la fila sigue reteniendo la cancha hasta que la barre el
+  // worker, así que no se dice "libre".
+  return <span className="tabular-nums">{remaining.expired ? 'liberando…' : remaining.label}</span>
+}
 
 export function bookingDisplayName(booking: GridBooking): string | null {
   if (booking.guestName) return booking.guestName.slice(0, 24)
@@ -201,6 +227,9 @@ function BookingCardComponent({
           >
             <StateIcon aria-hidden className="h-3 w-3 shrink-0" />
             {visual.label}
+            {booking.status === 'pending_payment' && booking.createdAt && (
+              <HoldCountdown createdAt={booking.createdAt} />
+            )}
           </span>
         </span>
       )}

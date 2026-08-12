@@ -3413,8 +3413,36 @@ Dos cosas para que la regla no se pueda vaciar:
 - `requireCajaContext` es el único indirecto aceptado, y otro test verifica que adentro llame
   `requireOperatorStaff()` de verdad.
 
-**Control negativo corrido**: sacándole el guard a `requireCajaContext`, el candado se pone rojo
-con el diff exacto (`expected 'import { redirect } …' to contain 'requireOperatorStaff()'`).
+### Y donde de verdad importaba: las Server Actions
+
+El barrido de páginas es cosmético porque el layout cubre. **Las Server Actions no pasan por el
+layout** — es el hallazgo R2 del ensayo general, escrito en `guards.ts`: un tenant `blocked` por
+falta de pago podía seguir moviendo caja invocando la action por POST directo. Ahí una auth a mano
+no es estilo, es cobertura que falta.
+
+Barrido el árbol de `(admin)` quedaron 3 `await extractAuthUser(` fuera de las páginas:
+
+| Archivo                          | Veredicto                                                                                                                                                                        |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `(admin)/layout.tsx`             | correcto — es su trabajo, resuelve la identidad antes de cualquier guard                                                                                                          |
+| `settings/equipo/actions.ts`     | **cubierto y deliberado**: guard propio documentado en su cabecera (fix 4 / M7 / ENS-26), las 4 actions llaman `assertActorIsAdmin`, y su `STAFF_WRITE_BLOCKED_STATUSES` es MÁS amplio que el del guard central |
+| `abonados/nuevo/actions.ts`      | **arreglado** — `previewAbonadoSlotsAction` autenticaba a mano sin chequeo de lifecycle, así que un complejo `blocked` seguía pudiendo consultar disponibilidad                    |
+
+El write de ese flujo (`createAbonadoAction`) ya usaba `requireOperatorStaff`; era solo el preview
+el que iba por su cuenta. Impacto bajo (read-only, con rate-limit) pero es la misma inconsistencia,
+y el fix es una línea.
+
+Se agregó un segundo candado en el mismo archivo, con la regla invertida: en las actions no es
+"nombrá un guard" sino **"no autentiques a mano"**, con `settings/equipo/actions.ts` como única
+excepción enumerada — y un test que verifica que esa excepción siga teniendo `assertActorIsAdmin` y
+su lista propia de estados bloqueados, para que la exención no sobreviva a que alguien la vacíe.
+
+**Dos controles negativos corridos:**
+
+1. Sacándole el guard a `requireCajaContext`, el candado de páginas se pone rojo con el diff exacto
+   (`expected 'import { redirect } …' to contain 'requireOperatorStaff()'`).
+2. Volviendo `previewAbonadoSlotsAction` a `extractAuthUser` a mano, el candado de actions se pone
+   rojo señalando el archivo: `(admin)\abonados\nuevo\actions.ts no llama extractAuthUser a mano`.
 
 **Un falso positivo propio, arreglado**: la primera versión del chequeo usaba
 `not.toContain('extractAuthUser')` y se ponía roja por el **docblock** que explica que ya no se

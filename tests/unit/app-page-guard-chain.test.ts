@@ -239,3 +239,60 @@ describe('cadena de guards de las páginas', () => {
     expect(source, 'volvió a autenticar a mano').not.toMatch(/await\s+extractAuthUser\(/)
   })
 })
+
+/**
+ * Las Server Actions son la superficie donde esto importa MÁS que en las páginas:
+ * **no pasan por `(admin)/layout.tsx`**, así que no heredan nada — ni el chequeo
+ * de rol ni el hard-lock de lifecycle del tenant. Es el hallazgo R2 del ensayo
+ * general, escrito en `guards.ts`: un tenant `blocked` por falta de pago podía
+ * seguir moviendo caja invocando la action por POST directo.
+ *
+ * Por eso acá la regla es al revés que en las páginas: no "nombrá un guard" sino
+ * **"no autentiques a mano"**, con una única excepción enumerada.
+ */
+describe('Server Actions del panel: nadie autentica a mano', () => {
+  /**
+   * `settings/equipo/actions.ts` tiene guard propio a propósito y está
+   * documentado en su cabecera (fix 4 / M7 / ENS-26): `requireStaffTenant` para
+   * la sesión, `assertActorIsAdmin` por rol —que las 4 actions llaman— y su
+   * propio `STAFF_WRITE_BLOCKED_STATUSES`, que es MÁS amplio que el del guard
+   * central. Reemplazarlo por `requireAdminStaffAction` perdería ese margen.
+   */
+  const ALLOWLIST = [join('(admin)', 'settings', 'equipo', 'actions.ts')] as const
+
+  function walkActions(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) walkActions(full, out)
+      else if (entry === 'actions.ts') out.push(full)
+    }
+    return out
+  }
+
+  const ACTIONS = walkActions(join(APP_DIR, STAFF_TREE))
+    .map((f) => ({ file: f, rel: relative(APP_DIR, f) }))
+    .filter((a) => !ALLOWLIST.includes(a.rel as (typeof ALLOWLIST)[number]))
+
+  it('hay actions que analizar (control: si el walk se rompe, todo pasa vacío)', () => {
+    expect(ACTIONS.length).toBeGreaterThan(5)
+  })
+
+  it('la excepción de equipo/actions.ts sigue teniendo su propio guard de rol', () => {
+    const source = readFileSync(join(APP_DIR, ...ALLOWLIST[0].split(sep)), 'utf8')
+    expect(source).toContain('assertActorIsAdmin')
+    expect(source).toContain('STAFF_WRITE_BLOCKED_STATUSES')
+  })
+
+  it.each(ACTIONS.map((a) => [a.rel, a.file]))(
+    '%s no llama extractAuthUser a mano',
+    (_rel, file) => {
+      const source = readFileSync(file as string, 'utf8')
+      // Forma de LLAMADA, no la palabra: varios docblocks la nombran para contar
+      // que ya no se usa.
+      expect(
+        source,
+        'una Server Action no hereda el guard del layout: usá requireOperatorStaff() / requireAdminStaffAction()',
+      ).not.toMatch(/await\s+extractAuthUser\(/)
+    },
+  )
+})

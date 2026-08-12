@@ -36,7 +36,7 @@ import {
 } from '@/shared/time/operating-day'
 import { physicalRange } from '@/shared/time/physical-range'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
-import { rowToBookingRow } from './booking.mappers'
+import { rawRowToBookingRow, rowToBookingRow, type BookingRawRow } from './booking.mappers'
 import { depositCashFlowDescription } from './booking.charges'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
@@ -697,14 +697,25 @@ export async function autoCompleteOverdueBookings(
 ): Promise<BookingRow[]> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${AUTO_COMPLETE_LOCK_KEY}))`)
 
-  const rows = await tx.execute(sql`
+  // B8 — el `RETURNING b.*` estaba casteado a `typeof bookings.$inferSelect`,
+  // que es el tipo del QUERY BUILDER: claves camelCase y fechas ya parseadas.
+  // El SQL crudo devuelve las claves como las nombra Postgres (snake_case) y
+  // las fechas como string, así que `rowToBookingRow` leía `row.tenantId` /
+  // `row.timeStart` y recibía `undefined` con TypeScript en verde. No lo notó
+  // nadie porque el worker solo usa `.length`.
+  //
+  // El UPDATE se queda en SQL crudo A PROPÓSITO: `auto-complete-advisory-lock`
+  // observa el orden lock→UPDATE sobre `tx.execute`, que es una invariante de
+  // concurrencia real. Pasarlo al query builder dejaba ese test ciego, así que
+  // lo que se arregla es el tipo, no el camino.
+  const rows = await tx.execute<BookingRawRow>(sql`
     UPDATE bookings b
     SET status = 'completed', updated_at = NOW()
     WHERE b.status = 'confirmed'
       AND b.ends_at < NOW() - (${graceMinutes} || ' minutes')::interval
     RETURNING b.*
   `)
-  return (rows as unknown as Array<typeof bookings.$inferSelect>).map(rowToBookingRow)
+  return [...rows].map(rawRowToBookingRow)
 }
 
 // ─── markNoShow ─────────────────────────────────────────────────────

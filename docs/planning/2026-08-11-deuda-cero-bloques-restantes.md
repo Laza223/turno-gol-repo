@@ -31,7 +31,16 @@ del dueño, verificada contra producción antes del DROP (0 filas). Destraba B13
 turnos fijos sin cuenta se derivan de `abonados` (sin tabla nueva) y se vinculan a mano, con inverso.
 Sin migración.
 
-Quedan **B8 (resto) · B11 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
+**B8 cerrado en lo que importaba** (2026-08-11, PRs #135/#136 + parte 2): la premisa del bloque
+—"convertir 193 casts al genérico de Drizzle"— **no se sostuvo**: esa conversión no atrapa nada,
+porque el genérico es la misma aserción sin chequear. Lo que sí faltaba era medir qué devuelve el
+driver, y ahí aparecieron 3 filas que prometían camelCase sobre SQL crudo (campos multi-palabra
+valiendo `undefined` con TypeScript en verde) y 12 campos `Date` que son string. Cero bugs vivos,
+verificado consumidor por consumidor. Tabla de tipos en `src/shared/db/client.ts`, candado en
+`tests/unit/raw-sql-row-shape.test.ts`. El barrido mecánico de los ~190 restantes queda sin hacer,
+a propósito.
+
+Quedan **B11 · B14 · B15**. Ninguno tiene el alcance escrito en ningún lado;
 lo de abajo es la reconstrucción, medida contra el código de hoy.
 
 ## Ojo con la nomenclatura: hay TRES series que se llaman igual
@@ -52,31 +61,46 @@ Mapeo correcto de los que citan una "D": **B11 → auditoría D6** · **B12 → 
 
 ---
 
-## B8 — Tipos de SQL crudo
+## B8 — Tipos de SQL crudo ✅ CERRADO en lo que importaba (2026-08-11, PRs #135/#136 + parte 2)
 
-**193 casts a mano** del resultado de un SQL crudo, en **55 archivos**. La forma es siempre
-`(rows as unknown as Array<{…}>)`.
+Lo de abajo es el plan original, con lo que **medirlo refutó** marcado. Ver
+`docs/audit/PROGRESS.md` § "B8 (parte 2)".
 
-Lo que hace este bloque barato: **183 de los 193 (95%) están sobre `tx.execute()` de Drizzle**, y
-Drizzle **ya expone el genérico** — `tx.execute<{ id: string }>(sql\`…\`)` compila hoy
-(`node_modules/drizzle-orm/pg-core/db.d.ts:280`). El repo tiene **0 usos** de `.execute<`. No hace
-falta escribir ningún helper. El patrón bueno ya se usa en 43 sitios, pero con el genérico de
-postgres-js (`sql<T[]>\`…\``), que es otra API y no es copy-paste.
+**193 casts a mano** del resultado de un SQL crudo, en **55 archivos** (hoy 205; el número crece
+con cada feature). La forma es siempre `(rows as unknown as Array<{…}>)`.
 
-**70 de los 193 tocan caminos de plata.** Los tres de mayor riesgo, por lo que hacen y no por
-cuántos son:
+> **La premisa central del bloque no se sostuvo.** El plan asume que convertir esos casts al
+> genérico de Drizzle (`tx.execute<T>(sql\`…\`)`) es el trabajo. **Esa conversión no atrapa ni un
+> bug**: el genérico es la MISMA aserción sin chequear, escrita más corto. Lo que atrapa algo es
+> comparar la forma prometida contra lo que el driver devuelve — y eso nadie lo había medido.
+>
+> Medido: **las dos APIs del repo parsean distinto el mismo SQL**. Por `tx.execute` un
+> `timestamptz` llega **string**; por el template de postgres-js llega **Date**. Y el SQL crudo
+> devuelve claves **snake_case**, mientras `$inferSelect` es camelCase. Tabla completa escrita en
+> `src/shared/db/client.ts`.
+>
+> Encontrado con esa tabla en la mano: **3 sitios** que prometían camelCase sobre SQL crudo
+> (`autoCompleteOverdueBookings` y los dos ramos de `createCashFlow` con idempotency key) y **12
+> campos** declarados `Date` que son string. **Cero bugs vivos** — verificado consumidor por
+> consumidor: todos leen `.id`/`.length` o envuelven en `new Date()`. El sistema andaba por
+> casualidad. Candado nuevo: `tests/unit/raw-sql-row-shape.test.ts`.
 
-- `payment.service.ts:968` — `Array<{ total: string | number }>` sobre reembolsos previos. Si
-  Postgres devuelve `numeric` como string, la aritmética de abajo **concatena en vez de sumar**.
-  El cast documenta la ambigüedad en lugar de resolverla.
-- `cashflow.service.ts:139,148` — castea a `typeof cashFlows.$inferSelect`, o sea promete la fila
-  **completa** del schema desde un `RETURNING` parcial. TypeScript miente y el consumidor lee
-  `undefined` con tipo no-nullable.
-- `billing.service.ts:469` y `super-admin/support.service.ts:356` — `!` encima del cast, sobre el
-  conteo de canchas que decide límites de plan.
+**Las tres "de mayor riesgo" del plan, verificadas una por una:**
 
-**Corte en 3 PRs** (el que sale de los números): torneos (42, autocontenido, sirve de piloto) ·
-caminos de plata (~85, revisión línea por línea) · resto (~66).
+- `payment.service.ts:968` — `Array<{ total: string | number }>` sobre reembolsos previos.
+  **REFUTADA en la parte 1 (#135)**: la concatenación no existía.
+- `cashflow.service.ts:139,148` — `typeof cashFlows.$inferSelect` sobre un `RETURNING`.
+  **CONFIRMADA, y peor de lo escrito**: no es "fila completa desde un RETURNING parcial", es
+  camelCase sobre claves snake_case. Arreglada en la parte 2.
+- `billing.service.ts:469` y `super-admin/support.service.ts:356` — `!` encima del conteo de
+  canchas que decide límites de plan. **REFUTADA**: los dos usan `COUNT(*)::int` (que sí llega
+  como number) y un `COUNT` sin `GROUP BY` devuelve siempre exactamente una fila, así que el `!`
+  es correcto.
+
+**El corte en 3 PRs (torneos / caminos de plata / resto) queda SIN hacer, a propósito.** Es churn
+mecánico sin defecto detrás, y el candado nuevo ya lee las dos formas (`as unknown as` y
+`.execute<…>`), así que no lo necesita para funcionar. Si algún día se hace, es por consistencia
+de estilo, no por seguridad — y conviene decirlo así en el PR.
 
 ### B8d — Prettier
 

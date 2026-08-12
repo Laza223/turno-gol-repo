@@ -44,6 +44,41 @@ function resolvePoolMax(): number {
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_POOL_MAX
 }
 
+/**
+ * ─── Qué tipo de JS devuelve cada camino (B8, medido contra Postgres real) ────
+ *
+ * El repo lee la base por DOS APIs y **no parsean igual el mismo SQL**. Esto no
+ * estaba escrito en ningún lado y es la trampa exacta de la que salieron los
+ * casts mentirosos de B8: uno mira un `SELECT occurred_at` en un service, se
+ * acuerda de que "postgres-js devuelve Date", declara `Date`, y compila.
+ *
+ *                          getSql() `sql\`…\``   tx.execute(sql\`…\`)
+ *   timestamptz / now()    Date                  **string**
+ *   date                   Date                  **string** ('YYYY-MM-DD')
+ *   time                   string                string ('HH:MM:SS')
+ *   count(*) / sum(int)    string (bigint)       string
+ *   numeric                string                string
+ *   integer / ::int        number                number
+ *   boolean                boolean               boolean
+ *
+ * Los services usan `tx.execute` → columna sin castear = **string SIEMPRE**.
+ * Los helpers de test y algunos workers usan el template de postgres-js → ahí
+ * sí llega un Date. La diferencia es el protocolo: el template tag va por el
+ * extendido (tipado), Drizzle manda todo por `unsafe()` (texto).
+ *
+ * Consecuencias prácticas:
+ *   - `tx.execute` + `as … { x: Date }` es SIEMPRE mentira. `x.getTime()`
+ *     compila y da NaN; envolver en `new Date(x)` es lo correcto y es lo que
+ *     hace todo el repo hoy.
+ *   - `count(*)`/`sum()` sin `::int` es string en los dos caminos: `a + b`
+ *     concatena. Candado: `tests/unit/sql-number-type-honesty.test.ts`.
+ *   - `SELECT *`/`RETURNING *` crudo devuelve las claves **snake_case**, así que
+ *     `typeof tabla.$inferSelect` (camelCase, del query builder) nunca las
+ *     describe. Candado: `tests/unit/raw-sql-row-shape.test.ts`.
+ *
+ * Reproducir: probes de B8 en el PR; el experimento es un `SELECT now(), …` por
+ * cada API imprimiendo `typeof` y el constructor.
+ */
 export function getSql(): Sql {
   if (_sql) return _sql
   if (globalForDb.__turnogolSql) {

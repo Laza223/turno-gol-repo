@@ -2880,3 +2880,102 @@ prometida llegue `undefined` (la función no tenía **ningún** test antes).
 no existía · `with-auth.ts` no es código muerto · el gate de
 `/api/e2e/create-booking` no dependía del inlining de `NEXT_PUBLIC_E2E` sino de
 `NODE_ENV`. Más un 🔴 que el plan no tenía y encontró un test.
+
+---
+
+## B8 (parte 2) — Los dos caminos a la base no parsean igual, y nadie lo había escrito
+
+**Rama**: `worktree-b8-torneos` · **Fecha**: 2026-08-11
+
+### El plan pedía una cosa; medirlo dijo otra
+
+El plan de B8 pide convertir **193 casts a mano** (`(rows as unknown as Array<{…}>)`)
+al genérico de Drizzle (`tx.execute<T>(sql\`…\`)`), en 3 PRs. Hay que decirlo
+derecho: **esa conversión no atrapa ni un bug.** El genérico es la MISMA
+aserción sin chequear, escrita más corto. Lo único que atrapa algo es comparar
+la forma prometida contra lo que el driver devuelve de verdad — y para eso
+primero hay que saber qué devuelve.
+
+No estaba escrito en ningún lado. Medido contra Postgres real:
+
+| SQL | `getSql()` (template de postgres-js) | `tx.execute(sql\`…\`)` (Drizzle) |
+|---|---|---|
+| `timestamptz` / `now()` | **Date** | **string** |
+| `date` | **Date** | **string** (`'YYYY-MM-DD'`) |
+| `time` | string | string |
+| `count(*)` / `sum(int)` | string (bigint) | string |
+| `numeric` | string | string |
+| `integer` / `::int` | number | number |
+| `boolean` | boolean | boolean |
+
+**Las dos APIs del repo parsean distinto el mismo SQL.** El template tag va por
+el protocolo extendido (tipado); Drizzle manda todo por `unsafe()` (texto). Los
+services usan `tx.execute`, o sea que ahí una columna sin castear es string
+SIEMPRE. La tabla quedó escrita en `src/shared/db/client.ts`, que es donde
+alguien la va a buscar.
+
+Y una segunda: **el SQL crudo devuelve las claves snake_case**, tal cual las
+nombra Postgres. `typeof <tabla>.$inferSelect` es camelCase porque describe la
+salida del *query builder*. Los dos se ven iguales en el editor.
+
+### Lo que estaba roto
+
+Barrido completo de los 205 casts. **3 sitios prometían camelCase sobre SQL
+crudo**, o sea que todo campo multi-palabra valía `undefined` con TypeScript en
+verde:
+
+| Sitio | Qué devolvía |
+|---|---|
+| `booking.service.ts` `autoCompleteOverdueBookings` | `RETURNING b.*` → `rowToBookingRow` leía `row.tenantId`, `row.timeStart`, `row.priceSnapshot`: todos `undefined` |
+| `cashflow.service.ts` `createCashFlow` (insert) | `RETURNING *` con `clientIdempotencyKey` → `tenantId`/`registeredBy`/`occurredAt` `undefined` |
+| `cashflow.service.ts` `createCashFlow` (reintento) | ídem por el `SELECT *` del segundo ramo |
+
+Más **12 campos declarados `Date`** que en runtime son string, en 6 archivos
+(`abonado.service`, `stock.service`, `payment.service`, `tournament-slots`,
+`cashflow`, `daily-close`).
+
+**Bugs vivos hoy: cero, y está verificado uno por uno.** Los consumidores de las
+3 filas mentirosas solo leen `.id` o `.length`, y los 12 `Date` pasan todos por
+`new Date(...)`, que funciona igual con un string. O sea: el sistema anda **por
+casualidad**, no por diseño. Un `r.occurredAt.getTime()` directo compila hoy y
+da NaN; `bookingId` ya venía enmascarado — el `?? null` del mapper convertía el
+`undefined` en un `null` que se lee como "este cobro no está atado a ningún
+turno".
+
+### Lo que se hizo
+
+- Tipo crudo explícito + mapper snake→camel donde el cast mentía:
+  `BookingRawRow`/`rawRowToBookingRow`, `CashFlowRawRow`/`rawRowToCashFlowRow`,
+  `DailyCashCloseRawRow`/`rawRowToDailyCloseRow` (este último estaba duplicado
+  a mano en dos archivos, ahora es uno).
+- Los 12 `Date` pasan a `string`. El `new Date(...)` de cada mapper ya era
+  correcto; el tipo era el que mentía.
+- `tests/unit/raw-sql-row-shape.test.ts`: candado estático de las **dos
+  subclases decidibles sin parsear SQL** — `Date` en una fila de `tx.execute`, y
+  `$inferSelect` sobre SQL crudo. El candado de la parte 1
+  (`sql-number-type-honesty`) había dejado escrito que emparejar campo↔columna
+  da falsos positivos, y tenía razón: al escanear el repo, la heurística se
+  equivocó sola en cada `Promise.all` de dos queries. Estas dos se deciden
+  mirando el TIPO solo, así que entran sin falso positivo.
+
+### Decisiones tomadas y por qué
+
+- **El UPDATE de `autoCompleteOverdueBookings` se queda en SQL crudo.** Pasarlo
+  al query builder borraba el cast entero (más lindo), pero
+  `auto-complete-advisory-lock` observa el orden lock→UPDATE sobre `tx.execute`
+  y quedaba ciego. Esa invariante de concurrencia vale más que un cast menos.
+- **La conversión mecánica de los ~190 casts restantes NO se hizo acá.** No
+  atrapa nada por sí sola, y el candado nuevo ya lee las dos formas
+  (`as unknown as` y `.execute<…>`), así que no la necesita.
+
+### Verificación
+
+- `pnpm typecheck` · `pnpm lint` · `pnpm knip` · `pnpm format:check` limpios
+- `pnpm test` → **3321/3321**
+- `pnpm test:integration` → **135 archivos / 932 tests**, todo verde. La primera
+  pasada dio 3 `Test timed out in 10000ms` (ninguna assertion); re-correr el
+  MISMO commit dio verde — el flake de carga ya registrado.
+- **Controles negativos corridos** (3): reinyectando cada cast original,
+  `raw-sql-row-shape` se pone rojo; el test de bookings da
+  `expected undefined to be '4718f890-…'`; el de cashflow da
+  `insert: expected undefined to be 'a8ea87e6-…'` y `expected null to be 'd86b81b8-…'`.

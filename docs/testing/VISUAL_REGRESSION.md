@@ -60,6 +60,7 @@ El project `visual` lista **9** tests y no 8: el noveno es
 | Las fechas se renderizan en **Server Components** | `page.clock` NO alcanza (solo intercepta el browser). Se pinnea la fecha por URL: `/grilla?date=2030-06-17` |
 | La línea roja de "ahora" se mueve | Sale gratis: `useNowLine` devuelve `null` cuando `artNow.date !== date` (`src/hooks/use-now-line.ts:28`). Con la fecha pinneada a una distinta de hoy, no se dibuja |
 | `useArtNow` / `ExpiryCountdown` leen `Date.now()` en el cliente | `page.clock.setFixedTime(FROZEN_NOW)`. Misma constante que Storybook |
+| El campo FECHA del buscador de la landing arranca en **hoy** | Mismo `setFixedTime`. `HeroSearch` es `'use client'` y lo lee con `useClientSnapshot(todayLocal, …)`, o sea del reloj del browser: sin congelarlo la baseline caduca sola (la de julio quedó con "29/07/2026" adentro). El diff que mete queda muy por debajo del umbral, así que **no rompe el gate: lo ensucia** — es ruido permanente en la única pieza cuyo trabajo es que un diff signifique algo |
 | Los seeds funcionales usan fechas relativas | Seed propio (`tests/e2e/visual/_seed.ts`) con UUIDs, horarios y fecha **absolutos**, idempotente |
 | Animaciones | `reducedMotion: 'reduce'` engancha el `@media` que ya existe en `globals.css`. Cero CSS nuevo, y de paso se fotografía el camino accesible |
 | Banner de push (`fixed bottom-left z-40`) | `addInitScript` + `localStorage` antes del primer `goto` |
@@ -287,6 +288,17 @@ git commit -m "test(visual): baselines linux"
 **Cuando un diff es legítimo** (cambiaste un padding a propósito): exactamente los
 mismos 5 pasos. Con `=all` se reescribe toda PNG cuyos bytes cambien; el colador
 contra bendecir basura es el paso 5, no el flag.
+
+> **Commiteá solo las fotos que el gate reprobó.** Una regeneración con `=all`
+> devuelve más PNG cambiadas que fotos rojas: el artifact del 2026-08-12 trajo 5
+> distintas cuando el gate había reprobado **una sola** (`landing.png`), y
+> `login.png` —el canario, sobre una pantalla que nadie tocó— venía 832 bytes más
+> pesada. Las otras cuatro son ruido de compresión y de anti-aliasing por
+> definición: el gate las declaró iguales en el mismo commit. Bendecirlas mete
+> miles de pixeles de churn al diff sin mover nada de lo que el gate mira, y de
+> paso tapa la próxima regresión de verdad en la revisión del PR. `git checkout --`
+> sobre las que no fallaron. Es el mismo criterio de la nota de DPR 2 de arriba,
+> que hasta ahora solo estaba escrito para las fotos mobile.
 
 **Cuando no lo es**: el job sube `test-results/` como artifact, con los
 `*-actual.png` y `*-diff.png`. Los mirás, arreglás el código, y las baselines ni

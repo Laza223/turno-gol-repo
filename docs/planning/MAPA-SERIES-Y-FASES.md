@@ -116,10 +116,15 @@ su trigger es "primer prospecto por firmar".
 
 ## Lo que sí queda, y no pertenece a ninguna serie
 
-- 🔴 **CI en `main` viene rojo** de forma determinística desde ≥5 merges: `E2E Tests`
-  (`reservas-crud.spec.ts:413`, el badge "Esperando seña" no aparece) y `Regresión visual`
-  (`landing.png`, 12% de píxeles — baseline vieja de Fase 4). Los otros workflows (Semgrep,
-  React Doctor, security) están verdes y **tapan el color** al mirar `gh run list` sin filtrar por
-  workflow.
+- ~~🔴 **CI en `main` viene rojo**~~ → **CERRADO** (PR #147, 2026-08-12). Eran dos causas
+  independientes, ninguna un bug de producto: `E2E Tests` afirmaba un label que B15 había
+  renombrado (`slot-visual.ts`: "Esperando seña" → "Pagando ahora"), y la baseline de
+  `landing.png` era de julio contra la landing rediseñada el 11/08 por #129.
+  Verificado con `gh workflow run ci.yml --ref ci-rojos`: **20 passed** en e2e y **9 passed**
+  en visual, leído del log y no del color del check.
+  **La causa raíz de que durara 5 merges:** desde el 2026-08-10 `e2e-tests` y
+  `visual-regression` **no corren en PRs** — solo en el push a main, o sea después de
+  mergear. Un rename de label no tenía cómo hacer rojo un PR. Corregido en `CLAUDE.md`,
+  que documentaba lo contrario.
 - **16 route handlers sin `runRequestObservability`**: sus errores vuelven sin id de correlación.
 - **k6** (auditoría-datos D6): requiere instalar k6 y env en el worktree.

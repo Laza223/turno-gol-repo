@@ -8,12 +8,14 @@ import {
 } from '@/modules/payments/mp-token-refresh'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
+import { captureMessage } from '@/lib/sentry'
 import {
   DowngradeBlockedError,
   InvalidPayerEmailError,
   PlanNotFoundError,
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
+  UpgradeAlreadyPendingError,
 } from './billing.errors'
 import { transitionToCanceled } from './lifecycle.service'
 import { track } from '@/shared/observability'
@@ -323,6 +325,13 @@ export async function upgrade(
   if (sub.status !== 'active') {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
+  // 01-billing-upgrade-dedup: sin este guard, una segunda llamada pisaba
+  // `pending_plan_change` (y creaba una preferencia MP nueva) sin invalidar
+  // la anterior — si el pago viejo se acreditaba después, el CAS de
+  // `handleUpgradeApproved` ya no matcheaba y ese pago quedaba huérfano.
+  if (sub.pending_plan_change) {
+    throw new UpgradeAlreadyPendingError(tenantId, sub.pending_plan_change)
+  }
 
   const targetPlan = await loadPlan(targetPlanId, tx)
   if (!targetPlan) throw new PlanNotFoundError(targetPlanId)
@@ -396,6 +405,7 @@ export async function handleUpgradeApproved(
   targetPlanId: string,
   gateway: PaymentGateway,
   tx: DbTx,
+  mpPaymentId?: string,
 ): Promise<void> {
   track.payment('payment.saas.upgrade.approved', { tenantId })
 
@@ -425,7 +435,27 @@ export async function handleUpgradeApproved(
     WHERE tenant_id = ${tenantId} AND status = 'active' AND pending_plan_change = ${targetPlanId}
     RETURNING id
   `)
-  if ((updated as unknown as Array<{ id: string }>).length === 0) return
+  if ((updated as unknown as Array<{ id: string }>).length === 0) {
+    // 01-billing-upgrade-dedup: este pago se acreditó pero el gate atómico no
+    // matcheó — o el `pending_plan_change` ya fue sobreescrito por una
+    // llamada posterior a `upgrade()`, o la sub salió de `status='active'`
+    // entre el `loadSub` y este UPDATE. MP ya cobró esa plata; sin esto se
+    // perdía en silencio. Mismo patrón que
+    // dunning.service.ts:onPaymentApproved (preapprovalIdMatches).
+    captureMessage(
+      'handleUpgradeApproved: CAS UPDATE affected 0 rows — an approved upgrade payment did not match the tenant current pending_plan_change/status; left for manual reconciliation',
+      {
+        level: 'warning',
+        extra: {
+          tenantId,
+          targetPlanId,
+          pendingPlanChange: sub.pending_plan_change,
+          mpPaymentId: mpPaymentId ?? null,
+        },
+      },
+    )
+    return
+  }
 
   await insertSystemAuditLog(tx, {
     tenantId,

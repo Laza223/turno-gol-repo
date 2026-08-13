@@ -31,6 +31,7 @@ type ApiResponse = {
     deposit_amount: number
     total_paid: number
     pending: number
+    created_at: string
   }>
 }
 
@@ -52,6 +53,10 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
     paymentMethod: (row['payment_method'] as PaymentMethodValue | null) ?? null,
     depositStatus: (row['deposit_status'] as DepositStatus | null) ?? null,
     depositAmount: (row['deposit_amount'] as number | null) ?? null,
+    // B15: created_at SÍ viaja en el payload de postgres_changes (replica la
+    // fila completa de `bookings`) — a diferencia de totalPaid/pending de acá
+    // abajo, que dependen de `cash_flows` y por eso quedan en null.
+    createdAt: row['created_at'] as string | undefined,
     // Realtime replica `bookings`, y los cobros de mostrador viven en
     // `cash_flows`: el saldo real no viaja en este payload. Se deja en null a
     // propósito (la alarma "sin cobrar" no se dispara con datos incompletos) y
@@ -77,7 +82,16 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
  */
 function carryMoney(next: GridBooking, prev: GridBooking | undefined): GridBooking {
   if (!prev) return next
-  return { ...next, totalPaid: prev.totalPaid ?? null, pending: prev.pending ?? null }
+  return {
+    ...next,
+    totalPaid: prev.totalPaid ?? null,
+    pending: prev.pending ?? null,
+    // B15: un UPDATE de Realtime SÍ trae created_at (replica la fila completa),
+    // pero por las dudas de que algún payload venga incompleto, no dejamos que
+    // un `next.createdAt` ausente borre el que ya teníamos y tire abajo el
+    // contador de hold a mitad de cuenta regresiva.
+    createdAt: next.createdAt ?? prev.createdAt ?? null,
+  }
 }
 
 function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
@@ -103,6 +117,7 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
     paymentMethod: row.payment_method ?? null,
     depositStatus: row.deposit_status ?? null,
     depositAmount: row.deposit_amount ?? null,
+    createdAt: row.created_at,
     totalPaid: row.total_paid ?? null,
     pending: row.pending ?? null,
   }

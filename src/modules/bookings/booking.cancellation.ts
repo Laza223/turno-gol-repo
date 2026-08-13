@@ -12,6 +12,7 @@ import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
 import { captureMessage } from '@/lib/sentry'
 import {
+  BookingAlreadyEndedError,
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
   RefundUnavailableError,
@@ -175,6 +176,16 @@ export async function cancelByPlayer(
   if (!b) throw new BookingNotInConfirmedError(bookingId)
   if (b.player_id !== playerId) throw new BookingNotOwnedByPlayerError(bookingId, playerId)
   if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
+
+  // 07-cancelbyplayer-noshow-guard: mismo criterio temporal que
+  // `decideAdminRefund` (bookingEndUtcMs) — un turno cuyo ends_at ya pasó no
+  // se puede "cancelar" desde el lado del jugador, es una ausencia. El status
+  // sigue 'confirmed' hasta que corre el cron auto-complete-bookings (hasta
+  // ~60 min de ventana); sin este guard esa ventana dejaba autocancelar (y
+  // esquivar el softban de) un no-show real.
+  if (Date.now() >= new Date(b.ends_at).getTime()) {
+    throw new BookingAlreadyEndedError(bookingId)
+  }
 
   // Hallazgo 8: reject cancellation when the complejo is in a terminal/inactive
   // state. Otherwise a player could trigger an automatic refund against an MP

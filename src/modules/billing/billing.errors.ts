@@ -57,6 +57,29 @@ export class PlanNotFoundError extends Error {
 }
 
 /**
+ * 01-billing-upgrade-dedup: `upgrade()` creaba una preferencia MP nueva y
+ * pisaba `pending_plan_change` sin chequear si ya había OTRO cambio
+ * pendiente (upgrade sin pagar, o downgrade agendado). Si el pago de la
+ * preferencia VIEJA se acreditaba después de que una llamada posterior ya
+ * hubiera sobreescrito `pending_plan_change`, el CAS de `handleUpgradeApproved`
+ * no matcheaba y ese pago quedaba huérfano en silencio. Mensaje en español:
+ * llega directo al dueño vía `ChangePlanSection` (mismo patrón que
+ * `InvalidPayerEmailError`).
+ */
+export class UpgradeAlreadyPendingError extends Error {
+  readonly code = 'UPGRADE_ALREADY_PENDING'
+  constructor(
+    public readonly tenantId: string,
+    public readonly pendingPlanId: string,
+  ) {
+    super(
+      'Ya tenés un cambio de plan pendiente. Completá o esperá a que venza ese pago antes de pedir otro cambio.',
+    )
+    this.name = 'UpgradeAlreadyPendingError'
+  }
+}
+
+/**
  * ENS-23: MP rechaza el preapproval si `payer_email` (el email del dueño del
  * tenant) no tiene cuenta de MercadoPago asociada ("Both payer and collector
  * must be real or test users"). Mensaje en español porque llega directo al

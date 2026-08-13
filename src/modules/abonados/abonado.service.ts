@@ -5,7 +5,7 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { getCourtById } from '@/modules/courts/court.service'
 import { generateSlotDates } from './slot-generator'
-import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
+import { isExclusionViolation, slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
 import { physicalRange } from '@/shared/time/physical-range'
 import {
   AbonadoConflictError,
@@ -94,6 +94,23 @@ async function checkBookingOverlap(
   return (rows as unknown[]).length > 0
 }
 
+/**
+ * SELECT ... FOR UPDATE sobre la fila de la cancha: serializa transacciones
+ * concurrentes que van a insertar bookings para este court. Mismo mecanismo
+ * que `lockCourtOrThrow` (booking.service.ts) usa en createManualBooking/
+ * createOnlineBooking, pero SIN su chequeo de status==='online' — los
+ * abonados nunca lo exigieron (una cancha offline en mantenimiento no impide
+ * dar de alta un turno fijo a futuro) y ampliar esa regla no es parte de este
+ * fix. Cierra en el origen la ventana de carrera entre createAbonado/
+ * reactivateAbonado concurrentes (o contra createManualBooking/
+ * createOnlineBooking) sobre la misma cancha: mientras el lock está tomado,
+ * ninguna otra transacción puede insertar un booking que el
+ * checkBookingOverlap optimista de abajo todavía no vio.
+ */
+async function lockCourtRow(courtId: string, tx: DbTx): Promise<void> {
+  await tx.execute(sql`SELECT id FROM courts WHERE id = ${courtId} FOR UPDATE`)
+}
+
 async function insertBookingsForSlots(
   slotDates: string[],
   abonado: AbonadoRow,
@@ -123,29 +140,61 @@ async function insertBookingsForSlots(
     }
   }
 
-  if (validRows.length > 0) {
-    await tx.insert(bookings).values(
-      validRows.map(({ dateStr, startsAt, endsAt }) => ({
-        tenantId,
-        courtId: abonado.courtId,
-        playerId: abonado.playerId ?? null,
-        abonadoId: abonado.id,
-        date: new Date(`${dateStr}T00:00:00Z`),
-        timeStart: abonado.timeStart,
-        timeEnd: abonado.timeEnd,
-        startsAt,
-        endsAt,
-        type: 'fixed' as const,
-        status: 'confirmed' as const,
-        priceSnapshot: abonado.pricePerSession,
-        depositAmount: 0,
-        depositStatus: 'not_required' as const,
-        paymentMethod: null,
-      })),
-    )
+  if (validRows.length === 0) {
+    return { slotsGenerated: 0, conflictDates }
   }
 
-  return { slotsGenerated: validRows.length, conflictDates }
+  const rowFor = ({ dateStr, startsAt, endsAt }: (typeof validRows)[number]) => ({
+    tenantId,
+    courtId: abonado.courtId,
+    playerId: abonado.playerId ?? null,
+    abonadoId: abonado.id,
+    date: new Date(`${dateStr}T00:00:00Z`),
+    timeStart: abonado.timeStart,
+    timeEnd: abonado.timeEnd,
+    startsAt,
+    endsAt,
+    type: 'fixed' as const,
+    status: 'confirmed' as const,
+    priceSnapshot: abonado.pricePerSession,
+    depositAmount: 0,
+    depositStatus: 'not_required' as const,
+    paymentMethod: null,
+  })
+
+  try {
+    // Bajo savepoint (tx.transaction anidado = SAVEPOINT en postgres-js): si el
+    // exclusion constraint revienta, un ROLLBACK TO SAVEPOINT deja la
+    // transacción externa sana para el fallback de abajo. Un catch sin
+    // savepoint la dejaría abortada ("current transaction is aborted") para
+    // cualquier query posterior, incluida la del fallback.
+    await tx.transaction(async (tx2) => {
+      await tx2.insert(bookings).values(validRows.map(rowFor))
+    })
+    return { slotsGenerated: validRows.length, conflictDates }
+  } catch (err) {
+    if (!isExclusionViolation(err)) throw err
+    // Otro proceso ganó alguno de estos slots entre el checkBookingOverlap
+    // optimista de arriba y este INSERT (misma carrera que
+    // createManualBooking/createOnlineBooking cierran con
+    // isExclusionViolation) — el batch entero abortó en Postgres. Reintentar
+    // fila por fila, cada una en su propio savepoint, para no perder las
+    // fechas que sí eran válidas: la que revienta con 23P01 pasa a
+    // conflictDates, las demás se insertan igual.
+    let slotsGenerated = 0
+    for (const candidate of validRows) {
+      try {
+        await tx.transaction(async (tx2) => {
+          await tx2.insert(bookings).values(rowFor(candidate))
+        })
+        slotsGenerated++
+      } catch (rowErr) {
+        if (!isExclusionViolation(rowErr)) throw rowErr
+        conflictDates.push(candidate.dateStr)
+      }
+    }
+    return { slotsGenerated, conflictDates }
+  }
 }
 
 export async function createAbonado(
@@ -159,6 +208,11 @@ export async function createAbonado(
   // cancha ajena. getCourtById ya filtra por tenant_id en la query.
   const court = await getCourtById(input.courtId, tenantId, tx)
   if (!court) throw new CourtNotFoundError(input.courtId)
+
+  // Cierra la ventana de carrera con OTRA createAbonado/reactivateAbonado (o
+  // con createManualBooking/createOnlineBooking) concurrente sobre la misma
+  // cancha: ver lockCourtRow arriba.
+  await lockCourtRow(input.courtId, tx)
 
   const hasConflict = await checkAbonadoSlotConflict(
     input.courtId,
@@ -243,10 +297,17 @@ export async function pauseAbonado(
   if (current.status === 'canceled') throw new AbonadoAlreadyCanceledError()
   if (current.status === 'paused') return rowToAbonadoRow(current)
 
+  // NOW()::date trunca en UTC (la sesión de Postgres no tiene SET TIME ZONE a
+  // ART): entre las 21:00 y 23:59 ART ya es "mañana" en UTC, y el DELETE con
+  // "date >= mañana" deja viva la reserva de bookings.date=hoy. artToday()
+  // (mismo cálculo que cancelAbonado hace con `fromDate` explícito) da la
+  // fecha operativa ART correcta.
+  const today = artToday()
+
   await tx.execute(sql`
     DELETE FROM bookings
     WHERE abonado_id = ${abonadoId}
-      AND date >= NOW()::date
+      AND date >= ${today}::date
       AND status IN ('confirmed','pending_payment')
   `)
 
@@ -285,6 +346,11 @@ export async function reactivateAbonado(
   const current = existing[0]!
   if (current.status === 'canceled') throw new AbonadoAlreadyCanceledError()
   if (current.status === 'active') return { abonado: rowToAbonadoRow(current), slotsGenerated: 0 }
+
+  // Cierra la ventana de carrera con OTRA createAbonado/reactivateAbonado (o
+  // con createManualBooking/createOnlineBooking) concurrente sobre la misma
+  // cancha: ver lockCourtRow arriba.
+  await lockCourtRow(current.courtId, tx)
 
   const hasConflict = await checkAbonadoSlotConflict(
     current.courtId,

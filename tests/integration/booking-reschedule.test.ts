@@ -618,6 +618,49 @@ describe('rescheduleBooking — mover el turno', () => {
     ).rejects.toBeInstanceOf(BookingDateOutOfRangeError)
   }, 30_000)
 
+  /**
+   * 🔴 04-reschedule-past-slot: `assertDateWindow` sólo compara la FECHA
+   * (string YYYY-MM-DD) contra hoy — para `date === hoy` una hora YA PASADA
+   * del mismo día operativo pasaba el gate igual. El fix compara el instante
+   * físico (`startsAt`, ya calculado con `physicalRange`) contra el reloj.
+   */
+  it('rechaza mover a una hora de HOY que ya pasó', async () => {
+    // Cancha con tarifa las 24hs: la `PRICING` compartida del archivo sólo
+    // cubre 08:00-23:00, y el destino de este test (00:00) tiene que tener
+    // precio para llegar al chequeo bajo prueba en vez de morir antes en
+    // `PriceUnavailableError`.
+    const courtAllDay = await insertCourt({
+      pricing: {
+        rules: [
+          {
+            days: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
+            from: '00:00',
+            to: '00:00',
+            price: 500000,
+          },
+        ],
+      },
+    })
+    const date = artTodayStr()
+    const id = await insertBooking({
+      courtId: courtAllDay,
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
+
+    // 00:00-01:00 ART de HOY: para cualquier hora del día en que corra el
+    // test, ese instante ya pasó (sólo no lo estaría en el primer milisegundo
+    // exacto de la medianoche ART). 60 minutos justos: `assertSlotDuration`
+    // exige SLOT_DURATION_MINUTES.
+    await expect(
+      move({ bookingId: id, courtId: courtAllDay, date, timeStart: '00:00', timeEnd: '01:00' }),
+    ).rejects.toBeInstanceOf(BookingDateOutOfRangeError)
+
+    // El turno original quedó intacto.
+    expect((await readBooking(id)).time_start).toBe('10:00:00')
+  }, 30_000)
+
   it('rechaza mover a una cancha pausada', async () => {
     const date = dateIn(3)
     const id = await insertBooking({ courtId: courtA, date, timeStart: '12:00', timeEnd: '13:00' })

@@ -70,6 +70,19 @@ export class TenantInactiveError extends Error {
   }
 }
 
+// 07-cancelbyplayer-noshow-guard: un turno queda 'confirmed' hasta ~60 min
+// después de ends_at (cron auto-complete-bookings, 30 min de tick + 30 min de
+// gracia). Sin este guard, un jugador que no se presentó podía cancelar su
+// propio turno YA TERMINADO dentro de esa ventana y esquivar el softban de
+// no-show (handleNoShow/applyNoShowStrike nunca corre por este camino).
+// Mismo criterio temporal que `decideAdminRefund` (bookingEndUtcMs).
+export class BookingAlreadyEndedError extends Error {
+  constructor(public readonly bookingId: string) {
+    super(`Booking ${bookingId} cannot be canceled by the player: it has already ended`)
+    this.name = 'BookingAlreadyEndedError'
+  }
+}
+
 // Hallazgo 2: una cancelación in-policy con seña MP pagada (payment_id seteado)
 // no puede ejecutar el refund porque el gateway no está disponible. Lanzamos en
 // vez de marcar canceled_refunded con deposit_status='paid' (estado mentiroso:

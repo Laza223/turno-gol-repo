@@ -22,6 +22,7 @@ import {
   DowngradeBlockedError,
   InvalidTransitionError,
   ReactivateNotAllowedError,
+  UpgradeAlreadyPendingError,
 } from '@/modules/billing/billing.errors'
 import { runDunningSweep } from '@/shared/jobs/workers/dunning-retry.worker'
 import {
@@ -346,6 +347,51 @@ describe('Test B — upgrade Predio → Complejo proration', () => {
     `
     expect(subRows[0]!.plan_id).toBe(plans.complejo)
     expect(subRows[0]!.pending_plan_change).toBeNull()
+  })
+})
+
+// ─── Test B2 (01-billing-upgrade-dedup): segunda upgrade() con una ya
+// pendiente se rechaza, no pisa el pending_plan_change ni crea otra
+// preferencia MP ────────────────────────────────────────────────────────────
+
+describe('Test B2 — upgrade() con un cambio ya pendiente', () => {
+  it('segunda llamada a upgrade() → UpgradeAlreadyPendingError, sin pisar pending_plan_change ni tocar MP de nuevo', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, 'predio', {
+      currentPeriodStart: new Date('2027-04-01T00:00:00Z'),
+      currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
+    })
+
+    await withTenantContext(tenantId, async (tx) => {
+      await billingUpgrade(
+        tenantId,
+        plans.complejo,
+        mockGateway,
+        tx,
+        new Date('2027-04-16T00:00:00Z'),
+      )
+    })
+    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(1)
+
+    await expect(
+      withTenantContext(tenantId, async (tx) => {
+        await billingUpgrade(
+          tenantId,
+          plans.estadio,
+          mockGateway,
+          tx,
+          new Date('2027-04-20T00:00:00Z'),
+        )
+      }),
+    ).rejects.toBeInstanceOf(UpgradeAlreadyPendingError)
+
+    // Sin segunda preferencia MP; `pending_plan_change` sigue apuntando al
+    // upgrade original (complejo), no al estadio del intento rechazado.
+    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(1)
+    const rows = await sql<{ pending_plan_change: string | null }[]>`
+      SELECT pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `
+    expect(rows[0]!.pending_plan_change).toBe(plans.complejo)
   })
 })
 

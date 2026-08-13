@@ -37,7 +37,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { withTenantContext } from '@/shared/db/client'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isStaffMemberOfTenant } from '@/modules/staff/staff.service'
+import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
 
 const STAFF_USER = {
   type: 'staff' as const,
@@ -155,5 +155,50 @@ describe('staff actions — happy path supera los guards', () => {
     const res = await deactivateStaffAction('member-1')
     expect(adminRateLimited).toHaveBeenCalledWith('tenant-1')
     expect(res).toEqual({ success: true })
+  })
+})
+
+// Chainable mock de `tx` para el insert/upsert de la Fase 3 (03-invite-staff-rollback).
+function fakeTx() {
+  return {
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+      }),
+    }),
+  }
+}
+
+describe('inviteStaffAction — rollback ante fallo real de entrega (03-invite-staff-rollback)', () => {
+  it('el callback de la Fase 3 RECHAZA (throw) cuando inviteUserByEmail falla, en vez de retornar un valor de negocio que comitearía igual', async () => {
+    // Fase 1 (preflight): actor admin, sin duplicado.
+    vi.mocked(withTenantContext).mockResolvedValueOnce({ success: true })
+    vi.mocked(upsertStaffUser).mockResolvedValue({ id: 'staffuser-1' } as never)
+    inviteUserByEmail.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'SMTP error: could not send email' },
+    })
+
+    // Fase 3: capturamos el callback real que recibe withTenantContext. El
+    // pool real (`db.transaction(fn) => fn(tx)`) solo hace rollback si ese
+    // callback LANZA — antes del fix devolvía {success:false, error} como
+    // valor normal, y el upsert de tenant_staff_members comiteaba igual.
+    let phase3Callback: ((tx: unknown) => Promise<unknown>) | undefined
+    vi.mocked(withTenantContext).mockImplementationOnce((_id, fn) => {
+      phase3Callback = fn as (tx: unknown) => Promise<unknown>
+      return fn(fakeTx() as never)
+    })
+
+    const res = await inviteStaffAction(inviteForm())
+
+    expect(phase3Callback).toBeDefined()
+    await expect(phase3Callback!(fakeTx())).rejects.toThrow('SMTP error: could not send email')
+
+    // El Server Action sigue devolviendo el mismo StaffActionResult de error
+    // al usuario -- lo que cambió es que ahora la tx real hace rollback.
+    expect(res).toEqual({
+      success: false,
+      error: 'Error enviando invitación: SMTP error: could not send email',
+    })
   })
 })

@@ -38,6 +38,25 @@ vi.mock('react-dom', async (importOriginal) => {
 import { AddClosedDateForm } from '@/app/(admin)/settings/horarios/AddClosedDateForm'
 import { HorariosForm } from '@/app/(admin)/settings/horarios/HorariosForm'
 import { RemoveClosedDateForm } from '@/app/(admin)/settings/horarios/RemoveClosedDateForm'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getStaffTenant } from '@/modules/tenants/tenant.service'
+
+// Regresión 05-horarios-mindate-utc: la page usaba el reloj UTC crudo del
+// server para "hoy" en vez de artTodayStr(). Se mockean los mismos dos puntos
+// que usa el resto del repo para esta page (ver facturacion-page.test.tsx) y
+// se deja el reloj real de '@/shared/dates/art' para ejercitar la conversión
+// ART de verdad.
+vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
+vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
+// La page importa ./actions (Server Actions) para pasarlas como prop — esas
+// actions importan '@/shared/rate-limit/server-action' y '@/shared/db/client',
+// que arrastran @sentry/nextjs y postgres reales. Mismo mock que usa el resto
+// del repo (ver booking-charge-action.test.ts, facturacion-page.test.tsx) para
+// no pagar ese costo/colgarse en un test que nunca invoca las actions.
+vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
+vi.mock('@/shared/db/client', () => ({
+  withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
+}))
 
 afterEach(() => cleanup())
 
@@ -70,4 +89,50 @@ describe('HorariosForms — feedback (#19)', () => {
     render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
     expect(screen.queryByRole('alert')).toBeNull()
   })
+})
+
+describe('HorariosPage — minDate en ART (regresión 05-horarios-mindate-utc)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('usa el día ART de hoy: no oculta el cierre de hoy ni adelanta el mínimo del form', async () => {
+    // Timeout ampliado (default 10s): esta page importa ./actions, que arrastra
+    // drizzle/postgres reales aunque estén mockeados los efectos — el cold
+    // transform de ese grafo de módulos puede pasar el default en máquinas lentas.
+    // 2026-06-13T01:30:00Z = 2026-06-12T22:30 ART (UTC-3): el reloj UTC crudo
+    // ya cayó en el día calendario siguiente, pero en ART todavía es 06-12.
+    // Solo se fakea `Date`: fakear setTimeout/MessageChannel también cuelga
+    // el render de React (scheduler interno los usa y nunca los avanzamos).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-06-13T01:30:00.000Z'))
+
+    formState.mockReturnValue({ success: true })
+    vi.mocked(extractAuthUser).mockResolvedValue({
+      type: 'staff',
+      staffUserId: 'staff-1',
+      tenantId: 't-1',
+      id: 'auth-1',
+      email: 'a@b.com',
+    } as never)
+    vi.mocked(getStaffTenant).mockResolvedValue({
+      openingHours: {},
+      closedDates: ['2026-06-11', '2026-06-12', '2026-06-13'],
+      closesNextDay: false,
+    } as never)
+
+    const HorariosPage = (await import('@/app/(admin)/settings/horarios/page')).default
+    render(await HorariosPage())
+
+    // El cierre de HOY (ART 06-12) sigue en la lista — con el bug, minDate
+    // caía en 06-13 y este filtro (`d >= minDate`) lo hacía desaparecer.
+    expect(screen.getByText(/12 de junio de 2026/)).toBeTruthy()
+    // El cierre vencido (06-11, anterior a hoy ART) sigue filtrado de la lista.
+    expect(screen.queryByText(/11 de junio de 2026/)).toBeNull()
+
+    // El <input type="date"> de "Agregar día cerrado" acepta hoy en ART, no
+    // un día adelantado por el reloj UTC del server.
+    const input = screen.getByLabelText('Agregar día cerrado') as HTMLInputElement
+    expect(input.min).toBe('2026-06-12')
+  }, 20_000)
 })

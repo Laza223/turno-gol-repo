@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  BookingAlreadyEndedError,
   BookingNotOwnedByPlayerError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
@@ -48,6 +49,15 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
     })
   })
 
+  it('07-cancelbyplayer-noshow-guard: mapea BookingAlreadyEndedError a un error amigable', async () => {
+    vi.mocked(cancelByPlayer).mockRejectedValueOnce(new BookingAlreadyEndedError(VALID_UUID))
+    const result = await cancelMyBookingAction(VALID_UUID)
+    expect(result).toEqual({
+      success: false,
+      error: 'El turno ya terminó. Contactá al complejo.',
+    })
+  })
+
   it('sigue mapeando BookingNotOwnedByPlayerError (no regresiona)', async () => {
     vi.mocked(cancelByPlayer).mockRejectedValueOnce(
       new BookingNotOwnedByPlayerError(VALID_UUID, 'player-1'),
@@ -68,5 +78,63 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
     } as never)
     const result = await cancelMyBookingAction(VALID_UUID)
     expect(result).toEqual({ success: true, booking })
+  })
+
+  it('no filtra campos internos de staff al jugador (auditoría #08-mis-reservas-data-leak)', async () => {
+    const fullBooking = {
+      id: 'booking-1',
+      tenantId: 'tenant-1',
+      courtId: 'court-1',
+      playerId: 'player-1',
+      abonadoId: null,
+      tournamentId: null,
+      createdByStaff: 'staff-secret-id',
+      date: new Date('2026-08-20'),
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      type: 'spontaneous',
+      status: 'canceled_refunded',
+      priceSnapshot: 500000,
+      depositAmount: 150000,
+      depositStatus: 'refunded',
+      paymentMethod: 'mercadopago',
+      paymentId: 'payment-secret-id',
+      notesInternal: 'cliente conflictivo, ojo',
+      notesPlayer: null,
+      guestName: 'Juan Invitado',
+      guestPhone: '+5491111111111',
+      canceledReason: 'no puedo ir',
+      canceledBy: 'player',
+      canceledAt: new Date('2026-08-19'),
+      completedByStaff: 'staff-secret-id-2',
+      createdAt: new Date('2026-08-01'),
+      updatedAt: new Date('2026-08-19'),
+    }
+    vi.mocked(cancelByPlayer).mockResolvedValueOnce({
+      booking: fullBooking,
+      pendingRefund: undefined,
+      notificationIds: [],
+    } as never)
+    const result = await cancelMyBookingAction(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error('expected success')
+    expect(result.booking).toEqual({
+      id: 'booking-1',
+      status: 'canceled_refunded',
+      date: fullBooking.date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      depositStatus: 'refunded',
+      depositAmount: 150000,
+      priceSnapshot: 500000,
+      canceledReason: 'no puedo ir',
+      canceledAt: fullBooking.canceledAt,
+    })
+    expect(result.booking).not.toHaveProperty('notesInternal')
+    expect(result.booking).not.toHaveProperty('createdByStaff')
+    expect(result.booking).not.toHaveProperty('completedByStaff')
+    expect(result.booking).not.toHaveProperty('paymentId')
+    expect(result.booking).not.toHaveProperty('guestName')
+    expect(result.booking).not.toHaveProperty('guestPhone')
   })
 })

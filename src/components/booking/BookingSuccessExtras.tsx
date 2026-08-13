@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { CalendarPlus, MessageCircle, Navigation } from 'lucide-react'
+import { icsEscapeText } from './ics-escape'
 
 const BookingMiniMap = dynamic(() => import('./BookingMiniMap'), {
   ssr: false,
@@ -32,20 +33,6 @@ const dateLabel = new Intl.DateTimeFormat('es-AR', {
 function parseDateOnly(d: string): Date {
   const [y, m, day] = d.split('-').map(Number)
   return new Date(y ?? 1970, (m ?? 1) - 1, day ?? 1)
-}
-
-// Neutraliza texto tenant-controlado antes de embeberlo en una línea ICS
-// (security scan F21): tenantName/courtName/address/city no tienen
-// restricción de caracteres, así que un CR/LF crudo podría cerrar la línea
-// actual e inyectar propiedades iCalendar adicionales. RFC 5545 §3.3.11:
-// backslash, punto y coma y coma van escapados con `\`; CR/LF se eliminan
-// (estos campos son de una sola línea, no soportan el continuation \n).
-export function icsEscapeText(value: string): string {
-  return value
-    .replace(/[\r\n]+/g, ' ')
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
 }
 
 // ART (UTC-3) → UTC en formato ICS: YYYYMMDDTHHMMSSZ

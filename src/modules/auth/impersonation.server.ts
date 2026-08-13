@@ -76,9 +76,7 @@ export async function getImpersonationSessionFor(
   // immediately". Dynamic import: same reason extractRealAuthUser() below
   // is dynamic — avoids a static cycle with auth.middleware.ts, which
   // imports this module.
-  const { isSystemAdminActiveAndAllowlisted } = await import(
-    '@/modules/auth/system-admin.guards'
-  )
+  const { isSystemAdminActiveAndAllowlisted } = await import('@/modules/auth/system-admin.guards')
   if (!(await isSystemAdminActiveAndAllowlisted(payload.systemAdminId))) return null
 
   return { systemAdminId: payload.systemAdminId, tenantId: payload.tenantId }

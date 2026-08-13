@@ -14,9 +14,7 @@ export type BookingCanceledData = {
 
 export function renderBookingCanceled(data: BookingCanceledData): EmailContent {
   const subject = `Reserva cancelada — ${data.courtName}, ${data.date} ${data.timeStart}`
-  const reasonLine = data.reason
-    ? `<p><strong>Motivo:</strong> ${escapeHtml(data.reason)}</p>`
-    : ''
+  const reasonLine = data.reason ? `<p><strong>Motivo:</strong> ${escapeHtml(data.reason)}</p>` : ''
   const html = `
 <!DOCTYPE html>
 <html lang="es">

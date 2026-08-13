@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { icsEscapeText } from '@/components/booking/BookingSuccessExtras'
+import { icsEscapeText } from '@/components/booking/ics-escape'
 
 // Security scan F21: tenantName/courtName/address/city are free text with no
 // character restriction, interpolated straight into ICS lines. A CR/LF

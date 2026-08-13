@@ -3490,3 +3490,35 @@ orden.
 
 **Cerrar Fase 4 no arranca la Fase 5.** El criterio de entrada que falta no es de código: el plan
 (§"Advertencia de secuencia") deja escrito que la otra condición es comercial.
+
+---
+
+## D6 — Volumen y carga: CERRADA (2026-08-13)
+
+Última fase pendiente de Wave 2 (D1-D8). Precedida por B11 (2026-08-12), que ya había cubierto la
+mitad del scope original (16 planes EXPLAIN bajo rol real y volumen) y dejó documentado con
+evidencia que el k6 local que pedía D6 no mide el p95 de producción — la comparación con doc5
+vive en Sentry, ya instrumentado. Esta sesión revisó el estado antes de tocar nada (a pedido
+explícito del dueño: "pasaron bastantes cambios, revisá antes"), y cerró lo que faltaba:
+
+- **3 hallazgos de volumen nuevos** por drift de schema desde D1 (Torneos, Caja/Cantina, Personas
+  no existían cuando D3/B11 escribieron el harness): `getPlayerActivity` medido y descartado
+  (crece con 1 persona, no con el tenant — riesgo estructuralmente bajo); `listTenantClients` 🟡
+  confirmado (cada página del universo del tenant cuesta lo mismo, 42k buffers/54ms sobre 470
+  personas — no fixeado, sin evidencia de que duela hoy); `getDebts` 12m vs `'all'` no pudo
+  demostrar la mejora de #144 con el seed actual (modela exactamente 1 año, el cutoff no excluye
+  nada — límite del fixture, no del código).
+- **Smoke de concurrencia local** (`scripts/audit/loadsmoke-d3.ts`, `pnpm audit:loadsmoke`,
+  `autocannon` en vez de k6 — cero fricción de instalación) sobre los 2 endpoints que pedía D6:
+  ambos dentro de presupuesto en caliente; en frío (Turbopack recién levantado) muy por encima —
+  artefacto de compilación, medido y descartado explícitamente como tal, no reportado como bug.
+- **Burst de 12 webhooks MP concurrentes con el mismo evento** (simula un reintento real de MP):
+  `lockMpEvent` sostiene la idempotencia bajo carrera de verdad, no solo en el caso feliz de 1
+  entrega — 1 `processed_webhooks`, 1 `payments`, booking confirmado una sola vez.
+
+Ningún hallazgo tocó código de producto. `next start` local se descartó (exige credenciales
+productivas de Upstash/VAPID/R2 no provisionadas por diseño — mismo motivo que el propio e2e del
+repo corre sobre `next dev`, nunca `next start`). Gate: typecheck + lint limpios. Report:
+`docs/audit/reports/fase-d6-volumen-carga-report.md`.
+
+**Wave 2 queda completa: 8 de 8 fases cerradas.**

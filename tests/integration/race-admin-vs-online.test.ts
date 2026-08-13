@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createManualBooking, createOnlineBooking } from '@/modules/bookings/booking.service'
 import { SlotTakenError } from '@/modules/bookings/booking.errors'
+import { addDays, artTodayStr } from '@/shared/dates/art'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 import {
@@ -155,7 +156,7 @@ async function countActiveBookings(
 
 describe('race: admin manual booking vs player online booking (same court/slot)', () => {
   it('admin manual y jugador online concurrentes en el mismo slot: exactamente 1 gana y el perdedor recibe SlotTakenError', async () => {
-    const date = '2026-08-12'
+    const date = addDays(artTodayStr(), 1)
     const timeStart = '20:00'
     const timeEnd = '21:00'
 
@@ -185,7 +186,7 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
   }, 30_000)
 
   it('5 intentos manuales + 5 online concurrentes en el mismo slot: exactamente 1 gana y los 9 perdedores reciben SlotTakenError', async () => {
-    const date = '2026-08-13'
+    const date = addDays(artTodayStr(), 2)
     const timeStart = '20:00'
     const timeEnd = '21:00'
 
@@ -213,7 +214,7 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
   }, 30_000)
 
   it('una reserva online con seña en pending_payment ocupa el slot y bloquea una reserva manual del admin', async () => {
-    const date = '2026-08-14'
+    const date = addDays(artTodayStr(), 3)
     const timeStart = '20:00'
     const timeEnd = '21:00'
 
@@ -258,7 +259,7 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
   }, 30_000)
 
   it('reserva manual del admin y online del jugador en CANCHAS distintas al mismo horario: ambas tienen éxito (aislamiento por cancha)', async () => {
-    const date = '2026-08-15'
+    const date = addDays(artTodayStr(), 4)
     const timeStart = '20:00'
     const timeEnd = '21:00'
 
@@ -277,7 +278,7 @@ describe('race: admin manual booking vs player online booking (same court/slot)'
   }, 30_000)
 
   it('reserva manual off-grid del admin vs online con solape PARCIAL: exactamente 1 gana y la otra recibe SlotTakenError', async () => {
-    const date = '2026-08-16'
+    const date = addDays(artTodayStr(), 5)
 
     // Tarea #6: ambos turnos son de 60 min, pero el manual va off-grid (20:30–
     // 21:30) y el online en hora redonda (21:00–22:00). Solapan en [21:00, 21:30).

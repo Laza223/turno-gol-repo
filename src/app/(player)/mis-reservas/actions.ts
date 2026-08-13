@@ -37,7 +37,7 @@ const cancelSchema = z.object({
  * jugador), sin importar si el componente cliente los lee. Este tipo
  * reducido es lo único que el jugador puede ver de SU PROPIA reserva.
  */
-export type PlayerBookingRow = Pick<
+type PlayerBookingRow = Pick<
   BookingRow,
   | 'id'
   | 'status'

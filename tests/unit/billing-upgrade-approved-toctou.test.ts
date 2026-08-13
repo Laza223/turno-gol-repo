@@ -13,9 +13,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // en el WHERE) sea el gate: si afecta 0 filas, MP nunca se toca.
 
 vi.mock('@/shared/db/audit', () => ({ insertSystemAuditLog: vi.fn() }))
+vi.mock('@/lib/sentry', () => ({ captureMessage: vi.fn() }))
 
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
+import { captureMessage } from '@/lib/sentry'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import type { DbTx } from '@/shared/db/client'
 
@@ -82,6 +84,32 @@ describe('handleUpgradeApproved — TOCTOU entre loadSub y el UPDATE (B4 🔴)',
     expect(insertSystemAuditLog).not.toHaveBeenCalled()
   })
 
+  // 01-billing-upgrade-dedup: antes de este fix, el 0-filas de arriba
+  // devolvía en silencio — un pago YA ACREDITADO en MP que no encontraba
+  // dónde aplicarse en la DB no dejaba rastro en Sentry ni en audit_logs
+  // (mismo patrón de captureMessage que dunning.service.ts:onPaymentApproved
+  // para su propio caso de pago-sin-match).
+  it('UPDATE afecta 0 filas → captureMessage con contexto, para conciliación manual', async () => {
+    const tx = makeTx([]) // 0 filas — race concurrente
+    const gateway = new MockGateway()
+
+    await handleUpgradeApproved(TENANT_ID, TARGET_PLAN_ID, gateway, tx, 'mp-pay-123')
+
+    expect(captureMessage).toHaveBeenCalledTimes(1)
+    expect(captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining('CAS UPDATE affected 0 rows'),
+      expect.objectContaining({
+        level: 'warning',
+        extra: expect.objectContaining({
+          tenantId: TENANT_ID,
+          targetPlanId: TARGET_PLAN_ID,
+          pendingPlanChange: TARGET_PLAN_ID,
+          mpPaymentId: 'mp-pay-123',
+        }),
+      }),
+    )
+  })
+
   it('UPDATE afecta 1 fila → MP se actualiza al monto nuevo y se audita upgrade_completed', async () => {
     const tx = makeTx([{ id: 'sub-1' }]) // 1 fila — camino feliz
     const gateway = new MockGateway()
@@ -99,5 +127,6 @@ describe('handleUpgradeApproved — TOCTOU entre loadSub y el UPDATE (B4 🔴)',
         metadata: expect.objectContaining({ fromPlanId: 'plan-1', toPlanId: TARGET_PLAN_ID }),
       }),
     )
+    expect(captureMessage).not.toHaveBeenCalled()
   })
 })

@@ -226,7 +226,13 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
         )
       }
       if (info.status === 'approved') {
-        await handleUpgradeApproved(upgrade.tenantId, upgrade.targetPlanId, gateway, tx)
+        await handleUpgradeApproved(
+          upgrade.tenantId,
+          upgrade.targetPlanId,
+          gateway,
+          tx,
+          job.mpPaymentId,
+        )
       }
       return
     }

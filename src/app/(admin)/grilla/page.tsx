@@ -115,6 +115,7 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
       paymentMethod: r.paymentMethod as PaymentMethodValue | null,
       depositStatus: r.depositStatus as DepositStatus,
       depositAmount: r.depositAmount,
+      createdAt: r.createdAt,
       totalPaid,
       pending,
     }

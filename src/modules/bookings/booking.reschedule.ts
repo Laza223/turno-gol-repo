@@ -333,6 +333,16 @@ export async function rescheduleBooking(
     physicallyNextDay,
   })
 
+  // `assertDateWindow` sólo compara la FECHA (string YYYY-MM-DD) contra hoy:
+  // para `input.date === today` cualquier hora ya pasada del mismo día operativo
+  // pasaba el gate igual. `startsAt` es el instante físico recién calculado
+  // (ya contempla `physicallyNextDay` para complejos `closes_next_day`), así
+  // que compararlo contra el reloj es el mismo criterio que usa la creación
+  // online (`createOnlineBookingImpl`, booking.service.ts) para 'past_slot'.
+  if (startsAt.getTime() <= Date.now()) {
+    throw new BookingDateOutOfRangeError('past_slot')
+  }
+
   await assertSlotFreeForOther(input.courtId, input.bookingId, startsAt, endsAt, tx)
 
   const from = {

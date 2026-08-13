@@ -21,6 +21,20 @@ import { createAdminClient } from '@/lib/supabase/admin'
 type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
 
 /**
+ * Hallazgo 03-invite-staff-rollback: el envío real de la invitación
+ * (inviteUserByEmail) corre DENTRO de la misma transacción que el upsert de
+ * `tenant_staff_members`. `withTenantContext` (src/shared/db/client.ts) solo
+ * hace rollback si el callback LANZA — un `return` de valor de negocio
+ * comitea igual. Clase propia (en vez de un `return {success:false}` desde
+ * adentro del callback) para que el fallo de entrega SÍ dispare el rollback
+ * del alta de staff, y se capture afuera de `withTenantContext` para
+ * devolver el mismo StaffActionResult al usuario.
+ */
+class InviteDeliveryError extends Error {
+  name = 'InviteDeliveryError'
+}
+
+/**
  * Busca un auth user por email. supabase-js no expone lookup por email, así que
  * paginamos listUsers de forma acotada. Best-effort: si no se ubica, el callback
  * de login sincroniza staff_user_id igual (#47).
@@ -195,65 +209,74 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
   }
 
   // Fase 3 (pool de tenant): vincula al tenant (con policies propias) + invita.
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    await tx
-      .insert(tenantStaffMembers)
-      .values({
-        tenantId: tenant.id,
-        staffUserId: staffUser.id,
-        role,
-        addedBy: user.staffUserId,
-        isActive: true,
-      })
-      .onConflictDoUpdate({
-        target: [tenantStaffMembers.tenantId, tenantStaffMembers.staffUserId],
-        // Re-invitar a un miembro inactivo lo reactiva con el rol recién elegido.
-        set: { isActive: true, role, addedBy: user.staffUserId },
-      })
-
-    const adminClient = createAdminClient()
-    const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-      lowerEmail,
-      {
-        // Mismo patrón token_hash que signup/recovery/magic-link (ADR-002):
-        // el link tiene que apuntar a /api/auth/callback, no directo a
-        // /dashboard — invite.html arma `{{ .RedirectTo }}&token_hash=...`.
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
-      },
-    )
-
-    if (inviteError && !inviteError.message.includes('already been registered')) {
-      return { success: false as const, error: `Error enviando invitación: ${inviteError.message}` }
-    }
-
-    if (inviteData?.user?.id) {
-      // Usuario nuevo en auth: solo pertenece a este complejo, claim completo.
-      // force_password_change: el invite de GoTrue crea el usuario SIN
-      // contraseña — sin este flag entra directo a /dashboard y queda sin
-      // forma de volver a loguearse una vez que cierra sesión.
-      await adminClient.auth.admin.updateUserById(inviteData.user.id, {
-        app_metadata: {
-          staff_user_id: staffUser.id,
-          tenant_id: tenant.id,
+  // Si el envío de la invitación falla, se lanza InviteDeliveryError (en vez
+  // de un `return` de negocio) para que Drizzle haga rollback del upsert de
+  // tenant_staff_members — ver comentario del hallazgo en InviteDeliveryError.
+  let result: { success: true } | { success: false; error: string }
+  try {
+    result = await withTenantContext(tenant.id, async (tx) => {
+      await tx
+        .insert(tenantStaffMembers)
+        .values({
+          tenantId: tenant.id,
+          staffUserId: staffUser.id,
           role,
-          force_password_change: true,
-        },
-      })
-    } else if (inviteError) {
-      // 'already been registered': el usuario ya existe en auth (p. ej. admin de
-      // otro complejo). inviteUserByEmail no devuelve su id, así que lo buscamos y
-      // sincronizamos SOLO staff_user_id, preservando su tenant_id/role actuales
-      // para no pisar la sesión de otros complejos (#47).
-      const existingAuth = await findAuthUserByEmail(adminClient, lowerEmail)
-      if (existingAuth) {
-        await adminClient.auth.admin.updateUserById(existingAuth.id, {
-          app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
+          addedBy: user.staffUserId,
+          isActive: true,
         })
-      }
-    }
+        .onConflictDoUpdate({
+          target: [tenantStaffMembers.tenantId, tenantStaffMembers.staffUserId],
+          // Re-invitar a un miembro inactivo lo reactiva con el rol recién elegido.
+          set: { isActive: true, role, addedBy: user.staffUserId },
+        })
 
-    return { success: true as const }
-  })
+      const adminClient = createAdminClient()
+      const { data: inviteData, error: inviteError } =
+        await adminClient.auth.admin.inviteUserByEmail(lowerEmail, {
+          // Mismo patrón token_hash que signup/recovery/magic-link (ADR-002):
+          // el link tiene que apuntar a /api/auth/callback, no directo a
+          // /dashboard — invite.html arma `{{ .RedirectTo }}&token_hash=...`.
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
+        })
+
+      if (inviteError && !inviteError.message.includes('already been registered')) {
+        throw new InviteDeliveryError(inviteError.message)
+      }
+
+      if (inviteData?.user?.id) {
+        // Usuario nuevo en auth: solo pertenece a este complejo, claim completo.
+        // force_password_change: el invite de GoTrue crea el usuario SIN
+        // contraseña — sin este flag entra directo a /dashboard y queda sin
+        // forma de volver a loguearse una vez que cierra sesión.
+        await adminClient.auth.admin.updateUserById(inviteData.user.id, {
+          app_metadata: {
+            staff_user_id: staffUser.id,
+            tenant_id: tenant.id,
+            role,
+            force_password_change: true,
+          },
+        })
+      } else if (inviteError) {
+        // 'already been registered': el usuario ya existe en auth (p. ej. admin de
+        // otro complejo). inviteUserByEmail no devuelve su id, así que lo buscamos y
+        // sincronizamos SOLO staff_user_id, preservando su tenant_id/role actuales
+        // para no pisar la sesión de otros complejos (#47).
+        const existingAuth = await findAuthUserByEmail(adminClient, lowerEmail)
+        if (existingAuth) {
+          await adminClient.auth.admin.updateUserById(existingAuth.id, {
+            app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
+          })
+        }
+      }
+
+      return { success: true as const }
+    })
+  } catch (err) {
+    if (err instanceof InviteDeliveryError) {
+      return { success: false, error: `Error enviando invitación: ${err.message}` }
+    }
+    throw err
+  }
 
   if (result.success) revalidatePath('/settings/equipo')
   return result

@@ -8,6 +8,7 @@ import {
   PlanNotFoundError,
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
+  UpgradeAlreadyPendingError,
 } from '@/modules/billing/billing.errors'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { badRequest, validationError, notFound, conflict, apiError } from '@/shared/api-error'
@@ -58,6 +59,9 @@ export const POST = withTenant(
       }
       if (err instanceof ReactivateNotAllowedError) {
         return conflict(err.message, { code: 'INVALID_STATE' })
+      }
+      if (err instanceof UpgradeAlreadyPendingError) {
+        return conflict(err.message, { code: 'UPGRADE_ALREADY_PENDING' })
       }
       if (err instanceof SubscriptionNotFoundError) {
         return notFound(err.message, { code: 'NOT_FOUND' })

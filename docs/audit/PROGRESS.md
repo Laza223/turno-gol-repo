@@ -3522,3 +3522,166 @@ repo corre sobre `next dev`, nunca `next start`). Gate: typecheck + lint limpios
 `docs/audit/reports/fase-d6-volumen-carga-report.md`.
 
 **Wave 2 queda completa: 8 de 8 fases cerradas.**
+
+## Caza de bugs — 8 revisores paralelos + panel adversarial 3 lentes (2026-08-13)
+
+Workflow `caza-bugs-turnogol`: 8 agentes por superficie (auth-guards, money-payments,
+races-transactions, time-dates, booking-state, frontend-actions, recent-changes, +1) buscaron en
+paralelo sobre el repo completo; cada hallazgo pasó por 3 verificadores adversariales
+independientes con lectura de código fresca (grep/Read, no confiar en el finder). 9 crudos → 9
+tras dedup → **9 confirmados (3/3 votos) / 0 rechazados**. Ninguno es decisión de negocio — los
+9 son bugs técnicos, ninguno REQUIERE INPUT. Sin fixes aplicados todavía — solo detección,
+pendiente de que Lazar priorice.
+
+Todos severidad 🟡 medio (nada crítico ni con pérdida de plata confirmada, pero dos tocan dinero
+indirectamente: #1 y #6).
+
+1. **`billing.service.ts:310` — upgrade de plan SaaS sin dedup**: `upgrade()` no invalida el
+   `pending_plan_change` anterior ni usa idempotency key hacia MP. Dos preferencias válidas para
+   el mismo tenant (back-button + reintento) hacen que la más vieja, si se paga después, quede
+   con `handleUpgradeApproved` matcheando 0 filas y un `return` silencioso — sin `captureMessage`
+   ni audit log, a diferencia del mismo caso ya manejado en `dunning.service.ts:275`. Cobra al
+   complejo y no aplica el upgrade, sin rastro para reembolso manual.
+   Fix: guard contra `pending_plan_change` ya activo + `captureMessage` en el CAS de 0 filas.
+
+2. **`abonado.service.ts:127` — `insertBookingsForSlots` sin lock ni catch de exclusion
+   violation**: a diferencia de `createManualBooking`/`createOnlineBooking`/
+   `reserveTournamentSlots`, no toma `lockCourtOrThrow` ni envuelve el INSERT masivo en
+   `isExclusionViolation`. Doble-submit de "crear turno fijo" sobre el mismo horario tira un
+   23P01 crudo que aborta TODA la transacción (abonado + las 8 fechas, incluidas las que no
+   chocaban).
+   Fix: mismo patrón que el resto — lock + catch con fallback fila-por-fila.
+
+3. **`settings/equipo/actions.ts:225` — `inviteStaffAction` comitea el alta aunque falle el
+   envío del email**: el paso 3 corre en una sola `withTenantContext`; si `inviteUserByEmail`
+   falla (rate limit/SMTP/cuota) el callback hace `return {success:false}` en vez de `throw` —
+   Drizzle comitea igual. Miembro queda `isActive:true` sin auth user real, y la UI solo ofrece
+   "Reenviar invitación" a miembros `isActive:false` → callejón sin salida sin intervención
+   manual.
+   Fix: lanzar excepción propia dentro del callback para forzar rollback.
+
+4. **`booking.reschedule.ts:172` — reprogramar a una hora ya pasada de hoy**: `assertDateWindow`
+   solo compara fecha (string), nunca hora — a diferencia de `createOnlineBookingImpl`, que sí
+   chequea `slotStartMs <= Date.now()`. Diálogo con lista de slots stale (no revalida antes del
+   submit) permite mover un turno confirmado a un horario ya transcurrido: email de
+   reprogramación erróneo, cancha "ocupada" para siempre en un slot que nadie jugó.
+   Fix: comparar `startsAt.getTime() <= Date.now()` antes de `assertSlotFreeForOther`.
+
+5. **`settings/horarios/page.tsx:20` — `minDate` de "Días cerrados" en UTC crudo**: usa
+   `new Date().toISOString()` en vez de `artTodayStr()`. Ventana 21:00–23:59 ART cada noche: no
+   se puede agregar un cierre de emergencia para "hoy", y si hoy ya estaba cerrado desaparece de
+   la lista (no se puede deshacer) hasta pasada la medianoche ART. Misma clase de bug que
+   `current-date-utc-ventana-muerta-art` (memoria), recurrente en el repo.
+   Fix: `artTodayStr()`.
+
+6. **`abonado.service.ts:249` — `pauseAbonado` usa `NOW()::date` (UTC), único uso de ese patrón
+   en todo `src/`**: en la misma ventana de 21:00–23:59 ART, pausar un abonado con turno esta
+   noche no borra la sesión de hoy (`date >= mañana` no la alcanza) — el turno queda `confirmed`
+   ocupando la cancha pese al pause, bloqueando un walk-in en esa franja. `cancelAbonado`, 88
+   líneas más abajo en el mismo archivo, ya resuelve esto bien con un `fromDate` explícito.
+   Fix: calcular `artTodayStr()` en JS y pasarlo como parámetro, igual que `cancelAbonado`.
+
+7. **`booking.cancellation.ts:177` — `cancelByPlayer` no valida que el turno ya terminó**: a
+   diferencia de `decideAdminRefund` (mismo archivo, guard `turnoTermino` ya documentado como
+   "Bug B3"), el camino de jugador no compara `ends_at`. Dentro de la ventana de gracia del cron
+   `auto-complete-bookings` (hasta ~60 min post-`ends_at`), un jugador que no se presentó puede
+   autocancelar su propia ausencia — mismo resultado financiero que un no-show (seña capturada)
+   pero **sin pasar por `applyNoShowStrike`**, esquivando el softban de reincidencia de forma
+   indefinida y repetible.
+   Fix: mismo guard temporal que `decideAdminRefund`, aplicado a `cancelByPlayer`.
+
+8. **`mis-reservas/actions.ts:152` — `cancelMyBookingAction` filtra el `BookingRow` completo al
+   jugador**: devuelve `notesInternal` (notas del staff sobre el cliente), `createdByStaff`,
+   `completedByStaff` y `paymentId` en el payload de la Server Action — visible en el Network tab
+   del jugador. Choca directo con el motivo por el que `abonados.notes` se eliminó (Ley 25.326,
+   "nunca texto libre sobre personas" — ver B12 en memoria): acá ese mismo texto libre interno
+   llega al jugador por una vía no auditada.
+   Fix: tipo `PlayerBookingRow` player-safe, sin esos 4+ campos.
+
+9. **`use-booking-realtime.ts:37` — B15 (PR #141, `696d34d6`) roto en los 3 puntos de entrada**:
+   ni `normalizeRealtimeRow`, ni `normalizeApiRow`, ni el SELECT de `grilla/page.tsx` (que sí
+   trae `created_at` de la DB pero lo descarta al construir el objeto) propagan `createdAt` al
+   `GridBooking`. `<HoldCountdown>` nunca monta — el contador en vivo de la seña pendiente que
+   el commit prometía ("Pagando ahora" con mm:ss) no se ve nunca en la práctica, solo en el
+   instante irrepetible antes del primer evento Realtime.
+   Fix: propagar `createdAt` en los 3 puntos + arrastrarlo en `carryMoney` si el evento no lo trae.
+
+### Verificación
+
+Solo detección — nada tocado en el código todavía. `pnpm typecheck`/`lint` no corrieron porque
+no hubo cambios.
+
+## Los 9 hallazgos, arreglados y verificados en el árbol real (2026-08-13)
+
+Los 9 hallazgos de arriba se implementaron en 8 worktrees aislados en paralelo (workflow
+`fix-caza-bugs-9`, 2 y 6 fusionados por archivo), cada uno con su propio ciclo
+implementar→verificar→patch. Ese primer juez corrió DENTRO del worktree — evidencia real, pero
+no la que cuenta. Acá se registra la integración al árbol real: cada patch se aplicó uno por vez
+sobre `main`, con `git apply --check` primero y el juez completo (`pnpm typecheck` + `pnpm lint`
+targeted + test relevante) corrido por mí, no confiado del reporte del agente.
+
+**Dos patches no aplicaron limpio** por drift real del árbol compartido (otra sesión tocando el
+mismo repo en simultáneo — mismo síntoma que ya documentó [[sesion-concurrente-cambia-rama-del-tree]]):
+- `05-horarios-mindate-utc`: el hunk de `page.tsx` no matcheaba contexto → aplicado a mano
+  (mismo cambio: `artTodayStr()` en vez de `new Date().toISOString()`).
+- El test de regresión de ese mismo patch mockeaba `requireAdminStaff` (guard que la página NO
+  usa en el HEAD real — usa `extractAuthUser`+`getStaffTenant` directo) → reescrito el mock para
+  coincidir con la implementación real de la página (mismo patrón que `facturacion-page.test.tsx`).
+  Sin este ajuste el test daba falso rojo por `cookies() called outside a request scope`, no por
+  el bug.
+
+**Orden de integración** (todos severidad medio, sin dependencias reales entre sí — 07 y 08
+comparten archivo y se separaron con verificación entre medio):
+
+1. **08 — data leak a jugador** (`mis-reservas/actions.ts`): `PlayerBookingRow` acota el shape.
+   typecheck+lint limpio · `mis-reservas-cancel-action.test.ts` 4/4.
+2. **05 — minDate UTC** (`settings/horarios/page.tsx`): `artTodayStr()`. typecheck+lint limpio ·
+   `horarios-forms.test.tsx` 5/5 (incluido el caso de regresión, confirmado como detector real:
+   con el fix revertido a mano falla por assertion, no por timeout).
+3. **09 — hold countdown roto (B15)** (`grilla/page.tsx` + `use-booking-realtime.ts`): `createdAt`
+   propagado en los 3 puntos de entrada. typecheck+lint limpio · `use-booking-realtime.test.ts` 8/8.
+4. **04 — reprogramar a hora pasada** (`booking.reschedule.ts`): guard `startsAt.getTime() <=
+   Date.now()`. typecheck+lint limpio · integración `booking-reschedule.test.ts` 23/23.
+5. **07 — cancelByPlayer esquiva softban** (`booking.cancellation.ts` + `booking.errors.ts` +
+   `mis-reservas/actions.ts`, mismo archivo que 08 — aplicó limpio encima sin duplicar la
+   proyección `PlayerBookingRow`, confirmado con grep de declaraciones únicas):
+   `BookingAlreadyEndedError` antes de aceptar la cancelación. typecheck+lint limpio · unit
+   `mis-reservas-cancel-action.test.ts` 5/5 · integración `cancellations.test.ts` 42/42.
+6. **03 — invite-staff sin rollback** (`settings/equipo/actions.ts`): `InviteDeliveryError` +
+   throw en vez de `return` dentro del callback transaccional. typecheck+lint limpio ·
+   `actions.test.ts` 12/12.
+7. **02+06 — abonados: lock + timezone** (`abonado.service.ts`): `lockCourtRow` (FOR UPDATE) +
+   catch de `isExclusionViolation` con fallback fila-por-fila en `insertBookingsForSlots`;
+   `pauseAbonado` usa `artToday()` en vez de `NOW()::date`. typecheck+lint limpio · integración
+   `abonados.test.ts` + `race-abonado-vs-individual.test.ts` + `abonado-slots-rerun-idempotency.test.ts`
+   16/16.
+8. **01 — upgrade SaaS sin dedup** (`billing.service.ts` + `billing.errors.ts` +
+   `api/billing/upgrade/route.ts` + `mp-webhook.handler.ts`): `UpgradeAlreadyPendingError` en
+   `upgrade()` + `captureMessage` cuando el CAS de `handleUpgradeApproved` afecta 0 filas.
+   typecheck+lint limpio · unit `billing-upgrade-approved-toctou.test.ts` 3/3 · integración
+   `billing.test.ts` 26/26 (incluido el caso nuevo B2).
+
+### Gate final sobre el árbol completo, con los 8 patches ya integrados
+
+```
+pnpm typecheck    ✓ (limpio)
+pnpm lint         ✓ (src/ tests/ scripts/, limpio)
+pnpm test              → 3429/3429 (328 archivos, 1 skip/1 todo preexistentes)
+pnpm test:integration  → 947/948 (1 falla — ver abajo, no relacionada)
+```
+
+**El 1 test rojo de integración no es de este esfuerzo.** `race-admin-vs-online.test.ts`
+hardcodea `const date = '2026-08-12'` (línea 158) en un test que ya pasaba por el path
+`createOnlineBooking`; hoy es 2026-08-13, esa fecha quedó en el pasado, y el guard de
+`past_slot` (preexistente, en `booking.service.ts`, ningún archivo de este esfuerzo lo toca —
+confirmado con `git diff HEAD` sobre ese archivo: vacío) rechaza el intento ANTES de llegar a la
+carrera por el lock que el test dice ejercitar. Reproduce aislado (3s, sin contención) así que no
+es el flake de CPU compartida que documentan otras entradas de este archivo — es una fecha
+hardcodeada que venció con el reloj real. Fuera de scope de los 9 hallazgos (no es ninguno de
+ellos, y el archivo no aparece en ningún patch de arriba): registrado aparte y flageado como
+tarea separada (`race-admin-vs-online.test.ts:158`), no arreglado acá. Hay dos archivos más con
+el mismo patrón de fecha hardcodeada (`race-double-booking.test.ts`,
+`booking-duration-borders.test.ts`) que hoy siguen en verde pero van a rotar igual con el tiempo
+— anotado en la tarea para que se revisen los tres juntos.
+
+Sin commits: todo queda en el working tree para que Lazar revise antes de commitear.

@@ -316,6 +316,75 @@ describe('useBookingRealtime', () => {
     unmount()
   })
 
+  // 8. B15: createdAt propagates on INSERT (realtime) and reconcile (API) so
+  // the hold countdown can mount for a pending_payment booking.
+  it('case 8: pending_payment INSERT and reconcile both carry createdAt', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 'b-hold',
+            court_id: 'court-1',
+            date: '2025-06-01',
+            time_start: '10:00:00',
+            time_end: '11:00:00',
+            status: 'pending_payment',
+            type: 'spontaneous',
+            guest_name: null,
+            player: null,
+            price_snapshot: 1000,
+            payment_method: null,
+            deposit_status: 'pending',
+            deposit_amount: 300,
+            total_paid: 0,
+            pending: 300,
+            created_at: '2025-06-01T10:00:00.000Z',
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result, unmount } = renderHook(() =>
+      useBookingRealtime({ tenantId: 't1', date: '2025-06-01', initialBookings: [] }),
+    )
+    await flushImport()
+
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
+    fetchMock.mockClear()
+
+    // Live INSERT — realtime payload replicates the full `bookings` row,
+    // created_at included.
+    await act(async () => {
+      h.handler({
+        eventType: 'INSERT',
+        new: makeRawRow({
+          id: 'b-hold',
+          status: 'pending_payment',
+          created_at: '2025-06-01T10:00:00.000Z',
+        }),
+        old: {},
+      })
+    })
+
+    const inserted = result.current.bookings.find((b: GridBooking) => b.id === 'b-hold')
+    expect(inserted?.createdAt).toBe('2025-06-01T10:00:00.000Z')
+
+    // Reconcile fetch (400ms debounce) normalizes the API row — createdAt
+    // must still be present after the authoritative refetch replaces state.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+    const reconciled = result.current.bookings.find((b: GridBooking) => b.id === 'b-hold')
+    expect(reconciled?.createdAt).toBe('2025-06-01T10:00:00.000Z')
+
+    unmount()
+  })
+
   // 7. Cleanup: removeChannel called, timers cleared after unmount
   it('case 7: unmount calls removeChannel and stops all timers', async () => {
     vi.useFakeTimers()

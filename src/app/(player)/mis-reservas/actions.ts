@@ -14,6 +14,7 @@ import { settleRefund } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { cancelByPlayer, type CancellationOutcome } from '@/modules/bookings/booking.cancellation'
 import {
+  BookingAlreadyEndedError,
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
   RefundUnavailableError,
@@ -28,8 +29,45 @@ const cancelSchema = z.object({
   reason: boundedText(500).optional(),
 })
 
+/**
+ * Auditoría #08-mis-reservas-data-leak: BookingRow completo trae
+ * notesInternal/createdByStaff/completedByStaff/paymentId/guestName/guestPhone
+ * — datos internos del staff. Next.js serializa TODO el valor de retorno de
+ * una Server Action en el payload RSC (visible en el Network tab del
+ * jugador), sin importar si el componente cliente los lee. Este tipo
+ * reducido es lo único que el jugador puede ver de SU PROPIA reserva.
+ */
+type PlayerBookingRow = Pick<
+  BookingRow,
+  | 'id'
+  | 'status'
+  | 'date'
+  | 'timeStart'
+  | 'timeEnd'
+  | 'depositStatus'
+  | 'depositAmount'
+  | 'priceSnapshot'
+  | 'canceledReason'
+  | 'canceledAt'
+>
+
+function toPlayerBookingRow(booking: BookingRow): PlayerBookingRow {
+  return {
+    id: booking.id,
+    status: booking.status,
+    date: booking.date,
+    timeStart: booking.timeStart,
+    timeEnd: booking.timeEnd,
+    depositStatus: booking.depositStatus,
+    depositAmount: booking.depositAmount,
+    priceSnapshot: booking.priceSnapshot,
+    canceledReason: booking.canceledReason,
+    canceledAt: booking.canceledAt,
+  }
+}
+
 export type PlayerBookingActionResult =
-  { success: true; booking: BookingRow } | { success: false; error: string }
+  { success: true; booking: PlayerBookingRow } | { success: false; error: string }
 
 async function requirePlayer() {
   const user = await extractAuthUser()
@@ -92,6 +130,11 @@ export async function cancelMyBookingAction(
     if (err instanceof BookingNotInConfirmedError) {
       return { success: false, error: 'La reserva no está en estado confirmado.' }
     }
+    // 07-cancelbyplayer-noshow-guard: el turno ya terminó — no es una
+    // cancelación, es una ausencia; se resuelve con el complejo.
+    if (err instanceof BookingAlreadyEndedError) {
+      return { success: false, error: 'El turno ya terminó. Contactá al complejo.' }
+    }
     // #31: el complejo en estado blocked/deleted hace que cancelByPlayer lance
     // TenantInactiveError. Sin este catch se propagaba como error no controlado
     // de la Server Action, dejando el dialog colgado sin feedback inline.
@@ -149,5 +192,5 @@ export async function cancelMyBookingAction(
     }
   }
 
-  return { success: true, booking: outcome.booking }
+  return { success: true, booking: toPlayerBookingRow(outcome.booking) }
 }

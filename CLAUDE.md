@@ -112,6 +112,7 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - `SET LOCAL` para tenant context, nunca `SET` sin LOCAL
 - Auth staff: email+password. Jugador sigue passwordless (Magic Link). SuperAdmin: script (`seed:system-admin`) + allowlist `SYSTEM_ADMIN_EMAILS` (MFA TOTP: columnas en schema, aún NO enforced en los guards). La identidad sale del JWT (`app_metadata`), no del método de login.
 - Correr `pnpm typecheck` después de cada cambio
+- UX: tan simple que un niño lo entienda (regla explícita del dueño). Portal jugador: cero fricción, tipo ecommerce; admin: denso pero obvio (las dos personalidades del design system, doc20). Nada de configurabilidad "por las dudas".
 
 ## Convenciones de comunicación
 - Respuestas directas, sin introducciones ni conclusiones

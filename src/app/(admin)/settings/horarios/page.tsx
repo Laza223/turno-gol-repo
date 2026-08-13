@@ -5,13 +5,14 @@ import { RemoveClosedDateForm } from './RemoveClosedDateForm'
 import type { LooseOpeningHours } from '@/lib/schedule/schedule-view'
 import { addClosedDateAction, removeClosedDateAction, updateHorariosAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
+import { artTodayStr } from '@/shared/dates/art'
 
 export default async function HorariosPage() {
   const { tenant } = await requireAdminStaff()
 
   const hours = tenant.openingHours as LooseOpeningHours
   const closedDates = (tenant.closedDates ?? []) as unknown as string[]
-  const minDate = new Date().toISOString().split('T')[0] ?? ''
+  const minDate = artTodayStr()
 
   return (
     <div className="space-y-6">

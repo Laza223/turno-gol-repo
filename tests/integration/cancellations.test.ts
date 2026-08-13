@@ -57,6 +57,7 @@ import {
 } from '@/modules/bookings/booking.cancellation'
 import { settleRefund } from '@/modules/payments/payment.service'
 import {
+  BookingAlreadyEndedError,
   BookingNotInConfirmedError,
   BookingNotInNoShowError,
   BookingNotOwnedByPlayerError,
@@ -520,6 +521,49 @@ describe('cancelByPlayer — 4A: no deposit', () => {
     expect(await getBookingDepositStatus(bookingId)).toBe('not_required')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
     expect(await countCashFlows(bookingId)).toBe(0)
+  })
+})
+
+// ─── 07-cancelbyplayer-noshow-guard: turno ya terminado, sigue 'confirmed' ──
+describe('cancelByPlayer — 07-cancelbyplayer-noshow-guard: turno ya terminado', () => {
+  it('rechaza con BookingAlreadyEndedError y no toca el booking (nunca esquiva el softban)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await setTenantPolicy(tenant.id, 9999) // in-policy si el guard no cortara antes
+
+    // Turno de AYER (ART), status TODAVÍA 'confirmed' — como si el cron
+    // auto-complete-bookings no hubiese corrido todavía (hasta ~60 min de
+    // ventana de gracia). Mismo patrón de siembra que insertPastConfirmed
+    // (describe 'handleNoShow' más abajo).
+    const rows = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, player_id, date, time_start, time_end,
+        starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, status
+      ) VALUES (
+        ${tenant.id}, ${courtId}, ${player.id},
+        (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day', '20:00'::time, '21:00'::time,
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date - INTERVAL '1 day' + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        ${800000}, ${240_000}, 'paid', 'confirmed'
+      )
+      RETURNING id
+    `
+    const bookingId = rows[0]!.id
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        cancelByPlayer(bookingId, player.id, 'no pude ir', mockGateway, tx),
+      ),
+    ).rejects.toBeInstanceOf(BookingAlreadyEndedError)
+
+    // El booking queda intacto: nada de canceled_no_refund con la seña
+    // capturada por la puerta del jugador — eso le corresponde a handleNoShow.
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
+    expect(await getPlayerNoShowCount(tenant.id, player.id)).toBe(0)
   })
 })
 

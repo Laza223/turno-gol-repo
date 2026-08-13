@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { dateStr, slug } from '@/shared/validation/primitives'
 import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/public.service'
+import { isTenantPubliclyVisible } from '@/modules/tenants/tenant-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,12 @@ export async function GET(req: NextRequest) {
   const todayStr = artNow.toISOString().slice(0, 10)
 
   const tenant = await getPublicTenant(tenantSlug)
-  if (!tenant) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (!tenant || !isTenantPubliclyVisible(tenant.status)) {
+    // Mismo gate que la API de disponibilidad diaria (security scan F15): un
+    // complejo suspendido/bloqueado/dado de baja no debe seguir exponiendo
+    // una semana entera de horarios/precios vía esta API.
+    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  }
 
   const maxStart = addDays(todayStr, tenant.bookingAdvanceDays)
   if (start < todayStr || start > maxStart) {

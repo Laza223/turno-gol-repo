@@ -24,6 +24,7 @@ import webpush from 'web-push'
 import { track } from '@/shared/observability'
 import {
   sendPushNotification,
+  isAllowedPushEndpoint,
   _resetVapidForTests,
   type PushSubscriptionLike,
   type PushPayload,
@@ -37,7 +38,9 @@ const mockWebpush = webpush as unknown as {
 const mockTrack = track as unknown as { notification: ReturnType<typeof vi.fn> }
 
 const validSub: PushSubscriptionLike = {
-  endpoint: 'https://push.example.com/sub/abc123',
+  // Must be an allowlisted push-service host (F6/F10) — a made-up host like
+  // push.example.com is exactly what the allowlist now rejects.
+  endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
   keys: { p256dh: 'key1', auth: 'auth1' },
 }
 
@@ -149,6 +152,48 @@ describe('happy path', () => {
     mockWebpush.sendNotification.mockResolvedValueOnce({})
     const result = await sendPushNotification(validSub, validPayload)
     expect(result).toEqual({ success: true, statusCode: 200 })
+  })
+})
+
+describe('endpoint allowlist (F6/F10 SSRF defense)', () => {
+  it('isAllowedPushEndpoint accepts known push-service hosts', () => {
+    expect(isAllowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')).toBe(true)
+    expect(isAllowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc')).toBe(
+      true,
+    )
+    expect(isAllowedPushEndpoint('https://web.push.apple.com/abc')).toBe(true)
+    expect(isAllowedPushEndpoint('https://wns2-abc.notify.windows.com/w/abc')).toBe(true)
+  })
+
+  it('isAllowedPushEndpoint rejects an arbitrary host', () => {
+    expect(isAllowedPushEndpoint('https://push.example.com/sub/abc')).toBe(false)
+  })
+
+  it('isAllowedPushEndpoint rejects a cloud metadata / internal address', () => {
+    expect(isAllowedPushEndpoint('http://169.254.169.254/latest/meta-data/')).toBe(false)
+  })
+
+  it('isAllowedPushEndpoint rejects http:// even for an allowlisted host', () => {
+    expect(isAllowedPushEndpoint('http://fcm.googleapis.com/fcm/send/abc')).toBe(false)
+  })
+
+  it('isAllowedPushEndpoint rejects an unparseable URL', () => {
+    expect(isAllowedPushEndpoint('not-a-url')).toBe(false)
+  })
+
+  it('sendPushNotification refuses to send to a non-allowlisted endpoint', async () => {
+    const sub: PushSubscriptionLike = {
+      endpoint: 'http://169.254.169.254/latest/meta-data/',
+      keys: { p256dh: 'key1', auth: 'auth1' },
+    }
+    const result = await sendPushNotification(sub, validPayload)
+    expect(result).toEqual({
+      success: false,
+      gone: false,
+      statusCode: 0,
+      error: 'endpoint host not allowlisted',
+    })
+    expect(mockWebpush.sendNotification).not.toHaveBeenCalled()
   })
 })
 

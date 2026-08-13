@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type BookingRescheduledData = {
   playerFirstName: string
@@ -38,13 +39,13 @@ export function renderBookingRescheduled(data: BookingRescheduledData): EmailCon
 <html lang="es">
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
   <h2 style="color:#047857">Tu turno se movió</h2>
-  <p>Hola ${data.playerFirstName},</p>
-  <p>Tu reserva en <strong>${data.tenantName}</strong> quedó reprogramada.</p>
+  <p>Hola ${escapeHtml(data.playerFirstName)},</p>
+  <p>Tu reserva en <strong>${escapeHtml(data.tenantName)}</strong> quedó reprogramada.</p>
   <p style="margin:16px 0;color:#94a3b8;font-size:14px;text-decoration:line-through">
-    Antes: ${data.fromCourtName} · ${data.fromDate} · ${data.fromTimeStart} – ${data.fromTimeEnd}
+    Antes: ${escapeHtml(data.fromCourtName)} · ${data.fromDate} · ${data.fromTimeStart} – ${data.fromTimeEnd}
   </p>
   <table style="width:100%;border-collapse:collapse;margin:16px 0">
-    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.toCourtName}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${escapeHtml(data.toCourtName)}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.toDate}</td></tr>
     <tr><td style="padding:8px 0;font-weight:600">Horario</td><td style="padding:8px 0">${data.toTimeStart} – ${data.toTimeEnd}</td></tr>
   </table>

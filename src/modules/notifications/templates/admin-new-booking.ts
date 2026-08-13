@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type AdminNewBookingData = {
   courtName: string
@@ -12,7 +13,7 @@ export type AdminNewBookingData = {
 export function renderAdminNewBooking(data: AdminNewBookingData): EmailContent {
   const subject = `Nueva reserva — ${data.courtName}, ${data.date} ${data.timeStart}`
   const phoneRow = data.playerPhone
-    ? `<tr><td style="padding:8px 0;font-weight:600">Teléfono</td><td style="padding:8px 0">${data.playerPhone}</td></tr>`
+    ? `<tr><td style="padding:8px 0;font-weight:600">Teléfono</td><td style="padding:8px 0">${escapeHtml(data.playerPhone)}</td></tr>`
     : ''
   const html = `
 <!DOCTYPE html>
@@ -21,10 +22,10 @@ export function renderAdminNewBooking(data: AdminNewBookingData): EmailContent {
   <h2 style="color:#0369a1">Nueva reserva online</h2>
   <p>Recibiste una nueva reserva online:</p>
   <table style="width:100%;border-collapse:collapse;margin:16px 0">
-    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.courtName}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${escapeHtml(data.courtName)}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.date}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Horario</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.timeStart} – ${data.timeEnd}</td></tr>
-    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Jugador</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.playerName}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Jugador</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${escapeHtml(data.playerName)}</td></tr>
     ${phoneRow}
   </table>
   <p style="color:#64748b;font-size:14px">Podés ver los detalles completos en el panel de TurnoGol.</p>

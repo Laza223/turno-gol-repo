@@ -30,6 +30,19 @@ async function resolveImpersonationOverride(): Promise<{
     if (!raw) return null
     const payload = verifyImpersonationCookie(raw)
     if (!payload) return null
+
+    // F16: bind the cookie to the CURRENT session — same check
+    // getImpersonationSessionFor makes for the impersonated staff context.
+    // Without it, a stale-but-unexpired cookie (left over on a shared
+    // machine after a plain "Cerrar sesión" instead of "Salir de
+    // impersonación") silently re-attributes a DIFFERENT person's audit
+    // entries to the system admin who last impersonated, corrupting the
+    // audit trail's non-repudiation guarantee.
+    const { extractRealAuthUser } = await import('@/modules/auth/auth.middleware')
+    const realUser = await extractRealAuthUser()
+    if (!realUser || realUser.type !== 'system_admin') return null
+    if (realUser.systemAdminId !== payload.systemAdminId) return null
+
     return { systemAdminId: payload.systemAdminId, tenantId: payload.tenantId }
   } catch {
     return null

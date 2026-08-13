@@ -48,6 +48,28 @@ function parseAllowlist(raw: string | undefined): string[] {
 }
 
 /**
+ * Chequeos 2+3 del guard (fila DB activa + allowlist) para un systemAdminId ya
+ * conocido, sin volver a resolver la identidad real (security scan F11).
+ * La usa la revalidación de la sesión de impersonación en cada lectura, para
+ * que revocar un system admin (status inactive o sacarlo de
+ * SYSTEM_ADMIN_EMAILS) corte una impersonación en curso de inmediato en vez
+ * de esperar hasta 1h a que expire sola la cookie firmada.
+ */
+export async function isSystemAdminActiveAndAllowlisted(systemAdminId: string): Promise<boolean> {
+  const rows = await withSystemAdminContext(systemAdminId, (tx) =>
+    tx
+      .select({ email: systemAdmins.email, status: systemAdmins.status })
+      .from(systemAdmins)
+      .where(eq(systemAdmins.id, systemAdminId))
+      .limit(1),
+  )
+  const row = rows[0]
+  if (!row || row.status !== 'active') return false
+  const allowlist = parseAllowlist(process.env.SYSTEM_ADMIN_EMAILS)
+  return allowlist.length > 0 && allowlist.includes(row.email.trim().toLowerCase())
+}
+
+/**
  * Núcleo compartido de ambos guards. null = cualquiera de los 3 chequeos
  * falló; los callers NO diferencian el motivo (no filtrar que la ruta existe).
  * Exportado para Route Handlers de /api/admin/* que necesitan el triple

@@ -18,9 +18,22 @@ export interface MdxPost {
   frontmatter: Frontmatter
 }
 
+// A route slug is a single filename token, never a path (security scan
+// F20/F22): the route param is concatenated straight into a filesystem path
+// below, and `path.join` normalizes `..` segments instead of rejecting them,
+// so an unvalidated slug could escape `content/<type>/` and read any `.mdx`
+// file elsewhere on the deployment filesystem that happens to satisfy
+// `frontmatterSchema`.
+const SLUG_TOKEN_RE = /^[a-z0-9-]+$/
+
 export function getPostBySlug(slug: string, type: 'blog' | 'pages' = 'blog'): MdxPost | null {
+  if (!SLUG_TOKEN_RE.test(slug)) return null
   try {
-    const fullPath = path.join(process.cwd(), 'content', type, `${slug}.mdx`)
+    const contentDir = path.join(process.cwd(), 'content', type)
+    const fullPath = path.join(contentDir, `${slug}.mdx`)
+    // Defense in depth: even with the regex above, assert the resolved path
+    // never leaves the intended content directory before reading it.
+    if (path.relative(contentDir, fullPath).startsWith('..')) return null
     const fileContents = fs.readFileSync(fullPath, 'utf8')
     const { data, content } = matter(fileContents)
 

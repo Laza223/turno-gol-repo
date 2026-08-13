@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type TrialWelcomeData = {
   ownerName: string
@@ -12,8 +13,8 @@ export function renderTrialWelcome(data: TrialWelcomeData): EmailContent {
 <html lang="es">
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
   <h2 style="color:#0369a1">¡Bienvenido a TurnoGol!</h2>
-  <p>Hola ${data.ownerName},</p>
-  <p>Tu complejo <strong>${data.tenantName}</strong> ya está activo en TurnoGol. Tenés 30 días de prueba gratuita para explorar todas las funcionalidades.</p>
+  <p>Hola ${escapeHtml(data.ownerName)},</p>
+  <p>Tu complejo <strong>${escapeHtml(data.tenantName)}</strong> ya está activo en TurnoGol. Tenés 30 días de prueba gratuita para explorar todas las funcionalidades.</p>
   <p>Te recomendamos empezar por:</p>
   <ol>
     <li>Configurar tus canchas y precios</li>

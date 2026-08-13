@@ -14,12 +14,20 @@ vi.mock('next/headers', () => ({ cookies: () => cookieStore }))
 const h = vi.hoisted(() => ({
   getTenantById: vi.fn(),
   getFirstActiveAdminStaffUserId: vi.fn(),
+  isSystemAdminActiveAndAllowlisted: vi.fn(),
 }))
 vi.mock('@/modules/tenants/tenant.service', () => ({
   getTenantById: (id: string) => h.getTenantById(id),
 }))
 vi.mock('@/modules/staff/staff.service', () => ({
   getFirstActiveAdminStaffUserId: (id: string) => h.getFirstActiveAdminStaffUserId(id),
+}))
+// F11: getImpersonationSessionFor now re-checks the DB row + allowlist via a
+// dynamic import of system-admin.guards — mocked so these tests exercise the
+// cookie/JWT logic without hitting a real DB. Defaults to "still authorized"
+// in beforeEach; the F11-specific tests below override it to simulate revocation.
+vi.mock('@/modules/auth/system-admin.guards', () => ({
+  isSystemAdminActiveAndAllowlisted: (id: string) => h.isSystemAdminActiveAndAllowlisted(id),
 }))
 
 const TENANT = {
@@ -47,6 +55,7 @@ beforeEach(() => {
   process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
   h.getTenantById.mockResolvedValue(TENANT)
   h.getFirstActiveAdminStaffUserId.mockResolvedValue(PROXY_STAFF_ID)
+  h.isSystemAdminActiveAndAllowlisted.mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -160,5 +169,27 @@ describe('getImpersonationSessionFor', () => {
         role: 'admin',
       }),
     ).toBeNull()
+  })
+
+  // F11: revoking the system admin (status inactive, or dropped from the
+  // allowlist) must kill an already-issued impersonation session immediately,
+  // not just once the signed cookie's own TTL expires.
+  describe('revocación mid-session (F11)', () => {
+    it('system admin desactivado en DB → null aun con cookie firmada válida', async () => {
+      cookieStore.get.mockReturnValue({ value: validCookie() })
+      h.isSystemAdminActiveAndAllowlisted.mockResolvedValue(false)
+      const { getImpersonationSessionFor } = await load()
+
+      expect(await getImpersonationSessionFor(SYSTEM_ADMIN_USER)).toBeNull()
+      expect(h.isSystemAdminActiveAndAllowlisted).toHaveBeenCalledWith(SYSTEM_ADMIN_ID)
+    })
+
+    it('resolveImpersonatedStaffContextFor también corta al revocar', async () => {
+      cookieStore.get.mockReturnValue({ value: validCookie() })
+      h.isSystemAdminActiveAndAllowlisted.mockResolvedValue(false)
+      const { resolveImpersonatedStaffContextFor } = await load()
+
+      expect(await resolveImpersonatedStaffContextFor(SYSTEM_ADMIN_USER)).toBeNull()
+    })
   })
 })

@@ -97,9 +97,23 @@ vi.mock('@/modules/auth/auth.middleware', () => ({
   extractRealAuthUser: () => extractRealAuthUser(),
 }))
 
+// F11: getImpersonationSessionFor now also dynamically imports this guard on
+// every read (DB row + allowlist re-check) — mocked so these tests exercise
+// the cookie/JWT logic alone, without a real DB. Defaults to "still
+// authorized" so pre-F11 assertions keep testing what they tested before.
+const isSystemAdminActiveAndAllowlisted = vi.fn()
+vi.mock('@/modules/auth/system-admin.guards', () => ({
+  isSystemAdminActiveAndAllowlisted: (id: string) => isSystemAdminActiveAndAllowlisted(id),
+}))
+
+beforeEach(() => {
+  isSystemAdminActiveAndAllowlisted.mockResolvedValue(true)
+})
+
 afterEach(() => {
   cookieStore.get.mockReset()
   extractRealAuthUser.mockReset()
+  isSystemAdminActiveAndAllowlisted.mockReset()
 })
 
 describe('getImpersonationSession (impersonation.server)', () => {

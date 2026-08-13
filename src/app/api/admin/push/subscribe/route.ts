@@ -7,12 +7,21 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { withTenantContext } from '@/shared/db/client'
 import { pushSubscriptions } from '@/shared/db/schema'
 import { badRequest, forbidden, validationError } from '@/shared/api-error'
+import { isAllowedPushEndpoint } from '@/lib/web-push'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const subscribeSchema = z.object({
-  endpoint: z.url('endpoint must be a valid URL').max(2000, 'endpoint too long'),
+  // Allowlisted to known push-service vendors (security scan F6) — a
+  // syntactically valid URL isn't enough, since any authenticated staff
+  // member can call this route directly (not only via the real browser
+  // PushManager.subscribe flow) and an unrestricted endpoint lets the
+  // worker be made to POST a VAPID-signed request anywhere (SSRF).
+  endpoint: z
+    .url('endpoint must be a valid URL')
+    .max(2000, 'endpoint too long')
+    .refine(isAllowedPushEndpoint, 'endpoint host is not a recognized push service'),
   keys: z.object({
     p256dh: z.string().min(80, 'p256dh must be at least 80 chars').max(200),
     auth: z.string().min(16, 'auth must be at least 16 chars').max(200),

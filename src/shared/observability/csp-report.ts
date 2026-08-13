@@ -25,6 +25,15 @@ const ALERT_COOLDOWN_MS = 60_000
 /** Hard ceiling on tracked keys; cleared wholesale when exceeded. */
 const MAX_DEDUPE_KEYS = 500
 
+/**
+ * Hard ceiling on violations processed per request (security scan F9). A real
+ * browser sends at most a handful per page load; the modern Reporting API
+ * body is an array with no entry cap of its own, so a single request could
+ * otherwise carry many distinct (attacker-chosen) dedupe keys within the
+ * 8KB body cap and generate a Sentry event per entry.
+ */
+const MAX_VIOLATIONS_PER_REQUEST = 5
+
 const lastAlertAt = new Map<string, number>()
 
 /** Test-only: clears the dedupe state between cases. */
@@ -100,6 +109,11 @@ function extractViolations(parsed: unknown): NormalizedViolation[] {
   return []
 }
 
+/** Bounds an already-extracted violation list to MAX_VIOLATIONS_PER_REQUEST. */
+function capViolations(violations: NormalizedViolation[]): NormalizedViolation[] {
+  return violations.slice(0, MAX_VIOLATIONS_PER_REQUEST)
+}
+
 function reportToSentry(v: NormalizedViolation): void {
   const directive = v.effectiveDirective || v.violatedDirective || 'unknown'
   const blocked = v.blockedUri || 'inline'
@@ -160,7 +174,7 @@ export async function handleCspReport(req: Request): Promise<Response> {
     return noContent()
   }
 
-  for (const violation of extractViolations(parsed)) {
+  for (const violation of capViolations(extractViolations(parsed))) {
     reportToSentry(violation)
   }
 

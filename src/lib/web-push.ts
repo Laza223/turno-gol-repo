@@ -28,6 +28,40 @@ export type SendPushResult =
 
 const MAX_PAYLOAD_BYTES = 4 * 1024 // 4KB
 
+/**
+ * Allowlisted Web Push service hosts (security scan F6/F10). `endpoint` is
+ * attacker-influenced — any staff member can call POST /api/admin/push/subscribe
+ * directly with an arbitrary syntactically-valid URL, and the worker later
+ * POSTs a VAPID-signed request to whatever host is stored there. Without this
+ * allowlist that's blind SSRF from server infrastructure (e.g. an endpoint
+ * pointed at a cloud metadata address). Real push subscriptions only ever
+ * come from these browser vendors' push services.
+ */
+const ALLOWED_PUSH_HOSTS = [
+  'fcm.googleapis.com', // Chrome/Edge/Android
+  'updates.push.services.mozilla.com', // Firefox
+  'web.push.apple.com', // Safari
+] as const
+
+/** Windows push (WNS) uses per-channel subdomains: wns2-<region>.notify.windows.com. */
+const ALLOWED_PUSH_HOST_SUFFIX = '.notify.windows.com'
+
+/** True only for an https:// URL whose host is a known push-service vendor. */
+export function isAllowedPushEndpoint(endpoint: string): boolean {
+  let url: URL
+  try {
+    url = new URL(endpoint)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'https:') return false
+  const host = url.hostname.toLowerCase()
+  return (
+    (ALLOWED_PUSH_HOSTS as readonly string[]).includes(host) ||
+    host.endsWith(ALLOWED_PUSH_HOST_SUFFIX)
+  )
+}
+
 let vapidInitialized = false
 
 function ensureVapidInitialized(): void {
@@ -47,6 +81,22 @@ export async function sendPushNotification(
   payload: PushPayload,
 ): Promise<SendPushResult> {
   ensureVapidInitialized()
+  // Defense in depth (F10): re-check the host here too, not only at
+  // subscribe time — a row already sitting in push_subscriptions from
+  // before the allowlist existed, or any future writer that forgets to
+  // validate, must not turn this into an SSRF primitive.
+  if (!isAllowedPushEndpoint(subscription.endpoint)) {
+    logger.error('push send blocked: endpoint host not allowlisted', {
+      module: 'web-push',
+      endpoint: subscription.endpoint,
+    })
+    return {
+      success: false,
+      gone: false,
+      statusCode: 0,
+      error: 'endpoint host not allowlisted',
+    }
+  }
   const json = JSON.stringify(payload)
   const byteLen = Buffer.byteLength(json, 'utf8')
   if (byteLen > MAX_PAYLOAD_BYTES) {

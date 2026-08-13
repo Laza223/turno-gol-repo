@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type DunningPaymentFailedData = {
   ownerName: string
@@ -13,8 +14,8 @@ export function renderDunningPaymentFailed(data: DunningPaymentFailedData): Emai
 <html lang="es">
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
   <h2 style="color:#dc2626">No pudimos procesar tu pago</h2>
-  <p>Hola ${data.ownerName},</p>
-  <p>Hubo un problema al cobrar la suscripción de <strong>${data.tenantName}</strong> en TurnoGol.</p>
+  <p>Hola ${escapeHtml(data.ownerName)},</p>
+  <p>Hubo un problema al cobrar la suscripción de <strong>${escapeHtml(data.tenantName)}</strong> en TurnoGol.</p>
   <p>Vamos a reintentar el cobro el <strong>${data.retryDate}</strong>. Si para esa fecha el pago sigue fallando, tu cuenta pasará a modo restringido.</p>
   <p>Para evitar interrupciones, actualizá tu método de pago en MercadoPago:</p>
   <p style="text-align:center;margin:24px 0">

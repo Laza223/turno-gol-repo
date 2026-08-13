@@ -118,6 +118,53 @@ describe('deactivateStaffAction — lockout de admins (roles 026)', () => {
     expect(res.success).toBe(true)
   })
 
+  // F18 (security scan): TOCTOU — dos deactivateStaffAction concurrentes,
+  // cada uno apuntando al OTRO de los últimos 2 admins activos, no deben
+  // poder pasar los dos el chequeo "al menos un admin" antes de que
+  // cualquiera commitee. Sin el FOR UPDATE, este test fallaba: los dos
+  // succeed=true y el tenant quedaba con 0 admins activos.
+  it('concurrencia: solo UNA de las dos desactivaciones de los últimos 2 admins pasa', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const adminA = await createTestStaffUser(sql)
+    const adminB = await createTestStaffUser(sql)
+    const memberA = await linkStaffToTenant(sql, tenant.id, adminA.id, 'admin')
+    const memberB = await linkStaffToTenant(sql, tenant.id, adminB.id, 'admin')
+
+    vi.mocked(getStaffTenant).mockResolvedValue({ id: tenant.id, status: 'active' } as never)
+    // Cada invocación de deactivateStaffAction arranca con
+    // requireStaffTenant() -> extractAuthUser() como primer await — el orden
+    // de evaluación síncrona de `Promise.all([f(), g()])` garantiza que la
+    // 1ª llamada mapea a A y la 2ª a B, aunque después corran entrelazadas.
+    let call = 0
+    vi.mocked(extractAuthUser).mockImplementation(async () => {
+      call += 1
+      const actor = call === 1 ? adminA : adminB
+      return {
+        type: 'staff',
+        id: `auth-${actor.id}`,
+        email: 'race@test.local',
+        staffUserId: actor.id,
+        tenantId: tenant.id,
+        role: 'admin',
+      }
+    })
+
+    const [resAtoB, resBtoA] = await Promise.all([
+      deactivateStaffAction(memberB), // A desactiva a B
+      deactivateStaffAction(memberA), // B desactiva a A
+    ])
+
+    const successCount = [resAtoB, resBtoA].filter((r) => r.success).length
+    expect(successCount).toBe(1)
+
+    const rows = await sql<{ id: string }[]>`
+      SELECT id FROM tenant_staff_members
+      WHERE tenant_id = ${tenant.id} AND role = 'admin' AND is_active = true
+    `
+    expect(rows.length).toBe(1)
+  })
+
   it('permite desactivar un admin si queda otro admin activo', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)

@@ -34,6 +34,20 @@ function parseDateOnly(d: string): Date {
   return new Date(y ?? 1970, (m ?? 1) - 1, day ?? 1)
 }
 
+// Neutraliza texto tenant-controlado antes de embeberlo en una línea ICS
+// (security scan F21): tenantName/courtName/address/city no tienen
+// restricción de caracteres, así que un CR/LF crudo podría cerrar la línea
+// actual e inyectar propiedades iCalendar adicionales. RFC 5545 §3.3.11:
+// backslash, punto y coma y coma van escapados con `\`; CR/LF se eliminan
+// (estos campos son de una sola línea, no soportan el continuation \n).
+export function icsEscapeText(value: string): string {
+  return value
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+}
+
 // ART (UTC-3) → UTC en formato ICS: YYYYMMDDTHHMMSSZ
 function toIcsUtc(date: string, time: string): string {
   const [y, mo, d] = date.split('-').map(Number)
@@ -77,9 +91,9 @@ export default function BookingSuccessExtras(props: Props) {
       `DTSTAMP:${dtStamp}`,
       `DTSTART:${toIcsUtc(date, timeStart)}`,
       `DTEND:${toIcsUtc(date, timeEnd)}`,
-      `SUMMARY:Fútbol en ${tenantName} (${courtName})`,
-      `LOCATION:${address}, ${city}`,
-      `DESCRIPTION:Reserva de cancha en ${tenantName}.`,
+      `SUMMARY:Fútbol en ${icsEscapeText(tenantName)} (${icsEscapeText(courtName)})`,
+      `LOCATION:${icsEscapeText(address)}\\, ${icsEscapeText(city)}`,
+      `DESCRIPTION:Reserva de cancha en ${icsEscapeText(tenantName)}.`,
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n')

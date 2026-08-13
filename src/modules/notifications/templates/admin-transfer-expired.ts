@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type AdminTransferExpiredData = {
   courtName: string
@@ -21,7 +22,7 @@ export function renderAdminTransferExpired(data: AdminTransferExpiredData): Emai
   <h2 style="color:#d97706">Transferencia no acreditada a tiempo</h2>
   <p>Una reserva con seña por transferencia bancaria estuvo <strong>48 horas en proceso</strong> sin acreditarse. El turno fue liberado automáticamente.</p>
   <table style="width:100%;border-collapse:collapse;margin:16px 0">
-    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.courtName}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${escapeHtml(data.courtName)}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.date}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Horario</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.timeStart}</td></tr>
     <tr><td style="padding:8px 0;font-weight:600">Reserva</td><td style="padding:8px 0">#${ref}</td></tr>

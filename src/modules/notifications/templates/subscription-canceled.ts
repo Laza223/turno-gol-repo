@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type SubscriptionCanceledData = {
   ownerName: string
@@ -13,8 +14,8 @@ export function renderSubscriptionCanceled(data: SubscriptionCanceledData): Emai
 <html lang="es">
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
   <h2 style="color:#475569">Suscripción cancelada</h2>
-  <p>Hola ${data.ownerName},</p>
-  <p>Cancelamos la suscripción de <strong>${data.tenantName}</strong>.</p>
+  <p>Hola ${escapeHtml(data.ownerName)},</p>
+  <p>Cancelamos la suscripción de <strong>${escapeHtml(data.tenantName)}</strong>.</p>
   <p>Tu acceso completo continúa hasta <strong>${data.accessUntil}</strong>. Después tu cuenta entra en modo restringido y los datos quedan disponibles 60 días para reactivar.</p>
   <p style="color:#64748b;font-size:14px">¿Cambiaste de idea? Reactivá desde el panel.</p>
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>

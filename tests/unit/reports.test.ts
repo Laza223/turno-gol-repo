@@ -182,6 +182,39 @@ describe('toCsv', () => {
     const dataLine = csv.split('\r\n')[1]
     expect(dataLine).toBe(',')
   })
+
+  // CSV/formula injection (F13/F17/F19): a cell that opens with =, +, -, or @
+  // must not survive as a live formula when the export is opened in Excel.
+  it('neutralizes a leading = with a single-quote prefix, even when the value also needs CSV quoting', () => {
+    const csv = toCsv([{ desc: '=HYPERLINK("http://evil.example","x")' }])
+    const dataLine = csv.split('\r\n')[1]!
+    // This value also contains a comma and embedded quotes, so RFC 4180
+    // wraps the whole field in an outer CSV-quoted string — the raw file
+    // text therefore starts with `"`, not `'`. That outer quoting is a
+    // CSV-syntax concern only: once a spreadsheet app parses the CSV and
+    // unwraps it, the actual CELL VALUE still starts with the neutralizing
+    // `'`, which is what stops it from being read as a live formula.
+    expect(dataLine).toBe('"\'=HYPERLINK(""http://evil.example"",""x"")"')
+    expect(dataLine.startsWith('=')).toBe(false)
+  })
+
+  it('neutralizes a leading +, -, and @', () => {
+    const csv = toCsv([{ a: '+1', b: '-1', c: '@cmd' }])
+    const dataLine = csv.split('\r\n')[1]!
+    expect(dataLine).toBe("'+1,'-1,'@cmd")
+  })
+
+  it('does not touch a value that merely contains = elsewhere', () => {
+    const csv = toCsv([{ desc: 'total = 100' }])
+    const dataLine = csv.split('\r\n')[1]!
+    expect(dataLine).toBe('total = 100')
+  })
+
+  it('still quotes a formula-prefixed value that also has a comma', () => {
+    const csv = toCsv([{ desc: '=SUM(A1,A2)' }])
+    const dataLine = csv.split('\r\n')[1]!
+    expect(dataLine).toBe('"\'=SUM(A1,A2)"')
+  })
 })
 
 describe('aggregateByMethod (#43)', () => {

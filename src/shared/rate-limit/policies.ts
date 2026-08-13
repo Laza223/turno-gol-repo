@@ -61,6 +61,12 @@ export const POLICIES = {
   // reales de dinero. Fail open: si Upstash cae, mostrar el número no es un
   // riesgo, y esconderlo sí es una regresión visible.
   adminDayTotal: { limit: 120, window: '60 s', keyBy: 'tenant', failMode: 'open' },
+  // CSP violation reports (security scan F9): public, unauthenticated POST.
+  // A real browser sends at most a few of these per page load; 20/60s per IP
+  // gives headroom while still bounding how many distinct Sentry events one
+  // origin can trigger by varying blockedUri per request. Fail open: losing
+  // CSP telemetry during an Upstash outage isn't worth blocking the endpoint.
+  cspReport: { limit: 20, window: '60 s', keyBy: 'ip', failMode: 'open' },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

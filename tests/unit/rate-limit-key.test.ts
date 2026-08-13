@@ -29,4 +29,22 @@ describe('parseClientIp', () => {
     const h = new Headers({ 'x-forwarded-for': 'attacker-spoof, 5.6.7.8' })
     expect(parseClientIp(h)).toBe('attacker-spoof')
   })
+  it('prefers x-vercel-forwarded-for over a spoofed x-forwarded-for (F12)', () => {
+    const h = new Headers({
+      'x-forwarded-for': 'attacker-spoof',
+      'x-vercel-forwarded-for': '1.2.3.4',
+    })
+    expect(parseClientIp(h)).toBe('1.2.3.4')
+  })
+  it('takes the leftmost hop of x-vercel-forwarded-for', () => {
+    const h = new Headers({ 'x-vercel-forwarded-for': '1.2.3.4, 5.6.7.8' })
+    expect(parseClientIp(h)).toBe('1.2.3.4')
+  })
+  it('falls back to x-forwarded-for when x-vercel-forwarded-for is empty', () => {
+    const h = new Headers({
+      'x-vercel-forwarded-for': '',
+      'x-forwarded-for': '9.9.9.9',
+    })
+    expect(parseClientIp(h)).toBe('9.9.9.9')
+  })
 })

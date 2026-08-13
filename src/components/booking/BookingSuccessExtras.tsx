@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { CalendarPlus, MessageCircle, Navigation } from 'lucide-react'
+import { icsEscapeText } from './ics-escape'
 
 const BookingMiniMap = dynamic(() => import('./BookingMiniMap'), {
   ssr: false,
@@ -77,9 +78,9 @@ export default function BookingSuccessExtras(props: Props) {
       `DTSTAMP:${dtStamp}`,
       `DTSTART:${toIcsUtc(date, timeStart)}`,
       `DTEND:${toIcsUtc(date, timeEnd)}`,
-      `SUMMARY:Fútbol en ${tenantName} (${courtName})`,
-      `LOCATION:${address}, ${city}`,
-      `DESCRIPTION:Reserva de cancha en ${tenantName}.`,
+      `SUMMARY:Fútbol en ${icsEscapeText(tenantName)} (${icsEscapeText(courtName)})`,
+      `LOCATION:${icsEscapeText(address)}\\, ${icsEscapeText(city)}`,
+      `DESCRIPTION:Reserva de cancha en ${icsEscapeText(tenantName)}.`,
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n')

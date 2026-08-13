@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { and, count, eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -309,9 +309,20 @@ export async function deactivateStaffAction(staffMemberId: string): Promise<Staf
     // Lockout (roles 026): con roles, lo que no puede quedar en cero son los
     // ADMINS activos, no los miembros. Un complejo solo con encargados no
     // tendría quién entre a configuración.
+    //
+    // FOR UPDATE (security scan F18): sin lock, dos deactivateStaffAction
+    // concurrentes (cada uno apuntando a un admin DISTINTO) pueden leer el
+    // mismo count=2 antes de que cualquiera commitee, y los dos pasan el
+    // chequeo <=1 — el tenant queda con cero admins activos. Al lockear las
+    // filas de admin activo, la segunda transacción bloquea hasta que la
+    // primera commitea y, al despertar, Postgres re-evalúa el WHERE contra la
+    // fila ya actualizada (isActive=false) — el count baja a 1 y la segunda
+    // desactivación se rechaza correctamente. Postgres no permite FOR UPDATE
+    // junto con una función de agregación (count()), así que se traen las
+    // filas y se cuenta en JS.
     if (target.role === 'admin') {
-      const [activeAdmins] = await tx
-        .select({ value: count() })
+      const activeAdmins = await tx
+        .select({ id: tenantStaffMembers.id })
         .from(tenantStaffMembers)
         .where(
           and(
@@ -320,8 +331,9 @@ export async function deactivateStaffAction(staffMemberId: string): Promise<Staf
             eq(tenantStaffMembers.role, 'admin'),
           ),
         )
+        .for('update')
 
-      if (Number(activeAdmins?.value ?? 0) <= 1) {
+      if (activeAdmins.length <= 1) {
         return {
           success: false as const,
           error: 'El complejo debe tener al menos un administrador activo.',

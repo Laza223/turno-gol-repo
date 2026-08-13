@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type BookingCanceledData = {
   playerFirstName: string
@@ -13,16 +14,16 @@ export type BookingCanceledData = {
 
 export function renderBookingCanceled(data: BookingCanceledData): EmailContent {
   const subject = `Reserva cancelada — ${data.courtName}, ${data.date} ${data.timeStart}`
-  const reasonLine = data.reason ? `<p><strong>Motivo:</strong> ${data.reason}</p>` : ''
+  const reasonLine = data.reason ? `<p><strong>Motivo:</strong> ${escapeHtml(data.reason)}</p>` : ''
   const html = `
 <!DOCTYPE html>
 <html lang="es">
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
   <h2 style="color:#dc2626">Reserva cancelada</h2>
-  <p>Hola ${data.playerFirstName},</p>
-  <p>Tu reserva en <strong>${data.tenantName}</strong> fue cancelada.</p>
+  <p>Hola ${escapeHtml(data.playerFirstName)},</p>
+  <p>Tu reserva en <strong>${escapeHtml(data.tenantName)}</strong> fue cancelada.</p>
   <table style="width:100%;border-collapse:collapse;margin:16px 0">
-    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.courtName}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${escapeHtml(data.courtName)}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.date}</td></tr>
     <tr><td style="padding:8px 0;font-weight:600">Horario</td><td style="padding:8px 0">${data.timeStart} – ${data.timeEnd}</td></tr>
   </table>

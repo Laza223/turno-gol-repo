@@ -1,4 +1,5 @@
 import type { EmailContent } from './index'
+import { escapeHtml } from './html-escape'
 
 export type SubscriptionSuspendedData = {
   ownerName: string
@@ -12,8 +13,8 @@ export function renderSubscriptionSuspended(data: SubscriptionSuspendedData): Em
 <html lang="es">
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
   <h2 style="color:#d97706">Tu cuenta está suspendida</h2>
-  <p>Hola ${data.ownerName},</p>
-  <p>No pudimos cobrar la suscripción de <strong>${data.tenantName}</strong> después de varios reintentos. Pasamos tu cuenta a modo solo lectura.</p>
+  <p>Hola ${escapeHtml(data.ownerName)},</p>
+  <p>No pudimos cobrar la suscripción de <strong>${escapeHtml(data.tenantName)}</strong> después de varios reintentos. Pasamos tu cuenta a modo solo lectura.</p>
   <p>Los jugadores siguen viendo sus reservas, pero no podés gestionar el complejo hasta regularizar el pago.</p>
   <p style="text-align:center;margin:24px 0">
     <a href="https://app.turnogol.app/settings/facturacion" style="background:#d97706;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Regularizar pago →</a>

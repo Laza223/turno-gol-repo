@@ -67,6 +67,18 @@ export async function getImpersonationSessionFor(
   const payload = await readImpersonationCookie()
   if (!payload) return null
   if (payload.systemAdminId !== realUser.systemAdminId) return null
+
+  // F11: re-verify the DB row + allowlist on every read, not only the
+  // signed cookie's integrity/expiry and the JWT claim — otherwise revoking
+  // a system admin (status inactive, or dropped from SYSTEM_ADMIN_EMAILS)
+  // leaves an already-issued impersonation session live for up to the
+  // remaining cookie TTL (up to 1h), contradicting "the DB revokes
+  // immediately". Dynamic import: same reason extractRealAuthUser() below
+  // is dynamic — avoids a static cycle with auth.middleware.ts, which
+  // imports this module.
+  const { isSystemAdminActiveAndAllowlisted } = await import('@/modules/auth/system-admin.guards')
+  if (!(await isSystemAdminActiveAndAllowlisted(payload.systemAdminId))) return null
+
   return { systemAdminId: payload.systemAdminId, tenantId: payload.tenantId }
 }
 

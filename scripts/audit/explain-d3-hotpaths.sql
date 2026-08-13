@@ -215,8 +215,49 @@ ORDER BY b.created_at ASC
 LIMIT 500;
 ROLLBACK;
 
+-- Cutoff de "Plata en la calle" (street-money-window.ts): 12 meses hacia
+-- atrás, en la MISMA forma que streetMoneyCutoffDate — restar meses en UTC y
+-- truncar a fecha. Q10 (default) y Q10b ('all', el botón "Ver anteriores")
+-- deben leerse juntas: la comparación es el punto, no cada una por separado.
+SELECT (NOW() - interval '12 months')::date::text AS street_money_cutoff \gset
+
 \echo ''
-\echo '=== Q10: /deudas — getDebts histórico completo (turnogol_app, tenant ctx) ==='
+\echo '=== Q10: /deudas — getDebts, ventana DEFAULT 12 meses (turnogol_app, tenant ctx) ==='
+\echo '    (B11 medía la forma SIN ventana — PR #144 la acotó el mismo día; esto ya es la forma post-fix)'
+BEGIN;
+SET LOCAL ROLE turnogol_app;
+SELECT set_config('app.current_tenant_id', :'heavy_id', true);
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
+       c.name, b.player_id,
+       CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END,
+       b.price_snapshot, b.deposit_amount, b.deposit_status,
+       COALESCE(SUM(cf.amount) FILTER (
+         WHERE cf.type = 'income' AND cf.category = 'booking'
+           AND cf.description <> ('Seña — turno ' || b.id::text)
+       ), 0)::int AS charges_total
+FROM bookings b
+JOIN courts c ON b.court_id = c.id
+LEFT JOIN players p ON b.player_id = p.id
+LEFT JOIN staff_users su ON b.completed_by_staff = su.id
+LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
+WHERE b.tenant_id = :'heavy_id'
+  AND b.status = 'completed'
+  AND b.date >= :'street_money_cutoff'::date
+GROUP BY b.id, c.name, b.player_id, p.id, su.id
+HAVING (b.price_snapshot
+        - CASE WHEN b.deposit_status IN ('paid', 'captured') THEN b.deposit_amount ELSE 0 END
+        - COALESCE(SUM(cf.amount) FILTER (
+            WHERE cf.type = 'income' AND cf.category = 'booking'
+              AND cf.description <> ('Seña — turno ' || b.id::text)
+          ), 0)) > 0
+ORDER BY b.date DESC, b.time_start DESC;
+ROLLBACK;
+
+\echo ''
+\echo '=== Q10b: /deudas?todas=1 — getDebts ventana ALL, "Ver anteriores" (turnogol_app) ==='
+\echo '    Escape hatch a propósito (street-money-window.ts): acota la CONSULTA, no la deuda.'
+\echo '    Sigue caro por diseño — no es un hallazgo, es el costo conocido y aceptado del botón.'
 BEGIN;
 SET LOCAL ROLE turnogol_app;
 SELECT set_config('app.current_tenant_id', :'heavy_id', true);
@@ -286,6 +327,125 @@ WHERE tenant_id = :'heavy_id'
   AND occurred_at >= ((CURRENT_DATE - 30) + interval '3 hours') AT TIME ZONE 'UTC'
   AND occurred_at < ((CURRENT_DATE + interval '1 day 3 hours') AT TIME ZONE 'UTC')
 GROUP BY category;
+ROLLBACK;
+
+\echo ''
+\echo '=== Q14a: getPlayerActivity — totales del jugador, SIN ventana (turnogol_app, player ctx) ==='
+\echo '    src/modules/players/activity.service.ts:22 — crece con toda la carrera del jugador'
+BEGIN;
+SET LOCAL ROLE turnogol_app;
+SELECT set_config('app.current_player_id', :'player_id', true);
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT COUNT(*)::int AS played,
+       COUNT(DISTINCT tenant_id)::int AS venues
+FROM bookings
+WHERE player_id = :'player_id' AND status = 'completed';
+ROLLBACK;
+
+\echo ''
+\echo '=== Q14b: getPlayerActivity — semanas jugadas, SIN ventana (turnogol_app, player ctx) ==='
+BEGIN;
+SET LOCAL ROLE turnogol_app;
+SELECT set_config('app.current_player_id', :'player_id', true);
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT DISTINCT (date_trunc('week', date::timestamp)::date)::text AS week
+FROM bookings
+WHERE player_id = :'player_id' AND status = 'completed'
+ORDER BY week DESC;
+ROLLBACK;
+
+\echo ''
+\echo '=== Q15: listTenantClients — página 0, tenant d3-heavy (turnogol_app, tenant ctx) ==='
+\echo '    src/app/(admin)/jugadores/queries.ts:89 — el LIMIT/OFFSET final solo recorta el'
+\echo '    resultado. Ninguna CTE (registered/unlinked/grouped/group_bookings/contacts) lleva'
+\echo '    LIMIT propio, así que página 0 y página N materializan el mismo universo completo'
+\echo '    del tenant — correr una sola página alcanza para medir el costo real de CUALQUIER'
+\echo '    página, no hace falta repetir con otro OFFSET.'
+BEGIN;
+SET LOCAL ROLE turnogol_app;
+SELECT set_config('app.current_tenant_id', :'heavy_id', true);
+EXPLAIN (ANALYZE, BUFFERS)
+WITH registered AS (
+  SELECT p.id::text AS key,
+         'player'::text AS kind,
+         p.id::text AS "playerId",
+         (p.first_name || ' ' || p.last_name) AS name,
+         p.email, p.phone,
+         r.bookings_count::int AS "bookingsCount",
+         r.noshow_count::int AS "noshowCount",
+         r.last_booking_at::date::text AS "lastBookingAt",
+         r.tags,
+         (SELECT COUNT(*)::int FROM abonados fa
+           WHERE fa.tenant_id = r.tenant_id
+             AND fa.player_id = r.player_id
+             AND fa.status <> 'canceled') AS "fixedCount",
+         NULL::text AS "suggestedPlayerId",
+         NULL::text AS "suggestedPlayerName"
+  FROM player_tenant_relationships r
+  JOIN players p ON p.id = r.player_id
+  WHERE r.tenant_id = :'heavy_id'
+),
+unlinked AS (
+  SELECT a.id, a.contact_name, a.contact_phone, a.status, a.created_at,
+         (CASE WHEN LENGTH(REGEXP_REPLACE(a.contact_phone, '\D', '', 'g')) >= 8
+               THEN RIGHT(REGEXP_REPLACE(a.contact_phone, '\D', '', 'g'), 8) END) AS hint_phone,
+         COALESCE(
+           (CASE WHEN LENGTH(REGEXP_REPLACE(a.contact_phone, '\D', '', 'g')) >= 6
+                 THEN RIGHT(REGEXP_REPLACE(a.contact_phone, '\D', '', 'g'), 10) END),
+           'id:' || a.id::text
+         ) AS group_key
+  FROM abonados a
+  WHERE a.tenant_id = :'heavy_id'
+    AND a.player_id IS NULL
+),
+grouped AS (
+  SELECT u.group_key,
+         MAX(u.hint_phone) AS hint_phone,
+         (ARRAY_AGG(u.contact_name ORDER BY u.created_at DESC))[1] AS name,
+         (ARRAY_AGG(u.contact_phone ORDER BY u.created_at DESC))[1] AS phone,
+         COUNT(*) FILTER (WHERE u.status <> 'canceled')::int AS fixed_count
+  FROM unlinked u
+  GROUP BY u.group_key
+),
+group_bookings AS (
+  SELECT u.group_key,
+         COUNT(b.id)::int AS bookings_count,
+         MAX(b.date)::text AS last_booking_at
+  FROM unlinked u
+  LEFT JOIN bookings b ON b.abonado_id = u.id
+  GROUP BY u.group_key
+),
+contacts AS (
+  SELECT g.group_key AS key,
+         'contact'::text AS kind,
+         NULL::text AS "playerId",
+         g.name, NULL::text AS email, g.phone,
+         COALESCE(gb.bookings_count, 0) AS "bookingsCount",
+         0 AS "noshowCount",
+         gb.last_booking_at AS "lastBookingAt",
+         NULL::player_tag[] AS tags,
+         g.fixed_count AS "fixedCount",
+         s.id::text AS "suggestedPlayerId",
+         s.name AS "suggestedPlayerName"
+  FROM grouped g
+  LEFT JOIN group_bookings gb ON gb.group_key = g.group_key
+  LEFT JOIN LATERAL (
+    SELECT sp.id, (sp.first_name || ' ' || sp.last_name) AS name
+    FROM player_tenant_relationships sr
+    JOIN players sp ON sp.id = sr.player_id
+    WHERE sr.tenant_id = :'heavy_id'
+      AND g.hint_phone IS NOT NULL
+      AND (CASE WHEN LENGTH(REGEXP_REPLACE(sp.phone, '\D', '', 'g')) >= 8
+                THEN RIGHT(REGEXP_REPLACE(sp.phone, '\D', '', 'g'), 8) END) = g.hint_phone
+    ORDER BY sr.last_booking_at DESC NULLS LAST
+    LIMIT 1
+  ) s ON TRUE
+)
+SELECT * FROM registered
+UNION ALL
+SELECT * FROM contacts
+ORDER BY "lastBookingAt" DESC NULLS LAST, name ASC
+LIMIT 101 OFFSET 0;
 ROLLBACK;
 
 \echo ''

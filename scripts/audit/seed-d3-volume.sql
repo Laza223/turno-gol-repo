@@ -61,14 +61,19 @@ SELECT gen_random_uuid(), 'd3seed-staff-' || n || '@example.com', 'Staff', 'D3-'
 FROM generate_series(0, 200) n;
 
 -- ─── Tenants: 1 heavy + 200 de fondo (geo ~AMBA para el Haversine) ──────────
+-- mp_access_token: placeholder OBVIAMENTE falso, no un token real. D6 lo
+-- necesita para que mp-webhook.handler.ts pase el guard "tenant conectado a
+-- MP" antes de llegar al gateway — bajo MP_MOCK_ENABLED el valor nunca se usa
+-- de verdad (resolveTenantGateway devuelve LocalMockGateway sin leerlo,
+-- mp-oauth.ts:122), así que cualquier string no-null alcanza.
 INSERT INTO tenants (slug, name, address, city, province, phone, email,
                      latitude, longitude, status,
-                     from_price_cents, court_surfaces, court_formats)
+                     from_price_cents, court_surfaces, court_formats, mp_access_token)
 SELECT
   'd3-heavy', 'Complejo D3 Heavy', 'Av. Siempreviva 100', 'Buenos Aires', 'Buenos Aires',
   '+5411000000', 'd3seed-heavy@example.com',
   -34.6037, -58.3816, 'active',
-  800000, ARRAY['synthetic_grass'], ARRAY[5, 7];
+  800000, ARRAY['synthetic_grass'], ARRAY[5, 7], 'd3-seed-fake-token-not-real';
 
 INSERT INTO tenants (slug, name, address, city, province, phone, email,
                      latitude, longitude, status,

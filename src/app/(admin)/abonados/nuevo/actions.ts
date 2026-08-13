@@ -3,8 +3,7 @@
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createAbonadoAction } from '../actions'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
@@ -74,11 +73,14 @@ export async function previewAbonadoSlotsAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
 
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+  // B10 — mismo guard que `createAbonadoAction`, que es lo que este preview
+  // antecede. Antes autenticaba a mano, y una Server Action que autentica a mano
+  // NO hereda nada del layout de `(admin)` (ver el hallazgo R2 en guards.ts): se
+  // quedaba sin el chequeo de lifecycle del tenant, así que un complejo
+  // `blocked` por falta de pago seguía pudiendo consultar disponibilidad.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }

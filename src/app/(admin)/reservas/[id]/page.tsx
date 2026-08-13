@@ -1,8 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getBookingDetail, getBookingCharges } from '../queries'
 import {
@@ -23,10 +22,9 @@ type Props = { params: Promise<{ id: string }> }
 
 export default async function ReservaDetailPage(props: Props) {
   const params = await props.params
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant } = auth
 
   const { booking, charges } = await withTenantContext(tenant.id, async (tx) => {
     const detail = await getBookingDetail(tenant.id, params.id, tx)

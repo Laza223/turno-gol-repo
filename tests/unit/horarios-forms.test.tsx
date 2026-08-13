@@ -38,16 +38,14 @@ vi.mock('react-dom', async (importOriginal) => {
 import { AddClosedDateForm } from '@/app/(admin)/settings/horarios/AddClosedDateForm'
 import { HorariosForm } from '@/app/(admin)/settings/horarios/HorariosForm'
 import { RemoveClosedDateForm } from '@/app/(admin)/settings/horarios/RemoveClosedDateForm'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaff } from '@/modules/staff/guards'
 
 // Regresión 05-horarios-mindate-utc: la page usaba el reloj UTC crudo del
-// server para "hoy" en vez de artTodayStr(). Se mockean los mismos dos puntos
-// que usa el resto del repo para esta page (ver facturacion-page.test.tsx) y
-// se deja el reloj real de '@/shared/dates/art' para ejercitar la conversión
-// ART de verdad.
-vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
-vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
+// server para "hoy" en vez de artTodayStr(). Se mockea el guard compuesto que
+// usa la page (D6 la migró a requireAdminStaff — auth+tenant+role+lockout en
+// una sola llamada) y se deja el reloj real de '@/shared/dates/art' para
+// ejercitar la conversión ART de verdad.
+vi.mock('@/modules/staff/guards', () => ({ requireAdminStaff: vi.fn() }))
 // La page importa ./actions (Server Actions) para pasarlas como prop — esas
 // actions importan '@/shared/rate-limit/server-action' y '@/shared/db/client',
 // que arrastran @sentry/nextjs y postgres reales. Mismo mock que usa el resto
@@ -108,17 +106,13 @@ describe('HorariosPage — minDate en ART (regresión 05-horarios-mindate-utc)',
     vi.setSystemTime(new Date('2026-06-13T01:30:00.000Z'))
 
     formState.mockReturnValue({ success: true })
-    vi.mocked(extractAuthUser).mockResolvedValue({
-      type: 'staff',
-      staffUserId: 'staff-1',
-      tenantId: 't-1',
-      id: 'auth-1',
-      email: 'a@b.com',
-    } as never)
-    vi.mocked(getStaffTenant).mockResolvedValue({
-      openingHours: {},
-      closedDates: ['2026-06-11', '2026-06-12', '2026-06-13'],
-      closesNextDay: false,
+    vi.mocked(requireAdminStaff).mockResolvedValue({
+      user: { type: 'staff', staffUserId: 'staff-1' },
+      tenant: {
+        openingHours: {},
+        closedDates: ['2026-06-11', '2026-06-12', '2026-06-13'],
+        closesNextDay: false,
+      },
     } as never)
 
     const HorariosPage = (await import('@/app/(admin)/settings/horarios/page')).default

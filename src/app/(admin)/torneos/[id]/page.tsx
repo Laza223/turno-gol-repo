@@ -2,8 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
@@ -12,7 +11,6 @@ import { listTeamPlayers, listTeams } from '@/modules/tournaments/tournament-tea
 import { listTournamentSlots } from '@/modules/tournaments/tournament-slots.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
 import { listCourts } from '@/modules/courts/court.service'
-import { getStaffRole } from '@/modules/staff/staff.service'
 import type { TournamentTeamPlayerRow } from '@/modules/tournaments/tournament.types'
 import {
   addTeamAction,
@@ -42,16 +40,13 @@ import { TorneoTabs } from './TorneoTabs'
 export default async function TorneoDetailPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
 
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  // El rol define si se puede publicar; el panel igual muestra el estado. Lo
+  // devuelve el guard, sin una segunda lectura de tenant_staff_members.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant, role } = auth
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
-
-  // El rol define si se puede publicar; el panel igual muestra el estado.
-  const role = await getStaffRole(tenant.id, user.staffUserId)
 
   // Todo en UNA transacción, en paralelo adentro.
   let data

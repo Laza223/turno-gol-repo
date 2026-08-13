@@ -36,6 +36,13 @@ test.describe('visual — público', () => {
 
   test('landing @visual', async ({ page }) => {
     await suppressPushBanner(page)
+    // El campo FECHA del buscador arranca prellenado con HOY: `HeroSearch` es
+    // 'use client' y lo lee con `useClientSnapshot(todayLocal, …)`, o sea del
+    // reloj del browser. Sin congelarlo, esta foto caduca sola — la baseline de
+    // julio traía "29/07/2026" y en agosto el campo decía otra cosa. El diff que
+    // eso mete es chico (unos glifos), pero es ruido permanente en la única
+    // pieza del repo cuyo trabajo es que un diff signifique algo.
+    await page.clock.setFixedTime(FROZEN_NOW)
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     // viewport-only (el default de toHaveScreenshot): la landing es larguísima y

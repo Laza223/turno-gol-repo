@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
+import { withAuth } from '@/server/middleware/with-auth'
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
-import { forbidden, unauthorized } from '@/shared/api-error'
+import { forbidden } from '@/shared/api-error'
 import { guard } from '@/shared/rate-limit/route-guard'
 
 export const dynamic = 'force-dynamic'
@@ -76,13 +76,16 @@ async function lastHealthPing(): Promise<string | null> {
  * Estado del sistema para el panel de observabilidad del dashboard /metricas.
  * Solo superadministradores de la plataforma (resolveSystemAdmin).
  * Una dependencia caída degrada su campo (down / null) — nunca un 500.
+ *
+ * B10 — va por `withAuth` y no por un `extractAuthUser` a mano. El bloque que
+ * había acá era letra por letra el del wrapper (mismo mensaje, mismo
+ * `AUTH_REQUIRED`), pero al ser una función pelada la ruta se quedaba SIN
+ * `runRequestObservability`: sus 401/403 volvían con `meta.request_id: null` y
+ * sus líneas de log sin requestId — la misma regresión que B5 cerró para los
+ * otros tres wrappers (ver `tests/unit/route-wrappers-request-context.test.ts`).
+ * Era el único consumidor legítimo de `withAuth`, que por eso parecía muerto.
  */
-export async function GET(): Promise<NextResponse> {
-  const user = await extractAuthUser()
-  if (!user) {
-    return unauthorized('Autenticación requerida.', { code: 'AUTH_REQUIRED' })
-  }
-
+export const GET = withAuth(async (_req, user): Promise<NextResponse> => {
   const systemAdmin = await resolveSystemAdmin()
   if (!systemAdmin) {
     return forbidden(
@@ -106,4 +109,4 @@ export async function GET(): Promise<NextResponse> {
     timestamp: new Date().toISOString(),
   }
   return NextResponse.json({ data: payload })
-}
+})

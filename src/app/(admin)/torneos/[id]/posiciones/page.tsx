@@ -2,8 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
@@ -16,7 +15,6 @@ import {
   getTopScorers,
 } from '@/modules/tournaments/tournament-standings.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
-import { getStaffRole } from '@/modules/staff/staff.service'
 import { seedPlayoffsAction, updateTeamAction } from '../../actions'
 import { FORMAT_SHORT, formatDateRange } from '../../torneos-lib'
 import { TorneoTabs } from '../TorneoTabs'
@@ -29,39 +27,32 @@ import { SuspendidosPanel, type SuspendidoView } from './SuspendidosPanel'
 export default async function TorneoPosicionesPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
 
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  // El corte es configuración (solo el dueño lo puede cerrar), pero el estado lo
+  // ve todo el staff: por eso el rol se lee y no se esconde la tarjeta. Antes
+  // salía de un `getStaffRole` propio corriendo en paralelo con los datos del
+  // torneo; ahora lo devuelve el guard, así que esa lectura desaparece en vez de
+  // paralelizarse.
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant, role } = auth
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
 
-  let role
   let data
   try {
-    // El corte es configuración (solo el dueño lo puede cerrar), pero el estado
-    // lo ve todo el staff: por eso el rol se lee y no se esconde la tarjeta.
-    // Va en paralelo con los datos del torneo — `getStaffRole` usa el pool
-    // worker, no el contexto de tenant, así que no depende de nada de acá.
-    ;[role, data] = await Promise.all([
-      getStaffRole(tenant.id, user.staffUserId),
-      withTenantContext(tenant.id, async (tx) => {
-        // Ninguna de las siete alimenta a las otras: todas toman `id` directo.
-        const [tournament, groups, scorers, discipline, stages, teams, matches] = await Promise.all(
-          [
-            getTournament(tenant.id, id, tx),
-            getStandings(tenant.id, id, tx),
-            getTopScorers(tenant.id, id, tx),
-            getDisciplineBoard(tenant.id, id, tx),
-            listStages(tenant.id, id, tx),
-            listTeams(tenant.id, id, tx),
-            listFixture(tenant.id, id, tx),
-          ],
-        )
-        return { tournament, groups, scorers, discipline, stages, teams, matches }
-      }),
-    ])
+    data = await withTenantContext(tenant.id, async (tx) => {
+      // Ninguna de las siete alimenta a las otras: todas toman `id` directo.
+      const [tournament, groups, scorers, discipline, stages, teams, matches] = await Promise.all([
+        getTournament(tenant.id, id, tx),
+        getStandings(tenant.id, id, tx),
+        getTopScorers(tenant.id, id, tx),
+        getDisciplineBoard(tenant.id, id, tx),
+        listStages(tenant.id, id, tx),
+        listTeams(tenant.id, id, tx),
+        listFixture(tenant.id, id, tx),
+      ])
+      return { tournament, groups, scorers, discipline, stages, teams, matches }
+    })
   } catch (err) {
     if (err instanceof TournamentNotFoundError) notFound()
     throw err

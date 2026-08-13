@@ -1,7 +1,5 @@
-import { redirect } from 'next/navigation'
 import { CreditCard, CheckCircle2, ExternalLink } from 'lucide-react'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
@@ -26,10 +24,7 @@ function formatDate(d: string | Date | null): string {
 }
 
 export default async function FacturacionPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const { tenant } = await requireAdminStaff()
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
   const mpConnected = !!tenant.mpConnectedAt

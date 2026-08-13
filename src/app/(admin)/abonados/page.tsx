@@ -2,8 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getAbonados } from '@/modules/abonados/abonado.service'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
@@ -22,11 +21,9 @@ const STATUS_LABELS: Record<AbonadoStatus, string> = {
 
 export default async function AbonadosPage(props: { searchParams: Promise<{ status?: string }> }) {
   const searchParams = await props.searchParams
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant } = auth
 
   const statusFilter = VALID_STATUSES.includes(searchParams.status as AbonadoStatus)
     ? (searchParams.status as AbonadoStatus)

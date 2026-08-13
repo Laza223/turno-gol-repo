@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CalendarX, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { artTodayStr } from '@/shared/dates/art'
 import { formatDateLong } from '@/lib/format'
@@ -126,14 +125,13 @@ function parsePage(raw: string | undefined): number {
 
 export default async function ReservasPage(props: Props) {
   const searchParams = await props.searchParams
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) redirect('/login')
+  const { tenant } = auth
   // Mismo dato/mismo default (24) que `getBookingDetail` (queries.ts) usa vía
   // COALESCE en SQL para `ReservaDetail.cancellationPolicyHours` — acá se lee
-  // en JS porque `getStaffTenant` ya trae `settings` completo, sin query
-  // extra. Reenviado a QuickActions (cluster F bug 2).
+  // en JS porque el guard ya devuelve el `tenant` con `settings` completo, sin
+  // query extra. Reenviado a QuickActions (cluster F bug 2).
   const cancellationPolicyHours = tenant.settings?.cancellation_policy?.hours_before ?? 24
 
   const today = artTodayStr()

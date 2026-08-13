@@ -1,16 +1,10 @@
-import { redirect } from 'next/navigation'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { AvisosForm } from './AvisosForm'
 import { updateAvisosSettingsAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function AvisosPage() {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-
-  const tenant = await getStaffTenant(user.staffUserId)
-  if (!tenant) redirect('/login')
+  const { tenant } = await requireAdminStaff()
 
   return (
     <div className="space-y-6">

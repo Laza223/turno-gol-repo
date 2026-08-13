@@ -65,6 +65,25 @@ harness estaba desactualizado en dos lugares y medía queries que la app ya no e
 k6 quedó SIN hacer** (k6 no instalado + sin env en el worktree) y el p95 de producción necesita
 tráfico que hoy no existe.
 
+**B10 — parte 4** (2026-08-12): el bloque se dio por cerrado arriba **decidiendo** no barrer las 12
+páginas con `extractAuthUser` crudo ("tampoco eran un agujero, los layouts las cubren") y poner el
+candado estático en su lugar. La decisión era correcta en lo que evaluó, pero dejó dos cosas que el
+candado de entonces no podía ver:
+
+- **`requireCajaContext`** (`src/app/(admin)/caja/queries.ts`) hacía `extractAuthUser` +
+  `getStaffTenant` a mano y nunca leía el rol, y lo comparten las **4** pantallas de Caja. El grep
+  sobre `page.tsx` no lo veía porque esas páginas no nombran `extractAuthUser`: lo delegan.
+- **`with-auth.ts` sí tenía un consumidor de producción**, escrito a mano:
+  `api/admin/system-status` duplicaba su bloque letra por letra y, al ser una función pelada,
+  corría **sin `runRequestObservability`** — sus 401/403 volvían con `meta.request_id: null`, la
+  misma regresión que B5 cerró para los otros tres wrappers. Enchufar el wrapper arregla las dos
+  cosas de una.
+
+El barrido de las 19 páginas se hizo igual (es cosmético, el plan tenía razón), y con eso el
+candado `app-page-guard-chain.test.ts` pudo apretarse: bajo `(admin)` ahora exige un guard de
+**staff** en el propio archivo, no cualquier guard. Detalle y controles negativos en
+`docs/audit/PROGRESS.md` ("B10 (parte 4)").
+
 **Deuda cero: los 17 bloques cerrados.** Lo de abajo es la reconstrucción del plan original,
 medida contra el código de entonces.
 

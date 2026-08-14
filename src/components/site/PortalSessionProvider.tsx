@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { PortalSession } from '@/modules/players/portal-session'
 
-type PortalSessionContextValue = {
+export type PortalSessionContextValue = {
   /** null mientras hidrata o si no hay jugador logueado (anónimo/staff). */
   session: PortalSession | null
   /** Complejos favoritos del jugador (vacío para anónimos). */

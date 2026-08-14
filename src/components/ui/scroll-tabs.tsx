@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 export type ScrollTab = { href: string; label: string }
@@ -28,8 +31,22 @@ type Props = {
  */
 export function ScrollTabs({ tabs, activeHref, ariaLabel, className, clientNav }: Props) {
   const Anchor = clientNav ? Link : 'a'
+  const navRef = useRef<HTMLElement>(null)
+
+  // MEJORA-UX QA (mobile 375px): con 7+ tabs la tira desborda y el navegador
+  // la monta siempre con scrollLeft=0 — si el tab activo es de los últimos
+  // (ej. "Avisos"), arranca fuera de vista sin que la tira misma lo indique
+  // (el h2 de la card sí lo dice, pero un usuario que solo mira la tira no lo
+  // sabe). `inline: 'nearest'` no mueve nada si ya está visible.
+  useEffect(() => {
+    navRef.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [activeHref])
+
   return (
     <nav
+      ref={navRef}
       aria-label={ariaLabel}
       className={cn(
         'flex gap-1 overflow-x-auto border-b border-border scrollbar-none [&::-webkit-scrollbar]:hidden',

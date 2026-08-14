@@ -1,8 +1,11 @@
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 
+// MEJORA-UX QA (WCAG 2.5.5, ≥44px): medían 16px de alto en mobile — mismo fix
+// ya aplicado en el componente hermano `SiteFooter.tsx` (min-h-11, se retrae
+// en sm+ porque ahí ya no son dedo sino mouse).
 const linkCls =
-  'transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded'
+  'inline-flex min-h-11 items-center transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded sm:min-h-0'
 
 export default function BusinessFooter() {
   return (
@@ -27,7 +30,7 @@ export default function BusinessFooter() {
               idiom dark:, es fijo, así que sube a slate-400 (7.87:1). */}
           <span className="text-xs text-slate-400">© {new Date().getFullYear()} · Argentina</span>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-0 text-xs text-slate-400 sm:gap-y-2">
           <Link href="/precios" className={linkCls}>
             Precios
           </Link>

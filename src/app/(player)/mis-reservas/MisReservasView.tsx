@@ -246,7 +246,13 @@ export function MisReservasView({
 
                   {/* Contenido */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
+                    {/* MEJORA-UX QA (mobile 375px): un badge largo ("Cancelado
+                        (sin reembolso)") es `shrink-0` y no cede — el bloque
+                        de nombre (`min-w-0`) se llevaba lo que sobraba y
+                        "Cancha E2E 3" quedaba en "Can...". `flex-wrap` larga
+                        el badge a su propia línea cuando no entra, en vez de
+                        angostar el nombre. */}
+                    <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-foreground">
                           {b.court_name}

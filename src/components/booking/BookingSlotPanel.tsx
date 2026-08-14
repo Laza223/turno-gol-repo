@@ -7,7 +7,9 @@ import { CalendarClock } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
+import { formatArs } from '@/lib/format'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -101,6 +103,9 @@ export function BookingSlotPanel({
   const [noShowOpen, setNoShowOpen] = useState(false)
   const [canteenOpen, setCanteenOpen] = useState(false)
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
 
   // Cambio de turno → estado limpio. Patrón "derived state on prop change"
   // (sin useEffect), igual que StreetMoneyChargeDialog.
@@ -137,6 +142,7 @@ export function BookingSlotPanel({
     setNoShowOpen(false)
     setCanteenOpen(false)
     setRescheduleOpen(false)
+    setCancelOpen(false)
   }
 
   if (!booking) return null
@@ -156,6 +162,13 @@ export function BookingSlotPanel({
   // Un bloqueo de mantenimiento y una hora de torneo no son el turno de nadie:
   // no hay a quién venderle ni a quién mover.
   const isClientBooking = booking.type !== 'block' && booking.type !== 'tournament'
+
+  // Mismo criterio que QuickActions.tsx (lista de /reservas): cancelar solo
+  // aplica a un turno `confirmed` — `pending_payment` expira solo (hold de 6
+  // min) y el resto de estados ya son terminales. Sin `cancelBookingAction`
+  // (stories/tests viejas) el botón no se ofrece, como el resto del panel.
+  const canCancel =
+    isClientBooking && booking.status === 'confirmed' && Boolean(actions?.cancelBookingAction)
 
   // La cantina sigue disponible con el turno ya jugado: lo normal es que la
   // gente consuma durante el partido y pague todo junto al final.
@@ -178,6 +191,47 @@ export function BookingSlotPanel({
     (booking.playerFirstName
       ? `${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim()
       : null)
+
+  function openCancel() {
+    setCancelReason('')
+    setCancelType(null)
+    setCancelOpen(true)
+  }
+
+  async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
+    if (!actions?.cancelBookingAction) return { success: false, error: 'Sin acciones disponibles.' }
+    if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
+    if (cancelReason.trim().length < 3) {
+      return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
+    }
+    const res = await actions.cancelBookingAction(booking!.id, cancelReason.trim(), cancelType)
+    if (res.success) {
+      setLastId(null)
+      notifyMutated()
+    }
+    return res
+  }
+
+  // Sin `startsAt`/`cancellationPolicyHours` a mano en este panel (GridBooking
+  // no los trae — ver su comentario): mismo fallback genérico que usa
+  // QuickActions.tsx cuando esos datos faltan (`inPolicy === null`), no un
+  // mensaje inventado nuevo.
+  const hasPaidDeposit = booking.depositStatus === 'paid' && (booking.depositAmount ?? 0) > 0
+  let cancelRefundWarning: string | null = null
+  if (cancelType) {
+    if (!hasPaidDeposit) {
+      cancelRefundWarning = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
+    } else if (hasEnded) {
+      cancelRefundWarning = 'El turno ya se jugó: la seña queda para el complejo (sin reembolso).'
+    } else if (cancelType === 'complejo') {
+      cancelRefundWarning =
+        booking.paymentMethod === 'mercadopago'
+          ? `Se reembolsará la seña de ${formatArs(booking.depositAmount ?? 0)} vía MercadoPago.`
+          : `Coordiná el reembolso de ${formatArs(booking.depositAmount ?? 0)} en efectivo/transferencia con el jugador (no es automático).`
+    } else {
+      cancelRefundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount ?? 0)} si está dentro del plazo, retención si no.`
+    }
+  }
 
   function handleOpenChange(next: boolean) {
     if (isPending) return
@@ -229,6 +283,8 @@ export function BookingSlotPanel({
               onOpenNoShow={() => setNoShowOpen(true)}
               canRevertNoShow={canRevertNoShow}
               onRevertNoShow={revertNoShow}
+              canCancel={canCancel}
+              onOpenCancel={openCancel}
             />
           </div>
         </SheetContent>
@@ -278,6 +334,62 @@ export function BookingSlotPanel({
           variant="destructive"
           onConfirm={confirmNoShow}
         />
+      )}
+
+      {actions?.cancelBookingAction && (
+        <ConfirmDialog
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
+          title="Cancelar reserva"
+          description={`${displayName ?? visual.label}, ${booking.timeStart}–${booking.timeEnd}. Esta acción cancela el turno y libera el horario. Ingresá el motivo.`}
+          variant="destructive"
+          confirmLabel="Cancelar reserva"
+          cancelLabel="Volver"
+          onConfirm={onConfirmCancel}
+        >
+          <div className="space-y-3">
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-medium text-foreground">¿Quién cancela?</legend>
+              <RadioChipGroup
+                value={cancelType ?? ''}
+                onValueChange={(v) => setCancelType(v as 'complejo' | 'jugador')}
+              >
+                <RadioChip
+                  value="complejo"
+                  description="Rotura, mantenimiento o error. Reembolso automático."
+                >
+                  El complejo necesita cancelar
+                </RadioChip>
+                <RadioChip
+                  value="jugador"
+                  description="Se aplica la política de cancelación del complejo."
+                >
+                  El jugador pidió cancelar
+                </RadioChip>
+              </RadioChipGroup>
+            </fieldset>
+            {cancelRefundWarning && (
+              <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
+                {cancelRefundWarning}
+              </div>
+            )}
+            <div className="space-y-1">
+              <label
+                htmlFor={`slot-cancel-reason-${booking.id}`}
+                className="text-xs font-medium text-foreground"
+              >
+                Motivo (obligatorio)
+              </label>
+              <textarea
+                id={`slot-cancel-reason-${booking.id}`}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={2}
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+              />
+            </div>
+          </div>
+        </ConfirmDialog>
       )}
     </>
   )

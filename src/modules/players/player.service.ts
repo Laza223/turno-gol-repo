@@ -26,7 +26,7 @@ export async function getOrCreatePlayer(
   firstName: string,
   lastName: string,
   opts: GetOrCreatePlayerOpts = {},
-): Promise<{ id: string }> {
+): Promise<{ id: string; wasCreated: boolean }> {
   const sql = getWorkerSql()
   const lower = email.toLowerCase()
   const agreed = opts.agreedToTerms === true
@@ -46,7 +46,7 @@ export async function getOrCreatePlayer(
     } else {
       await sql`UPDATE players SET last_login_at = NOW() WHERE id = ${row.id}`
     }
-    return { id: row.id }
+    return { id: row.id, wasCreated: false }
   }
 
   const created = await sql<{ id: string }[]>`
@@ -61,5 +61,10 @@ export async function getOrCreatePlayer(
         terms_version = COALESCE(players.terms_version, EXCLUDED.terms_version)
     RETURNING id
   `
-  return { id: created[0]!.id }
+  // `wasCreated: true` es best-effort: el SELECT previo no vio la fila, pero
+  // el ON CONFLICT DO UPDATE puede haber ganado la carrera contra un insert
+  // concurrente idéntico. Solo alimenta el copy de "¡Cuenta confirmada!" vs
+  // "¡Listo!" en /verify — un falso positivo ahí no tiene consecuencia de
+  // negocio, no vale otra query para desambiguar la carrera rara.
+  return { id: created[0]!.id, wasCreated: true }
 }

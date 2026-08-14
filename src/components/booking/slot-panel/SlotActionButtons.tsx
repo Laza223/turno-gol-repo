@@ -1,6 +1,6 @@
 'use client'
 
-import { CupSoda, MoveRight, UserX } from 'lucide-react'
+import { Ban, CupSoda, MoveRight, UserX } from 'lucide-react'
 import type { SlotPanelActions } from './actions'
 
 type Props = {
@@ -15,9 +15,11 @@ type Props = {
   onOpenNoShow: () => void
   canRevertNoShow: boolean
   onRevertNoShow: () => void
+  canCancel: boolean
+  onOpenCancel: () => void
 }
 
-/** Botones de cantina, reprogramar, marcar ausente y deshacerla. */
+/** Botones de cantina, reprogramar, cancelar, marcar ausente y deshacerla. */
 export function SlotActionButtons({
   isPending,
   isTournament,
@@ -30,6 +32,8 @@ export function SlotActionButtons({
   onOpenNoShow,
   canRevertNoShow,
   onRevertNoShow,
+  canCancel,
+  onOpenCancel,
 }: Props) {
   return (
     <>
@@ -77,6 +81,18 @@ export function SlotActionButtons({
           className="h-11 rounded-lg border border-border text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
         >
           Deshacer la ausencia
+        </button>
+      )}
+
+      {canCancel && actions?.cancelBookingAction && (
+        <button
+          type="button"
+          onClick={onOpenCancel}
+          disabled={isPending}
+          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-card text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10 md:h-10"
+        >
+          <Ban aria-hidden className="h-4 w-4" />
+          Cancelar reserva
         </button>
       )}
 

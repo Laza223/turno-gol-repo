@@ -34,16 +34,20 @@ export default function SuspendedPage() {
         Soy el dueño — regularizar el pago
       </Link>
 
+      {/* MEJORA-UX QA (WCAG 2.5.8, ≥24px): medían 20px de alto con 8px de
+          separación — mismo patrón `min-h-11 md:min-h-0` que ya usa el resto
+          del repo para links de texto (ver "¿Olvidaste tu contraseña?" en
+          LoginCard.tsx). */}
       <a
         href="mailto:soporte@turnogol.app"
-        className="mt-4 text-sm font-medium text-muted-foreground hover:text-foreground"
+        className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0"
       >
         Contactar a soporte
       </a>
 
       <Link
         href="/"
-        className="mt-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+        className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0"
       >
         Volver al inicio
       </Link>

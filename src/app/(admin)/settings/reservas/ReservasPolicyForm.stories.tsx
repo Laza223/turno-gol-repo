@@ -57,6 +57,26 @@ export const PorcentajePersonalizado: Story = {
   },
 }
 
+/**
+ * Candado de regresión (QA Lote 2 P1): con un preset activo (50%, plata real),
+ * "Otro" tiene que precargar CON ESE VALOR — no con el "30" de estado inicial
+ * de un form que nunca visitó "Otro". El bug real bajaba la seña en silencio.
+ */
+export const OtroPrecargaElPresetActivo: Story = {
+  args: {
+    s: tenantSettings({ deposit_percentage: 50 }),
+    action: fn(async () => ({ success: true as const })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Hay dos botones "Otro" en la pantalla (seña y anticipación de
+    // cancelación) — se escopea al fieldset "Seña" para no ambigüar.
+    const senaFieldset = within(canvas.getByRole('group', { name: 'Seña' }))
+    await userEvent.click(senaFieldset.getByRole('button', { name: 'Otro' }))
+    await expect(canvas.getByLabelText(/porcentaje de seña/i)).toHaveValue(50)
+  },
+}
+
 /** Reservas online apagadas: solo el complejo puede cargar turnos. */
 export const ReservasOnlineDeshabilitadas: Story = {
   args: {

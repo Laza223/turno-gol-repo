@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormStatus } from 'react-dom'
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
@@ -33,6 +33,16 @@ export function LoginCard({
   const [state, formAction] = useActionState(loginAction, initial)
   const [show, setShow] = useState(false)
   const isError = state.status === 'error'
+  const errorRef = useRef<HTMLParagraphElement>(null)
+
+  // MEJORA-UX QA: tras un submit fallido, `document.activeElement` quedaba en
+  // `<body>` — el mensaje se anuncia por `role="alert"` pero un usuario de
+  // teclado sin lector de pantalla tenía que retabular desde el principio.
+  // `[state]` (no solo `isError`) para re-enfocar en cada submit fallido,
+  // incluso dos errores seguidos con el mismo mensaje.
+  useEffect(() => {
+    if (isError) errorRef.current?.focus()
+  }, [state, isError])
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
@@ -104,7 +114,12 @@ export function LoginCard({
         </div>
 
         {isError && (
-          <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+          <p
+            ref={errorRef}
+            tabIndex={-1}
+            role="alert"
+            className="text-xs text-red-600 dark:text-red-400 focus-visible:outline-hidden"
+          >
             {state.message}
           </p>
         )}

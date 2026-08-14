@@ -56,11 +56,18 @@ export default async function HomePage() {
       <PortalSessionProvider>
         <SiteNav variant="overlay" signOutAction={signOutAction} />
       </PortalSessionProvider>
-      <Hero cities={cities} />
-      {featured.length > 0 && <FeaturedComplexes complexes={featured} />}
-      <HowItWorks />
-      <StatsBar />
-      <OwnerBanner />
+      {/* La home no pasa por ninguno de los layouts que definen `id="main-content"`
+          (auth, business, admin, portal), así que el skip link del layout raíz
+          apuntaba a un ancla inexistente: Tab + Enter no movía el foco ni el
+          scroll. Es la página de más tráfico del sitio (🟡 QA 2026-08-14,
+          WCAG 2.4.1 Bypass Blocks). */}
+      <main id="main-content" tabIndex={-1}>
+        <Hero cities={cities} />
+        {featured.length > 0 && <FeaturedComplexes complexes={featured} />}
+        <HowItWorks />
+        <StatsBar />
+        <OwnerBanner />
+      </main>
       <SiteFooter />
     </div>
   )

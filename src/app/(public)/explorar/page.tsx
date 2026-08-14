@@ -235,7 +235,10 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
           {view === 'map' ? (
             <ExplorarSplitView results={results} favoritedIds={Array.from(favoriteIds)} />
           ) : results.length === 0 ? (
-            <EmptyResults avail={avail ? { date: avail.date, time: avail.time } : null} />
+            <EmptyResults
+              avail={avail ? { date: avail.date, time: avail.time } : null}
+              outOfRange={offset > 0}
+            />
           ) : (
             <>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

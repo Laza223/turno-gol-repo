@@ -12,6 +12,7 @@ import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import { MoneyInput } from '@/components/ui/money-input'
 import { formatArs } from '@/lib/format'
+import { todayART } from '@/shared/time/art-date'
 import {
   Clock,
   CalendarDays,
@@ -265,6 +266,11 @@ export default function AbonadoForm({
   const [timeStart, setTimeStart] = useState('19:00')
   const [timeEnd, setTimeEnd] = useState('20:00')
   const [contactName, setContactName] = useState('')
+  // El teléfono vivía SOLO en el FormData: al volver del preview tras un error de
+  // validación el form se remonta y el campo salía vacío, mientras Nombre y Precio
+  // conservaban su valor. El usuario corregía el nombre, reenviaba y se comía un
+  // segundo error no relacionado ('Teléfono requerido') — 🟡 QA 2026-08-13.
+  const [contactPhone, setContactPhone] = useState('')
   const [pricePerSessionCents, setPricePerSessionCents] = useState<number | null>(null)
 
   const courtOptions: ComboboxOption[] = useMemo(
@@ -301,13 +307,16 @@ export default function AbonadoForm({
     const form = e.currentTarget
     const fd = new FormData(form)
 
+    const phoneFromForm = (fd.get('contactPhone') as string) ?? ''
+    setContactPhone(phoneFromForm)
+
     const values: FormValues = {
       courtId,
       dayOfWeek,
       timeStart: (fd.get('timeStart') as string) || timeStart,
       timeEnd: normalizeMidnightEnd((fd.get('timeEnd') as string) || timeEnd),
       contactName,
-      contactPhone: fd.get('contactPhone') as string,
+      contactPhone: phoneFromForm,
       pricePerSessionCents,
       startsOn,
     }
@@ -456,6 +465,11 @@ export default function AbonadoForm({
                     id="startsOn"
                     value={startsOn}
                     onChange={setStartsOn}
+                    // Un turno fijo son reservas a futuro: sin este piso se aceptaba una
+                    // fecha pasada y se generaban reservas retroactivas que el trigger de
+                    // 24h pasaba a 'completed' — partidos 'jugados' que nunca ocurrieron, y
+                    // que ni pausar ni cancelar el abonado borran después (🟡 QA 2026-08-13).
+                    min={todayART()}
                     allowedDayOfWeek={dayOfWeek !== '' ? Number(dayOfWeek) : undefined}
                     placeholder="Seleccionar fecha"
                   />
@@ -546,7 +560,13 @@ export default function AbonadoForm({
                   </div>
                 </div>
 
-                <PhoneInput id="contactPhone" name="contactPhone" label="Teléfono" required />
+                <PhoneInput
+                  id="contactPhone"
+                  name="contactPhone"
+                  label="Teléfono"
+                  defaultValue={contactPhone}
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

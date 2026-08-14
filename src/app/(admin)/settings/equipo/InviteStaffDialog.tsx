@@ -70,7 +70,12 @@ export function InviteStaffDialog({
       handledRef.current = true
       toast({
         title: 'Invitación enviada',
-        description: 'Recibirán un email para activar su cuenta.',
+        // El copy decía 'para activar su cuenta' y es falso: el alta queda
+        // ACTIVA desde el primer instante (no existe ningún flujo que active al
+        // aceptar, así que poner is_active=false dejaría al invitado bloqueado
+        // para siempre). Decisión del dueño: que opere ya y que el cartel diga
+        // la verdad (🟡 QA 2026-08-13).
+        description: 'Ya puede entrar. Le mandamos un email para que ponga su contraseña.',
       })
       onClose()
     }
@@ -111,7 +116,8 @@ export function InviteStaffDialog({
               className="h-11 md:h-10"
             />
             <p className="text-xs text-muted-foreground">
-              Recibirán un email para activar su cuenta.
+              Va a poder operar apenas lo invites. Le mandamos un email para que ponga su
+              contraseña.
             </p>
           </div>
 

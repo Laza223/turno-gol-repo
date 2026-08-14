@@ -61,8 +61,13 @@ type AuthCtx = {
   playerId?: string
   staffUserId?: string
   tenantCount?: number
-  /** magiclink.*: alta nueva con perfil vs re-acceso de un jugador existente. */
-  flow?: 'signup' | 'reaccess'
+  /**
+   * magiclink.*: alta nueva con perfil vs re-acceso de un jugador existente.
+   * `reaccess_unknown_email`: se pidió re-acceso para un email no registrado —
+   * al caller se le responde igual que a un envío real (no filtramos qué emails
+   * existen), así que este es el único rastro de que no se mandó ningún mail.
+   */
+  flow?: 'signup' | 'reaccess' | 'reaccess_unknown_email'
   /** magiclink.clicked: si el intercambio del código terminó en sesión. */
   ok?: boolean
 }

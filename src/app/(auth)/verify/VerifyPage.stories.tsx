@@ -74,10 +74,6 @@ export const ErrorExpirado: Story = {
   },
 }
 
-export const ErrorUsado: Story = {
-  args: { searchParams: { error: 'used' } },
-}
-
 export const ErrorInvalido: Story = {
   args: { searchParams: { error: 'algo-no-mapeado' } },
   play: async ({ canvasElement }) => {

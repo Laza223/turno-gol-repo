@@ -9,6 +9,7 @@ import { AdminSidebar } from './admin-sidebar'
 import { AdminBottomNav } from './admin-bottom-nav'
 import { AdminHeader } from './admin-header'
 import { StatusBanner } from './status-banner'
+import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 
 interface AdminLayoutShellProps {
   children: ReactNode
@@ -110,6 +111,9 @@ export function AdminLayoutShell({
                 : 'max-w-7xl pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-4rem)]',
             )}
           >
+            {/* Va acá, en flujo y dentro del contenedor de la página, y no como
+                overlay fijo: ver el comentario del propio componente. */}
+            <PushNotificationManagerLoader />
             {children}
           </main>
         </div>

@@ -17,7 +17,7 @@ vi.mock('@/shared/rate-limit/server-action', () => ({
   adminRateLimited: vi.fn(async () => null),
 }))
 vi.mock('@/modules/abonados/slot-generator', () => ({
-  generateSlotDates: vi.fn(() => ['2026-06-15']),
+  generateSlotDates: vi.fn(() => [FUTURE_START]),
 }))
 vi.mock('@/modules/abonados/abonado.service', () => ({
   checkAbonadoSlotConflict: vi.fn(async () => false),
@@ -36,13 +36,19 @@ import {
 } from '@/modules/abonados/abonado.service'
 import { previewAbonadoSlotsAction } from '@/app/(admin)/abonados/nuevo/actions'
 
+// Fecha de inicio SIEMPRE futura y relativa al reloj: una fecha fija (antes
+// '2026-06-15') queda en el pasado con el correr del tiempo y choca contra el
+// guard de "un turno fijo no puede arrancar antes de hoy" (🟡 QA 2026-08-13).
+// Mismo patrón de fixture que ya rotó en race-admin-vs-online.test.ts.
+const FUTURE_START = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10)
+
 const VALID_UUID = '11111111-1111-1111-1111-111111111111'
 const baseInput = {
   courtId: VALID_UUID,
   dayOfWeek: 1,
   timeStart: '10:00',
   timeEnd: '11:00',
-  startsOn: '2026-06-15',
+  startsOn: FUTURE_START,
 }
 
 beforeEach(() => {
@@ -63,12 +69,12 @@ describe('previewAbonadoSlotsAction — conflicto de abonado activo (#34)', () =
 
   it('devuelve success con los conflictos de booking si no hay abonado en conflicto', async () => {
     vi.mocked(checkAbonadoSlotConflict).mockResolvedValueOnce(false)
-    vi.mocked(getAbonadoSlotConflicts).mockResolvedValueOnce(['2026-06-15'])
+    vi.mocked(getAbonadoSlotConflicts).mockResolvedValueOnce([FUTURE_START])
     const res = await previewAbonadoSlotsAction(baseInput)
     expect(res).toEqual({
       success: true,
-      dates: ['2026-06-15'],
-      conflicts: ['2026-06-15'],
+      dates: [FUTURE_START],
+      conflicts: [FUTURE_START],
     })
   })
 })

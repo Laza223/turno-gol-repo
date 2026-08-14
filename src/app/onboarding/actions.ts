@@ -18,6 +18,7 @@ import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/openi
 import {
   createCourt,
   getCourtCountAndLimit,
+  listCourts,
   validatePricingRulesCoverage,
 } from '@/modules/courts/court.service'
 import { createCourtSchema } from '@/modules/courts/court.schema'
@@ -217,13 +218,28 @@ export async function createWizardCourtsAction(input: unknown): Promise<WizardAc
     if (inputs.length === 0 && count === 0) {
       return { success: false as const, error: 'Agregá al menos una cancha para continuar.' }
     }
-    if (maxCourts !== null && count + inputs.length > maxCourts) {
+
+    // Idempotencia del paso Canchas (🔴 QA 2026-08-13): el Paso 1 ya frena el
+    // reenvío con `getStaffTenant` (comentario #35), pero este iba derecho al
+    // INSERT, así que volver con "Atrás" y reenviar —o un doble POST— dejaba
+    // 3 filas "Cancha 1" idénticas, todas `online` y bookeables. Saltear por
+    // nombre ya existente es idempotente ante el reenvío y sigue permitiendo
+    // agregar canchas nuevas en una revisita, que es el caso que protege el
+    // early-return de arriba.
+    const existingNames = new Set(
+      (await listCourts(tenant.id, tx)).map((c) => c.name.trim().toLocaleLowerCase('es')),
+    )
+    const toCreate = inputs.filter(
+      (data) => !existingNames.has(data.name.trim().toLocaleLowerCase('es')),
+    )
+
+    if (maxCourts !== null && count + toCreate.length > maxCourts) {
       return {
         success: false as const,
         error: `Tu plan soporta hasta ${maxCourts} canchas. Hacé upgrade para agregar más.`,
       }
     }
-    for (const data of inputs) {
+    for (const data of toCreate) {
       await createCourt(tenant.id, data, tx)
     }
     return { success: true as const }

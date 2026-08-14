@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
+import { isUuid } from '@/shared/validation/primitives'
 import { holdExpiresAtMs } from '@/lib/booking/hold'
 import { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
@@ -28,7 +29,12 @@ export default async function ReservaErrorPage(props: Props) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 
-  const booking = await loadBooking(params.bookingId, user.playerId)
+  // Guard de formato antes del SQL crudo: un id no-UUID rompía el cast en
+  // Postgres y tumbaba la página con "Algo salió mal". Mismo patrón que
+  // verificar/page.tsx.
+  const booking = isUuid(params.bookingId)
+    ? await loadBooking(params.bookingId, user.playerId)
+    : null
 
   // Sin reserva (inexistente, purgada por RGPD, o de otro jugador via RLS): no
   // afirmamos "el pago no se procesó"; mostramos un estado neutro como la página

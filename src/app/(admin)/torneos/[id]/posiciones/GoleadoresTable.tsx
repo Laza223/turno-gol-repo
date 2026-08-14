@@ -10,10 +10,19 @@ import type { TopScorersResult } from '@/modules/tournaments/tournament.types'
  */
 export function GoleadoresTable({ scorers }: { scorers: TopScorersResult }) {
   if (scorers.rows.length === 0) {
+    // El aviso de goles sin autor vivía SOLO en el footer de la tabla real, o sea
+    // en código inalcanzable mientras no hubiera ni un goleador cargado — que es
+    // justo el caso en que más falta hace (🟡 QA 2026-08-13). Con partidos ya
+    // jugados y ningún autor cargado, la pantalla decía "todavía no hay
+    // goleadores" y no mencionaba los goles pendientes de atribuir.
     return (
       <EmptyState
         title="Todavía no hay goleadores"
-        description="Cargá los goles desde el acta de cada partido y la tabla se arma sola."
+        description={
+          scorers.unattributedGoals > 0
+            ? `Hay ${scorers.unattributedGoals} gol(es) en el marcador sin autor cargado. Anotá quién los hizo desde el acta de cada partido y la tabla se arma sola.`
+            : 'Cargá los goles desde el acta de cada partido y la tabla se arma sola.'
+        }
       />
     )
   }

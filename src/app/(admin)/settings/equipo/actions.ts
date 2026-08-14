@@ -100,8 +100,8 @@ async function guardStaffMutation(tenant: {
 
 const inviteSchema = z.object({
   email: z.email('Email inválido'),
-  firstName: z.string().min(1, 'Nombre requerido').max(100),
-  lastName: z.string().min(1, 'Apellido requerido').max(100),
+  firstName: z.string().min(1, 'Nombre requerido').max(100, 'Máximo 100 caracteres'),
+  lastName: z.string().min(1, 'Apellido requerido').max(100, 'Máximo 100 caracteres'),
   // El default Encargado se aplica acá (capa de aplicación); el DEFAULT de la
   // columna sigue siendo 'admin' por retrocompatibilidad (migración 026).
   role: z.enum(STAFF_ROLES, { error: 'Rol inválido' }).default(DEFAULT_INVITE_ROLE),

@@ -640,6 +640,15 @@ export async function completeBooking(
   actor: 'admin' | 'system',
   tx: DbTx,
   staffUserId?: string,
+  /**
+   * Línea a anexar a `notes_internal` (ej. la nota de deuda de "Completar con
+   * deuda"). Va en el MISMO UPDATE que la transición, por el mismo motivo que la
+   * captura de seña en `applyNoShow`: `enforce_booking_invariants_fn` bloquea
+   * cualquier UPDATE posterior sobre un booking ya en estado terminal, así que
+   * una segunda sentencia rollbackeaba la transacción entera y escalaba el error
+   * crudo de Postgres al error boundary de toda la ruta (🔴 QA 2026-08-13).
+   */
+  appendNote?: string,
 ): Promise<BookingRow> {
   assertTransition('confirmed', 'completed', { actor })
 
@@ -664,6 +673,11 @@ export async function completeBooking(
       status: 'completed',
       completedByStaff: staffUserId ?? null,
       updatedAt: new Date(),
+      ...(appendNote
+        ? {
+            notesInternal: sql`CASE WHEN COALESCE(${bookings.notesInternal}, '') = '' THEN ${appendNote} ELSE ${bookings.notesInternal} || chr(10) || ${appendNote} END`,
+          }
+        : {}),
     })
     .where(and(eq(bookings.id, bookingId), eq(bookings.status, 'confirmed')))
     .returning()
@@ -708,10 +722,21 @@ export async function autoCompleteOverdueBookings(
   // observa el orden lock→UPDATE sobre `tx.execute`, que es una invariante de
   // concurrencia real. Pasarlo al query builder dejaba ese test ciego, así que
   // lo que se arregla es el tipo, no el camino.
+  // Las horas que posee un torneo NO se autocompletan. Un slot de torneo no es
+  // un turno que alguien "jugó": es la hora que el torneo tiene tomada, y todo
+  // el módulo la busca con `status IN ('confirmed','pending_payment')`
+  // (tournament-slots.service.ts: listado, countTournamentBookings, fixture).
+  // Cuando el cron las pasaba a `completed`, el panel "Horarios tomados" se
+  // vaciaba, el guard de borrado daba 0 y el DELETE moría con el 23503 crudo de
+  // la FK que ese guard existe para evitar; además dejaban de bloquear reservas
+  // nuevas en `hasActiveBookingOverlap` (doble booking). Tiene que ser
+  // preventivo: una vez en `completed`, el trigger de la 070 las vuelve
+  // inmutables y no hay vuelta atrás (🔴 QA 2026-08-13).
   const rows = await tx.execute<BookingRawRow>(sql`
     UPDATE bookings b
     SET status = 'completed', updated_at = NOW()
     WHERE b.status = 'confirmed'
+      AND b.tournament_id IS NULL
       AND b.ends_at < NOW() - (${graceMinutes} || ' minutes')::interval
     RETURNING b.*
   `)

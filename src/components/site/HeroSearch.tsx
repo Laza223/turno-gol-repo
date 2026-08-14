@@ -154,8 +154,15 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div onFocusCapture={() => setCityTouched(true)}>
+          {/* Localidad en fila propia + Fecha/Hora a la par: a 640-1023px, 3
+              columnas iguales le dejaban a Fecha/Hora ~160px de ancho —
+              72px de eso son el pl-10/pr-8 del ícono + botón "Limpiar
+              fecha" de `date-picker.tsx` (no negociable desde acá: cn()
+              los aplica DESPUÉS del className externo, ganan siempre), y
+              el texto ("14/03/2026", 10 caracteres) truncaba por 2px. Con
+              Fecha/Hora a 2 columnas quedan en ~246px, sin apretar. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2" onFocusCapture={() => setCityTouched(true)}>
               <label htmlFor="hero-city-v" className={labelClass}>
                 Localidad
               </label>

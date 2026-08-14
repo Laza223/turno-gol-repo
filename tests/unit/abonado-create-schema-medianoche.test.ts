@@ -12,6 +12,12 @@ import { describe, expect, it } from 'vitest'
 
 import { createAbonadoSchema } from '@/modules/abonados/abonado.schema'
 
+// Fecha de inicio SIEMPRE futura y relativa al reloj: una fecha fija (antes
+// '2026-06-15') queda en el pasado con el correr del tiempo y choca contra el
+// guard de "un turno fijo no puede arrancar antes de hoy" (🟡 QA 2026-08-13).
+// Mismo patrón de fixture que ya rotó en race-admin-vs-online.test.ts.
+const FUTURE_START = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10)
+
 const VALID_UUID = '11111111-1111-1111-1111-111111111111'
 
 const base = {
@@ -21,7 +27,7 @@ const base = {
   dayOfWeek: 1,
   timeStart: '23:00',
   pricePerSession: 10000,
-  startsOn: '2026-06-15',
+  startsOn: FUTURE_START,
   paymentMethod: 'cash' as const,
 }
 

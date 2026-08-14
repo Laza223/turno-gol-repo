@@ -30,14 +30,6 @@ export const SinError: Story = {
   args: { error: undefined },
 }
 
-export const TurnoTomado: Story = {
-  args: { error: 'slot_taken' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByRole('alert')).toHaveTextContent(/acaba de ser tomado/i)
-  },
-}
-
 /** Softban activo con fecha de fin (2da ausencia en 90 días → 14 días bloqueado). */
 export const BaneadoConFecha: Story = {
   args: { error: 'banned', until: '2026-03-28T00:00:00.000Z' },

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
+import { isUuid } from '@/shared/validation/primitives'
 import { getBookingDetail, getBookingCharges } from '../queries'
 import {
   addBookingChargeAction,
@@ -25,6 +26,12 @@ export default async function ReservaDetailPage(props: Props) {
   const auth = await requireOperatorStaff()
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
+
+  // getBookingDetail/getBookingCharges bindean el id a SQL crudo: sin este
+  // guard, `/reservas/abc` reventaba el cast en Postgres y mostraba el error
+  // boundary de toda la ruta en vez del 404. Mismo patrón que
+  // super-admin/tenants/[id]/page.tsx.
+  if (!isUuid(params.id)) notFound()
 
   const { booking, charges } = await withTenantContext(tenant.id, async (tx) => {
     const detail = await getBookingDetail(tenant.id, params.id, tx)

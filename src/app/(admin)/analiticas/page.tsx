@@ -63,11 +63,13 @@ function isValidMonth(s: string): boolean {
  * reporte mensual de /reportes (abajo, con navegación mes a mes y export CSV
  * acotado al mes seleccionado).
  *
- * Zona sensible (ingresos visibles): el acceso lo da `requireOperatorStaff` en
- * el layout de (admin) — el comentario que decía "va detrás del PinGate" era
- * falso, `PinGate` no existe en el repo (el sistema de PIN se eliminó con el
- * modelo de 2 roles). Un comentario que promete una barrera inexistente es peor
- * que no tener comentario.
+ * Zona sensible (ingresos visibles): el guard es el `requireOperatorStaff()` de
+ * ESTA página (más abajo), no algo del layout de (admin) — el layout solo
+ * resuelve `getStaffRole` para el chrome, no corta el acceso. La versión previa
+ * de este comentario decía "el layout" y antes de eso "va detrás del PinGate"
+ * (`PinGate` nunca existió en el repo: el sistema de PIN se eliminó con el modelo
+ * de 2 roles). Un comentario que promete una barrera que está en otro lado es
+ * peor que no tener comentario: mandó a auditar el layout dos veces.
  *
  * El panel "Estado del sistema" se renderiza solo para superadministradores de la plataforma.
  */

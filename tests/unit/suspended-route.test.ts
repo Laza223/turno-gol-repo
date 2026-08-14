@@ -20,4 +20,13 @@ describe('/suspended (destino del kill-switch)', () => {
     expect(robots?.index).toBe(false)
     expect(robots?.follow).toBe(false)
   })
+
+  // 🟡 QA 2026-08-14: el título traía su propio "— TurnoGol" y el template del
+  // layout raíz (`%s · TurnoGol`) lo volvía a concatenar → "Cuenta suspendida —
+  // TurnoGol · TurnoGol", también en og:title. Este test existía pero solo
+  // miraba `robots`, así que no lo atrapó.
+  it('el título no repite el nombre del sitio (lo agrega el template raíz)', () => {
+    expect(metadata.title).toBe('Cuenta suspendida')
+    expect(String(metadata.title)).not.toMatch(/TurnoGol/)
+  })
 })

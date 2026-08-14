@@ -109,6 +109,18 @@ export function JugadoresView({
           <p className="text-sm text-muted-foreground">
             No se encontraron personas que coincidan con la búsqueda.
           </p>
+        ) : page > 0 ? (
+          // Página fuera de rango (`?pagina=999`, o un link viejo después de que
+          // bajó el total): el array de ESTA página está vacío, pero el complejo
+          // sí tiene clientes. Antes caía en el EmptyState de "todavía no tenés
+          // clientes" —y encima con el link "Anteriores" al lado, contradiciéndolo
+          // en la misma pantalla (🟡 QA 2026-08-13).
+          <p className="text-sm text-muted-foreground">
+            No hay personas en esta página.{' '}
+            <Link href={pageHref(q, 0)} className="font-medium text-foreground underline">
+              Volver al principio
+            </Link>
+          </p>
         ) : (
           <EmptyState
             icon={Users}

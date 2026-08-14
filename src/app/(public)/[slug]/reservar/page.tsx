@@ -13,11 +13,11 @@ import type { PayMethod } from './components/PaymentMethodSelector'
 import { createBookingAndCheckout, sendPlayerMagicLink } from './actions'
 import { CheckoutErrorBanner, CheckoutInvalidState } from './CheckoutStates'
 import { track } from '@/shared/observability'
+import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 
 export const dynamic = 'force-dynamic'
 
 const UNAVAILABLE = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
 type Props = {
@@ -60,7 +60,10 @@ export default async function ReservarPage(props: Props) {
     !court ||
     !date ||
     !time ||
-    !DATE_RE.test(date) ||
+    // Formato Y fecha real: '2099-13-45' pasaba el regex y llegaba crudo al
+    // `${date}::date` de getPublicAvailability, que reventaba con un 22008 de
+    // Postgres sin atrapar. Mismo helper que ya usa actions.ts de este directorio.
+    !isValidCalendarDate(date) ||
     !TIME_RE.test(time) ||
     durNum !== SLOT_DURATION_MINUTES
   ) {
@@ -84,6 +87,9 @@ export default async function ReservarPage(props: Props) {
     )
   }
   if (slot.status !== 'free') {
+    // Único mensaje para "el turno ya no está libre": el código `slot_taken` se
+    // eliminó (decisión del dueño 2026-08-14) porque este guard se dispara siempre
+    // antes que su banner. Este camino trae el CTA "Elegir otro turno".
     return (
       <CheckoutInvalidState
         slug={params.slug}

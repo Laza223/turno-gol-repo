@@ -38,6 +38,9 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/modules/courts/court.service', () => ({
   createCourt: vi.fn(async () => ({ id: 'court-1' })),
   getCourtCountAndLimit: vi.fn(async () => ({ count: 0, maxCourts: null, planSlug: null })),
+  // El guard de idempotencia del paso Canchas lee las canchas ya existentes
+  // para saltear las repetidas por nombre.
+  listCourts: vi.fn(async () => []),
   validatePricingRulesCoverage: vi.fn(() => ({ valid: true, gaps: [] })),
 }))
 
@@ -55,7 +58,7 @@ import {
 } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
-import { createCourt } from '@/modules/courts/court.service'
+import { createCourt, listCourts } from '@/modules/courts/court.service'
 
 const STAFF_USER = { type: 'staff', id: 'auth-1', staffUserId: 'staff-1', email: 'staff@test.com' }
 const OPEN_ALL_WEEK = Object.fromEntries(
@@ -152,6 +155,26 @@ describe('onboarding wizard actions — admin sigue funcionando (paridad)', () =
     })
     expect(res).toEqual({ success: true })
     expect(vi.mocked(createCourt)).toHaveBeenCalledTimes(1)
+  })
+
+  // 🔴 QA 2026-08-13: reenviar el paso Canchas (doble POST, o "Volver" + enviar
+  // de nuevo) creaba una fila más por cada envío — 3 columnas "Cancha 1"
+  // indistinguibles en la grilla, las 3 online y bookeables.
+  it('createWizardCourtsAction no duplica una cancha ya creada al reenviar el paso', async () => {
+    vi.mocked(listCourts).mockResolvedValue([{ name: 'Cancha 1' }] as never)
+    const res = await createWizardCourtsAction({
+      courts: [
+        {
+          name: '  cancha 1  ',
+          format: 5,
+          surfaceType: 'synthetic_grass',
+          isCovered: false,
+          priceCents: 100000,
+        },
+      ],
+    })
+    expect(res).toEqual({ success: true })
+    expect(vi.mocked(createCourt)).not.toHaveBeenCalled()
   })
 
   it('finishOnboardingAction completa el onboarding para un admin', async () => {

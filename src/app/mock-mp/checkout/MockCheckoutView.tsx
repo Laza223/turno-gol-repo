@@ -36,7 +36,11 @@ export function MockCheckoutView({
   const timeEnd = booking.time_end.slice(0, 5)
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 py-12">
+    // El fondo de PÁGINA quedaba fuera de la protección de theming que promete
+    // el comentario de arriba: sin fondo propio hereda `body { bg-background }`,
+    // que sí sigue el tema del sistema, y en dark se renderizaba casi negro
+    // detrás de la tarjeta blanca fija (🟢 QA 2026-08-14).
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center bg-slate-100 px-4 py-12">
       {/* Mock banner */}
       <div className="mb-6 w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         <span className="mr-1" aria-hidden>
@@ -88,7 +92,11 @@ export function MockCheckoutView({
           <button
             type="submit"
             formAction={payAction}
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            // `text-white` a mano sobre `bg-primary` daba 2.59:1 en dark (bajo el
+            // 4.5:1 de AA): la vista no fuerza tema, así que el par correcto es el
+            // del design system (`text-primary-foreground`, 7.9:1 — MASTER §2.4).
+            // 🟡 QA 2026-08-14.
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-emerald-700"
           >
             Pagar (aprobado)
           </button>

@@ -10,10 +10,14 @@ import { players } from '@/shared/db/schema'
 import { captureException } from '@/lib/sentry'
 
 const profileSchema = z.object({
-  first_name: z.string().min(1, 'Nombre requerido').max(100),
-  last_name: z.string().min(1, 'Apellido requerido').max(100),
-  phone: z.string().min(6).max(30).optional(),
-  preferred_area: z.string().max(100).optional(),
+  // `.trim()` ANTES del `.min(1)`: sin eso, un apellido de 5 espacios tenía
+  // length 5, pasaba la validación y se guardaba tal cual — la UI decía "Perfil
+  // actualizado" y el avatar de iniciales quedaba con una sola letra
+  // (🟡 QA 2026-08-14).
+  first_name: z.string().trim().min(1, 'Nombre requerido').max(100, 'Máximo 100 caracteres'),
+  last_name: z.string().trim().min(1, 'Apellido requerido').max(100, 'Máximo 100 caracteres'),
+  phone: z.string().min(6, 'Teléfono muy corto').max(30, 'Máximo 30 caracteres').optional(),
+  preferred_area: z.string().max(100, 'Máximo 100 caracteres').optional(),
 })
 
 export type UpdateProfileResult = { success: true } | { success: false; error: string }

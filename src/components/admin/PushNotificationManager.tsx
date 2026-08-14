@@ -318,15 +318,20 @@ export function PushNotificationManager() {
   }
 
   return (
-    // inset-x-4 en vez de `left-4 max-w-[calc(100vw-2rem)]`: ese par desbordaba
-    // 1rem exacto (el left-4 se suma al ancho ya calculado sobre el viewport
-    // completo). Además 100vw no descuenta el área bajo el notch con
-    // viewport-fit=cover, ni se recalcula si iOS zoomea.
-    // p-3/mt-2/h-9 en mobile (vs p-4/mt-3/h-11 desde sm:): en la grilla mobile
-    // este banner fijo tapaba hasta 4 de 9 botones "Reservar turno" con la
-    // versión completa (~130px de alto) — la descripción larga se oculta bajo
-    // sm: y el resto se achica para que la franja tapada sea mínima.
-    <div className="card-premium fixed bottom-[max(env(safe-area-inset-bottom),1rem)] inset-x-4 z-40 sm:left-4 sm:right-auto sm:max-w-sm p-3 sm:p-4">
+    // EN FLUJO, no `fixed` (🔴 QA 2026-08-13). Flotando abajo-izquierda tapaba —
+    // e INTERCEPTABA el click de— los links del sidebar en desktop (la caja
+    // llegaba a 400px de ancho sobre un sidebar de 240px, y el aside no tiene
+    // z-index), los tabs de AdminBottomNav en mobile (mismo z-40, ganaba por
+    // orden de DOM) y el botón "Guardar" de /settings/avisos en viewports bajos,
+    // donde el click se perdía sin ningún feedback porque `useFormStatus` nunca
+    // llegaba a marcar `pending`. Ya se había intentado achicarlo (ENS-11: la
+    // versión completa tapaba 4 de 9 botones "Reservar turno" en la grilla
+    // mobile) y desmontarlo al descartar; un elemento en flujo cierra la clase
+    // entera: no puede tapar nada, y no depende de mantener sincronizados
+    // offsets con el alto de barras que hoy están hardcodeados en 3 lugares.
+    // p-3/mt-2/h-9 en mobile (vs p-4/mt-3/h-11 desde sm:) y la descripción larga
+    // oculta bajo sm: se conservan — el banner sigue ocupando lo mínimo.
+    <div className="card-premium relative mb-4 w-full sm:max-w-sm p-3 sm:p-4">
       <button
         type="button"
         onClick={dismiss}

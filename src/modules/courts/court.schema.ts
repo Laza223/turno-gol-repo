@@ -18,8 +18,8 @@ const courtPricingSchema = z.object({
 })
 
 export const createCourtSchema = z.object({
-  name: z.string().min(1, 'Nombre requerido').max(100),
-  description: z.string().max(500).optional(),
+  name: z.string().min(1, 'Nombre requerido').max(100, 'Máximo 100 caracteres'),
+  description: z.string().max(500, 'Máximo 500 caracteres').optional(),
   surfaceType: z.enum(['synthetic_grass', 'natural_grass', 'cement', 'tile'], {
     error: 'Tipo de superficie inválido',
   }),

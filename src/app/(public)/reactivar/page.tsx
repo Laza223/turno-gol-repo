@@ -24,7 +24,9 @@ import {
 // canceled), pero requiere sesión de staff — no es una página pública.
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-  title: 'Reactivar cuenta — TurnoGol',
+  // Sin el sufijo "— TurnoGol": lo agrega el template `%s · TurnoGol` del layout
+  // raíz, y quedaba duplicado (🟡 QA 2026-08-14, mismo caso que /suspended).
+  title: 'Reactivar cuenta',
   robots: { index: false, follow: false },
 }
 

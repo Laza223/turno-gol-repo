@@ -15,8 +15,11 @@ const alertDestructive =
 const alertWarning =
   'rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-warning/30 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30'
 
-export type CheckoutErrorCode =
-  'slot_taken' | 'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable'
+// `slot_taken` salió del union (decisión del dueño, 2026-08-14): el guard de
+// disponibilidad de `reservar/page.tsx` cubre ese caso ANTES de llegar a este
+// banner, así que el código dejó de emitirse — el cartel específico "acaba de
+// ser tomado" era inalcanzable en la práctica (🟡 QA 2026-08-13).
+export type CheckoutErrorCode = 'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable'
 
 function formatBannedUntilArt(iso: string): string | null {
   const date = new Date(iso)
@@ -52,13 +55,6 @@ export function CheckoutErrorBanner({
    */
   reason?: string
 }) {
-  if (error === 'slot_taken') {
-    return (
-      <p role="alert" className={alertDestructive}>
-        Ese turno acaba de ser tomado. Elegí otro horario.
-      </p>
-    )
-  }
   if (error === 'banned') {
     const untilLabel = until ? formatBannedUntilArt(until) : null
     const untilSuffix = untilLabel ? ` Volvés a poder reservar el ${untilLabel}.` : ''

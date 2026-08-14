@@ -3685,3 +3685,345 @@ el mismo patrón de fecha hardcodeada (`race-double-booking.test.ts`,
 — anotado en la tarea para que se revisen los tres juntos.
 
 Sin commits: todo queda en el working tree para que Lazar revise antes de commitear.
+
+---
+
+# QA App — fixes de `docs/qa/AUDIT_APP_FINDINGS.md`, tanda 1 (2026-08-14)
+
+Rama `claude/audit-app-findings-fixes-9c8978` (worktree, desde `main` 2b51d8b6). Alcance pactado
+con el dueño: **los 3 patrones sistémicos + los 8 🔴 críticos**. Los ~28 🟡 van en una segunda
+tanda; los 19 MEJORA-UX quedan fuera de las dos.
+
+Juez por hallazgo: `pnpm typecheck && pnpm lint && pnpm test`.
+
+## Mediciones que corrigieron el diagnóstico del report
+
+Tres hipótesis se cayeron con control negativo antes de escribir código. Van registradas porque
+cada una habría llevado a un fix equivocado:
+
+1. **"`instrumentation.ts` y `middleware.ts` en la raíz los ignora Next 16 con `src/app`"** —
+   REFUTADO. `GET https://turnogol.app/verify` (dentro del `matcher`) responde `X-Request-Id` y
+   `/precios` (fuera) no: el middleware raíz corre en producción. Y un probe dentro de
+   `register()` sobre `next dev` imprimió `register() ENTRA, runtime=nodejs` +
+   `installZodLocale OK`.
+2. **"El locale de Zod no se instala"** — REFUTADO, y el hallazgo real es otro: se instala, y
+   desde un route handler `globalThis.__zod_globalConfig.localeError` está seteado, pero los
+   mensajes de ESE handler siguen saliendo en inglés. Llamando `installZodLocale()` desde un
+   módulo del grafo de la app, los mismos schemas pasan a español. O sea: `instrumentation.ts`
+   se bundlea en otro layer y configura otra copia de zod. **El locale global no sirve como red
+   de seguridad** — medición completa en el docstring de `zod-locale.ts`.
+3. **"El soft-404 de `[slug]` es la caché de ISR"** — REFUTADO. Aislado con 3 rutas sonda, sin DB
+   de por medio:
+
+   | Sonda | `notFound()` en | `loading.tsx` | Status |
+   |---|---|---|---|
+   | `/probe-plain` | page | no | **404** |
+   | `/probe-loading` | page | sí | **200** ❌ |
+   | `/probe-loading-layout` | layout | sí | **404** ✅ |
+
+   El `loading.tsx` mete un `<Suspense>`, Next arranca a stremear con el 200 ya emitido y el
+   `notFound()` posterior llega tarde. El layout renderiza fuera del boundary. (La primera
+   corrida de esta medición salió con Postgres local caído y daba 500/200 por el throw de la
+   query, no por `notFound()`; por eso se rehizo con sondas que no tocan la DB.)
+
+## Patrones sistémicos
+
+**S1 · Mensajes de Zod en inglés** (cubre 6 hallazgos: Checkout P0, Register/Onboarding,
+Canchas/Equipo, Caja·Productos, Perfil del jugador). Mensaje explícito en todo `.max()`/`.min()`
+que puede llegar a la pantalla, en vez de delegar en el locale global (ver medición 2):
+`primitives.ts` (`boundedText`, cubre 31 usos en 8 archivos) · `tenant.schema.ts` (5 campos) ·
+`court.schema.ts` · `reservar/actions.ts` · `settings/equipo/actions.ts` · `perfil/actions.ts` ·
+`register/actions.ts` · `canteen.schema.ts`. El docstring de `zod-locale.ts` quedó reescrito con
+la medición para que nadie vuelva a asumir la red de seguridad.
+
+Agujero de test cerrado: `tests/setup.ts` llama `installZodLocale()`, así que en tests todo salía
+en español y CI nunca vio el bug. `tests/unit/zod-messages-es.test.ts` fuerza el locale INGLÉS
+(con control negativo del propio test) para que solo pase lo que tiene mensaje explícito.
+
+**S2 · El banner de push interceptaba clicks** (4 hallazgos, uno 🔴).
+`PushNotificationManager.tsx` pasa de `fixed … z-40` a un elemento **en flujo** dentro del
+`<main>` de `admin-layout-shell.tsx` (se saca de los dos puntos de montaje de
+`(admin)/layout.tsx`). Flotando tapaba —e interceptaba el click de— los links del sidebar en
+desktop (caja de 400px sobre un `<aside>` de 240px sin `z-index`), los tabs de `AdminBottomNav`
+en mobile (mismo `z-40`, ganaba por orden de DOM) y el "Guardar" de `/settings/avisos` en
+viewports bajos, donde el click se perdía **sin ningún feedback** porque `useFormStatus` nunca
+llegaba a marcar `pending`. Ya se había intentado achicarlo (ENS-11) y desmontarlo al descartar:
+en flujo la clase se cierra entera y no quedan offsets que mantener sincronizados con altos de
+barra hoy hardcodeados en 3 lugares distintos.
+
+**S3 · Soft-404 del catch-all `[slug]`** (3 hallazgos). `src/app/(public)/[slug]/layout.tsx`
+nuevo: resuelve el complejo y `notFound()` si no existe, fuera del boundary de `loading.tsx` (ver
+medición 3). Cubre `/{slug}`, `/disponibilidad` y `/reservar`. Solo chequea EXISTENCIA — el 200
+del complejo suspendido es deliberado y sigue en `page.tsx`. `getPublicTenant` queda envuelto en
+`cache()` de React, así que el layout no agrega una consulta (la page y `generateMetadata` ya la
+pedían dos veces). Aparte: `redirects()` en `next.config.ts` para `/privacy → /privacidad` y
+`/terms → /terminos`, que caían al catch-all — verificado en dev, 308.
+
+## Críticos puntuales
+
+- **F1 · `/ingresar` daba de alta cuentas sin declaración jurada +18** — `auth.service.ts`:
+  `shouldCreateUser: false`. El `otp_disabled` de un email inexistente se mapea a `{ ok: true }`
+  para no filtrar qué emails están registrados (mismo criterio que `signInWithPassword`), con
+  `flow: 'reaccess_unknown_email'` como único rastro (`breadcrumbs.ts`).
+  `signInWithPlayerMagicLink` (el alta real, con `agreed_terms`) no se toca.
+- **F2 · `date` calendáricamente inválido crasheaba el checkout** — `[slug]/reservar/page.tsx`
+  usa `isValidCalendarDate` (helper que ya existía, y que el `actions.ts` del mismo directorio ya
+  importaba) en lugar del `DATE_RE`, que solo miraba el formato. El crash real estaba en el
+  `${date}::date` de `public.service.ts`.
+- **F3 · `bookingId` no-UUID crasheaba 4 páginas** — `isUuid` exportado desde `primitives.ts`
+  (donde ya vivía el `UUID_RE` canónico, duplicado en 10 archivos) y usado en
+  `reserva/[bookingId]/{exito,pendiente,error}` y en `(admin)/reservas/[id]` → `notFound()`.
+  Precedentes copiados: `verificar/page.tsx`, `super-admin/tenants/[id]/page.tsx`.
+- **F4 · El paso Canchas del onboarding duplicaba** — **el diagnóstico del report era falso**: el
+  botón SÍ se deshabilita (`useTransition` + `<Button isLoading>`, igual que el Paso 1). Lo que
+  faltaba era el guard de idempotencia server-side que el Paso 1 sí tiene (comentario `#35`, para
+  el reenvío tras "Volver"). `createWizardCourtsAction` ahora saltea los drafts cuyo nombre ya
+  existe (trim + case-insensitive) y sigue permitiendo agregar canchas nuevas en una revisita.
+- **F5 · Completar con nota de deuda tumbaba `/reservas`** — la nota viaja en el MISMO UPDATE que
+  la transición (`completeBooking`, 5º parámetro `appendNote`), no en una segunda sentencia que
+  `enforce_booking_invariants_fn` (migr. 070) rechaza por estado terminal. Patrón copiado de
+  `applyNoShow`, que ya había resuelto lo mismo para la captura de seña. **Migración no tocada.**
+- **F6 · Logo de R2 crasheaba el perfil público → NO REPRODUCE.** `media.turnogol.com` ya está en
+  `remotePatterns` y en el `img-src`. Riesgo residual real:
+  `docs/operations/dns-turnogol-app.md` manda migrar a `media.turnogol.app`, y ahí el crash
+  aparece de verdad (`next/image` tira y se lleva puesta la página entera, no solo la imagen).
+  Fix preventivo: el hostname sale de `R2_PUBLIC_BASE_URL` — el mismo env que usa `publicUrl()` —
+  y alimenta `remotePatterns` y el CSP, así config y env no pueden divergir.
+- **F7 · El cron auto-complete rompía Torneos** — `AND b.tournament_id IS NULL` en
+  `autoCompleteOverdueBookings`. Tiene que ser preventivo: en `completed` el trigger de la 070
+  vuelve la fila inmutable y no hay vuelta atrás. De paso cierra el doble-booking derivado
+  (`booking.overlap.ts` filtra por los mismos dos estados).
+- **F8 · Banner tapando "Guardar" en `/settings/avisos`** → lo cierra S2.
+
+## Verificación
+
+`pnpm typecheck` ✓ · `pnpm lint` ✓ · `pnpm test` → **331 archivos / 3464 tests en verde**
+(1 skip + 1 todo preexistentes), corrido después de cada hallazgo.
+
+Tests tocados, ninguno debilitado:
+
+- `reserva-error-no-booking.test.tsx`: los fixtures usaban `'b1'`/`'missing'` como bookingId; las
+  PKs son UUID, así que con el guard de formato el test pasaba a medir otra cosa. Se pasaron a un
+  UUID real y se **sumó** un caso que prueba que un id no-UUID no llega a la query.
+- `onboarding-role-guard.test.ts`: `listCourts` agregado al mock de `court.service` y **sumado**
+  un caso de reenvío que verifica que no se duplica.
+- `zod-messages-es.test.ts`: nuevo.
+
+Gate final sobre el árbol completo (Postgres local en 54322):
+
+```
+pnpm typecheck          ✓ limpio
+pnpm lint               ✓ limpio (src/ tests/ scripts/)
+pnpm test               → 3464/3464 (331 archivos, 1 skip + 1 todo preexistentes)
+pnpm test:integration   → 949/949 (136 archivos)
+pnpm test:isolation     → 166/166
+pnpm test:storybook     → 1076/1076 (265 archivos)
+```
+
+La PRIMERA corrida de integración dio 3 rojos (`webhook-notification-url`, `booking-checkout`,
+`booking-physical-overlap`), los tres por **timeout** (10s/30s) sobre una DB recién levantada.
+Corridos aislados pasan en 769ms / 776ms / 836ms, y la corrida completa siguiente con la DB
+caliente dio 949/949. Ninguno toca los archivos de esta tanda. Contención de arranque, no
+regresión.
+
+**Anomalía registrada, no explicada:** una corrida de `pnpm test` (la primera tras el fix de F7)
+reportó `1 failed | 3458 passed` pero el reporter no emitió el bloque de detalle, así que no quedó
+el nombre del test. Las dos corridas siguientes sobre el MISMO código dieron verde, y todas las
+posteriores también. Queda como flake sin identificar.
+
+**Verificación manual pendiente:** el banner de S2 no se comprobó en un navegador con sesión de
+admin real. El argumento estructural es fuerte (ya no existe ningún `position: fixed`, así que la
+oclusión es imposible por construcción), pero el "click real sobre Guardar en 1366×620" que pide
+el checklist de QA no se ejecutó.
+
+Sin commits: todo queda en el working tree.
+
+---
+
+# QA App — tanda 2: los 🟡 medios (2026-08-14)
+
+Misma rama que la tanda 1. Los 🟡 que ya habían caído con los 3 patrones sistémicos (los 5 de
+mensajes de Zod, el banner de push tapando navegación, los 3 de soft-404 y el `/reservas/abc`
+no-UUID) no se re-abren acá: quedaron cerrados arriba.
+
+## No reproducen (verificado contra el código, no contra el report)
+
+- **`/analiticas` sin guard de rol.** El report decía que `requireOperatorStaff` solo aparecía en
+  un comentario. Es falso: se llama en `analiticas/page.tsx:78`. Lo único cierto era el comentario,
+  que decía que el guard "lo da el layout de (admin)" — y el layout solo resuelve `getStaffRole`
+  para el chrome, no corta acceso. Corregido el comentario para que apunte al guard real; ya había
+  mandado a auditar el layout dos veces.
+
+## Aplicados
+
+**Estado vacío que miente cuando la página está fuera de rango** (2 hallazgos, misma clase). El
+EmptyState miraba solo el array de la página actual, no si existían filas en otras páginas.
+`/jugadores?pagina=999` decía "Todavía no tenés clientes" con el link "Anteriores" al lado, y
+`/explorar?offset=12` mostraba "No encontramos complejos" mientras el toolbar seguía anunciando
+"6 complejos". Ahora las dos vistas distinguen "no hay nada" de "esta página no tiene nada" y
+ofrecen volver al principio (`JugadoresView.tsx`, `EmptyResults.tsx` + `explorar/page.tsx`).
+
+**Teléfono argentino sin validar** (`/register` + onboarding paso 1). El `PhoneInput` manda el
+valor ya compuesto con el código de país (`"+54 12345"`), así que las reglas que contaban
+CARACTERES contaban el prefijo como dígitos del abonado y un número de 5 dígitos pasaba. Primitiva
+compartida `phone` en `primitives.ts` que cuenta DÍGITOS (10 a 15: con +54 son 8 nacionales, el
+mínimo del checklist; 15 es el techo de E.164), usada por `tenant.schema.ts` y
+`register/actions.ts`; el `phoneRegex` local se fue. Test: `tests/unit/phone-primitive.test.ts`.
+
+**Abonado con fecha de inicio pasada** — decisión del dueño: **bloquear**. `min={todayART()}` en el
+DatePicker y `.refine(startsOnNotPast)` en los DOS schemas del server (alta y preview), porque el
+cliente no es la barrera. Antes se generaban reservas retroactivas en `confirmed` que el trigger de
+24h pasaba a `completed`: partidos "jugados" que nunca ocurrieron, contando plata, y que ni pausar
+ni cancelar el abonado limpian (las dos acciones solo borran `date >= hoy`).
+
+**El teléfono se vaciaba al volver del preview** (nuevo abonado). Vivía solo en el FormData
+mientras Nombre y Precio estaban en estado: al remontar el form tras un error de validación el
+campo salía vacío y el segundo intento fallaba con un error no relacionado. Ahora es estado y
+vuelve como `defaultValue`.
+
+**Apellido de solo espacios** (`/perfil`). `.trim()` antes del `.min(1)`: una cadena de 5 espacios
+tenía length 5, pasaba, y la UI decía "Perfil actualizado" con el avatar de iniciales roto.
+
+**`BanPlayerDialog` no se reseteaba al reabrir.** El reset vivía en el handler que Radix invoca
+cuando el diálogo cambia su propio estado — nunca cuando el padre hace `setOpen(true)`. Ahora se
+ajusta en la transición de `open` DENTRO del diálogo, así cubre a cualquier caller (el precedente
+de `LinkContactDialog`, que resetea en su botón disparador, deja el bug latente para el próximo que
+lo monte). Va como ajuste durante el render, no en un efecto: `react-hooks/set-state-in-effect`
+lo prohíbe — un primer intento con `useEffect` dejó el lint rojo y se rehizo.
+
+**Invitación de staff: el cartel mentía** — decisión del dueño: el invitado opera desde el minuto
+cero, se arregla el copy. Decía "Recibirán un email para activar su cuenta" y no hay ninguna
+activación: la fila nace `is_active=true` y no existe flujo que la active al aceptar (ponerla en
+`false` dejaría al invitado bloqueado para siempre). Ahora dice que ya puede entrar y que el email
+es para poner la contraseña.
+
+**Tabla de goleadores: el aviso de goles sin autor era inalcanzable.** Vivía solo en el footer de
+la tabla real, o sea en código muerto mientras no hubiera ni un goleador cargado — justo el caso en
+que más falta hace. Ahora el EmptyState lo dice.
+
+**"Próximos" de Mis reservas se definía solo por fecha.** Una reserva de HOY ya jugada o expirada
+seguía ahí, mezclada con turnos futuros, contradiciendo al contador "Tenés N turnos por jugar" de
+la misma pantalla, que ya filtraba por `UPCOMING_PLAYABLE_STATUSES`. Las dos tabs ahora reusan esa
+misma constante y siguen siendo una partición exacta.
+
+**`slot_taken`: el mensaje específico no se veía nunca.** La causa real del redirect es que el slot
+dejó de estar libre, así que el guard de disponibilidad se dispara siempre primero. Se resuelve en
+ese guard y no sacándolo: ese camino ya trae el CTA "Elegir otro turno", que el banner suelto no
+tiene.
+
+**Overflow horizontal del Dashboard en 390px.** La fila del header del checklist no wrapeaba y el
+botón "Descartar" terminaba 11px afuera del viewport, con scroll horizontal en toda la página.
+`flex-wrap` + `min-w-0` + barra de progreso angosta en mobile.
+
+**Skip link sin destino en la home pública.** `/` no pasa por ninguno de los layouts que definen
+`id="main-content"`, así que Tab + Enter no movía nada — en la página de más tráfico del sitio
+(WCAG 2.4.1). Se envolvió el contenido en un `<main id="main-content">`.
+
+**Título duplicado en `/suspended` y `/reactivar`.** Traían su propio "— TurnoGol" y el template
+`%s · TurnoGol` del layout raíz lo volvía a concatenar, también en `og:title`.
+`tests/unit/suspended-route.test.ts` existía pero solo miraba `robots`; se le sumó el caso del
+título. (Un intento de cubrir `/reactivar` en el mismo test se descartó: importar esa page arrastra
+el cliente de DB y colgaba el test 10s.)
+
+**La Política de Privacidad describía una cookie que no existe.** Decía "la cookie de PIN gate para
+zonas sensibles del panel": el sistema de PIN se eliminó con el modelo de 2 roles y el acceso lo
+resuelven los guards leyendo `tenant_staff_members`. Un texto legal (Ley 25.326) que describe un
+mecanismo inexistente es un problema en sí mismo. Reescrito para nombrar lo que sí existe.
+
+**Mock de MercadoPago** (2 hallazgos): `text-white` a mano sobre `bg-primary` daba 2.59:1 en dark
+(AA pide 4.5:1) → `text-primary-foreground`, el par que el design system garantiza en 7.9:1. Y el
+fondo de página, que no fijaba color y heredaba `bg-background`, quedaba casi negro detrás de la
+tarjeta blanca, justo lo contrario de lo que promete el comentario del propio componente.
+
+## Fixtures de test que rotaron con el reloj
+
+`abonado-create-schema-medianoche`, `nuevo-abonado-time-refine` y `preview-abonado-conflict`
+hardcodeaban `startsOn: '2026-06-15'`, que hoy es pasado: con el guard nuevo los casos de camino
+feliz salieron rojos. Se pasaron a una fecha relativa (`hoy + 7 días`). Es el mismo patrón que ya
+se había registrado en `race-admin-vs-online.test.ts:158` — vale revisarlos juntos alguna vez.
+
+## Verificación
+
+```
+pnpm typecheck          ✓ limpio
+pnpm lint               ✓ limpio
+pnpm test               → 3472/3472 (332 archivos, 1 skip + 1 todo preexistentes)
+pnpm test:integration   → 949/949 (136 archivos)
+pnpm test:isolation     → 166/166
+pnpm test:storybook     → 1076/1076 (265 archivos)
+```
+
+## Borrado de código muerto (OK explícito del dueño, 2026-08-14)
+
+- **`used` de `ERROR_COPY`** (`verify/page.tsx`) — BORRADO, junto con la story `ErrorUsado`.
+  Confirmado muerto: `api/auth/callback/route.ts:76` mapea cualquier `otp_expired` (vencido o ya
+  canjeado) a `expired`, ningún caller de `redirectVerifyError()` pasa nunca `used`, y el fallback
+  de `ErrorState` cubre cualquier código sin entrada. Storybook 1075/1075 (una story menos, como
+  corresponde).
+- **`slot_taken`, el CÓDIGO entero** — BORRADO, no solo el cartel. Al ir a ejecutar el borrado
+  aparecieron dos cosas que el hallazgo no contemplaba: (a) `slot_taken` seguía siendo un código de
+  redirect vivo (`reservar/actions.ts:216`) — el fix de la tanda 2 adelantó el mensaje al guard de
+  disponibilidad, no eliminó el camino; y (b) `tests/unit/reservar-error-alerts.test.tsx` itera
+  TODOS los valores de `CheckoutErrorCode` y exige que cada uno renderice un `role="alert"` con
+  texto (contrato #22), así que sacar solo el cartel dejaba un código sin cartel y ponía el test en
+  rojo.
+
+  Decisión del dueño: sacar el código completo, para no debilitar ese contrato. Cinco puntos, en
+  orden: el redirect de `SlotTakenError` pasa a `redirect(backTo)` sin parámetro de error; se quita
+  `'slot_taken'` del union `CheckoutErrorCode`; se borra su rama en `CheckoutErrorBanner`; se borra
+  la story `TurnoTomado`; y sale de la lista `CODES` del test. **La regla del test no se tocó** —
+  sigue diciendo "todo código con el que el checkout puede rebotar tiene que renderizar un alert
+  con texto"; lo que se achicó es el conjunto de códigos, que es legítimo porque el código dejó de
+  emitirse (si quedara en el union, typecheck lo delataría).
+
+  Consecuencia asumida: el jugador que pierde la carrera ve "Ese turno ya no está disponible. Elegí
+  otro horario." con su CTA (lo que ya veía en la práctica), y en la carrera rara en que el slot
+  vuelve a quedar libre antes del re-render cae en un checkout normal y puede reintentar — que es
+  la acción correcta si el turno está libre de nuevo. Se pierde el matiz "acaba de ser tomado".
+
+Gate tras los dos borrados: `pnpm typecheck` ✓ · `pnpm lint` ✓ · `pnpm test` → 3471/3471 ·
+`pnpm test:storybook` → 1074/1074 (dos stories menos que antes de los borrados, como corresponde).
+
+Quedan sin tocar los 19 MEJORA-UX y los 🟢 restantes.
+
+## Tanda 3 — 🟢 BUG restantes
+
+Cruce contra `AUDIT_APP_FINDINGS.md` (extraído de `origin/claude/turnogol-admin-qa-audit-8d771f`,
+no vive en este worktree): de los 41 BUG, 38 ya estaban cerrados por las tandas 1+2. Quedaban 3:
+
+- **Falta `focus-visible` en "Eliminar mi cuenta"** (`DeleteAccountForm.tsx:33`) — VIGENTE. El botón
+  disparador no tenía ninguna clase `focus-visible`, a diferencia del resto de los elementos
+  interactivos de la misma vista (`confirm-dialog.tsx:126,134`). Fix: agregado el mismo patrón —
+  `focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`.
+
+- **Ícono de teléfono sin número/link en el bloque de deuda** (`CompleteBookingDialog.tsx`) —
+  VIGENTE. `{contactName && (...)}` renderizaba "📞 {nombre}" solo con el nombre cuando no había
+  teléfono — el hallazgo pide que ambas condiciones sean necesarias. Fix: `{contactName &&
+  contactPhone && (...)}`.
+
+- **Botón FECHA truncado en el buscador de la home, 640-1023px** (`HeroSearch.tsx`) — VIGENTE,
+  reproducido y verificado con Storybook (`HeroSearch.stories.tsx` → story `Vertical`, la que
+  realmente renderiza `<lg` vía `HeroMobile`, no la `Horizontal` que solo se ve en desktop).
+  Diagnóstico: `date-picker.tsx` fija `pl-10 pr-8` con `cn(...)` DESPUÉS del `className` externo —
+  a propósito, según su propio comentario — así que ningún caller puede angostar ese padding desde
+  afuera; el `dateFieldClass` de `HeroSearch` con `pr-2` nunca tuvo efecto ahí (dead code, no
+  tocado). La grilla de 3 columnas iguales (`sm:grid-cols-3`) le dejaba a Fecha/Hora ~160px de
+  ancho útil dentro del `max-w-[560px]` de `HeroMobile`; con 72px fijos de padding, el texto
+  ("14/03/2026", 10 caracteres) truncaba por apenas 2px (medido: `offsetWidth:86` vs
+  `scrollWidth:88`, calza con la evidencia original `85 vs 88`). Fix: Localidad pasa a fila propia
+  (`sm:col-span-2`, mismo patrón que ya usa el layout horizontal del mismo archivo) y Fecha+Hora
+  quedan a la par abajo — de ~160px a ~245px cada uno. Verificado en Storybook con el contenedor de
+  560px inyectado a mano en 640px y 900px de viewport: `truncated:false` en ambos, con margen (245px
+  contra los ~162px que hacían falta).
+
+Los 3 fixes tocan solo el archivo que citaba el hallazgo — nada del `date-picker.tsx` compartido.
+
+```
+pnpm typecheck                              ✓ limpio
+pnpm lint                                   ✓ limpio
+pnpm vitest run <4 unit files puntuales>    → 38/38
+pnpm test:storybook (2 archivos puntuales)  → 10/10
+```
+
+Quedan los 19 MEJORA-UX.
+

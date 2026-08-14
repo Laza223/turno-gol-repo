@@ -3,7 +3,10 @@ import Link from 'next/link'
 import { PauseCircle } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Cuenta suspendida — TurnoGol',
+  // Sin el sufijo "— TurnoGol": el layout raíz aplica el template `%s · TurnoGol`,
+  // así que el título terminaba duplicado ("Cuenta suspendida — TurnoGol · TurnoGol")
+  // en la pestaña y en og:title (🟡 QA 2026-08-14).
+  title: 'Cuenta suspendida',
   robots: { index: false, follow: false },
 }
 

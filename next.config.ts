@@ -29,6 +29,25 @@ const connectSrc =
 // way. See src/shared/observability/csp-report.ts.
 const CSP_REPORT_PATH = '/api/csp-report'
 
+// Host del bucket público de R2 (logos, portadas, fotos de canchas). Sale del
+// MISMO env que usa `publicUrl()` en runtime (`R2_PUBLIC_BASE_URL`) en vez de
+// una constante hardcodeada: el runbook de migración a turnogol.app cambia ese
+// dominio (docs/operations/dns-turnogol-app.md), y si `remotePatterns`/`img-src`
+// quedan atrás no se rompe la imagen sino la PÁGINA — `next/image` tira
+// "Invalid src prop" y el throw en cliente se lleva puesto el perfil público
+// entero del complejo (🔴 QA 2026-08-13). `media.turnogol.com` queda siempre en
+// la lista para no depender de que la var esté seteada en tiempo de build.
+function r2PublicHost(): string | null {
+  const raw = process.env.R2_PUBLIC_BASE_URL
+  if (!raw) return null
+  try {
+    return new URL(raw).hostname
+  } catch {
+    return null
+  }
+}
+const MEDIA_HOSTS = [...new Set(['media.turnogol.com', r2PublicHost()].filter((h) => h !== null))]
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
@@ -36,7 +55,7 @@ const securityHeaders = [
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' *.supabase.co images.unsplash.com *.tile.openstreetmap.org media.turnogol.com data: blob:",
+      `img-src 'self' *.supabase.co images.unsplash.com *.tile.openstreetmap.org ${MEDIA_HOSTS.join(' ')} data: blob:`,
       "font-src 'self'",
       connectSrc,
       "frame-src *.mercadopago.com",
@@ -74,8 +93,19 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '**.supabase.co' },
-      { protocol: 'https', hostname: 'media.turnogol.com' },
+      ...MEDIA_HOSTS.map((hostname) => ({ protocol: 'https' as const, hostname })),
     ],
+  },
+  // Las páginas legales viven en castellano (`/privacidad`, `/terminos`). Las
+  // rutas viejas en inglés se sacaron del sitemap y del robots.ts, pero nunca se
+  // redirigieron: caían al catch-all `[slug]`, que las interpretaba como slug de
+  // complejo y devolvía "Complejo no encontrado" — encima con 200 (🟢 QA
+  // 2026-08-14). Cualquier link o bookmark viejo queda apuntando bien.
+  async redirects() {
+    return [
+      { source: '/privacy', destination: '/privacidad', permanent: true },
+      { source: '/terms', destination: '/terminos', permanent: true },
+    ]
   },
   async headers() {
     return [

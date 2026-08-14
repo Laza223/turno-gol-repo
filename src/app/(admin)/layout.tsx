@@ -12,7 +12,6 @@ import { tenantSubscriptions } from '@/shared/db/schema'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
-import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 import { signOutAction } from '@/app/(admin)/actions/auth'
 import { stopImpersonationAction } from '@/app/(super-admin)/super-admin/tenants/[id]/actions'
 
@@ -45,7 +44,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         staffRole="admin"
       >
         {children}
-        <PushNotificationManagerLoader />
       </AdminLayoutShell>
     )
   }
@@ -111,7 +109,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       staffRole={staffRole ?? 'manager'}
     >
       {children}
-      <PushNotificationManagerLoader />
     </AdminLayoutShell>
   )
 }

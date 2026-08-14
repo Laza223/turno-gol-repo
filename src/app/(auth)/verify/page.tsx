@@ -8,7 +8,6 @@ import SuccessRedirect from '@/app/(auth)/verify/SuccessRedirect'
 
 const ERROR_COPY: Record<string, string> = {
   expired: 'Este enlace expiró. Generá uno nuevo desde Iniciar sesión.',
-  used: 'Este enlace ya fue utilizado. Iniciá sesión nuevamente.',
   invalid: 'No pudimos verificar el enlace. Probá de nuevo.',
   exchange_failed: 'No pudimos completar el inicio de sesión. Probá de nuevo.',
   orphaned_session: 'Tu sesión expiró, volvé a iniciar sesión.',
@@ -165,7 +164,11 @@ function ErrorState({ code }: { code: string }) {
       <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
         No pudimos verificar tu enlace
       </h1>
-      <p className="mt-3 text-sm text-slate-400">{message}</p>
+      {/* role="alert" para que el lector de pantalla anuncie el motivo del fallo,
+          igual que el error de /login. Faltaba solo acá (🟡 QA 2026-08-13). */}
+      <p role="alert" className="mt-3 text-sm text-slate-400">
+        {message}
+      </p>
       <Link href="/login" className={ctaClass}>
         Volver a intentar
       </Link>

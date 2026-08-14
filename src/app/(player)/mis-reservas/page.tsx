@@ -65,8 +65,22 @@ export default async function MisReservasPage(props: {
   // que se perdía era la cola del HISTORIAL: un jugador de años no podía llegar
   // a sus reservas más viejas, y nada en pantalla lo decía. Ahora el corte está
   // en SQL y cada tab pagina por su lado.
+  // El corte era SOLO por fecha de calendario, nunca por estado: una reserva de
+  // HOY ya jugada (`completed`, badge "Jugada") o expirada sin pagar seguía en
+  // "Próximos", mezclada con turnos realmente futuros, hasta que cambiaba el día
+  // (🟡 QA 2026-08-13). Peor: el contador "Tenés N turnos por jugar" de arriba ya
+  // filtraba por `UPCOMING_PLAYABLE_STATUSES`, así que la lista contradecía a su
+  // propio encabezado. Se reusa la MISMA constante para que las dos cosas no
+  // puedan volver a divergir; las dos condiciones siguen siendo una partición
+  // exacta (ninguna reserva se pierde ni aparece en las dos tabs).
+  const playableStatuses = sql.join(
+    UPCOMING_PLAYABLE_STATUSES.map((s) => sql`${s}::booking_status`),
+    sql`, `,
+  )
   const tabCond =
-    tab === 'proximos' ? sql`AND b.date >= ${today}::date` : sql`AND b.date < ${today}::date`
+    tab === 'proximos'
+      ? sql`AND b.date >= ${today}::date AND b.status IN (${playableStatuses})`
+      : sql`AND (b.date < ${today}::date OR b.status NOT IN (${playableStatuses}))`
 
   const { rows, upcoming } = await withPlayerContext(user.playerId, async (tx) => {
     const paged = await tx.execute(sql`

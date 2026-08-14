@@ -46,12 +46,22 @@ export function BanPlayerDialog({
   const [reason, setReason] = useState('')
   const [duration, setDuration] = useState<ManualBanDuration>('7d')
 
-  function handleOpenChange(next: boolean) {
-    if (next) {
+  // El reset vivía en el handler que Radix invoca cuando el DIÁLOGO cambia su
+  // propio estado (ESC, click afuera, sus botones) — nunca cuando el padre hace
+  // setOpen(true). Abriendo desde afuera reaparecía el motivo y la duración del
+  // intento que se había cancelado (🟡 QA 2026-08-13). Reaccionar a la
+  // transición de `open` cubre a cualquier caller, no solo al de esta pantalla
+  // (el precedente de LinkContactDialog resetea en su botón disparador, y eso
+  // deja el bug latente para el próximo que monte el diálogo).
+  // Ajuste durante el render (no en un efecto: `react-hooks/set-state-in-effect`
+  // lo prohíbe, y con razón — un efecto pintaría un frame con los valores viejos).
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) {
       setReason('')
       setDuration('7d')
     }
-    onOpenChange(next)
   }
 
   async function handleConfirm(): Promise<{ success: boolean; error?: string }> {
@@ -64,7 +74,7 @@ export function BanPlayerDialog({
   return (
     <ConfirmDialog
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
       title="Bloquear jugador"
       description={
         <>

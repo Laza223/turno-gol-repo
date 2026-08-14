@@ -62,6 +62,12 @@ export async function signInWithPlayerMagicLink(
  * Magic link de re-acceso para un jugador EXISTENTE con sesión vencida que cae
  * en `/ingresar` (form passwordless del jugador). Sin perfil: el callback resuelve
  * nombre desde el metadata previo / email y no pisa el consentimiento ya dado.
+ *
+ * `shouldCreateUser: false` es la parte que hace cumplir el "EXISTENTE": sin eso
+ * Supabase daba de alta al vuelo cualquier email nunca visto y el callback creaba
+ * un `players` con `agreed_to_terms_at` NULL — o sea una cuenta activa sin la
+ * declaración jurada +18 que exige el ADR-012, saltándose el LoginGate del
+ * checkout, que es el único lugar donde se pide (🔴 QA 2026-08-13).
  */
 export async function signInWithExistingPlayerMagicLink(
   email: string,
@@ -70,9 +76,23 @@ export async function signInWithExistingPlayerMagicLink(
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: redirectTo, data: { is_player: true } },
+    options: {
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: false,
+      data: { is_player: true },
+    },
   })
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    // Email inexistente: Supabase responde `otp_disabled` al no poder crear el
+    // usuario. Devolvemos el mismo `ok: true` que un envío real para no filtrar
+    // qué emails están registrados (§6.2 enumeración de usuarios, mismo criterio
+    // que signInWithPassword). No se manda ningún email en este caso.
+    if (error.code === 'otp_disabled') {
+      track.auth('magiclink.sent', { flow: 'reaccess_unknown_email' })
+      return { ok: true }
+    }
+    return { ok: false, error: error.message }
+  }
   track.auth('magiclink.sent', { flow: 'reaccess' })
   return { ok: true }
 }

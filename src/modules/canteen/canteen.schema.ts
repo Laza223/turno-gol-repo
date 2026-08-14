@@ -9,7 +9,7 @@ import { uuid, moneyCents, boundedText } from '@/shared/validation/primitives'
 
 // Catálogo: límites generosos pero acotados (nombre corto = botón legible en
 // el grid de venta; 60 años-friendly).
-const productNameSchema = z.string().trim().min(1, 'El nombre no puede estar vacío.').max(40)
+const productNameSchema = z.string().trim().min(1, 'El nombre no puede estar vacío.').max(40, 'Máximo 40 caracteres')
 
 export const createProductSchema = z.object({
   name: productNameSchema,

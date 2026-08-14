@@ -360,11 +360,10 @@ export default function CompleteBookingDialog({
                 rows={2}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
-              {contactName && (
+              {contactName && contactPhone && (
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>
-                    📞 {contactName}
-                    {contactPhone ? ` — ${contactPhone}` : ''}
+                    📞 {contactName} — {contactPhone}
                   </span>
                   {whatsappUrl && (
                     <a

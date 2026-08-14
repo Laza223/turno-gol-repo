@@ -918,8 +918,19 @@ export async function completeAndChargeBookingAction(
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, async (tx) => {
-      // 1. Complete the booking (validates ends_at, status)
-      const completed = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
+      // 1. Complete the booking (validates ends_at, status). La nota de deuda
+      // viaja EN el mismo UPDATE: como segunda sentencia chocaba contra
+      // enforce_booking_invariants_fn (el booking ya está en estado terminal),
+      // rollbackeaba la tx entera y el PostgresError crudo se llevaba puesta
+      // toda la ruta /reservas (🔴 QA 2026-08-13).
+      const noteLine = debtNote?.trim() ? `[Deuda] ${debtNote.trim()}` : undefined
+      const completed = await completeBooking(
+        bookingId,
+        'admin',
+        tx,
+        user.staffUserId,
+        noteLine,
+      )
 
       // 2. Validate total charges don't exceed pending amount
       if (charges.length > 0) {
@@ -973,17 +984,6 @@ export async function completeAndChargeBookingAction(
             tx,
           )
         }
-      }
-
-      // 4. If there's a debt note, save it in notes_internal
-      if (debtNote?.trim()) {
-        const existingNotes = completed.notesInternal ?? ''
-        const newNote = existingNotes
-          ? `${existingNotes}\n[Deuda] ${debtNote.trim()}`
-          : `[Deuda] ${debtNote.trim()}`
-        await tx.execute(
-          sql`UPDATE bookings SET notes_internal = ${newNote} WHERE id = ${bookingId}`,
-        )
       }
 
       return completed

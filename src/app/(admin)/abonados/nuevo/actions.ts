@@ -7,6 +7,7 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
+import { todayART } from '@/shared/time/art-date'
 import {
   checkAbonadoSlotConflict,
   getAbonadoSlotConflicts,
@@ -19,6 +20,16 @@ function timeToSeconds(t: string): number {
   const [h, m, s] = t.split(':').map(Number)
   return h * 3600 + m * 60 + (s ?? 0)
 }
+
+// Un turno fijo son reservas a FUTURO. Con una fecha de inicio pasada se
+// generaban reservas retroactivas en 'confirmed' que el trigger de 24h pasaba a
+// 'completed': partidos 'jugados' que nunca ocurrieron, contando plata en las
+// métricas, y que ni pausar ni cancelar el abonado limpian después (las dos
+// acciones solo borran reservas con date >= hoy). Decisión del dueño: bloquear
+// (🟡 QA 2026-08-13). Va en el servidor además del min= del DatePicker porque el
+// cliente no es la barrera.
+const PAST_START_MSG = 'La fecha de inicio no puede ser anterior a hoy.'
+const startsOnNotPast = (d: { startsOn: string }): boolean => d.startsOn >= todayART()
 
 const TIME_RANGE_MSG = 'El horario de fin debe ser posterior al de inicio.'
 const endAfterStart = (d: { timeStart: string; timeEnd: string }): boolean =>
@@ -43,6 +54,7 @@ const schema = z
     paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
   })
   .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
+  .refine(startsOnNotPast, { message: PAST_START_MSG, path: ['startsOn'] })
 
 const previewSchema = z
   .object({
@@ -59,6 +71,7 @@ const previewSchema = z
       .optional(),
   })
   .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
+  .refine(startsOnNotPast, { message: PAST_START_MSG, path: ['startsOn'] })
 
 export type PreviewAbonadoSlotsInput = z.infer<typeof previewSchema>
 

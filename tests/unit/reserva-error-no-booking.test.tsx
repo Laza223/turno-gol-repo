@@ -34,10 +34,15 @@ beforeEach(() => {
 })
 afterEach(() => cleanup())
 
+// Las PKs de bookings son UUID: los ids de fixture tienen que serlo también, o
+// el guard de formato (🔴 QA 2026-08-13) corta antes de llegar a la query y el
+// test mide otra cosa.
+const BOOKING_ID = '11111111-2222-4333-8444-555555555555'
+
 describe('ReservaErrorPage (#44)', () => {
   it('sin reserva muestra "No encontramos tu reserva." (no el error de pago)', async () => {
     execute.mockResolvedValue([])
-    const ui = await ReservaErrorPage({ params: Promise.resolve({ bookingId: 'missing' }) })
+    const ui = await ReservaErrorPage({ params: Promise.resolve({ bookingId: BOOKING_ID }) })
     render(ui)
     expect(screen.getByText('No encontramos tu reserva.')).toBeTruthy()
     expect(screen.queryByText('El pago no se procesó.')).toBeNull()
@@ -47,9 +52,18 @@ describe('ReservaErrorPage (#44)', () => {
     execute.mockResolvedValue([
       { status: 'rejected', createdAt: new Date('2020-01-01T00:00:00Z'), tenantSlug: 'cancha-x' },
     ])
-    const ui = await ReservaErrorPage({ params: Promise.resolve({ bookingId: 'b1' }) })
+    const ui = await ReservaErrorPage({ params: Promise.resolve({ bookingId: BOOKING_ID }) })
     render(ui)
     expect(screen.getByText('El pago no se procesó.')).toBeTruthy()
     expect(screen.queryByText('No encontramos tu reserva.')).toBeNull()
+  })
+
+  it('un bookingId que no es UUID no llega a la query y muestra el estado neutro', async () => {
+    // Antes del guard, el id crudo entraba al `WHERE b.id = ${bookingId}` de SQL
+    // y Postgres tiraba el error de cast, tumbando la página entera.
+    const ui = await ReservaErrorPage({ params: Promise.resolve({ bookingId: 'not-a-uuid' }) })
+    render(ui)
+    expect(execute).not.toHaveBeenCalled()
+    expect(screen.getByText('No encontramos tu reserva.')).toBeTruthy()
   })
 })

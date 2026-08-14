@@ -40,8 +40,8 @@ const gateSchema = z.object({
     .trim()
     .toLowerCase()
     .pipe(z.email({ message: 'Ingresá un email válido' })),
-  firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80),
-  lastName: z.string().trim().max(80).optional().default(''),
+  firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80, 'Máximo 80 caracteres'),
+  lastName: z.string().trim().max(80, 'Máximo 80 caracteres').optional().default(''),
   terms: z.literal('on', { error: 'Tenés que aceptar los términos.' }),
   next: z.string(),
 })
@@ -213,7 +213,16 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   } catch (err) {
     if (err instanceof BookingValidationError) redirect(`${backTo}&error=unavailable`)
     if (err instanceof BookingDateOutOfRangeError) redirect(`${backTo}&error=date_out_of_range`)
-    if (err instanceof SlotTakenError) redirect(`${backTo}&error=slot_taken`)
+    // Sin código de error propio (decisión del dueño, 2026-08-14): el rebote vuelve
+    // al checkout pelado y el guard de disponibilidad de `page.tsx` muestra "Ese
+    // turno ya no está disponible. Elegí otro horario." con su CTA. El mensaje
+    // específico "acaba de ser tomado" era inalcanzable en la práctica porque ese
+    // guard se dispara siempre primero (🟡 QA 2026-08-13), así que se elimina el
+    // código entero en vez de dejar un cartel sin camino que lo alcance. En la
+    // carrera rara en que el slot vuelve a quedar libre antes del re-render, el
+    // jugador cae en un checkout normal y puede reintentar — que es la acción
+    // correcta si el turno está libre de nuevo.
+    if (err instanceof SlotTakenError) redirect(backTo)
     if (err instanceof PlayerBannedError) {
       const untilParam = err.until ? `&until=${encodeURIComponent(err.until.toISOString())}` : ''
       // R3-5: el `reason` YA NO viaja por la URL (antes permitía fabricar

@@ -219,10 +219,18 @@ export default function PrivacidadPage() {
       <section className="mt-10 space-y-4 text-foreground">
         <h2 className="text-xl font-semibold text-foreground">7. Cookies y seguridad</h2>
         <p>
+          {/* Antes este párrafo describía "la cookie de PIN gate para zonas sensibles
+              del panel del complejo": esa cookie NUNCA existió — el sistema de PIN se
+              eliminó junto con el modelo de 2 roles de staff, y el acceso a las zonas
+              sensibles lo resuelven `requireOperatorStaff`/`requireAdminStaff` leyendo
+              el rol de `tenant_staff_members`, sin cookie. Un texto legal (Ley 25.326)
+              que describe un mecanismo inexistente es un problema en sí mismo
+              (🟡 QA 2026-08-14). */}
           TurnoGol usa <strong>únicamente cookies esenciales</strong> para el funcionamiento del
-          servicio: sesión de autenticación gestionada por Supabase Auth, y la cookie de PIN gate
-          para zonas sensibles del panel del complejo. No utilizamos cookies de tracking
-          publicitario ni de analytics de terceros (Google Analytics, Facebook Pixel, etc.).
+          servicio: la sesión de autenticación gestionada por Supabase Auth y, en las sesiones del
+          equipo de soporte, una cookie firmada de acceso temporal al panel de un complejo. No
+          utilizamos cookies de tracking publicitario ni de analytics de terceros (Google
+          Analytics, Facebook Pixel, etc.).
         </p>
         <p>
           Por eso no mostramos un banner de cookies: solo usamos cookies funcionales estrictamente

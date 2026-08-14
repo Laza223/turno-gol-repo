@@ -10,9 +10,7 @@ import { passwordSchema } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
 import { parseClientIp } from '@/shared/rate-limit/key'
 import { echoFields } from '@/shared/forms/echo'
-
-// International mobile number validation (+ code + national digits)
-const phoneRegex = /^\+?[1-9][0-9\s-]{7,24}$/
+import { phone } from '@/shared/validation/primitives'
 
 const schema = z
   .object({
@@ -21,9 +19,9 @@ const schema = z
       .trim()
       .toLowerCase()
       .pipe(z.email({ message: 'Ingresá un email válido' })),
-    firstName: z.string().trim().min(2, 'Ingresá tu nombre').max(80),
-    lastName: z.string().trim().min(2, 'Ingresá tu apellido').max(80),
-    phone: z.string().trim().regex(phoneRegex, 'Ingresá un número de teléfono válido'),
+    firstName: z.string().trim().min(2, 'Ingresá tu nombre').max(80, 'Máximo 80 caracteres'),
+    lastName: z.string().trim().min(2, 'Ingresá tu apellido').max(80, 'Máximo 80 caracteres'),
+    phone,
     password: passwordSchema,
     confirmPassword: z.string(),
   })

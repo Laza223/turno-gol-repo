@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
+import { isUuid } from '@/shared/validation/primitives'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
@@ -61,7 +62,12 @@ export default async function ReservaExitoPage(props: Props) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
 
-  const booking = await loadBooking(params.bookingId, user.playerId)
+  // Guard de formato antes del SQL crudo: un id no-UUID rompía el cast en
+  // Postgres y tumbaba la página con "Algo salió mal" en vez del estado
+  // "no encontramos tu reserva". Mismo patrón que verificar/page.tsx.
+  const booking = isUuid(params.bookingId)
+    ? await loadBooking(params.bookingId, user.playerId)
+    : null
 
   if (!booking) {
     return (

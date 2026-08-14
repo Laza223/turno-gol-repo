@@ -18,13 +18,11 @@ import {
  * banner vive en su propio componente (CheckoutStates.tsx, extraído del page para
  * poder storyearlo) se puede renderizar de verdad y asertar lo que el jugador VE.
  */
-const CODES: CheckoutErrorCode[] = [
-  'slot_taken',
-  'banned',
-  'too_many_holds',
-  'rate_limited',
-  'unavailable',
-]
+// `slot_taken` salió del union el 2026-08-14 (decisión del dueño): el guard de
+// disponibilidad de reservar/page.tsx cubre ese caso antes del banner, así que el
+// código dejó de emitirse. La REGLA no cambió — sigue siendo "todo código con el
+// que el checkout puede rebotar tiene que renderizar un alert con texto".
+const CODES: CheckoutErrorCode[] = ['banned', 'too_many_holds', 'rate_limited', 'unavailable']
 
 afterEach(() => cleanup())
 

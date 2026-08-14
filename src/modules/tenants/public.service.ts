@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts } from '@/shared/db/schema'
@@ -273,7 +274,14 @@ export async function listTopPublicTenantSlugs(limit = 50): Promise<string[]> {
 }
 
 // tenants is a global table (no RLS) — no context needed (doc12 §9.3)
-export async function getPublicTenant(slug: string): Promise<PublicTenant | null> {
+//
+// Envuelto en `cache()` de React: dentro de un mismo render el slug se resuelve
+// una sola vez por más que lo pidan el layout, `generateMetadata` y la page (que
+// ya lo pedían dos veces antes de que existiera el layout). Todos los callers son
+// request-scoped (pages y route handlers), así que no hay uso fuera de un render.
+export const getPublicTenant = cache(_getPublicTenant)
+
+async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
   const db = getDb()
   const row = await db.query.tenants.findFirst({
     where: (t, { eq: eqFn }) => eqFn(t.slug, slug),

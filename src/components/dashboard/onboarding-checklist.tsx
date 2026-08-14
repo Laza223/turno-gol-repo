@@ -183,7 +183,7 @@ export function OnboardingChecklist({
   if (minimized) {
     return (
       <div className="card-entrance flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-xs shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <CheckCircle2
             className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
             aria-hidden="true"
@@ -270,7 +270,11 @@ export function OnboardingChecklist({
     <div className="card-premium card-entrance rounded-2xl">
       <div
         data-tour-id="tour-checklist"
-        className="flex items-center justify-between border-b border-border px-5 py-3"
+        // flex-wrap + min-w-0 + barra angosta en mobile: a 390px la fila no
+        // wrapeaba y el botón "Descartar" (whitespace-nowrap) terminaba en
+        // right=401px, 11px afuera del viewport, con scroll horizontal en toda
+        // la página (🟡 QA 2026-08-13).
+        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border px-5 py-3"
       >
         <div className="flex items-center gap-3">
           <div
@@ -287,7 +291,7 @@ export function OnboardingChecklist({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+          <div className="h-2 w-16 overflow-hidden rounded-full bg-muted sm:w-24">
             <div
               className="h-full rounded-full bg-linear-to-r from-emerald-500 to-emerald-400 transition-all duration-500 ease-out"
               style={{ width: `${pct}%` }}

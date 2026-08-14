@@ -19,6 +19,7 @@ describe('getOrCreatePlayer', () => {
       termsVersion: 'v1',
     })
     expect(player.id).toMatch(/^[0-9a-f-]{36}$/)
+    expect(player.wasCreated).toBe(true)
 
     const sql = getSql()
     const rows = await sql<
@@ -39,6 +40,7 @@ describe('getOrCreatePlayer', () => {
       agreedToTerms: true,
       termsVersion: 'v1',
     })
+    expect(player.wasCreated).toBe(false)
     const rows = await sql<{ id: string }[]>`SELECT id FROM players WHERE email = ${email}`
     expect(rows).toHaveLength(1)
     expect(rows[0]!.id).toBe(player.id)

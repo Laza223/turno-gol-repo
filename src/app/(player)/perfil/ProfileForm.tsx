@@ -54,6 +54,17 @@ export function ProfileForm({ defaultValues, action }: Props) {
     <form
       action={formAction}
       onSubmit={() => setDidSubmit(true)}
+      // MEJORA-UX QA: sin esto, Nombre/Apellido vacíos disparaban el tooltip
+      // nativo del navegador ("Completa este campo") y nunca llegaban al
+      // servidor, mientras el resto de los errores del mismo form (largo
+      // máximo, teléfono corto) usan el `role="alert"` custom de abajo — dos
+      // mecanismos distintos para la misma clase de error. `required` se deja
+      // (sigue marcando `aria-required` para lectores de pantalla); lo único
+      // que cambia es que el navegador ya no bloquea el submit por su cuenta,
+      // así que TODO error pasa por el mismo camino: el mensaje de Zod
+      // ("Nombre requerido"/"Apellido requerido", ya con `.trim()` antes del
+      // `.min(1)`).
+      noValidate
       className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xs"
     >
       <div className="grid grid-cols-2 gap-3">

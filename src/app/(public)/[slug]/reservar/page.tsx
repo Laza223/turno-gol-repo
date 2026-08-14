@@ -151,6 +151,7 @@ export default async function ReservarPage(props: Props) {
         </h1>
 
         <CheckoutErrorBanner
+          slug={params.slug}
           error={searchParams.error}
           until={searchParams.until}
           reason={banReason ?? undefined}

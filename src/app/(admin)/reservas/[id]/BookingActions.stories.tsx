@@ -56,13 +56,25 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Reserva confirmada: las 3 acciones disponibles. */
+/**
+ * Reserva confirmada de HOY a las 20:00 (reloj congelado en 15:30, ver
+ * arriba): las 3 acciones están visibles, pero MEJORA-UX QA — "Marcar
+ * completada"/"Marcar ausente" no tienen sentido antes de que el turno
+ * termine, así que arrancan deshabilitadas con el porqué en `title`.
+ * "Cancelar" es la excepción: cancelar un turno que todavía no pasó es
+ * exactamente el caso de uso normal.
+ */
 export const Confirmada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Marcar completada' })).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Marcar ausente' })).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+    const completar = canvas.getByRole('button', { name: 'Marcar completada' })
+    const ausente = canvas.getByRole('button', { name: 'Marcar ausente' })
+    await expect(completar).toBeVisible()
+    await expect(completar).toBeDisabled()
+    await expect(completar).toHaveAttribute('title', 'El turno todavía no terminó')
+    await expect(ausente).toBeVisible()
+    await expect(ausente).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeEnabled()
   },
 }
 
@@ -133,6 +145,11 @@ export const AusentePasadasLas24hNoOfreceNada: Story = {
  * (mismo criterio que QuickActions.stories.tsx → CompletarAbreElDialogoDeCobro).
  */
 export const MarcarCompletadaAbreElDialogoDeCobro: Story = {
+  // MEJORA-UX QA: "Marcar completada" se deshabilita antes de que el turno
+  // termine (mismo criterio que "Marcar ausente" y que `chargeMode` en la
+  // grilla) — sin `endsAt` en el pasado, el default (hoy 20:00, reloj
+  // congelado en 15:30) lo dejaría deshabilitado y el click no abriría nada.
+  args: { endsAt: hoursFromNow(-1).toISOString() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Marcar completada' }))
@@ -143,6 +160,9 @@ export const MarcarCompletadaAbreElDialogoDeCobro: Story = {
 
 /** "Marcar ausente" abre confirmación (menciona la política de softban) antes de ejecutar. */
 export const MarcarAusenteConfirmado: Story = {
+  // Mismo motivo que MarcarCompletadaAbreElDialogoDeCobro: gate de "turno ya
+  // terminado" nuevo en el botón de entrada.
+  args: { endsAt: hoursFromNow(-1).toISOString() },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)

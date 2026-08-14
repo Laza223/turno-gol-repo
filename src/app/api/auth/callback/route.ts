@@ -116,7 +116,7 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
 
     track.auth('player.login', { playerId: player.id })
     const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
-    const intent = playerSuccessIntent(next)
+    const intent = playerSuccessIntent(next, player.wasCreated)
     return NextResponse.redirect(new URL(successVerifyPath(next, intent), req.url))
   }
 

@@ -11,6 +11,7 @@ const meta = {
   title: 'Player/Checkout/CheckoutErrorBanner',
   component: CheckoutErrorBanner,
   parameters: { layout: 'padded' },
+  args: { slug: 'club-norte' },
   decorators: [
     (Story) => (
       <ReservaDarkShell>

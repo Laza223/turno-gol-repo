@@ -41,4 +41,14 @@ export type SlotPanelActions = {
   /** Reprogramar. Las dos van juntas o ninguna (T5). */
   listRescheduleSlotsAction?: ListRescheduleSlots
   rescheduleBookingAction?: RescheduleBooking
+  /**
+   * Cancelar sin salir de la grilla (hallazgo QA Lote 1 P0: la única forma de
+   * cancelar vivía en /reservas → tab Lista). Opcional, mismo criterio que el
+   * resto: sin ella no se ofrece "Cancelar" y el panel se comporta como antes.
+   */
+  cancelBookingAction?: (
+    bookingId: string,
+    reason: string,
+    cancellationType: 'complejo' | 'jugador',
+  ) => Promise<{ success: boolean; error?: string }>
 }

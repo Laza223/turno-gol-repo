@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
 import { SubmitButton } from '@/components/ui/submit-button'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import type { AvisosActionResult } from './actions'
@@ -32,10 +33,19 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
         <p className="text-sm text-muted-foreground">
           Push al admin con PWA instalada, siempre activo. El email es opcional (opt-in).
         </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setOptIn(true)}
+        {/* MEJORA-UX QA: eran 2 <button> sueltos, sin `role`/`aria-checked` —
+            un lector de pantalla los anunciaba como botones sueltos, sin
+            forma de saber cuál está activo. `RadioGroupPrimitive` (Radix, ya
+            usado en el repo vía RadioChip) da radiogroup + roving tabindex +
+            flechas gratis, SIN heredar el estilo apilado de `RadioChip` —
+            son los mismos className de siempre, solo cambia el elemento. */}
+        <RadioGroupPrimitive.Root
+          className="flex gap-2"
+          value={optIn ? 'email' : 'push'}
+          onValueChange={(v) => setOptIn(v === 'email')}
+        >
+          <RadioGroupPrimitive.Item
+            value="email"
             className={`h-11 rounded-xl border px-5 text-sm font-medium transition-all duration-200 ${
               optIn
                 ? 'border-emerald-500 bg-emerald-500/10 font-semibold text-emerald-700 shadow-xs shadow-emerald-500/10 dark:text-emerald-400'
@@ -43,10 +53,9 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
             }`}
           >
             Recibir por email
-          </button>
-          <button
-            type="button"
-            onClick={() => setOptIn(false)}
+          </RadioGroupPrimitive.Item>
+          <RadioGroupPrimitive.Item
+            value="push"
             className={`h-11 rounded-xl border px-5 text-sm font-medium transition-all duration-200 ${
               !optIn
                 ? 'border-emerald-500 bg-emerald-500/10 font-semibold text-emerald-700 shadow-xs shadow-emerald-500/10 dark:text-emerald-400'
@@ -54,8 +63,8 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
             }`}
           >
             Solo push
-          </button>
-        </div>
+          </RadioGroupPrimitive.Item>
+        </RadioGroupPrimitive.Root>
         <input type="hidden" name="dailySummaryEmailOptIn" value={optIn ? 'true' : 'false'} />
       </fieldset>
 

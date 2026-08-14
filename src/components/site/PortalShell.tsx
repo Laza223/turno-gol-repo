@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import PortalHeader from './PortalHeader'
 import SiteFooter from './SiteFooter'
 import PortalFrame from './PortalFrame'
-import { PortalSessionProvider } from './PortalSessionProvider'
+import { PortalSessionProvider, type PortalSessionContextValue } from './PortalSessionProvider'
 
 /**
  * Cascarón único del portal del jugador (público + logueado + post-reserva).
@@ -19,12 +19,22 @@ import { PortalSessionProvider } from './PortalSessionProvider'
 export default function PortalShell({
   children,
   signOutAction,
+  initialSession,
 }: {
   children: ReactNode
   signOutAction: () => Promise<void>
+  /**
+   * MEJORA-UX QA: en rutas exclusivas de jugador (`(player)/layout.tsx`), el
+   * server YA sabe quién está logueado (tuvo que confirmarlo para no
+   * redirigir) — sembrar la sesión acá evita el flash de ~1-1.5s de header
+   * anónimo mientras hidrata. Opcional: sin esto (rutas públicas, donde el
+   * anónimo-primero es a propósito para ISR) el comportamiento es el de
+   * siempre.
+   */
+  initialSession?: PortalSessionContextValue
 }) {
   return (
-    <PortalSessionProvider>
+    <PortalSessionProvider initialValue={initialSession}>
       <PortalFrame
         header={<PortalHeader variant="solid" signOutAction={signOutAction} />}
         footer={<SiteFooter />}

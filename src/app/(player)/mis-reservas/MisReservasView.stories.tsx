@@ -142,6 +142,50 @@ export const HistorialTodosLosEstados: Story = {
   },
 }
 
+/**
+ * MEJORA-UX QA (mobile 375px): el badge "Cancelado (sin reembolso)" es
+ * `shrink-0` y no cedía — el nombre de cancha/complejo (`min-w-0`, mismo
+ * ancho compartido) se llevaba lo que sobraba: "Cancha E2E 3" quedaba en
+ * "Can…" y "E2E Complejo Demo" en "E2E (". `flex-wrap` en el header de la
+ * card larga el badge a su propia línea cuando no entra, en vez de angostar
+ * el nombre — se verifica con geometría, no con el string (con badge corto
+ * los dos ya compartían línea sin problema y eso también es válido).
+ */
+export const BadgeLargoNoAngostaElNombre: Story = {
+  args: {
+    tab: 'historial',
+    upcomingCount: 0,
+    bookings: [
+      row({
+        id: 'h-badge-largo',
+        status: 'canceled_no_refund',
+        date: artDateString(daysFromNow(-1)),
+        court_name: 'Cancha E2E 3',
+        tenant_name: 'E2E Complejo Demo',
+      }),
+    ],
+  },
+  // `parameters.viewport` no angosta el browser real del test runner (solo
+  // afecta la UI manual de Storybook) — se fuerza el ancho angosto con un
+  // contenedor propio, que es lo único que `flex-wrap` de verdad mira.
+  decorators: [
+    (Story) => (
+      <div style={{ width: 375 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const name = canvas.getByText('Cancha E2E 3')
+    const badge = canvas.getByText('Cancelado (sin reembolso)')
+    await expect(name).toHaveTextContent('Cancha E2E 3')
+    // Línea distinta (wrap real), no compartiendo fila con el badge largo.
+    const gap = Math.abs(name.getBoundingClientRect().top - badge.getBoundingClientRect().top)
+    await expect(gap).toBeGreaterThan(4)
+  },
+}
+
 export const HistorialVacio: Story = {
   args: { tab: 'historial', upcomingCount: 0, bookings: [] },
   play: async ({ canvasElement }) => {

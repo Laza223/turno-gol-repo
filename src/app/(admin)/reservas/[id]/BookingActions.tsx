@@ -190,6 +190,15 @@ export default function BookingActions({
     ? new Date(endsAt).getTime()
     : bookingStartUtcMs + SLOT_DURATION_MINUTES * 60_000
   const inPolicy = nowMs < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
+  // MEJORA-UX QA: "Marcar completada"/"Marcar ausente" abrían el diálogo
+  // entero sin aviso — recién al confirmar el server devolvía "El turno
+  // todavía no terminó...". "Cancelar" ya usaba este mismo cálculo (antes
+  // recalculado adentro del bloque de abajo) para su propio preview; acá se
+  // sube para poder deshabilitar los otros dos botones de entrada. Mismo
+  // criterio que ya aplica `chargeMode`/`canMarkNoShow` en el panel de la
+  // grilla (BookingSlotPanel): ninguno de los dos tiene sentido antes de que
+  // el turno termine.
+  const turnoEnded = nowMs >= bookingEndUtcMs
 
   async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
@@ -229,7 +238,6 @@ export default function BookingActions({
       ? `Corresponde devolver la seña de ${formatArs(depositAmount)} (dentro del plazo de cancelación).`
       : `La seña de ${formatArs(depositAmount)} quedó fuera de la ventana de devolución (política de ${cancellationPolicyHours}h).`
   } else {
-    const turnoEnded = nowMs >= bookingEndUtcMs
     const willRefund = turnoEnded ? false : cancelType === 'complejo' ? true : inPolicy
     if (willRefund) {
       refundPreview =
@@ -248,15 +256,19 @@ export default function BookingActions({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
+          disabled={!turnoEnded}
+          title={turnoEnded ? undefined : 'El turno todavía no terminó'}
           onClick={() => setCompleteDialogOpen(true)}
-          className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+          className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Marcar completada
         </button>
         <button
           type="button"
+          disabled={!turnoEnded}
+          title={turnoEnded ? undefined : 'El turno todavía no terminó'}
           onClick={() => setNoShowOpen(true)}
-          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           Marcar ausente
         </button>

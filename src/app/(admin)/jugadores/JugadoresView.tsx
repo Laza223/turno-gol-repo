@@ -169,8 +169,16 @@ export function JugadoresView({
                     </Link>
                   ) : (
                     <div className="min-w-0 flex-1 px-4 py-3">
-                      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <span className="truncate">{c.name}</span>
+                      {/* MEJORA-UX QA: el nombre y el badge "Sin cuenta" compitiendo
+                          en una sola línea (+ el botón "Vincular" afuera, también
+                          shrink-0) dejaban el nombre en ~9 caracteres visibles en
+                          mobile. `flex-wrap` larga el badge a su propia línea
+                          cuando no entra, en vez de robarle ancho al nombre;
+                          `title` es la salida en desktop (hover). */}
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium text-foreground">
+                        <span className="truncate" title={c.name}>
+                          {c.name}
+                        </span>
                         <SinCuentaBadge />
                       </p>
                       <p className="truncate text-xs text-muted-foreground">

@@ -251,3 +251,29 @@ export const NombresLargos: Story = {
     await expect(table.getByText('María Fernanda Etcheverry Balcarce Domínguez')).toBeVisible()
   },
 }
+
+/**
+ * MEJORA-UX QA (mobile 390px): un contacto sin cuenta trunca agresivo porque
+ * el badge "Sin cuenta" + el botón "Vincular" (los dos `shrink-0`) le
+ * disputaban ancho al nombre en la misma línea. `title` es la salida en
+ * desktop; en la card mobile el badge ahora larga a su propia línea
+ * (`flex-wrap`) en vez de robarle ancho al nombre.
+ */
+export const ContactoNombreLargo: Story = {
+  args: {
+    clients: [
+      contacto({
+        key: '1122334456',
+        name: 'Cliente QA Test con Nombre Bien Largo',
+        phone: '11 2233-4456',
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    // ResponsiveList monta cards Y tabla a la vez (CSS decide cuál se ve) — se
+    // escopea al <ul> de las cards, no a getByText a secas (matchea 2 veces).
+    const cards = within(canvasElement.querySelector('ul')!)
+    const nameEl = cards.getByText('Cliente QA Test con Nombre Bien Largo')
+    await expect(nameEl).toHaveAttribute('title', 'Cliente QA Test con Nombre Bien Largo')
+  },
+}

@@ -75,11 +75,22 @@ export default function LoginGate({
       <div className="grid grid-cols-2 gap-3">
         <label className="space-y-1 text-sm">
           <span className="font-medium text-foreground/90">Nombre</span>
-          <input name="firstName" required defaultValue={vals.firstName} className={inputClass} />
+          <input
+            name="firstName"
+            required
+            maxLength={80}
+            defaultValue={vals.firstName}
+            className={inputClass}
+          />
         </label>
         <label className="space-y-1 text-sm">
           <span className="font-medium text-foreground/90">Apellido</span>
-          <input name="lastName" defaultValue={vals.lastName} className={inputClass} />
+          <input
+            name="lastName"
+            maxLength={80}
+            defaultValue={vals.lastName}
+            className={inputClass}
+          />
         </label>
       </div>
       <label className="block space-y-1 text-sm">

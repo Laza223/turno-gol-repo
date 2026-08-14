@@ -121,7 +121,16 @@ export function ReservasPolicyForm({
               })}
               <button
                 type="button"
-                onClick={() => setSelectedPercentage('other')}
+                onClick={() => {
+                  // MEJORA-UX QA: "Otro" pisaba el input con el `customPercentage`
+                  // de INIT (30 fijo si arrancó en un preset) en vez del % activo
+                  // — con seña real en 50%, mostraba "30" y guardar de largo
+                  // bajaba la seña en silencio. Precarga con el preset activo.
+                  if (typeof selectedPercentage === 'number') {
+                    setCustomPercentage(String(selectedPercentage))
+                  }
+                  setSelectedPercentage('other')
+                }}
                 className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
                   selectedPercentage === 'other'
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
@@ -261,7 +270,11 @@ export function ReservasPolicyForm({
           })}
           <button
             type="button"
-            onClick={() => setSelectedHours('other')}
+            onClick={() => {
+              // Misma clase que el "Otro" de seña, arriba.
+              if (typeof selectedHours === 'number') setCustomHours(String(selectedHours))
+              setSelectedHours('other')
+            }}
             className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
               selectedHours === 'other'
                 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'

@@ -206,7 +206,8 @@ describe('AvailabilityGrid (#39)', () => {
       expect(screen.getByText(formatDateES(today))).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Elegir fecha' }))
+    // WCAG 2.5.3: el aria-label incluye la fecha actual, no queda pelado.
+    fireEvent.click(screen.getByRole('button', { name: /^Elegir fecha, actualmente/ }))
 
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy()

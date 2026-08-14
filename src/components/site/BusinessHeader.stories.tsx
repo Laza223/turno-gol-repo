@@ -28,3 +28,10 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+
+// MEJORA-UX QA: el menú hamburguesa nuevo (trigger `sm:hidden`) no tiene story
+// con `play` acá — el test runner de Storybook corre el browser real a
+// ~1280px (Playwright default; `parameters.viewport` no lo angosta, ver el
+// mismo hallazgo ya documentado en HeroSearch.tsx), así que el trigger nunca
+// sería clickeable ahí. Verificado a mano contra el dev server de Storybook a
+// 375px (Claude_Browser + Chromium real): abre, lista los 4 links, cierra.

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { Plus, Trophy } from 'lucide-react'
+import { Lock, Plus, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { requireOperatorStaff } from '@/modules/staff/guards'
@@ -52,13 +52,30 @@ export default async function TorneosPage() {
           title="Todavía no hay torneos"
           description="Creá un torneo para reservarle los horarios en la grilla, anotar los equipos y armar el fixture."
           action={
-            <Link
-              href="/torneos/nuevo"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              Crear el primero
-            </Link>
+            role === 'admin' ? (
+              <Link
+                href="/torneos/nuevo"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Crear el primero
+              </Link>
+            ) : (
+              // MEJORA-UX QA: para el manager, "Crear el primero" quedaba
+              // habilitado y llevaba a un rebote silencioso server-side (el
+              // botón del header de arriba SÍ estaba bien condicionado). Mismo
+              // patrón "candado, no desaparición" que ya usa el módulo en
+              // CorteZonasCard.tsx — un `<span>`, no un link, con el motivo en
+              // `title` y también anunciado a lectores de pantalla.
+              <span
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground"
+                title="Solo el dueño puede crear torneos"
+              >
+                <Lock className="h-4 w-4" aria-hidden="true" />
+                Crear el primero
+                <span className="sr-only">— solo el dueño puede hacerlo</span>
+              </span>
+            )
           }
         />
       ) : (

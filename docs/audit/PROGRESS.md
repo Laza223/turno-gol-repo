@@ -4027,3 +4027,192 @@ pnpm test:storybook (2 archivos puntuales)  → 10/10
 
 Quedan los 19 MEJORA-UX.
 
+## Tanda 4 — los 19 MEJORA-UX
+
+18 de 19 aplicados (el 19no, el menú mobile de marketing, se resolvió aparte más abajo tras la
+pregunta al dueño); 1 NO REPRODUCE. Todos con ancla verificada contra el código (no contra el
+report). Un hallazgo por vez, `pnpm typecheck && pnpm lint` en verde entre cada uno.
+
+### P0
+
+- **Cancelar no vivía en el panel de la Grilla** (`BookingSlotPanel.tsx`) — VIGENTE, era el más
+  caro de los 19. En vez de reconstruir el flujo, se REUSA el mismo patrón que `QuickActions.tsx`
+  (motivo + quién cancela + preview de reembolso) directo en el panel: nuevo campo opcional
+  `cancelBookingAction` en `SlotPanelActions` (`slot-panel/actions.ts`), botón "Cancelar reserva"
+  en `SlotActionButtons.tsx` (mismo criterio que `QuickActions`: solo turnos `confirmed`, no
+  `pending_payment` — ahí expira solo por el hold de 6 min), diálogo nuevo en
+  `BookingSlotPanel.tsx` con el mismo RadioChipGroup complejo/jugador, y wiring real de
+  `cancelBookingAction` (ya exportado de `reservas/actions.ts`, solo faltaba importarlo) en
+  `grilla/page.tsx`. Sin `startsAt`/`cancellationPolicyHours` en `GridBooking` — el preview de
+  reembolso cae al mensaje genérico, mismo fallback que ya usa `QuickActions` cuando esos datos
+  faltan, no un caso nuevo.
+- **`/verify` mostraba "¡Cuenta confirmada!" en un re-login** — VIGENTE. `playerSuccessIntent()`
+  solo miraba el `next` (¿es una ruta de reserva?), nunca si el jugador YA existía.
+  `getOrCreatePlayer` ahora devuelve `{id, wasCreated}` (`player.service.ts`); el callback
+  (`api/auth/callback/route.ts`) pasa `player.wasCreated` a `playerSuccessIntent(next, isNewPlayer)`,
+  que agrega un 3er valor `booking_returning` (mismo subtítulo/CTA que `booking` — sigue siendo
+  cierto que vuelve a terminar su reserva — pero título "¡Listo!", no de alta). `SuccessIntent`
+  extendido en `auth-success.ts`, copy nueva en `verify/page.tsx`.
+- **Foco no se movía al error tras login fallido** (`LoginCard.tsx`) — VIGENTE. `useEffect` (no
+  setState, así que no pisa `react-hooks/set-state-in-effect`) enfoca el `<p role="alert">`
+  (`tabIndex={-1}` + `ref`) en cada submit fallido, `[state, isError]` como deps para re-enfocar
+  aunque el mensaje sea idéntico al anterior.
+- **Inputs Nombre/Apellido sin `maxlength`** (`LoginGate.tsx`, checkout) — VIGENTE.
+  `maxLength={80}`, mismo tope que el schema (`reservar/actions.ts:43-44`).
+- **Banners de error sin CTA de recuperación** (`CheckoutStates.tsx`) — VIGENTE en los 4 códigos
+  (`banned`/`too_many_holds`/`rate_limited`/`unavailable`, no solo los 3 que citaba el hallazgo:
+  mismo componente, misma clase). `CheckoutErrorBanner` ahora pide `slug` (prop nueva, se
+  propaga desde `page.tsx`) y cada rama agrega el link "Elegir otro turno" — mismo href que ya
+  usa `CheckoutInvalidState`.
+
+### P1
+
+- **Input "Otro" del % de seña no sincronizaba con el chip activo** (`ReservasPolicyForm.tsx`) —
+  VIGENTE, con plata real de por medio (bajaba la seña en silencio). El `onClick` de "Otro"
+  precarga `customPercentage`/`customHours` con el valor del preset activo ANTES de cambiar de
+  modo — mismo bug y mismo fix en el bloque de "Anticipación para cancelar" (misma clase, mismo
+  archivo). Candado de regresión con datos reales: `OtroPrecargaElPresetActivo` en
+  `ReservasPolicyForm.stories.tsx` (falla sin el fix, confirmado).
+- **Nombre de contacto sin cuenta truncado ilegible en mobile** (`JugadoresView.tsx`) — VIGENTE.
+  El badge "Sin cuenta" compartía línea con el nombre y no cedía ancho. `flex-wrap` en el `<p>`
+  contenedor: el badge larga a su propia línea cuando no entra, en vez de angostar el nombre;
+  `title={c.name}` como salida en desktop. Verificado con geometría real en Storybook/Chromium
+  (390px): `sameLine:false` tras el fix.
+- **Badge largo truncaba nombre de cancha/complejo en Mis reservas mobile** (`MisReservasView.tsx`)
+  — VIGENTE, misma clase que el anterior. `flex-wrap` en el header de la card. Candado
+  `BadgeLargoNoAngostaElNombre` en `MisReservasView.stories.tsx`, con contenedor de 375px inyectado
+  a mano (el parámetro `viewport` de Storybook NO angosta el browser real del test runner —
+  confirmado empíricamente, primer intento dio falso rojo con `gap:0`). Revertido el fix a mano y
+  confirmado que el candado SÍ rompe sin él, antes de restaurarlo.
+- **Gate "turno no terminó" no se anticipaba en 2 de 3 botones** (`BookingActions.tsx`, detalle de
+  reserva) — VIGENTE. "Marcar completada"/"Marcar ausente" abrían el diálogo entero sin aviso;
+  "Cancelar" ya usaba `turnoEnded` para su propio preview. Se sube ese cálculo (antes recalculado
+  adentro del bloque de refund) y se deshabilitan los otros dos botones con `title="El turno
+  todavía no terminó"` — mismo criterio que ya aplican `chargeMode`/`canMarkNoShow` en el panel de
+  la grilla. 2 stories (`MarcarCompletadaAbreElDialogoDeCobro`, `MarcarAusenteConfirmado`)
+  necesitaron `endsAt` en el pasado (antes usaban el default de hoy 20:00 sin haber terminado, que
+  ahora los dejaría deshabilitados) — no es debilitar el test, es que la premisa de esas 2 stories
+  (turno ya jugado) ahora es explícita en vez de accidental. `Confirmada` reforzada para verificar
+  el estado disabled + title.
+- **Header muestra brevemente estado anónimo en ruta exclusiva de jugador** (Mis reservas) —
+  VIGENTE, causa raíz distinta a la sospechada: `getPortalSession()`/`getPlayerHeaderInfo()` ya
+  existían, cacheados por request, con el comentario explícito "para que PortalShell y
+  PortalHeader compartan una sola query" — pero `PortalShell` nunca las llamaba. `(player)/layout.tsx`
+  YA confirma `user.type === 'player'` antes de renderizar (si no, redirige) — ahí mismo se llama
+  `getPortalSession()` (reusa el `extractAuthUser()` cacheado, sin lectura de auth extra) y se
+  siembra como `initialSession` (prop nueva, opcional) en `PortalShell` → `PortalSessionProvider`.
+  Las rutas públicas (`(public)/layout.tsx`) no pasan la prop — siguen anónimas-primero a propósito
+  (ISR). `favoriteTenantIds` queda igual (hidrata client-side): no es lo que este hallazgo señala.
+- **Botón "Elegir fecha" sin la fecha en su nombre accesible** (`AvailabilityGrid.tsx`) — VIGENTE
+  (WCAG 2.5.3). `aria-label` dinámico con la fecha visible. Test unitario ajustado a un matcher
+  por regex (el nombre accesible ya no es la constante `'Elegir fecha'`).
+- **"Crear el primero" visible para el manager, dead-end silencioso** (`torneos/page.tsx`) —
+  VIGENTE: el botón del header YA estaba bien condicionado por rol, el de la EmptyState no. Mismo
+  patrón "candado, no desaparición" que ya usa `CorteZonasCard.tsx` del mismo módulo: para el
+  manager es un `<span>` (no un link) con `Lock` + `title="Solo el dueño puede crear torneos"` +
+  sufijo `sr-only`.
+
+### P2
+
+- **Dos mecanismos de error en Perfil** (`ProfileForm.tsx`) — VIGENTE. `noValidate` en el form:
+  Nombre/Apellido vacíos ya no los bloquea el tooltip nativo del navegador (que nunca llegaba a
+  la Server Action) — TODO error pasa por el mismo `role="alert"` de Zod (`.trim()` +
+  `.min(1, 'Nombre requerido')`, ya vigente desde la tanda 2). `required` se deja (sigue marcando
+  `aria-required`). Candado `NombreVacioPasaPorElMismoMecanismoDeError`: limpia el campo, clickea
+  Guardar, confirma que SÍ llegó a la action (antes ni se hubiera llamado).
+- **Toggles "Recibir por email"/"Solo push" sin exponer estado a ARIA** (`AvisosForm.tsx`) —
+  VIGENTE. Eran 2 `<button>` sueltos. Se reemplazan por `RadioGroupPrimitive` de Radix
+  (el mismo paquete que ya usa `RadioChip`, pero SIN heredar su estilo apilado — son los mismos
+  className de siempre, solo cambia el elemento) → `radiogroup` real + `aria-checked` +
+  roving tabindex gratis. Sin story previa para esta vista — se creó `AvisosForm.stories.tsx` con
+  un candado que verifica `role="radiogroup"` y `aria-checked` en ambos estados.
+- **Tira de tabs de Configuración sin scroll automático al tab activo en mobile**
+  (`scroll-tabs.tsx`) — VIGENTE. Componente pasa a `'use client'` (antes no tenía JS propio);
+  `useEffect` con `navRef.current.querySelector('[aria-current="page"]')?.scrollIntoView(...)` en
+  cada cambio de `activeHref`. La story `Overflow` YA reproducía el caso exacto (tab activo = el
+  último, contenedor angosto) — solo le faltaba el `play` que lo verificara; confirmado en
+  Chromium real (`scrollLeft > 0` tras montar).
+
+### P3
+
+- **Links "Contactar a soporte"/"Volver al inicio" bajo 24px** (`/suspended`) — VIGENTE (WCAG
+  2.5.8). Mismo patrón `inline-flex min-h-11 ... md:min-h-0` que ya usa `LoginCard.tsx` para
+  "¿Olvidaste tu contraseña?".
+- **Footer de marketing sin el fix de 44px que el componente hermano sí tiene**
+  (`BusinessFooter.tsx` vs `SiteFooter.tsx`) — VIGENTE (WCAG 2.5.5). Mismo `min-h-11 ... sm:min-h-0`
+  + `gap-y-0 sm:gap-y-2` que `SiteFooter.tsx` ya tenía documentado y resuelto.
+
+### Decisión del dueño (post-cierre de la tanda)
+
+Dos hallazgos quedaron como REQUIERE INPUT al cerrar la tanda 4; el dueño resolvió los dos:
+
+- **Widget "Cobrado hoy" tarda hasta 60s en reflejar un cobro si te quedás en la misma pantalla**
+  — **NO REPRODUCE** la distinción puntual del hallazgo ("cantina sí actualiza al instante,
+  deudas no"): se verificó código de los dos flujos (`StreetMoneyChargeDialog.tsx` y
+  `TicketPanel.tsx`) y AMBOS usan exactamente `router.refresh()` — ninguno navega ni dispara nada
+  que `DayTotalBadge` escuche. La brecha real (hasta `REFRESH_MS`=60s de staleness) es un
+  trade-off YA documentado y aceptado explícitamente en el propio código
+  (`day-total-badge.tsx:33-37`, "Límite conocido y aceptado"). **Decisión: dejarlo como está** —
+  cerrarlo de verdad exigiría un bus de eventos client-side transversal (cada punto que cobra:
+  deudas, cantina, reservas, abonados…), desproporcionado para un 🟢 y pisa una decisión de
+  diseño ya razonada. No aplicado.
+- **Header de marketing ocultaba toda la nav en mobile sin menú alternativo**
+  (`BusinessHeader.tsx`) — **Decisión: construirlo.** Menú hamburguesa (`DropdownMenu` de Radix,
+  ya usado en el resto del repo — mismo primitivo que `RadioGroupPrimitive` usado más arriba para
+  Avisos, consistente) con Funciones/Precios/Blog/Ingresar, trigger `sm:hidden` (h-11 w-11, tap
+  target OK) junto al logo. `modal={false}` (mismo criterio que `HeroSearch`/`QuickActions`: es
+  nav liviana, no un diálogo — con el default Radix aria-hidearía "Empezar gratis" mientras el
+  menú está abierto). Verificado en Chromium real vía Storybook a 375px (no con `play` — el test
+  runner de `@storybook/addon-vitest` corre a ~1280px fijo, `parameters.viewport` no lo angosta,
+  mismo hallazgo ya documentado para `HeroSearch`; un trigger `sm:hidden` sería inclickeable ahí):
+  `read_page` (árbol de accesibilidad) confirma el menú abre con los 4 `menuitem` y sus `href`
+  correctos tras el click.
+
+  `tests/unit/business-header.test.tsx` sigue pasando sin cambios: el contenido del
+  `DropdownMenuContent` no está montado en el DOM hasta que se abre (Radix Portal), así que el
+  segundo "Ingresar" (el de adentro del menú) no duplica el `getByRole('link', {name:
+  'Ingresar'})` que ya usaba la vista desktop.
+
+## Verificación de la tanda 4
+
+```
+pnpm typecheck                           ✓ limpio (17 fixes, uno por vez)
+pnpm lint                                ✓ limpio (17 fixes, uno por vez)
+pnpm test                                → 3479/3480 (333 archivos, 1 skip + 1 todo preexistentes)
+pnpm test:storybook                      → 1080/1080 (266 archivos — 6 stories más que antes)
+pnpm test:integration tests/…/players.ts → 2/2 (wasCreated real contra Postgres)
+```
+
+Stories nuevas o reforzadas con candados reales (falla sin el fix, confirmado a mano en al menos
+2 casos revirtiendo temporalmente): `ReservasPolicyForm`, `JugadoresView`, `MisReservasView`,
+`BookingActions`, `AvisosForm` (nueva), `scroll-tabs`, `ProfileForm`, `HeroSearch` (verificado
+en vivo con Storybook + Chromium real, sin story nueva — geometría confirmada por script).
+
+## Menú mobile de marketing (post-decisión del dueño)
+
+```
+pnpm typecheck                              ✓ limpio
+pnpm lint                                   ✓ limpio
+pnpm test (suite completa, final)           → 3479/3480 (333 archivos, 1 skip + 1 todo preexistentes)
+pnpm test:storybook (suite completa, final) → 1080/1080 (266 archivos)
+```
+
+Con esto se cierran los 60 hallazgos de `AUDIT_APP_FINDINGS.md`: 41 BUG (39 aplicados + 2
+borrados con OK explícito) y 19 MEJORA-UX (18 aplicados + 1 NO REPRODUCE, dejado a propósito por
+decisión del dueño).
+
+## Juez completo (integration + isolation, post-cierre)
+
+Faltaba correr las suites con DB real después de la tanda 3/4 (solo se había corrido el test
+targeted de `players.test.ts`). Se corrieron completas contra Postgres local (`pnpm supabase:start`,
+puerto 54322):
+
+```
+pnpm test:integration → 949/949 (136 archivos)
+pnpm test:isolation   → 166/166 (tests/integration/isolation.test.ts)
+```
+
+Sin regresiones. Juez completo (typecheck, lint, unit, storybook, integration, isolation) verde
+en su totalidad.
+
+Sin commits: todo queda en el working tree.

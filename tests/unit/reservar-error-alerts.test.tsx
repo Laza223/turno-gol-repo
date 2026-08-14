@@ -28,27 +28,40 @@ afterEach(() => cleanup())
 
 describe('CheckoutErrorBanner — alertas de error de checkout (#22)', () => {
   it.each(CODES)('renderiza un role="alert" con texto para error=%s', (code) => {
-    render(<CheckoutErrorBanner error={code} />)
+    render(<CheckoutErrorBanner slug="club-norte" error={code} />)
     expect(screen.getByRole('alert').textContent?.trim().length).toBeGreaterThan(0)
   })
 
+  // MEJORA-UX QA: los 4 banners eran solo texto, sin salida — a diferencia de
+  // `CheckoutInvalidState`, que siempre ofrece "Elegir otro turno".
+  it.each(CODES)(
+    'ofrece "Elegir otro turno" hacia el perfil del complejo para error=%s',
+    (code) => {
+      render(<CheckoutErrorBanner slug="club-norte" error={code} />)
+      const link = screen.getByRole('link', { name: 'Elegir otro turno' })
+      expect(link).toHaveAttribute('href', '/club-norte')
+    },
+  )
+
   it('no renderiza nada sin error', () => {
-    render(<CheckoutErrorBanner error={undefined} />)
+    render(<CheckoutErrorBanner slug="club-norte" error={undefined} />)
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('no renderiza nada ante un código desconocido', () => {
-    render(<CheckoutErrorBanner error="ni_idea" />)
+    render(<CheckoutErrorBanner slug="club-norte" error="ni_idea" />)
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('error=banned con `until` dice cuándo se levanta el softban', () => {
-    render(<CheckoutErrorBanner error="banned" until="2026-03-28T12:00:00.000Z" />)
+    render(
+      <CheckoutErrorBanner slug="club-norte" error="banned" until="2026-03-28T12:00:00.000Z" />,
+    )
     expect(screen.getByRole('alert').textContent).toContain('28 mar')
   })
 
   it('error=banned sin `until` cae al mensaje genérico', () => {
-    render(<CheckoutErrorBanner error="banned" />)
+    render(<CheckoutErrorBanner slug="club-norte" error="banned" />)
     expect(screen.getByRole('alert').textContent).toContain('No podés reservar')
   })
 
@@ -60,6 +73,7 @@ describe('CheckoutErrorBanner — alertas de error de checkout (#22)', () => {
   it('error=banned con `reason` muestra el motivo real, no "por ausencias" hardcodeado', () => {
     render(
       <CheckoutErrorBanner
+        slug="club-norte"
         error="banned"
         reason="Ausencias reiteradas (2+ en 90 días)"
         until="2026-03-28T12:00:00.000Z"
@@ -72,7 +86,13 @@ describe('CheckoutErrorBanner — alertas de error de checkout (#22)', () => {
   })
 
   it('error=banned con `reason` de ban global (sin `until`) igual muestra el motivo', () => {
-    render(<CheckoutErrorBanner error="banned" reason="Jugador suspendido globalmente." />)
+    render(
+      <CheckoutErrorBanner
+        slug="club-norte"
+        error="banned"
+        reason="Jugador suspendido globalmente."
+      />,
+    )
     expect(screen.getByRole('alert').textContent).toContain('Jugador suspendido globalmente.')
   })
 })

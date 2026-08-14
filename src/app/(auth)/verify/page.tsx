@@ -19,6 +19,14 @@ const SUCCESS_COPY: Record<SuccessIntent, { title: string; subtitle: string; cta
     subtitle: 'Volvé para terminar tu reserva.',
     cta: 'Continuar con mi reserva',
   },
+  // Re-acceso (jugador YA existente) con `next` de reserva: mismo destino que
+  // `booking` (sigue siendo cierto que vuelve a terminar su reserva), pero sin
+  // el título de alta — no hubo ninguna cuenta nueva que "confirmar".
+  booking_returning: {
+    title: '¡Listo!',
+    subtitle: 'Volvé para terminar tu reserva.',
+    cta: 'Continuar con mi reserva',
+  },
   login: {
     title: '¡Listo!',
     subtitle: 'Iniciaste sesión correctamente.',

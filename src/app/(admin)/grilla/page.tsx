@@ -18,6 +18,7 @@ import {
   revertNoShowAction,
   listRescheduleSlotsAction,
   rescheduleBookingAction,
+  cancelBookingAction,
 } from '@/app/(admin)/reservas/actions'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
@@ -147,6 +148,7 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
           revertNoShowAction,
           listRescheduleSlotsAction,
           rescheduleBookingAction,
+          cancelBookingAction,
         }}
         canteen={{
           listCatalogAction: listCanteenForBookingAction,

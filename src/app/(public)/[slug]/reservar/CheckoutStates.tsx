@@ -15,11 +15,21 @@ const alertDestructive =
 const alertWarning =
   'rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-warning/30 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30'
 
-// `slot_taken` salió del union (decisión del dueño, 2026-08-14): el guard de
-// disponibilidad de `reservar/page.tsx` cubre ese caso ANTES de llegar a este
-// banner, así que el código dejó de emitirse — el cartel específico "acaba de
-// ser tomado" era inalcanzable en la práctica (🟡 QA 2026-08-13).
 export type CheckoutErrorCode = 'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable'
+
+// MEJORA-UX QA: los 4 banners inline eran solo texto, sin salida — a
+// diferencia de `CheckoutInvalidState`, que siempre ofrece "Elegir otro
+// turno". Mismo link, mismo estilo, reusado en los 4 `if` de abajo.
+function ElegirOtroTurnoLink({ slug }: { slug: string }) {
+  return (
+    <Link
+      href={`/${slug}`}
+      className="mt-2 inline-flex text-sm font-semibold underline underline-offset-2 hover:no-underline"
+    >
+      Elegir otro turno
+    </Link>
+  )
+}
 
 function formatBannedUntilArt(iso: string): string | null {
   const date = new Date(iso)
@@ -37,10 +47,13 @@ function formatBannedUntilArt(iso: string): string | null {
  * Sin `error` (o un código desconocido) no renderiza nada.
  */
 export function CheckoutErrorBanner({
+  slug,
   error,
   until,
   reason,
 }: {
+  /** Para el link de recuperación "Elegir otro turno" de los 4 banners. */
+  slug: string
   error: CheckoutErrorCode | string | undefined
   /** ISO — solo aplica a `error=banned`, cuándo termina el softban. */
   until?: string
@@ -59,36 +72,46 @@ export function CheckoutErrorBanner({
     const untilLabel = until ? formatBannedUntilArt(until) : null
     const untilSuffix = untilLabel ? ` Volvés a poder reservar el ${untilLabel}.` : ''
     return (
-      <p role="alert" className={alertDestructive}>
-        {reason
-          ? `El complejo restringió tu cuenta: ${reason.replace(/\.$/, '')}.${untilSuffix}`
-          : untilLabel
-            ? `Te bloqueamos temporalmente. Volvés a poder reservar el ${untilLabel}.`
-            : 'No podés reservar en este complejo actualmente.'}
-      </p>
+      <div role="alert" className={alertDestructive}>
+        <p>
+          {reason
+            ? `El complejo restringió tu cuenta: ${reason.replace(/\.$/, '')}.${untilSuffix}`
+            : untilLabel
+              ? `Te bloqueamos temporalmente. Volvés a poder reservar el ${untilLabel}.`
+              : 'No podés reservar en este complejo actualmente.'}
+        </p>
+        <ElegirOtroTurnoLink slug={slug} />
+      </div>
     )
   }
   if (error === 'too_many_holds') {
     return (
-      <p role="alert" className={alertWarning}>
-        Ya tenés reservas pendientes de pago en este complejo. Completá o esperá a que venzan antes
-        de reservar otra.
-      </p>
+      <div role="alert" className={alertWarning}>
+        <p>
+          Ya tenés reservas pendientes de pago en este complejo. Completá o esperá a que venzan
+          antes de reservar otra.
+        </p>
+        <ElegirOtroTurnoLink slug={slug} />
+      </div>
     )
   }
   if (error === 'rate_limited') {
     return (
-      <p role="alert" className={alertWarning}>
-        Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.
-      </p>
+      <div role="alert" className={alertWarning}>
+        <p>Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.</p>
+        <ElegirOtroTurnoLink slug={slug} />
+      </div>
     )
   }
   if (error === 'unavailable') {
     return (
-      <p role="alert" className={alertDestructive}>
-        No pudimos procesar la reserva: la cancha no está disponible o no tiene precio configurado
-        para ese horario.
-      </p>
+      <div role="alert" className={alertDestructive}>
+        <p>
+          No pudimos procesar la reserva: la cancha no está disponible o no tiene precio configurado
+          para ese horario.
+        </p>
+        <ElegirOtroTurnoLink slug={slug} />
+      </div>
     )
   }
   return null

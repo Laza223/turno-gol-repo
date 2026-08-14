@@ -323,7 +323,10 @@ export default function AvailabilityGrid({ tenant }: Props) {
             type="button"
             onClick={() => setIsModalOpen(true)}
             disabled={loading || !date}
-            aria-label="Elegir fecha"
+            // MEJORA-UX QA (WCAG 2.5.3 Label in Name): el aria-label pelado
+            // tapaba la fecha visible — un lector de pantalla nunca la
+            // anunciaba y control por voz no podía decir "click <fecha>".
+            aria-label={date ? `Elegir fecha, actualmente ${formatDateES(date)}` : 'Elegir fecha'}
             className="flex h-11 md:h-9 min-w-[180px] items-center justify-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium text-foreground tabular-nums hover:bg-accent hover:border-emerald-500/50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 transition-colors duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Calendar className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />

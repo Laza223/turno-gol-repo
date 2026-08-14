@@ -55,6 +55,24 @@ export const Error: Story = {
   },
 }
 
+/**
+ * MEJORA-UX QA: antes, un Nombre vacío disparaba el tooltip nativo del
+ * navegador y ni siquiera llamaba a la action — un mecanismo de error
+ * distinto del resto del form. Con `noValidate`, pasa por el mismo
+ * `role="alert"` que largo máximo/teléfono corto.
+ */
+export const NombreVacioPasaPorElMismoMecanismoDeError: Story = {
+  args: {
+    action: fn(async () => ({ success: false as const, error: 'Nombre requerido' })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.clear(canvas.getByLabelText('Nombre'))
+    await userEvent.click(canvas.getByRole('button', { name: 'Guardar cambios' }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Nombre requerido')
+  },
+}
+
 export const GuardadoOk: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement }) => {

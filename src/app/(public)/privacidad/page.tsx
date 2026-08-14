@@ -229,8 +229,8 @@ export default function PrivacidadPage() {
           TurnoGol usa <strong>únicamente cookies esenciales</strong> para el funcionamiento del
           servicio: la sesión de autenticación gestionada por Supabase Auth y, en las sesiones del
           equipo de soporte, una cookie firmada de acceso temporal al panel de un complejo. No
-          utilizamos cookies de tracking publicitario ni de analytics de terceros (Google
-          Analytics, Facebook Pixel, etc.).
+          utilizamos cookies de tracking publicitario ni de analytics de terceros (Google Analytics,
+          Facebook Pixel, etc.).
         </p>
         <p>
           Por eso no mostramos un banner de cookies: solo usamos cookies funcionales estrictamente

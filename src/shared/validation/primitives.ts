@@ -46,8 +46,7 @@ export const moneyCents = z.number().int().nonnegative()
 // y los mensajes de los schemas siguen saliendo en inglés igual. Ver el
 // comentario de `zod-locale.ts`. Cualquier `.max()`/`.min()` que pueda llegar a
 // la pantalla necesita su mensaje acá o en el schema.
-export const boundedText = (max: number) =>
-  z.string().max(max, `Máximo ${max} caracteres`)
+export const boundedText = (max: number) => z.string().max(max, `Máximo ${max} caracteres`)
 export const slug = z.string().regex(SLUG_RE, 'slug inválido')
 
 // El `PhoneInput` manda el valor ya compuesto con el código de país

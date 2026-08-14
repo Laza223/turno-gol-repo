@@ -924,13 +924,7 @@ export async function completeAndChargeBookingAction(
       // rollbackeaba la tx entera y el PostgresError crudo se llevaba puesta
       // toda la ruta /reservas (🔴 QA 2026-08-13).
       const noteLine = debtNote?.trim() ? `[Deuda] ${debtNote.trim()}` : undefined
-      const completed = await completeBooking(
-        bookingId,
-        'admin',
-        tx,
-        user.staffUserId,
-        noteLine,
-      )
+      const completed = await completeBooking(bookingId, 'admin', tx, user.staffUserId, noteLine)
 
       // 2. Validate total charges don't exceed pending amount
       if (charges.length > 0) {

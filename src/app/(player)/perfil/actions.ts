@@ -16,11 +16,7 @@ const profileSchema = z.object({
   // (🟡 QA 2026-08-14).
   first_name: z.string().trim().min(1, 'Nombre requerido').max(100, 'Máximo 100 caracteres'),
   last_name: z.string().trim().min(1, 'Apellido requerido').max(100, 'Máximo 100 caracteres'),
-  phone: z
-    .string()
-    .min(6, 'Teléfono muy corto')
-    .max(30, 'Máximo 30 caracteres')
-    .optional(),
+  phone: z.string().min(6, 'Teléfono muy corto').max(30, 'Máximo 30 caracteres').optional(),
   preferred_area: z.string().max(100, 'Máximo 100 caracteres').optional(),
 })
 

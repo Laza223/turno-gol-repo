@@ -1,10 +1,15 @@
 'use server'
 
 import { z } from 'zod'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { eq, sql } from 'drizzle-orm'
-import { signInWithPlayerMagicLink } from '@/modules/auth/auth.service'
+import { signInWithPlayerMagicLink, signInWithGooglePlayer } from '@/modules/auth/auth.service'
+import {
+  buildGoogleTermsCookie,
+  GOOGLE_TERMS_COOKIE_NAME,
+  GOOGLE_TERMS_COOKIE_TTL_MS,
+} from '@/shared/security/google-terms-cookie'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { getDb, withPlayerContext } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
@@ -103,6 +108,51 @@ export async function sendPlayerMagicLink(
   if (!result.ok)
     return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.', values }
   return { status: 'sent', email: parsed.data.email }
+}
+
+/**
+ * Google desde el checkout: el checkbox de términos vive en el MISMO form que
+ * el submit de email (`terms`, ver LoginGate) — si venía tildado, se setea una
+ * cookie firmada de corta duración (`google-terms-cookie.ts`) ANTES de mandar
+ * a Google, así el alta nueva por Google entra con el consentimiento ya
+ * resuelto y no ve la pantalla de `/aceptar-terminos`. Sin checkbox no
+ * bloqueamos el redirect client-side es la UX (el botón está disabled) — este
+ * chequeo server-side es defensa en profundidad, no la única barrera: la real
+ * es `hasAgreedTerms` en el callback.
+ *
+ * La cookie (no un query param en `redirectTo`) es a propósito: revisión
+ * adversarial 2026-08-14 encontró que un query param reenviado por Supabase
+ * junto al `code` viaja por una URL externa sin firma — se podía forzar
+ * `agreed=1` sin haber tildado nada. Se borra siempre antes de decidir, para
+ * que una cookie vieja de un intento anterior (tildado, abandonado, y vuelto
+ * a intentar SIN tildar) no aplique a este envío.
+ */
+export async function startGoogleLoginFromReservar(formData: FormData): Promise<void> {
+  const nextRaw = formData.get('next')
+  const safeNext = sanitizeNext(typeof nextRaw === 'string' ? nextRaw : null)
+  const agreed = formData.get('agreed') === '1'
+
+  const cookieStore = await cookies()
+  if (agreed) {
+    cookieStore.set({
+      name: GOOGLE_TERMS_COOKIE_NAME,
+      value: buildGoogleTermsCookie(CURRENT_TERMS_VERSION),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: Math.floor(GOOGLE_TERMS_COOKIE_TTL_MS / 1000),
+      path: '/',
+    })
+  } else {
+    cookieStore.delete(GOOGLE_TERMS_COOKIE_NAME)
+  }
+
+  const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
+
+  const result = await signInWithGooglePlayer(redirectTo)
+  if (!result.url) redirect(safeNext)
+  redirect(result.url)
 }
 
 const BLOCKED = ['deleted', 'blocked', 'canceled', 'churned', 'suspended']

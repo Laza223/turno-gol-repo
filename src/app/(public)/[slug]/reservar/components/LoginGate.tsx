@@ -1,15 +1,17 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Mail } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
-import type { sendPlayerMagicLink, GateState } from '../actions'
+import { GoogleIcon } from '@/components/icons/GoogleIcon'
+import type { sendPlayerMagicLink, startGoogleLoginFromReservar, GateState } from '../actions'
 
 const initial: GateState = { status: 'idle' }
 
 /** Firma de la Server Action que consume el form (ver ../actions#sendPlayerMagicLink). */
 export type SendPlayerMagicLink = typeof sendPlayerMagicLink
+export type StartGoogleLoginFromReservar = typeof startGoogleLoginFromReservar
 
 // text-base en mobile: < 16px hace que iOS zoomee al enfocar. Está en el flujo
 // de reserva, así que el zoom pega justo antes del pago.
@@ -38,15 +40,22 @@ function Submit() {
 export default function LoginGate({
   next,
   action,
+  googleAction,
 }: {
   next: string
   /** Server Action inyectada por la page (../actions#sendPlayerMagicLink). */
   action: SendPlayerMagicLink
+  /** Server Action inyectada por la page (../actions#startGoogleLoginFromReservar). */
+  googleAction: StartGoogleLoginFromReservar
 }) {
   const [state, formAction] = useActionState(action, initial)
   // Repone lo tipeado tras un error: los inputs son NO controlados y el form
   // usa noValidate, así que toda validación pasa por el servidor.
   const vals = state.status === 'error' ? (state.values ?? {}) : {}
+  // Controla el checkbox (a diferencia del resto del form, no controlado) para
+  // poder deshabilitar el botón de Google hasta que esté tildado — mismo gate
+  // que ya exige el submit de email, server-side, vía gateSchema.terms.
+  const [termsChecked, setTermsChecked] = useState(vals.terms ?? false)
 
   if (state.status === 'sent') {
     return (
@@ -110,7 +119,8 @@ export default function LoginGate({
           type="checkbox"
           name="terms"
           required
-          defaultChecked={vals.terms}
+          checked={termsChecked}
+          onChange={(e) => setTermsChecked(e.target.checked)}
           className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/4"
         />
         <span>
@@ -123,6 +133,39 @@ export default function LoginGate({
         </p>
       )}
       <Submit />
+      <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
+        <div className="h-px flex-1 bg-border dark:bg-white/10" />
+        o
+        <div className="h-px flex-1 bg-border dark:bg-white/10" />
+      </div>
+      <GoogleSubmit formAction={googleAction} agreed={termsChecked} />
     </form>
+  )
+}
+
+function GoogleSubmit({
+  formAction,
+  agreed,
+}: {
+  formAction: StartGoogleLoginFromReservar
+  agreed: boolean
+}) {
+  // Mismo <form> (no puede haber un <form> anidado): un segundo submit button
+  // con su propio `formAction` manda ESTE formData — el hidden `next` de arriba
+  // ya viaja, checkbox de términos incluido, sin disparar el submit principal.
+  return (
+    <>
+      <input type="hidden" name="agreed" value={agreed ? '1' : '0'} />
+      <button
+        type="submit"
+        formAction={formAction}
+        disabled={!agreed}
+        title={!agreed ? 'Tildá los términos para continuar' : undefined}
+        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/4"
+      >
+        <GoogleIcon className="h-4 w-4" />
+        Continuar con Google
+      </button>
+    </>
   )
 }

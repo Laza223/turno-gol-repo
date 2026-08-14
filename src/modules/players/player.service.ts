@@ -1,4 +1,6 @@
-import { getWorkerSql } from '@/shared/db/client'
+import { eq } from 'drizzle-orm'
+import { getWorkerSql, withPlayerContext } from '@/shared/db/client'
+import { players } from '@/shared/db/schema'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 export type GetOrCreatePlayerOpts = {
@@ -26,7 +28,7 @@ export async function getOrCreatePlayer(
   firstName: string,
   lastName: string,
   opts: GetOrCreatePlayerOpts = {},
-): Promise<{ id: string; wasCreated: boolean }> {
+): Promise<{ id: string; wasCreated: boolean; hasAgreedTerms: boolean }> {
   const sql = getWorkerSql()
   const lower = email.toLowerCase()
   const agreed = opts.agreedToTerms === true
@@ -37,6 +39,7 @@ export async function getOrCreatePlayer(
   `
   if (existing.length > 0) {
     const row = existing[0]!
+    const hasAgreedTerms = agreed || row.agreed_to_terms_at !== null
     if (agreed && row.agreed_to_terms_at === null) {
       await sql`
         UPDATE players
@@ -46,10 +49,10 @@ export async function getOrCreatePlayer(
     } else {
       await sql`UPDATE players SET last_login_at = NOW() WHERE id = ${row.id}`
     }
-    return { id: row.id, wasCreated: false }
+    return { id: row.id, wasCreated: false, hasAgreedTerms }
   }
 
-  const created = await sql<{ id: string }[]>`
+  const created = await sql<{ id: string; agreed_to_terms_at: Date | null }[]>`
     INSERT INTO players (email, first_name, last_name, phone, agreed_to_terms_at, terms_version, last_login_at)
     VALUES (
       ${lower}, ${firstName}, ${lastName}, ${opts.phone ?? null},
@@ -59,12 +62,27 @@ export async function getOrCreatePlayer(
     SET last_login_at = NOW(),
         agreed_to_terms_at = COALESCE(players.agreed_to_terms_at, EXCLUDED.agreed_to_terms_at),
         terms_version = COALESCE(players.terms_version, EXCLUDED.terms_version)
-    RETURNING id
+    RETURNING id, agreed_to_terms_at
   `
   // `wasCreated: true` es best-effort: el SELECT previo no vio la fila, pero
   // el ON CONFLICT DO UPDATE puede haber ganado la carrera contra un insert
   // concurrente idéntico. Solo alimenta el copy de "¡Cuenta confirmada!" vs
   // "¡Listo!" en /verify — un falso positivo ahí no tiene consecuencia de
   // negocio, no vale otra query para desambiguar la carrera rara.
-  return { id: created[0]!.id, wasCreated: true }
+  const row = created[0]!
+  return { id: row.id, wasCreated: true, hasAgreedTerms: row.agreed_to_terms_at !== null }
+}
+
+/**
+ * Consentimiento diferido (Google OAuth vía /ingresar: sin checkbox previo,
+ * a diferencia de LoginGate). El jugador YA tiene sesión acá — corre bajo RLS
+ * self-scoped (`withPlayerContext`), no bajo el pool worker que usa el alta.
+ */
+export async function acceptPlayerTerms(playerId: string, termsVersion: string): Promise<void> {
+  await withPlayerContext(playerId, async (tx) => {
+    await tx
+      .update(players)
+      .set({ agreedToTermsAt: new Date(), termsVersion })
+      .where(eq(players.id, playerId))
+  })
 }

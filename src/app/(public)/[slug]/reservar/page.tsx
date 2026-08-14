@@ -10,7 +10,11 @@ import BookingSummary from './components/BookingSummary'
 import LoginGate from './components/LoginGate'
 import ConfirmBookingButton from './components/ConfirmBookingButton'
 import type { PayMethod } from './components/PaymentMethodSelector'
-import { createBookingAndCheckout, sendPlayerMagicLink } from './actions'
+import {
+  createBookingAndCheckout,
+  sendPlayerMagicLink,
+  startGoogleLoginFromReservar,
+} from './actions'
 import { CheckoutErrorBanner, CheckoutInvalidState } from './CheckoutStates'
 import { track } from '@/shared/observability'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
@@ -182,7 +186,11 @@ export default async function ReservarPage(props: Props) {
             action={createBookingAndCheckout}
           />
         ) : (
-          <LoginGate next={nextUrl} action={sendPlayerMagicLink} />
+          <LoginGate
+            next={nextUrl}
+            action={sendPlayerMagicLink}
+            googleAction={startGoogleLoginFromReservar}
+          />
         )}
       </div>
     </ReservaShell>

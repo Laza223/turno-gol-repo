@@ -243,6 +243,25 @@ url = ""
 # If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
 skip_nonce_check = false
 
+# Google OAuth (jugador — alcance ADR-002/2026-08-14, reintroducido tras la
+# eliminación de e9f49fee que solo era código muerto sin botón en UI. Alcance
+# ahora: solo jugador, staff se queda en password por ADR-013). Client
+# id/secret se cargan por env var local (nunca committeados); en el proyecto
+# hosted de prod se cargan a mano en el Dashboard → Authentication → Providers
+# → Google, la app nunca ve el secret.
+# `enabled=false` hasta tener credenciales reales de Google Cloud Console: con
+# `true` el CLI de Supabase resuelve `env(...)` al toque y CUALQUIER comando
+# (`supabase status`, `supabase:start`, CI) explota si las vars no están
+# seteadas — mismo motivo por el que `[auth.external.apple]` de abajo también
+# arranca en false. Flip a `true` + setear las dos vars en `.env.local` cuando
+# haya credenciales (ver supabase/config.toml issue verificado 2026-08-14).
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+skip_nonce_check = true
+
 # Use Firebase Auth as a third-party provider alongside Supabase Auth.
 [auth.third_party.firebase]
 enabled = false

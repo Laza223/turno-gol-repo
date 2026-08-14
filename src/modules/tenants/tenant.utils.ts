@@ -39,6 +39,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'staff',
   'torneos',
   // (auth)
+  'aceptar-terminos',
   'forgot-password',
   'ingresar',
   'login',

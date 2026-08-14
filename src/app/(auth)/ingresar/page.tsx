@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft } from 'lucide-react'
-import { playerLoginAction } from './actions'
+import { playerLoginAction, startGoogleLoginFromIngresar } from './actions'
 import { IngresarForm } from './IngresarForm'
 import { Logo } from '@/components/ui/logo'
 
@@ -109,7 +109,7 @@ function FormPane() {
         <div className="mb-8 flex justify-center lg:hidden">
           <Logo variant="vertical" className="w-32" textClassName="text-white" />
         </div>
-        <IngresarForm action={playerLoginAction} />
+        <IngresarForm action={playerLoginAction} googleAction={startGoogleLoginFromIngresar} />
         <p className="mt-6 text-center text-sm text-slate-400">
           ¿Primera vez en TurnoGol?{' '}
           <Link

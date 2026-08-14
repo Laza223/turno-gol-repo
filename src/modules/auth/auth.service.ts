@@ -97,6 +97,25 @@ export async function signInWithExistingPlayerMagicLink(
   return { ok: true }
 }
 
+export type OAuthSignInResult = { url: string; error?: undefined } | { url: null; error: string }
+
+/**
+ * Google OAuth para jugador (alcance decidido 2026-08-14: solo jugador, staff
+ * sigue en password por ADR-013). `signInWithOAuth` no soporta `options.data`
+ * — a diferencia del magic link no hay forma de inyectar perfil/consentimiento
+ * en el mismo viaje, por eso `redirectTo` es la única vía para llevar `next`
+ * (y, desde LoginGate, `agreed`/`tv`) hasta el callback.
+ */
+export async function signInWithGooglePlayer(redirectTo: string): Promise<OAuthSignInResult> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo },
+  })
+  if (error || !data?.url) return { url: null, error: error?.message ?? 'no_url' }
+  return { url: data.url }
+}
+
 export type PasswordSignInResult =
   { ok: true; user: User } | { ok: false; code: 'invalid_credentials' | 'email_not_confirmed' }
 

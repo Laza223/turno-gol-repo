@@ -11,7 +11,10 @@ const meta = {
   title: 'Player/Checkout/LoginGate',
   component: LoginGate,
   parameters: { layout: 'padded' },
-  args: { next: '/complejo-fenix/reservar?court=101&date=2026-03-14&time=18:00&dur=60' },
+  args: {
+    next: '/complejo-fenix/reservar?court=101&date=2026-03-14&time=18:00&dur=60',
+    googleAction: fn(async () => {}),
+  },
   decorators: [
     (Story) => (
       <ReservaDarkShell>

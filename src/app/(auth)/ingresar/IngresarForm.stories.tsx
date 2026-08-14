@@ -3,6 +3,8 @@ import { expect, fn, userEvent, within } from 'storybook/test'
 import { pendingAction } from '@/test/pending-action'
 import { IngresarForm, type PlayerLoginAction } from './IngresarForm'
 
+const noopGoogleAction = fn(async () => {})
+
 type PlayerLoginState = Awaited<ReturnType<PlayerLoginAction>>
 
 /**
@@ -14,6 +16,7 @@ type PlayerLoginState = Awaited<ReturnType<PlayerLoginAction>>
 const meta = {
   title: 'Auth/IngresarForm',
   component: IngresarForm,
+  args: { googleAction: noopGoogleAction },
   parameters: {
     layout: 'fullscreen',
     nextjs: { appDirectory: true, navigation: { pathname: '/ingresar' } },
@@ -78,7 +81,7 @@ export const Enviando: Story = {
     await userEvent.type(canvas.getByLabelText(/email/i), 'tomas@example.com')
     await userEvent.click(canvas.getByRole('button', { name: 'Enviarme el enlace' }))
     await expect(await canvas.findByText('Enviando…')).toBeInTheDocument()
-    await enviando.release(canvas.getByRole('button'))
+    await enviando.release(canvas.getByRole('button', { name: /envia/i }))
   },
 }
 

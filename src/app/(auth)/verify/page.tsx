@@ -11,6 +11,11 @@ const ERROR_COPY: Record<string, string> = {
   invalid: 'No pudimos verificar el enlace. Probá de nuevo.',
   exchange_failed: 'No pudimos completar el inicio de sesión. Probá de nuevo.',
   orphaned_session: 'Tu sesión expiró, volvé a iniciar sesión.',
+  // Ese email ya es una cuenta de staff — Google en /ingresar o LoginGate es
+  // solo para jugador, así que no se mergea sobre esa identidad (ver
+  // provisionPlayerAndRedirect en api/auth/callback/route.ts).
+  account_conflict:
+    'Ese email ya tiene una cuenta de TurnoGol para complejos. Iniciá sesión en /login con tu contraseña.',
 }
 
 const SUCCESS_COPY: Record<SuccessIntent, { title: string; subtitle: string; cta: string }> = {

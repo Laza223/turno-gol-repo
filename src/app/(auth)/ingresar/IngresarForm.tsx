@@ -5,7 +5,8 @@ import { useActionState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle2, Mail } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
-import type { PlayerLoginState } from './actions'
+import { GoogleIcon } from '@/components/icons/GoogleIcon'
+import type { PlayerLoginState, startGoogleLoginFromIngresar } from './actions'
 
 const initial: PlayerLoginState = { status: 'idle' }
 
@@ -14,6 +15,7 @@ export type PlayerLoginAction = (
   prevState: PlayerLoginState,
   formData: FormData,
 ) => Promise<PlayerLoginState>
+export type StartGoogleLoginFromIngresar = typeof startGoogleLoginFromIngresar
 
 // text-base en mobile: < 16px dispara el zoom de iOS al enfocar (MASTER §3.x).
 const inputClass =
@@ -32,11 +34,17 @@ const cardStyle = {
  * `node:async_hooks`, que Vite externaliza en el browser y rompe la story si
  * se importa como valor.
  */
-export function IngresarForm({ action }: { action: PlayerLoginAction }) {
+export function IngresarForm({
+  action,
+  googleAction,
+}: {
+  action: PlayerLoginAction
+  googleAction: StartGoogleLoginFromIngresar
+}) {
   return (
     <Suspense fallback={null}>
       <DeletedNotice />
-      <FormCard action={action} />
+      <FormCard action={action} googleAction={googleAction} />
     </Suspense>
   )
 }
@@ -59,7 +67,13 @@ function DeletedNotice() {
   )
 }
 
-function FormCard({ action }: { action: PlayerLoginAction }) {
+function FormCard({
+  action,
+  googleAction,
+}: {
+  action: PlayerLoginAction
+  googleAction: StartGoogleLoginFromIngresar
+}) {
   const [state, formAction] = useActionState(action, initial)
   const searchParams = useSearchParams()
   const next = searchParams.get('next') ?? '/mis-reservas'
@@ -140,7 +154,29 @@ function FormCard({ action }: { action: PlayerLoginAction }) {
         )}
         <SubmitButton />
       </form>
+
+      <div className="my-5 flex items-center gap-3 text-xs text-slate-500" aria-hidden>
+        <div className="h-px flex-1 bg-white/10" />o<div className="h-px flex-1 bg-white/10" />
+      </div>
+      <form action={googleAction}>
+        <input type="hidden" name="next" value={next} />
+        <GoogleSubmitButton />
+      </form>
     </div>
+  )
+}
+
+function GoogleSubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/4 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/8 disabled:opacity-60"
+    >
+      <GoogleIcon className="h-4 w-4" />
+      Continuar con Google
+    </button>
   )
 }
 

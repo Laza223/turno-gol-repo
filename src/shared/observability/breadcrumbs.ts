@@ -56,6 +56,10 @@ type AuthEvent =
   // mail está cayendo en spam, y hasta ahora eso no se podía ver.
   | 'magiclink.sent'
   | 'magiclink.clicked'
+  // Google OAuth (jugador, 2026-08-14): el equivalente de `magiclink.clicked` —
+  // si exchangeCodeForSession terminó en sesión. No hay lado "sent": el
+  // redirect a Google es inmediato, no hay nada que esperar en el medio.
+  | 'oauth.exchanged'
 
 type AuthCtx = {
   playerId?: string

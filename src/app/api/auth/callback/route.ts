@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import type { EmailOtpType } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+import type { EmailOtpType, User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
@@ -14,6 +15,10 @@ import { playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
 import { logger } from '@/shared/lib/logger'
 import { track, withSpan } from '@/shared/observability'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
+import {
+  GOOGLE_TERMS_COOKIE_NAME,
+  verifyGoogleTermsCookie,
+} from '@/shared/security/google-terms-cookie'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,6 +39,88 @@ function redirectVerifyError(req: NextRequest, code: string): NextResponse {
   return NextResponse.redirect(url)
 }
 
+/**
+ * Única fuente de verdad de provisión de JUGADOR en el callback — la usan
+ * tanto la rama `token_hash` (magic link) como `code` (Google OAuth,
+ * reintroducida 2026-08-14, solo alcance jugador). `hasAgreedTerms` decide el
+ * ruteo: si el consentimiento +18/ToC (ADR-012) no quedó resuelto en el mismo
+ * viaje (Google no soporta `options.data`, así que `/ingresar` sin checkbox
+ * llega acá sin haberlo mandado), una única pantalla `/aceptar-terminos` lo
+ * captura antes de `next` — cubre LoginGate y /ingresar sin distinguir origen,
+ * porque mira el estado final en DB, no de dónde vino el request.
+ */
+async function provisionPlayerAndRedirect(
+  req: NextRequest,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: User,
+  opts: { agreedTerms: boolean; termsVersion: string },
+): Promise<NextResponse> {
+  const email = user.email
+  if (!email) return redirectVerifyError(req, 'invalid')
+
+  const meta: Record<string, unknown> = user.app_metadata ?? {}
+
+  // Defensa cross-account (revisión adversarial 2026-08-14): esta identidad de
+  // auth.users YA es staff/system_admin (mismo email de Gmail que su cuenta de
+  // trabajo, típicamente vía auto-link de Supabase por email verificado). Sin
+  // este chequeo, la rama `code` de Google marcaba `is_player:true` ENCIMA de
+  // esos claims sin tocarlos — y como extractRealAuthUser mira `is_player`
+  // ANTES que `is_system_admin`/staff (auth.middleware.ts), la cuenta quedaba
+  // reclasificada `type:'player'` para SIEMPRE, incluso en su próximo login
+  // normal con password. Sin flujo de autoservicio para revertirlo. Cierra
+  // sesión y explica en vez de mergear un rol encima del otro.
+  if (meta.tenant_id || meta.staff_user_id || meta.is_system_admin === true) {
+    logger.warn('Cuenta staff/system_admin intentó loguearse como jugador', {
+      module: 'auth-callback',
+      authUserId: user.id,
+    })
+    await supabase.auth.signOut()
+    return redirectVerifyError(req, 'account_conflict')
+  }
+
+  const userMeta: Record<string, unknown> = user.user_metadata ?? {}
+  const firstNameMeta = typeof userMeta.first_name === 'string' ? userMeta.first_name : null
+  const lastNameMeta = typeof userMeta.last_name === 'string' ? userMeta.last_name : null
+  // Perfil de Google OAuth: claims OIDC estándar, no los que mandamos nosotros
+  // en options.data del magic link.
+  const givenName = typeof userMeta.given_name === 'string' ? userMeta.given_name : null
+  const familyName = typeof userMeta.family_name === 'string' ? userMeta.family_name : null
+  const fullName =
+    typeof userMeta.full_name === 'string'
+      ? userMeta.full_name
+      : typeof userMeta.name === 'string'
+        ? userMeta.name
+        : null
+  const [fullFirst, ...fullRest] = fullName ? fullName.split(' ') : []
+  const firstName = firstNameMeta || givenName || fullFirst || email.split('@')[0] || 'Jugador'
+  const lastName = lastNameMeta ?? familyName ?? fullRest.join(' ')
+
+  const player = await getOrCreatePlayer(email, firstName, lastName, {
+    agreedToTerms: opts.agreedTerms,
+    termsVersion: opts.termsVersion,
+  })
+
+  if (meta.player_id !== player.id || meta.is_player !== true) {
+    const adminClient = createAdminClient()
+    await adminClient.auth.admin.updateUserById(user.id, {
+      app_metadata: { ...meta, is_player: true, player_id: player.id },
+    })
+    await supabase.auth.refreshSession()
+  }
+
+  track.auth('player.login', { playerId: player.id })
+  const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
+
+  if (!player.hasAgreedTerms) {
+    const url = new URL('/aceptar-terminos', req.url)
+    url.searchParams.set('next', next)
+    return NextResponse.redirect(url)
+  }
+
+  const intent = playerSuccessIntent(next, player.wasCreated)
+  return NextResponse.redirect(new URL(successVerifyPath(next, intent), req.url))
+}
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   return withSpan('auth.callback', 'auth.session.exchange', () => handleAuthCallback(req))
 }
@@ -42,8 +129,40 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   const params = new URL(req.url).searchParams
   const supabase = await createClient()
 
-  // token_hash + verifyOtp is the ONLY flow now (Google OAuth removed, so the
-  // PKCE `code` branch is gone). verifyOtp needs NO code_verifier cookie, so it's
+  // Google OAuth (jugador, alcance ADR-002/2026-08-14): rama `code` separada de
+  // la de OTP de abajo — exchangeCodeForSession en vez de verifyOtp, sin `type`.
+  // El consentimiento viaja por la cookie firmada de google-terms-cookie.ts, NO
+  // por un query param — solo LoginGate la setea (ahí el checkbox ya es
+  // obligatorio antes del click); /ingresar nunca la setea y cae en el gate de
+  // `hasAgreedTerms` de provisionPlayerAndRedirect.
+  const code = params.get('code')
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    track.auth('oauth.exchanged', { ok: !error && !!data?.user })
+    if (error || !data?.user) {
+      logger.error('Supabase exchangeCodeForSession error', {
+        module: 'auth-callback',
+        error: error instanceof Error ? error.message : String(error),
+      })
+      track.auth('auth.exchange_failed', {})
+      return redirectVerifyError(req, 'exchange_failed')
+    }
+    // Cookie firmada de un solo uso (no un query param en la URL — revisión
+    // adversarial 2026-08-14, ver google-terms-cookie.ts): la seteó
+    // startGoogleLoginFromReservar SOLO si el checkbox de términos estaba
+    // tildado. Se borra siempre, se haya podido verificar o no.
+    const cookieStore = await cookies()
+    const termsCookie = verifyGoogleTermsCookie(cookieStore.get(GOOGLE_TERMS_COOKIE_NAME)?.value)
+    cookieStore.delete(GOOGLE_TERMS_COOKIE_NAME)
+
+    return provisionPlayerAndRedirect(req, supabase, data.user, {
+      agreedTerms: termsCookie !== null,
+      termsVersion: termsCookie?.termsVersion ?? CURRENT_TERMS_VERSION,
+    })
+  }
+
+  // token_hash + verifyOtp is the other flow (email confirmation/recovery/magic
+  // link/invite/email_change). verifyOtp needs NO code_verifier cookie, so it's
   // robust to the two ways the old code flow broke the first link: (1) requesting
   // a second link overwrote the verifier cookie; (2) an email scanner prefetched
   // and consumed the one-time code. Requires templates to point here with
@@ -90,34 +209,10 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   const isPlayer = meta.is_player === true || userMeta.is_player === true
 
   if (isPlayer) {
-    const email = user.email
-    if (!email) return redirectVerifyError(req, 'invalid')
-
-    const firstNameMeta = typeof userMeta.first_name === 'string' ? userMeta.first_name : null
-    const lastNameMeta = typeof userMeta.last_name === 'string' ? userMeta.last_name : null
-    const firstName = firstNameMeta || email.split('@')[0] || 'Jugador'
-    const lastName = lastNameMeta ?? ''
     const agreedTerms = userMeta.agreed_terms === true || meta.agreed_terms === true
     const termsVersion =
       typeof userMeta.terms_version === 'string' ? userMeta.terms_version : CURRENT_TERMS_VERSION
-
-    const player = await getOrCreatePlayer(email, firstName, lastName, {
-      agreedToTerms: agreedTerms,
-      termsVersion,
-    })
-
-    if (meta.player_id !== player.id || meta.is_player !== true) {
-      const adminClient = createAdminClient()
-      await adminClient.auth.admin.updateUserById(user.id, {
-        app_metadata: { ...meta, is_player: true, player_id: player.id },
-      })
-      await supabase.auth.refreshSession()
-    }
-
-    track.auth('player.login', { playerId: player.id })
-    const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
-    const intent = playerSuccessIntent(next, player.wasCreated)
-    return NextResponse.redirect(new URL(successVerifyPath(next, intent), req.url))
+    return provisionPlayerAndRedirect(req, supabase, user, { agreedTerms, termsVersion })
   }
 
   // Staff: confirmación de alta (type=signup) o de cambio de email

@@ -33,6 +33,7 @@ vi.mock('next/image', () => ({
 
 vi.mock('@/app/(auth)/ingresar/actions', () => ({
   playerLoginAction: vi.fn(),
+  startGoogleLoginFromIngresar: vi.fn(),
 }))
 
 import IngresarPage from '@/app/(auth)/ingresar/page'

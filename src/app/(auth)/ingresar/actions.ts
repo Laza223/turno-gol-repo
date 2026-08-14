@@ -2,7 +2,11 @@
 
 import { z } from 'zod'
 import { headers } from 'next/headers'
-import { signInWithExistingPlayerMagicLink } from '@/modules/auth/auth.service'
+import { redirect } from 'next/navigation'
+import {
+  signInWithExistingPlayerMagicLink,
+  signInWithGooglePlayer,
+} from '@/modules/auth/auth.service'
 import { enforce } from '@/shared/rate-limit/apply'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { echoFields } from '@/shared/forms/echo'
@@ -49,4 +53,20 @@ export async function playerLoginAction(
     }
   }
   return { status: 'sent', email: email.data }
+}
+
+/**
+ * Google en /ingresar: a diferencia del magic link de acá, NO manda `agreed`/`tv`
+ * (no hay checkbox en esta pantalla). Un jugador genuinamente nuevo que entra por
+ * esta vía cae en el gate de `/aceptar-terminos` del callback (ver
+ * provisionPlayerAndRedirect) — uno que ya existe pasa directo, sin fricción.
+ */
+export async function startGoogleLoginFromIngresar(formData: FormData): Promise<void> {
+  const nextRaw = formData.get('next')
+  const safeNext = sanitizeNext(typeof nextRaw === 'string' ? nextRaw : null)
+  const redirectTo = `${await callbackOrigin()}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
+
+  const result = await signInWithGooglePlayer(redirectTo)
+  if (!result.url) redirect('/ingresar')
+  redirect(result.url)
 }

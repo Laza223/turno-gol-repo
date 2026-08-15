@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormStatus } from 'react-dom'
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { ResetState } from './actions'
@@ -21,6 +21,15 @@ export type ResetPasswordAction = (prevState: ResetState, formData: FormData) =>
 export function ResetForm({ action }: { action: ResetPasswordAction }) {
   const [state, formAction] = useActionState(action, initial)
   const [show, setShow] = useState(false)
+
+  // Navegación completa, no redirect() server-side — ver actions.ts.
+  const navigatedRef = useRef(false)
+  useEffect(() => {
+    if (state.status === 'success' && !navigatedRef.current) {
+      navigatedRef.current = true
+      window.location.assign(state.path)
+    }
+  }, [state])
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
@@ -76,20 +85,22 @@ export function ResetForm({ action }: { action: ResetPasswordAction }) {
         </p>
       )}
 
-      <SubmitButton />
+      <SubmitButton navigating={state.status === 'success'} />
     </form>
   )
 }
 
-function SubmitButton() {
+// `navigating`: ver mismo comentario en LoginCard.tsx.
+function SubmitButton({ navigating }: { navigating: boolean }) {
   const { pending } = useFormStatus()
+  const busy = pending || navigating
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={busy}
       className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30 disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
     >
-      {pending ? (
+      {busy ? (
         <>
           <TgBallSpinner size="xs" className="mr-2" aria-hidden />
           Guardando…

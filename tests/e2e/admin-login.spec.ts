@@ -20,7 +20,10 @@ test.describe('admin login flow (email + password)', () => {
     await page.getByLabel(/^contraseña$/i).fill(E2E_TEST_PASSWORD)
     await page.getByRole('button', { name: /^ingresar$/i }).click()
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
-    await expect(page.getByText(/E2E Complejo Demo/i).first()).toBeVisible()
+    // "E2E Complejo Demo" vive en el nombre del sidebar, que en mobile queda
+    // colapsado detrás del menú hamburguesa — no es contenido principal. El
+    // <h1> "Hoy" de PageHeader sí está en el contenido, en cualquier viewport.
+    await expect(page.getByRole('heading', { name: 'Hoy', level: 1 })).toBeVisible()
   })
 
   test('with admin storageState, /dashboard renders', async ({ browser, adminStorageState }) => {
@@ -28,7 +31,10 @@ test.describe('admin login flow (email + password)', () => {
     const page = await ctx.newPage()
     await page.goto('/dashboard')
     await expect(page).toHaveURL(/\/dashboard/)
-    await expect(page.getByText(/E2E Complejo Demo/i).first()).toBeVisible()
+    // "E2E Complejo Demo" vive en el nombre del sidebar, que en mobile queda
+    // colapsado detrás del menú hamburguesa — no es contenido principal. El
+    // <h1> "Hoy" de PageHeader sí está en el contenido, en cualquier viewport.
+    await expect(page.getByRole('heading', { name: 'Hoy', level: 1 })).toBeVisible()
     await ctx.close()
   })
 

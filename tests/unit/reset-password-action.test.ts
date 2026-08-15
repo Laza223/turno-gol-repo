@@ -1,13 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { getUser, updateUser, refreshSession, adminUpdateUserById, redirect } = vi.hoisted(() => ({
+const { getUser, updateUser, refreshSession, adminUpdateUserById } = vi.hoisted(() => ({
   getUser: vi.fn(),
   updateUser: vi.fn(async () => ({ error: null })),
   refreshSession: vi.fn(async () => ({ error: null })),
   adminUpdateUserById: vi.fn(async () => ({ error: null })),
-  redirect: vi.fn((url: string) => {
-    throw new Error(`REDIRECT:${url}`)
-  }),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -16,7 +13,6 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({ auth: { admin: { updateUserById: adminUpdateUserById } } }),
 }))
-vi.mock('next/navigation', () => ({ redirect }))
 
 import { resetPasswordAction } from '@/app/(auth)/reset-password/actions'
 
@@ -53,10 +49,9 @@ describe('resetPasswordAction', () => {
     expect(updateUser).not.toHaveBeenCalled()
   })
 
-  it('recovery normal → actualiza la contraseña y redirige a /dashboard', async () => {
-    await expect(resetPasswordAction({ status: 'idle' }, fd())).rejects.toThrow(
-      'REDIRECT:/dashboard',
-    )
+  it('recovery normal → actualiza la contraseña y devuelve la ruta para navegar', async () => {
+    const res = await resetPasswordAction({ status: 'idle' }, fd())
+    expect(res).toEqual({ status: 'success', path: '/dashboard' })
     expect(updateUser).toHaveBeenCalledWith({ password: 'unaClaveSegura' })
     expect(adminUpdateUserById).not.toHaveBeenCalled()
   })
@@ -66,9 +61,8 @@ describe('resetPasswordAction', () => {
       data: { user: { id: 'u1', app_metadata: { force_password_change: true, tenant_id: 't1' } } },
       error: null,
     })
-    await expect(resetPasswordAction({ status: 'idle' }, fd())).rejects.toThrow(
-      'REDIRECT:/dashboard',
-    )
+    const res = await resetPasswordAction({ status: 'idle' }, fd())
+    expect(res).toEqual({ status: 'success', path: '/dashboard' })
     expect(adminUpdateUserById).toHaveBeenCalledWith(
       'u1',
       expect.objectContaining({

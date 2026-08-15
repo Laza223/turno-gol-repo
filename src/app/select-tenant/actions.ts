@@ -10,12 +10,23 @@ import { isMemberTenant } from './select-tenant.utils'
 
 const tenantIdSchema = z.guid()
 
+// `success` NO navega desde acá — mismo motivo que login/actions.ts: el
+// redirect('/dashboard') final (tras refreshSession) dependía de que el
+// navegador aplicara el Set-Cookie antes del siguiente GET, carrera real en
+// WebKit móvil. El cliente hace `window.location.assign('/dashboard')`. Los
+// redirects tempranos de abajo SÍ se dejan como redirect() real: son previos
+// a cualquier mutación de cookie, no forman parte de la carrera.
+export type SelectTenantState = { status: 'idle' } | { status: 'success'; path: string }
+
 /**
  * Staff con N>1 complejos elige uno. Setea el claim tenant_id en el JWT y entra
  * al panel. Antes esta acción no existía y el callback redirigía a /select-tenant
  * (404), dejando al staff multi-tenant sin forma de entrar (BLOCKER triage #8).
  */
-export async function selectTenantAction(formData: FormData): Promise<void> {
+export async function selectTenantAction(
+  _prev: SelectTenantState,
+  formData: FormData,
+): Promise<SelectTenantState> {
   const parsedTenantId = tenantIdSchema.safeParse(formData.get('tenantId'))
   if (!parsedTenantId.success) redirect('/select-tenant?error=invalid')
   const tenantId = parsedTenantId.data
@@ -36,5 +47,5 @@ export async function selectTenantAction(formData: FormData): Promise<void> {
   await supabase.auth.refreshSession()
 
   track.auth('staff.login', { staffUserId: user.staffUserId, tenantCount: tenants.length })
-  redirect('/dashboard')
+  return { status: 'success', path: '/dashboard' }
 }

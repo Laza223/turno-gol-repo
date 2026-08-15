@@ -19,18 +19,18 @@ type Story = StoryObj<typeof meta>
 
 /** Caso real que justifica la página: staff con acceso a 3 complejos. */
 export const Default: Story = {
-  args: { tenants: staffTenantRows(), action: fn(async () => {}) },
+  args: { tenants: staffTenantRows(), action: fn(async () => ({ status: 'idle' as const })) },
 }
 
 /** Un solo tenant — caso límite: en la app real `resolveStaffTenants` con 1 resultado
  * nunca llega acá (el login setea el claim directo), pero la lista no debe romperse. */
 export const UnComplejo: Story = {
-  args: { tenants: [staffTenantRow()], action: fn(async () => {}) },
+  args: { tenants: [staffTenantRow()], action: fn(async () => ({ status: 'idle' as const })) },
 }
 
 /** `?error=invalid` — tenantId manipulado a mano o el staff ya no pertenece a ese tenant. */
 export const ErrorSeleccionInvalida: Story = {
-  args: { tenants: staffTenantRows(), error: 'invalid', action: fn(async () => {}) },
+  args: { tenants: staffTenantRows(), error: 'invalid', action: fn(async () => ({ status: 'idle' as const })) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('alert')).toHaveTextContent(
@@ -41,7 +41,7 @@ export const ErrorSeleccionInvalida: Story = {
 
 /** Clic en un complejo dispara el submit del form (la Server Action recibe el tenantId). */
 export const Seleccion: Story = {
-  args: { tenants: staffTenantRows(), action: fn(async () => {}) },
+  args: { tenants: staffTenantRows(), action: fn(async () => ({ status: 'idle' as const })) },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /Canchas del Sur/ }))

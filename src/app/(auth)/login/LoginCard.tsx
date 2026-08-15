@@ -44,6 +44,19 @@ export function LoginCard({
     if (isError) errorRef.current?.focus()
   }, [state, isError])
 
+  // Navegación completa (no redirect() server-side): usa la respuesta que el
+  // browser YA tiene, con el Set-Cookie de sesión ya aplicado — evita la
+  // carrera de WebKit descripta en actions.ts. El ref evita un segundo
+  // `assign` si React StrictMode duplica el efecto en dev (inocuo, misma URL,
+  // pero explícito es mejor que implícito).
+  const navigatedRef = useRef(false)
+  useEffect(() => {
+    if (state.status === 'success' && !navigatedRef.current) {
+      navigatedRef.current = true
+      window.location.assign(state.path)
+    }
+  }, [state])
+
   return (
     <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <header className="mb-6 space-y-1">
@@ -124,7 +137,7 @@ export function LoginCard({
           </p>
         )}
 
-        <SubmitButton />
+        <SubmitButton navigating={state.status === 'success'} />
       </form>
 
       {/* Fuera del <form> a propósito: un <form> anidado adentro del de login es HTML
@@ -182,15 +195,20 @@ function ResendConfirmation({
   )
 }
 
-function SubmitButton() {
+// `navigating`: la Action ya resolvió con éxito pero `window.location.assign`
+// todavía no completó la navegación — sin esto, `pending` (useFormStatus)
+// vuelve a `false` un paint antes de que la página cambie, y el botón
+// flashea "Ingresar" por un instante entre el submit exitoso y el reload.
+function SubmitButton({ navigating }: { navigating: boolean }) {
   const { pending } = useFormStatus()
+  const busy = pending || navigating
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={busy}
       className="group inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:bg-emerald-500 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/30 disabled:opacity-60 disabled:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
     >
-      {pending ? (
+      {busy ? (
         <>
           <TgBallSpinner size="xs" className="mr-2" aria-hidden />
           Ingresando…

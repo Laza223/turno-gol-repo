@@ -2,7 +2,6 @@
 
 import { z } from 'zod'
 import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import {
   provisionAndRouteStaff,
@@ -20,11 +19,17 @@ const schema = z.object({
   password: z.string().min(MIN_PASSWORD_LENGTH),
 })
 
-// El éxito redirige (throw NEXT_REDIRECT), por eso no hay estado 'sent' como en
-// magic link: idle | error. `unconfirmedEmail` habilita el reenvío de confirmación.
+// `success` NO navega desde acá: un `redirect()` server-side en esta Action
+// depende de que el navegador aplique el Set-Cookie recién puesto ANTES del
+// siguiente GET a la ruta protegida — carrera real en WebKit (Safari/Chrome
+// iOS) que dejaba al usuario rebotado a un /login en blanco pese a que el
+// login había funcionado (ensayo real 2026-08-15). El componente cliente hace
+// `window.location.assign(path)`, una navegación completa sobre la respuesta
+// que el browser YA tiene con la cookie aplicada.
 export type LoginState =
   | { status: 'idle' }
   | { status: 'error'; message: string; unconfirmedEmail?: string; email?: string }
+  | { status: 'success'; path: string }
 
 async function callbackOrigin(): Promise<string> {
   return (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -79,14 +84,14 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   // Cambio forzado (contraseña temporal del SuperAdmin): atajo que evita un render
   // del layout. El enforcement real vive también en el layout admin (R8).
   if (result.user.app_metadata?.force_password_change === true) {
-    redirect('/reset-password')
+    return { status: 'success', path: '/reset-password' }
   }
 
   // Un super admin (is_system_admin) va directo al panel /super-admin: no es
   // staff de ningún complejo, así que provisionAndRouteStaff lo mandaría a
   // /onboarding (0 tenants). El guard requireSystemAdmin del layout revalida.
   if (result.user.app_metadata?.is_system_admin === true) {
-    redirect('/super-admin')
+    return { status: 'success', path: '/super-admin' }
   }
 
   // JWT con staff_user_id huérfano (típicamente reset de DB local sin reseed
@@ -104,7 +109,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     }
     throw err
   }
-  redirect(path)
+  return { status: 'success', path }
 }
 
 // ── Reenvío de confirmación de alta (caso email no confirmado) ──────────────

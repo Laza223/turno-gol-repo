@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { signInWithPassword, provisionAndRouteStaff, redirect } = vi.hoisted(() => ({
+const { signInWithPassword, provisionAndRouteStaff } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   provisionAndRouteStaff: vi.fn(async () => ({ path: '/dashboard' })),
-  redirect: vi.fn((url: string) => {
-    throw new Error(`REDIRECT:${url}`)
-  }),
 }))
 
 vi.mock('@/modules/auth/auth.service', () => ({
@@ -14,7 +11,6 @@ vi.mock('@/modules/auth/auth.service', () => ({
   signInWithExistingPlayerMagicLink: vi.fn(async () => ({ ok: true })),
 }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: () => ({ auth: { resend: vi.fn() } }) }))
-vi.mock('next/navigation', () => ({ redirect }))
 vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://localhost:3000' }) }))
 // El rate limiter fail-closea sin Upstash y NODE_ENV='test' no dispara el bypass
 // de enforce → sin este mock, cada acción devuelve "Demasiados intentos". El
@@ -44,7 +40,7 @@ beforeEach(() => {
 })
 
 describe('loginAction (email + password)', () => {
-  it('credenciales inválidas → error genérico, sin redirect', async () => {
+  it('credenciales inválidas → error genérico, sin provisionar', async () => {
     signInWithPassword.mockResolvedValueOnce({ ok: false, code: 'invalid_credentials' })
     const res = await loginAction({ status: 'idle' }, fd())
     expect(res.status).toBe('error')
@@ -52,7 +48,7 @@ describe('loginAction (email + password)', () => {
       expect(res.message).toMatch(/incorrect/i)
       expect(res.unconfirmedEmail).toBeUndefined()
     }
-    expect(redirect).not.toHaveBeenCalled()
+    expect(provisionAndRouteStaff).not.toHaveBeenCalled()
   })
 
   it('email sin confirmar → error con unconfirmedEmail para ofrecer reenvío', async () => {
@@ -68,18 +64,20 @@ describe('loginAction (email + password)', () => {
     expect(signInWithPassword).not.toHaveBeenCalled()
   })
 
-  it('login OK → provisiona y redirige a la ruta resuelta', async () => {
+  it('login OK → provisiona y devuelve la ruta resuelta para navegar', async () => {
     signInWithPassword.mockResolvedValueOnce({ ok: true, user: { id: 'u1', app_metadata: {} } })
-    await expect(loginAction({ status: 'idle' }, fd())).rejects.toThrow('REDIRECT:/dashboard')
+    const res = await loginAction({ status: 'idle' }, fd())
+    expect(res).toEqual({ status: 'success', path: '/dashboard' })
     expect(provisionAndRouteStaff).toHaveBeenCalledTimes(1)
   })
 
-  it('login OK con force_password_change → redirige a /reset-password sin provisionar', async () => {
+  it('login OK con force_password_change → success a /reset-password sin provisionar', async () => {
     signInWithPassword.mockResolvedValueOnce({
       ok: true,
       user: { id: 'u1', app_metadata: { force_password_change: true } },
     })
-    await expect(loginAction({ status: 'idle' }, fd())).rejects.toThrow('REDIRECT:/reset-password')
+    const res = await loginAction({ status: 'idle' }, fd())
+    expect(res).toEqual({ status: 'success', path: '/reset-password' })
     expect(provisionAndRouteStaff).not.toHaveBeenCalled()
   })
 })

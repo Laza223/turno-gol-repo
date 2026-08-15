@@ -75,7 +75,13 @@ export default defineConfig({
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-      testMatch: /cross-browser\/.*\.spec\.ts$/,
+      // admin-login.spec.ts sumado a propósito: es el único spec con un login
+      // real + assert de /dashboard, y hasta ahora solo corría en `chromium`
+      // (Blink) — el motor que nunca reprodujo la carrera cookie/redirect de
+      // WebKit que rebotaba el login a una pantalla en blanco en Safari/Chrome
+      // iOS (ensayo real 2026-08-15). `cross-browser/login-smoke.spec.ts` no
+      // alcanza: nunca hace un submit con credenciales válidas.
+      testMatch: [/cross-browser\/.*\.spec\.ts$/, /admin-login\.spec\.ts$/],
     },
     {
       name: 'firefox',
@@ -85,7 +91,9 @@ export default defineConfig({
     {
       name: 'mobile-safari',
       use: { ...devices['iPhone 14'] },
-      testMatch: /cross-browser\/.*\.spec\.ts$/,
+      // Mismo motivo que `webkit` arriba — este es el proyecto que más se
+      // acerca al dispositivo real que reprodujo el bug.
+      testMatch: [/cross-browser\/.*\.spec\.ts$/, /admin-login\.spec\.ts$/],
     },
     // ─── Regresión visual ────────────────────────────────────────────────────
     // Viewport, DPR, colorScheme, locale y timezone EXPLÍCITOS, no heredados de

@@ -1,12 +1,17 @@
 'use server'
 
 import { z } from 'zod'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { passwordSchema } from '@/modules/auth/password'
 
-export type ResetState = { status: 'idle' } | { status: 'error'; message: string }
+// `success` NO navega desde acá — mismo motivo que login/actions.ts: un
+// redirect() server-side depende de que el navegador aplique el Set-Cookie
+// recién puesto antes del siguiente GET, carrera real en WebKit móvil. El
+// cliente hace `window.location.assign(path)` sobre la respuesta que ya
+// tiene la cookie aplicada.
+export type ResetState =
+  { status: 'idle' } | { status: 'error'; message: string } | { status: 'success'; path: string }
 
 const schema = z
   .object({ password: passwordSchema, confirmPassword: z.string() })
@@ -62,5 +67,5 @@ export async function resetPasswordAction(
     await supabase.auth.refreshSession()
   }
 
-  redirect('/dashboard')
+  return { status: 'success', path: '/dashboard' }
 }

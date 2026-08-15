@@ -1,19 +1,47 @@
+'use client'
+
 import { Building2 } from 'lucide-react'
+import { useActionState, useEffect, useRef } from 'react'
 import type { StaffTenantRow } from '@/modules/auth/auth.service'
+import type { SelectTenantState } from './actions'
+
+/** Firma de la Server Action que consume el form (llega por PROP, no por
+ * import: './actions' es `'use server'` y arrastra `node:async_hooks`, que
+ * rompe cualquier bundle de browser si se importa como valor — mismo motivo
+ * que LoginCard.tsx / reset-form.tsx). */
+type SelectTenantAction = (
+  prevState: SelectTenantState,
+  formData: FormData,
+) => Promise<SelectTenantState>
 
 type Props = {
   tenants: StaffTenantRow[]
   /** `?error=invalid` — tenantId manipulado o el staff ya no pertenece a ese tenant. */
   error?: string
-  /** `selectTenantAction` (Server Action real, `'use server'`) inyectada por `page.tsx`. */
-  action: (formData: FormData) => Promise<void>
+  action: SelectTenantAction
 }
+
+const initial: SelectTenantState = { status: 'idle' }
 
 /**
  * Selector de complejo para staff con acceso a más de uno (`resolveStaffTenants`
- * devuelve N>1 filas). Cada fila es un `<form>` propio — sin JS, submit real.
+ * devuelve N>1 filas). Cada fila es un `<form>` propio, todas comparten el
+ * mismo `formAction` de `useActionState`.
  */
 export function SelectTenantList({ tenants, error, action }: Props) {
+  const [state, formAction] = useActionState(action, initial)
+
+  // Navegación completa, no redirect() server-side — ver actions.ts.
+  const navigatedRef = useRef(false)
+  useEffect(() => {
+    if (state.status === 'success' && !navigatedRef.current) {
+      navigatedRef.current = true
+      window.location.assign(state.path)
+    }
+  }, [state])
+
+  const isNavigating = state.status === 'success'
+
   return (
     <section className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-6 py-12">
       <div className="mb-6 text-center">
@@ -41,11 +69,12 @@ export function SelectTenantList({ tenants, error, action }: Props) {
       <ul className="space-y-3">
         {tenants.map((t) => (
           <li key={t.tenantId}>
-            <form action={action}>
+            <form action={formAction}>
               <input type="hidden" name="tenantId" value={t.tenantId} />
               <button
                 type="submit"
-                className="card-premium card-premium-interactive flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition-all hover:border-emerald-300 dark:hover:border-emerald-500/40 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+                disabled={isNavigating}
+                className="card-premium card-premium-interactive flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition hover:border-emerald-300 dark:hover:border-emerald-500/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <span>
                   <span className="block text-sm font-semibold text-foreground">

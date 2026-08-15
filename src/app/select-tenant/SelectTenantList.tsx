@@ -9,7 +9,7 @@ import type { SelectTenantState } from './actions'
  * import: './actions' es `'use server'` y arrastra `node:async_hooks`, que
  * rompe cualquier bundle de browser si se importa como valor — mismo motivo
  * que LoginCard.tsx / reset-form.tsx). */
-export type SelectTenantAction = (
+type SelectTenantAction = (
   prevState: SelectTenantState,
   formData: FormData,
 ) => Promise<SelectTenantState>

@@ -30,7 +30,11 @@ export const UnComplejo: Story = {
 
 /** `?error=invalid` — tenantId manipulado a mano o el staff ya no pertenece a ese tenant. */
 export const ErrorSeleccionInvalida: Story = {
-  args: { tenants: staffTenantRows(), error: 'invalid', action: fn(async () => ({ status: 'idle' as const })) },
+  args: {
+    tenants: staffTenantRows(),
+    error: 'invalid',
+    action: fn(async () => ({ status: 'idle' as const })),
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('alert')).toHaveTextContent(

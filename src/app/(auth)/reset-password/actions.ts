@@ -11,9 +11,7 @@ import { passwordSchema } from '@/modules/auth/password'
 // cliente hace `window.location.assign(path)` sobre la respuesta que ya
 // tiene la cookie aplicada.
 export type ResetState =
-  | { status: 'idle' }
-  | { status: 'error'; message: string }
-  | { status: 'success'; path: string }
+  { status: 'idle' } | { status: 'error'; message: string } | { status: 'success'; path: string }
 
 const schema = z
   .object({ password: passwordSchema, confirmPassword: z.string() })

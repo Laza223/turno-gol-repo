@@ -74,7 +74,7 @@ export function SelectTenantList({ tenants, error, action }: Props) {
               <button
                 type="submit"
                 disabled={isNavigating}
-                className="card-premium card-premium-interactive flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition-all hover:border-emerald-300 dark:hover:border-emerald-500/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="card-premium card-premium-interactive flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition hover:border-emerald-300 dark:hover:border-emerald-500/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <span>
                   <span className="block text-sm font-semibold text-foreground">

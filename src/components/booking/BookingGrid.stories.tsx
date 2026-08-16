@@ -113,8 +113,14 @@ export const ConexionInestable: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    // BookingGrid debouncea 1.5s antes de mostrar el banner (blips
+    // auto-recuperables no deben alarmar) — findByText espera ese delay.
     await expect(
-      canvas.getByText('Sin conexión. Los datos pueden no estar actualizados.'),
+      await canvas.findByText(
+        'Sin conexión. Los datos pueden no estar actualizados.',
+        {},
+        { timeout: 3000 },
+      ),
     ).toBeInTheDocument()
   },
 }

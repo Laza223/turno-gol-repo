@@ -66,7 +66,7 @@ export async function saveOnboardingSchedule(
  * Es una función pura sobre el tenant: no toca la DB. Devuelve el primer error
  * legible que encuentre — el wizard muestra uno por vez, no una lista.
  */
-export function buildCourtInputsFromDrafts(
+function buildCourtInputsFromDrafts(
   tenant: Pick<TenantRow, 'openingHours' | 'closesNextDay'>,
   drafts: readonly WizardCourtDraftInput[],
 ): { ok: true; inputs: z.infer<typeof createCourtSchema>[] } | { ok: false; error: string } {

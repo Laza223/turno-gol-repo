@@ -33,12 +33,6 @@ export type WizardStep = 1 | 2 | 3 | 4 | 5
 export const LAST_WIZARD_STEP = 4 satisfies WizardStep
 
 /**
- * Último paso que se puede marcar como completado desde "Volver". No incluye el 4:
- * cerrar el onboarding es `completeOnboarding`, no un retroceso.
- */
-export const MAX_COMPLETED_STEP = 3
-
-/**
  * Contrato de `createOnboardingFirstBookingAction` (Fase 5, paso 4 nuevo).
  * Distinto de `WizardActionResult`: esta acción nunca navega —el turno
  * aparece inline en la grilla del propio paso— así que no hay `next`, y en

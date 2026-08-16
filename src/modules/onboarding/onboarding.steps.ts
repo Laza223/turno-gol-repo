@@ -23,8 +23,6 @@ export const WIZARD_STEPS = [
   { n: 4, slug: 'reserva', label: 'Primera reserva', hint: 'Cargá tu primer turno' },
 ] as const
 
-export type WizardStepSlug = (typeof WIZARD_STEPS)[number]['slug']
-
 /** Número de paso a partir del slug de la URL. `null` si el slug no existe. */
 export function stepFromSlug(slug: string): WizardStep | null {
   const found = WIZARD_STEPS.find((s) => s.slug === slug)

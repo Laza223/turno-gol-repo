@@ -25,7 +25,7 @@ export const wizardCourtsSchema = z.object({
     .max(20, 'Máximo 20 canchas por vez'),
 })
 
-export type WizardCourtsInput = z.infer<typeof wizardCourtsSchema>
+type WizardCourtsInput = z.infer<typeof wizardCourtsSchema>
 export type WizardCourtDraftInput = WizardCourtsInput['courts'][number]
 
 /**

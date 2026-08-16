@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
  * `WizardChrome`) — si algún día se reusa en una pantalla de uso diario, ESA es
  * la señal para separar la versión animada de una versión CSS-only.
  */
-export interface StepperStep {
+interface StepperStep {
   /** 1-based. Es el número que se muestra mientras el paso está pendiente. */
   n: number
   label: string

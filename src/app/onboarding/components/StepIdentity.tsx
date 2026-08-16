@@ -54,7 +54,7 @@ const INITIAL: WizardActionResult = { success: true }
  * Sin `phone`/`email`: el paso dejó de pedirlos (doc10 §2 — se derivan de la
  * cuenta staff al crear el complejo) y editarlos vive en `/settings/perfil`.
  */
-export type TenantIdentityValues = {
+type TenantIdentityValues = {
   name: string
   address: string
   city: string

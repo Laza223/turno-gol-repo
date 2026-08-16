@@ -3,6 +3,7 @@ import { formatArs } from '@/lib/format'
 import type { DashboardData, TenantStatus } from '@/modules/super-admin/dashboard.service'
 import { SaMetricCard } from './sa-metric-card'
 import { TenantStatusBadge } from './tenant-status-visual'
+import { OnboardingFunnelSection } from './onboarding-funnel-section'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -108,6 +109,8 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
           ))}
         </div>
       </SectionCard>
+
+      <OnboardingFunnelSection data={data.onboardingFunnel} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Trials por vencer */}

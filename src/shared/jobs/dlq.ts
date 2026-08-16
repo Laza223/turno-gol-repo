@@ -5,8 +5,11 @@ import { logger } from '@/shared/lib/logger'
 /**
  * Canonical list of active pg-boss queue names — every queue that a worker
  * registers via `boss.work(...)` in `registerAllWorkers`. Kept in sync with
- * `src/shared/jobs/workers/index.ts` (14 worker registrations, 15 work queues:
- * `expire-pending-booking` also registers a `-sweep` safety-net queue).
+ * `src/shared/jobs/workers/index.ts` (16 work queues: `expire-pending-booking`
+ * also registers a `-sweep` safety-net queue).
+ *
+ * NOTA: `daily-summary` no está en esta lista — gap preexistente, no
+ * introducido por Fase 7 del refactor de onboarding.
  *
  * Used both for DLQ failure subscriptions and the queue-depth admin endpoint.
  */
@@ -26,6 +29,7 @@ export const ALL_QUEUES: readonly string[] = [
   'retry-pending-refunds',
   'push-send',
   'health-ping',
+  'onboarding-abandonment-sweep',
 ] as const
 
 /**

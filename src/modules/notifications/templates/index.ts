@@ -39,6 +39,7 @@ import {
   type TenantDeletionWarningData,
 } from './tenant-deletion-warning'
 import { renderDailySummary, type DailySummaryData } from './daily-summary'
+import { renderOnboardingAbandoned, type OnboardingAbandonedData } from './onboarding-abandoned'
 
 export {
   renderBookingConfirmed,
@@ -53,6 +54,7 @@ export {
   renderAdminTransferExpired,
   renderAdminLatePayment,
   renderAdminRefundFailed,
+  renderOnboardingAbandoned,
   // `renderAdminDepositAfterClose` y `renderAdminExternalRefundDetected` NO se
   // re-exportan (B5): nadie los importaba por nombre. Siguen vivos vía el mapa
   // RENDERERS de más abajo, que es como los despacha `renderTemplate`. Este
@@ -83,6 +85,7 @@ type TemplateDataMap = {
   subscription_blocked: SubscriptionBlockedData
   tenant_deletion_warning: TenantDeletionWarningData
   daily_summary: DailySummaryData
+  onboarding_abandoned: OnboardingAbandonedData
 }
 
 export type TemplateName = keyof TemplateDataMap
@@ -109,6 +112,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   subscription_blocked: renderSubscriptionBlocked,
   tenant_deletion_warning: renderTenantDeletionWarning,
   daily_summary: renderDailySummary,
+  onboarding_abandoned: renderOnboardingAbandoned,
 }
 
 export function renderTemplate(name: TemplateName, data: unknown): EmailContent {

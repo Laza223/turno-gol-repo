@@ -263,6 +263,12 @@ export default function Combobox({
           id={listboxId}
           role="listbox"
           aria-label={listboxLabel ?? placeholder}
+          // tabIndex: `PopoverContent` es `max-h-60 overflow-auto` — con más
+          // opciones de las que entran (24 provincias, p. ej.) es una región con
+          // scroll propio, y sin esto queda fuera del alcance del teclado (axe:
+          // scrollable-region-focusable). Mismo fix que ya tiene el listbox de
+          // países de `PhoneInput`.
+          tabIndex={0}
           onMouseDown={(e) => {
             // Que agarrar el scrollbar o el padding del panel no blureé el input
             // (cerraría la lista en plena interacción).

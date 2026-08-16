@@ -78,7 +78,11 @@ test.describe('onboarding', () => {
       // Step 1 must render — if the full-wizard test below ran first and
       // persisted a tenant, the seed-e2e cleanup (T1) reverts that on next
       // run, but the serial() above guarantees order within this describe.
-      const heading = page.getByRole('heading', { name: /tu complejo/i })
+      //
+      // `level: 2`: sin nombre tipeado, el preview (`PublicCardPreview`, Fase
+      // 3) muestra un <h3> placeholder con el MISMO texto "Tu complejo" — sin
+      // el nivel, el locator resuelve a 2 elementos (strict mode violation).
+      const heading = page.getByRole('heading', { level: 2, name: /tu complejo/i })
       await expect(heading).toBeVisible({ timeout: 10_000 })
       await expect(page.getByPlaceholder(/complejo san mart/i)).toBeVisible()
       await expect(page.getByPlaceholder(/corrientes/i)).toBeVisible()
@@ -93,21 +97,47 @@ test.describe('onboarding', () => {
       await page.goto('/onboarding')
       await expect(page).toHaveURL(/\/onboarding/)
 
-      // Step 1: identidad del complejo
-      await expect(page.getByRole('heading', { name: /tu complejo/i })).toBeVisible({
+      // Step 1: identidad del complejo. `level: 2`: ver comentario de arriba
+      // (el preview también dice "Tu complejo" mientras el nombre está vacío).
+      await expect(
+        page.getByRole('heading', { level: 2, name: /tu complejo/i }),
+      ).toBeVisible({
         timeout: 10_000,
       })
-      await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard E2E')
+      // Nombre "equivocado" a propósito: se corrige más abajo con "Volver", y
+      // el assert final del dashboard es el que prueba que el UPDATE persistió.
+      await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard Borrador')
       await page.getByPlaceholder(/av\. corrientes/i).fill('Av. Test 123')
       await page.getByPlaceholder(/luj[aá]n/i).fill('Buenos Aires')
-      await page.locator('select[name="province"]').selectOption({ index: 1 })
-      await page.getByPlaceholder(/11 1234-5678/).fill('+5491100000000')
-      await page.getByPlaceholder(/hola@complejo\.com/i).fill('wizard-e2e@turnogol.test')
+      // Provincia es un Combobox (Fase 4, reemplaza el <select> de 24 opciones).
+      // Sin teléfono/email: el paso ya no los pide, se derivan de la cuenta
+      // staff que se registró en /register (doc10 §2).
+      await page.getByRole('combobox', { name: /provincia/i }).click()
+      await page.getByRole('option', { name: 'Buenos Aires' }).click()
       await page.getByRole('button', { name: /continuar/i }).click()
 
       // Step 2: horarios (general + excepciones). Los defaults llegan saneados
       // (cierres de madrugada → 00:00), así que Continuar sin tocar nada es
       // válido — antes fallaba con "cierre posterior a apertura".
+      await expect(page.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 10_000 })
+
+      // "Volver" desde Horarios: era el único paso sin salida hacia atrás, así
+      // que un nombre mal tipeado no se podía corregir ni acá ni después
+      // (ninguna pantalla de Configuración edita estos campos). El paso 1 ahora
+      // acepta la revisita y EDITA en vez de crear un segundo complejo.
+      await page.getByRole('link', { name: /^volver$/i }).click()
+      await expect(page).toHaveURL(/\/onboarding\/complejo/, { timeout: 10_000 })
+      await expect(page.getByPlaceholder(/complejo san mart/i)).toHaveValue(
+        'Complejo Wizard Borrador',
+      )
+      await expect(page.getByPlaceholder(/av\. corrientes/i)).toHaveValue('Av. Test 123')
+
+      const slugAntes = await page.locator('p:has-text("Tu link público") strong').innerText()
+      await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard E2E')
+      // El link público NO se recalcula al renombrar: ya pudo viajar por WhatsApp.
+      await expect(page.locator('p:has-text("Tu link público") strong')).toHaveText(slugAntes)
+      await page.getByRole('button', { name: /guardar y continuar/i }).click()
+
       await expect(page.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 10_000 })
       // exact: los rows de días también dicen "· horario general" (strict mode)
       await expect(page.getByText('Horario general', { exact: true })).toBeVisible()
@@ -119,10 +149,12 @@ test.describe('onboarding', () => {
       await page.getByPlaceholder(/20\.000/).fill('20.000')
       await page.getByRole('button', { name: /^continuar$/i }).click()
 
-      // Step 4: señas — elegir "Sin seña por ahora" cambia el CTA primario
+      // Step 4: primera reserva — "Saltar por ahora" (el click a un slot real
+      // depende de la hora del día en que corre el runner: ver el comentario
+      // de TG-HP-203.spec.ts sobre la ventana muerta cerca de medianoche ART).
       await expect(page.getByText(/paso 4 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      await page.getByText(/sin seña por ahora/i).click()
-      await page.getByRole('button', { name: /terminar y ver mi complejo/i }).click()
+      await expect(page.getByRole('heading', { name: /tu primera reserva/i })).toBeVisible()
+      await page.getByRole('button', { name: /saltar por ahora/i }).click()
 
       // Cierre peak-end: link público + compartir (el Aha Moment empieza acá)
       await expect(page).toHaveURL(/\/onboarding\/listo/, { timeout: 15_000 })

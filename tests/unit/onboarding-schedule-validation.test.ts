@@ -90,7 +90,7 @@ describe('saveWizardScheduleAction — horariosSchema canónico (pages/onboardin
       PREV,
       scheduleFormData({ mon: { open: '22:00', close: '02:00' } }, true),
     )
-    expect(res).toEqual({ success: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
     expect(withTenantContext).toHaveBeenCalledTimes(1)
   })
 
@@ -99,7 +99,7 @@ describe('saveWizardScheduleAction — horariosSchema canónico (pages/onboardin
       PREV,
       scheduleFormData({ mon: { open: '08:00', close: '00:00' } }),
     )
-    expect(res).toEqual({ success: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
   })
 
   it('rechaza un formato de hora inválido', async () => {
@@ -124,7 +124,7 @@ describe('saveWizardScheduleAction — horariosSchema canónico (pages/onboardin
       PREV,
       scheduleFormData({ sun: { open: '10:00', close: '08:00', closed: true } }),
     )
-    expect(res).toEqual({ success: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
     expect(withTenantContext).toHaveBeenCalledTimes(1)
     expect(updateOnboardingStep).toHaveBeenCalledWith('tenant-1', 2)
   })

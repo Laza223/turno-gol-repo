@@ -31,6 +31,8 @@ type FakeRow = Record<string, unknown>
 // Chainable fake query builder covering every method these two services call
 // (select/from/innerJoin/leftJoin/where/groupBy/orderBy/limit/offset), thenable
 // so `await` on a chain missing a terminal `.limit()`/`.offset()` still resolves.
+// `execute` (Fase 7, analytics): `getOnboardingFunnel` usa `db.execute(sql\`...\`)`
+// para leer analytics_events — no pasa por el builder encadenado de arriba.
 function makeChain(rows: FakeRow[]) {
   const chain: Record<string, unknown> = {
     select: () => chain,
@@ -42,6 +44,7 @@ function makeChain(rows: FakeRow[]) {
     orderBy: () => chain,
     limit: () => chain,
     offset: () => chain,
+    execute: () => Promise.resolve(rows),
     then: (onfulfilled: (v: FakeRow[]) => unknown, onrejected?: (e: unknown) => unknown) =>
       Promise.resolve(rows).then(onfulfilled, onrejected),
   }

@@ -81,8 +81,24 @@ export function pendingAction<T>(resolvedValue: T): {
       await new Promise((r) => setTimeout(r, 0))
       await new Promise((r) => setTimeout(r, 0))
       if (settledEl) {
-        const deadline = Date.now() + 2_000
-        while ((settledEl as HTMLButtonElement).disabled && Date.now() < deadline) {
+        // Tope por CANTIDAD de vueltas, no por `Date.now() + 2_000`: el preview
+        // de Storybook congela `Date.now()` (`.storybook/preview.tsx`, "reloj
+        // congelado") para toda story — un deadline armado con él no vence
+        // nunca, y el loop queda vivo hasta el timeout del test (medido:
+        // StepFirstBooking.stories.tsx, 30s). `setTimeout` sigue siendo real
+        // ahí, así que 200 vueltas de 10ms es el mismo presupuesto (~2s) pero
+        // medido en wall-clock real, no en el reloj mockeado.
+        //
+        // Segunda condición de salida, `!document.contains(settledEl)`: no
+        // todos los componentes vuelven a habilitar el MISMO botón al
+        // terminar — StepFirstBooking, por ejemplo, lo DESMONTA (la mini-form
+        // entera se reemplaza por el banner de éxito). Sobre un nodo ya
+        // desconectado del documento, `.disabled` se queda en `true` para
+        // siempre: solo el chequeo de adjunto lo destraba.
+        for (let i = 0; i < 200; i++) {
+          const stillDisabled = (settledEl as HTMLButtonElement).disabled
+          const stillAttached = document.contains(settledEl)
+          if (!stillDisabled || !stillAttached) break
           await new Promise((r) => setTimeout(r, 10))
         }
       }

@@ -255,7 +255,11 @@ export async function completeOnboarding(tenantId: string): Promise<void> {
     SELECT settings FROM tenants WHERE id = ${tenantId} LIMIT 1
   `
   if (!rows.length) throw new Error('Tenant not found')
-  const settings = { ...rows[0]!.settings, onboarding_completed: true }
+  const settings = {
+    ...rows[0]!.settings,
+    onboarding_completed: true,
+    onboarding_completed_at: new Date().toISOString(),
+  }
   await sql`
     UPDATE tenants
     SET settings = ${sql.json(settings as unknown as Parameters<typeof sql.json>[0])},

@@ -33,6 +33,13 @@ export type TenantSettings = {
   auto_complete_minutes: number
   onboarding_step?: number
   onboarding_completed?: boolean
+  /** ISO timestamp: cuándo se cerró el wizard (Fase 7 del plan de refactor —
+   *  base para `daysSinceOnboarding` de `activation.first_online_booking`). */
+  onboarding_completed_at?: string
+  /** ISO timestamp: cuándo se mandó el recordatorio de onboarding a medio
+   *  terminar (Fase 7, worker de abandono). Marca de idempotencia — un solo
+   *  mail por tenant, nunca. */
+  onboarding_abandoned_notified_at?: string
   public_link_shared?: boolean
   // canteen_products (JSONB) ELIMINADO: la cantina vive en la tabla
   // canteen_products desde la migr. 048; la key se borró en la 051.

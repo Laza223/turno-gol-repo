@@ -1,87 +1,27 @@
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { resolveStaffTenants } from '@/modules/auth/auth.service'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { listCourts } from '@/modules/courts/court.service'
-import { withTenantContext } from '@/shared/db/client'
+import { resolveWizardStep } from '@/modules/onboarding/onboarding.service'
+import { stepPath } from '@/modules/onboarding/onboarding.steps'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
-import type { CourtRow } from '@/modules/courts/court.types'
-import { WizardShell } from './components/WizardShell'
-import { StepIdentity } from './components/StepIdentity'
-import { StepSchedule } from './components/StepSchedule'
-import { StepCourts } from './components/StepCourts'
-import { StepPayments } from './components/StepPayments'
-import {
-  createTenantAction,
-  createWizardCourtsAction,
-  deleteOnboardingCourtPhotoAction,
-  finishOnboardingAction,
-  saveWizardScheduleAction,
-  setWizardStepAction,
-  uploadOnboardingCourtPhotoAction,
-} from './actions'
 
-export default async function OnboardingPage(props: {
-  searchParams?: Promise<{ error?: string; complejo?: string }>
-}) {
-  const searchParams = await props.searchParams
+/**
+ * `/onboarding` ya no renderiza: resuelve dónde quedó el dueño y manda al paso.
+ * Los pasos viven en `/onboarding/[paso]` — antes los cuatro compartían esta misma
+ * URL, que es por lo que el botón atrás del navegador no hacía nada.
+ *
+ * Una sola query: antes preguntaba dos veces lo mismo (`resolveStaffTenants` para
+ * saber si había tenant y después `getStaffTenant` para traerlo).
+ */
+export default async function OnboardingPage() {
   const user = await extractAuthUser()
-  if (!user || user.type !== 'staff') redirect('/login')
-  if (!user.staffUserId) redirect('/login')
+  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
-  const staffTenants = await resolveStaffTenants(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId)
+  if (!tenant) redirect(stepPath(1))
 
-  let currentStep = 1
-  let tenantData = null
+  const settings = tenant.settings as TenantSettings
+  if (settings.onboarding_completed) redirect('/dashboard')
 
-  if (staffTenants.length > 0) {
-    tenantData = await getStaffTenant(user.staffUserId)
-    if (tenantData) {
-      const settings = tenantData.settings as TenantSettings
-      if (settings.onboarding_completed) redirect('/dashboard')
-      currentStep = Math.min((settings.onboarding_step ?? 1) + 1, 4)
-    }
-  }
-
-  // El paso Canchas lista las ya creadas (revisita con "Volver"): permite
-  // continuar sin drafts nuevos y evita duplicados por doble envío.
-  let existingCourts: CourtRow[] = []
-  if (currentStep === 3 && tenantData) {
-    const tenantId = tenantData.id
-    existingCourts = await withTenantContext(tenantId, (tx) => listCourts(tenantId, tx))
-  }
-
-  return (
-    <WizardShell currentStep={currentStep} wide={currentStep === 2 || currentStep === 3}>
-      <div className="card-premium rounded-2xl p-6 md:p-8">
-        {currentStep === 1 && <StepIdentity action={createTenantAction} />}
-        {currentStep === 2 && tenantData && (
-          <StepSchedule
-            hours={tenantData.openingHours}
-            closesNextDay={tenantData.closesNextDay}
-            action={saveWizardScheduleAction}
-          />
-        )}
-        {currentStep === 3 && tenantData && (
-          <StepCourts
-            existingCourts={existingCourts}
-            createCourtsAction={createWizardCourtsAction}
-            setStepAction={setWizardStepAction}
-            uploadPhotoAction={uploadOnboardingCourtPhotoAction}
-            deletePhotoAction={deleteOnboardingCourtPhotoAction}
-          />
-        )}
-        {currentStep === 4 && tenantData && (
-          <StepPayments
-            mpConnected={!!tenantData.mpConnectedAt}
-            mpNickname={tenantData.mpNickname}
-            mpError={searchParams?.error ?? null}
-            mpConflictTenant={searchParams?.complejo ?? null}
-            finishAction={finishOnboardingAction}
-            setStepAction={setWizardStepAction}
-          />
-        )}
-      </div>
-    </WizardShell>
-  )
+  redirect(stepPath(resolveWizardStep(settings)))
 }

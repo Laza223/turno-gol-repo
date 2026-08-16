@@ -1,7 +1,8 @@
 import { and, count, eq, isNull } from 'drizzle-orm'
 import { withTenantContext } from '@/shared/db/client'
 import { bookings, courts } from '@/shared/db/schema'
-import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import { hasOperableDay } from '@/shared/time/operating-day'
+import type { TenantRow, TenantSettings } from '@/modules/tenants/tenant.types'
 
 export interface ChecklistState {
   accountCreated: boolean
@@ -14,10 +15,11 @@ export interface ChecklistState {
 }
 
 export async function getChecklistState(
-  tenantId: string,
+  tenant: Pick<TenantRow, 'id' | 'openingHours' | 'closesNextDay'>,
   settings: TenantSettings,
   mpConnected: boolean,
 ): Promise<ChecklistState> {
+  const tenantId = tenant.id
   return withTenantContext(tenantId, async (tx) => {
     const [courtsCount, firstBooking] = await Promise.all([
       tx
@@ -36,9 +38,18 @@ export async function getChecklistState(
 
     return {
       accountCreated: true,
+      // Constante a propósito, no un chequeo pendiente: `name`, `address`,
+      // `city`, `province`, `phone` y `email` son NOT NULL en `tenants`, así que
+      // un complejo sin datos no existe. Un chequeo acá no podría dar false
+      // nunca — sería teatro.
       complexData: true,
       hasCourts: courtsCount > 0,
-      hasSchedule: true,
+      // Esto SÍ puede dar false: estaba hardcodeado a `true` y por eso decía
+      // "Horarios definidos ✓" a un complejo cuyos siete días quedaron cerrados
+      // (o con rangos que no generan un solo turno) después de editarlos en
+      // Configuración. La checklist responde "¿puedo recibir reservas?": un
+      // complejo sin un día operable no puede, y tiene que verlo.
+      hasSchedule: hasOperableDay(tenant.openingHours, tenant.closesNextDay),
       mpConnected,
       publicLinkShared: settings.public_link_shared === true,
       firstBookingReceived: firstBooking !== null,

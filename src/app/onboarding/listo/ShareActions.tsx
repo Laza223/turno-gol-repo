@@ -8,7 +8,7 @@ import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { MarkSharedResult } from '@/app/(admin)/dashboard/actions'
 
 /** Firma de la Server Action que marca `public_link_shared` (best-effort). */
-type MarkPublicLinkSharedAction = () => Promise<MarkSharedResult>
+type MarkPublicLinkSharedAction = (channel: 'whatsapp' | 'copy') => Promise<MarkSharedResult>
 
 /** Estable entre llamadas: `useClientValue` invoca el reader varias veces por render. */
 const readOrigin = (): string | null =>
@@ -44,10 +44,10 @@ export function ShareActions({ appUrl, slug, tenantName, action }: Props) {
   const waHref = waMessage ? `https://wa.me/?text=${encodeURIComponent(waMessage)}` : null
 
   // Best-effort: si falla el guardado del paso, el share ya salió igual.
-  function persistShared() {
+  function persistShared(channel: 'whatsapp' | 'copy') {
     startTransition(async () => {
       try {
-        await action()
+        await action(channel)
       } catch {
         // La checklist del dashboard ofrece reintentar con su propio CTA.
       }
@@ -63,14 +63,14 @@ export function ShareActions({ appUrl, slug, tenantName, action }: Props) {
         await navigator.clipboard.writeText(publicUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-        persistShared()
+        persistShared('copy')
         return
       } catch {
         // fallthrough al prompt (Safari privado, contexto HTTP, etc.)
       }
     }
     window.prompt('Copiá el enlace público:', publicUrl)
-    persistShared()
+    persistShared('copy')
   }
 
   return (
@@ -85,7 +85,7 @@ export function ShareActions({ appUrl, slug, tenantName, action }: Props) {
         href={waHref ?? undefined}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={persistShared}
+        onClick={() => persistShared('whatsapp')}
         aria-disabled={!waHref}
         className={cn(buttonVariants(), 'w-full', !waHref && 'pointer-events-none opacity-50')}
       >

@@ -186,6 +186,75 @@ type GridCtx = {
 }
 
 /**
+ * Embudo del wizard de onboarding (plan de refactor §I, Fase 7). TODOS estos
+ * eventos se emiten desde el servidor —Server Actions y el propio Server
+ * Component de `[paso]/page.tsx`, nunca desde el navegador—: `breadcrumbs.ts`
+ * es isomórfico, pero el sink que persiste (`recordEvent`, en
+ * `@/shared/observability/analytics`) solo se registra en `instrumentation.ts`
+ * y `run-workers.ts`. Un `track.onboarding(...)` llamado desde un componente
+ * `'use client'` no rompe nada, pero tampoco persiste nada: solo deja
+ * breadcrumb de Sentry.
+ *
+ * Sin `elapsedMs` en los eventos de paso a propósito: el tiempo por paso (o el
+ * total, contra el objetivo de doc10 "< 20 min") se calcula DESPUÉS, restando
+ * `occurredAt` entre filas de la propia tabla (`onboarding.started` →
+ * `onboarding.completed`, o entre dos `step.viewed` consecutivos) — más simple
+ * y más robusto que threadear un timestamp de "cuándo se vio el paso" a mano
+ * por toda la cadena action→servicio solo para restarlo acá.
+ */
+type OnboardingEvent =
+  | 'onboarding.started'
+  | 'onboarding.step.viewed'
+  | 'onboarding.step.completed'
+  | 'onboarding.step.back'
+  | 'onboarding.step.error'
+  | 'onboarding.courts.added'
+  | 'onboarding.first_booking.created'
+  | 'onboarding.first_booking.skipped'
+  | 'onboarding.completed'
+  | 'onboarding.abandoned'
+  | 'onboarding.link.shared'
+  | 'onboarding.mp.connected'
+
+type OnboardingCtx = {
+  tenantId?: string
+  /** step.viewed/completed/error/back: 1..4 (5 = /onboarding/listo). */
+  step?: number
+  stepName?: string
+  /** step.error: motivo legible (el mismo mensaje que ve el usuario, sin datos crudos). */
+  reason?: string
+  /** courts.added: cuántas canchas nuevas entraron en ese submit. */
+  count?: number
+  /** completed: cuántas canchas tiene el tenant al cerrar el wizard. */
+  courtsCount?: number
+  /** completed: si además cargó su primera reserva en el paso 4 (no la salteó). */
+  hasFirstBooking?: boolean
+  /** abandoned: último paso completado antes de dejar de volver (worker). */
+  lastStep?: number
+  /** link.shared: por qué canal (el CTA primario es WhatsApp, doc10 §3). */
+  channel?: 'whatsapp' | 'copy'
+  /** mp.connected: siempre `true` desde la Fase 5 (la conexión se movió a /settings/facturacion). */
+  fromChecklist?: boolean
+}
+
+/**
+ * El aha moment real (doc10, §C del plan): la primera reserva que entra SOLA,
+ * sin que el staff la haya cargado (`created_by_staff IS NULL` — mismo
+ * predicado que `firstBookingReceived` en dashboard/queries.ts). Categoría
+ * propia, no `onboarding.*`: mide algo que puede pasar días después de
+ * cerrado el wizard, y es la pregunta que justifica todo el rediseño —¿los que
+ * cargaron una reserva en el paso 4 llegan antes acá que los que la
+ * saltearon?— así que conviene que quede separada del embudo de los 4 pasos.
+ */
+type ActivationEvent = 'activation.first_online_booking'
+
+type ActivationCtx = {
+  tenantId?: string
+  /** Contra `onboarding_completed_at` (settings) — null si el tenant nunca completó el wizard. */
+  daysSinceOnboarding?: number | null
+}
+
+/**
  * Segundo destino de los eventos, registrado desde el servidor.
  *
  * Este archivo es ISOMÓRFICO: lo importan dos componentes cliente
@@ -230,4 +299,6 @@ export const track = {
   cashflow: (ev: CashflowEvent, ctx: CashflowCtx) => emit('cashflow', ev, ctx),
   grid: (ev: GridEvent, ctx: GridCtx) => emit('grid', ev, ctx),
   funnel: (ev: FunnelEvent, ctx: FunnelCtx) => emit('funnel', ev, ctx),
+  onboarding: (ev: OnboardingEvent, ctx: OnboardingCtx) => emit('onboarding', ev, ctx),
+  activation: (ev: ActivationEvent, ctx: ActivationCtx) => emit('activation', ev, ctx),
 }

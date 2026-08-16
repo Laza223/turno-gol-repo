@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO + fase 4 de Torneos (portal público y cobro de inscripción)",
-  "total": 323,
+  "total": 332,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -44,9 +44,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "Importa pauseAbonadoAction/reactivateAbonadoAction/cancelAbonadoAction de ./actions y previewAbonadoSlotsAction de ./nuevo/actions directamente (server actions reales a mockear); usa dynamic(ssr:false) para AbonadoDialogs y createPortal(..., document.body) para montarlo."
     },
     {
@@ -58,10 +56,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error con digest",
-        "error sin digest"
-      ],
+      "relevantStates": ["error con digest", "error sin digest"],
       "proposedStoryTitle": "Admin/Abonados/Error",
       "usesNetwork": false,
       "usesSession": false,
@@ -79,9 +74,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton único (sin variantes)"
-      ],
+      "relevantStates": ["skeleton único (sin variantes)"],
       "proposedStoryTitle": "Admin/Abonados/Loading",
       "usesNetwork": false,
       "usesSession": false,
@@ -186,10 +179,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "isClosed=true (retorna null)",
-        "isClosed=false"
-      ],
+      "relevantStates": ["isClosed=true (retorna null)", "isClosed=false"],
       "proposedStoryTitle": "Admin/Caja/CajaActions",
       "usesNetwork": false,
       "usesSession": false,
@@ -207,10 +197,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "primera visita (visible)",
-        "ya visto (dismissed, retorna null)"
-      ],
+      "relevantStates": ["primera visita (visible)", "ya visto (dismissed, retorna null)"],
       "proposedStoryTitle": "Admin/Caja/CajaCierreHint",
       "usesNetwork": false,
       "usesSession": false,
@@ -240,9 +227,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "useRouter (next/navigation) para router.refresh()/push; sellTicketAction llega por prop (mock en stories); Sentry.captureException en catch; crypto.randomUUID() para idempotencyKey. Reemplaza a CanteenQuickSale (Fase 3 rediseño Caja y Cantina)."
     },
     {
@@ -289,9 +274,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "useRouter (router.refresh); importa closeDayAction directamente de ../actions; Sentry.captureException en catch; usa ConfirmDialog con confirmationPhrase='CERRAR'."
     },
     {
@@ -303,10 +286,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "botón visible",
-        "click abre RegisterMovementModal (code-split)"
-      ],
+      "relevantStates": ["botón visible", "click abre RegisterMovementModal (code-split)"],
       "proposedStoryTitle": "Admin/Caja/EmptyMovementAction",
       "usesNetwork": false,
       "usesSession": false,
@@ -335,9 +315,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "useRouter (router.refresh); importa createCashFlowAction directamente de ../actions; Sentry.captureException; crypto.randomUUID() idempotencyKey por apertura del modal."
     },
     {
@@ -349,9 +327,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error con/sin digest"
-      ],
+      "relevantStates": ["error con/sin digest"],
       "proposedStoryTitle": "Admin/Caja/Error",
       "usesNetwork": false,
       "usesSession": false,
@@ -369,9 +345,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton único"
-      ],
+      "relevantStates": ["skeleton único"],
       "proposedStoryTitle": "Admin/Caja/Loading",
       "usesNetwork": false,
       "usesSession": false,
@@ -446,9 +420,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "dynamic(ssr:false) para CourtForm y ConfirmDialog; importa toggleCourtStatusAction/getCourtDeactivationImpactAction directamente de ../actions."
     },
     {
@@ -516,9 +488,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ThemeProvider (next-themes)"
-      ],
+      "providers": ["ThemeProvider (next-themes)"],
       "isolationNotes": "useTheme (next-themes) para resolvedTheme→isDark en el heatStyle; necesita ThemeProvider en el decorator."
     },
     {
@@ -554,10 +524,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "court_status: online",
-        "court_status: offline"
-      ],
+      "relevantStates": ["court_status: online", "court_status: offline"],
       "proposedStoryTitle": "Admin/Canchas/CourtStatusBadge",
       "usesNetwork": false,
       "usesSession": false,
@@ -575,9 +542,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error con/sin digest"
-      ],
+      "relevantStates": ["error con/sin digest"],
       "proposedStoryTitle": "Admin/Canchas/Error",
       "usesNetwork": false,
       "usesSession": false,
@@ -595,9 +560,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton único"
-      ],
+      "relevantStates": ["skeleton único"],
       "proposedStoryTitle": "Admin/Canchas/Loading",
       "usesNetwork": false,
       "usesSession": false,
@@ -651,9 +614,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error con/sin digest, con link secundario a /dashboard"
-      ],
+      "relevantStates": ["error con/sin digest, con link secundario a /dashboard"],
       "proposedStoryTitle": "Admin/Layout/AdminError",
       "usesNetwork": false,
       "usesSession": false,
@@ -671,9 +632,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error con/sin digest"
-      ],
+      "relevantStates": ["error con/sin digest"],
       "proposedStoryTitle": "Admin/Grilla/Error",
       "usesNetwork": false,
       "usesSession": false,
@@ -691,9 +650,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton único (header + tira semanal + grid)"
-      ],
+      "relevantStates": ["skeleton único (header + tira semanal + grid)"],
       "proposedStoryTitle": "Admin/Grilla/Loading",
       "usesNetwork": false,
       "usesSession": false,
@@ -810,9 +767,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ThemeProvider (next-themes, vía useChartTheme)"
-      ],
+      "providers": ["ThemeProvider (next-themes, vía useChartTheme)"],
       "isolationNotes": "fetch('/api/admin/metrics') y fetch('/api/admin/system-status') propios en useEffect + setInterval(60000) — necesita MSW o mock de fetch; usa recharts (BarChart/LineChart) + useChartTheme (@/components/admin/useChartTheme)."
     },
     {
@@ -869,9 +824,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ThemeProvider (next-themes, vía useChartTheme)"
-      ],
+      "providers": ["ThemeProvider (next-themes, vía useChartTheme)"],
       "isolationNotes": "useChartTheme (@/components/admin/useChartTheme) + recharts BarChart; necesita ThemeProvider en el decorator."
     },
     {
@@ -895,9 +848,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "useRouter (router.refresh); importa completeBookingAction/markNoShowAction/cancelBookingAction directamente de ../actions."
     },
     {
@@ -921,9 +872,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "useRouter (router.refresh); importa addBookingChargeAction directamente de ../actions; usa summarizeBookingCharges (@/modules/bookings/booking.charges) para el cálculo de saldo."
     },
     {
@@ -932,9 +881,7 @@
       "domain": "staff-settings",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -1001,9 +948,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error con/sin digest"
-      ],
+      "relevantStates": ["error con/sin digest"],
       "proposedStoryTitle": "Admin/Reservas/Error",
       "usesNetwork": false,
       "usesSession": false,
@@ -1021,9 +966,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton único (header + tabs + píldoras + 2 secciones de filas)"
-      ],
+      "relevantStates": ["skeleton único (header + tabs + píldoras + 2 secciones de filas)"],
       "proposedStoryTitle": "Admin/Reservas/Loading",
       "usesNetwork": false,
       "usesSession": false,
@@ -1078,10 +1021,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "TooltipProvider (Radix)",
-        "Toaster"
-      ],
+      "providers": ["TooltipProvider (Radix)", "Toaster"],
       "isolationNotes": "useRouter (router.refresh); importa cancelBookingAction/completeBookingAction/confirmDepositPaymentAction/markNoShowAction directamente de ./actions; usa DropdownMenu + Tooltip (Radix) + ConfirmDialog."
     },
     {
@@ -1093,18 +1033,13 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "búsqueda vacía/con texto",
-        "vista detallada/compacta"
-      ],
+      "relevantStates": ["búsqueda vacía/con texto", "vista detallada/compacta"],
       "proposedStoryTitle": "Admin/Reservas/ReservasToolbar",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": false,
-      "providers": [
-        "TooltipProvider (Radix)"
-      ],
+      "providers": ["TooltipProvider (Radix)"],
       "isolationNotes": "usePathname/useRouter/useSearchParams (next/navigation) — necesita mock del app router (parameters.nextjs.navigation) en Storybook."
     },
     {
@@ -1155,19 +1090,13 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "idle",
-        "error",
-        "success (didSubmit)"
-      ],
+      "relevantStates": ["idle", "error", "success (didSubmit)"],
       "proposedStoryTitle": "Admin/Settings/AddClosedDateForm",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "useFormState (react-dom) + import directo de addClosedDateAction (server action real) — necesita mock de ambos para renderizar en Storybook."
     },
     {
@@ -1188,9 +1117,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "useFormState (react-dom) + import directo de updateHorariosAction; depende de ScheduleFields (@/components/schedule, fuera de esta área, compartido con el wizard de onboarding)."
     },
     {
@@ -1220,18 +1147,13 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "idle",
-        "error"
-      ],
+      "relevantStates": ["idle", "error"],
       "proposedStoryTitle": "Admin/Settings/RemoveClosedDateForm",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "useFormState (react-dom) + import directo de removeClosedDateAction (server action real)."
     },
     {
@@ -1311,6 +1233,29 @@
       "isolationNotes": "Importa setTenantImageAction/removeTenantImageAction directamente de ./actions; usa ImageUploader (blob-based, requiere mock de upload)."
     },
     {
+      "path": "src/app/(admin)/settings/perfil/TenantContactForm.tsx",
+      "name": "TenantContactForm",
+      "domain": "settings",
+      "rendering": "client",
+      "role": "form",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "datos guardados",
+        "guardado (mensaje de éxito)",
+        "error del servidor",
+        "pending submit"
+      ],
+      "proposedStoryTitle": "Settings/Perfil/TenantContactForm",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": true,
+      "providers": [],
+      "isolationNotes": "B15 (plan de refactor de onboarding): contacto público del tenant, editable acá desde que el wizard dejó de pedirlo (Fase 4) — action por prop."
+    },
+    {
       "path": "src/app/(admin)/settings/reservas/page.tsx",
       "name": "ReservasPolicyPage",
       "domain": "staff-settings",
@@ -1348,9 +1293,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "useFormState (react-dom) + import directo de updateReservasPolicyAction (server action real)."
     },
     {
@@ -1385,9 +1328,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error con/sin digest"
-      ],
+      "relevantStates": ["error con/sin digest"],
       "proposedStoryTitle": "Admin/Staff/Error",
       "usesNetwork": false,
       "usesSession": false,
@@ -1439,10 +1380,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "form",
-        "Toaster"
-      ],
+      "providers": ["form", "Toaster"],
       "isolationNotes": "useFormState/useFormStatus (react-dom); inviteAction llega como prop (mockeable sin importar la action real, a diferencia de otros forms de esta área)."
     },
     {
@@ -1454,9 +1392,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton único (tabla de 4 filas)"
-      ],
+      "relevantStates": ["skeleton único (tabla de 4 filas)"],
       "proposedStoryTitle": "Admin/Staff/Loading",
       "usesNetwork": false,
       "usesSession": false,
@@ -1508,10 +1444,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "TooltipProvider (Radix)",
-        "Toaster"
-      ],
+      "providers": ["TooltipProvider (Radix)", "Toaster"],
       "isolationNotes": "dynamic(ssr:false) de ConfirmDialog; importa deactivateStaffAction/resendInviteAction/updateStaffRoleAction directamente de ./actions."
     },
     {
@@ -1520,9 +1453,7 @@
       "domain": "staff-settings",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -1543,10 +1474,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "staff_role: admin/manager (solo 2 roles)",
-        "isActive: true/false"
-      ],
+      "relevantStates": ["staff_role: admin/manager (solo 2 roles)", "isActive: true/false"],
       "proposedStoryTitle": "Admin/Staff/StaffBadges",
       "usesNetwork": false,
       "usesSession": false,
@@ -1561,9 +1489,7 @@
       "domain": "auth",
       "rendering": "client",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -1604,9 +1530,7 @@
       "domain": "auth",
       "rendering": "client",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": true,
@@ -1665,9 +1589,7 @@
       "domain": "auth",
       "rendering": "client",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -1733,9 +1655,7 @@
       "domain": "auth",
       "rendering": "client",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -1774,12 +1694,7 @@
       "isolationDifficulty": "medium",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "idle",
-        "error",
-        "password oculto/visible",
-        "pending"
-      ],
+      "relevantStates": ["idle", "error", "password oculto/visible", "pending"],
       "proposedStoryTitle": "Auth/ResetPasswordForm",
       "usesNetwork": false,
       "usesSession": false,
@@ -1839,9 +1754,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "page",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": true,
@@ -1859,9 +1772,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "page",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": true,
@@ -1879,9 +1790,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "page",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -2004,9 +1913,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "page",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": true,
@@ -2024,9 +1931,7 @@
       "domain": "player-facing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -2047,11 +1952,7 @@
       "isolationDifficulty": "medium",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "idle",
-        "loading (Generando...)",
-        "error"
-      ],
+      "relevantStates": ["idle", "loading (Generando...)", "error"],
       "proposedStoryTitle": "Player/Configuracion/DataExportButton",
       "usesNetwork": true,
       "usesSession": false,
@@ -2069,9 +1970,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton"
-      ],
+      "relevantStates": ["skeleton"],
       "proposedStoryTitle": "Player/Configuracion/LoadingSkeleton",
       "usesNetwork": false,
       "usesSession": false,
@@ -2126,9 +2025,7 @@
       "domain": "player-facing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -2149,9 +2046,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton"
-      ],
+      "relevantStates": ["skeleton"],
       "proposedStoryTitle": "Player/EliminarCuenta/LoadingSkeleton",
       "usesNetwork": false,
       "usesSession": false,
@@ -2187,9 +2082,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error boundary ('No pudimos cargar tus reservas')"
-      ],
+      "relevantStates": ["error boundary ('No pudimos cargar tus reservas')"],
       "proposedStoryTitle": "Player/ErrorBoundary",
       "usesNetwork": false,
       "usesSession": false,
@@ -2260,9 +2153,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": false,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "fetch('/api/player/reviews', POST) directo (no Server Action) + useToast (@/hooks/use-toast, requiere el host <Toaster/>) + useRouter para router.refresh — mockear el fetch (MSW)."
     },
     {
@@ -2271,9 +2162,7 @@
       "domain": "player-facing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -2336,10 +2225,7 @@
       "isolationDifficulty": "medium",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "sin favoritos (empty state)",
-        "con favoritos (grid de TenantCard)"
-      ],
+      "relevantStates": ["sin favoritos (empty state)", "con favoritos (grid de TenantCard)"],
       "proposedStoryTitle": "Player/Perfil/FavoritesList",
       "usesNetwork": false,
       "usesSession": false,
@@ -2357,9 +2243,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton"
-      ],
+      "relevantStates": ["skeleton"],
       "proposedStoryTitle": "Player/Perfil/LoadingSkeleton",
       "usesNetwork": false,
       "usesSession": false,
@@ -2377,11 +2261,7 @@
       "isolationDifficulty": "medium",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "email on/off",
-        "push on/off",
-        "error tras revertir el toggle"
-      ],
+      "relevantStates": ["email on/off", "push on/off", "error tras revertir el toggle"],
       "proposedStoryTitle": "Player/Perfil/NotificationPrefs",
       "usesNetwork": false,
       "usesSession": false,
@@ -2437,9 +2317,7 @@
       "domain": "player-facing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -2605,9 +2483,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton fijo (7 días x 8 slots)"
-      ],
+      "relevantStates": ["skeleton fijo (7 días x 8 slots)"],
       "proposedStoryTitle": "Player/TenantProfile/DisponibilidadLoading",
       "usesNetwork": false,
       "usesSession": false,
@@ -2643,9 +2519,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton fijo (hero+header+grilla)"
-      ],
+      "relevantStates": ["skeleton fijo (hero+header+grilla)"],
       "proposedStoryTitle": "Player/TenantProfile/ProfileLoading",
       "usesNetwork": false,
       "usesSession": false,
@@ -2663,9 +2537,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "estado único: complejo no encontrado"
-      ],
+      "relevantStates": ["estado único: complejo no encontrado"],
       "proposedStoryTitle": "Player/TenantProfile/NotFound",
       "usesNetwork": false,
       "usesSession": false,
@@ -2698,9 +2570,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -2752,9 +2622,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "useFormStatus (react-dom) exige un <form action> real o mock (ver gotcha useformstate-vitest-mock); action={createBookingAndCheckout} es Server Action de ../actions, hay que mockearla en la story."
     },
     {
@@ -2777,9 +2645,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "useFormState + useFormStatus (react-dom, undefined en Vitest sin mock, ver gotcha useformstate-vitest-mock); action=sendPlayerMagicLink (Server Action de ../actions)."
     },
     {
@@ -2813,9 +2679,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton fijo del checkout"
-      ],
+      "relevantStates": ["skeleton fijo del checkout"],
       "proposedStoryTitle": "Player/Checkout/CheckoutLoading",
       "usesNetwork": false,
       "usesSession": false,
@@ -2863,10 +2727,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "con digest (error.digest presente)",
-        "sin digest"
-      ],
+      "relevantStates": ["con digest (error.digest presente)", "sin digest"],
       "proposedStoryTitle": "Public/ErrorBoundary",
       "usesNetwork": false,
       "usesSession": false,
@@ -3001,9 +2862,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": false,
-      "providers": [
-        "Toaster"
-      ],
+      "providers": ["Toaster"],
       "isolationNotes": "useRouter+useSearchParams; useToast (@/hooks/use-toast, requiere <Toaster/> en el decorator); navigator.geolocation.getCurrentPosition (mockear)."
     },
     {
@@ -3056,9 +2915,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "estado único con lista de ciudades (hero + SearchBar)"
-      ],
+      "relevantStates": ["estado único con lista de ciudades (hero + SearchBar)"],
       "proposedStoryTitle": "Player/Explorar/SearchBand",
       "usesNetwork": false,
       "usesSession": false,
@@ -3145,9 +3002,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton fijo (hero+toolbar+sidebar+6 cards)"
-      ],
+      "relevantStates": ["skeleton fijo (hero+toolbar+sidebar+6 cards)"],
       "proposedStoryTitle": "Player/Explorar/ExplorarLoading",
       "usesNetwork": false,
       "usesSession": false,
@@ -3219,9 +3074,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "estado único: cuenta suspendida (icono + CTA soporte + volver)"
-      ],
+      "relevantStates": ["estado único: cuenta suspendida (icono + CTA soporte + volver)"],
       "proposedStoryTitle": "Public/SuspendedPage",
       "usesNetwork": false,
       "usesSession": false,
@@ -3254,9 +3107,7 @@
       "domain": "super-admin",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3267,6 +3118,27 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "proposedStoryTitle": ""
+    },
+    {
+      "path": "src/app/(super-admin)/super-admin/_components/onboarding-funnel-section.tsx",
+      "name": "OnboardingFunnelSection",
+      "domain": "super-admin",
+      "rendering": "server",
+      "role": "presentational",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "con datos (barras del embudo 1→4 decrecientes + KPIs + mediana de activación)",
+        "sin actividad en la ventana (empty state, no una barra al 0%)"
+      ],
+      "proposedStoryTitle": "SuperAdmin/Dashboard/OnboardingFunnelSection",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Fase 7 del plan de refactor de onboarding — primera vista que LEE analytics_events."
     },
     {
       "path": "src/app/(super-admin)/super-admin/_components/sa-metric-card.tsx",
@@ -3384,9 +3256,7 @@
       "domain": "super-admin",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3404,9 +3274,7 @@
       "domain": "super-admin",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3424,9 +3292,7 @@
       "domain": "super-admin",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3444,9 +3310,7 @@
       "domain": "super-admin",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3467,11 +3331,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "idle",
-        "pending (Entrando…)",
-        "error"
-      ],
+      "relevantStates": ["idle", "pending (Entrando…)", "error"],
       "proposedStoryTitle": "SuperAdmin/TenantDetail/ImpersonateButton",
       "usesNetwork": false,
       "usesSession": false,
@@ -3486,9 +3346,7 @@
       "domain": "super-admin",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3598,11 +3456,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "null (no renderiza)",
-        "kind=ok (verde)",
-        "kind=error (rojo)"
-      ],
+      "relevantStates": ["null (no renderiza)", "kind=ok (verde)", "kind=error (rojo)"],
       "proposedStoryTitle": "SuperAdmin/TenantDetail/AccionesSoporte/FeedbackText",
       "usesNetwork": false,
       "usesSession": false,
@@ -3643,10 +3497,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "pending",
-        "feedback ok/error"
-      ],
+      "relevantStates": ["pending", "feedback ok/error"],
       "proposedStoryTitle": "SuperAdmin/TenantDetail/AccionesSoporte/ReactivateSection",
       "usesNetwork": false,
       "usesSession": false,
@@ -3664,11 +3515,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "email vacío (botón deshabilitado)",
-        "email cargado",
-        "feedback ok/error"
-      ],
+      "relevantStates": ["email vacío (botón deshabilitado)", "email cargado", "feedback ok/error"],
       "proposedStoryTitle": "SuperAdmin/TenantDetail/AccionesSoporte/ResetPasswordSection",
       "usesNetwork": false,
       "usesSession": false,
@@ -3686,9 +3533,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "contenedor con título+descripción+children"
-      ],
+      "relevantStates": ["contenedor con título+descripción+children"],
       "proposedStoryTitle": "SuperAdmin/TenantDetail/AccionesSoporte/SectionCard",
       "usesNetwork": false,
       "usesSession": false,
@@ -3726,9 +3571,7 @@
       "domain": "super-admin",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3803,9 +3646,7 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error boundary genérico ('Algo salió mal')"
-      ],
+      "relevantStates": ["error boundary genérico ('Algo salió mal')"],
       "proposedStoryTitle": "Layout/ErrorBoundary",
       "usesNetwork": false,
       "usesSession": false,
@@ -3823,9 +3664,7 @@
       "isolationDifficulty": "hard",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "error catastrófico de layout raíz"
-      ],
+      "relevantStates": ["error catastrófico de layout raíz"],
       "proposedStoryTitle": "Layout/GlobalErrorBoundary",
       "usesNetwork": false,
       "usesSession": false,
@@ -3840,9 +3679,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3860,9 +3697,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3880,9 +3715,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3900,9 +3733,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3920,9 +3751,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3940,9 +3769,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3960,9 +3787,7 @@
       "domain": "misc",
       "rendering": "server",
       "role": "image-route",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -3980,9 +3805,7 @@
       "domain": "misc",
       "rendering": "server",
       "role": "image-route",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -4000,9 +3823,7 @@
       "domain": "misc",
       "rendering": "server",
       "role": "image-route",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -4047,9 +3868,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ThemeProvider"
-      ],
+      "providers": ["ThemeProvider"],
       "isolationNotes": ""
     },
     {
@@ -4058,9 +3877,7 @@
       "domain": "misc",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -4099,9 +3916,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "404 estático"
-      ],
+      "relevantStates": ["404 estático"],
       "proposedStoryTitle": "Layout/NotFoundPage",
       "usesNetwork": false,
       "usesSession": false,
@@ -4125,17 +3940,15 @@
         "precio vacío ('falta precio')",
         "isCovered on/off",
         "canRemove true/false",
-        "con/sin foto"
+        "plegado/expandido"
       ],
       "proposedStoryTitle": "Onboarding/StepCourts/CourtDraftCard",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "TooltipProvider"
-      ],
-      "isolationNotes": "<ImageUploader/> (@/components/ui/image-uploader, fuera de esta área) hace uploads reales vía uploadOnboardingCourtPhotoAction/deleteOnboardingCourtPhotoAction pasadas por onUpload/onRemove; <Tooltip/> (radix) en el botón quitar."
+      "providers": ["TooltipProvider"],
+      "isolationNotes": "<Tooltip/> (radix) en el botón quitar. El <ImageUploader/> que vivía acá se eliminó: subía a R2 y el submit del paso descartaba el resultado."
     },
     {
       "path": "src/app/onboarding/components/step-courts/ExistingCourtsList.tsx",
@@ -4146,10 +3959,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "cancha con precio (minPrice)",
-        "cancha sin precio (minPrice null)"
-      ],
+      "relevantStates": ["cancha con precio (minPrice)", "cancha sin precio (minPrice null)"],
       "proposedStoryTitle": "Onboarding/StepCourts/ExistingCourtsList",
       "usesNetwork": false,
       "usesSession": false,
@@ -4207,8 +4017,8 @@
       "isolationNotes": "useTransition + createTenantAction (Server Action) real — mockear; usa <PhoneInput/>."
     },
     {
-      "path": "src/app/onboarding/components/StepPayments.tsx",
-      "name": "StepPayments",
+      "path": "src/app/onboarding/components/StepFirstBooking.tsx",
+      "name": "StepFirstBooking",
       "domain": "onboarding",
       "rendering": "client",
       "role": "form",
@@ -4216,21 +4026,21 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "mpConnected=true (info conectado)",
-        "mpConnected=false + choice=deposit",
-        "choice=none",
-        "mpError=mp_not_configured/mp_config_missing (mensaje distinto)",
-        "mpError genérico",
-        "pending terminar",
-        "pending volver"
+        "sin slots (EmptyState)",
+        "con slots libres, sin turno cargado (CTA=Saltar por ahora)",
+        "slot activo (mini-form abierto)",
+        "error del server al confirmar",
+        "turno cargado (CTA=Terminar y ver mi complejo, banner de éxito)",
+        "pending confirmar",
+        "pending volver/terminar"
       ],
-      "proposedStoryTitle": "Onboarding/StepPayments",
+      "proposedStoryTitle": "Onboarding/StepFirstBooking",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
       "providers": [],
-      "isolationNotes": "useTransition x2 + <a href='/api/mp/oauth-start'> (navegación real a un Route Handler OAuth, no interceptable como Server Action) — en la story dejar el link inerte."
+      "isolationNotes": "useTransition x2 (confirmar turno + terminar/saltar); Server Actions por prop, mockear ambas."
     },
     {
       "path": "src/app/onboarding/components/StepSchedule.tsx",
@@ -4241,12 +4051,7 @@
       "isolationDifficulty": "medium",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "horario por defecto saneado",
-        "closesNextDay on/off",
-        "error",
-        "pending"
-      ],
+      "relevantStates": ["horario por defecto saneado", "closesNextDay on/off", "error", "pending"],
       "proposedStoryTitle": "Onboarding/StepSchedule",
       "usesNetwork": false,
       "usesSession": false,
@@ -4265,9 +4070,7 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "currentStep 1..4 (rail desktop + barra mobile)",
-        "currentStep=5 ('¡Listo!')",
-        "wide=true/false"
+        "preview presente -> layout split (form + PreviewPane) / ausente -> card centrada angosta"
       ],
       "proposedStoryTitle": "Onboarding/WizardShell",
       "usesNetwork": false,
@@ -4275,7 +4078,109 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": ""
+      "isolationNotes": "Fase 6: el rail de marca + indicador de progreso se mudaron a WizardChrome (currentStep ya no es prop de este componente)."
+    },
+    {
+      "path": "src/app/onboarding/components/WizardChrome.tsx",
+      "name": "WizardChrome",
+      "domain": "onboarding",
+      "rendering": "client",
+      "role": "layout",
+      "isolationDifficulty": "medium",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "pathname de cada paso 1..4 (rail desktop + barra mobile)",
+        "pathname /onboarding/listo (paso 5, ¡Listo!)",
+        "landmark único (aria-label) del rail"
+      ],
+      "proposedStoryTitle": "Onboarding/WizardChrome",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": true,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "usePathname vía parameters.nextjs.navigation (mock estándar del framework). AnimatePresence/motion: la transición en sí no se testea por timing, solo el contenido final por pathname."
+    },
+    {
+      "path": "src/app/onboarding/components/PreviewPane.tsx",
+      "name": "PreviewPane",
+      "domain": "onboarding",
+      "rendering": "client",
+      "role": "layout",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": ["barra mobile colapsada (default)", "barra mobile expandida"],
+      "proposedStoryTitle": "Onboarding/PreviewPane",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "children se renderiza dos veces (aside desktop / panel mobile) — mismo patrón que Stepper+SegmentedProgress en WizardShell."
+    },
+    {
+      "path": "src/app/onboarding/components/PublicCardPreview.tsx",
+      "name": "PublicCardPreview",
+      "domain": "onboarding",
+      "rendering": "client",
+      "role": "presentational",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": ["sin datos (placeholder)", "solo nombre", "nombre + dirección + ciudad"],
+      "proposedStoryTitle": "Onboarding/PublicCardPreview",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "NO es FeaturedComplexCard (esa pide PublicTenantCard completo: precio, amenities, rating, foto — nada de eso existe en el paso 1)."
+    },
+    {
+      "path": "src/app/onboarding/components/WeekPreview.tsx",
+      "name": "WeekPreview",
+      "domain": "onboarding",
+      "rendering": "client",
+      "role": "presentational",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "horario típico (general + custom)",
+        "día cerrado",
+        "cierre pasada la medianoche (closesNextDay)"
+      ],
+      "proposedStoryTitle": "Onboarding/WeekPreview",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Geometría de la barra vía effectiveCloseMins/timeToMins (mismo cálculo que la grilla real); el texto muestra la hora de pared tal cual se tipeó."
+    },
+    {
+      "path": "src/app/onboarding/components/GridPreview.tsx",
+      "name": "GridPreview",
+      "domain": "onboarding",
+      "rendering": "client",
+      "role": "presentational",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "sin canchas ni borradores (empty state)",
+        "borrador sin nombre/precio",
+        "canchas existentes + borrador nuevo"
+      ],
+      "proposedStoryTitle": "Onboarding/GridPreview",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Componente propio y liviano a propósito — NO monta BookingGrid (11 archivos, Realtime, drag)."
     },
     {
       "path": "src/app/onboarding/listo/page.tsx",
@@ -4369,9 +4274,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "PortalSessionProvider"
-      ],
+      "providers": ["PortalSessionProvider"],
       "isolationNotes": "listPublicCities()/searchPublicTenants() con try/catch + Sentry.captureException si falla (degrada a []); envuelve <SiteNav variant='overlay'/> en <PortalSessionProvider/>."
     },
     {
@@ -4380,9 +4283,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -4403,9 +4304,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton fijo (icono+título+2 líneas)"
-      ],
+      "relevantStates": ["skeleton fijo (icono+título+2 líneas)"],
       "proposedStoryTitle": "Player/BookingResult/ErrorLoading",
       "usesNetwork": false,
       "usesSession": false,
@@ -4433,9 +4332,7 @@
       "usesSession": true,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "extractAuthUser()+redirect('/ingresar'); withPlayerContext(tx.execute(sql...)) — raw SQL devuelve Date como string (ver gotcha raw-sql-execute-date-string); form action={retryDepositPaymentAction} Server Action de (public)/[slug]/reservar/actions."
     },
     {
@@ -4444,9 +4341,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -4467,9 +4362,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton fijo (badge+título+card de recibo)"
-      ],
+      "relevantStates": ["skeleton fijo (badge+título+card de recibo)"],
       "proposedStoryTitle": "Player/BookingResult/ExitoLoading",
       "usesNetwork": false,
       "usesSession": false,
@@ -4510,9 +4403,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton fijo (icono+título+2 líneas)"
-      ],
+      "relevantStates": ["skeleton fijo (icono+título+2 líneas)"],
       "proposedStoryTitle": "Player/BookingResult/PendienteLoading",
       "usesNetwork": false,
       "usesSession": false,
@@ -4573,9 +4464,7 @@
       "domain": "public-marketing",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -4629,9 +4518,7 @@
       "domain": "misc",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -4664,9 +4551,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ThemeProvider (next-themes)"
-      ],
+      "providers": ["ThemeProvider (next-themes)"],
       "isolationNotes": "useTheme de next-themes: la story necesita un decorator con ThemeProvider (o mock) para setear theme/resolvedTheme y ver los 3 estados de ícono; usa DropdownMenu de Radix (@/components/ui/dropdown-menu) y ThemeToggle (@/components/theme/ThemeToggle) como contenido."
     },
     {
@@ -4793,9 +4678,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "Toaster (@/hooks/use-toast)"
-      ],
+      "providers": ["Toaster (@/hooks/use-toast)"],
       "isolationNotes": "Importa directo el Server Action createBookingAction de @/app/(admin)/reservas/actions y lo invoca dentro de startTransition — Storybook necesita mockear ese módulo (alias/moduleMock) para no ejecutar el action real; también usa Sentry.captureException, toast() y PhoneInput (@/components/ui/phone-input)."
     },
     {
@@ -4832,9 +4715,7 @@
       "isolationDifficulty": "medium",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "ubicación válida (lat/lng) renderizando pin + tiles"
-      ],
+      "relevantStates": ["ubicación válida (lat/lng) renderizando pin + tiles"],
       "proposedStoryTitle": "Player/BookingSuccess/BookingMiniMap",
       "usesNetwork": true,
       "usesSession": false,
@@ -4979,9 +4860,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "único estado visual (banner de hint con botón 'Entendido')"
-      ],
+      "relevantStates": ["único estado visual (banner de hint con botón 'Entendido')"],
       "proposedStoryTitle": "Booking/Grid/FirstBookingHint",
       "usesNetwork": false,
       "usesSession": false,
@@ -5053,9 +4932,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "TooltipProvider (@/components/ui/tooltip)"
-      ],
+      "providers": ["TooltipProvider (@/components/ui/tooltip)"],
       "isolationNotes": "computeArtNow() de @/hooks/use-art-now se llama en el click de 'Hoy' (Date real, no depende de props); compone WeekStrip (../WeekStrip) y Tooltip de Radix — necesita TooltipProvider en el decorator."
     },
     {
@@ -5112,9 +4989,7 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "único estado (cascarón con glows, theme-adaptive light/dark vía CSS)"
-      ],
+      "relevantStates": ["único estado (cascarón con glows, theme-adaptive light/dark vía CSS)"],
       "proposedStoryTitle": "Player/BookingSuccess/ReservaDarkShell",
       "usesNetwork": false,
       "usesSession": false,
@@ -5143,9 +5018,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "TooltipProvider (@/components/ui/tooltip)"
-      ],
+      "providers": ["TooltipProvider (@/components/ui/tooltip)"],
       "isolationNotes": "addDays/mondayOf de @/lib/booking/grid-cells (cálculo puro de fechas, mockeable con una `date` fija); usa Tooltip de Radix en los chevrons — necesita TooltipProvider en el decorator."
     },
     {
@@ -5252,18 +5125,13 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "default",
-        "userEmail largo (truncamiento)"
-      ],
+      "relevantStates": ["default", "userEmail largo (truncamiento)"],
       "proposedStoryTitle": "Admin/Layout/AdminHeader",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Importa AdminThemeMenu (src/components/admin/AdminThemeMenu.tsx, fuera de mi área) — mockear/stub como children o excluir de la story si no está disponible; props onMobileMenuToggle/onSignOut son callbacks simples, fáciles de mockear."
     },
     {
@@ -5289,9 +5157,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "usePathname (next/navigation) determina isGrilla; signOut es una Server Action tipada `() => Promise<never>` — en Storybook hay que pasar un mock async que nunca resuelve o rechaza controladamente; compone AdminSidebar+AdminHeader+StatusBanner reales."
     },
     {
@@ -5315,9 +5181,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "usePathname (next/navigation) para resaltar el item activo — mockear con decorator de Next.js router; usa Sheet de Radix (ui/sheet.tsx) para el drawer mobile, requiere portal en el DOM del story."
     },
     {
@@ -5329,18 +5193,13 @@
       "isolationDifficulty": "easy",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "default (nombre corto)",
-        "tenantName largo"
-      ],
+      "relevantStates": ["default (nombre corto)", "tenantName largo"],
       "proposedStoryTitle": "SuperAdmin/ImpersonationBanner",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "El <form action={stopImpersonationAction}> usa una Server Action real importada de src/app/(super-admin)/super-admin/tenants/[id]/actions.ts; en Storybook el submit no ejecutará la acción real (no hay runtime de servidor) pero el markup renderiza sin problema — no requiere mock si solo se testea visual, no interacción de submit."
     },
     {
@@ -5365,9 +5224,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Lee process.env.NEXT_PUBLIC_SERVICE_DEGRADED directamente en el render — para forzar el estado 'degraded' en Storybook hay que definir esa env var en la config de Storybook (Vite define) o refactorizar; el resto de estados son puramente por props."
     },
     {
@@ -5390,9 +5247,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": true,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "usePathname (next/navigation) para nav activo; signOut prop es Server Action `() => Promise<never>` mockeable; importa AdminThemeMenu (fuera de mi área, componente compartido con admin-header)."
     },
     {
@@ -5410,9 +5265,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "useReportWebVitals de next/web-vitals + @sentry/nextjs — ninguno de los dos tiene sentido en un entorno Storybook aislado."
     },
     {
@@ -5430,9 +5283,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": ""
     },
     {
@@ -5458,10 +5309,7 @@
       "usesSession": true,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "PortalSessionProvider",
-        "Toaster (useToast)"
-      ],
+      "providers": ["PortalSessionProvider", "Toaster (useToast)"],
       "isolationNotes": "fetch('/api/player/favorites/toggle') debe mockearse (MSW o fetch stub); usePortalSession (src/components/site/PortalSessionProvider.tsx) para favoriteTenantIds — requiere el provider como decorator; useToast (hooks/use-toast) requiere el Toaster montado; en error 401 hace window.location.href, hay que evitar disparar navegación real en el story de esa interacción."
     },
     {
@@ -5482,9 +5330,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "SVG puro decorativo con currentColor, cero estado — trivial de storyear con distintos className de color de texto en el wrapper."
     },
     {
@@ -5508,9 +5354,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Ninguna — componente puro por props (rating, count, variant)."
     },
     {
@@ -5532,9 +5376,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "Toaster (useToast)"
-      ],
+      "providers": ["Toaster (useToast)"],
       "isolationNotes": "navigator.clipboard.writeText debe mockearse (no disponible/permitido en todos los entornos de test); useToast requiere el Toaster montado como decorator; usa DropdownMenu de Radix (ui/dropdown-menu.tsx)."
     },
     {
@@ -5576,9 +5418,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "renderStructuredData de @/lib/seo/structured-data — lógica de serialización, no de presentación."
     },
     {
@@ -5601,9 +5441,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": true,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Incluye <ThemeToggle/> (usa next-themes useTheme) dentro del dropdown — requiere ThemeProvider como decorator; el form de logout usa signOutAction (Server Action real importada), no ejecuta en Storybook pero el markup renderiza; usa DropdownMenu de Radix."
     },
     {
@@ -5612,9 +5450,7 @@
       "domain": "misc",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -5635,17 +5471,13 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "default"
-      ],
+      "relevantStates": ["default"],
       "proposedStoryTitle": "Public/BusinessFooter",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Ninguna — estático, solo Links de next/link (funcionan sin router real en Storybook)."
     },
     {
@@ -5657,17 +5489,13 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "default (fixed pill dark-premium)"
-      ],
+      "relevantStates": ["default (fixed pill dark-premium)"],
       "proposedStoryTitle": "Public/BusinessHeader",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Ninguna — estático. Es 'fixed top-0': en Storybook conviene envolver en un contenedor con altura para que no tape los controles del canvas."
     },
     {
@@ -5693,9 +5521,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Tipa el prop `tenant: PublicTenantCard` desde @/modules/tenants/search.service — construir un fixture tipado a mano; usa next/image (necesita loader configurado o unoptimized en preview de Storybook); compone RatingStars y AMENITIES/activeAmenities reales de src/components/public/."
     },
     {
@@ -5722,9 +5548,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "useRouter (next/navigation) para el submit (router.push a /explorar) — mockear con decorator de router; useNearestCity (src/hooks/use-nearest-city.ts) usa navigator.geolocation.getCurrentPosition, hay que stubear geolocation en el entorno de Storybook para cada estado (found/denied/pending); compone Combobox y DatePicker (ui/) y DropdownMenu de Radix para la hora."
     },
     {
@@ -5733,9 +5557,7 @@
       "domain": "misc",
       "rendering": "server",
       "role": "presentational",
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
@@ -5766,9 +5588,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "usePathname (next/navigation) determina el item activo vía funciones match() por prefijo — mockear con decorator de router; mobile-only (md:hidden), conviene fijar el viewport del story a mobile."
     },
     {
@@ -5791,9 +5611,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Ninguna — puramente presentacional por props, usa clases CSS custom (player-hero-band, hero-glow-blob, player-hero-grid, hero-accent-text) definidas en el design system global; requiere el CSS global cargado en Storybook para verse fiel."
     },
     {
@@ -5814,9 +5632,7 @@
       "usesSession": true,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "PortalSessionProvider"
-      ],
+      "providers": ["PortalSessionProvider"],
       "isolationNotes": "usePortalSession (src/components/site/PortalSessionProvider.tsx) decide si renderiza <PlayerBottomNav/> — requiere el provider como decorator, mockeando session null vs poblada; header/footer/children llegan como ReactNode props (pasar placeholders o los componentes reales)."
     },
     {
@@ -5839,9 +5655,7 @@
       "usesSession": true,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "PortalSessionProvider"
-      ],
+      "providers": ["PortalSessionProvider"],
       "isolationNotes": "usePortalSession decide sesión anónima vs logueada — requiere el provider como decorator con distintos valores mockeados; cuando hay sesión compone AccountMenu real (que a su vez usa next-themes y Server Action de sign-out)."
     },
     {
@@ -5859,9 +5673,7 @@
       "usesSession": true,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "fetch('/api/player/session') en useEffect; mantiene un cache module-level (cachedSessionValue) que persiste entre renders/stories dentro del mismo proceso — en Storybook conviene resetearlo o mockear fetch por story para evitar leakage entre historias."
     },
     {
@@ -5879,9 +5691,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "PortalSessionProvider"
-      ],
+      "providers": ["PortalSessionProvider"],
       "isolationNotes": "No usa hooks propios; delega toda la complejidad de sesión/router a sus hijos ya storyeados por separado."
     },
     {
@@ -5904,9 +5714,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "IntersectionObserver del navegador — en el entorno de test/Storybook hay que verificar que dispare (jsdom/happy-dom no lo implementan nativamente, Storybook con navegador real sí); también lee window.matchMedia('(prefers-reduced-motion: reduce)'), mockeable para forzar el estado sin-animación."
     },
     {
@@ -5918,17 +5726,13 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "default"
-      ],
+      "relevantStates": ["default"],
       "proposedStoryTitle": "Player/SiteFooter",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Ninguna — estático, solo Links de next/link."
     },
     {
@@ -5946,9 +5750,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": ""
     },
     {
@@ -5966,9 +5768,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "next-themes ThemeProvider (attribute='class', defaultTheme='system', enableSystem) — Storybook probablemente necesita su propio decorator/addon de tema en vez de reusar este componente literal, dado que ya gestiona <html> a nivel de toda la app."
     },
     {
@@ -5991,9 +5791,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ThemeProvider (next-themes)"
-      ],
+      "providers": ["ThemeProvider (next-themes)"],
       "isolationNotes": "useTheme de next-themes — requiere ThemeProvider como decorator; guarda un estado local `mounted` (useEffect) para evitar mismatch de hidratación, así que el primer render en cualquier entorno es siempre neutro hasta el efecto."
     },
     {
@@ -6018,9 +5816,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — cva puro + div, sin hooks ni imports externos aparte de cn."
     },
     {
@@ -6043,9 +5839,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — forwardRef + cva; Loader2 de lucide-react solo se monta cuando isLoading=true."
     },
     {
@@ -6069,9 +5863,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Portal manual a document.body (createPortal, no Radix Popover) anclado por `[data-tour-id]`; mide con getBoundingClientRect en un layout effect isomórfico + ResizeObserver del target + listeners pasivos de resize/scroll — el decorator de la story debe renderizar el ancla real para que el selector encuentre algo."
     },
     {
@@ -6096,9 +5888,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "usa Popover/PopoverAnchor/PopoverContent de ./popover (Radix, portaled) + document.getElementById(...).scrollIntoView en un useEffect para mantener visible la opción activa; sin fetch ni router."
     },
     {
@@ -6123,9 +5913,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Sentry.captureException (@sentry/nextjs) dentro del catch de handleConfirm — el import debe resolver en el bundle de Storybook aunque no dispare red real; useTransition (React) maneja el estado pending; onConfirm es una prop async fácil de mockear con distintos resultados (success/error/throw)."
     },
     {
@@ -6151,9 +5939,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno aparte de Popover (./popover); el cálculo del calendario es puro (useMemo/useState), solo usa new Date() real para el botón 'Hoy'."
     },
     {
@@ -6176,9 +5962,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "@radix-ui/react-dialog puro (Root/Trigger/Portal/Overlay/Content/Close); sin hooks propios, solo forwardRef + cn."
     },
     {
@@ -6190,20 +5974,13 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "cerrado",
-        "abierto con items",
-        "item inset",
-        "item data-disabled"
-      ],
+      "relevantStates": ["cerrado", "abierto con items", "item inset", "item data-disabled"],
       "proposedStoryTitle": "Design System/DropdownMenu",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "@radix-ui/react-dropdown-menu puro (Root/Trigger/Portal/Content/Item); sin hooks propios."
     },
     {
@@ -6227,9 +6004,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — presentacional puro; icon/illustration/action son ReactNode/LucideIcon inyectados por el padre, sin lógica propia."
     },
     {
@@ -6254,9 +6029,7 @@
       "usesSession": false,
       "usesRouter": true,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "next/link (Link) para secondaryHref — requiere el router mock que ya aporta @storybook/nextjs-vite (framework configurado en F1); onRetry es callback inyectable, sin fetch propio."
     },
     {
@@ -6282,9 +6055,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "resizeToPreset de '@/shared/images/resize-image' (fuera de src/components/ui) — usa Canvas/Image API del browser real en el onChange del <input type='file'>; onUpload/onRemove/onReorder son props async inyectables, fáciles de mockear con Promise.resolve()/reject en la story."
     },
     {
@@ -6308,9 +6079,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — forwardRef puro sobre <input> nativo, sin hooks."
     },
     {
@@ -6331,9 +6100,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — cva + forwardRef sobre <label> nativo, NO usa @radix-ui/react-label pese al nombre."
     },
     {
@@ -6355,9 +6122,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — solo cn + texto con clases de color, sin imágenes ni SVG externo, sin hooks."
     },
     {
@@ -6384,10 +6149,32 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "Popover/PopoverTrigger/PopoverContent (./popover) para el selector de país; useId (React) genera el id; incluye un <input type='hidden' name=...> pensado para que un <form action={serverAction}> del padre reciba el string completo — el propio componente no invoca ninguna Server Action."
+    },
+    {
+      "path": "src/components/ui/progress.tsx",
+      "name": "Progress",
+      "domain": "design-system",
+      "rendering": "server",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": ["ninguno"],
+      "role": "progress-indicator",
+      "isolationDifficulty": "trivial",
+      "relevantStates": [
+        "decorativa (sin label: aria-hidden, sin role)",
+        "con label (role=progressbar + aria-valuenow)",
+        "0% / 100% / valor fuera de rango recortado",
+        "size sm",
+        "SegmentedProgress: segmentos discretos con y sin label"
+      ],
+      "proposedStoryTitle": "Design System/Progress",
+      "isolationNotes": "ninguno — divs con width inline y transicion CSS; el role depende de si viene label."
     },
     {
       "path": "src/components/ui/popover.tsx",
@@ -6408,9 +6195,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "@radix-ui/react-popover puro (Root/Trigger/Anchor/Close/Content con Portal); sin hooks propios — para mostrar estados en la story hay que componer Trigger+Content igual que hacen combobox/date-picker/phone-input."
     },
     {
@@ -6432,9 +6217,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "@radix-ui/react-collapsible puro (Root/Trigger/Content); base de progressive disclosure (Fase 3 UX) en BookingFormModal y ScheduleFields ('Opciones avanzadas' / 'Excepciones y detalles avanzados'). CollapsibleContent anima con accordion-down/up (globals.css) mapeando --accordion-content-height a --radix-collapsible-content-height vía inline style."
     },
     {
@@ -6456,9 +6239,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — solo compone 3 ReactNode (header/cards/table) con clases hidden/sm:block responsive; sin data-fetching ni estado."
     },
     {
@@ -6480,9 +6261,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "usa <a href> nativo a propósito (full reload en settings, no next/link) — sin useRouter ni Link; la única lógica es comparar href===activeHref."
     },
     {
@@ -6505,9 +6284,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "@radix-ui/react-dialog (mismo primitivo que dialog.tsx, re-expuesto como Sheet) + cva para side left/bottom; sin hooks propios."
     },
     {
@@ -6528,10 +6305,32 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "ninguno — div con clase 'skeleton' (animación CSS) y role condicional a la prop aria-hidden."
+    },
+    {
+      "path": "src/components/ui/stepper.tsx",
+      "name": "Stepper",
+      "domain": "design-system",
+      "rendering": "server",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": ["ninguno"],
+      "role": "progress-indicator",
+      "isolationDifficulty": "trivial",
+      "relevantStates": [
+        "paso en curso (aria-current=step)",
+        "primer paso",
+        "todo completado (current > ultimo)",
+        "sin hints",
+        "tone on-dark sobre fondo solido slate-950"
+      ],
+      "proposedStoryTitle": "Design System/Stepper",
+      "isolationNotes": "ninguno — <ol> puro. La story on-dark usa fondo SOLIDO: sobre gradiente axe no puede medir contraste."
     },
     {
       "path": "src/components/ui/submit-button.tsx",
@@ -6552,9 +6351,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "form"
-      ],
+      "providers": ["form"],
       "isolationNotes": "useFormStatus de 'react-dom' — solo reporta pending real dentro de un <form action={...}>; en react-dom@18.3.1 vanilla useFormStatus no existe, depende del alias a next/dist/compiled/react-dom que aporta @storybook/nextjs-vite. Ya resuelto: submit-button.stories.tsx (mismo directorio) ya envuelve cada story en un <form action={...}> decorator y lo usa como canario del setup."
     },
     {
@@ -6579,9 +6376,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ToastProvider"
-      ],
+      "providers": ["ToastProvider"],
       "isolationNotes": "@radix-ui/react-toast puro (Provider/Viewport/Root/Close/Title/Description); para renderizar un Toast individual en Storybook hay que envolverlo en <ToastProvider><ToastViewport/>...</ToastProvider> (ver toaster.tsx como referencia de composición real)."
     },
     {
@@ -6599,9 +6394,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "useToast de '@/hooks/use-toast' (store global fuera de src/components/ui) — Toaster() no acepta props, solo lee/despacha ese store; para forzar estados en una story haría falta un decorator que dispare el dispatch del hook antes del render (no alcanza con args), lo que duplica lo que ya cubre toast.tsx."
     },
     {
@@ -6623,9 +6416,7 @@
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
-      "providers": [
-        "ninguno"
-      ],
+      "providers": ["ninguno"],
       "isolationNotes": "@radix-ui/react-tooltip, con TooltipPrimitive.Provider embebido dentro del propio Tooltip (delayDuration=300ms por default) — no hace falta un TooltipProvider externo en la story."
     },
     {
@@ -6637,9 +6428,7 @@
       "isolationDifficulty": "trivial",
       "classification": "STORY_COMPLETED",
       "exclusionReason": "",
-      "relevantStates": [
-        "skeleton de PageHeader + 3 tarjetas de torneo"
-      ],
+      "relevantStates": ["skeleton de PageHeader + 3 tarjetas de torneo"],
       "proposedStoryTitle": "Admin/Torneos/Loading",
       "usesNetwork": false,
       "usesSession": false,
@@ -6867,11 +6656,7 @@
       "isolationDifficulty": "easy",
       "classification": "STORY_COMPLETED",
       "exclusionReason": "",
-      "relevantStates": [
-        "con goleadores",
-        "con goles sin autor",
-        "vacío"
-      ],
+      "relevantStates": ["con goleadores", "con goles sin autor", "vacío"],
       "proposedStoryTitle": "Admin/Torneos/GoleadoresTable",
       "usesNetwork": false,
       "usesSession": false,
@@ -6889,12 +6674,7 @@
       "isolationDifficulty": "easy",
       "classification": "STORY_COMPLETED",
       "exclusionReason": "",
-      "relevantStates": [
-        "por amarillas",
-        "por roja",
-        "sin partidos por delante",
-        "vacío"
-      ],
+      "relevantStates": ["por amarillas", "por roja", "sin partidos por delante", "vacío"],
       "proposedStoryTitle": "Admin/Torneos/SuspendidosPanel",
       "usesNetwork": false,
       "usesSession": false,

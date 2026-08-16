@@ -101,6 +101,7 @@
     "leaflet": "1.9.4",
     "lucide-react": "^1.24",
     "mercadopago": "^2.0",
+    "motion": "^13.1.0",
     "next": "^16.2.11",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",

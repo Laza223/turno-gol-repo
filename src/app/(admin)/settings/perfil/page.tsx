@@ -1,7 +1,13 @@
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { PerfilImagesForm } from './PerfilImagesForm'
 import { AccountEmailForm } from './AccountEmailForm'
-import { setTenantImageAction, removeTenantImageAction, updateUserEmailAction } from './actions'
+import { TenantContactForm } from './TenantContactForm'
+import {
+  setTenantImageAction,
+  removeTenantImageAction,
+  updateUserEmailAction,
+  updateTenantContactAction,
+} from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function PerfilPage() {
@@ -14,6 +20,12 @@ export default async function PerfilPage() {
       <SettingsTabs active="/settings/perfil" />
 
       <AccountEmailForm currentEmail={user.email} updateEmailAction={updateUserEmailAction} />
+
+      <TenantContactForm
+        currentPhone={tenant.phone}
+        currentEmail={tenant.email}
+        action={updateTenantContactAction}
+      />
 
       <div className="card-premium rounded-lg p-6">
         <h2 className="mb-6 text-base font-semibold text-foreground">Perfil público</h2>

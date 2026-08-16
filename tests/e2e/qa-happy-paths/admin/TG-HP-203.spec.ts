@@ -8,13 +8,19 @@ import { suppressPushPrompt } from '../_qa/session'
 const FRESH_STAFF_USER_ID = '00000000-0000-4000-8000-000000000005'
 
 /**
- * TG-HP-203 — Onboarding wizard (4 pasos), camino "Sin seña".
+ * TG-HP-203 — Onboarding wizard (4 pasos), camino "Saltar por ahora".
  * Rol: Admin (dueño) — requireAdminStaffAction en pasos 2-4.
  * Prereq: sesión de e2e-admin-fresh@turnogol.test (0 tenants) → freshAdminStorageState.
  * Flujo: Paso 1 Identidad → Paso 2 Horarios (default) → Paso 3 Canchas (precio) →
- *   Paso 4 Señas ("Sin seña por ahora") → /onboarding/listo → /dashboard.
- * Evidence anchors: src/app/onboarding/page.tsx:24-87, actions.ts:42-254,
- *   StepIdentity.tsx:68-160, StepCourts.tsx:94-158, StepPayments.tsx:82-203.
+ *   Paso 4 Primera reserva ("Saltar por ahora") → /onboarding/listo → /dashboard.
+ * "Saltar por ahora" a propósito, no cargar el turno: la grilla del paso 4 sale
+ * de los slots LIBRES DE HOY (getFirstBookingSlots), así que ejercitar el click
+ * dependería de la hora del día en que corre el runner (ventana muerta cerca de
+ * medianoche ART, mismo tipo de flakiness que ya documenta
+ * current-date-utc-ventana-muerta-art). Ese camino interactivo lo cubren las
+ * stories de Storybook (StepFirstBooking.stories.tsx) + el unit de la action.
+ * Evidence anchors: src/app/onboarding/[paso]/page.tsx, actions.ts:42-254,
+ *   StepIdentity.tsx, StepCourts.tsx, StepFirstBooking.tsx.
  */
 test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
   test('fresh admin completes the 4-step wizard and lands on /dashboard with tenant + court created', async ({
@@ -46,15 +52,22 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
       await expect(page).toHaveURL(/\/onboarding/)
 
       // ── Paso 1 — Tu complejo ──────────────────────────────────────────
-      await expect(page.getByRole('heading', { name: /Tu complejo/i })).toBeVisible({
+      // `level: 2`: sin nombre tipeado, el preview (`PublicCardPreview`, Fase
+      // 3) muestra un <h3> placeholder con el MISMO texto "Tu complejo" — sin
+      // el nivel, el locator resuelve a 2 elementos (strict mode violation).
+      await expect(
+        page.getByRole('heading', { level: 2, name: /Tu complejo/i }),
+      ).toBeVisible({
         timeout: 10_000,
       })
       await page.locator('#identity-name').fill(tenantName)
       await page.locator('#identity-address').fill('Av. Test QA 203')
       await page.locator('#identity-city').fill('Luján')
-      await page.locator('#identity-province').selectOption({ label: 'Buenos Aires' })
-      await page.locator('#identity-phone').fill('1122334455')
-      await page.locator('#identity-email').fill(`qa-203-${uniq}@turnogol.test`)
+      // Provincia es un Combobox (Fase 4, reemplaza el <select> de 24 opciones).
+      // Sin teléfono/email: el paso ya no los pide, se derivan de la cuenta
+      // staff que se registró en /register (doc10 §2).
+      await page.locator('#identity-province').click()
+      await page.getByRole('option', { name: 'Buenos Aires' }).click()
       await page.getByRole('button', { name: /Continuar/i }).click()
 
       // ── Paso 2 — Horarios (defaults saneados, Continuar sin tocar nada) ─
@@ -67,10 +80,10 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
       await page.getByPlaceholder(/20\.000/).fill('20.000')
       await page.getByRole('button', { name: /^Continuar$/i }).click()
 
-      // ── Paso 4 — Señas: "Sin seña por ahora" ────────────────────────────
+      // ── Paso 4 — Tu primera reserva: "Saltar por ahora" ─────────────────
       await expect(page.getByText(/Paso 4 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      await page.getByText(/Sin seña por ahora/i).click()
-      await page.getByRole('button', { name: /Terminar y ver mi complejo/i }).click()
+      await expect(page.getByRole('heading', { name: /Tu primera reserva/i })).toBeVisible()
+      await page.getByRole('button', { name: /Saltar por ahora/i }).click()
 
       // ── Cierre peak-end ──────────────────────────────────────────────
       await expect(page).toHaveURL(/\/onboarding\/listo/, { timeout: 15_000 })
@@ -114,7 +127,7 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
           dbWrites:
             'tenants (Paso 1) + tenant_staff_members + opening_hours UPDATE (Paso 2) + courts INSERT (Paso 3) + settings.onboarding_completed=true (Paso 4)',
           notes:
-            'Camino "Sin seña" — settings.onboarding_completed marcado por finishOnboardingAction.',
+            'Camino "Saltar por ahora" — settings.onboarding_completed marcado por finishOnboardingAction.',
         })
       } finally {
         await sql.end({ timeout: 5 })

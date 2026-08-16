@@ -7,7 +7,7 @@ import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
 import { priceForSlot } from '@/lib/booking/pricing'
 import type { CourtPricingData } from '@/modules/courts/court.types'
-import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import type { OpeningHours, TenantSettings } from '@/modules/tenants/tenant.types'
 import {
   enqueueNotification,
   enqueueTenantOwnerNotification,
@@ -557,8 +557,8 @@ async function createOnlineBookingImpl(
     const playerPhone = playerRows[0]?.phone ?? undefined
 
     const tenantRows = (await tx.execute(sql`
-      SELECT name, address FROM tenants WHERE id = ${tenantId} LIMIT 1
-    `)) as unknown as Array<{ name: string; address: string }>
+      SELECT name, address, settings FROM tenants WHERE id = ${tenantId} LIMIT 1
+    `)) as unknown as Array<{ name: string; address: string; settings: TenantSettings }>
     const tenantName = tenantRows[0]?.name ?? ''
     const tenantAddress = tenantRows[0]?.address ?? ''
 
@@ -611,6 +611,24 @@ async function createOnlineBookingImpl(
       courtId: booking.courtId,
       playerId: booking.playerId ?? undefined,
     })
+
+    // El aha moment real (plan de refactor §I): la primera reserva que entra
+    // SOLA para este tenant. Mismo predicado que `firstBookingReceived`
+    // (dashboard/queries.ts): `created_by_staff IS NULL`. El COUNT corre
+    // DESPUÉS del insert, adentro de la misma tx, así que ya incluye esta fila
+    // — `=== 1` es "esta es la primera", sin una segunda query de "¿existía
+    // antes?" separada que pudiera racear contra otra reserva concurrente.
+    const onlineCountRows = (await tx.execute(sql`
+      SELECT COUNT(*)::int AS count FROM bookings
+      WHERE tenant_id = ${tenantId} AND created_by_staff IS NULL
+    `)) as unknown as Array<{ count: number }>
+    if (onlineCountRows[0]?.count === 1) {
+      const completedAt = tenantRows[0]?.settings?.onboarding_completed_at
+      const daysSinceOnboarding = completedAt
+        ? Math.floor((Date.now() - new Date(completedAt).getTime()) / 86_400_000)
+        : null
+      track.activation('activation.first_online_booking', { tenantId, daysSinceOnboarding })
+    }
 
     if (booking.status === 'pending_payment') {
       // Hallazgo 1: arm the 6-min expiry timer. Routed through an injectable

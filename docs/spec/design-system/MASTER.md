@@ -288,8 +288,18 @@ esto) y estado (esto cambió). Si no comunica nada, no va.
 | `motion-slow` | 300ms | ease-out | Modales, sheets, drawers |
 | `motion-peak` | 400–600ms | ease-out / spring suave | SOLO momentos pico del jugador (§5.3) |
 
-Implementación: clases Tailwind (`duration-150`, `ease-out`, `tailwindcss-animate`). No agregar
+Implementación: clases Tailwind (`duration-150`, `ease-out`, `tw-animate-css`). No agregar
 librerías de animación al stack.
+
+**Excepción única: `/onboarding`** (enmienda 2026-08-15). El wizard usa `motion` con `LazyMotion` +
+`domAnimation` (~15 KB, y solo en esa ruta — vive fuera de `(admin)`, así que no toca el bundle del
+panel diario). Se concede porque la regla protege las superficies de *tarea repetida*, y el
+onboarding se recorre **una vez en la vida del complejo**: ahí la transición entre pasos y la
+animación de salida —lo único que CSS no resuelve bien— sí pagan su peso. Por el mismo motivo el
+techo de §5.2 no aplica al onboarding: rige el presupuesto del jugador (300 ms, hasta 600 ms una vez
+en el cierre). Obligatorio `<MotionConfig reducedMotion="user">`, o se rompe la política de
+`prefers-reduced-motion` de las otras tres capas. Cualquier otra ruta que quiera la librería vuelve
+a discutirse acá: esta excepción no sienta precedente.
 
 ### 5.2 Presupuesto por lado
 
@@ -612,7 +622,6 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 **dónde el código viola este MASTER hoy**. Al cerrar un ítem, borrarlo de acá.
 
 ### P0 — sistema (bloquean la coherencia)
-1. **Primitives sin tokens** (14/16 en `ui/`: button, input, badge, dialog, toast, etc. con clases light hardcodeadas y 0 `dark:`) → §6.1. Migrar al tocar cada uno; empezar por `button` y `badge` (los más visibles; `button` sigue con `bg-emerald-600` hardcodeado en vez de `bg-primary`, ya corregido a nivel token). Nota: `tooltip.tsx` (2026-07-02) nace tokenizado — es el patrón a seguir.
 2. **Formato de contenido inconsistente**: `$ 100` / `$50,00` / `$ 100,00` en el mismo flujo; `Caja — 2026-07-01` y `2026-07-03` (éxito jugador) en ISO → §8. Fix: helpers `formatMoney`/`formatDate` únicos + barrida (el dashboard ya migró a `formatArs` de `lib/format` — 2026-07-02; "Revenue hoy" murió con el rediseño de Inicio).
 
 ### P1 — vistas
@@ -626,6 +635,14 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 8. Teléfonos sin formato (`+541100000000` en página de complejo) → §8.4.
 9. Foto stock del login staff con marcas visibles (pelotas Nike) — reemplazar por foto propia/sin trademark.
 10. Docs `doc20`/`pages/*`: actualizar referencias cruzadas a esta v2 (player-area §0–1 superado, explorar hero adaptativo).
+
+Cerrado 2026-08-15: **P0.1 primitives sin tokens**. Verificado sobre el código, no sobre el
+changelog: `grep -E "(bg|text|border)-(white|black|gray|slate|zinc|neutral|stone)-" src/components/ui/*.tsx`
+no devuelve un solo color light sin par `dark:`. Los dos únicos hits son deliberados y correctos —
+`image-uploader.tsx` (overlay sobre foto: no depende del tema) y `stepper.tsx` tone `on-dark`
+(superficie de marca). El ítem había quedado abierto en el doc mucho después de estar cerrado en el
+código, y cuatro `pages/*.md` seguían difiriendo trabajo hacia él: `caja.md` §10.2, `reservas.md` §7.1,
+`reportes.md` §2, `abonados.md` §1 pueden usar los primitives directamente.
 
 Cerrados 2026-07-02: CTA fuera de AA (token `--primary` dual), token `--info`, rediseño de grilla
 (spec nueva `pages/grilla.md`: estados §2.6, densidad, colapso de madrugada, scroll-to-now, pulso

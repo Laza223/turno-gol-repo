@@ -81,3 +81,39 @@ describe('adminCrud rate-limit coverage on admin endpoints', () => {
     })
   }
 })
+
+// El check de arriba es POR ARCHIVO: si una sola action del archivo llama
+// adminRateLimited, el archivo entero pasa, aunque otra action del mismo
+// archivo no lo haga. Así pasó desapercibida `finishOnboardingAction` (B13 del
+// plan de refactor de onboarding) — era la única action de `actions.ts` sin
+// rate limit y el test seguía verde porque sus vecinas sí lo llamaban. Se
+// arregló en el código (Fase 1); este bloque repite el check por FUNCIÓN
+// sobre ese mismo archivo, para que la próxima action que se agregue sin
+// rate limit no vuelva a esconderse detrás de sus vecinas.
+describe('src/app/onboarding/actions.ts: cada action trae su propio rate limit (B13)', () => {
+  const file = path.join(ROOT, 'src/app/onboarding/actions.ts')
+  const src = read(file)
+  const actionNames = Array.from(src.matchAll(/^export async function (\w+Action)\(/gm)).map(
+    (m) => m[1],
+  )
+
+  it('encuentra las actions esperadas (guard contra un archivo vacío o movido)', () => {
+    expect(actionNames.length).toBeGreaterThan(0)
+  })
+
+  for (let i = 0; i < actionNames.length; i++) {
+    const name = actionNames[i]
+    it(`${name} llama adminRateLimited en su propio cuerpo, no solo en el archivo`, () => {
+      const needle = `export async function ${name}(`
+      const start = src.indexOf(needle)
+      const nextNeedle =
+        i + 1 < actionNames.length ? `export async function ${actionNames[i + 1]}(` : null
+      const end = nextNeedle ? src.indexOf(nextNeedle, start + needle.length) : src.length
+      const body = src.slice(start, end)
+      expect(
+        hasAdminRateLimit(body),
+        `${name} debe llamar adminRateLimited(...) dentro de su propio cuerpo`,
+      ).toBe(true)
+    })
+  }
+})

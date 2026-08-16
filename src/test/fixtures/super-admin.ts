@@ -49,6 +49,19 @@ export type SaRecentWebhook = {
 }
 export type SaQueueDepthEntry = { queue: string; depth: number | null; error?: 'unavailable' }
 
+/** Embudo de onboarding (Fase 7 del plan de refactor → `OnboardingFunnelData`). */
+export type SaOnboardingFunnelData = {
+  windowDays: number
+  startedViews: number
+  stepCompleted: { step: number; stepName: string; tenants: number }[]
+  completedTenants: number
+  firstBookingInWizard: number
+  linkShared: number
+  mpConnected: number
+  activationEvents: number
+  medianDaysToActivation: number | null
+}
+
 export type SaDashboardData = {
   mrrCents: number
   tenantsByStatus: Record<SaTenantStatus, number>
@@ -57,9 +70,10 @@ export type SaDashboardData = {
   signupsLast7Days: number
   queues: SaQueueDepthEntry[]
   recentWebhooks: SaRecentWebhook[]
+  onboardingFunnel: SaOnboardingFunnelData
 }
 
-/** Las 13 colas activas de pg-boss (`shared/jobs/dlq.ts` → ALL_QUEUES), copiadas a mano. */
+/** Las colas activas de pg-boss (`shared/jobs/dlq.ts` → ALL_QUEUES), copiadas a mano. */
 export const SA_QUEUES: readonly string[] = [
   'process-mp-webhook',
   'generate-abonado-slots',
@@ -74,6 +88,7 @@ export const SA_QUEUES: readonly string[] = [
   'reconcile-pending-payments',
   'push-send',
   'health-ping',
+  'onboarding-abandonment-sweep',
 ]
 
 const ZERO_BY_STATUS: Record<SaTenantStatus, number> = {
@@ -86,6 +101,45 @@ const ZERO_BY_STATUS: Record<SaTenantStatus, number> = {
   churned: 0,
   deleted: 0,
 }
+
+/** Embudo con caída típica: 1→2→3→4 decreciente, algo de activación. */
+export const onboardingFunnelData = (
+  overrides: Partial<SaOnboardingFunnelData> = {},
+): SaOnboardingFunnelData => ({
+  windowDays: 30,
+  startedViews: 22,
+  stepCompleted: [
+    { step: 1, stepName: 'Tu complejo', tenants: 15 },
+    { step: 2, stepName: 'Horarios', tenants: 13 },
+    { step: 3, stepName: 'Canchas', tenants: 10 },
+    { step: 4, stepName: 'Primera reserva', tenants: 9 },
+  ],
+  completedTenants: 9,
+  firstBookingInWizard: 6,
+  linkShared: 8,
+  mpConnected: 4,
+  activationEvents: 5,
+  medianDaysToActivation: 1.5,
+  ...overrides,
+})
+
+/** Sin actividad de onboarding en la ventana: cada paso en cero. */
+export const onboardingFunnelDataEmpty = (): SaOnboardingFunnelData =>
+  onboardingFunnelData({
+    startedViews: 0,
+    stepCompleted: [
+      { step: 1, stepName: 'Tu complejo', tenants: 0 },
+      { step: 2, stepName: 'Horarios', tenants: 0 },
+      { step: 3, stepName: 'Canchas', tenants: 0 },
+      { step: 4, stepName: 'Primera reserva', tenants: 0 },
+    ],
+    completedTenants: 0,
+    firstBookingInWizard: 0,
+    linkShared: 0,
+    mpConnected: 0,
+    activationEvents: 0,
+    medianDaysToActivation: null,
+  })
 
 /** Dashboard con datos representativos: MRR real, colas OK, algo de todo. */
 export const dashboardData = (overrides: Partial<SaDashboardData> = {}): SaDashboardData => ({
@@ -145,6 +199,7 @@ export const dashboardData = (overrides: Partial<SaDashboardData> = {}): SaDashb
       processedAt: hoursFromNow(-5),
     },
   ],
+  onboardingFunnel: onboardingFunnelData(),
   ...overrides,
 })
 
@@ -157,6 +212,7 @@ export const dashboardDataEmpty = (): SaDashboardData =>
     recentSignups: [],
     signupsLast7Days: 0,
     recentWebhooks: [],
+    onboardingFunnel: onboardingFunnelDataEmpty(),
   })
 
 /** pg-boss no pudo arrancar: `getQueueDepthsSafe` degrada cada cola a "no disponible". */

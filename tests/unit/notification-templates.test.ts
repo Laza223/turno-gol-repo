@@ -12,6 +12,7 @@ import {
   renderAdminLatePayment,
   renderAdminTransferExpired,
   renderAdminRefundFailed,
+  renderOnboardingAbandoned,
   renderTemplate,
   isTemplateName,
 } from '@/modules/notifications/templates'
@@ -382,6 +383,30 @@ describe('renderBookingRescheduled', () => {
   })
 })
 
+describe('renderOnboardingAbandoned', () => {
+  const DATA = { ownerName: 'Marcelo', tenantName: 'Complejo Norte', lastStepLabel: 'Horarios' }
+
+  it('subject nombra el complejo', () => {
+    const { subject } = renderOnboardingAbandoned(DATA)
+    expect(subject).toContain('Complejo Norte')
+  })
+
+  it('html dice en qué paso quedó, sin fingir que fue más lejos', () => {
+    const { html, text } = renderOnboardingAbandoned(DATA)
+    for (const body of [html, text!]) {
+      expect(body).toContain('Marcelo')
+      expect(body).toContain('Horarios')
+    }
+  })
+
+  it('se puede renderizar por nombre, como lo hace el worker de abandono', () => {
+    expect(isTemplateName('onboarding_abandoned')).toBe(true)
+    const out = renderTemplate('onboarding_abandoned', DATA)
+    expect(out.subject).toBeTruthy()
+    expect(out.html).toContain('Horarios')
+  })
+})
+
 describe('isTemplateName', () => {
   it('returns true for all valid template names', () => {
     const valid = [
@@ -397,6 +422,7 @@ describe('isTemplateName', () => {
       'admin_late_payment',
       'admin_transfer_expired',
       'admin_refund_failed',
+      'onboarding_abandoned',
     ]
     for (const name of valid) {
       expect(isTemplateName(name)).toBe(true)

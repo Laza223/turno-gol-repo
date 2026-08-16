@@ -34,10 +34,6 @@ const ALLOWLIST: Record<string, string> = {
   'src/components/ui/image-uploader.stories.tsx':
     'http://www.w3.org/2000/svg es el namespace del <svg> del placeholder, no una URL ' +
     'que se fetchea.',
-  'src/app/onboarding/components/StepCourts.stories.tsx':
-    'https://example.com/foto.webp es el valor de retorno de un `uploadPhotoAction` ' +
-    'mockeado que ninguna story de este archivo dispara (sin `userEvent.upload`) — ' +
-    'nunca se renderiza.',
   'src/components/admin/PushNotificationManager.stories.tsx':
     'https://fcm.googleapis.com/fake/abc123 es un string fijo dentro del `pushManager.' +
     'getSubscription()` stubeado (stubPushApis) — vive en memoria, no se fetchea.',

@@ -2,33 +2,47 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { eq } from 'drizzle-orm'
-import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { withTenantContext } from '@/shared/db/client'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { setStaffTenantClaim } from '@/modules/auth/auth.service'
 import {
   createTenantWithTrial,
   getStaffTenant,
-  updateOnboardingStep,
   completeOnboarding,
+  updateTenant,
 } from '@/modules/tenants/tenant.service'
-import { createTenantSchema } from '@/modules/tenants/tenant.schema'
+import { createTenantSchema, updateTenantIdentitySchema } from '@/modules/tenants/tenant.schema'
 import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/opening-hours.schema'
 import {
-  createCourt,
-  getCourtCountAndLimit,
-  listCourts,
-  validatePricingRulesCoverage,
-} from '@/modules/courts/court.service'
-import { createCourtSchema } from '@/modules/courts/court.schema'
-import { uniformRulesFromOpeningHours } from '@/modules/courts/pricing-grid'
-import { withTenantContext } from '@/shared/db/client'
-import { tenants } from '@/shared/db/schema'
+  createOnboardingCourts,
+  createOnboardingFirstBooking,
+  hasAnyBooking,
+  saveOnboardingSchedule,
+} from '@/modules/onboarding/onboarding.service'
+import {
+  wizardCourtsSchema,
+  wizardFirstBookingSchema,
+} from '@/modules/onboarding/onboarding.schema'
+import { stepPath, WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { requireAdminStaff, requireAdminStaffAction } from '@/modules/staff/guards'
+import { getStaffContact } from '@/modules/staff/staff.service'
+import { getCourtCountAndLimit } from '@/modules/courts/court.service'
+import { track } from '@/shared/observability/breadcrumbs'
 
-export type WizardActionResult = { success: true } | { success: false; error: string }
+/** slug de WIZARD_STEPS por número, para el `stepName` de los eventos de analytics. */
+function stepSlug(n: number): string | undefined {
+  return WIZARD_STEPS.find((s) => s.n === n)?.slug
+}
+
+export type { WizardActionResult } from '@/modules/onboarding/onboarding.types'
+export type { WizardCourtDraftInput } from '@/modules/onboarding/onboarding.schema'
+
+import type {
+  CreateFirstBookingResult,
+  WizardActionResult,
+} from '@/modules/onboarding/onboarding.types'
 
 // caza-bugs #7: los pasos 2-4 del wizard (horarios, canchas, cerrar
 // onboarding) son Configuración — solo-admin, igual que /settings y /canchas
@@ -37,7 +51,10 @@ export type WizardActionResult = { success: true } | { success: false; error: st
 // funcionando aunque setStaffTenantClaim del Paso 1 todavía no haya
 // propagado al JWT — no reintroduce el problema que este guard evitaba.
 
-export async function createTenantAction(formData: FormData): Promise<WizardActionResult> {
+export async function createTenantAction(
+  _prevState: WizardActionResult,
+  formData: FormData,
+): Promise<WizardActionResult> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff') redirect('/login')
   if (!user.staffUserId) return { success: false, error: 'Staff ID no disponible' }
@@ -49,25 +66,46 @@ export async function createTenantAction(formData: FormData): Promise<WizardActi
   // navegador y reenvio el Paso 1), no crear un duplicado ni una segunda fila en
   // tenant_staff_members: devolver success con el tenant existente.
   const existingTenant = await getStaffTenant(user.staffUserId)
-  if (existingTenant) return { success: true }
+  if (existingTenant) return { success: true, next: stepPath(2), hardNavigate: true }
+
+  // doc10 §2: el wizard NO pide teléfono/email del complejo — ya los pidió
+  // `/register` para esta misma cuenta. Se derivan de ahí, no del form.
+  const contact = await getStaffContact(user.staffUserId)
+  if (!contact?.phone) {
+    // Defensivo, no esperado en el camino normal: `/register` exige teléfono
+    // con el mismo validador que este schema. Sin fallback inventado —
+    // mismo espíritu que el fallback de `email.split('@')[0]` que se sacó de
+    // acá por guardar "juan" como teléfono del complejo.
+    return {
+      success: false,
+      error: 'Tu cuenta no tiene un teléfono cargado. Escribinos para completarlo.',
+    }
+  }
 
   const raw = {
     name: formData.get('name'),
     address: formData.get('address'),
     city: formData.get('city'),
     province: formData.get('province'),
-    phone: formData.get('phone') ?? user.email.split('@')[0],
-    email: formData.get('email') ?? user.email,
+    phone: contact.phone,
+    email: contact.email,
   }
 
   const parsed = createTenantSchema.safeParse(raw)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+    const error = parsed.error.issues[0]?.message ?? 'Datos inválidos'
+    track.onboarding('onboarding.step.error', { step: 1, stepName: stepSlug(1), reason: error })
+    return { success: false, error }
   }
 
   const tenant = await createTenantWithTrial({
     ...parsed.data,
     staffUserId: user.staffUserId,
+  })
+  track.onboarding('onboarding.step.completed', {
+    tenantId: tenant.id,
+    step: 1,
+    stepName: stepSlug(1),
   })
 
   try {
@@ -78,27 +116,62 @@ export async function createTenantAction(formData: FormData): Promise<WizardActi
     // Non-fatal: wizard continues. JWT will have tenant_id on next full login.
   }
 
-  revalidatePath('/onboarding')
-  return { success: true }
+  // `hardNavigate`: este es el único paso que reescribe la cookie de sesión, y una
+  // navegación client-side llegaría al paso 2 antes de que el browser la aplique
+  // (misma carrera que el fix #158 de login en WebKit móvil). Recarga completa.
+  return { success: true, next: stepPath(2), hardNavigate: true }
 }
 
 /**
- * "Volver" de los pasos 3 y 4 (pages/onboarding.md §2). `completedStep` es el
- * último paso que queda como completado: la página muestra `completedStep + 1`.
- * Solo permite moverse dentro del wizard (1..3) — nunca completar ni saltear.
+ * Paso 1 en revisita — corregir los datos del complejo sin salir del wizard.
+ *
+ * Existe porque el paso 2 ahora tiene "Volver" y ese botón necesita un destino
+ * real: hasta acá el paso 1 rebotaba al paso pendiente, así que un nombre mal
+ * tipeado no se podía arreglar hasta terminar todo el onboarding (y después
+ * tampoco — no hay pantalla de Configuración que edite estos campos).
+ *
+ * **El slug NO se recalcula.** Se fija al crear el complejo: para cuando el
+ * dueño vuelve a este paso el link público ya pudo viajar por WhatsApp, y
+ * renombrar la cancha no puede romper un link que alguien tiene guardado.
  */
-export async function setWizardStepAction(completedStep: number): Promise<WizardActionResult> {
-  if (!Number.isInteger(completedStep) || completedStep < 1 || completedStep > 3) {
-    return { success: false, error: 'Paso inválido' }
-  }
+export async function updateWizardTenantAction(
+  _prevState: WizardActionResult,
+  formData: FormData,
+): Promise<WizardActionResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
-  const limited = await adminRateLimited(auth.tenant.id)
+  const { tenant } = auth
+  const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  await updateOnboardingStep(auth.tenant.id, completedStep)
-  revalidatePath('/onboarding')
-  return { success: true }
+  // Sin phone/email: este paso ya no los pide (se editan en /settings/perfil,
+  // ver tenantContactSchema). `updateTenant` hace SET parcial —omitirlos acá
+  // no los toca en la fila.
+  const parsed = updateTenantIdentitySchema.safeParse({
+    name: formData.get('name'),
+    address: formData.get('address'),
+    city: formData.get('city'),
+    province: formData.get('province'),
+  })
+  if (!parsed.success) {
+    const error = parsed.error.issues[0]?.message ?? 'Datos inválidos'
+    track.onboarding('onboarding.step.error', {
+      tenantId: tenant.id,
+      step: 1,
+      stepName: stepSlug(1),
+      reason: error,
+    })
+    return { success: false, error }
+  }
+
+  await updateTenant(tenant.id, parsed.data)
+  track.onboarding('onboarding.step.completed', {
+    tenantId: tenant.id,
+    step: 1,
+    stepName: stepSlug(1),
+  })
+  revalidatePath('/onboarding', 'layout')
+  return { success: true, next: stepPath(2) }
 }
 
 /**
@@ -119,43 +192,30 @@ export async function saveWizardScheduleAction(
 
   const parsed = horariosSchema.safeParse(horariosFormDataToInput(formData))
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Horarios inválidos.' }
+    const error = parsed.error.issues[0]?.message ?? 'Horarios inválidos.'
+    track.onboarding('onboarding.step.error', {
+      tenantId: tenant.id,
+      step: 2,
+      stepName: stepSlug(2),
+      reason: error,
+    })
+    return { success: false, error }
   }
 
   // closesNextDay vive en su columna, NO dentro de opening_hours.
   const { closesNextDay, ...openingHours } = parsed.data
 
-  await withTenantContext(tenant.id, async (tx) => {
-    await tx
-      .update(tenants)
-      .set({ openingHours, closesNextDay, updatedAt: new Date() })
-      .where(eq(tenants.id, tenant.id))
+  await saveOnboardingSchedule(tenant.id, openingHours, closesNextDay)
+  track.onboarding('onboarding.step.completed', {
+    tenantId: tenant.id,
+    step: 2,
+    stepName: stepSlug(2),
   })
-
-  await updateOnboardingStep(tenant.id, 2)
-  revalidatePath('/onboarding')
-  return { success: true }
+  revalidatePath('/onboarding', 'layout')
+  return { success: true, next: stepPath(3) }
 }
 
-// Paso 3 — drafts de canchas del wizard. El precio es UNO por cancha (modo
-// uniforme, pages/onboarding.md §5); el ajuste por franja vive en /canchas.
-const wizardCourtsSchema = z.object({
-  courts: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1, 'Poné un nombre a cada cancha').max(100),
-        format: z.number().int(),
-        surfaceType: z.enum(['synthetic_grass', 'natural_grass', 'cement', 'tile']),
-        isCovered: z.boolean(),
-        priceCents: z.number().int().positive('Cargá el precio por turno de cada cancha'),
-        photos: z.array(z.string()).optional(),
-      }),
-    )
-    .max(20, 'Máximo 20 canchas por vez'),
-})
-
-export type WizardCourtDraftInput = z.infer<typeof wizardCourtsSchema>['courts'][number]
-
+/** Paso 3 — canchas y precios. La lógica vive en el módulo; acá solo el borde. */
 export async function createWizardCourtsAction(input: unknown): Promise<WizardActionResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
@@ -165,169 +225,123 @@ export async function createWizardCourtsAction(input: unknown): Promise<WizardAc
 
   const parsed = wizardCourtsSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
-  }
-  const drafts = parsed.data.courts
-
-  // Validación completa por draft con el schema canónico de canchas (formato
-  // 4..11, superficie, reglas de precio bien formadas).
-  const inputs: z.infer<typeof createCourtSchema>[] = []
-  for (const draft of drafts) {
-    const rules = uniformRulesFromOpeningHours(
-      tenant.openingHours,
-      tenant.closesNextDay,
-      draft.priceCents,
-    )
-    if (rules.length === 0) {
-      return {
-        success: false,
-        error:
-          'Tus horarios no tienen días abiertos. Volvé al paso Horarios y abrí al menos un día.',
-      }
-    }
-    const courtParsed = createCourtSchema.safeParse({
-      name: draft.name,
-      surfaceType: draft.surfaceType,
-      isCovered: draft.isCovered,
-      format: draft.format,
-      pricing: { rules },
-      photos: draft.photos,
+    const error = parsed.error.issues[0]?.message ?? 'Datos inválidos'
+    track.onboarding('onboarding.step.error', {
+      tenantId: tenant.id,
+      step: 3,
+      stepName: stepSlug(3),
+      reason: error,
     })
-    if (!courtParsed.success) {
-      return {
-        success: false,
-        error: courtParsed.error.issues[0]?.message ?? 'Datos inválidos',
-      }
-    }
-    // Backstop de cobertura (mismo gate que /canchas): huecos = horas operativas
-    // irreservables online.
-    const coverage = validatePricingRulesCoverage(rules, tenant.openingHours)
-    if (!coverage.valid) {
-      const sample = coverage.gaps
-        .slice(0, 3)
-        .map((g) => `${g.day} ${g.time}`)
-        .join(', ')
-      return { success: false, error: `Precios sin cubrir: ${sample}` }
-    }
-    inputs.push(courtParsed.data)
+    return { success: false, error }
   }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    const { count, maxCourts } = await getCourtCountAndLimit(tenant.id, tx)
-    // Continuar sin drafts es válido en una revisita ("Volver") si ya hay canchas.
-    if (inputs.length === 0 && count === 0) {
-      return { success: false as const, error: 'Agregá al menos una cancha para continuar.' }
-    }
+  const result = await createOnboardingCourts(tenant, parsed.data.courts)
+  if (!result.success) {
+    track.onboarding('onboarding.step.error', {
+      tenantId: tenant.id,
+      step: 3,
+      stepName: stepSlug(3),
+      reason: result.error,
+    })
+    return result
+  }
 
-    // Idempotencia del paso Canchas (🔴 QA 2026-08-13): el Paso 1 ya frena el
-    // reenvío con `getStaffTenant` (comentario #35), pero este iba derecho al
-    // INSERT, así que volver con "Atrás" y reenviar —o un doble POST— dejaba
-    // 3 filas "Cancha 1" idénticas, todas `online` y bookeables. Saltear por
-    // nombre ya existente es idempotente ante el reenvío y sigue permitiendo
-    // agregar canchas nuevas en una revisita, que es el caso que protege el
-    // early-return de arriba.
-    const existingNames = new Set(
-      (await listCourts(tenant.id, tx)).map((c) => c.name.trim().toLocaleLowerCase('es')),
-    )
-    const toCreate = inputs.filter(
-      (data) => !existingNames.has(data.name.trim().toLocaleLowerCase('es')),
-    )
-
-    if (maxCourts !== null && count + toCreate.length > maxCourts) {
-      return {
-        success: false as const,
-        error: `Tu plan soporta hasta ${maxCourts} canchas. Hacé upgrade para agregar más.`,
-      }
-    }
-    for (const data of toCreate) {
-      await createCourt(tenant.id, data, tx)
-    }
-    return { success: true as const }
+  track.onboarding('onboarding.step.completed', {
+    tenantId: tenant.id,
+    step: 3,
+    stepName: stepSlug(3),
   })
-
-  if (!result.success) return result
-
-  await updateOnboardingStep(tenant.id, 3)
-  revalidatePath('/onboarding')
-  return { success: true }
+  if (parsed.data.courts.length > 0) {
+    // Aproximado: cuenta lo ENVIADO en este submit, no lo efectivamente creado
+    // (createOnboardingCourts saltea duplicados por nombre en un reenvío —
+    // caza-bugs #7). Suficiente para el embudo; el caso de reenvío es raro.
+    track.onboarding('onboarding.courts.added', {
+      tenantId: tenant.id,
+      count: parsed.data.courts.length,
+    })
+  }
+  revalidatePath('/onboarding', 'layout')
+  return { success: true, next: stepPath(4) }
 }
 
 /**
- * Paso 4 — "Sin seña por ahora" (o "Ir a mi complejo" con MP ya conectado).
- * Cierra el wizard y aterriza en el momento peak-end (/onboarding/listo), no en
- * un dashboard mudo. El camino "Sí, cobrar seña" termina en /api/mp/callback.
+ * Paso 4 — cargar la primera reserva. Nunca navega (el turno aparece inline
+ * en la grilla del propio paso, ver StepFirstBooking): por eso el contrato es
+ * `CreateFirstBookingResult`, no `WizardActionResult`. Sigue el paso hasta el
+ * final en 2 y 3 no marca `onboarding_step`: es skippable siempre (§D del
+ * plan), así que no hay "completado" que trackear acá — cerrar el wizard es
+ * `finishOnboardingAction`, con o sin turno cargado.
+ */
+export async function createOnboardingFirstBookingAction(
+  input: unknown,
+): Promise<CreateFirstBookingResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsed = wizardFirstBookingSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  const result = await withTenantContext(tenant.id, (tx) =>
+    createOnboardingFirstBooking(tenant.id, user.staffUserId, parsed.data, tx),
+  )
+  if (!result.success) {
+    // Sin `onboarding.step.error` acá: no navega ni bloquea nada (el paso es
+    // skippable), así que un slot recién tomado no es un tropiezo del embudo —
+    // el mini-form ya lo maneja mostrando el error inline.
+    return result
+  }
+
+  track.onboarding('onboarding.first_booking.created', { tenantId: tenant.id })
+  revalidatePath('/onboarding', 'layout')
+  return result
+}
+
+/**
+ * Paso 4 — "Terminar y ver mi complejo" (con o sin turno cargado) o "Saltar
+ * por ahora". Cierra el wizard y aterriza en el momento peak-end
+ * (/onboarding/listo), no en un dashboard mudo. La seña (MercadoPago) ya no
+ * se decide acá — se movió a la checklist del dashboard (§D del plan, Fase 5):
+ * conectarla es /api/mp/oauth-start desde /settings/facturacion, fuera del wizard.
  */
 export async function finishOnboardingAction(): Promise<void> {
   const { tenant } = await requireAdminStaff()
+
+  // Era la única action del archivo sin rate limit. El test de cobertura mira por
+  // ARCHIVO, no por action, así que el hueco pasaba en verde. A diferencia de las
+  // otras, esta no puede devolver el error: su contrato es `Promise<void>` y
+  // termina en redirect. Rebotar al wizard es el equivalente honesto — el paso 4
+  // se vuelve a mostrar y el dueño reintenta.
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) redirect('/onboarding')
+
+  // Un tenant recién creado no tiene reservas propias todavía: si hay al menos
+  // una, solo puede ser la que el propio dueño cargó en el paso 4 (mismo
+  // razonamiento que /onboarding/listo). `first_booking.created` ya se emitió
+  // en ese momento (createOnboardingFirstBookingAction) — acá solo hace falta
+  // el caso contrario, que no tiene ningún otro punto de emisión posible.
+  const [hasFirstBooking, { count: courtsCount }] = await Promise.all([
+    hasAnyBooking(tenant.id),
+    withTenantContext(tenant.id, (tx) => getCourtCountAndLimit(tenant.id, tx)),
+  ])
+  if (!hasFirstBooking) {
+    track.onboarding('onboarding.first_booking.skipped', { tenantId: tenant.id })
+  }
+
   await completeOnboarding(tenant.id)
+  track.onboarding('onboarding.completed', { tenantId: tenant.id, courtsCount, hasFirstBooking })
   redirect('/onboarding/listo')
 }
 
-export type UploadPhotoActionResult =
-  { success: true; url: string } | { success: false; error: string }
-
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024
-
-export async function uploadOnboardingCourtPhotoAction(
-  formData: FormData,
-): Promise<UploadPhotoActionResult> {
-  const auth = await requireAdminStaffAction()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { tenant } = auth
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { success: false, error: limited }
-
-  const { isR2Configured, putImage, publicUrl } = await import('@/shared/storage/r2')
-
-  if (!isR2Configured()) {
-    console.warn('[storage] R2 no configurado — upload deshabilitado en este entorno')
-    return { success: false, error: 'Storage no configurado en este entorno' }
-  }
-
-  const file = formData.get('file')
-  if (!(file instanceof Blob) || file.size === 0) {
-    return { success: false, error: 'Archivo inválido' }
-  }
-  if (file.size > MAX_PHOTO_BYTES) {
-    return { success: false, error: 'La imagen no puede superar 2MB' }
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const key = `${tenant.id}/courts/draft/${crypto.randomUUID()}.webp`
-
-  try {
-    await putImage(key, bytes, 'image/webp')
-  } catch {
-    return { success: false, error: 'No se pudo subir la imagen' }
-  }
-
-  const url = publicUrl(key)
-  return { success: true, url }
-}
-
-export async function deleteOnboardingCourtPhotoAction(url: string): Promise<WizardActionResult> {
-  const auth = await requireAdminStaffAction()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { tenant } = auth
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { success: false, error: limited }
-
-  const { isR2Configured, keyFromPublicUrl, deleteImage } = await import('@/shared/storage/r2')
-
-  if (!isR2Configured()) {
-    console.warn('[storage] R2 no configurado — borrado deshabilitado en este entorno')
-    return { success: false, error: 'Storage no configurado en este entorno' }
-  }
-
-  const key = keyFromPublicUrl(url)
-  if (!key || !key.startsWith(`${tenant.id}/`)) {
-    return { success: false, error: 'Imagen inválida' }
-  }
-
-  try {
-    await deleteImage(key)
-    return { success: true }
-  } catch {
-    return { success: false, error: 'No se pudo borrar la imagen' }
-  }
-}
+// Acá vivían `uploadOnboardingCourtPhotoAction` y `deleteOnboardingCourtPhotoAction`.
+// El uploader del paso 3 subía a `${tenantId}/courts/draft/…` y el submit armaba
+// el payload SIN el campo `photos`: la cancha se creaba sin foto y el objeto
+// quedaba huérfano en R2 para siempre. La foto no bloquea recibir reservas, y
+// `/settings/canchas` ya tiene el mismo uploader contra la cancha real — así que
+// el paso 3 la deja de pedir en vez de arrastrar dos actions para perder el
+// archivo. Los objetos ya subidos bajo ese prefijo quedan en el bucket: R2 no
+// tiene barrido y el prefijo es inerte (nadie lo lee ni lo vuelve a escribir).

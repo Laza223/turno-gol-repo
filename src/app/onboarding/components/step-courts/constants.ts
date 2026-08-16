@@ -12,6 +12,14 @@ export const SURFACE_OPTIONS = [
 
 export type SurfaceType = (typeof SURFACE_OPTIONS)[number]['value']
 
+/**
+ * Un borrador de cancha del paso 3.
+ *
+ * Sin fotos a propósito: el wizard tenía un uploader por cancha cuyo resultado
+ * el submit NUNCA mandaba —la cancha se creaba sin foto y el blob quedaba
+ * huérfano en R2— y encima es lo primero que sobra en un alta rápida. Se cargan
+ * después desde `/settings/canchas`, que ya tiene el mismo uploader.
+ */
 export type Draft = {
   key: number
   name: string
@@ -20,7 +28,6 @@ export type Draft = {
   isCovered: boolean
   /** Precio por turno en centavos (MoneyInput ya entrega/recibe cents). */
   priceCents: number | null
-  photos: string[]
 }
 
 /** Precio "desde" de una cancha existente para la fila-resumen. */

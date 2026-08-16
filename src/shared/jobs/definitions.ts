@@ -19,6 +19,7 @@ export const QUEUE_RETRY_PENDING_REFUNDS = 'retry-pending-refunds'
 export const QUEUE_HEALTH_PING = 'health-ping'
 export const QUEUE_RECONCILE_ACCOUNTING_DRIFT = 'reconcile-accounting-drift'
 export const QUEUE_DAILY_SUMMARY = 'daily-summary'
+export const QUEUE_ONBOARDING_ABANDONMENT = 'onboarding-abandonment-sweep'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 

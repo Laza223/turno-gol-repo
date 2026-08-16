@@ -16,6 +16,41 @@ export interface StaffRosterMember {
 }
 
 /**
+ * Contacto de la cuenta staff (email + teléfono), para derivar el contacto
+ * público del complejo al crearlo (`createTenantAction` — doc10 §2: "NO pedir
+ * teléfono/email del complejo", se toman de la cuenta que ya los pidió en
+ * `/register`). Se llama JUSTO antes de que el tenant exista — es el paso que
+ * lo crea — así que no hay `app.current_tenant_id` seteado todavía.
+ *
+ * `staff_users` SÍ tiene RLS (migr. 006 `ENABLE` + 036 `FORCE`): la única
+ * policy de SELECT (`staff_see_same_tenant_staff`) exige una fila ACTIVA en
+ * `tenant_staff_members` para el tenant actual — exactamente lo que todavía
+ * no existe acá. Bajo el pool restringido (`getDb`, PR #30) esta query
+ * siempre devolvía 0 filas, sin excepción, para TODO alta nueva: el Paso 1
+ * del wizard quedaba bloqueado con "Tu cuenta no tiene un teléfono cargado"
+ * para cualquier cuenta recién registrada, no un edge case — encontrado
+ * recién en e2e porque los tests de integración corren como superusuario
+ * (`ensureRoles`) y nunca ejercitan RLS de verdad. Mismo patrón de acceso que
+ * `getStaffTenant` en tenant.service.ts: pool bypass-capable (`getWorkerDb`),
+ * filtrado explícito por un `staffUserId` ya autenticado (no user-controlled).
+ *
+ * `phone` puede dar `null` — la columna lo permite (staff invitado, no
+ * auto-registrado) aunque el form de `/register` lo exige. Es responsabilidad
+ * del caller decidir qué hacer si falta: no inventar un valor acá.
+ */
+export async function getStaffContact(
+  staffUserId: string,
+): Promise<{ email: string; phone: string | null } | null> {
+  const db = getWorkerDb()
+  const rows = await db
+    .select({ email: staffUsers.email, phone: staffUsers.phone })
+    .from(staffUsers)
+    .where(eq(staffUsers.id, staffUserId))
+    .limit(1)
+  return rows[0] ?? null
+}
+
+/**
  * Rol del miembro ACTIVO en un tenant, leído de la DB (no del JWT: el claim
  * `role` queda viejo si un admin cambia el rol después del login). Se llama
  * SIEMPRE antes de `withTenantContext` (guards.ts, with-tenant.ts,

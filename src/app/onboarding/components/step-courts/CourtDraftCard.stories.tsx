@@ -3,10 +3,6 @@ import { expect, fn, userEvent, within } from 'storybook/test'
 import type { Draft } from './constants'
 import { CourtDraftCard } from './CourtDraftCard'
 
-// PNG transparente 1x1 — evita depender de una imagen real en la red.
-const FAKE_PHOTO_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
-
 const draft = (overrides: Partial<Draft> = {}): Draft => ({
   key: 1,
   name: 'Cancha 1',
@@ -14,7 +10,6 @@ const draft = (overrides: Partial<Draft> = {}): Draft => ({
   surfaceType: 'synthetic_grass',
   isCovered: false,
   priceCents: 2000000,
-  photos: [],
   ...overrides,
 })
 
@@ -39,8 +34,6 @@ const meta = {
     onToggle: fn(),
     onUpdate: fn(),
     onRemove: fn(),
-    onUploadPhoto: fn(async () => ({ success: true as const, url: FAKE_PHOTO_URL })),
-    onDeletePhoto: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof CourtDraftCard>
 
@@ -103,12 +96,16 @@ export const Expandido: Story = {
   },
 }
 
-/** Con foto ya subida (max=1): el slot de carga desaparece, queda "Quitar imagen". */
-export const ConFoto: Story = {
-  args: { draft: draft({ photos: [FAKE_PHOTO_URL] }), isExpanded: true },
+/**
+ * La tarjeta ya no pide foto: el uploader que vivía acá subía a R2 y el submit
+ * del paso descartaba el resultado. Se cargan desde `/settings/canchas`, contra
+ * la cancha real.
+ */
+export const SinUploaderDeFoto: Story = {
+  args: { draft: draft(), isExpanded: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText('Quitar imagen')).toBeInTheDocument()
     await expect(canvas.queryByLabelText('Subir foto')).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/foto de la cancha/i)).not.toBeInTheDocument()
   },
 }

@@ -28,12 +28,16 @@ async function ensureAdvancedOpen(canvas: ReturnType<typeof within>) {
 /**
  * `useFormState` + Server Action por prop (mismo patrón que ReservasPolicyForm,
  * ver `src/app/(admin)/settings/reservas/ReservasPolicyForm.stories.tsx`).
+ *
+ * Desde el split panel (Fase 3), `StepSchedule` arma su propio `<WizardShell>`
+ * con preview (`WeekPreview`) — `fullscreen`, sin decorator: el shell pone el
+ * `card-premium` solo.
  */
 const meta = {
   title: 'Onboarding/StepSchedule',
   component: StepSchedule,
   parameters: {
-    layout: 'padded',
+    layout: 'fullscreen',
     // Acá había una exclusión de axe (`.h-7.text-emerald-600`) por el botón
     // "Restablecer" de ScheduleFields.tsx, que en su momento usaba `text-emerald-600`
     // (3.76:1 sobre blanco, no pasa AA). Ese archivo ya se arregló a
@@ -41,14 +45,6 @@ const meta = {
     // ella. Una exclusión que sobrevive a su motivo es peor que ninguna: hace pensar
     // que hay deuda donde ya no la hay, y tapa cualquier bug NUEVO en ese selector.
   },
-  // Paso 2 vive dentro de `.card-premium rounded-2xl p-6 md:p-8` (ancho, wide=true).
-  decorators: [
-    (Story) => (
-      <div className="card-premium max-w-2xl rounded-2xl p-6 md:p-8">
-        <Story />
-      </div>
-    ),
-  ],
   args: {
     hours: openingHours(),
     closesNextDay: false,
@@ -71,6 +67,9 @@ export const HorarioPorDefecto: Story = {
     await expect(
       await canvas.findByRole('checkbox', { name: /cierra después de medianoche/i }),
     ).not.toBeChecked()
+    // El preview (WeekPreview, columna derecha en desktop / barra mobile) vive
+    // dos veces en el DOM — mismo patrón que el indicador de progreso.
+    await expect(canvas.getAllByText('Tu semana').length).toBeGreaterThan(0)
   },
 }
 
@@ -107,5 +106,21 @@ export const ErrorDelServidor: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /continuar/i }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Horarios inválidos.')
+  },
+}
+
+/**
+ * Era el único paso sin salida hacia atrás: desde Horarios no había forma de
+ * corregir el nombre o la dirección del complejo. El paso 1 ahora acepta la
+ * revisita y edita en vez de crear.
+ */
+export const VolverEsUnLink: Story = {
+  args: { action: fn(async () => ({ success: true as const })) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: /^volver$/i })).toHaveAttribute(
+      'href',
+      '/onboarding/complejo',
+    )
   },
 }

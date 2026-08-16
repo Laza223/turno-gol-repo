@@ -55,9 +55,7 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
       // `level: 2`: sin nombre tipeado, el preview (`PublicCardPreview`, Fase
       // 3) muestra un <h3> placeholder con el MISMO texto "Tu complejo" — sin
       // el nivel, el locator resuelve a 2 elementos (strict mode violation).
-      await expect(
-        page.getByRole('heading', { level: 2, name: /Tu complejo/i }),
-      ).toBeVisible({
+      await expect(page.getByRole('heading', { level: 2, name: /Tu complejo/i })).toBeVisible({
         timeout: 10_000,
       })
       await page.locator('#identity-name').fill(tenantName)

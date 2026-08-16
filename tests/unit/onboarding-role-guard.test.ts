@@ -49,8 +49,7 @@ vi.mock('@/modules/courts/court.service', () => ({
 // sin este mock, `finishOnboardingAction` explota contra el `{}` que
 // `withTenantContext` devuelve como tx falso.
 vi.mock('@/modules/onboarding/onboarding.service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/modules/onboarding/onboarding.service')>()
+  const actual = await importOriginal<typeof import('@/modules/onboarding/onboarding.service')>()
   return { ...actual, hasAnyBooking: vi.fn(async () => false) }
 })
 

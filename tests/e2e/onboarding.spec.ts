@@ -99,9 +99,7 @@ test.describe('onboarding', () => {
 
       // Step 1: identidad del complejo. `level: 2`: ver comentario de arriba
       // (el preview también dice "Tu complejo" mientras el nombre está vacío).
-      await expect(
-        page.getByRole('heading', { level: 2, name: /tu complejo/i }),
-      ).toBeVisible({
+      await expect(page.getByRole('heading', { level: 2, name: /tu complejo/i })).toBeVisible({
         timeout: 10_000,
       })
       // Nombre "equivocado" a propósito: se corrige más abajo con "Volver", y

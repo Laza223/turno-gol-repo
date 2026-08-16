@@ -95,7 +95,7 @@ export function Stepper({ steps, current, tone = 'default', className }: Stepper
                 <m.span
                   initial={{ scale: 0.4, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 17, duration: 0.3 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   className="flex"
                 >
                   <Check className="h-4 w-4" aria-hidden />

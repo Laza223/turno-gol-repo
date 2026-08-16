@@ -94,7 +94,7 @@ export function SegmentedProgress({ total, completed, label, className }: Segmen
             <m.span
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 26, duration: 0.4 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 26 }}
               style={{ transformOrigin: 'left' }}
               className="block h-full rounded-full bg-primary"
             />

@@ -5,6 +5,7 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { bookings, courts, players } from '@/shared/db/schema'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { artTodayStr } from '@/shared/dates/art'
 import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -30,7 +31,7 @@ export const GET = withTenant(async (req: NextRequest, user, tx) => {
   if (throttled) return throttled
 
   const { searchParams } = new URL(req.url)
-  const dateParam = searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
+  const dateParam = searchParams.get('date') ?? artTodayStr()
   const courtId = searchParams.get('court_id')
   const status = searchParams.get('status')
   const cursorParam = searchParams.get('cursor')

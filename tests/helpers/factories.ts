@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker'
 import type { Sql } from 'postgres'
 import { artDateOf } from '@/shared/time/art-date'
+import { artTodayStr } from '@/shared/dates/art'
 
 const dayMs = 86400000
 
@@ -52,7 +53,7 @@ export async function insertAbonado(
     VALUES (
       ${tenantId}, ${courtId}, ${faker.person.fullName()}, ${faker.phone.number()},
       ${dayOfWeek}, '08:00', '09:00',
-      ${1500000}, ${new Date().toISOString().slice(0, 10)}
+      ${1500000}, ${artTodayStr()}
     )
     RETURNING id
   `
@@ -75,7 +76,7 @@ export async function insertTournament(
       ${overrides.name ?? `Torneo ${faker.word.noun()}`},
       ${slug},
       ${overrides.format ?? 'league'}::tournament_format,
-      ${new Date().toISOString().slice(0, 10)}
+      ${artTodayStr()}
     )
     RETURNING id
   `

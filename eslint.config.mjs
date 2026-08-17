@@ -81,6 +81,30 @@ export default tseslint.config(
           message:
             'bg-emerald-600 con texto blanco falla WCAG AA en dark mode (el token --primary dark es emerald-500+slate-950, no emerald-600+white). Usá <Button> o las clases bg-primary/text-primary-foreground.',
         },
+
+        // Día calendario derivado en UTC. Argentina es UTC-3: entre las 21:00 y
+        // la medianoche ART, `new Date().toISOString()` ya dice "mañana". Un
+        // default de listado, un bucketing de métricas o un seed de test que
+        // pase por acá salta de día todas las noches durante 3 horas — la clase
+        // de bug más repetida del repo (ventana muerta 21-24 ART).
+        //
+        // Los dos selectores exigen `new Date()` SIN argumentos como receptor,
+        // así que NO tocan lo legítimo: el idioma ART del repo
+        // (`new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)`) ni
+        // el formateo de una columna DATE que ya venía de la base
+        // (`fila.startsOn.toISOString().slice(0, 10)`).
+        {
+          selector:
+            "CallExpression[callee.property.name=/^(slice|substring)$/][arguments.0.value=0][arguments.1.value=10][callee.object.type='CallExpression'][callee.object.callee.property.name='toISOString'][callee.object.callee.object.type='NewExpression'][callee.object.callee.object.callee.name='Date'][callee.object.callee.object.arguments.length=0]",
+          message:
+            'new Date().toISOString().slice(0,10) deriva el día en UTC: entre las 21:00 y la medianoche ART ya devuelve el día siguiente. Usá artTodayStr() (@/shared/dates/art) para "hoy" en Argentina, artDateOf (@/shared/time/art-date) para el día ART de un instante, u operatingDateOf (@/shared/time/operating-day) cuando el día es el OPERATIVO del complejo.',
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='split'][arguments.0.value='T'][callee.object.type='CallExpression'][callee.object.callee.property.name='toISOString'][callee.object.callee.object.type='NewExpression'][callee.object.callee.object.callee.name='Date'][callee.object.callee.object.arguments.length=0]",
+          message:
+            "new Date().toISOString().split('T')[0] deriva el día en UTC: entre las 21:00 y la medianoche ART ya devuelve el día siguiente. Usá artTodayStr() (@/shared/dates/art), artDateOf (@/shared/time/art-date) u operatingDateOf (@/shared/time/operating-day) según el caso.",
+        },
       ],
     },
   },
@@ -405,6 +429,63 @@ export default tseslint.config(
               allowTypeImports: true,
               message:
                 'Capa de composición importando la capa de ruteo. La dirección es app → server → modules → shared, nunca al revés.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    // El pool equivocado es SILENCIOSO, y por eso necesita un candado mecánico.
+    //
+    // `getDb`/`getSql` usan DATABASE_URL, que en producción apunta a un rol con
+    // RLS enforced (`bypassRlsCheck` en launch-check.ts falla el deploy si no).
+    // Un worker hace sweeps CROSS-TENANT: sin `app.current_tenant_id` seteado,
+    // ese pool no tira error — devuelve CERO FILAS y el job reporta éxito.
+    // Historial: el worker de data-retention abortaba mudo; getMrrCents y
+    // listTenants devolvían $0 en el panel de super-admin. Ninguno de los dos
+    // rompió un test: local corre con superusuario, que ve todo.
+    //
+    // El pool correcto es `getWorkerDb`/`getWorkerSql` (WORKER_DATABASE_URL,
+    // rol BYPASSRLS). Para MUTAR un solo tenant conocido sigue siendo correcto
+    // `withTenantContext` sobre el pool normal.
+    //
+    // `src/modules/super-admin` queda FUERA a propósito: ahí `getDb` se usa
+    // sobre tablas globales sin RLS (staff_users, system_admins) y los caminos
+    // cross-tenant ya van por el pool worker; la regla solo generaría disables.
+    name: 'turnogol/jobs-worker-pool',
+    files: ['src/shared/jobs/**/*.ts'],
+    rules: {
+      'no-restricted-imports': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/shared/db/client',
+              importNames: ['getDb', 'getSql'],
+              message:
+                'En src/shared/jobs/** el pool de la app corre bajo RLS en producción: un sweep cross-tenant ve CERO FILAS en silencio y el job reporta éxito (pasó con data-retention y con getMrrCents/$0). Usá getWorkerDb/getWorkerSql (BYPASSRLS). Si mutás UN tenant conocido, withTenantContext. Excepción real: liveness del propio DSN de app — ahí va un eslint-disable con el motivo escrito (ver health-ping.worker.ts).',
+            },
+          ],
+          // REPETIDO a propósito, mismo motivo que en `turnogol/capas-shared`:
+          // este bloque es posterior a `capas-nadie-importa-app-ni-server`, que
+          // matchea `src/shared/**`, así que REEMPLAZA su config de la regla en
+          // vez de sumarse. Sin esta copia, jobs/ podría importar @/app y
+          // @/server sin que nadie chille.
+          patterns: [
+            {
+              group: ['@/app/**'],
+              allowTypeImports: true,
+              message:
+                'Capa de dominio/infra importando la capa de ruteo. La dirección es app → server → modules → shared, nunca al revés.',
+            },
+            {
+              group: ['@/server/**'],
+              allowTypeImports: true,
+              message:
+                '@/server es el composition root del runtime WEB: compone dominio para requests HTTP. src/shared/jobs es el composition root del runtime de BACKGROUND. Lo que los dos necesiten vive en @/modules o @/shared, no en el otro.',
             },
           ],
         },

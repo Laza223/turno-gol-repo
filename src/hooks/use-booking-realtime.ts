@@ -133,6 +133,11 @@ export function useBookingRealtime(opts: {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const moneyPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const reconcileRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // ¿Hace falta un catch-up al (re)suscribirse? Arranca en false porque
+  // `initialBookings` sale del render de servidor de hace un instante; se
+  // enciende cuando el canal se cae, que es cuando de verdad se pueden haber
+  // perdido eventos.
+  const needsCatchUpRef = useRef(false)
 
   const fetchFromApi = useCallback(async () => {
     try {
@@ -218,9 +223,19 @@ export function useBookingRealtime(opts: {
               pollRef.current = null
             }
             // Catch up on any events missed while OFFLINE (Supabase does not
-            // guarantee an event queue). Also covers the micro-window between
-            // the SSR snapshot and the first post-hydration SUBSCRIBED.
-            void fetchFromApi()
+            // guarantee an event queue) — pero SOLO si el canal se cayó antes.
+            //
+            // Antes esto corría en todo SUBSCRIBED, incluido el primero de cada
+            // montaje. Ahí re-pedía el día entero —la query más pesada de la
+            // grilla, más la cadena de auth del endpoint— para reemplazar datos
+            // que el SSR acababa de traer: cada visita a la grilla cargaba los
+            // mismos turnos dos veces. Lo único que cubría era la micro-ventana
+            // entre el snapshot del render y la suscripción, y el reconcile de
+            // 30s de acá abajo, que arranca en este mismo bloque, la cierra igual.
+            if (needsCatchUpRef.current) {
+              needsCatchUpRef.current = false
+              void fetchFromApi()
+            }
             // Reconcile periódico incluso CONECTADO (hallazgo de la revisión de
             // Fase 3 T7). El canal escucha `bookings`, pero cobrar un turno sólo
             // inserta en `cash_flows` — no hay ningún UPDATE de `bookings` que
@@ -236,6 +251,9 @@ export function useBookingRealtime(opts: {
             }
           } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') {
             setStatus('OFFLINE')
+            // Desde acá sí se pueden perder eventos: el próximo SUBSCRIBED tiene
+            // que traer el día entero de nuevo.
+            needsCatchUpRef.current = true
             if (!pollRef.current) {
               pollRef.current = setInterval(() => void fetchFromApi(), 30_000)
             }

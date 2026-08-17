@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { and, eq, like, ne, or, sql } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
@@ -167,7 +168,17 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
   }
 }
 
-export async function getStaffTenant(staffUserId: string): Promise<TenantRow | null> {
+/**
+ * Cacheado por request (`React.cache`), mismo idiom que `extractAuthUser`: el
+ * layout de (admin) y el guard de cada página lo pedían por separado sobre la
+ * misma fila (tres veces en `/settings/*`, que suma su propio layout), y con la
+ * base en otra región cada repetición es una ida y vuelta entera. La ventana es
+ * un request: ninguna Server Action lo lee dos veces esperando ver una escritura
+ * intermedia.
+ */
+export const getStaffTenant = cache(async function getStaffTenant(
+  staffUserId: string,
+): Promise<TenantRow | null> {
   // Called before any tenant_id is known (that's what it's resolving) —
   // RLS on tenant_staff_members requires app.current_tenant_id, which
   // doesn't exist yet here. Needs a bypass-capable pool, same as
@@ -185,7 +196,7 @@ export async function getStaffTenant(staffUserId: string): Promise<TenantRow | n
     .limit(1)
   if (!rows.length) return null
   return rowToTenantRow(rows[0].tenants)
-}
+})
 
 /**
  * Tenant por id, sin pasar por una membresía de staff. Lo usa el resolver de

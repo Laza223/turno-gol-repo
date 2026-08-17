@@ -16,12 +16,5 @@ const CLIENTES_TABS = [
  * las reservas recurrentes — pausar, reactivar, cancelar una serie.
  */
 export function ClientesTabs({ active }: { active: string }) {
-  return (
-    <ScrollTabs
-      tabs={CLIENTES_TABS}
-      activeHref={active}
-      ariaLabel="Secciones de clientes"
-      clientNav
-    />
-  )
+  return <ScrollTabs tabs={CLIENTES_TABS} activeHref={active} ariaLabel="Secciones de clientes" />
 }

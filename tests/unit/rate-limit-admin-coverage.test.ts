@@ -22,9 +22,12 @@ const ROOT = path.resolve(__dirname, '..', '..')
 const rel = (f: string): string => path.relative(ROOT, f).replace(/\\/g, '/')
 const read = (f: string): string => readFileSync(f, 'utf8')
 
-// El rate limit se aplica de tres formas idiomáticas: guard() en route
-// handlers, enforce() directo (handlers crudos / super-admin), o
-// adminRateLimited() en Server Actions. Cualquiera cuenta como cobertura.
+// El rate limit se aplica de cuatro formas idiomáticas: guard() en route
+// handlers, enforce() directo (handlers crudos / super-admin),
+// adminRateLimited() en Server Actions, o la opción `rateLimit` de withTenant —
+// que corre el mismo guard() pero ANTES de abrir la transacción, para no
+// retener una conexión del pool durante el viaje a Upstash. Cualquiera cuenta
+// como cobertura.
 //
 // Y con más de UN balde. `adminCrud` (100/60s por tenant) lo comparten todas
 // las mutaciones de plata del staff, así que las lecturas automáticas —las que
@@ -39,8 +42,10 @@ const ADMIN_POLICIES = ['adminCrud', 'adminAvailabilityCheck', 'adminDayTotal'] 
 
 function hasAdminRateLimit(src: string): boolean {
   if (/adminRateLimited\s*\(/.test(src)) return true
-  return ADMIN_POLICIES.some((policy) =>
-    new RegExp(String.raw`\b(?:guard|enforce)\(\s*['"]${policy}['"]`).test(src),
+  return ADMIN_POLICIES.some(
+    (policy) =>
+      new RegExp(String.raw`\b(?:guard|enforce)\(\s*['"]${policy}['"]`).test(src) ||
+      new RegExp(String.raw`\brateLimit:\s*['"]${policy}['"]`).test(src),
   )
 }
 

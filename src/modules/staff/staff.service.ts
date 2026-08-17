@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { and, eq } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
@@ -60,8 +61,16 @@ export async function getStaffContact(
  * PR #30) devolvería 0 filas. Mismo patrón de acceso que getStaffTenant en
  * tenant.service.ts: pool bypass-capable (`getWorkerDb`), filtrado explícito
  * por tenantId + staffUserId ya autenticados (no user-controlled).
+ *
+ * Cacheado por request (`React.cache`), mismo idiom que `extractAuthUser`: una
+ * sola navegación del panel lo pedía hasta 4 veces sobre la MISMA fila (layout
+ * de (admin), guard de la página, layout de settings, y de nuevo en
+ * with-role.ts para los route handlers), y con la base en otra región cada
+ * repetición es una ida y vuelta entera. La ventana del caché es un request, no
+ * un proceso: un cambio de rol sigue viéndose en la navegación siguiente, que
+ * es exactamente lo que este helper garantiza al no confiar en el claim del JWT.
  */
-export async function getStaffRole(
+export const getStaffRole = cache(async function getStaffRole(
   tenantId: string,
   staffUserId: string,
 ): Promise<StaffRole | null> {
@@ -78,7 +87,7 @@ export async function getStaffRole(
     )
     .limit(1)
   return rows[0]?.role ?? null
-}
+})
 
 /**
  * staff_user_id del primer admin ACTIVO del tenant (orden por antigüedad). Lo usa

@@ -21,6 +21,7 @@ import {
   SlotTakenError,
 } from '@/modules/bookings/booking.errors'
 import {
+  asApp,
   cleanupAll,
   createTestPlayer,
   createTestStaffUser,
@@ -464,9 +465,13 @@ describe('transitionFromPendingPayment → confirmed (doc7 Flujo 2 PASO 5)', () 
     }
 
     // And the change is durable in the row, not just in the returned object.
-    const persisted = await sql<{ status: string; deposit_status: string }[]>`
-      SELECT status, deposit_status FROM bookings WHERE id = ${booking.id}
-    `
+    const persisted = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ status: string; deposit_status: string }[]>`
+        SELECT status, deposit_status FROM bookings WHERE id = ${booking.id}
+      `,
+    )
     expect(persisted[0]).toEqual({ status: 'confirmed', deposit_status: 'paid' })
   })
 })
@@ -526,9 +531,13 @@ describe('price_snapshot inmutabilidad (trigger DB)', () => {
 
     // The trigger must have ROLLED BACK the write, not merely raised on something
     // unrelated: the snapshot stays at its original captured value.
-    const after = await sql<{ price_snapshot: number }[]>`
-      SELECT price_snapshot FROM bookings WHERE id = ${bookingId}
-    `
+    const after = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ price_snapshot: number }[]>`
+        SELECT price_snapshot FROM bookings WHERE id = ${bookingId}
+      `,
+    )
     expect(after[0]!.price_snapshot).toBe(800000)
   })
 })
@@ -656,9 +665,13 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
     )
     expect(corrected.status).toBe('no_show')
 
-    const after = await sql<{ status: string }[]>`
-      SELECT status FROM bookings WHERE id = ${created.id}
-    `
+    const after = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ status: string }[]>`
+        SELECT status FROM bookings WHERE id = ${created.id}
+      `,
+    )
     expect(after[0]!.status).toBe('no_show')
   })
 
@@ -684,9 +697,13 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
     ).rejects.toBeInstanceOf(NoShowCorrectionWindowExpiredError)
 
     // El turno sigue 'completed' (la corrección no se aplicó).
-    const after = await sql<{ status: string }[]>`
-      SELECT status FROM bookings WHERE id = ${bookingId}
-    `
+    const after = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ status: string }[]>`
+        SELECT status FROM bookings WHERE id = ${bookingId}
+      `,
+    )
     expect(after[0]!.status).toBe('completed')
   })
 
@@ -707,9 +724,13 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
       agedHours: 1,
     })
     await sql`UPDATE bookings SET status = 'no_show' WHERE id = ${fresh}`
-    const a = await sql<{ status: string }[]>`
-      SELECT status FROM bookings WHERE id = ${fresh}
-    `
+    const a = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ status: string }[]>`
+        SELECT status FROM bookings WHERE id = ${fresh}
+      `,
+    )
     expect(a[0]!.status).toBe('no_show')
 
     // Pasada la ventana: el trigger lo bloquea (backstop de defensa en profundidad).
@@ -748,9 +769,13 @@ describe('completed → no_show: corrección de 24h (P5)', () => {
       agedHours: 1,
     })
     await sql`UPDATE bookings SET status = 'completed' WHERE id = ${fresh}`
-    const a = await sql<{ status: string }[]>`
-      SELECT status FROM bookings WHERE id = ${fresh}
-    `
+    const a = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ status: string }[]>`
+        SELECT status FROM bookings WHERE id = ${fresh}
+      `,
+    )
     expect(a[0]!.status).toBe('completed')
 
     // Pasada la ventana: el trigger lo bloquea.
@@ -910,9 +935,13 @@ describe('markNoShow', () => {
     ).rejects.toBeInstanceOf(NoShowNotYetEndedError)
 
     // La transición no se aplicó: el turno sigue 'confirmed'.
-    const after = await sql<{ status: string }[]>`
-      SELECT status FROM bookings WHERE id = ${bookingId}
-    `
+    const after = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ status: string }[]>`
+        SELECT status FROM bookings WHERE id = ${bookingId}
+      `,
+    )
     expect(after[0]!.status).toBe('confirmed')
   })
 
@@ -1012,7 +1041,10 @@ describe('día operativo (closes_next_day) — instante físico del slot', () =>
     const db = getWorkerDb()
     await db.transaction((tx) => autoCompleteOverdueBookings(tx))
 
-    const row = await sql<{ status: string }[]>`SELECT status FROM bookings WHERE id = ${bookingId}`
+    const row = await asApp(
+      tenant.id,
+      (tx) => tx<{ status: string }[]>`SELECT status FROM bookings WHERE id = ${bookingId}`,
+    )
     expect(row[0]!.status).toBe('confirmed')
   })
 
@@ -1181,9 +1213,13 @@ describe('createOnlineBooking — guard de softban por ausencias (DB real)', () 
     expect(err).toBeInstanceOf(PlayerBannedError)
 
     // Y no se creó ninguna reserva pese al softban.
-    const count = await sql<{ n: number }[]>`
-      SELECT COUNT(*)::int AS n FROM bookings WHERE court_id = ${courtId}
-    `
+    const count = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ n: number }[]>`
+        SELECT COUNT(*)::int AS n FROM bookings WHERE court_id = ${courtId}
+      `,
+    )
     expect(count[0]!.n).toBe(0)
   })
 
@@ -1278,7 +1314,10 @@ describe('aislamiento de tenant en la cancha', () => {
       ),
     ).rejects.toBeInstanceOf(CourtOfflineError)
 
-    // No se filtró ninguna reserva a la cancha del otro complejo.
+    // No se filtró ninguna reserva a la cancha del otro complejo. Excepción (a):
+    // si el IDOR existiera, la fila colaría con tenant_id=A (quien hizo el
+    // INSERT), no B (dueño de la cancha) — asApp(tenantB, ...) jamás la vería
+    // por su propio RLS y el test daría falso verde. Pool admin a propósito.
     const count = await sql<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM bookings WHERE court_id = ${courtB}
     `

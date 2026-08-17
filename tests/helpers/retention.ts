@@ -1,4 +1,5 @@
-import { getSql } from '@/shared/db/client'
+import type { Sql } from 'postgres'
+import { adminSql } from './admin-db'
 import {
   createTestPlayer,
   createTestStaffUser,
@@ -63,7 +64,7 @@ export async function setupTenant(
     mpSubscriptionId?: string
   } = {},
 ): Promise<TenantBundle> {
-  const sql = getSql()
+  const sql = adminSql()
   const tenant = await createTestTenant(sql)
   const player = await createTestPlayer(sql)
   const staff = await createTestStaffUser(sql)
@@ -241,10 +242,7 @@ export type ChildCounts = {
   tournamentMatchEvents: number
 }
 
-export async function countChildren(
-  sql: ReturnType<typeof getSql>,
-  tenantId: string,
-): Promise<ChildCounts> {
+export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCounts> {
   const [r] = await sql<Array<Record<keyof ChildCounts, string>>>`
     SELECT
       (SELECT COUNT(*) FROM bookings WHERE tenant_id = ${tenantId})::text AS bookings,

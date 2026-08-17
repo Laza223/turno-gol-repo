@@ -1,9 +1,34 @@
 import { faker } from '@faker-js/faker'
-import type { Sql } from 'postgres'
-import { getSql } from '@/shared/db/client'
+import type { Sql, TransactionSql } from 'postgres'
+import { withContextRollback } from '@/shared/db/client'
+import { adminSql } from './admin-db'
+
+/**
+ * Corre `fn` con el ROL DE LA APLICACIÓN (`turnogol_app`) y el contexto de
+ * tenant seteado: lo que esta transacción no ve, producción tampoco.
+ *
+ * Es la contracara de `adminSql()` (ver `./admin-db.ts`): los seeds necesitan
+ * privilegios, los ASSERTS necesitan las restricciones. Un `SELECT` de
+ * post-condición hecho con `adminSql()`/`getSql()` corre como superusuario y
+ * por lo tanto NO prueba que la app pueda leer esa fila — ahí es donde se
+ * escondieron los bugs de RLS que llegaron a producción con la suite en verde.
+ *
+ * Siempre hace ROLLBACK, así que también es seguro para asserts que escriben.
+ *
+ * Excepciones legítimas que se quedan en `adminSql()` (documentar el motivo en
+ * cada caso): lecturas deliberadamente cross-tenant, tablas globales de
+ * infraestructura (`processed_webhooks`, pg-boss) y tablas deny-all para el rol
+ * de la app (`push_send_log`).
+ */
+export function asApp<T>(tenantId: string, fn: (tx: TransactionSql) => Promise<T>): Promise<T> {
+  // Montado sobre `getSql()` A PROPÓSITO (withContextRollback usa ese pool): es
+  // el pool cuyo DSN puede endurecerse más adelante. Hoy ya ejercita
+  // `SET LOCAL ROLE` + RLS + GRANTs, que es el 90% de la clase de bugs.
+  return withContextRollback({ role: 'turnogol_app', tenantId }, fn)
+}
 
 export async function ensureRoles(sql?: Sql): Promise<void> {
-  const s = sql ?? getSql()
+  const s = sql ?? adminSql()
   // Create turnogol_app role if absent (008_revokes.sql depends on it).
   await s.unsafe(`
     DO $$
@@ -72,7 +97,7 @@ export async function createTestTenant(
   sql?: Sql,
   overrides: Partial<{ slug: string; name: string }> = {},
 ): Promise<TestTenant> {
-  const s = sql ?? getSql()
+  const s = sql ?? adminSql()
   const slug = overrides.slug ?? `t-${faker.string.alphanumeric(10).toLowerCase()}`
   const name = overrides.name ?? faker.company.name().slice(0, 50)
   const rows = await s<{ id: string; slug: string; name: string }[]>`
@@ -97,7 +122,7 @@ export async function createTestPlayer(
   sql?: Sql,
   overrides: Partial<{ email: string }> = {},
 ): Promise<TestPlayer> {
-  const s = sql ?? getSql()
+  const s = sql ?? adminSql()
   const email = overrides.email ?? faker.internet.email({ provider: 'test.local' }).toLowerCase()
   const rows = await s<{ id: string; email: string }[]>`
     INSERT INTO players (email, first_name, last_name, agreed_to_terms_at, terms_version)
@@ -119,7 +144,7 @@ export async function createTestStaffUser(
   sql?: Sql,
   overrides: Partial<{ email: string }> = {},
 ): Promise<TestStaff> {
-  const s = sql ?? getSql()
+  const s = sql ?? adminSql()
   const email = overrides.email ?? faker.internet.email({ provider: 'staff.local' }).toLowerCase()
   const rows = await s<{ id: string; email: string }[]>`
     INSERT INTO staff_users (email, first_name, last_name)
@@ -139,7 +164,7 @@ export async function createTestSystemAdmin(
   sql?: Sql,
   overrides: Partial<{ email: string }> = {},
 ): Promise<TestSystemAdmin> {
-  const s = sql ?? getSql()
+  const s = sql ?? adminSql()
   const email =
     overrides.email ?? `sa-${Date.now()}-${faker.string.alphanumeric(6).toLowerCase()}@test.local`
   const rows = await s<{ id: string; email: string }[]>`
@@ -182,7 +207,7 @@ export async function linkPlayerToTenant(
 }
 
 export async function cleanupAll(sql?: Sql): Promise<void> {
-  const s = sql ?? getSql()
+  const s = sql ?? adminSql()
   // Order respects FKs. Staff and players cleared last (referenced by many).
   await s.unsafe(`
     TRUNCATE TABLE

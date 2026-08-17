@@ -3,18 +3,11 @@
 import { ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { ImageUploader } from '@/components/ui/image-uploader'
 import { MoneyInput } from '@/components/ui/money-input'
-import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { formatArs } from '@/lib/format'
 import { fieldClass, labelClass } from '../wizard-styles'
 import { FORMATS, SURFACE_OPTIONS, type Draft, type SurfaceType } from './constants'
-import type { UploadPhotoActionResult, WizardActionResult } from '../../actions'
-
-/** Firmas de las Server Actions de foto que consume ImageUploader. */
-export type UploadCourtPhotoAction = (formData: FormData) => Promise<UploadPhotoActionResult>
-export type DeleteCourtPhotoAction = (url: string) => Promise<WizardActionResult>
 
 type Props = {
   draft: Draft
@@ -24,8 +17,6 @@ type Props = {
   onToggle: (key: number) => void
   onUpdate: (key: number, patch: Partial<Draft>) => void
   onRemove: (key: number) => void
-  onUploadPhoto: UploadCourtPhotoAction
-  onDeletePhoto: DeleteCourtPhotoAction
 }
 
 /** Tarjeta de un borrador de cancha: fila-resumen colapsable + form inline. */
@@ -37,8 +28,6 @@ export function CourtDraftCard({
   onToggle,
   onUpdate,
   onRemove,
-  onUploadPhoto,
-  onDeletePhoto,
 }: Props) {
   const surfaceLabel =
     SURFACE_OPTIONS.find((s) => s.value === draft.surfaceType)?.label ?? draft.surfaceType
@@ -227,49 +216,6 @@ export function CourtDraftCard({
             />
             <span className="text-sm text-foreground">Techada</span>
           </label>
-
-          <div className="border-t border-border/40 pt-4">
-            <label className={cn(labelClass, 'mb-1 flex items-baseline gap-1.5')}>
-              Foto de la cancha
-              <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
-            </label>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Subí una foto para que los jugadores puedan identificar visualmente esta cancha al
-              reservar.
-            </p>
-            <ImageUploader
-              preset="court"
-              value={draft.photos}
-              onUpload={async (blob) => {
-                const fd = new FormData()
-                fd.append('file', blob)
-                const res = await onUploadPhoto(fd)
-                if (res.success) {
-                  onUpdate(draft.key, { photos: [...draft.photos, res.url] })
-                } else {
-                  toast({
-                    title: 'No se pudo subir la foto',
-                    description: res.error,
-                    variant: 'destructive',
-                  })
-                }
-              }}
-              onRemove={async (url) => {
-                const res = await onDeletePhoto(url)
-                if (res.success) {
-                  onUpdate(draft.key, { photos: draft.photos.filter((p) => p !== url) })
-                } else {
-                  toast({
-                    title: 'No se pudo borrar la foto',
-                    description: res.error,
-                    variant: 'destructive',
-                  })
-                }
-              }}
-              max={1}
-              emptyLabel="Subir foto"
-            />
-          </div>
         </div>
       </div>
     </fieldset>

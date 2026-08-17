@@ -3,6 +3,7 @@ import {
   END_OF_DAY_MINS,
   effectiveCloseMins,
   endLabelFromMins,
+  hasOperableDay,
   normalizeRangeToOpenDay,
   nightCutoffMins,
   operatingDateOf,
@@ -238,5 +239,45 @@ describe('slotHasPassed', () => {
     expect(
       slotHasPassed({ ...base, closesNextDay: true, date: '2026-08-03', timeStart: '01:00' }),
     ).toBe(true)
+  })
+})
+
+describe('hasOperableDay', () => {
+  const closedWeek = Object.fromEntries(
+    Object.keys(sameDayAllWeek).map((d) => [d, { open: '08:00', close: '23:00', closed: true }]),
+  )
+
+  it('una semana normal es operable', () => {
+    expect(hasOperableDay(sameDayAllWeek, false)).toBe(true)
+  })
+
+  it('todos los días cerrados: nadie puede reservar', () => {
+    expect(hasOperableDay(closedWeek, false)).toBe(false)
+  })
+
+  it('un solo día abierto alcanza', () => {
+    expect(hasOperableDay({ ...closedWeek, sat: { open: '09:00', close: '23:00' } }, false)).toBe(
+      true,
+    )
+  })
+
+  // El caso que la checklist del dashboard daba por bueno: horarios cargados
+  // que no generan un solo turno porque el cierre no avanza sin el flag.
+  it('madrugada SIN closes_next_day no genera turnos', () => {
+    const madrugada = Object.fromEntries(
+      Object.keys(sameDayAllWeek).map((d) => [d, { open: '08:00', close: '02:00' }]),
+    )
+    expect(hasOperableDay(madrugada, false)).toBe(false)
+    expect(hasOperableDay(madrugada, true)).toBe(true)
+  })
+
+  it('cierre 00:00 es medianoche, no un día vacío', () => {
+    expect(hasOperableDay({ mon: { open: '08:00', close: '00:00' } }, false)).toBe(true)
+  })
+
+  it('un día cerrado con horas viejas adentro no cuenta como operable', () => {
+    expect(hasOperableDay({ mon: { open: '08:00', close: '23:00', closed: true } }, false)).toBe(
+      false,
+    )
   })
 })

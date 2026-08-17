@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Banknote } from 'lucide-react'
 import { formatArs } from '@/lib/format'
@@ -25,10 +24,19 @@ const MIN_GAP_MS = 5_000
  * avisar. Y un total de plata viejo no se lee como "viejo", se lee como plata
  * que falta.
  *
- * Tres disparadores, todos por el mismo camino con piso de {@link MIN_GAP_MS}:
- * al montar y al cambiar de ruta, cada {@link REFRESH_MS}, y al volver a la
+ * Dos disparadores, los dos por el mismo camino con piso de {@link MIN_GAP_MS}:
+ * cada {@link REFRESH_MS} mientras la pestaña está a la vista, y al volver a la
  * pestaña. Ese último importa de verdad: el encargado deja el panel abierto y
  * atiende el mostrador; al volver, lo primero que mira es este número.
+ *
+ * Hubo un tercero —cambiar de ruta— y se sacó: el badge vive en la barra
+ * lateral, así que disparaba en CADA navegación del panel, y del otro lado ese
+ * pedido no es barato (rehace la cadena de autenticación completa y consulta el
+ * rate-limit reteniendo una de las 3 conexiones del pool). Ninguno de los dos
+ * motivos que justifican el componente —plata que entra por fuera de esta
+ * pestaña— tiene que ver con navegar: si el encargado se mueve por el panel, el
+ * número que ya tiene sigue siendo el mismo. El piso de {@link MIN_GAP_MS} lo
+ * atenuaba, no lo evitaba.
  *
  * Límite conocido y aceptado: si el admin cobra desde `/caja` y se queda ahí, el
  * encabezado de esa pantalla se actualiza al instante (`router.refresh()`) y
@@ -37,7 +45,6 @@ const MIN_GAP_MS = 5_000
  * criterio.
  */
 export function DayTotalBadge() {
-  const pathname = usePathname()
   const [cents, setCents] = useState<number | null>(null)
   const lastFetchRef = useRef(0)
   const aliveRef = useRef(true)
@@ -66,11 +73,15 @@ export function DayTotalBadge() {
     }
   }, [])
 
-  // Montaje, cambio de ruta e intervalo, en un solo efecto. El primer pedido
-  // sale por un timer y no desde el cuerpo del efecto: así el valor llega por
-  // una respuesta y nunca por una cascada de render
-  // (`react-hooks/set-state-in-effect`, en `error` en este repo). Mismo idioma
-  // que `PaymentStatusWatcher`.
+  // Montaje e intervalo, en un solo efecto. El primer pedido sale por un timer
+  // y no desde el cuerpo del efecto: así el valor llega por una respuesta y
+  // nunca por una cascada de render (`react-hooks/set-state-in-effect`, en
+  // `error` en este repo). Mismo idioma que `PaymentStatusWatcher`.
+  //
+  // Sin `pathname` en las dependencias: la barra lateral no se desmonta al
+  // navegar, así que el intervalo sobrevive de una vista a la otra y no hay que
+  // rearmarlo. Ver el bloque de arriba sobre por qué el cambio de ruta dejó de
+  // ser un disparador.
   useEffect(() => {
     let cancelled = false
     const run = () => {
@@ -84,7 +95,7 @@ export function DayTotalBadge() {
       clearTimeout(kickoff)
       clearInterval(interval)
     }
-  }, [pathname, refresh])
+  }, [refresh])
 
   useEffect(() => {
     const onVisible = () => {

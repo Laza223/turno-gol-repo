@@ -71,7 +71,7 @@ export default async function DashboardPage() {
         closesNextDay: tenant.closesNextDay,
       }),
     ),
-    getChecklistState(tenant.id, tenant.settings, !!tenant.mpConnectedAt),
+    getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt),
   ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo

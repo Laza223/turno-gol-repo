@@ -8,6 +8,15 @@
 > **La lógica detallada está en Doc 7 (Flujo 1) y Doc 8 (Epic ONB-001 a 005).**
 > Este documento se enfoca en la **estrategia de diseño** y las **decisiones de UX**.
 
+> [!WARNING]
+> **§2 (mockups paso a paso) SUPERSEDED por el refactor 2026-08-16** —
+> `docs/spec/design-system/pages/onboarding.md` es la fuente de verdad de la UI actual (orden de
+> pasos, contenido de cada uno, paso 4 = primera reserva en vez de MP, fotos fuera del wizard). Los
+> mockups de acá ya no coinciden con el código y no se deben usar como referencia de implementación.
+> **Siguen vigentes**: §1 (Aha Moment, cadena de valor, métricas de éxito), §3 (WhatsApp share, ya
+> implementado en `ShareActions`), §4 (anti-patterns), §6 (razonamiento de negocio) — es estrategia,
+> no describe pantallas.
+
 ---
 
 ## 1. El "Aha Moment" de TurnoGol

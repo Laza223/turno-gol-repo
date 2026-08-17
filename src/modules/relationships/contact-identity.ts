@@ -90,9 +90,30 @@ export function significantPhoneSql(column: string): string {
 /**
  * Cola corta para el JOIN de sugerencia. Exige los 8 dígitos completos: con
  * menos, un fijo corto haría match con media agenda.
+ *
+ * Vale para `abonados.contact_phone`, que se calcula al vuelo sobre las filas de
+ * UN complejo. Para el lado de `players` está {@link PLAYER_PHONE_HINT_COLUMN},
+ * que es la MISMA cuenta pero materializada — ver ahí el porqué.
  */
 export function suggestionPhoneSql(column: string): string {
   const digits = `REGEXP_REPLACE(${column}, '\\D', '', 'g')`
   return `CASE WHEN LENGTH(${digits}) >= ${SUGGESTION_DIGITS}
     THEN RIGHT(${digits}, ${SUGGESTION_DIGITS}) END`
 }
+
+/**
+ * La cola de sugerencia del lado de `players`, ya materializada en una columna
+ * (`GENERATED ALWAYS … STORED`, migr. 075).
+ *
+ * No es una micro-optimización: bajo RLS, un índice sobre la EXPRESIÓN
+ * equivalente no se usa —`regexp_replace` no es LEAKPROOF y el planner no la
+ * baja a Index Cond—, así que la sugerencia de /jugadores recorría
+ * `player_tenant_relationships ⋈ players` entero por cada contacto. Medido con
+ * el rol `turnogol_app`: 52.341 ms contra 14,2 ms, con el mismo dato. La
+ * migración 075 tiene la medición completa y el control negativo.
+ *
+ * `abonados` sigue con {@link suggestionPhoneSql} porque ahí la expresión se
+ * evalúa sobre las filas ya filtradas de un complejo, no sobre el lado buscado
+ * del JOIN.
+ */
+export const PLAYER_PHONE_HINT_COLUMN = 'phone_hint8'

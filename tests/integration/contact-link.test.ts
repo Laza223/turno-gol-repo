@@ -23,7 +23,11 @@ import {
   linkContactToPlayer,
   unlinkContactFromPlayer,
 } from '@/modules/relationships/contact-link.service'
-import { normalizeContactPhone } from '@/modules/relationships/contact-identity'
+import {
+  normalizeContactPhone,
+  PLAYER_PHONE_HINT_COLUMN,
+  suggestionPhoneSql,
+} from '@/modules/relationships/contact-identity'
 
 const MONDAY = 1
 
@@ -404,5 +408,68 @@ describe('linkContactToPlayer / unlinkContactFromPlayer (B13)', () => {
     `
     expect(rows[0]!.player_id).toBeNull()
     expect((await list(b.id)).find((r) => r.kind === 'contact')).toBeDefined()
+  })
+})
+
+/**
+ * La cola de sugerencia se calcula en DOS lugares: al vuelo sobre
+ * `abonados.contact_phone` (`suggestionPhoneSql`) y materializada en
+ * `players.phone_hint8` (columna generada, migr. 075). Tienen que decir
+ * exactamente lo mismo o la sugerencia deja de encontrar gente en silencio —
+ * justo lo que nadie mira, porque "no sugirió nada" se lee como "no había nadie".
+ *
+ * La materialización no es opcional ni cosmética: bajo RLS, un índice sobre la
+ * expresión no se usa (`regexp_replace` no es LEAKPROOF), y sin índice el JOIN
+ * de sugerencia recorre el complejo entero por cada contacto — 52 s medidos
+ * contra 14 ms, con `statement_timeout` de 15 s esperando al final.
+ */
+describe('players.phone_hint8 — paridad con suggestionPhoneSql (migr. 075)', () => {
+  const PHONES = [
+    '+54 9 11 2233-4455',
+    '011 15 2233-4455',
+    '11 2233 4455',
+    '2233-4455',
+    '1234567', // 7 dígitos: no llega al mínimo, tiene que dar NULL
+    '',
+    'sin numeros',
+  ]
+
+  it('la columna generada da lo mismo que la expresión, teléfono por teléfono', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const ids: string[] = []
+    for (const phone of PHONES) {
+      const player = await createTestPlayer(sql)
+      await sql`UPDATE players SET phone = ${phone} WHERE id = ${player.id}`
+      await linkPlayerToTenant(sql, tenant.id, player.id)
+      ids.push(player.id)
+    }
+
+    const rows = await sql<{ phone: string; stored: string | null; computed: string | null }[]>`
+      SELECT phone,
+             ${sql.unsafe(PLAYER_PHONE_HINT_COLUMN)} AS stored,
+             ${sql.unsafe(suggestionPhoneSql('phone'))} AS computed
+      FROM players
+      WHERE id = ANY(${ids})
+    `
+
+    expect(rows).toHaveLength(PHONES.length)
+    for (const row of rows) {
+      expect(row.stored, `hint de "${row.phone}"`).toBe(row.computed)
+    }
+    // Y el caso que importa de verdad: los 7 dígitos no producen hint, así que
+    // nunca se sugiere a alguien por un teléfono demasiado corto.
+    expect(rows.find((r) => r.phone === '1234567')!.stored).toBeNull()
+  })
+
+  it('el índice de la columna existe y es el parcial que espera el plan', async () => {
+    const sql = getSql()
+    const rows = await sql<{ indexdef: string }[]>`
+      SELECT indexdef FROM pg_indexes
+      WHERE tablename = 'players' AND indexname = 'idx_players_phone_hint8'
+    `
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.indexdef).toContain(PLAYER_PHONE_HINT_COLUMN)
+    expect(rows[0]!.indexdef).toContain('WHERE')
   })
 })

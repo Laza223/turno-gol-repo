@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { withTenant } from '@/server/middleware/with-tenant'
 import { withAnyRole } from '@/server/middleware/with-role'
-import { guard } from '@/shared/rate-limit/route-guard'
 import { getTenantMetrics } from '@/modules/metrics/metrics.service'
 
 export const dynamic = 'force-dynamic'
@@ -19,10 +18,10 @@ export const dynamic = 'force-dynamic'
  */
 export const GET = withTenant(
   withAnyRole(['admin', 'manager'], async (_req: NextRequest, user, tx) => {
-    const throttled = await guard('adminCrud', user.tenantId!)
-    if (throttled) return throttled
-
     const metrics = await getTenantMetrics(user.tenantId!, tx)
     return NextResponse.json({ data: metrics })
   }),
+  // Rate-limit antes de abrir la transacción: el viaje a Upstash no tiene por
+  // qué retener una conexión del pool.
+  { rateLimit: 'adminCrud' },
 )

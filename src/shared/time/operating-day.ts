@@ -108,6 +108,25 @@ export function normalizeRangeToOpenDay(
 }
 
 /**
+ * ¿Hay al menos un día de la semana que produzca turnos?
+ *
+ * Un día cerrado, o abierto con un rango que no avanza (open 08:00, close 01:00
+ * SIN `closesNextDay`), genera cero slots: nadie puede reservar ahí. Un complejo
+ * cuyos siete días son así está online y es inalcanzable — se ve "listo" y no
+ * puede recibir una sola reserva.
+ *
+ * Lo usa la checklist del dashboard, que hasta ahora daba "Horarios definidos"
+ * por sentado.
+ */
+export function hasOperableDay(openingHours: OpeningHoursLike, closesNextDay: boolean): boolean {
+  return Object.values(openingHours).some((day) => {
+    if (day.closed) return false
+    const openMins = hhmmToMins(day.open)
+    return effectiveCloseMins(day.open, day.close, closesNextDay) > openMins
+  })
+}
+
+/**
  * ¿Este slot ya transcurrió? Predicado del día operativo, en ART.
  *
  * Vivía inline en `useGridLayout` y lo necesita también el picker de

@@ -1,4 +1,4 @@
-import { CreditCard, CheckCircle2, ExternalLink } from 'lucide-react'
+import { AlertTriangle, CreditCard, CheckCircle2, ExternalLink } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
@@ -7,6 +7,23 @@ import { SettingsTabs } from '../SettingsTabs'
 import { ActivatePlanSection } from './ActivatePlanSection'
 import { ChangePlanSection } from './ChangePlanSection'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
+
+// Nunca mostrar el código crudo del callback OAuth: siempre qué pasó + qué
+// hacer (pages/onboarding.md §6.7). Vivía en StepPayments.tsx —se reubica acá
+// tal cual (Fase 5 del refactor de onboarding, §D del plan: la seña se mudó
+// del wizard a esta pantalla), no se reescribe.
+const MP_UNAVAILABLE = new Set(['mp_not_configured', 'mp_config_missing'])
+
+function mpErrorMessage(code: string, conflictTenant?: string | null): string {
+  if (code === 'mp_already_connected') {
+    const cual = conflictTenant ? `"${conflictTenant}"` : 'otro complejo'
+    return `Esa cuenta de MercadoPago ya está cobrando para ${cual}. Cada complejo necesita su propia cuenta: entrá a MercadoPago con la cuenta de este complejo y volvé a intentar.`
+  }
+  if (MP_UNAVAILABLE.has(code)) {
+    return 'La conexión con MercadoPago no está disponible en este momento. Probá de nuevo más tarde.'
+  }
+  return 'No pudimos conectar MercadoPago. Probá de nuevo en un momento.'
+}
 
 const STATUS_LABELS: Record<string, string> = {
   trialing: 'Período de prueba',
@@ -23,8 +40,11 @@ function formatDate(d: string | Date | null): string {
   return new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default async function FacturacionPage() {
+export default async function FacturacionPage(
+  props: { searchParams?: Promise<{ error?: string; complejo?: string }> } = {},
+) {
   const { tenant } = await requireAdminStaff()
+  const searchParams = await props.searchParams
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
   const mpConnected = !!tenant.mpConnectedAt
@@ -142,6 +162,16 @@ export default async function FacturacionPage() {
             </span>
           )}
         </div>
+        {searchParams?.error && (
+          <div
+            role="alert"
+            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <p>{mpErrorMessage(searchParams.error, searchParams.complejo)}</p>
+          </div>
+        )}
+
         {!mpConnected && (
           <a
             href="/api/mp/oauth-start"

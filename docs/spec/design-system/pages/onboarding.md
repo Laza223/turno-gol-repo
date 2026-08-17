@@ -1,248 +1,290 @@
-# Onboarding wizard del admin — spec de rediseño
+# Onboarding wizard del admin — spec del refactor 2026-08
 
-> Vistas: `/onboarding` (wizard 4 pasos) + `/onboarding/listo` (cierre peak-end).
-> Fuente visual: `MASTER.md` v2 (§7 Guided UX, §9 goal gradient/Zeigarnik/peak-end).
-> Hermana de `pages/horarios-precios.md` (reusa su modelo de horarios y su motor de precios).
-> Estado: implementada 2026-07-02. Cierra deuda MASTER §13.7.
+> Vistas: `/onboarding/[paso]` (wizard 4 pasos, paso en la URL) + `/onboarding/listo` (cierre peak-end).
+> Fuente visual: `MASTER.md` v2 (§5.1 excepción de motion, §7 Guided UX, §9 goal gradient/Zeigarnik/peak-end).
+> Hermana de `pages/horarios-precios.md` (reusa su modelo de horarios) y de `pages/canchas.md`.
+> Reemplaza la spec de 2026-07-02 (implementada, luego auditada: "todo el diseño está en el marco,
+> nada en el contenido" — ver plan `2026-08-15-onboarding-refactor.md`).
+> Estado: implementado 2026-08-16 (rama `feat/onboarding-refactor`, fases 0-9 cerradas).
+> `docs/spec/doc10_onboarding_design.md` queda **superseded** por este documento (ver nota al pie).
 
 ## 0. Objetivo y anti-objetivo
 
-**Objetivo**: que el dueño salga del wizard con el complejo **operable de verdad**: canchas
-creadas, horarios confirmados, precios cargados, decisión de seña tomada, y el link público en
-la mano. Cero "andá a configurarlo en otro lado" (doc10 siempre pidió creación inline; el código
-v1 desvió del spec).
+**Objetivo**: que el dueño vea el complejo que está armando MIENTRAS lo arma — la tarjeta pública,
+la semana de horarios, la grilla con sus canchas — y que el wizard termine con una victoria adentro
+del producto (una reserva real cargada en la grilla), no con un trámite afuera (OAuth de MercadoPago).
 
-**Anti-objetivo**: volver a meter el panel de configuración entero adentro del wizard. El wizard
-carga el **caso común con el mínimo de campos**; el ajuste fino (precio por franja, fotos,
-excepciones raras) vive en Configuración y el copy lo dice explícitamente.
+**Anti-objetivo**: seguir invirtiendo solo en el marco. La v1 (2026-07-02) tenía rail de marca,
+gradiente, indicador de progreso único — y aun así se sentía "un formulario", porque el 80% de la
+pantalla (el panel derecho) era una card blanca con `<input>` apilados que no mostraban nada del
+complejo del usuario. Este refactor no cambia colores: cambia qué ocupa la pantalla.
 
-## 1. Problemas del diseño anterior
+## 1. Qué cambió respecto a la v1
 
-| # | Problema | Evidencia |
+| # | v1 (2026-07-02) | Ahora |
 |---|---|---|
-| 1 | **Paso 2 no creaba canchas**: banner "podés agregarlas desde el panel" + Continuar | `StepCourts.tsx` v1 — rompe Zeigarnik: el wizard termina y el complejo NO puede recibir reservas (0 canchas) |
-| 2 | Doble indicador de progreso (barra % + 4 segmentos) | `page.tsx` v1; MASTER §13.7 |
-| 3 | Sin marca visual: card gris flotando en `bg-muted/40`, sin continuidad con register/login | Primera impresión del producto |
-| 4 | **Validación de horarios rota**: `scheduleSchema` local trataba `close 00:00` como 0 min → los propios defaults de DB (lun–jue cierran 00:00) fallaban con "cierre debe ser posterior a apertura" | `actions.ts` v1 vs `opening-hours.schema.ts` (que ya resuelve medianoche, madrugada, días cerrados y ≥1 día abierto) |
-| 5 | Paso horarios: tabla 7×2 cruda, sin madrugada (`closes_next_day`), duplicando una validación que settings ya tenía bien | `StepSchedule.tsx` v1 |
-| 6 | `?error=mp_*` del callback OAuth se ignoraba: el dueño volvía al paso 4 sin ningún feedback | `page.tsx` v1 no lee searchParams |
-| 7 | "Sí, cobrar seña" no activaba la seña: el callback conecta MP pero `requires_deposit` quedaba `false` → promesa vacía | `api/mp/callback` v1 |
-| 8 | Final sin peak-end: `skipMpAction` → redirect mudo a /dashboard; el "compartí tu link" (la acción que dispara el Aha Moment, doc10 §6) no existía | `actions.ts` v1 |
-| 9 | Placeholder de email truncaba (auditoría MASTER §6.3) y el preview de URL mentía (`turnogol.app/slug`; el link real es `/c/slug`) | `StepIdentity.tsx` v1 |
+| 1 | Paso 4 = "¿Cobrás seña?", CTA primario = OAuth a MercadoPago | Paso 4 = "Tu primera reserva": grilla real, tocás un slot y cargás un turno. La seña se movió a la checklist del dashboard (ítem destacado, `/settings/facturacion` ya tenía su card) |
+| 2 | Panel derecho = card de formulario sola, `bg-background` plano | Split panel: form a la izquierda, preview del producto a la derecha (`PublicCardPreview`/`WeekPreview`/`GridPreview`, armándose en vivo) |
+| 3 | Mobile: rail oculto, sin preview, solo header + form | Preview en barra sticky colapsable al pie (`PreviewPane`), nunca ausente |
+| 4 | Paso NO estaba en la URL — `page.tsx` lo calculaba de DB en cada render | `/onboarding/[paso]` (`complejo`/`horarios`/`canchas`/`reserva`); el botón atrás del navegador funciona |
+| 5 | Paso 2 sin "Volver" | `StepSchedule` y `StepCourts` tienen "Volver"; `updateWizardTenantAction` nuevo permite corregir el paso 1 sin reiniciar |
+| 6 | Fotos de cancha se subían a R2 y se perdían en el submit (el payload no las incluía) | El paso 3 no pide fotos — se cargan después en `/settings/canchas`, mismo uploader contra la cancha real |
+| 7 | Drafts de canchas en `useState` puro — perder la conexión los borraba | `sessionStorage` por tenant (`use-court-drafts.ts`) |
+| 8 | Checklist del dashboard: 2 de 7 ítems (`complexData`, `hasSchedule`) hardcodeados a `true` | `hasSchedule` sale de `hasOperableDay()` real; `complexData` sigue `true` a propósito (los campos son NOT NULL, no hay nada que chequear) |
+| 9 | Cero eventos de analytics en todo el flujo | Categoría `onboarding` completa + `activation.first_online_booking` (§8) |
+| 10 | Lógica de negocio en `src/app/onboarding/actions.ts` (Zod inline, UPDATE crudo) | `src/modules/onboarding/` (service/schema/types/steps), la action queda de capa fina |
+| 11 | Sin `layout.tsx`/`loading.tsx`/`error.tsx` | Los tres existen; `layout.tsx` además es el gate de sesión (§4) |
+| 12 | `useActionState` en `StepIdentity` | `useTransition` + `onSubmit` manual — ver nota de la Fase 9 en el service, `createTenantAction` muta la cookie de sesión y `useActionState` pierde la carrera contra la revalidación automática de Next |
 
-## 2. Estructura: orden nuevo de pasos
+## 2. Estructura de pasos
 
-```
-1. Tu complejo   → crea el tenant (igual que v1, retocado)
-2. Horarios      → general + excepciones + madrugada (modelo de pages/horarios-precios.md §2)
-3. Canchas       → creación inline: nombre, formato, superficie, techada, precio por turno
-4. Señas         → ¿cobrás seña? 2 cards → MP OAuth o terminar
-→ /onboarding/listo  (cierre peak-end: link + WhatsApp)
-```
-
-**Por qué Horarios antes que Canchas** (v1 tenía canchas→horarios): el precio de una cancha debe
-**cubrir el horario de apertura** (`validatePricingRulesCoverage`). Crear canchas antes de
-confirmar horarios obliga a validar contra horarios que el dueño todavía no vio → huecos de
-cobertura o precios sobre horas inexistentes. Con horarios primero, el generador de precios del
-paso 3 trabaja sobre datos confirmados. La dependencia manda el orden.
-
-**Semántica de `onboarding_step`** (sin cambios de contrato): `settings.onboarding_step` = último
-paso completado; la página muestra `step + 1`. Nuevo mapeo: 1 = identidad → muestra Horarios;
-2 = horarios → Canchas; 3 = canchas → Señas. Tenants en vuelo con el mapeo viejo se re-mapean
-solos (pre-launch, sin migración).
-
-**Volver**: pasos 3 y 4 tienen "Volver" (ghost) → `advanceStepAction(paso−2)`, ahora restringido
-a `1..3`. El paso 1 no tiene Volver: el tenant ya existe; renombrar es Configuración.
-
-## 3. Shell: marca + progreso único
-
-### 3.1 Desktop (lg+): split con rail de marca
-
-Continuidad con el journey `/register` → `/login` (split oscuro + form): el wizard es la pantalla
-siguiente y habla el mismo idioma visual.
+Se mantienen **4 pasos** (contrato de 3 specs e2e), en el mismo orden que la v1 — horarios antes que
+canchas sigue siendo obligatorio: `uniformRulesFromOpeningHours` necesita horarios confirmados para
+generar precios que cubran la apertura real.
 
 ```
-┌─ rail (w-[380px], always-dark) ─┬─ contenido (bg-background, theme-adaptive) ─┐
-│ [Logo]                          │                                             │
-│                                 │        ┌ card-premium ──────────┐           │
-│ Paso 2 de 4 · 50%               │        │ (Volver)               │           │
-│ ✓ Tu complejo                   │        │ h2 del paso            │           │
-│ ● Horarios      ← actual        │        │ …form…                 │           │
-│ ○ Canchas                       │        │ [Continuar]            │           │
-│ ○ Señas                         │        └────────────────────────┘           │
-│                                 │                                             │
-│ "Menos de 5 minutos. Todo se    │                                             │
-│  puede cambiar después."        │                                             │
-└─────────────────────────────────┴─────────────────────────────────────────────┘
+1. complejo   → crea el tenant (Tu complejo)
+2. horarios   → confirma horarios (Cuándo abrís)
+3. canchas    → ≥1 cancha con precio (Tus canchas)
+4. reserva    → carga (skippable) la primera reserva real en la grilla (Tu primera reserva)
+→ /onboarding/listo  (cierre peak-end: link + WhatsApp + reconocimiento de la 1ra reserva)
 ```
 
-- Rail: gradiente `slate-950 → emerald-950` (mismo lenguaje que el pane de register, sin foto —
-  evita el problema de stock con marcas de §13 P2.9). Always-dark deliberado: es superficie de
-  marca (como `para-complejos`), no vista de tarea.
-- **La lista de pasos ES el indicador de progreso** (check verde = hecho, punto lleno = actual,
-  círculo numerado = pendiente) + línea de texto "Paso N de 4 · N %" (goal gradient §9: el paso 1
-  ya muestra 25 % — la cuenta arranca regalada porque la cuenta ya está creada). Un solo sistema
-  gráfico → cierra §13.7.
-- Pie del rail: "⏱ Menos de 5 minutos · Todo se puede cambiar después desde Configuración" —
-  mata la ansiedad de "¿cuántos pasos más?" (doc10 §4).
+Fuente única de la tabla de pasos: `src/modules/onboarding/onboarding.steps.ts` (`WIZARD_STEPS`,
+`stepFromSlug`, `stepPath`, `stepFromPathname`) — nadie arma `/onboarding/<algo>` a mano.
 
-### 3.2 Mobile: barra única
+### Paso 1 — "Tu complejo"
 
-Rail oculto. Header compacto: Logo + "Paso N de 4 · N %" + **una** barra segmentada (4 segmentos,
-hechos+actual en emerald, resto `muted`). Un indicador por viewport, nunca dos.
+- Pide: Nombre · Dirección · Ciudad + Provincia (`Combobox` con búsqueda, no un `<select>` de 24).
+- No pide: teléfono ni email del complejo — se derivan de la cuenta staff vía `getStaffContact()`
+  (que YA los pidió en `/register`). Editables después en `/settings/perfil` (`TenantContactForm`).
+- Preview: `PublicCardPreview` — la tarjeta pública tal como la ve un jugador en `/explorar`,
+  armándose en vivo. No es `FeaturedComplexCard` (esa pide un `PublicTenantCard` completo que este
+  paso no tiene todavía); reusa su mismo lenguaje visual (`card-premium`, `mockup-cover`, iniciales
+  fantasma) con solo los 3 datos que el paso realmente pide.
+- Revisita: `updateWizardTenantAction` — el slug NO se recalcula (puede haber viajado por WhatsApp ya).
+- Actions: `createTenantAction` (alta, idempotente si ya hay tenant) / `updateWizardTenantAction`.
 
-### 3.3 Contenido
+### Paso 2 — "Cuándo abrís"
 
-- Columna `max-w-lg` (pasos 1, 2 y 4) / `max-w-2xl` (paso 3, canchas necesita aire).
-- Card `card-premium rounded-2xl p-6 md:p-8`. h2 = título del paso (`text-2xl font-bold`),
-  subtítulo `text-sm text-muted-foreground`.
-- Primitives `ui/` tal cual están (Button/SubmitButton con `isLoading` §6.2). **No** se tokenizan
-  acá: P0.1 de MASTER §13 sigue abierta y es tarea propia (blast radius app-wide); los campos de
-  form usan las clases token-safe que el wizard ya tenía (`border-border bg-card text-foreground`).
+- Reusa `ScheduleFields` tal cual (compartido con `/settings/horarios`), sin reescritura.
+- Preview: `WeekPreview` — una barra por día sobre un eje de 24h (06:00→06:00 del día siguiente, para
+  no aplastar una madrugada de `closesNextDay` a un pixel), calculada con `effectiveCloseMins()`
+  (mismo cálculo que la grilla real). Es la única representación gráfica de un horario en todo el
+  producto.
+- Botón "Volver" → paso 1.
+- Action: `saveWizardScheduleAction` (usa `horariosSchema` canónico, no un schema local).
 
-## 4. Paso 2 — Horarios (reuso, no reinvención)
+### Paso 3 — "Tus canchas"
 
-- Mismo modelo mental que `/settings/horarios` (pages/horarios-precios.md §2): **horario general
-  (2 campos) + Personalizar/Cerrado por día + checkbox madrugada**. Reusa `horarios-lib.ts`
-  (`deriveScheduleView`/`effectiveDay`/`needsNextDayHint`) y valida con el `horariosSchema`
-  canónico — muere el `scheduleSchema` local roto (problema #4).
-- El parseo FormData→input se extrae a `horariosFormDataToInput()` en `opening-hours.schema.ts`,
-  compartido con la action de settings (una sola fuente para el contrato `${day}_open/_close/_closed`
-  + `closes_next_day`).
-- **Normalización de defaults** (`sanitizeWizardHours`): el default de DB trae vie/sáb cierre
-  `01:00` con `closes_next_day=false` — estado inválido para el schema y, peor, **invisible para el
-  motor de precios** (una madrugada sin flag = 0 celdas activas → viernes sin precio silencioso).
-  Al iniciar el paso, todo cierre `close <= open` distinto de `00:00` con el flag apagado se
-  normaliza a `00:00`. Es un default que nadie eligió → se corrige a un default seguro. Quien
-  cierra de madrugada lo elige explícitamente (toggle) y el generador de precios del paso 3 lo
-  soporta (§5).
-- Hint de madrugada (`needsNextDayHint`) idéntico a settings (§7.1: info, no warning).
+- Pide: Nombre · Formato (chips) · Superficie · Precio por turno (uniforme, un precio por cancha).
+- No pide: fotos (§1.6).
+- Preview: `GridPreview` — cada cancha (existente o draft) es una columna que entra animada
+  (`AnimatePresence` + `layout`, spring 200ms) al agregarse.
+- "+ Agregar otra cancha" duplica la anterior (nombre autoincremental). Drafts persistidos en
+  `sessionStorage` por tenant. Revisita: canchas ya creadas se listan aparte (`ExistingCourtsList`)
+  con hint "Podés editarlas después desde Canchas".
+- Botón "Volver" → paso 2.
+- Action: `createWizardCourtsAction` → `createOnboardingCourts` (módulo), transacción única:
+  límite de plan, `createCourt` por draft, `updateOnboardingStep(3)`.
 
-## 5. Paso 3 — Canchas y precios inline (el corazón)
+### Paso 4 — "Tu primera reserva"
 
-### 5.1 Anatomía
+Reemplaza al paso de señas de la v1 (§A.2 del plan: el paso terminal empujaba al dueño fuera de la
+app, al peor momento del flujo, para una decisión que ni siquiera es requisito de operación —
+`booking.service.ts` confirma un booking online sin MP conectado).
+
+- Contenido: `StepFirstBooking` monta la grilla **real** de HOY (`FirstBookingCourtSlots`, generada
+  server-side con las canchas y horarios que el dueño acaba de confirmar). Tocar un slot libre abre
+  un mini-form (nombre) → `createOnboardingFirstBookingAction` → `createManualBooking` del módulo
+  `bookings` (mismo camino que una reserva manual real desde la grilla del admin).
+- Es el único momento del wizard donde ya existen los tres requisitos duros de `createManualBooking`:
+  cancha `online`, pricing que cubre el slot, slot de 60 min confirmado.
+- El slot recién cargado hace un pulse único (`scale` keyframes, 400ms) — el momento pico del wizard.
+- Skippable siempre: "Saltar por ahora" (sin turno) / "Terminar y ver mi complejo" (con turno) →
+  `finishOnboardingAction`, que cierra el onboarding y redirige a `/onboarding/listo`.
+- Sin horarios libres hoy (caso borde: el complejo cierra o ya está lleno) → `EmptyState`, no bloquea.
+
+### Señas / MercadoPago — fuera del wizard
+
+Se movió a la checklist del dashboard (`onboarding-checklist.tsx`) como ítem destacado; conectar
+sigue siendo `/api/mp/oauth-start` desde `/settings/facturacion`. El callback de OAuth
+(`api/mp/callback/route.ts`) distingue: onboarding no completo (caso wizard, ya no ocurre desde acá
+salvo un link viejo) activa `requires_deposit` + completa onboarding; onboarding completo (caso
+real, desde la checklist) solo conecta y emite `onboarding.mp.connected`.
+
+### Cierre `/onboarding/listo`
+
+Guard propio (sesión + `onboarding_completed`, ver §4). Mismo shell (`WizardShell` sin preview),
+check animado (`ListoReveal`), reconocimiento condicional "Tu primera reserva ya está en la grilla"
+si `hasAnyBooking(tenant.id)`, y `ShareActions` (WhatsApp + copiar link) — la acción que dispara el
+Aha Moment real (`activation.first_online_booking`, §8) y marca `public_link_shared` en la checklist.
+
+## 3. Arquitectura de rutas
 
 ```
-Tus canchas
-┌ Cancha 1 ──────────────────────────────── [×] ┐
-│ Nombre   [Cancha 1        ]                    │
-│ Formato  (F5) (F7) (F8) (F9) (F11)   ← chips  │
-│ Superficie [Césped sintético ▾]  ☐ Techada     │
-│ Precio por turno  [$ Ej: 20.000]               │
-│   "Por turno de 1 hora, igual toda la semana.  │
-│    Después podés poner precio por franja."     │
-└────────────────────────────────────────────────┘
-[+ Agregar otra cancha]   ← copia formato/superficie/precio de la anterior
-[Continuar →]
+src/app/onboarding/
+├── layout.tsx               ← gate de sesión (§4) + WizardMotionProvider + WizardChrome
+├── loading.tsx               ← Suspense fallback del segmento
+├── error.tsx                  ← error boundary del segmento
+├── motion-provider.tsx        ← LazyMotion(domAnimation) + MotionConfig(reducedMotion="user")
+├── page.tsx                   ← bare `/onboarding` → redirige al paso correcto según DB
+├── [paso]/page.tsx            ← resuelve slug→paso, guard de tenant/paso válido, emite analytics
+├── listo/page.tsx             ← cierre peak-end
+├── actions.ts                 ← capa fina: guard → rate limit → módulo → track
+├── wizard-hours.ts            ← sanitizeWizardHours (normaliza defaults de DB con madrugada inválida)
+└── components/
+    ├── WizardChrome.tsx        ← el único componente que Next mantiene montado entre pasos: rail +
+    │                              progreso animado + manejo de foco (§7)
+    ├── WizardShell.tsx          ← card centrada + slot de preview (split si `preview` está presente)
+    ├── PreviewPane.tsx           ← dónde vive el preview (columna sticky desktop / barra mobile)
+    ├── PublicCardPreview.tsx     ← preview paso 1
+    ├── WeekPreview.tsx           ← preview paso 2
+    ├── GridPreview.tsx           ← preview paso 3 y 4
+    ├── StepIdentity.tsx / StepSchedule.tsx / StepCourts.tsx / StepFirstBooking.tsx
+    ├── step-courts/               ← CourtDraftCard, ExistingCourtsList, use-court-drafts (sessionStorage)
+    ├── use-wizard-navigation.ts   ← helper de navegación cliente compartido entre pasos
+    └── wizard-styles.ts           ← clases token-safe para los campos (P0.1 de MASTER §13 sigue abierta)
+
+src/modules/onboarding/
+├── onboarding.service.ts     ← reglas de negocio: createOnboardingCourts, saveOnboardingSchedule,
+│                                 createOnboardingFirstBooking, hasAnyBooking, currentWizardStep
+├── onboarding.schema.ts       ← wizardCourtsSchema, wizardFirstBookingSchema
+├── onboarding.types.ts        ← WizardActionResult, WizardStep (1|2|3|4|5), CreateFirstBookingResult
+└── onboarding.steps.ts        ← WIZARD_STEPS, stepFromSlug/stepPath/stepFromPathname
 ```
 
-- Mínimo 1 cancha para continuar (doc10). Máximo 20 por envío (backstop server).
-- **"+ Agregar otra cancha" duplica la anterior** con nombre autoincremental ("Cancha 2"): el
-  caso real es N canchas idénticas — la lección de "copiar precios de otra cancha" de
-  horarios-precios, aplicada automáticamente. Microcopy: "Copiamos los datos de la anterior".
-- Formato en chips (Hick: 5 opciones, mismas que el form de `/canchas`); "Fútbol N"; capacidad
-  derivada server-side (`format × 2`, migr. 032). Quitar cancha = icon-only con `aria-label` +
-  `Tooltip` (§7.4), solo si hay más de un draft.
-- **Un solo precio por cancha** en el wizard (modo `uniform` de la plantilla). Día/noche o finde
-  se ajustan después en `/canchas` — el wizard resuelve el caso común, no el general (mismo
-  principio que horarios-precios §0). `DEFAULT_RULES` sigue muerto: acá el precio lo pone el
-  dueño (1 campo), no un default inventado.
-- Revisita (Volver desde Señas): las canchas ya creadas se listan como filas guardadas
-  (check + "Cancha 1 · Fútbol 5 · $ 20.000") con hint "Podés editarlas después desde Canchas";
-  los drafts nuevos se agregan debajo. Continuar con 0 drafts es válido si ya existen canchas.
+## 4. Gate de sesión: por qué vive en `layout.tsx`
 
-### 5.2 Generador de reglas: `uniformRulesFromOpeningHours`
+`loading.tsx` mete un `<Suspense>` alrededor de cada page — Next arranca a streamear la respuesta
+(200 ya emitido) antes de que `page.tsx`/`[paso]/page.tsx`/`listo/page.tsx` lleguen a su propio
+`redirect('/login')`, y el status HTTP ya no se puede cambiar (mismo bug que `(public)/[slug]/layout.tsx`
+ya tenía resuelto, encontrado de nuevo acá en la verificación adversarial de Fase 9). El layout
+renderiza FUERA de ese boundary, así que ahí el `redirect()` llega a tiempo — `curl` contra
+`/onboarding`, `/onboarding/complejo`, `/onboarding/listo` sin sesión da 307 real a `/login`, no 200
+con el chrome vacío.
 
-Nuevo helper puro en `pricing-grid.ts`: `(openingHours, closesNextDay, priceCents) → PricingRule[]`.
+El layout solo chequea **sesión** (staff autenticado). Cada page sigue llamando `extractAuthUser()`
+por su cuenta para el `staffUserId` que necesita — está memoizada con `cache()` (React), así que no
+es un segundo viaje real. El resto de las validaciones (tenant existente, paso válido, onboarding ya
+completo) sigue en cada page: no son uniformes entre páginas (`listo` exige `onboarding_completed`,
+lo inverso de las otras).
 
-- Día abierto normal → regla `{days:[d], from: open, to: close}` (con `00:00` = medianoche,
-  minutos exactos — no trunca a hora entera como la grilla).
-- **Madrugada** (`closesNextDay && close <= open && close ≠ 00:00`): dos reglas — `[d] open→00:00`
-  y `[día siguiente] 00:00→close`. `calculatePrice` busca por día **calendario**, así que el turno
-  de la 01:00 del sábado (noche del viernes) lo cubre la regla del sábado 00:00→02:00. Esto hace
-  que el wizard sea el ÚNICO camino hoy que precia madrugadas correctamente (ver §8).
-- Reglas con mismo `(from, to, price)` se fusionan por días (mismo criterio que
-  `compressGridToRules`). Cerrados se saltean. Sin días abiertos → `[]` (la action lo rechaza).
-- `validatePricingRulesCoverage` queda de backstop server-side (no falla en madrugada: la saltea).
+## 5. Shell y layout visual
 
-### 5.3 Action `createWizardCourtsAction`
+Split funcional en desktop: rail de progreso (`WizardChrome`, angosto) + card del form + columna de
+preview (`PreviewPane`, sticky). En mobile el preview no desaparece: baja a una barra sticky al pie,
+colapsada por defecto, con `pb-[env(safe-area-inset-bottom)]` (mismo patrón que `ui/sheet.tsx`). El
+form va SIEMPRE antes que el preview en el DOM aunque visualmente quede al lado — el teclado no debe
+atravesar el preview antes de los campos.
 
-Patrón de auth del wizard (extractAuthUser + getStaffTenant — el claim de tenant en el JWT puede
-no estar todavía; mismo trade-off que las actions v1). Zod: drafts 0–20 de
-`{name, format, surfaceType, isCovered, priceCents>0}`. Todo en **una** transacción
-`withTenantContext`: límite de plan (`getCourtCountAndLimit`; en trial no hay suscripción →
-sin límite), `createCourt` por draft, luego `updateOnboardingStep(3)`.
+Card `card-premium rounded-2xl p-6 md:p-8`, h2 de paso en `font-display` (Archivo). Primitives
+`ui/` tal cual — la tokenización de `ui/input`/`ui/button` (MASTER §13 P0.1) sigue abierta y es
+tarea propia; el wizard usa las clases token-safe de `wizard-styles.ts` mientras tanto.
 
-## 6. Paso 4 — Señas (decisión honesta) y cierre
+## 6. Animaciones
 
-### 6.1 Cards de decisión
+`motion` (paquete `motion/react`) es la única librería de animación del stack, y solo en esta ruta —
+ver la enmienda a MASTER §5.1 (`docs/spec/design-system/MASTER.md`, sección "5.1 Tokens": excepción
+fechada 2026-08-15). `WizardMotionProvider` (`motion-provider.tsx`) monta `LazyMotion` con
+`domAnimation` (~15 KB, no el bundle completo) y `MotionConfig reducedMotion="user"` — sin esa línea
+se rompe la política de `prefers-reduced-motion` que el resto del producto respeta en tres capas.
 
-Dos cards radio (roving por teclado, `role="radiogroup"`), default "Sí" (doc10):
+| Momento | Componente | Cómo |
+|---|---|---|
+| Cambio de paso | `WizardChrome` | slide+fade direccional, `AnimatePresence mode="wait"` |
+| Cancha agregada | `GridPreview` | columna nueva entra con `layout` + spring (200ms) |
+| Barra de progreso | `WizardChrome` | width con spring |
+| Slot de la primera reserva | `StepFirstBooking` | `scale` keyframes reactivos a `done`, 400ms — el momento pico |
+| Cierre `/listo` | `ListoReveal` | stagger de las acciones, ~500ms total |
 
-- **"Cobrar seña online"** + badge "Recomendado": "El jugador paga un porcentaje al reservar,
-  por MercadoPago. La plata va directo a tu cuenta y la reserva llega confirmada." CTA primario:
-  **Conectar MercadoPago** (→ `/api/mp/oauth-start`) + microcopy de confianza "Te llevamos a
-  MercadoPago para autorizar los cobros. Tarda 2 minutos."
-- **"Sin seña por ahora"**: "Los jugadores reservan online y pagan al llegar. Activás la seña
-  cuando quieras desde Configuración." CTA primario: **Terminar y ver mi complejo**.
+Reglas técnicas: solo `transform`/`opacity` (nunca `height`/`top`), interrumpibles (default de
+`motion`), duraciones al 80% en mobile.
 
-Un solo CTA primario visible a la vez (§6.2): el CTA cambia con la selección.
+## 7. Accesibilidad
 
-### 6.2 Errores de OAuth (problema #6)
+- **Foco al cambiar de paso**: `WizardChrome` compara el `pathname` guardado en un ref contra el
+  actual — mueve el foco al h2 del paso nuevo solo si el pathname cambió, nunca en la carga inicial
+  (evita robar foco al montar, un riesgo real con `AnimatePresence` que no depende de si `motion`
+  llega a disparar `onAnimationComplete` en el primer render).
+- **Anuncio de progreso**: región `aria-live="polite"` ("Paso N de 4, N%") — `polite` a propósito,
+  para que se encole después del anuncio de foco del h2 en vez de interrumpirlo.
+- **Preview pane**: equivalente textual real (cuántas canchas, qué horarios), nunca `aria-hidden` —
+  comunica estado, no es decorativo. `PreviewPane` renderiza el mismo contenido dos veces (aside
+  desktop / panel mobile) ocultas por CSS según viewport, para que un lector de pantalla no lo
+  anuncie dos veces.
+- **Grilla del paso 4**: slots son `<button>` navegables por teclado, no `<div onClick>`.
+- **Reduced motion**: `MotionConfig reducedMotion="user"` (§6).
+- Targets ≥44px mobile, campos ≥16px (guard automático `tests/unit/mobile-font-size-guard.test.tsx`),
+  errores con `role="alert"`.
 
-`?error=mp_*` → banner warning con copy accionable: fallas transitorias ("No pudimos conectar
-MercadoPago. Probá de nuevo o terminá sin seña — lo conectás después desde Configuración") vs
-config faltante ("La conexión con MercadoPago no está disponible ahora…"). Nunca el código crudo.
+## 8. Analytics
 
-### 6.3 El callback ahora cumple la promesa (problema #7)
+Categoría `onboarding` en `src/shared/observability/breadcrumbs.ts`. Restricción no negociable: el
+sink de `analytics_events` solo se registra server-side (`instrumentation.ts`, `run-workers.ts`) —
+**todo evento de onboarding se emite desde Server Actions o Server Components**, nunca desde el
+cliente. `PII_KEYS` descarta `staffUserId`: solo se puede medir agregado por tenant.
 
-En `api/mp/callback`, si el onboarding NO está completo (= flujo wizard, elección explícita
-"Sí, cobrar seña"): `requires_deposit: true` + `completeOnboarding` + redirect a
-`/onboarding/listo`. Si ya estaba completo (reconexión desde settings): NO toca
-`requires_deposit` (respeta lo que el admin haya configurado) y redirige a
-`/settings/facturacion`. El porcentaje no se pregunta (default 30 %, doc10).
+```
+onboarding.started                  [paso]/page.tsx — primera vista de cualquier paso
+onboarding.step.viewed              [paso]/page.tsx — cada vista de paso
+onboarding.step.completed           actions.ts — cada action que avanza
+onboarding.step.back                [paso]/page.tsx — navegación a un paso anterior
+onboarding.step.error               actions.ts — validación o negocio falló
+onboarding.courts.added             createWizardCourtsAction — count enviado en el submit
+onboarding.first_booking.created    createOnboardingFirstBookingAction
+onboarding.first_booking.skipped    finishOnboardingAction — sin turno cargado
+onboarding.completed                finishOnboardingAction
+onboarding.link.shared              markPublicLinkSharedAction (dashboard) — channel whatsapp|copy
+onboarding.mp.connected             api/mp/callback — fromChecklist: true
+onboarding.abandoned                onboarding-abandonment.worker.ts — derivado, no emitido en vivo
+activation.first_online_booking     booking.service.ts — el Aha Moment real, categoría `activation`
+                                     propia (no `onboarding.*`: puede pasar días después)
+```
 
-### 6.4 `/onboarding/listo` — peak-end (problema #8)
+Vista de embudo: `(super-admin)/super-admin/_components/onboarding-funnel-section.tsx`, alimentada
+por `metrics.service.ts`/`dashboard.service.ts` — primer `SELECT` real sobre `analytics_events`
+fuera de la purga de retención.
 
-Guard: staff con tenant y `onboarding_completed` (si no → `/onboarding`). Mismo shell, rail con
-los 4 pasos tildados (pago del goal gradient). Contenido:
+## 9. Checklist del dashboard
 
-- Check grande con una entrada animada única (fade+scale 300 ms, sin loop — presupuesto admin §5.2).
-- "¡Tu complejo está online!" + link público real (`buildPublicLinkUrl` → `/c/slug`).
-- CTA primario: **Compartir por WhatsApp** (`wa.me` con el mensaje pre-armado de doc10 §3 — la
-  acción que dispara el Aha Moment). Secundario outline: **Copiar link**. Terciario ghost:
-  **Ir a mi panel**. Compartir/copiar marcan `public_link_shared` (la checklist del dashboard
-  arranca más llena — Zeigarnik encadenado).
+`getChecklistState()` (`(admin)/dashboard/queries.ts`): `complexData` sigue `true` constante (los
+campos son NOT NULL en `tenants`, no hay nada que pueda dar falso — dejarlo como chequeo sería
+teatro); `hasSchedule` ahora es real (`hasOperableDay(openingHours, closesNextDay)` — antes decía
+"Horarios definidos ✓" a un complejo con los 7 días cerrados). `mpConnected` es el ítem destacado que
+reemplaza al viejo paso 4. `firstBookingReceived` sigue siendo el proxy del Aha Moment (booking con
+`created_by_staff IS NULL`).
 
-## 7. Copy (§8)
+## 10. Deuda declarada / fuera de alcance (no ejecutar sin pedido)
 
-- Rail: "Tu complejo" · "Horarios" · "Canchas" · "Señas" · "Paso N de 4 · N %".
-- Voseo operativo: "Contanos de tu complejo", "Confirmá tus horarios", "Cargá tus canchas",
-  "¿Cobrás seña?". Plata `formatArs` ("$ 20.000"), rangos "08:00–00:00" (§8.3).
-- Preview de URL del paso 1 dice la verdad: `turnogol.app/c/<slug>` (problema #9). Placeholder
-  de email corto que cabe: "Ej: hola@tucomplejo.com".
+- **Madrugada × precios, sistémico** (heredado de la v1, sin cambios): `PricingGrid` UI y
+  `validatePricingRulesCoverage` siguen sin representar horas post-medianoche fuera del generador
+  del wizard. Tarea propia.
+- Primitives `button`/`input` siguen light-hardcodeados (MASTER §13 P0.1).
+- Paso 1 sin autocompletado Google Places (doc10 lo pedía; requiere API key — decisión de negocio,
+  explícitamente fuera del alcance elegido el 2026-08-15).
+- Rediseño de `/register` y del email de bienvenida: fuera del alcance elegido.
 
-## 8. Deuda declarada / REQUIERE INPUT (no ejecutar sin pedido)
+## 11. Contratos de test
 
-- **Madrugada × precios, sistémico**: `pricing-grid` (celdas), `PricingGrid` UI y
-  `validatePricingRulesCoverage` ignoran `closes_next_day` — un día 18:00→02:00 tiene 0 celdas
-  activas: no se puede preciar desde `/canchas` y la cobertura no valida esas horas. Peor: editar
-  en `/canchas` una cancha creada por el wizard con reglas de madrugada las **pierde** (la grilla
-  no representa 00:00–02:00 del día siguiente). El wizard genera reglas correctas (§5.2), pero el
-  fix de fondo (extender el modelo de celdas más allá de la medianoche) es tarea propia.
-- Primitives `button`/`input` siguen light-hardcodeados (MASTER §13 P0.1) — el wizard los consume
-  tal cual; cuando P0.1 cierre, hereda gratis.
-- `createTenantWithTrial` sigue sembrando el default JSONB de DB (vie/sáb 01:00 sin flag); el
-  wizard lo normaliza al mostrar (§4), pero un tenant que abandona antes del paso 2 conserva ese
-  default inválido para el motor de precios. Decidir si se corrige el default de DB (migración).
-- Paso 1 sin autocompletado Google Places (doc10 lo pedía; requiere API key — decisión de negocio).
+- `tests/e2e/onboarding.spec.ts` — flujo completo: identidad → horarios → canchas → primera reserva
+  (skip) → `/onboarding/listo`. Locators de heading con `{ level: 2 }` donde compiten con el `<h3>`
+  placeholder de `PublicCardPreview`.
+- `tests/e2e/qa-happy-paths/admin/TG-HP-203.spec.ts` — mismo recorrido + asserts de DB.
+- `tests/e2e/first-booking-aha.spec.ts` — la checklist refleja el booking real.
+- `tests/e2e/capture-screenshots.spec.ts` — captura los 4 pasos nuevos.
+- `tests/unit/rate-limit-admin-coverage.test.ts` — cobertura **por action** (no por archivo): cierra
+  el hueco que dejaba pasar `finishOnboardingAction` sin rate limit.
+- `tests/unit/onboarding-role-guard.test.ts`, `onboarding-create-tenant-idempotency.test.ts`,
+  `onboarding-schedule-validation.test.ts`.
+- Stories con axe bloqueante en CI: `WizardChrome`, `WizardShell`, `PreviewPane`,
+  `PublicCardPreview`, `WeekPreview`, `GridPreview`, `StepIdentity`, `StepSchedule`, `StepCourts`,
+  `StepFirstBooking`, `CourtDraftCard`, `ExistingCourtsList`, `ui/progress`, `ui/stepper`.
 
-## 9. Contratos de test
+---
 
-- `tests/unit/pricing-grid.test.ts`: + `uniformRulesFromOpeningHours` (normal, medianoche,
-  cerrado, madrugada→regla día siguiente, fusión de días, sin días abiertos).
-- `tests/unit/horarios-lib.test.ts`: sin cambios (lib reusada tal cual).
-- `tests/e2e/onboarding.spec.ts`: flujo completo nuevo — identidad → horarios (Continuar con
-  defaults normalizados) → canchas (nombre+precio, Continuar) → señas (Terminar) →
-  `/onboarding/listo` → "Ir a mi panel" → `/dashboard`. "Paso N de 4" via `.first()` (existe en
-  rail y en header mobile, uno visible por viewport).
+> **Nota sobre `doc10_onboarding_design.md`**: ese documento (spec de estrategia/negocio, no de UI)
+> describe un wizard que nunca coincidió con el código en varios puntos (orden de pasos, contenido
+> del paso 4, precios pre-cargados) y quedó desactualizado por este refactor en los que sí coincidía
+> (fotos fuera del wizard, paso terminal). Sigue vigente su §1 (Aha Moment, métricas de éxito) y su
+> razonamiento de negocio (§6); su §2 (mockups ASCII paso a paso) está superseded por este documento.

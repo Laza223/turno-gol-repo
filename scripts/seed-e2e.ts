@@ -325,9 +325,16 @@ async function seedSubscription(sql: SqlClient): Promise<void> {
 }
 
 async function seedFreshAdminStaff(sql: SqlClient): Promise<void> {
+  // Con teléfono: `createTenantAction` (Fase 4 del refactor de onboarding)
+  // deriva el contacto del complejo de `staff_users.phone` en vez de pedirlo
+  // en el Paso 1 (doc10 §2) — `/register` real siempre lo exige, así que un
+  // fresh admin sin `phone` no representa ninguna cuenta real y el wizard se
+  // frena en el Paso 1 con "Tu cuenta no tiene un teléfono cargado" (el mismo
+  // guard defensivo que protege el caso real de un staff invitado sin
+  // completar el perfil).
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${E2E.freshStaffUserId}, ${E2E.freshAdminEmail}, ${'Fresh'}, ${'Admin'})
+    INSERT INTO staff_users (id, email, first_name, last_name, phone)
+    VALUES (${E2E.freshStaffUserId}, ${E2E.freshAdminEmail}, ${'Fresh'}, ${'Admin'}, ${'+5491100000099'})
   `
   // NO tenant_staff_members insert — fresh admin has 0 tenants → enters wizard.
 }

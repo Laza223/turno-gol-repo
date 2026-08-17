@@ -6,6 +6,7 @@ import { requireAdminStaffAction, requireOperatorStaff } from '@/modules/staff/g
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
+import { track } from '@/shared/observability/breadcrumbs'
 
 export type MarkSharedResult = { success: true } | { success: false; error: string }
 
@@ -18,7 +19,15 @@ export type MarkSharedResult = { success: true } | { success: false; error: stri
  * `(admin)/*\/actions.ts`) cubre sesión + rol + tenant.status en un solo
  * punto.
  */
-export async function markPublicLinkSharedAction(): Promise<MarkSharedResult> {
+/**
+ * `channel` (Fase 7 del plan de refactor, `onboarding.link.shared`): por qué
+ * botón se compartió. Default `'copy'` porque el llamador más viejo (la
+ * checklist del dashboard, `onboarding-checklist.tsx`) solo tiene ese botón —
+ * WhatsApp es un CTA que hoy solo existe en `/onboarding/listo`.
+ */
+export async function markPublicLinkSharedAction(
+  channel: 'whatsapp' | 'copy' = 'copy',
+): Promise<MarkSharedResult> {
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
@@ -37,6 +46,7 @@ export async function markPublicLinkSharedAction(): Promise<MarkSharedResult> {
       })
       .where(eq(tenants.id, tenant.id))
   })
+  track.onboarding('onboarding.link.shared', { tenantId: tenant.id, channel })
 
   revalidatePath('/dashboard')
   return { success: true }

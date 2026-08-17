@@ -115,6 +115,16 @@ export default defineConfig({
       enabled: true,
       provider: 'playwright',
       headless: true,
+
+      // El default es 60s, y es poco para una corrida EN FRÍO: antes de servir la
+      // primera story, Vite escanea las 268 entries para pre-bundlear deps, y en
+      // una máquina lenta eso solo ya tarda ~70s. El browser se cansa de esperar,
+      // Vitest cierra el server, y el scan a medio hacer escupe una cascada de
+      // "The server is being restarted or closed" que apunta a un archivo de story
+      // al azar — el síntoma no se parece en nada a la causa. Pasa cada vez que se
+      // invalida `node_modules/.vite` (agregar una dependencia, por ejemplo).
+      connectTimeout: 180_000,
+
       instances: [
         {
           browser: 'chromium',

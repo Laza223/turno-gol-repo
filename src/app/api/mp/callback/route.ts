@@ -11,6 +11,7 @@ import {
 } from '@/modules/tenants/tenant.service'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffRole } from '@/modules/staff/staff.service'
+import { track } from '@/shared/observability/breadcrumbs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   })
 
   if (!parsed.success) {
-    return NextResponse.redirect(new URL('/onboarding?error=mp_missing_params', req.url))
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_missing_params', req.url))
   }
   const { code, state } = parsed.data
 
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const secret = process.env.MP_CLIENT_SECRET ?? ''
   const dot = state.indexOf('.')
   if (dot < 0) {
-    return NextResponse.redirect(new URL('/onboarding?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
   }
   const payload = state.slice(0, dot)
   const sig = state.slice(dot + 1)
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const a = Buffer.from(sig)
   const b = Buffer.from(expected)
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return NextResponse.redirect(new URL('/onboarding?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
   }
 
   // Decode tenantId + issued-at timestamp from the state payload.
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const decoded = Buffer.from(payload, 'base64url').toString('utf8')
   const [tenantId, tsRaw] = decoded.split(':')
   if (!tenantId || !tsRaw) {
-    return NextResponse.redirect(new URL('/onboarding?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
   }
 
   // El `state` firmado solo prueba que ESTE navegador inició un oauth-start
@@ -112,14 +113,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const STATE_TTL_MS = 10 * 60 * 1000 // 10 minutos
   const age = Date.now() - issuedAt
   if (!Number.isFinite(issuedAt) || age < 0 || age > STATE_TTL_MS) {
-    return NextResponse.redirect(new URL('/onboarding?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
   }
 
   // Exchange code for token — require APP_URL (no req.url origin fallback to
   // avoid host-header injection into the OAuth redirect_uri).
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) {
-    return NextResponse.redirect(new URL('/onboarding?error=mp_config_missing', req.url))
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
   }
   const redirectUri = `${appUrl}/api/mp/callback`
   const clientId = process.env.MP_CLIENT_ID ?? ''
@@ -137,7 +138,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   })
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL('/onboarding?error=mp_token_failed', req.url))
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_token_failed', req.url))
   }
 
   const tokenData = (await tokenRes.json()) as MpTokenResponse
@@ -156,7 +157,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (ocupada) {
     return NextResponse.redirect(
       new URL(
-        `/onboarding?error=mp_already_connected&complejo=${encodeURIComponent(ocupada.name)}`,
+        `/settings/facturacion?error=mp_already_connected&complejo=${encodeURIComponent(ocupada.name)}`,
         req.url,
       ),
     )
@@ -169,11 +170,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     mpPublicKey: tokenData.public_key,
     mpNickname: await fetchMpNickname(tokenData.access_token),
   })
+  // `fromChecklist: true` siempre desde la Fase 5: el único punto de entrada
+  // real a este callback es /settings/facturacion (ver el comentario de abajo).
+  track.onboarding('onboarding.mp.connected', { tenantId, fromChecklist: true })
 
-  // Flujo wizard vs reconexión (pages/onboarding.md §6.3): llegar acá desde el
-  // paso "¿Cobrás seña?" es la elección explícita "Sí" → se activa la seña y el
-  // wizard cierra en su momento peak-end. Una reconexión posterior NO toca
-  // requires_deposit (respeta lo que el admin haya configurado).
+  // Desde la Fase 5 del refactor de onboarding, conectar MP se movió del
+  // wizard (viejo paso "¿Cobrás seña?") a /settings/facturacion — el ÚNICO
+  // punto de entrada real a `/api/mp/oauth-start` es esa pantalla, y llegar
+  // ahí ya exige `onboarding_completed` ((admin)/layout.tsx). La rama
+  // `!onboardingDone` de abajo queda por compatibilidad con una sesión que
+  // haya iniciado el OAuth desde el wizard viejo justo antes de este deploy
+  // (state firmado con TTL de 10 min): activa la seña y cierra el onboarding
+  // como hacía el paso que ya no existe. Una reconexión posterior (la rama de
+  // arriba) NO toca requires_deposit — respeta lo que el admin haya configurado.
   const tenant = await getTenantById(tenantId)
   const onboardingDone = tenant?.settings.onboarding_completed === true
   if (onboardingDone) {

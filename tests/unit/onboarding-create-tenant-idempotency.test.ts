@@ -22,6 +22,10 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
   completeOnboarding: vi.fn(),
   updateTenant: vi.fn(),
 }))
+// doc10 §2: el wizard deriva phone/email de la cuenta staff, no del form.
+vi.mock('@/modules/staff/staff.service', () => ({
+  getStaffContact: vi.fn(async () => ({ email: 'complejo@test.com', phone: '+54 11 2233-4455' })),
+}))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => {
@@ -38,8 +42,6 @@ function validForm(): FormData {
   fd.set('address', 'Calle Falsa 123')
   fd.set('city', 'Rosario')
   fd.set('province', 'Santa Fe')
-  fd.set('phone', '1122334455')
-  fd.set('email', 'complejo@test.com')
   return fd
 }
 
@@ -50,15 +52,15 @@ beforeEach(() => {
 describe('createTenantAction — idempotencia (#35)', () => {
   it('no crea un tenant duplicado si el staff ya tiene uno', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce({ id: 'tenant-existing' } as never)
-    const res = await createTenantAction(validForm())
-    expect(res).toEqual({ success: true })
+    const res = await createTenantAction({ success: true }, validForm())
+    expect(res).toEqual({ success: true, next: '/onboarding/horarios', hardNavigate: true })
     expect(createTenantWithTrial).not.toHaveBeenCalled()
   })
 
   it('crea el tenant cuando el staff todavia no tiene ninguno', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce(null)
-    const res = await createTenantAction(validForm())
-    expect(res).toEqual({ success: true })
+    const res = await createTenantAction({ success: true }, validForm())
+    expect(res).toEqual({ success: true, next: '/onboarding/horarios', hardNavigate: true })
     expect(createTenantWithTrial).toHaveBeenCalledTimes(1)
   })
 })

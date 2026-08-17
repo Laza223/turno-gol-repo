@@ -300,17 +300,22 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     await freshAdminPage.goto('/onboarding')
 
-    // Step 1: complex identity
-    await expect(freshAdminPage.getByRole('heading', { name: /tu complejo/i })).toBeVisible({
+    // Step 1: complex identity. `level: 2`: sin nombre tipeado, el preview
+    // (`PublicCardPreview`, Fase 3) muestra un <h3> placeholder con el MISMO
+    // texto "Tu complejo" — sin el nivel, el locator resuelve a 2 elementos.
+    await expect(
+      freshAdminPage.getByRole('heading', { level: 2, name: /tu complejo/i }),
+    ).toBeVisible({
       timeout: 20000,
     })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_1')
     await freshAdminPage.locator('#identity-name').fill('Complejo UX Audit')
     await freshAdminPage.locator('#identity-address').fill('Calle Audit 555')
     await freshAdminPage.locator('#identity-city').fill('Luján')
-    await freshAdminPage.locator('#identity-province').selectOption({ label: 'Buenos Aires' })
-    await freshAdminPage.locator('#identity-phone').fill('+5491166666666')
-    await freshAdminPage.locator('#identity-email').fill('ux-audit-tenant@turnogol.test')
+    // Provincia es un Combobox (Fase 4, reemplaza el <select> de 24 opciones).
+    // Sin teléfono/email: el paso ya no los pide, se derivan de la cuenta staff.
+    await freshAdminPage.locator('#identity-province').click()
+    await freshAdminPage.getByRole('option', { name: 'Buenos Aires' }).click()
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
     // Step 2: horarios (general + excepciones; defaults saneados → Continuar directo)
@@ -338,7 +343,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_3')
     await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
 
-    // Step 4: señas (cards de decisión)
+    // Step 4: primera reserva (grilla de slots de hoy)
     try {
       await expect(
         freshAdminPage
@@ -354,8 +359,9 @@ test.describe('UX Audit Screenshot Capturer', () => {
       throw err
     }
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_4')
-    await freshAdminPage.getByText(/sin seña por ahora/i).click()
-    await freshAdminPage.getByRole('button', { name: /terminar y ver mi complejo/i }).click()
+    // "Saltar por ahora": el click a un slot real depende de la hora del día
+    // en que corre el runner (ver TG-HP-203.spec.ts).
+    await freshAdminPage.getByRole('button', { name: /saltar por ahora/i }).click()
 
     // Cierre peak-end del wizard → panel
     await expect(freshAdminPage).toHaveURL(/\/onboarding\/listo/, { timeout: 20000 })

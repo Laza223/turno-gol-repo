@@ -43,19 +43,23 @@ vi.mock('@/modules/courts/court.service', () => ({
   listCourts: vi.fn(async () => []),
   validatePricingRulesCoverage: vi.fn(() => ({ valid: true, gaps: [] })),
 }))
+// Parcial: `createOnboardingCourts`/`saveOnboardingSchedule` quedan REALES (su
+// lógica orquesta funciones ya mockeadas arriba, ver el resto del archivo).
+// Solo `hasAnyBooking` (Fase 7, analytics) toca `tx.select(...)` DIRECTO —
+// sin este mock, `finishOnboardingAction` explota contra el `{}` que
+// `withTenantContext` devuelve como tx falso.
+vi.mock('@/modules/onboarding/onboarding.service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/modules/onboarding/onboarding.service')>()
+  return { ...actual, hasAnyBooking: vi.fn(async () => false) }
+})
 
 import {
   createWizardCourtsAction,
   finishOnboardingAction,
   saveWizardScheduleAction,
-  setWizardStepAction,
 } from '@/app/onboarding/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import {
-  getStaffTenant,
-  completeOnboarding,
-  updateOnboardingStep,
-} from '@/modules/tenants/tenant.service'
+import { getStaffTenant, completeOnboarding } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
 import { createCourt, listCourts } from '@/modules/courts/court.service'
@@ -95,12 +99,6 @@ describe('onboarding wizard actions — manager (rol no-admin) es rechazado (caz
     vi.mocked(getStaffRole).mockResolvedValue('manager')
   })
 
-  it('setWizardStepAction no avanza el wizard para un manager', async () => {
-    const res = await setWizardStepAction(2)
-    expect(res.success).toBe(false)
-    expect(vi.mocked(updateOnboardingStep)).not.toHaveBeenCalled()
-  })
-
   it('saveWizardScheduleAction no reescribe horarios para un manager', async () => {
     const res = await saveWizardScheduleAction({ success: true }, scheduleFormData())
     expect(res.success).toBe(false)
@@ -135,12 +133,6 @@ describe('onboarding wizard actions — admin sigue funcionando (paridad)', () =
     vi.mocked(getStaffRole).mockResolvedValue('admin')
   })
 
-  it('setWizardStepAction avanza el wizard para un admin', async () => {
-    const res = await setWizardStepAction(2)
-    expect(res).toEqual({ success: true })
-    expect(vi.mocked(updateOnboardingStep)).toHaveBeenCalledWith('tenant-1', 2)
-  })
-
   it('createWizardCourtsAction crea canchas para un admin', async () => {
     const res = await createWizardCourtsAction({
       courts: [
@@ -153,7 +145,7 @@ describe('onboarding wizard actions — admin sigue funcionando (paridad)', () =
         },
       ],
     })
-    expect(res).toEqual({ success: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/reserva' })
     expect(vi.mocked(createCourt)).toHaveBeenCalledTimes(1)
   })
 
@@ -173,7 +165,7 @@ describe('onboarding wizard actions — admin sigue funcionando (paridad)', () =
         },
       ],
     })
-    expect(res).toEqual({ success: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/reserva' })
     expect(vi.mocked(createCourt)).not.toHaveBeenCalled()
   })
 

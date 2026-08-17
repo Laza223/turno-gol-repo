@@ -22,9 +22,12 @@ const ROOT = path.resolve(__dirname, '..', '..')
 const rel = (f: string): string => path.relative(ROOT, f).replace(/\\/g, '/')
 const read = (f: string): string => readFileSync(f, 'utf8')
 
-// El rate limit se aplica de tres formas idiomáticas: guard() en route
-// handlers, enforce() directo (handlers crudos / super-admin), o
-// adminRateLimited() en Server Actions. Cualquiera cuenta como cobertura.
+// El rate limit se aplica de cuatro formas idiomáticas: guard() en route
+// handlers, enforce() directo (handlers crudos / super-admin),
+// adminRateLimited() en Server Actions, o la opción `rateLimit` de withTenant —
+// que corre el mismo guard() pero ANTES de abrir la transacción, para no
+// retener una conexión del pool durante el viaje a Upstash. Cualquiera cuenta
+// como cobertura.
 //
 // Y con más de UN balde. `adminCrud` (100/60s por tenant) lo comparten todas
 // las mutaciones de plata del staff, así que las lecturas automáticas —las que
@@ -39,8 +42,10 @@ const ADMIN_POLICIES = ['adminCrud', 'adminAvailabilityCheck', 'adminDayTotal'] 
 
 function hasAdminRateLimit(src: string): boolean {
   if (/adminRateLimited\s*\(/.test(src)) return true
-  return ADMIN_POLICIES.some((policy) =>
-    new RegExp(String.raw`\b(?:guard|enforce)\(\s*['"]${policy}['"]`).test(src),
+  return ADMIN_POLICIES.some(
+    (policy) =>
+      new RegExp(String.raw`\b(?:guard|enforce)\(\s*['"]${policy}['"]`).test(src) ||
+      new RegExp(String.raw`\brateLimit:\s*['"]${policy}['"]`).test(src),
   )
 }
 
@@ -77,6 +82,42 @@ describe('adminCrud rate-limit coverage on admin endpoints', () => {
       expect(
         hasAdminRateLimit(read(f)),
         `${rel(f)} must call guard('adminCrud', …), enforce('adminCrud', …) or adminRateLimited(…)`,
+      ).toBe(true)
+    })
+  }
+})
+
+// El check de arriba es POR ARCHIVO: si una sola action del archivo llama
+// adminRateLimited, el archivo entero pasa, aunque otra action del mismo
+// archivo no lo haga. Así pasó desapercibida `finishOnboardingAction` (B13 del
+// plan de refactor de onboarding) — era la única action de `actions.ts` sin
+// rate limit y el test seguía verde porque sus vecinas sí lo llamaban. Se
+// arregló en el código (Fase 1); este bloque repite el check por FUNCIÓN
+// sobre ese mismo archivo, para que la próxima action que se agregue sin
+// rate limit no vuelva a esconderse detrás de sus vecinas.
+describe('src/app/onboarding/actions.ts: cada action trae su propio rate limit (B13)', () => {
+  const file = path.join(ROOT, 'src/app/onboarding/actions.ts')
+  const src = read(file)
+  const actionNames = Array.from(src.matchAll(/^export async function (\w+Action)\(/gm)).map(
+    (m) => m[1],
+  )
+
+  it('encuentra las actions esperadas (guard contra un archivo vacío o movido)', () => {
+    expect(actionNames.length).toBeGreaterThan(0)
+  })
+
+  for (let i = 0; i < actionNames.length; i++) {
+    const name = actionNames[i]
+    it(`${name} llama adminRateLimited en su propio cuerpo, no solo en el archivo`, () => {
+      const needle = `export async function ${name}(`
+      const start = src.indexOf(needle)
+      const nextNeedle =
+        i + 1 < actionNames.length ? `export async function ${actionNames[i + 1]}(` : null
+      const end = nextNeedle ? src.indexOf(nextNeedle, start + needle.length) : src.length
+      const body = src.slice(start, end)
+      expect(
+        hasAdminRateLimit(body),
+        `${name} debe llamar adminRateLimited(...) dentro de su propio cuerpo`,
       ).toBe(true)
     })
   }

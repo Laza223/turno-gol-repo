@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
+import { tenantContactSchema } from '@/modules/tenants/tenant.schema'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import {
   isR2Configured,
@@ -113,6 +114,41 @@ export async function removeTenantImageAction(
   await deleteImage(key)
   await updateTenant(tenant.id, kind === 'logo' ? { logoUrl: null } : { coverUrl: null })
 
+  revalidatePath('/settings/perfil')
+  revalidatePath(`/${tenant.slug}`)
+  return { success: true }
+}
+
+export type UpdateTenantContactResult = { success: true } | { success: false; error: string }
+
+/**
+ * Contacto público del complejo (B15): el wizard dejó de pedir teléfono/email
+ * ahí (doc10 §2, se derivan de la cuenta staff al crear) — esta es la única
+ * pantalla donde se pueden corregir después. Distinto de `updateUserEmailAction`
+ * de acá abajo: ese es el email de LOGIN del staff (Supabase Auth, con
+ * confirmación); este es un dato de contacto público del tenant, sin relación
+ * con autenticación — un UPDATE directo alcanza.
+ */
+export async function updateTenantContactAction(
+  _prevState: UpdateTenantContactResult,
+  formData: FormData,
+): Promise<UpdateTenantContactResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsed = tenantContactSchema.safeParse({
+    phone: formData.get('phone'),
+    email: formData.get('email'),
+  })
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  await updateTenant(tenant.id, parsed.data)
   revalidatePath('/settings/perfil')
   revalidatePath(`/${tenant.slug}`)
   return { success: true }

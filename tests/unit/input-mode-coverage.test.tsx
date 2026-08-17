@@ -13,9 +13,12 @@ describe('inputMode coverage (regression guard)', () => {
     expect(windowAround).toMatch(/inputMode="tel"/)
   })
 
-  it('StepIdentity uses PhoneInput component', () => {
+  // Fase 4 del refactor de onboarding: el paso 1 dejó de pedir teléfono (se
+  // deriva de la cuenta staff, doc10 §2) — el campo se mudó a
+  // TenantContactForm.tsx (/settings/perfil, B15), no desapareció.
+  it('TenantContactForm uses PhoneInput component', () => {
     const file = readFileSync(
-      path.join(projectRoot, 'src/app/onboarding/components/StepIdentity.tsx'),
+      path.join(projectRoot, 'src/app/(admin)/settings/perfil/TenantContactForm.tsx'),
       'utf8',
     )
     expect(file).toMatch(/<PhoneInput/)

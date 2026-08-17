@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, Trash2 } from 'lucide-react'
@@ -50,7 +51,7 @@ export function BorrarTorneo({
     )
   }
 
-  async function confirmDelete(): Promise<{ success: boolean; error?: string }> {
+  async function confirmDelete(): Promise<ActionResult> {
     const result = await deleteAction({ id: tournamentId })
     if (result.success) {
       toast({ title: 'Torneo borrado', description: tournamentName, variant: 'success' })

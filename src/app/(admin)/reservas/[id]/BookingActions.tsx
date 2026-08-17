@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -132,7 +133,7 @@ export default function BookingActions({
   // pestaña abierta cruzaba cualquiera de esos límites sin enterarse.
   const nowMs = useNowMs()
 
-  async function onConfirmRevertNoShow(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmRevertNoShow(): Promise<ActionResult> {
     const res = await revertNoShowAction(bookingId)
     if (res.success) {
       toast({ title: 'Ausencia deshecha', variant: 'success' })
@@ -200,7 +201,7 @@ export default function BookingActions({
   // el turno termine.
   const turnoEnded = nowMs >= bookingEndUtcMs
 
-  async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmCancel(): Promise<ActionResult> {
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
     if (reason.trim().length < 3)
       return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
@@ -212,7 +213,7 @@ export default function BookingActions({
     return res
   }
 
-  async function onConfirmNoShow(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmNoShow(): Promise<ActionResult> {
     const res = await markNoShowAction(bookingId)
     if (res.success) {
       toast({

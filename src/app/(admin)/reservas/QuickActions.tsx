@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { MoreVertical } from 'lucide-react'
@@ -164,7 +165,7 @@ export function QuickActions({
   const hasPaidDeposit = booking.depositStatus === 'paid' && booking.depositAmount > 0
   const turnoEnded = booking.endsAt ? nowMs >= new Date(booking.endsAt).getTime() : false
 
-  function run(fn: () => Promise<{ success: boolean; error?: string }>, successTitle: string) {
+  function run(fn: () => Promise<ActionResult>, successTitle: string) {
     startTransition(async () => {
       const res = await fn()
       if (res.success) {
@@ -185,7 +186,7 @@ export function QuickActions({
     run(() => revertNoShowAction(booking.id), 'Ausencia deshecha')
   }
 
-  async function onConfirmNoShow(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmNoShow(): Promise<ActionResult> {
     const res = await markNoShowAction(booking.id)
     if (res.success) {
       toast({
@@ -211,7 +212,7 @@ export function QuickActions({
     setConfirmDepositOpen(true)
   }
 
-  async function onConfirmDeposit(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmDeposit(): Promise<ActionResult> {
     const res = await confirmDepositPaymentAction(booking.id, depositMethod)
     if (res.success) {
       toast({ title: 'Pago confirmado', description: label, variant: 'success' })
@@ -220,7 +221,7 @@ export function QuickActions({
     return res
   }
 
-  async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmCancel(): Promise<ActionResult> {
     if (!cancelType) {
       return { success: false, error: 'Indicá quién cancela la reserva.' }
     }

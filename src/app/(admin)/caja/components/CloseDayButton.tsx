@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
@@ -65,7 +66,7 @@ export function CloseDayButton({
   const diff = declaredCents === undefined ? null : declaredCents - expectedCash
   const noteRequired = diff !== null && diff !== 0
 
-  async function onConfirm(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirm(): Promise<ActionResult> {
     if (noteRequired && note.trim().length < 1) {
       return { success: false, error: 'Hay diferencia: la nota es obligatoria.' }
     }

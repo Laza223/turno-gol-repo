@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import { Tag } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
@@ -10,7 +11,6 @@ import {
   type PlayerTag,
 } from '@/modules/relationships/player-tags'
 
-type ActionResult = { success: boolean; error?: string }
 export type SetPlayerTagsFn = (playerId: string, tags: string[]) => Promise<ActionResult>
 
 type Props = {

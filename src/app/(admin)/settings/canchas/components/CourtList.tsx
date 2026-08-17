@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { LayoutGrid, Trophy } from 'lucide-react'
@@ -264,7 +265,7 @@ function CourtCard({
     setConfirmOpen(true)
   }
 
-  async function onConfirmDeactivate(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmDeactivate(): Promise<ActionResult> {
     const prev = currentStatus
     setCurrentStatus('offline')
     const res = await toggleStatusAction(court.id, 'offline')

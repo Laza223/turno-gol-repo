@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { Unlink } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -14,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   canceled: 'Cancelado',
 }
 
-export type UnlinkContactFn = (playerId: string) => Promise<{ success: boolean; error?: string }>
+export type UnlinkContactFn = (playerId: string) => Promise<ActionResult>
 
 /**
  * Turnos fijos a nombre del jugador, con el inverso de la vinculación de B13.

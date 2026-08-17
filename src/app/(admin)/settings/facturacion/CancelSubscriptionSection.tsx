@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -91,7 +92,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
       ? 'Tu cuenta va a quedar bloqueada y tus datos se conservan 60 días para reactivar cuando quieras.'
       : `Vas a mantener el acceso hasta el ${formatDate(accessUntil)}. Después tu cuenta se bloquea y tus datos se conservan 60 días para reactivar.`
 
-  async function onConfirm(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirm(): Promise<ActionResult> {
     if (reason.trim().length < 1) return { success: false, error: 'Ingresá un motivo.' }
     try {
       const res = await fetch('/api/billing/cancel', {

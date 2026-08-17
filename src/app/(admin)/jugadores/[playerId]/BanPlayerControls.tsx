@@ -1,12 +1,12 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { BanPlayerDialog, type BanPlayerFn } from '@/components/admin/BanPlayerDialog'
 import { toast } from '@/hooks/use-toast'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 
-type ActionResult = { success: boolean; error?: string }
 type LiftFn = (playerId: string) => Promise<ActionResult>
 
 type Props = {

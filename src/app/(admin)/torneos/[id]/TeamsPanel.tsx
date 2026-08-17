@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, ChevronDown, ChevronUp, Pencil, Plus, Users, X } from 'lucide-react'
@@ -111,7 +112,7 @@ export function TeamsPanel({
     })
   }
 
-  async function confirmRemoveTeam(): Promise<{ success: boolean; error?: string }> {
+  async function confirmRemoveTeam(): Promise<ActionResult> {
     if (!removeConfirm) return { success: false, error: 'No hay equipo seleccionado.' }
     const res = await removeAction({ id: removeConfirm.id })
     if (res.success) {

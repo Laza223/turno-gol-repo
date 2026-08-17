@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
@@ -9,7 +10,7 @@ export type BanPlayerFn = (
   playerId: string,
   reason: string,
   duration: ManualBanDuration,
-) => Promise<{ success: boolean; error?: string }>
+) => Promise<ActionResult>
 
 const DURATION_LABELS: Record<ManualBanDuration, string> = {
   '7d': '7 días',
@@ -64,7 +65,7 @@ export function BanPlayerDialog({
     }
   }
 
-  async function handleConfirm(): Promise<{ success: boolean; error?: string }> {
+  async function handleConfirm(): Promise<ActionResult> {
     if (!reason.trim()) return { success: false, error: 'Ingresá un motivo.' }
     const res = await banPlayerAction(playerId, reason.trim(), duration)
     if (res.success) onBanned?.()

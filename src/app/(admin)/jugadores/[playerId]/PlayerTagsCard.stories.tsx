@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
+import type { ActionResult } from '@/shared/types/action-result'
 import { PlayerTagsCard } from './PlayerTagsCard'
 
 const PLAYER_ID = uid(561)
@@ -12,7 +13,9 @@ const meta = {
   args: {
     playerId: PLAYER_ID,
     tags: [],
-    setPlayerTagsAction: fn(async () => ({ success: true })),
+    // Retorno anotado (no `as const`): el `satisfies Meta` de abajo congela el
+    // tipo del mock, y sin la anotación la story del rechazo no encajaría.
+    setPlayerTagsAction: fn(async (): Promise<ActionResult> => ({ success: true })),
   },
   decorators: [
     (Story) => (

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import { AlertTriangle, CalendarClock, Check, Trash2 } from 'lucide-react'
@@ -109,7 +110,7 @@ export function SlotsPanel({
     })
   }
 
-  async function confirmRelease(): Promise<{ success: boolean; error?: string }> {
+  async function confirmRelease(): Promise<ActionResult> {
     setConflicts(null)
     setReserved(null)
     const result = await releaseAction({ tournamentId, fromDate: todayIso() })

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { AlertTriangle, CalendarPlus, LayoutGrid, List, Trash2, Trophy } from 'lucide-react'
@@ -120,7 +121,7 @@ export function FixturePanel({
     })
   }
 
-  async function confirmClear(): Promise<{ success: boolean; error?: string }> {
+  async function confirmClear(): Promise<ActionResult> {
     setNotice(null)
     const result = await clearAction({ tournamentId })
     if (result.success) {

@@ -4216,3 +4216,107 @@ Sin regresiones. Juez completo (typecheck, lint, unit, storybook, integration, i
 en su totalidad.
 
 Sin commits: todo queda en el working tree.
+
+---
+
+## Esfuerzo — Guardrails mecánicos contra los 6 patrones repetidos (2026-08-17)
+
+**Por qué.** Análisis de los commits `fix(...)` de meses: los bugs no eran aleatorios, eran 6 patrones
+sistémicos repitiéndose (día operativo/UTC, pool de DB equivocado, contrato de Server Actions
+fragmentado, efectos externos dentro de transacciones, APIs viejas de Tailwind/Next, tests que
+enmascaran). Decisión: **guardrails que fallan solos** antes que más texto de instrucciones, porque
+una regla escrita es una sugerencia que se puede ignorar en un descuido, y un lint no.
+
+Plan completo: `C:\Users\Lazar\.claude\plans\fua-cuanta-raz-n-que-sprightly-lobster.md`.
+
+### 1. Tests de integración: separar el pool de seed del pool de assert
+
+El DSN de los tests es superusuario, así que un `SELECT` de post-condición veía filas que producción
+(rol `turnogol_app`, RLS enforced) NO ve — la clase "local enmascara" que ya había llegado a prod
+(`getMrrCents` en $0, data-retention abortando mudo). Flipear `DATABASE_URL` a `turnogol_app` NO es
+opción: mata ~122 `beforeAll` y deja fallas silenciosas de 0 filas.
+
+- **`tests/helpers/admin-db.ts` (nuevo)** — `adminSql()`: pool ADMIN para seeds/cleanup/GRANTs.
+  DSN `TEST_ADMIN_DATABASE_URL ?? DATABASE_URL ?? default`, o sea **hoy es no-op** (cae al mismo
+  superusuario en local y CI); lo que habilita es endurecer `DATABASE_URL` más adelante sin tocar un
+  solo seed. Usa el mismo truco de `globalThis` que `getSql()`: sin eso, vitest abre un pool por
+  archivo de test (137 pools).
+- **`tests/helpers/tenant.ts`** — defaults de los 6 helpers a `adminSql()`, y `asApp(tenantId, fn)`
+  nuevo: `withContextRollback` con rol `turnogol_app` + `app.current_tenant_id`, siempre rollback.
+  Ídem `tests/helpers/retention.ts`.
+- **Asserts migrados a `asApp`**: 23 en `tests/integration/billing.test.ts`, 9 en
+  `tests/integration/bookings.test.ts`. 4 excepciones documentadas inline (tabla global `tenants`; y
+  el SELECT de IDOR cross-tenant de bookings, donde envolver con el contexto del OTRO tenant daría
+  **falso verde**: la fila filtrada llevaría `tenant_id` del atacante y el RLS de la víctima la
+  ocultaría).
+- Convención escrita en `.claude/skills/protocolo-testing/SKILL.md` (sección "Seeds vs asserts"),
+  con el tercer diseño para lo que `SET ROLE` no puede cazar (GUCs `SUSET`, `rolconfig` de migr.
+  055): LOGIN real + tripwire, patrón de `data-retention-worker-role.test.ts`.
+
+Queda para otra tanda (documentado, no olvidado): sacar el `GRANT ... ON ALL TABLES` de
+`ensureRoles`, que es a la vez el enmascarador, la causa de la race `tuple concurrently updated` y
+el motivo del `singleThread`. Bloqueante real: el rol `authenticated` no tiene grants en ninguna
+migración, así que en CI (postgres pelado) los 69 usos de `role: 'authenticated'` fallarían.
+
+### 2. ESLint: dos candados mecánicos (reglas stock, cero plugin nuevo)
+
+- **`turnogol/jobs-worker-pool`** (`eslint.config.mjs`): prohíbe importar `getDb`/`getSql` en
+  `src/shared/jobs/**`. El modo de falla es silencioso — el pool de la app no tira error bajo RLS,
+  devuelve cero filas y el job reporta éxito. Fixes: `refresh-mp-tokens.worker.ts` pasó al pool
+  worker; `health-ping.worker.ts` conserva `getSql` con `eslint-disable` + motivo (mide el DSN de la
+  app a propósito, y `SELECT 1` no toca tablas) — es el escape hatch de referencia.
+  `src/modules/super-admin` queda FUERA: ahí `getDb` se usa sobre tablas globales sin RLS.
+- **Día calendario en UTC** (dos selectores `no-restricted-syntax` en el bloque base): bloquea
+  `new Date().toISOString().slice(0,10)` y `.split('T')[0]`. Exigen `new Date()` SIN argumentos como
+  receptor, así que no tocan el idioma ART del repo ni el formateo de columnas DATE. **Cero falsos
+  positivos**: los 5 hits eran reales.
+- 🔴 **Bug vivo que destapó la regla**: `src/app/api/bookings/route.ts:33` — el default del listado
+  de reservas derivaba el día en UTC, o sea que **entre las 21:00 y medianoche ART el admin veía la
+  grilla de mañana**. Ahora `artTodayStr()`. Los otros 4 hits eran seeds de test que se corrían un
+  día cada noche (`tests/helpers/factories.ts`, `tests/integration/isolation.test.ts`).
+- Descartada con números: regla contra fechas literales en tests (720 ocurrencias en 145 archivos,
+  casi todas fixtures legítimos — señal/ruido inviable).
+
+### 3. Contrato de Server Actions: `ActionResult` compartido
+
+El patrón que Gemini reportó (castear la action en `<form action=>` para tragarse el error) **ya no
+existe en el repo**: 0 hits. El problema real era otro y más sutil: el shape se había copiado a mano
+en **39 lugares** en su versión LAXA `{ success: boolean; error?: string }`, que no discrimina — deja
+compilar un `{ success: false }` sin motivo y el usuario termina viendo el mensaje genérico donde
+había un error real.
+
+- **`src/shared/types/action-result.ts` (nuevo)**: `ActionResult<TExtra> = ({ success: true } &
+  TExtra) | { success: false; error: string }`.
+- 39 sitios migrados, incluido `src/components/ui/confirm-dialog.tsx` (26 usos cuelgan de él).
+- El typecheck destapó un caso de producción: `confirmNoShow` en
+  `src/components/booking/slot-panel/use-slot-charges.ts` no tenía tipo de retorno y devolvía
+  `success` como `boolean` widened, así que `ConfirmDialog` no podía discriminarlo. Anotado.
+- `InviteStaffDialog.tsx` pasó al `SubmitButton` compartido. Los otros 7 botones locales (auth y
+  perfil) se quedan a propósito: son del sistema visual de auth y unificarlos mueve píxeles.
+- **NO se creó un wrapper `ActionForm`**: el patrón de facto (`useActionState` + action por PROP
+  tipada + `SubmitButton`) ya está bien y un wrapper impondría un mínimo común denominador. Queda
+  escrito en `.claude/skills/convenciones-stack/SKILL.md`, junto con la regla de externos
+  (MP/Resend/R2) FUERA de transacciones SQL.
+
+### 4. Skills de Claude Code: de 84 globales a 24
+
+Ruido de contexto: 84 descripciones compitiendo por atención en CADA sesión de código.
+
+- **Parkeadas** en `~/.claude/skills-parked/` (reversible, nada borrado): 8 de Cloudflare (dominio
+  ajeno a este stack) + 4 del pack "context engineering" (scripts con `gpt-5.2` hardcodeado, y
+  solapan skills propias).
+- **Movidas** a `Documents/TURNOGOL/Marketing-factory/.claude/skills/`: las 47 de marketing + la
+  propia `marketing-factory` (estaba instalada global siendo 100% de este proyecto). Ahora cargan
+  solo cuando se trabaja ahí. `skills-lock.json` de TurnoGol: 50 → 3 entradas (si no, `npx skills`
+  las reinstalaba globalmente).
+- `agent-browser` y `web-perf` se quedan (decisión de Lazar: las usa).
+- **Repo**: `.claude/skills/audit` estaba rota (`name: audit-layer` ≠ carpeta, y apuntaba a un
+  `PROGRESS.md` sin ruta) — arreglada. `ui-ux-pro-max` era un shim a un plugin que no existe en la
+  máquina: borrada. `.claude/commands/audit-docs.md` reescrita: auditaba los specs entre sí para
+  decidir "¿listo para codear?" (pregunta de hace un año); ahora audita **drift docs↔código** con la
+  regla de oro de que el código gana, que es el modo de falla real hoy.
+
+**PENDIENTE explícito** (decisión de Lazar, no olvido): el OS `laza-ai-engineering-os` merece una
+sesión propia. El routing "Opus orquesta, Sonnet ejecuta" está hardcodeado en 9 skills + 7 agentes
+`sonnet-*` y **no está funcionando** (los workflows rara vez usan Sonnet salvo pedido explícito).
+Nada de eso se tocó.

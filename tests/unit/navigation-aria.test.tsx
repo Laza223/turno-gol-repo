@@ -95,10 +95,25 @@ describe('AdminSidebar — los 6 espacios', () => {
 
   it('al admin Configuración le queda como link navegable', () => {
     renderSidebar('/grilla', 'admin')
+    // Apunta a la sub-ruta y no a `/settings`, que es un stub de redirect: el
+    // destino final es el mismo pero sin pagar un render de servidor de más.
     expect(screen.getByRole('link', { name: 'Configuración' }).getAttribute('href')).toBe(
-      '/settings',
+      '/settings/reservas',
     )
   })
+
+  // El href dejó de ser el prefijo del espacio, así que el activo ya no se
+  // puede deducir de él: `/settings/perfil` tiene que encender Configuración
+  // igual, y `/settings` a secas también (sigue siendo una URL válida).
+  it.each(['/settings', '/settings/perfil', '/settings/facturacion'])(
+    '%s enciende Configuración',
+    (pathname) => {
+      renderSidebar(pathname, 'admin')
+      expect(screen.getByRole('link', { name: 'Configuración' }).getAttribute('aria-current')).toBe(
+        'page',
+      )
+    },
+  )
 })
 
 describe('AdminBottomNav', () => {

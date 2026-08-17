@@ -133,8 +133,8 @@ describe('useBookingRealtime', () => {
     expect(catchUpUrl).toContain('2025-06-01')
   })
 
-  // 2. First SUBSCRIBED also catches up
-  it('case 2: fires fetch on first SUBSCRIBED (initial sync)', async () => {
+  // 2. El primer SUBSCRIBED NO re-pide el día: ya lo trajo el render de servidor
+  it('case 2: no fetch on the first SUBSCRIBED (SSR already brought the day)', async () => {
     vi.useFakeTimers()
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -151,6 +151,35 @@ describe('useBookingRealtime', () => {
 
     await act(async () => {
       h.subCb('SUBSCRIBED')
+    })
+
+    // Sin caída previa del canal no hay nada que recuperar: cargar la grilla
+    // pedía los mismos turnos dos veces, uno por SSR y otro por acá.
+    expect(fetchMock.mock.calls.length).toBe(0)
+  })
+
+  // 2b. Pero el reconcile periódico arranca igual en ese primer SUBSCRIBED: es
+  // el que cubre los cobros (`cash_flows` no viaja por este canal) y, de paso,
+  // la micro-ventana entre el snapshot del SSR y la suscripción.
+  it('case 2b: the 30s reconcile still starts on the first SUBSCRIBED', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderHook(() =>
+      useBookingRealtime({ tenantId: 't1', date: '2025-06-01', initialBookings: [] }),
+    )
+    await flushImport()
+    await act(async () => {
+      h.subCb('SUBSCRIBED')
+    })
+    expect(fetchMock.mock.calls.length).toBe(0)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000)
     })
 
     expect(fetchMock.mock.calls.length).toBe(1)

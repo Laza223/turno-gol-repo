@@ -8,6 +8,14 @@ export const players = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email').notNull().unique(),
     phone: text('phone'),
+    /**
+     * Últimos 8 dígitos del teléfono, GENERATED ALWAYS … STORED (migr. 075).
+     * Solo lectura: la escribe Postgres. Existe para que el JOIN de sugerencia
+     * de /jugadores pueda usar índice — bajo RLS, un índice sobre la expresión
+     * equivalente no se usa (`regexp_replace` no es LEAKPROOF; ver la migración
+     * para la medición y el control negativo).
+     */
+    phoneHint8: text('phone_hint8'),
     firstName: text('first_name').notNull(),
     lastName: text('last_name').notNull(),
     avatarUrl: text('avatar_url'),
@@ -40,6 +48,9 @@ export const players = pgTable(
     phoneIdx: index('idx_players_phone')
       .on(table.phone)
       .where(sql`phone IS NOT NULL`),
+    phoneHint8Idx: index('idx_players_phone_hint8')
+      .on(table.phoneHint8)
+      .where(sql`phone_hint8 IS NOT NULL`),
     statusIdx: index('idx_players_status').on(table.status),
   }),
 )

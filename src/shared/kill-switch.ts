@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { isFeatureEnabled } from '@/shared/feature-flags'
+import { isFeatureEnabled, preloadFeatureFlags } from '@/shared/feature-flags'
 import { logger } from '@/shared/lib/logger'
 
 /** Feature-flag key for the per-tenant kill switch. */
@@ -25,12 +25,23 @@ const KILL_SWITCH_TIMEOUT_MS = 2_000
  * Fix #56: la llamada a isFeatureEnabled tiene un timeout de 2 s. Si la DB tarda
  * más (cold path, reinicio de proceso), se hace fail-open (no se suspende) para
  * no bloquear al admin layout indefinidamente.
+ *
+ * `alsoWarm` deja calientes, en la MISMA transacción, otros flags que el caller
+ * va a mirar enseguida (el layout de (admin) mira `tournaments` para el menú).
+ * Van acá y no en un preload aparte a propósito: así siguen cubiertos por este
+ * único timeout de 2 s en vez de anidar dos esperas que en el peor caso se
+ * sumarían. Si la lectura falla o se pasa de tiempo, el `isFeatureEnabled` de
+ * cada flag reintenta después por su cuenta — es una optimización, no un
+ * contrato.
  */
-export async function redirectIfTenantSuspended(tenantId: string): Promise<void> {
+export async function redirectIfTenantSuspended(
+  tenantId: string,
+  alsoWarm: readonly string[] = [],
+): Promise<void> {
   let isSuspended: boolean
   try {
     isSuspended = await Promise.race([
-      isFeatureEnabled(TENANT_SUSPENDED_FLAG, tenantId),
+      readSuspendedFlag(tenantId, alsoWarm),
       new Promise<false>((resolve) => setTimeout(() => resolve(false), KILL_SWITCH_TIMEOUT_MS)),
     ])
   } catch (err) {
@@ -44,4 +55,15 @@ export async function redirectIfTenantSuspended(tenantId: string): Promise<void>
   if (isSuspended) {
     redirect('/suspended')
   }
+}
+
+async function readSuspendedFlag(tenantId: string, alsoWarm: readonly string[]): Promise<boolean> {
+  // El `.catch` no es defensivo de más: sin él, un fallo del preload haría
+  // rechazar a esta promesa y el kill switch caería en su catch de arriba, que
+  // hace fail-open. O sea, una optimización rota decidiría que nadie está
+  // suspendido. Tragárselo acá deja la decisión donde siempre estuvo.
+  await preloadFeatureFlags([TENANT_SUSPENDED_FLAG, ...alsoWarm], tenantId).catch(() => {})
+  // Ya está en caché salvo que el preload haya fallado; en ese caso esto lo
+  // resuelve solo, con el fallback al último valor conocido de siempre.
+  return isFeatureEnabled(TENANT_SUSPENDED_FLAG, tenantId)
 }

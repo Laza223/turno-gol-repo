@@ -126,7 +126,10 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
       '/jugadores',
       '/torneos',
       '/analiticas',
-      '/settings',
+      // Configuración apunta a la sub-ruta y no al stub `/settings`, que solo
+      // hace `redirect('/settings/reservas')`: mismo destino, un render de
+      // servidor menos.
+      '/settings/reservas',
     ])
   })
 

@@ -77,7 +77,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   // Kill switch: an ops-flipped `suspended` flag locks the tenant out of the
   // panel instantly (no redeploy). Distinct from tenant_status — see kill-switch.ts.
-  await redirectIfTenantSuspended(tenant.id)
+  // De paso deja caliente `tournaments`, que el menú de abajo mira: los dos flags
+  // salen en la misma transacción en vez de abrir una cada uno.
+  await redirectIfTenantSuspended(tenant.id, [TOURNAMENTS_FLAG])
 
   if (tenant.settings.onboarding_completed !== true) redirect('/onboarding')
 

@@ -7,6 +7,8 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { StaffUser } from '@/modules/auth/types'
 import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'
 import { forbidden, unauthorized } from '@/shared/api-error'
+import { guard } from '@/shared/rate-limit/route-guard'
+import type { PolicyName } from '@/shared/rate-limit/policies'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import type { StaffRole } from '@/modules/staff/roles'
 import {
@@ -31,6 +33,17 @@ export type TenantHandler = (
 
 export type WithTenantOptions = {
   roles?: readonly StaffRole[]
+  /**
+   * Política de rate-limit a aplicar, con el tenant como clave.
+   *
+   * Existe para que el chequeo corra ANTES de `withTenantContext` y no adentro
+   * del handler, que es donde lo llamaba cada route handler a mano. `enforce()`
+   * habla con Upstash por HTTP: hacerlo con la transacción ya abierta retiene
+   * una de las 3 conexiones del pool (`DEFAULT_POOL_MAX`) durante un viaje a
+   * internet, y encima para decidir algo que muchas veces termina en 429 —
+   * es decir, sin llegar a usar esa conexión para nada.
+   */
+  rateLimit?: PolicyName
 }
 
 /**
@@ -91,6 +104,10 @@ export function withTenant(
         code: 'TENANT_SUSPENDED_READ_ONLY',
         details: { status },
       })
+    }
+    if (options?.rateLimit) {
+      const throttled = await guard(options.rateLimit, user.tenantId)
+      if (throttled) return throttled
     }
     return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
   }

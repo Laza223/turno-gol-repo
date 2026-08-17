@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { withTenant } from '@/server/middleware/with-tenant'
 import { withAnyRole } from '@/server/middleware/with-role'
-import { guard } from '@/shared/rate-limit/route-guard'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { resolveCutoffMins } from '@/modules/tenants/tenant-operating-day'
 import { operatingDateOf } from '@/shared/time/operating-day'
@@ -37,9 +36,6 @@ export const dynamic = 'force-dynamic'
  */
 export const GET = withTenant(
   withAnyRole(['admin', 'manager'], async (_req: NextRequest, user, tx) => {
-    const throttled = await guard('adminDayTotal', user.tenantId!)
-    if (throttled) return throttled
-
     const cutoffMins = await resolveCutoffMins(user.tenantId!, tx)
     const date = operatingDateOf(new Date(), cutoffMins)
     // getDaySummary y no una query propia: una segunda implementación del mismo
@@ -48,4 +44,8 @@ export const GET = withTenant(
 
     return NextResponse.json({ data: { date, collectedCents: summary.collected } })
   }),
+  // El rate-limit va acá y no como primera línea del handler: así el viaje a
+  // Upstash ocurre ANTES de abrir la transacción, en vez de retener una conexión
+  // del pool mientras se resuelve por HTTP.
+  { rateLimit: 'adminDayTotal' },
 )

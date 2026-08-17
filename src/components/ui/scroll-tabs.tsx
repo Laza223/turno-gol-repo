@@ -12,25 +12,27 @@ type Props = {
   activeHref: string
   ariaLabel: string
   className?: string
-  /**
-   * Navegar con `next/link` en vez de `<a>` nativo. Lo piden los tab bars que
-   * Fase 4 creó sobre pantallas que ANTES se alcanzaban desde el sidebar (que
-   * siempre fue `next/link`): degradar Grilla ↔ Lista a full reload sería una
-   * regresión de la pantalla más pesada del producto, no el statu quo.
-   */
-  clientNav?: boolean
 }
 
 /**
  * Tab bar de links con scroll horizontal propio en mobile (receta
  * QuickFilters/WeekStrip): los tabs nunca desbordan la página a 360px
  * (MASTER §12 "sin scroll horizontal a 375px") y mantienen touch de 44px
- * (§10) vía min-h-11 md:min-h-9. Por defecto usa <a> nativo a propósito: las
- * páginas que ya lo consumían (settings, caja) navegan con full reload, igual
- * que antes. Ver `clientNav` para el caso contrario.
+ * (§10) vía min-h-11 md:min-h-9.
+ *
+ * Navega SIEMPRE con `next/link`. Hasta acá el default era `<a>` nativo y solo
+ * Grilla y Clientes pedían el opt-in `clientNav`, así que las 15 tabs de Caja,
+ * Configuración y Torneos recargaban el documento entero en cada click: el
+ * layout de `(admin)` volvía a correr completo (1 llamada de red a Supabase
+ * Auth + hasta 14 round trips a Postgres, con la base en otra región que la
+ * función) y encima se re-descargaba y re-hidrataba todo el bundle. Eso es el
+ * grueso de los ">5s entre vistas" que reportó el dueño.
+ *
+ * El opt-in se eliminó en vez de agregarse a los tres call-sites que faltaban:
+ * los cinco consumidores quieren lo mismo, y un default que se paga caro cuando
+ * te olvidás de un prop vuelve a romperse en el sexto.
  */
-export function ScrollTabs({ tabs, activeHref, ariaLabel, className, clientNav }: Props) {
-  const Anchor = clientNav ? Link : 'a'
+export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
   const navRef = useRef<HTMLElement>(null)
 
   // MEJORA-UX QA (mobile 375px): con 7+ tabs la tira desborda y el navegador
@@ -56,7 +58,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className, clientNav }
       {tabs.map(({ href, label }) => {
         const active = href === activeHref
         return (
-          <Anchor
+          <Link
             key={href}
             href={href}
             aria-current={active ? 'page' : undefined}
@@ -73,7 +75,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className, clientNav }
             )}
           >
             {label}
-          </Anchor>
+          </Link>
         )
       })}
     </nav>

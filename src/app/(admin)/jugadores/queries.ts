@@ -1,7 +1,11 @@
 import { sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { normalizePlayerTags, type PlayerTag } from '@/modules/relationships/player-tags'
-import { significantPhoneSql, suggestionPhoneSql } from '@/modules/relationships/contact-identity'
+import {
+  PLAYER_PHONE_HINT_COLUMN,
+  significantPhoneSql,
+  suggestionPhoneSql,
+} from '@/modules/relationships/contact-identity'
 
 /**
  * Una persona vista por este complejo (B13). Dos orígenes, una sola lista:
@@ -60,7 +64,12 @@ function contactSearchCond(q: string | undefined): SQL {
 const ABONADO_PHONE = sql.raw(significantPhoneSql('a.contact_phone'))
 /** Cola de sugerencia (últimos 8): más laxa, pero siempre la confirma un humano. */
 const ABONADO_HINT = sql.raw(suggestionPhoneSql('a.contact_phone'))
-const PLAYER_HINT = sql.raw(suggestionPhoneSql('sp.phone'))
+/**
+ * Del lado de `players` la misma cola sale de una columna materializada y no de
+ * la expresión: es el lado BUSCADO del JOIN, y bajo RLS una expresión ahí no
+ * puede usar índice. Ver PLAYER_PHONE_HINT_COLUMN y la migración 075.
+ */
+const PLAYER_HINT = sql.raw(`sp.${PLAYER_PHONE_HINT_COLUMN}`)
 
 /**
  * La lista única de personas del complejo (B13). Reemplaza a

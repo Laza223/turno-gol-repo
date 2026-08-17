@@ -203,12 +203,22 @@ export async function getTenantMetrics(
   const { fromUtc } = operatingDayRangeUtc(from, cutoffMins)
   const { toUtc } = operatingDayRangeUtc(to, cutoffMins)
 
-  // 3) Income by category. amount is centavos (>0); sum as bigint to dodge int
-  //    overflow on high-volume tenants, then parse to a JS number.
-  const revenueRows = await tx
+  // 3 y 4) Ingresos, en UNA sola pasada: el total por categoría y la serie
+  //    diaria salen de las mismas filas.
+  //
+  //    Eran dos consultas con el WHERE idéntico — una con GROUP BY category y
+  //    otra trayendo las filas crudas — o sea dos escaneos completos de la misma
+  //    ventana de 30 días para dos vistas del mismo dato. La serie diaria ya
+  //    obligaba a traer las filas crudas (el bucketing por día operativo no se
+  //    puede expresar en un GROUP BY parametrizado por el `cutoffMins` dinámico
+  //    del complejo, mismo patrón que getCanteenDailyTotals), así que agrupar
+  //    también por categoría acá sale gratis y ahorra el otro escaneo. La ventana
+  //    es de UN tenant y 30 días: cientos de filas, no miles.
+  const revenueRawRows = await tx
     .select({
+      occurredAt: cashFlows.occurredAt,
+      amount: cashFlows.amount,
       category: cashFlows.category,
-      total: sql<string>`coalesce(sum(${cashFlows.amount}), 0)::bigint`,
     })
     .from(cashFlows)
     .where(
@@ -219,45 +229,20 @@ export async function getTenantMetrics(
         lt(cashFlows.occurredAt, toUtc),
       ),
     )
-    .groupBy(cashFlows.category)
 
   // Seed the income categories (per the cash_flows type/category check
   // constraint) at 0 so the response shape is stable even when a category has
   // no rows in the window.
   const byCategory: Record<string, number> = { booking: 0, product_sale: 0, other: 0 }
   let totalCents = 0
-  for (const r of revenueRows) {
-    // Number() is safe here: realistic 30-day per-tenant income stays well under
-    // JS's 2^53 safe-integer ceiling (~9e15 centavos). The bigint cast above only
-    // guards the SQL-side int32 sum overflow.
-    const cents = Number(r.total)
-    byCategory[r.category] = cents
-    totalCents += cents
-  }
-
-  // 4) Ingresos por día. Ventana acotada a METRICS_WINDOW_DAYS (30 días) de UN
-  //    tenant — a lo sumo cientos de filas, no miles ni histórico completo —
-  //    así que el bucketing por día operativo se agrega en JS post-fetch
-  //    (mismo patrón que getCanteenDailyTotals) en vez de una expresión SQL
-  //    de GROUP BY que no puede parametrizarse por el cutoffMins dinámico del
-  //    tenant.
-  const revenueRawRows = await tx
-    .select({
-      occurredAt: cashFlows.occurredAt,
-      amount: cashFlows.amount,
-    })
-    .from(cashFlows)
-    .where(
-      and(
-        eq(cashFlows.tenantId, tenantId),
-        eq(cashFlows.type, 'income'),
-        gte(cashFlows.occurredAt, fromUtc),
-        lt(cashFlows.occurredAt, toUtc),
-      ),
-    )
-
   const dailyTotals = new Map<string, number>()
   for (const r of revenueRawRows) {
+    // Sumar en JS es seguro acá: el ingreso realista de 30 días de un complejo
+    // queda muy por debajo del entero seguro de JS (~9e15 centavos). El
+    // `::bigint` que tenía la query agregada sólo cubría el overflow de int32
+    // del SUM del lado de SQL, que acá ya no existe.
+    byCategory[r.category] = (byCategory[r.category] ?? 0) + r.amount
+    totalCents += r.amount
     const day = operatingDateOf(r.occurredAt, cutoffMins)
     dailyTotals.set(day, (dailyTotals.get(day) ?? 0) + r.amount)
   }

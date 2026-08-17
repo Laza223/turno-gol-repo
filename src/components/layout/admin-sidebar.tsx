@@ -79,12 +79,21 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/analiticas', icon: ChartLine, label: 'Métricas' },
 ]
 
-/** Fuera del flujo diario: se separa del resto con un borde, al pie. */
+/**
+ * Fuera del flujo diario: se separa del resto con un borde, al pie.
+ *
+ * Apunta a `/settings/reservas` y no a `/settings`: esa última es un stub cuyo
+ * único cuerpo es `redirect('/settings/reservas')`, así que entrar por ahí
+ * costaba un render de servidor entero —con su cadena de auth completa— para
+ * después mandar al navegador a hacer una segunda navegación. El destino final
+ * es el mismo. `/settings` sigue existiendo para links y favoritos viejos.
+ */
 const CONFIG_ITEM: NavItem = {
-  href: '/settings',
+  href: '/settings/reservas',
   icon: Settings,
   label: 'Configuración',
   requiresAdmin: true,
+  match: (p) => p === '/settings' || p.startsWith('/settings/'),
 }
 
 /** Un espacio está activo si su `match` lo dice; si no, por igualdad o prefijo del href. */

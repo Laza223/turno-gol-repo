@@ -98,8 +98,17 @@ export async function isFeatureEnabled(flag: string, tenantId?: string): Promise
   return resolveFeatureFlag(flag, tenantId ?? null, dbFlagLoader)
 }
 
-/** Loads every (flag, tenant) pair at once. Missing keys are simply absent. */
-export type BatchFlagLoader = (
+/**
+ * Loads every (flag, tenant) pair at once. Missing keys are simply absent.
+ *
+ * Sin export: a diferencia de `FlagLoader` (que sí lo necesita para que
+ * `resolveFeatureFlag` sea testeable con un loader falso desde otro archivo),
+ * ni este tipo ni `warmFeatureFlags` tienen consumidor fuera de este módulo
+ * todavía — `preloadFeatureFlags` es la única puerta pública del preload.
+ * `knip` marca exports sin uso externo como dead code; agregar el `export`
+ * el día que haga falta.
+ */
+type BatchFlagLoader = (
   flags: string[],
   tenantId: string,
 ) => Promise<Map<string, boolean | undefined>>
@@ -111,7 +120,7 @@ export type BatchFlagLoader = (
  * propósito: esto es una optimización, y las llamadas a `isFeatureEnabled` que
  * vienen después reintentan por su cuenta con su propia tolerancia a fallos.
  */
-export async function warmFeatureFlags(
+async function warmFeatureFlags(
   flags: string[],
   tenantId: string,
   loader: BatchFlagLoader,

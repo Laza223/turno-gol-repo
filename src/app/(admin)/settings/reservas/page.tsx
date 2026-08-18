@@ -16,7 +16,11 @@ export default async function ReservasPolicyPage() {
 
       <div className="card-premium rounded-lg p-6">
         <h2 className="mb-6 text-base font-semibold text-foreground">Políticas de Reserva</h2>
-        <ReservasPolicyForm s={s} action={updateReservasPolicyAction} />
+        <ReservasPolicyForm
+          s={s}
+          action={updateReservasPolicyAction}
+          mpConnected={!!tenant.mpConnectedAt}
+        />
       </div>
     </div>
   )

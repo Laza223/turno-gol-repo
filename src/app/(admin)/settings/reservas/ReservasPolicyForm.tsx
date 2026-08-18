@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -43,15 +44,28 @@ export type UpdateReservasPolicy = (
 export function ReservasPolicyForm({
   s,
   action,
+  mpConnected = true,
 }: {
   s: TenantSettings
   action: UpdateReservasPolicy
+  /**
+   * 🔴 F-003 (QA de producción 2026-08-17): sin MercadoPago conectado no hay con
+   * qué cobrar la seña, así que el checkout público deja la reserva en
+   * `pending_payment` hasta que expira sola. El control se bloquea acá y la
+   * Server Action rechaza el mismo caso — la UI evita la trampa, la action es
+   * la que garantiza que no se pueda guardar por POST directo.
+   */
+  mpConnected?: boolean
 }) {
   const [state, formAction] = useActionState(action, INITIAL_STATE)
   const [didSubmit, setDidSubmit] = useState(false)
 
-  // Toggle states for boolean settings
-  const [requiresDeposit, setRequiresDeposit] = useState(s.requires_deposit !== false)
+  // Toggle states for boolean settings. Sin MP conectado la seña queda forzada
+  // en "Sin seña", aunque el tenant tenga `requires_deposit=true` guardado de
+  // antes (se pudo activar mientras el gate no existía).
+  const [requiresDeposit, setRequiresDeposit] = useState(
+    mpConnected ? s.requires_deposit !== false : false,
+  )
   const [allowOnlineBooking, setAllowOnlineBooking] = useState(s.allow_online_booking !== false)
 
   // Deposit percentage states. Un tenant en "Sin seña" puede tener
@@ -86,17 +100,31 @@ export function ReservasPolicyForm({
           Seña
         </legend>
         <SegmentedControl
-          className="flex gap-2"
+          className={`flex gap-2 ${mpConnected ? '' : 'cursor-not-allowed'}`}
           aria-label="Seña"
           value={requiresDeposit ? 'yes' : 'no'}
           onValueChange={(v) => setRequiresDeposit(v === 'yes')}
           itemClassName={pillClass}
+          disabled={!mpConnected}
           options={[
             { value: 'yes', label: 'Requerir seña' },
             { value: 'no', label: 'Sin seña' },
           ]}
         />
         <input type="hidden" name="requiresDeposit" value={requiresDeposit ? 'true' : 'false'} />
+
+        {!mpConnected && (
+          <p className="text-xs text-muted-foreground max-w-md">
+            Para cobrar seña necesitás conectar MercadoPago.{' '}
+            <Link
+              href="/settings/facturacion"
+              className="font-medium text-emerald-700 underline underline-offset-2 dark:text-emerald-400"
+            >
+              Conectar MercadoPago
+            </Link>
+            .
+          </p>
+        )}
 
         {requiresDeposit && (
           <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">

@@ -11,6 +11,7 @@ import {
   GOOGLE_TERMS_COOKIE_TTL_MS,
 } from '@/shared/security/google-terms-cookie'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { captureMessage } from '@/lib/sentry'
 import { getDb, withPlayerContext } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -217,7 +218,23 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   // (con seña el flujo MP setea payment_method='mercadopago' vía webhook P10)
   // y solo si el complejo lo acepta — re-validamos server-side: el form puede
   // venir manipulado.
-  const withDeposit = settings.requires_deposit && settings.deposit_percentage > 0
+  // 🔴 F-003 (QA de producción 2026-08-17): un complejo con "requerir seña"
+  // prendido y MercadoPago SIN conectar no puede crear la preferencia de pago, así
+  // que el booking nacía `pending_payment` y **expiraba solo por hold**: el jugador
+  // creía que había reservado y el complejo perdía el turno sin enterarse.
+  //
+  // Acá la reserva se confirma SIN seña (decisión del dueño, 2026-08-18): el
+  // complejo se queda con el turno y cobra en el mostrador, que es estrictamente
+  // mejor que perder al cliente en silencio. El estado ya no se puede volver a
+  // crear —la Server Action de Políticas de Reserva lo rechaza y el default de la
+  // columna nace en `false` (migr. 077)—, así que llegar acá significa que quedó un
+  // tenant inconsistente de antes: se reporta para poder encontrarlo.
+  const depositUnpayable = settings.requires_deposit && !tenant!.mpAccessToken
+  if (depositUnpayable) {
+    captureMessage('checkout: requires_deposit sin MercadoPago conectado', 'warning')
+  }
+  const withDeposit =
+    settings.requires_deposit && !depositUnpayable && settings.deposit_percentage > 0
   const payRaw = String(formData.get('pay') ?? '')
   const paymentMethod: 'cash' | 'transfer' | undefined = withDeposit
     ? undefined
@@ -239,7 +256,10 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
           date,
           timeStart: time,
           timeEnd,
-          requiresDeposit: settings.requires_deposit,
+          // `&& !depositUnpayable` y no `withDeposit` a secas: `withDeposit`
+          // suma la condición `deposit_percentage > 0`, que este parámetro nunca
+          // tuvo. Se cambia solo lo que el hallazgo pide.
+          requiresDeposit: settings.requires_deposit && !depositUnpayable,
           depositPercentage: settings.deposit_percentage,
           maxAdvanceDays: settings.booking_advance_days ?? 6,
           ...(paymentMethod ? { paymentMethod } : {}),

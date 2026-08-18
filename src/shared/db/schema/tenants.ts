@@ -69,7 +69,7 @@ export const tenants = pgTable(
       .notNull()
       .default(
         sql`'{
-        "requires_deposit": true,
+        "requires_deposit": false,
         "deposit_percentage": 30,
         "cancellation_policy": {"hours_before": 12, "penalty_type": "deposit", "penalty_amount": null},
         "accepts_cash": true,

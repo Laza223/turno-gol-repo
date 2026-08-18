@@ -4866,3 +4866,222 @@ Ruido de contexto: 84 descripciones compitiendo por atención en CADA sesión de
 sesión propia. El routing "Opus orquesta, Sonnet ejecuta" está hardcodeado en 9 skills + 7 agentes
 `sonnet-*` y **no está funcionando** (los workflows rara vez usan Sonnet salvo pedido explícito).
 Nada de eso se tocó.
+
+---
+
+# QA de producción 2026-08-17 — tanda 2: los 16 que quedaban (2026-08-18)
+
+El PR #166 cerró 11 de los 27 hallazgos de `docs/qa/PROD_QA_2026-08-17.md`. Esta tanda toma los 16
+restantes: 3 🔴, 6 🟡 y 7 🟢. Trece se aplicaron, uno **no reproduce** y dos quedan como decisión
+del dueño (abajo, con el motivo).
+
+## 🔴 F-001 — La CSP bloqueaba el WebSocket de Realtime
+
+`next.config.ts:22`. `connect-src 'self' *.supabase.co …`: un host-source pelado **no habilita el
+esquema `wss:`**, así que Chrome bloqueaba el socket de Supabase Realtime y la grilla del admin
+mostraba "Sin conexión. Los datos pueden no estar actualizados." de forma permanente. El comentario
+del archivo afirmaba "en producción Realtime usa wss://… (ya cubierto)" — una suposición que nadie
+había verificado, y el commit `f46dc596` (debounce de 1,5 s en el banner) había parcheado el síntoma.
+
+**Confirmado contra producción viva antes de tocar nada**, no contra el report:
+
+```
+curl -sSI https://turnogol.app/grilla | grep -io "connect-src[^;]*"
+connect-src 'self' *.supabase.co *.mercadopago.com
+```
+
+Fix: `wss://*.supabase.co` explícito en las DOS ramas (dev y prod) del `connectSrc`.
+
+## 🔴 F-003 — Se podía exigir seña sin MercadoPago conectado
+
+`src/app/(admin)/settings/reservas/actions.ts` no consultaba `mp_connected_at` en ningún momento, así
+que "Requerir seña" se guardaba con un "Políticas guardadas." y el checkout público pasaba a mostrar
+"Seña a pagar ahora". Sin `mpAccessToken` no hay preferencia de pago: el booking nace
+`pending_payment` y **expira solo por hold**. El jugador cree que reservó y el complejo pierde
+reservas sin enterarse.
+
+Dos capas, las dos aplicadas:
+
+- **Server Action** (el guard real): rechaza `requiresDeposit=true` cuando `tenant.mpConnectedAt` es
+  null, con un mensaje que nombra dónde se conecta. El estado sale del tenant que ya trajo el guard
+  **desde la DB**, nunca de un campo del form — misma regla que el resto de las actions de plata.
+- **UI**: `ReservasPolicyForm` recibe `mpConnected` y deshabilita el control de Seña con un link
+  directo a `/settings/facturacion`. Con MP sin conectar el toggle arranca en "Sin seña" aunque el
+  tenant tenga `requires_deposit=true` guardado de antes (se pudo activar mientras el gate no existía).
+
+**Queda pendiente de decisión** la tercera capa que propone el informe: qué hacer en el checkout
+público con un tenant que HOY está en ese estado inconsistente. Degradar a "sin seña" confirma la
+reserva pero le entrega al complejo un turno sin la seña que pidió; rechazar la reserva es lo que
+propone el informe pero pierde al jugador. Es una decisión de negocio, no un fix — ver la sección
+final.
+
+## 🔴 F-022 — La analítica web no se guardaba: causa raíz encontrada
+
+El informe dejó la hipótesis de que era F-002 (pool saturado) comiéndose los INSERT en silencio, y
+pedía re-medir después de arreglarlo. Se midió, y **no era eso**.
+
+Experimento contra producción (F-002 ya mergeado):
+
+```
+4 × GET https://turnogol.app/api/public/search   → 200 (visibles en los logs de Vercel, 18:23)
+select count(*) from analytics_events            → 0 filas
+logs de Vercel, misma ventana                    → ni un solo "analytics event no persistido"
+```
+
+`track.search` está en la ruta principal de `searchPublicTenants` (`search.service.ts:236`), o sea que
+los 4 eventos se emitieron. Y `persist()` ya loguea por `stdout` cuando la escritura falla
+(`logger.warn`, sin gate por entorno), así que **la ausencia de ese warn descarta la escritura como
+causa**: el sink nunca se ejecutó.
+
+La causa es la misma clase que ya se pagó con el locale de Zod
+(memoria `zod-locale-global-no-alcanza-schemas`): **`instrumentation.ts` se bundlea en un layer
+aparte**, así que su `import` de `breadcrumbs.ts` resolvía a OTRA instancia del módulo que la que
+importan los servicios. `setAnalyticsSink()` seteaba la variable de módulo de una copia y `track.*`
+leía la de la otra, que seguía en `null`. Cero filas, cero errores, cero ruido.
+
+Fix (`src/shared/observability/breadcrumbs.ts`):
+
+- El sink pasa a vivir en `globalThis` (`__turnogol_analytics_sink__`), que **sí** es compartido entre
+  copias del módulo. A diferencia del caso de Zod —donde el canal era interno a la librería y no se
+  podía tocar— acá el canal es nuestro.
+- El modo de falla deja de ser invisible: si `track.*` corre server-side sin sink, sale un
+  `Sentry.captureMessage` **una vez por instancia**. Es la distinción que el informe pedía entre "no
+  se emitió el evento" y "se emitió y nadie lo escuchó".
+- 3 tests nuevos en `tests/unit/breadcrumbs.test.ts` (entrega al sink, canal por `globalThis`, alarma
+  una sola vez). El mock de `@sentry/nextjs` del archivo pasó a exportar `captureMessage`: era
+  incompleto respecto al módulo real y explotaba en el primer `track.*` de la suite.
+
+**Verificación pendiente**: la prueba definitiva es re-medir `analytics_events` después del deploy.
+Hasta entonces esto es una causa raíz confirmada por descarte, no por observación del fix corriendo.
+
+## 🟡 F-019 — El wizard rechazaba el horario nocturno sin señalar la salida
+
+Dos de los tres puntos del hallazgo:
+
+- `opening-hours.schema.ts`: el mensaje ahora nombra la opción que resuelve el caso ("Si cerrás después
+  de medianoche, activá esa opción más abajo"), y solo cuando el flag está apagado. Se toca el schema
+  compartido a propósito: el mismo mensaje sale en `/settings/horarios`, que tiene el mismo control.
+- `StepSchedule.tsx`: el error del server se oculta apenas cambia cualquier valor del formulario
+  (`touchedSinceError`). Antes quedaba en pantalla después de corregir, y el paso se leía como
+  bloqueado cuando ya era válido — misma clase que F-010.
+
+Sin resolver, y es de UI, no de validación: la vista previa "TU SEMANA" muestra `Lun 08:00–02:00`
+mientras el formulario rechaza ese mismo horario. La pantalla se sigue contradiciendo a sí misma.
+
+## 🟡 F-020 — NO REPRODUCE
+
+El hallazgo dice que tipear `-500` en el precio del wizard guardaba $500 **en silencio**. La primera
+mitad es cierta; la segunda no. `MoneyInput.handleChange` reescribe el display normalizado en la misma
+tecla (`parsePesosToCents` descarta todo lo que no sea dígito y `centsToInputDisplay` lo vuelve a
+formatear), así que el campo **nunca llega a mostrar `-500`**: muestra `500` mientras se tipea. Lo que
+se ve es lo que se guarda, que es exactamente lo que pedía la solución propuesta.
+
+Verificado, no razonado — 3 casos nuevos en `tests/unit/money-input.test.tsx` que fijan la propiedad:
+el signo menos no llega al campo, la basura tipeada se descarta a la vista, y un campo con solo
+caracteres inválidos queda vacío (no en cero).
+
+## 🟡 F-021 — El campo "Cliente" de Turnos fijos no tenía etiqueta accesible
+
+`AbonadoForm.tsx`: la `<label>` existía pero sin `htmlFor`, y el input sin `id`. Era el único de los
+siete campos del formulario en esa condición. `id="contactName"` + `htmlFor`, como los otros seis.
+
+## 🟡 F-025 — El "esperá tu email" del registro se perdía con un refresh
+
+`useActionState` vive en memoria del navegador: un F5 en la pestaña que quedó esperando reiniciaba el
+estado a `idle` y reaparecía el formulario **vacío**, como si el registro nunca hubiera pasado.
+
+- La marca viaja en la URL (`/register?pending=1`), que el Server Component lee y pasa como prop.
+- El email va en `sessionStorage`, **no** en el query string: es dato personal y en la URL se filtra a
+  logs, referrers e historial. Si no está (otra pestaña, storage limpiado) sale el mismo cartel sin el
+  email — peor mensaje, nunca el formulario vacío.
+- Se lee con `useSyncExternalStore` y no con `useState` + efecto: el snapshot del servidor es `null`,
+  así que no hay mismatch de hidratación ni el `setState` dentro de un efecto que
+  `react-hooks/set-state-in-effect` prohíbe (la regla lo cazó en el primer intento).
+
+## 🟡 F-026 — Horario default parejo para los 7 días
+
+**Migración 077** (`077_uniform_opening_hours_default.sql` + espejo en `supabase/migrations/`). El
+DEFAULT de `tenants.opening_hours` (migr. 003) traía viernes cerrando 01:00, sábado abriendo 09:00 y
+domingo cerrando 23:00, sin que nadie los hubiera elegido. `sanitizeWizardHours` ya corregía el bug
+TÉCNICO de ese default (madrugada sin `closes_next_day` = día sin precio en silencio) pero no la
+diferencia de horario, que es el bug de producto: el complejo publica un horario que no es el suyo.
+
+`SET DEFAULT` no toca ninguna fila existente — ningún complejo ya creado cambia de horario.
+
+## 🟢 Los siete menores
+
+| ID | Qué se hizo |
+|---|---|
+| F-011 | `formatPct()` nuevo en `src/lib/format.ts` (es-AR, coma decimal). Aplicado a los 2 usos de `/analiticas` y a los 2 formatters de `ReportCharts`. El `%` se concatena a mano: `style:'percent'` mete un NBSP y complica los matchers sin ganar nada |
+| F-012 | Un solo `<h1>` en la home: el de `HeroDesktop` queda, el de `HeroMobile` pasa a `<p role="heading" aria-level={1}>` — suena igual en un lector de pantalla y no duplica el encabezado para el crawler |
+| F-013 | `telHref()` nuevo en `src/lib/contact.ts`: conserva dígitos y el `+` inicial. Aplicado en `TenantHeader` y `AvailabilityGrid`. El formato lindo sigue siendo el TEXTO del link |
+| F-014 | `generateMetadata` en `/[slug]/reservar`: título con complejo, fecha y hora; `noIndex` porque es una pantalla con parámetros de una reserva puntual |
+| F-015 | `ctaClass()` en `status-banner.tsx`: `min-h-11` (44 px) solo en mobile para los TRES CTA del banner, no solo el reportado — "Elegir plan", "Actualizar pago" y "Reactivar" tenían el mismo problema |
+| F-016 | `scripts/sentry-issues.ts`: `statsPeriod=90d` → `14d` en el camino de `--detail`, que la API rechaza siempre con 400. El listado ya respetaba el límite; este camino no |
+| F-027 | Placeholder de ciudad: "Ej: Luján" → "Ej: Rosario" (el informe lo señala como probable origen de los "Lujan, Neuquén" de F-004) |
+
+## Verificación
+
+```
+pnpm typecheck        ✓
+pnpm lint             ✓
+pnpm test             → 3551/3551 (337 archivos, 1 skipped, 1 todo preexistente)
+pnpm test:storybook   → 1118/1118 (275 archivos)
+```
+
+Sin correr acá: integración/isolation (necesitan Postgres local levantado) y e2e. La migración 077 es
+un `ALTER … SET DEFAULT` que CI aplica en orden.
+
+## Pendiente de decisión del dueño (REQUIERE INPUT)
+
+Los dos se resolvieron el mismo día — ver la sección siguiente. Quedaba: (1) qué hace el checkout
+público con un tenant que ya está en el estado inconsistente de F-003, y (2) si se sube la foto de la
+cancha en la jerarquía del wizard (F-028).
+
+## Cierre de los dos pendientes (decisión del dueño, 2026-08-18)
+
+### F-003, tercera capa — la reserva se confirma sin seña, y el estado deja de ser alcanzable
+
+Decisión: **confirmar la reserva sin seña**. El complejo se queda con el turno y cobra en el
+mostrador; hoy esa reserva muere sola y nadie se entera. Pedido explícito además: *"nos tenemos que
+asegurar de que no pueda pasar porque es un bug garrafal"* — así que se barrió la clase, no la
+instancia.
+
+`(public)/[slug]/reservar/actions.ts`: `depositUnpayable = requires_deposit && !mpAccessToken`
+desactiva la seña para esa reserva y reporta a Sentry (llegar ahí significa que quedó un tenant
+inconsistente de antes, y hay que poder encontrarlo). El parámetro que baja a `createOnlineBooking`
+es `settings.requires_deposit && !depositUnpayable`, **no** `withDeposit`: este último suma la
+condición `deposit_percentage > 0`, que ese parámetro nunca tuvo, y el fix no cambia más que lo que
+el hallazgo pide.
+
+El barrido de `requires_deposit` sobre `src/` encontró la causa que el informe no había visto:
+
+**El DEFAULT de la columna `tenants.settings` nacía con `requires_deposit: true`** (migr. 003,
+reafirmado en la 034). El camino normal de alta ya estaba bien —`createTenantWithTrial` pasa
+`DEFAULT_SETTINGS` con `false`, con un comentario que documenta ese mismo fix— pero cualquier INSERT
+que NO pase settings explícitos (seeds, scripts, soporte, una migración futura) nacía exigiendo seña
+sin MercadoPago conectado. Era una bomba con mecha larga, y probablemente el origen del estado que el
+QA encontró en `complejo-random`.
+
+Corregido en la migración 077 (`ALTER COLUMN settings SET DEFAULT`, resto del objeto idéntico) y en el
+default espejo de `src/shared/db/schema/tenants.ts`, que decía lo mismo.
+
+Con eso, los tres caminos quedan cerrados: no se puede activar desde el panel (Server Action), no se
+puede nacer así (default de la columna), y si igual pasara —soporte de super-admin, dato viejo— el
+checkout no deja al jugador colgado.
+
+### F-028 — NO APLICA sobre el código actual
+
+El hallazgo cita `CourtDraftCard.tsx:231-239` con un `ImageUploader` de "Foto de la cancha". Ese
+bloque **ya no existe**: el refactor del wizard (PR #159, commit `654d63e3`) sacó la carga de foto del
+paso de canchas. Hoy `StepCourts.tsx:101` dice explícitamente *"Las fotos se cargan después desde
+Canchas"*, y no hay ni un `ImageUploader` en todo `src/app/onboarding/`.
+
+O sea que no hay nada que subir en la jerarquía visual — el control que el hallazgo quiere hacer más
+visible fue movido a otra pantalla a propósito. Es la tercera vez que un informe de auditoría de este
+repo describe una versión anterior del árbol (ver `harness-auditoria-mide-el-pasado` y
+`arbol-principal-atrasado-mide-mal` en memoria): **verificar el archivo citado antes de ejecutar sobre
+él sigue pagando**.
+
+Queda como pregunta de producto, si alguna vez interesa: que el onboarding termine sin ninguna foto es
+real, pero se resuelve en el paso de Canchas o después, no acá.

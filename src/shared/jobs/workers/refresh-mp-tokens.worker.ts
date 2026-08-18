@@ -1,7 +1,7 @@
 import type PgBoss from 'pg-boss'
 import { eq, sql as drizzleSql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
-import { getSql, getDb } from '@/shared/db/client'
+import { getWorkerSql, getWorkerDb } from '@/shared/db/client'
 import { refreshMpAccessToken } from '@/modules/payments/mp-oauth'
 import { encrypt } from '@/lib/crypto/encrypt'
 import { TenantMpNotConnectedError } from '@/modules/payments/payment.errors'
@@ -25,7 +25,10 @@ type RefreshOutcome = 'refreshed' | 'skipped'
  * inline (not via `refreshTenantMpToken`) so they share the lock-holding tx.
  */
 export async function runRefreshMpTokens(): Promise<void> {
-  const sql = getSql()
+  // Pool worker (BYPASSRLS): el barrido es cross-tenant. Hoy `tenants` no tiene
+  // RLS, así que el pool de la app también leería — pero el día que la tenga,
+  // este SELECT devolvería cero filas en silencio y ningún token se refrescaría.
+  const sql = getWorkerSql()
   const rows = await sql<{ id: string }[]>`
     SELECT id
     FROM tenants
@@ -33,7 +36,7 @@ export async function runRefreshMpTokens(): Promise<void> {
       AND status IN ('active', 'trialing', 'past_due', 'suspended')
   `
 
-  const db = getDb()
+  const db = getWorkerDb()
   let refreshed = 0
   let skippedLocked = 0
   for (const row of rows) {

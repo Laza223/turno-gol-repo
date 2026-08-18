@@ -32,6 +32,7 @@ import {
 } from '../helpers/tenant'
 import { seedIsolationData, type IsolationSeed } from '../helpers/seed'
 import { getOrCreatePlanId, insertBooking } from '../helpers/factories'
+import { artTodayStr } from '@/shared/dates/art'
 
 faker.seed(42)
 
@@ -196,7 +197,7 @@ const insertOps: Record<string, InsertFn> = {
     tx`INSERT INTO abonados (
       tenant_id, court_id, contact_name, contact_phone,
       day_of_week, time_start, time_end, price_per_session, starts_on
-    ) VALUES (${tid}, ${B.courtId}, 'spoof', '111', 1, '20:00', '21:00', 1000, ${new Date().toISOString().slice(0, 10)})`,
+    ) VALUES (${tid}, ${B.courtId}, 'spoof', '111', 1, '20:00', '21:00', 1000, ${artTodayStr()})`,
   payments: async (tx, tid) =>
     tx`INSERT INTO payments (tenant_id, amount, type, method, status)
       VALUES (${tid}, 1000, 'full_payment', 'cash', 'approved')`,
@@ -243,7 +244,7 @@ const insertOps: Record<string, InsertFn> = {
   // (Los chequeos de FK corren con privilegios del owner y no pasan por RLS.)
   tournaments: async (tx, tid) =>
     tx`INSERT INTO tournaments (tenant_id, name, slug, format, starts_on)
-      VALUES (${tid}, 'spoof', ${`spoof-${faker.string.alphanumeric(8).toLowerCase()}`}, 'league', ${new Date().toISOString().slice(0, 10)})`,
+      VALUES (${tid}, 'spoof', ${`spoof-${faker.string.alphanumeric(8).toLowerCase()}`}, 'league', ${artTodayStr()})`,
   tournament_teams: async (tx, tid) =>
     tx`INSERT INTO tournament_teams (tenant_id, tournament_id, name)
       VALUES (${tid}, ${B.tournamentId}, ${`spoof-${faker.string.alphanumeric(8)}`})`,

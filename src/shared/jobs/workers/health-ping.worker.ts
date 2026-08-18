@@ -1,5 +1,10 @@
 import type PgBoss from 'pg-boss'
 import * as Sentry from '@sentry/nextjs'
+// Excepción legítima a `turnogol/jobs-worker-pool`: la sonda mide el DSN DE LA
+// APP, que es justo el que le importa al usuario final. `SELECT 1` no toca
+// ninguna tabla, así que RLS no puede alterar el resultado — el riesgo que la
+// regla persigue (ver cero filas en silencio) no existe acá.
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { CRON_WORK_OPTIONS, QUEUE_HEALTH_PING } from '../definitions'

@@ -7,12 +7,16 @@ const TAG = `srch${Date.now()}`
 
 async function seed() {
   const sql = getSql()
+  // F-004 (QA prod 2026-08-17): searchPublicTenants/listPublicCities ahora
+  // exigen onboarding cerrado además del status — sin esto los 3 tenants de
+  // este seed quedarían fuera por incompletitud, no por lo que el test
+  // quiere ejercitar (status).
   await sql`
-    INSERT INTO tenants (slug, name, address, city, province, phone, email, status)
+    INSERT INTO tenants (slug, name, address, city, province, phone, email, status, settings)
     VALUES
-      (${`${TAG}-a`}, ${`${TAG} Goleador`}, 'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}a@t.local`}, 'active'),
-      (${`${TAG}-b`}, ${`${TAG} Mundialito`}, 'x', 'Córdoba', 'Córdoba', '1', ${`${TAG}b@t.local`}, 'trialing'),
-      (${`${TAG}-c`}, ${`${TAG} Suspendido`}, 'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}c@t.local`}, 'suspended')
+      (${`${TAG}-a`}, ${`${TAG} Goleador`}, 'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}a@t.local`}, 'active', '{"onboarding_completed": true}'::jsonb),
+      (${`${TAG}-b`}, ${`${TAG} Mundialito`}, 'x', 'Córdoba', 'Córdoba', '1', ${`${TAG}b@t.local`}, 'trialing', '{"onboarding_completed": true}'::jsonb),
+      (${`${TAG}-c`}, ${`${TAG} Suspendido`}, 'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}c@t.local`}, 'suspended', '{"onboarding_completed": true}'::jsonb)
   `
 }
 

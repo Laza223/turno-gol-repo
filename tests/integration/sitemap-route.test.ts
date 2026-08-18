@@ -7,13 +7,24 @@ const TAG = `smap${Date.now()}`
 
 async function seed() {
   const sql = getSql()
+  // F-004 (QA prod 2026-08-17): listSitemapTenants ahora exige
+  // settings.onboarding_completed=true además del status — sin esto -a/-b
+  // quedarían fuera por incompletitud, no por lo que este test ejercita.
+  //
+  // `sql.json({...})`, NO `${'{"...": true}'}::jsonb`: interpolar un STRING
+  // ya-serializado como parámetro y castearlo con `::jsonb` lo doble-codifica
+  // (mismo bug de la clase "jsonb-merge-double-stringify") — quedaba guardado
+  // como el STRING `"{\"onboarding_completed\": true}"` en vez del objeto, así
+  // que `settings ->> 'onboarding_completed'` daba `NULL` y -a/-b quedaban
+  // afuera siempre. Confirmado en vivo contra Postgres real, no solo lectura.
+  const done = sql.json({ onboarding_completed: true })
   await sql`
-    INSERT INTO tenants (slug, name, address, city, province, phone, email, status)
+    INSERT INTO tenants (slug, name, address, city, province, phone, email, status, settings)
     VALUES
-      (${`${TAG}-a`}, ${`${TAG} Active`},   'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}a@t.local`}, 'active'),
-      (${`${TAG}-b`}, ${`${TAG} Trialing`}, 'x', 'Córdoba', 'Córdoba', '1', ${`${TAG}b@t.local`}, 'trialing'),
-      (${`${TAG}-c`}, ${`${TAG} Suspended`},'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}c@t.local`}, 'suspended'),
-      (${`${TAG}-d`}, ${`${TAG} Deleted`},  'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}d@t.local`}, 'deleted')
+      (${`${TAG}-a`}, ${`${TAG} Active`},   'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}a@t.local`}, 'active', ${done}),
+      (${`${TAG}-b`}, ${`${TAG} Trialing`}, 'x', 'Córdoba', 'Córdoba', '1', ${`${TAG}b@t.local`}, 'trialing', ${done}),
+      (${`${TAG}-c`}, ${`${TAG} Suspended`},'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}c@t.local`}, 'suspended', ${done}),
+      (${`${TAG}-d`}, ${`${TAG} Deleted`},  'x', 'Mendoza', 'Mendoza', '1', ${`${TAG}d@t.local`}, 'deleted', ${done})
   `
 }
 

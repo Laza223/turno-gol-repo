@@ -28,3 +28,22 @@ export function contactWhatsappUrl(message?: string): string {
   const base = `https://wa.me/${CONTACT_WHATSAPP_DIGITS}`
   return message ? `${base}?text=${encodeURIComponent(message)}` : base
 }
+
+/**
+ * Teléfono legible → valor de un `href="tel:"` válido.
+ *
+ * F-013 (QA de producción 2026-08-17): el perfil público generaba
+ * `tel:+54 1164458855`. Los espacios no son válidos en un URI `tel:` (RFC 3966)
+ * y algunos discadores lo rechazan sin decir por qué. Se conservan solo los
+ * dígitos y el `+` inicial si lo había; el formato lindo sigue siendo el TEXTO
+ * del link, que es donde importa que se lea bien.
+ *
+ * Devuelve `null` si no queda ningún dígito — quien llama decide si esconde el
+ * link o lo muestra sin `href`.
+ */
+export function telHref(phone: string | null | undefined): string | null {
+  const raw = (phone ?? '').trim()
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return null
+  return `tel:${raw.startsWith('+') ? '+' : ''}${digits}`
+}

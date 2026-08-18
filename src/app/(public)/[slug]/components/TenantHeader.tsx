@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { CalendarDays, MapPin, MessageCircle, Navigation, Phone } from 'lucide-react'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
+import { telHref } from '@/lib/contact'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import RatingStars from '@/components/public/RatingStars'
 import FavoriteButton from '@/components/public/FavoriteButton'
@@ -88,7 +89,7 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
             <Navigation className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             Cómo llegar
           </a>
-          <a href={`tel:${tenant.phone}`} className={chipClass}>
+          <a href={telHref(tenant.phone) ?? undefined} className={chipClass}>
             <Phone className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
             {tenant.phone}
           </a>

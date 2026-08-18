@@ -21,14 +21,37 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+/**
+ * Las 2 stories dejan el diálogo abierto por diseño (el cierre es
+ * caller-controlled: `open={product !== null}`). En batch, el portal de la
+ * story anterior puede seguir montado un frame y `findByRole('dialog')`
+ * matchea múltiple → tomar SIEMPRE el último (el de esta story). Mismo helper
+ * que StockEntryDialog.stories.tsx / ProductFormDialog.stories.tsx.
+ */
+async function findCurrentDialog(body: ReturnType<typeof within>) {
+  const dialogs = await body.findAllByRole('dialog')
+  return dialogs[dialogs.length - 1]!
+}
+
 /** Motivo (chip) + cantidad + nota obligatoria. Copy explícito: no toca la caja. */
 export const SalidaPorMerma: Story = {
   play: async ({ args, canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    const dialogEl = await body.findByRole('dialog')
+    const dialogEl = await findCurrentDialog(body)
     const dialog = within(dialogEl)
 
-    await expect(dialog.getByText('Esto no toca la caja: solo descuenta stock.')).toBeVisible()
+    // `findByRole` resuelve apenas el nodo EXISTE, no cuando está visible: el
+    // diálogo entra con `data-[state=open]:animate-in fade-in-0` y el primer
+    // frame llega en opacity 0, así que un `getByText(...).toBeVisible()`
+    // síncrono le gana la carrera en CI (rojo en el run 32175436851, verde al
+    // re-correr el mismo commit). `waitFor` sobre el `textContent` del
+    // contenedor estable relee el DOM vivo en cada reintento y no captura el
+    // nodo. OJO con el log: `toBeVisible` serializa el elemento con
+    // `cloneNode(false)`, o sea SIEMPRE sin hijos — leerlo como "el texto
+    // nunca llegó" manda a buscar un bug de producto que no existe.
+    await waitFor(() =>
+      expect(dialogEl.textContent).toContain('Esto no toca la caja: solo descuenta stock.'),
+    )
     await userEvent.type(dialog.getByLabelText('Nota'), 'latas vencidas')
     await userEvent.click(dialog.getByRole('button', { name: /registrar salida/i }))
 
@@ -50,7 +73,7 @@ export const SalidaPorMerma: Story = {
 export const ErrorSinNota: Story = {
   play: async ({ args, canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    const dialog = within(await body.findByRole('dialog'))
+    const dialog = within(await findCurrentDialog(body))
     await userEvent.click(dialog.getByRole('button', { name: /registrar salida/i }))
     await expect(await dialog.findByRole('alert')).toHaveTextContent(/contá el motivo/i)
     await expect(args.registerStockExitAction).not.toHaveBeenCalled()

@@ -270,19 +270,54 @@ type ActivationCtx = {
  */
 type AnalyticsSink = (category: string, event: string, data: Record<string, unknown>) => void
 
-let analyticsSink: AnalyticsSink | null = null
+/**
+ * 🔴 F-022 (QA de producción 2026-08-17): el sink vive en `globalThis`, NO en una
+ * variable de módulo.
+ *
+ * `instrumentation.ts` se bundlea en un layer aparte del grafo de la app, así que
+ * su `import` de este archivo puede resolver a OTRA instancia del módulo que la
+ * que importan los servicios. Con una variable de módulo, `setAnalyticsSink()`
+ * seteaba la copia de instrumentation y `track.*` leía la de la app, que seguía
+ * en `null`: los eventos se descartaban en silencio y `analytics_events` quedaba
+ * vacía en producción (medido: 4 búsquedas públicas con 200, cero filas, cero
+ * warns de escritura). Es la misma clase que ya se pagó con el locale de Zod
+ * (`zod-locale.ts`) — ahí el canal era interno a la librería y no se podía
+ * arreglar; acá el canal es nuestro, y `globalThis` lo comparte entre copias.
+ */
+const SINK_KEY = '__turnogol_analytics_sink__'
+type SinkHolder = { [SINK_KEY]?: AnalyticsSink | null }
 
 export function setAnalyticsSink(sink: AnalyticsSink | null): void {
-  analyticsSink = sink
+  ;(globalThis as SinkHolder)[SINK_KEY] = sink
 }
+
+function getAnalyticsSink(): AnalyticsSink | null {
+  return (globalThis as SinkHolder)[SINK_KEY] ?? null
+}
+
+/**
+ * El aviso de "sink ausente" se emite UNA vez por instancia. Sin esto, el modo de
+ * falla de F-022 es invisible: no hay forma de distinguir "el evento no se emitió"
+ * de "se emitió y nadie lo escuchó". En el navegador la ausencia es normal y
+ * esperada (ver el comentario de arriba), así que solo se avisa server-side.
+ */
+let warnedMissingSink = false
 
 function emit(category: string, message: string, data: Record<string, unknown>): void {
   // Contexto para depurar un error: se transmite solo si después hay excepción.
   Sentry.addBreadcrumb({ category, message, data, level: 'info' })
 
   // Medición: destino durable, independiente de que haya o no error.
+  const sink = getAnalyticsSink()
+  if (!sink) {
+    if (typeof window === 'undefined' && !warnedMissingSink) {
+      warnedMissingSink = true
+      Sentry.captureMessage('analytics sink no registrado: los eventos no se persisten', 'warning')
+    }
+    return
+  }
   try {
-    analyticsSink?.(category, message, data)
+    sink(category, message, data)
   } catch {
     // Un sink roto no puede voltear el flujo que lo emitió.
   }

@@ -188,7 +188,7 @@ export function StepIdentity({ action, defaultValues }: Props) {
                 name="city"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="Ej: Luján"
+                placeholder="Ej: Rosario"
                 required
                 className={fieldClass}
               />

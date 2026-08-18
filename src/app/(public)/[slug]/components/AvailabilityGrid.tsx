@@ -8,6 +8,7 @@ import type { AvailabilityResponse, PublicTenant, Slot } from '@/modules/tenants
 import { Skeleton } from '@/components/ui/skeleton'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 import { holdRemainingLabel } from '@/lib/booking/hold'
+import { telHref } from '@/lib/contact'
 import WeeklyAvailabilityModal from './WeeklyAvailabilityModal'
 
 type Props = {
@@ -166,7 +167,7 @@ function SlotCell({
   if (!allowOnlineBooking) {
     return (
       <a
-        href={`tel:${phone}`}
+        href={telHref(phone) ?? undefined}
         aria-label="Contactar al complejo para reservar"
         className="inline-flex w-full flex-col items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
       >

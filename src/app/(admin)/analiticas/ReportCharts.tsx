@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useChartTheme } from '@/components/admin/useChartTheme'
-import { formatArs } from '@/lib/format'
+import { formatArs, formatPct } from '@/lib/format'
 import type { CourtReport, PeriodTotals } from '@/modules/reports/report.types'
 
 /** Barra horizontal de ocupación por cancha. Dato ya presente en `RevenueReport.byCourt`. */
@@ -35,7 +35,7 @@ export function OccupancyChart({
               type="number"
               domain={[0, 100]}
               tick={{ fontSize: 11, fill: chart.axis }}
-              tickFormatter={(v: number) => `${v}%`}
+              tickFormatter={(v: number) => formatPct(v)}
             />
             <YAxis
               type="category"
@@ -44,7 +44,7 @@ export function OccupancyChart({
               width={90}
             />
             <Tooltip
-              formatter={(value) => [`${value}%`, 'Ocupación']}
+              formatter={(value) => [formatPct(Number(value)), 'Ocupación']}
               labelStyle={chart.tooltip.labelStyle}
               contentStyle={chart.tooltip.contentStyle}
               itemStyle={chart.tooltip.itemStyle}

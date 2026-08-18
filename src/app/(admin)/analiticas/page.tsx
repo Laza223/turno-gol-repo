@@ -25,7 +25,7 @@ import {
   formatMonthLabel,
   isReportEmpty,
 } from '@/modules/reports/report.utils'
-import { formatArsContable } from '@/lib/format'
+import { formatArsContable, formatPct } from '@/lib/format'
 import { GhostKpis } from './GhostKpis'
 import { OccupancyChart, TrendChart } from './ReportCharts'
 
@@ -235,7 +235,7 @@ export default async function AnaliticasPage(props: {
                             {c.courtName}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {c.bookingCount} reservas · {c.occupancyPct}% ocupación
+                            {c.bookingCount} reservas · {formatPct(c.occupancyPct)} ocupación
                           </p>
                         </div>
                         <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
@@ -266,7 +266,7 @@ export default async function AnaliticasPage(props: {
                             {c.bookingCount}
                           </td>
                           <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                            {c.occupancyPct}%
+                            {formatPct(c.occupancyPct)}
                           </td>
                         </tr>
                       ))}

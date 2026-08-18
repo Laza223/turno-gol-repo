@@ -23,6 +23,17 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
 }
 
+/**
+ * F-015 (QA de producción 2026-08-17): los CTA del banner eran links de texto
+ * pelado — 71 × 20 px medidos en 375 px de ancho, menos de la mitad del mínimo
+ * de 44 px. Uno de ellos ("Elegir plan") es literalmente el camino por el que el
+ * complejo empieza a pagar. `min-h-11` (44 px) solo en mobile: en desktop el
+ * puntero no necesita el área y el alto extra desbalancearía la barra.
+ */
+function ctaClass(hover: string): string {
+  return `inline-flex min-h-11 items-center px-1 font-semibold underline underline-offset-2 transition-colors duration-150 shrink-0 md:min-h-0 ${hover}`
+}
+
 export function StatusBanner({
   tenantStatus,
   trialEndsAt,
@@ -59,7 +70,7 @@ export function StatusBanner({
         </span>
         <Link
           href="/settings/facturacion"
-          className="font-semibold underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors duration-150 shrink-0"
+          className={ctaClass('hover:text-emerald-700 dark:hover:text-emerald-300')}
         >
           Elegir plan
         </Link>
@@ -75,10 +86,7 @@ export function StatusBanner({
         <span className="flex-1">
           Tu pago falló. Regularizá antes del <strong>{formatDate(periodEnd)}</strong>.
         </span>
-        <Link
-          href="/reactivar"
-          className="font-medium underline underline-offset-2 hover:text-red-900 dark:hover:text-red-300 transition-colors duration-150 shrink-0"
-        >
+        <Link href="/reactivar" className={ctaClass('hover:text-red-900 dark:hover:text-red-300')}>
           Actualizar pago
         </Link>
       </div>
@@ -102,7 +110,7 @@ export function StatusBanner({
         </span>
         <Link
           href="/reactivar"
-          className="font-medium underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300 transition-colors duration-150 shrink-0"
+          className={ctaClass('hover:text-amber-900 dark:hover:text-amber-300')}
         >
           Reactivar
         </Link>

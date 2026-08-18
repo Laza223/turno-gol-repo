@@ -84,3 +84,36 @@ describe('MoneyInput', () => {
     expect(input.value).toBe('10.000') // clampeado a maxCents=1_000_000 (=$10.000)
   })
 })
+
+/**
+ * F-020 (QA de producción 2026-08-17): "el campo de precio corrige el número en
+ * silencio" — se reportó que tipear `-500` guardaba $500 sin que el dueño lo
+ * viera. La corrección existe (el signo no es un dígito), pero NO es silenciosa:
+ * el display se reescribe normalizado en la misma tecla, así que lo que se ve es
+ * lo que se guarda. Estos casos fijan esa propiedad para que siga siendo cierta.
+ */
+describe('MoneyInput — entrada inválida normalizada a la vista', () => {
+  it('el signo menos no llega al campo: lo que se ve es lo que se guarda', () => {
+    render(<Controlled />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '-500' } })
+    expect(input.value).toBe('500')
+    expect(screen.getByTestId('cents').textContent).toBe('50000')
+  })
+
+  it('descarta cualquier basura tipeada y muestra el número resultante', () => {
+    render(<Controlled />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '1a2b3c' } })
+    expect(input.value).toBe('123')
+    expect(screen.getByTestId('cents').textContent).toBe('12300')
+  })
+
+  it('un campo con solo caracteres inválidos queda vacío, no en cero', () => {
+    render(<Controlled />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '---' } })
+    expect(input.value).toBe('')
+    expect(screen.getByTestId('cents').textContent).toBe('null')
+  })
+})

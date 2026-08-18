@@ -544,12 +544,19 @@ export default function AbonadoForm({
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  {/* F-021: era el único campo del form sin label asociada — un
+                      lector de pantalla anunciaba "Nombre y apellido, requerido"
+                      sin decir de quién. `htmlFor`/`id` como los otros seis. */}
+                  <label
+                    htmlFor="contactName"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                  >
                     <User className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Cliente
                   </label>
                   <div className="relative">
                     <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
                     <input
+                      id="contactName"
                       name="contactName"
                       required
                       value={contactName}

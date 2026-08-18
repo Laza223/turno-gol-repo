@@ -65,6 +65,20 @@ export async function updateReservasPolicyAction(
     bookingAdvanceDays,
   } = parsed.data
 
+  // 🔴 F-003 (QA de producción 2026-08-17): exigir seña sin MercadoPago conectado
+  // deja al jugador colgado — el checkout público muestra "Seña a pagar ahora", el
+  // booking nace `pending_payment` porque no hay `mpAccessToken` con el que crear
+  // la preferencia, y expira solo por hold. Nadie ve un error: el complejo pierde
+  // reservas sin enterarse. El estado de la conexión se lee del tenant que ya trajo
+  // el guard desde la DB, nunca de un campo del form.
+  if (requiresDeposit && !tenant.mpConnectedAt) {
+    return {
+      success: false,
+      error:
+        'Para cobrar seña primero tenés que conectar MercadoPago en Configuración → Facturación. Hasta entonces, dejá la reserva en "Sin seña".',
+    }
+  }
+
   // Ya no se persiste no_show_penalty: el no-show captura la seña y aplica
   // softban por reincidencia, sin configuración por complejo.
   const patch = {

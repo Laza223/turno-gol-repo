@@ -154,12 +154,16 @@ async function main(): Promise<void> {
     const shortId = args[iDetalle + 1]
     if (!shortId) throw new SalidaLimpia('Uso: pnpm sentry:issues --detail <SHORT-ID>')
     // El endpoint por shortId necesita resolverse primero al id numérico.
+    // F-016: acá iba `statsPeriod=90d` y la API lo rechaza SIEMPRE con 400
+    // ("Invalid stats_period. Valid choices are '', '24h', and '14d'"), así que
+    // `--detail` nunca funcionó. El listado ya respetaba ese límite; este camino
+    // no. `14d` es la ventana más ancha que la API acepta.
     const encontrados = await pedir<Issue[]>(
-      `/projects/${org}/${project}/issues/?query=${encodeURIComponent(shortId)}&statsPeriod=90d`,
+      `/projects/${org}/${project}/issues/?query=${encodeURIComponent(shortId)}&statsPeriod=14d`,
     )
     const issue = encontrados[0] as (Issue & { id?: string }) | undefined
     if (!issue?.id) {
-      throw new SalidaLimpia(`No encontré el issue ${shortId} en los últimos 90 días.`)
+      throw new SalidaLimpia(`No encontré el issue ${shortId} en los últimos 14 días.`)
     }
     detalle(await pedir<LatestEvent>(`/issues/${issue.id}/events/latest/`))
     return

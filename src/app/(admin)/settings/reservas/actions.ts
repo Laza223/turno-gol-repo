@@ -81,9 +81,15 @@ export async function updateReservasPolicyAction(
 
   // Ya no se persiste no_show_penalty: el no-show captura la seña y aplica
   // softban por reincidencia, sin configuración por complejo.
+  //
+  // `deposit_percentage` SOLO se toca con la seña prendida: con el toggle en
+  // "Sin seña" el input hidden del porcentaje ni se renderiza, así que
+  // `Number(null)` llegaba como 0 y guardar pisaba el porcentaje configurado
+  // con un valor fuera del rango válido (10-100). Como el patch se aplica con
+  // `settings || patch`, omitir la clave deja el valor guardado intacto.
   const patch = {
     requires_deposit: requiresDeposit,
-    deposit_percentage: depositPercentage,
+    ...(requiresDeposit ? { deposit_percentage: depositPercentage } : {}),
     allow_online_booking: allowOnlineBooking,
     booking_advance_days: bookingAdvanceDays,
     cancellation_policy: {

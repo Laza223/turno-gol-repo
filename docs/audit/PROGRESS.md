@@ -5085,3 +5085,112 @@ repo describe una versión anterior del árbol (ver `harness-auditoria-mide-el-p
 
 Queda como pregunta de producto, si alguna vez interesa: que el onboarding termine sin ninguna foto es
 real, pero se resuelve en el paso de Canchas o después, no acá.
+
+## QA en producción 2026-08-18 — "Requerir seña" volvía sola a "Sin seña"
+
+Bug reproducido en vivo por el dueño: en `/settings/reservas`, elegir "Requerir seña" + 100% y
+guardar. La Server Action escribía bien (verificado en la base de producción: `requires_deposit=true`,
+`deposit_percentage=100`), pero el form volvía solo a "Sin seña". El dueño concluía que no se había
+guardado y reintentaba — y ese segundo guardado, con el toggle en "Sin seña", dejaba
+`deposit_percentage` en 0.
+
+### La hipótesis de entrada era falsa (y se midió antes de tocar nada)
+
+La sospecha inicial era el `React.cache` de `getStaffTenant` (`tenant.service.ts`): la Server Action
+lo lee en el guard ANTES del UPDATE, y después `revalidatePath` re-renderiza la página en el MISMO
+request — o sea la ventana que el docstring da por imposible.
+
+**Refutada con sonda.** Se instrumentó `getStaffTenant`, la page y la action, y se corrió el flujo
+real contra el dev server con Playwright:
+
+```
+[PROBE] getStaffTenant MISS -> {"rd":false,"dp":0}
+[PROBE] action guardo -> {"requires_deposit":true,"deposit_percentage":100,...}
+[PROBE] getStaffTenant MISS -> {"rd":true,"dp":100}      ← re-render POST-revalidate
+[PROBE] page reservas render -> {"rd":true,"dp":100,"mp":true}
+ POST /settings/reservas 200 in 551ms
+```
+
+El re-render posterior a `revalidatePath` es un MISS de cache nuevo y trae la fila nueva. El servidor
+manda el dato correcto; el problema es puramente de cliente. (Sonda previa con una page de juguete y
+un `store` en memoria: mismo resultado — en Next 16 el scope de `React.cache` no se comparte entre la
+action y el render que la sigue.)
+
+### Causa real: Radix + el reset automático de form de React 19
+
+Con probes en el componente cliente, la revelación:
+
+```
+[PROBE-CLIENT] fiber o5hbx render props {"rd":true,"dp":100}   ← props YA nuevas
+[PROBE-CLIENT] estado actual {"requiresDeposit":true,"selectedPercentage":100}
+[PROBE-CLIENT] SegmentedControl onValueChange Seña -> no
+[PROBE-CLIENT] SegmentedControl onValueChange % de seña (presets) -> 30
+[PROBE-CLIENT] SegmentedControl onValueChange Reservas online -> yes
+[PROBE-CLIENT] estado actual {"requiresDeposit":false,"selectedPercentage":30}
+```
+
+Mismo fiber (no hay remount: el `useState` inicializador no vuelve a correr y el `useEffect` de mount
+no re-dispara). Los TRES grupos vuelven a su valor DE MONTAJE, y lo hacen llamando `onValueChange`.
+El estado que no pasa por Radix (`didSubmit`, `customPercentage`) sobrevive.
+
+En `node_modules/@radix-ui/react-radio-group/dist/index.mjs`:
+
+```js
+const initialValueRef = React2.useRef(value)          // valor al MONTAR, nunca se actualiza
+React2.useEffect(() => {
+  const associatedForm = form ? ...getElementById(form) : control?.closest('form')
+  if (associatedForm instanceof HTMLFormElement) {
+    const reset = () => setValue(initialValueRef.current)
+    associatedForm.addEventListener('reset', reset)
+    ...
+```
+
+React 19 resetea el `<form action={serverAction}>` automáticamente cuando la action termina. Radix
+escucha ese `reset` y vuelve al valor de montaje; como el grupo es CONTROLADO, ese `setValue` es un
+`onValueChange` que le pisa el estado al padre con el valor viejo.
+
+**Lo introdujo F-007** (PR #166, 2026-08-17): el hallazgo de a11y cambió los `<button>` sueltos por
+`RadioGroupPrimitive` de Radix. Un día después el dueño lo encontró. Explica también por qué el precio
+de una cancha sí se actualizaba al instante: ese form no tiene ningún grupo de Radix adentro.
+
+### Fix
+
+- `src/components/ui/radix-form-detach.ts` (nuevo): la constante `RADIX_DETACHED_FORM_ID` con la
+  explicación completa. Estos grupos NO son controles nativos — el valor viaja al submit en un
+  `<input type="hidden">` explícito de cada consumidor, y el input que Radix inyecta no se usa. Pasarle
+  `form` con un id que no resuelve a un `<form>` le dice la verdad (no pertenece a ninguno) y con eso
+  no registra el listener.
+- `src/components/ui/segmented-control.tsx`: `form={RADIX_DETACHED_FORM_ID}` en el Root. Cubre los 3
+  grupos de `ReservasPolicyForm` y, de paso, `DepositFieldset` y `CompleteBookingDialog`.
+- `src/app/(admin)/settings/avisos/AvisosForm.tsx`: mismo prop en su Root crudo (segunda instancia de
+  la clase — mismo shape, `<form action>` + estado del padre).
+
+### Barrido de la clase
+
+La clase es "grupo de Radix adentro de un `<form action={serverAction}>` con el valor en el estado del
+padre" (no "página que lee `getStaffTenant`", que era la hipótesis vieja). De los 24 `<form action=>`
+del repo, los únicos con un grupo de Radix adentro son `ReservasPolicyForm` y `AvisosForm` — los dos
+arreglados. Los consumidores de `RadioChip` (`QuickActions`, `BookingActions`, `TeamsPanel`,
+`BanPlayerDialog`, `BookingSlotPanel`) están en `<form onSubmit>` o directamente fuera de un form, así
+que React no los resetea; se dejan como están. `ScheduleFields` (`/settings/horarios`) usa checkboxes
+nativos controlados, que no llaman a ningún handler cuando el form se resetea.
+
+Si alguna vez se mete un `RadioChip` dentro de un `<form action>`, hay que ponerle el mismo prop.
+
+### Fix aparte: guardar con la seña apagada pisaba el porcentaje
+
+`updateReservasPolicyAction`: el input hidden del porcentaje solo se renderiza con la seña prendida,
+así que `Number(formData.get('depositPercentage'))` = `Number(null)` = 0 y el patch lo persistía —
+fuera del rango válido 10-100. Ahora `deposit_percentage` solo entra al patch cuando
+`requiresDeposit` es true; como se aplica con `settings || patch`, la clave ausente deja el valor
+guardado intacto.
+
+### Verificación
+
+- Tests nuevos, los tres con control negativo (desactivar el fix los pone en rojo):
+  `tests/unit/reservas-policy-form.test.tsx` (2 casos de reset), `tests/unit/avisos-form-reset.test.tsx`,
+  `tests/unit/reservas-policy-action-deposit.test.ts` (2 casos de patch).
+- `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ 338 archivos / 3556 tests.
+- Flujo real en el navegador contra el dev server: después de guardar el form muestra "Requerir seña"
+  + 100% (antes mostraba "Sin seña"), tras recargar idem, y guardar con la seña apagada deja
+  `deposit_percentage=100` en la base (antes lo pisaba a 0).

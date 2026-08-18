@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
+import { RADIX_DETACHED_FORM_ID } from './radix-form-detach'
 
 export type SegmentedControlOption<T extends string> = {
   value: T
@@ -49,6 +50,11 @@ export function SegmentedControl<T extends string>({
       onValueChange={(v) => onValueChange(v as T)}
       disabled={disabled}
       aria-label={ariaLabel}
+      // Sin esto, el reset automático que React 19 le hace al form al terminar
+      // una Server Action devuelve la selección al valor de montaje — el bug de
+      // "Requerir seña" que volvía sola a "Sin seña". Ver radix-form-detach.ts:
+      // el valor lo manda el `<input type="hidden">` del consumidor, no Radix.
+      form={RADIX_DETACHED_FORM_ID}
     >
       {options.map((opt) => (
         <RadioGroupPrimitive.Item

@@ -49,9 +49,17 @@ const CONTEXTUAL_ROUTES: Record<string, string> = {
   '/torneos/[id]/partidos/[matchId]': 'partido del fixture',
 }
 
-/** Recorre `dir` y devuelve las URLs de cada `page.tsx`, sin los route groups. */
-function adminPageUrls(): string[] {
-  const urls: string[] = []
+/**
+ * Recorre `dir` una sola vez y arma url → archivo real de `page.tsx`.
+ *
+ * `(list)`/`(grupo)` son route groups: no aportan segmento de URL, pero SÍ
+ * son parte del path real en disco — reconstruir el path desde la URL a mano
+ * (join(adminDir, ...url.split('/'), 'page.tsx')) rompe apenas una página se
+ * mueve adentro de un grupo. Este map es la única fuente de verdad de "dónde
+ * vive el archivo de esta URL".
+ */
+function walkAdminPages(): Map<string, string> {
+  const byUrl = new Map<string, string>()
   const walk = (dir: string, segments: string[]) => {
     for (const entry of readdirSync(dir)) {
       const full = path.join(dir, entry)
@@ -62,12 +70,19 @@ function adminPageUrls(): string[] {
         if (isPrivate) continue
         walk(full, isGroup ? segments : [...segments, entry])
       } else if (entry === 'page.tsx') {
-        urls.push('/' + segments.join('/'))
+        byUrl.set('/' + segments.join('/'), full)
       }
     }
   }
   walk(adminDir, [])
-  return urls.sort()
+  return byUrl
+}
+
+const ADMIN_PAGES = walkAdminPages()
+
+/** URLs de cada `page.tsx`, sin los route groups. */
+function adminPageUrls(): string[] {
+  return [...ADMIN_PAGES.keys()].sort()
 }
 
 /** `href: '/x'` de cualquier archivo de navegación. */
@@ -97,7 +112,7 @@ function declaredNavHrefs(): Map<string, string> {
 function redirectStubs(urls: string[]): Set<string> {
   const stubs = new Set<string>()
   for (const url of urls) {
-    const file = path.join(adminDir, ...url.split('/').filter(Boolean), 'page.tsx')
+    const file = ADMIN_PAGES.get(url)!
     const src = readFileSync(file, 'utf8')
     if (/redirect\('\/[^']*'\)/.test(src) && !/\breturn\b/.test(src)) stubs.add(url)
   }

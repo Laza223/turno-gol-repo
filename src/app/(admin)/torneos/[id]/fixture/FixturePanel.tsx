@@ -309,9 +309,17 @@ export function FixturePanel({
         onOpenChange={setClearConfirmOpen}
         title="Borrar el fixture"
         consequences={[
-          `Se borran los ${matches.length} partidos del calendario.`,
+          // F-017 (QA prod 2026-08-17): "los 1 partidos"/"los 1 resultados" con
+          // un solo elemento — el resto del diálogo ya pluraliza bien.
+          matches.length === 1
+            ? 'Se borra el partido del calendario.'
+            : `Se borran los ${matches.length} partidos del calendario.`,
           ...(matchesWithResult > 0
-            ? [`Se pierden los ${matchesWithResult} resultados ya cargados.`]
+            ? [
+                matchesWithResult === 1
+                  ? 'Se pierde el resultado ya cargado.'
+                  : `Se pierden los ${matchesWithResult} resultados ya cargados.`,
+              ]
             : []),
           'No se puede deshacer: hay que generar el fixture de nuevo.',
         ]}

@@ -112,7 +112,8 @@ describe('FixturePanel — borrar fixture (Clase B: ConfirmDialog, avisa resulta
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Se borran los 2 partidos del calendario.')).toBeTruthy()
-    expect(within(dialog).getByText(/Se pierden los 1 resultados/)).toBeTruthy()
+    // F-017 (QA prod 2026-08-17): singular con 1 elemento.
+    expect(within(dialog).getByText('Se pierde el resultado ya cargado.')).toBeTruthy()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Borrar fixture' }))
     await waitFor(() => expect(clearAction).toHaveBeenCalledWith({ tournamentId: 'tour-1' }))

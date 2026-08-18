@@ -57,7 +57,14 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
         {/* Columna izquierda */}
         <div className="min-w-0">
           {/* Titular */}
-          <h1
+          {/* F-012 (QA de producción 2026-08-17): este hero y el de desktop se
+              sirven en el MISMO HTML (uno se oculta por CSS), así que dos <h1>
+              idénticos llegaban al crawler. El <h1> real quedó en HeroDesktop;
+              acá va un <p> con role=heading nivel 1, que suena igual en un
+              lector de pantalla y no duplica el encabezado del documento. */}
+          <p
+            role="heading"
+            aria-level={1}
             className="mt-1 font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.5)]"
             style={{
               fontSize: 'clamp(38px, 5.2vw, 78px)',
@@ -68,7 +75,7 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
             Reservá tu cancha
             <br />
             <span className="hero-accent-text">al instante.</span>
-          </h1>
+          </p>
 
           {/* Subtítulo */}
           <p

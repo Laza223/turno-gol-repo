@@ -15,10 +15,10 @@ import {
   sumBookingChargesByBooking,
   type ReservaListRow,
   type ReservaScope,
-} from './queries'
+} from '../queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
-import { BookingListItem } from './BookingListItem'
-import { ReservasToolbar } from './ReservasToolbar'
+import { BookingListItem } from '../BookingListItem'
+import { ReservasToolbar } from '../ReservasToolbar'
 import { GrillaTabs } from '@/app/(admin)/grilla/GrillaTabs'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
@@ -27,8 +27,8 @@ import {
   confirmDepositPaymentAction,
   markNoShowAction,
   revertNoShowAction,
-} from './actions'
-import { getBookingChargesAction } from './charges-actions'
+} from '../actions'
+import { getBookingChargesAction } from '../charges-actions'
 
 const QUICK_ACTIONS = {
   cancelBookingAction,

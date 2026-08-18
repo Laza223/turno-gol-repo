@@ -53,7 +53,7 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
   sumBookingChargesByBooking: (...args: unknown[]) => chargesMock(...(args as [])),
 }))
 
-import ReservasPage from '@/app/(admin)/reservas/page'
+import ReservasPage from '@/app/(admin)/reservas/(list)/page'
 
 function row(overrides: Partial<ReservaListRow>): ReservaListRow {
   return {

@@ -78,9 +78,13 @@ describe('saveWizardScheduleAction — horariosSchema canónico (pages/onboardin
       PREV,
       scheduleFormData({ mon: { open: '22:00', close: '08:00' } }),
     )
+    // F-019: el mensaje nombra la opción que resuelve el caso (el horario
+    // "abre 20:00 / cierra 02:00" es el más común del mercado objetivo, y sin
+    // esta pista el paso 2 se lee como "tu negocio no entra en el producto").
     expect(res).toEqual({
       success: false,
-      error: 'Lunes: el horario de cierre debe ser posterior al de apertura.',
+      error:
+        'Lunes: el horario de cierre debe ser posterior al de apertura. Si cerrás después de medianoche, activá esa opción más abajo.',
     })
     expect(withTenantContext).not.toHaveBeenCalled()
   })

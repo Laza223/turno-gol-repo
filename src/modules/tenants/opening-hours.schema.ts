@@ -107,10 +107,20 @@ export const horariosSchema = z
       if (day.closed) continue
       openDays++
       if (!isValidDayRange(day.open, day.close, data.closesNextDay)) {
+        // F-019 (QA de producción 2026-08-17): el mensaje describía el problema
+        // sin nombrar la salida, y el caso que lo dispara —abre 08:00, cierra
+        // 02:00— es el horario de media Argentina en fútbol 5. Leído solo, el
+        // dueño entendía "el sistema no soporta mi horario" en el paso 2 del
+        // onboarding, antes de haber visto ningún valor. La opción que lo
+        // resuelve está en la misma pantalla (ScheduleFields, en las dos
+        // superficies que usan este schema), así que el mensaje la nombra.
+        const hint = data.closesNextDay
+          ? ''
+          : ' Si cerrás después de medianoche, activá esa opción más abajo.'
         ctx.addIssue({
           code: 'custom',
           path: [key, 'close'],
-          message: `${label}: el horario de cierre debe ser posterior al de apertura.`,
+          message: `${label}: el horario de cierre debe ser posterior al de apertura.${hint}`,
         })
       }
     }

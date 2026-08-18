@@ -46,6 +46,13 @@ export function StepSchedule({ hours, closesNextDay, action }: Props) {
   const [nextDay, setNextDay] = useState(closesNextDay)
   const navigate = useWizardNavigation()
 
+  // F-019: el error del server quedaba en pantalla DESPUÉS de corregir el
+  // horario (o de activar "cierra después de medianoche"), así que el paso se
+  // leía como bloqueado cuando ya era válido. Misma clase que F-010. Cualquier
+  // cambio del formulario lo oculta; el próximo submit lo vuelve a decidir.
+  const [touchedSinceError, setTouchedSinceError] = useState(false)
+  const showError = !state.success && !touchedSinceError
+
   // El paso avanza cuando la action devuelve a dónde ir, no cuando el server
   // redirige: la navegación la maneja el cliente (ver use-wizard-navigation).
   useEffect(() => {
@@ -65,15 +72,25 @@ export function StepSchedule({ hours, closesNextDay, action }: Props) {
           </p>
         </div>
 
-        <form action={formAction} className="space-y-4">
+        <form
+          action={formAction}
+          onSubmit={() => setTouchedSinceError(false)}
+          className="space-y-4"
+        >
           <ScheduleFields
             view={view}
-            onViewChange={setView}
+            onViewChange={(v) => {
+              setTouchedSinceError(true)
+              setView(v)
+            }}
             closesNextDay={nextDay}
-            onClosesNextDayChange={setNextDay}
+            onClosesNextDayChange={(v) => {
+              setTouchedSinceError(true)
+              setNextDay(v)
+            }}
           />
 
-          {!state.success && (
+          {showError && (
             <p role="alert" className="text-sm text-red-600 dark:text-red-400">
               {state.error}
             </p>

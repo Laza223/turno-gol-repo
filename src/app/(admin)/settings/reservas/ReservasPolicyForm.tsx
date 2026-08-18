@@ -3,9 +3,24 @@
 import { useActionState, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { SubmitButton } from '@/components/ui/submit-button'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import type { PolicyActionResult } from './actions'
+
+/** Mismas clases que ya tenían los `<button>` sueltos (F-007, ver segmented-control.tsx). */
+const pillClass = (active: boolean) =>
+  `h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
+    active
+      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
+      : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+  }`
+const chipClass = (active: boolean) =>
+  `h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
+    active
+      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
+      : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+  }`
 
 const INITIAL_STATE: PolicyActionResult = { success: true }
 
@@ -70,30 +85,17 @@ export function ReservasPolicyForm({
         <legend className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90 mb-1">
           Seña
         </legend>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setRequiresDeposit(true)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
-              requiresDeposit
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
-                : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Requerir seña
-          </button>
-          <button
-            type="button"
-            onClick={() => setRequiresDeposit(false)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
-              !requiresDeposit
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
-                : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Sin seña
-          </button>
-        </div>
+        <SegmentedControl
+          className="flex gap-2"
+          aria-label="Seña"
+          value={requiresDeposit ? 'yes' : 'no'}
+          onValueChange={(v) => setRequiresDeposit(v === 'yes')}
+          itemClassName={pillClass}
+          options={[
+            { value: 'yes', label: 'Requerir seña' },
+            { value: 'no', label: 'Sin seña' },
+          ]}
+        />
         <input type="hidden" name="requiresDeposit" value={requiresDeposit ? 'true' : 'false'} />
 
         {requiresDeposit && (
@@ -102,26 +104,20 @@ export function ReservasPolicyForm({
               Porcentaje de seña (%)
             </Label>
             <div className="flex flex-wrap items-center gap-2">
-              {[30, 50, 100].map((p) => {
-                const active = selectedPercentage === p
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setSelectedPercentage(p)}
-                    className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
-                      active
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
-                        : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {p}%
-                  </button>
-                )
-              })}
-              <button
-                type="button"
-                onClick={() => {
+              <SegmentedControl
+                className="flex flex-wrap items-center gap-2"
+                // No repite el texto de <Label htmlFor="depositPercentage"> a
+                // propósito: un `aria-label` idéntico (o que lo contenga como
+                // substring) hace que `getByLabelText(/porcentaje de seña/i)`
+                // matchee DOS elementos — el radiogroup Y el input — y las
+                // stories con ese query ambiguan (`getMultipleElementsFoundError`).
+                aria-label="% de seña (presets)"
+                value={selectedPercentage === 'other' ? 'other' : String(selectedPercentage)}
+                onValueChange={(v) => {
+                  if (v !== 'other') {
+                    setSelectedPercentage(Number(v))
+                    return
+                  }
                   // MEJORA-UX QA: "Otro" pisaba el input con el `customPercentage`
                   // de INIT (30 fijo si arrancó en un preset) en vez del % activo
                   // — con seña real en 50%, mostraba "30" y guardar de largo
@@ -131,14 +127,14 @@ export function ReservasPolicyForm({
                   }
                   setSelectedPercentage('other')
                 }}
-                className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
-                  selectedPercentage === 'other'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
-                    : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Otro
-              </button>
+                itemClassName={chipClass}
+                options={[
+                  { value: '30', label: '30%' },
+                  { value: '50', label: '50%' },
+                  { value: '100', label: '100%' },
+                  { value: 'other', label: 'Otro' },
+                ]}
+              />
 
               {selectedPercentage === 'other' && (
                 <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
@@ -177,30 +173,17 @@ export function ReservasPolicyForm({
           Permite que los jugadores reserven solos desde la página pública de tu complejo. Si las
           deshabilitás, solo vos podés cargar reservas desde el panel.
         </p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setAllowOnlineBooking(true)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
-              allowOnlineBooking
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
-                : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Habilitadas
-          </button>
-          <button
-            type="button"
-            onClick={() => setAllowOnlineBooking(false)}
-            className={`h-11 px-5 rounded-xl border text-sm font-medium transition-all duration-200 ${
-              !allowOnlineBooking
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold shadow-xs shadow-emerald-500/10'
-                : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Deshabilitadas
-          </button>
-        </div>
+        <SegmentedControl
+          className="flex gap-2"
+          aria-label="Reservas online"
+          value={allowOnlineBooking ? 'yes' : 'no'}
+          onValueChange={(v) => setAllowOnlineBooking(v === 'yes')}
+          itemClassName={pillClass}
+          options={[
+            { value: 'yes', label: 'Habilitadas' },
+            { value: 'no', label: 'Deshabilitadas' },
+          ]}
+        />
         <input
           type="hidden"
           name="allowOnlineBooking"
@@ -245,44 +228,32 @@ export function ReservasPolicyForm({
           Anticipación mínima para cancelar
         </Label>
         <div className="flex flex-wrap items-center gap-2">
-          {[
-            { value: 0, label: 'Sin límite' },
-            { value: 2, label: '2 hs' },
-            { value: 6, label: '6 hs' },
-            { value: 12, label: '12 hs' },
-            { value: 24, label: '24 hs' },
-          ].map((item) => {
-            const active = selectedHours === item.value
-            return (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setSelectedHours(item.value)}
-                className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
-                  active
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
-                    : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {item.label}
-              </button>
-            )
-          })}
-          <button
-            type="button"
-            onClick={() => {
+          <SegmentedControl
+            className="flex flex-wrap items-center gap-2"
+            // Mismo motivo que el `aria-label` de "% de seña" de arriba: no
+            // repetir el texto de la <Label> vecina (evita ambigüar un futuro
+            // `getByLabelText` entre el radiogroup y el input de "Otro").
+            aria-label="Anticipación para cancelar (presets)"
+            value={selectedHours === 'other' ? 'other' : String(selectedHours)}
+            onValueChange={(v) => {
+              if (v !== 'other') {
+                setSelectedHours(Number(v))
+                return
+              }
               // Misma clase que el "Otro" de seña, arriba.
               if (typeof selectedHours === 'number') setCustomHours(String(selectedHours))
               setSelectedHours('other')
             }}
-            className={`h-10 px-4 rounded-xl border text-sm font-medium transition-all duration-200 ${
-              selectedHours === 'other'
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold'
-                : 'border-border bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Otro
-          </button>
+            itemClassName={chipClass}
+            options={[
+              { value: '0', label: 'Sin límite' },
+              { value: '2', label: '2 hs' },
+              { value: '6', label: '6 hs' },
+              { value: '12', label: '12 hs' },
+              { value: '24', label: '24 hs' },
+              { value: 'other', label: 'Otro' },
+            ]}
+          />
 
           {selectedHours === 'other' && (
             <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">

@@ -38,7 +38,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { listTenantBookings } from '@/app/(admin)/reservas/queries'
-import ReservasPage from '@/app/(admin)/reservas/page'
+import ReservasPage from '@/app/(admin)/reservas/(list)/page'
 
 beforeEach(() => {
   vi.clearAllMocks()

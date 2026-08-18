@@ -185,6 +185,12 @@ export async function getTopScorers(
 
   // Goles de los marcadores que todavía no tienen autor. Se calcula acá para
   // que la UI lo muestre sin re-derivarlo a mano.
+  //
+  // F-018 (QA prod 2026-08-17): "attributed" tiene que contar SOLO eventos con
+  // autor identificado (team_player_id IS NOT NULL) — sin ese filtro, un gol
+  // cargado "sin autor" (el caso que este aviso existe para señalar) contaba
+  // igual como "atribuido" y el aviso subestimaba cuántos goles del marcador
+  // siguen sin autor.
   const totals = (await tx.execute(sql`
     SELECT
       COALESCE(SUM(m.home_score + m.away_score), 0)::int AS "scoreboardGoals",
@@ -192,6 +198,7 @@ export async function getTopScorers(
         JOIN tournament_matches m2 ON m2.id = e2.match_id
         WHERE e2.tenant_id = ${tenantId} AND e2.tournament_id = ${tournamentId}
           AND e2.type IN ('goal', 'own_goal')
+          AND e2.team_player_id IS NOT NULL
           AND m2.status IN ('played', 'walkover')) AS "attributed"
     FROM tournament_matches m
     WHERE m.tenant_id = ${tenantId} AND m.tournament_id = ${tournamentId}

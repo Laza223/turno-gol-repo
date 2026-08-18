@@ -95,12 +95,28 @@ export type TestTenant = { id: string; slug: string; name: string }
 
 export async function createTestTenant(
   sql?: Sql,
-  overrides: Partial<{ slug: string; name: string }> = {},
+  overrides: Partial<{ slug: string; name: string; onboardingCompleted: boolean }> = {},
 ): Promise<TestTenant> {
   const s = sql ?? adminSql()
   const slug = overrides.slug ?? `t-${faker.string.alphanumeric(10).toLowerCase()}`
   const name = overrides.name ?? faker.company.name().slice(0, 50)
-  const rows = await s<{ id: string; slug: string; name: string }[]>`
+  // F-004 (QA prod 2026-08-17): searchPublicTenants/listSitemapTenants ahora
+  // exigen `settings.onboarding_completed=true` — el DEFAULT de la columna
+  // (migr. 003) no incluye esa key (se agregó después, solo a nivel
+  // aplicación en DEFAULT_SETTINGS de tenant.service.ts). Sin este merge, TODO
+  // tenant creado acá quedaría invisible en la búsqueda pública — así que el
+  // default acá es `true`. `{ onboardingCompleted: false }` es el opt-out para
+  // los pocos tests que ejercitan la transición de onboarding en sí (ej.
+  // mp-callback-happy-path.test.ts, que necesita arrancar SIN completar).
+  const onboardingCompleted = overrides.onboardingCompleted ?? true
+  //
+  // Dos statements, no un WITH-INSERT-luego-UPDATE fusionado: todas las
+  // partes de un WITH corren contra el MISMO snapshot (regla documentada de
+  // Postgres), así que el UPDATE de abajo nunca "veía" la fila insertada por
+  // el INSERT hermano — devolvía 0 filas siempre, y `rows[0]` quedaba
+  // `undefined` para TODO caller de `createTestTenant()`. Confirmado en vivo
+  // contra Postgres real (`docker exec ... psql`), no solo por lectura.
+  const inserted = await s<{ id: string }[]>`
     INSERT INTO tenants (slug, name, address, city, province, phone, email)
     VALUES (
       ${slug},
@@ -111,6 +127,14 @@ export async function createTestTenant(
       ${faker.phone.number()},
       ${faker.internet.email().toLowerCase()}
     )
+    RETURNING id
+  `
+  const insertedId = inserted[0]!.id
+  if (!onboardingCompleted) return { id: insertedId, slug, name }
+  const rows = await s<{ id: string; slug: string; name: string }[]>`
+    UPDATE tenants
+    SET settings = settings || '{"onboarding_completed": true}'::jsonb
+    WHERE id = ${insertedId}
     RETURNING id, slug, name
   `
   return rows[0]

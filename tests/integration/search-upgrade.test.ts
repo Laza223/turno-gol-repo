@@ -137,7 +137,11 @@ describe('search upgrade: filtros', () => {
     await cleanupAll(sql)
     const t = await createTestTenant(sql)
     await insertCourt(t.id)
-    await sql`UPDATE tenants SET settings = '{}'::jsonb WHERE id = ${t.id}`
+    // `allow_online_booking` queda ausente a propósito (eso es lo que el test
+    // ejercita). `onboarding_completed` SÍ hace falta (F-004, QA prod
+    // 2026-08-17): sin ella el tenant queda invisible por incompletitud, no
+    // por el filtro que este test mide.
+    await sql`UPDATE tenants SET settings = '{"onboarding_completed": true}'::jsonb WHERE id = ${t.id}`
 
     const { results } = await searchPublicTenants({ onlineOnly: true })
     const card = results.find((r) => r.id === t.id)

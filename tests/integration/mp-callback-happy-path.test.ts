@@ -76,7 +76,11 @@ afterAll(async () => {
 describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo', () => {
   it('persiste tokens MP cifrados, activa la seña, marca onboarding y redirige a /onboarding/listo', async () => {
     const sql = getSql()
-    const tenant = await createTestTenant(sql)
+    // Fresco, sin onboarding completado: el punto de este test es la
+    // transición false→true que dispara el callback (F-004 hizo que el
+    // default de createTestTenant() sea `true`, para las pruebas de
+    // búsqueda/sitemap — acá se necesita lo contrario).
+    const tenant = await createTestTenant(sql, { onboardingCompleted: false })
     mockAdminAuth(tenant.id)
 
     // Only the external MP token endpoint is mocked. Everything else (HMAC state
@@ -135,7 +139,7 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
 
   it('si MP rechaza el token (400) no persiste credenciales y redirige a mp_token_failed', async () => {
     const sql = getSql()
-    const tenant = await createTestTenant(sql)
+    const tenant = await createTestTenant(sql, { onboardingCompleted: false })
     mockAdminAuth(tenant.id)
     stubMpToken({ error: 'invalid_grant' }, 400)
 
@@ -158,7 +162,7 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
 
   it('state expirado (>10min) no dispara intercambio ni escribe credenciales', async () => {
     const sql = getSql()
-    const tenant = await createTestTenant(sql)
+    const tenant = await createTestTenant(sql, { onboardingCompleted: false })
     mockAdminAuth(tenant.id)
     const fetchSpy = vi.fn(async () => new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchSpy)

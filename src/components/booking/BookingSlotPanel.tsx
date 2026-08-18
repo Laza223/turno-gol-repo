@@ -264,7 +264,13 @@ export function BookingSlotPanel({
               <SlotChargeSection
                 mode={mode}
                 lines={lines}
-                onLinesChange={setLines}
+                // F-010 (QA prod 2026-08-17): sin esto, corregir el monto (o tocar
+                // "Pagar todo en efectivo") dejaba el error de sobrecobro viejo en
+                // pantalla, contradiciendo lo que el usuario ve mientras toca plata.
+                onLinesChange={(next) => {
+                  setError(null)
+                  setLines(next)
+                }}
                 pending={pending}
                 error={error}
                 isPending={isPending}

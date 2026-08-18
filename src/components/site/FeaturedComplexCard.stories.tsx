@@ -26,7 +26,7 @@ type Story = StoryObj<typeof meta>
 
 /** Con foto de portada, reserva online y reseñas. */
 export const Default: Story = {
-  args: { tenant: publicTenantCard({ coverUrl: '/bg-hero.png' }) },
+  args: { tenant: publicTenantCard({ coverUrl: '/bg-hero-desktop.png' }) },
 }
 
 /** Sin `coverUrl` (default de la fixture): iniciales fantasma sobre la retícula decorativa. */

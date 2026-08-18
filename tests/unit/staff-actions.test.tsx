@@ -15,6 +15,7 @@ const ACTIVE_MEMBER = {
   firstName: 'José',
   lastName: 'Pérez',
   isActive: true,
+  lastLoginAt: new Date('2026-08-01T12:00:00Z'),
   role: 'admin' as const,
 }
 
@@ -24,6 +25,18 @@ const INACTIVE_MEMBER = {
   firstName: 'Laura',
   lastName: 'Gómez',
   isActive: false,
+  lastLoginAt: new Date('2026-06-01T10:00:00Z'),
+  role: 'manager' as const,
+}
+
+// F-024: invitación creada, nunca aceptada — nace `isActive=true` sin login.
+const PENDING_INVITE_MEMBER = {
+  memberId: 'mmmmmmmm-0000-0000-0000-000000000003',
+  email: 'nuevo@test.com',
+  firstName: 'Nuevo',
+  lastName: 'Encargado',
+  isActive: true,
+  lastLoginAt: null,
   role: 'manager' as const,
 }
 
@@ -94,6 +107,17 @@ describe('StaffActions — dropdown rendering', () => {
   it('inactive member shows "Reenviar invitación" in dropdown', async () => {
     const body = await openDropdown(INACTIVE_MEMBER)
     expect(body.getByRole('menuitem', { name: 'Reenviar invitación' })).toBeTruthy()
+  })
+
+  it('active member with lastLoginAt does NOT offer "Reenviar invitación"', async () => {
+    const body = await openDropdown(ACTIVE_MEMBER)
+    expect(body.queryByRole('menuitem', { name: 'Reenviar invitación' })).toBeNull()
+  })
+
+  it('pending invite (active, no lastLoginAt) offers "Reenviar invitación" TOGETHER with role/deactivate', async () => {
+    const body = await openDropdown(PENDING_INVITE_MEMBER)
+    expect(body.getByRole('menuitem', { name: 'Reenviar invitación' })).toBeTruthy()
+    expect(body.getByRole('menuitem', { name: 'Desactivar' })).toBeTruthy()
   })
 })
 

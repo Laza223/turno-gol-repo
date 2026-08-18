@@ -28,6 +28,7 @@ function renderActions(
           firstName: 'Mi',
           lastName: 'Embro',
           isActive: overrides.isActive ?? true,
+          lastLoginAt: new Date('2026-08-01T12:00:00Z'),
           role: overrides.role ?? 'manager',
         }}
         currentUserStaffId="staff-yo"

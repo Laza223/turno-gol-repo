@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Bell, X } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { fetchWithTimeout, withTimeout } from '@/shared/utils/async'
 
@@ -329,29 +329,35 @@ export function PushNotificationManager() {
     // mobile) y desmontarlo al descartar; un elemento en flujo cierra la clase
     // entera: no puede tapar nada, y no depende de mantener sincronizados
     // offsets con el alto de barras que hoy están hardcodeados en 3 lugares.
-    // p-3/mt-2/h-9 en mobile (vs p-4/mt-3/h-11 desde sm:) y la descripción larga
-    // oculta bajo sm: se conservan — el banner sigue ocupando lo mínimo.
-    <div className="card-premium relative mb-4 w-full sm:max-w-sm p-3 sm:p-4">
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Cerrar"
-        className="absolute right-1.5 top-1.5 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <X className="h-4 w-4" aria-hidden="true" />
-      </button>
-      <p className="pr-6 text-sm font-semibold text-foreground">¿Habilitar notificaciones?</p>
-      <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
-        Recibí un aviso cuando se confirma una reserva online, incluso si no tenés la grilla
-        abierta.
+    //
+    // F-005 (QA prod 2026-08-17, punto 2): la versión apilada (título + descripción
+    // + botón, cada uno en su fila) medía 142px en 1366×768 — casi todo lo que le
+    // quedaba de alto a la grilla en una sesión nueva. Una sola fila (ícono + texto
+    // corto + botón + cerrar) baja eso a una línea real, sin volver a `fixed`/flotar
+    // (mismo motivo del comentario de arriba) y sin sacrificar el texto que los
+    // tests de abajo esperan ("¿Habilitar notificaciones?", "Habilitar
+    // notificaciones", "Habilitando…", botón "Cerrar") — se saca la descripción
+    // larga, que ya estaba oculta en mobile y era lo único que sobraba.
+    <div className="card-premium relative mb-4 flex w-full flex-wrap items-center gap-2 p-2.5 sm:flex-nowrap sm:p-3">
+      <Bell className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+      <p className="min-w-0 flex-1 text-xs font-semibold text-foreground sm:text-sm">
+        ¿Habilitar notificaciones?
       </p>
       <button
         type="button"
         onClick={enable}
         disabled={status === 'pending'}
-        className="mt-2 sm:mt-3 inline-flex h-9 sm:h-11 md:h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-white shadow-xs transition hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50"
+        className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-white shadow-xs transition hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 sm:h-9 sm:px-4 sm:text-sm"
       >
         {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
+      </button>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Cerrar"
+        className="shrink-0 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
       <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto" aria-hidden="true" />
     </div>

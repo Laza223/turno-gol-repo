@@ -74,7 +74,22 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 50)
   const offset = Math.max(params.offset ?? 0, 0)
 
-  const conds: SQL[] = [inArray(tenants.status, VISIBLE as never)]
+  const conds: SQL[] = [
+    inArray(tenants.status, VISIBLE as never),
+    // F-004 (QA prod 2026-08-17): la visibilidad pública decidía solo por
+    // `status`, así que un trial recién arrancado y abandonado (wizard a medio
+    // terminar, sin ninguna cancha) quedaba publicado para siempre.
+    // `onboarding_completed` vive en `settings` jsonb (no es columna propia,
+    // ver DEFAULT_SETTINGS en tenant.service.ts) — COALESCE cubre filas legacy
+    // sin esa key. Deliberadamente NO se exige `fromPriceCents IS NOT NULL`
+    // (≥1 cancha ONLINE): un complejo que completó el onboarding y después
+    // apagó sus canchas sigue queriendo aparecer listado sin reserva online
+    // (`publicTenantCardSinReservaOnline`, tarjeta "sin CTA directo") — el
+    // wizard ya exige ≥1 cancha con precio válido para poder completarse, así
+    // que onboarding_completed alcanza para sacar los tenants basura sin
+    // romper ese caso real.
+    sql`COALESCE((${tenants.settings} ->> 'onboarding_completed')::boolean, false) = true`,
+  ]
   if (params.tenantIds) conds.push(inArray(tenants.id, params.tenantIds))
   const q = params.q?.trim()
   if (q) conds.push(ilike(tenants.name, `%${q}%`))
@@ -263,6 +278,11 @@ export async function listPublicCities(): Promise<CityCount[]> {
     SELECT city, province, count(*)::int AS count
     FROM tenants
     WHERE status IN ('active', 'trialing')
+      -- F-004 (QA prod 2026-08-17): mismo filtro de completitud que
+      -- searchPublicTenants/listSitemapTenants — sin esto un tenant de
+      -- prueba con onboarding incompleto sigue apareciendo en el selector de
+      -- ciudad, y quien lo elige cae en 0 resultados de búsqueda.
+      AND COALESCE((settings ->> 'onboarding_completed')::boolean, false) = true
     GROUP BY city, province
     ORDER BY count DESC, city ASC
   `)

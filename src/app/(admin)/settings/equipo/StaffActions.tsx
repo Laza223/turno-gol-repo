@@ -39,6 +39,7 @@ interface StaffActionsProps {
     firstName: string
     lastName: string
     isActive: boolean
+    lastLoginAt: Date | null
     role: StaffRole
   }
   currentUserStaffId: string
@@ -61,6 +62,10 @@ export function StaffActions({
   // valida el server en deactivateStaffAction).
   const isLastActiveAdmin = member.role === 'admin' && activeAdminCount <= 1
   const otherRoles = STAFF_ROLES.filter((role) => role !== member.role)
+  // F-024: invitado que nunca aceptó (isActive=true desde que se crea la
+  // invitación, no desde que se acepta) — también necesita "Reenviar
+  // invitación", no solo el miembro desactivado a propósito.
+  const isPendingInvite = member.isActive && !member.lastLoginAt
 
   async function handleChangeRole(role: StaffRole) {
     const res = await updateRoleAction(member.memberId, role)
@@ -114,7 +119,7 @@ export function StaffActions({
           <TooltipContent>Opciones</TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end">
-          {member.isActive ? (
+          {member.isActive && (
             <>
               {otherRoles.map((role) => (
                 <DropdownMenuItem
@@ -138,7 +143,8 @@ export function StaffActions({
                 Desactivar
               </DropdownMenuItem>
             </>
-          ) : (
+          )}
+          {(!member.isActive || isPendingInvite) && (
             <DropdownMenuItem
               className="cursor-pointer"
               onSelect={() => {

@@ -56,6 +56,8 @@ describe('provisionAndRouteStaff — resolución de identidad', () => {
         match: /FROM tenant_staff_members/,
         rows: [{ tenantId: 'tenant-1', tenantName: 'Demo FC', tenantSlug: 'demo', role: 'admin' }],
       },
+      // F-024: stampea last_login_at en cada login.
+      { match: /UPDATE staff_users SET last_login_at/, rows: [] },
     ])
     mockGetWorkerSql.mockReturnValue(sql as unknown as ReturnType<typeof getWorkerSql>)
 
@@ -86,6 +88,8 @@ describe('provisionAndRouteStaff — resolución de identidad', () => {
       { match: /SELECT id FROM staff_users WHERE email/, rows: [] },
       { match: /INSERT INTO staff_users/, rows: [{ id: 'staff-new' }] },
       { match: /FROM tenant_staff_members/, rows: [] },
+      // F-024: stampea last_login_at en cada login.
+      { match: /UPDATE staff_users SET last_login_at/, rows: [] },
     ])
     mockGetWorkerSql.mockReturnValue(sql as unknown as ReturnType<typeof getWorkerSql>)
 

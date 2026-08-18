@@ -44,6 +44,16 @@ function resolvePoolMax(): number {
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_POOL_MAX
 }
 
+// F-002 (QA prod 2026-08-17): sin estos dos, una conexión abierta no se suelta
+// nunca. Con Fluid Compute manteniendo instancias calientes, cada instancia
+// retiene sus DEFAULT_POOL_MAX conexiones ociosas para siempre — entre varias
+// instancias tibias y el worker de Railway se agota el `pool_size` de
+// Supavisor (hoy 15) y la siguiente request de staff se queda sin slot
+// (EMAXCONNSESSION), tirando abajo la resolución de tenant. Valores en
+// segundos (unidades de la lib `postgres`).
+const IDLE_TIMEOUT_SECONDS = 20
+const MAX_LIFETIME_SECONDS = 30 * 60
+
 /**
  * ─── Qué tipo de JS devuelve cada camino (B8, medido contra Postgres real) ────
  *
@@ -88,6 +98,8 @@ export function getSql(): Sql {
   const url = process.env.DATABASE_URL ?? DEFAULT_URL
   _sql = postgres(url, {
     max: resolvePoolMax(),
+    idle_timeout: IDLE_TIMEOUT_SECONDS,
+    max_lifetime: MAX_LIFETIME_SECONDS,
     prepare: false,
     onnotice: () => {},
   })
@@ -187,6 +199,8 @@ export function getWorkerSql(): Sql {
   const url = process.env.WORKER_DATABASE_URL ?? process.env.DATABASE_URL ?? DEFAULT_URL
   _workerSql = postgres(url, {
     max: resolvePoolMax(),
+    idle_timeout: IDLE_TIMEOUT_SECONDS,
+    max_lifetime: MAX_LIFETIME_SECONDS,
     prepare: false,
     onnotice: () => {},
   })

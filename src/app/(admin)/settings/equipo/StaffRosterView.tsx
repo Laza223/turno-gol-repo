@@ -24,6 +24,7 @@ export type StaffRosterMember = {
   email: string
   role: StaffRole
   isActive: boolean
+  lastLoginAt: Date | null
 }
 
 type Props = {
@@ -88,7 +89,7 @@ export function StaffRosterView({
                     <p className="truncate text-sm text-muted-foreground">{m.email}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <StaffRoleBadge role={m.role} />
-                      <StaffStatusBadge isActive={m.isActive} />
+                      <StaffStatusBadge isActive={m.isActive} lastLoginAt={m.lastLoginAt} />
                     </div>
                   </div>
                   {m.staffUserId !== staffUserId && (
@@ -99,6 +100,7 @@ export function StaffRosterView({
                         firstName: m.firstName,
                         lastName: m.lastName,
                         isActive: m.isActive,
+                        lastLoginAt: m.lastLoginAt,
                         role: m.role,
                       }}
                       currentUserStaffId={staffUserId}
@@ -147,7 +149,7 @@ export function StaffRosterView({
                       <StaffRoleBadge role={m.role} />
                     </td>
                     <td className="p-3">
-                      <StaffStatusBadge isActive={m.isActive} />
+                      <StaffStatusBadge isActive={m.isActive} lastLoginAt={m.lastLoginAt} />
                     </td>
                     <td className="p-3 text-right">
                       {m.staffUserId !== staffUserId && (
@@ -158,6 +160,7 @@ export function StaffRosterView({
                             firstName: m.firstName,
                             lastName: m.lastName,
                             isActive: m.isActive,
+                            lastLoginAt: m.lastLoginAt,
                             role: m.role,
                           }}
                           currentUserStaffId={staffUserId}

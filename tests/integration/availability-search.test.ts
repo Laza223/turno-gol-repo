@@ -38,12 +38,17 @@ async function seedTenant(
   suffix: string,
   opts: { status?: string; openingHours?: string } = {},
 ): Promise<string> {
+  // F-004 (QA prod 2026-08-17): searchPublicTenants ahora exige
+  // settings.onboarding_completed=true — sin esto ninguno de estos tenants
+  // aparecería en el describe('searchPublicTenants tenantIds filter') de
+  // abajo, no por lo que esos tests quieren ejercitar.
   const rows = await sql<{ id: string }[]>`
-    INSERT INTO tenants (slug, name, address, city, province, phone, email, status, opening_hours)
+    INSERT INTO tenants (slug, name, address, city, province, phone, email, status, opening_hours, settings)
     VALUES (
       ${`${TAG}-${suffix}`}, ${`${TAG} ${suffix}`}, 'x', 'Rosario', 'Santa Fe', '1',
       ${`${TAG}${suffix}@t.local`}, ${opts.status ?? 'active'},
-      ${opts.openingHours ?? OPEN_ALL_DAYS}::jsonb
+      ${opts.openingHours ?? OPEN_ALL_DAYS}::jsonb,
+      '{"onboarding_completed": true}'::jsonb
     )
     RETURNING id
   `

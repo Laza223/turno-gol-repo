@@ -12,15 +12,17 @@ const scriptSrc =
     ? "script-src 'self' 'unsafe-inline'"
     : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
 
-// Supabase Realtime en dev apunta a ws://127.0.0.1:<port> (Supabase local), que
-// el CSP de prod (*.supabase.co) bloquea — la grilla queda "Sin conexión".
-// Relajamos connect-src SOLO en dev para permitir el WebSocket local; en
-// producción Realtime usa wss://<proj>.supabase.co (ya cubierto) y el header
-// queda estricto.
+// Supabase Realtime abre un WebSocket: en dev contra ws://127.0.0.1:<port>
+// (Supabase local) y en producción contra wss://<proj>.supabase.co.
+// `wss://*.supabase.co` va EXPLÍCITO en las dos ramas: un host-source pelado
+// (`*.supabase.co`) sólo cubre http/https, NO habilita el esquema `wss:`, así
+// que sin esa entrada Chrome bloquea el socket y la grilla del admin queda con
+// el banner "Sin conexión" permanente (🔴 F-001, QA de producción 2026-08-17 —
+// el comentario anterior afirmaba "ya cubierto" sin haberlo verificado).
 const connectSrc =
   process.env.NODE_ENV === 'production'
-    ? "connect-src 'self' *.supabase.co *.mercadopago.com"
-    : "connect-src 'self' *.supabase.co *.mercadopago.com ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*"
+    ? "connect-src 'self' *.supabase.co wss://*.supabase.co *.mercadopago.com"
+    : "connect-src 'self' *.supabase.co wss://*.supabase.co *.mercadopago.com ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*"
 
 // CSP violation reports are POSTed to /api/csp-report. We emit both the legacy
 // `report-uri` (Firefox/Safari + older Chrome) and the modern `report-to`

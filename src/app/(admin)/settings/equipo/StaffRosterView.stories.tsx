@@ -11,6 +11,7 @@ const toRosterMember = (m: StaffMember): StaffRosterMember => ({
   email: m.email,
   role: m.role,
   isActive: m.isActive,
+  lastLoginAt: m.lastLoginAt,
 })
 
 const ADMIN = staffMember() // Marcelo — el actor logueado en todas las stories.

@@ -8,6 +8,7 @@ const ACTIVE_MANAGER = {
   firstName: 'Rodrigo',
   lastName: 'Fernández',
   isActive: true,
+  lastLoginAt: new Date('2026-08-01T12:00:00Z'),
   role: 'manager' as const,
 }
 
@@ -17,6 +18,7 @@ const ACTIVE_ADMIN = {
   firstName: 'Marcelo',
   lastName: 'Gómez',
   isActive: true,
+  lastLoginAt: new Date('2026-07-15T09:30:00Z'),
   role: 'admin' as const,
 }
 
@@ -26,6 +28,18 @@ const INACTIVE_MEMBER = {
   firstName: 'Julieta',
   lastName: 'Domínguez Belgrano',
   isActive: false,
+  lastLoginAt: new Date('2026-06-01T10:00:00Z'),
+  role: 'manager' as const,
+}
+
+// F-024: invitación creada, nunca aceptada — nace `isActive=true` sin login.
+const PENDING_INVITE_MEMBER = {
+  memberId: '00000000-0000-4000-8000-000000000304',
+  email: 'nuevo.encargado@complejofenix.com.ar',
+  firstName: 'Nuevo',
+  lastName: 'Encargado',
+  isActive: true,
+  lastLoginAt: null,
   role: 'manager' as const,
 }
 
@@ -114,6 +128,27 @@ export const MiembroInactivo: Story = {
       menu.findByRole('menuitem', { name: 'Reenviar invitación' }),
     ).resolves.toBeInTheDocument()
     await expect(menu.queryByRole('menuitem', { name: /Cambiar a/ })).toBeNull()
+  },
+}
+
+/**
+ * Invitación creada, nunca aceptada (F-024): `isActive=true` sin `lastLoginAt`.
+ * A diferencia de un activo normal, también ofrece "Reenviar invitación" —
+ * JUNTO con cambiar rol/desactivar, no en su lugar (a diferencia del inactivo).
+ */
+export const InvitacionPendiente: Story = {
+  args: { member: PENDING_INVITE_MEMBER },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Opciones' }))
+    const menu = within(document.body)
+    await expect(
+      menu.findByRole('menuitem', { name: 'Reenviar invitación' }),
+    ).resolves.toBeInTheDocument()
+    await expect(
+      menu.getByRole('menuitem', { name: 'Cambiar a Administrador' }),
+    ).toBeInTheDocument()
+    await expect(menu.getByRole('menuitem', { name: 'Desactivar' })).toBeInTheDocument()
   },
 }
 

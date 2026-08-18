@@ -38,6 +38,12 @@ export const EstadoInactivo: Story = {
   render: () => <StaffStatusBadge isActive={false} />,
 }
 
+/** F-024: invitación creada, nunca aceptada — isActive=true, sin lastLoginAt. */
+export const EstadoInvitacionPendiente: Story = {
+  args: { role: 'admin' },
+  render: () => <StaffStatusBadge isActive lastLoginAt={null} />,
+}
+
 /** Ambos badges como se ven juntos en una fila real de la tabla/cards. */
 export const ParEnFila: Story = {
   args: { role: 'admin' },

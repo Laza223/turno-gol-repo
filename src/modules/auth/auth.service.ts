@@ -315,6 +315,15 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   } else {
     ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
   }
+
+  // F-024 (QA prod 2026-08-17): única señal de "esta invitación se completó
+  // alguna vez" — `is_active` nace en `true` al invitar (actions.ts), así que
+  // no distingue invitado-pendiente de activado. Mismo patrón que
+  // `getOrCreatePlayer` en player.service.ts. Se corre en TODO login/alta de
+  // staff (esta función es la única invocada por el callback y por
+  // `loginAction`), así que también cubre la aceptación de la invitación.
+  await getWorkerSql()`UPDATE staff_users SET last_login_at = NOW() WHERE id = ${ourStaff.id}`
+
   const tenants = await resolveStaffTenants(ourStaff.id)
 
   const supabase = await createClient()

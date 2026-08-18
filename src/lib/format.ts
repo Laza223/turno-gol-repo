@@ -39,6 +39,21 @@ export function formatArsContable(cents: number): string {
   return arsContableFormatter.format(Math.round(cents) / 100)
 }
 
+const pctFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 })
+
+/**
+ * Porcentaje ya en escala 0–100 → texto es-AR. `0.2` → `"0,2%"`.
+ *
+ * F-011 (QA de producción 2026-08-17): la ocupación por cancha se interpolaba
+ * cruda (`{c.occupancyPct}%`), o sea con el punto decimal de JavaScript, en una
+ * pantalla donde todo lo demás ya usa coma (`$ 60.000,00`, `Tasa de ausencias
+ * 0,0%`). El `%` se concatena a mano a propósito: `style: 'percent'` mete un
+ * NBSP antes del signo y complica los matchers de test sin ganar nada.
+ */
+export function formatPct(value: number): string {
+  return `${pctFormatter.format(value)}%`
+}
+
 /** "Desde $X" para tarjetas de complejo. Devuelve null si no hay precio. */
 export function formatFromPrice(cents: number | null | undefined): string | null {
   if (cents == null) return null

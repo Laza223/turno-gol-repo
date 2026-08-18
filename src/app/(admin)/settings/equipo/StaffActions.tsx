@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { MoreHorizontal } from 'lucide-react'
@@ -73,7 +74,7 @@ export function StaffActions({
     }
   }
 
-  async function onConfirmDeactivate(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmDeactivate(): Promise<ActionResult> {
     const res = await deactivateAction(member.memberId)
     if (!res.success) {
       return { success: false, error: res.error }

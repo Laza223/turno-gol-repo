@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { LogIn } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -34,7 +35,7 @@ export function ImpersonateButton({
 }) {
   const [open, setOpen] = useState(false)
 
-  async function handleConfirm(): Promise<{ success: boolean; error?: string } | void> {
+  async function handleConfirm(): Promise<ActionResult | void> {
     const res = await action(tenantId)
     // Si la action redirigió, este código no corre. Solo llega acá en error.
     if (res && !res.success) return { success: false, error: res.error }

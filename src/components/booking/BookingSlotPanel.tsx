@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -198,7 +199,7 @@ export function BookingSlotPanel({
     setCancelOpen(true)
   }
 
-  async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmCancel(): Promise<ActionResult> {
     if (!actions?.cancelBookingAction) return { success: false, error: 'Sin acciones disponibles.' }
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
     if (cancelReason.trim().length < 3) {

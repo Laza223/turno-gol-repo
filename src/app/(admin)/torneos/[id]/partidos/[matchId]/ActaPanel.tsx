@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { AlertTriangle, Ban, Plus, Trash2 } from 'lucide-react'
@@ -94,7 +95,7 @@ export function ActaPanel({
     })
   }
 
-  async function confirmWalkover(): Promise<{ success: boolean; error?: string }> {
+  async function confirmWalkover(): Promise<ActionResult> {
     if (!walkoverConfirm) return { success: false, error: 'No hay equipo seleccionado.' }
     const res = await walkoverAction({ matchId: match.id, winnerTeamId: walkoverConfirm.teamId })
     if (res.success) {
@@ -108,7 +109,7 @@ export function ActaPanel({
     return res
   }
 
-  async function confirmClearResult(): Promise<{ success: boolean; error?: string }> {
+  async function confirmClearResult(): Promise<ActionResult> {
     const res = await clearResultAction({ matchId: match.id })
     if (res.success) {
       toast({ title: 'Resultado borrado', variant: 'success' })

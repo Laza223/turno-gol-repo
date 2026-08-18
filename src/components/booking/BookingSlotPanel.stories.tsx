@@ -26,10 +26,10 @@ import { BookingSlotPanel, type SlotPanelActions } from './BookingSlotPanel'
  */
 const okActions = (): SlotPanelActions => ({
   chargeDebtAction: fn(async () => ({ success: true as const })),
-  completeAndChargeBookingAction: fn(async () => ({ success: true })),
-  addBookingChargeAction: fn(async () => ({ success: true })),
-  markNoShowAction: fn(async () => ({ success: true })),
-  revertNoShowAction: fn(async () => ({ success: true })),
+  completeAndChargeBookingAction: fn(async () => ({ success: true as const })),
+  addBookingChargeAction: fn(async () => ({ success: true as const })),
+  markNoShowAction: fn(async () => ({ success: true as const })),
+  revertNoShowAction: fn(async () => ({ success: true as const })),
   listRescheduleSlotsAction: fn(async () => ({
     success: true as const,
     slots: [

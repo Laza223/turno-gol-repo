@@ -1,3 +1,4 @@
+import type { ActionResult } from '@/shared/types/action-result'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { capitalizeFirst, formatArs } from '@/lib/format'
@@ -45,8 +46,6 @@ function formatDateArt(date: Date): string {
     }),
   )
 }
-
-type ActionResult = { success: boolean; error?: string }
 
 type Props = {
   profile: PlayerProfile

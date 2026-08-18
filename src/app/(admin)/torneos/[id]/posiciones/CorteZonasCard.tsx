@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, CheckCircle2, Lock, Shuffle } from 'lucide-react'
@@ -60,7 +61,7 @@ export function CorteZonasCard({
   const ready = !blocked && !alreadySeeded
   const showRounds = new Set(crosses.map((c) => c.round)).size > 1
 
-  async function confirmSeed(): Promise<{ success: boolean; error?: string }> {
+  async function confirmSeed(): Promise<ActionResult> {
     const result = await seedAction({ tournamentId })
     if (result.success) {
       toast({
@@ -281,7 +282,7 @@ function SorteoDesempateDialog({
   const allDistinct = new Set(values).size === values.length
   const valid = allFilled && allDistinct
 
-  async function save(): Promise<{ success: boolean; error?: string }> {
+  async function save(): Promise<ActionResult> {
     if (!valid) {
       return {
         success: false,

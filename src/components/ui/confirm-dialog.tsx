@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -21,8 +22,13 @@ export type ConfirmDialogProps = {
   variant?: 'default' | 'destructive'
   /** Type-to-confirm: si está seteado, confirmar queda deshabilitado hasta que se escriba exactamente esta frase. */
   confirmationPhrase?: string
-  /** Handler async. Devolvé { success:false, error } para mantener el diálogo abierto y mostrar el error; void o { success:true } cierra. */
-  onConfirm: () => Promise<{ success: boolean; error?: string } | void>
+  /** Handler async. Devolvé `{ success:false, error }` para mantener el diálogo
+   *  abierto y mostrar el error; `void` o `{ success:true }` cierra. El tipo es
+   *  la unión discriminada compartida a propósito: con la versión laxa
+   *  (`{ success: boolean; error?: string }`) que este archivo declaraba inline,
+   *  un `{ success:false }` sin motivo compilaba y el usuario terminaba viendo
+   *  el fallback genérico en vez del error real. */
+  onConfirm: () => Promise<ActionResult | void>
 }
 
 export function ConfirmDialog({

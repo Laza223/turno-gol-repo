@@ -1,11 +1,12 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import DatePicker from '@/components/ui/date-picker'
 
 type DialogKind = 'pause' | 'reactivate' | 'cancel' | 'cancel-single' | null
 
-type ConfirmResult = { success: boolean; error?: string }
+type ConfirmResult = ActionResult
 
 /** Today in ART (UTC-3) as YYYY-MM-DD — used as the min for the cancel date. */
 function todayART(): string {

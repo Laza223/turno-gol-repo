@@ -9,7 +9,7 @@ afterEach(cleanup)
 
 describe('BanPlayerDialog — defaults (decisión del dueño 2026-08-01, 🔴 §4.11)', () => {
   it('arranca con 7 días seleccionado, nunca "Permanente" ni un motivo precargado', async () => {
-    const banPlayerAction = vi.fn(async () => ({ success: true }))
+    const banPlayerAction = vi.fn(async () => ({ success: true as const }))
     render(
       <BanPlayerDialog
         open={true}
@@ -24,7 +24,7 @@ describe('BanPlayerDialog — defaults (decisión del dueño 2026-08-01, 🔴 §
   })
 
   it('"Permanente" sigue disponible como opción manual', async () => {
-    const banPlayerAction = vi.fn(async () => ({ success: true }))
+    const banPlayerAction = vi.fn(async () => ({ success: true as const }))
     render(
       <BanPlayerDialog
         open={true}
@@ -38,7 +38,7 @@ describe('BanPlayerDialog — defaults (decisión del dueño 2026-08-01, 🔴 §
   })
 
   it('sin motivo, no llama la action', async () => {
-    const banPlayerAction = vi.fn(async () => ({ success: true }))
+    const banPlayerAction = vi.fn(async () => ({ success: true as const }))
     render(
       <BanPlayerDialog
         open={true}
@@ -54,7 +54,7 @@ describe('BanPlayerDialog — defaults (decisión del dueño 2026-08-01, 🔴 §
   })
 
   it('con motivo, llama la action con el playerId/motivo/duración elegidos', async () => {
-    const banPlayerAction = vi.fn(async () => ({ success: true }))
+    const banPlayerAction = vi.fn(async () => ({ success: true as const }))
     const onBanned = vi.fn()
     render(
       <BanPlayerDialog

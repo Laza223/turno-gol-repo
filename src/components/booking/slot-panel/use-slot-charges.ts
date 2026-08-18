@@ -8,6 +8,7 @@ import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import { chargeMode } from './charge-copy'
 import type { ChargeInput, SlotPanelActions } from './actions'
+import type { ActionResult } from '@/shared/types/action-result'
 
 /**
  * Estado y handlers de "cobrar" del panel del turno: las líneas de pago, el
@@ -99,7 +100,7 @@ export function useSlotCharges({
     })
   }
 
-  async function confirmNoShow() {
+  async function confirmNoShow(): Promise<ActionResult> {
     if (!booking || !actions) return { success: false, error: 'Sin acciones disponibles.' }
     const bookingId = booking.id
     const res = await actions.markNoShowAction(bookingId)

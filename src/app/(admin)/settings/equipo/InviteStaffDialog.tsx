@@ -1,8 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useRef } from 'react'
-import { useFormStatus } from 'react-dom'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,20 +21,6 @@ type InviteAction = (formData: FormData) => Promise<StaffActionResult>
 // después del primer submit.
 type FormState = StaffActionResult | null
 const INITIAL_STATE: FormState = null
-
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <Button
-      type="submit"
-      disabled={pending}
-      aria-busy={pending}
-      className="w-full bg-primary hover:bg-emerald-500"
-    >
-      {pending ? 'Enviando…' : 'Enviar invitación'}
-    </Button>
-  )
-}
 
 /**
  * Controlled "Invitar miembro del equipo" dialog. Mounts already-open and reports
@@ -156,7 +141,9 @@ export function InviteStaffDialog({
             </p>
           )}
 
-          <SubmitButton />
+          <SubmitButton className="w-full" pendingLabel="Enviando…">
+            Enviar invitación
+          </SubmitButton>
         </form>
       </DialogContent>
     </Dialog>

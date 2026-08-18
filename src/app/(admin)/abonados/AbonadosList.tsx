@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
@@ -214,7 +215,7 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
   }
 
   // ── Pause ─────────────────────────────────────────────────────────────────
-  async function onConfirmPause(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmPause(): Promise<ActionResult> {
     const res = await actions.pauseAction(a.id)
     if (!res.success) {
       return { success: false, error: res.error }
@@ -255,7 +256,7 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
     }))
   }
 
-  async function onConfirmReactivate(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmReactivate(): Promise<ActionResult> {
     const res = await actions.reactivateAction(a.id)
     if (!res.success) {
       return { success: false, error: res.error }
@@ -269,7 +270,7 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
   }
 
   // ── Cancel ────────────────────────────────────────────────────────────────
-  async function onConfirmCancel(): Promise<{ success: boolean; error?: string }> {
+  async function onConfirmCancel(): Promise<ActionResult> {
     const res = await actions.cancelAction(a.id, state.cancelFromDate)
     if (!res.success) {
       return { success: false, error: res.error }

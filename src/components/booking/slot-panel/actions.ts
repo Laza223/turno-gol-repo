@@ -1,3 +1,4 @@
+import type { ActionResult } from '@/shared/types/action-result'
 import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
 import type { ListRescheduleSlots, RescheduleBooking } from '../BookingRescheduleDialog'
 
@@ -28,16 +29,16 @@ export type SlotPanelActions = {
     bookingId: string
     charges: ChargeInput[]
     clientIdempotencyKey?: string
-  }) => Promise<{ success: boolean; error?: string }>
+  }) => Promise<ActionResult>
   /** Turno que todavía no empezó: adelanto. Una sola línea (el backend no acepta mixto acá). */
   addBookingChargeAction: (input: {
     bookingId: string
     amount: number
     method: ChargeInput['method']
     clientIdempotencyKey?: string
-  }) => Promise<{ success: boolean; error?: string }>
-  markNoShowAction: (bookingId: string) => Promise<{ success: boolean; error?: string }>
-  revertNoShowAction?: (bookingId: string) => Promise<{ success: boolean; error?: string }>
+  }) => Promise<ActionResult>
+  markNoShowAction: (bookingId: string) => Promise<ActionResult>
+  revertNoShowAction?: (bookingId: string) => Promise<ActionResult>
   /** Reprogramar. Las dos van juntas o ninguna (T5). */
   listRescheduleSlotsAction?: ListRescheduleSlots
   rescheduleBookingAction?: RescheduleBooking
@@ -50,5 +51,5 @@ export type SlotPanelActions = {
     bookingId: string,
     reason: string,
     cancellationType: 'complejo' | 'jugador',
-  ) => Promise<{ success: boolean; error?: string }>
+  ) => Promise<ActionResult>
 }

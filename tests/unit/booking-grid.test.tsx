@@ -116,17 +116,17 @@ function booking(over: Partial<GridBooking>): GridBooking {
  */
 const panelActions = () => ({
   chargeDebtAction: vi.fn(async () => ({ success: true as const })),
-  completeAndChargeBookingAction: vi.fn(async () => ({ success: true })),
-  addBookingChargeAction: vi.fn(async () => ({ success: true })),
-  markNoShowAction: vi.fn(async () => ({ success: true })),
-  revertNoShowAction: vi.fn(async () => ({ success: true })),
+  completeAndChargeBookingAction: vi.fn(async () => ({ success: true as const })),
+  addBookingChargeAction: vi.fn(async () => ({ success: true as const })),
+  markNoShowAction: vi.fn(async () => ({ success: true as const })),
+  revertNoShowAction: vi.fn(async () => ({ success: true as const })),
   listRescheduleSlotsAction: vi.fn(async () => ({
     success: true as const,
     slots: [],
     minDate: '2026-06-10',
     maxDate: '2026-06-16',
   })),
-  rescheduleBookingAction: vi.fn(async () => ({ success: true })),
+  rescheduleBookingAction: vi.fn(async () => ({ success: true as const })),
 })
 
 function renderGrid(opts?: {

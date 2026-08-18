@@ -23,9 +23,9 @@ const meta = {
     reactivatePreviewConflicts: [],
     reactivatePreviewError: null,
     onClose: fn(),
-    onConfirmPause: fn(async () => ({ success: true })),
-    onConfirmReactivate: fn(async () => ({ success: true })),
-    onConfirmCancel: fn(async () => ({ success: true })),
+    onConfirmPause: fn(async () => ({ success: true as const })),
+    onConfirmReactivate: fn(async () => ({ success: true as const })),
+    onConfirmCancel: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof AbonadoDialogs>
 

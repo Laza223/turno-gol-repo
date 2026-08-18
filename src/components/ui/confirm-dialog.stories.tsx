@@ -34,7 +34,7 @@ const meta = {
     open: true,
     onOpenChange: () => {},
     title: 'Confirmar acción',
-    onConfirm: async () => ({ success: true }),
+    onConfirm: async () => ({ success: true as const }),
   },
 } satisfies Meta<typeof ConfirmDialog>
 
@@ -46,7 +46,7 @@ export const Default: Story = {
     <ConfirmDialogDemo
       title="Completar reserva"
       description="Se va a marcar como jugada. Esta acción no se puede deshacer."
-      onConfirm={fn(async () => ({ success: true }))}
+      onConfirm={fn(async () => ({ success: true as const }))}
     />
   ),
 }
@@ -59,7 +59,7 @@ export const Destructivo: Story = {
       description="El jugador va a recibir un email de aviso. Esta acción no se puede deshacer."
       variant="destructive"
       confirmLabel="Cancelar reserva"
-      onConfirm={fn(async () => ({ success: true }))}
+      onConfirm={fn(async () => ({ success: true as const }))}
     />
   ),
 }
@@ -76,7 +76,7 @@ export const ConConsecuencias: Story = {
         'Si es su 2ª ausencia en 90 días, queda bloqueado 14 días para reservar online.',
         'Podés deshacerlo hasta 24hs después.',
       ]}
-      onConfirm={fn(async () => ({ success: true }))}
+      onConfirm={fn(async () => ({ success: true as const }))}
     />
   ),
   play: async ({ canvasElement }) => {
@@ -94,7 +94,7 @@ export const ConFraseDeConfirmacion: Story = {
       description="Se cancelan todas las reservas futuras del abonado."
       variant="destructive"
       confirmationPhrase="CANCELAR"
-      onConfirm={fn(async () => ({ success: true }))}
+      onConfirm={fn(async () => ({ success: true as const }))}
     />
   ),
   play: async ({ canvasElement }) => {

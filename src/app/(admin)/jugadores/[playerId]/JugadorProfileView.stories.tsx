@@ -88,10 +88,10 @@ const meta = {
     history: HISTORY,
     ban: NOT_BANNED,
     fixedSlots: [],
-    banPlayerAction: fn(async () => ({ success: true })),
-    liftPlayerBanAction: fn(async () => ({ success: true })),
-    setPlayerTagsAction: fn(async () => ({ success: true })),
-    unlinkContactAction: fn(async () => ({ success: true })),
+    banPlayerAction: fn(async () => ({ success: true as const })),
+    liftPlayerBanAction: fn(async () => ({ success: true as const })),
+    setPlayerTagsAction: fn(async () => ({ success: true as const })),
+    unlinkContactAction: fn(async () => ({ success: true as const })),
   },
   decorators: [
     (Story) => (

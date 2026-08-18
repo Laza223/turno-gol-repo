@@ -29,8 +29,8 @@ const meta = {
   args: {
     playerId: PLAYER_ID,
     ban: NOT_BANNED,
-    banPlayerAction: fn(async () => ({ success: true })),
-    liftPlayerBanAction: fn(async () => ({ success: true })),
+    banPlayerAction: fn(async () => ({ success: true as const })),
+    liftPlayerBanAction: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof BanPlayerControls>
 

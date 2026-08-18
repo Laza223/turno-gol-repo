@@ -23,7 +23,7 @@ type Story = StoryObj<typeof meta>
 /** Con logo, WhatsApp, amenities y reseñas — el complejo "completo". */
 export const Default: Story = {
   args: {
-    tenant: publicTenant({ logoUrl: '/bg-hero.png' }),
+    tenant: publicTenant({ logoUrl: '/bg-hero-desktop.png' }),
     avgRating: 4.6,
     reviewCount: 28,
   },

@@ -20,7 +20,12 @@ import { openingHours } from './tenant'
  * determinismo de build, ver `.storybook/main.ts`), NUNCA unsplash/CDN.
  */
 
-const LOCAL_PHOTOS = ['/bg-hero.png', '/bg-hero-2.png', '/bg-owner.png', '/bg-how-it-works.png']
+const LOCAL_PHOTOS = [
+  '/bg-hero-desktop.png',
+  '/bg-hero-2.png',
+  '/bg-owner.png',
+  '/bg-how-it-works.png',
+]
 
 // ─── Perfil público del complejo (public.service.ts#PublicTenant) ─────────────
 

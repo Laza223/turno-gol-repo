@@ -4,12 +4,12 @@ import TenantGallery from './TenantGallery'
 
 // 6 fotos: 1 principal + 4 thumbnails + la 6ta se resume en el badge "+1" del último thumbnail.
 const PHOTOS = [
-  '/bg-hero.png',
+  '/bg-hero-desktop.png',
   '/bg-hero-2.png',
   '/bg-owner.png',
   '/bg-how-it-works.png',
   '/hero-bg.png',
-  '/bg-hero.png',
+  '/bg-hero-desktop.png',
 ]
 
 /** En el perfil vive dentro de la card blanca principal (`page.tsx`, `space-y-7`), primer bloque. */

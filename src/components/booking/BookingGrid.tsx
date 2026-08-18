@@ -14,7 +14,7 @@ import { GridToolbar } from './grid/GridToolbar'
 import { FirstBookingHint } from './grid/FirstBookingHint'
 import { GridScroller } from './grid/GridScroller'
 import { GridDayList } from './grid/GridDayList'
-import { GridLegend } from './grid/GridLegend'
+import { GridLegendPopover } from './grid/GridLegendPopover'
 import { GridOverlays } from './grid/GridOverlays'
 import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
 import { QuickFormCell } from './grid/QuickFormCell'
@@ -304,8 +304,10 @@ export function BookingGrid({
                 renderQuickForm={quickEnabled ? renderQuickForm : undefined}
               />
               {/* La leyenda explica el color de la matriz. En la lista cada
-                  fila ya trae el label escrito al lado del ícono: ahí sobra. */}
-              <GridLegend />
+                  fila ya trae el label escrito al lado del ícono: ahí sobra.
+                  F-005 (punto 3): popover a demanda, no fila fija (ver
+                  GridLegendPopover.tsx). */}
+              <GridLegendPopover />
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col lg:hidden">

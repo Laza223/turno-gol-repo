@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
 // useActionState/useFormStatus son undefined en vitest: los mockeamos para
@@ -50,5 +50,57 @@ describe('ReservasPolicyForm (#21)', () => {
     formState.mockReturnValue({ success: true })
     render(<ReservasPolicyForm s={SETTINGS} action={noopAction} />)
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+})
+
+/**
+ * Bug reproducido en producción el 2026-08-18: el dueño elegía "Requerir seña"
+ * + 100%, guardaba, la Server Action escribía bien en la base, y el form volvía
+ * SOLO a "Sin seña" — así que concluía que no se había guardado y reintentaba
+ * (dejando `deposit_percentage` en 0 de paso).
+ *
+ * Causa medida: React 19 resetea el `<form action={serverAction}>` cuando la
+ * action termina, y `@radix-ui/react-radio-group` escucha ese `reset` para
+ * volver su valor al que tenía AL MONTAR. Como el grupo es controlado, eso es
+ * un `onValueChange` con el valor viejo que le pisa el estado al form. No tenía
+ * nada que ver con el cache de `getStaffTenant`: en ese mismo render las props
+ * del servidor ya traían el valor nuevo.
+ *
+ * El test dispara el `reset` a mano porque es exactamente lo que hace React al
+ * terminar la action (`form.reset()`), y así no depende de simular el submit.
+ */
+describe('ReservasPolicyForm — el reset del form no pisa la selección', () => {
+  const SIN_SENA = {
+    requires_deposit: false,
+    deposit_percentage: 0,
+  } as unknown as TenantSettings
+
+  const senaControl = () => screen.getByRole('radio', { name: 'Requerir seña' })
+
+  it('mantiene "Requerir seña" después de que React resetea el form', () => {
+    formState.mockReturnValue({ success: true })
+    const { container } = render(<ReservasPolicyForm s={SIN_SENA} action={noopAction} />)
+
+    fireEvent.click(senaControl())
+    expect(senaControl()).toHaveAttribute('aria-checked', 'true')
+
+    fireEvent.reset(container.querySelector('form')!)
+
+    expect(senaControl()).toHaveAttribute('aria-checked', 'true')
+    expect(container.querySelector('input[name="requiresDeposit"]')).toHaveValue('true')
+  })
+
+  it('mantiene el porcentaje elegido después del reset', () => {
+    formState.mockReturnValue({ success: true })
+    const { container } = render(<ReservasPolicyForm s={SIN_SENA} action={noopAction} />)
+
+    fireEvent.click(senaControl())
+    fireEvent.click(screen.getByRole('radio', { name: '100%' }))
+    expect(container.querySelector('input[name="depositPercentage"]')).toHaveValue('100')
+
+    fireEvent.reset(container.querySelector('form')!)
+
+    expect(screen.getByRole('radio', { name: '100%' })).toHaveAttribute('aria-checked', 'true')
+    expect(container.querySelector('input[name="depositPercentage"]')).toHaveValue('100')
   })
 })

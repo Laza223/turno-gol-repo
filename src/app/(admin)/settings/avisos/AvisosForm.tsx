@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
+import { RADIX_DETACHED_FORM_ID } from '@/components/ui/radix-form-detach'
 import { SubmitButton } from '@/components/ui/submit-button'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import type { AvisosActionResult } from './actions'
@@ -43,6 +44,11 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
           className="flex gap-2"
           value={optIn ? 'email' : 'push'}
           onValueChange={(v) => setOptIn(v === 'email')}
+          // Mismo motivo que en SegmentedControl (ver radix-form-detach.ts): sin
+          // desasociar el grupo del form, el reset automático de React 19 al
+          // terminar la Server Action vuelve la opción a la de montaje y el
+          // dueño ve "no se guardó" sobre un guardado que sí funcionó.
+          form={RADIX_DETACHED_FORM_ID}
         >
           <RadioGroupPrimitive.Item
             value="email"

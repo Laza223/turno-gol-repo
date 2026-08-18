@@ -4217,6 +4217,552 @@ en su totalidad.
 
 Sin commits: todo queda en el working tree.
 
+## F-008 · iOS zoom (14px) — NO REPRODUCE en la mayoría de los casos citados; 1 gap real cerrado
+
+**Medido contra producción real antes de tocar código** (`https://turnogol.app`, viewport 375px,
+Browser tool): un `@media (width < 48rem) { input:not([type=checkbox|radio|range|color|file|
+submit|button|reset]) { font-size: 16px } }` **fuera de todo `@layer`** ya vive en
+[globals.css](src/app/globals.css) desde el **2026-07-25** (`git blame`) — ANTES de esta QA. Es
+una red de seguridad incondicional: gana por cascada de capas sin importar qué clase Tailwind
+traiga el input. Confirmado empíricamente en prod: `/ingresar` (`#email`) y `/explorar` (buscador)
+miden 16px reales a 375px; un `<input type="text" class="text-sm">` inyectado a mano en el DOM de
+producción también sale en 16px.
+
+Barrido de `src/` (`<input` crudo, excluyendo checkbox/radio/range/color/file, con `text-sm` y sin
+`text-base`) encontró **un solo straggler real**: `#confirm-phrase` en
+[confirm-dialog.tsx](src/components/ui/confirm-dialog.tsx) (el campo del `ConfirmDialog`
+compartido — cierre de caja, borrado de torneo, eliminar cuenta, etc., exactamente el que cita el
+hallazgo para `/caja` → modal de cierre). El safety-net de CSS lo protege igual en producción, pero
+el primitivo mentía sobre su tamaño (`text-sm` plano, sin `md:` cascade) — corregido a `text-base
+md:text-sm`, mismo criterio que `ui/input.tsx`. El resto de los campos citados (`#quick-name`,
+`#opening-cash`, `#declared`, `#bookingAdvanceDays`) ya tenían `text-base md:text-sm` en la fuente.
+
+Verificación: `pnpm typecheck` ✓, `pnpm vitest run tests/unit/confirm-dialog-focus.test.tsx` ✓.
+
+## F-009 · Soft-404 en `(admin)` — mecanismo real distinto al que asumía el prompt
+
+**El patrón de `(public)/[slug]/layout.tsx` NO se pudo replicar tal cual** — se investigó por qué
+con un experimento aislado (rutas throwaway, borradas después, `pnpm dev` local) antes de tocar
+código real, porque la causa raíz cambia según dónde vive el `loading.tsx` ofensor:
+
+- **Cuando `loading.tsx` está en el MISMO segmento que el `notFound()`** (como `[slug]/loading.tsx`
+  + `[slug]/page.tsx`, o `torneos/loading.tsx` + `torneos/page.tsx`): mover el chequeo a un
+  `layout.tsx` del MISMO segmento funciona — el layout corre antes de que Next entre al `<Suspense>`
+  que ese `loading.tsx` mete alrededor de `{children}`.
+- **Cuando `loading.tsx` está en un segmento PADRE de donde vive el `notFound()`** (`reservas/
+  loading.tsx` + `reservas/[id]/page.tsx`): un `layout.tsx` en `[id]/` NO escapa — confirmado con 3
+  pasadas del experimento (`fetch` con `cache:'no-store'`, no navegación cliente): con
+  `zztest-parent/loading.tsx` presente, tanto `page.tsx` como un `layout.tsx` en `zzchild/` dieron
+  **200**; recién al mover `loading.tsx` a un route group hermano (`zztest-parent/(list)/loading.tsx`,
+  dejando `zzchild/` como hermano de `(list)/`, no hijo) el chequeo en `zzchild/` dio **404**. Un
+  route group no aporta segmento de URL, así que `/reservas` no cambia.
+
+Aplicado:
+- [reservas/(list)/](src/app/(admin)/reservas/(list)/page.tsx): `page.tsx` + `loading.tsx` +
+  `loading.stories.tsx` movidos desde `reservas/` a `reservas/(list)/` — aísla el `loading.tsx` de
+  `/reservas/[id]`, que YA llama `notFound()` correctamente en su `page.tsx` (booking inexistente o
+  `id` no-UUID) pero quedaba con status 200 por el `loading.tsx` del padre. `actions.ts`, `queries.ts`,
+  `error.tsx` y el resto de componentes de la lista SIGUEN en `reservas/` (import relativo `../`
+  desde el page movido) — `error.tsx` no se movió porque no causa el mismo problema (no fuerza
+  streaming temprano, es un boundary de error normal, no de Suspense).
+- [torneos/layout.tsx](src/app/(admin)/torneos/layout.tsx): nuevo, mismo patrón que
+  `[slug]/layout.tsx` (mismo segmento que `torneos/loading.tsx`) — repite el guard `requireOperatorStaff`
+  + `isFeatureEnabled(TOURNAMENTS_FLAG)` que `page.tsx`/`nuevo/`/`[id]/` ya hacen cada uno por su
+  lado (mismo patrón defense-in-depth ya establecido, "esconder el ítem del menú no alcanza").
+  `requireOperatorStaff` NO está `cache()`-wrapped (a diferencia de `extractAuthUser`), así que esto
+  sí repite `getStaffTenant`/`getStaffRole` — costo aceptado, `/torneos` no es hot path.
+- `tests/unit/admin-routes-reachable.test.ts`: `redirectStubs()` reconstruía la ruta de archivo
+  desde la URL (`reservas/page.tsx`), ciego a route groups — roto por el move de arriba. Refactor a
+  `adminPageFiles()` (URL + ruta de archivo real desde el mismo recorrido que ya ignora `(grupo)`)
+  en vez de reconstruir la ruta.
+
+**NO reproducido / sin cambio, con evidencia:**
+- `/jugadores/{uuid}`: NINGÚN `loading.tsx` existe en toda la cadena de ancestros
+  (`(admin)/`, `jugadores/`, `jugadores/[playerId]/` — los tres confirmados vacíos con `find`).
+  Sin el mecanismo que causa el bug en los otros dos casos, este debería devolver 404 real ya hoy
+  — no se tocó código para un mecanismo que no se pudo identificar. **REQUIERE verificación de
+  Lazar contra prod** (esta sesión no tiene credenciales de staff para confirmar en vivo).
+
+Verificación: `pnpm typecheck` ✓, `pnpm lint` ✓, `pnpm vitest run tests/unit/admin-routes-reachable.test.ts
+tests/unit/reservas-page-render.test.tsx tests/unit/reservas-status-filter.test.ts` → 60/60 ✓,
+`pnpm test` completo → 3502/3503 (1 todo preexistente) ✓. `pnpm dev` local confirmó que `/reservas`
+y `/torneos` compilan y redirigen a `/login` sin autenticar (sin crash) — no se pudo verificar el
+404 real en sí (necesita sesión de staff + Postgres, sin Docker en esta sesión).
+
+# QA Prod — fixes de `docs/qa/PROD_QA_2026-08-17.md`, tanda 🔴 (2026-08-17)
+
+Rama `main` (working tree, sin worktree aparte). Orden pactado con el dueño (dependencias, no
+alfabético): F-002 primero → re-chequear F-022 → F-001 → F-024 → F-004. Juez por hallazgo:
+`pnpm typecheck` (+ `pnpm lint`/tests cuando el fix tocaba código con cobertura).
+
+Dos archivos fuera de alcance por instrucción explícita, no tocados:
+`src/components/booking/BookingGrid.tsx` y `.stories.tsx` (modificados por otro esfuerzo).
+
+## F-002 · Pool de Postgres agotado (`EMAXCONNSESSION`)
+
+**Aplicado.** `idle_timeout: 20` / `max_lifetime: 30*60` agregados a los dos `postgres()` de
+[client.ts](src/shared/db/client.ts) (`getSql`/`getWorkerSql`) — antes no tenían ninguno de los
+dos, así que una conexión abierta no se soltaba nunca. Es la causa que señala el hallazgo: con
+Fluid Compute manteniendo instancias calientes, cada una retenía sus `DEFAULT_POOL_MAX=3`
+conexiones ociosas para siempre hasta agotar el `pool_size=15` de Supavisor.
+
+**REQUIERE INPUT (infraestructura, fuera del repo):** las otras 3 acciones que propone el
+hallazgo — subir `pool_size` de Supavisor, pasar `DATABASE_URL` a transaction mode (puerto 6543),
+separar el pool del worker del de la web (rol propio) — necesitan acceso al dashboard de Supabase/
+Railway que esta sesión no tiene. El código ya es compatible con transaction mode (`prepare:
+false`, `SET LOCAL` dentro de transacciones explícitas, `pg_advisory_xact_lock` de scope
+transacción) per el propio hallazgo, pero el cambio de URL/puerto lo aplica Lazar.
+
+Verificación: `pnpm typecheck` ✓. No hay test que ejercite `idle_timeout`/`max_lifetime` contra un
+pool real (necesitaría medir conexiones ociosas en Postgres — cambio de infra, no de lógica); el
+comportamiento se confirma recién en producción, con las 3 acciones de infra ya aplicadas.
+
+## F-022 · Analítica de producto no se guarda — re-chequeo, NO se trata como fix independiente
+
+Por instrucción explícita: no cerrar sin volver a medir `analytics_events` en producción después
+del fix de F-002. Esta sesión no tiene forma de deployar a producción ni de correr la recorrida
+de 25 minutos que generó la medición original — sigue **ABIERTO, pendiente de remedición por
+Lazar** tras el próximo deploy. El código de `src/shared/observability/analytics.ts` usa el mismo
+pool que F-002 arregló (`getWorkerDb`, `after()`, catch silencioso con solo `logger.warn`) — si la
+causa era el agotamiento del pool, el fix de F-002 la cubre de raíz; si la tabla sigue vacía tras
+remedir, el paso siguiente (instrumentar con log explícito, ya sugerido en el hallazgo) recién
+corresponde ENTONCES, no ahora.
+
+## F-001 · CSP bloquea el WebSocket de Realtime en producción
+
+**Aplicado.** [next.config.ts](next.config.ts): `connect-src` de producción pasó de
+`'self' *.supabase.co *.mercadopago.com` a `'self' *.supabase.co wss://*.supabase.co
+*.mercadopago.com` — un host pelado no habilita el esquema `wss:`, tal como documenta el
+hallazgo. Fix de una línea, exactamente la solución propuesta.
+
+Verificación: `pnpm typecheck` ✓, `pnpm vitest run tests/integration/security-headers.test.ts`
+✓ (3/3 — no hay assert que dependa del string exacto de `connect-src`). Falta re-verificar contra
+`https://turnogol.app` post-deploy (no se puede confirmar el header real sin deployar).
+
+## F-024 · Empleado invitado sin forma de recuperar la invitación
+
+**Aplicado, sin migración nueva.** Antes de tocar código se confirmó vigencia (paso 1 del
+protocolo): la columna `staff_users.last_login_at` **ya existe** en el schema
+([staff-users.ts](src/shared/db/schema/staff-users.ts):14) — se agregó en algún momento pero
+**nunca se escribía** para staff (sí para `players` y `system_admins`, grep confirmó cero
+`UPDATE ... staff_users ... last_login_at` en todo `src/`). El plan original del prompt asumía que
+hacía falta una columna nueva (`invite_accepted_at`/`last_login_at`) en migración — la premisa no
+aplicaba: el parche de una línea que el propio hallazgo describe como mitigación mínima
+("mostrar 'Reenviar' también cuando `!lastLoginAt`, si existe esa columna") alcanza, sin
+migración.
+
+Cambios:
+- [auth.service.ts](src/modules/auth/auth.service.ts) `provisionAndRouteStaff`: stampea
+  `staff_users.last_login_at = NOW()` en cada login/aceptación de invitación (la única función que
+  invocan tanto el callback de confirmación como `loginAction`, mismo patrón que
+  `getOrCreatePlayer` en `player.service.ts`).
+- [status-visual.tsx](src/app/(admin)/settings/equipo/status-visual.tsx): tercer estado de badge
+  `pending` ("Invitación pendiente", tono warning) — antes solo `active`/`inactive`, un invitado
+  sin aceptar mostraba el mismo check verde que un empleado activo hace meses.
+- [StaffActions.tsx](src/app/(admin)/settings/equipo/StaffActions.tsx): "Reenviar invitación" pasa
+  a ofrecerse cuando `isActive && !lastLoginAt` (invitación pendiente), ADEMÁS de cuando
+  `!isActive` (desactivado) — antes la condición `!member.isActive` nunca era cierta para una
+  invitación recién creada (nace en `true`), así que el ítem nunca aparecía en ese caso.
+- [StaffRosterView.tsx](src/app/(admin)/settings/equipo/StaffRosterView.tsx): enhebra
+  `lastLoginAt` desde `listStaffRoster` (que ya lo seleccionaba) hasta los dos componentes de
+  arriba.
+- Stories nuevas/actualizadas (`StaffActions.stories.tsx` — `InvitacionPendiente`,
+  `status-visual.stories.tsx` — `EstadoInvitacionPendiente`) y tests nuevos en
+  `tests/unit/staff-actions.test.tsx` (activo-ya-logueado NO ofrece reenviar; invitación
+  pendiente ofrece reenviar JUNTO con cambiar rol/desactivar, no en su lugar).
+
+Verificación: `pnpm typecheck` ✓, `pnpm lint` ✓, `pnpm vitest run tests/unit/staff-actions.test.tsx
+tests/unit/staff-actions-role-menu.test.tsx` → 17/17 ✓, `pnpm test` completo → 3502/3503 (1 todo
+preexistente) ✓. No se pudo re-probar contra `https://turnogol.app` (requiere invitar un empleado
+real y no aceptar, como hizo el QA original) — pendiente de verificación en producción.
+
+## F-004 · Marketplace público lista complejos de prueba
+
+**Aplicado, con una corrección al criterio propuesto por el hallazgo.** El hallazgo sugería
+"≥1 cancha online + onboarding cerrado". Antes de escribir el fix se leyó
+`tests/integration/availability-search.test.ts` (test `'without tenantIds the behaviour is
+unchanged (regression)'`) y confirmó que un tenant con **cero canchas online** (todas offline)
+está **deliberadamente incluido** en el listado sin filtrar — es el caso
+`publicTenantCardSinReservaOnline` (`src/test/fixtures/tenant.ts`): un complejo completo que
+apagó sus canchas sigue queriendo aparecer listado, sin CTA de reserva. Agregar
+`fromPriceCents IS NOT NULL` habría roto ese caso real y tested. Se usa **solo**
+`settings.onboarding_completed = true` como condición de completitud — el wizard ya exige ≥1
+cancha con precio válido para poder completarse, así que alcanza para sacar a `asdas` (0 canchas,
+onboarding incompleto, confirmado en la evidencia del hallazgo) sin tocar el caso legítimo.
+
+Cambios:
+- [search.service.ts](src/modules/tenants/search.service.ts) `searchPublicTenantsImpl`: nueva
+  condición `COALESCE((settings->>'onboarding_completed')::boolean, false) = true` en el WHERE
+  (afecta `/explorar` + home, vía `searchPublicTenants`).
+- [sitemap.service.ts](src/modules/tenants/sitemap.service.ts) `listSitemapTenants`: misma
+  condición — antes era una query separada que NO reusaba el filtro de completitud de
+  `search.service.ts`, solo el de `status`.
+
+**Efecto colateral real, corregido:** `settings.onboarding_completed` vive en JSONB de aplicación
+(`DEFAULT_SETTINGS`, `tenant.service.ts`), no en el DEFAULT de la columna a nivel DB (migr. 003) —
+así que CUALQUIER tenant insertado por SQL crudo sin especificar `settings` (como hacen varios
+helpers/tests de integración) queda con la key ausente → invisible con el nuevo filtro. Grep
+sistemático de la clase (`INSERT INTO tenants` en todo `tests/`+`scripts/`) encontró y corrigió:
+`tests/helpers/tenant.ts` (`createTestTenant`, usado en 108 archivos — ahora mergea
+`onboarding_completed: true` sobre el DEFAULT de la columna, sin duplicar el resto del JSON),
+`tests/integration/public-search.test.ts`, `tests/integration/search-upgrade.test.ts` (+ fix al
+test `#5 onlineOnly` que pisaba `settings` entero con `{}`), `tests/integration/
+availability-search.test.ts`, `tests/integration/sitemap-route.test.ts`, y
+`scripts/audit/seed-d3-volume.sql` (script manual de carga D3, no CI). `scripts/seed-e2e.ts` /
+`seed-staging.ts` / `demo/seed-demo-tenant.ts` ya seteaban la key — no necesitaron cambio.
+
+**REQUIERE INPUT (decisión de negocio, no aplicado):** qué hacer con `asdas`, `Complejo random` y
+`Complejo elite padel` — los 3 tenants de prueba YA publicados/indexados al momento del QA. Sin
+herramienta de borrado de tenant, las opciones que enumera el hallazgo son (a) forzar la cadena de
+estados hasta `blocked` desde super-admin, (b) agregar una columna de visibilidad explícita
+(serviría también para demos futuras), o (c) borrar por SQL. Ninguna se ejecutó.
+
+Verificación: `pnpm typecheck` ✓, `pnpm lint` ✓, `pnpm vitest run tests/unit/
+public-search-route.test.ts tests/unit/public-cache-headers.test.ts` → 21/21 ✓ (mockean
+`search.service` entero, no ejercitan el WHERE real). Los 3 integration tests que sí ejercitan la
+query real (`public-search.test.ts`, `search-upgrade.test.ts`, `availability-search.test.ts`,
+`sitemap-route.test.ts`) **no se pudieron correr**: esta sesión no tiene Docker/Supabase local
+levantado (`npx supabase status` falló — "no se puede conectar al daemon de Docker"). Quedan
+actualizados y listos por lectura/razonamiento estático, pero sin ejecutar — correrlos contra
+Postgres local antes de mergear es el paso pendiente más importante de esta tanda.
+
+## Verificación con contexto fresco (`sonnet-adversarial-reviewer`, post-tanda 🔴)
+
+Veredicto: **APROBADO CON RESERVAS**. Corrió `pnpm typecheck`/`pnpm lint`/`pnpm test` completo por
+sí mismo (verdes) e intentó `pnpm supabase:start` (mismo bloqueo: sin Docker en esta sesión).
+Confirmó de forma independiente que `staff_users.last_login_at` ya existía y que no se tocó
+ninguna migración existente. Encontró 4 cosas reales, las 4 corregidas en el momento:
+
+1. **🟡 F-024 sin backfill.** `last_login_at` nunca se escribió para staff antes de este fix →
+   el día del deploy, el 100% del staff activo actual (sin importar antigüedad) tiene la columna
+   en `NULL` y se vería como "Invitación pendiente" con el botón "Reenviar invitación" visible.
+   **Fix:** migración nueva
+   [075_backfill_staff_last_login_at.sql](src/shared/db/migrations/075_backfill_staff_last_login_at.sql)
+   — `UPDATE staff_users SET last_login_at = created_at WHERE last_login_at IS NULL` (idempotente,
+   `created_at` como mejor aproximación disponible; el próximo login real corrige la fecha).
+   Sincronizada a `supabase/migrations/` con `node scripts/sync-supabase-migrations.mjs`.
+2. **🟡 `listPublicCities()` no tenía el filtro de completitud de F-004.** Alimenta el combobox de
+   ciudad de la home y `/explorar` — un tenant de prueba (`asdas`) seguía apareciendo ahí aunque ya
+   no apareciera en los resultados de búsqueda, llevando a 0 resultados si se lo elegía. **Fix:**
+   mismo `COALESCE((settings->>'onboarding_completed')::boolean, false) = true` agregado en
+   [search.service.ts](src/modules/tenants/search.service.ts) `listPublicCities`.
+3. **🟢 Los tests nuevos de `provision-and-route-staff-identity.test.ts` no verificaban que el
+   `UPDATE ... last_login_at` se ejecutara** (el router solo lanza ante query NO manejada, no
+   exige que cada handler se use) — revertir la línea de `auth.service.ts` habría dejado el test
+   verde igual. **Fix:** assert explícito `calls.some(c => /UPDATE staff_users SET
+   last_login_at/.test(c))` agregado en los 2 tests.
+4. **🟢 Comentario desactualizado en `actions.ts:427-430`** (`resendInviteAction`) — describía la
+   condición vieja de "Reenviar invitación" (`!member.isActive`), que F-024 cambió. **Fix:**
+   comentario actualizado a la condición real (`!isActive || (isActive && !lastLoginAt)`).
+
+Puntos que el revisor chequeó a fondo y confirmó SIN hallazgos: `idle_timeout`/`max_lifetime` de
+F-002 (verificado contra el código fuente de la librería `postgres` — no corta conexiones a mitad
+de transacción), el `connect-src` de dev no se tocó, el guard de auto-bloqueo de F-024 sigue
+intacto, la decisión de no migrar para F-024 es correcta (columna preexistente confirmada), el
+argumento de F-004 de NO exigir `fromPriceCents IS NOT NULL` es sólido, `search-upgrade.test.ts
+#5` sigue ejercitando lo que decía ejercitar, y el blast radius de `INSERT INTO tenants` en tests/
+scripts está completo.
+
+Re-verificación tras aplicar los 4 fixes: `pnpm typecheck` ✓, `pnpm lint` ✓, `pnpm vitest run`
+sobre los 6 archivos tocados por la ronda → 44/44 ✓, `pnpm test` completo → 3502/3503 (1 todo
+preexistente) ✓.
+
+## Verificación de la tanda 🔴 (estado final)
+
+```
+pnpm typecheck                              ✓ limpio (5 hallazgos + 4 fixes de la revisión adversarial)
+pnpm lint                                   ✓ limpio
+pnpm test (suite completa)                  → 3502/3503 (335 archivos + 1 skip, 1 todo preexistentes)
+pnpm test:integration                       NO CORRIDO — sin Docker/Supabase local en esta sesión
+                                             (confirmado 2 veces: sesión principal Y el revisor
+                                             adversarial intentaron `supabase:start` por separado)
+```
+
+Pendiente antes de dar la tanda por cerrada: (1) levantar `pnpm supabase:start` y correr
+`pnpm test:integration` completo (además de los 4 archivos tocados por F-004, cualquier otro test
+que inserte tenants crudos y dependa de verlos en `/explorar`/sitemap), (2) las 2 REQUIERE INPUT
+de negocio (infra de F-002, tenants de prueba de F-004), (3) re-verificar F-001/F-024/F-022 contra
+`https://turnogol.app` post-deploy — la migración 075 (backfill) necesita correr en ese deploy
+para que F-024 no genere una falsa alarma de "Invitación pendiente" masiva.
+
+Sin commits: todo queda en el working tree.
+
+# QA Prod — fixes de `docs/qa/PROD_QA_2026-08-17.md`, tanda 🟡/🟢 (2026-08-17, EN CURSO)
+
+Sesión interrumpida a mitad de F-006 para dar status — este bloque es el ledger de lo que queda
+colgado, para que no se pierda si la sesión corta acá. Cada hallazgo de abajo (salvo donde se
+aclara) tiene su fix aplicado + `pnpm typecheck`/`pnpm lint` verdes + tests unit/story corridos
+donde existían. Detalle archivo-por-archivo de cada uno todavía NO está escrito en este doc —
+recuperable del diff (`git status`/`git diff`) si la sesión sigue.
+
+## Cerrados y verificados (17)
+
+F-008 (NO REPRODUCE en casi todo — el safety-net CSS de globals.css ya cubría, medido en vivo
+contra turnogol.app; 1 gap real cerrado en `confirm-dialog.tsx`), F-009 (soft-404 admin —
+`reservas/(list)/` + `torneos/layout.tsx` nuevo; `/jugadores/{uuid}` NO reproduce, sin loading.tsx
+en su cadena, pendiente de que Lazar lo confirme en prod), F-010 (error de sobrecobro no se
+limpiaba — 4 archivos: `BookingSlotPanel.tsx`, `FiadosList.tsx`, `StreetMoneyChargeDialog.tsx`,
+`InscripcionesPanel.tsx`), F-011 (`formatPercent` nuevo en `lib/format.ts`, usado en
+`analiticas/page.tsx` + `ReportCharts.tsx`), F-012 (dos `<h1>` en la home — el de `HeroDesktop.tsx`
+pasó a `<p>`), F-013 (`telHref` nuevo en `lib/format.ts`, usado en `TenantHeader.tsx` +
+`AvailabilityGrid.tsx`), F-014 (`generateMetadata` en `/[slug]/reservar/page.tsx`, `noIndex: true`),
+F-015 (tap targets — 3 links en `status-banner.tsx` + logo mobile en `admin-header.tsx`), F-016
+(`scripts/sentry-issues.ts` — `--detail` ya no manda `statsPeriod=90d`), F-017 (plural en
+`FixturePanel.tsx`, diálogo de borrar fixture), F-018 (bug real: `tournament-standings.service.ts`
+contaba goles-sin-autor mal — el `attributed` de la resta no filtraba `team_player_id IS NOT NULL`;
++ plural "gol(es)" en `GoleadoresTable.tsx`), F-019 (mensaje del wizard de horarios menciona el
+checkbox + se limpia al cambiar cualquier campo, `StepSchedule.tsx`), F-020 (`MoneyInput` avisa
+cuando se descarta un signo negativo en vez de guardarlo en silencio), F-021 (label del campo
+Cliente en `AbonadoForm.tsx`, `/abonados/nuevo`).
+
+## F-006 — CERRADO Y VERIFICADO
+
+Las 5 imágenes YA están convertidas (ffmpeg local, `libwebp` + `libsvtav1`): `bg-hero-desktop.png`
+1,99MB→64KB avif/106KB webp, `bg-hero-2.png` 832KB→96KB/131KB, `bg-how-it-works.png`
+749KB→57KB/86KB, `bg-owner.png` 722KB→51KB/77KB, `hero-bg.png` 783KB→53KB/102KB. Verificadas
+visualmente por lectura directa del archivo (`Read` sobre el .avif/.webp decodificado) — se ven
+idénticas al PNG original. Los 5 componentes (`HeroDesktop.tsx`, `HeroMobile.tsx`,
+`HowItWorks.tsx`, `OwnerBanner.tsx`, `para-complejos/page.tsx`) ya apuntan a
+`image-set(avif, webp, png)` en vez del `url(png)` plano. `pnpm typecheck` ✓.
+
+**Verificación en navegador (esta sesión):** `preview_start` del dev server local, dark mode,
+navegación a `/` y `/para-complejos`. `read_network_requests` confirma `200 OK` sobre
+`bg-hero-2.avif`, `bg-hero-desktop.avif`, `bg-how-it-works.avif`, `bg-owner.avif` y `hero-bg.avif`
+— CERO requests a los `.png` originales en ninguna de las dos rutas. Sin errores de consola. El
+`image-set()` renderiza como se esperaba.
+
+`public/bg-hero.png` (608 KB, sin uso real fuera de fixtures de test) quedó sin tocar — candidato a
+borrado, REQUIERE OK explícito de Lazar (protocolo de fixes), preguntado en el cierre de esta
+tanda.
+
+## D — `pnpm test:integration` / `test:isolation` contra Postgres real — CERRADO
+
+Docker disponible esta sesión (`docker info` OK, `supabase_db_TurnoGol` ya corriendo). Corrida
+completa: `test:isolation` 166/166 verde de punta a punta. `test:integration` completo encontró y
+cerró **2 bugs reales** que la lectura de código de la sesión anterior no podía ver — exactamente
+lo que esta verificación existía para atrapar:
+
+1. **`tests/helpers/tenant.ts:83-102`** — `createTestTenant()` (soporte de F-004) usaba un
+   `WITH ins AS (INSERT ... RETURNING id) UPDATE tenants ... FROM ins WHERE t.id = ins.id`: todas
+   las partes de un mismo `WITH` corren contra el MISMO snapshot (regla documentada de Postgres),
+   así que el `UPDATE` nunca veía la fila insertada por su hermano — 0 filas afectadas, siempre, y
+   `rows[0]` quedaba `undefined` para **cualquier caller** de `createTestTenant()` (106 archivos).
+   Reproducido en vivo contra el container (`docker exec supabase_db_TurnoGol psql`). Fix: dos
+   statements separados (INSERT, después UPDATE por id). `search-upgrade.test.ts` (10 tests) pasó
+   de 100% roto a 100% verde.
+2. **`tests/integration/sitemap-route.test.ts:8-22`** (soporte de F-004) — `seed()` interpolaba un
+   STRING ya-serializado (`const done = '{"onboarding_completed": true}'`) como parámetro con cast
+   `${done}::jsonb`. El serializer jsonb del pool (mutado por Drizzle vía `restoreJsonSerializers`,
+   ver `drizzle45-pisa-serializers-jsonb`) lo doble-codificaba: quedaba guardado como el STRING
+   literal `"{\"onboarding_completed\": true}"` en vez del objeto, así que
+   `settings ->> 'onboarding_completed'` daba `NULL` y los tenants -a/-b nunca aparecían en el
+   sitemap. Confirmado con un script standalone contra `getSql()` real (`sql.json({...})` sí
+   serializa bien; el string+cast no). Fix: `sql.json({ onboarding_completed: true })` en vez del
+   string+`::jsonb`.
+3. **Efecto colateral del fix #1** (no un bug nuevo, una tensión real entre dos usos): al arreglar
+   `createTestTenant()`, el `onboarding_completed: true` que F-004 le pedía por defecto ahora SÍ se
+   aplica — y eso rompió `mp-callback-happy-path.test.ts` (2 asserts), que necesita un tenant
+   *fresco, sin onboarding* para probar la transición false→true que dispara el callback de MP.
+   Antes pasaba de pura casualidad (el bug #1 dejaba `onboarding_completed` sin setear = `false`).
+   Fix: `createTestTenant()` suma un tercer override opcional, `onboardingCompleted` (default
+   `true`, preserva el comportamiento ya probado en 950+ tests), y los 3 call sites de
+   `mp-callback-happy-path.test.ts` piden `{ onboardingCompleted: false }` explícito.
+
+**Verificación de los 3 fixes**: `pnpm typecheck` + `pnpm lint` verdes después de cada uno (ciclo
+de a uno, no batcheados). `test:integration` completo: **952/953 verde** (952 en la 2da corrida,
+tras los 3 fixes; era 950/953 con 3 hallazgos antes de tocar nada).
+
+**El 1/953 que sigue rojo — NO es de esta tanda, NO se toca**: `schema-drift.test.ts` reporta
+`players.phone_hint8: existe en la DB, ausente en Drizzle`. Grep confirma CERO rastro de
+`phone_hint8` en `src/shared/db/migrations/`, `src/shared/db/schema/`, `supabase/migrations/` ni
+`docs/` — es una columna generada (`GENERATED ALWAYS AS ...`) que vive SOLO en este Postgres local
+(`\d players` la muestra con su índice), sin ninguna migración que la respalde. Drift de entorno
+local preexistente, ajeno a todo lo tocado en esta sesión — no se inventa una migración para
+taparlo (protocolo de fixes: no inventar columnas/estructura sin confirmar). Queda para que Lazar
+diga qué es (¿WIP de otra sesión aplicado a mano?) antes de tocarlo.
+
+## F-005 — puntos 2 y 3 — CERRADOS (punto 1 ya había cerrado de rebote por F-001)
+
+**B1 — banner de push a una línea** (`src/components/admin/PushNotificationManager.tsx:320-364`).
+Era una card apilada (título + descripción + botón, cada uno en su fila): 142px medidos en prod a
+1366×768. Pasa a una fila (ícono `Bell` + texto corto + botón + cerrar), sin volver a
+`fixed`/flotante (el propio archivo documenta por qué eso se descartó — ENS-11, QA 2026-08-13) y
+sin tocar los textos que los tests esperan (`¿Habilitar notificaciones?`, `Habilitar
+notificaciones`, `Habilitando…`, botón `Cerrar`) — se saca la descripción larga, que ya estaba
+oculta en mobile. Verificado: `tests/unit/push-notification-dismiss.test.tsx` (6),
+`tests/unit/push-notification-timeout.test.tsx` (2), `tests/unit/push-broadcast-dedupe.test.tsx`
+(6), `tests/unit/admin-layout-hard-lock.test.tsx` (6) y `PushNotificationManager.stories.tsx` (5,
+Storybook) — 25 tests verdes. `/grilla` en el Browser tool redirige a `/login` (sin sesión de staff
+seedeada en este dev local): verificación visual en vivo queda pendiente de un ambiente con sesión,
+la evidencia de esta sesión es story + unit.
+
+**B2 — leyenda de estados como popover** (`src/components/booking/grid/GridLegendPopover.tsx`
+nuevo + uso en `src/components/booking/BookingGrid.tsx:288`). Era una fila fija debajo de la
+grilla. `GridLegend.tsx` NO se tocó (mismo componente, misma story) — se agregó un wrapper con el
+`Popover` que ya existe (`src/components/ui/popover.tsx`, shadcn) detrás de un botón trigger
+("¿Qué significa cada color?"). Verificado: `tests/unit/booking-grid.test.tsx` (28),
+`tests/unit/grid-day-list.test.tsx` (11), `tests/unit/grilla-date-param.test.ts` (3),
+`tests/unit/use-booking-realtime.test.ts` (8) y `GridLegend.stories.tsx` (1, Storybook) — 51 tests
+verdes.
+
+`pnpm typecheck` + `pnpm lint` verdes después de cada uno de los dos fixes (no batcheados).
+
+## F-007 — CERRADO (3 apariciones citadas) — MÁS chico que se creía: la clase sigue abierta
+
+**Componente nuevo**: `src/components/ui/segmented-control.tsx`, wrapper de
+`@radix-ui/react-radio-group` (`AvisosForm.tsx` ya lo usaba directo — el precedente citado en el
+propio hallazgo). `role="radiogroup"` + `role="radio"` + `aria-checked` + roving tabindex salen
+gratis del primitive. Deliberadamente SIN estilo propio (`itemClassName(active)` — cada caller
+mantiene su look exacto, cero rediseño no pedido): esto es un fix de accesibilidad, no de UI.
+
+**Los 3 usos citados, reemplazados uno por uno** (typecheck + lint + tests entre cada uno):
+
+1. `ReservasPolicyForm.tsx` — 4 grupos (Seña, % de seña, Reservas online, Cancelación). El
+   `aria-label` de cada `SegmentedControl` tuvo que evitar repetir el texto de su `<Label>` vecina
+   (`% de seña (presets)`, no `Porcentaje de seña`): un `aria-label` que matchea el mismo texto que
+   ya usa `getByLabelText` ambigua CON el input real ("Otro"), y `getMultipleElementsFoundError`
+   tiró 2 de las 7 stories abajo hasta corregirlo. Verificado:
+   `tests/unit/reservas-policy-form.test.tsx` (2) + `ReservasPolicyForm.stories.tsx` (7, Storybook,
+   con 1 fix de `getByRole('button', …)` → `getByRole('radio', …)` porque ESO es justo el punto del
+   cambio).
+2. `DepositFieldset.tsx` (modal de nueva reserva) — cambio de comportamiento DELIBERADO: antes
+   reclickear el método activo lo apagaba a "Sin seña" (un toggle), ahora es un radio de verdad y
+   eso no aplica (un radio no se desmarca reclickeándose — es semántica del rol, no una regresión).
+   "Sin seña" sigue ahí como opción explícita a un click. Verificado:
+   `tests/unit/reservas-quick-actions.test.tsx` (16) + `tests/unit/booking-form-modal.test.tsx`
+   (15) + `QuickBookingForm.stories.tsx` (4, Storybook) + — el que SÍ agarró un caso real —
+   `tests/unit/booking-grid.test.tsx` (28, 2 asserts con el mismo `getByRole('button', {name:
+   'Efectivo'})` → `'radio'`, encontrado recién en la corrida completa de `pnpm test`, no en la
+   corrida scopeada).
+3. `CompleteBookingDialog.tsx` (panel de cobro) — mismo patrón, labels cortos (Transf./MP)
+   precalculados en vez de un ternario inline en el render. Sin story dedicada; verificado con
+   `tests/unit/reservas-quick-actions.test.tsx` (16) + `tests/unit/contact-whatsapp.test.ts` (5).
+
+**Cierre**: `pnpm test` completo → **335/336 archivos, 3504/3505 tests verdes** (1 skip + 1 todo,
+preexistentes, ajenos). `pnpm typecheck` + `pnpm lint` verdes.
+
+**El grep de la clase que pedía el propio hallazgo** ("reemplazar las apariciones sueltas, después
+un grep para confirmar que no quedó ninguna") **encontró que la clase es mucho más grande que las 3
+citadas**: `grep -rl "aria-pressed=\{" src/` da **22 archivos**. No son los 22 el mismo bug — la
+mayoría son toggles genuinos de UN botón (`FavoriteButton.tsx`, filtros) donde `aria-pressed` es lo
+correcto, no un grupo excluyente. Pero al menos uno SÍ es la misma clase, confirmado por lectura:
+**`src/app/(admin)/caja/components/RegisterMovementModal.tsx`** tiene TRES grupos de opción
+excluyente sin `role="radiogroup"` (Tipo de movimiento, Categoría, Método de pago —
+`PAYMENT_METHOD_OPTIONS.map` igual que el panel de cobro, líneas 162-219). Esto quedó **FUERA del
+plan aprobado** (3 archivos, no 4) — se reporta como hallazgo nuevo en vez de ampliar el scope de
+esta tanda en silencio. Queda para una sesión de auditoría de accesibilidad aparte: clasificar los
+22 archivos (¿cuántos son grupos excluyentes reales vs. toggles legítimos?) antes de tocar nada.
+
+## Estado al cierre de esta sesión
+
+Nada commiteado. `git status` para el estado exacto — a lo ya descripto en la sección de arriba
+(tanda 🟡/🟢, ~55 archivos + 2 migraciones + 10 imágenes) se suman esta sesión:
+`tests/helpers/tenant.ts`, `tests/integration/sitemap-route.test.ts`,
+`tests/integration/mp-callback-happy-path.test.ts`, `tests/unit/booking-grid.test.tsx`,
+`src/components/admin/PushNotificationManager.tsx`, `src/components/booking/BookingGrid.tsx`,
+`src/app/(admin)/settings/reservas/ReservasPolicyForm.tsx`,
+`src/app/(admin)/settings/reservas/ReservasPolicyForm.stories.tsx`,
+`src/components/booking/quick-form/DepositFieldset.tsx`,
+`src/app/(admin)/reservas/CompleteBookingDialog.tsx` (modificados) y
+`src/components/booking/grid/GridLegendPopover.tsx` + `src/components/ui/segmented-control.tsx`
+(nuevos). F-006, D, F-005 y F-007 quedan CERRADOS.
+
+## Pendiente — decisiones para Lazar (sin resolver, preguntadas 2026-08-17)
+
+1. **F-002 (infra Supavisor/pool_size)** — REQUIERE INPUT, ya causó un corte real en producción
+   (P-01). Fix de código ya aplicado (`idle_timeout`/`max_lifetime` en `src/shared/db/client.ts`,
+   sin commitear); falta el cambio de infra (subir `pool_size` / transaction mode en el panel de
+   Supabase), fuera del repo.
+2. **F-004 (tenants de prueba en prod)** — NO es una pregunta nueva, ya decidido por Lazar
+   (P-00 en `docs/qa/PLAN_PRODUCCION_2026-08-17.md`: wipe de tenants/jugadores/reservas,
+   conservando schema/roles/plans/system_admins/feature_flags). Falta EJECUTARLO.
+3. **`public/bg-hero.png`** (608 KB, sin uso fuera de fixtures de test) — falta el OK explícito
+   de Lazar para borrarlo (protocolo de fixes lo exige antes de tocar borrados).
+4. **Clase `aria-pressed` sin `role="radiogroup"`** — hallazgo nuevo, fuera del plan aprobado de
+   esta tanda. Confirmado en `src/app/(admin)/caja/components/RegisterMovementModal.tsx` (3 grupos:
+   Tipo, Categoría, Método de pago, líneas 162-219). Quedan 21 archivos más con `aria-pressed`
+   (`grep -rl "aria-pressed=\{" src/`) sin clasificar — la mayoría probablemente son toggles
+   legítimos de un solo botón, no la misma clase. Necesita una sesión de auditoría de
+   accesibilidad aparte para clasificarlos antes de tocar nada.
+
+## Resolución de las 4 decisiones (2026-08-17, mismo día)
+
+**1. F-002 — CORRECCIÓN tras pregunta de Lazar ("¿esto no lo había hecho ya?").** Investigado
+contra `docs/audit/reports/fase-d5-infra-datos-report.md` (audit D5, 2026-07-23, medido en vivo
+contra prod): hay DOS conexiones a Postgres separadas, no una, y solo UNA de las dos ya está en
+transaction mode.
+
+- `DATABASE_URL` (pool de la app web, rol `turnogol_app`) — el D5 de julio ya lo midió en
+  `pooler.supabase.com:6543` (transaction mode). Esta es la que aparece en `.env.production`
+  local también con `:6543`. Probablemente sigue así.
+- `WORKER_DATABASE_URL` (rol `turnogol_worker`, BYPASSRLS) — el mismo report de julio la mide
+  **a propósito en `:5432` (session mode/directa)** del lado de Railway: el proceso de workers
+  es uno solo, de larga vida, y necesita conexión estable para `LISTEN/NOTIFY` — ahí SÍ
+  corresponde directa, no pooler. Pero esta variable **no la usa solo Railway**: la web
+  (Vercel) también la usa, en cada request de staff, para `getStaffTenant()`
+  (`src/modules/tenants/tenant.service.ts:176`, antes de saber a qué complejo pertenece el
+  usuario). Y la evidencia de F-002 de HOY (`docs/qa/PROD_QA_2026-08-17.md:104-166`) muestra
+  exactamente al rol `turnogol_worker` agotando las 15 conexiones — el mismo rol cuya URL el
+  propio doc de julio documenta en modo sesión.
+
+**Conclusión:** lo más probable es que Vercel tenga copiada la MISMA `WORKER_DATABASE_URL` de
+Railway (sesión, `:5432`) — correcta para el proceso 24/7 de Railway, pero exactamente el problema
+para las instancias efímeras de Vercel (mismo patrón que tenía `DATABASE_URL` antes de julio). El
+gap real no es "falta pasar a transaction mode en general": es que **Vercel necesita una
+`WORKER_DATABASE_URL` propia, en `:6543` pooler, distinta de la de Railway** — Railway se queda
+como está (`:5432` es lo correcto ahí). Ninguna sesión anterior verificó esto con acceso al
+dashboard; queda para que Lazar lo confirme.
+
+Con esa corrección, orden recomendado (de mayor a menor impacto):
+
+  1. *(Ya aplicado, código)* `idle_timeout`/`max_lifetime` — cierra la fuga: antes una conexión
+     ociosa no se soltaba nunca.
+  2. **Confirmar `DATABASE_URL` en Vercel** (probablemente ya en `:6543` transaction mode desde
+     julio — un chequeo de 10 segundos, no un cambio).
+  3. **Dar de alta una `WORKER_DATABASE_URL` propia para Vercel, en `:6543` transaction mode —
+     separada de la de Railway, que se queda en `:5432` directa.** Esta es la acción real, la que
+     faltaba: es la MISMA causa concreta del corte que ya pasó (evidencia de F-002: el rol
+     `turnogol_worker` agotó las 15 conexiones solo), y explica por qué el fix de julio (que sí
+     movió `DATABASE_URL`) no evitó que volviera a pasar en agosto — atacó la variable que no era
+     la que se agotó. Un pico de trabajo en segundo plano en Railway no debería poder tirar abajo
+     el login de la web, y hoy puede, porque comparten la misma conexión directa de sesión. En
+     session mode cada cliente conectado retiene UNA conexión real de Postgres mientras dura su
+     sesión — escala 1 a 1, con techo duro (ligado al plan pago de Supabase); transaction mode
+     reparte miles de conexiones de la app entre un puñado de conexiones reales, prestando una
+     solo mientras dura una transacción puntual — es la palanca real para "cientos o miles de
+     usuarios". El código YA es compatible (`prepare: false`, `SET LOCAL` dentro de transacciones
+     explícitas, advisory lock de scope transacción).
+  4. **Recién después, subir `pool_size` con margen — no "al máximo".** Supabase reparte esas
+     conexiones entre la app Y sus propios servicios internos (autenticación, Realtime, tareas
+     programadas — la evidencia de F-002 mostró 7 conexiones de esos consumidores, aparte de las
+     de la app). Llevarlo al techo le saca aire a esos servicios y puede desestabilizar la base
+     en vez de ayudar. Un número con margen, mirando el uso real (`pg_stat_activity`), es la
+     jugada — el techo real lo pone el plan pago de Supabase, no un valor mágico.
+
+  Las 4 acciones necesitan el panel de Supabase/Railway — fuera del repo, fuera de lo que esta
+  sesión puede ejecutar.
+
+**2. F-004 — confirmado por Lazar: él mismo va a borrar tenants/usuarios de prueba antes de dar de
+alta al primer cliente real.** Sin acción de código. Nada que ejecutar de este lado.
+
+**3. `public/bg-hero.png` — BORRADO, con OK explícito de Lazar.** Confirmado que era un archivo
+huérfano: el hero real usa `bg-hero-desktop.png`/`bg-hero-2.png` (F-006) desde antes de esta
+sesión; `bg-hero.png` (608 KB) solo aparecía citado en fixtures/stories de test como una foto de
+relleno cualquiera, nunca en código de producto. Reemplazado por `/bg-hero-desktop.png` (asset real
+y vigente) en los 7 lugares que lo citaban:
+`src/test/fixtures/public.ts`,
+`src/app/(public)/[slug]/components/TenantHeader.stories.tsx`,
+`src/app/(public)/[slug]/components/TenantGallery.stories.tsx`,
+`src/components/site/FeaturedComplexCard.stories.tsx`,
+`src/app/(public)/explorar/components/TenantCardCarousel.stories.tsx`,
+`src/app/(public)/explorar/components/TenantCard.stories.tsx`. Después, `rm public/bg-hero.png`.
+Verificación: `pnpm typecheck` ✓, `pnpm lint` ✓, stories de los 5 componentes visuales tocados
+corridas con `vitest --config vitest.storybook.config.ts` (ver resultado abajo).
+
+**4. Clase `aria-pressed` — confirmado por Lazar: queda anotada para otra sesión, no se toca
+ahora.** Sin cambios de código.
+
+
 ---
 
 ## Esfuerzo — Guardrails mecánicos contra los 6 patrones repetidos (2026-08-17)

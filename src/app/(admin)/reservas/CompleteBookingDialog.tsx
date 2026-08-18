@@ -6,13 +6,18 @@ import { Plus, Trash2, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyInput } from '@/components/ui/money-input'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import type { CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
 
-const METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS
+// Mismas etiquetas cortas que ya tenía el render (Transf./MP), ahora precalculadas.
+const METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS.map((m) => ({
+  value: m.value,
+  label: m.label === 'Transferencia' ? 'Transf.' : m.label === 'MercadoPago' ? 'MP' : m.label,
+}))
 
 type Method = MethodKey
 
@@ -281,22 +286,23 @@ export default function CompleteBookingDialog({
                         {idx === 0 && (
                           <span className="text-xs font-medium text-muted-foreground">Método</span>
                         )}
-                        <div className="flex flex-wrap gap-1">
-                          {METHOD_OPTIONS.map((m) => (
-                            <button
-                              key={m.value}
-                              type="button"
-                              onClick={() => updateChargeLine(c.id, { method: m.value })}
-                              className={chipClass(c.method === m.value)}
-                            >
-                              {m.label === 'Transferencia'
-                                ? 'Transf.'
-                                : m.label === 'MercadoPago'
-                                  ? 'MP'
-                                  : m.label}
-                            </button>
-                          ))}
-                        </div>
+                        <SegmentedControl
+                          className="flex flex-wrap gap-1"
+                          // F-007: varias líneas de cobro = varios radiogroups
+                          // idénticos — mismo criterio que el `aria-label` del
+                          // `<select>` de `SplitPaymentFields.tsx`, el índice
+                          // entra al nombre para que un lector de pantalla
+                          // los distinga.
+                          aria-label={
+                            charges.length > 1
+                              ? `Método de pago del cobro ${idx + 1}`
+                              : 'Método de pago'
+                          }
+                          value={c.method}
+                          onValueChange={(v) => updateChargeLine(c.id, { method: v })}
+                          itemClassName={chipClass}
+                          options={METHOD_OPTIONS}
+                        />
                       </div>
                       {charges.length > 1 && (
                         <button

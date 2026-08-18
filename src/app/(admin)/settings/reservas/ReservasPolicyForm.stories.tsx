@@ -69,10 +69,13 @@ export const OtroPrecargaElPresetActivo: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Hay dos botones "Otro" en la pantalla (seña y anticipación de
+    // Hay dos opciones "Otro" en la pantalla (seña y anticipación de
     // cancelación) — se escopea al fieldset "Seña" para no ambigüar.
+    // F-007: ahora es un SegmentedControl (Radix RadioGroup) — role="radio",
+    // no "button" (ese es justo el punto: antes un lector de pantalla lo
+    // anunciaba como botón suelto, sin decir que era una opción excluyente).
     const senaFieldset = within(canvas.getByRole('group', { name: 'Seña' }))
-    await userEvent.click(senaFieldset.getByRole('button', { name: 'Otro' }))
+    await userEvent.click(senaFieldset.getByRole('radio', { name: 'Otro' }))
     await expect(canvas.getByLabelText(/porcentaje de seña/i)).toHaveValue(50)
   },
 }

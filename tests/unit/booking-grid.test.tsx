@@ -116,17 +116,17 @@ function booking(over: Partial<GridBooking>): GridBooking {
  */
 const panelActions = () => ({
   chargeDebtAction: vi.fn(async () => ({ success: true as const })),
-  completeAndChargeBookingAction: vi.fn(async () => ({ success: true })),
-  addBookingChargeAction: vi.fn(async () => ({ success: true })),
-  markNoShowAction: vi.fn(async () => ({ success: true })),
-  revertNoShowAction: vi.fn(async () => ({ success: true })),
+  completeAndChargeBookingAction: vi.fn(async () => ({ success: true as const })),
+  addBookingChargeAction: vi.fn(async () => ({ success: true as const })),
+  markNoShowAction: vi.fn(async () => ({ success: true as const })),
+  revertNoShowAction: vi.fn(async () => ({ success: true as const })),
   listRescheduleSlotsAction: vi.fn(async () => ({
     success: true as const,
     slots: [],
     minDate: '2026-06-10',
     maxDate: '2026-06-16',
   })),
-  rescheduleBookingAction: vi.fn(async () => ({ success: true })),
+  rescheduleBookingAction: vi.fn(async () => ({ success: true as const })),
 })
 
 function renderGrid(opts?: {
@@ -523,7 +523,9 @@ describe('BookingGrid — popover de alta rápida', () => {
     fireEvent.click(screen.getByRole('button', { name: FREE }))
     const input = await screen.findByLabelText('¿A nombre de quién?')
     fireEvent.change(input, { target: { value: 'Con seña' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Efectivo' }))
+    // F-007: DepositFieldset ahora usa SegmentedControl (Radix RadioGroup) —
+    // role="radio", no "button" (ese es justo el punto del fix).
+    fireEvent.click(screen.getByRole('radio', { name: 'Efectivo' }))
     fireEvent.submit(input.closest('form')!)
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
@@ -547,7 +549,7 @@ describe('BookingGrid — popover de alta rápida', () => {
     await screen.findByLabelText('¿A nombre de quién?')
 
     expect(screen.queryByText(/sugerida/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Efectivo' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Efectivo' }))
     const monto = screen.getByLabelText('Monto de la seña') as HTMLInputElement
     expect(monto.value).toBe('')
   })

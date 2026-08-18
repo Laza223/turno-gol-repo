@@ -8,11 +8,20 @@ import { Logo } from '@/components/ui/logo'
 const HERO_IMG =
   'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=2000&auto=format&fit=crop'
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ pending?: string }>
+}) {
+  // F-025: marca de "ya te registraste, revisá el mail" que sobrevive un F5.
+  // Solo el flag viaja por la URL — el email queda en sessionStorage (dato
+  // personal, ver el comentario en RegisterCard).
+  const pending = (await searchParams)?.pending === '1'
+
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <ImagePane />
-      <FormPane />
+      <FormPane pending={pending} />
     </div>
   )
 }
@@ -67,7 +76,7 @@ function ImagePane() {
   )
 }
 
-function FormPane() {
+function FormPane({ pending }: { pending: boolean }) {
   return (
     <div className="relative flex items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
       <Link
@@ -83,7 +92,7 @@ function FormPane() {
           <Logo variant="vertical" className="w-32" />
         </div>
 
-        <RegisterCard action={registerAction} />
+        <RegisterCard action={registerAction} pending={pending} />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useSyncExternalStore } from 'react'
 import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { CheckCircle2, Mail } from 'lucide-react'
@@ -22,11 +22,68 @@ export type RegisterAction = (
  * `node:async_hooks`, que Vite externaliza en el browser y rompe la story si
  * se importa como valor.
  */
-export function RegisterCard({ action }: { action: RegisterAction }) {
+/**
+ * F-025 (QA de producción 2026-08-17): el estado "esperando confirmación" vivía
+ * solo en `useActionState`, o sea en memoria del navegador. Un F5 en esa pestaña
+ * lo reiniciaba a `idle` y reaparecía el formulario VACÍO, como si el registro
+ * nunca hubiera pasado — el dueño que refresca por ansiedad puede volver a
+ * registrarse creyendo que falló.
+ *
+ * El flag sobrevive en la URL (`?pending=1`, que el Server Component lee y pasa
+ * como prop) y el email en `sessionStorage`. La separación es deliberada: el
+ * email es dato personal y no va en un query string — se filtra a logs,
+ * referrers y al historial del navegador. Si el `sessionStorage` no lo tiene
+ * (otra pestaña, storage limpiado), se muestra el mismo cartel sin el email:
+ * peor mensaje, nunca el formulario vacío.
+ */
+const PENDING_EMAIL_KEY = 'tg_register_pending_email'
+
+/** El valor no cambia durante la vida de la página: no hay a qué suscribirse. */
+const subscribeNever = () => () => {}
+
+function readPendingEmail(): string | null {
+  try {
+    return sessionStorage.getItem(PENDING_EMAIL_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function RegisterCard({
+  action,
+  pending = false,
+}: {
+  action: RegisterAction
+  pending?: boolean
+}) {
   const [state, formAction] = useActionState(action, initial)
+
+  // `useSyncExternalStore` y no `useState` + efecto: el snapshot del servidor es
+  // `null` (no hay sessionStorage en SSR) y el del cliente se lee en el render,
+  // así que no hay mismatch de hidratación ni un `setState` dentro de un efecto
+  // (que la regla `react-hooks/set-state-in-effect` prohíbe, con razón).
+  const storedEmail = useSyncExternalStore(subscribeNever, readPendingEmail, () => null)
+
+  const confirmed = state.status === 'confirm'
+  const confirmedEmail = state.status === 'confirm' ? state.email : null
+
+  useEffect(() => {
+    if (!confirmed || !confirmedEmail) return
+    try {
+      sessionStorage.setItem(PENDING_EMAIL_KEY, confirmedEmail)
+    } catch {
+      // Modo privado / storage lleno: el cartel sigue saliendo, sin el email.
+    }
+    // `replaceState` y no `router.replace`: no hace falta un round-trip al
+    // servidor para dejar la marca, y evita re-montar la card ya renderizada.
+    const url = new URL(window.location.href)
+    url.searchParams.set('pending', '1')
+    window.history.replaceState(null, '', url)
+  }, [confirmed, confirmedEmail])
 
   if (state.status === 'confirm') return <ConfirmState email={state.email} />
   if (state.status === 'existing') return <ExistingState email={state.email} />
+  if (pending && state.status === 'idle') return <ConfirmState email={storedEmail} />
   return <FormCard state={state} formAction={formAction} />
 }
 
@@ -126,7 +183,7 @@ function FormCard({
   )
 }
 
-function ConfirmState({ email }: { email: string }) {
+function ConfirmState({ email }: { email: string | null }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card/90 dark:bg-white/4 dark:border-white/8 p-8 text-center shadow-xl shadow-slate-900/5 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 ring-8 ring-emerald-50">
@@ -134,8 +191,14 @@ function ConfirmState({ email }: { email: string }) {
       </div>
       <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Confirmá tu email</h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Te enviamos un email a <strong className="text-foreground">{email}</strong>. Hacé click en
-        el enlace para activar tu cuenta; después entrás con tu contraseña.
+        {email ? (
+          <>
+            Te enviamos un email a <strong className="text-foreground">{email}</strong>.
+          </>
+        ) : (
+          <>Te enviamos un email.</>
+        )}{' '}
+        Hacé click en el enlace para activar tu cuenta; después entrás con tu contraseña.
       </p>
       <p className="mt-6 text-xs text-muted-foreground">
         ¿No llegó? Revisá spam. Podés volver a{' '}

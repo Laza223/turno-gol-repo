@@ -1,4 +1,6 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { buildMetadata } from '@/lib/seo/metadata'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { endLabelFromMins } from '@/shared/time/operating-day'
@@ -195,4 +197,31 @@ export default async function ReservarPage(props: Props) {
       </div>
     </ReservaShell>
   )
+}
+
+/**
+ * F-014 (QA de producción 2026-08-17): el paso de pago servía `TurnoGol` a secas
+ * como título del documento, contra `Complejo elite padel · TurnoGol` en el
+ * perfil. Con varias pestañas abiertas —el caso normal al comparar complejos—
+ * la del checkout no decía ni dónde ni cuándo.
+ *
+ * `noIndex` a propósito: es una pantalla con parámetros de una reserva puntual,
+ * no una página que tenga sentido en un buscador.
+ */
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams])
+  const tenant = await getPublicTenant(params.slug)
+  if (!tenant) return {}
+
+  const cuando =
+    searchParams.date && TIME_RE.test(searchParams.time ?? '')
+      ? ` · ${searchParams.date} ${searchParams.time}`
+      : ''
+
+  return buildMetadata({
+    title: `Reservar en ${tenant.name}${cuando}`,
+    description: `Confirmá tu turno en ${tenant.name}, ${tenant.city}.`,
+    path: `/${tenant.slug}/reservar`,
+    noIndex: true,
+  })
 }

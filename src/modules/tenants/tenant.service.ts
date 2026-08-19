@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { and, eq, like, ne, or, sql } from 'drizzle-orm'
-import { getDb, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
+import { getDb, getSql, getWorkerDb, withTenantContext, type DbTx } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { TRIAL_DAYS } from '@/shared/constants'
@@ -327,4 +327,52 @@ export async function connectMercadoPago(
       updatedAt: new Date(),
     })
     .where(eq(tenants.id, tenantId))
+}
+
+/**
+ * Desvincula la cuenta de MercadoPago del complejo.
+ *
+ * Por qué existe: hasta ahora conectar era un camino de una sola dirección. El
+ * botón de /settings/facturacion se oculta cuando `mpConnectedAt` está seteado
+ * y no había ninguna otra puerta, así que un complejo que conectó la cuenta
+ * equivocada —o que cambia de cuenta— quedaba trabado sin salida in-app.
+ *
+ * Apaga `requires_deposit` en el mismo UPDATE, y eso no es un extra: exigir
+ * seña sin MercadoPago conectado es justo el estado que dejaba al jugador
+ * colgado en el checkout (F-003 del QA de producción 2026-08-17; el guard de
+ * `updateReservasPolicyAction` impide ENTRAR a ese estado, así que desconectar
+ * sin apagar la seña lo reconstruiría por la puerta de atrás). Un solo
+ * statement para que no exista una ventana con seña activa y sin credenciales.
+ *
+ * El `%` de seña se deja como está: es la preferencia del complejo y sirve tal
+ * cual cuando vuelva a conectar.
+ */
+export async function disconnectMercadoPago(
+  tenantId: string,
+  tx: DbTx,
+): Promise<{ mpUserId: string | null }> {
+  // Un solo statement: lee el `mp_user_id` que había y lo limpia en el mismo
+  // UPDATE. Hace falta devolverlo porque `TenantRow` no lo expone y es el dato
+  // con el que el audit log reconstruye a qué cuenta estaba vinculado. `RETURNING`
+  // trae la fila NUEVA, así que el valor viejo se saca del `FROM` — que ve el
+  // snapshot previo al UPDATE dentro de la misma sentencia.
+  const rows = await tx.execute<{ mp_user_id: string | null }>(sql`
+    UPDATE tenants AS t
+    SET mp_access_token = NULL,
+        mp_refresh_token = NULL,
+        mp_user_id = NULL,
+        mp_public_key = NULL,
+        mp_nickname = NULL,
+        mp_connected_at = NULL,
+        -- t.settings calificado: con el self-join del FROM, "settings" a secas
+        -- es ambiguo (42702). El lado izquierdo del SET nunca lleva prefijo;
+        -- el derecho sí lo necesita. (Sin backticks en este comentario: cierran
+        -- el template literal de JS.)
+        settings = t.settings || '{"requires_deposit": false}'::jsonb,
+        updated_at = NOW()
+    FROM tenants AS previo
+    WHERE t.id = ${tenantId} AND previo.id = t.id
+    RETURNING previo.mp_user_id AS mp_user_id
+  `)
+  return { mpUserId: rows[0]?.mp_user_id ?? null }
 }

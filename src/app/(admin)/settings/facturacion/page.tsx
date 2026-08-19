@@ -7,6 +7,7 @@ import { SettingsTabs } from '../SettingsTabs'
 import { ActivatePlanSection } from './ActivatePlanSection'
 import { ChangePlanSection } from './ChangePlanSection'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
+import { DisconnectMpSection } from './DisconnectMpSection'
 
 // Nunca mostrar el código crudo del callback OAuth: siempre qué pasó + qué
 // hacer (pages/onboarding.md §6.7). Vivía en StepPayments.tsx —se reubica acá
@@ -152,7 +153,7 @@ export default async function FacturacionPage(
               <p className="mt-2 text-sm text-foreground">
                 Cobrando en la cuenta{' '}
                 <span className="font-semibold">{tenant.mpNickname ?? 'conectada'}</span>. Si no es
-                la del complejo, escribinos para cambiarla.
+                la del complejo, desconectala y conectá la correcta.
               </p>
             )}
           </div>
@@ -172,7 +173,12 @@ export default async function FacturacionPage(
           </div>
         )}
 
-        {!mpConnected && (
+        {mpConnected ? (
+          <DisconnectMpSection
+            nickname={tenant.mpNickname}
+            requiresDeposit={!!tenant.settings?.requires_deposit}
+          />
+        ) : (
           <a
             href="/api/mp/oauth-start"
             className="mt-4 inline-flex h-11 md:h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"

@@ -75,8 +75,22 @@ test.describe('Player bookings', () => {
       // Wait for dialog to close
       await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible()
 
-      // Wait for UI to show canceled badge (page.reload() via router.refresh())
-      await expect(page.getByText('Cancelado').first()).toBeVisible({ timeout: 8_000 })
+      // Una cancelada ya no vive en "Próximos": desde cd3f0787 esa tab filtra
+      // por UPCOMING_PLAYABLE_STATUSES (confirmed | pending_payment), así que
+      // pasa a "Historial". El assert va partido en dos para no perder nada de
+      // lo que verificaba el original:
+      //   1) la tarjeta desaparece de Próximos  → prueba que el router.refresh()
+      //      corrió (era lo que cubría el `toBeVisible` con timeout),
+      //   2) el badge "Cancelado" aparece en Historial → prueba el estado.
+      // Acotado a SU tarjeta (el slot 20:00) y no a `.first()` global: una
+      // reserva ajena no puede satisfacer el assert por accidente.
+      // El locator es perezoso: la misma definición sirve antes y después de
+      // navegar de tab.
+      const card = page.getByRole('main').getByRole('listitem').filter({ hasText: '20:00' })
+      await expect(card).toHaveCount(0, { timeout: 8_000 })
+
+      await page.goto('/mis-reservas?tab=historial')
+      await expect(card.getByText('Cancelado')).toBeVisible({ timeout: 8_000 })
 
       // DB assertion
       const { data: row, error } = await supabase
@@ -200,8 +214,13 @@ test.describe('Player bookings', () => {
       // Wait for dialog to close.
       await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible()
 
-      // Wait for canceled badge.
-      await expect(page.getByText('Cancelado').first()).toBeVisible({ timeout: 8_000 })
+      // Mismo corte de tabs que en el spec de arriba: la cancelada sale de
+      // "Próximos" y aparece en "Historial". Acotado al slot 21:00 de ESTE spec.
+      const card = page.getByRole('main').getByRole('listitem').filter({ hasText: '21:00' })
+      await expect(card).toHaveCount(0, { timeout: 8_000 })
+
+      await page.goto('/mis-reservas?tab=historial')
+      await expect(card.getByText('Cancelado')).toBeVisible({ timeout: 8_000 })
 
       // ── DB assertion ────────────────────────────────────────────────────
       // status must be one of the two canceled variants (policy-dependent).

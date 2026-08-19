@@ -6,6 +6,7 @@ import { Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import { useClientSnapshot } from '@/hooks/use-client-value'
+import { todayART } from '@/shared/time/art-date'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +17,6 @@ import type { CityCount } from '@/modules/tenants/search.service'
 import { buildExplorarUrl } from './url'
 
 type Props = { cities: CityCount[] }
-
-function todayLocal(): string {
-  const d = new Date()
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 10)
-}
 
 const HOURS = Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`)
 
@@ -49,7 +44,10 @@ function cityValueFrom(params: { get(name: string): string | null }): string {
 export default function SearchBar({ cities }: Props) {
   const router = useRouter()
   const params = useSearchParams()
-  const today = useClientSnapshot(todayLocal, todayLocal)
+  // Mismo criterio que HeroSearch: ART explícito. Acá `today` solo es el `min`
+  // del calendario, pero con el huso del runtime el piso del selector era el día
+  // UTC — de 21:00 a 00:00 ART el jugador no podía elegir "hoy".
+  const today = useClientSnapshot(todayART, todayART)
 
   const [q, setQ] = useState(params.get('q') ?? '')
   const [city, setCity] = useState(() => cityValueFrom(params))

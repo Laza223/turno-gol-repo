@@ -7,6 +7,7 @@ import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import { useClientSnapshot } from '@/hooks/use-client-value'
 import { useNearestCity } from '@/hooks/use-nearest-city'
+import { todayART } from '@/shared/time/art-date'
 import type { CityCount } from '@/modules/tenants/search.service'
 import {
   DropdownMenu,
@@ -16,13 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 type Props = { cities: CityCount[]; layout?: 'horizontal' | 'vertical' }
-
-/** YYYY-MM-DD de hoy en horario local (evita el shift de toISOString en UTC). */
-function todayLocal(): string {
-  const d = new Date()
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 10)
-}
 
 const HOURS = Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`)
 
@@ -45,7 +39,14 @@ function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
  */
 export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const router = useRouter()
-  const today = useClientSnapshot(todayLocal, todayLocal)
+  // ART explícito, NO el huso del runtime. `todayLocal()` (getTimezoneOffset)
+  // devolvía el día del SERVIDOR en el HTML (UTC en Vercel) y el día del
+  // NAVEGADOR al hidratar: entre las 21:00 y las 00:00 ART son días distintos,
+  // así que el campo FECHA llegaba con una fecha en el HTML y otra al hidratar
+  // → "Hydration failed … text didn't match" y React regenerando el hero entero
+  // en el cliente, todas las noches, para todos los usuarios. Con el offset fijo
+  // de Argentina (sin DST) las dos puntas calculan lo mismo.
+  const today = useClientSnapshot(todayART, todayART)
   const [q, setQ] = useState('')
   const [city, setCity] = useState('')
   const [cityTouched, setCityTouched] = useState(false)

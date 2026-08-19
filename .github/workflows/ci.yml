@@ -241,8 +241,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `sudo apt-get update` baja los índices de TODOS los repos de Ubuntu y el
+      # 2026-08-19 se colgó 19m43s contra archive.ubuntu.com, comiéndose el
+      # `timeout-minutes: 20` del job entero sin correr un solo test. Misma
+      # falla que ya había matado los tres shards de Stories el mismo día.
+      #
+      # `ubuntu-latest` viene con psql preinstalado, así que el caso normal ni
+      # toca la red: se salta el apt y el job arranca en segundos. El apt queda
+      # solo como respaldo por si una imagen futura deja de traerlo, y con techo
+      # propio para que no vuelva a costar el presupuesto del job.
       - name: Install psql client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+        timeout-minutes: 5
+        run: |
+          if command -v psql >/dev/null 2>&1; then
+            echo "psql ya presente: $(psql --version)"
+          else
+            echo "psql ausente en la imagen del runner — instalando"
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
 
       - name: Create roles required by 008_revokes.sql
         env:

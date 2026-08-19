@@ -123,6 +123,13 @@ export class MercadoPagoGateway implements PaymentGateway {
             // makes in_process rare instead of routine for this flow.
             payment_methods: {
               excluded_payment_types: DEPOSIT_EXCLUDED_PAYMENT_TYPES,
+              // Seña en UNA cuota (decisión del dueño, 2026-08-18). Sin este
+              // tope MP ofrece el máximo de cuotas disponibles, y MercadoPago
+              // le libera la plata al complejo **al ritmo de las cuotas**: una
+              // seña de un turno que se juega el jueves terminaba cobrándose
+              // mes a mes durante un año. El costo financiero de las cuotas
+              // tampoco tiene sentido sobre el 30% de una cancha.
+              installments: 1,
             },
           },
         }),

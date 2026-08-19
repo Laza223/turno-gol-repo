@@ -55,3 +55,24 @@ export async function assertDevOverlayHookExists(page: Page): Promise<void> {
     'El hook del overlay de dev de Next cambió de nombre: revisá los selectores de tests/e2e/visual/screenshot.css',
   ).toBeAttached()
 }
+
+/**
+ * `DayTotalBadge` (barra lateral del admin, B14) pide `/api/admin/day-total` al
+ * montar y pinta un esqueleto gris hasta que llega la respuesta. O sea que las
+ * tres fotos de escritorio del admin tienen una carrera adentro: la regeneración
+ * del 19/08 sacó `admin-canchas` y `admin-settings-reservas` con el número ya
+ * resuelto ("$ 0") y `admin-grilla` con el esqueleto, en la MISMA corrida.
+ * Congelar cualquiera de los dos estados deja la baseline decidida a cara o
+ * ceca.
+ *
+ * Se espera al estado resuelto en vez de enmascarar el badge: el valor es
+ * determinístico (el seed visual no mueve plata HOY, siempre "$ 0") y así el
+ * componente sigue adentro del canario en lugar de quedar tapado por una caja.
+ *
+ * Ancla el `aria-label` que el componente ya distingue por estado
+ * ("Cobrado hoy, cargando" vs "Cobrado hoy: $ 0. Ir a Caja"), no un
+ * data-testid nuevo.
+ */
+export async function waitForDayTotal(page: Page): Promise<void> {
+  await expect(page.getByLabel(/^Cobrado hoy: /)).toBeVisible({ timeout: 15_000 })
+}

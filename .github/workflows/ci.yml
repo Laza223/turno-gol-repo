@@ -131,7 +131,10 @@ jobs:
   stories-shards:
     name: Stories shard ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    # 8 min era el presupuesto de las stories SOLAS; con install-deps lento no
+    # quedaba nada para correrlas. 15 deja margen para el setup sin volver la
+    # espera eterna cuando un shard se cuelga de verdad.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -152,8 +155,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # El binario de Chromium (~150MB) es lo caro de descargar; las libs de
-      # sistema (apt) son rápidas y pueden faltar en un runner nuevo aunque el
-      # binario esté cacheado, así que install-deps corre siempre.
+      # sistema (apt) pueden faltar en un runner nuevo aunque el binario esté
+      # cacheado, así que install-deps corre siempre.
       - uses: actions/cache@v4
         id: pw-cache
         with:
@@ -162,8 +165,22 @@ jobs:
 
       # Browser mode de Vitest: corre las stories en un chromium real, no en
       # jsdom — es lo que hace que axe mida colores computados de verdad.
+      #
+      # `install-deps` hace apt-get contra archive.ubuntu.com y el 2026-08-19
+      # colgó los TRES shards 7m20s seguidos, dos runs idénticos, sin llegar a
+      # correr una sola story (`Get:4 …noble-backports InRelease` y después el
+      # timeout). El comentario de arriba decía "las libs de sistema son
+      # rápidas": no siempre, y cuando no lo son se comen el job entero.
+      #
+      # `continue-on-error` acá NO oculta nada: `ubuntu-latest` ya trae las
+      # libs de Chromium, así que el caso normal es que este step sea
+      # redundante. Si de verdad faltara una, el que falla es el step `Stories`
+      # de abajo —que no es tolerante— con un error de librería explícito. Lo
+      # que se tolera es el apt colgado, no un chromium roto.
       - name: Install Playwright system deps
         run: pnpm exec playwright install-deps chromium
+        timeout-minutes: 3
+        continue-on-error: true
 
       - name: Install Playwright chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'

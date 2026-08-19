@@ -36,18 +36,22 @@ test.describe('visual — público', () => {
 
   test('landing @visual', async ({ page }) => {
     await suppressPushBanner(page)
-    // El campo FECHA del buscador arranca prellenado con HOY: `HeroSearch` es
-    // 'use client' y lo lee con `useClientSnapshot(todayLocal, …)`, o sea del
-    // reloj del browser. Sin congelarlo, esta foto caduca sola — la baseline de
-    // julio traía "29/07/2026" y en agosto el campo decía otra cosa. El diff que
-    // eso mete es chico (unos glifos), pero es ruido permanente en la única
-    // pieza del repo cuyo trabajo es que un diff signifique algo.
-    await page.clock.setFixedTime(FROZEN_NOW)
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     // viewport-only (el default de toHaveScreenshot): la landing es larguísima y
     // un cambio abajo de todo no debería romper la foto del hero.
-    await expect(page).toHaveScreenshot('landing.png')
+    await expect(page).toHaveScreenshot('landing.png', {
+      // El campo FECHA arranca prellenado con HOY (ART), así que caduca solo:
+      // la baseline de julio traía "29/07/2026" y en agosto decía otra cosa.
+      //
+      // El intento anterior fue `page.clock.setFixedTime(FROZEN_NOW)`, y ese
+      // remedio era peor: congela el reloj del BROWSER y no el del servidor, o
+      // sea que garantizaba un "Hydration failed … text didn't match" en cada
+      // corrida y fotografiaba un árbol REGENERADO en el cliente. Peor todavía,
+      // ese error tapaba en el log cualquier mismatch de verdad. Se enmascara el
+      // control y listo: la foto deja de depender del día sin mentirle a React.
+      mask: [page.locator('#hero-date')],
+    })
   })
 
   test('ficha pública del complejo @visual', async ({ page }) => {

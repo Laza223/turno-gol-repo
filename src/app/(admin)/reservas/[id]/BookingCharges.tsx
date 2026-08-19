@@ -10,6 +10,7 @@ import { METHOD_LABELS } from '@/lib/payment-method'
 import { MoneyInput } from '@/components/ui/money-input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { resolveDepositDisplayStatus } from '../deposit-display'
 import type { BookingChargeRow } from '../queries'
 import type { AddBookingChargeInput, BookingChargeActionResult } from '../actions'
 
@@ -18,6 +19,8 @@ type Props = {
   priceSnapshot: number
   depositAmount: number
   depositStatus: string
+  /** Ver `deposit-display.ts`: un pago tardío deja `depositStatus='pending'` con la plata ya devuelta. */
+  depositRefunded?: boolean
   charges: BookingChargeRow[]
   chargesTotal: number
   /**
@@ -66,6 +69,7 @@ export default function BookingCharges({
   priceSnapshot,
   depositAmount,
   depositStatus,
+  depositRefunded,
   charges,
   chargesTotal,
   addBookingChargeAction,
@@ -93,6 +97,9 @@ export default function BookingCharges({
     [priceSnapshot, depositAmount, depositStatus, chargesTotal],
   )
   const isPaidInFull = pendingAmount === 0
+  // Solo la ETIQUETA. `summarizeBookingCharges` de arriba sigue recibiendo el
+  // `depositStatus` crudo: los totales son plata, no texto.
+  const depositDisplayStatus = resolveDepositDisplayStatus(depositStatus, depositRefunded)
 
   const [chargeMode, setChargeMode] = useState<'single' | 'split'>('single')
   const [splitCents1, setSplitCents1] = useState<number | null>(null)
@@ -230,7 +237,7 @@ export default function BookingCharges({
                 <span className="text-emerald-800 dark:text-emerald-400">✓ pagada</span>
               ) : (
                 <span className="text-muted-foreground">
-                  ({DEPOSIT_STATUS_LABELS[depositStatus] ?? depositStatus})
+                  ({DEPOSIT_STATUS_LABELS[depositDisplayStatus] ?? depositDisplayStatus})
                 </span>
               )}
             </dt>

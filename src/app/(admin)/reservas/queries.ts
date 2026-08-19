@@ -15,6 +15,15 @@ export type ReservaListRow = {
   priceSnapshot: number
   depositAmount: number
   depositStatus: string
+  /**
+   * Hay un `payments` tipo `refund` (approved/pending) para esta reserva. NO es
+   * columna de `bookings`: existe porque un pago tardío deja el booking
+   * mostrando "Seña pendiente" con la plata ya devuelta, y `deposit_status` no
+   * se puede corregir (el trigger de estado terminal rechaza el UPDATE). Solo
+   * para MOSTRAR — ver `deposit-display.ts`. Opcional por el mismo motivo que
+   * `endsAt`: no rompe consumidores/stories que arman la fila a mano.
+   */
+  depositRefunded?: boolean
   paymentMethod: string | null
   /**
    * Instante físico absoluto del FIN del turno (TIMESTAMPTZ, migraciones
@@ -135,6 +144,11 @@ export async function listTenantBookings(
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
+           EXISTS (
+             SELECT 1 FROM payments pr
+             WHERE pr.booking_id = b.id AND pr.type = 'refund'
+               AND pr.status IN ('approved', 'pending')
+           ) AS "depositRefunded",
            b.payment_method AS "paymentMethod", b.starts_at AS "startsAt", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
@@ -220,6 +234,11 @@ export async function getBookingDetail(
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
+           EXISTS (
+             SELECT 1 FROM payments pr
+             WHERE pr.booking_id = b.id AND pr.type = 'refund'
+               AND pr.status IN ('approved', 'pending')
+           ) AS "depositRefunded",
            b.payment_method AS "paymentMethod", b.notes_player AS "notesPlayer",
            b.notes_internal AS "notesInternal", b.guest_name AS "guestName", b.guest_phone AS "guestPhone",
            b.canceled_reason AS "canceledReason",

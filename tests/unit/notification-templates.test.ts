@@ -10,6 +10,7 @@ import {
   renderDunningPaymentFailed,
   renderDepositExpired,
   renderAdminLatePayment,
+  renderPlayerLatePaymentRefunded,
   renderAdminTransferExpired,
   renderAdminRefundFailed,
   renderOnboardingAbandoned,
@@ -262,6 +263,49 @@ describe('renderAdminLatePayment', () => {
     })
     expect(text).toContain('500,00')
     expect(text).not.toContain('Cancha')
+  })
+
+  // Decisión del dueño 2026-08-19: sobre una reserva `expired` el reembolso
+  // sale solo, así que pedirle al complejo "acción manual" pasó a ser mentira.
+  // Los otros estados terminales SÍ la siguen necesitando, por eso la copy es
+  // condicional y no un reemplazo.
+  it('con refundIssued deja de pedir acción manual, en subject, html y text', () => {
+    const { subject, html, text } = renderAdminLatePayment({ ...DATA, refundIssued: true })
+    expect(subject).not.toContain('acción requerida')
+    expect(html).not.toContain('acción manual')
+    expect(text).not.toContain('acción manual')
+    expect(html).toContain('automáticamente')
+    expect(text).toContain('automáticamente')
+    expect(html).toContain('3.000,00')
+  })
+})
+
+describe('renderPlayerLatePaymentRefunded', () => {
+  const DATA = {
+    playerFirstName: 'Tomás',
+    courtName: 'Cancha 5',
+    date: '02/06/2027',
+    timeStart: '20:00',
+    tenantName: 'Complejo Norte',
+    amountArs: '3.000,00',
+  }
+
+  it('le dice al jugador que la plata vuelve, con monto y turno', () => {
+    const { subject, html, text } = renderPlayerLatePaymentRefunded(DATA)
+    expect(subject).toContain('Cancha 5')
+    expect(html).toContain('3.000,00')
+    expect(html).toContain('Complejo Norte')
+    expect(html).toContain('20:00')
+    expect(text).toContain('3.000,00')
+  })
+
+  it('escapa el nombre del complejo (viene de input del dueño)', () => {
+    const { html } = renderPlayerLatePaymentRefunded({
+      ...DATA,
+      tenantName: '<script>alert(1)</script>',
+    })
+    expect(html).not.toContain('<script>')
+    expect(html).toContain('&lt;script&gt;')
   })
 })
 

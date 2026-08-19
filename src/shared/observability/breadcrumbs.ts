@@ -17,6 +17,13 @@ type PaymentEvent =
   | 'payment.deposit.rejected'
   | 'payment.saas.upgrade.approved'
   | 'payment.reconcile.confirmed'
+  // Pago tardío: MP aprobó después de que la reserva expirara, así que no hay
+  // turno y la plata vuelve sola (decisión del dueño 2026-08-19). `.refunded`
+  // lo emite quien liquida contra MP; `.late_refunded` lo emite el barrido de
+  // reconciliación, que es el único que además sabe que la reserva ya estaba
+  // terminal cuando lo encontró.
+  | 'payment.late_payment.refunded'
+  | 'payment.reconcile.late_refunded'
   | 'payment.refund.retry_succeeded'
   | 'payment.reconcile.drift_detected'
 

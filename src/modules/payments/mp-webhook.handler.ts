@@ -3,7 +3,7 @@ import { tenants } from '@/shared/db/schema'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from './mp-oauth'
 import type { PaymentGateway } from './mp-gateway'
-import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
+import { dispatchPaymentInfo, lockMpEvent, settleLatePaymentRefund } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
 import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
@@ -268,6 +268,15 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // the send-email worker reads them.
   if (outcome && !outcome.alreadyProcessed) {
     await Promise.all((outcome.notificationIds ?? []).map((id) => dispatchEmail(id)))
+
+    // Pago tardío sobre una reserva ya expirada: el intent de reembolso commiteó
+    // con la tx de arriba y recién acá se llama a MP (mismo límite post-commit
+    // que los mails). `isMasterAccountEvent` usa el gateway del master del SaaS,
+    // pero este camino solo se alcanza desde el flujo de seña de un booking, que
+    // siempre resolvió el gateway del complejo.
+    if (outcome.preparedRefund) {
+      await settleLatePaymentRefund(outcome.preparedRefund, job.tenantId, gateway)
+    }
   }
 
   // Push notification to admin when a booking deposit is confirmed.

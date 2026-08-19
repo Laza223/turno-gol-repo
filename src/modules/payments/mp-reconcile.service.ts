@@ -1,11 +1,19 @@
 import { withTenantContext } from '@/shared/db/client'
 import type { PaymentGateway } from './mp-gateway'
 import type { WebhookEvent } from './payment.types'
-import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
+import { dispatchPaymentInfo, lockMpEvent, settleLatePaymentRefund } from './payment.service'
 
 export type ReconcileMpOutcome = {
   confirmed: boolean
   notificationIds: string[]
+  /**
+   * `true` cuando MP había aprobado pero la reserva ya estaba `expired`, así
+   * que en vez de confirmarla se pidió la devolución (decisión del dueño
+   * 2026-08-19). Distingue el `confirmed: false` de "no hay nada que hacer"
+   * del `confirmed: false` de "hubo plata y se movió" — sin esto los callers
+   * no pueden contar ni loguear el rescate real.
+   */
+  refunded?: boolean
 }
 
 /**
@@ -88,6 +96,16 @@ export async function reconcileApprovedPaymentForBooking(
   if (!outcome || outcome.alreadyProcessed) {
     return { confirmed: false, notificationIds: [] }
   }
+
+  // Pago tardío: el intent de reembolso ya commiteó con la tx de arriba; recién
+  // ahora se llama a MP. Va ACÁ y no en cada caller (booking.expiry.ts y el
+  // pase 2 del worker de reconciliación) a propósito: los dos ya nos pasaron el
+  // gateway, así que dejarlo en sus manos sería repetir la misma llamada en dos
+  // lugares y abrir la puerta a que uno se la olvide. `settleLatePaymentRefund`
+  // no tira nunca, así que no puede alterar el contrato de esta función.
+  if (outcome.preparedRefund) {
+    await settleLatePaymentRefund(outcome.preparedRefund, tenantId, gateway)
+  }
   // R1-B (rechazo review): `won` de transitionFromPendingPayment es la ÚNICA
   // fuente de verdad de que ESTA corrida confirmó la reserva — el lock fresco
   // (`fresh`) solo dice "primera vez que vemos este mpPaymentId", no que la
@@ -96,5 +114,9 @@ export async function reconcileApprovedPaymentForBooking(
   // dispatchPaymentInfo no tire — derivar `confirmed` de cualquier otra cosa
   // dispara un push "Nueva reserva" falso y duplicados en carreras contra el
   // webhook real (que usa una idempotency key distinta).
-  return { confirmed: outcome.won === true, notificationIds: outcome.notificationIds ?? [] }
+  return {
+    confirmed: outcome.won === true,
+    notificationIds: outcome.notificationIds ?? [],
+    refunded: outcome.preparedRefund !== undefined,
+  }
 }

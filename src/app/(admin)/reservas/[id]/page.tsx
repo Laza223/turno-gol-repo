@@ -76,6 +76,7 @@ export default async function ReservaDetailPage(props: Props) {
           priceSnapshot={booking.priceSnapshot}
           depositAmount={booking.depositAmount}
           depositStatus={booking.depositStatus}
+          depositRefunded={booking.depositRefunded}
           charges={charges.charges}
           chargesTotal={charges.chargesTotal}
           addBookingChargeAction={addBookingChargeAction}

@@ -5194,3 +5194,115 @@ guardado intacto.
 - Flujo real en el navegador contra el dev server: después de guardar el form muestra "Requerir seña"
   + 100% (antes mostraba "Sin seña"), tras recargar idem, y guardar con la seña apagada deja
   `deposit_percentage=100` en la base (antes lo pisaba a 0).
+
+---
+
+## 2026-08-19 — Pago tardío: reembolso automático + los workers dejan de fallar en silencio
+
+### El síntoma y el diagnóstico
+
+Reporte: "el worker `reconcile-pending-payments` no rescata pagos huérfanos". Medido contra la base de
+producción antes de tocar nada, con dos correcciones sobre la premisa inicial:
+
+- **La query SÍ encuentra las filas** y el cron SÍ corre: 144 ejecuciones `completed` en 12 h, ninguna
+  fallida. Descartada la hipótesis de RLS/permisos/DSN — `getWorkerSql()` ve producción (el mismo pool
+  expiró el booking a las 20:48).
+- **El search de MP tampoco vuelve vacío**: `audit_logs` tiene `booking.late_payment_attempt` el
+  2026-08-19 14:40:34 para `a7a2dca3` con `mpPaymentId=174510158896`. El booking que se investigaba
+  primero (`d6f0a098`) nunca se pagó — hay dos reservas sobre el mismo slot (Cancha Elite 2, 18/08
+  20:00) y la que pagó es la otra.
+
+Lo que sí estaba roto, probado leyendo código y confirmado con los datos:
+
+**El "rescate post-terminal" nunca pudo rescatar nada.** `handleApproved` solo sabe transicionar con
+`transitionFromPendingPayment`, que filtra `WHERE status='pending_payment'`; sobre un booking ya
+`expired` devuelve `won:false` siempre. Y `expired` es terminal a propósito en las otras dos capas:
+`booking.state-machine.ts:29` (`expired: new Set([])`) y el trigger `enforce_booking_invariants_fn`
+(migr. 070), que rechaza cualquier UPDATE. El worker gateaba el rescate en `result.confirmed`, que
+deriva de `won` — o sea, en la única condición que su caso de uso jamás puede cumplir. Resultado:
+plata cobrada, sin turno, y un mail al complejo pidiendo "acción manual".
+
+### La decisión
+
+`docs/decisions/2026-08-19-pago-tardio-reembolso-automatico.md` (dueño, 2026-08-19): **el sistema
+reembolsa solo y avisa a las dos partes; el turno NO se resucita.** Se descartó explícitamente la
+excepción `expired → confirmed` acotada a 24 h — si vuelve a aparecer como propuesta, se reabre la
+decisión con el dueño, no se implementa.
+
+### El cambio
+
+- `payment.service.ts`, bloque `TERMINAL_BOOKING_STATUSES` de `handleApproved`: `prepareLatePaymentRefund`
+  (fase 1, dentro de la tx) + `settleLatePaymentRefund` (fase 2, post-commit, nunca tira). Reusa
+  `prepareRefund`/`settleRefund` tal cual.
+  **Solo sobre `expired`**, no sobre los cinco estados terminales: `completed`/`no_show` significan que
+  el turno se consumió, `canceled_no_refund` es una política de cancelación que esto estaría
+  contradiciendo, y `canceled_refunded` ya tiene su reembolso. Para esos cuatro el comportamiento queda
+  idéntico al de antes.
+- **Idempotencia: NO se partió la clave de evento por pase.** Al mismo pago aprobado se llega por
+  cuatro caminos con claves distintas — el webhook real (`<mpEventId>`), el precheck de expiración y
+  los dos pases del worker (los tres con `reconcile-<mpPaymentId>`) —, así que ninguna clave de evento
+  puede impedir el doble reembolso; partirla lo haría MÁS probable. El guard va contra el PAGO
+  ORIGINAL (`payments` tipo `refund` con `description = 'Refund of <id>'` en `approved`/`pending`), que
+  es la única barrera que cubre los cuatro. Cubierto por el test "un segundo barrido no genera un
+  segundo reembolso".
+- Mail nuevo al **jugador** (`player_late_payment_refunded`) — antes el único que ponía plata no
+  recibía nada. `admin_late_payment` deja de pedir acción manual cuando el reembolso ya salió
+  (`refundIssued`).
+- Si MP falla al liquidar, no se pierde: el cron `retry-pending-refunds` levanta cualquier refund
+  `pending` de más de 1 h con la misma idempotency key y alerta a las 24 h.
+
+### Por qué nadie lo vio en 5 horas
+
+`run-workers.ts` **nunca inicializó Sentry**: `sentry.server.config.ts` lo carga `instrumentation.ts`,
+que es solo el runtime web de Vercel. Todos los `logger.error` de los 14 workers morían en el stderr de
+Railway, y `attachFailureHandlers` (dlq.ts) llamaba `Sentry.captureException` sobre un SDK sin
+inicializar. Sentry de las 24 h del incidente: cero errores de worker.
+
+- `src/shared/observability/sentry-worker.ts` (nuevo): `initWorkerSentry()` con el mismo scrub PII que
+  el web, tag `runtime: 'worker'`, y `flushWorkerSentry()` (capturar sin vaciar la cola antes de
+  `process.exit` no manda nada). No tira nunca: que la observabilidad falle no puede impedir el boot.
+- `run-workers.ts`: init como primera línea de `main()` y captura+flush en el `catch` fatal del arranque.
+- Los dos `catch` por fila de `reconcile-pending-payments.worker.ts` ahora además hacen
+  `captureException`.
+
+### Verificación
+
+- `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ 338 archivos / 3562 tests.
+- `tests/integration/late-payment-refund.test.ts` (nuevo, 3 casos contra DB real): reembolsa + avisa al
+  jugador + el booking sigue `expired`; segundo barrido no duplica el reembolso; sin pago aprobado no
+  hace nada.
+- Integración de pagos sin regresiones: 7 archivos / 38 tests ✅ (`payments`, `mp-webhook`,
+  `reconcile-pending-payments-idempotency`, `mp-refund-validation`, `mp-external-refund`,
+  `race-double-payment`, `mp-webhook-idempotency-massive`).
+
+### Punto 4 de la decisión: el detalle decía "Seña pendiente" con la plata ya devuelta
+
+No se arregla donde parece. Lo natural sería `bookings.deposit_status='refunded'`, pero el trigger de
+estado terminal rechaza cualquier UPDATE sobre un booking `expired` — la misma pared que impide
+resucitarlo. Así que el arreglo es de LECTURA, y deliberadamente NO toca `depositStatus`: ese campo no
+es una etiqueta, gobierna los previews de reembolso y qué acciones se ofrecen (`BookingActions`,
+`QuickActions`, `summarizeBookingCharges`). Reescribirlo desde la UI cambiaría comportamiento de plata
+para arreglar un texto.
+
+- `queries.ts`: las dos queries (lista y detalle) traen `depositRefunded`, un `EXISTS` sobre `payments`
+  tipo `refund` en `approved`/`pending` (usa `idx_payments_booking`). Campo opcional en
+  `ReservaListRow`, mismo criterio que `startsAt`/`endsAt`: no rompe stories que arman la fila a mano.
+- `deposit-display.ts` (nuevo): `resolveDepositDisplayStatus`. El override es angosto a propósito —
+  **solo desde `pending`**. Una cancelación con reembolso normal ya deja `deposit_status='refunded'` y
+  las dos fuentes coinciden; desde `paid`/`captured` un refund puede ser PARCIAL y "reembolsada" a
+  secas mentiría en la otra dirección. `pending` + refund en la base no tiene otra lectura: entró plata
+  que el booking nunca registró y que ya se está devolviendo.
+- Tres puntos de render pasan por el helper: `BookingListItem.tsx` (lista), `BookingDetailCard.tsx` y
+  `BookingCharges.tsx` (detalle). En `BookingCharges` cambia SOLO la etiqueta: `summarizeBookingCharges`
+  sigue recibiendo el `depositStatus` crudo porque los totales son plata, no texto.
+
+Verificación del punto 4: `tests/unit/deposit-display.test.ts` (4 casos, incluidos los dos que NO
+deben pisarse), story `PagoTardioReembolsado` en `BookingListItem.stories.tsx` con control negativo
+(`queryByText('Seña pendiente')` nulo), y dos asserts contra DB real en
+`late-payment-refund.test.ts` (`depositStatus` sigue `pending` + `depositRefunded` true; y el control
+negativo: sin reembolso el flag es false).
+
+### Gate final
+
+`pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ 339 archivos / 3566 tests ·
+`pnpm test:storybook` ✅ 275 archivos / 1119 tests · integración de pagos ✅ 7 archivos / 39 tests.

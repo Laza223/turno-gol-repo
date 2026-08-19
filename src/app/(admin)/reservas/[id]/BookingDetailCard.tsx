@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { formatArs, formatDateLong, formatTime } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
 import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from '../status-visual'
+import { resolveDepositDisplayStatus } from '../deposit-display'
 import type { ReservaDetail } from '../queries'
 
 const DEPOSIT_LABEL: Record<string, string> = {
@@ -20,6 +21,10 @@ const DEPOSIT_LABEL: Record<string, string> = {
  */
 export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
   const visual = reservaStatusVisual(booking)
+  const depositDisplayStatus = resolveDepositDisplayStatus(
+    booking.depositStatus,
+    booking.depositRefunded,
+  )
 
   const rows: Array<[string, ReactNode]> = [
     [
@@ -42,7 +47,7 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
     [
       'Seña',
       booking.depositAmount > 0
-        ? `${formatArs(booking.depositAmount)} (${DEPOSIT_LABEL[booking.depositStatus] ?? booking.depositStatus})`
+        ? `${formatArs(booking.depositAmount)} (${DEPOSIT_LABEL[depositDisplayStatus] ?? depositDisplayStatus})`
         : 'Sin seña',
     ],
     [

@@ -30,6 +30,10 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/api/bookings/route.ts',
   // Pure session-driven trigger; no user-supplied input from request.
   'src/app/api/mp/oauth-start/route.ts',
+  // disconnectMercadoPagoAction() takes no args — el tenant y el rol salen de
+  // la sesión vía requireAdminStaffAction. Contracara exacta de
+  // /api/mp/oauth-start, que ya está en esta lista por lo mismo.
+  'src/app/(admin)/settings/facturacion/actions.ts',
   // GET with no input; returns global cities list.
   'src/app/api/public/cities/route.ts',
   // Health endpoint, no input.

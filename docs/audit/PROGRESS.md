@@ -5352,3 +5352,78 @@ Esto modifica los pendientes 5 y 6 de la lista de arriba: el 5 (acción manual d
 reserva) deja de ser el camino principal y pasa a ser el respaldo para reasignar; el 6 queda
 CERRADO — `5ece40d6` no se rescató porque ningún booking expirado se rescata, no por un bug del
 barrido.
+
+## CI de `main` en rojo hace 6 merges — 3 fallos, 2 causas (2026-08-19)
+
+`Regresión visual` y `E2E Tests` corren **solo** en push a `main` o
+`workflow_dispatch` (`ci.yml`, desde 2026-08-10), así que ningún PR los muestra.
+Resultado: mismo fingerprint exacto en 6 runs seguidos sin que nadie lo viera.
+
+| Test | Síntoma | Causa raíz | Severidad |
+|---|---|---|---|
+| `visual/screens.spec.ts:37` `landing.png` | 146737 px, ratio **0.12** | Baseline del 29/07 (`8168eeaf`) contra el hero rediseñado por `27dd8348` (#129, 11/08) | 🟢 baseline vieja |
+| `visual/screens.spec.ts:113` `admin-settings-reservas.png` | 24288 px, ratio 0.02 | Misma baseline vieja: cambiaron los ítems de la sidebar del admin y apareció la tab "Avisos" | 🟢 baseline vieja |
+| `player-bookings.spec.ts:44` línea 79 | `getByText('Cancelado')` — element(s) not found | `cd3f0787` (#154, 14/08) filtró la tab "Próximos" por `UPCOMING_PLAYABLE_STATUSES`: una cancelada pasa a "Historial" | 🟡 assert desactualizado |
+
+**Ninguno de los tres era un bug de producto.** El assert de DB de
+`player-bookings.spec.ts:82` seguía verde en todas las corridas: la cancelación
+del jugador nunca dejó de funcionar, solo cambió de tab.
+
+### El `Hydration failed` del log era una pista falsa — y tapaba un bug real
+
+El log del job visual repetía, del lado del WebServer, `Hydration failed because
+the server rendered text didn't match the client`, justo antes de cada foto
+fallida. **No explicaba el 12%** (las dos pantallas comparadas son distintas por
+rediseño), pero sí escondía dos cosas:
+
+1. **Lo inducía el propio test.** `page.clock.setFixedTime(FROZEN_NOW)`
+   (`52075f78`) congela el reloj del BROWSER y no el del servidor, así que
+   garantizaba el mismatch en cada corrida y la foto salía de un árbol
+   REGENERADO en el cliente. Los otros dos mismatches del log
+   (`HoldCountdown` en la grilla, `caret-color` de la propia Playwright)
+   son de la misma familia: harness, no producto.
+2. **El mismo mismatch existe en producción, sin test de por medio.**
+   `todayLocal()` en `HeroSearch` y `SearchBar` derivaba el día con
+   `getTimezoneOffset()`, o sea el huso del RUNTIME: el servidor (UTC en Vercel)
+   escribía un día en el HTML y el navegador (ART) calculaba otro al hidratar.
+   Control corrido con el instante `2026-08-19T01:30:00Z` (= 22:30 ART):
+
+   ```
+   TZ=UTC                            -> 2026-08-19
+   TZ=America/Argentina/Buenos_Aires -> 2026-08-18
+   ```
+
+   O sea: **de 21:00 a 00:00 ART, todas las noches, React tiraba el hero entero
+   y lo volvía a renderizar en el cliente**, para todos los usuarios. En
+   `/explorar` el mismo bug era el piso del calendario (`min`): en esa franja el
+   jugador no podía elegir "hoy". Misma clase que
+   `current-date-utc-ventana-muerta-art`.
+
+### Fixes aplicados
+
+- `HeroSearch.tsx` + `SearchBar.tsx`: `todayLocal()` (huso del runtime) →
+  `todayART()` de `@/shared/time/art-date` (offset fijo, Argentina no tiene
+  DST). Las dos puntas calculan lo mismo.
+- `visual/screens.spec.ts`: fuera el `page.clock.setFixedTime` de la landing
+  (ya no hace falta y era el que rompía la hidratación), y en su lugar `mask:
+  [#hero-date]` — la foto deja de depender del día sin mentirle a React.
+- `player-bookings.spec.ts` (2 specs): el assert va partido en dos y **no se
+  aflojó nada** — (1) la tarjeta desaparece de "Próximos", que cubre lo mismo
+  que cubría el timeout anterior (que el `router.refresh()` haya corrido), y
+  (2) el badge "Cancelado" aparece en "Historial". Acotado a la tarjeta de SU
+  slot (20:00 / 21:00) en vez de `.first()` global.
+- Baselines regeneradas con `visual-baseline.yml` (`--update-snapshots=all`;
+  sin `=all` el preset `changed` no reescribe nada bajo el umbral).
+
+### Lo que queda abierto
+
+- **Nada barato caza esta clase.** El e2e rompió porque un cambio de producto
+  movió un badge de tab, y los specs de Playwright no importan de `@/`, así que
+  ningún job bloqueante se entera. Es el mismo agujero que `52075f78` tapó para
+  los labels de `slot-visual.ts` con un test unitario candado; acá el candado
+  equivalente tendría que atar "qué estados muestra cada tab" a
+  `UPCOMING_PLAYABLE_STATUSES`, y no existe.
+- **Los dos jobs siguen sin ser required status check.** Se puede mergear a
+  `main` con los dos en rojo, que es exactamente cómo se llegó a 6 merges
+  seguidos. Endurecerlo es decisión del dueño (cuesta ~14 min de Actions por
+  push).

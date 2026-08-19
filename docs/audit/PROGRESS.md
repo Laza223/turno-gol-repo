@@ -3422,11 +3422,11 @@ no es estilo, es cobertura que falta.
 
 Barrido el árbol de `(admin)` quedaron 3 `await extractAuthUser(` fuera de las páginas:
 
-| Archivo                          | Veredicto                                                                                                                                                                        |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `(admin)/layout.tsx`             | correcto — es su trabajo, resuelve la identidad antes de cualquier guard                                                                                                          |
-| `settings/equipo/actions.ts`     | **cubierto y deliberado**: guard propio documentado en su cabecera (fix 4 / M7 / ENS-26), las 4 actions llaman `assertActorIsAdmin`, y su `STAFF_WRITE_BLOCKED_STATUSES` es MÁS amplio que el del guard central |
-| `abonados/nuevo/actions.ts`      | **arreglado** — `previewAbonadoSlotsAction` autenticaba a mano sin chequeo de lifecycle, así que un complejo `blocked` seguía pudiendo consultar disponibilidad                    |
+| Archivo                      | Veredicto                                                                                                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `(admin)/layout.tsx`         | correcto — es su trabajo, resuelve la identidad antes de cualquier guard                                                                                                                                        |
+| `settings/equipo/actions.ts` | **cubierto y deliberado**: guard propio documentado en su cabecera (fix 4 / M7 / ENS-26), las 4 actions llaman `assertActorIsAdmin`, y su `STAFF_WRITE_BLOCKED_STATUSES` es MÁS amplio que el del guard central |
+| `abonados/nuevo/actions.ts`  | **arreglado** — `previewAbonadoSlotsAction` autenticaba a mano sin chequeo de lifecycle, así que un complejo `blocked` seguía pudiendo consultar disponibilidad                                                 |
 
 El write de ese flujo (`createAbonadoAction`) ya usaba `requireOperatorStaff`; era solo el preview
 el que iba por su cuenta. Impacto bajo (read-only, con rate-limit) pero es la misma inconsistencia,
@@ -3622,6 +3622,7 @@ targeted + test relevante) corrido por mí, no confiado del reporte del agente.
 
 **Dos patches no aplicaron limpio** por drift real del árbol compartido (otra sesión tocando el
 mismo repo en simultáneo — mismo síntoma que ya documentó [[sesion-concurrente-cambia-rama-del-tree]]):
+
 - `05-horarios-mindate-utc`: el hunk de `page.tsx` no matcheaba contexto → aplicado a mano
   (mismo cambio: `artTodayStr()` en vez de `new Date().toISOString()`).
 - El test de regresión de ese mismo patch mockeaba `requireAdminStaff` (guard que la página NO
@@ -3641,7 +3642,7 @@ comparten archivo y se separaron con verificación entre medio):
 3. **09 — hold countdown roto (B15)** (`grilla/page.tsx` + `use-booking-realtime.ts`): `createdAt`
    propagado en los 3 puntos de entrada. typecheck+lint limpio · `use-booking-realtime.test.ts` 8/8.
 4. **04 — reprogramar a hora pasada** (`booking.reschedule.ts`): guard `startsAt.getTime() <=
-   Date.now()`. typecheck+lint limpio · integración `booking-reschedule.test.ts` 23/23.
+Date.now()`. typecheck+lint limpio · integración `booking-reschedule.test.ts` 23/23.
 5. **07 — cancelByPlayer esquiva softban** (`booking.cancellation.ts` + `booking.errors.ts` +
    `mis-reservas/actions.ts`, mismo archivo que 08 — aplicó limpio encima sin duplicar la
    proyección `PlayerBookingRow`, confirmado con grep de declaraciones únicas):
@@ -3715,11 +3716,11 @@ cada una habría llevado a un fix equivocado:
 3. **"El soft-404 de `[slug]` es la caché de ISR"** — REFUTADO. Aislado con 3 rutas sonda, sin DB
    de por medio:
 
-   | Sonda | `notFound()` en | `loading.tsx` | Status |
-   |---|---|---|---|
-   | `/probe-plain` | page | no | **404** |
-   | `/probe-loading` | page | sí | **200** ❌ |
-   | `/probe-loading-layout` | layout | sí | **404** ✅ |
+   | Sonda                   | `notFound()` en | `loading.tsx` | Status     |
+   | ----------------------- | --------------- | ------------- | ---------- |
+   | `/probe-plain`          | page            | no            | **404**    |
+   | `/probe-loading`        | page            | sí            | **200** ❌ |
+   | `/probe-loading-layout` | layout          | sí            | **404** ✅ |
 
    El `loading.tsx` mete un `<Suspense>`, Next arranca a stremear con el 200 ya emitido y el
    `notFound()` posterior llega tarde. El layout renderiza fuera del boundary. (La primera
@@ -3999,7 +4000,7 @@ no vive en este worktree): de los 41 BUG, 38 ya estaban cerrados por las tandas 
 - **Ícono de teléfono sin número/link en el bloque de deuda** (`CompleteBookingDialog.tsx`) —
   VIGENTE. `{contactName && (...)}` renderizaba "📞 {nombre}" solo con el nombre cuando no había
   teléfono — el hallazgo pide que ambas condiciones sean necesarias. Fix: `{contactName &&
-  contactPhone && (...)}`.
+contactPhone && (...)}`.
 
 - **Botón FECHA truncado en el buscador de la home, 640-1023px** (`HeroSearch.tsx`) — VIGENTE,
   reproducido y verificado con Storybook (`HeroSearch.stories.tsx` → story `Vertical`, la que
@@ -4088,7 +4089,7 @@ report). Un hallazgo por vez, `pnpm typecheck && pnpm lint` en verde entre cada 
   reserva) — VIGENTE. "Marcar completada"/"Marcar ausente" abrían el diálogo entero sin aviso;
   "Cancelar" ya usaba `turnoEnded` para su propio preview. Se sube ese cálculo (antes recalculado
   adentro del bloque de refund) y se deshabilitan los otros dos botones con `title="El turno
-  todavía no terminó"` — mismo criterio que ya aplican `chargeMode`/`canMarkNoShow` en el panel de
+todavía no terminó"` — mismo criterio que ya aplican `chargeMode`/`canMarkNoShow` en el panel de
   la grilla. 2 stories (`MarcarCompletadaAbreElDialogoDeCobro`, `MarcarAusenteConfirmado`)
   necesitaron `endsAt` en el pasado (antes usaban el default de hoy 20:00 sin haber terminado, que
   ahora los dejaría deshabilitados) — no es debilitar el test, es que la premisa de esas 2 stories
@@ -4140,7 +4141,7 @@ report). Un hallazgo por vez, `pnpm typecheck && pnpm lint` en verde entre cada 
   "¿Olvidaste tu contraseña?".
 - **Footer de marketing sin el fix de 44px que el componente hermano sí tiene**
   (`BusinessFooter.tsx` vs `SiteFooter.tsx`) — VIGENTE (WCAG 2.5.5). Mismo `min-h-11 ... sm:min-h-0`
-  + `gap-y-0 sm:gap-y-2` que `SiteFooter.tsx` ya tenía documentado y resuelto.
+  - `gap-y-0 sm:gap-y-2` que `SiteFooter.tsx` ya tenía documentado y resuelto.
 
 ### Decisión del dueño (post-cierre de la tanda)
 
@@ -4171,7 +4172,7 @@ Dos hallazgos quedaron como REQUIERE INPUT al cerrar la tanda 4; el dueño resol
   `tests/unit/business-header.test.tsx` sigue pasando sin cambios: el contenido del
   `DropdownMenuContent` no está montado en el DOM hasta que se abre (Radix Portal), así que el
   segundo "Ingresar" (el de adentro del menú) no duplica el `getByRole('link', {name:
-  'Ingresar'})` que ya usaba la vista desktop.
+'Ingresar'})` que ya usaba la vista desktop.
 
 ## Verificación de la tanda 4
 
@@ -4246,11 +4247,11 @@ con un experimento aislado (rutas throwaway, borradas después, `pnpm dev` local
 código real, porque la causa raíz cambia según dónde vive el `loading.tsx` ofensor:
 
 - **Cuando `loading.tsx` está en el MISMO segmento que el `notFound()`** (como `[slug]/loading.tsx`
-  + `[slug]/page.tsx`, o `torneos/loading.tsx` + `torneos/page.tsx`): mover el chequeo a un
-  `layout.tsx` del MISMO segmento funciona — el layout corre antes de que Next entre al `<Suspense>`
-  que ese `loading.tsx` mete alrededor de `{children}`.
+  - `[slug]/page.tsx`, o `torneos/loading.tsx` + `torneos/page.tsx`): mover el chequeo a un
+    `layout.tsx` del MISMO segmento funciona — el layout corre antes de que Next entre al `<Suspense>`
+    que ese `loading.tsx` mete alrededor de `{children}`.
 - **Cuando `loading.tsx` está en un segmento PADRE de donde vive el `notFound()`** (`reservas/
-  loading.tsx` + `reservas/[id]/page.tsx`): un `layout.tsx` en `[id]/` NO escapa — confirmado con 3
+loading.tsx` + `reservas/[id]/page.tsx`): un `layout.tsx` en `[id]/` NO escapa — confirmado con 3
   pasadas del experimento (`fetch` con `cache:'no-store'`, no navegación cliente): con
   `zztest-parent/loading.tsx` presente, tanto `page.tsx` como un `layout.tsx` en `zzchild/` dieron
   **200**; recién al mover `loading.tsx` a un route group hermano (`zztest-parent/(list)/loading.tsx`,
@@ -4258,25 +4259,27 @@ código real, porque la causa raíz cambia según dónde vive el `loading.tsx` o
   route group no aporta segmento de URL, así que `/reservas` no cambia.
 
 Aplicado:
-- [reservas/(list)/](src/app/(admin)/reservas/(list)/page.tsx): `page.tsx` + `loading.tsx` +
+
+- [reservas/(list)/](<src/app/(admin)/reservas/(list)/page.tsx>): `page.tsx` + `loading.tsx` +
   `loading.stories.tsx` movidos desde `reservas/` a `reservas/(list)/` — aísla el `loading.tsx` de
   `/reservas/[id]`, que YA llama `notFound()` correctamente en su `page.tsx` (booking inexistente o
   `id` no-UUID) pero quedaba con status 200 por el `loading.tsx` del padre. `actions.ts`, `queries.ts`,
   `error.tsx` y el resto de componentes de la lista SIGUEN en `reservas/` (import relativo `../`
   desde el page movido) — `error.tsx` no se movió porque no causa el mismo problema (no fuerza
   streaming temprano, es un boundary de error normal, no de Suspense).
-- [torneos/layout.tsx](src/app/(admin)/torneos/layout.tsx): nuevo, mismo patrón que
+- [torneos/layout.tsx](<src/app/(admin)/torneos/layout.tsx>): nuevo, mismo patrón que
   `[slug]/layout.tsx` (mismo segmento que `torneos/loading.tsx`) — repite el guard `requireOperatorStaff`
-  + `isFeatureEnabled(TOURNAMENTS_FLAG)` que `page.tsx`/`nuevo/`/`[id]/` ya hacen cada uno por su
-  lado (mismo patrón defense-in-depth ya establecido, "esconder el ítem del menú no alcanza").
-  `requireOperatorStaff` NO está `cache()`-wrapped (a diferencia de `extractAuthUser`), así que esto
-  sí repite `getStaffTenant`/`getStaffRole` — costo aceptado, `/torneos` no es hot path.
+  - `isFeatureEnabled(TOURNAMENTS_FLAG)` que `page.tsx`/`nuevo/`/`[id]/` ya hacen cada uno por su
+    lado (mismo patrón defense-in-depth ya establecido, "esconder el ítem del menú no alcanza").
+    `requireOperatorStaff` NO está `cache()`-wrapped (a diferencia de `extractAuthUser`), así que esto
+    sí repite `getStaffTenant`/`getStaffRole` — costo aceptado, `/torneos` no es hot path.
 - `tests/unit/admin-routes-reachable.test.ts`: `redirectStubs()` reconstruía la ruta de archivo
   desde la URL (`reservas/page.tsx`), ciego a route groups — roto por el move de arriba. Refactor a
   `adminPageFiles()` (URL + ruta de archivo real desde el mismo recorrido que ya ignora `(grupo)`)
   en vez de reconstruir la ruta.
 
 **NO reproducido / sin cambio, con evidencia:**
+
 - `/jugadores/{uuid}`: NINGÚN `loading.tsx` existe en toda la cadena de ancestros
   (`(admin)/`, `jugadores/`, `jugadores/[playerId]/` — los tres confirmados vacíos con `find`).
   Sin el mecanismo que causa el bug en los otros dos casos, este debería devolver 404 real ya hoy
@@ -4352,18 +4355,19 @@ aplicaba: el parche de una línea que el propio hallazgo describe como mitigaci�
 migración.
 
 Cambios:
+
 - [auth.service.ts](src/modules/auth/auth.service.ts) `provisionAndRouteStaff`: stampea
   `staff_users.last_login_at = NOW()` en cada login/aceptación de invitación (la única función que
   invocan tanto el callback de confirmación como `loginAction`, mismo patrón que
   `getOrCreatePlayer` en `player.service.ts`).
-- [status-visual.tsx](src/app/(admin)/settings/equipo/status-visual.tsx): tercer estado de badge
+- [status-visual.tsx](<src/app/(admin)/settings/equipo/status-visual.tsx>): tercer estado de badge
   `pending` ("Invitación pendiente", tono warning) — antes solo `active`/`inactive`, un invitado
   sin aceptar mostraba el mismo check verde que un empleado activo hace meses.
-- [StaffActions.tsx](src/app/(admin)/settings/equipo/StaffActions.tsx): "Reenviar invitación" pasa
+- [StaffActions.tsx](<src/app/(admin)/settings/equipo/StaffActions.tsx>): "Reenviar invitación" pasa
   a ofrecerse cuando `isActive && !lastLoginAt` (invitación pendiente), ADEMÁS de cuando
   `!isActive` (desactivado) — antes la condición `!member.isActive` nunca era cierta para una
   invitación recién creada (nace en `true`), así que el ítem nunca aparecía en ese caso.
-- [StaffRosterView.tsx](src/app/(admin)/settings/equipo/StaffRosterView.tsx): enhebra
+- [StaffRosterView.tsx](<src/app/(admin)/settings/equipo/StaffRosterView.tsx>): enhebra
   `lastLoginAt` desde `listStaffRoster` (que ya lo seleccionaba) hasta los dos componentes de
   arriba.
 - Stories nuevas/actualizadas (`StaffActions.stories.tsx` — `InvitacionPendiente`,
@@ -4391,6 +4395,7 @@ cancha con precio válido para poder completarse, así que alcanza para sacar a 
 onboarding incompleto, confirmado en la evidencia del hallazgo) sin tocar el caso legítimo.
 
 Cambios:
+
 - [search.service.ts](src/modules/tenants/search.service.ts) `searchPublicTenantsImpl`: nueva
   condición `COALESCE((settings->>'onboarding_completed')::boolean, false) = true` en el WHERE
   (afecta `/explorar` + home, vía `searchPublicTenants`).
@@ -4450,7 +4455,7 @@ ninguna migración existente. Encontró 4 cosas reales, las 4 corregidas en el m
    `UPDATE ... last_login_at` se ejecutara** (el router solo lanza ante query NO manejada, no
    exige que cada handler se use) — revertir la línea de `auth.service.ts` habría dejado el test
    verde igual. **Fix:** assert explícito `calls.some(c => /UPDATE staff_users SET
-   last_login_at/.test(c))` agregado en los 2 tests.
+last_login_at/.test(c))` agregado en los 2 tests.
 4. **🟢 Comentario desactualizado en `actions.ts:427-430`** (`resendInviteAction`) — describía la
    condición vieja de "Reenviar invitación" (`!member.isActive`), que F-024 cambió. **Fix:**
    comentario actualizado a la condición real (`!isActive || (isActive && !lastLoginAt)`).
@@ -4510,10 +4515,11 @@ F-015 (tap targets — 3 links en `status-banner.tsx` + logo mobile en `admin-he
 (`scripts/sentry-issues.ts` — `--detail` ya no manda `statsPeriod=90d`), F-017 (plural en
 `FixturePanel.tsx`, diálogo de borrar fixture), F-018 (bug real: `tournament-standings.service.ts`
 contaba goles-sin-autor mal — el `attributed` de la resta no filtraba `team_player_id IS NOT NULL`;
-+ plural "gol(es)" en `GoleadoresTable.tsx`), F-019 (mensaje del wizard de horarios menciona el
-checkbox + se limpia al cambiar cualquier campo, `StepSchedule.tsx`), F-020 (`MoneyInput` avisa
-cuando se descarta un signo negativo en vez de guardarlo en silencio), F-021 (label del campo
-Cliente en `AbonadoForm.tsx`, `/abonados/nuevo`).
+
+- plural "gol(es)" en `GoleadoresTable.tsx`), F-019 (mensaje del wizard de horarios menciona el
+  checkbox + se limpia al cambiar cualquier campo, `StepSchedule.tsx`), F-020 (`MoneyInput` avisa
+  cuando se descarta un signo negativo en vez de guardarlo en silencio), F-021 (label del campo
+  Cliente en `AbonadoForm.tsx`, `/abonados/nuevo`).
 
 ## F-006 — CERRADO Y VERIFICADO
 
@@ -4562,7 +4568,7 @@ lo que esta verificación existía para atrapar:
 3. **Efecto colateral del fix #1** (no un bug nuevo, una tensión real entre dos usos): al arreglar
    `createTestTenant()`, el `onboarding_completed: true` que F-004 le pedía por defecto ahora SÍ se
    aplica — y eso rompió `mp-callback-happy-path.test.ts` (2 asserts), que necesita un tenant
-   *fresco, sin onboarding* para probar la transición false→true que dispara el callback de MP.
+   _fresco, sin onboarding_ para probar la transición false→true que dispara el callback de MP.
    Antes pasaba de pura casualidad (el bug #1 dejaba `onboarding_completed` sin setear = `false`).
    Fix: `createTestTenant()` suma un tercer override opcional, `onboardingCompleted` (default
    `true`, preserva el comportamiento ya probado en 950+ tests), y los 3 call sites de
@@ -4632,7 +4638,7 @@ mantiene su look exacto, cero rediseño no pedido): esto es un fix de accesibili
    `tests/unit/reservas-quick-actions.test.tsx` (16) + `tests/unit/booking-form-modal.test.tsx`
    (15) + `QuickBookingForm.stories.tsx` (4, Storybook) + — el que SÍ agarró un caso real —
    `tests/unit/booking-grid.test.tsx` (28, 2 asserts con el mismo `getByRole('button', {name:
-   'Efectivo'})` → `'radio'`, encontrado recién en la corrida completa de `pnpm test`, no en la
+'Efectivo'})` → `'radio'`, encontrado recién en la corrida completa de `pnpm test`, no en la
    corrida scopeada).
 3. `CompleteBookingDialog.tsx` (panel de cobro) — mismo patrón, labels cortos (Transf./MP)
    precalculados en vez de un ternario inline en el render. Sin story dedicada; verificado con
@@ -4715,32 +4721,32 @@ dashboard; queda para que Lazar lo confirme.
 
 Con esa corrección, orden recomendado (de mayor a menor impacto):
 
-  1. *(Ya aplicado, código)* `idle_timeout`/`max_lifetime` — cierra la fuga: antes una conexión
-     ociosa no se soltaba nunca.
-  2. **Confirmar `DATABASE_URL` en Vercel** (probablemente ya en `:6543` transaction mode desde
-     julio — un chequeo de 10 segundos, no un cambio).
-  3. **Dar de alta una `WORKER_DATABASE_URL` propia para Vercel, en `:6543` transaction mode —
-     separada de la de Railway, que se queda en `:5432` directa.** Esta es la acción real, la que
-     faltaba: es la MISMA causa concreta del corte que ya pasó (evidencia de F-002: el rol
-     `turnogol_worker` agotó las 15 conexiones solo), y explica por qué el fix de julio (que sí
-     movió `DATABASE_URL`) no evitó que volviera a pasar en agosto — atacó la variable que no era
-     la que se agotó. Un pico de trabajo en segundo plano en Railway no debería poder tirar abajo
-     el login de la web, y hoy puede, porque comparten la misma conexión directa de sesión. En
-     session mode cada cliente conectado retiene UNA conexión real de Postgres mientras dura su
-     sesión — escala 1 a 1, con techo duro (ligado al plan pago de Supabase); transaction mode
-     reparte miles de conexiones de la app entre un puñado de conexiones reales, prestando una
-     solo mientras dura una transacción puntual — es la palanca real para "cientos o miles de
-     usuarios". El código YA es compatible (`prepare: false`, `SET LOCAL` dentro de transacciones
-     explícitas, advisory lock de scope transacción).
-  4. **Recién después, subir `pool_size` con margen — no "al máximo".** Supabase reparte esas
-     conexiones entre la app Y sus propios servicios internos (autenticación, Realtime, tareas
-     programadas — la evidencia de F-002 mostró 7 conexiones de esos consumidores, aparte de las
-     de la app). Llevarlo al techo le saca aire a esos servicios y puede desestabilizar la base
-     en vez de ayudar. Un número con margen, mirando el uso real (`pg_stat_activity`), es la
-     jugada — el techo real lo pone el plan pago de Supabase, no un valor mágico.
+1. _(Ya aplicado, código)_ `idle_timeout`/`max_lifetime` — cierra la fuga: antes una conexión
+   ociosa no se soltaba nunca.
+2. **Confirmar `DATABASE_URL` en Vercel** (probablemente ya en `:6543` transaction mode desde
+   julio — un chequeo de 10 segundos, no un cambio).
+3. **Dar de alta una `WORKER_DATABASE_URL` propia para Vercel, en `:6543` transaction mode —
+   separada de la de Railway, que se queda en `:5432` directa.** Esta es la acción real, la que
+   faltaba: es la MISMA causa concreta del corte que ya pasó (evidencia de F-002: el rol
+   `turnogol_worker` agotó las 15 conexiones solo), y explica por qué el fix de julio (que sí
+   movió `DATABASE_URL`) no evitó que volviera a pasar en agosto — atacó la variable que no era
+   la que se agotó. Un pico de trabajo en segundo plano en Railway no debería poder tirar abajo
+   el login de la web, y hoy puede, porque comparten la misma conexión directa de sesión. En
+   session mode cada cliente conectado retiene UNA conexión real de Postgres mientras dura su
+   sesión — escala 1 a 1, con techo duro (ligado al plan pago de Supabase); transaction mode
+   reparte miles de conexiones de la app entre un puñado de conexiones reales, prestando una
+   solo mientras dura una transacción puntual — es la palanca real para "cientos o miles de
+   usuarios". El código YA es compatible (`prepare: false`, `SET LOCAL` dentro de transacciones
+   explícitas, advisory lock de scope transacción).
+4. **Recién después, subir `pool_size` con margen — no "al máximo".** Supabase reparte esas
+   conexiones entre la app Y sus propios servicios internos (autenticación, Realtime, tareas
+   programadas — la evidencia de F-002 mostró 7 conexiones de esos consumidores, aparte de las
+   de la app). Llevarlo al techo le saca aire a esos servicios y puede desestabilizar la base
+   en vez de ayudar. Un número con margen, mirando el uso real (`pg_stat_activity`), es la
+   jugada — el techo real lo pone el plan pago de Supabase, no un valor mágico.
 
-  Las 4 acciones necesitan el panel de Supabase/Railway — fuera del repo, fuera de lo que esta
-  sesión puede ejecutar.
+Las 4 acciones necesitan el panel de Supabase/Railway — fuera del repo, fuera de lo que esta
+sesión puede ejecutar.
 
 **2. F-004 — confirmado por Lazar: él mismo va a borrar tenants/usuarios de prueba antes de dar de
 alta al primer cliente real.** Sin acción de código. Nada que ejecutar de este lado.
@@ -4761,7 +4767,6 @@ corridas con `vitest --config vitest.storybook.config.ts` (ver resultado abajo).
 
 **4. Clase `aria-pressed` — confirmado por Lazar: queda anotada para otra sesión, no se toca
 ahora.** Sin cambios de código.
-
 
 ---
 
@@ -4832,7 +4837,7 @@ compilar un `{ success: false }` sin motivo y el usuario termina viendo el mensa
 había un error real.
 
 - **`src/shared/types/action-result.ts` (nuevo)**: `ActionResult<TExtra> = ({ success: true } &
-  TExtra) | { success: false; error: string }`.
+TExtra) | { success: false; error: string }`.
 - 39 sitios migrados, incluido `src/components/ui/confirm-dialog.tsx` (26 usos cuelgan de él).
 - El typecheck destapó un caso de producción: `confirmNoShow` en
   `src/components/booking/slot-panel/use-slot-charges.ts` no tenía tipo de retorno y devolvía
@@ -5010,15 +5015,15 @@ diferencia de horario, que es el bug de producto: el complejo publica un horario
 
 ## 🟢 Los siete menores
 
-| ID | Qué se hizo |
-|---|---|
+| ID    | Qué se hizo                                                                                                                                                                                                                                        |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | F-011 | `formatPct()` nuevo en `src/lib/format.ts` (es-AR, coma decimal). Aplicado a los 2 usos de `/analiticas` y a los 2 formatters de `ReportCharts`. El `%` se concatena a mano: `style:'percent'` mete un NBSP y complica los matchers sin ganar nada |
-| F-012 | Un solo `<h1>` en la home: el de `HeroDesktop` queda, el de `HeroMobile` pasa a `<p role="heading" aria-level={1}>` — suena igual en un lector de pantalla y no duplica el encabezado para el crawler |
-| F-013 | `telHref()` nuevo en `src/lib/contact.ts`: conserva dígitos y el `+` inicial. Aplicado en `TenantHeader` y `AvailabilityGrid`. El formato lindo sigue siendo el TEXTO del link |
-| F-014 | `generateMetadata` en `/[slug]/reservar`: título con complejo, fecha y hora; `noIndex` porque es una pantalla con parámetros de una reserva puntual |
-| F-015 | `ctaClass()` en `status-banner.tsx`: `min-h-11` (44 px) solo en mobile para los TRES CTA del banner, no solo el reportado — "Elegir plan", "Actualizar pago" y "Reactivar" tenían el mismo problema |
-| F-016 | `scripts/sentry-issues.ts`: `statsPeriod=90d` → `14d` en el camino de `--detail`, que la API rechaza siempre con 400. El listado ya respetaba el límite; este camino no |
-| F-027 | Placeholder de ciudad: "Ej: Luján" → "Ej: Rosario" (el informe lo señala como probable origen de los "Lujan, Neuquén" de F-004) |
+| F-012 | Un solo `<h1>` en la home: el de `HeroDesktop` queda, el de `HeroMobile` pasa a `<p role="heading" aria-level={1}>` — suena igual en un lector de pantalla y no duplica el encabezado para el crawler                                              |
+| F-013 | `telHref()` nuevo en `src/lib/contact.ts`: conserva dígitos y el `+` inicial. Aplicado en `TenantHeader` y `AvailabilityGrid`. El formato lindo sigue siendo el TEXTO del link                                                                     |
+| F-014 | `generateMetadata` en `/[slug]/reservar`: título con complejo, fecha y hora; `noIndex` porque es una pantalla con parámetros de una reserva puntual                                                                                                |
+| F-015 | `ctaClass()` en `status-banner.tsx`: `min-h-11` (44 px) solo en mobile para los TRES CTA del banner, no solo el reportado — "Elegir plan", "Actualizar pago" y "Reactivar" tenían el mismo problema                                                |
+| F-016 | `scripts/sentry-issues.ts`: `statsPeriod=90d` → `14d` en el camino de `--detail`, que la API rechaza siempre con 400. El listado ya respetaba el límite; este camino no                                                                            |
+| F-027 | Placeholder de ciudad: "Ej: Luján" → "Ej: Rosario" (el informe lo señala como probable origen de los "Lujan, Neuquén" de F-004)                                                                                                                    |
 
 ## Verificación
 
@@ -5043,8 +5048,8 @@ cancha en la jerarquía del wizard (F-028).
 ### F-003, tercera capa — la reserva se confirma sin seña, y el estado deja de ser alcanzable
 
 Decisión: **confirmar la reserva sin seña**. El complejo se queda con el turno y cobra en el
-mostrador; hoy esa reserva muere sola y nadie se entera. Pedido explícito además: *"nos tenemos que
-asegurar de que no pueda pasar porque es un bug garrafal"* — así que se barrió la clase, no la
+mostrador; hoy esa reserva muere sola y nadie se entera. Pedido explícito además: _"nos tenemos que
+asegurar de que no pueda pasar porque es un bug garrafal"_ — así que se barrió la clase, no la
 instancia.
 
 `(public)/[slug]/reservar/actions.ts`: `depositUnpayable = requires_deposit && !mpAccessToken`
@@ -5074,8 +5079,8 @@ checkout no deja al jugador colgado.
 
 El hallazgo cita `CourtDraftCard.tsx:231-239` con un `ImageUploader` de "Foto de la cancha". Ese
 bloque **ya no existe**: el refactor del wizard (PR #159, commit `654d63e3`) sacó la carga de foto del
-paso de canchas. Hoy `StepCourts.tsx:101` dice explícitamente *"Las fotos se cargan después desde
-Canchas"*, y no hay ni un `ImageUploader` en todo `src/app/onboarding/`.
+paso de canchas. Hoy `StepCourts.tsx:101` dice explícitamente _"Las fotos se cargan después desde
+Canchas"_, y no hay ni un `ImageUploader` en todo `src/app/onboarding/`.
 
 O sea que no hay nada que subir en la jerarquía visual — el control que el hallazgo quiere hacer más
 visible fue movido a otra pantalla a propósito. Es la tercera vez que un informe de auditoría de este
@@ -5192,5 +5197,158 @@ guardado intacto.
   `tests/unit/reservas-policy-action-deposit.test.ts` (2 casos de patch).
 - `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ 338 archivos / 3556 tests.
 - Flujo real en el navegador contra el dev server: después de guardar el form muestra "Requerir seña"
-  + 100% (antes mostraba "Sin seña"), tras recargar idem, y guardar con la seña apagada deja
-  `deposit_percentage=100` en la base (antes lo pisaba a 0).
+  - 100% (antes mostraba "Sin seña"), tras recargar idem, y guardar con la seña apagada deja
+    `deposit_percentage=100` en la base (antes lo pisaba a 0).
+
+---
+
+## 2026-08-19 — Corrida 2 del cobro real: `ENCRYPTION_KEY` inválida en el worker
+
+Segunda corrida de la prueba de cobro en producción, con la cuenta MP virgen de un tercero como
+cobrador (`complejo titi`, `mp_user_id` 1059888348 — distinto del 381048203 de la corrida 1, así que
+el experimento es válido). Cobro de $100 aprobado del lado de MercadoPago, pantalla del jugador
+clavada en "Confirmando tu pago".
+
+### Causa raíz (una sola para dos síntomas)
+
+```
+Error: ENCRYPTION_KEY must be exactly 64 hex chars (32 bytes)
+    at getKey (/app/src/lib/crypto/encrypt.ts:14:11)
+    at decrypt (/app/src/lib/crypto/encrypt.ts:29:15)
+    at mpClient (/app/src/lib/mercadopago.ts:12:32)
+    at resolveTenantGateway (/app/src/modules/payments/mp-oauth.ts:124:5)
+    at handleMpWebhookJob (/app/src/modules/payments/mp-webhook.handler.ts:112:15)
+```
+
+Salida real de `pgboss.job` (4 jobs `process-mp-webhook` en estado `retry`, más uno `failed` con
+`retrycount=5` de la corrida 1). El `ENCRYPTION_KEY` del worker de Railway es inválido; el de Vercel
+está bien, por eso el checkout se crea y el pago sale, pero nadie puede confirmarlo después.
+
+El camino hasta el worker está sano y medido: MP notifica, la firma valida, el route handler responde
+200 y encola. Lo que falla es el consumidor.
+
+**Explica también el 🔴 abierto de la red de rescate.** `reconcile-pending-payments` llama
+`resolveTenantGateway` en sus dos pasadas (`reconcile-pending-payments.worker.ts:61` y `:158`), las dos
+dentro de un `try/catch` por fila (`:102`, `:182`). Revienta con el mismo error, el catch lo traga y el
+job termina `completed` sin rescatar nada. No eran dos bugs: era uno.
+
+### Por qué hubo que rotar la clave en vez de recuperarla
+
+Descartadas ambas candidatas con evidencia, sin exponer ningún valor:
+
+- `.env.production` local: 32 caracteres y no hexadecimal — inválida con el mismo criterio del guard.
+- `.env.local`: 64 hex válida, pero **no descifra** los `tenants.mp_access_token` de producción
+  (probado abriendo los primeros 16 bytes del ciphertext, que en AES-GCM se pueden descifrar sueltos:
+  el prefijo no da `APP_USR-`).
+- `vercel env pull --environment=production` devuelve todas las variables sensibles enmascaradas
+  (`ENCRYPTION_KEY`, `DATABASE_URL`, `MP_WEBHOOK_SECRET`… todas con el mismo placeholder de 11
+  caracteres). **Vercel no permite recuperar el valor de una variable Sensitive.**
+
+La rotación sale barata porque esa clave cifra una sola cosa en todo el sistema: `mp_access_token` y
+`mp_refresh_token` de cada complejo (`mp/callback/route.ts:167-168`, `mp-oauth.ts:96-102`,
+`refresh-mp-tokens.worker.ts:63-64`). El costo es reconectar MercadoPago en cada complejo.
+
+### Números del complejo típico (lo que la corrida venía a medir)
+
+Cuenta MP nueva, sin tocar ninguna configuración: **retiene ~5 % y libera a los 18 días** (cobro del
+19/08 → 06/09). Contra la cuenta configurada de la corrida 1: 1,89 % a 35 días. El default no es el
+peor caso, pero se compara contra un alias que acredita al instante y gratis.
+
+### Pendiente registrado
+
+**El worker tiene que negarse a arrancar con `ENCRYPTION_KEY` inválida.** Hoy arranca bien y falla
+job por job, en silencio, indefinidamente: la única señal fue ir a leer `pgboss.job` a mano. Es la
+segunda vez que esta misma variable rompe el cobro en producción (ver `primer-wizard-real-2-bugs-2026-07-31`
+en memoria), así que el arreglo durable es la validación al arranque en `run-workers.ts`, no volver a
+cargar bien la variable. Queda para después de que el cobro esté confirmado andando.
+
+### RESULTADO: cobro real confirmado de punta a punta (2026-08-19 14:48 UTC)
+
+Primer pago online que TurnoGol confirma solo en producción, con la clave ya rotada en Vercel y
+Railway y MercadoPago reconectado en los dos complejos:
+
+```
+booking 6cde8621  status=confirmed  deposit_status=paid
+payment           status=approved   mp_payment_id=173668584263
+pgboss            process-mp-webhook completed, retrycount=0
+cash_flows        1 fila            processed_webhooks 0 -> 2 filas
+click -> confirmado: 23 s (14:47:52 -> 14:48:15)
+```
+
+**La red de rescate tampoco estaba rota.** En el mismo ciclo (14:40:32) `reconcile-pending-payments`
+levantó el pago huérfano de la corrida 1 (`a7a2dca3`, del 18/08): lo buscó en MP por
+`external_reference`, lo encontró `approved`, lo grabó (`pago=pending -> approved`,
+`mp_payment_id=174510158896`) y mandó el mail "Pago tardío recibido — acción requerida". No confirmó
+el turno porque ya había pasado, que es la decisión correcta.
+
+Es decir: **una sola causa —`ENCRYPTION_KEY` inválida en Railway— explicaba los tres síntomas**
+(webhook que no confirma, rescate que no rescata, pago huérfano de la corrida 1). La hipótesis previa
+de un bug propio del reconcile queda descartada; la task que se abrió con ese enunciado está
+desactualizada.
+
+## Pendientes registrados
+
+1. **El worker tiene que negarse a arrancar con `ENCRYPTION_KEY` inválida** (`run-workers.ts`).
+   Hoy arranca bien y falla job por job en silencio, indefinidamente. Segunda vez que esta misma
+   variable rompe el cobro en producción (ver `primer-wizard-real-2-bugs-2026-07-31` en memoria).
+   Es el pendiente de mayor valor de esta sesión.
+
+2. **Los errores del worker no llegan a Sentry.** `logger.error` en los workers de Railway no produce
+   ni un issue: 24 h de Sentry sin una sola entrada mientras el cobro estaba muerto. La única señal
+   fue leer `pgboss.job` a mano. Sin esto, el punto 1 tapa el próximo incidente pero no lo revela.
+
+3. **No hay forma de desvincular MercadoPago desde la UI.** El botón "Conectar" de
+   `/settings/facturacion` se oculta apenas hay `mpConnectedAt` y no existe otra puerta, así que un
+   complejo que autorizó la cuenta equivocada queda trabado (la copy actual dice "escribinos para
+   cambiarla"). Se puede re-vincular entrando a mano a `/api/mp/oauth-start`, que no chequea si ya
+   está conectado y cuyo guard de cuenta ocupada se excluye a sí mismo — pero eso no es un camino de
+   producto. Al desconectar hay que apagar `settings.requires_deposit` en el mismo UPDATE: exigir
+   seña sin MP conectado es justo el estado que dejaba al jugador colgado (F-003). Se empezó a
+   implementar en esta sesión y se revirtió por prioridad; el diseño quedó definido.
+
+4. **El detalle de reserva miente sobre un pago tardío.** Con `payments.status='approved'` y el
+   booking `expired`, la pantalla muestra el monto como "(pendiente)". Es un dato falso, no un
+   estado incompleto.
+
+5. **El mail de pago tardío pide una acción que la UI no ofrece.** "Se requiere acción manual para
+   reembolsar o reasignar" y el detalle de reserva no tiene ninguno de los dos botones. Falta la
+   acción de resolver un pago sin turno (reasignar a otro horario o marcar reembolsado).
+
+6. **Verificar por qué `5ece40d6` no se rescató.** En el ciclo de 14:40 el reconcile levantó el
+   huérfano de `complejo-elite-futbol` pero no el de `complejo-titi`, que cumple los mismos
+   predicados de la pasada 2 y cuyo complejo también estaba ya reconectado (14:35:45 vs 14:39:25).
+   Medir en el próximo ciclo antes de sacar conclusiones.
+
+7. **Onboarding: avisar del plazo de liquidación.** Una cuenta MP nueva libera a los 18 días y retiene
+   ~5 %. El complejo no se entera hasta que busca la plata, y el competidor real de la seña online es
+   el alias, que acredita al instante y gratis. Hay que decirle dónde elegir su plazo
+   (MercadoPago → Costos y cuotas).
+
+## Corrección al diagnóstico anterior + decisión de pago tardío (2026-08-19)
+
+Una sesión paralela refutó, con razón, la frase "la red de rescate funciona" de más arriba. Precisión:
+el rescate **detecta, registra y avisa**; nunca **resucita** un turno expirado, y no puede — `expired`
+es terminal en tres capas (`booking.state-machine.ts:29`, el `WHERE status='pending_payment'` de
+`booking.concurrency.ts:38` y el trigger `enforce_booking_invariants_fn` de la migr. 070). Lo que se
+arregló con la `ENCRYPTION_KEY` fue que ese camino pudiera EJECUTARSE; su resultado siempre fue
+`won:false` + `admin_late_payment`.
+
+Dos afirmaciones de esa sesión que los datos de producción **no** sostienen:
+
+- **"El search de MP vuelve vacío, falta aislar por qué."** No vuelve vacío. `audit_logs` tiene
+  `booking.late_payment_attempt` a las 14:40:34 para `a7a2dca3` con `mpPaymentId=174510158896`: el
+  reconcile le preguntó a MercadoPago, encontró el pago y ejecutó el camino de pago tardío.
+- **El booking que estaba investigando (`d6f0a098`) nunca se pagó.** Hay DOS reservas sobre el mismo
+  slot (Cancha Elite 2, 18/08 20:00): `d6f0a098` (creada 20:42, abrió checkout y se abandonó) y
+  `a7a2dca3` (22:13, esa sí pagó). MP devuelve vacío para la primera porque no existe tal pago. No
+  hacían falta las credenciales de producción que pedía.
+
+**Decisión del dueño:** pago tardío ⇒ **reembolso automático**. Ver
+`docs/decisions/2026-08-19-pago-tardio-reembolso-automatico.md`. Queda **descartada** la migración
+078 con la excepción `expired → confirmed`: cambia una regla de negocio deliberada y no se implementa
+sin reabrir la decisión.
+
+Esto modifica los pendientes 5 y 6 de la lista de arriba: el 5 (acción manual desde el detalle de
+reserva) deja de ser el camino principal y pasa a ser el respaldo para reasignar; el 6 queda
+CERRADO — `5ece40d6` no se rescató porque ningún booking expirado se rescata, no por un bug del
+barrido.

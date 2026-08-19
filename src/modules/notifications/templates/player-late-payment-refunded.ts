@@ -18,9 +18,7 @@ export type PlayerLatePaymentRefundedData = {
  * solo se le mandaba un mail al complejo pidiéndole acción manual, y el único
  * que había puesto plata se quedaba sin turno y sin noticias.
  */
-export function renderPlayerLatePaymentRefunded(
-  data: PlayerLatePaymentRefundedData,
-): EmailContent {
+export function renderPlayerLatePaymentRefunded(data: PlayerLatePaymentRefundedData): EmailContent {
   const subject = `Te devolvemos la seña — ${data.courtName}, ${data.date} ${data.timeStart}`
   const html = `
 <!DOCTYPE html>

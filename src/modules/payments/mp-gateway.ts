@@ -37,11 +37,19 @@ export interface PaymentGateway {
    * `data.id` es el cobro, que apunta a su preapproval, que tiene la
    * referencia.
    *
+   * **`payment` también entra acá**, y en la práctica es EL caso: el panel de
+   * MercadoPago avisa el cobro de una suscripción como un `payment` común.
+   * Medido en el historial de notificaciones de producción el 2026-08-20 — las
+   * dos únicas entregas del día fueron `payment.created` con el id del pago, y
+   * ninguna de tipo suscripción, con "Planes y suscripciones" tildado igual. Un
+   * `payment` sólo resuelve si el pago está ligado a un preapproval; una venta
+   * suelta de la cuenta master (un QR, un Point) devuelve null y se ignora.
+   *
    * Devuelve null si MP no lo reconoce: el caller responde 200 e ignora, en vez
    * de reintentar para siempre un evento que nunca va a resolver.
    */
   resolveSubscriptionTenant(
-    eventType: 'subscription_preapproval' | 'subscription_authorized_payment',
+    eventType: 'subscription_preapproval' | 'subscription_authorized_payment' | 'payment',
     dataId: string,
   ): Promise<string | null>
   /**

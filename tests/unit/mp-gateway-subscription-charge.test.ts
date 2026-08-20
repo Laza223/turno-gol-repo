@@ -151,3 +151,76 @@ describe('MercadoPagoGateway.getSubscriptionChargeInfo', () => {
     ).rejects.toThrow(/503/)
   })
 })
+
+/**
+ * El cobro llega como `payment`, no como evento de suscripción.
+ *
+ * Historial de notificaciones de producción del 2026-08-20: las dos únicas
+ * entregas del día fueron `payment.created` con el id del PAGO
+ * (173841538187 y 173833098759), y ninguna de tipo suscripción — con "Planes y
+ * suscripciones" tildado en el panel igual. Las dos rebotaron en 400.
+ */
+describe('MercadoPagoGateway.resolveSubscriptionTenant — un `payment` del canal global', () => {
+  const fetchMock = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  /** Respuesta real de `GET /v1/payments/173841538187`, recortada. */
+  const PAGO_DE_SUSCRIPCION = {
+    id: PAGO,
+    status: 'approved',
+    external_reference: TENANT,
+    point_of_interaction: {
+      transaction_data: { subscription_id: PREAPPROVAL, billing_date: '2026-08-19' },
+    },
+  }
+
+  it('resuelve el complejo siguiendo el preapproval del pago', async () => {
+    fetchMock
+      .mockResolvedValueOnce(responder(200, PAGO_DE_SUSCRIPCION))
+      .mockResolvedValueOnce(responder(200, { id: PREAPPROVAL, external_reference: TENANT }))
+
+    const tenant = await new MercadoPagoGateway('enc-token').resolveSubscriptionTenant(
+      'payment',
+      String(PAGO),
+    )
+
+    expect(tenant).toBe(TENANT)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`/v1/payments/${PAGO}`)
+    // El complejo sale del preapproval y no del `external_reference` del pago:
+    // una sola fuente de verdad para los dos caminos.
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(`/preapproval/${PREAPPROVAL}`)
+  })
+
+  it('una venta suelta de la cuenta master no es de ningún complejo', async () => {
+    // Un QR o un Point de la cuenta de TurnoGol: pago real, sin preapproval
+    // detrás. Devolver un complejo acá sería aplicarle plata ajena a alguien.
+    fetchMock.mockResolvedValueOnce(
+      responder(200, { id: 999, status: 'approved', external_reference: 'QR #1' }),
+    )
+
+    const tenant = await new MercadoPagoGateway('enc-token').resolveSubscriptionTenant(
+      'payment',
+      '999',
+    )
+
+    expect(tenant).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('un pago que la cuenta master no conoce se ignora', async () => {
+    // La seña de una reserva vive en el MP del complejo, no en el master: acá
+    // da 404, y su webhook real llega aparte con `?tenant=` en la URL.
+    fetchMock.mockResolvedValueOnce(responder(404, {}))
+
+    const tenant = await new MercadoPagoGateway('enc-token').resolveSubscriptionTenant(
+      'payment',
+      '123',
+    )
+
+    expect(tenant).toBeNull()
+  })
+})

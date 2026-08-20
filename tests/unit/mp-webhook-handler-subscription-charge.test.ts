@@ -36,6 +36,7 @@ vi.mock('@/shared/observability', () => ({ track: { webhook: vi.fn(), payment: v
 
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
+import { lockMpEvent } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 
@@ -43,6 +44,7 @@ const mockGetBillingGateway = getBillingGateway as ReturnType<typeof vi.fn>
 const mockResolveTenantGateway = resolveTenantGateway as ReturnType<typeof vi.fn>
 const mockOnPaymentApproved = onPaymentApproved as ReturnType<typeof vi.fn>
 const mockOnPaymentRejected = onPaymentRejected as ReturnType<typeof vi.fn>
+const mockLockMpEvent = lockMpEvent as ReturnType<typeof vi.fn>
 
 // Ids reales del cobro de producción del 2026-08-20.
 const TENANT = 'fbeda410-39eb-4ed0-b248-2f732ad14d26'
@@ -154,6 +156,83 @@ describe('handleMpWebhookJob — cobro de suscripción', () => {
     // El cross-check sigue en pie con la fuente nueva: quien tenga el secreto
     // del webhook no puede aplicarle el cobro de un complejo a otro.
     await expect(handleMpWebhookJob(job())).rejects.toThrow(/tenant mismatch/)
+    expect(mockOnPaymentApproved).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * El mismo cobro, pero llegando como `payment` — que es como MercadoPago lo
+ * manda de verdad (historial de notificaciones del 2026-08-20).
+ */
+describe('handleMpWebhookJob — el cobro que llega como `payment`', () => {
+  function jobPayment(): MpWebhookJob {
+    return {
+      tenantId: TENANT,
+      mpEventId: 'evt-pay-1',
+      eventType: 'payment',
+      mpPaymentId: PAGO,
+      rawPayload: { id: 'evt-pay-1', type: 'payment', data: { id: PAGO } },
+      // Lo pone el route cuando el complejo lo resolvió MercadoPago con el
+      // token master.
+      source: 'saas',
+    }
+  }
+
+  function master(info: Record<string, unknown>) {
+    return { getPaymentStatus: vi.fn().mockResolvedValue(info) }
+  }
+
+  const COBRO = {
+    mpPaymentId: PAGO,
+    status: 'approved',
+    amount: 10_000,
+    externalReference: TENANT,
+    paymentMethodId: 'account_money',
+    preapprovalId: PREAPPROVAL,
+  }
+
+  it('un `payment` ligado a un preapproval activa la suscripción', async () => {
+    const gw = master(COBRO)
+    mockGetBillingGateway.mockReturnValue(gw)
+
+    await handleMpWebhookJob(jobPayment())
+
+    expect(mockOnPaymentApproved).toHaveBeenCalledTimes(1)
+    const args = mockOnPaymentApproved.mock.calls[0] as unknown[]
+    expect(args[6]).toBe(PAGO)
+    expect(args[7]).toBe(PREAPPROVAL)
+  })
+
+  it('no lockea el evento por su cuenta: lo hace la activación', async () => {
+    // `onPaymentApproved` hace su propio `lockWebhook`. Si el handler lockeara
+    // antes, la primera entrega quedaría marcada como procesada SIN haber
+    // aplicado el cobro, y ningún reintento lo arreglaría.
+    const gw = master(COBRO)
+    mockGetBillingGateway.mockReturnValue(gw)
+
+    await handleMpWebhookJob(jobPayment())
+
+    expect(mockLockMpEvent).not.toHaveBeenCalled()
+  })
+
+  it('un `payment` sin preapproval sigue el camino de siempre', async () => {
+    // Control positivo: una seña de reserva o el proraeo de un upgrade no
+    // deben desviarse a la rama de suscripción.
+    const gw = master({ ...COBRO, preapprovalId: undefined, externalReference: 'booking-abc' })
+    mockGetBillingGateway.mockReturnValue(gw)
+
+    // Sin `upgrade` en el ref y con source=saas, el handler corta por el
+    // control de coherencia que ya existía — lo que importa acá es que NO
+    // haya entrado a la rama de suscripción.
+    await expect(handleMpWebhookJob(jobPayment())).rejects.toThrow(/source mismatch/)
+    expect(mockOnPaymentApproved).not.toHaveBeenCalled()
+  })
+
+  it('rechaza el cobro si el complejo del pago no es el reclamado', async () => {
+    const gw = master({ ...COBRO, externalReference: 'otro-complejo' })
+    mockGetBillingGateway.mockReturnValue(gw)
+
+    await expect(handleMpWebhookJob(jobPayment())).rejects.toThrow(/tenant mismatch/)
     expect(mockOnPaymentApproved).not.toHaveBeenCalled()
   })
 })

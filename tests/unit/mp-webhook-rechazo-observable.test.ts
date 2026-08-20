@@ -104,14 +104,17 @@ describe('webhook de MercadoPago — todo rechazo queda explicado en el log', ()
     })
   })
 
-  it('un `payment` sin complejo en la URL se registra como tal', async () => {
+  it('un evento sin complejo y sin forma de resolverlo se registra como tal', async () => {
+    // `payment` y los dos de suscripción ya no caen acá: a esos se les pregunta
+    // a MercadoPago de quién son. Queda el resto de los tipos que el canal
+    // global del panel manda y que no sabemos atribuir a nadie.
     const res = await postear(
-      { id: 1, type: 'payment', data: { id: '123456789' } },
+      { id: 1, type: 'chargebacks', data: { id: '123456789' } },
       firmar('123456789'),
     )
 
     expect(res.status).toBe(400)
-    expect(ultimoWarn()).toMatchObject({ motivo: 'missing tenant', eventType: 'payment' })
+    expect(ultimoWarn()).toMatchObject({ motivo: 'missing tenant', eventType: 'chargebacks' })
   })
 
   it('no filtra el payload ni el id completo, solo su forma', async () => {

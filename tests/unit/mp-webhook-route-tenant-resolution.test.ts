@@ -110,11 +110,40 @@ describe('webhook de MercadoPago — resolución del complejo', () => {
     expect(send).not.toHaveBeenCalled()
   })
 
-  it('un pago de seña sin tenant sigue siendo 400', async () => {
+  it('un `payment` sin tenant también se le pregunta a MercadoPago', async () => {
+    // Medido en el historial de notificaciones de producción (2026-08-20): el
+    // cobro de la suscripción llega como `payment`, no como evento de
+    // suscripción. Si esto vuelve a ser un 400 automático, el SaaS deja de
+    // cobrar y nadie se entera.
+    resolveSubscriptionTenant.mockResolvedValue(TENANT)
+
     const res = await postear(SIN_TENANT, evento('payment', '555'), firmar('555'))
 
-    // No se puede resolver: para preguntarle a MP hace falta el token del
-    // complejo, y saber cuál es el complejo era justamente la pregunta.
+    expect(res.status).toBe(200)
+    expect(resolveSubscriptionTenant).toHaveBeenCalledWith('payment', '555')
+    expect(send).toHaveBeenCalledWith(
+      expect.anything(),
+      // `source: 'saas'` porque lo resolvió el token MASTER: la plata está en
+      // la cuenta de TurnoGol, no en la del complejo.
+      expect.objectContaining({ tenantId: TENANT, source: 'saas' }),
+      expect.anything(),
+    )
+  })
+
+  it('un `payment` que MercadoPago no liga a ninguna suscripción se ignora, no se aplica', async () => {
+    // Una venta suelta de la cuenta master (un QR, un Point) no es de ningún
+    // complejo. El gateway devuelve null y acá no se toca plata de nadie.
+    resolveSubscriptionTenant.mockResolvedValue(null)
+
+    const res = await postear(SIN_TENANT, evento('payment', '556'), firmar('556'))
+
+    expect(res.status).toBe(200)
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('un tipo de evento fuera de los tres sigue siendo 400 sin tenant', async () => {
+    const res = await postear(SIN_TENANT, evento('chargebacks', '557'), firmar('557'))
+
     expect(res.status).toBe(400)
     expect(resolveSubscriptionTenant).not.toHaveBeenCalled()
   })

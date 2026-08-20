@@ -99,23 +99,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // quedaba en `trialing`. Ahora se le pregunta a MP de quién es, vía el
   // `external_reference` que `createPreapproval` ya guarda.
   //
+  // Y el cobro llega como `payment`, no como evento de suscripción: en el
+  // historial de notificaciones de producción del 2026-08-20 las dos únicas
+  // entregas del día fueron `payment.created` con el id del pago, con "Planes y
+  // suscripciones" tildado en el panel igual. Por eso `payment` sin `?tenant=`
+  // ya no es un 400 automático: se le pregunta a MP, y sólo resuelve si el pago
+  // está ligado a un preapproval.
+  //
   // Es MÁS estricto que confiar en el query, no menos: el complejo lo dice
   // MercadoPago, no quien manda el request. El cross-check de
   // `mp-webhook.handler` contra `external_reference` sigue en pie para el
   // camino con `?tenant=`.
   let tenantId = url.searchParams.get('tenant')
+  /**
+   * El complejo lo dijo MercadoPago y no la URL. Vale como `source=saas`: si MP
+   * reconoce el pago con el token MASTER, la plata está en la cuenta de
+   * TurnoGol y no en la del complejo.
+   */
+  let resueltoPorMp = false
   if (!tenantId) {
     if (
       payload.type !== 'subscription_preapproval' &&
-      payload.type !== 'subscription_authorized_payment'
+      payload.type !== 'subscription_authorized_payment' &&
+      payload.type !== 'payment'
     ) {
-      // Un `payment` sin tenant no se puede resolver: para preguntarle a MP
-      // hace falta saber con qué token, y eso depende del complejo. Las señas
-      // siempre traen el query, así que esto es ruido del canal del panel.
       return rechazar('missing tenant', 400, body)
     }
     try {
       tenantId = await getBillingGateway().resolveSubscriptionTenant(payload.type, payload.data.id)
+      resueltoPorMp = tenantId !== null
     } catch (err) {
       // Error real contra MP (5xx, red, timeout): 500 para que MP reintente.
       logger.error('mp-webhook: no se pudo resolver el complejo del evento', {
@@ -166,7 +178,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // proraeo (billing.service.computeNotificationUrl): marca que el pago vive en
   // la cuenta MASTER y no en el MP del complejo. Se normaliza a un literal para
   // no propagar texto arbitrario de la query al job.
-  const source = url.searchParams.get('source') === 'saas' ? ('saas' as const) : undefined
+  const source =
+    url.searchParams.get('source') === 'saas' || resueltoPorMp ? ('saas' as const) : undefined
 
   const job: MpWebhookJob = {
     tenantId,

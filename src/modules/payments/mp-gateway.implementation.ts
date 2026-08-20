@@ -331,11 +331,27 @@ export class MercadoPagoGateway implements PaymentGateway {
   }
 
   async resolveSubscriptionTenant(
-    eventType: 'subscription_preapproval' | 'subscription_authorized_payment',
+    eventType: 'subscription_preapproval' | 'subscription_authorized_payment' | 'payment',
     dataId: string,
   ): Promise<string | null> {
     try {
       let preapprovalId = dataId
+
+      if (eventType === 'payment') {
+        // El cobro de una suscripción llega como `payment` común por el canal
+        // global del panel. Se resuelve SÓLO si el pago está ligado a un
+        // preapproval (`transaction_data.subscription_id`): una venta suelta de
+        // la cuenta master —un QR, un Point— no es de ningún complejo, y una
+        // seña vive en la cuenta del complejo, así que acá da 404. En los dos
+        // casos `null`, que el caller ignora con 200.
+        const pago = await this.mpGet(`/v1/payments/${encodeURIComponent(dataId)}`)
+        if (!pago) return null
+        const poi = pago.point_of_interaction as
+          { transaction_data?: { subscription_id?: unknown } } | undefined
+        const suscripcion = poi?.transaction_data?.subscription_id
+        if (typeof suscripcion !== 'string' || suscripcion === '') return null
+        preapprovalId = suscripcion
+      }
 
       if (eventType === 'subscription_authorized_payment') {
         // El `data.id` es el cobro mensual, no el preapproval: hay que saltar

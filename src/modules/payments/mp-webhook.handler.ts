@@ -191,6 +191,45 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       return
     }
 
+    // Un `payment` ligado a un preapproval ES el cobro mensual de la
+    // suscripción, aunque no venga con el tipo de evento de suscripción.
+    //
+    // En producción es EL camino: el historial de notificaciones del
+    // 2026-08-20 muestra que MercadoPago avisó los dos cobros como
+    // `payment.created` con el id del pago, y ningún evento de suscripción,
+    // con "Planes y suscripciones" tildado en el panel igual.
+    //
+    // Va ANTES del `lockMpEvent` de abajo a propósito: `onPaymentApproved`
+    // hace su propio `lockWebhook`, igual que en la rama de
+    // `subscription_authorized_payment`. Lockear dos veces el mismo evento
+    // haría que la primera entrega se marque procesada sin aplicar el cobro.
+    if (info?.preapprovalId) {
+      // Mismo cross-check que la rama de suscripción: el complejo del pago
+      // manda sobre el complejo reclamado por el job.
+      if (info.externalReference !== job.tenantId) {
+        throw new Error(
+          `webhook tenant mismatch: claimed=${job.tenantId} actual=${info.externalReference}`,
+        )
+      }
+      const at = new Date()
+      if (info.status === 'approved') {
+        await onPaymentApproved(
+          job.tenantId,
+          job.mpEventId,
+          job.eventType,
+          job.rawPayload,
+          at,
+          tx,
+          info.mpPaymentId,
+          info.preapprovalId,
+        )
+      } else if (info.status === 'rejected' || info.status === 'cancelled') {
+        await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)
+      }
+      // pending / in_process: no-op hasta el próximo evento.
+      return
+    }
+
     // type === 'payment' — booking deposit OR SaaS upgrade proration.
     // El lock sigue yendo primero: ya no evita pagar `getPaymentStatus` (la
     // fase SEARCH de arriba ya lo hizo, sin importar si esto termina siendo

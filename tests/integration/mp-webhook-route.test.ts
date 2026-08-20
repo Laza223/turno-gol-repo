@@ -94,7 +94,13 @@ function makeReq(args: {
 
 describe('POST /api/webhooks/mercadopago — request validation wiring', () => {
   it('responde 400 "missing tenant" cuando falta el query param tenant', async () => {
-    const res = await webhookRoute(makeReq({ tenant: null, body: VALID_PAYLOAD }))
+    // Tipo de evento que no se puede atribuir a nadie. `payment` y los dos de
+    // suscripción YA NO caen acá: desde que MercadoPago avisa el cobro del SaaS
+    // como un `payment` sin `?tenant=`, a esos se les pregunta a MP de quién
+    // son (ver mp-webhook-route-tenant-resolution.test.ts).
+    const res = await webhookRoute(
+      makeReq({ tenant: null, body: { ...VALID_PAYLOAD, type: 'chargebacks' } }),
+    )
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ error: 'missing tenant' })
     expect(hoisted.sendSpy).not.toHaveBeenCalled()

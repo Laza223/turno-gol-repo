@@ -13,6 +13,52 @@ import { validatedJson } from '@/shared/api-output'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+/**
+ * Forma del `data.id` sin exponer el id en sí.
+ *
+ * Los ids de MP no son secretos, pero tampoco hacen falta para diagnosticar:
+ * lo que importa es si el formato era el que el schema espera. Esto es lo que
+ * distingue "MP mandó algo raro" de "nuestra validación está de más".
+ */
+function formaDelId(valor: unknown): string {
+  if (typeof valor === 'number') return `numerico(${String(valor).length})`
+  if (typeof valor !== 'string') return `${typeof valor}`
+  if (valor === '') return 'vacio'
+  if (/^\d+$/.test(valor)) return `numerico(${valor.length})`
+  if (/^[0-9a-f]+$/i.test(valor)) return `hex(${valor.length})`
+  return `otro(${valor.length})`
+}
+
+/** Lee un campo de nivel superior del body crudo sin confiar en su tipo. */
+function campoCrudo(body: unknown, campo: string): unknown {
+  if (typeof body !== 'object' || body === null) return undefined
+  return (body as Record<string, unknown>)[campo]
+}
+
+/**
+ * Rechaza el webhook DEJANDO RASTRO de por qué.
+ *
+ * Sin esto, los rechazos eran indistinguibles en los logs de Vercel: sólo se
+ * veía `POST /api/webhooks/mercadopago 400`, y averiguar la causa costaba
+ * reproducir el payload a mano contra producción. Pasó dos veces seguidas con
+ * el cobro de suscripciones (#176 y #177), así que el rechazo mudo es en sí
+ * mismo el bug a corregir.
+ *
+ * Lo que se loguea es forma, no contenido: el tipo de evento y el formato del
+ * id, nunca el payload entero ni nada que identifique a una persona.
+ */
+function rechazar(motivo: string, status: number, body: unknown): NextResponse {
+  const tipo = campoCrudo(body, 'type')
+  logger.warn('mp-webhook: evento rechazado', {
+    module: 'mp-webhook',
+    motivo,
+    status,
+    eventType: typeof tipo === 'string' ? tipo.slice(0, 64) : `${typeof tipo}`,
+    formaDataId: formaDelId(campoCrudo(campoCrudo(body, 'data'), 'id')),
+  })
+  return NextResponse.json({ error: motivo }, { status })
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url)
 
@@ -20,12 +66,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 })
+    return rechazar('invalid json', 400, null)
   }
 
   const parsed = webhookPayloadSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
+    return rechazar('invalid payload', 400, body)
   }
   const payload = parsed.data
 
@@ -37,7 +83,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // llamada a MercadoPago, y ese trabajo no se le regala a quien no probó
   // todavía que el evento es de MP.
   if (!verifyWebhookSignature(xSignature, xRequestId, dataId)) {
-    return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
+    return rechazar('invalid signature', 401, body)
   }
 
   // De qué complejo es este evento.
@@ -66,7 +112,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // Un `payment` sin tenant no se puede resolver: para preguntarle a MP
       // hace falta saber con qué token, y eso depende del complejo. Las señas
       // siempre traen el query, así que esto es ruido del canal del panel.
-      return NextResponse.json({ error: 'missing tenant' }, { status: 400 })
+      return rechazar('missing tenant', 400, body)
     }
     try {
       tenantId = await getBillingGateway().resolveSubscriptionTenant(payload.type, payload.data.id)

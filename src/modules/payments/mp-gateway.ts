@@ -44,6 +44,18 @@ export interface PaymentGateway {
     eventType: 'subscription_preapproval' | 'subscription_authorized_payment',
     dataId: string,
   ): Promise<string | null>
+  /**
+   * El cobro mensual de una suscripción, leído de la FACTURA y no de la API
+   * de pagos.
+   *
+   * `subscription_authorized_payment` trae en `data.id` el id del
+   * `authorized_payment` (la factura del mes), que **no existe** en
+   * `/v1/payments` — verificado en producción el 2026-08-20: ese GET devuelve
+   * 404 y el pago real es otro id, anidado adentro de la factura. Usar
+   * `getPaymentStatus` acá hacía fallar el job en cada intento con el cobro ya
+   * cobrado.
+   */
+  getSubscriptionChargeInfo(authorizedPaymentId: string): Promise<GatewayPaymentInfo>
   /** `amount` in centavos ARS. */
   updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void>
   /**

@@ -135,6 +135,28 @@ export class MockGateway implements PaymentGateway {
     return match?.[1] ?? null
   }
 
+  subscriptionChargeCalls: string[] = []
+  /** Seteable por instancia: qué devuelve el lookup de la factura del mes. */
+  subscriptionChargeInfo?: GatewayPaymentInfo
+
+  /**
+   * Espejo de `getPaymentStatus`, pero por el id de la FACTURA. Por defecto
+   * devuelve un cobro aprobado, que es el caso que activa la suscripción;
+   * los tests que necesitan un rechazo setean `subscriptionChargeInfo`.
+   */
+  async getSubscriptionChargeInfo(authorizedPaymentId: string): Promise<GatewayPaymentInfo> {
+    this.subscriptionChargeCalls.push(authorizedPaymentId)
+    if (this.subscriptionChargeInfo) return this.subscriptionChargeInfo
+    return {
+      mpPaymentId: `mp-pay-${authorizedPaymentId}`,
+      status: 'approved',
+      amount: 0,
+      externalReference: '',
+      paymentMethodId: 'account_money',
+      preapprovalId: null,
+    }
+  }
+
   async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {
     this.updatePreapprovalCalls.push({ preapprovalId, amount })
   }

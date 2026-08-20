@@ -122,10 +122,18 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // a MP). Las entregas repetidas ya cortaron en el pre-check de arriba sin
   // llegar acá; una carrera exacta puede pagar el fetch doble, y el lock
   // transaccional de la fase PROCESS decide.
+  //
+  // El cobro de suscripción NO se pide a `/v1/payments`: su `data.id` es la
+  // factura del mes (`authorized_payment`), que ahí no existe — verificado en
+  // producción el 2026-08-20, `GET /v1/payments/7031112147` devuelve 404 y el
+  // pago real es otro id, anidado adentro de la factura. Con `getPaymentStatus`
+  // este camino fallaba en cada reintento con la plata ya cobrada.
   const info: GatewayPaymentInfo | null =
     job.eventType === 'subscription_preapproval'
       ? null
-      : await gateway.getPaymentStatus(job.mpPaymentId)
+      : job.eventType === 'subscription_authorized_payment'
+        ? await gateway.getSubscriptionChargeInfo(job.mpPaymentId)
+        : await gateway.getPaymentStatus(job.mpPaymentId)
 
   // Capture the booking id when a deposit is confirmed, so we can enqueue a
   // push notification AFTER the transaction commits. This avoids threading

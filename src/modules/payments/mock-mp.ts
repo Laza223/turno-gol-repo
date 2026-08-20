@@ -137,6 +137,22 @@ export class LocalMockGateway implements PaymentGateway {
     return dataId.startsWith(prefijo) ? dataId.slice(prefijo.length) : null
   }
 
+  /**
+   * En mock mode la factura del mes no existe como entidad aparte: se
+   * devuelve un cobro aprobado por el mismo id, que es lo que necesita el
+   * handler para activar la suscripción en un E2E.
+   */
+  async getSubscriptionChargeInfo(authorizedPaymentId: string): Promise<GatewayPaymentInfo> {
+    return {
+      mpPaymentId: `mock-pay-${authorizedPaymentId}`,
+      status: 'approved',
+      amount: 0,
+      externalReference: '',
+      paymentMethodId: 'mock',
+      preapprovalId: null,
+    }
+  }
+
   async updatePreapprovalAmount(_preapprovalId: string, _amount: number): Promise<void> {
     // no-op in mock mode
   }

@@ -32,6 +32,10 @@ export const tenantSubscriptions = pgTable(
 
     mpSubscriptionId: text('mp_subscription_id'),
 
+    // Migr. 078: con qué cuenta de MercadoPago paga el complejo, desacoplado
+    // del email de login. NULL = el del dueño (staff_users).
+    mpPayerEmail: text('mp_payer_email'),
+
     pendingPlanChange: uuid('pending_plan_change').references(() => plans.id),
     pendingChangeAt: timestamp('pending_change_at', {
       withTimezone: true,

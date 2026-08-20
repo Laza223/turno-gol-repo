@@ -66,6 +66,7 @@ export type StaffActionAuth =
 async function requireStaffWithRole(
   allowed: readonly StaffRole[],
   error: string,
+  opts?: { billing?: boolean },
 ): Promise<StaffActionAuth> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
@@ -79,7 +80,16 @@ async function requireStaffWithRole(
   const role = await getStaffRole(tenant.id, user.staffUserId)
   if (!role || !allowed.includes(role)) return { ok: false, error }
 
-  if (await isBlockedForStaff(tenant)) {
+  if (opts?.billing) {
+    // Excepción de facturación, misma que `withBillingTenant` para
+    // `/api/billing/reactivate`: al que quiere pagar no se le cierra la puerta
+    // (ENS-20). Un tenant `suspended`/`blocked` tiene que poder corregir CON QUÉ
+    // paga, o el único flujo que lo saca del bloqueo queda inalcanzable. Solo
+    // `deleted` (datos ya borrados) queda afuera.
+    if (tenant.status === 'deleted') {
+      return { ok: false, error: 'El complejo fue eliminado.' }
+    }
+  } else if (await isBlockedForStaff(tenant)) {
     return { ok: false, error: 'El complejo está bloqueado por falta de pago.' }
   }
 
@@ -100,6 +110,18 @@ export async function requireOperatorStaff(): Promise<StaffActionAuth> {
  */
 export async function requireAdminStaffAction(): Promise<StaffActionAuth> {
   return requireStaffWithRole(['admin'], 'Solo el administrador puede modificar la configuración.')
+}
+
+/**
+ * Guard para Server Actions de facturación que un tenant moroso TIENE que
+ * poder ejecutar (declarar con qué cuenta de MercadoPago paga). Solo admin, y
+ * sin el hard-lock de lifecycle: mismo criterio que `withBillingTenant`
+ * (ENS-20). No usarlo para nada que no sea "cómo/con qué se paga".
+ */
+export async function requireBillingAdminStaffAction(): Promise<StaffActionAuth> {
+  return requireStaffWithRole(['admin'], 'Solo el administrador puede modificar la facturación.', {
+    billing: true,
+  })
 }
 
 /**

@@ -91,12 +91,20 @@ export function ActivatePlanSection({
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3.5 text-sm font-medium text-red-600 dark:text-red-400"
         >
           <span>{error}</span>
+          {/* Apuntaba a /settings/equipo — pantalla equivocada (ahí se invita
+              staff, no se toca el mail propio) y, peor, el arreglo que sugería
+              el mensaje viejo podía ser imposible: el email de la cuenta de
+              MercadoPago del dueño puede estar tomado en `auth.users` por su
+              propia cuenta de jugador. Desde la migr. 078 la salida es declarar
+              el email de MP acá abajo, sin tocar el de login: el ancla
+              `#cuenta-mp` existe en las DOS páginas que montan esta sección
+              (/settings/facturacion y /reactivar). */}
           {error.toLowerCase().includes('email') && (
             <a
-              href="/settings/equipo"
+              href="#cuenta-mp"
               className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors shadow-xs"
             >
-              Ir a Equipo <ArrowRight className="h-3.5 w-3.5" />
+              Cargar mi cuenta de MercadoPago <ArrowRight className="h-3.5 w-3.5" />
             </a>
           )}
         </div>

@@ -7,16 +7,16 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { plans } from '@/shared/db/schema'
-import { getSubscriptionState } from '@/modules/billing/billing.service'
+import { getBillingPayerEmail, getSubscriptionState } from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
 import {
   ActivatePlanSection,
   type ActivatePlanOption,
 } from '@/app/(admin)/settings/facturacion/ActivatePlanSection'
-import {
-  CancelSubscriptionSection,
-  CANCELABLE,
-} from '@/app/(admin)/settings/facturacion/CancelSubscriptionSection'
+import { CancelSubscriptionSection } from '@/app/(admin)/settings/facturacion/CancelSubscriptionSection'
+import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
+import { MpPayerEmailSection } from '@/app/(admin)/settings/facturacion/MpPayerEmailSection'
+import { updateMpPayerEmailAction } from '@/app/(admin)/settings/facturacion/actions'
 
 // ENS-20: destino del "recovery por UI" del ciclo de dunning
 // (past_due → suspended → blocked → churned). Vive fuera de (admin) para
@@ -136,6 +136,12 @@ export default async function ReactivarPage() {
 
   const activePlans = canReactivate ? await loadActivePlans() : []
 
+  // Con qué cuenta de MercadoPago paga (migr. 078). Va acá y no solo en
+  // /settings/facturacion porque el hard-lock del panel deja al dueño
+  // suspendido/bloqueado con esta página como única superficie: si el cobro
+  // rebota por el email, corregirlo tiene que ser posible SIN salir de acá.
+  const payer = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
+
   return (
     <section className="mx-auto flex min-h-[70vh] max-w-4xl flex-col justify-center gap-6 px-6 py-16">
       <div className="text-center">
@@ -166,6 +172,14 @@ export default async function ReactivarPage() {
           description="Elegí tu plan para volver a operar."
           ctaLabel="Reactivar plan"
           ctaLoadingLabel="Reactivando…"
+        />
+      )}
+
+      {canReactivate && activePlans.length > 0 && (
+        <MpPayerEmailSection
+          currentEmail={payer.override}
+          ownerEmail={payer.ownerEmail}
+          action={updateMpPayerEmailAction}
         />
       )}
 

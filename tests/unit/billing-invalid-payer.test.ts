@@ -114,14 +114,16 @@ describe('subscribe — payer sin cuenta de MP (ENS-23)', () => {
     const tx = makeSubscribeTx()
     const gateway = gatewayRejecting(INVALID_PAYER_MP_ERROR)
 
-    expect.assertions(2)
+    expect.assertions(3)
     try {
       await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
     } catch (err) {
       expect(err).toBeInstanceOf(InvalidPayerEmailError)
-      expect((err as Error).message).toBe(
-        'El email de tu cuenta no tiene una cuenta de MercadoPago asociada. Creá una cuenta de MercadoPago con ese email o actualizá tu email.',
-      )
+      // Migr. 078: el mensaje nombra el email rechazado y manda al campo donde
+      // se declara la cuenta de MercadoPago, no a cambiar el email de login
+      // (esa salida podía estar cerrada — ver billing-payer-email.test.ts).
+      expect((err as Error).message).toContain(OWNER_EMAIL)
+      expect((err as Error).message).toContain('Cuenta de MercadoPago para pagar')
     }
   })
 

@@ -43,6 +43,8 @@ export type SubscriptionState = {
   currentPeriodStart: Date
   currentPeriodEnd: Date
   mpSubscriptionId: string | null
+  /** Migr. 078 — NULL = se cobra al email del dueño (`staff_users`). */
+  mpPayerEmail: string | null
   pendingPlanChange: string | null
   pendingChangeAt: Date | null
   canceledAt: Date | null

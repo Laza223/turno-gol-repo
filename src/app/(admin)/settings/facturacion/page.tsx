@@ -1,13 +1,19 @@
 import { AlertTriangle, CreditCard, CheckCircle2, ExternalLink } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
-import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
+import {
+  getBillingPayerEmail,
+  getSubscriptionState,
+  listActivePlans,
+} from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
 import { SettingsTabs } from '../SettingsTabs'
 import { ActivatePlanSection } from './ActivatePlanSection'
 import { ChangePlanSection } from './ChangePlanSection'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
 import { DisconnectMpSection } from './DisconnectMpSection'
+import { MpPayerEmailSection } from './MpPayerEmailSection'
+import { updateMpPayerEmailAction } from './actions'
 
 // Nunca mostrar el código crudo del callback OAuth: siempre qué pasó + qué
 // hacer (pages/onboarding.md §6.7). Vivía en StepPayments.tsx —se reubica acá
@@ -57,6 +63,10 @@ export default async function FacturacionPage(
   }
 
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
+  // Con qué cuenta de MercadoPago se paga la suscripción (migr. 078). Se lee
+  // aunque no haya fila de suscripción: `getBillingPayerEmail` tolera el caso
+  // y la sección igual muestra de dónde sale el default.
+  const payer = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
   const defaultCourts = courts.length || 3
 
   // Bug raíz: createTenantWithTrial no insertaba tenant_subscriptions, así que
@@ -126,6 +136,12 @@ export default async function FacturacionPage(
           periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
         />
       )}
+
+      <MpPayerEmailSection
+        currentEmail={payer.override}
+        ownerEmail={payer.ownerEmail}
+        action={updateMpPayerEmailAction}
+      />
 
       {sub && (
         <CancelSubscriptionSection

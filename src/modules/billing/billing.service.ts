@@ -58,6 +58,7 @@ type SubRow = {
   current_period_start: Date | string
   current_period_end: Date | string
   mp_subscription_id: string | null
+  mp_payer_email: string | null
   pending_plan_change: string | null
   pending_change_at: Date | string | null
   canceled_at: Date | string | null
@@ -102,7 +103,7 @@ async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
     SELECT status, plan_id, billing_cycle,
            current_period_start, current_period_end,
-           mp_subscription_id, pending_plan_change, pending_change_at,
+           mp_subscription_id, mp_payer_email, pending_plan_change, pending_change_at,
            canceled_at, cancellation_reason, scheduled_deletion_at,
            dunning_started_at, last_payment_failed_at, last_payment_at
     FROM tenant_subscriptions
@@ -131,7 +132,7 @@ async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | nu
   const rows = await tx.execute(sql`
     SELECT status, plan_id, billing_cycle,
            current_period_start, current_period_end,
-           mp_subscription_id, pending_plan_change, pending_change_at,
+           mp_subscription_id, mp_payer_email, pending_plan_change, pending_change_at,
            canceled_at, cancellation_reason, scheduled_deletion_at,
            dunning_started_at, last_payment_failed_at, last_payment_at
     FROM tenant_subscriptions
@@ -141,23 +142,36 @@ async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | nu
   return (rows as unknown as Array<SubRow>)[0] ?? null
 }
 
+/**
+ * El dueño del complejo: a quién se le cobra la suscripción (cuando no declaró
+ * un email de MercadoPago propio, migr. 078) y a quién le llegan los avisos de
+ * facturación.
+ *
+ * Dos subqueries correlacionadas independientes, cada una con `LIMIT 1` y sin
+ * `ORDER BY`, podían devolver el nombre de UN staff y el email de OTRO — y
+ * ninguna filtraba por rol, así que el "dueño" podía terminar siendo el
+ * encargado (`manager`). Un solo LATERAL con orden determinístico corrige las
+ * dos cosas: gana el `admin` más antiguo. El fallback a cualquier staff activo
+ * es deliberado — un complejo sin admin activo es un estado roto, pero perder
+ * el aviso de facturación encima no ayuda a nadie.
+ */
 async function loadTenantOwner(
   tenantId: string,
   tx: DbTx,
 ): Promise<{ tenantName: string; ownerName: string | null; ownerEmail: string | null } | null> {
   const rows = await tx.execute(sql`
     SELECT t.name AS "tenantName",
-           (
-             SELECT su.first_name FROM tenant_staff_members tsm
-             JOIN staff_users su ON su.id = tsm.staff_user_id
-             WHERE tsm.tenant_id = t.id AND tsm.is_active = true LIMIT 1
-           ) AS "ownerName",
-           (
-             SELECT su.email FROM tenant_staff_members tsm
-             JOIN staff_users su ON su.id = tsm.staff_user_id
-             WHERE tsm.tenant_id = t.id AND tsm.is_active = true LIMIT 1
-           ) AS "ownerEmail"
+           o."ownerName",
+           o."ownerEmail"
     FROM tenants t
+    LEFT JOIN LATERAL (
+      SELECT su.first_name AS "ownerName", su.email AS "ownerEmail"
+      FROM tenant_staff_members tsm
+      JOIN staff_users su ON su.id = tsm.staff_user_id
+      WHERE tsm.tenant_id = t.id AND tsm.is_active = true
+      ORDER BY (tsm.role = 'admin') DESC, tsm.created_at
+      LIMIT 1
+    ) o ON true
     WHERE t.id = ${tenantId}
     LIMIT 1
   `)
@@ -170,6 +184,28 @@ async function loadTenantOwner(
       }>
     )[0] ?? null
   )
+}
+
+/**
+ * Con qué email se le pide el cobro a MercadoPago (migr. 078).
+ *
+ * MP exige que el `payer_email` del preapproval tenga una cuenta real ("Both
+ * payer and collector must be real or test users"), pero NO exige que sea el
+ * email con el que la persona entra a TurnoGol — eran dos cosas distintas
+ * pegadas. El caso real que lo destapó (prod, 2026-08-19): la dueña había
+ * probado TurnoGol como jugadora con el email de su cuenta de MercadoPago, así
+ * que ese email ya estaba tomado en `auth.users` y no podía mudarlo a su
+ * cuenta de staff — el mensaje de error le pedía exactamente lo que la app le
+ * impedía hacer.
+ *
+ * `mp_payer_email` en NULL (el default de todos los complejos preexistentes)
+ * conserva el comportamiento anterior: se cobra al email del dueño.
+ */
+function resolvePayerEmail(
+  sub: Pick<SubRow, 'mp_payer_email'>,
+  owner: { ownerEmail: string | null } | null,
+): string | null {
+  return sub.mp_payer_email ?? owner?.ownerEmail ?? null
 }
 
 function planAmount(plan: PlanRow, cycle: BillingCycle): number {
@@ -247,7 +283,8 @@ export async function subscribe(
   if (!plan) throw new PlanNotFoundError(planId)
 
   const owner = await loadTenantOwner(tenantId, tx)
-  if (!owner?.ownerEmail) {
+  const payerEmail = resolvePayerEmail(sub, owner)
+  if (!payerEmail) {
     throw new SubscriptionNotFoundError(tenantId)
   }
 
@@ -271,7 +308,7 @@ export async function subscribe(
 
   const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
-    payerEmail: owner.ownerEmail,
+    payerEmail,
     amount,
     frequency: billingCycle,
     planId,
@@ -661,7 +698,8 @@ export async function reactivate(
   if (!plan) throw new PlanNotFoundError(planId)
 
   const owner = await loadTenantOwner(tenantId, tx)
-  if (!owner?.ownerEmail) throw new SubscriptionNotFoundError(tenantId)
+  const payerEmail = resolvePayerEmail(sub, owner)
+  if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
   const amount = planAmount(plan, billingCycle)
 
@@ -706,7 +744,7 @@ export async function reactivate(
 
   const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
-    payerEmail: owner.ownerEmail,
+    payerEmail,
     amount,
     frequency: billingCycle,
     planId,
@@ -764,6 +802,7 @@ export async function getSubscriptionState(tenantId: string, tx: DbTx): Promise<
            ts.current_period_start AS "currentPeriodStart",
            ts.current_period_end AS "currentPeriodEnd",
            ts.mp_subscription_id AS "mpSubscriptionId",
+           ts.mp_payer_email AS "mpPayerEmail",
            ts.pending_plan_change AS "pendingPlanChange",
            ts.pending_change_at AS "pendingChangeAt",
            ts.canceled_at AS "canceledAt",
@@ -780,4 +819,64 @@ export async function getSubscriptionState(tenantId: string, tx: DbTx): Promise<
   const row = (rows as unknown as Array<SubscriptionState>)[0]
   if (!row) throw new SubscriptionNotFoundError(tenantId)
   return row
+}
+
+// ─── payer email de MercadoPago (migr. 078) ─────────────────────────────────
+
+export type BillingPayerEmail = {
+  /** El que se le manda a MP hoy: el declarado si existe, si no el del dueño. */
+  effective: string | null
+  /** Lo que el dueño declaró explícitamente. NULL = todavía usa el del dueño. */
+  override: string | null
+  /** El email de login del dueño, para mostrar de dónde sale el default. */
+  ownerEmail: string | null
+}
+
+export async function getBillingPayerEmail(tenantId: string, tx: DbTx): Promise<BillingPayerEmail> {
+  const sub = await loadSub(tenantId, tx)
+  const owner = await loadTenantOwner(tenantId, tx)
+  const override = sub?.mp_payer_email ?? null
+  return {
+    effective: resolvePayerEmail({ mp_payer_email: override }, owner),
+    override,
+    ownerEmail: owner?.ownerEmail ?? null,
+  }
+}
+
+/**
+ * Declara (o borra, con `null`) el email de la cuenta de MercadoPago del
+ * complejo. Devuelve el valor anterior para que la Server Action audite el
+ * cambio: es el dato que decide a qué cuenta se le cobra la suscripción.
+ *
+ * No toca `mp_subscription_id`: un preapproval YA autorizado sigue cobrándole
+ * a la cuenta que lo autorizó — MP no lo repunta solo. El email nuevo entra a
+ * jugar en el próximo `subscribe()`/`reactivate()`, que es exactamente el
+ * momento en que el dueño lo está cargando (el flujo que hoy rebota).
+ */
+export async function setBillingPayerEmail(
+  tenantId: string,
+  email: string | null,
+  tx: DbTx,
+): Promise<{ previous: string | null }> {
+  // `RETURNING` devuelve los valores NUEVOS, así que el anterior sale del CTE
+  // (idioma estándar de Postgres para "old value"). El `FOR UPDATE` serializa
+  // dos ediciones concurrentes: sin él las dos leerían el mismo `previous` y
+  // una auditoría mentiría sobre desde qué email se cambió.
+  const rows = await tx.execute(sql`
+    WITH prev AS (
+      SELECT tenant_id, mp_payer_email
+      FROM tenant_subscriptions
+      WHERE tenant_id = ${tenantId}
+      FOR UPDATE
+    )
+    UPDATE tenant_subscriptions ts
+    SET mp_payer_email = ${email},
+        updated_at = NOW()
+    FROM prev
+    WHERE ts.tenant_id = prev.tenant_id
+    RETURNING prev.mp_payer_email AS "previous"
+  `)
+  const row = (rows as unknown as Array<{ previous: string | null }>)[0]
+  if (!row) throw new SubscriptionNotFoundError(tenantId)
+  return { previous: row.previous }
 }

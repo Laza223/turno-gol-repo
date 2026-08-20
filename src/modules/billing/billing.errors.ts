@@ -80,11 +80,19 @@ export class UpgradeAlreadyPendingError extends Error {
 }
 
 /**
- * ENS-23: MP rechaza el preapproval si `payer_email` (el email del dueño del
- * tenant) no tiene cuenta de MercadoPago asociada ("Both payer and collector
- * must be real or test users"). Mensaje en español porque llega directo al
- * dueño vía `ActivatePlanSection` (`err.message` se muestra tal cual, mismo
- * patrón que `AbonadoConflictError`).
+ * ENS-23: MP rechaza el preapproval si el `payer_email` no tiene cuenta de
+ * MercadoPago asociada ("Both payer and collector must be real or test
+ * users"). Mensaje en español porque llega directo al dueño vía
+ * `ActivatePlanSection` (`err.message` se muestra tal cual, mismo patrón que
+ * `AbonadoConflictError`).
+ *
+ * El mensaje viejo ofrecía dos salidas: crear una cuenta de MP con ese email, o
+ * cambiar el email de la cuenta de TurnoGol. La segunda puede estar CERRADA
+ * (caso real en prod, 2026-08-19: el email de su cuenta de MP ya estaba tomado
+ * en `auth.users` por su propia cuenta de jugadora) — le pedía justo lo que la
+ * app le impedía hacer. Desde la migr. 078 la salida real es declarar el email
+ * de MercadoPago sin tocar el de login, así que el mensaje apunta ahí y NOMBRA
+ * el email rechazado: sin eso el dueño no sabe cuál de los dos falló.
  */
 export class InvalidPayerEmailError extends Error {
   readonly code = 'INVALID_PAYER_EMAIL'
@@ -93,7 +101,7 @@ export class InvalidPayerEmailError extends Error {
     public readonly payerEmail: string,
   ) {
     super(
-      'El email de tu cuenta no tiene una cuenta de MercadoPago asociada. Creá una cuenta de MercadoPago con ese email o actualizá tu email.',
+      `MercadoPago no encontró una cuenta con el email ${payerEmail}. Escribí abajo, en "Cuenta de MercadoPago para pagar", el email con el que entrás a MercadoPago — puede ser distinto al que usás para entrar a TurnoGol.`,
     )
     this.name = 'InvalidPayerEmailError'
   }

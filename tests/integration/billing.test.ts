@@ -4,6 +4,8 @@ import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import { setBillingGateway } from '@/modules/billing/billing.gateway'
 import {
   cancel as billingCancel,
+  getBillingPayerEmail,
+  setBillingPayerEmail,
   downgrade as billingDowngrade,
   getSubscriptionState,
   handleUpgradeApproved,
@@ -1084,5 +1086,95 @@ describe('B5 residual — extremo a extremo: upgrade pendiente + cancel + reacti
       `,
     )
     expect(finalRows[0]!.plan_id).toBe(plans.complejo)
+  })
+})
+
+// ─── payer_email de MercadoPago (migr. 078) ────────────────────────────────
+
+describe('con qué cuenta de MercadoPago paga el complejo', () => {
+  it('subscribe cobra al email declarado; sin declarar, al del dueño (admin, no el encargado)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const owner = await createTestStaffUser(sql, { email: `owner-${tenant.id}@staff.local` })
+    const manager = await createTestStaffUser(sql, { email: `manager-${tenant.id}@staff.local` })
+    // El encargado se linkea PRIMERO: sin el ORDER BY del LATERAL, las
+    // subqueries de loadTenantOwner podían devolver a este y cobrarle a él.
+    await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
+    await linkStaffToTenant(sql, tenant.id, owner.id, 'admin')
+    await seedSubscription(sql, tenant.id, 'trialing', 'predio')
+
+    const before = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
+    expect(before.override).toBeNull()
+    expect(before.ownerEmail).toBe(owner.email)
+    expect(before.effective).toBe(owner.email)
+
+    await withTenantContext(tenant.id, (tx) =>
+      billingSubscribe(tenant.id, plans.predio, 'monthly', mockGateway, tx),
+    )
+    expect(mockGateway.preapprovalCalls[0]!.payerEmail).toBe(owner.email)
+
+    const mpEmail = 'cuenta.mp@gmail.com'
+    const { previous } = await withTenantContext(tenant.id, (tx) =>
+      setBillingPayerEmail(tenant.id, mpEmail, tx),
+    )
+    expect(previous).toBeNull()
+
+    const after = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
+    expect(after.override).toBe(mpEmail)
+    expect(after.effective).toBe(mpEmail)
+    expect(after.ownerEmail).toBe(owner.email)
+
+    // Re-subscribe durante el trial: el segundo preapproval ya va al email
+    // declarado, que es el flujo que destrabó el caso real de producción.
+    await withTenantContext(tenant.id, (tx) =>
+      billingSubscribe(tenant.id, plans.predio, 'monthly', mockGateway, tx),
+    )
+    expect(mockGateway.preapprovalCalls[1]!.payerEmail).toBe(mpEmail)
+  })
+
+  it('vaciar el email vuelve al del dueño y devuelve el valor anterior para la auditoría', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const owner = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, owner.id)
+    await seedSubscription(sql, tenant.id, 'trialing', 'predio')
+
+    await withTenantContext(tenant.id, (tx) =>
+      setBillingPayerEmail(tenant.id, 'cuenta.mp@gmail.com', tx),
+    )
+    const { previous } = await withTenantContext(tenant.id, (tx) =>
+      setBillingPayerEmail(tenant.id, null, tx),
+    )
+
+    expect(previous).toBe('cuenta.mp@gmail.com')
+    const state = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
+    expect(state.override).toBeNull()
+    expect(state.effective).toBe(owner.email)
+
+    // El mismo UPDATE, pero con el ROL DE LA APP y RLS puestos (`asApp`): el
+    // pool de `withTenantContext` corre con el DSN superusuario en local, así
+    // que por sí solo no prueba que la policy deje escribir esta columna.
+    // El CTE con FOR UPDATE es el que necesita, además del SELECT, el USING de
+    // la policy de UPDATE.
+    const asAppRows = await asApp(
+      tenant.id,
+      (tx) =>
+        tx<{ previous: string | null }[]>`
+        WITH prev AS (
+          SELECT tenant_id, mp_payer_email
+          FROM tenant_subscriptions
+          WHERE tenant_id = ${tenant.id}
+          FOR UPDATE
+        )
+        UPDATE tenant_subscriptions ts
+        SET mp_payer_email = ${'otra.cuenta@gmail.com'},
+            updated_at = NOW()
+        FROM prev
+        WHERE ts.tenant_id = prev.tenant_id
+        RETURNING prev.mp_payer_email AS "previous"
+      `,
+    )
+    expect(asAppRows).toHaveLength(1)
+    expect(asAppRows[0]!.previous).toBeNull()
   })
 })

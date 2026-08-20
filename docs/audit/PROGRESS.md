@@ -5427,3 +5427,145 @@ rediseño), pero sí escondía dos cosas:
   `main` con los dos en rojo, que es exactamente cómo se llegó a 6 merges
   seguidos. Endurecerlo es decisión del dueño (cuesta ~14 min de Actions por
   push).
+
+---
+
+## 2026-08-19 — El dueño encerrado: el email con el que se paga ≠ el email con el que se entra
+
+**Detectado** probando el cobro de la suscripción SaaS en producción.
+
+### El hallazgo
+
+`subscribe()`/`reactivate()` mandaban a MercadoPago, como `payer_email`, el email
+del dueño leído de `staff_users` — el de login. MP exige que ese email tenga una
+cuenta real ("Both payer and collector must be real or test users") y
+`InvalidPayerEmailError` traducía el rechazo con dos salidas: crear una cuenta de
+MP con ese email, **o actualizar el email de la cuenta**.
+
+La segunda puede estar CERRADA, por un camino que no tiene nada de raro
+(reproducido en prod con `complejo-titi`): la persona probó TurnoGol como
+jugadora con su email real (`lisantiziana@gmail.com` — fila en `players` y en
+`auth.users`), después abrió su complejo con otro email
+(`tizianalisanti11@gmail.com`), y su cuenta de MercadoPago es la del primero.
+Cambiar el email del staff al primero falla: `auth.users.email` es único y ya lo
+ocupa su propio registro de jugadora. **El error le pedía exactamente lo que la
+app le impedía hacer.**
+
+Dos agravantes verificados en el código, no reportados en el barrido:
+
+- El botón del error mandaba a `/settings/equipo` — pantalla equivocada (ahí se
+  invita staff). La pantalla real de cambio de email existe y es
+  `/settings/perfil` (`updateUserEmailAction`), pero su pre-check solo mira
+  `staff_users`: el choque de `auth.users` llegaba crudo y en inglés desde
+  Supabase.
+- 🟡 `loadTenantOwner` resolvía "el dueño" con dos subqueries correlacionadas
+  independientes, cada una `LIMIT 1` sin `ORDER BY` y **sin filtrar por rol**:
+  podía devolver el nombre de un staff y el email de otro, y el "dueño" podía
+  terminar siendo el encargado (`manager`). Ese email es a quien se le cobra y a
+  quien le llegan los avisos de facturación.
+
+### La decisión (dueño, 2026-08-19)
+
+Separar las dos cosas que estaban pegadas: **con qué identidad entrás** y **con
+qué cuenta pagás**. Descartada la unificación de identidades (un mismo email
+como jugador y staff): toca `auth.users`, `app_metadata` (hoy `player_id` XOR
+`tenant_id`), guards, JWT y RLS dual — semanas y riesgo de seguridad real, para
+resolver lo mismo. Descartado también "solo arreglar el mensaje": deja al dueño
+sin poder pagar.
+
+El campo va **siempre visible** en Facturación (no solo cuando MP rechaza): el
+valor por defecto ya es el correcto para todos, así que el que no tiene el
+problema no hace nada.
+
+### Fixes aplicados
+
+- **Migr. 078** `tenant_subscriptions.mp_payer_email` (nullable, sin backfill:
+  NULL = seguir cobrando al email del dueño, que es el comportamiento previo).
+- `billing.service.ts`: `resolvePayerEmail()` (declarado → si no, el del dueño)
+  en `subscribe()` y `reactivate()`; `getBillingPayerEmail()` /
+  `setBillingPayerEmail()` (CTE con `FOR UPDATE` para devolver el valor anterior
+  a la auditoría); `loadTenantOwner()` pasa a un solo LATERAL con
+  `ORDER BY (role = 'admin') DESC, created_at` — una sola fila, admin primero.
+- `MpPayerEmailSection.tsx` + `updateMpPayerEmailAction`, montado en
+  `/settings/facturacion` **y en `/reactivar`**: el hard-lock del panel deja al
+  dueño suspendido/bloqueado con `/reactivar` como única superficie, y ahí es
+  donde más necesita corregir con qué paga. Por eso la action usa un guard nuevo
+  `requireBillingAdminStaffAction()` (admin, sin el lock de lifecycle, solo
+  `deleted` afuera) — mismo criterio que `withBillingTenant` (ENS-20: al que
+  quiere pagar no se le cierra la puerta).
+- Mensaje de `InvalidPayerEmailError`: nombra el email rechazado y manda al
+  campo; el CTA de `ActivatePlanSection` ya no va a Equipo sino al ancla
+  `#cuenta-mp`.
+- `settings/perfil/actions.ts`: el "ya existe una cuenta con ese email" (del
+  pre-check Y el de Supabase Auth) explica que puede ser su propia cuenta de
+  jugador y que para pagar no hace falta cambiar el de login.
+
+### Evidencia
+
+```
+pnpm typecheck        -> limpio
+pnpm lint             -> 0 errores
+pnpm test             -> 340 archivos, 3566 tests, 0 fallas
+pnpm test:storybook   -> 276 archivos, 1124 tests, 0 fallas
+pnpm test:integration tests/integration/billing.test.ts -> 28/28
+pnpm test:isolation   -> 166/166
+```
+
+Tests nuevos: `tests/unit/billing-payer-email.test.ts` (4), 1 caso nuevo en
+`settings-perfil-actions.test.ts`, 2 en `tests/integration/billing.test.ts`
+(cubren el SQL real de las dos queries nuevas, incluida la preferencia por el
+`admin` frente al `manager` linkeado primero, y el mismo UPDATE corrido con el
+ROL DE LA APP bajo RLS vía `asApp`), 6 stories de `MpPayerEmailSection` y el
+candado `server-no-importa-valores-de-modulos-client.test.ts`.
+
+### Verificado en la app corriendo (2026-08-20, Supabase local + seed e2e)
+
+Guardar desde `/settings/facturacion`: la fila queda en
+`cuenta.mp@gmail.com` (normalizado desde `Cuenta.MP@Gmail.com  `) y el
+`audit_logs` registra `subscription.payer_email_updated` con
+`{before: null, after: "cuenta.mp@gmail.com"}`. Vaciar el campo vuelve a
+`e2e-admin@turnogol.test (el email de tu cuenta de TurnoGol)`. Con el tenant
+puesto en `suspended`, el dueño guarda su cuenta de MercadoPago **desde
+`/reactivar`** — que es el punto del guard nuevo.
+
+### Dos hallazgos que aparecieron al verificar
+
+**🔴 `/reactivar` devolvía 500 — preexistente, no de esta tanda.** Con un tenant
+`suspended` la página entera caía en su error boundary:
+`CANCELABLE.has is not a function`. `CANCELABLE` es un `Set` que vivía exportado
+desde `CancelSubscriptionSection.tsx`, un módulo `'use client'`: un Server
+Component que importa un VALOR de un módulo client recibe la referencia de
+módulo, no el valor. Control negativo hecho: el 500 pasa igual con el archivo
+tal cual está en `main`. O sea que hoy, en producción, **el dueño suspendido no
+puede pagar ni darse de baja** — `/reactivar` es su única superficie.
+
+Fix: `CANCELABLE` se mudó a `src/modules/billing/cancelable-statuses.ts`.
+Candado nuevo: `tests/unit/server-no-importa-valores-de-modulos-client.test.ts`
+—visto en ROJO reintroduciendo el bug a propósito, y en VERDE con el fix. Ojo
+con la heurística: la primera versión no lo atrapaba porque `CANCELABLE` es
+SCREAMING_SNAKE y pasaba por "componente PascalCase"; hay que exigir una
+minúscula. Misma clase que `rsc-helper-en-modulo-use-client`: reincidente,
+invisible para typecheck/lint/vitest (los tests de la página mockean el módulo,
+y ahí `CANCELABLE` sí es un Set).
+
+**REFUTADO 2026-08-20**: esta sesión había reportado acá "el `didSubmit &&
+state.success` de los forms de Configuración no muestra nada cuando la action
+hace `revalidatePath`, porque el refresh del RSC se lleva puesto el estado del
+cliente" — y de ahí sacaba que `avisos`/`horarios`×2/`perfil` tenían el mismo
+bug. Una sesión distinta lo midió con control (pane visible, checksums, build
+de prod) y **no se sostiene**: `revalidatePath` no borra `state`; el falso
+positivo salió de medir con el pane oculto, que hace caer el form al POST
+nativo (recarga entera, ahí sí se pierde todo). Los 4 forms de `/settings/*`
+NO tienen bug — nada que arreglar ahí. `MpPayerEmailSection` sigue sin
+`revalidatePath` (comentario corregido para no repetir la premisa falsa), pero
+por el otro motivo real: las dos páginas que la montan son dinámicas. Memoria:
+`revalidatepath-borra-el-mensaje-de-guardado.md` (marcada REFUTADO). El chip
+de tarea para "arreglar" los 4 forms queda sin objeto — no hace falta correrlo.
+
+### Lo que queda abierto
+
+- Un preapproval YA autorizado sigue cobrándole a la cuenta que lo autorizó:
+  cambiar el email acá afecta al PRÓXIMO `subscribe()`/`reactivate()`, no
+  repunta una suscripción viva. Es el caso real (nunca llegó a autorizar), pero
+  si algún día hay que mudar una suscripción activa, hoy es cancelar + volver a
+  suscribir.

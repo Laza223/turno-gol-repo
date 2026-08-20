@@ -7,13 +7,12 @@ import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import type { SubscriptionStatus } from '@/modules/billing/billing.types'
+import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 
-/** Estados desde los que `billing.cancel()` permite pedir la baja voluntaria (ver `lifecycle.service.transitionToCanceled`), MENOS `trialing` — todavía no eligió plan, no hay nada que cancelar (decisión explícita, no la del FSM). Exportado: `/reactivar` (Fix 2, R2-4 residual) lo reusa para decidir si muestra esta sección — es la única forma en que un `suspended` (el hard-lock del layout lo saca de `/settings/facturacion`) llega a un botón de baja. */
-export const CANCELABLE: ReadonlySet<SubscriptionStatus> = new Set([
-  'active',
-  'past_due',
-  'suspended',
-])
+// `CANCELABLE` se mudó a `@/modules/billing/cancelable-statuses`: exportado
+// desde acá, `/reactivar` (Server Component) importaba una referencia de módulo
+// cliente en vez del Set y la página moría con un 500. El detalle completo, en
+// el comentario de ese archivo.
 
 type Props = {
   status: SubscriptionStatus

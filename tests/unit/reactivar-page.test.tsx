@@ -39,8 +39,33 @@ vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb(fakeTenantTx())),
   getDb: vi.fn(),
 }))
+// La página monta MpPayerEmailSection (migr. 078), un client component con
+// useActionState/useFormStatus — ambos undefined en vitest si no se mockean
+// (mismo patrón que horarios-forms.test.tsx). React 19: useActionState vive en
+// 'react'; useFormStatus siguió en 'react-dom'.
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return {
+    ...actual,
+    useActionState: (_action: unknown, initial: unknown) => [initial, vi.fn(), false],
+  }
+})
+vi.mock('react-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-dom')>()
+  return {
+    ...actual,
+    useFormStatus: () => ({ pending: false }),
+  }
+})
+
 vi.mock('@/modules/billing/billing.service', () => ({
   getSubscriptionState: vi.fn(),
+  // Migr. 078: la página lee con qué cuenta de MercadoPago se paga.
+  getBillingPayerEmail: vi.fn(async () => ({
+    effective: 'a@b.com',
+    override: null,
+    ownerEmail: 'a@b.com',
+  })),
 }))
 
 import ReactivarPage from '@/app/(public)/reactivar/page'

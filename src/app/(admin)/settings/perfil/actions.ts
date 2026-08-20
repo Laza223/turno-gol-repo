@@ -157,6 +157,29 @@ export async function updateTenantContactAction(
 export type UpdateEmailActionResult =
   { success: true; message: string } | { success: false; error: string }
 
+/**
+ * "Ese email ya existe" es, en la práctica, casi siempre la MISMA persona: el
+ * dueño probó TurnoGol como jugador con ese email antes de abrir su complejo
+ * (fila propia en `auth.users`, que exige email único), y ahora lo quiere para
+ * el login del staff. Reproducido en producción el 2026-08-19.
+ *
+ * El motivo por el que lo intentaba era pagar la suscripción: MercadoPago
+ * rechaza el cobro si el email no tiene cuenta de MP, y el mensaje de aquel
+ * error le decía "actualizá tu email" — justo lo que esta pantalla no puede
+ * hacer. Desde la migr. 078 ya no hace falta: el email de MercadoPago se
+ * declara aparte, sin tocar el de login. Por eso el mensaje lleva ahí.
+ */
+const EMAIL_TAKEN_MESSAGE =
+  'Ese email ya está en uso por otra cuenta (puede ser tu propia cuenta de jugador). Si lo querés para pagar la suscripción, no hace falta cambiar este: cargalo en Configuración → Facturación, en "Cuenta de MercadoPago para pagar".'
+
+/** Rechazo de Supabase Auth cuando el email ya existe en `auth.users`. */
+function isEmailTakenAuthError(error: { code?: string; message: string }): boolean {
+  return (
+    error.code === 'email_exists' ||
+    /already (been )?registered|already exists|email_exists/i.test(error.message)
+  )
+}
+
 export async function updateUserEmailAction(newEmail: string): Promise<UpdateEmailActionResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
@@ -182,7 +205,7 @@ export async function updateUserEmailAction(newEmail: string): Promise<UpdateEma
   // acá, avisar ahora es mejor que dejar la confirmación rota más tarde.
   const taken = await isStaffEmailTaken(parsed.data, auth.user.staffUserId)
   if (taken) {
-    return { success: false, error: 'Ese email ya está en uso por otra cuenta.' }
+    return { success: false, error: EMAIL_TAKEN_MESSAGE }
   }
 
   const supabase = await createClient()
@@ -195,6 +218,12 @@ export async function updateUserEmailAction(newEmail: string): Promise<UpdateEma
   )
 
   if (error) {
+    // El pre-check de arriba solo mira `staff_users`; el email puede estar
+    // tomado en `auth.users` por una cuenta de JUGADOR de la misma persona, y
+    // ahí el rechazo llega recién acá — crudo y en inglés hasta este fix.
+    if (isEmailTakenAuthError(error)) {
+      return { success: false, error: EMAIL_TAKEN_MESSAGE }
+    }
     return { success: false, error: error.message }
   }
 

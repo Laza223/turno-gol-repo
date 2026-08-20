@@ -162,9 +162,29 @@ describe('updateUserEmailAction', () => {
   it('email ya usado por otra cuenta (staff_users UNIQUE) → error limpio, sin tocar Supabase Auth', async () => {
     vi.mocked(isStaffEmailTaken).mockResolvedValue(true)
     const res = await updateUserEmailAction('otro@complejo.com')
-    expect(res).toEqual({ success: false, error: 'Ese email ya está en uso por otra cuenta.' })
+    expect(res.success).toBe(false)
+    // Migr. 078: el mensaje además dice qué hacer, porque el motivo típico de
+    // este intento es pagar la suscripción — y para eso ya no hace falta
+    // cambiar el email de login.
+    expect(res.success === false && res.error).toContain('ya está en uso por otra cuenta')
+    expect(res.success === false && res.error).toContain('Cuenta de MercadoPago para pagar')
     expect(vi.mocked(isStaffEmailTaken)).toHaveBeenCalledWith('otro@complejo.com', 'staff-1')
     expect(updateUser).not.toHaveBeenCalled()
+  })
+
+  it('Supabase rechaza porque el email ya existe en auth.users (cuenta de jugador propia) → mensaje útil, no el crudo en inglés', async () => {
+    updateUser.mockResolvedValue({
+      error: {
+        code: 'email_exists',
+        message: 'A user with this email address has already been registered',
+      },
+    })
+
+    const res = await updateUserEmailAction('lajugadora@gmail.com')
+
+    expect(res.success).toBe(false)
+    expect(res.success === false && res.error).toContain('Cuenta de MercadoPago para pagar')
+    expect(res.success === false && res.error).not.toContain('already been registered')
   })
 
   it('email disponible → pide el cambio a Supabase con el redirect al callback', async () => {

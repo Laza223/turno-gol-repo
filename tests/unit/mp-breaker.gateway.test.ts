@@ -36,6 +36,7 @@ function makeInner(overrides: Partial<PaymentGateway> = {}): PaymentGateway {
       initPoint: 'ip',
     })),
     cancelPreapproval: vi.fn(async (): Promise<void> => {}),
+    resolveSubscriptionTenant: vi.fn(async (): Promise<string | null> => 'tenant-1'),
     updatePreapprovalAmount: vi.fn(async (): Promise<void> => {}),
     createSaasUpgradePreference: vi.fn(async (): Promise<PreferenceResult> => ({
       preferenceId: 'u',

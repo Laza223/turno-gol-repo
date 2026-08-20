@@ -304,6 +304,53 @@ export class MercadoPagoGateway implements PaymentGateway {
     }
   }
 
+  async resolveSubscriptionTenant(
+    eventType: 'subscription_preapproval' | 'subscription_authorized_payment',
+    dataId: string,
+  ): Promise<string | null> {
+    // Por REST y no por el SDK: `PreApproval.get()` existe, pero para los
+    // authorized_payments el SDK no expone nada y quedaría media resolución
+    // por SDK y media por fetch. Una sola forma es más fácil de seguir.
+    // El token sale del config del SDK y no de un campo propio: guardarlo dos
+    // veces daría dos fuentes de verdad, y `withRefresh` reconstruye `config`
+    // al refrescar — un campo aparte quedaría con el token viejo.
+    const get = async (path: string): Promise<Record<string, unknown> | null> => {
+      const res = await fetch(`https://api.mercadopago.com${path}`, {
+        headers: { Authorization: `Bearer ${this.config.accessToken}` },
+      })
+      // 404 = MP no reconoce el id. No es un fallo nuestro y reintentar no lo
+      // va a cambiar, así que se distingue de un error real (5xx, red).
+      if (res.status === 404) return null
+      if (!res.ok) {
+        throw new MpGatewayError(`MP ${path} respondió ${res.status}`)
+      }
+      return (await res.json()) as Record<string, unknown>
+    }
+
+    try {
+      let preapprovalId = dataId
+
+      if (eventType === 'subscription_authorized_payment') {
+        // El `data.id` es el cobro mensual, no el preapproval: hay que saltar
+        // al padre para llegar al external_reference.
+        const cobro = await get(`/authorized_payments/${encodeURIComponent(dataId)}`)
+        if (!cobro) return null
+        const padre = cobro.preapproval_id
+        if (typeof padre !== 'string' || padre === '') return null
+        preapprovalId = padre
+      }
+
+      const preapproval = await get(`/preapproval/${encodeURIComponent(preapprovalId)}`)
+      if (!preapproval) return null
+
+      const ref = preapproval.external_reference
+      return typeof ref === 'string' && ref !== '' ? ref : null
+    } catch (err) {
+      if (err instanceof MpGatewayError) throw err
+      throw new MpGatewayError(`Failed to resolve tenant for ${eventType} ${dataId}`, err)
+    }
+  }
+
   async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {
     const preapproval = new PreApproval(this.config)
     try {

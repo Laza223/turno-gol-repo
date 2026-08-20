@@ -5,6 +5,7 @@ import { webhookPayloadSchema, webhookResponseSchema } from '@/modules/payments/
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { verifyWebhookSignature } from '@/modules/payments/webhook-auth'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
+import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { track, withSpan } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
 import { validatedJson } from '@/shared/api-output'
@@ -14,10 +15,6 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url)
-  const tenantId = url.searchParams.get('tenant')
-  if (!tenantId) {
-    return NextResponse.json({ error: 'missing tenant' }, { status: 400 })
-  }
 
   let body: unknown
   try {
@@ -36,8 +33,63 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const xRequestId = req.headers.get('x-request-id')
   const dataId = url.searchParams.get('data.id') ?? payload.data.id
 
+  // La firma se valida ANTES de resolver el complejo: resolverlo cuesta una
+  // llamada a MercadoPago, y ese trabajo no se le regala a quien no probó
+  // todavía que el evento es de MP.
   if (!verifyWebhookSignature(xSignature, xRequestId, dataId)) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
+  }
+
+  // De qué complejo es este evento.
+  //
+  // En las señas viene en la URL: TurnoGol arma una `notification_url` por
+  // operación con `?tenant=`. En las SUSCRIPCIONES no puede — MP **no guarda**
+  // `notification_url` en un preapproval (verificado en producción el
+  // 2026-08-20: el PUT devuelve 200 y el campo sigue vacío), así que notifica
+  // por el canal global del panel, que es una URL fija sin query.
+  //
+  // Hasta hoy eso era un 400 y el cobro recurrente del SaaS no llegaba nunca:
+  // el complejo pagaba, MP le cobraba todos los meses y la suscripción se
+  // quedaba en `trialing`. Ahora se le pregunta a MP de quién es, vía el
+  // `external_reference` que `createPreapproval` ya guarda.
+  //
+  // Es MÁS estricto que confiar en el query, no menos: el complejo lo dice
+  // MercadoPago, no quien manda el request. El cross-check de
+  // `mp-webhook.handler` contra `external_reference` sigue en pie para el
+  // camino con `?tenant=`.
+  let tenantId = url.searchParams.get('tenant')
+  if (!tenantId) {
+    if (
+      payload.type !== 'subscription_preapproval' &&
+      payload.type !== 'subscription_authorized_payment'
+    ) {
+      // Un `payment` sin tenant no se puede resolver: para preguntarle a MP
+      // hace falta saber con qué token, y eso depende del complejo. Las señas
+      // siempre traen el query, así que esto es ruido del canal del panel.
+      return NextResponse.json({ error: 'missing tenant' }, { status: 400 })
+    }
+    try {
+      tenantId = await getBillingGateway().resolveSubscriptionTenant(payload.type, payload.data.id)
+    } catch (err) {
+      // Error real contra MP (5xx, red, timeout): 500 para que MP reintente.
+      logger.error('mp-webhook: no se pudo resolver el complejo del evento', {
+        module: 'mp-webhook',
+        eventType: payload.type,
+        mpEventId: payload.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      return NextResponse.json({ error: 'tenant lookup failed' }, { status: 500 })
+    }
+    if (!tenantId) {
+      // MP no reconoce el id, o el preapproval no tiene `external_reference`
+      // (los creados fuera de TurnoGol, p. ej. a mano en el panel). 200 a
+      // propósito: reintentarlo no lo va a resolver nunca.
+      return validatedJson(
+        webhookResponseSchema,
+        { ok: true, ignored: payload.type },
+        'POST /api/webhooks/mercadopago',
+      )
+    }
   }
 
   track.webhook('mp.webhook.received', {

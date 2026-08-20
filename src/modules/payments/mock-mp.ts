@@ -124,6 +124,19 @@ export class LocalMockGateway implements PaymentGateway {
     // no-op in mock mode
   }
 
+  /**
+   * `createPreapproval` arma el id como `mock-preapp-<tenantId>`, así que la
+   * resolución es su inversa exacta: mismo contrato que en producción (el
+   * complejo sale del preapproval, no del query de la URL) sin llamar a MP.
+   */
+  async resolveSubscriptionTenant(
+    _eventType: 'subscription_preapproval' | 'subscription_authorized_payment',
+    dataId: string,
+  ): Promise<string | null> {
+    const prefijo = 'mock-preapp-'
+    return dataId.startsWith(prefijo) ? dataId.slice(prefijo.length) : null
+  }
+
   async updatePreapprovalAmount(_preapprovalId: string, _amount: number): Promise<void> {
     // no-op in mock mode
   }

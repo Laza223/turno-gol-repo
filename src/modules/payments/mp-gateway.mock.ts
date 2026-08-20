@@ -113,6 +113,28 @@ export class MockGateway implements PaymentGateway {
     if (this.cancelPreapprovalError !== undefined) throw this.cancelPreapprovalError
   }
 
+  resolveSubscriptionTenantCalls: Array<{ eventType: string; dataId: string }> = []
+  /** Seteable por instancia para probar el camino "MP no lo reconoce" → null. */
+  resolveSubscriptionTenantResult?: string | null
+
+  /**
+   * Inversa de `createPreapproval`, que arma el id como
+   * `mp-preapp-<n>-<tenantId>`: el complejo sale del id, igual que en
+   * producción sale del `external_reference`. Sobrescribible con
+   * `resolveSubscriptionTenantResult`.
+   */
+  async resolveSubscriptionTenant(
+    eventType: 'subscription_preapproval' | 'subscription_authorized_payment',
+    dataId: string,
+  ): Promise<string | null> {
+    this.resolveSubscriptionTenantCalls.push({ eventType, dataId })
+    if (this.resolveSubscriptionTenantResult !== undefined) {
+      return this.resolveSubscriptionTenantResult
+    }
+    const match = /^mp-preapp-\d+-(.+)$/.exec(dataId)
+    return match?.[1] ?? null
+  }
+
   async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {
     this.updatePreapprovalCalls.push({ preapprovalId, amount })
   }

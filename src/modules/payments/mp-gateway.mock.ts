@@ -140,13 +140,19 @@ export class MockGateway implements PaymentGateway {
   subscriptionChargeInfo?: GatewayPaymentInfo
 
   /**
-   * Espejo de `getPaymentStatus`, pero por el id de la FACTURA. Por defecto
-   * devuelve un cobro aprobado, que es el caso que activa la suscripción;
-   * los tests que necesitan un rechazo setean `subscriptionChargeInfo`.
+   * Espejo de `getPaymentStatus`, pero por el id de la FACTURA del mes.
+   *
+   * Respeta el mismo `statusByPaymentId` que `getPaymentStatus`: en producción
+   * son endpoints distintos, pero para un test lo que importa es "qué contesta
+   * MP sobre este id", y tener dos mapas separados obligaría a sembrar los
+   * mismos datos dos veces. `subscriptionChargeInfo` pisa todo, para el test
+   * que necesita una respuesta puntual.
    */
   async getSubscriptionChargeInfo(authorizedPaymentId: string): Promise<GatewayPaymentInfo> {
     this.subscriptionChargeCalls.push(authorizedPaymentId)
     if (this.subscriptionChargeInfo) return this.subscriptionChargeInfo
+    const sembrado = this.statusByPaymentId[authorizedPaymentId]
+    if (sembrado) return sembrado
     return {
       mpPaymentId: `mp-pay-${authorizedPaymentId}`,
       status: 'approved',

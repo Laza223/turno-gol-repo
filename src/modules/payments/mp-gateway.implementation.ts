@@ -304,43 +304,50 @@ export class MercadoPagoGateway implements PaymentGateway {
     }
   }
 
+  /**
+   * GET contra la API de MP por REST, no por el SDK.
+   *
+   * `PreApproval.get()` existe, pero para los authorized_payments el SDK no
+   * expone nada y quedaría media integración por SDK y media por fetch. Una
+   * sola forma es más fácil de seguir.
+   *
+   * El token sale del config del SDK y no de un campo propio: guardarlo dos
+   * veces daría dos fuentes de verdad, y `withRefresh` reconstruye `config`
+   * al refrescar — un campo aparte quedaría con el token viejo.
+   *
+   * `null` = 404, o sea MP no reconoce el id. No es un fallo nuestro y
+   * reintentar no lo va a cambiar, así que se distingue de un error real
+   * (5xx, red), que sí sube como excepción para que el job reintente.
+   */
+  private async mpGet(path: string): Promise<Record<string, unknown> | null> {
+    const res = await fetch(`https://api.mercadopago.com${path}`, {
+      headers: { Authorization: `Bearer ${this.config.accessToken}` },
+    })
+    if (res.status === 404) return null
+    if (!res.ok) {
+      throw new MpGatewayError(`MP ${path} respondió ${res.status}`)
+    }
+    return (await res.json()) as Record<string, unknown>
+  }
+
   async resolveSubscriptionTenant(
     eventType: 'subscription_preapproval' | 'subscription_authorized_payment',
     dataId: string,
   ): Promise<string | null> {
-    // Por REST y no por el SDK: `PreApproval.get()` existe, pero para los
-    // authorized_payments el SDK no expone nada y quedaría media resolución
-    // por SDK y media por fetch. Una sola forma es más fácil de seguir.
-    // El token sale del config del SDK y no de un campo propio: guardarlo dos
-    // veces daría dos fuentes de verdad, y `withRefresh` reconstruye `config`
-    // al refrescar — un campo aparte quedaría con el token viejo.
-    const get = async (path: string): Promise<Record<string, unknown> | null> => {
-      const res = await fetch(`https://api.mercadopago.com${path}`, {
-        headers: { Authorization: `Bearer ${this.config.accessToken}` },
-      })
-      // 404 = MP no reconoce el id. No es un fallo nuestro y reintentar no lo
-      // va a cambiar, así que se distingue de un error real (5xx, red).
-      if (res.status === 404) return null
-      if (!res.ok) {
-        throw new MpGatewayError(`MP ${path} respondió ${res.status}`)
-      }
-      return (await res.json()) as Record<string, unknown>
-    }
-
     try {
       let preapprovalId = dataId
 
       if (eventType === 'subscription_authorized_payment') {
         // El `data.id` es el cobro mensual, no el preapproval: hay que saltar
         // al padre para llegar al external_reference.
-        const cobro = await get(`/authorized_payments/${encodeURIComponent(dataId)}`)
+        const cobro = await this.mpGet(`/authorized_payments/${encodeURIComponent(dataId)}`)
         if (!cobro) return null
         const padre = cobro.preapproval_id
         if (typeof padre !== 'string' || padre === '') return null
         preapprovalId = padre
       }
 
-      const preapproval = await get(`/preapproval/${encodeURIComponent(preapprovalId)}`)
+      const preapproval = await this.mpGet(`/preapproval/${encodeURIComponent(preapprovalId)}`)
       if (!preapproval) return null
 
       const ref = preapproval.external_reference
@@ -348,6 +355,51 @@ export class MercadoPagoGateway implements PaymentGateway {
     } catch (err) {
       if (err instanceof MpGatewayError) throw err
       throw new MpGatewayError(`Failed to resolve tenant for ${eventType} ${dataId}`, err)
+    }
+  }
+
+  async getSubscriptionChargeInfo(authorizedPaymentId: string): Promise<GatewayPaymentInfo> {
+    // Un cobro de suscripción NO vive en `/v1/payments`. El `data.id` del
+    // evento es la FACTURA del mes (`authorized_payment`), y el pago real es
+    // otro número, adentro. Verificado contra producción el 2026-08-20 con el
+    // cobro real de $100:
+    //
+    //   GET /v1/payments/7031112147          → 404
+    //   GET /authorized_payments/7031112147  → 200, payment.id = 173841538187
+    //
+    // Con `getPaymentStatus` este camino tiraba 404 en cada intento y el job
+    // moría con el cobro ya hecho: el complejo pagaba y la suscripción se
+    // quedaba en `trialing` igual.
+    const cobro = await this.mpGet(
+      `/authorized_payments/${encodeURIComponent(authorizedPaymentId)}`,
+    )
+    if (!cobro) {
+      throw new MpGatewayError(`MP no reconoce el cobro de suscripción ${authorizedPaymentId}`)
+    }
+
+    const pago = cobro.payment as { id?: number | string; status?: string } | undefined
+
+    return {
+      // El id del PAGO, no el de la factura: es el que `onPaymentApproved`
+      // guarda y con el que después se puede rastrear la plata en MP.
+      mpPaymentId: pago?.id === undefined ? '' : String(pago.id),
+      // El estado lo manda el pago de adentro. El de la factura
+      // (`scheduled`/`processed`/`recycling`) describe el ciclo de cobro, no
+      // el resultado; sin pago todavía no hay resultado que aplicar, y
+      // `pending` es justamente el no-op del handler.
+      status: pago?.status === undefined ? 'pending' : mapStatus(pago.status),
+      amount: pesosToCents(
+        typeof cobro.transaction_amount === 'number' ? cobro.transaction_amount : 0,
+      ),
+      externalReference:
+        typeof cobro.external_reference === 'string' ? cobro.external_reference : '',
+      paymentMethodId:
+        typeof cobro.payment_method_id === 'string' ? cobro.payment_method_id : 'unknown',
+      // Directo del padre, sin tener que deducirlo de
+      // `point_of_interaction.transaction_data.subscription_id` como en un
+      // pago suelto. `onPaymentApproved` lo usa para verificar que el cobro
+      // es del preapproval VIGENTE antes de activar nada.
+      preapprovalId: typeof cobro.preapproval_id === 'string' ? cobro.preapproval_id : null,
     }
   }
 

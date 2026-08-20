@@ -4,8 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // reactiva cuando el preapproval del pago matchea `mp_subscription_id`
 // vigente — pero esa verificación es inútil si el handler nunca le pasa el
 // preapproval del pago. Este test prueba SOLO la plomería del handler: que
-// `info.mpPaymentId`/`info.preapprovalId` (lo que devuelve
-// `gateway.getPaymentStatus`) lleguen tal cual hasta `onPaymentApproved`.
+// `info.mpPaymentId`/`info.preapprovalId` lleguen tal cual hasta
+// `onPaymentApproved`.
+//
+// La FUENTE de ese `info` cambió el 2026-08-20: un cobro de suscripción se lee
+// de `getSubscriptionChargeInfo` (la factura del mes) y no de
+// `getPaymentStatus`, porque el `data.id` del evento no existe en
+// `/v1/payments` — ahí devolvía 404 en producción. La plomería que este
+// archivo cuida es la misma.
 
 const h = vi.hoisted(() => ({
   getDb: vi.fn(),
@@ -94,7 +100,7 @@ beforeEach(() => {
 describe('handleMpWebhookJob — pasa mpPaymentId/preapprovalId a onPaymentApproved (Fix 2b plumbing)', () => {
   it('approved CON preapprovalId (cobro recurrente normal) → pasa ambos campos tal cual', async () => {
     mockGetBillingGateway.mockReturnValue({
-      getPaymentStatus: vi.fn().mockResolvedValue({
+      getSubscriptionChargeInfo: vi.fn().mockResolvedValue({
         mpPaymentId: 'mp-pay-1',
         status: 'approved',
         amount: 5_500_000,
@@ -121,7 +127,7 @@ describe('handleMpWebhookJob — pasa mpPaymentId/preapprovalId a onPaymentAppro
 
   it('approved SIN preapprovalId (gateway/mock no lo trae) → pasa undefined, no lo inventa', async () => {
     mockGetBillingGateway.mockReturnValue({
-      getPaymentStatus: vi.fn().mockResolvedValue({
+      getSubscriptionChargeInfo: vi.fn().mockResolvedValue({
         mpPaymentId: 'mp-pay-1',
         status: 'approved',
         amount: 5_500_000,
@@ -147,7 +153,7 @@ describe('handleMpWebhookJob — pasa mpPaymentId/preapprovalId a onPaymentAppro
 
   it('rejected: onPaymentRejected sigue sin tocar (no forma parte de este fix)', async () => {
     mockGetBillingGateway.mockReturnValue({
-      getPaymentStatus: vi.fn().mockResolvedValue({
+      getSubscriptionChargeInfo: vi.fn().mockResolvedValue({
         mpPaymentId: 'mp-pay-1',
         status: 'rejected',
         amount: 5_500_000,

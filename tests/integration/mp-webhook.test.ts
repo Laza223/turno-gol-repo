@@ -28,6 +28,12 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
         mockGateway.createPreference(...args)
       getPaymentStatus = (...args: Parameters<MockGateway['getPaymentStatus']>) =>
         mockGateway.getPaymentStatus(...args)
+      // El cobro de suscripción se lee de la factura del mes, no de la API de
+      // pagos (ver mp-gateway.ts): sin este reenvío el handler se queda sin el
+      // método y el test falla con "is not a function" en vez de con lo que
+      // realmente está probando.
+      getSubscriptionChargeInfo = (...args: Parameters<MockGateway['getSubscriptionChargeInfo']>) =>
+        mockGateway.getSubscriptionChargeInfo(...args)
       createRefund = (...args: Parameters<MockGateway['createRefund']>) =>
         mockGateway.createRefund(...args)
     },

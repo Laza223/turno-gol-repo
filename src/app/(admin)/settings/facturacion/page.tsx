@@ -150,11 +150,31 @@ export default async function FacturacionPage(
                   sin ninguna pantalla de por medio — y las señas caían ahí sin que
                   nada lo dijera. */}
             {mpConnected && (
-              <p className="mt-2 text-sm text-foreground">
-                Cobrando en la cuenta{' '}
-                <span className="font-semibold">{tenant.mpNickname ?? 'conectada'}</span>. Si no es
-                la del complejo, desconectala y conectá la correcta.
-              </p>
+              <>
+                <p className="mt-2 text-sm text-foreground">
+                  Cobrando en la cuenta{' '}
+                  <span className="font-semibold">{tenant.mpNickname ?? 'conectada'}</span>. Si no
+                  es la del complejo, desconectala y conectá la correcta.
+                </p>
+                {/* Mercado Pago le pone 18 días de plazo a toda cuenta nueva por default
+                      (verificado en producción, 2026-08-19: la cuenta configurada libera
+                      antes, la default no). Es un ajuste DENTRO del panel de Mercado Pago,
+                      no algo que TurnoGol pueda cambiar por el complejo — por eso el aviso
+                      recién aparece acá, una vez conectado, y no en el botón de Conectar:
+                      antes de eso el complejo no tiene panel de Costos y cuotas que tocar. */}
+                <p className="mt-2 text-sm text-muted-foreground">
+                  💡 Por defecto, Mercado Pago tarda 18 días en acreditarte la seña.{' '}
+                  <a
+                    href="https://youtu.be/pwUFOdZMxYs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
+                  >
+                    Mirá cómo cambiarlo a al instante (2 min)
+                  </a>
+                  .
+                </p>
+              </>
             )}
           </div>
           {mpConnected && (

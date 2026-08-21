@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { dateStr, slug } from '@/shared/validation/primitives'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
-import { isTenantPubliclyVisible } from '@/modules/tenants/tenant-status'
+import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const todayStr = artNow.toISOString().slice(0, 10)
 
   const tenant = await getPublicTenant(tenantSlug)
-  if (!tenant || !isTenantPubliclyVisible(tenant.status)) {
+  if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
     // Un complejo suspendido/bloqueado/dado de baja no debe exponer turnos
     // via la API publica (mismo not_found que aplica la page del perfil).
     return NextResponse.json({ error: 'not_found' }, { status: 404 })

@@ -25,22 +25,10 @@ export type ReconcileDecision =
   | { action: 'alert'; reason: string }
   | { action: 'activate'; paidAt: Date; periodStart: Date; periodEnd: Date }
 
-/**
- * Estados locales desde los que el reconciliador puede levantar una
- * suscripción. Fuera de esta lista no toca nada.
- *
- * `suspended`/`blocked` están adentro por el rescate post-terminal: el
- * desenlace natural de un aviso de cobro perdido es que `expire-trials` pase el
- * complejo a `blocked` o que `dunning-retry` lo escale a `suspended`. Sin esos
- * dos, la red no cubre al que ya se cayó — que es exactamente el caso que hay
- * que rescatar.
- */
-export const RECONCILABLE_STATUSES = [
-  'trialing',
-  'past_due',
-  'suspended',
-  'blocked',
-] as const satisfies readonly SubscriptionStatus[]
+// Qué estados locales son reconciliables NO se declara acá: el worker los tiene
+// partidos en `CORE_STATUSES` (trialing/past_due) y `POST_TERMINAL_STATUSES`
+// (suspended/blocked, con ventana), porque cada barrido los usa distinto. Una
+// tercera lista con la unión sería una segunda fuente de verdad para lo mismo.
 
 /**
  * Clave de idempotencia POR COBRO, compartida entre el webhook y el

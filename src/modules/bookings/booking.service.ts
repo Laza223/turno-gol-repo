@@ -12,6 +12,7 @@ import {
   enqueueNotification,
   enqueueTenantOwnerNotification,
 } from '@/modules/notifications/notification.service'
+import { assertWithinPaidPeriod } from './paid-period.guard'
 import {
   BookingDateOutOfRangeError,
   BookingNotInConfirmedError,
@@ -198,6 +199,11 @@ export async function createManualBooking(
   if (input.type !== 'block') {
     assertSlotDuration(input.timeStart, input.timeEnd)
   }
+
+  // La carga manual NUNCA tuvo ventana de anticipación (el admin carga el turno
+  // cuando quiere, a diferencia del portal) — este es el único tope que se le
+  // pone, y solo aplica si el complejo está dado de baja.
+  await assertWithinPaidPeriod(tenantId, [input.date], tx)
 
   const court = await lockCourtOrThrow(input.courtId, tx)
   if (court.tenantId !== tenantId) {
@@ -458,6 +464,10 @@ async function createOnlineBookingImpl(
   if (input.maxAdvanceDays !== undefined && input.date > addDays(todayStr, input.maxAdvanceDays)) {
     throw new BookingDateOutOfRangeError('advance_exceeded')
   }
+  // Backstop del recorte que `publicBookingAdvanceDays` ya aplicó del lado del
+  // portal: la autoridad sobre "hasta cuándo puede vender este complejo" vive
+  // acá, no en el `maxAdvanceDays` que llega por parámetro.
+  await assertWithinPaidPeriod(tenantId, [input.date], tx)
 
   track.booking('booking.online.create.start', {
     tenantId,

@@ -45,6 +45,7 @@ export type PublicTenantFixture = {
   closedDates: string[]
   closesNextDay: boolean
   status: string
+  canceledPeriodEnd: Date | null
   timezone: string
   allowOnlineBooking: boolean
   requiresDeposit: boolean
@@ -75,6 +76,7 @@ export const publicTenant = (
   closedDates: [],
   closesNextDay: false,
   status: 'active',
+  canceledPeriodEnd: null,
   timezone: 'America/Argentina/Buenos_Aires',
   allowOnlineBooking: true,
   requiresDeposit: true,

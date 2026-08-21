@@ -5569,3 +5569,138 @@ de tarea para "arreglar" los 4 forms queda sin objeto — no hace falta correrlo
   repunta una suscripción viva. Es el caso real (nunca llegó a autorizar), pero
   si algún día hay que mudar una suscripción activa, hoy es cancelar + volver a
   suscribir.
+
+---
+
+## 2026-08-20 — Baja voluntaria: el portal del jugador se apagaba en el acto
+
+**Reporte original: mitad stale, mitad peor.** El hallazgo decía que cancelar
+cortaba el acceso del ADMIN en el acto, citando
+`src/server/middleware/with-tenant.ts:156` ("sólo deja pasar
+`['active','trialing','past_due','suspended']`"). Medido: no es así, y esa
+línea es de `withBillingTenant`, cuya condición es un `&&` de dos negaciones —
+`canceled` está en `BILLING_REACTIVATE_ALLOWED` (`:22`), así que pasa. El
+acceso admin durante `canceled` ya cumplía el spec desde ENS-26 (commit
+`7b69cd7c`, 2026-07-15, en main): el hard-lock de `(admin)/layout.tsx`,
+`BLOCKED_TENANT_STATUSES` y `BLOCKED_STAFF_TENANT_STATUSES` no lo incluyen, y
+`status-banner.tsx` ya dice "Tenés acceso hasta el ⟨fecha⟩". El sweep que corta
+al vencer el período existe y es `dunning-retry.worker.ts` (no
+`expire-trials`), vía `transitionCanceledToBlocked` con gate
+`current_period_end < NOW()`; va a `blocked`, no a `churned`.
+
+**Lo que sí estaba roto era la otra mitad de la misma fila de doc4 §2: "Acceso
+jugador — Completo hasta fin período".** El portal público apagaba al complejo
+en el mismo instante de la baja, en 7 lugares que decidían por `tenants.status`
+sin mirar nunca el período pago: perfil, checkout, disponibilidad, torneos ×2,
+la Server Action del checkout y el filtro de búsqueda. O sea: el complejo pagó
+hasta el 18/10 y su reserva online —lo que compró— quedó muerta desde el minuto
+uno. Ese es el reclamo material, no el panel admin.
+
+**Decisión del dueño (2026-08-20): abrir el portal hasta `current_period_end`,
+CON tope de fecha.** La opción sin tope se descartó por un efecto concreto: con
+la anticipación default de 6 días, el último día del período se podían vender
+turnos hasta 6 días DESPUÉS del corte — con la seña cobrada en el MercadoPago
+del complejo y el complejo ya `blocked`, sin poder verlos ni atenderlos.
+
+Fuente única nueva en `src/modules/tenants/tenant.lifecycle.ts` (mismo archivo
+que ya era la fuente de verdad del gating admin):
+`PUBLIC_UNAVAILABLE_TENANT_STATUSES`, `isPublicPortalOpen()`,
+`publicBookingAdvanceDays()` e `isPublicPortalIndexable()`. Los cinco `Set`
+literales duplicados en `(public)/[slug]/*` y el `BLOCKED` de
+`reservar/actions.ts` se borraron.
+
+- `getPublicTenant` devuelve `canceledPeriodEnd` y lo lee **sólo cuando
+  `status === 'canceled'`**: `tenant_subscriptions` está aislada por RLS (hace
+  falta `withTenantContext`), y así la visita pública normal no paga una
+  segunda transacción.
+- El tope se aplica UNA vez, recortando `bookingAdvanceDays` dentro de
+  `getPublicTenant` — de ahí lo heredan la grilla, `/api/public/availability` y
+  su variante semanal. El camino de ESCRITURA (`reservar/actions.ts`) lo
+  recalcula por su cuenta y no confía en lo que decidió la page.
+- Búsqueda/ciudades/disponibilidad cross-tenant pasan a
+  `SEARCHABLE_TENANT_STATUSES` (= visibles + `canceled`). Es un filtro **grueso
+  a propósito**: `current_period_end` no se puede leer cross-tenant bajo RLS
+  desde el pool público, así que entre el vencimiento y el sweep de las 13:00
+  ART una tarjeta puede sobrevivir unas horas y llevar a un perfil que responde
+  "no disponible" — misma clase de staleness que el ISR de 300s, contra dos
+  meses de un cliente pago sin aparecer en ningún lado.
+- El **sitemap NO** se tocó (sigue en `VISIBLE_TENANT_STATUSES`) y `canceled`
+  queda `noIndex`: el índice de un buscador sobrevive meses a la baja, así que
+  indexarlo mandaría gente a una página que para entonces está muerta.
+
+Test: `tests/integration/public-portal-canceled-gate.test.ts` (5 casos, DB
+real). Control negativo hecho — rompiendo `isPublicPortalOpen` y el recorte a
+propósito, 2 de los 5 se ponen rojos con `expected 6 to be 2` y `expected true
+to be false`.
+
+Verificación: `pnpm typecheck` limpio (el único error, `.next/dev/types/
+validator.ts`, es artefacto stale de build — reproducido igual sobre HEAD sin
+cambios), `pnpm lint` limpio, unit 3616/3616, integración 963/963, isolation
+166/166.
+
+### Segunda tanda (mismo día): los caminos del admin
+
+El dueño pidió cerrar también el lado admin, que la tanda anterior había dejado
+explícitamente afuera. Al buscar la CLASE ("¿dónde más un complejo `canceled`
+puede ocupar una cancha después de su corte?") aparecieron **cinco** caminos de
+escritura, no los dos que se habían nombrado — y uno del signo contrario.
+
+Fuente única: `src/modules/bookings/paid-period.guard.ts` (`paidPeriodCutoff`,
+`paidPeriodCutoffFrom`, `assertWithinPaidPeriod`, `paidPeriodErrorMessage`).
+Vive del lado del SERVICE y no de las Server Actions a propósito: los cinco
+caminos insertan en `bookings` por vías distintas y una regla puesta en las
+actions se le escapa a la próxima. Una sola query (`tenants` ⋈
+`tenant_subscriptions`), y devuelve `null` —sin tope— para todo estado que no
+sea `canceled`.
+
+Rechazar vs. recortar se decidió por la FORMA del pedido, no por el camino:
+
+- **Rechazan** (fechas explícitas): carga manual (`createManualBooking`, que
+  NUNCA había tenido ventana de fechas — el admin carga cuando quiere, así que
+  este es el único tope que se le pone), reserva online (backstop del recorte
+  que ya hacía el portal), mover un turno (`booking.reschedule`) y horas de
+  torneo (`reserveTournamentSlots`, donde el admin eligió las fechas a mano).
+- **Recortan**: abonados (`createAbonado` / `reactivateAbonado`) y el worker de
+  generación rodante. Ahí el pedido es "todas las que entren", el resultado sale
+  a la vista en `slotsGenerated`, y recortar mantiene coherente al que crea el
+  abono con al que después lo sigue generando.
+
+**El bug del signo contrario:** `generate-abonado-slots.worker.ts` tenía
+`canceled` dentro de `SKIP_STATUSES`, así que al complejo que se daba de baja
+con dos meses pagos por delante se le cortaba la generación de turnos fijos
+desde el día uno — sus clientes con horario fijo se quedaban sin sesiones
+aunque el complejo siguiera abierto y pago. Se lo sacó del skip y se lo recortó
+en el corte; el `current_period_end` entra por el barrido cross-tenant que ya
+existía (`LEFT JOIN tenant_subscriptions`), sin una query por abonado.
+
+`BookingDateOutOfRangeError` suma la razón `after_period_end` y un `cutoff`
+opcional: el mensaje útil para el admin es la FECHA de corte, y las actions no
+la tienen sin repetir la query del guard. `createBookingAction` **no atrapaba**
+`BookingDateOutOfRangeError` (nunca había tenido ventana de fechas): sin esa
+rama nueva, el tope habría salido por un 500 en vez de un mensaje.
+
+Tests: `tests/integration/paid-period-guard.test.ts` (6 casos, uno por camino +
+control negativo con el complejo `active`) y un caso nuevo en
+`abonado-slots-rerun-idempotency.test.ts` para el worker. Control negativo
+hecho en los dos: neutralizando el guard caen 5 de 6 (el que sobrevive es,
+correctamente, el del complejo `active`), y devolviendo `canceled` a
+`SKIP_STATUSES` el del worker da `expected 3 to be 4`.
+
+Verificación: typecheck limpio (salvo el `.next/dev/types/validator.ts` stale,
+reproducido igual sobre HEAD), lint limpio, unit 3616/3616, **integración
+970/970 (139/139 archivos)**, isolation 166/166.
+
+> Ojo con el harness local: corriendo la suite de integración varias veces
+> seguidas aparecen caídas de `cleanupAll` con `PostgresError: deadlock
+> detected` que tumban archivos enteros (y arrastran a otros por el filtro de
+> substring de vitest — `bookings.test.ts` matchea también
+> `idor-player-bookings.test.ts`). No es el código: la MISMA revisión da
+> 970/970 al correrla limpia. `--retry=3` lo estabiliza, igual que en la
+> memoria `integration-ensureroles-grant-race`.
+
+**Sigue fuera de alcance:** el tope es por DÍA (el día ART de
+`current_period_end`), no por instante. Un turno del último día que empiece
+después de la hora exacta del vencimiento entra igual. Es deliberado:
+`bookings.date` es un día operativo y toda la ventana de anticipación del
+sistema se compara como string 'YYYY-MM-DD'; además el sweep que bloquea corre
+recién a las 13:00 ART del día siguiente.

@@ -12,8 +12,8 @@ import {
 } from '@/shared/security/google-terms-cookie'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { captureMessage } from '@/lib/sentry'
-import { getDb, withPlayerContext } from '@/shared/db/client'
-import { tenants } from '@/shared/db/schema'
+import { getDb, withPlayerContext, withTenantContext } from '@/shared/db/client'
+import { tenants, tenantSubscriptions } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce, parseClientIp } from '@/shared/rate-limit'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
@@ -29,6 +29,7 @@ import {
   SlotTakenError,
   TooManyActiveHoldsError,
 } from '@/modules/bookings/booking.errors'
+import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
@@ -156,8 +157,6 @@ export async function startGoogleLoginFromReservar(formData: FormData): Promise<
   redirect(result.url)
 }
 
-const BLOCKED = ['deleted', 'blocked', 'canceled', 'churned', 'suspended']
-
 function addMins(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number)
   const total = h! * 60 + (m ?? 0) + mins
@@ -209,7 +208,25 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     .where(eq(tenants.slug, slug))
     .limit(1)
   const tenant = tRows[0]
-  if (!tenant || BLOCKED.includes(tenant.status)) redirect(`/${slug}`)
+  if (!tenant) redirect(`/${slug}`)
+
+  // El portal público sigue abierto durante la baja voluntaria hasta el fin del
+  // período ya pagado (doc4 §2, "acceso jugador: completo hasta fin período"),
+  // así que este guard NO puede decidir por `status` a secas. Se lee el período
+  // sólo cuando el estado lo pide y se resuelve con la MISMA función que usan
+  // las pages — el camino de escritura no confía en lo que decidió la page.
+  const canceledPeriodEnd =
+    tenant!.status === 'canceled'
+      ? await withTenantContext(tenant!.id, async (tx) =>
+          tx
+            .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
+            .from(tenantSubscriptions)
+            .where(eq(tenantSubscriptions.tenantId, tenant!.id))
+            .limit(1)
+            .then((r) => r[0]?.currentPeriodEnd ?? null),
+        )
+      : null
+  if (!isPublicPortalOpen(tenant!.status, canceledPeriodEnd)) redirect(`/${slug}`)
 
   const settings = tenant!.settings as TenantSettings
   const timeEnd = addMins(time, dur)
@@ -261,7 +278,14 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
           // tuvo. Se cambia solo lo que el hallazgo pide.
           requiresDeposit: settings.requires_deposit && !depositUnpayable,
           depositPercentage: settings.deposit_percentage,
-          maxAdvanceDays: settings.booking_advance_days ?? 6,
+          // Recortado por el fin del período pago si el complejo está dado
+          // de baja: no puede vender turnos que caen después del corte, con la
+          // seña ya cobrada y él sin acceso para atenderlos.
+          maxAdvanceDays: publicBookingAdvanceDays(
+            settings.booking_advance_days ?? 6,
+            tenant!.status,
+            canceledPeriodEnd,
+          ),
           ...(paymentMethod ? { paymentMethod } : {}),
         },
         tx,

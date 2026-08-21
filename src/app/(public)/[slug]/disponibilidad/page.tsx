@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ChevronLeft } from 'lucide-react'
 import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/public.service'
+import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import WeeklyAvailability from './components/WeeklyAvailability'
 import JsonLd from '@/components/seo/JsonLd'
@@ -13,8 +14,6 @@ export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ slug: string }> }
 
-const UNAVAILABLE = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
-
 function getArtToday(): string {
   return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 }
@@ -22,7 +21,7 @@ function getArtToday(): string {
 export default async function DisponibilidadPage(props: Props) {
   const params = await props.params
   const tenant = await getPublicTenant(params.slug)
-  if (!tenant || UNAVAILABLE.has(tenant.status)) notFound()
+  if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) notFound()
 
   const week = await getPublicWeeklyAvailability(tenant, getArtToday())
 
@@ -56,7 +55,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
-  if (UNAVAILABLE.has(tenant.status)) {
+  if (!isPublicPortalIndexable(tenant.status)) {
     return buildMetadata({
       title: `Disponibilidad — ${tenant.name}`,
       description: `Mirá los turnos disponibles esta semana en ${tenant.name}, ${tenant.city}.`,

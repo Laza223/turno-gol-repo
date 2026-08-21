@@ -9,6 +9,7 @@ import { withTenantContext, getDb } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { tenants } from '@/shared/db/schema'
+import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
 import {
   createManualBooking,
   completeBooking,
@@ -121,6 +122,18 @@ export async function createBookingAction(data: unknown): Promise<BookingActionR
     if (err instanceof BookingValidationError) {
       // Tarea #6: turnos de 60 min (los bloques sí pueden durar varias horas).
       return { success: false, error: err.message }
+    }
+    // La carga manual no tenía ventana de fechas, así que nunca había atrapado
+    // este error. Ahora sí la tiene —el corte del período pago de un complejo
+    // dado de baja— y sin esta rama saldría por un 500 en vez de un mensaje.
+    if (err instanceof BookingDateOutOfRangeError) {
+      return {
+        success: false,
+        error:
+          err.reason === 'after_period_end'
+            ? paidPeriodErrorMessage(err.cutoff)
+            : 'Esa fecha no se puede reservar.',
+      }
     }
     throw err
   }
@@ -678,9 +691,11 @@ export async function rescheduleBookingAction(
       return {
         success: false,
         error:
-          err.reason === 'advance_exceeded'
-            ? 'Esa fecha excede la anticipación que permite el complejo.'
-            : 'No se puede mover un turno a una fecha pasada.',
+          err.reason === 'after_period_end'
+            ? paidPeriodErrorMessage(err.cutoff)
+            : err.reason === 'advance_exceeded'
+              ? 'Esa fecha excede la anticipación que permite el complejo.'
+              : 'No se puede mover un turno a una fecha pasada.',
       }
     }
     if (err instanceof CourtOfflineError) {

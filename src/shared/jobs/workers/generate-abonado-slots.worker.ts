@@ -3,6 +3,7 @@ import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
 import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
+import { paidPeriodCutoffFrom } from '@/modules/bookings/paid-period.guard'
 import { physicalRange } from '@/shared/time/physical-range'
 import { logger } from '@/shared/lib/logger'
 import { CRON_WORK_OPTIONS } from '../definitions'
@@ -33,6 +34,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
       starts_on: string
       ends_on: string | null
       tenant_status: string
+      current_period_end: string | null
       closed_dates: string[] | null
     }[]
   >`
@@ -40,13 +42,20 @@ export async function runRollingSlotGeneration(): Promise<void> {
            a.day_of_week, a.time_start, a.time_end,
            a.price_per_session, a.starts_on::text, a.ends_on::text,
            t.status AS tenant_status,
+           s.current_period_end,
            ARRAY(SELECT (d::date)::text FROM unnest(t.closed_dates) AS d) AS closed_dates
     FROM abonados a
     JOIN tenants t ON t.id = a.tenant_id
+    LEFT JOIN tenant_subscriptions s ON s.tenant_id = a.tenant_id
     WHERE a.status = 'active'
   `
 
-  const SKIP_STATUSES = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
+  // `canceled` NO está acá (2026-08-20): el complejo dado de baja sigue operando
+  // hasta el fin del período que ya pagó, así que sus turnos fijos se le siguen
+  // generando — recortados en el corte por `paidPeriodCutoffFrom` más abajo.
+  // Antes se lo saltaba entero y los clientes con turno fijo se quedaban sin
+  // sesiones desde el día uno de una baja con dos meses pagos por delante.
+  const SKIP_STATUSES = new Set(['suspended', 'blocked', 'churned', 'deleted'])
 
   for (const abonado of abonadoRows) {
     if (SKIP_STATUSES.has(abonado.tenant_status)) continue
@@ -87,16 +96,24 @@ export async function runRollingSlotGeneration(): Promise<void> {
         closedDates,
       })
 
+      const cutoff = paidPeriodCutoffFrom(abonado.tenant_status, abonado.current_period_end)
+      const bookableDates = cutoff === null ? slotDates : slotDates.filter((d) => d <= cutoff)
+
       // Madrugada/día-operativo: mismo cálculo que insertBookingsForSlots
       // (abonado.service.ts) — recurrencia semanal, mismo día calendario en
       // todas las fechas generadas, así que se resuelve una sola vez.
       const physicallyNextDay =
-        slotDates.length > 0
-          ? await slotIsPhysicallyNextDay(abonado.tenant_id, slotDates[0]!, abonado.time_start, tx)
+        bookableDates.length > 0
+          ? await slotIsPhysicallyNextDay(
+              abonado.tenant_id,
+              bookableDates[0]!,
+              abonado.time_start,
+              tx,
+            )
           : false
 
       let count = 0
-      for (const dateStr of slotDates) {
+      for (const dateStr of bookableDates) {
         const conflictRows = await tx.execute(drizzleSql`
           SELECT COUNT(*)::int AS n FROM bookings
           WHERE court_id = ${abonado.court_id}

@@ -30,6 +30,8 @@ import {
   releaseTournamentSlots,
   reserveTournamentSlots,
 } from '@/modules/tournaments/tournament-slots.service'
+import { BookingDateOutOfRangeError } from '@/modules/bookings/booking.errors'
+import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
 import {
   createTeamPlayerSchema,
   createTeamSchema,
@@ -169,6 +171,9 @@ function mapTournamentError(err: unknown): string | null {
   if (err instanceof TournamentSlotRangeError) return err.message
   if (err instanceof NoSlotsReservedError) {
     return 'Ninguna de esas horas estaba libre: no se tomó nada.'
+  }
+  if (err instanceof BookingDateOutOfRangeError && err.reason === 'after_period_end') {
+    return paidPeriodErrorMessage(err.cutoff)
   }
   // El motor de fixture arma su mensaje ya en es-AR con el detalle del caso.
   if (err instanceof FixtureGenerationError) return err.message

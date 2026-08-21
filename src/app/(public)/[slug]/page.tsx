@@ -8,6 +8,7 @@ import {
   getPublicCourtCards,
   listTopPublicTenantSlugs,
 } from '@/modules/tenants/public.service'
+import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
 import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
 import { STATUS_LABELS, formatDateRange } from '@/app/(admin)/torneos/torneos-lib'
@@ -38,15 +39,13 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return slugs.map((slug) => ({ slug }))
 }
 
-const UNAVAILABLE_STATUSES = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
-
 export default async function PublicComplexPage(props: Props) {
   const tenant = await getPublicTenant((await props.params).slug)
   if (!tenant) notFound()
 
   // Gate server-side: un complejo suspendido/dado de baja no expone su perfil.
   // Con ISR puede servirse stale hasta 300s tras el cambio de estado (aceptable).
-  if (UNAVAILABLE_STATUSES.has(tenant.status)) {
+  if (!isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="max-w-md space-y-3 text-center">
@@ -170,7 +169,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) return {}
-  if (UNAVAILABLE_STATUSES.has(tenant.status)) {
+  if (!isPublicPortalIndexable(tenant.status)) {
     return buildMetadata({
       title: tenant.name,
       description: `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,

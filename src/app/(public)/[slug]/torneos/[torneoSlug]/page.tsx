@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { ChevronLeft } from 'lucide-react'
 import { getPublicTenant } from '@/modules/tenants/public.service'
+import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { getPublicTournamentView } from '@/modules/tournaments/tournament-public.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
@@ -23,12 +24,10 @@ export const revalidate = 300
 
 type Props = { params: Promise<{ slug: string; torneoSlug: string }> }
 
-const UNAVAILABLE = new Set(['suspended', 'blocked', 'canceled', 'churned', 'deleted'])
-
 export default async function TorneoPublicoPage(props: Props) {
   const { slug, torneoSlug } = await props.params
   const tenant = await getPublicTenant(slug)
-  if (!tenant || UNAVAILABLE.has(tenant.status)) notFound()
+  if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) notFound()
 
   // null cubre los cuatro casos por igual (no existe / no es público / es
   // borrador / flag apagado): que un torneo exista sin estar publicado tampoco
@@ -103,6 +102,6 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: `${view.card.name} — ${tenant.name}`,
     description: `Tabla de posiciones, fixture y goleadores de ${view.card.name} en ${tenant.name}, ${tenant.city}.`,
     path: `/${tenant.slug}/torneos/${view.card.slug}`,
-    noIndex: UNAVAILABLE.has(tenant.status),
+    noIndex: !isPublicPortalIndexable(tenant.status),
   })
 }

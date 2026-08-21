@@ -1,11 +1,12 @@
 import { cache } from 'react'
 import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
-import { bookings, courts } from '@/shared/db/schema'
+import { bookings, courts, tenantSubscriptions } from '@/shared/db/schema'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
+import { publicBookingAdvanceDays } from './tenant.lifecycle'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -26,6 +27,13 @@ export type PublicTenant = {
   closedDates: string[]
   closesNextDay: boolean
   status: string
+  /**
+   * `tenant_subscriptions.current_period_end` — hasta cuándo llega el período
+   * ya pagado. Se lee SOLO cuando `status === 'canceled'`; en cualquier otro
+   * estado es `null` porque no cambia ninguna decisión y no vale la query.
+   * Lo consume `isPublicPortalOpen` (tenant.lifecycle.ts).
+   */
+  canceledPeriodEnd: Date | null
   timezone: string
   allowOnlineBooking: boolean
   requiresDeposit: boolean
@@ -33,6 +41,13 @@ export type PublicTenant = {
   // Métodos de pago presencial que el complejo declara aceptar (settings).
   acceptsCash: boolean
   acceptsTransfer: boolean
+  /**
+   * Anticipación EFECTIVA, no la cruda de `settings`: un complejo `canceled`
+   * la trae recortada para no vender turnos posteriores a su período pago
+   * (`publicBookingAdvanceDays`). Todas las superficies públicas leen de acá
+   * —la grilla, `/api/public/availability` y su variante semanal—, así que el
+   * tope se aplica una vez y vale para todas.
+   */
   bookingAdvanceDays: number
   // Interfaz pública estilo ATC: amenities + coordenadas (ya en la fila tenants).
   amenities: Record<string, boolean>
@@ -313,6 +328,23 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
   if (!row) return null
 
   const s = row.settings as TenantSettings
+  // Segunda query SOLO en la baja voluntaria: `isPublicPortalOpen` y
+  // `publicBookingAdvanceDays` necesitan el fin del período pago únicamente
+  // cuando el estado es `canceled`. Así el resto de las visitas públicas (o
+  // sea, casi todas) no paga una transacción extra. `tenant_subscriptions`
+  // está aislada por RLS, de ahí el `withTenantContext` — mismo camino que ya
+  // usan `getPublicCourtCards` y el layout admin.
+  const canceledPeriodEnd =
+    row.status === 'canceled'
+      ? await withTenantContext(row.id, async (tx) =>
+          tx
+            .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
+            .from(tenantSubscriptions)
+            .where(eq(tenantSubscriptions.tenantId, row.id))
+            .limit(1)
+            .then((r) => r[0]?.currentPeriodEnd ?? null),
+        )
+      : null
   return {
     id: row.id,
     slug: row.slug,
@@ -329,13 +361,18 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     closedDates: (row.closedDates ?? []) as string[],
     closesNextDay: row.closesNextDay ?? false,
     status: row.status,
+    canceledPeriodEnd,
     timezone: row.timezone,
     allowOnlineBooking: s.allow_online_booking ?? true,
     requiresDeposit: s.requires_deposit ?? false,
     depositPercentage: s.deposit_percentage ?? 30,
     acceptsCash: s.accepts_cash ?? true,
     acceptsTransfer: s.accepts_transfer ?? true,
-    bookingAdvanceDays: s.booking_advance_days ?? 6,
+    bookingAdvanceDays: publicBookingAdvanceDays(
+      s.booking_advance_days ?? 6,
+      row.status,
+      canceledPeriodEnd,
+    ),
     amenities: (row.amenities ?? {}) as Record<string, boolean>,
     latitude: row.latitude == null ? null : Number(row.latitude),
     longitude: row.longitude == null ? null : Number(row.longitude),

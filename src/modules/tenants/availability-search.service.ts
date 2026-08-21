@@ -4,7 +4,7 @@ import { tenants } from '@/shared/db/schema'
 import { readThroughAvailSearch } from '@/shared/cache/slots-cache'
 import { track, withSpan } from '@/shared/observability'
 import { generateSlots } from './public.service'
-import { VISIBLE_TENANT_STATUSES } from './search.service'
+import { SEARCHABLE_TENANT_STATUSES } from './search.service'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { addDays } from '@/shared/dates/art'
@@ -152,7 +152,7 @@ async function loadAvailableTenantIds({
       settings: tenants.settings,
     })
     .from(tenants)
-    .where(inArray(tenants.status, VISIBLE_TENANT_STATUSES as never))
+    .where(inArray(tenants.status, SEARCHABLE_TENANT_STATUSES as never))
 
   // Current time in ART. Argentina = UTC-3, no DST.
   const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)

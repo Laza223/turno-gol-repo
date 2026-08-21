@@ -57,7 +57,28 @@ export type CityCount = { city: string; province: string; count: number }
 
 // Estados de tenant visibles en superficies públicas (search + availability).
 export const VISIBLE_TENANT_STATUSES = ['active', 'trialing'] as const
-const VISIBLE = VISIBLE_TENANT_STATUSES
+
+/**
+ * Estados LISTABLES en descubrimiento (búsqueda, selector de ciudad,
+ * disponibilidad cross-tenant). Suma `canceled` a los visibles: el complejo
+ * dado de baja sigue operando —y sigue queriendo que lo encuentren— hasta el
+ * fin del período que ya pagó (doc4 §2).
+ *
+ * Es un filtro GRUESO a propósito: el corte fino es `current_period_end`, que
+ * vive en `tenant_subscriptions` (aislada por RLS) y por lo tanto no se puede
+ * leer cross-tenant desde el pool público. La precisión la pone el perfil, que
+ * sí resuelve con `isPublicPortalOpen`. Consecuencia acotada y aceptada: entre
+ * el vencimiento del período y el sweep diario de las 13:00 ART que lo pasa a
+ * `blocked`, la tarjeta puede sobrevivir unas horas y llevar a un perfil que
+ * responde "no disponible" — la misma clase de staleness que el ISR de 300s
+ * del perfil, contra dos meses de un cliente pago sin aparecer en ningún lado.
+ *
+ * El sitemap NO usa esta lista y se queda en `VISIBLE_TENANT_STATUSES`:
+ * indexar en buscadores una página que muere en semanas es peor que no
+ * indexarla, y la indexación no es lo que el complejo contrató.
+ */
+export const SEARCHABLE_TENANT_STATUSES = [...VISIBLE_TENANT_STATUSES, 'canceled'] as const
+const VISIBLE = SEARCHABLE_TENANT_STATUSES
 
 export async function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
   return withSpan('search.public', 'db.query.search', () => searchPublicTenantsImpl(params))
@@ -277,7 +298,10 @@ export async function listPublicCities(): Promise<CityCount[]> {
   const rows = await db.execute(sql`
     SELECT city, province, count(*)::int AS count
     FROM tenants
-    WHERE status IN ('active', 'trialing')
+    WHERE status = ANY(ARRAY[${sql.join(
+      SEARCHABLE_TENANT_STATUSES.map((st) => sql`${st}`),
+      sql`, `,
+    )}]::tenant_status[])
       -- F-004 (QA prod 2026-08-17): mismo filtro de completitud que
       -- searchPublicTenants/listSitemapTenants — sin esto un tenant de
       -- prueba con onboarding incompleto sigue apareciendo en el selector de

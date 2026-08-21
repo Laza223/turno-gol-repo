@@ -147,7 +147,24 @@ export class NoShowRevertWindowExpiredError extends Error {
 }
 
 export class BookingDateOutOfRangeError extends Error {
-  constructor(public readonly reason: 'past_date' | 'past_slot' | 'advance_exceeded') {
+  constructor(
+    /**
+     * `after_period_end` (2026-08-20): el complejo está dado de baja y la fecha
+     * cae después del período que ya pagó — cuando ese período vence, el sweep
+     * lo deja `blocked` y el turno queda sin nadie que pueda atenderlo. Es una
+     * condición del COMPLEJO, no de la ventana de anticipación, así que no se
+     * mezcla con `advance_exceeded`: el mensaje al admin tiene que decir la
+     * fecha de corte, no "excede la anticipación". Ver `paid-period.guard.ts`.
+     */
+    public readonly reason: 'past_date' | 'past_slot' | 'advance_exceeded' | 'after_period_end',
+    /**
+     * Sólo con `after_period_end`: el último día operativo pago ('YYYY-MM-DD'
+     * ART). Viaja en el error porque el mensaje útil para el admin es la FECHA
+     * de corte, y las actions que lo muestran no la tienen a mano sin repetir
+     * la query que el guard ya hizo.
+     */
+    public readonly cutoff?: string,
+  ) {
     super(`Booking date is out of range: ${reason}`)
     this.name = 'BookingDateOutOfRangeError'
   }

@@ -18,6 +18,7 @@ import {
   lockCourtOrThrow,
   slotIsPhysicallyNextDay,
 } from './booking.service'
+import { assertWithinPaidPeriod } from './paid-period.guard'
 import {
   BookingDateOutOfRangeError,
   BookingNotReschedulableError,
@@ -288,6 +289,9 @@ export async function rescheduleBooking(
   // mientras el selector de la UI sí la acota a 6 días — no es alcanzable hoy
   // (el default de la columna la trae), pero la divergencia no tiene por qué existir.
   assertDateWindow(input.date, settings?.booking_advance_days ?? 6)
+  // Y, si el complejo está dado de baja, tampoco más allá del período que pagó:
+  // mover un turno al otro lado del corte lo deja sin nadie que lo atienda.
+  await assertWithinPaidPeriod(tenantId, [input.date], tx)
 
   let priceSnapshot: number
   let priceOverridden = false

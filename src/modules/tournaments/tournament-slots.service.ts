@@ -4,6 +4,7 @@ import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { physicalRange } from '@/shared/time/physical-range'
 import { hasActiveBookingOverlap } from '@/modules/bookings/booking.overlap'
+import { assertWithinPaidPeriod } from '@/modules/bookings/paid-period.guard'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { expandRangeToHourSlots } from './slot-expansion'
 import { NoSlotsReservedError, TournamentCourtUnavailableError } from './tournament.errors'
@@ -89,6 +90,10 @@ export async function reserveTournamentSlots(
   tx: DbTx,
 ): Promise<ReserveSlotsResult> {
   const { openingHours, closesNextDay } = await getTenantHours(tenantId, tx)
+  // Acá se RECHAZA el lote entero (no se recorta como en abonados): las fechas
+  // del torneo las eligió el admin una por una, y armarle medio fixture sin
+  // decirle que el complejo cierra antes sería peor que frenarlo con el motivo.
+  await assertWithinPaidPeriod(tenantId, input.dates, tx)
   await lockCourtsOrThrow(input.courtIds, tenantId, tx)
 
   const conflicts: SlotConflict[] = []

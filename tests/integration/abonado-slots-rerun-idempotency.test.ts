@@ -9,6 +9,8 @@ import {
 } from '../helpers/tenant'
 import { createAbonado } from '@/modules/abonados/abonado.service'
 import { runRollingSlotGeneration } from '@/shared/jobs/workers/generate-abonado-slots.worker'
+import { addDays, artTodayStr } from '@/shared/dates/art'
+import { getOrCreatePlanId } from '../helpers/factories'
 
 // Gap de recon (D4): el cron de slots (generate-abonado-slots.worker) corrido
 // dos veces seguidas no debe duplicar bookings. Mismo seed que
@@ -132,4 +134,86 @@ describe('generate-abonado-slots.worker — el cron corrido 2 veces seguidas no 
     const uniqueStartsAt = new Set(rows.map((r) => new Date(r.starts_at).getTime()))
     expect(uniqueStartsAt.size).toBe(rows.length)
   })
+
+  it('complejo dado de baja: el worker LE SIGUE generando turnos fijos, pero no más allá del período pago', async () => {
+    // Dos bugs en un caso. Antes del 2026-08-20 `canceled` estaba en
+    // SKIP_STATUSES, así que al complejo que se daba de baja con dos meses
+    // pagos por delante se le cortaba la generación de turnos fijos desde el
+    // día uno: sus clientes con horario fijo se quedaban sin sesiones aunque
+    // el complejo siguiera abierto y pago. Y al sacarlo del skip aparece el
+    // otro: sin tope generaría turnos DESPUÉS del corte, que es cuando el
+    // sweep lo deja `blocked` y no puede ni verlos.
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    // El abonado nace con el complejo ACTIVO a propósito: si ya estuviera dado
+    // de baja, `createAbonado` recortaría en origen y no estaríamos midiendo
+    // el worker sino el otro camino (ver `paid-period-guard.test.ts`).
+    const startsOn = addDays(artTodayStr(), 7)
+    const dayOfWeek = new Date(`${startsOn}T12:00:00Z`).getUTCDay()
+    const { abonado } = await withTenantContext(tenant.id, (tx) =>
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Turno fijo de complejo dado de baja',
+          contactPhone: '0000000098',
+          dayOfWeek,
+          timeStart: '15:00',
+          timeEnd: '16:00',
+          pricePerSession: 800000,
+          startsOn,
+        },
+        tx,
+      ),
+    )
+    expect(await countFutureBookings(abonado.id)).toBe(8)
+
+    // Deja 3 semanas futuras (+7, +14, +21) para bajar del umbral `>= 4` y que
+    // el worker tenga algo que hacer.
+    await sql`
+      DELETE FROM bookings
+      WHERE abonado_id = ${abonado.id}
+        AND date >= NOW()::date
+        AND id IN (
+          SELECT id FROM bookings
+          WHERE abonado_id = ${abonado.id} AND date >= NOW()::date
+          ORDER BY date DESC
+          LIMIT 5
+        )
+    `
+    expect(await countFutureBookings(abonado.id)).toBe(3)
+
+    // Recién ahora el complejo se da de baja, con 30 días de período por delante.
+    const planId = await getOrCreatePlanId(sql)
+    await sql`
+      INSERT INTO tenant_subscriptions (
+        tenant_id, plan_id, billing_cycle, status,
+        current_period_start, current_period_end
+      ) VALUES (
+        ${tenant.id}, ${planId}, 'monthly'::billing_cycle, 'canceled'::subscription_status,
+        NOW() - INTERVAL '5 days', NOW() + INTERVAL '30 days'
+      )
+    `
+    await sql`UPDATE tenants SET status = 'canceled'::tenant_status WHERE id = ${tenant.id}`
+
+    await expect(runRollingSlotGeneration()).resolves.toBeUndefined()
+
+    // El worker ancla en la última futura (+21) y quiere generar 4: +28, +35,
+    // +42 y +49. Con el corte en +30 sólo entra +28 → 3 + 1 = 4.
+    // Con `canceled` todavía en SKIP_STATUSES esto daba 3 (no generaba nada);
+    // sin el recorte daría 7.
+    expect(await countFutureBookings(abonado.id)).toBe(4)
+
+    const cutoff = addDays(artTodayStr(), 30)
+    const [{ n }] = await sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM bookings
+      WHERE abonado_id = ${abonado.id} AND date > ${cutoff}::date
+    `
+    expect(n).toBe(0)
+  }, 30_000)
 })

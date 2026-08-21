@@ -32,6 +32,7 @@ const FIXTURE_TENANT: PublicTenant = {
   closedDates: [],
   closesNextDay: false,
   status: 'active',
+  canceledPeriodEnd: null,
   timezone: 'America/Argentina/Buenos_Aires',
   allowOnlineBooking: true,
   requiresDeposit: false,

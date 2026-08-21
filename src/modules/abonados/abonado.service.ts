@@ -6,6 +6,7 @@ import { ensurePTR } from '@/modules/relationships/ptr.service'
 import { getCourtById } from '@/modules/courts/court.service'
 import { generateSlotDates } from './slot-generator'
 import { isExclusionViolation, slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
+import { paidPeriodCutoff } from '@/modules/bookings/paid-period.guard'
 import { physicalRange } from '@/shared/time/physical-range'
 import {
   AbonadoConflictError,
@@ -256,8 +257,16 @@ export async function createAbonado(
     closedDates,
   })
 
+  // Complejo dado de baja: las sesiones se generan hasta el fin del período que
+  // ya pagó y ni una más. Acá se RECORTA en vez de rechazar (a diferencia de la
+  // carga manual o de las horas de torneo) porque el pedido es "todas las que
+  // entren", el resultado sale a la vista en `slotsGenerated`, y es lo mismo
+  // que hace el worker de generación rodante. `null` = sin tope que aplicar.
+  const cutoff = await paidPeriodCutoff(tenantId, tx)
+  const bookableDates = cutoff === null ? slotDates : slotDates.filter((d) => d <= cutoff)
+
   const { slotsGenerated, conflictDates } = await insertBookingsForSlots(
-    slotDates,
+    bookableDates,
     abonado,
     tenantId,
     tx,
@@ -382,7 +391,15 @@ export async function reactivateAbonado(
     closedDates,
   })
 
-  const { slotsGenerated } = await insertBookingsForSlots(slotDates, abonado, tenantId, tx)
+  // Complejo dado de baja: las sesiones se generan hasta el fin del período que
+  // ya pagó y ni una más. Acá se RECORTA en vez de rechazar (a diferencia de la
+  // carga manual o de las horas de torneo) porque el pedido es "todas las que
+  // entren", el resultado sale a la vista en `slotsGenerated`, y es lo mismo
+  // que hace el worker de generación rodante. `null` = sin tope que aplicar.
+  const cutoff = await paidPeriodCutoff(tenantId, tx)
+  const bookableDates = cutoff === null ? slotDates : slotDates.filter((d) => d <= cutoff)
+
+  const { slotsGenerated } = await insertBookingsForSlots(bookableDates, abonado, tenantId, tx)
 
   await insertAuditLog(tx, {
     tenantId,

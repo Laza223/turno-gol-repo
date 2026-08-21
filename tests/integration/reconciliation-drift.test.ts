@@ -98,6 +98,8 @@ type PaymentOverrides = {
   type?: string
   status?: string
   method?: string
+  /** 'Refund of <id de la seña>' — cómo `prepareRefund` ata un reembolso a su original. */
+  description?: string
 }
 
 async function createTestPayment(
@@ -112,14 +114,16 @@ async function createTestPayment(
   const status = overrides.status ?? 'approved'
   const method = overrides.method ?? 'mercadopago'
   const mpPaymentId = `mp-${randomUUID()}`
+  const description = overrides.description ?? null
 
   const [{ id }] = await sql<{ id: string }[]>`
     INSERT INTO payments (
-      tenant_id, booking_id, player_id, amount, type, method, status, mp_payment_id, created_at
+      tenant_id, booking_id, player_id, amount, type, method, status, mp_payment_id, description,
+      created_at
     )
     VALUES (
       ${tenantId}, ${bookingId}, ${playerId}, ${amount}, ${type}, ${method}, ${status}, ${mpPaymentId},
-      NOW() - INTERVAL '20 minutes'
+      ${description}, NOW() - INTERVAL '20 minutes'
     )
     RETURNING id
   `
@@ -213,6 +217,84 @@ describe('reconciliation-drift: INV1 payment sin cashflow', () => {
 
     const findings = await runAccountingReconciliation(sql)
     expect(idsFor(findings, 'inv1_payment_without_cashflow')).not.toContain(paymentId)
+  }, 30_000)
+})
+
+/**
+ * La forma del pago tardío, que es la que destapó estas dos exclusiones: la
+ * plata entra DESPUÉS de que la reserva venció, el sistema la devuelve sola
+ * (#183) y no puede tocar ni la seña original ni el booking, porque el trigger
+ * `enforce_booking_invariants` prohíbe modificar una reserva terminal. Sin las
+ * exclusiones, cada devolución correcta dejaba dos alarmas encendidas para
+ * siempre — y un monitor que suena todos los días deja de mirarse.
+ */
+async function seedPagoTardioReembolsado(
+  sql: Sql,
+  fx: Fixture,
+  opts: { montoReembolso?: number; estadoBooking?: string } = {},
+): Promise<{ bookingId: string; depositId: string; refundId: string }> {
+  const bookingId = await createTestBooking(sql, fx.tenantId, fx.courtId, fx.playerId, {
+    status: opts.estadoBooking ?? 'expired',
+    depositStatus: 'pending',
+  })
+  const depositId = await createTestPayment(sql, fx.tenantId, bookingId, fx.playerId, {
+    amount: 240000,
+  })
+  const refundId = await createTestPayment(sql, fx.tenantId, bookingId, fx.playerId, {
+    amount: opts.montoReembolso ?? 240000,
+    type: 'refund',
+    status: 'approved',
+    description: `Refund of ${depositId}`,
+  })
+  return { bookingId, depositId, refundId }
+}
+
+describe('reconciliation-drift: un reembolso correcto no es un descuadre', () => {
+  it('INV1: seña devuelta al 100% y sin cash_flow → NO es finding', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const { depositId } = await seedPagoTardioReembolsado(sql, fx)
+
+    const findings = await runAccountingReconciliation(sql)
+
+    // No hay movimiento en Caja a propósito: no entró plata que registrar.
+    expect(idsFor(findings, 'inv1_payment_without_cashflow')).not.toContain(depositId)
+  }, 30_000)
+
+  it('INV1: si el reembolso fue PARCIAL, la parte que quedó adentro sigue alarmando', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    // Devuelve 100.000 de 240.000: quedan 140.000 en la cuenta del complejo,
+    // y esa plata sí tiene que estar en Caja.
+    const { depositId } = await seedPagoTardioReembolsado(sql, fx, { montoReembolso: 100000 })
+
+    const findings = await runAccountingReconciliation(sql)
+
+    expect(idsFor(findings, 'inv1_payment_without_cashflow')).toContain(depositId)
+  }, 30_000)
+
+  it('INV5: el reembolso sobre una reserva `expired` NO reclama un reflejo imposible', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const { refundId } = await seedPagoTardioReembolsado(sql, fx)
+
+    const findings = await runAccountingReconciliation(sql)
+
+    // `deposit_status` sigue en 'pending' y así va a quedar: el trigger de la
+    // migración 070 no deja actualizar una reserva terminal.
+    expect(idsFor(findings, 'inv5_refund_not_reflected')).not.toContain(refundId)
+  }, 30_000)
+
+  it('INV5: control positivo — sobre una reserva viva el reflejo se sigue exigiendo', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    // Misma forma, pero con la reserva `confirmed`: acá el sistema SÍ puede
+    // dejar la seña en 'refunded', así que no haberlo hecho es un descuadre.
+    const { refundId } = await seedPagoTardioReembolsado(sql, fx, { estadoBooking: 'confirmed' })
+
+    const findings = await runAccountingReconciliation(sql)
+
+    expect(idsFor(findings, 'inv5_refund_not_reflected')).toContain(refundId)
   }, 30_000)
 })
 

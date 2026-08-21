@@ -57,15 +57,36 @@ type ApprovedDepositPayment = {
  */
 async function fetchApprovedDepositPayments(sql: Sql): Promise<ApprovedDepositPayment[]> {
   return sql<ApprovedDepositPayment[]>`
-    SELECT id, tenant_id AS "tenantId", booking_id AS "bookingId", amount,
-           mp_payment_id AS "mpPaymentId"
-    FROM payments
-    WHERE status = 'approved'
-      AND type = 'deposit'
-      AND method = 'mercadopago'
-      AND booking_id IS NOT NULL
-      AND created_at < NOW() - INTERVAL '15 minutes'
-    ORDER BY created_at ASC
+    SELECT p.id, p.tenant_id AS "tenantId", p.booking_id AS "bookingId", p.amount,
+           p.mp_payment_id AS "mpPaymentId"
+    FROM payments p
+    WHERE p.status = 'approved'
+      AND p.type = 'deposit'
+      AND p.method = 'mercadopago'
+      AND p.booking_id IS NOT NULL
+      AND p.created_at < NOW() - INTERVAL '15 minutes'
+      -- Sólo se pregunta por la plata que TODAVÍA está adentro. Una seña
+      -- devuelta al 100% no tiene que tener movimiento en Caja: no entró nada
+      -- que registrar, y exigirlo convertía cada reembolso correcto en una
+      -- alarma perpetua. El caso que lo destapó es el pago tardío (la plata
+      -- llega después de que la reserva venció y vuelve sola): el reembolso
+      -- inserta su fila y NO puede tocar la seña original ni el booking,
+      -- porque el trigger enforce_booking_invariants prohíbe modificar una
+      -- reserva en estado terminal.
+      --
+      -- El vínculo se arma por description exacta, mismo idiom que
+      -- prepareRefund (payment.service.ts), que escribe 'Refund of <id>'.
+      -- Un reembolso PARCIAL deja saldo adentro y sigue alarmando, que es lo
+      -- correcto: esa parte sí tiene que estar en Caja.
+      AND p.amount > COALESCE((
+        SELECT SUM(r.amount)
+        FROM payments r
+        WHERE r.booking_id = p.booking_id
+          AND r.type = 'refund'
+          AND r.status IN ('approved', 'pending')
+          AND r.description = ('Refund of ' || p.id::text)
+      ), 0)
+    ORDER BY p.created_at ASC
     LIMIT ${DRIFT_QUERY_LIMIT}
   `
 }
@@ -305,6 +326,14 @@ async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> {
     WHERE p.status = 'approved'
       AND p.type = 'refund'
       AND b.deposit_status <> 'refunded'
+      -- Una reserva expired NO puede llegar a deposit_status='refunded':
+      -- el trigger enforce_booking_invariants (migr. 070) bloquea cualquier
+      -- UPDATE sobre una reserva en estado terminal, y ésa es justamente la
+      -- forma del pago tardío — la plata entra cuando el turno ya venció y el
+      -- sistema la devuelve sola. Reclamar un reflejo que la base prohíbe
+      -- escribir es pedirle al monitor que ladre para siempre por algo que
+      -- nadie puede arreglar.
+      AND b.status <> 'expired'
       AND p.created_at < NOW() - INTERVAL '15 minutes'
     ORDER BY p.created_at ASC
     LIMIT ${DRIFT_QUERY_LIMIT}

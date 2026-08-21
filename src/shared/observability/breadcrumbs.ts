@@ -19,6 +19,8 @@ type PaymentEvent =
   | 'payment.reconcile.confirmed'
   | 'payment.refund.retry_succeeded'
   | 'payment.reconcile.drift_detected'
+  | 'payment.subscription.reconciled'
+  | 'payment.subscription.mp_desync'
 
 type WebhookEvent =
   'mp.webhook.received' | 'mp.webhook.duplicate' | 'mp.webhook.processed' | 'mp.webhook.failed'
@@ -35,6 +37,11 @@ type PaymentCtx = {
   bookingId?: string
   tenantId?: string
   mpPaymentId?: string
+  /**
+   * Preapproval de la suscripción SaaS. Identifica a un complejo (una empresa),
+   * no a una persona, así que no entra en `PII_KEYS`.
+   */
+  preapprovalId?: string
   amountCents?: number
 }
 

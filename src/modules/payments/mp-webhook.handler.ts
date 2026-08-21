@@ -7,6 +7,7 @@ import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
 import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
+import { buildSubscriptionChargeKey } from '@/modules/billing/subscription-reconcile.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
@@ -177,6 +178,12 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           tx,
           info.mpPaymentId,
           info.preapprovalId,
+          // Guard por cobro: `info.mpPaymentId` es el id del PAGO —
+          // `getSubscriptionChargeInfo` ya lo saca de adentro de la factura —,
+          // el mismo número que ve la rama `payment` de abajo y el que
+          // encuentra `reconcile-subscriptions.worker`. Sin esto, dos caminos
+          // que apliquen el mismo cobro extienden el período dos veces.
+          buildSubscriptionChargeKey(info.mpPaymentId),
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
         await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)
@@ -222,6 +229,9 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           tx,
           info.mpPaymentId,
           info.preapprovalId,
+          // Misma clave por cobro que la rama de arriba: acá `info.mpPaymentId`
+          // ya es el id del pago porque el evento vino como `payment`.
+          buildSubscriptionChargeKey(info.mpPaymentId),
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
         await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)

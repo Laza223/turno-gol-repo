@@ -10,6 +10,7 @@ import { registerExpirePendingBookingWorker } from './expire-pending-booking.wor
 import { registerRefreshMpTokensWorker } from './refresh-mp-tokens.worker'
 import { registerReconcilePendingPaymentsWorker } from './reconcile-pending-payments.worker'
 import { registerReconcileAccountingDriftWorker } from './reconcile-accounting-drift.worker'
+import { registerReconcileSubscriptionsWorker } from './reconcile-subscriptions.worker'
 import { registerRetryRefundsWorker } from './retry-refunds.worker'
 import { registerPushSendWorker } from './push.worker'
 import { registerHealthPingWorker } from './health-ping.worker'
@@ -29,6 +30,7 @@ export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerRefreshMpTokensWorker(boss)
   await registerReconcilePendingPaymentsWorker(boss)
   await registerReconcileAccountingDriftWorker(boss)
+  await registerReconcileSubscriptionsWorker(boss)
   await registerRetryRefundsWorker(boss)
   await registerPushSendWorker(boss)
   await registerHealthPingWorker(boss)

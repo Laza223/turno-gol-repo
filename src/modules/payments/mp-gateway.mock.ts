@@ -5,6 +5,7 @@ import {
   type CreatePreferenceInput,
   type CreateSaasUpgradePreferenceInput,
   type GatewayPaymentInfo,
+  type GatewaySubscriptionState,
   type MpPaymentStatus,
   type PreapprovalResult,
   type PreferenceResult,
@@ -161,6 +162,19 @@ export class MockGateway implements PaymentGateway {
       paymentMethodId: 'account_money',
       preapprovalId: null,
     }
+  }
+
+  getSubscriptionStateCalls: string[] = []
+  /**
+   * Seteable por instancia. `undefined` (default) = "MP no reconoce el
+   * preapproval" → `null`, que es el camino que NO activa nada: un test que se
+   * olvide de sembrar el estado no puede activar una suscripción por accidente.
+   */
+  subscriptionState?: GatewaySubscriptionState | null
+
+  async getSubscriptionState(preapprovalId: string): Promise<GatewaySubscriptionState | null> {
+    this.getSubscriptionStateCalls.push(preapprovalId)
+    return this.subscriptionState ?? null
   }
 
   async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {

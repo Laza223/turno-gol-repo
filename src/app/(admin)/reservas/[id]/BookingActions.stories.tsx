@@ -80,11 +80,58 @@ export const Confirmada: Story = {
 
 /**
  * Regla de negocio: el componente entero es `null` fuera de `status === 'confirmed'`,
- * con UNA excepción (abajo): un `no_show` dentro de la ventana de corrección de 24h.
- * Una reserva ya cancelada o completada no ofrece NINGUNA acción.
+ * con DOS excepciones (abajo), las dos correcciones de asistencia de 24h: un
+ * `no_show` que se deshace y un `completed` que se corrige a ausente. Una
+ * reserva cancelada no ofrece NINGUNA acción.
  */
 export const SinAccionesSiNoEstaConfirmada: Story = {
   args: { status: 'canceled_refunded' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('button')).toBeNull()
+  },
+}
+
+/**
+ * P5 — corrección de asistencia: el cron `auto-complete-bookings` pasa el turno
+ * a "Jugada" hasta 30 minutos después de que termina. Si el equipo no vino,
+ * ESTE es el único lugar donde se puede corregir, y por eso tiene que existir:
+ * el motor lo soportaba desde siempre pero no había puerta, así que la ventana
+ * real para registrar una ausencia eran esos ≤30 minutos.
+ */
+export const CompletadaDentroDeLa24hSePuedeCorregirAAusente: Story = {
+  args: {
+    status: 'completed',
+    depositStatus: 'paid',
+    updatedAt: hoursFromNow(-3).toISOString(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Marcar ausente' }))
+
+    const dialogEl = await body.findByRole('dialog')
+    const dialog = within(dialogEl)
+    await waitFor(() => expect(dialog.getByText(/figura como jugado/i)).toBeVisible())
+    await userEvent.click(dialog.getByRole('button', { name: 'Marcar ausente' }))
+
+    await waitFor(() => expect(args.markNoShowAction).toHaveBeenCalledWith(BOOKING_ID))
+    await expectGone(dialogEl)
+    const toastText = await body.findByText('Marcada como ausente')
+    await expect(toastText).toBeVisible()
+    // Mismo motivo que en la story de deshacer: el toast sobrevive al cambio de
+    // story y la siguiente asertea CERO botones.
+    await userEvent.click(body.getByRole('button', { name: 'Cerrar' }))
+    await expectGone(() => body.queryByText('Marcada como ausente'))
+  },
+}
+
+/** Pasadas las 24h de la marca de jugado, el turno es inmutable. */
+export const CompletadaPasadasLas24hNoOfreceNada: Story = {
+  args: {
+    status: 'completed',
+    updatedAt: hoursFromNow(-25).toISOString(),
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('button')).toBeNull()

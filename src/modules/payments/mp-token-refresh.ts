@@ -102,3 +102,58 @@ export async function withTokenRefresh<T>(
     return op()
   }
 }
+
+/** Tope de caracteres del resumen: un log no es lugar para volcar un body entero. */
+const MP_ERROR_SUMMARY_MAX = 400
+
+function pushIfString(parts: string[], label: string, value: unknown): void {
+  if (typeof value === 'string' && value.trim() !== '') parts.push(`${label}=${value.trim()}`)
+  else if (typeof value === 'number') parts.push(`${label}=${value}`)
+}
+
+/**
+ * Resumen legible de POR QUÉ MercadoPago rechazó algo, para logs.
+ *
+ * El gateway envuelve todo error del SDK en `MpGatewayError('Failed to ... <id>',
+ * cause=rawErr)`, y los tres catches del camino de reembolso loguean sólo
+ * `err.message` — o sea, la frase que escribimos nosotros. El motivo real
+ * (`status` + el array `cause: [{ code, description }]` que devuelve MP) se
+ * descartaba entero. Un reembolso que no llega quedaba como "Failed to refund
+ * MP payment 1750…", que no distingue una cuenta sin saldo de un token vencido
+ * de un pago no reembolsable. Pasó en producción el 2026-08-21.
+ *
+ * Devuelve sólo status, códigos y descripciones de MP: son mensajes de la API,
+ * sin datos de personas. Nunca el body completo ni el token.
+ */
+export function describeMpError(err: unknown): string {
+  if (typeof err !== 'object' || err === null) return String(err)
+  const e = err as { message?: unknown; status?: unknown; statusCode?: unknown; cause?: unknown }
+  const parts: string[] = []
+
+  pushIfString(parts, 'msg', e.message)
+  pushIfString(parts, 'status', e.status ?? e.statusCode)
+
+  // El SDK anida el error crudo un nivel abajo (MpGatewayError.cause).
+  const raw =
+    typeof e.cause === 'object' && e.cause !== null
+      ? (e.cause as { message?: unknown; status?: unknown; statusCode?: unknown; cause?: unknown })
+      : undefined
+  if (raw) {
+    pushIfString(parts, 'mp_msg', raw.message)
+    pushIfString(parts, 'mp_status', raw.status ?? raw.statusCode)
+
+    // `cause` de MP es un array de { code, description } con el motivo real.
+    const detail = Array.isArray(raw.cause) ? raw.cause : []
+    for (const item of detail.slice(0, 3)) {
+      if (typeof item !== 'object' || item === null) continue
+      const d = item as { code?: unknown; description?: unknown }
+      pushIfString(parts, 'mp_code', d.code)
+      pushIfString(parts, 'mp_desc', d.description)
+    }
+  }
+
+  const summary = parts.join(' ')
+  return summary.length > MP_ERROR_SUMMARY_MAX
+    ? summary.slice(0, MP_ERROR_SUMMARY_MAX) + '…'
+    : summary || String(err)
+}

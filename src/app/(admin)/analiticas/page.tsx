@@ -29,11 +29,11 @@ import { formatArsContable, formatPct } from '@/lib/format'
 import { GhostKpis } from './GhostKpis'
 import { OccupancyChart, TrendChart } from './ReportCharts'
 
-/** Formato contable con signo (§2.5/§8.2): negativos en `−$ X,00` + `text-destructive`. */
+/** Formato contable con signo (§2.5/§8.2): negativos en `−$ X,00` + rojo destructive. */
 function signedArsContable(cents: number): ReactNode {
   if (cents < 0) {
     return (
-      <span className="text-destructive">
+      <span className="text-red-700 dark:text-red-300">
         {'−'}
         {formatArsContable(-cents)}
       </span>

@@ -147,3 +147,17 @@ export const TurnoFijo: Story = {
     await expect(d.queryByText(/El precio pasa de/)).toBeNull()
   },
 }
+
+/**
+ * El MISMO error, en tema oscuro.
+ *
+ * Antes de esta tanda el repo no tenía UNA sola story en dark (`globals.theme`
+ * quedaba siempre en 'light'), así que axe venía midiendo medio design system.
+ * Y el lado sin medir era justo donde el rojo del token se cae:
+ * `text-destructive` es red-600 en los dos temas, y sobre la superficie oscura
+ * daba 3.87:1.
+ */
+export const ErrorAlCargarOscuro: Story = {
+  ...ErrorAlCargar,
+  globals: { theme: 'dark' },
+}

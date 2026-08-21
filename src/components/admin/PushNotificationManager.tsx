@@ -347,7 +347,7 @@ export function PushNotificationManager() {
         type="button"
         onClick={enable}
         disabled={status === 'pending'}
-        className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-white shadow-xs transition hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 sm:h-9 sm:px-4 sm:text-sm"
+        className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-xs transition hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 sm:h-9 sm:px-4 sm:text-sm"
       >
         {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
       </button>

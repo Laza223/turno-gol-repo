@@ -61,7 +61,7 @@ export const InlineEnBoton: Story = {
     <button
       type="button"
       disabled
-      className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-white opacity-90"
+      className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground opacity-90"
     >
       <TgBallSpinner size="xs" className="mr-2" aria-hidden />
       Procesando…

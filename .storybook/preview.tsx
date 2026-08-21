@@ -121,7 +121,12 @@ const preview: Preview = {
   globalTypes: {
     theme: {
       description: 'Tema (next-themes + clase .dark)',
-      defaultValue: 'light',
+      // `STORYBOOK_THEME=dark` corre TODA la suite en oscuro (`pnpm test:storybook:dark`).
+      // Hasta 2026-08-21 no había forma de hacerlo y ninguna story corría en dark, así
+      // que axe —el único lugar del repo que mide contraste— venía midiendo medio design
+      // system: la barrida en oscuro encontró 81 stories rojas de una. Una story puede
+      // fijar su tema con `globals: { theme: 'dark' }` y este default no la pisa.
+      defaultValue: process.env['STORYBOOK_THEME'] === 'dark' ? 'dark' : 'light',
       toolbar: {
         icon: 'circlehollow',
         items: [

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
-import { LinkContactDialog } from './LinkContactDialog'
+import { LinkContactDialog, type LinkContactDialogProps } from './LinkContactDialog'
 
 const SUGGESTED_ID = uid(271)
 
@@ -29,7 +29,13 @@ const meta = {
     fixedCount: 1,
     suggestedPlayerId: SUGGESTED_ID,
     suggestedPlayerName: 'Diego Rossi',
-    searchAction: fn(async () => ({ success: true as const, candidates: [] })),
+    // Anotado con el tipo de la prop (y no inferido del mock): sin esto,
+    // `satisfies Meta` fija la rama `success: true` y la story de error no
+    // typecheckea.
+    searchAction: fn(async () => ({
+      success: true as const,
+      candidates: [],
+    })) as LinkContactDialogProps['searchAction'],
     linkAction: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof LinkContactDialog>
@@ -91,4 +97,48 @@ export const SinSugerencia: Story = {
     )
     await expect(args.linkAction).not.toHaveBeenCalled()
   },
+}
+
+/**
+ * La búsqueda falló (rate limit, red): se dice, y el radiogroup no se llena
+ * con la lista vieja.
+ *
+ * Este aviso sale sólo cuando `searchAction` devuelve error, así que sin esta
+ * story axe no medía nunca su contraste — el mismo agujero que en la grilla
+ * dejó un `text-destructive` por debajo de AA sin que nadie lo viera.
+ */
+export const BusquedaConError: Story = {
+  args: {
+    searchAction: fn(async () => ({
+      success: false as const,
+      error: 'Demasiadas búsquedas. Probá en unos segundos.',
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Vincular' }))
+
+    const dialog = await within(document.body).findByRole('dialog')
+    const inDialog = within(dialog)
+    // La búsqueda arranca recién a partir del 2do caracter.
+    await userEvent.type(inDialog.getByLabelText('Buscar la cuenta del jugador'), 'Ro')
+
+    await expect(await inDialog.findByText(/Demasiadas búsquedas/)).toBeTruthy()
+    // Con error no queda el listado anterior colgado ni el "Buscando…".
+    await expect(inDialog.queryByText('Buscando…')).toBeNull()
+  },
+}
+
+/**
+ * El MISMO error, en tema oscuro.
+ *
+ * Antes de esta tanda el repo no tenía UNA sola story en dark (`globals.theme`
+ * quedaba siempre en 'light'), así que axe venía midiendo medio design system.
+ * Y el lado sin medir era justo donde el rojo del token se cae:
+ * `text-destructive` es red-600 en los dos temas, y sobre la superficie oscura
+ * daba 3.87:1.
+ */
+export const BusquedaConErrorOscuro: Story = {
+  ...BusquedaConError,
+  globals: { theme: 'dark' },
 }

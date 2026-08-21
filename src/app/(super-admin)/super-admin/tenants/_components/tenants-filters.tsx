@@ -82,7 +82,7 @@ export function TenantsFilters({
       </div>
       <button
         type="submit"
-        className="h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700"
+        className="h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-emerald-700"
       >
         Filtrar
       </button>

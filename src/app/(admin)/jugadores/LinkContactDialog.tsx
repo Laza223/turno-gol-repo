@@ -143,7 +143,9 @@ export function LinkContactDialog({
             />
           </div>
 
-          {searchError && <p className="text-xs text-destructive">{searchError}</p>}
+          {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el
+              token es red-600 en los DOS temas y sobre la superficie oscura da 3.87:1. */}
+          {searchError && <p className="text-xs text-red-700 dark:text-red-300">{searchError}</p>}
           {isSearching && <p className="text-xs text-muted-foreground">Buscando…</p>}
           {!isSearching && !searchError && query.trim().length >= 2 && results.length === 0 && (
             <p className="text-xs text-muted-foreground">

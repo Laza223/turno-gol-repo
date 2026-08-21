@@ -168,13 +168,16 @@ export default function WeeklyAvailabilityModal({
         </div>
 
         {/* Day Tabs */}
+        {/* El aviso de error va en red-700/red-300 (idiom de `status-tone.ts`) y no en
+            `text-destructive`: el token es red-600 en los DOS temas y sobre la
+            superficie oscura da 3.87:1. */}
         {loading && !weekData ? (
           <div className="space-y-4 py-4">
             <Skeleton className="h-12 w-full rounded-xl" />
             <Skeleton className="h-40 w-full rounded-xl" />
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-sm text-destructive">
+          <div className="py-8 text-center text-sm text-red-700 dark:text-red-300">
             Ocurrió un error al cargar la disponibilidad de la semana.
           </div>
         ) : weekData ? (

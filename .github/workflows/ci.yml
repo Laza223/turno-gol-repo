@@ -128,8 +128,11 @@ jobs:
   # El nombre `Stories (BLOCKING)` está en branch protection (required status
   # check) — `stories` es un agregador de 1 línea que lo conserva sin tocar
   # la config de GitHub. Sigue sin haber retries: un shard que falla, falla.
+  # La matriz es shard × tema (6 jobs en paralelo): el resultado de una matriz
+  # es `success` sólo si TODOS sus jobs pasan, así que el agregador ya cubre
+  # los seis sin cambios.
   stories-shards:
-    name: Stories shard ${{ matrix.shard }}/3
+    name: Stories shard ${{ matrix.shard }}/3 (${{ matrix.theme }})
     runs-on: ubuntu-latest
     # 8 min era el presupuesto de las stories SOLAS; con install-deps lento no
     # quedaba nada para correrlas. 15 deja margen para el setup sin volver la
@@ -139,6 +142,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
+        # El tema es una dimensión de la matriz, no un job aparte: los 6 shards
+        # comparten los mismos steps de setup y el mismo agregador de abajo, así
+        # que no hay que tocar branch protection.
+        theme: [light, dark]
     steps:
       - uses: actions/checkout@v4
 
@@ -188,6 +195,12 @@ jobs:
 
       - name: Stories
         run: pnpm test:storybook:ci --shard=${{ matrix.shard }}/3
+        env:
+          # Lo lee `.storybook/preview.tsx` para el `defaultValue` del global
+          # `theme`. Sin la mitad `dark` el gate mide medio design system: hasta
+          # 2026-08-21 ninguna story corría en oscuro y la primera barrida ahí
+          # encontró 81 stories rojas de 1136, todas de contraste.
+          STORYBOOK_THEME: ${{ matrix.theme }}
 
   stories:
     name: Stories (BLOCKING)

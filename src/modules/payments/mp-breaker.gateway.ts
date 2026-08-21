@@ -47,6 +47,7 @@ export function withCircuitBreaker(
       breaker.execute(key, () => inner.resolveSubscriptionTenant(eventType, dataId)),
     getSubscriptionChargeInfo: (id) =>
       breaker.execute(key, () => inner.getSubscriptionChargeInfo(id)),
+    getSubscriptionState: (id) => breaker.execute(key, () => inner.getSubscriptionState(id)),
     updatePreapprovalAmount: (id, amount) =>
       breaker.execute(key, () => inner.updatePreapprovalAmount(id, amount)),
     createSaasUpgradePreference: (input) =>

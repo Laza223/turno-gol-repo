@@ -28,6 +28,35 @@ export type GatewayPaymentInfo = {
   preapprovalId?: string | null
 }
 
+/**
+ * Estado real de una suscripción en MercadoPago (`GET /preapproval/{id}`).
+ * Montos en centavos ARS, como en todo el resto del sistema.
+ *
+ * Lo consume `reconcile-subscriptions.worker.ts`: `trialing → active` solo pasa
+ * cuando llega el aviso del cobro, así que si el aviso se pierde hace falta
+ * poder preguntarle a MP directamente en vez de esperarlo.
+ *
+ * `status` sale tal cual de MP. `'unknown'` cubre un valor que MP agregue más
+ * adelante y este código no conozca: se trata como "no tocar y alertar", nunca
+ * como "está pagando".
+ */
+export type GatewaySubscriptionState = {
+  preapprovalId: string
+  status: 'pending' | 'authorized' | 'paused' | 'cancelled' | 'unknown'
+  /** `createPreapproval` lo setea al tenantId. Sirve de cross-check. */
+  externalReference: string | null
+  nextPaymentDate: Date | null
+  /**
+   * Cobros efectivos. **Cuidado**: MP omite `summarized` ENTERO en un
+   * preapproval que nunca cobró (no manda `charged_quantity: 0`) — medido
+   * contra la cuenta viva el 2026-08-20 sobre 3 preapprovals reales sin
+   * cobros. El parser normaliza esa ausencia a 0.
+   */
+  chargedQuantity: number
+  lastChargedDate: Date | null
+  lastChargedAmountCents: number | null
+}
+
 export type CreatePreferenceInput = {
   bookingId: string
   /** Centavos ARS. */

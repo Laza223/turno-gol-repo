@@ -10,6 +10,7 @@ import {
   type CreatePreferenceInput,
   type CreateSaasUpgradePreferenceInput,
   type GatewayPaymentInfo,
+  type GatewaySubscriptionState,
   type MpPaymentStatus,
   type PreapprovalResult,
   type PreferenceResult,
@@ -30,6 +31,20 @@ function mapStatus(raw: string | undefined): MpPaymentStatus {
     return raw as MpPaymentStatus
   }
   return 'pending'
+}
+
+/**
+ * MP manda las fechas en ISO-8601 con offset (`2026-08-20T10:49:04.486-04:00`).
+ *
+ * Un valor ausente o no parseable devuelve `null`, nunca un Invalid Date: un
+ * Invalid Date se propagaría silencioso hasta un `current_period_end` corrupto
+ * en la DB, y recién se notaría cuando a un complejo le venza la suscripción en
+ * una fecha imposible.
+ */
+function parseMpDate(v: unknown): Date | null {
+  if (typeof v !== 'string' || v === '') return null
+  const d = new Date(v)
+  return Number.isNaN(d.getTime()) ? null : d
 }
 
 function normalizeUrl(url: string): string
@@ -231,14 +246,28 @@ export class MercadoPagoGateway implements PaymentGateway {
         transaction_amount?: number
         external_reference?: string
         payment_method_id?: string
+        point_of_interaction?: { transaction_data?: { subscription_id?: unknown } }
       }>
-      return results.map((r) => ({
-        mpPaymentId: String(r.id ?? ''),
-        status: mapStatus(r.status),
-        amount: pesosToCents(r.transaction_amount),
-        externalReference: r.external_reference ?? externalReference,
-        paymentMethodId: r.payment_method_id ?? 'unknown',
-      }))
+      return results.map((r) => {
+        // `subscription_id` es el MISMO camino que ya usa `getPaymentStatus`
+        // (verificado contra un cobro real). Acá se propaga para que
+        // `reconcile-subscriptions.worker.ts` pueda distinguir cuál de los
+        // pagos del complejo pertenece al preapproval vigente. Si MP no lo
+        // manda en los resultados de búsqueda queda `undefined`, y el worker
+        // degrada solo (sigue con su guard de marca de agua) en vez de
+        // adivinar.
+        const suscripcion = r.point_of_interaction?.transaction_data?.subscription_id
+        return {
+          mpPaymentId: String(r.id ?? ''),
+          status: mapStatus(r.status),
+          amount: pesosToCents(r.transaction_amount),
+          externalReference: r.external_reference ?? externalReference,
+          paymentMethodId: r.payment_method_id ?? 'unknown',
+          ...(typeof suscripcion === 'string' && suscripcion !== ''
+            ? { preapprovalId: suscripcion }
+            : {}),
+        }
+      })
     } catch (err) {
       throw new MpGatewayError(`Failed to search MP payments for ref ${externalReference}`, err)
     }
@@ -416,6 +445,41 @@ export class MercadoPagoGateway implements PaymentGateway {
       // pago suelto. `onPaymentApproved` lo usa para verificar que el cobro
       // es del preapproval VIGENTE antes de activar nada.
       preapprovalId: typeof cobro.preapproval_id === 'string' ? cobro.preapproval_id : null,
+    }
+  }
+
+  async getSubscriptionState(preapprovalId: string): Promise<GatewaySubscriptionState | null> {
+    try {
+      const raw = await this.mpGet(`/preapproval/${encodeURIComponent(preapprovalId)}`)
+      if (!raw) return null
+
+      // `summarized` viene AUSENTE ENTERO cuando el preapproval nunca cobró
+      // —no llega como `{charged_quantity: 0}`—. Medido contra la cuenta viva
+      // el 2026-08-20 sobre 3 preapprovals reales sin cobros. Si esto se leyera
+      // mal, un complejo en prueba se activaría solo sin haber pagado nada.
+      const sum = (raw.summarized ?? {}) as Record<string, unknown>
+      const conocidos: readonly string[] = ['pending', 'authorized', 'paused', 'cancelled']
+
+      return {
+        preapprovalId,
+        status: conocidos.includes(String(raw.status))
+          ? (raw.status as GatewaySubscriptionState['status'])
+          : 'unknown',
+        externalReference:
+          typeof raw.external_reference === 'string' && raw.external_reference !== ''
+            ? raw.external_reference
+            : null,
+        nextPaymentDate: parseMpDate(raw.next_payment_date),
+        chargedQuantity: typeof sum.charged_quantity === 'number' ? sum.charged_quantity : 0,
+        lastChargedDate: parseMpDate(sum.last_charged_date),
+        lastChargedAmountCents:
+          typeof sum.last_charged_amount === 'number'
+            ? pesosToCents(sum.last_charged_amount)
+            : null,
+      }
+    } catch (err) {
+      if (err instanceof MpGatewayError) throw err
+      throw new MpGatewayError(`Failed to fetch MP preapproval state ${preapprovalId}`, err)
     }
   }
 

@@ -20,6 +20,7 @@ export const QUEUE_HEALTH_PING = 'health-ping'
 export const QUEUE_RECONCILE_ACCOUNTING_DRIFT = 'reconcile-accounting-drift'
 export const QUEUE_DAILY_SUMMARY = 'daily-summary'
 export const QUEUE_ONBOARDING_ABANDONMENT = 'onboarding-abandonment-sweep'
+export const QUEUE_RECONCILE_SUBSCRIPTIONS = 'reconcile-subscriptions'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 
@@ -50,6 +51,23 @@ export const EXPIRE_PENDING_BOOKING_SEND_OPTIONS = {
   retryBackoff: true,
   // Comfortably outlives the 6 min timer + retries so a rescheduled job isn't dropped.
   expireInHours: 1,
+} as const
+
+// ─── Reconciliación de suscripciones SaaS ─────────────────────────────────────
+// OJO: `boss.schedule(name, cron, data)` SIN cuarto argumento registra el cron
+// con retryLimit=0 — el "reintento" pasa a ser el próximo tick, una hora
+// después. Acá sí se pasan SendOptions porque el barrido es idempotente por
+// construcción (escritura convergente + guard de marca de agua), así que
+// reintentar ante un 5xx de MP es seguro y evita que un complejo que ya pagó
+// espere una hora más para que le arreglen la suscripción.
+//
+// `expireInHours: 2` deja lugar a los 2 reintentos con backoff sin que dos
+// corridas del cron horario se solapen.
+export const RECONCILE_SUBSCRIPTIONS_SEND_OPTIONS = {
+  retryLimit: 2,
+  retryDelay: 120,
+  retryBackoff: true,
+  expireInHours: 2,
 } as const
 
 // ─── Push notifications ───────────────────────────────────────────────────────

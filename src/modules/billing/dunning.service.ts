@@ -255,9 +255,34 @@ export async function onPaymentApproved(
   tx: DbTx,
   mpPaymentId?: string,
   preapprovalId?: string | null,
+  chargeKey?: string,
 ): Promise<{ alreadyProcessed: boolean }> {
   const fresh = await lockWebhook(mpEventId, eventType, rawPayload, tx)
   if (!fresh) return { alreadyProcessed: true }
+
+  // Guard por COBRO, no por notificación (D3 del diseño de
+  // `reconcile-subscriptions`). `mpEventId` es el id de NOTIFICACIÓN de MP, así
+  // que dos avisos distintos del MISMO cobro —o el reconciliador y el webhook
+  // aplicando el mismo cobro por caminos separados— pasan los dos el lock de
+  // arriba y extienden `current_period_end` dos veces: un ciclo regalado.
+  //
+  // `chargeKey` se construye sobre el id del PAGO, que los dos caminos ven
+  // igual, y lo lockea con la misma tabla. Es OPCIONAL para no romper a los
+  // callers que no lo conocen (tests de FSM/idempotencia): sin él, el
+  // comportamiento es exactamente el de antes.
+  //
+  // Va DESPUÉS del lock de `mpEventId` a propósito: así el evento igual queda
+  // registrado en `processed_webhooks` y el pre-check de `mp-webhook.handler`
+  // sigue cortando las entregas repetidas sin volver a consultarle a MP.
+  if (chargeKey) {
+    const freshCharge = await lockWebhook(
+      chargeKey,
+      `${eventType}:charge`,
+      { chargeKey, mpEventId, mpPaymentId: mpPaymentId ?? null },
+      tx,
+    )
+    if (!freshCharge) return { alreadyProcessed: true }
+  }
 
   // Fase 2 (🔴 TOCTOU, cierra el residual de Fix 2b): `loadSub` ahora lockea
   // (`FOR UPDATE OF ts`). Sin esto, un `reactivate()` concurrente (que ya

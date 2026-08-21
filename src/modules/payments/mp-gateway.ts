@@ -3,6 +3,7 @@ import type {
   CreatePreferenceInput,
   CreateSaasUpgradePreferenceInput,
   GatewayPaymentInfo,
+  GatewaySubscriptionState,
   PreapprovalResult,
   PreferenceResult,
   RefundResult,
@@ -64,6 +65,20 @@ export interface PaymentGateway {
    * cobrado.
    */
   getSubscriptionChargeInfo(authorizedPaymentId: string): Promise<GatewayPaymentInfo>
+  /**
+   * Estado real de una suscripción, preguntado a MercadoPago.
+   *
+   * Lo usa `reconcile-subscriptions.worker.ts` como red de rescate: el paso
+   * `trialing → active` depende de que llegue el aviso del cobro, y cuando ese
+   * aviso se pierde el complejo paga y queda en prueba hasta que
+   * `expire-trials` lo apaga. Pasó de verdad el 2026-08-20 (ver el diseño en
+   * `docs/superpowers/specs/2026-08-20-reconcile-subscriptions-design.md` §2).
+   *
+   * Devuelve null si MP no reconoce el preapproval (404): reintentar no lo va a
+   * cambiar, así que el caller lo reporta como desincronización en vez de
+   * fallar y reintentar para siempre.
+   */
+  getSubscriptionState(preapprovalId: string): Promise<GatewaySubscriptionState | null>
   /** `amount` in centavos ARS. */
   updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void>
   /**

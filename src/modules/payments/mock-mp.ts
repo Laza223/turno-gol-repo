@@ -6,6 +6,7 @@ import type {
   CreatePreferenceInput,
   CreateSaasUpgradePreferenceInput,
   GatewayPaymentInfo,
+  GatewaySubscriptionState,
   PreapprovalResult,
   PreferenceResult,
   RefundResult,
@@ -151,6 +152,16 @@ export class LocalMockGateway implements PaymentGateway {
       paymentMethodId: 'mock',
       preapprovalId: null,
     }
+  }
+
+  /**
+   * `null` = "MP no reconoce este preapproval", que es lo que hace al
+   * reconciliador saltear la fila sin tocarla. En mock mode no hay una cuenta
+   * real contra la cual conciliar, y devolver un estado inventado activaría
+   * suscripciones que nadie pagó.
+   */
+  async getSubscriptionState(_preapprovalId: string): Promise<GatewaySubscriptionState | null> {
+    return null
   }
 
   async updatePreapprovalAmount(_preapprovalId: string, _amount: number): Promise<void> {

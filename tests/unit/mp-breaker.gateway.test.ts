@@ -5,6 +5,7 @@ import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type {
   GatewayPaymentInfo,
   PreapprovalResult,
+  GatewaySubscriptionState,
   PreferenceResult,
   RefundResult,
 } from '@/modules/payments/payment.types'
@@ -38,6 +39,7 @@ function makeInner(overrides: Partial<PaymentGateway> = {}): PaymentGateway {
     cancelPreapproval: vi.fn(async (): Promise<void> => {}),
     resolveSubscriptionTenant: vi.fn(async (): Promise<string | null> => 'tenant-1'),
     getSubscriptionChargeInfo: vi.fn(async (): Promise<GatewayPaymentInfo> => OK_INFO),
+    getSubscriptionState: vi.fn(async (): Promise<GatewaySubscriptionState | null> => null),
     updatePreapprovalAmount: vi.fn(async (): Promise<void> => {}),
     createSaasUpgradePreference: vi.fn(async (): Promise<PreferenceResult> => ({
       preferenceId: 'u',

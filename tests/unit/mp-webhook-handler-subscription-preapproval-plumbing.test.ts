@@ -122,6 +122,10 @@ describe('handleMpWebhookJob — pasa mpPaymentId/preapprovalId a onPaymentAppro
       expect.anything(), // tx
       'mp-pay-1',
       'mp-preapp-current',
+      // Guard por cobro: se arma con el id del PAGO, no con el de la factura ni
+      // con el `mp_event_id`, para que el webhook y `reconcile-subscriptions`
+      // lleguen a la MISMA clave y no apliquen el cobro dos veces.
+      'sub-charge:mp-pay-1',
     )
   })
 
@@ -148,6 +152,9 @@ describe('handleMpWebhookJob — pasa mpPaymentId/preapprovalId a onPaymentAppro
       expect.anything(),
       'mp-pay-1',
       undefined,
+      // La clave del cobro NO depende del preapproval: sale del id del pago,
+      // que acá sí vino.
+      'sub-charge:mp-pay-1',
     )
   })
 

@@ -86,6 +86,19 @@ export type WebhookEvent = {
   rawPayload: unknown
 }
 
+/**
+ * Intent de reembolso ya persistido por `prepareRefund` (fase 1) y todavía sin
+ * liquidar contra MP (fase 2, `settleRefund`). Vive acá y no en
+ * `payment.service.ts` porque `WebhookOutcome` lo expone: el tipo tiene que ser
+ * importable sin arrastrar el service entero (y sin ciclo, el service importa
+ * de este archivo).
+ */
+export type PreparedRefund = {
+  refundPaymentId: string
+  mpPaymentId: string
+  refundAmount: number
+}
+
 export type WebhookOutcome =
   | { alreadyProcessed: true }
   | {
@@ -107,6 +120,17 @@ export type WebhookOutcome =
        * `won === true`, no `result`.
        */
       won?: boolean
+      /**
+       * Reembolso automático de un pago tardío (decisión del dueño 2026-08-19):
+       * MP aprobó DESPUÉS de que la reserva expirara, así que no hay turno que
+       * confirmar y la plata vuelve sola. El intent ya está commiteado con esta
+       * tx; el caller lo liquida contra MP DESPUÉS del commit vía
+       * `settleLatePaymentRefund` — misma frontera de side-effects post-commit
+       * que `notificationIds`. Si el caller se lo saltea no se pierde plata: el
+       * cron `retry-pending-refunds` levanta cualquier refund `pending` de más
+       * de una hora.
+       */
+      preparedRefund?: PreparedRefund
     }
 
 // ─── SaaS recurring billing (P18) ──────────────────────────────

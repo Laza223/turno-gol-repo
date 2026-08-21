@@ -64,7 +64,11 @@ describe('webhook de MercadoPago — todo rechazo queda explicado en el log', ()
   const env = process.env as Record<string, string | undefined>
 
   beforeEach(() => {
-    vi.resetModules()
+    // Sin `vi.resetModules()` a propósito: `verifyWebhookSignature` lee
+    // `process.env.MP_WEBHOOK_SECRET` en cada llamada, así que cambiarlo acá
+    // alcanza sin recompilar. Reseteando, cada caso recompilaba el grafo entero
+    // del route (~2,5 s el primero) y el archivo se ponía rojo por timeout
+    // cuando la suite completa competía por CPU — verde al correrlo solo.
     warn.mockReset()
     env['MP_WEBHOOK_SECRET'] = SECRET
   })

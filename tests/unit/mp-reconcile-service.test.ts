@@ -13,10 +13,15 @@ vi.mock('@/shared/db/client', () => ({
 vi.mock('@/modules/payments/payment.service', () => ({
   lockMpEvent: vi.fn(),
   dispatchPaymentInfo: vi.fn(),
+  settleLatePaymentRefund: vi.fn(),
 }))
 
 import { withTenantContext } from '@/shared/db/client'
-import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.service'
+import {
+  dispatchPaymentInfo,
+  lockMpEvent,
+  settleLatePaymentRefund,
+} from '@/modules/payments/payment.service'
 import {
   reconcileApprovedPaymentForBooking,
   ReconcileProcessingError,
@@ -25,6 +30,7 @@ import {
 const mockWithTenantContext = withTenantContext as ReturnType<typeof vi.fn>
 const mockLockMpEvent = lockMpEvent as ReturnType<typeof vi.fn>
 const mockDispatchPaymentInfo = dispatchPaymentInfo as ReturnType<typeof vi.fn>
+const mockSettleLatePaymentRefund = settleLatePaymentRefund as ReturnType<typeof vi.fn>
 
 const BOOKING_ID = '11111111-1111-4111-8111-111111111111'
 const TENANT_ID = 'tenant-1'
@@ -92,7 +98,7 @@ describe('reconcileApprovedPaymentForBooking', () => {
       'test-source',
     )
 
-    expect(result).toEqual({ confirmed: true, notificationIds: ['notif-1'] })
+    expect(result).toEqual({ confirmed: true, notificationIds: ['notif-1'], refunded: false })
     expect(mockLockMpEvent).toHaveBeenCalledWith(
       expect.objectContaining({ mpEventId: 'reconcile-mp-pay-1' }),
       expect.anything(),
@@ -161,7 +167,14 @@ describe('reconcileApprovedPaymentForBooking', () => {
       'test-source',
     )
 
-    expect(result).toEqual({ confirmed: false, notificationIds: ['notif-late-payment'] })
+    // `refunded:false` explícito: MP aprobó y el booking ya estaba terminal,
+    // pero este caso NO preparó reembolso (lo hace `handleApproved`, mockeado
+    // acá). Distinguirlo de `refunded:true` es todo el punto del campo.
+    expect(result).toEqual({
+      confirmed: false,
+      notificationIds: ['notif-late-payment'],
+      refunded: false,
+    })
   })
 })
 
@@ -207,5 +220,86 @@ describe('reconcileApprovedPaymentForBooking — fases search vs process (R1-A)'
 
     await expect(promise).rejects.toBeInstanceOf(ReconcileProcessingError)
     await expect(promise).rejects.toMatchObject({ bookingId: BOOKING_ID, cause: localError })
+  })
+})
+
+/**
+ * Pago tardío (decisión del dueño 2026-08-19): MP aprobó cuando la reserva ya
+ * estaba `expired`, así que `won` es false —y va a seguir siéndolo, `expired`
+ * es terminal en las tres capas— pero SÍ pasó algo con la plata. Antes ese
+ * caso era indistinguible de "MP no tenía nada": los dos devolvían
+ * `confirmed:false` y el caller no tenía con qué contarlo ni loguearlo.
+ */
+describe('reconcileApprovedPaymentForBooking — pago tardío', () => {
+  const APPROVED = {
+    mpPaymentId: 'mp-late-1',
+    status: 'approved',
+    amount: 5000,
+    externalReference: BOOKING_ID,
+    paymentMethodId: 'account_money',
+  }
+  const PREPARED = { refundPaymentId: 'refund-row-1', mpPaymentId: 'mp-late-1', refundAmount: 5000 }
+
+  function gatewayWithApproved() {
+    return { searchPaymentsByReference: vi.fn().mockResolvedValue([APPROVED]) }
+  }
+
+  it('won:false + preparedRefund → liquida contra MP y devuelve refunded:true', async () => {
+    mockTx()
+    mockLockMpEvent.mockResolvedValue(true)
+    mockDispatchPaymentInfo.mockResolvedValue({
+      alreadyProcessed: false,
+      result: 'confirmed',
+      notificationIds: ['n1', 'n2'],
+      won: false,
+      preparedRefund: PREPARED,
+    })
+
+    const gateway = gatewayWithApproved()
+    const result = await reconcileApprovedPaymentForBooking(
+      BOOKING_ID,
+      TENANT_ID,
+      gateway as never,
+      'reconcile-post-terminal',
+    )
+
+    expect(result).toEqual({ confirmed: false, notificationIds: ['n1', 'n2'], refunded: true })
+    expect(mockSettleLatePaymentRefund).toHaveBeenCalledWith(PREPARED, TENANT_ID, gateway)
+  })
+
+  it('sin preparedRefund no llama a MP por un reembolso que nadie pidió', async () => {
+    mockTx()
+    mockLockMpEvent.mockResolvedValue(true)
+    mockDispatchPaymentInfo.mockResolvedValue({
+      alreadyProcessed: false,
+      result: 'confirmed',
+      notificationIds: [],
+      won: true,
+    })
+
+    const result = await reconcileApprovedPaymentForBooking(
+      BOOKING_ID,
+      TENANT_ID,
+      gatewayWithApproved() as never,
+      'expiry-precheck',
+    )
+
+    expect(result).toEqual({ confirmed: true, notificationIds: [], refunded: false })
+    expect(mockSettleLatePaymentRefund).not.toHaveBeenCalled()
+  })
+
+  it('evento ya procesado (lock no fresco) → no liquida nada', async () => {
+    mockTx()
+    mockLockMpEvent.mockResolvedValue(false)
+
+    const result = await reconcileApprovedPaymentForBooking(
+      BOOKING_ID,
+      TENANT_ID,
+      gatewayWithApproved() as never,
+      'reconcile-post-terminal',
+    )
+
+    expect(result).toEqual({ confirmed: false, notificationIds: [] })
+    expect(mockSettleLatePaymentRefund).not.toHaveBeenCalled()
   })
 })

@@ -192,7 +192,10 @@ async function alertDesync(tenantId: string, preapprovalId: string, reason: stri
  * una mejora sobre el camino del webhook, no una condición para rescatar a un
  * complejo que ya pagó — degradar acá tiene que ser inofensivo.
  */
-async function findChargePaymentId(tenantId: string, preapprovalId: string): Promise<string | null> {
+async function findChargePaymentId(
+  tenantId: string,
+  preapprovalId: string,
+): Promise<string | null> {
   try {
     const pagos = await getBillingGateway().searchPaymentsByReference(tenantId)
     const delPreapproval = pagos.filter(

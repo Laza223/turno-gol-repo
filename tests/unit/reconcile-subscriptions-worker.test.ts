@@ -169,9 +169,8 @@ describe('reconcileSubscriptions en modo mock', () => {
     vi.resetModules()
     vi.doMock('@/modules/payments/mock-mp', () => ({ MP_MOCK_ENABLED: true }))
 
-    const { reconcileSubscriptions: enMock } = await import(
-      '@/shared/jobs/workers/reconcile-subscriptions.worker'
-    )
+    const { reconcileSubscriptions: enMock } =
+      await import('@/shared/jobs/workers/reconcile-subscriptions.worker')
     mockGetWorkerSql.mockClear()
     mockGetBillingGateway.mockClear()
 

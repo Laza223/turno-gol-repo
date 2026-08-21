@@ -473,7 +473,9 @@ export class MercadoPagoGateway implements PaymentGateway {
         chargedQuantity: typeof sum.charged_quantity === 'number' ? sum.charged_quantity : 0,
         lastChargedDate: parseMpDate(sum.last_charged_date),
         lastChargedAmountCents:
-          typeof sum.last_charged_amount === 'number' ? pesosToCents(sum.last_charged_amount) : null,
+          typeof sum.last_charged_amount === 'number'
+            ? pesosToCents(sum.last_charged_amount)
+            : null,
       }
     } catch (err) {
       if (err instanceof MpGatewayError) throw err

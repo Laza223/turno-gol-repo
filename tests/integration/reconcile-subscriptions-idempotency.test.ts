@@ -199,7 +199,9 @@ describe('reconcile-subscriptions (DB real)', () => {
     expect(fixed).toBe(0)
     const despues = await readSub(sql, tenantId)
     expect(despues.status).toBe('past_due')
-    expect(new Date(despues.updated_at).toISOString()).toBe(new Date(antes.updated_at).toISOString())
+    expect(new Date(despues.updated_at).toISOString()).toBe(
+      new Date(antes.updated_at).toISOString(),
+    )
   })
 
   it('rescata el caso real: el evento ya está en processed_webhooks y no aplicó nada', async () => {

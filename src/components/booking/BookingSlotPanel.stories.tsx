@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, within } from 'storybook/test'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import {
   booking,
   bookingBlock,
@@ -85,6 +85,38 @@ export const CobrarYCerrar: Story = {
     // Confirmado ⇒ todavía se puede mover (RESCHEDULABLE_STATUSES).
     await expect(await panel.findByRole('button', { name: /Reprogramar/ })).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
+  },
+}
+
+/**
+ * El cobro lo rechaza el backend (caja del día ya cerrada, por ejemplo): el
+ * panel queda abierto con el motivo, sin dar el turno por jugado.
+ *
+ * El aviso de la sección de cobro sólo existe después de un submit fallido,
+ * así que sin esta story axe no medía nunca su contraste — el mismo agujero
+ * que en la grilla dejó un `text-destructive` por debajo de AA sin que nadie
+ * lo viera.
+ */
+export const CobroRechazado: Story = {
+  args: {
+    actions: {
+      ...okActions(),
+      completeAndChargeBookingAction: fn(async () => ({
+        success: false as const,
+        error: 'La caja de ese día ya está cerrada.',
+      })),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    // La línea de cobro viene precargada con lo pendiente: alcanza con el CTA.
+    await userEvent.click(await panel.findByRole('button', { name: 'Cobrar y cerrar turno' }))
+
+    await expect(await panel.findByRole('alert')).toHaveTextContent(
+      'La caja de ese día ya está cerrada.',
+    )
+    // El panel no se cierra ni da el turno por jugado.
+    await expect(await panel.findByText('Cobrar y dar por jugado')).toBeTruthy()
   },
 }
 
@@ -175,4 +207,18 @@ export const Bloqueo: Story = {
 /** Sin Server Actions (el modo en el que corren otras stories): abre igual, sólo mira. */
 export const SoloLectura: Story = {
   args: { actions: undefined },
+}
+
+/**
+ * El MISMO error, en tema oscuro.
+ *
+ * Antes de esta tanda el repo no tenía UNA sola story en dark (`globals.theme`
+ * quedaba siempre en 'light'), así que axe venía midiendo medio design system.
+ * Y el lado sin medir era justo donde el rojo del token se cae:
+ * `text-destructive` es red-600 en los dos temas, y sobre la superficie oscura
+ * daba 3.87:1.
+ */
+export const CobroRechazadoOscuro: Story = {
+  ...CobroRechazado,
+  globals: { theme: 'dark' },
 }

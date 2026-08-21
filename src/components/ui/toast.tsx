@@ -56,12 +56,16 @@ const toastVariants = cva(
         //   text-green-800 sobre bg-green-50:  6.81:1
         //   text-red-700   sobre bg-red-50:    5.91:1
         // El foreground de light también se ajusta: los tokens crudos (`text-success`,
-        // `text-destructive`) no llegan a AA sobre estos fills. En dark los tokens sí
-        // pasan y se mantienen.
+        // `text-destructive`) no llegan a AA sobre estos fills.
+        // En dark `text-destructive` TAMPOCO pasa: es red-600 en los dos temas y sobre
+        // el fill `bg-destructive/15` da 3.84:1 (medido con axe recién cuando hubo
+        // stories en tema oscuro — antes ninguna corría en dark). Va red-300, el mismo
+        // `TONE_TEXT.destructive` de `status-tone.ts`. `text-success` sí pasa: el token
+        // de success se aclara en dark (green 70%/45%), el de destructive no.
         success:
           'border-success/30 bg-green-50 text-green-800 dark:border-success/40 dark:bg-success/15 dark:text-success before:bg-linear-to-b before:from-emerald-500 before:to-teal-600',
         destructive:
-          'border-destructive/30 bg-red-50 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-destructive before:bg-linear-to-b before:from-red-500 before:to-red-600',
+          'border-destructive/30 bg-red-50 text-red-700 dark:border-destructive/40 dark:bg-destructive/15 dark:text-red-300 before:bg-linear-to-b before:from-red-500 before:to-red-600',
       },
     },
     defaultVariants: { variant: 'default' },

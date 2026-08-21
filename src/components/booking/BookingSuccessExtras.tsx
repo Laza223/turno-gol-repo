@@ -107,10 +107,14 @@ export default function BookingSuccessExtras(props: Props) {
       )}
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {/* Sin `dark:bg-green-600`: el verde más claro de dark dejaba el texto
+            blanco en 3.21:1 (AA pide 4.5). green-700 con blanco da 4.95:1 y en
+            oscuro se sigue leyendo perfecto — el mismo botón que ya se ve en
+            claro. */}
         <button
           type="button"
           onClick={shareWhatsApp}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 text-sm font-semibold text-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-800 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:bg-green-600 dark:hover:bg-green-500"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 text-sm font-semibold text-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-800 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
         >
           <MessageCircle className="h-4 w-4" aria-hidden />
           Compartir

@@ -369,7 +369,7 @@ function AbonadoTableRow({
                 type="button"
                 disabled={actions.isPending}
                 onClick={() => actions.openDialog('cancel')}
-                className="text-xs font-medium text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-red-700 dark:text-red-300 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>
@@ -389,7 +389,7 @@ function AbonadoTableRow({
                 type="button"
                 disabled={actions.isPending}
                 onClick={() => actions.openDialog('cancel')}
-                className="text-xs font-medium text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-red-700 dark:text-red-300 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
               </button>
@@ -464,7 +464,7 @@ function AbonadoCard({
             type="button"
             disabled={actions.isPending}
             onClick={() => actions.openDialog('cancel')}
-            className={`${actionButtonClass} text-destructive`}
+            className={`${actionButtonClass} text-red-700 dark:text-red-300`}
           >
             Cancelar
           </button>

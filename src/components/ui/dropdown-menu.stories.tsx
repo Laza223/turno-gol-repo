@@ -52,7 +52,7 @@ function Menu({ disabledItem = false }: { disabledItem?: boolean }) {
         <DropdownMenuItem>Completar</DropdownMenuItem>
         <DropdownMenuItem>Marcar ausente</DropdownMenuItem>
         <DropdownMenuItem disabled={disabledItem}>Confirmar pago</DropdownMenuItem>
-        <DropdownMenuItem className="text-destructive focus:text-destructive">
+        <DropdownMenuItem className="text-red-700 focus:text-red-700 dark:text-red-300 dark:focus:text-red-300">
           Cancelar
         </DropdownMenuItem>
       </DropdownMenuContent>

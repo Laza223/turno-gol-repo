@@ -43,6 +43,7 @@
     "build-storybook": "storybook build",
     "test:storybook": "vitest run --config vitest.storybook.config.ts",
     "test:storybook:ci": "vitest run --config vitest.storybook.config.ts --reporter=default",
+    "test:storybook:dark": "cross-env STORYBOOK_THEME=dark vitest run --config vitest.storybook.config.ts --reporter=default",
     "qa:storybook": "node scripts/storybook-qa.mjs",
     "qa:coverage": "node scripts/verify-story-coverage.mjs",
     "test:e2e": "playwright test",

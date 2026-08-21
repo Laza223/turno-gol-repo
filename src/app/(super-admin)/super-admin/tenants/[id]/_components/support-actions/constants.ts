@@ -57,6 +57,6 @@ export const STATUS_LABELS: Record<TenantStatus, string> = {
 export const inputCls =
   'h-11 md:h-10 rounded-md border border-border px-3 text-sm focus:border-emerald-600 focus:outline-hidden focus:ring-2 focus:ring-emerald-500'
 export const primaryBtn =
-  'h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-emerald-700 disabled:opacity-60'
+  'h-11 md:h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-emerald-700 disabled:opacity-60'
 export const destructiveBtn =
   'h-11 md:h-10 rounded-md bg-red-600 px-4 text-sm font-medium text-white transition-colors duration-150 hover:bg-red-700 disabled:opacity-60'

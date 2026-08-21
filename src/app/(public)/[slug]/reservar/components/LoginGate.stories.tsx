@@ -77,3 +77,31 @@ export const Error: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent(/demasiados intentos/i)
   },
 }
+
+/**
+ * El MISMO error, pero sobre un fondo que axe pueda resolver.
+ *
+ * `.reserva-receipt-card` se pinta en light con
+ * `linear-gradient(180deg, #ffffff, #f0fdf4)`, y axe no dictamina contraste
+ * sobre un gradiente: devuelve `incomplete`, que NO falla el runner. O sea que
+ * la story `Error` de arriba entra al estado pero deja el color sin medir —
+ * exactamente el agujero que en la grilla dejó pasar un `text-destructive` por
+ * debajo de AA.
+ *
+ * Acá se fija la tarjeta en `#f0fdf4`, que es el extremo INFERIOR del mismo
+ * gradiente (el peor caso real: el aviso vive en la mitad de abajo del form).
+ * No es un fondo inventado — es un punto de la superficie que ya existe, y con
+ * él axe sí emite veredicto.
+ */
+export const ErrorSobreFondoMedible: Story = {
+  args: Error.args,
+  decorators: [
+    (Story) => (
+      <>
+        <style>{'.reserva-receipt-card { background: #f0fdf4; }'}</style>
+        <Story />
+      </>
+    ),
+  ],
+  play: Error.play,
+}

@@ -927,13 +927,13 @@ export function BookingFormModal({
               </div>
             )}
 
-            {/* red-700 en claro, el token en oscuro: mismo idiom ya documentado
-                en `error-state.tsx` — `text-destructive` (red-600) sobre su
-                propio tinte translúcido en superficie clara no llega a AA. */}
+            {/* red-700/red-300 (`TONE_TEXT.destructive`): `text-destructive` es
+                red-600 en los DOS temas y sobre su propio tinte translúcido no
+                llega a AA ni en claro (3.34:1) ni en oscuro (3.66:1). */}
             {error && (
               <div
                 role="alert"
-                className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-red-700 dark:text-destructive text-xs font-medium"
+                className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-red-700 dark:text-red-300 text-xs font-medium"
               >
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>

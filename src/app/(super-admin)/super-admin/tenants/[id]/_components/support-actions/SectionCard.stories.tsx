@@ -37,7 +37,7 @@ export const ConFormulario: Story = {
         />
         <button
           type="button"
-          className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white"
+          className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
           Resetear contraseña
         </button>

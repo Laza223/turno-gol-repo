@@ -43,17 +43,18 @@ export function ErrorState({
           text-destructive (red-600, #DC2626) sobre bg-destructive/10 mezclado
           con bg-background (slate-200) da 3.34:1 — falla AA. Mismo antipatrón
           documentado para emerald (texto saturado sobre tinte translúcido en
-          superficie clara): el idiom correcto es un tono más oscuro en claro,
-          el token original en oscuro (donde sí pasa).
+          superficie clara).
+          En oscuro el token TAMPOCO pasa (red-600 sobre bg-destructive/15 da
+          3.84:1): el par correcto es red-700/red-300, o sea `TONE_TEXT.destructive`.
         */}
-        <p className="text-sm text-red-700 dark:text-destructive">
+        <p className="text-sm text-red-700 dark:text-red-300">
           {title}
           {description ? `. ${description}` : ''}
         </p>
         {onRetry ? (
           <button
             onClick={onRetry}
-            className="mt-3 text-sm font-medium text-red-700 underline hover:no-underline dark:text-destructive"
+            className="mt-3 text-sm font-medium text-red-700 underline hover:no-underline dark:text-red-300"
             type="button"
           >
             {retryLabel}

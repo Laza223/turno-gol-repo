@@ -44,6 +44,17 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof BookingFormM
   return { container: res.container, onClose, onSuccess }
 }
 
+/**
+ * Lo cobrado es respuesta obligatoria en el alta manual (pedido del dueño): un
+ * turno cargado a mano no tiene ningún hecho de cobro detrás salvo lo que
+ * afirme el mostrador. Los bloqueos internos no cobran nada y no muestran el
+ * control, así que el helper no hace nada ahí.
+ */
+function contestarSinCobro() {
+  const select = screen.queryByLabelText('¿Cobraste algo ahora?')
+  if (select) fireEvent.change(select, { target: { value: 'none' } })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -53,6 +64,7 @@ describe('BookingFormModal — loading recovery', () => {
     createBookingAction.mockRejectedValueOnce(new Error('network down'))
     const { onSuccess } = renderModal()
 
+    contestarSinCobro()
     const submit = screen.getByRole('button', { name: 'Confirmar' })
     fireEvent.click(submit)
 
@@ -74,6 +86,7 @@ describe('BookingFormModal — loading recovery', () => {
     createBookingAction.mockResolvedValueOnce({ success: false, error: 'Horario ocupado' })
     renderModal()
 
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => {
@@ -94,6 +107,7 @@ describe('BookingFormModal — loading recovery', () => {
     createBookingAction.mockResolvedValueOnce({ success: true, booking })
     const { onSuccess } = renderModal()
 
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => {
@@ -125,6 +139,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
 
     fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
     fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), { target: { value: '11-1234-5678' } })
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
@@ -148,6 +163,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     // los inputs y el FormData perdía estos campos en silencio (bug real
     // atrapado por verificación adversarial, Fase 3).
     fireEvent.click(advancedTrigger)
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
@@ -168,6 +184,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     expect(screen.queryByLabelText(/Nombre/i)).toBeNull()
     expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeNull()
 
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
@@ -181,6 +198,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     renderModal()
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'school' } })
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
@@ -193,6 +211,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'other' } })
     fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Pepe' } })
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
@@ -211,6 +230,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
 
     const durationSelect = document.querySelector<HTMLSelectElement>('select#duration')!
     fireEvent.change(durationSelect, { target: { value: '120' } })
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
@@ -225,6 +245,7 @@ describe('BookingFormModal — slot de medianoche (día operativo)', () => {
     createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
     renderModal({ slot: midnightSlot })
 
+    contestarSinCobro()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())

@@ -133,6 +133,16 @@ export const BloqueoInterno: Story = {
   },
 }
 
+/**
+ * Lo cobrado es respuesta obligatoria en el alta manual: un turno cargado a mano
+ * no tiene ningún hecho de cobro detrás salvo lo que afirme el mostrador. Las
+ * stories que llegan al submit tienen que contestar, y "No cobré" es la
+ * respuesta del complejo que cobra al terminar de jugar.
+ */
+async function contestarSinCobro(body: ReturnType<typeof within>) {
+  await userEvent.selectOptions(body.getByLabelText('¿Cobraste algo ahora?'), 'none')
+}
+
 const guardando = pendingAction<BookingActionResult>({
   success: true as const,
   booking: booking(),
@@ -147,6 +157,7 @@ export const Guardando: Story = {
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
+    await contestarSinCobro(body)
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     const guardandoBtn = await body.findByRole('button', { name: 'Guardando…' })
     await expect(guardandoBtn).toBeDisabled()
@@ -163,6 +174,7 @@ export const ErrorDelServidor: Story = {
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
+    await contestarSinCobro(body)
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
       'Este turno acaba de ser tomado.',
@@ -216,6 +228,7 @@ export const ExitoLlamaOnSuccess: Story = {
   ),
   play: async ({ canvasElement, args }) => {
     const body = within(canvasElement.ownerDocument.body)
+    await contestarSinCobro(body)
     await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
     await waitFor(() => expect(args.onSuccess).toHaveBeenCalledOnce())
     await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())

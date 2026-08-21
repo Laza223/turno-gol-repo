@@ -8,11 +8,11 @@ import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { track } from '@/shared/observability/breadcrumbs'
-import { DepositFieldset } from './quick-form/DepositFieldset'
+import { DepositFieldset, type DepositChoice } from './quick-form/DepositFieldset'
 import { usePlayerSearch } from './quick-form/use-player-search'
 import { useSlotAvailability } from './quick-form/use-slot-availability'
 import type { BookingRow } from '@/modules/bookings/booking.types'
-import type { DepositMethod, Slot } from './quick-form/constants'
+import type { Slot } from './quick-form/constants'
 import type {
   CheckSlotAvailabilityAction,
   CreateBookingAction,
@@ -27,22 +27,26 @@ import type {
  * precio a mano, teléfono, notas, duración. Acá vive el caso del 90% (alguien
  * llama y pide la cancha), y el criterio #4 lo mide en segundos.
  *
- * Dos campos a la vista: **quién** y **seña**. El precio NO es un campo — se
- * muestra ya resuelto. Se calcula en el cliente con la MISMA función que usa el
- * server (`@/lib/booking/pricing`), así que no hay round-trip antes de mostrarlo
- * ni forma de que lo mostrado difiera de lo que se graba.
+ * Dos campos a la vista: **quién** y **qué se cobró**. El precio NO es un campo
+ * — se muestra ya resuelto. Se calcula en el cliente con la MISMA función que
+ * usa el server (`@/lib/booking/pricing`), así que no hay round-trip antes de
+ * mostrarlo ni forma de que lo mostrado difiera de lo que se graba.
+ *
+ * Lo cobrado es de respuesta OBLIGATORIA (y sin preselección): el turno cargado
+ * a mano no tiene ningún hecho de plata detrás salvo lo que afirme quien está en
+ * el mostrador. "No cobré" es una respuesta válida y el caso normal del complejo
+ * que cobra al terminar de jugar; lo que ya no existe es crear el turno sin
+ * decirlo.
  *
  * Las Server Actions llegan por prop (ver BookingFormModal). Piezas propias en
  * `quick-form/`: constantes, búsqueda de jugador, chequeo optimista de
- * disponibilidad y el fieldset de seña — este archivo queda como orquestador.
+ * disponibilidad y el fieldset de lo cobrado — este archivo queda como orquestador.
  */
 
 type QuickBookingConfig = {
   action: CreateBookingAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction
-  /** `settings.deposit_percentage` del complejo. Sugiere el monto de la seña. */
-  depositPercentage: number
   onSuccess: (booking: BookingRow) => void
   /** Abre el `BookingFormModal` completo con este mismo slot. */
   onMoreOptions: (slot: Slot) => void
@@ -61,7 +65,6 @@ export function QuickBookingForm({
   action,
   checkAvailabilityAction,
   searchPlayersAction,
-  depositPercentage,
   onSuccess,
   onMoreOptions,
   onClose,
@@ -70,7 +73,8 @@ export function QuickBookingForm({
     searchPlayersAction,
   })
   const taken = useSlotAvailability({ checkAvailabilityAction, slot })
-  const [depositMethod, setDepositMethod] = useState<DepositMethod | null>(null)
+  // `null` = todavía no contestó. El submit lo exige: ver DepositFieldset.
+  const [depositChoice, setDepositChoice] = useState<DepositChoice | null>(null)
   const [depositCents, setDepositCents] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -122,8 +126,13 @@ export function QuickBookingForm({
       setError('Poné a nombre de quién va el turno.')
       return
     }
+    if (depositChoice === null) {
+      setError('Decí si cobraste algo por este turno.')
+      return
+    }
+    const depositMethod = depositChoice === 'none' ? null : depositChoice
     if (depositMethod && (depositCents == null || depositCents <= 0)) {
-      setError('La seña tiene que ser mayor a $0.')
+      setError('El monto cobrado tiene que ser mayor a $0.')
       return
     }
 
@@ -237,18 +246,21 @@ export function QuickBookingForm({
       </div>
 
       <DepositFieldset
-        price={price}
-        depositPercentage={depositPercentage}
-        depositMethod={depositMethod}
+        depositChoice={depositChoice}
         depositCents={depositCents}
-        onDepositMethodChange={setDepositMethod}
+        onDepositChoiceChange={setDepositChoice}
         onDepositCentsChange={setDepositCents}
         isPending={isPending}
         taken={taken}
       />
 
+      {/* `TONE_TEXT.destructive` (red-700/red-300), no `text-destructive`: el
+          red-600 del token da 3.86:1 sobre la superficie del popover y no
+          llega a AA. Se veía recién ahora porque ninguna story entraba al
+          estado de error, así que axe nunca lo medía — mismo idiom que
+          `BookingFormModal` y `error-state.tsx`. */}
       {error && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className={cn('text-xs', TONE_TEXT.destructive)}>
           {error}
         </p>
       )}

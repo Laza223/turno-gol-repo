@@ -100,8 +100,9 @@ export function useGridActions(params: {
    * + precio ya resuelto), no el modal de 10 campos. El modal sigue a un click
    * de distancia ("Más opciones") y no perdió nada.
    *
-   * Sin `depositPercentage` (stories, tests viejos) se cae al modal completo: el
-   * popover no puede sugerir una seña sin saber el porcentaje del complejo.
+   * Sin `depositPercentage` (stories, tests viejos) se cae al modal completo:
+   * ese prop es la señal de que la grilla está montada con los settings reales
+   * del complejo. El popover ya no lo usa para nada más — ver DepositFieldset.
    */
   const quickEnabled = typeof depositPercentage === 'number'
 

@@ -59,9 +59,12 @@ type Props = {
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   searchPlayersAction?: SearchBookingPlayersAction
   /**
-   * `settings.deposit_percentage` del complejo: el popover de alta rápida
-   * sugiere la seña con ese porcentaje. Sin esto (stories/tests) el popover no
-   * se ofrece y el click de una celda libre abre el modal completo, como antes.
+   * `settings.deposit_percentage` del complejo. El formulario rápido ya NO lo
+   * usa para nada (precargar la seña online en el mostrador confundía los dos
+   * mundos: ver DepositFieldset), pero sigue siendo la señal de "esta grilla
+   * está montada con los settings reales del complejo". Sin esto (stories,
+   * tests) el popover no se ofrece y el click de una celda libre abre el modal
+   * completo, como antes.
    */
   depositPercentage?: number
   /**
@@ -196,7 +199,6 @@ export function BookingGrid({
           courtName={courtName}
           date={date}
           slotTime={slotTime}
-          depositPercentage={depositPercentage}
           action={action}
           checkAvailabilityAction={checkAvailabilityAction}
           searchPlayersAction={searchPlayersAction}

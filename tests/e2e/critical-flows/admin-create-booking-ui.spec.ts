@@ -72,6 +72,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       await page.getByRole('button', { name: 'Opciones avanzadas' }).click()
       await page.fill('#guestPhone', '+5491100000099')
 
+      // Qué se cobró es respuesta obligatoria en el alta manual.
+      await page.selectOption('#depositMethod', 'none')
+
       // Submit the form.
       await page.getByRole('button', { name: 'Confirmar' }).click()
 
@@ -140,6 +143,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       await expect(page.getByText(/^\$/).first()).toBeVisible()
 
       await nombre.fill('E2E Quick Popover')
+      // Qué se cobró es respuesta obligatoria: "No cobré" es la del complejo que
+      // cobra al terminar de jugar, y deja el turno sin deposit.
+      await page.getByRole('radio', { name: 'No cobré' }).click()
       // Enter confirma — sin tocar el botón.
       await nombre.press('Enter')
 
@@ -162,7 +168,7 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       expect(data?.status).toBe('confirmed')
       expect(data?.type).toBe('spontaneous')
       expect(data?.guest_name).toBe('E2E Quick Popover')
-      // Sin seña elegida: el turno no arrastra deposit.
+      // Con "No cobré": el turno no arrastra deposit.
       expect(data?.deposit_status).toBe('not_required')
 
       bookingId = data?.id ?? null

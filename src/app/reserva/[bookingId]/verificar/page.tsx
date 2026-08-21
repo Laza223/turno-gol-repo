@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { sql } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
-import { isTenantPubliclyVisible } from '@/modules/tenants/tenant-status'
+import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { VerificationCard, VerificationNotFound } from './VerificationCard'
 
 // Página PÚBLICA de verificación: la abre el complejo al escanear el QR del
@@ -26,6 +26,13 @@ type VerifyRow = {
   tenantName: string
   city: string
   tenantStatus: string
+  /**
+   * `tenant_subscriptions.current_period_end`, sólo relevante cuando el
+   * complejo está en baja voluntaria: hasta ahí sigue operando el turno que ya
+   * vendió. LEFT JOIN — un complejo sin fila de suscripción da `null`, que es
+   * lo que `isPublicPortalOpen` espera para cerrar.
+   */
+  canceledPeriodEnd: Date | null
 }
 
 // Lectura cross-tenant sin SET LOCAL, capability-token style (UUID no
@@ -45,21 +52,28 @@ async function loadVerification(bookingId: string): Promise<VerifyRow | null> {
            c.name AS "courtName",
            t.name AS "tenantName",
            t.city AS "city",
-           t.status AS "tenantStatus"
+           t.status AS "tenantStatus",
+           ts.current_period_end AS "canceledPeriodEnd"
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
     JOIN tenants t ON t.id = b.tenant_id
+    LEFT JOIN tenant_subscriptions ts ON ts.tenant_id = t.id
     WHERE b.id = ${bookingId}
     LIMIT 1
   `)) as unknown as VerifyRow[]
 
   const row = rows[0]
   if (!row) return null
-  // Cruce #4 (auditoría junio): un tenant suspendido/bloqueado/dado de baja
-  // está oculto de TODA superficie pública (tenant-status.ts) — esta página
-  // no es la excepción. Fail-closed con el mismo mensaje genérico que un
-  // código inexistente, sin filtrar el motivo ni el estado del complejo.
-  if (!isTenantPubliclyVisible(row.tenantStatus)) return null
+  // Cruce #4 (auditoría junio): un tenant suspendido/bloqueado está oculto de
+  // TODA superficie pública — esta página no es la excepción. Fail-closed con
+  // el mismo mensaje genérico que un código inexistente, sin filtrar el motivo
+  // ni el estado del complejo.
+  //
+  // `isPublicPortalOpen`, NO el viejo gate por status pelado: en la baja
+  // voluntaria el complejo sigue operando hasta el fin del período que pagó
+  // (doc4 §2), y estas reservas son justo las que ya vendió y todavía tiene que
+  // dejar entrar. Cerrarle el QR le rompe el turno a un jugador que ya pagó.
+  if (!isPublicPortalOpen(row.tenantStatus, row.canceledPeriodEnd)) return null
   return row
 }
 

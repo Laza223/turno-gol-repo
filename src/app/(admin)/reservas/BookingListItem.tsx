@@ -5,11 +5,14 @@ import { formatArs, formatTime } from '@/lib/format'
 import { QuickActions, type BookingQuickActions } from './QuickActions'
 import { hasQuickActions } from './quick-actions-helpers'
 import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from './status-visual'
+import { resolveDepositDisplayStatus } from './deposit-display'
 import type { ReservaListRow } from './queries'
 
-function depositText(booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount'>): string {
+function depositText(
+  booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount' | 'depositRefunded'>,
+): string {
   if (booking.depositAmount <= 0) return 'Sin seña'
-  switch (booking.depositStatus) {
+  switch (resolveDepositDisplayStatus(booking.depositStatus, booking.depositRefunded)) {
     case 'paid':
     case 'captured':
       return `Seña pagada (${formatArs(booking.depositAmount)})`

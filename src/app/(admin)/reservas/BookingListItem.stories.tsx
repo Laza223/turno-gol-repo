@@ -67,6 +67,22 @@ const ROW_PENDIENTE = row({
   timeStart: '10:00',
   timeEnd: '11:00',
 })
+/**
+ * Pago tardío: MP acreditó la seña DESPUÉS de que el turno expirara, así que la
+ * plata entró y ya se devolvió sola — pero `deposit_status` quedó en 'pending'
+ * y no se puede corregir (el trigger de estado terminal rechaza el UPDATE sobre
+ * un booking `expired`). La etiqueta tiene que salir del reembolso que SÍ está
+ * en `payments`. Ver `deposit-display.ts`.
+ */
+const ROW_PAGO_TARDIO = row({
+  id: uid(1009),
+  status: 'expired',
+  depositStatus: 'pending',
+  depositRefunded: true,
+  paymentMethod: 'mercadopago',
+  timeStart: '21:00',
+  timeEnd: '22:00',
+})
 const ROW_JUGADA = row({
   id: uid(1005),
   status: 'completed',
@@ -240,6 +256,17 @@ export const PendientePago: Story = {
     ).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Confirmar pago' })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
+  },
+}
+
+export const PagoTardioReembolsado: Story = {
+  args: { booking: ROW_PAGO_TARDIO },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Seña reembolsada', { exact: false })).toBeVisible()
+    // Control negativo: sin el override diría "Seña pendiente", que es el dato
+    // falso que este caso existe para impedir.
+    await expect(canvas.queryByText('Seña pendiente', { exact: false })).toBeNull()
   },
 }
 

@@ -45,6 +45,15 @@ async function main(): Promise<void> {
   // Import dinámico y acá adentro, no arriba: los `import` estáticos de este
   // archivo se resuelven ANTES del bloque de `loadEnvFile` (ver el comentario
   // del encabezado), y este módulo sí termina leyendo `WORKER_DATABASE_URL`.
+  // Sentry PRIMERO, antes de cualquier cosa que pueda tirar: si
+  // `assertWorkerDbVisibility` o `getBoss` explotan, ese error tiene que
+  // llegar a algún lado. Import dinámico por el mismo motivo que los de abajo
+  // (el bloque de `loadEnvFile` corre después de los `import` estáticos y este
+  // módulo lee SENTRY_DSN).
+  const { initWorkerSentry } = await import('@/shared/observability/sentry-worker')
+  const sentryEnabled = initWorkerSentry()
+  logger.info('sentry', { module: 'workers', enabled: sentryEnabled })
+
   const { setAnalyticsSink } = await import('@/shared/observability/breadcrumbs')
   const { recordEvent } = await import('@/shared/observability/analytics')
   setAnalyticsSink(recordEvent)
@@ -65,10 +74,21 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown('SIGTERM'))
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   logger.error('fatal', {
     module: 'workers',
     error: err instanceof Error ? err.message : String(err),
   })
+  // Un arranque que falla dejaba TODOS los crons muertos sin una sola señal
+  // fuera del stderr de Railway. `flush` antes del exit: capturar sin vaciar
+  // la cola no manda nada.
+  try {
+    const { captureException } = await import('@/lib/sentry')
+    const { flushWorkerSentry } = await import('@/shared/observability/sentry-worker')
+    captureException(err, { extra: { module: 'workers', phase: 'boot' } })
+    await flushWorkerSentry()
+  } catch {
+    /* si ni esto anda, el log de arriba es todo lo que hay */
+  }
   process.exit(1)
 })

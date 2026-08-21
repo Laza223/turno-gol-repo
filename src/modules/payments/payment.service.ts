@@ -15,6 +15,7 @@ import type {
   CreatePreferenceInput,
   GatewayPaymentInfo,
   PreferenceResult,
+  PreparedRefund,
   WebhookEvent,
   WebhookOutcome,
 } from './payment.types'
@@ -29,7 +30,8 @@ import {
   enqueueTenantOwnerNotification,
 } from '@/modules/notifications/notification.service'
 import { track } from '@/shared/observability'
-import { captureMessage } from '@/lib/sentry'
+import { captureException, captureMessage } from '@/lib/sentry'
+import { logger } from '@/shared/lib/logger'
 
 const TERMINAL_BOOKING_STATUSES = [
   'expired',
@@ -243,6 +245,10 @@ export async function dispatchPaymentInfo(
       // CUALQUIER pago approved, incluso el guard perdedor de
       // transitionFromPendingPayment sobre un booking ya post-terminal).
       won: approved.won,
+      // Reembolso automático del pago tardío (2026-08-19): el intent ya está
+      // en la tx; el caller lo liquida contra MP DESPUÉS del commit, igual
+      // que hace con `notificationIds`.
+      preparedRefund: approved.preparedRefund,
     }
   }
   if (info.status === 'in_process') {
@@ -416,7 +422,12 @@ async function handleApproved(
   info: GatewayPaymentInfo,
   tenantId: string,
   tx: DbTx,
-): Promise<{ won: boolean; row?: BookingRow; notificationIds: string[] }> {
+): Promise<{
+  won: boolean
+  row?: BookingRow
+  notificationIds: string[]
+  preparedRefund?: PreparedRefund
+}> {
   // Fetch expected deposit before upserting so we can compare amounts.
   const depRows = await tx.execute(sql`
     SELECT deposit_amount AS "depositAmount"
@@ -500,9 +511,15 @@ async function handleApproved(
   // attempt for operational follow-up (manual refund decision). The payment row
   // is upserted regardless to preserve the audit trail.
   const cur = await tx.execute(sql`
-    SELECT b.status, c.name AS court_name, b.date::text AS date
+    SELECT b.status, c.name AS court_name, b.date::text AS date,
+           b.time_start::text AS time_start,
+           b.player_id AS player_id,
+           p.first_name AS player_first_name,
+           t.name AS tenant_name
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
+    JOIN tenants t ON t.id = b.tenant_id
+    LEFT JOIN players p ON p.id = b.player_id
     WHERE b.id = ${info.externalReference}
   `)
   const row = (
@@ -510,6 +527,10 @@ async function handleApproved(
       status: string
       court_name: string
       date: string
+      time_start: string
+      player_id: string | null
+      player_first_name: string | null
+      tenant_name: string
     }>
   )[0]
   const notificationIds: string[] = []
@@ -541,9 +562,26 @@ async function handleApproved(
       },
     })
 
-    // Hallazgo 3: don't just bury it in audit_logs — alert the admin prominently
-    // so the late payment gets a manual refund/reassignment decision. The email
-    // is dispatched by the caller AFTER this tx commits (see WebhookOutcome).
+    // Reembolso AUTOMÁTICO del pago tardío (decisión del dueño 2026-08-19,
+    // docs/decisions/2026-08-19-pago-tardio-reembolso-automatico.md). Antes
+    // esto solo auditaba y le mandaba un mail al complejo pidiéndole "acción
+    // manual": mientras tanto el jugador tenía la plata cobrada y ningún turno.
+    //
+    // SOLO sobre `expired`, no sobre todo TERMINAL_BOOKING_STATUSES. Los otros
+    // cuatro terminales NO deben auto-reembolsarse y no es un recorte del
+    // alcance sino la única lectura correcta: `completed`/`no_show` significan
+    // que el turno se consumió (la plata es del complejo), `canceled_no_refund`
+    // es una política de cancelación que este camino estaría contradiciendo, y
+    // `canceled_refunded` ya tiene su reembolso (o uno en vuelo). Para esos
+    // cuatro el comportamiento queda EXACTAMENTE como estaba: auditoría + mail
+    // al complejo.
+    const preparedRefund =
+      row.status === 'expired' ? await prepareLatePaymentRefund(info, tx) : undefined
+
+    // Hallazgo 3: don't just bury it in audit_logs — alert the admin prominently.
+    // El mail sigue saliendo con reembolso automático: el complejo tiene que
+    // enterarse de que le entró y le salió plata. La copy cambia según si se
+    // reembolsó solo o si todavía necesita que un humano decida.
     const ids = await enqueueTenantOwnerNotification(
       {
         tenantId,
@@ -554,14 +592,135 @@ async function handleApproved(
           currentStatus: row.status,
           courtName: row.court_name,
           date: row.date.slice(0, 10).split('-').reverse().join('/'),
+          refundIssued: preparedRefund !== undefined,
         },
         triggerEvent: 'booking.late_payment_attempt',
       },
       tx,
     )
     notificationIds.push(...ids)
+
+    // Punto 2 de la decisión: al jugador no se le avisaba NADA. Es el único que
+    // puso plata.
+    if (preparedRefund && row.player_id) {
+      const playerNotificationId = await enqueueNotification(
+        {
+          tenantId,
+          recipientType: 'player',
+          recipientId: row.player_id,
+          templateName: 'player_late_payment_refunded',
+          content: {
+            playerFirstName: row.player_first_name ?? '',
+            courtName: row.court_name,
+            date: row.date.slice(0, 10).split('-').reverse().join('/'),
+            timeStart: row.time_start.slice(0, 5),
+            tenantName: row.tenant_name,
+            amountArs: formatArs(preparedRefund.refundAmount),
+          },
+          triggerEvent: 'payment.late_payment_refunded',
+        },
+        tx,
+      )
+      notificationIds.push(playerNotificationId)
+    }
+
+    return { won: false, notificationIds, preparedRefund }
   }
   return { won: false, notificationIds }
+}
+
+/**
+ * Prepara (fase 1) el reembolso de un pago que MP aprobó DESPUÉS de que la
+ * reserva expirara. Devuelve `undefined` —sin tirar— cuando no hay nada que
+ * reembolsar; el caller trata eso como "seguí con la auditoría y el mail".
+ *
+ * Idempotencia: NO se apoya en la clave del evento de MP
+ * (`processed_webhooks`). Al mismo pago aprobado se puede llegar por cuatro
+ * caminos con claves DISTINTAS —el webhook real (`<mpEventId>`), el precheck
+ * de expiración y los dos pases del worker de reconciliación (los tres con
+ * `reconcile-<mpPaymentId>`)—, así que una clave de evento no puede impedir el
+ * doble reembolso: la única barrera que los cubre a todos es preguntar por el
+ * PAGO ORIGINAL. `prepareRefund` ya tiene su propio guard de sobre-reembolso,
+ * pero tira `RefundAmountExceedsOriginalError`; acá se chequea antes para poder
+ * salir en silencio (un segundo camino llegando al mismo pago es lo esperado,
+ * no un error) y, sobre todo, para no mandarle al jugador un segundo mail
+ * diciéndole que le devolvieron la plata otra vez.
+ */
+async function prepareLatePaymentRefund(
+  info: GatewayPaymentInfo,
+  tx: DbTx,
+): Promise<PreparedRefund | undefined> {
+  const originalRows = await tx.execute(sql`
+    SELECT id FROM payments
+    WHERE mp_payment_id = ${info.mpPaymentId} AND type = 'deposit'
+    LIMIT 1
+  `)
+  const originalId = (originalRows as unknown as Array<{ id: string }>)[0]?.id
+  if (!originalId) {
+    // `upsertPaymentRow` corrió unas líneas más arriba en ESTA misma tx, así
+    // que la fila tiene que existir. Si no está, la plata entró y no hay contra
+    // qué reembolsarla: es exactamente el caso que nadie puede ver solo.
+    captureMessage('late_payment: deposit row not found for refund', {
+      level: 'error',
+      extra: { bookingId: info.externalReference, mpPaymentId: info.mpPaymentId },
+    })
+    return undefined
+  }
+
+  const already = await tx.execute(sql`
+    SELECT 1 FROM payments
+    WHERE type = 'refund'
+      AND status IN ('approved', 'pending')
+      AND description = ${'Refund of ' + originalId}
+    LIMIT 1
+  `)
+  if ((already as unknown[]).length > 0) return undefined
+
+  return prepareRefund(originalId, undefined, tx)
+}
+
+/**
+ * Fase 2 del reembolso de un pago tardío: llama a MP. Va DESPUÉS del commit de
+ * la tx que preparó el intent (misma frontera que `dispatchEmail` y el push de
+ * admin) — `settleRefund` abre su propia tx corta y no puede correr adentro de
+ * la del caller sin dejar la conexión colgada durante el round trip HTTP.
+ *
+ * No tira NUNCA: la fila de intent ya está commiteada, así que si MP falla el
+ * cron `retry-pending-refunds` la levanta dentro de la hora reusando la misma
+ * idempotency key (`refund:<refundPaymentId>`) y, si sigue trabada 24h, le
+ * avisa al complejo. Propagar el error acá solo lograría que pg-boss reintente
+ * todo el job y vuelva a pasar por el camino que ya hizo su parte.
+ */
+export async function settleLatePaymentRefund(
+  prepared: PreparedRefund,
+  tenantId: string,
+  gateway: PaymentGateway,
+): Promise<void> {
+  try {
+    const result = await settleRefund(prepared, gateway, tenantId)
+    track.payment('payment.late_payment.refunded', {
+      tenantId,
+      paymentId: prepared.refundPaymentId,
+      mpPaymentId: prepared.mpPaymentId,
+      amountCents: prepared.refundAmount,
+    })
+    // `pending` = MP aceptó el pedido pero todavía no lo acreditó; el cron
+    // `retry-pending-refunds` lo sigue hasta `approved` y alerta si se traba.
+    logger.info('late_payment: refund settled', {
+      module: 'payments',
+      refundPaymentId: prepared.refundPaymentId,
+      status: result.status,
+    })
+  } catch (err) {
+    logger.error('late_payment: settle refund failed, dejándolo al cron de retry', {
+      module: 'payments',
+      refundPaymentId: prepared.refundPaymentId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    captureException(err, {
+      extra: { refundPaymentId: prepared.refundPaymentId, tenantId },
+    })
+  }
 }
 
 /** Métodos que el staff puede elegir al confirmar una seña a mano (nunca 'mercadopago': esa la confirma el webhook). */
@@ -902,11 +1061,10 @@ async function upsertPaymentRow(
   `)
 }
 
-export type PreparedRefund = {
-  refundPaymentId: string
-  mpPaymentId: string
-  refundAmount: number
-}
+// Re-export: `PreparedRefund` se mudó a payment.types.ts (WebhookOutcome lo
+// expone y no puede importar del service). Los callers que ya lo importaban de
+// acá siguen andando.
+export type { PreparedRefund }
 
 /**
  * Refund, phase 1 ("prepare"). NEW row in `payments` (type='refund',

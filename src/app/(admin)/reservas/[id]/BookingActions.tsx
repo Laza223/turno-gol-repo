@@ -181,6 +181,58 @@ export default function BookingActions({
     )
   }
 
+  /**
+   * Corrección de asistencia (doc6 §3, P5): un turno que quedó `completed` sin
+   * que nadie lo mirara vuelve a `no_show` dentro de las 24h de esa marca.
+   *
+   * El motor, la state machine y el trigger de la migración 060 ya lo
+   * soportaban desde siempre; lo que faltaba era la puerta. Sin ella, la
+   * ÚNICA ventana real para registrar una ausencia eran los ≤30 minutos entre
+   * que el turno termina y que el cron `auto-complete-bookings` lo pasa a
+   * "Jugada" — un plazo que nadie que esté atendiendo el complejo puede
+   * cumplir, y que dejaba la falta sin registrar (y por lo tanto sin contar
+   * para el bloqueo por reincidencia).
+   *
+   * Sin `updatedAt` no se ofrece: el server igual rechazaría fuera de ventana,
+   * pero no ofrecemos una acción que no sabemos si es válida (mismo criterio
+   * que "Deshacer ausente" arriba).
+   */
+  if (status === 'completed') {
+    const completedAtMs = updatedAt ? new Date(updatedAt).getTime() : null
+    const withinWindow =
+      completedAtMs !== null &&
+      Number.isFinite(completedAtMs) &&
+      nowMs - completedAtMs < CORRECTION_WINDOW_MS
+    if (!withinWindow) return null
+
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setNoShowOpen(true)}
+          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+        >
+          Marcar ausente
+        </button>
+        <p className="text-xs text-muted-foreground">
+          El turno figura como jugado. Si el equipo no vino, se puede corregir hasta 24 h después.
+        </p>
+
+        <ConfirmDialog
+          open={noShowOpen}
+          onOpenChange={setNoShowOpen}
+          title="Marcar como ausente"
+          description="El turno figura como jugado. Se corrige a ausente y queda registrado que el jugador no se presentó."
+          consequences={NO_SHOW_CONSEQUENCES}
+          variant="destructive"
+          confirmLabel="Marcar ausente"
+          cancelLabel="Volver"
+          onConfirm={onConfirmNoShow}
+        />
+      </div>
+    )
+  }
+
   if (status !== 'confirmed') return null
 
   const hasPaidDeposit = depositStatus === 'paid' && depositAmount > 0

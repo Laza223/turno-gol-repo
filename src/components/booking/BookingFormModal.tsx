@@ -168,11 +168,12 @@ export function BookingFormModal({
   const [playerSearchOpen, setPlayerSearchOpen] = useState(false)
   const playerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Seña cobrada de mostrador (opcional): elegir un método pide el monto: los
-  // tres campos (depositMethod/depositAmount/depositStatus:'paid') viajan
-  // juntos o no viajan ninguno.
+  // Lo cobrado al crear el turno a mano. `''` = todavía no contestó y el submit
+  // lo rechaza; `'none'` = dijo explícitamente que no cobró nada. Con un método
+  // elegido, los tres campos (depositMethod/depositAmount/depositStatus:'paid')
+  // viajan juntos o no viaja ninguno.
   const [depositMethod, setDepositMethod] = useState<
-    '' | 'cash' | 'transfer' | 'mercadopago' | 'other'
+    '' | 'none' | 'cash' | 'transfer' | 'mercadopago' | 'other'
   >('')
 
   const isCourtOffline = slot.courtStatus === 'offline'
@@ -311,8 +312,12 @@ export function BookingFormModal({
 
     // La seña solo aplica a reservas de cliente (no a bloqueos internos): los
     // tres campos (method/amount/status) viajan juntos o no viaja ninguno.
+    // Narrowing por const, no por `depositMethod &&`: ahora `'none'` es truthy
+    // (es una respuesta, no la ausencia de una), así que el check de falsy ya no
+    // alcanza para dejar afuera los dos sentinels.
+    const chargedMethod = depositMethod === '' || depositMethod === 'none' ? null : depositMethod
     const depositAmountRaw =
-      !isInternalBlock && depositMethod
+      !isInternalBlock && chargedMethod
         ? ((fd.get('depositAmountPesos') as string) ?? '').trim()
         : ''
     const depositAmountCents = depositAmountRaw === '' ? undefined : Number(depositAmountRaw)
@@ -330,8 +335,8 @@ export function BookingFormModal({
       timeEnd,
       ...(notesInternal ? { notesInternal } : {}),
       ...(priceOverride !== undefined ? { priceOverride } : {}),
-      ...(!isInternalBlock && depositMethod && depositAmount !== undefined
-        ? { depositMethod, depositAmount, depositStatus: 'paid' as const }
+      ...(!isInternalBlock && chargedMethod && depositAmount !== undefined
+        ? { depositMethod: chargedMethod, depositAmount, depositStatus: 'paid' as const }
         : {}),
     }
 
@@ -350,6 +355,14 @@ export function BookingFormModal({
           ...(guestName ? { guestName } : {}),
           ...(guestPhone ? { guestPhone } : {}),
         }
+
+    // Respuesta obligatoria sobre la plata (pedido del dueño): un turno cargado
+    // a mano no tiene ningún hecho de cobro detrás salvo lo que afirme el
+    // mostrador. Los bloqueos internos no cobran nada, así que quedan afuera.
+    if (!isInternalBlock && depositMethod === '') {
+      setError('Decí si cobraste algo por este turno.')
+      return
+    }
 
     setError(null)
     startTransition(async () => {
@@ -859,10 +872,7 @@ export function BookingFormModal({
                         htmlFor="depositMethod"
                         className="flex items-center justify-between text-sm font-medium text-foreground"
                       >
-                        <span>Seña cobrada</span>
-                        <span className="text-xs text-muted-foreground font-normal">
-                          (opcional)
-                        </span>
+                        <span>¿Cobraste algo ahora?</span>
                       </Label>
                       <select
                         id="depositMethod"
@@ -870,7 +880,10 @@ export function BookingFormModal({
                         onChange={(e) => setDepositMethod(e.target.value as typeof depositMethod)}
                         className="w-full rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm font-medium text-foreground transition-colors focus:border-emerald-500 focus:outline-hidden"
                       >
-                        <option value="">Sin seña</option>
+                        <option value="" disabled>
+                          Elegí una opción
+                        </option>
+                        <option value="none">No cobré</option>
                         <option value="cash">Efectivo</option>
                         <option value="transfer">Transferencia</option>
                         <option value="mercadopago">MercadoPago</option>
@@ -879,13 +892,13 @@ export function BookingFormModal({
                     </div>
                   )}
 
-                  {!isInternalBlock && depositMethod && (
+                  {!isInternalBlock && depositMethod !== '' && depositMethod !== 'none' && (
                     <div className="space-y-1.5">
                       <Label
                         htmlFor="depositAmountPesos"
                         className="text-sm font-medium text-foreground"
                       >
-                        Monto de la seña
+                        Cuánto cobraste
                       </Label>
                       <MoneyInput
                         id="depositAmountPesos"

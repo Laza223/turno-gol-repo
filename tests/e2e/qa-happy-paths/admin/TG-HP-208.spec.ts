@@ -57,6 +57,10 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       await page.getByRole('button', { name: 'Opciones avanzadas' }).click()
       await page.fill('#guestPhone', '+5491100000208')
 
+      // Step 5: qué se cobró es respuesta obligatoria. "De palabra" es
+      // justamente el turno que todavía no pagó nada.
+      await page.selectOption('#depositMethod', 'none')
+
       // Step 6: confirmar.
       await page.getByRole('button', { name: 'Confirmar' }).click()
 

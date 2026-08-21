@@ -24,7 +24,6 @@ export function QuickFormCell({
   courtName,
   date,
   slotTime,
-  depositPercentage,
   action,
   checkAvailabilityAction,
   searchPlayersAction,
@@ -37,7 +36,6 @@ export function QuickFormCell({
   courtName: string
   date: string
   slotTime: string
-  depositPercentage: number
   action: CreateBookingAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction
@@ -63,7 +61,6 @@ export function QuickFormCell({
       action={action}
       checkAvailabilityAction={checkAvailabilityAction}
       searchPlayersAction={searchPlayersAction}
-      depositPercentage={depositPercentage}
       onSuccess={onSuccess}
       onMoreOptions={(s) => onMoreOptions(s.courtId, s.timeStart)}
       onClose={onClose}

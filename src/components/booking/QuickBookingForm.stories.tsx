@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, within } from 'storybook/test'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import { QuickBookingForm } from './QuickBookingForm'
 
 /**
@@ -7,9 +7,10 @@ import { QuickBookingForm } from './QuickBookingForm'
  * visibles, precio pre-calculado, Enter confirma.
  *
  * Las stories son una por rama de lo que decide el formulario: hay precio o no,
- * el complejo sugiere seña o no, y el turno se ocupó mientras el popover estaba
- * abierto. Las tres cambian lo que el admin PUEDE hacer, que es donde está el
- * riesgo (pre-cargar $0 y después rechazar el submit fue un bug real).
+ * contestó lo que cobró o no, y el turno se ocupó mientras el popover estaba
+ * abierto. Todas cambian lo que el admin PUEDE hacer, que es donde está el
+ * riesgo (pre-cargar un monto y crear un turno "pagado completo" de un click
+ * fue un bug real).
  *
  * Las Server Actions llegan por prop: importarlas arrastraría `node:async_hooks`
  * y rompería el bundle de Storybook.
@@ -27,7 +28,6 @@ const meta = {
       timeEnd: '21:00',
     },
     price: 2400000,
-    depositPercentage: 30,
     action: fn(async () => ({ success: true as const, booking: { id: 'nueva' } as never })),
     searchPlayersAction: fn(async () => ({ success: true as const, players: [] })),
     onSuccess: fn(),
@@ -39,27 +39,52 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** El caso del 90%: alguien llama, se tipea el nombre y Enter. */
+/**
+ * El caso del 90%: alguien llama, se tipea el nombre, se dice qué se cobró.
+ * Ninguna opción de cobro viene marcada: es una pregunta, no un default.
+ */
 export const Base: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement)
     await expect(await c.findByLabelText('¿A nombre de quién?')).toBeTruthy()
     // El precio se muestra ya resuelto — no es un campo.
     await expect(await c.findByText(/24\.000/)).toBeTruthy()
-    await expect(await c.findByText(/sugerida/)).toBeTruthy()
+    for (const opcion of await c.findAllByRole('radio')) {
+      await expect(opcion.getAttribute('aria-checked')).toBe('false')
+    }
+    // Sin método elegido no hay monto que tipear.
+    await expect(c.queryByLabelText('Cuánto cobraste')).toBeNull()
   },
 }
 
 /**
- * Complejo con `deposit_percentage: 0` (no pide seña online — config válida).
- * No hay sugerencia: el campo arranca vacío en vez de en $0, que era un
- * callejón sin salida (el submit rechaza montos de $0).
+ * El turno no se crea sin decir qué pasó con la plata. Antes se podía confirmar
+ * sin tocar el control y el turno nacía sin cobro registrado por inercia, no
+ * por decisión.
  */
-export const SinPorcentajeDeSena: Story = {
-  args: { depositPercentage: 0 },
+export const SinDecirQueCobro: Story = {
+  play: async ({ canvasElement, args }) => {
+    const c = within(canvasElement)
+    await userEvent.type(await c.findByLabelText('¿A nombre de quién?'), 'Marce')
+    await userEvent.click(await c.findByRole('button', { name: /Confirmar reserva/ }))
+
+    await expect(await c.findByText(/Decí si cobraste algo/)).toBeTruthy()
+    await expect(args.action).not.toHaveBeenCalled()
+  },
+}
+
+/**
+ * Elegir un método abre el monto VACÍO. La regresión que cubre: se precargaba
+ * con `settings.deposit_percentage`, que es la política del portal online — un
+ * complejo con la seña en 100% creaba turnos pagados enteros sin tipear nada.
+ */
+export const MontoArrancaVacio: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement)
-    await expect(c.queryByText(/sugerida/)).toBeNull()
+    await userEvent.click(await c.findByRole('radio', { name: 'Efectivo' }))
+
+    const monto = await c.findByLabelText('Cuánto cobraste')
+    await expect((monto as HTMLInputElement).value).toBe('')
   },
 }
 

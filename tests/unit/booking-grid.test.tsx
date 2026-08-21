@@ -475,8 +475,11 @@ describe('BookingGrid — popover de alta rápida', () => {
     expect(await screen.findByLabelText('¿A nombre de quién?')).toBeTruthy()
     // El precio sale de court.pricing en el cliente: $24.000, sin round-trip.
     expect(screen.getByText(/24\.000/)).toBeTruthy()
-    // La seña sugerida es el 30% — se muestra antes de elegir método.
-    expect(screen.getByText(/sugerida/)).toBeTruthy()
+    // Lo cobrado se pregunta sin preseleccionar nada: el porcentaje online del
+    // complejo no tiene voz en el mostrador.
+    for (const opcion of screen.getAllByRole('radio')) {
+      expect(opcion.getAttribute('aria-checked')).toBe('false')
+    }
     // El modal completo NO se abrió.
     expect(screen.queryByTestId('booking-form-modal')).toBeNull()
   })
@@ -488,6 +491,9 @@ describe('BookingGrid — popover de alta rápida', () => {
     fireEvent.click(screen.getByRole('button', { name: FREE }))
     const input = await screen.findByLabelText('¿A nombre de quién?')
     fireEvent.change(input, { target: { value: 'Juan Telefónico' } })
+    // Lo cobrado es respuesta obligatoria; "No cobré" es la del complejo que
+    // cobra al terminar de jugar.
+    fireEvent.click(screen.getByRole('radio', { name: 'No cobré' }))
     // Enter dentro del campo dispara el submit del form — es el criterio.
     fireEvent.submit(input.closest('form')!)
 
@@ -500,7 +506,7 @@ describe('BookingGrid — popover de alta rápida', () => {
       type: 'spontaneous',
       guestName: 'Juan Telefónico',
     })
-    // Sin seña elegida, los tres campos de seña NO viajan.
+    // Con "No cobré", los tres campos de seña NO viajan.
     expect(action.mock.calls[0]![0]).not.toHaveProperty('depositMethod')
   })
 
@@ -516,7 +522,7 @@ describe('BookingGrid — popover de alta rápida', () => {
     expect(action).not.toHaveBeenCalled()
   })
 
-  it('elegir un método de seña manda los TRES campos juntos, con el monto sugerido', async () => {
+  it('elegir un método manda los TRES campos juntos con el monto tipeado', async () => {
     const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'x' } }))
     renderGrid({ depositPercentage: 30, action })
 
@@ -526,32 +532,40 @@ describe('BookingGrid — popover de alta rápida', () => {
     // F-007: DepositFieldset ahora usa SegmentedControl (Radix RadioGroup) —
     // role="radio", no "button" (ese es justo el punto del fix).
     fireEvent.click(screen.getByRole('radio', { name: 'Efectivo' }))
+
+    // El monto arranca VACÍO aunque el complejo tenga porcentaje configurado:
+    // `settings.deposit_percentage` es la política del portal online y
+    // precargarla acá creaba turnos "pagados completos" de un click.
+    const monto = screen.getByLabelText('Cuánto cobraste') as HTMLInputElement
+    expect(monto.value).toBe('')
+    fireEvent.change(monto, { target: { value: '7200' } })
+
     fireEvent.submit(input.closest('form')!)
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
     expect(action.mock.calls[0]![0]).toMatchObject({
       depositMethod: 'cash',
-      // 30% de $24.000 = $7.200 (calcDepositCents, la misma función del server).
       depositAmount: 720000,
       depositStatus: 'paid',
     })
   })
 
   /**
-   * Un complejo con `deposit_percentage: 0` (no pide seña online — config válida
-   * y la que trae el seed) hacía que el popover pre-cargara $0 y después
-   * rechazara el submit: el atajo se volvía un callejón sin salida. Sin
-   * sugerencia, el campo queda vacío y el admin tipea el monto.
+   * Un turno cargado a mano no tiene ningún hecho de cobro detrás salvo lo que
+   * afirme el mostrador, así que la pregunta es obligatoria. Antes se podía
+   * confirmar sin tocar el control y el turno nacía sin cobro por inercia.
    */
-  it('con porcentaje 0 no sugiere seña ni pre-carga $0', async () => {
-    renderGrid({ depositPercentage: 0 })
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    await screen.findByLabelText('¿A nombre de quién?')
+  it('sin contestar qué se cobró no llama al server', async () => {
+    const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'x' } }))
+    renderGrid({ depositPercentage: 30, action })
 
-    expect(screen.queryByText(/sugerida/)).toBeNull()
-    fireEvent.click(screen.getByRole('radio', { name: 'Efectivo' }))
-    const monto = screen.getByLabelText('Monto de la seña') as HTMLInputElement
-    expect(monto.value).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: FREE }))
+    const input = await screen.findByLabelText('¿A nombre de quién?')
+    fireEvent.change(input, { target: { value: 'Sin contestar' } })
+    fireEvent.submit(input.closest('form')!)
+
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(action).not.toHaveBeenCalled()
   })
 
   it('"Más opciones" abre el modal completo con el MISMO slot', async () => {

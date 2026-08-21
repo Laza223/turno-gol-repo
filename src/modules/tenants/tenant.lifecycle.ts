@@ -38,8 +38,14 @@ export const READ_ONLY_TENANT_STATUSES = new Set(['suspended'])
  *
  * `suspended` sí queda afuera: es mora, no baja, y el jugador conserva sus
  * reservas existentes por otras vías (doc4 §2 nota).
+ *
+ * NO se exporta (a diferencia de sus dos hermanas de arriba, que sí las lee
+ * `guards.ts`): la pregunta pública se contesta con `isPublicPortalOpen`, que
+ * además necesita el período pago. Exportar el `Set` pelado invita justo al
+ * `Set.has(status)` suelto que este cambio vino a borrar — y `knip` lo marca
+ * como export muerto, que es cómo se descubrió.
  */
-export const PUBLIC_UNAVAILABLE_TENANT_STATUSES: ReadonlySet<string> = new Set([
+const PUBLIC_UNAVAILABLE_TENANT_STATUSES: ReadonlySet<string> = new Set([
   'suspended',
   'blocked',
   'churned',

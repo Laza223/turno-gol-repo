@@ -148,6 +148,32 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   })
 
   if (!tokenRes.ok) {
+    // El canje del `code` por el token es el ÚNICO paso del flujo donde entra
+    // el `client_secret` (la firma del `state` usa el mismo valor, pero sólo
+    // prueba que está presente y es consistente consigo mismo, no que sea el
+    // correcto para esta aplicación). Por eso un fallo acá casi siempre es una
+    // credencial mal cargada: secret de otra aplicación, el de "Credenciales de
+    // prueba" en vez del de producción, o un copiado incompleto.
+    //
+    // Y hasta hoy no dejaba NINGÚN rastro: en los logs de Vercel sólo se veía
+    // `GET /api/mp/callback 307`, idéntico al de una conexión exitosa, así que
+    // la causa había que adivinarla. Mismo criterio que `rechazar()` en el
+    // webhook (#176/#177): el fallo mudo es en sí mismo el bug a corregir.
+    //
+    // Qué se loguea: el status y el cuerpo del error de MercadoPago, que trae
+    // `error`/`message`/`cause` y NO reproduce las credenciales enviadas; se
+    // recorta igual, para que un payload inesperado no vuelque nada largo. El
+    // `client_id` va entero a propósito: es público (viaja en la URL de
+    // autorización) y es lo que responde "¿estaba usando la aplicación que
+    // creía?" sin tener que abrir el panel de MercadoPago.
+    const mpError = await tokenRes.text().catch(() => '(sin cuerpo)')
+    logger.error('mp oauth: el canje del code por el token falló', {
+      module: 'mp-oauth',
+      tenantId,
+      status: tokenRes.status,
+      clientId: clientId === '' ? '(vacío)' : clientId,
+      mpError: mpError.slice(0, 500),
+    })
     return NextResponse.redirect(new URL('/settings/facturacion?error=mp_token_failed', req.url))
   }
 

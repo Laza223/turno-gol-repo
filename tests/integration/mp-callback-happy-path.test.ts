@@ -32,6 +32,7 @@ import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const SECRET = process.env.MP_CLIENT_SECRET!
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL!
+const STAFF_USER_ID = '00000000-0000-4000-8000-0000000000aa'
 
 function makeState(tenantId: string, ts: number = Date.now()): string {
   const payload = Buffer.from(`${tenantId}:${ts}`, 'utf8').toString('base64url')
@@ -52,7 +53,9 @@ function mockAdminAuth(tenantId: string): void {
     type: 'staff',
     id: 'auth-hp',
     email: 'admin@test.local',
-    staffUserId: 'staff-hp',
+    // UUID real: el callback asienta el alcance del token en `audit_logs`, y
+    // `actor_id` es `uuid NOT NULL` — un id de fantasía hacía fallar el INSERT.
+    staffUserId: STAFF_USER_ID,
     tenantId,
     role: 'admin',
   }
@@ -91,6 +94,8 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
       refresh_token: 'live-refresh',
       user_id: 777,
       public_key: 'live-pub',
+      scope: 'offline_access payment write read',
+      expires_in: 15_552_000,
     })
 
     const state = makeState(tenant.id)
@@ -130,6 +135,27 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
     expect(row.mp_public_key).toBe('live-pub')
     expect(row.mp_connected_at).not.toBeNull()
     expect(Date.now() - new Date(row.mp_connected_at!).getTime()).toBeLessThan(60_000)
+
+    // El alcance que MercadoPago otorgó queda asentado y consultable. Los
+    // Runtime Logs de Vercel guardan el pedido HTTP y NO el stdout, así que el
+    // `logger.info` de la ruta es ilegible a los minutos; y es el dato que
+    // decide si ese complejo va a poder devolver una seña (con la aplicación
+    // de Suscripciones el token salía `payments:refunds/read-only` y todo
+    // reembolso daba 403).
+    const auditRows = await sql<{ metadata: Record<string, unknown> }[]>`
+      SELECT metadata FROM audit_logs
+      WHERE tenant_id = ${tenant.id} AND action = 'mp.connected'
+    `
+    expect(auditRows).toHaveLength(1)
+    const meta = auditRows[0]!.metadata
+    expect(meta.scope).toBe('offline_access payment write read')
+    expect(meta.mpUserId).toBe('777')
+    expect(meta.expiresInDays).toBe(180)
+    // Nunca las credenciales.
+    const metaJson = JSON.stringify(meta)
+    expect(metaJson).not.toContain('live-access')
+    expect(metaJson).not.toContain('live-refresh')
+    expect(metaJson).not.toContain(SECRET)
 
     // Onboarding flipped to complete (the Aha-moment gate, doc10).
     expect(row.onboarding_completed).toBe(true)

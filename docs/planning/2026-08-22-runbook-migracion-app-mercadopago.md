@@ -15,11 +15,14 @@ Este es el procedimiento operativo. El "por qué" y la evidencia están en el in
 
 | Fase | Quién | Qué | Reversible |
 |---|---|---|---|
-| 0 | 🧑 | Crear App B y **probar en local que su scope trae `refunds/read-write`** | Sí — se borra la app |
-| 1 | código | El buzón de webhooks acepta las dos claves (PR #194) | Sí — y conviene que quede igual |
+| 1 | código | El buzón de webhooks acepta las dos claves (PR #194) | ✅ **HECHO y en producción** |
+| 0 | 🧑 | Crear App B | ✅ **HECHA** — se borra la app si hace falta |
 | 2 | 🧑 | Webhooks de App B + variables en Vercel y Railway | Sí — se revierten las variables |
-| 3 | 🧑 | Cada complejo reconecta MercadoPago + prueba de la plata | Sí — reconectan de nuevo |
+| 0.4 | 🧑 | **GATE**: reconectar **tu** complejo y leer el scope | Sí — dos variables y un clic |
+| 3 | 🧑 | Titi reconecta + prueba de la plata | Sí — reconecta de nuevo |
 | 4 | código | ADR y memoria | — |
+
+El orden quedó así —Fase 1 primero, y el gate metido adentro de la Fase 2— porque la prueba local resultó imposible: MercadoPago no acepta `localhost` como URL de redireccionamiento (§0.3).
 
 **Regla de oro del orden:** la Fase 1 va **antes** que la Fase 2, y la carga de `MP_WEBHOOK_SECRET_CHECKOUT` va **antes** que el cambio de `MP_CLIENT_ID`/`MP_CLIENT_SECRET`. Invertirlo deja una ventana donde los avisos de pago se rechazan con 401 y las reservas quedan colgadas con la plata cobrada.
 
@@ -27,7 +30,9 @@ Este es el procedimiento operativo. El "por qué" y la evidencia están en el in
 
 ## FASE 0 — Crear App B y probar el scope (GATE del plan entero)
 
-Nada de esta fase toca producción ni mueve un peso. **Si el paso 0.4 no muestra `refunds/read-write`, el plan se frena acá** y hay que decidir el REQUIERE INPUT #4 del informe.
+**Si el paso 0.4 no muestra `refunds/read-write`, el plan se frena acá** y hay que decidir el REQUIERE INPUT #4 del informe.
+
+> **Cambio de plan sobre la marcha, 2026-08-22.** Esta fase estaba pensada para correr en local sin tocar nada. No se puede: MercadoPago **rechaza `http://localhost` como URL de redireccionamiento** (§0.3), así que el OAuth de prueba exige un dominio público. Las opciones eran montar un túnel HTTPS o hacer el gate en producción sobre el complejo de prueba del propio dueño; se eligió lo segundo, que sale más barato y es reversible en dos minutos (§0.4).
 
 ### 0.1 ✅ Cuánto dura un token — YA MEDIDO: 180 días
 
@@ -49,32 +54,37 @@ El log `mp oauth: token emitido` de producción (2026-08-22 15:46 UTC) trae **`e
 
 > Los textos exactos de las pantallas de MercadoPago cambian cada tanto. Lo invariante y lo único que importa es la elección **Pagos online → Checkout Pro**.
 
-### 0.3 🧑 Registrar las URLs de redireccionamiento
+### 0.3 🧑 Registrar la URL de redireccionamiento
 
-En App B → **"Detalles de aplicación"** → **"Editar datos"** → sección **"URLs de redireccionamiento"**. Cargar las dos:
+En App B → **"Detalles de aplicación"** → **"Editar datos"** → sección **"URLs de redireccionamiento"**:
 
-- `https://turnogol.app/api/mp/callback` — producción
-- `http://localhost:3000/api/mp/callback` — para la prueba del paso siguiente
+- `https://turnogol.app/api/mp/callback`
 
 La URL tiene que ser **estática y exacta** (sin query string): MercadoPago compara carácter por carácter y si no coincide devuelve error antes de mostrar la pantalla de permisos.
 
-> **Si el panel rechaza `http://localhost`** (no está confirmado que lo acepte): levantar un túnel HTTPS gratis con `cloudflared tunnel --url http://localhost:3000`, registrar la URL que imprime, y usar esa misma URL como `NEXT_PUBLIC_APP_URL` en el paso 0.4.
+> **[MEDIDO 2026-08-22] MercadoPago RECHAZA `http://localhost:3000/api/mp/callback`.** Sólo acepta el dominio público. Era la incógnita que hacía posible la prueba local, y quedó cerrada por la negativa: **no hay prueba local sin un túnel HTTPS**. Por eso el gate se corrió a producción (paso 0.4), que además resultó ser más barato que montar el túnel.
 
-### 0.4 🧑 La prueba decisiva: OAuth en local y leer el scope
+### 0.4 🧑 El gate, en producción y sobre TU complejo
 
-1. En App B → **"Credenciales de producción"**, copiar **Client ID** y **Client Secret**.
-2. En `.env.local`: **comentar** (no borrar) los `MP_CLIENT_ID` / `MP_CLIENT_SECRET` actuales y poner los de App B. Dejar `NEXT_PUBLIC_APP_URL=http://localhost:3000`.
-3. `pnpm supabase:start` y `pnpm dev`.
-4. Entrar como admin de un complejo local → **Configuración → Facturación** → **"Conectar MercadoPago"**.
-5. Autorizar con **tu propia cuenta de MercadoPago**. Como App B es una aplicación nueva, MercadoPago **va a mostrar la pantalla de permisos** — que aparezca ya es en sí una buena señal: confirma que la Fase 3 va a ser una vinculación limpia.
-6. En la consola de `pnpm dev`, buscar el log **`mp oauth: token emitido`** y leer el campo **`scope`**.
+La prueba local es imposible sin túnel (ver arriba), así que el gate se hace en producción. **No es un atajo riesgoso, y por un motivo concreto:** `Complejo Elite Futbol` está conectado con **tu propia cuenta maestra de MercadoPago**, así que la primera reconexión la hacés vos, con tu cuenta, sobre tu complejo de prueba. Titi no se entera de nada hasta que el gate esté verde.
+
+Esto **fusiona la Fase 0 con la Fase 2**: los pasos son los de la Fase 2 (webhooks + variables), y recién al final viene la lectura del scope que decide si se sigue.
+
+1. Hacer la **Fase 2 completa** (§2.1, §2.2, §2.3 de este documento): webhooks de App B, `MP_WEBHOOK_SECRET_CHECKOUT` en Vercel, y después `MP_CLIENT_ID`/`MP_CLIENT_SECRET` en Vercel y Railway.
+2. En **producción**, entrar como admin de **Complejo Elite Futbol** → **Configuración → Facturación** → **"Conectar MercadoPago"**.
+3. Autorizar con **tu cuenta maestra**. Como App B es una aplicación nueva, MercadoPago **va a mostrar la pantalla de permisos** — que aparezca ya es buena señal: confirma que la reconexión de Titi va a ser una vinculación limpia.
+4. Leer el `scope` del log `mp oauth: token emitido` en los logs de Vercel.
 
 **GATE:**
 
-- ✅ Aparece `urn:mp:online:payments:refunds/read-write` → **seguir a la Fase 2** (la Fase 1 ya está en el PR #194).
-- ❌ No aparece → **PARAR**. Borrar App B, restaurar `.env.local`, y decidir el REQUIERE INPUT #4 del informe (ticket a soporte de MercadoPago, o aceptar que el reembolso sea manual).
+- ✅ Aparece `urn:mp:online:payments:refunds/read-write` → seguir a la **Fase 3** y avisarle a Titi.
+- ❌ No aparece → **PARAR** y revertir, que cuesta dos minutos: volver `MP_CLIENT_ID`/`MP_CLIENT_SECRET` a los de App A en Vercel y Railway, y reconectar Elite (un clic, **sin** pantalla de autorización, porque el consentimiento de App A sigue vigente). Después, decidir el REQUIERE INPUT #4 del informe.
 
-7. Pase lo que pase: restaurar `.env.local` con las credenciales viejas. Opcional y prolijo: revocar "TurnoGol Cobros" desde tu cuenta personal (**Tu perfil → Seguridad → Aplicaciones conectadas**) para que el consentimiento de prueba no quede colgado.
+**Qué se arriesga realmente en la ventana del gate**, para tenerlo dimensionado:
+
+- Titi **sigue cobrando normal**: su token está guardado en la base y vale 180 días; el cambio de `MP_CLIENT_ID`/`MP_CLIENT_SECRET` no lo toca.
+- Los webhooks de los pagos de Titi los sigue firmando App A, cuya clave sigue cargada y sigue siendo aceptada (eso es el PR #194).
+- Lo único que se rompe en esa ventana es la **renovación** del token de Titi, que ya estaba rota por otro motivo (está en `status='canceled'`, que el cron excluye).
 
 ---
 
@@ -136,7 +146,9 @@ Ninguno es un bug; están previstos:
 
 ---
 
-## FASE 3 — Reconectar los complejos y probar la plata
+## FASE 3 — Reconectar Titi y probar la plata
+
+> Sólo se entra acá con el **gate del §0.4 en verde**. Si el scope de tu propio complejo no trajo `refunds/read-write`, no hay nada que ganar molestando al complejo real.
 
 ### 3.1 Saber a quiénes hay que avisar
 

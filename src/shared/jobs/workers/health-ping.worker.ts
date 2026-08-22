@@ -55,12 +55,20 @@ async function pingPgBoss(): Promise<PingResult> {
   }
 }
 
-async function pingSupabaseAuth(): Promise<PingResult> {
+export async function pingSupabaseAuth(): Promise<PingResult> {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!base) return { name: 'supabase-auth', status: 'ok', note: 'not configured' }
+  // Sin la anon key `/auth/v1/health` contesta 401 SIEMPRE: GoTrue exige el
+  // header `apikey` en todos sus endpoints, incluido el de salud. La sonda
+  // nació sin él, así que venía gritando "supabase-auth down" cada 5 minutos
+  // desde el día uno, con el login funcionando perfecto — una alarma que no
+  // podía apagarse nunca, que es la peor clase de alarma: entrena a ignorarlas.
+  // Mismo criterio que `pingResend`, que sí manda su credencial.
+  if (!anonKey) return { name: 'supabase-auth', status: 'ok', note: 'not configured' }
   const t0 = Date.now()
   try {
-    const res = await timedFetch(`${base}/auth/v1/health`)
+    const res = await timedFetch(`${base}/auth/v1/health`, { headers: { apikey: anonKey } })
     if (res.ok) return { name: 'supabase-auth', status: 'ok', latencyMs: Date.now() - t0 }
     return { name: 'supabase-auth', status: 'down', error: `HTTP ${res.status}` }
   } catch (err) {

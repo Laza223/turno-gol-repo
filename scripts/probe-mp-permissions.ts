@@ -283,6 +283,31 @@ async function main(): Promise<void> {
     console.log('(sin pagos propios en la base: se saltea la sonda de lectura)\n')
   }
 
+  // La sonda que evita cambiar un problema por otro. Todo el cobro de señas de
+  // TurnoGol depende de CREAR PREFERENCIAS (`createPreference` →
+  // `POST /checkout/preferences`): es el link de pago que ve el jugador. La app
+  // de Checkout Pro trae `urn:mp:online:preference/read-write` justamente para
+  // eso; una app de otro producto podría traer el permiso de reembolso y NO
+  // este, y ahí ganaríamos la devolución perdiendo el cobro — mucho peor que
+  // el problema original.
+  //
+  // Se manda un body vacío a propósito: sin `items` MercadoPago responde 400 de
+  // validación, así que la sonda no llega a crear ninguna preferencia real. De
+  // nuevo, el status separa permiso de contenido.
+  sondas.push(
+    await sondear(
+      'crear link',
+      'POST /checkout/preferences  (body vacío — no crea nada)',
+      { url: `${MP}/checkout/preferences`, method: 'POST', token: accessToken, body: {} },
+      (s) =>
+        s === 403
+          ? 'NO PUEDE CREAR LINKS DE PAGO — esta app NO sirve para cobrar señas'
+          : s === 400 || s === 201 || s === 200
+            ? 'PUEDE CREAR LINKS DE PAGO'
+            : `AMBIGUO (${s}) — leer el cuerpo`,
+    ),
+  )
+
   sondas.push(
     await sondear(
       'refund pago',

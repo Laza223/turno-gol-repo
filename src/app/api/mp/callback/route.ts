@@ -12,6 +12,7 @@ import {
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { track } from '@/shared/observability/breadcrumbs'
+import { logger } from '@/shared/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,15 @@ type MpTokenResponse = {
   refresh_token: string
   user_id: number
   public_key: string
+  /**
+   * Permisos que MercadoPago EFECTIVAMENTE otorgó a este token (`offline_access`,
+   * `read`, `write`). Se descartaba, y esa era la pieza que faltaba para
+   * diagnosticar el 403 `At least one policy returned UNAUTHORIZED` que
+   * devuelve todo intento de reembolso: el mismo token cobra bien y no puede
+   * devolver, y sin este dato no había forma de saber con qué alcance quedó.
+   */
+  scope?: string
+  expires_in?: number
 }
 
 /**
@@ -143,6 +153,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const tokenData = (await tokenRes.json()) as MpTokenResponse
   const mpUserId = String(tokenData.user_id)
+
+  // Sólo el alcance y la vigencia — NUNCA el token ni el refresh. `logger.error`
+  // no: esto no es un fallo. Va a stderr igual por ser un dato que hay que poder
+  // leer en los logs de Vercel cuando un complejo reporta que no puede devolver.
+  logger.info('mp oauth: token emitido', {
+    module: 'mp-oauth',
+    tenantId,
+    mpUserId,
+    scope: tokenData.scope ?? '(MercadoPago no devolvió scope)',
+    expiresInDays:
+      typeof tokenData.expires_in === 'number' ? Math.round(tokenData.expires_in / 86_400) : null,
+  })
 
   // Una cuenta de MercadoPago cobra para UN solo complejo (migr. 069). El
   // índice único es la red ante dos requests simultáneos; este chequeo existe

@@ -27,6 +27,7 @@ import { decrypt } from '@/lib/crypto/encrypt'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { GET as mpCallback } from '@/app/api/mp/callback/route'
+import { logger } from '@/shared/lib/logger'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 const SECRET = process.env.MP_CLIENT_SECRET!
@@ -137,17 +138,39 @@ describe('mp/callback happy path (DB real) — persistencia de OAuth de complejo
     expect(row.requires_deposit).toBe(true)
   })
 
-  it('si MP rechaza el token (400) no persiste credenciales y redirige a mp_token_failed', async () => {
+  it('si MP rechaza el token (400) no persiste credenciales, redirige a mp_token_failed y DEJA RASTRO', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql, { onboardingCompleted: false })
     mockAdminAuth(tenant.id)
-    stubMpToken({ error: 'invalid_grant' }, 400)
+    stubMpToken({ error: 'invalid_client', message: 'client_secret inválido' }, 400)
+
+    // El fallo mudo era el bug: en los logs de Vercel se veía el mismo
+    // `GET /api/mp/callback 307` que en una conexión exitosa, y la causa había
+    // que adivinarla. Pasó en producción el 2026-08-22 al migrar a la segunda
+    // aplicación de MercadoPago; sin este log costó una vuelta entera.
+    const logSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
 
     const state = makeState(tenant.id)
     const req = new NextRequest(`${APP_URL}/api/mp/callback?code=bad-code&state=${state}`)
 
     const res = await mpCallback(req)
     expect(res.headers.get('location')).toMatch(/mp_token_failed/)
+
+    expect(logSpy).toHaveBeenCalledTimes(1)
+    const [mensaje, contexto] = logSpy.mock.calls[0]! as [string, Record<string, unknown>]
+    expect(mensaje).toMatch(/canje del code/i)
+    // Lo que hace accionable al log: el status, qué dijo MercadoPago, y con
+    // QUÉ aplicación se intentó (el client_id es público — viaja en la URL de
+    // autorización — y es lo que distingue "credencial mal cargada" de
+    // "apunté a la aplicación equivocada").
+    expect(contexto.status).toBe(400)
+    expect(contexto.clientId).toBe(process.env.MP_CLIENT_ID)
+    expect(String(contexto.mpError)).toContain('invalid_client')
+    // Nunca el secret, ni el code, ni el token.
+    expect(JSON.stringify(contexto)).not.toContain(SECRET)
+    expect(JSON.stringify(contexto)).not.toContain('bad-code')
+
+    logSpy.mockRestore()
 
     const rows = await sql<
       { mp_access_token: string | null; onboarding_completed: boolean | null }[]

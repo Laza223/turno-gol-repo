@@ -67,6 +67,31 @@ describe('validateServerEnv', () => {
     expect(() => validateServerEnv({ ...rest, NODE_ENV: 'development' })).not.toThrow()
   })
 
+  // MP_WEBHOOK_SECRET_CHECKOUT (clave de firma de la app de Checkout Pro) es
+  // opcional INCLUSO en producción, a diferencia de la de Suscripciones: el
+  // merge a main deploya solo, y exigirla acá tiraría la app entera al boot si
+  // el deploy le gana a la carga de la variable en Vercel. Quien la exige es
+  // `launch-check` (REQUIRED_ENV). Este test es ese contrato, no un descuido.
+  it('permite MP_WEBHOOK_SECRET_CHECKOUT ausente incluso en producción', () => {
+    expect(() => validateServerEnv({ ...baseValid, NODE_ENV: 'production' })).not.toThrow()
+  })
+
+  it('rechaza MP_WEBHOOK_SECRET_CHECKOUT presente pero demasiado corta', () => {
+    expect(() => validateServerEnv({ ...baseValid, MP_WEBHOOK_SECRET_CHECKOUT: 'corta' })).toThrow(
+      /MP_WEBHOOK_SECRET_CHECKOUT/,
+    )
+  })
+
+  it('acepta MP_WEBHOOK_SECRET_CHECKOUT válida junto a la de suscripciones', () => {
+    expect(() =>
+      validateServerEnv({
+        ...baseValid,
+        NODE_ENV: 'production',
+        MP_WEBHOOK_SECRET_CHECKOUT: 'b'.repeat(32),
+      }),
+    ).not.toThrow()
+  })
+
   it('fails when NEXT_PUBLIC_APP_URL missing in production', () => {
     const { NEXT_PUBLIC_APP_URL: _, ...rest } = baseValid
     expect(() => validateServerEnv({ ...rest, NODE_ENV: 'production' })).toThrow(

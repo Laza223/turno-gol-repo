@@ -93,4 +93,5 @@ confirm it passes, then delete the temp project.
 | `NEXT_PUBLIC_SENTRY_DSN` | Vercel + `.env.local` | Browser error tracking |
 | `SENTRY_DSN` | Vercel + `.env.local` | Server error tracking |
 | `RESEND_API_KEY` | Vercel (encrypted) | Transactional email |
-| `MP_CLIENT_ID` / `MP_CLIENT_SECRET` | Vercel (encrypted) | MercadoPago OAuth app credentials |
+| `MP_CLIENT_ID` / `MP_CLIENT_SECRET` | Vercel (encrypted) | MercadoPago OAuth app credentials (Checkout Pro app — booking deposits) |
+| `MP_WEBHOOK_SECRET` / `MP_WEBHOOK_SECRET_CHECKOUT` | Vercel (encrypted) | Webhook signing keys — one per MercadoPago app (Subscriptions / Checkout Pro) |

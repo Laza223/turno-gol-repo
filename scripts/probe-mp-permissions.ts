@@ -41,15 +41,19 @@
  *
  * ── Uso ─────────────────────────────────────────────────────────────────────
  *
- *   SENTRY_ENV_FILE no: este script lee `.env.production` por defecto, igual que
- *   `inspect-mp-payment.ts`, y exige el MISMO `ENCRYPTION_KEY` que producción
- *   (el token está cifrado at-rest).
+ * Por slug — exige DSN de producción válido y la `ENCRYPTION_KEY` de producción
+ * en el env (el token está cifrado at-rest), igual que `inspect-mp-payment.ts`:
  *
- *   pnpm tsx scripts/probe-mp-permissions.ts <slug>
- *   MP_ENV_FILE=.env.production pnpm tsx scripts/probe-mp-permissions.ts complejo-elite-futbol
+ *   pnpm tsx scripts/probe-mp-permissions.ts complejo-elite-futbol
  *
- * Si el DSN local no sirve (el `.env.production` del repo no es foto de prod,
- * ver docs/planning), se puede saltear la base pasando el ciphertext:
+ * Con un token EN CLARO — sin base ni clave, la vía corta. Es la que sirve para
+ * el Access Token de producción que el panel de MercadoPago muestra de una
+ * aplicación (ver la nota de `tokenPlano` sobre qué responde y qué no):
+ *
+ *   PowerShell:  $env:MP_ACCESS_TOKEN_FILE="token.txt"; pnpm tsx scripts/probe-mp-permissions.ts
+ *   bash/zsh:    MP_ACCESS_TOKEN_FILE=token.txt pnpm tsx scripts/probe-mp-permissions.ts
+ *
+ * Con el ciphertext a mano (base inaccesible pero clave disponible):
  *
  *   MP_TOKEN_CIPHERTEXT_FILE=token.txt pnpm tsx scripts/probe-mp-permissions.ts
  */
@@ -80,8 +84,43 @@ const slug = args.find((a) => !a.startsWith('--'))
 const refundProbeId =
   args.find((a) => a.startsWith('--refund-probe-id='))?.split('=')[1] ?? '999999999999'
 
-if (!slug && !process.env.MP_TOKEN_CIPHERTEXT && !process.env.MP_TOKEN_CIPHERTEXT_FILE) {
+/**
+ * Token EN CLARO, la vía sin base de datos ni `ENCRYPTION_KEY`.
+ *
+ * Existe porque la vía por slug exige tres cosas que en la práctica fallan
+ * juntas: DSN de producción válido en el `.env.production` local (que no es
+ * foto de prod y suele tener la password rotada — pasó el 2026-08-22, error
+ * `28P01`), la `ENCRYPTION_KEY` de producción, y que ambas coincidan. Con el
+ * token en claro no hace falta nada de eso: sirve para pegar el Access Token
+ * de producción que el panel de MercadoPago muestra de una aplicación.
+ *
+ * OJO con la interpretación: ese token es la credencial de la aplicación sobre
+ * la cuenta de SU DUEÑO, no el token OAuth que un vendedor tercero le emite.
+ * Responde "¿esta aplicación puede reembolsar?", que no es exactamente
+ * "¿puede reembolsar en nombre de un tercero?". Sirve para decidir el paso
+ * siguiente, no para dar por cerrado el caso.
+ *
+ * Se lee de un ARCHIVO y no de la línea de comandos para que no quede en el
+ * historial de la shell.
+ */
+const tokenFile = process.env.MP_ACCESS_TOKEN_FILE
+const tokenPlano = tokenFile ? readFileSync(tokenFile, 'utf8').trim() : process.env.MP_ACCESS_TOKEN
+
+if (
+  !slug &&
+  !tokenPlano &&
+  !process.env.MP_TOKEN_CIPHERTEXT &&
+  !process.env.MP_TOKEN_CIPHERTEXT_FILE
+) {
   console.error('Uso: pnpm tsx scripts/probe-mp-permissions.ts <slug-del-complejo>')
+  console.error('')
+  console.error('Sin base de datos ni ENCRYPTION_KEY, con un token en claro:')
+  console.error(
+    '  PowerShell:  $env:MP_ACCESS_TOKEN_FILE="token.txt"; pnpm tsx scripts/probe-mp-permissions.ts',
+  )
+  console.error(
+    '  bash/zsh:    MP_ACCESS_TOKEN_FILE=token.txt pnpm tsx scripts/probe-mp-permissions.ts',
+  )
   process.exit(1)
 }
 
@@ -122,42 +161,64 @@ async function sondear(
 }
 
 async function main(): Promise<void> {
-  const { decrypt } = await import('../src/lib/crypto/encrypt')
-
-  const ctFile = process.env.MP_TOKEN_CIPHERTEXT_FILE
-  const ctFromEnv = ctFile ? readFileSync(ctFile, 'utf8').trim() : process.env.MP_TOKEN_CIPHERTEXT
-
-  let cipher: string
   let tenantId: string | null = null
   let sql: ReturnType<typeof postgres> | null = null
+  let accessToken: string
 
-  if (ctFromEnv) {
-    cipher = ctFromEnv
+  if (tokenPlano) {
+    // Camino corto: el token ya viene en claro, no hay base ni descifrado.
+    accessToken = tokenPlano
+    console.log('token en claro (no se consultó la base)')
   } else {
-    sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false })
-    const rows = await sql<{ id: string; name: string; token: string | null }[]>`
-      SELECT id, name, mp_access_token AS token FROM tenants WHERE slug = ${slug!} LIMIT 1
-    `
-    const tenant = rows[0]
-    if (!tenant?.token) {
-      console.error(`El complejo ${slug} no existe o no tiene MercadoPago conectado.`)
-      await sql.end()
+    const { decrypt } = await import('../src/lib/crypto/encrypt')
+
+    const ctFile = process.env.MP_TOKEN_CIPHERTEXT_FILE
+    const ctFromEnv = ctFile ? readFileSync(ctFile, 'utf8').trim() : process.env.MP_TOKEN_CIPHERTEXT
+
+    let cipher: string
+    if (ctFromEnv) {
+      cipher = ctFromEnv
+    } else {
+      try {
+        sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false })
+        const rows = await sql<{ id: string; name: string; token: string | null }[]>`
+          SELECT id, name, mp_access_token AS token FROM tenants WHERE slug = ${slug!} LIMIT 1
+        `
+        const tenant = rows[0]
+        if (!tenant?.token) {
+          console.error(`El complejo ${slug} no existe o no tiene MercadoPago conectado.`)
+          await sql.end()
+          process.exit(1)
+        }
+        cipher = tenant.token
+        tenantId = tenant.id
+        console.log(`complejo: ${tenant.name} (${tenant.id})`)
+      } catch (err) {
+        // `28P01` = password rechazada. El `.env.production` del repo NO es foto
+        // de producción y su password suele estar rotada; el error crudo de
+        // postgres no lo dice y manda a buscar por el lado equivocado.
+        const code = (err as { code?: string } | null)?.code
+        console.error(
+          code === '28P01'
+            ? 'No se pudo entrar a la base: la password del DATABASE_URL de este env está vencida.'
+            : 'No se pudo consultar la base.',
+        )
+        console.error('Sin base: pasá el token en claro con MP_ACCESS_TOKEN_FILE=<archivo>.')
+        console.error(err instanceof Error ? err.message : String(err))
+        if (sql) await sql.end().catch(() => {})
+        process.exit(1)
+      }
+    }
+
+    try {
+      accessToken = decrypt(cipher)
+    } catch (err) {
+      console.error('No se pudo DESCIFRAR el token del complejo.')
+      console.error('Eso significa que ENCRYPTION_KEY de este env NO es la de producción.')
+      console.error(err instanceof Error ? err.message : String(err))
+      if (sql) await sql.end()
       process.exit(1)
     }
-    cipher = tenant.token
-    tenantId = tenant.id
-    console.log(`complejo: ${tenant.name} (${tenant.id})`)
-  }
-
-  let accessToken: string
-  try {
-    accessToken = decrypt(cipher)
-  } catch (err) {
-    console.error('No se pudo DESCIFRAR el token del complejo.')
-    console.error('Eso significa que ENCRYPTION_KEY de este env NO es la de producción.')
-    console.error(err instanceof Error ? err.message : String(err))
-    if (sql) await sql.end()
-    process.exit(1)
   }
 
   // Un pago propio del complejo, para que la sonda de LECTURA pruebe el caso

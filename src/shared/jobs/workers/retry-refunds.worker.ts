@@ -26,6 +26,10 @@ type PendingRefundRow = {
    * NULL solo si el join por `description = 'Refund of <id>'` no encuentra
    * el pago original (no debería pasar; se salta con log si ocurre). */
   originalMpPaymentId: string | null
+  /** Monto del pago original, para decidir si el reembolso va como TOTAL. */
+  originalAmount: number | null
+  /** Lo ya reembolsado por OTRAS filas contra el mismo pago original. */
+  otrosRefunds: number
   mpAccessToken: string
 }
 
@@ -63,6 +67,14 @@ export async function retryPendingRefunds(): Promise<{ retried: number; alerted:
       p.amount          AS "refundAmount",
       p.created_at      AS "createdAt",
       op.mp_payment_id  AS "originalMpPaymentId",
+      op.amount         AS "originalAmount",
+      COALESCE((
+        SELECT SUM(pr.amount) FROM payments pr
+        WHERE pr.type = 'refund'
+          AND pr.status IN ('approved', 'pending')
+          AND pr.description = p.description
+          AND pr.id <> p.id
+      ), 0)::int        AS "otrosRefunds",
       t.mp_access_token AS "mpAccessToken"
     FROM payments p
     JOIN tenants t ON t.id = p.tenant_id
@@ -108,6 +120,13 @@ export async function retryPendingRefunds(): Promise<{ retried: number; alerted:
         refundPaymentId: row.refundPaymentId,
         mpPaymentId: row.originalMpPaymentId,
         refundAmount: row.refundAmount,
+        // Mismo criterio que `prepareRefund`: cubre el pago entero y no hay
+        // otro refund contra ese pago. Sin el monto original no se asume
+        // total — un parcial de más es peor que un reintento que falla.
+        isTotal:
+          row.originalAmount !== null &&
+          row.otrosRefunds === 0 &&
+          row.refundAmount === row.originalAmount,
       }
       const gateway = resolveTenantGateway(row.tenantId, row.mpAccessToken)
       const result = await settleRefund(prepared, gateway, row.tenantId)

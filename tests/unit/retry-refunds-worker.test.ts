@@ -59,6 +59,8 @@ function baseRow(
     refundAmount: number
     createdAt: Date
     originalMpPaymentId: string | null
+    originalAmount: number | null
+    otrosRefunds: number
     mpAccessToken: string
   }> = {},
 ) {
@@ -69,6 +71,8 @@ function baseRow(
     refundAmount: 300000,
     createdAt: new Date(Date.now() - 2 * 3_600_000), // 2h ago (>1h stale)
     originalMpPaymentId: ORIGINAL_MP_PAYMENT_ID,
+    originalAmount: 300000,
+    otrosRefunds: 0,
     mpAccessToken: 'tok',
     ...overrides,
   }
@@ -121,6 +125,8 @@ describe('retryPendingRefunds — reintento (c)', () => {
       refundPaymentId: REFUND_PAYMENT_ID,
       mpPaymentId: ORIGINAL_MP_PAYMENT_ID,
       refundAmount: 300000,
+      // Cubre el pago entero y no hay otros refunds: contra MP va como TOTAL.
+      isTotal: true,
     })
     expect(gateway).toEqual({ id: 'fake-gateway' })
     expect(tenantId).toBe(TENANT_ID)
@@ -231,5 +237,40 @@ describe('retryPendingRefunds — settle lanza (MP caído)', () => {
 
     expect(result).toEqual({ retried: 0, alerted: 1 })
     expect(mockDispatchEmail).toHaveBeenCalledWith('notif-2')
+  })
+})
+
+/**
+ * Total vs parcial no es cosmético: MP tiene reglas más duras para el parcial y
+ * devolvió 403 sobre un pago con la plata sin liberar, mientras el total salía.
+ * El worker rearma el `PreparedRefund` a mano, así que tiene que decidir igual
+ * que `prepareRefund` o el reintento vuelve a mandar un parcial innecesario.
+ */
+describe('retryPendingRefunds — total vs parcial', () => {
+  it('un refund que NO cubre el pago entero va como parcial', async () => {
+    mockSqlRows([baseRow({ refundAmount: 100000, originalAmount: 300000 })])
+    mockSettleRefund.mockResolvedValue({ status: 'approved' })
+
+    await retryPendingRefunds()
+
+    expect(mockSettleRefund.mock.calls[0]![0].isTotal).toBe(false)
+  })
+
+  it('con otro refund previo sobre el mismo pago, nunca es total', async () => {
+    mockSqlRows([baseRow({ refundAmount: 300000, originalAmount: 300000, otrosRefunds: 50000 })])
+    mockSettleRefund.mockResolvedValue({ status: 'approved' })
+
+    await retryPendingRefunds()
+
+    expect(mockSettleRefund.mock.calls[0]![0].isTotal).toBe(false)
+  })
+
+  it('sin monto original conocido no asume total', async () => {
+    mockSqlRows([baseRow({ originalAmount: null })])
+    mockSettleRefund.mockResolvedValue({ status: 'approved' })
+
+    await retryPendingRefunds()
+
+    expect(mockSettleRefund.mock.calls[0]![0].isTotal).toBe(false)
   })
 })

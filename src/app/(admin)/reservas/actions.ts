@@ -37,6 +37,8 @@ import {
 } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { captureMessage, captureException } from '@/lib/sentry'
+import { logger } from '@/shared/lib/logger'
+import { describeMpError } from '@/modules/payments/mp-token-refresh'
 import {
   createManualBookingSchema,
   rescheduleBookingSchema,
@@ -518,13 +520,23 @@ export async function cancelBookingAction(
     try {
       await settleRefund(outcome.pendingRefund, gateway, tenant.id)
     } catch (err) {
+      // Mismo criterio que en la cancelación del jugador: stderr primero (queda
+      // en Vercel sí o sí), Sentry después. Ver describeMpError.
+      const motivo = describeMpError(err)
+      logger.error('mp refund settlement failed after admin cancellation', {
+        module: 'refunds',
+        bookingId,
+        tenantId: tenant.id,
+        refundPaymentId: outcome.pendingRefund.refundPaymentId,
+        motivo,
+      })
       captureMessage('mp refund settlement failed after admin cancellation', {
         level: 'error',
         extra: {
           bookingId,
           tenantId: tenant.id,
           refundPaymentId: outcome.pendingRefund.refundPaymentId,
-          error: err instanceof Error ? err.message : String(err),
+          error: motivo,
         },
       })
     }

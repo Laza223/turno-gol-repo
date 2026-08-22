@@ -2,6 +2,7 @@ import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
+import { describeMpError } from '@/modules/payments/mp-token-refresh'
 import { settleRefund, formatArs, type PreparedRefund } from '@/modules/payments/payment.service'
 import {
   enqueueTenantOwnerNotification,
@@ -120,10 +121,15 @@ export async function retryPendingRefunds(): Promise<{ retried: number; alerted:
         })
       }
     } catch (err) {
+      // `describeMpError`, no `err.message`: el gateway envuelve el error del SDK
+      // y el mensaje de afuera lo escribimos nosotros ("Failed to refund MP
+      // payment <id>"), que no distingue una cuenta sin saldo de un token
+      // vencido. El motivo real vive en el `cause` anidado.
       logger.error('retry-refunds: settle failed', {
         module: 'retry-refunds',
         refundPaymentId: row.refundPaymentId,
-        error: err instanceof Error ? err.message : String(err),
+        tenantId: row.tenantId,
+        error: describeMpError(err),
       })
     }
 

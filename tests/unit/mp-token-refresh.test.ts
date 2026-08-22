@@ -4,6 +4,7 @@ import {
   isMpInvalidPayerError,
   isMpAlreadyCancelledPreapprovalError,
   withTokenRefresh,
+  describeMpError,
 } from '@/modules/payments/mp-token-refresh'
 
 describe('isMpUnauthorized', () => {
@@ -164,5 +165,59 @@ describe('withTokenRefresh', () => {
     await expect(withTokenRefresh(op, refresh)).rejects.toEqual({ status: 401 })
     expect(refresh).toHaveBeenCalledTimes(1)
     expect(op).toHaveBeenCalledTimes(2)
+  })
+})
+
+/**
+ * 2026-08-21, producción: un reembolso de $100 falló y los tres catches del
+ * camino loguearon `err.message`, que es la frase que escribimos nosotros
+ * ("Failed to refund MP payment 175029618908"). El motivo real de MercadoPago
+ * se descartaba entero, así que no había forma de distinguir una cuenta sin
+ * saldo de un token vencido de un pago no reembolsable.
+ */
+describe('describeMpError', () => {
+  it('rescata el motivo real del cause anidado que arma el gateway', () => {
+    // Forma exacta: MpGatewayError(msg, cause = error crudo del SDK de MP).
+    const err = Object.assign(new Error('Failed to refund MP payment 175029618908'), {
+      cause: {
+        message: 'Bad Request',
+        status: 400,
+        cause: [{ code: 2062, description: 'Refund is not available for this payment' }],
+      },
+    })
+
+    const out = describeMpError(err)
+    expect(out).toContain('mp_status=400')
+    expect(out).toContain('mp_code=2062')
+    expect(out).toContain('Refund is not available for this payment')
+  })
+
+  it('no se queda mudo cuando el error no tiene la forma esperada', () => {
+    expect(describeMpError(new Error('boom'))).toContain('boom')
+    expect(describeMpError('texto pelado')).toBe('texto pelado')
+    expect(describeMpError(null)).toBe('null')
+  })
+
+  it('recorta un cause gigante en vez de volcarlo entero al log', () => {
+    const err = Object.assign(new Error('x'), {
+      cause: { message: 'y'.repeat(5_000) },
+    })
+    expect(describeMpError(err).length).toBeLessThanOrEqual(401)
+  })
+
+  it('toma varios detalles pero no más de tres', () => {
+    const err = Object.assign(new Error('x'), {
+      cause: {
+        cause: [
+          { code: 1, description: 'uno' },
+          { code: 2, description: 'dos' },
+          { code: 3, description: 'tres' },
+          { code: 4, description: 'cuatro' },
+        ],
+      },
+    })
+    const out = describeMpError(err)
+    expect(out).toContain('tres')
+    expect(out).not.toContain('cuatro')
   })
 })

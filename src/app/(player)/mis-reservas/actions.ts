@@ -23,6 +23,8 @@ import {
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import { captureMessage } from '@/lib/sentry'
+import { logger } from '@/shared/lib/logger'
+import { describeMpError } from '@/modules/payments/mp-token-refresh'
 
 const cancelSchema = z.object({
   bookingId: uuid,
@@ -180,13 +182,27 @@ export async function cancelMyBookingAction(
     try {
       await settleRefund(outcome.pendingRefund, gateway, pre.tenant_id)
     } catch (err) {
+      const motivo = describeMpError(err)
+      // `logger.error` ADEMÁS de Sentry, y primero: escribe a stderr de forma
+      // sincrónica, así que el renglón queda en los logs de Vercel sí o sí. El
+      // `captureMessage` de Sentry encola un evento asincrónico que la lambda
+      // puede congelar antes de despachar — el 2026-08-21 un reembolso falló en
+      // producción y no dejó rastro NI en Sentry NI en Vercel, así que
+      // diagnosticarlo fue imposible.
+      logger.error('mp refund settlement failed after player cancellation', {
+        module: 'refunds',
+        bookingId: parsed.data.bookingId,
+        tenantId: pre.tenant_id,
+        refundPaymentId: outcome.pendingRefund.refundPaymentId,
+        motivo,
+      })
       captureMessage('mp refund settlement failed after player cancellation', {
         level: 'error',
         extra: {
           bookingId: parsed.data.bookingId,
           tenantId: pre.tenant_id,
           refundPaymentId: outcome.pendingRefund.refundPaymentId,
-          error: err instanceof Error ? err.message : String(err),
+          error: motivo,
         },
       })
     }

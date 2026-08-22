@@ -79,12 +79,14 @@ Eso responde la pregunta con evidencia propia, en minutos, sin deploy y sin move
 
 **[INFERIDO]** El modelo de MercadoPago sugiere que **sí** funciona: el pago pertenece a la **cuenta** del vendedor (es su `collector_id`), no a la aplicación; un token OAuth es una autorización *del vendedor* a *una aplicación* para operar en nombre de esa cuenta. Nada en el modelo ata una devolución a la aplicación que originó el cobro. Pero es razonamiento, no medición, y hay que tratarlo como tal.
 
-**Cómo se responde sin construir nada:** la deuda que ya existe es el experimento. Las dos señas del 21 y 22 de agosto quedaron con su fila en `payments` en estado `pending`, y el cron `retry-refunds` (horario, `src/shared/jobs/workers/retry-refunds.worker.ts`) las reintenta solo. Apenas el complejo reconecte con App B, ese cron va a disparar un reembolso con token de App B contra pagos cobrados con App A:
+**Cómo se responde sin construir nada:** la deuda que ya existe es el experimento. **[MEDIDO contra la base de producción, 2026-08-22 17:00 UTC]** hay **exactamente UNA** fila de reembolso en `pending`: `4a8a7ca8-4b5d-4520-8e7c-186fd8df202c`, de `complejo titi`, $100, creada el 22-08 15:07 UTC, contra el pago de MercadoPago `174177392859` que sigue en `approved` — o sea, la plata **no** volvió. (Los otros dos reembolsos del 21-08 figuran `approved`; no confundir "el 403 pasó dos veces" con "quedaron dos filas colgadas".)
 
-- Si salen aprobadas → pregunta respondida **y** la plata devuelta, sin escribir una línea.
-- Si vuelven 403 → pregunta respondida igual, y el complejo devuelve desde su panel como viene haciendo.
+El cron `retry-refunds` (horario, `src/shared/jobs/workers/retry-refunds.worker.ts`) sólo toma refunds con más de 1 h de antigüedad, así que esa fila entró recién en la corrida de las 17:00 UTC. Apenas el complejo reconecte con App B, ese cron va a disparar un reembolso con token de App B contra un pago cobrado con App A:
 
-No hay nada que perder: hoy esas devoluciones ya fallan.
+- Si sale aprobada → pregunta respondida **y** la plata devuelta, sin escribir una línea.
+- Si vuelve 403 → pregunta respondida igual, y el complejo devuelve desde su panel como viene haciendo.
+
+No hay nada que perder: hoy esa devolución ya falla.
 
 **b) ¿Qué pasa con los tokens viejos y sus refresh? ¿Conviven?**
 
@@ -92,7 +94,9 @@ No hay nada que perder: hoy esas devoluciones ya fallan.
 
 Conclusión operativa: **la reconexión de cada complejo ya conectado es obligatoria, no opcional.** Conviven en el sentido de que el access token viejo sigue cobrando hasta que expire, pero no en el sentido de que el sistema pueda mantenerlo vivo.
 
-**Dato pendiente de leer antes de tocar nada:** cuánto dura un access token de MercadoPago. El comentario de `refresh-mp-tokens.worker.ts:16` dice ~6 h; la documentación pública de MercadoPago dice 180 días **[DOC]**. Los dos no pueden ser ciertos. El log de `aff984d5` ya emite `expiresInDays` en cada conexión: hay que leer el último `mp oauth: token emitido` en los logs de Vercel. Si son horas, la reconexión hay que coordinarla para el mismo día del cambio; si son meses, hay aire de sobra.
+**Cuánto dura un access token: RESUELTO. [MEDIDO]** El log `mp oauth: token emitido` de producción del 2026-08-22 15:46 UTC trae **`expiresInDays: 180`**. O sea: la documentación de MercadoPago tenía razón y **el comentario "~6h" de `refresh-mp-tokens.worker.ts:16` está mal** (se corrige en la Fase 4). Consecuencia para el plan: los complejos siguen cobrando con su token viejo durante meses, así que **la reconexión no es urgente por vencimiento** — el apuro es sólo destrabar el reembolso.
+
+**Hallazgo lateral del mismo barrido [MEDIDO]:** `complejo titi` está hoy en `status='canceled'`, y `runRefreshMpTokens` filtra `status IN ('active','trialing','past_due','suspended')` — o sea que a ese complejo **ya no se le renueva el token**, con App A o con App B. Con 180 días de vigencia no es un incendio, pero es una bomba de tiempo silenciosa para cualquier complejo que vuelva de `canceled` a operar. Fuera del alcance de esta migración; queda anotado.
 
 **c) ¿El webhook de un pago viejo sigue llegando, y con qué firma?**
 
@@ -160,7 +164,7 @@ Es el único trabajo de código real de todo el cambio, y tiene que ir primero.
 
 ### Fase 0 — Verificar antes de tocar producción (gratis, sin riesgo)
 
-1. **Leer** en los logs de Vercel el último `mp oauth: token emitido` y anotar `expiresInDays`. Define si la reconexión de los complejos es urgente o puede esperar.
+1. ~~Leer `expiresInDays` en los logs de Vercel.~~ **HECHO: 180 días** (§2.4b). La reconexión no es urgente por vencimiento.
 2. **Crear la App B** en la misma cuenta (381048203), producto **Checkout Pro**. Registrar dos redirect URIs: la de producción y `http://localhost:3000/api/mp/callback`.
 3. **Correr el OAuth en local** con las credenciales de App B, autorizando con la cuenta de MercadoPago del dueño (que nunca autorizó App B). Leer el `scope` del log.
    - Trae `urn:mp:online:payments:refunds/read-write` → seguir.
@@ -187,7 +191,7 @@ Es el único trabajo de código real de todo el cambio, y tiene que ir primero.
 
 1. El dueño de cada complejo entra a Configuración → Facturación y aprieta "Conectar MercadoPago". **[INFERIDO]** Como App B es una aplicación nueva, MercadoPago **sí** va a mostrar la pantalla de autorización: el consentimiento es por (usuario, aplicación) **[MEDIDO]** y nadie autorizó App B todavía. O sea que el trámite incómodo de "revocar la aplicación desde tu propia cuenta de MercadoPago" **no aplica**. Es una vinculación limpia de dos minutos.
 2. Reconectar la misma cuenta al mismo complejo no choca con el índice único de migr. 069: `findTenantUsingMpAccount` excluye al propio complejo.
-3. **La prueba del reembolso cruzado se hace sola**, vía las dos señas pendientes y el cron horario (§2.4a).
+3. **La prueba del reembolso cruzado se hace sola**, vía la seña pendiente de `complejo titi` y el cron horario (§2.4a).
 
 ### Fase 4 — Documentar
 
@@ -221,7 +225,7 @@ Barata en las dos direcciones, porque todo el estado vive en variables de entorn
 ## 7. REQUIERE INPUT
 
 1. **Si el reembolso cruzado no funciona** (un token de App B no puede devolver un pago cobrado con App A): ¿qué hacemos con las señas ya cobradas bajo App A? **(a)** el complejo devuelve a mano desde su panel y bancamos que la fila quede `pending` con la alerta de `retry-refunds` repitiéndose; **(b)** agregamos una acción "marcar reembolso hecho por fuera" —hoy **no existe** ningún camino para cerrar esa fila a mano—; **(c)** las dejamos así y listo.
-2. **Ventana de convivencia.** Entre el cambio de variables y la reconexión de cada complejo, el cron de refresh va a fallar para ese complejo (log de error, sin síntoma visible hasta que el access token expire). ¿Coordinás la reconexión para el mismo día del cambio, o aceptás la ventana? La respuesta depende del `expiresInDays` que hay que leer en la Fase 0.
+2. ~~**Ventana de convivencia.**~~ **RESUELTO por medición**: con 180 días de vigencia, la ventana no tiene costo real más allá del ruido en los logs. Se hace cuando se pueda coordinar con cada complejo.
 3. **¿App B en la misma cuenta de MercadoPago (381048203)?** Mi recomendación es sí. Lo pregunto solo por si hay una razón contable o fiscal para separarlas.
 4. **Si App B tampoco otorga `refunds/read-write`:** ¿abrimos ticket con soporte de MercadoPago, o aceptamos que el reembolso sea manual desde el panel del complejo y ajustamos el producto para no prometerlo?
 

@@ -29,14 +29,13 @@ Este es el procedimiento operativo. El "por qué" y la evidencia están en el in
 
 Nada de esta fase toca producción ni mueve un peso. **Si el paso 0.4 no muestra `refunds/read-write`, el plan se frena acá** y hay que decidir el REQUIERE INPUT #4 del informe.
 
-### 0.1 🧑 Leer cuánto dura un token (logs de Vercel)
+### 0.1 ✅ Cuánto dura un token — YA MEDIDO: 180 días
 
-En el dashboard de Vercel → proyecto → **Logs** (o **Observability → Logs**), filtrar por el texto `mp oauth: token emitido`. La entrada más reciente trae un campo **`expiresInDays`**.
+El log `mp oauth: token emitido` de producción (2026-08-22 15:46 UTC) trae **`expiresInDays: 180`**.
 
-- Si dice ~180 → hay meses de aire; la reconexión de la Fase 3 no es urgente.
-- Si dice 0 o 1 → el token vive horas y la Fase 3 hay que hacerla el mismo día que la Fase 2.
+**Consecuencia:** los complejos siguen cobrando con su token actual durante meses, así que la Fase 3 **no es urgente por vencimiento**. Lo único que apura es destrabar el reembolso.
 
-> Por qué importa: hoy tenemos dos fuentes que se contradicen (un comentario del worker dice ~6 h, la documentación de MercadoPago dice 180 días). Este log lo zanja con un dato propio.
+> Este dato desmiente el comentario "~6h" de `refresh-mp-tokens.worker.ts`, que se corrige en la Fase 4.
 
 ### 0.2 🧑 Crear la App B
 
@@ -144,10 +143,22 @@ Ninguno es un bug; están previstos:
 Desde el panel SuperAdmin, o directo en la base:
 
 ```sql
-SELECT name, slug, mp_nickname, mp_connected_at
+SELECT name, slug, status, mp_nickname, mp_connected_at
 FROM tenants
 WHERE mp_access_token IS NOT NULL;
 ```
+
+**[MEDIDO 2026-08-22]** Hoy son **dos**, no uno:
+
+| Complejo | `status` | Cuenta de MP |
+|---|---|---|
+| `complejo titi` | `canceled` | la del complejo (la que tiene la seña sin devolver) |
+| `Complejo Elite Futbol` | `trialing` | **la cuenta maestra del dueño** (381048203), la misma que factura el SaaS |
+
+Dos consecuencias prácticas:
+
+- **Son dos reconexiones, no una.** La de Elite la hacés vos mismo, así que sirve de ensayo antes de llamar al complejo real.
+- **A `complejo titi` ya no se le renueva el token**: el cron filtra por `status IN ('active','trialing','past_due','suspended')` y `canceled` queda afuera. Con 180 días de vigencia no es urgente, pero significa que ese complejo depende del token que tenga guardado hasta que su estado vuelva a ser operativo.
 
 ### 3.2 🧑 Cada complejo reconecta (2 minutos)
 
@@ -164,14 +175,28 @@ En los logs de Vercel, el `mp oauth: token emitido` de ese complejo tiene que tr
 - `scope` con **`urn:mp:online:payments:refunds/read-write`**
 - el `mpUserId` de la cuenta correcta
 
-### 3.4 Prueba de fuego 1 — las señas viejas (gratis, se hace sola)
+### 3.4 Prueba de fuego 1 — la seña vieja (gratis, se hace sola)
 
-Las dos señas del 21 y 22 de agosto que no se pudieron devolver siguen con su fila de pago en estado `pending`. El cron `retry-refunds` corre **cada hora** y las va a reintentar solo, ahora con el token de App B contra pagos que se cobraron con App A.
+**[MEDIDO 2026-08-22 17:00 UTC]** Hay **una sola** fila de reembolso colgada, no dos:
+
+```sql
+SELECT p.id, t.name, p.amount, p.status, p.created_at, op.mp_payment_id, op.status AS original_status
+FROM payments p
+JOIN tenants t ON t.id = p.tenant_id
+LEFT JOIN payments op ON p.description = 'Refund of ' || op.id::text
+WHERE p.type = 'refund' AND p.status = 'pending';
+```
+
+→ `4a8a7ca8-4b5d-4520-8e7c-186fd8df202c`, `complejo titi`, $100, del 22-08 15:07 UTC, contra el pago de MercadoPago `174177392859` que sigue `approved` (la plata no volvió). Los otros dos reembolsos del 21-08 figuran `approved`: **que el 403 haya pasado dos veces no significa que hayan quedado dos filas colgadas.**
+
+El cron `retry-refunds` corre **cada hora** y sólo toma refunds con más de 1 h de antigüedad, así que la va a reintentar solo, ahora con token de App B contra un pago cobrado con App A.
 
 Mirar en la hora siguiente el log `retry-refunds run summary` (o Sentry):
 
-- **Aprobadas** → queda confirmado que una aplicación puede devolver lo que cobró la otra, **y la plata volvió**. Es la única pregunta que quedaba abierta del informe.
-- **403 de nuevo** → también queda respondida: hay que devolver esas dos a mano desde el panel del complejo, y decidir el REQUIERE INPUT #1 del informe.
+- **Aprobada** → queda confirmado que una aplicación puede devolver lo que cobró la otra, **y la plata volvió**. Es la única pregunta que quedaba abierta del informe.
+- **403 de nuevo** → también queda respondida: hay que devolverla a mano desde el panel del complejo, y decidir el REQUIERE INPUT #1 del informe.
+
+> Si esa fila lleva más de 24 h en `pending`, el worker encola **una** alerta por email al dueño del complejo (`admin_refund_failed`, dedupeada). Al 22-08 17:00 UTC todavía no había ninguna.
 
 ### 3.5 Prueba de fuego 2 — el bug original, con plata mínima
 
@@ -187,7 +212,8 @@ Mirar en la hora siguiente el log `retry-refunds run summary` (o Sentry):
 
 - ADR en `docs/decisions/` con la decisión y sus consecuencias (dos claves de webhook; reconectar es obligatorio al cambiar de aplicación; qué destraba a futuro: con `payments/read-write` se abre la puerta a Checkout API / Bricks).
 - Nota en `doc11` apuntando desde ADR-004 al ADR nuevo.
-- Corregir el comentario de `refresh-mp-tokens.worker.ts` sobre la vigencia del token si el `expiresInDays` medido lo desmiente.
+- ~~Corregir el comentario de `refresh-mp-tokens.worker.ts` sobre la vigencia del token.~~ **HECHO** (decía ~6 h, son 180 días).
+- Evaluar aparte —no es de esta migración— que un complejo en `canceled` queda fuera del barrido de renovación de tokens.
 
 ---
 

@@ -12,9 +12,21 @@ type RefreshOutcome = 'refreshed' | 'skipped'
 
 /**
  * Proactively refresh every connected tenant's MP access token (Hallazgo 4).
- * MP OAuth access tokens expire (~6h); refreshing every 4h keeps them valid so
- * deposit/refund calls don't 401 mid-request. Per-tenant failures are logged
- * and skipped so one bad tenant doesn't block the rest.
+ *
+ * Vigencia real del access token: **180 días**, no ~6 h como decía este
+ * comentario. MEDIDO contra producción el 2026-08-22 — el log
+ * `mp oauth: token emitido` (`api/mp/callback/route.ts`) trae
+ * `expiresInDays: 180`, y coincide con lo que documenta MercadoPago. El cron
+ * cada 4 h se deja igual: es barato, mantiene el `refresh_token` circulando
+ * (MercadoPago lo rota y es de un solo uso) y sirve de sonda temprana —
+ * si las credenciales de la aplicación dejan de servir, se entera en horas y
+ * no en meses. Lo que cambia es la expectativa: un token que no se refresca
+ * NO se cae al rato, aguanta medio año. Per-tenant failures are logged and
+ * skipped so one bad tenant doesn't block the rest.
+ *
+ * OJO con el filtro de `status` de abajo: un complejo en `canceled` queda
+ * fuera del barrido y su token no se renueva nunca más. Con 180 días de
+ * vigencia no es urgente, pero es real (`complejo titi` está así hoy).
  *
  * Concurrency safety (B11/T2): each tenant's refresh runs inside a transaction
  * that first attempts `pg_try_advisory_xact_lock(hashtext('mp_refresh:'||id))`.

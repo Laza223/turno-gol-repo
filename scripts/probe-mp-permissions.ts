@@ -19,15 +19,20 @@
  *
  * ── Por qué no mueve plata ──────────────────────────────────────────────────
  *
- * La sonda de reembolso hace un POST real a `/v1/payments/{id}/refunds`, pero
- * contra un `payment_id` INEXISTENTE. El chequeo de permisos de MercadoPago
- * corre en su gateway, ANTES de buscar el recurso — eso es exactamente lo que
- * significa el `403 At least one policy returned UNAUTHORIZED` que motivó todo
- * esto. Así que el código de respuesta separa las dos hipótesis sin que exista
- * un pago al que devolverle nada:
+ * Las sondas de reembolso hacen un POST real a `/v1/payments/{id}/refunds` y a
+ * `/v1/orders/{id}/refund`, pero contra un id INEXISTENTE. El chequeo de
+ * permisos de MercadoPago corre en su gateway, ANTES de buscar el recurso — eso
+ * es exactamente lo que significa el `403 At least one policy returned
+ * UNAUTHORIZED` que motivó todo esto. Así que el código de respuesta separa las
+ * dos hipótesis sin que exista un pago al que devolverle nada:
  *
  *   403  -> el token NO tiene permiso de reembolso  (falla la policy)
  *   404  -> el token SÍ tiene permiso               (pasa la policy, no hay recurso)
+ *
+ * Se sondean las DOS vías porque la app de Checkout Pro no recibe ningún
+ * `urn:mp:online:payments*` pero sí `urn:mp:online:order:payment/read-write`:
+ * la hipótesis es que a esas apps MercadoPago las movió a la API de Orders y
+ * dejó el endpoint legacy detrás del scope viejo.
  *
  * El id que se manda es de 12 dígitos y no pertenece al vendedor; aunque
  * existiera en MercadoPago, un reembolso sobre un pago ajeno da 404, nunca una
@@ -199,7 +204,7 @@ async function main(): Promise<void> {
 
   sondas.push(
     await sondear(
-      'reembolsar',
+      'refund pago',
       `POST /v1/payments/${refundProbeId}/refunds  (pago inexistente — no mueve plata)`,
       {
         url: `${MP}/v1/payments/${refundProbeId}/refunds`,
@@ -208,9 +213,38 @@ async function main(): Promise<void> {
       },
       (s) =>
         s === 403
-          ? 'NO PUEDE REEMBOLSAR — la policy rechaza antes de mirar el recurso'
+          ? 'NO PUEDE REEMBOLSAR (endpoint legacy) — la policy rechaza antes de mirar el recurso'
           : s === 404
-            ? 'PUEDE REEMBOLSAR — pasó la policy y sólo falta el recurso'
+            ? 'PUEDE REEMBOLSAR (endpoint legacy) — pasó la policy y sólo falta el recurso'
+            : `AMBIGUO (${s}) — leer el cuerpo`,
+    ),
+  )
+
+  // Segunda vía de reembolso, y la razón de sondearla: la app de Checkout Pro
+  // NO recibe ningún `urn:mp:online:payments*` pero SÍ recibe
+  // `urn:mp:online:order:payment/read-write` — escritura sobre órdenes. La
+  // hipótesis es que MercadoPago movió a esas apps a la API de Orders y dejó el
+  // endpoint legacy de pagos detrás del scope viejo. Si esta sonda da 404 y la
+  // de arriba 403, ahí está el camino: reembolsar por orden, no por pago.
+  //
+  // OJO con el paso siguiente si eso pasa: nuestros cobros se crean con
+  // Preference (Checkout Pro clásico), que produce un `payment` y un
+  // `merchant_order` — falta confirmar que exista un `order_id` de la API nueva
+  // al que apuntar. El permiso y el recurso son dos preguntas distintas.
+  sondas.push(
+    await sondear(
+      'refund orden',
+      `POST /v1/orders/${refundProbeId}/refund  (orden inexistente — no mueve plata)`,
+      {
+        url: `${MP}/v1/orders/${refundProbeId}/refund`,
+        method: 'POST',
+        token: accessToken,
+      },
+      (s) =>
+        s === 403
+          ? 'NO PUEDE REEMBOLSAR por Orders'
+          : s === 404
+            ? 'PUEDE REEMBOLSAR por Orders — pasó la policy y sólo falta el recurso'
             : `AMBIGUO (${s}) — leer el cuerpo`,
     ),
   )

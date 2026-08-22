@@ -13,6 +13,8 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { track } from '@/shared/observability/breadcrumbs'
 import { logger } from '@/shared/lib/logger'
+import { withTenantContext } from '@/shared/db/client'
+import { insertAuditLog } from '@/shared/db/audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -221,6 +223,53 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // `fromChecklist: true` siempre desde la Fase 5: el único punto de entrada
   // real a este callback es /settings/facturacion (ver el comentario de abajo).
   track.onboarding('onboarding.mp.connected', { tenantId, fromChecklist: true })
+
+  // El alcance del token, durable y consultable.
+  //
+  // Ya se loguea arriba, pero eso resultó no alcanzar: los Runtime Logs de
+  // Vercel guardan el pedido HTTP y NO el stdout de la función, así que la
+  // línea `mp oauth: token emitido` es ilegible a los pocos minutos —
+  // verificado el 2026-08-22 exportando los logs del dashboard: los 50
+  // registros del rango vinieron con `"message":""`.
+  //
+  // Y es justo el dato que decide si un complejo va a poder devolver una seña:
+  // MercadoPago deriva los permisos del PRODUCTO de la aplicación, y con la de
+  // Suscripciones el token salía con `payments:refunds/read-only`, o sea que
+  // TODO reembolso daba 403. Averiguarlo costó dos días porque no quedaba
+  // asentado en ningún lado que sobreviviera al minuto siguiente.
+  //
+  // Va a `audit_logs` y no a analíticas a propósito: es un hecho del circuito
+  // de plata de un complejo, con actor y momento, no una métrica de producto.
+  // Sin token ni refresh, obviamente: solo qué permisos dio MP y por cuánto.
+  try {
+    await withTenantContext(tenantId, async (tx) => {
+      await insertAuditLog(tx, {
+        tenantId,
+        actorId: user.staffUserId!,
+        actorType: 'staff',
+        action: 'mp.connected',
+        resourceType: 'tenant',
+        resourceId: tenantId,
+        metadata: {
+          mpUserId,
+          clientId,
+          scope: tokenData.scope ?? null,
+          expiresInDays:
+            typeof tokenData.expires_in === 'number'
+              ? Math.round(tokenData.expires_in / 86_400)
+              : null,
+        },
+      })
+    })
+  } catch (err) {
+    // La conexión ya está guardada y es válida: perder la traza no puede
+    // deshacerla ni dejar al complejo sin cobrar.
+    logger.error('mp oauth: no se pudo asentar el alcance del token', {
+      module: 'mp-oauth',
+      tenantId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 
   // Desde la Fase 5 del refactor de onboarding, conectar MP se movió del
   // wizard (viejo paso "¿Cobrás seña?") a /settings/facturacion — el ÚNICO

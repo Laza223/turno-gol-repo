@@ -63,8 +63,15 @@ export const REQUIRED_ENV = [
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
   'NEXT_PUBLIC_APP_URL',
-  // Las dos únicas vars del camino de la plata que NINGÚN otro mecanismo valida
-  // (no están en el schema Zod de src/shared/env.ts) y que fallan en silencio:
+  // Las vars del camino de la plata que NINGÚN otro mecanismo valida como
+  // obligatorias (o no están en el schema Zod de src/shared/env.ts, o están
+  // como opcionales a propósito) y que fallan en silencio:
+  //   - MP_WEBHOOK_SECRET_CHECKOUT: la clave de firma de la app de Checkout Pro
+  //     (señas). En el schema es opcional para que un deploy no se caiga entero
+  //     por una clave que todavía no está cargada; el precio es que sin ella
+  //     TODO webhook de seña se rechaza con 401 —el pago hecho en MP y la
+  //     reserva colgada—, visible sólo en el log de `rechazar()`. Este gate es
+  //     el que convierte ese silencio en un rojo antes de lanzar.
   //   - MP_TURNOGOL_ACCESS_TOKEN: billing.gateway.ts la lee con `?? ''`. Sin
   //     ella, subscribe()/reactivate() llaman a MP con token vacío y el dueño
   //     del complejo no puede pagar el plan — el trial sigue andando, así que
@@ -76,6 +83,7 @@ export const REQUIRED_ENV = [
   // Van acá y no en el check de /api/status a propósito: `overallFrom` devuelve
   // 503 ante cualquier check en no-ok, así que una var que recién importa a los
   // 30 días pintaría la app como caída ante el uptime monitor.
+  'MP_WEBHOOK_SECRET_CHECKOUT',
   'MP_TURNOGOL_ACCESS_TOKEN',
   'APP_URL',
   // `roleIdentityCheck` más abajo la exige, pero sin ella acá el gate no dice

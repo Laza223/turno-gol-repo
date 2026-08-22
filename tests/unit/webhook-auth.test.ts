@@ -13,10 +13,13 @@ const original = {
   NODE_ENV: env['NODE_ENV'],
   VERCEL_ENV: env['VERCEL_ENV'],
   MP_WEBHOOK_SECRET: env['MP_WEBHOOK_SECRET'],
+  MP_WEBHOOK_SECRET_CHECKOUT: env['MP_WEBHOOK_SECRET_CHECKOUT'],
   MP_WEBHOOK_TEST_BYPASS_SECRET: env['MP_WEBHOOK_TEST_BYPASS_SECRET'],
 }
 
 const REAL_SECRET = 'real-secret-'.repeat(3)
+/** Clave de la app de Checkout Pro (señas), distinta de la de Suscripciones. */
+const CHECKOUT_SECRET = 'checkout-secret-'.repeat(2)
 const TEST_BYPASS_SECRET = 'staging-bypass-secret-'.repeat(2)
 const DATA_ID = '12345'
 const REQUEST_ID = 'req-1'
@@ -32,6 +35,7 @@ beforeEach(() => {
   env['NODE_ENV'] = 'test'
   delete env['VERCEL_ENV']
   env['MP_WEBHOOK_SECRET'] = REAL_SECRET
+  delete env['MP_WEBHOOK_SECRET_CHECKOUT']
   delete env['MP_WEBHOOK_TEST_BYPASS_SECRET']
 })
 
@@ -49,6 +53,55 @@ describe('verifyWebhookSignature — MP_WEBHOOK_SECRET (existing behavior, uncha
 
   it('rejects an invalid signature when no bypass secret is configured', () => {
     expect(verifyWebhookSignature(sign('wrong-secret'), REQUEST_ID, DATA_ID)).toBe(false)
+  })
+})
+
+// TurnoGol tiene DOS aplicaciones de MercadoPago (Suscripciones para el plan
+// SaaS, Checkout Pro para el OAuth de señas) y MP genera una clave de firma por
+// aplicación. Las dos notifican al mismo buzón: validar contra una sola
+// rechazaría con 401 todo lo que firme la otra — el pago hecho en MP y la
+// reserva colgada.
+describe('verifyWebhookSignature — MP_WEBHOOK_SECRET_CHECKOUT (dos apps de MP)', () => {
+  it('acepta la firma de la app de Checkout Pro cuando están las dos claves', () => {
+    env['MP_WEBHOOK_SECRET_CHECKOUT'] = CHECKOUT_SECRET
+    expect(verifyWebhookSignature(sign(CHECKOUT_SECRET), REQUEST_ID, DATA_ID)).toBe(true)
+  })
+
+  it('sigue aceptando la firma de la app de Suscripciones cuando están las dos', () => {
+    env['MP_WEBHOOK_SECRET_CHECKOUT'] = CHECKOUT_SECRET
+    expect(verifyWebhookSignature(sign(REAL_SECRET), REQUEST_ID, DATA_ID)).toBe(true)
+  })
+
+  it('rechaza una firma que no matchea NINGUNA de las dos', () => {
+    env['MP_WEBHOOK_SECRET_CHECKOUT'] = CHECKOUT_SECRET
+    expect(verifyWebhookSignature(sign('ninguna-de-las-dos'), REQUEST_ID, DATA_ID)).toBe(false)
+  })
+
+  it('acepta la de Checkout Pro en producción (el dual no abre ningún bypass)', () => {
+    env['NODE_ENV'] = 'production'
+    env['MP_WEBHOOK_SECRET_CHECKOUT'] = CHECKOUT_SECRET
+    expect(verifyWebhookSignature(sign(CHECKOUT_SECRET), REQUEST_ID, DATA_ID)).toBe(true)
+    expect(verifyWebhookSignature(sign('basura'), REQUEST_ID, DATA_ID)).toBe(false)
+  })
+
+  // Configuración transitoria posible durante la migración: la app vieja ya no
+  // firma nada y sólo queda cargada la clave nueva.
+  it('funciona con SOLO la clave de Checkout Pro cargada, incluso en producción', () => {
+    env['NODE_ENV'] = 'production'
+    delete env['MP_WEBHOOK_SECRET']
+    env['MP_WEBHOOK_SECRET_CHECKOUT'] = CHECKOUT_SECRET
+    expect(verifyWebhookSignature(sign(CHECKOUT_SECRET), REQUEST_ID, DATA_ID)).toBe(true)
+    expect(verifyWebhookSignature(sign(REAL_SECRET), REQUEST_ID, DATA_ID)).toBe(false)
+  })
+
+  // El fail-closed de producción depende de que NO haya NINGUNA clave, no de
+  // que falte una en particular.
+  it('sin ninguna de las dos claves: fail-closed en producción, fail-open fuera', () => {
+    delete env['MP_WEBHOOK_SECRET']
+    env['NODE_ENV'] = 'production'
+    expect(verifyWebhookSignature(sign(REAL_SECRET), REQUEST_ID, DATA_ID)).toBe(false)
+    env['NODE_ENV'] = 'test'
+    expect(verifyWebhookSignature(sign(REAL_SECRET), REQUEST_ID, DATA_ID)).toBe(true)
   })
 })
 

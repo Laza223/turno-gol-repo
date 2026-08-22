@@ -42,7 +42,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - PostgreSQL via Supabase (Auth + Realtime). **Storage de imágenes: Cloudflare R2** (`src/shared/storage/r2.ts`), NO Supabase Storage
 - Drizzle ORM + Zod 4 (validación) + pg-boss (background jobs)
 - shadcn/ui + Tailwind CSS v4
-- MercadoPago (Checkout Pro + Suscripciones; OAuth por complejo para señas)
+- MercadoPago — **DOS aplicaciones, una por circuito de plata** (`docs/planning/2026-08-22-dos-apps-mercadopago.md`): la de **Suscripciones** cobra el plan SaaS con el token master del env (`MP_TURNOGOL_ACCESS_TOKEN`), la de **Checkout Pro** es la del OAuth por complejo para señas (`MP_CLIENT_ID`/`MP_CLIENT_SECRET`). MP deriva los scopes del PRODUCTO de la aplicación: con una sola app de Suscripciones el token del complejo salía con `payments:refunds/read-only` y **todo reembolso daba 403**. Consecuencia: MP genera una clave de firma de webhook **por aplicación**, y las dos notifican al mismo buzón — `webhook-auth.ts` valida contra `MP_WEBHOOK_SECRET` (Suscripciones) **y** `MP_WEBHOOK_SECRET_CHECKOUT` (Checkout Pro)
 - Resend (email transaccional — WhatsApp descartado para v1, ver ADR-003)
 - Web Push API (notificaciones push al admin cuando llega reserva online)
 - Vitest + Playwright

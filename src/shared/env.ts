@@ -29,9 +29,21 @@ function makeSchema(isProd: boolean) {
       .regex(ENCRYPTION_KEY_PATTERN, 'ENCRYPTION_KEY must be exactly 64 hex chars (32 bytes)'),
     MP_CLIENT_ID: z.string().min(1),
     MP_CLIENT_SECRET: z.string().min(1),
+    // Clave de firma de la app de SUSCRIPCIONES (cobro del plan SaaS).
     MP_WEBHOOK_SECRET: isProd
       ? minLen(16, 'MP_WEBHOOK_SECRET')
       : minLen(16, 'MP_WEBHOOK_SECRET').optional(),
+    // Clave de firma de la app de CHECKOUT PRO (OAuth de señas por complejo).
+    // MercadoPago genera una clave por aplicación, y las dos notifican al mismo
+    // buzón — ver `webhook-auth.ts`.
+    //
+    // OPCIONAL incluso en producción, a propósito y a diferencia de la de
+    // arriba: el merge a main deploya solo, así que exigirla acá tiraría TODA
+    // la app al boot si el deploy le gana a la carga de la variable en Vercel
+    // — un apagón total por una clave que todavía no se usa. Quien la exige es
+    // `launch-check` (REQUIRED_ENV), el gate manual previo al lanzamiento,
+    // mismo tratamiento que MP_TURNOGOL_ACCESS_TOKEN.
+    MP_WEBHOOK_SECRET_CHECKOUT: minLen(16, 'MP_WEBHOOK_SECRET_CHECKOUT').optional(),
     RESEND_API_KEY: z.string().min(1),
     UPSTASH_REDIS_REST_URL: isProd ? z.url() : z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: isProd ? z.string().min(20) : z.string().min(20).optional(),

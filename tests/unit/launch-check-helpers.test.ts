@@ -199,13 +199,19 @@ describe('launch-check.ts main() usa la lista filtrada', () => {
 })
 
 describe('REQUIRED_ENV', () => {
-  it('cubre las 2 vars del camino de la plata que ningún otro mecanismo valida', () => {
+  it('cubre las vars del camino de la plata que ningún otro mecanismo exige', () => {
     // MP_TURNOGOL_ACCESS_TOKEN: billing.gateway.ts la lee con `?? ''` → el
     // dueño no puede pagar el plan. APP_URL: billing.service.ts cae a
     // http://localhost:3000 → el webhook de la suscripción nunca llega.
     // Ninguna de las dos está en el schema Zod de src/shared/env.ts.
     expect(REQUIRED_ENV).toContain('MP_TURNOGOL_ACCESS_TOKEN')
     expect(REQUIRED_ENV).toContain('APP_URL')
+    // MP_WEBHOOK_SECRET_CHECKOUT sí está en el schema, pero como OPCIONAL a
+    // propósito (para que un deploy no se caiga entero por una clave todavía no
+    // cargada). Sin ella, todo webhook de seña se rechaza con 401: el pago
+    // hecho en MercadoPago y la reserva colgada. Este gate es lo único que lo
+    // convierte en un rojo antes de lanzar.
+    expect(REQUIRED_ENV).toContain('MP_WEBHOOK_SECRET_CHECKOUT')
   })
 
   it('exige WORKER_DATABASE_URL', () => {

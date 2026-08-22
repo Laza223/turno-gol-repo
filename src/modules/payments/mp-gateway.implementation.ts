@@ -1,4 +1,4 @@
-import { Payment, PaymentRefund, PreApproval, Preference } from 'mercadopago'
+import { MercadoPagoConfig, Payment, PaymentRefund, PreApproval, Preference } from 'mercadopago'
 import { mpClient, mpClientFromPlaintext } from '@/lib/mercadopago'
 import { MpGatewayError } from './payment.errors'
 import { withTokenRefresh } from './mp-token-refresh'
@@ -211,12 +211,35 @@ export class MercadoPagoGateway implements PaymentGateway {
       throw new MpGatewayError(`invalid mpPaymentId: ${mpPaymentId}`)
     }
     try {
+      // SIN body = reembolso TOTAL; con body = reembolso PARCIAL. No es lo
+      // mismo para MP: el parcial tiene reglas más duras y devolvía 403
+      // `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` sobre un pago cuya plata todavía
+      // no estaba liberada, mientras el total sí salía (probado a mano desde el
+      // panel del complejo, 2026-08-21). Antes se mandaba SIEMPRE el monto, así
+      // que devolver el 100% viajaba igual como parcial sin necesidad.
       const body = amount !== undefined ? { amount: centsToPesos(amount) } : undefined
+      // `requestOptions` NO existe en esta operación del SDK: su `create`
+      // destructura sólo `{ payment_id, body, config }` y descarta el resto, y
+      // después `RestClient.fetch` genera un UUID nuevo al azar por intento. O
+      // sea que la clave de idempotencia que creíamos estar mandando nunca
+      // llegaba, y dos reintentos del MISMO refund podían devolver dos veces.
+      // El único canal que el SDK sí lee es `config.options.idempotencyKey`.
+      //
+      // Se arma DENTRO del closure de `withRefresh`, no afuera: si un 401
+      // dispara el refresh, `this.config` cambia y el reintento tiene que
+      // tomar el token nuevo (mismo motivo por el que el resto de las
+      // operaciones leen `this.config` en cada invocación).
+      const configConClave = (): MercadoPagoConfig =>
+        idempotencyKey
+          ? new MercadoPagoConfig({
+              accessToken: this.config.accessToken,
+              options: { ...this.config.options, idempotencyKey },
+            })
+          : this.config
       const res = await this.withRefresh(() =>
-        new PaymentRefund(this.config).create({
+        new PaymentRefund(configConClave()).create({
           payment_id: mpPaymentId,
           body,
-          ...(idempotencyKey ? { requestOptions: { idempotencyKey } } : {}),
         }),
       )
       const status = (res.status ?? 'pending') as RefundResult['status']

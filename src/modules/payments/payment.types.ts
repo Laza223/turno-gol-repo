@@ -97,6 +97,14 @@ export type PreparedRefund = {
   refundPaymentId: string
   mpPaymentId: string
   refundAmount: number
+  /**
+   * El reembolso cubre el pago ORIGINAL entero y no hay refunds previos, así
+   * que contra MP va como reembolso TOTAL (POST sin body) en vez de parcial.
+   * No es cosmético: el parcial tiene reglas más duras del lado de MP y
+   * devolvía 403 sobre un pago con la plata todavía no liberada, mientras el
+   * total salía sin problema.
+   */
+  isTotal: boolean
 }
 
 export type WebhookOutcome =

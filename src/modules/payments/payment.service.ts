@@ -1161,6 +1161,9 @@ export async function prepareRefund(
     refundPaymentId: inserted[0]!.id,
     mpPaymentId: original.mpPaymentId,
     refundAmount,
+    // Total = cubre el pago entero Y no hay nada reembolsado antes. Con un
+    // refund previo, aunque este cubra el saldo, contra MP sigue siendo parcial.
+    isTotal: priorTotal === 0 && refundAmount === original.amount,
   }
 }
 
@@ -1186,7 +1189,8 @@ export async function settleRefund(
 ): Promise<{ status: 'approved' | 'pending' }> {
   const refund = await gateway.createRefund(
     prepared.mpPaymentId,
-    prepared.refundAmount,
+    // `undefined` = POST sin body = reembolso TOTAL. Ver `isTotal`.
+    prepared.isTotal ? undefined : prepared.refundAmount,
     `refund:${prepared.refundPaymentId}`,
   )
   const status = refund.status === 'approved' ? ('approved' as const) : ('pending' as const)

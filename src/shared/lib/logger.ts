@@ -3,6 +3,47 @@ import { getRequestContext } from './request-context'
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 type LogMeta = Record<string, unknown>
 
+/**
+ * Destino al que se reenvía TODO lo que sale por `logger.error`.
+ *
+ * Por qué existe: `logger.error` solo escribía a stderr. En Vercel eso todavía
+ * se lee; en el proceso standalone de workers (Railway) se lo lleva el viento.
+ * Medido el 2026-08-22: el cron `retry-pending-refunds` venía fallando cada
+ * hora contra el reembolso de un complejo —12 corridas en 26 h, ninguna
+ * exitosa— y Sentry no tenía NI UN evento de reembolso en toda su historia. El
+ * motivo real del fallo existía y estaba bien armado (`describeMpError`, en
+ * retry-refunds.worker.ts): no lo leía nadie. Y 23 de los 38 `logger.error`
+ * del código viven en `shared/jobs`, así que el agujero era de la clase
+ * entera, no de ese worker.
+ *
+ * Por qué un sink y no `import * as Sentry` acá: este módulo lo importa medio
+ * codebase, así que meterle el SDK adentro lo arrastra a todos los grafos de
+ * import. MEDIDO: la suite unitaria pasó de 56,7 s a 135,8 s (el `collect` de
+ * 24 s a 62 s) y un test se cayó por timeout. Registrándolo al revés —desde
+ * los dos entrypoints, igual que `setAnalyticsSink` en breadcrumbs.ts— el
+ * logger no importa Sentry nunca y el costo desaparece.
+ *
+ * En `globalThis` por el mismo motivo que el sink de analytics (F-022): con
+ * una variable de módulo, el bundle de `instrumentation.ts` registra sobre SU
+ * copia y los servicios leen otra, así que el registro no se vería. Ver
+ * [[zod-locale-global-no-alcanza-schemas]].
+ *
+ * Sin sink registrado el logger se comporta igual que antes (solo stderr): la
+ * observabilidad nunca condiciona al que loguea.
+ */
+type ErrorSink = (message: string, entry: Record<string, unknown>) => void
+
+const SINK_KEY = '__turnogol_error_sink__'
+type SinkHolder = { [SINK_KEY]?: ErrorSink | null }
+
+export function setErrorSink(sink: ErrorSink | null): void {
+  ;(globalThis as SinkHolder)[SINK_KEY] = sink
+}
+
+function getErrorSink(): ErrorSink | null {
+  return (globalThis as SinkHolder)[SINK_KEY] ?? null
+}
+
 function emit(level: LogLevel, message: string, meta?: LogMeta): void {
   const ctx = getRequestContext()
   const entry = {
@@ -16,8 +57,19 @@ function emit(level: LogLevel, message: string, meta?: LogMeta): void {
     ...(meta ?? {}),
   }
   const line = JSON.stringify(entry)
-  if (level === 'error') process.stderr.write(line + '\n')
-  else process.stdout.write(line + '\n')
+  if (level !== 'error') {
+    process.stdout.write(line + '\n')
+    return
+  }
+
+  process.stderr.write(line + '\n')
+  const sink = getErrorSink()
+  if (!sink) return
+  try {
+    sink(message, entry)
+  } catch {
+    // Un sink roto no puede voltear al que estaba logueando un error.
+  }
 }
 
 export const logger = {

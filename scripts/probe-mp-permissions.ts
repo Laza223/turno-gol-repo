@@ -104,7 +104,27 @@ const refundProbeId =
  * historial de la shell.
  */
 const tokenFile = process.env.MP_ACCESS_TOKEN_FILE
-const tokenPlano = tokenFile ? readFileSync(tokenFile, 'utf8').trim() : process.env.MP_ACCESS_TOKEN
+
+/**
+ * `MP_ACCESS_TOKEN_FILE` espera un NOMBRE DE ARCHIVO, pero pegar el token ahí
+ * directamente es el error obvio de cometer —pasó a la primera— y el crudo
+ * `ENOENT: no such file or directory, open 'APP_USR-…'` no ayuda a entenderlo:
+ * parece un problema de rutas cuando en realidad el valor era correcto y el
+ * sobre estaba equivocado. Como los tokens de MercadoPago tienen prefijo
+ * conocido y ningún archivo se llama así, se acepta el valor tal cual y se
+ * avisa, en vez de morir con un stack trace.
+ */
+function leerToken(valor: string): string {
+  if (/^(APP_USR|TEST)-/.test(valor)) {
+    console.warn(
+      'Aviso: MP_ACCESS_TOKEN_FILE traía el token en vez de un nombre de archivo. Lo uso igual.',
+    )
+    return valor.trim()
+  }
+  return readFileSync(valor, 'utf8').trim()
+}
+
+const tokenPlano = tokenFile ? leerToken(tokenFile) : process.env.MP_ACCESS_TOKEN
 
 if (
   !slug &&

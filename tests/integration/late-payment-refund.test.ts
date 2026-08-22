@@ -173,8 +173,11 @@ describe('pago tardio sobre reserva expirada, reembolso automatico', () => {
     `
     expect(booking!.status).toBe('expired')
 
-    // 2. Se pidió la devolución a MP por el monto completo de la seña.
-    expect(mockGateway.refundCalls).toEqual([{ mpPaymentId, amount: DEPOSIT }])
+    // 2. Se pidió la devolución a MP por el monto completo de la seña, y por eso
+    // viaja como reembolso TOTAL (sin `amount`): con monto sería parcial, que MP
+    // rechaza con 403 cuando la plata todavía no está liberada. La fila local
+    // sigue guardando el importe — se chequea abajo.
+    expect(mockGateway.refundCalls).toEqual([{ mpPaymentId }])
 
     const refunds = await refundRows(bookingId)
     expect(refunds).toHaveLength(1)

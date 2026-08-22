@@ -546,7 +546,11 @@ describe('createDepositPayment → webhook approval → cancelByPlayer — re-li
     expect(gateway.refundCalls).toHaveLength(0)
 
     await settleRefund(canceled.pendingRefund!, gateway, tenant.id)
-    expect(gateway.refundCalls).toContainEqual({ mpPaymentId, amount: 240_000 })
+    // Sin `amount`: la seña se devuelve ENTERA, y un reembolso total contra MP
+    // va como POST sin body. Mandarle el monto lo convierte en parcial, que
+    // MP rechaza con 403 cuando la plata todavía no está liberada (visto en
+    // producción el 2026-08-21).
+    expect(gateway.refundCalls).toContainEqual({ mpPaymentId })
   })
 })
 

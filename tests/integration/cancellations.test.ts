@@ -432,7 +432,11 @@ describe('cancelByPlayer — 4A: in-policy, deposit paid', () => {
     // Aserción anterior (solo count===1) pasaba aunque el refund fuera por $0 o por el precio completo.
     const refund = await getRefundPayment(bookingId)
     expect(refund).toEqual({ amount: 240_000, status: 'approved' })
-    expect(mockGateway.refundCalls).toContainEqual({ mpPaymentId, amount: 240_000 })
+    // Sin `amount`: la seña se devuelve ENTERA, y un reembolso total contra MP
+    // va como POST sin body. Mandarle el monto lo convierte en parcial, que
+    // MP rechaza con 403 cuando la plata todavía no está liberada (visto en
+    // producción el 2026-08-21).
+    expect(mockGateway.refundCalls).toContainEqual({ mpPaymentId })
 
     // canceled_by / canceled_reason deben persistir en la fila del booking.
     expect(await getBookingCancelMeta(bookingId)).toEqual({
@@ -611,7 +615,8 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     expect(await countCashFlows(bookingId)).toBe(0)
 
     expect(await getRefundPayment(bookingId)).toEqual({ amount: 240_000, status: 'approved' })
-    expect(mockGateway.refundCalls).toContainEqual({ mpPaymentId, amount: 240_000 })
+    // Igual que arriba: seña entera ⇒ reembolso TOTAL, sin `amount`.
+    expect(mockGateway.refundCalls).toContainEqual({ mpPaymentId })
     // canceled_reason incluye el tipo de cancelación (Tarea #3).
     expect(await getBookingCancelMeta(bookingId)).toEqual({
       canceled_by: 'admin',

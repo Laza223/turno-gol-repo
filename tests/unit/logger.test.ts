@@ -1,9 +1,12 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { runWithRequestContext } from '@/shared/lib/request-context'
-import { logger } from '@/shared/lib/logger'
+import { logger, setErrorSink } from '@/shared/lib/logger'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  // El sink vive en `globalThis`: sin limpiarlo se filtra a los demás archivos
+  // de test, que corren en el mismo proceso (vitest en singleThread).
+  setErrorSink(null)
 })
 
 function captureStdout(): { calls: string[] } {
@@ -152,5 +155,67 @@ describe('logger meta merging', () => {
     const entry = JSON.parse(calls[0]) as Record<string, unknown>
     // meta spreads after the base fields, so level is overridden
     expect(entry.level).toBe('custom-override')
+  })
+})
+
+describe('logger.error reenvía al sink de errores', () => {
+  // Antes SOLO escribía a stderr. En el proceso standalone de workers (Railway)
+  // eso equivale a no reportar: el cron `retry-pending-refunds` falló cada hora
+  // durante días con Sentry vacío de eventos de reembolso (2026-08-22).
+  it('le pasa al sink el mismo mensaje que loguea', () => {
+    const sink = vi.fn()
+    setErrorSink(sink)
+    captureStderr()
+
+    logger.error('retry-refunds: settle failed')
+
+    expect(sink).toHaveBeenCalledTimes(1)
+    expect(sink.mock.calls[0]![0]).toBe('retry-refunds: settle failed')
+  })
+
+  it('el meta viaja en la entrada, junto con el contexto del request', () => {
+    const sink = vi.fn()
+    setErrorSink(sink)
+    captureStderr()
+
+    runWithRequestContext({ requestId: 'req-1', tenantId: 'tenant-9' }, () => {
+      logger.error('fallo con contexto', { error: 'MP dijo 403' })
+    })
+
+    const entrada = sink.mock.calls[0]![1] as Record<string, unknown>
+    expect(entrada.error).toBe('MP dijo 403')
+    expect(entrada.request_id).toBe('req-1')
+    expect(entrada.tenant_id).toBe('tenant-9')
+    expect(entrada.message).toBe('fallo con contexto')
+    expect(entrada.level).toBe('error')
+  })
+
+  it('NO reenvía debug, info ni warn — solo error', () => {
+    const sink = vi.fn()
+    setErrorSink(sink)
+    captureStdout()
+
+    logger.debug('d')
+    logger.info('i')
+    logger.warn('w')
+
+    expect(sink).not.toHaveBeenCalled()
+  })
+
+  it('si el sink tira, el log sale igual y logger.error no propaga', () => {
+    setErrorSink(() => {
+      throw new Error('sentry caído')
+    })
+    const { calls } = captureStderr()
+
+    expect(() => logger.error('igual se loguea')).not.toThrow()
+    expect(calls).toHaveLength(1)
+    expect(JSON.parse(calls[0]!).message).toBe('igual se loguea')
+  })
+
+  it('sin sink registrado se comporta como antes: stderr y nada más', () => {
+    const { calls } = captureStderr()
+    expect(() => logger.error('sin sink')).not.toThrow()
+    expect(calls).toHaveLength(1)
   })
 })

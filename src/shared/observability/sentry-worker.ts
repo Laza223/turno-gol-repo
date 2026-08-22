@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs'
 import { scrubObject } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 import { logger } from '@/shared/lib/logger'
+import { registerSentryErrorSink } from './error-sink'
 
 /**
  * Inicializa Sentry en el proceso STANDALONE de workers (Railway).
@@ -27,6 +28,10 @@ export function initWorkerSentry(): boolean {
     const dsn = process.env.SENTRY_DSN
     if (!isValidDsn(dsn)) return false
 
+    // Sin esto los 23 `logger.error` de los workers seguirían muriendo en el
+    // stderr de Railway, que es como el reintento de reembolsos falló cada
+    // hora durante días sin que Sentry viera un solo evento (2026-08-22).
+    registerSentryErrorSink()
     Sentry.init({
       dsn,
       environment: process.env.NODE_ENV,

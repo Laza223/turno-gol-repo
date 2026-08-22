@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { scrubObject, scrubQueryString } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
+import { registerSentryErrorSink } from '@/shared/observability/error-sink'
 
 // ─────────────────────────────────────────────────────────────────────────
 // ALERTS (doc17 §Observabilidad) — configured in the Sentry UI, NOT in code.
@@ -70,6 +71,10 @@ if (dsn && !isValidDsn(dsn)) {
 }
 
 if (isValidDsn(dsn)) {
+  // Todo `logger.error` del runtime web pasa a reportarse (ver error-sink.ts).
+  // Va antes del init a propósito: `captureMessage` sobre un SDK todavía sin
+  // inicializar es un no-op, pero un error durante el propio `init` sí llega.
+  registerSentryErrorSink()
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV,

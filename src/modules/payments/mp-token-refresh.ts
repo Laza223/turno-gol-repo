@@ -10,9 +10,31 @@ function readNumber(value: unknown): number | undefined {
 }
 
 /**
+ * Rechazo del PolicyAgent de MercadoPago: la aplicación no tiene permiso para
+ * esa operación. Trae la palabra "UNAUTHORIZED" en el texto, y por eso hay que
+ * distinguirlo a mano de un token vencido.
+ */
+const POLICY_RECHAZO_RE = /policy returned unauthorized|PA_UNAUTHORIZED_RESULT_FROM_POLICIES/i
+
+/**
  * True when a MercadoPago error represents an expired/invalid access token
  * (HTTP 401). Handles the raw SDK error shape (`status`/`statusCode`), a nested
  * `cause`, and a 401/"unauthorized" message fallback.
+ *
+ * 🔴 Ese fallback por texto se comía el 403 de permisos y tapaba el
+ * diagnóstico. MercadoPago rechaza un reembolso sin permiso con
+ * `403 { code: 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES', message: 'At least one
+ * policy returned UNAUTHORIZED.' }`, y ese texto matcheaba /unauthorized/i:
+ * `withTokenRefresh` lo tomaba por token vencido, salía a renovar, la
+ * renovación fallaba, y lo que llegaba al log era
+ * `MP token refresh failed (HTTP 400)`. O sea que el motivo REAL de que no se
+ * pudiera devolver una seña estuvo enmascarado todo el tiempo, en los dos
+ * complejos de producción (medido el 2026-08-23: Elite y titi, mismo síntoma
+ * con aplicaciones de MercadoPago distintas).
+ *
+ * Renovar el token ante un 403 de permisos nunca sirvió de nada: los permisos
+ * los deriva MercadoPago del producto de la aplicación, así que el token nuevo
+ * sale con exactamente los mismos.
  */
 export function isMpUnauthorized(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false
@@ -29,8 +51,15 @@ export function isMpUnauthorized(err: unknown): boolean {
     readNumber(cause?.statusCode),
   ]
   if (codes.some((c) => c === 401)) return true
+  // MercadoPago dijo qué pasó y no fue un 401: creerle. El texto es peor
+  // evidencia que el status, y confundirlos manda a renovar un token sano.
+  if (codes.some((c) => c !== undefined)) return false
 
   const msg = typeof e.message === 'string' ? e.message : ''
+  // El rechazo del PolicyAgent trae la palabra "UNAUTHORIZED" y NO es un token
+  // vencido: renovarlo no cambia nada, porque los permisos los deriva MP del
+  // PRODUCTO de la aplicación y viajan iguales en el token nuevo.
+  if (POLICY_RECHAZO_RE.test(msg)) return false
   return /\b401\b|unauthorized/i.test(msg)
 }
 

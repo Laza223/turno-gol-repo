@@ -3,6 +3,7 @@ import { bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { prepareRefund, type PreparedRefund } from '@/modules/payments/payment.service'
+import { prepareManualRefund } from '@/modules/payments/refund.service'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { applyNoShowStrike, revertNoShowStrike } from '@/modules/relationships/ptr.service'
@@ -59,6 +60,7 @@ type LockedBooking = {
   deposit_status: string
   deposit_amount: number
   payment_id: string | null
+  payment_method: string | null
   date: string // 'YYYY-MM-DD'
   time_start: string // 'HH:MM:SS'
   starts_at: Date
@@ -76,6 +78,7 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       deposit_status,
       deposit_amount,
       payment_id,
+      payment_method,
       date::text AS date,
       time_start::text AS time_start,
       starts_at,
@@ -231,7 +234,20 @@ export async function cancelByPlayer(
         throw new RefundUnavailableError(bookingId)
       } else {
         // Seña en efectivo/transferencia (sin payment_id MP): el reembolso se
-        // resuelve offline entre jugador y complejo. Marcamos la obligación.
+        // resuelve offline entre jugador y complejo. Marcamos la obligación en
+        // `bookings` Y la registramos como fila de refund pendiente: sin ella
+        // la deuda no existía en ningún lado y el complejo no tenía cómo
+        // saber que la debía, ni cómo marcar que la saldó.
+        await prepareManualRefund(
+          {
+            bookingId,
+            tenantId: b.tenant_id,
+            playerId: b.player_id,
+            amount: b.deposit_amount,
+            paymentMethod: b.payment_method,
+          },
+          tx,
+        )
         newDepositStatus = 'refunded'
       }
     } else {
@@ -373,7 +389,18 @@ export async function cancelByAdmin(
         // legacy/corrupto) — mismo camino, nunca una excepción cruda sin catch.
         throw new RefundUnavailableError(bookingId)
       } else {
-        // Seña en efectivo/transferencia: reembolso offline, marcamos obligación.
+        // Seña en efectivo/transferencia: reembolso offline. Misma razón que en
+        // `cancelByPlayer` para dejar además la fila de refund pendiente.
+        await prepareManualRefund(
+          {
+            bookingId,
+            tenantId: b.tenant_id,
+            playerId: b.player_id,
+            amount: b.deposit_amount,
+            paymentMethod: b.payment_method,
+          },
+          tx,
+        )
         newDepositStatus = 'refunded'
       }
     } else {

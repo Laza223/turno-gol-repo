@@ -1,4 +1,5 @@
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react'
+import { bookingCode } from '@/lib/booking-code'
 
 export type VerificationBooking = {
   tenantName: string
@@ -125,7 +126,7 @@ export function VerificationCard({
       </dl>
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Verificado por TurnoGol · código {bookingId.slice(0, 8).toUpperCase()}
+        Verificado por TurnoGol · código {bookingCode(bookingId)}
       </p>
     </div>
   )

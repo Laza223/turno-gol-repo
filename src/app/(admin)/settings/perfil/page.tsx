@@ -24,6 +24,7 @@ export default async function PerfilPage() {
       <TenantContactForm
         currentPhone={tenant.phone}
         currentEmail={tenant.email}
+        currentWhatsapp={tenant.whatsapp}
         action={updateTenantContactAction}
       />
 

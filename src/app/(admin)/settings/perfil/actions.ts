@@ -143,6 +143,7 @@ export async function updateTenantContactAction(
   const parsed = tenantContactSchema.safeParse({
     phone: formData.get('phone'),
     email: formData.get('email'),
+    whatsapp: formData.get('whatsapp') ?? '',
   })
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }

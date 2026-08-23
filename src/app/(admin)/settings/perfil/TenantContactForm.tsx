@@ -24,10 +24,12 @@ const INITIAL: UpdateTenantContactResult = { success: true }
 export function TenantContactForm({
   currentPhone,
   currentEmail,
+  currentWhatsapp,
   action,
 }: {
   currentPhone: string
   currentEmail: string
+  currentWhatsapp: string | null
   action: UpdateTenantContactAction
 }) {
   const [state, formAction] = useActionState(action, INITIAL)
@@ -45,7 +47,7 @@ export function TenantContactForm({
         <div>
           <h2 className="text-base font-semibold text-foreground">Contacto del complejo</h2>
           <p className="text-sm text-muted-foreground">
-            Teléfono y email que ven los jugadores en tu página pública.
+            Teléfono, WhatsApp y email que ven los jugadores en tu página pública.
           </p>
         </div>
       </div>
@@ -62,6 +64,16 @@ export function TenantContactForm({
           defaultValue={currentPhone}
           required
         />
+
+        <PhoneInput
+          id="tenant-contact-whatsapp"
+          name="whatsapp"
+          label="WhatsApp (opcional)"
+          defaultValue={currentWhatsapp ?? ''}
+        />
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Si lo dejás vacío, los jugadores te escriben al teléfono de arriba.
+        </p>
 
         <div>
           <label

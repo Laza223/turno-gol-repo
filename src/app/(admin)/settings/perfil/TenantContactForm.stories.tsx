@@ -16,6 +16,10 @@ const meta = {
   args: {
     currentPhone: '+54 11 2233-4455',
     currentEmail: 'contacto@complejo.test',
+    // El caso real de casi todos los complejos: la columna existe desde la
+    // migración 003 pero nunca hubo pantalla para cargarla, así que está en
+    // NULL y los jugadores caen al teléfono de arriba.
+    currentWhatsapp: null,
   },
 } satisfies Meta<typeof TenantContactForm>
 
@@ -27,6 +31,18 @@ export const ConDatosGuardados: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByLabelText(/email/i)).toHaveValue('contacto@complejo.test')
+  },
+}
+
+/** Con WhatsApp propio cargado: es el canal que se le ofrece al jugador. */
+export const ConWhatsappPropio: Story = {
+  args: {
+    currentWhatsapp: '+54 9 11 5566-7788',
+    action: fn(async () => ({ success: true as const })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByLabelText(/whatsapp/i)).toHaveValue('9 11 5566-7788')
   },
 }
 

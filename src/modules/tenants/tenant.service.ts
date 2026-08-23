@@ -156,6 +156,7 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     city: t.city,
     province: t.province,
     phone: t.phone,
+    whatsapp: t.whatsapp,
     email: t.email,
     status: t.status,
     trialEndsAt: t.trialEndsAt,

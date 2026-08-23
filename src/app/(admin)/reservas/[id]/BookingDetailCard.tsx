@@ -9,7 +9,9 @@ const DEPOSIT_LABEL: Record<string, string> = {
   paid: 'pagada',
   captured: 'pagada',
   pending: 'pendiente',
-  refunded: 'reembolsada',
+  // La plata todavía no se movió: el complejo la debe. Ver `deposit-display.ts`.
+  refund_pending: 'a devolver',
+  refunded: 'devuelta',
 }
 
 /**
@@ -23,7 +25,7 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
   const visual = reservaStatusVisual(booking)
   const depositDisplayStatus = resolveDepositDisplayStatus(
     booking.depositStatus,
-    booking.depositRefunded,
+    booking.refundState,
   )
 
   const rows: Array<[string, ReactNode]> = [

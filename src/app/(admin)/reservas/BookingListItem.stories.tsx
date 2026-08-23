@@ -69,19 +69,34 @@ const ROW_PENDIENTE = row({
 })
 /**
  * Pago tardío: MP acreditó la seña DESPUÉS de que el turno expirara, así que la
- * plata entró y ya se devolvió sola — pero `deposit_status` quedó en 'pending'
- * y no se puede corregir (el trigger de estado terminal rechaza el UPDATE sobre
- * un booking `expired`). La etiqueta tiene que salir del reembolso que SÍ está
- * en `payments`. Ver `deposit-display.ts`.
+ * plata entró y ya volvió — pero `deposit_status` quedó en 'pending' y no se
+ * puede corregir (el trigger de estado terminal rechaza el UPDATE sobre un
+ * booking `expired`). La etiqueta tiene que salir del reembolso que SÍ está en
+ * `payments`. Ver `deposit-display.ts`.
  */
 const ROW_PAGO_TARDIO = row({
   id: uid(1009),
   status: 'expired',
   depositStatus: 'pending',
-  depositRefunded: true,
+  refundState: 'settled',
   paymentMethod: 'mercadopago',
   timeStart: '21:00',
   timeEnd: '22:00',
+})
+/**
+ * Cancelada con devolución PENDIENTE: `deposit_status` dice 'refunded' desde la
+ * transacción que canceló, pero la fila de `payments` sigue en 'pending' — la
+ * plata no se movió y el complejo la debe. Tiene que decir "a devolver", no
+ * "devuelta". Ver `deposit-display.ts`.
+ */
+const ROW_DEVOLUCION_PENDIENTE = row({
+  id: uid(1010),
+  status: 'canceled_refunded',
+  depositStatus: 'refunded',
+  refundState: 'pending',
+  paymentMethod: 'mercadopago',
+  timeStart: '20:00',
+  timeEnd: '21:00',
 })
 const ROW_JUGADA = row({
   id: uid(1005),
@@ -263,10 +278,25 @@ export const PagoTardioReembolsado: Story = {
   args: { booking: ROW_PAGO_TARDIO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Seña reembolsada', { exact: false })).toBeVisible()
+    await expect(canvas.getByText('Seña devuelta', { exact: false })).toBeVisible()
     // Control negativo: sin el override diría "Seña pendiente", que es el dato
     // falso que este caso existe para impedir.
     await expect(canvas.queryByText('Seña pendiente', { exact: false })).toBeNull()
+  },
+}
+
+export const DevolucionPendiente: Story = {
+  args: { booking: ROW_DEVOLUCION_PENDIENTE },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByText(`Seña a devolver (${money(ROW_DEVOLUCION_PENDIENTE.depositAmount)})`, {
+        exact: false,
+      }),
+    ).toBeVisible()
+    // Control negativo: ANTES de este cambio decía "Seña reembolsada" sobre
+    // plata que nunca salió. Es el dato falso que la fila de `payments` corrige.
+    await expect(canvas.queryByText('Seña devuelta', { exact: false })).toBeNull()
   },
 }
 

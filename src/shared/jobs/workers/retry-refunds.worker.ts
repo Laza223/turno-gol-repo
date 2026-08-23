@@ -81,6 +81,14 @@ export async function retryPendingRefunds(): Promise<{ retried: number; alerted:
     LEFT JOIN payments op ON p.description = 'Refund of ' || op.id::text
     WHERE p.type = 'refund'
       AND p.status = 'pending'
+      -- Solo las que viajan por MercadoPago. Una devolución de una seña cobrada
+      -- en efectivo o por transferencia también es una fila de refund pendiente,
+      -- pero no tiene pago original en MP: sin este filtro el LEFT JOIN daría
+      -- NULL, el worker loguearía un error CADA HORA y a las 24h mandaría un
+      -- mail diciendo "revisá el reembolso en el panel de MercadoPago" por
+      -- plata que nunca pasó por MercadoPago. Esas se saldan a mano en
+      -- /caja/devoluciones.
+      AND p.method = 'mercadopago'
       AND p.created_at < NOW() - INTERVAL '1 hour'
       AND t.mp_access_token IS NOT NULL
     ORDER BY p.created_at ASC

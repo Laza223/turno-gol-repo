@@ -1198,7 +1198,14 @@ export async function settleRefund(
   await withTenantContext(tenantId, async (tx) => {
     await tx
       .update(payments)
-      .set({ mpPaymentId: refund.mpRefundId, status })
+      .set({
+        mpPaymentId: refund.mpRefundId,
+        status,
+        // `processed_at` = cuándo se movió la plata de verdad. Solo se sella si
+        // MP la dio por aprobada: en `pending` el dinero todavía no salió, y la
+        // fila sigue siendo una deuda de devolución hasta que alguien la salde.
+        ...(status === 'approved' ? { processedAt: new Date() } : {}),
+      })
       .where(eq(payments.id, prepared.refundPaymentId))
   })
 

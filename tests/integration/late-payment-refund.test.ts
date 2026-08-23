@@ -204,7 +204,7 @@ describe('pago tardio sobre reserva expirada, reembolso automatico', () => {
       getBookingDetail(tenantId, bookingId, tx),
     )
     expect(detail?.depositStatus).toBe('pending')
-    expect(detail?.depositRefunded).toBe(true)
+    expect(detail?.refundState).toBe('settled')
 
     // 5. El rastro de auditoría de siempre no se pierde.
     const [audit] = await sql<{ c: number }[]>`
@@ -238,11 +238,12 @@ describe('pago tardio sobre reserva expirada, reembolso automatico', () => {
     expect(mockGateway.refundCalls).toEqual([])
     expect(await refundRows(bookingId)).toHaveLength(0)
 
-    // Control negativo del flag de display: sin reembolso sigue en false, o sea
-    // el turno sigue diciendo "Seña pendiente", que acá es la verdad.
+    // Control negativo del estado de display: sin fila de refund queda en
+    // 'none', o sea el turno sigue diciendo "Seña pendiente", que acá es la
+    // verdad.
     const detail = await withTenantContext(tenantId, (tx) =>
       getBookingDetail(tenantId, bookingId, tx),
     )
-    expect(detail?.depositRefunded).toBe(false)
+    expect(detail?.refundState).toBe('none')
   }, 30_000)
 })

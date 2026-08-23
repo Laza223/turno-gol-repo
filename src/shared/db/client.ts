@@ -291,6 +291,25 @@ export async function withSystemAdminContext<T>(
   })
 }
 
+/**
+ * Rechaza un rol fuera de la allowlist ANTES de tocar la base.
+ *
+ * `SET LOCAL ROLE` no admite parámetros, así que el rol se interpola a mano
+ * (`tx.unsafe`) y la allowlist es lo único que separa eso de una inyección de
+ * SQL. Se valida acá arriba, antes de `getSql()`, por dos motivos: un rol
+ * inválido no tiene por qué abrir una conexión ni consumir un slot del pool, y
+ * el rechazo pasa a ser el MISMO error haya base o no. Sin eso, la única
+ * prueba que cubre este guard dependía de que la base estuviera levantada:
+ * en CI, donde no lo está, fallaba con `ECONNREFUSED` y dejaba de medir la
+ * inyección. `applyContext` mantiene igual su chequeo — es la última línea, y
+ * la que vale para cualquier otro camino que llegue hasta ahí.
+ */
+function assertRoleAllowed(opts: ContextOpts): void {
+  if (opts.role && !ALLOWED_ROLES.has(opts.role)) {
+    throw new Error(`Invalid AppRole: ${opts.role}`)
+  }
+}
+
 async function applyContext(tx: TransactionSql, opts: ContextOpts): Promise<void> {
   if (opts.role) {
     if (!ALLOWED_ROLES.has(opts.role)) {
@@ -321,6 +340,7 @@ export async function withContext<T>(
   opts: ContextOpts,
   fn: (tx: TransactionSql) => Promise<T>,
 ): Promise<T> {
+  assertRoleAllowed(opts)
   const sql = getSql()
   return sql.begin(async (tx) => {
     await applyContext(tx, opts)
@@ -335,6 +355,7 @@ export async function withContextRollback<T>(
   opts: ContextOpts,
   fn: (tx: TransactionSql) => Promise<T>,
 ): Promise<T> {
+  assertRoleAllowed(opts)
   const sql = getSql()
   let captured: T
   let captureErr: unknown = null

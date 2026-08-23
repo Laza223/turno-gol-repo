@@ -1100,3 +1100,69 @@ describe('Q. analytics_events (migración 072)', () => {
     ).rejects.toThrow(/permission denied/i)
   })
 })
+
+/**
+ * R. player_own_payments_select (migración 079)
+ *
+ * El jugador tiene que poder ver el estado de la devolución de SU seña: la fila
+ * `bookings` queda congelada al cancelar (trigger de la migr. 070) y dice
+ * 'refunded' desde antes de que la plata se mueva, así que la verdad vive en
+ * `payments`. La policy es lo único que le da acceso a esa tabla.
+ *
+ * Toda policy nueva sobre una tabla de plata merece paranoia: lo que se prueba
+ * acá es que NO abre ningún camino hacia los pagos de otro jugador ni de otro
+ * complejo, y que el staff sigue viendo exactamente lo mismo que antes.
+ */
+describe('R. player_own_payments_select (migración 079)', () => {
+  it('el jugador ve SUS pagos', async () => {
+    const rows = await withContextRollback({ role: 'turnogol_app', playerId: A.playerId }, (tx) =>
+      tx.unsafe(`SELECT id FROM payments`),
+    )
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.every((r) => r.id === A.paymentId)).toBe(true)
+  })
+
+  it('el jugador NO ve los pagos de otro jugador', async () => {
+    const rows = await withContextRollback({ role: 'turnogol_app', playerId: A.playerId }, (tx) =>
+      tx.unsafe(`SELECT id FROM payments WHERE id = $1`, [B.paymentId]),
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  /**
+   * Las policies permisivas se combinan con OR, así que la pregunta real es si
+   * la nueva le suma filas a un contexto que no debería tenerlas. No: bajo
+   * contexto de STAFF `app.current_player_id` no está seteado, la comparación
+   * da NULL y la policy no aporta ni una fila.
+   */
+  it('bajo contexto de staff la policy nueva no agrega nada', async () => {
+    const rows = await withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+      tx.unsafe(`SELECT id, tenant_id FROM payments`),
+    )
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.every((r) => r.tenant_id === tenantA.id)).toBe(true)
+  })
+
+  /**
+   * La policy nueva es solo de SELECT y la de UPDATE sigue siendo por tenant,
+   * que bajo contexto de jugador no matchea. El UPDATE no explota: con RLS,
+   * una fila que no pasa el `USING` de la policy de escritura simplemente no
+   * se toca. Por eso el assert mira el EFECTO —cero filas afectadas y el dato
+   * intacto— y no una excepción, que nunca va a llegar.
+   */
+  it('el jugador NO puede escribir en payments (la policy es solo de lectura)', async () => {
+    const updated = await withContextRollback(
+      { role: 'turnogol_app', playerId: A.playerId },
+      (tx) =>
+        // 'rejected' y no 'approved': el pago sembrado ya nace aprobado, así
+        // que ese valor no distinguiría un UPDATE bloqueado de uno aplicado.
+        tx.unsafe(`UPDATE payments SET status = 'rejected' WHERE id = $1 RETURNING id`, [
+          A.paymentId,
+        ]),
+    )
+    expect(updated.length).toBe(0)
+
+    const [row] = await getSql()`SELECT status FROM payments WHERE id = ${A.paymentId}`
+    expect((row as { status: string }).status).not.toBe('rejected')
+  })
+})

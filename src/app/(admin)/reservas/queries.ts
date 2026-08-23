@@ -145,12 +145,20 @@ export async function listTenantBookings(
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
-           COALESCE((
-             SELECT CASE WHEN bool_or(pr.status = 'pending') THEN 'pending' ELSE 'settled' END
+           (
+             -- COUNT(*) primero y no un COALESCE afuera: un subselect con
+             -- agregado SIEMPRE devuelve una fila, y bool_or sobre el conjunto
+             -- vacío da NULL, que caía en el ELSE y marcaba como devuelta una
+             -- reserva sin ninguna devolución.
+             SELECT CASE
+                      WHEN COUNT(*) = 0 THEN 'none'
+                      WHEN bool_or(pr.status = 'pending') THEN 'pending'
+                      ELSE 'settled'
+                    END
              FROM payments pr
              WHERE pr.booking_id = b.id AND pr.type = 'refund'
                AND pr.status IN ('approved', 'pending')
-           ), 'none') AS "refundState",
+           ) AS "refundState",
            b.payment_method AS "paymentMethod", b.starts_at AS "startsAt", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
@@ -236,12 +244,20 @@ export async function getBookingDetail(
     SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
-           COALESCE((
-             SELECT CASE WHEN bool_or(pr.status = 'pending') THEN 'pending' ELSE 'settled' END
+           (
+             -- COUNT(*) primero y no un COALESCE afuera: un subselect con
+             -- agregado SIEMPRE devuelve una fila, y bool_or sobre el conjunto
+             -- vacío da NULL, que caía en el ELSE y marcaba como devuelta una
+             -- reserva sin ninguna devolución.
+             SELECT CASE
+                      WHEN COUNT(*) = 0 THEN 'none'
+                      WHEN bool_or(pr.status = 'pending') THEN 'pending'
+                      ELSE 'settled'
+                    END
              FROM payments pr
              WHERE pr.booking_id = b.id AND pr.type = 'refund'
                AND pr.status IN ('approved', 'pending')
-           ), 'none') AS "refundState",
+           ) AS "refundState",
            b.payment_method AS "paymentMethod", b.notes_player AS "notesPlayer",
            b.notes_internal AS "notesInternal", b.guest_name AS "guestName", b.guest_phone AS "guestPhone",
            b.canceled_reason AS "canceledReason",

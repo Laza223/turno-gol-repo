@@ -1528,7 +1528,7 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
   })
 
-  it('seña en efectivo (sin payment_id MP) → canceled_refunded + deposit refunded sin refund MP', async () => {
+  it('seña en efectivo (sin payment_id MP) → canceled_refunded + la deuda de devolución registrada', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1551,11 +1551,20 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
       cancelByPlayer(bookingId, player.id, 'me arrepentí', null, tx),
     )
 
-    // Sin payment_id MP no hay refund automático, pero el booking queda consistente:
-    // canceled_refunded + deposit 'refunded' (obligación offline), nunca 'paid'.
+    // Sin payment_id MP no hay nada que reembolsar por API, pero el booking
+    // queda consistente: canceled_refunded + deposit 'refunded', que acá
+    // significa "corresponde devolución", nunca 'paid'.
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
-    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+
+    // Y la deuda queda REGISTRADA. Hasta 2026-08-23 este assert esperaba 0: el
+    // complejo debía la plata y no existía ninguna fila que lo dijera, así que
+    // no tenía forma de enterarse ni de marcar que la saldó. La fila es lo
+    // único escribible después de cancelar — `bookings` queda congelada por el
+    // trigger de la migr. 070.
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
+    // La caja no se toca acá: se mueve recién cuando el complejo tilda que
+    // devolvió, y con el medio real por el que salió la plata.
     expect(await countCashFlows(bookingId)).toBe(0)
   })
 

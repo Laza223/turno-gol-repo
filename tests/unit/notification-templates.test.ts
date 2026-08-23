@@ -50,27 +50,47 @@ describe('renderBookingConfirmed', () => {
 })
 
 describe('renderBookingCanceled', () => {
+  const CANCELED_BASE = {
+    playerFirstName: 'Tomás',
+    courtName: 'Cancha 5',
+    date: '02/06/2027',
+    timeStart: '10:00',
+    timeEnd: '11:00',
+    tenantName: 'Complejo Norte',
+    bookingCode: 'A1B2C3D4',
+    tenantPhone: '+54 9 2323 346976',
+    tenantWhatsapp: null,
+    tenantEmail: 'contacto@complejo.test',
+  }
+
   it('subject signals cancelation', () => {
-    const { subject } = renderBookingCanceled({
-      playerFirstName: 'Tomás',
-      courtName: 'Cancha 5',
-      date: '02/06/2027',
-      timeStart: '10:00',
-      timeEnd: '11:00',
-      tenantName: 'Complejo Norte',
-      canceledBy: 'player',
-    })
+    const { subject } = renderBookingCanceled({ ...CANCELED_BASE, canceledBy: 'player' })
     expect(subject.toLowerCase()).toContain('cancelad')
+  })
+
+  /**
+   * El mail decía "contactá directamente al complejo" sin dar un solo canal, y
+   * es justo el mail donde el jugador se entera de que le tienen que devolver
+   * la seña. El teléfono y el email son NOT NULL en la base: siempre hay algo.
+   */
+  it('da los canales de contacto del complejo, no solo la frase', () => {
+    const { html, text } = renderBookingCanceled({ ...CANCELED_BASE, canceledBy: 'player' })
+    expect(html).toContain('+54 9 2323 346976')
+    expect(html).toContain('contacto@complejo.test')
+    // Sin WhatsApp propio cargado cae al teléfono, normalizado a formato wa.me.
+    expect(html).toContain('https://wa.me/5492323346976')
+    expect(text!).toContain('contacto@complejo.test')
+  })
+
+  it('incluye el código de reserva, que el complejo puede buscar', () => {
+    const { html, text } = renderBookingCanceled({ ...CANCELED_BASE, canceledBy: 'player' })
+    expect(html).toContain('A1B2C3D4')
+    expect(text!).toContain('A1B2C3D4')
   })
 
   it('html includes reason when provided', () => {
     const { html } = renderBookingCanceled({
-      playerFirstName: 'Tomás',
-      courtName: 'Cancha 5',
-      date: '02/06/2027',
-      timeStart: '10:00',
-      timeEnd: '11:00',
-      tenantName: 'Complejo Norte',
+      ...CANCELED_BASE,
       canceledBy: 'admin',
       reason: 'Lluvia',
     })
@@ -81,15 +101,7 @@ describe('renderBookingCanceled', () => {
   })
 
   it('html omits reason row when absent', () => {
-    const { html } = renderBookingCanceled({
-      playerFirstName: 'Tomás',
-      courtName: 'Cancha 5',
-      date: '02/06/2027',
-      timeStart: '10:00',
-      timeEnd: '11:00',
-      tenantName: 'Complejo Norte',
-      canceledBy: 'admin',
-    })
+    const { html } = renderBookingCanceled({ ...CANCELED_BASE, canceledBy: 'admin' })
     expect(html).not.toContain('Motivo')
   })
 })
@@ -102,6 +114,10 @@ describe('renderBookingCanceledByComplex', () => {
     timeStart: '10:00',
     timeEnd: '11:00',
     tenantName: 'Complejo Norte',
+    bookingCode: 'A1B2C3D4',
+    tenantPhone: '+54 9 2323 346976',
+    tenantWhatsapp: null,
+    tenantEmail: 'contacto@complejo.test',
   }
 
   it('subject names the tenant', () => {
@@ -110,24 +126,42 @@ describe('renderBookingCanceledByComplex', () => {
     expect(subject.toLowerCase()).toContain('cancelad')
   })
 
-  it('html confirms refund when refundConfirmed is true', () => {
+  it('anuncia que corresponde la devolución cuando había seña', () => {
     const { html } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: true })
-    // Exacto (no lowercase 'reembolso' suelto): alinea con el assert negativo,
+    // Exacto (no lowercase 'devoluc' suelto): alinea con el assert negativo,
     // así el par no puede dar verde si la línea cambia de forma.
-    expect(html).toContain('Reembolso confirmado')
+    expect(html).toContain('Te corresponde la devolución de la seña')
+  })
+
+  /**
+   * Antes decía "te devolvemos la seña de forma automática". No hay nada
+   * automático: el reembolso por API falla siempre con 403 de permisos, así que
+   * el mail prometía plata que nadie había mandado.
+   */
+  it('no promete que la devolución ya se hizo', () => {
+    const { html, text } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: true })
+    expect(html).not.toContain('forma automática')
+    expect(html).not.toContain('Reembolso confirmado')
+    expect(text ?? '').not.toContain('forma automática')
   })
 
   it('html omits refund line when refundConfirmed is false', () => {
     const { html } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: false })
-    expect(html).not.toContain('Reembolso confirmado')
+    expect(html).not.toContain('Te corresponde la devolución')
   })
 
-  it('text incluye la nota de reembolso solo cuando refundConfirmed es true', () => {
+  it('text incluye la nota de devolución solo cuando refundConfirmed es true', () => {
     const yes = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: true })
     const no = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: false })
     expect(yes.text).toBeTruthy()
-    expect(yes.text!).toContain('Reembolso confirmado')
-    expect(no.text ?? '').not.toContain('Reembolso confirmado')
+    expect(yes.text!).toContain('Te corresponde la devolución de la seña')
+    expect(no.text ?? '').not.toContain('Te corresponde la devolución')
+  })
+
+  it('da los canales de contacto del complejo', () => {
+    const { html } = renderBookingCanceledByComplex({ ...BASE, refundConfirmed: true })
+    expect(html).toContain('+54 9 2323 346976')
+    expect(html).toContain('contacto@complejo.test')
   })
 })
 
@@ -368,10 +402,14 @@ describe('renderTemplate dispatcher', () => {
   it('routes booking_canceled_by_complex to its renderer', () => {
     const result = renderTemplate('booking_canceled_by_complex', {
       ...CONFIRMED_DATA,
+      bookingCode: 'A1B2C3D4',
+      tenantPhone: '+54 9 2323 346976',
+      tenantWhatsapp: null,
+      tenantEmail: 'contacto@complejo.test',
       refundConfirmed: true,
     })
     expect(result.subject).toContain('Complejo Norte')
-    expect(result.html).toContain('Reembolso confirmado')
+    expect(result.html).toContain('Te corresponde la devolución de la seña')
   })
 })
 

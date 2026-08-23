@@ -4,6 +4,7 @@ import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { prepareRefund, type PreparedRefund } from '@/modules/payments/payment.service'
 import { prepareManualRefund } from '@/modules/payments/refund.service'
+import { bookingCode } from '@/lib/booking-code'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { applyNoShowStrike, revertNoShowStrike } from '@/modules/relationships/ptr.service'
@@ -130,9 +131,14 @@ async function loadCancelEmailNames(
   courtId: string,
   playerId: string,
   tx: DbTx,
-): Promise<{ courtName: string; tenantName: string; playerFirstName: string } | undefined> {
+): Promise<CancelEmailNames | undefined> {
+  // El contacto del complejo viaja en la misma query: el mail de cancelación
+  // decía "contactá directamente al complejo" sin dar ningún canal, y es
+  // justo el mail donde el jugador se entera de que le tienen que devolver la
+  // seña. Son las mismas columnas que ya se publican en /[slug].
   const rows = await tx.execute(sql`
-    SELECT c.name AS court_name, t.name AS tenant_name, p.first_name AS player_first_name
+    SELECT c.name AS court_name, t.name AS tenant_name, p.first_name AS player_first_name,
+           t.phone AS tenant_phone, t.whatsapp AS tenant_whatsapp, t.email AS tenant_email
     FROM courts c, tenants t, players p
     WHERE c.id = ${courtId} AND t.id = ${tenantId} AND p.id = ${playerId}
   `)
@@ -141,6 +147,9 @@ async function loadCancelEmailNames(
       court_name: string
       tenant_name: string
       player_first_name: string
+      tenant_phone: string
+      tenant_whatsapp: string | null
+      tenant_email: string
     }>
   )[0]
   if (!row) return undefined
@@ -148,7 +157,19 @@ async function loadCancelEmailNames(
     courtName: row.court_name,
     tenantName: row.tenant_name,
     playerFirstName: row.player_first_name,
+    tenantPhone: row.tenant_phone,
+    tenantWhatsapp: row.tenant_whatsapp,
+    tenantEmail: row.tenant_email,
   }
+}
+
+type CancelEmailNames = {
+  courtName: string
+  tenantName: string
+  playerFirstName: string
+  tenantPhone: string
+  tenantWhatsapp: string | null
+  tenantEmail: string
 }
 
 export type CancellationOutcome = {
@@ -299,7 +320,11 @@ export async function cancelByPlayer(
           timeStart: bookingRow.timeStart.slice(0, 5),
           timeEnd: bookingRow.timeEnd.slice(0, 5),
           tenantName: names.tenantName,
+          tenantPhone: names.tenantPhone,
+          tenantWhatsapp: names.tenantWhatsapp,
+          tenantEmail: names.tenantEmail,
           canceledBy: 'player',
+          bookingCode: bookingCode(bookingId),
           ...(reason ? { reason } : {}),
         },
         triggerEvent: 'booking.canceled',
@@ -458,6 +483,10 @@ export async function cancelByAdmin(
                   timeStart: bookingRow.timeStart.slice(0, 5),
                   timeEnd: bookingRow.timeEnd.slice(0, 5),
                   tenantName: names.tenantName,
+                  tenantPhone: names.tenantPhone,
+                  tenantWhatsapp: names.tenantWhatsapp,
+                  tenantEmail: names.tenantEmail,
+                  bookingCode: bookingCode(bookingId),
                   refundConfirmed: newDepositStatus === 'refunded',
                 },
                 triggerEvent: 'booking.canceled_by_admin',
@@ -477,7 +506,11 @@ export async function cancelByAdmin(
                   timeStart: bookingRow.timeStart.slice(0, 5),
                   timeEnd: bookingRow.timeEnd.slice(0, 5),
                   tenantName: names.tenantName,
+                  tenantPhone: names.tenantPhone,
+                  tenantWhatsapp: names.tenantWhatsapp,
+                  tenantEmail: names.tenantEmail,
                   canceledBy: 'admin',
+                  bookingCode: bookingCode(bookingId),
                   reason,
                 },
                 triggerEvent: 'booking.canceled_by_admin',

@@ -40,7 +40,7 @@ describe('email templates neutralize an HTML-injection payload in every free-tex
     expect(html).not.toContain('<a href="https://evil.example">')
   })
 
-  it('renderBookingCanceled — playerFirstName, tenantName, courtName, reason (F7)', () => {
+  it('renderBookingCanceled — nombres, motivo y contacto del complejo (F7)', () => {
     const { html } = renderBookingCanceled({
       playerFirstName: PAYLOAD,
       courtName: PAYLOAD,
@@ -48,6 +48,13 @@ describe('email templates neutralize an HTML-injection payload in every free-tex
       timeStart: '10:00',
       timeEnd: '11:00',
       tenantName: PAYLOAD,
+      // El bloque de contacto es texto del complejo yendo al HTML de un mail:
+      // se escapa igual que el resto. El WhatsApp no aparece acá porque
+      // `buildWhatsappUrl` lo reduce a dígitos antes de llegar al href.
+      tenantPhone: PAYLOAD,
+      tenantWhatsapp: PAYLOAD,
+      tenantEmail: PAYLOAD,
+      bookingCode: PAYLOAD,
       canceledBy: 'admin',
       reason: PAYLOAD,
     })

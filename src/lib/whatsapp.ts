@@ -57,10 +57,24 @@ export function toWhatsappDigits(raw: string | null | undefined): string | null 
  * "+54 9 2323 346976" son el mismo teléfono.
  */
 function normalizeArNational(national: string): string {
-  let rest = national.startsWith('0') ? national.slice(1) : national
-  // El 15 va después del código de área (2 a 4 dígitos), nunca al principio.
+  const rest = national.startsWith('0') ? national.slice(1) : national
+
+  // Un nacional que ya empieza con 9 trae el marcador de móvil internacional y
+  // NO puede pasar por la limpieza del 15: en "9 11 5566-7788" el "15" del
+  // medio es parte del área y del abonado, no un prefijo de marcación, y
+  // sacarlo destruye el número. (Ninguna característica argentina empieza con
+  // 9, así que ese 9 inicial solo puede ser el marcador.)
+  if (rest.startsWith('9')) return rest
+
+  // El 15 va después del código de área (2 a 4 dígitos), nunca al principio, y
+  // solo cuenta si lo que queda son los 10 dígitos de un número argentino: sin
+  // esa comprobación el patrón se come cualquier "15" que caiga en esa
+  // posición por casualidad.
   const with15 = rest.match(/^(\d{2,4})15(\d{6,8})$/)
-  if (with15) rest = `${with15[1]}${with15[2]}`
+  if (with15) {
+    const stripped = `${with15[1]}${with15[2]}`
+    if (stripped.length === 10) return stripped
+  }
   return rest
 }
 

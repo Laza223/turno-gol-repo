@@ -28,6 +28,17 @@ describe('toWhatsappDigits — móviles argentinos', () => {
     expect(toWhatsappDigits('5491112345678')).toBe('5491112345678')
   })
 
+  /**
+   * Regresión: el patrón que saca el 15 de marcación nacional se comía el "15"
+   * de "9 11 5566-7788" —donde es parte del área y del abonado, no un
+   * prefijo— y devolvía un número de 11 dígitos, o sea `null` y sin botón de
+   * WhatsApp. Un número perfectamente válido quedaba sin canal.
+   */
+  it('no confunde un 15 que es parte del número con el prefijo de marcación', () => {
+    expect(toWhatsappDigits('+54 9 11 5566-7788')).toBe('5491155667788')
+    expect(toWhatsappDigits('11 5566-7788')).toBe('5491155667788')
+  })
+
   it('formato de marcación nacional: saca el 0 de área y el 15 de móvil', () => {
     expect(toWhatsappDigits('02323 15 346976')).toBe('5492323346976')
     expect(toWhatsappDigits('011 15 1234-5678')).toBe('5491112345678')

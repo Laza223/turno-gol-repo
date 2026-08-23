@@ -15,6 +15,19 @@ import { logger } from '@/shared/lib/logger'
 const ALERT_AFTER_HOURS = 24
 const ALERT_TEMPLATE = 'admin_refund_failed' as const
 
+/**
+ * A los 7 días se le recuerda al complejo cualquier devolución sin saldar,
+ * incluidas las que nunca pasaron por MercadoPago.
+ *
+ * 24h ya lo cubre `admin_refund_failed`, pero solo para MercadoPago. Una seña
+ * cobrada en efectivo no tiene ningún camino automático que la resuelva, así
+ * que sin este segundo pase no tendría alerta alguna. Una semana es cuando un
+ * jugador que espera plata empieza a hablar mal del complejo, y es corto para
+ * el ciclo semanal de un complejo.
+ */
+const REMINDER_AFTER_DAYS = 7
+const REMINDER_TEMPLATE = 'admin_refund_pending_reminder' as const
+
 type PendingRefundRow = {
   refundPaymentId: string
   tenantId: string
@@ -51,7 +64,11 @@ type PendingRefundRow = {
  * `template_name` + `content->>'refundPaymentId'` antes de encolar) — el
  * worker sigue reintentando en corridas futuras, pero no vuelve a avisar.
  */
-export async function retryPendingRefunds(): Promise<{ retried: number; alerted: number }> {
+export async function retryPendingRefunds(): Promise<{
+  retried: number
+  alerted: number
+  reminded: number
+}> {
   // Cross-tenant scan (mismo patrón que reconcile-pending-payments.worker.ts):
   // necesita el pool de servicio, un rol restringido no vería refunds de otros
   // tenants bajo RLS. El JOIN a `op` (pago original) reconstruye el link que
@@ -172,11 +189,94 @@ export async function retryPendingRefunds(): Promise<{ retried: number; alerted:
     }
   }
 
-  if (retried > 0 || alerted > 0) {
-    logger.info('retry-refunds run summary', { module: 'retry-refunds', retried, alerted })
+  const reminded = await remindStalePendingRefunds()
+
+  if (retried > 0 || alerted > 0 || reminded > 0) {
+    logger.info('retry-refunds run summary', {
+      module: 'retry-refunds',
+      retried,
+      alerted,
+      reminded,
+    })
   }
 
-  return { retried, alerted }
+  return { retried, alerted, reminded }
+}
+
+type StaleRefundRow = {
+  refundPaymentId: string
+  tenantId: string
+  bookingId: string | null
+  refundAmount: number
+  daysPending: number
+  playerName: string | null
+  courtName: string | null
+  date: string | null
+}
+
+/**
+ * Segundo pase: devoluciones sin saldar de CUALQUIER medio, pasados
+ * {@link REMINDER_AFTER_DAYS} días.
+ *
+ * Vive en este worker y no en uno nuevo porque reusa el mismo cron horario, el
+ * mismo dedupe contra `notifications` y el mismo dispatch. La query no filtra
+ * por `method` a propósito — es exactamente lo contrario del pase de arriba.
+ */
+async function remindStalePendingRefunds(): Promise<number> {
+  const sql = getWorkerSql()
+  const rows = await sql<StaleRefundRow[]>`
+    SELECT p.id         AS "refundPaymentId",
+           p.tenant_id  AS "tenantId",
+           p.booking_id AS "bookingId",
+           p.amount     AS "refundAmount",
+           FLOOR(EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 86400)::int AS "daysPending",
+           CASE WHEN pl.id IS NULL THEN b.guest_name
+                ELSE pl.first_name || ' ' || pl.last_name END AS "playerName",
+           c.name       AS "courtName",
+           b.date::text AS "date"
+    FROM payments p
+    LEFT JOIN bookings b ON b.id = p.booking_id
+    LEFT JOIN courts c ON c.id = b.court_id
+    LEFT JOIN players pl ON pl.id = p.player_id
+    WHERE p.type = 'refund'
+      AND p.status = 'pending'
+      AND p.created_at < NOW() - (${REMINDER_AFTER_DAYS} * INTERVAL '1 day')
+      -- Dedupe: un solo recordatorio por devolución, para siempre. El mismo
+      -- criterio que la alerta de 24h — insistir cada hora sería spam.
+      AND NOT EXISTS (
+        SELECT 1 FROM notifications n
+        WHERE n.template_name = ${REMINDER_TEMPLATE}
+          AND n.content ->> 'refundPaymentId' = p.id::text
+      )
+    ORDER BY p.created_at ASC
+    LIMIT 100
+  `
+
+  let reminded = 0
+  for (const row of rows) {
+    const ids = await withTenantContext(row.tenantId, (tx) =>
+      enqueueTenantOwnerNotification(
+        {
+          tenantId: row.tenantId,
+          templateName: REMINDER_TEMPLATE,
+          content: {
+            refundPaymentId: row.refundPaymentId,
+            bookingId: row.bookingId,
+            amountArs: formatArs(row.refundAmount),
+            daysPending: row.daysPending,
+            ...(row.playerName ? { playerName: row.playerName } : {}),
+            ...(row.courtName ? { courtName: row.courtName } : {}),
+            ...(row.date ? { date: row.date.slice(0, 10).split('-').reverse().join('/') } : {}),
+          },
+          triggerEvent: 'payment.refund.still_pending',
+        },
+        tx,
+      ),
+    )
+    await Promise.all(ids.map((id) => dispatchEmail(id)))
+    reminded += 1
+  }
+  return reminded
 }
 
 /**

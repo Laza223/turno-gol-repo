@@ -78,8 +78,15 @@ function baseRow(
   }
 }
 
-function mockSqlRows(rows: unknown[]) {
-  const sqlStub = vi.fn().mockResolvedValue(rows)
+/**
+ * El worker hace DOS queries por corrida contra el pool de servicio: la de
+ * reintentos contra MercadoPago y, después, la de recordatorios a los 7 días.
+ * El stub tiene que responder distinto a cada una — devolver las mismas filas a
+ * las dos haría que cada refund del primer pase también dispare un mail de
+ * recordatorio.
+ */
+function mockSqlRows(rows: unknown[], staleRows: unknown[] = []) {
+  const sqlStub = vi.fn().mockResolvedValueOnce(rows).mockResolvedValueOnce(staleRows)
   mockGetWorkerSql.mockReturnValue(sqlStub as unknown as ReturnType<typeof getWorkerSql>)
 }
 
@@ -99,11 +106,66 @@ beforeEach(() => {
   mockResolveGateway.mockReturnValue({ id: 'fake-gateway' })
 })
 
+/**
+ * Segundo pase: recordatorio a los 7 días para CUALQUIER medio.
+ *
+ * La alerta de 24h solo cubre MercadoPago. Una seña cobrada en efectivo no
+ * tiene ningún camino automático que la resuelva, así que sin este pase esas
+ * devoluciones no tendrían ninguna alerta — y son justamente las que dependen
+ * enteramente de que alguien se acuerde.
+ */
+describe('retryPendingRefunds — recordatorio a los 7 días', () => {
+  it('encola el recordatorio con los días que lleva pendiendo', async () => {
+    mockSqlRows(
+      [],
+      [
+        {
+          refundPaymentId: 'refund-viejo',
+          tenantId: 'tenant-1',
+          bookingId: 'booking-1',
+          refundAmount: 500000,
+          daysPending: 9,
+          playerName: 'Tomás García',
+          courtName: 'Cancha 5',
+          date: '2026-08-14',
+        },
+      ],
+    )
+    mockTenantTx([[]])
+    mockEnqueueOwner.mockResolvedValue(['notif-1'])
+
+    const result = await retryPendingRefunds()
+
+    expect(result.reminded).toBe(1)
+    expect(mockEnqueueOwner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateName: 'admin_refund_pending_reminder',
+        triggerEvent: 'payment.refund.still_pending',
+        content: expect.objectContaining({
+          refundPaymentId: 'refund-viejo',
+          daysPending: 9,
+          playerName: 'Tomás García',
+          date: '14/08/2026',
+        }),
+      }),
+      expect.anything(),
+    )
+    expect(mockDispatchEmail).toHaveBeenCalledWith('notif-1')
+  })
+
+  it('sin devoluciones viejas no molesta a nadie', async () => {
+    mockSqlRows([], [])
+    const result = await retryPendingRefunds()
+    expect(result.reminded).toBe(0)
+    expect(mockEnqueueOwner).not.toHaveBeenCalled()
+  })
+})
+
 describe('retryPendingRefunds — sin filas', () => {
   it('no hace nada si no hay refunds pending >1h', async () => {
     mockSqlRows([])
     const result = await retryPendingRefunds()
-    expect(result).toEqual({ retried: 0, alerted: 0 })
+    expect(result).toEqual({ retried: 0, alerted: 0, reminded: 0 })
     expect(mockResolveGateway).not.toHaveBeenCalled()
     expect(mockSettleRefund).not.toHaveBeenCalled()
   })
@@ -138,7 +200,7 @@ describe('retryPendingRefunds — reintento (c)', () => {
     const result = await retryPendingRefunds()
 
     expect(mockSettleRefund).not.toHaveBeenCalled()
-    expect(result).toEqual({ retried: 0, alerted: 0 })
+    expect(result).toEqual({ retried: 0, alerted: 0, reminded: 0 })
   })
 })
 
@@ -149,7 +211,7 @@ describe('retryPendingRefunds — settle exitoso (d)', () => {
 
     const result = await retryPendingRefunds()
 
-    expect(result).toEqual({ retried: 1, alerted: 0 })
+    expect(result).toEqual({ retried: 1, alerted: 0, reminded: 0 })
     expect(mockWithTenantContext).not.toHaveBeenCalled()
     expect(mockEnqueueOwner).not.toHaveBeenCalled()
   })
@@ -162,7 +224,7 @@ describe('retryPendingRefunds — sigue pending <24h', () => {
 
     const result = await retryPendingRefunds()
 
-    expect(result).toEqual({ retried: 0, alerted: 0 })
+    expect(result).toEqual({ retried: 0, alerted: 0, reminded: 0 })
     expect(mockWithTenantContext).not.toHaveBeenCalled()
     expect(mockEnqueueOwner).not.toHaveBeenCalled()
   })
@@ -177,7 +239,7 @@ describe('retryPendingRefunds — alerta única tras 24h (e)', () => {
 
     const result = await retryPendingRefunds()
 
-    expect(result).toEqual({ retried: 0, alerted: 1 })
+    expect(result).toEqual({ retried: 0, alerted: 1, reminded: 0 })
     expect(mockEnqueueOwner).toHaveBeenCalledTimes(1)
     const [params] = mockEnqueueOwner.mock.calls[0]!
     expect(params).toMatchObject({
@@ -201,7 +263,7 @@ describe('retryPendingRefunds — alerta única tras 24h (e)', () => {
     const result = await retryPendingRefunds()
 
     expect(mockSettleRefund).not.toHaveBeenCalled()
-    expect(result).toEqual({ retried: 0, alerted: 1 })
+    expect(result).toEqual({ retried: 0, alerted: 1, reminded: 0 })
     expect(mockEnqueueOwner).toHaveBeenCalledTimes(1)
     const [params] = mockEnqueueOwner.mock.calls[0]!
     expect(params).toMatchObject({
@@ -220,7 +282,7 @@ describe('retryPendingRefunds — alerta única tras 24h (e)', () => {
 
     const result = await retryPendingRefunds()
 
-    expect(result).toEqual({ retried: 0, alerted: 0 })
+    expect(result).toEqual({ retried: 0, alerted: 0, reminded: 0 })
     expect(mockEnqueueOwner).not.toHaveBeenCalled()
     expect(mockDispatchEmail).not.toHaveBeenCalled()
   })
@@ -235,7 +297,7 @@ describe('retryPendingRefunds — settle lanza (MP caído)', () => {
 
     const result = await retryPendingRefunds()
 
-    expect(result).toEqual({ retried: 0, alerted: 1 })
+    expect(result).toEqual({ retried: 0, alerted: 1, reminded: 0 })
     expect(mockDispatchEmail).toHaveBeenCalledWith('notif-2')
   })
 })

@@ -13,6 +13,7 @@ import {
   renderPlayerLatePaymentRefunded,
   renderAdminTransferExpired,
   renderAdminRefundFailed,
+  renderAdminRefundPendingReminder,
   renderOnboardingAbandoned,
   renderTemplate,
   isTemplateName,
@@ -388,6 +389,52 @@ describe('renderAdminRefundFailed (ENS-19)', () => {
     })
     expect(text).toContain('500,00')
     expect(text).not.toContain('Cancha')
+  })
+})
+
+describe('renderAdminRefundPendingReminder', () => {
+  const BASE = {
+    refundPaymentId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    bookingId: '11111111-2222-4333-8444-555555555555',
+    amountArs: '5.000,00',
+    daysPending: 9,
+    playerName: 'Tomás García',
+    courtName: 'Cancha 5',
+    date: '14/08/2026',
+  }
+
+  it('dice cuántos días lleva y cuánto se debe', () => {
+    const { subject, html, text } = renderAdminRefundPendingReminder(BASE)
+    expect(subject).toContain('9 días')
+    expect(subject).toContain('5.000,00')
+    expect(html).toContain('Tomás García')
+    expect(text!).toContain('9 días')
+  })
+
+  /**
+   * Distinto de `admin_refund_failed`, que manda al panel de MercadoPago: este
+   * cubre también las señas cobradas en efectivo, para las que ese panel no
+   * sirve de nada. Tiene que mandar a la pantalla propia.
+   */
+  it('manda a Devoluciones y no asume que la plata salió por MercadoPago', () => {
+    const { html } = renderAdminRefundPendingReminder(BASE)
+    expect(html).toContain('Devoluciones')
+    // Ofrece los tres medios. El hermano `admin_refund_failed` da UNA sola
+    // instrucción ("revisá el reembolso en el panel de MercadoPago"), que para
+    // una seña cobrada en efectivo no sirve de nada.
+    expect(html).toContain('transferencia o efectivo')
+    expect(html).not.toContain('Se requiere acción manual')
+  })
+
+  it('sin datos del turno no rompe ni inventa filas vacías', () => {
+    const { html } = renderAdminRefundPendingReminder({
+      refundPaymentId: BASE.refundPaymentId,
+      bookingId: null,
+      amountArs: '5.000,00',
+      daysPending: 8,
+    })
+    expect(html).not.toContain('Cancha')
+    expect(html).not.toContain('undefined')
   })
 })
 

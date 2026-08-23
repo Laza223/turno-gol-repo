@@ -221,3 +221,47 @@ describe('describeMpError', () => {
     expect(out).not.toContain('cuatro')
   })
 })
+
+describe('isMpUnauthorized — el 403 de permisos NO es un token vencido', () => {
+  // 🔴 Producción, 2026-08-23. MercadoPago rechaza un reembolso sin permiso con
+  // `PA_UNAUTHORIZED_RESULT_FROM_POLICIES` / "At least one policy returned
+  // UNAUTHORIZED." — y ese texto matcheaba el fallback /unauthorized/i. El
+  // gateway lo tomaba por token vencido, salía a renovar, la renovación fallaba
+  // y al log llegaba `MP token refresh failed (HTTP 400)`. El motivo real de que
+  // no se pudiera devolver una seña quedó tapado en los DOS complejos.
+  const rechazoDePolitica = {
+    status: 403,
+    message: 'At least one policy returned UNAUTHORIZED.',
+    cause: { status: 403, code: 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES' },
+  }
+
+  it('no toma por token vencido el rechazo del PolicyAgent', () => {
+    expect(isMpUnauthorized(rechazoDePolitica)).toBe(false)
+  })
+
+  it('tampoco cuando MercadoPago no manda status y solo queda el texto', () => {
+    expect(isMpUnauthorized(new Error('At least one policy returned UNAUTHORIZED.'))).toBe(false)
+    expect(isMpUnauthorized(new Error('PA_UNAUTHORIZED_RESULT_FROM_POLICIES'))).toBe(false)
+  })
+
+  it('si MercadoPago dijo un status distinto de 401, se le cree y no se renueva', () => {
+    expect(isMpUnauthorized({ status: 403, message: 'unauthorized' })).toBe(false)
+    expect(isMpUnauthorized({ status: 400, message: 'unauthorized' })).toBe(false)
+  })
+
+  it('el 401 real sigue disparando la renovación', () => {
+    expect(
+      isMpUnauthorized({ status: 401, message: 'At least one policy returned UNAUTHORIZED.' }),
+    ).toBe(true)
+    expect(isMpUnauthorized({ cause: { status: 401 } })).toBe(true)
+    expect(isMpUnauthorized(new Error('unauthorized'))).toBe(true)
+  })
+
+  it('no reintenta la operación cuando el error es el rechazo de permisos', async () => {
+    const op = vi.fn().mockRejectedValue(rechazoDePolitica)
+    const refresh = vi.fn()
+    await expect(withTokenRefresh(op, refresh)).rejects.toBe(rechazoDePolitica)
+    expect(refresh).not.toHaveBeenCalled()
+    expect(op).toHaveBeenCalledTimes(1)
+  })
+})

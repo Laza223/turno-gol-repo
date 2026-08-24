@@ -179,19 +179,23 @@ Todo este grupo va sobre `complejo-elite-padel`, que ya tiene el OAuth de Mercad
 
 ---
 
-#### P-06 · Cancelación con reembolso real
+#### P-06 · Cancelación con devolución de la seña
 
 **Qué prueba.** El camino de vuelta de la plata. Cancelar dentro de la política una reserva con seña pagada.
 
+**⚠️ Este ensayo cambió de forma el 2026-08-24 ([PR #203](https://github.com/Laza223/turno-gol-repo/pull/203)).** El reembolso automático por API de MercadoPago **se descartó como producto**: MP deriva los permisos del producto de la aplicación y ninguna concede `payments:refunds`, así que ningún reembolso automático se completó jamás. Vale la decisión que ya estaba en `CLAUDE.md`: **la devolución la hace el complejo y TurnoGol la facilita** — registra la deuda, la muestra en `/caja/devoluciones` con su botón "Ya devolví", se la recuerda al complejo a los 7 días, y al jugador le da monto, código y WhatsApp para reclamarla. Lo que sigue abajo es el ensayo **reescrito** para lo que el sistema hace hoy.
+
 **Qué tiene que pasar.**
-- `booking_status`: `canceled_refunded`; `deposit_status`: `refunded`
-- **Reembolso visible en la cuenta de MercadoPago del complejo** (no solo la fila local)
-- Contraasiento en `cash_flows`, y la caja del día cuadra
-- Email al jugador
+- `booking_status`: `canceled_refunded`; `deposit_status`: `refunded` (que ahora significa *"corresponde devolución"*, no *"ya se devolvió"*)
+- Una fila `payments` con `type='refund'` y `status='pending'`: **esa** es la que dice si la plata volvió
+- La devolución aparece en `/caja/devoluciones` y en "Necesita tu atención"
+- El jugador ve el recordatorio en su reserva, con el contacto del complejo
+- El complejo marca "Ya devolví" con el medio real → `status='approved'`, y si fue efectivo o transferencia sale el egreso de caja
+- **Camino alternativo que también tiene que cerrar solo**: si el complejo devuelve desde el panel de MercadoPago, el webhook salda la fila sin que nadie tilde nada
 
 **Y el complemento**: cancelar fuera de política → `canceled_no_refund` + `captured`, sin reembolso, con la seña quedando en la caja del complejo.
 
-**🔴 BLOQUEADO 2026-08-24 — hoy los reembolsos de `complejo-titi` NO salen.** Dos devoluciones de $100 están colgadas desde el 22/8: MercadoPago responde `403 At least one policy returned UNAUTHORIZED` cada hora, mientras la reserva ya figura `canceled_refunded` + `refunded`. Es el token OAuth viejo — el complejo nunca reconectó MercadoPago después de la [migración a dos aplicaciones](../planning/2026-08-22-dos-apps-mercadopago.md). **Paso previo obligatorio de este ensayo: reconectar MercadoPago en el complejo y ver esos dos refunds pasar a `approved`.** Detalle: [P08-crons-2026-08-24.md](P08-crons-2026-08-24.md).
+**Estado 2026-08-24.** `complejo-titi` tiene dos devoluciones de $100 esperando desde el 22/8, visibles en su lista. Que sigan ahí no es una falla del sistema: es la tarea que el complejo todavía no hizo. Lo que **sí** hay que limpiar antes de cerrar este ensayo es que el código sigue intentando el camino automático descartado — 89 errores por día contra MercadoPago, todos 403 garantizados ([detalle](P08-crons-2026-08-24.md)).
 
 ---
 
@@ -337,7 +341,7 @@ Se puede vender cuando, con evidencia pegada:
 - [ ] Los 6 🔴 del QA cerrados y verificados en producción
 - [ ] **P-03**: una seña real entró, se acreditó y aparece en la caja del complejo
 - [ ] **P-05**: una reserva pagada sobre el filo del hold terminó confirmada, no expirada
-- [ ] **P-06**: un reembolso real salió y se ve en MercadoPago
+- [ ] **P-06**: una devolución real quedó registrada, el complejo la saldó y la caja lo refleja (ya **no** es "sale por la API de MP": ver el ensayo)
 - [x] **P-07**: un día operativo cerró con `diff_amount = 0` — 2026-08-24 en `complejo-titi`, esperado $9.100 = contado $9.100 ([registro](P07-dia-operativo-guion.md))
 - [ ] **P-01**: tu suscripción está `active` y cobrada de verdad
 - [x] **P-08**: los 15 workers con último job dentro de su período — 2026-08-24: 15/15, 48 h corridas, **0 fallados** ([registro](P08-crons-2026-08-24.md))

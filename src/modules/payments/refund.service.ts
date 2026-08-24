@@ -117,6 +117,13 @@ export type PendingRefundRow = {
   debtorName: string
   /** Para el link de WhatsApp al jugador. `null` en turnos de invitado sin teléfono. */
   contactPhone: string | null
+  /**
+   * Último recurso de contacto. Sin esto, la fila de un jugador sin teléfono
+   * cargado no ofrecía NINGÚN canal: el complejo veía a quién le debe y no
+   * tenía cómo avisarle desde ahí. `players.email` es NOT NULL, así que
+   * siempre hay algo mientras la reserva tenga dueño con cuenta.
+   */
+  contactEmail: string | null
   courtName: string | null
   date: string | null
   timeStart: string | null
@@ -139,6 +146,7 @@ export async function listPendingRefunds(tenantId: string, tx: DbTx): Promise<Pe
            p.created_at    AS "since",
            COALESCE(pl.first_name || ' ' || pl.last_name, b.guest_name, 'Sin nombre') AS "debtorName",
            COALESCE(pl.phone, b.guest_phone) AS "contactPhone",
+           pl.email        AS "contactEmail",
            c.name          AS "courtName",
            b.date::text    AS "date",
            b.time_start::text AS "timeStart"

@@ -20,6 +20,8 @@ type Story = StoryObj<typeof meta>
 
 const BASE = {
   amountCents: 500000,
+  settledMethod: null,
+  settledAt: null,
   bookingCode: 'A1B2C3D4',
   dateLabel: '25/08',
   timeLabel: '21:00',
@@ -48,7 +50,15 @@ export const Pendiente: Story = {
 
 /** Si MercadoPago llegara a procesarla, no se le pide nada al jugador. */
 export const Saldada: Story = {
-  args: { refund: { ...BASE, state: 'settled', tenantWhatsapp: '+54 9 11 5566-7788' } },
+  args: {
+    refund: {
+      ...BASE,
+      state: 'settled',
+      settledMethod: 'mercadopago',
+      settledAt: '2026-08-24T14:30:00Z',
+      tenantWhatsapp: '+54 9 11 5566-7788',
+    },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(/mercadopago ya procesó/i)).toBeInTheDocument()
@@ -59,6 +69,55 @@ export const Saldada: Story = {
       'href',
       expect.stringContaining('5491155667788'),
     )
+  },
+}
+
+/**
+ * Saldada FUERA de MercadoPago — el caso más común, porque el reembolso
+ * automático nunca funciona y el complejo termina devolviendo por transferencia
+ * o en mano.
+ *
+ * Existe por un bug medido en el navegador: la pantalla decía "MercadoPago ya
+ * procesó la devolución" para cualquier devolución saldada, así que a alguien
+ * que ya había cobrado por transferencia se lo mandaba a esperar en la app
+ * equivocada. Ninguna story lo tomaba porque las dos que había nacieron
+ * asumiendo que 'settled' solo podía venir de MercadoPago.
+ */
+export const SaldadaPorTransferencia: Story = {
+  args: {
+    refund: {
+      ...BASE,
+      state: 'settled',
+      settledMethod: 'transfer',
+      settledAt: '2026-08-24T14:30:00Z',
+      tenantWhatsapp: '+54 9 11 5566-7788',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/por transferencia/i)).toBeInTheDocument()
+    await expect(canvas.queryByText(/mercadopago/i)).not.toBeInTheDocument()
+    // Sigue habiendo canal: "me dice que devolvió y no me llegó" es
+    // exactamente el reclamo que hay que poder hacer.
+    await expect(canvas.getByRole('link', { name: /escribir por whatsapp/i })).toBeInTheDocument()
+  },
+}
+
+/** Lo mismo en efectivo: el medio se nombra, no se asume. */
+export const SaldadaEnEfectivo: Story = {
+  args: {
+    refund: {
+      ...BASE,
+      state: 'settled',
+      settledMethod: 'cash',
+      settledAt: '2026-08-24T14:30:00Z',
+      tenantWhatsapp: null,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/en efectivo/i)).toBeInTheDocument()
+    await expect(canvas.queryByText(/mercadopago/i)).not.toBeInTheDocument()
   },
 }
 

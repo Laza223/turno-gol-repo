@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatArs } from '@/lib/format'
-import { RefundContactPanel } from './RefundContactPanel'
-import type { PlayerBookingActionResult, RefundContactInfo } from './actions'
+import { useRefundDialog } from './RefundDialogProvider'
+import type { PlayerBookingActionResult } from './actions'
 
 /** Firma de la Server Action que ejecuta la cancelación. */
 export type CancelMyBookingAction = (
@@ -58,20 +56,20 @@ export function CancelBookingButton({
 }: Props) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
-  // Segundo diálogo, en vez de una pantalla de éxito adentro del primero:
-  // `ConfirmDialog` se cierra solo al recibir `{ success: true }`, así que no
-  // hay dónde mostrar nada después de confirmar sin tocar ese primitivo, que lo
-  // comparte medio repo.
-  const [refund, setRefund] = useState<RefundContactInfo | null>(null)
-  const router = useRouter()
+  // El diálogo de la devolución NO se renderiza acá: la Server Action revalida
+  // /mis-reservas y esta tarjeta desaparece de "Próximos", con lo que React la
+  // desmonta y se lleva puesto cualquier diálogo que fuera hijo suyo. Lo
+  // muestra `RefundDialogProvider`, que está por encima de la lista.
+  const showRefundDialog = useRefundDialog()
 
   async function handleConfirm() {
     const result = await action(bookingId, reason.trim() || undefined)
     if (!result.success) {
       return { success: false as const, error: result.error }
     }
-    if (result.refund) setRefund(result.refund)
-    router.refresh()
+    // Se avisa hacia arriba y se termina: no hace falta `router.refresh()`
+    // porque la propia Server Action ya hizo `revalidatePath('/mis-reservas')`.
+    if (result.refund) showRefundDialog(result.refund)
     return { success: true as const }
   }
 
@@ -118,15 +116,6 @@ export function CancelBookingButton({
           />
         </div>
       </ConfirmDialog>
-
-      <Dialog open={refund !== null} onOpenChange={(v) => !v && setRefund(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reserva cancelada</DialogTitle>
-          </DialogHeader>
-          {refund && <RefundContactPanel refund={refund} />}
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

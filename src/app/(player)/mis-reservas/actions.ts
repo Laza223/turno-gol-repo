@@ -84,11 +84,22 @@ export type RefundContactInfo = {
   /** Centavos. Es la seña entera: no existen devoluciones parciales. */
   amountCents: number
   /**
-   * `settled` = MercadoPago ya la procesó (hoy nunca pasa: el reembolso
-   * automático falla siempre con 403 de permisos). `pending` = la devolución la
-   * tiene que hacer el complejo.
+   * `settled` = la plata ya volvió. `pending` = la devolución la tiene que
+   * hacer el complejo.
    */
   state: 'settled' | 'pending'
+  /**
+   * Por dónde volvió la plata. **Solo tiene sentido con `state: 'settled'`.**
+   *
+   * Existe porque sin esto la pantalla decía "MercadoPago ya procesó la
+   * devolución" para CUALQUIER devolución saldada — incluida la que el complejo
+   * marcó como entregada en efectivo o por transferencia. El jugador se
+   * quedaba esperando en MercadoPago una plata que ya tenía en la mano, que es
+   * la misma clase de mentira que este circuito vino a sacar del producto.
+   */
+  settledMethod: 'mercadopago' | 'cash' | 'transfer' | 'other' | null
+  /** Cuándo se saldó, ISO. `null` en las devoluciones viejas sin `processed_at`. */
+  settledAt: string | null
   bookingCode: string
   /** "DD/MM" y "HH:MM" del turno, para que el mensaje identifique cuál era. */
   dateLabel: string
@@ -271,6 +282,12 @@ export async function cancelMyBookingAction(
       ? {
           amountCents: pre.deposit_amount,
           state: refundSettled ? 'settled' : 'pending',
+          // Acá `settled` solo puede venir de `settleRefund`, o sea del refund
+          // automático de MercadoPago: es el único que resuelve dentro de esta
+          // misma request. Cualquier otro medio lo marca el complejo después,
+          // y esa pantalla lee el método de la fila de `payments`.
+          settledMethod: refundSettled ? 'mercadopago' : null,
+          settledAt: refundSettled ? new Date().toISOString() : null,
           bookingCode: bookingCode(parsed.data.bookingId),
           dateLabel: booking.date
             .toISOString()

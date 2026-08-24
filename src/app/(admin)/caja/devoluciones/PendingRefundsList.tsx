@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, ExternalLink, MessageCircle, Undo2 } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Mail, MessageCircle, Undo2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatArs } from '@/lib/format'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
@@ -19,6 +19,11 @@ const ORIGIN_TAG: Record<string, string> = {
   other: 'Otro medio',
 }
 
+/** "YYYY-MM-DD" → "29/08". Sin `new Date`: evita el corrimiento por zona. */
+function shortDate(date: string): string {
+  return date.slice(0, 10).split('-').reverse().slice(0, 2).join('/')
+}
+
 /**
  * Aviso al jugador de que la devolución está en camino. Es la mitad del
  * circuito que le falta al complejo: el jugador ya tiene un botón para
@@ -27,13 +32,27 @@ const ORIGIN_TAG: Record<string, string> = {
 function whatsappUrl(row: PendingRefundRow): string | null {
   const detalle =
     row.date && row.timeStart
-      ? ` del ${row.date.slice(0, 10).split('-').reverse().slice(0, 2).join('/')} a las ${row.timeStart.slice(0, 5)}`
+      ? ` del ${shortDate(row.date)} a las ${row.timeStart.slice(0, 5)}`
       : ''
   const codigo = row.bookingId ? ` (${bookingCode(row.bookingId)})` : ''
   const msg =
     `Hola${row.debtorName !== 'Sin nombre' ? ` ${row.debtorName}` : ''}, te escribimos por la ` +
     `devolución de la seña de ${formatArs(row.amountCents)} del turno${detalle}${codigo}.`
   return buildWhatsappUrl(row.contactPhone, msg)
+}
+
+/** El mismo aviso, por el canal que queda cuando no hay número marcable. */
+function mailtoUrl(row: PendingRefundRow): string {
+  const detalle =
+    row.date && row.timeStart
+      ? ` del ${shortDate(row.date)} a las ${row.timeStart.slice(0, 5)}`
+      : ''
+  const codigo = row.bookingId ? ` (${bookingCode(row.bookingId)})` : ''
+  const asunto = `Devolución de tu seña${codigo}`
+  const cuerpo =
+    `Hola${row.debtorName !== 'Sin nombre' ? ` ${row.debtorName}` : ''}, te escribimos por la ` +
+    `devolución de la seña de ${formatArs(row.amountCents)} del turno${detalle}${codigo}.`
+  return `mailto:${row.contactEmail}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`
 }
 
 export function PendingRefundsList({
@@ -98,7 +117,7 @@ export function PendingRefundsList({
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
                   {row.courtName && row.date
-                    ? `${row.courtName} · ${row.date} ${row.timeStart?.slice(0, 5) ?? ''} · `
+                    ? `${row.courtName} · ${shortDate(row.date)} ${row.timeStart?.slice(0, 5) ?? ''} · `
                     : ''}
                   {relativeTimeEs(new Date(row.since).toISOString(), nowMs)}
                 </p>
@@ -114,6 +133,20 @@ export function PendingRefundsList({
                     >
                       <MessageCircle className="h-3.5 w-3.5" aria-hidden />
                       Avisarle por WhatsApp
+                    </a>
+                  )}
+                  {/* Sin teléfono queda el email, que es NOT NULL para
+                      cualquier jugador con cuenta. Antes de esto, la fila de
+                      alguien sin teléfono cargado no ofrecía ningún canal: el
+                      complejo sabía a quién le debe y no tenía desde dónde
+                      avisarle. */}
+                  {!whatsappUrl(row) && row.contactEmail && (
+                    <a
+                      href={mailtoUrl(row)}
+                      className="inline-flex min-h-11 items-center gap-1 rounded-sm font-medium text-emerald-800 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:text-emerald-400 md:min-h-0"
+                    >
+                      <Mail className="h-3.5 w-3.5" aria-hidden />
+                      Avisarle por email
                     </a>
                   )}
                   {row.bookingId && (

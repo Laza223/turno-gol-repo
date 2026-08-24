@@ -108,10 +108,14 @@ const asPlayer = (): AuthUser =>
 
 async function render(params: { tab?: string; pagina?: string }): Promise<ViewProps> {
   vi.mocked(extractAuthUser).mockResolvedValue(asPlayer())
+  // La page devuelve `<RefundDialogProvider><MisReservasView …/></RefundDialogProvider>`:
+  // el diálogo de la devolución tiene que vivir POR ENCIMA de la lista, porque
+  // la cancelación revalida esta ruta y la tarjeta cancelada —con todo lo que
+  // cuelgue de ella— se desmonta. De ahí el `.children` para llegar al view.
   const el = (await MisReservasPage({ searchParams: Promise.resolve(params) })) as {
-    props: ViewProps
+    props: { children: { props: ViewProps } }
   }
-  return el.props
+  return el.props.children.props
 }
 
 beforeAll(async () => {

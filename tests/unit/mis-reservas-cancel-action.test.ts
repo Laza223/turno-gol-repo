@@ -139,6 +139,11 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
       // Sin `pendingRefund` no hubo llamada a MercadoPago: la plata la debe el
       // complejo, no está devuelta.
       state: 'pending',
+      // Pendiente = todavía no viajó por ningún lado. El medio y la fecha se
+      // llenan recién cuando alguien la salda; con `state: 'pending'` la
+      // pantalla ni los mira.
+      settledMethod: null,
+      settledAt: null,
       bookingCode: VALID_UUID.slice(0, 8).toUpperCase(),
       dateLabel: '20/08',
       timeLabel: '10:00',

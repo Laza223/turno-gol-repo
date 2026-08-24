@@ -102,6 +102,12 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${E2E.tenantId}`
+  // analytics_events (migr. 072) referencia el tenant y su FK NO es CASCADE, así
+  // que borrarlo sin limpiar acá revienta con 23503 — pero solo en una máquina
+  // donde alguien ABRIÓ la app: si nadie navegó, no hay filas y el seed pasa
+  // igual. Misma clase que la trampa del wipe de retención: cada tabla nueva
+  // con tenant_id se paga acá.
+  await sql`DELETE FROM analytics_events WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenants WHERE id = ${E2E.tenantId}`
   await sql`DELETE FROM audit_logs WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.depositTenantId}`
@@ -127,6 +133,8 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${E2E.depositTenantId}`
+  // Ver la nota del bloque equivalente del tenant principal.
+  await sql`DELETE FROM analytics_events WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenants WHERE id = ${E2E.depositTenantId}`
   await sql`DELETE FROM players WHERE id = ${E2E.playerId} OR email = ${E2E.playerEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`

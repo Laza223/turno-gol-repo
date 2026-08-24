@@ -285,3 +285,67 @@ describe('el retry contra MercadoPago no toca las devoluciones de otro medio', (
     expect(n).toBe(0)
   }, 30_000)
 })
+
+/**
+ * La lista de `/caja/devoluciones` y el contador del panel tienen que decir lo
+ * mismo. Divergían: la lista mostraba TODA devolución pendiente y el contador
+ * excluía las de MercadoPago de menos de una hora, así que la pantalla ofrecía
+ * "Ya devolví" sobre una fila que la alerta no contaba.
+ *
+ * No es cosmético. Devolver a mano algo que el reintento horario todavía va a
+ * intentar es la forma de que la plata salga dos veces, y la clave de
+ * idempotencia no protege: el cliente de `paymentRefund` del SDK descarta
+ * `requestOptions` y manda un UUID nuevo en cada intento.
+ */
+describe('lista y contador de devoluciones coinciden', () => {
+  /** Una devolución por MercadoPago recién creada, todavía del camino automático. */
+  async function insertMpRefund(tenantId: string, bookingId: string) {
+    const sql = getSql()
+    // El medio que importa es el de la fila de `payments`: es lo que decide si
+    // el reintento horario la va a tomar, y por lo tanto de quién es todavía.
+    await sql`
+      INSERT INTO payments (tenant_id, booking_id, amount, currency, type, method, status)
+      VALUES (${tenantId}, ${bookingId}, ${DEPOSIT}, 'ARS', 'refund', 'mercadopago', 'pending')
+    `
+  }
+
+  it('una devolución de MercadoPago recién creada no le corresponde al complejo', async () => {
+    const { tenantId, bookingId } = await setupConfirmedBookingWithCashDeposit()
+    await insertMpRefund(tenantId, bookingId)
+
+    const listed = await withTenantContext(tenantId, (tx) => listPendingRefunds(tenantId, tx))
+    const counted = await withTenantContext(tenantId, (tx) => countPendingRefunds(tenantId, tx))
+
+    expect(listed).toHaveLength(0)
+    expect(counted.count).toBe(0)
+  }, 30_000)
+
+  it('pasada la hora aparece en las dos superficies', async () => {
+    const { tenantId, bookingId } = await setupConfirmedBookingWithCashDeposit()
+    await insertMpRefund(tenantId, bookingId)
+
+    await getSql()`
+      UPDATE payments SET created_at = NOW() - INTERVAL '90 minutes'
+      WHERE booking_id = ${bookingId} AND type = 'refund'
+    `
+
+    const listed = await withTenantContext(tenantId, (tx) => listPendingRefunds(tenantId, tx))
+    const counted = await withTenantContext(tenantId, (tx) => countPendingRefunds(tenantId, tx))
+
+    expect(listed).toHaveLength(1)
+    expect(counted).toMatchObject({ count: 1, totalCents: DEPOSIT })
+  }, 30_000)
+
+  it('una devolución que nunca pasó por MercadoPago aparece enseguida en las dos', async () => {
+    const { tenantId, bookingId, playerId } = await setupConfirmedBookingWithCashDeposit()
+    await withTenantContext(tenantId, (tx) =>
+      cancelByPlayer(bookingId, playerId, undefined, null, tx),
+    )
+
+    const listed = await withTenantContext(tenantId, (tx) => listPendingRefunds(tenantId, tx))
+    const counted = await withTenantContext(tenantId, (tx) => countPendingRefunds(tenantId, tx))
+
+    expect(listed).toHaveLength(1)
+    expect(counted).toMatchObject({ count: 1, totalCents: DEPOSIT })
+  }, 30_000)
+})

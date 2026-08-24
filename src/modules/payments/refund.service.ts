@@ -137,6 +137,26 @@ export type PendingRefundRow = {
  * devolución es lo contrario —lo que el complejo debe— y sumarla ahí rompería
  * el invariante que `street-money-total.test.ts` compara por dos caminos.
  */
+/**
+ * Qué devolución le toca resolver al complejo, en un solo lugar.
+ *
+ * Una devolución que pasó por MercadoPago recién le corresponde al complejo
+ * pasada una hora, que es lo que espera `retry-refunds.worker` antes de
+ * reintentar: pedirle acción por algo que el camino automático todavía podría
+ * resolver solo abre la ventana para que la plata salga dos veces —a mano y
+ * después por el reintento—, y la clave de idempotencia del SDK de MercadoPago
+ * no protege de eso (el cliente de `paymentRefund` descarta `requestOptions` y
+ * genera un UUID nuevo por intento). Las que nunca pasaron por MercadoPago
+ * corresponden enseguida, porque para esas no hay ningún camino automático.
+ *
+ * Vive acá y no repetido en cada query porque la lista y el contador del panel
+ * TIENEN que decir lo mismo: divergían, y la pantalla mostraba una fila que la
+ * alerta no contaba.
+ */
+const TENANT_OWNED_REFUND = sql`
+  (p.method <> 'mercadopago' OR p.created_at < NOW() - INTERVAL '1 hour')
+`
+
 export async function listPendingRefunds(tenantId: string, tx: DbTx): Promise<PendingRefundRow[]> {
   const rows = await tx.execute(sql`
     SELECT p.id            AS "refundPaymentId",
@@ -157,6 +177,7 @@ export async function listPendingRefunds(tenantId: string, tx: DbTx): Promise<Pe
     WHERE p.tenant_id = ${tenantId}
       AND p.type = 'refund'
       AND p.status = 'pending'
+      AND ${TENANT_OWNED_REFUND}
     ORDER BY p.created_at ASC
   `)
   return rows as unknown as PendingRefundRow[]
@@ -165,11 +186,8 @@ export async function listPendingRefunds(tenantId: string, tx: DbTx): Promise<Pe
 /**
  * Resumen para la alerta del panel: cuántas devoluciones se deben y por cuánto.
  *
- * Las de MercadoPago recién cuentan pasada una hora, que es el mismo intervalo
- * que espera `retry-refunds.worker` antes de reintentar: no tiene sentido
- * pedirle acción al complejo por algo que el camino automático todavía podría
- * resolver solo. Las que nunca pasaron por MercadoPago cuentan enseguida,
- * porque para esas no hay ningún camino automático.
+ * Cuenta exactamente las mismas filas que lista `listPendingRefunds` — ver
+ * {@link TENANT_OWNED_REFUND}.
  */
 export async function countPendingRefunds(
   tenantId: string,
@@ -177,13 +195,13 @@ export async function countPendingRefunds(
 ): Promise<{ count: number; totalCents: number; oldestAt: Date | null }> {
   const rows = await tx.execute(sql`
     SELECT COUNT(*)::int          AS "count",
-           COALESCE(SUM(amount), 0)::int AS "totalCents",
-           MIN(created_at)        AS "oldestAt"
-    FROM payments
-    WHERE tenant_id = ${tenantId}
-      AND type = 'refund'
-      AND status = 'pending'
-      AND (method <> 'mercadopago' OR created_at < NOW() - INTERVAL '1 hour')
+           COALESCE(SUM(p.amount), 0)::int AS "totalCents",
+           MIN(p.created_at)      AS "oldestAt"
+    FROM payments p
+    WHERE p.tenant_id = ${tenantId}
+      AND p.type = 'refund'
+      AND p.status = 'pending'
+      AND ${TENANT_OWNED_REFUND}
   `)
   const row = (
     rows as unknown as Array<{ count: number; totalCents: number; oldestAt: Date | null }>

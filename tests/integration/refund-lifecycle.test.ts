@@ -7,6 +7,7 @@ import {
   createTestTenant,
   ensureRoles,
   linkPlayerToTenant,
+  linkStaffToTenant,
 } from '../helpers/tenant'
 
 /**
@@ -62,6 +63,10 @@ async function setupConfirmedBookingWithCashDeposit(paymentMethod: 'cash' | 'tra
   const player = await createTestPlayer(sql)
   const staff = await createTestStaffUser(sql)
   await linkPlayerToTenant(sql, tenant.id, player.id)
+  // Sin esto el complejo no tiene dueño, y cualquier aviso al dueño se encola
+  // en cero destinatarios sin fallar: un test que espere el mail se cae por un
+  // motivo que no tiene nada que ver con lo que quiere probar.
+  await linkStaffToTenant(sql, tenant.id, staff.id)
 
   const [{ id: courtId }] = await sql<{ id: string }[]>`
     INSERT INTO courts (tenant_id, name, capacity, pricing, status)

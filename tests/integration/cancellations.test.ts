@@ -59,7 +59,6 @@ import {
   BookingNotInNoShowError,
   BookingNotOwnedByPlayerError,
   NoShowRevertWindowExpiredError,
-  RefundUnavailableError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
 
@@ -1475,9 +1474,17 @@ describe('cancelByAdmin — inactive tenant guard (H8, paridad con cancelByPlaye
   })
 })
 
-// ─── Hallazgo 2 (FIX): in-policy + seña paga sin refund MP ejecutable ──
-describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutable', () => {
-  it('seña MP pagada pero gateway no disponible → lanza RefundUnavailableError sin tocar nada', async () => {
+// ─── in-policy + seña paga, por los dos medios ──────────────────────────────
+describe('cancelByPlayer — in-policy con seña paga', () => {
+  /**
+   * Este caso probaba que, con el token de MercadoPago delinkeado, la
+   * cancelación tiraba `RefundUnavailableError` y no tocaba nada. Dejó de tener
+   * sentido el día que TurnoGol dejó de pedirle el reembolso a MercadoPago: la
+   * obligación de devolver existe igual —el jugador pagó— y no depende de
+   * ningún servicio externo. Bloquear la cancelación por un tercero que ya no
+   * participa era castigar al jugador por un problema que no era suyo.
+   */
+  it('seña MP pagada: cancela y deja la devolución registrada contra el pago original', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1504,15 +1511,14 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     })
     await linkPaymentToBooking(bookingId, paymentId) // seña MP (payment_id seteado)
 
-    // gateway = null simula token MP delinkeado: no se puede refundar.
-    await expect(
-      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx)),
-    ).rejects.toBeInstanceOf(RefundUnavailableError)
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
 
-    // Estado consistente: nada cambió. No hay booking "refunded" con plata atrapada.
-    expect(await getBookingStatus(bookingId)).toBe('confirmed')
-    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
-    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+    expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
+    expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
+    // Contra el pago original: ese `description` es lo que después le permite al
+    // webhook reconocer la devolución y saldarla sola.
+    expect(await getRefundDescription(bookingId)).toBe(`Refund of ${paymentId}`)
   })
 
   it('seña en efectivo (sin payment_id MP) → canceled_refunded + la deuda de devolución registrada', async () => {

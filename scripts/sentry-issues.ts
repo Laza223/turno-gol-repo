@@ -50,6 +50,10 @@ type LatestEvent = {
   dateCreated: string
   entries?: EventEntry[]
   tags?: Array<{ key: string; value: string }>
+  /** Lo que `registerSentryErrorSink` manda como `extra`: la entrada completa
+   * del `logger.error` (módulo, ids, y el motivo real del fallo). La API lo
+   * devuelve bajo `context`, no bajo `extra`. */
+  context?: Record<string, unknown>
 }
 
 class SalidaLimpia extends Error {}
@@ -135,6 +139,20 @@ function detalle(evento: LatestEvent): void {
   }
   if (valores.length === 0) console.log('(el evento no trae stack trace)\n')
 
+  // Los errores que entran por `logger.error` (la mayoría de los workers) no
+  // traen stack: todo lo que los explica viaja en el `extra` del sink. Sin
+  // esto, `--detail` sobre uno de esos eventos no dice absolutamente nada.
+  const extra = evento.context ?? {}
+  const claves = Object.keys(extra)
+  if (claves.length > 0) {
+    console.log('Contexto:')
+    for (const k of claves) {
+      const v = extra[k]
+      console.log(`    ${k} = ${typeof v === 'string' ? v : JSON.stringify(v)}`)
+    }
+    console.log()
+  }
+
   // Los tags dicen ruta, release y entorno — casi siempre alcanzan para ubicarlo.
   const tags = evento.tags ?? []
   const interesantes = ['environment', 'release', 'url', 'transaction', 'server_name', 'level']
@@ -158,8 +176,12 @@ async function main(): Promise<void> {
     // ("Invalid stats_period. Valid choices are '', '24h', and '14d'"), así que
     // `--detail` nunca funcionó. El listado ya respetaba ese límite; este camino
     // no. `14d` es la ventana más ancha que la API acepta.
+    //
+    // Y con la ventana arreglada seguía sin encontrar nada: un short-id suelto
+    // en `query` es una búsqueda de TEXTO sobre el título del issue, no una
+    // búsqueda por short-id. El prefijo `issue:` es el que hace el lookup real.
     const encontrados = await pedir<Issue[]>(
-      `/projects/${org}/${project}/issues/?query=${encodeURIComponent(shortId)}&statsPeriod=14d`,
+      `/projects/${org}/${project}/issues/?query=${encodeURIComponent(`issue:${shortId}`)}&statsPeriod=14d`,
     )
     const issue = encontrados[0] as (Issue & { id?: string }) | undefined
     if (!issue?.id) {

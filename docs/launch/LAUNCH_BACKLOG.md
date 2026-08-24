@@ -18,5 +18,5 @@
 
 ### 🟡 Pendientes
 - **STAGING-001**: ambiente de staging real (project ref/credenciales) NO provisionado. Ver `docs/operations/LAUNCH.md` y `RISK_REGISTER.md` TG-P0-RESTORE-01.
-- **RESTORE-001**: restore drill documentado, NO ejecutado — bloqueado por STAGING-001. Riesgo aceptado formalmente por el Fundador (ver `RISK_REGISTER.md` TG-P0-RESTORE-01 y `docs/audit/backup-drills/2026-07-02-drill.md`).
+- ~~**RESTORE-001**~~: **EJECUTADO el 2026-08-24** con "Restore to new project" a un proyecto efímero (`docs/audit/backup-drills/2026-08-24-drill.md`). RTO de la base: menos de 5 minutos. RPO real: hasta 24 h — **PITR no está habilitado**, es un add-on sin contratar, contra lo que afirmaba el registro de riesgos. No necesitó STAGING-001 para correrse.
 - **test:concurrency**: script de test de concurrencia (no existe en `package.json`).

@@ -191,6 +191,8 @@ Todo este grupo va sobre `complejo-elite-padel`, que ya tiene el OAuth de Mercad
 
 **Y el complemento**: cancelar fuera de política → `canceled_no_refund` + `captured`, sin reembolso, con la seña quedando en la caja del complejo.
 
+**🔴 BLOQUEADO 2026-08-24 — hoy los reembolsos de `complejo-titi` NO salen.** Dos devoluciones de $100 están colgadas desde el 22/8: MercadoPago responde `403 At least one policy returned UNAUTHORIZED` cada hora, mientras la reserva ya figura `canceled_refunded` + `refunded`. Es el token OAuth viejo — el complejo nunca reconectó MercadoPago después de la [migración a dos aplicaciones](../planning/2026-08-22-dos-apps-mercadopago.md). **Paso previo obligatorio de este ensayo: reconectar MercadoPago en el complejo y ver esos dos refunds pasar a `approved`.** Detalle: [P08-crons-2026-08-24.md](P08-crons-2026-08-24.md).
+
 ---
 
 #### P-07 · Un día operativo completo, cerrado
@@ -231,6 +233,8 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 
 **Ojo con esto.** Los crons registrados sin `SendOptions` corren con `retryLimit=0` real: si uno falla, no reintenta — espera al próximo tick. Un cron diario que falla es un día perdido, no un reintento.
 
+**EJECUTADO 2026-08-24 — PASA.** Las 15 colas con su último job completado dentro de su período, 48 h corridas, **0 fallados**. Los dos únicos huecos del latido están explicados: los 26 min del sabotaje de P-12 y 10 min de reinicio por un deploy. Ese segundo dato calibra el umbral nuevo de `/api/status`: un deploy normal deja al worker fuera ~10 min contra un umbral de 15. Tabla completa y dos hallazgos colaterales (reembolsos con 403, Resend con timeouts): [P08-crons-2026-08-24.md](P08-crons-2026-08-24.md).
+
 ---
 
 #### P-09 · Un trial que vence solo
@@ -268,6 +272,8 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 **Qué tiene que salir.** El RTO real (cuánto tardaste) y el RPO real (cuánta plata/reservas se perderían). Los dos números van al `RISK_REGISTER.md` como hechos, no como estimaciones.
 
 **Beneficio colateral.** Cerrar `STAGING-001` significa que el próximo fix se prueba fuera de la base de tu cliente. Hoy no existe ese lugar.
+
+**EJECUTADO 2026-08-24 — PASA, y por un camino más barato que el previsto.** No hizo falta provisionar STAGING-001: el dashboard de Supabase tiene "Restore to new project", que restaura un backup a un proyecto nuevo sin tocar producción. Se restauró el backup del 24/08 03:45 UTC a un proyecto efímero, se verificaron los conteos (predichos antes de mirar, los seis exactos), 101 policies RLS, 2 roles, 7 extensiones y 5 `auth.users`, y se borró el proyecto. **RTO de la base: < 5 min. RPO real: hasta 24 h.** Hallazgo del ensayo: **PITR no está habilitado** — es un add-on sin contratar, contra lo que afirmaba el `RISK_REGISTER.md`. Detalle: [2026-08-24-drill.md](../audit/backup-drills/2026-08-24-drill.md).
 
 ---
 
@@ -334,10 +340,12 @@ Se puede vender cuando, con evidencia pegada:
 - [ ] **P-06**: un reembolso real salió y se ve en MercadoPago
 - [x] **P-07**: un día operativo cerró con `diff_amount = 0` — 2026-08-24 en `complejo-titi`, esperado $9.100 = contado $9.100 ([registro](P07-dia-operativo-guion.md))
 - [ ] **P-01**: tu suscripción está `active` y cobrada de verdad
-- [ ] **P-08**: los 15 workers con último job dentro de su período
+- [x] **P-08**: los 15 workers con último job dentro de su período — 2026-08-24: 15/15, 48 h corridas, **0 fallados** ([registro](P08-crons-2026-08-24.md))
 - [x] **P-12**: **CERRADO 2026-08-24**. El ensayo salió mal (26 min caído, cero avisos) y el hallazgo se arregló el mismo día: `/api/status` detecta el worker muerto y hay un monitor externo que avisa por mail, probado de punta a punta ([registro](P12-worker-caido-2026-08-24.md))
-- [ ] **P-11**: existe un backup restaurado, con RTO y RPO medidos
+- [x] **P-11**: existe un backup restaurado, con RTO y RPO medidos — 2026-08-24: RTO < 5 min, RPO hasta 24 h (PITR NO contratado) ([drill](../audit/backup-drills/2026-08-24-drill.md))
 
 Los tres que quedan (**P-02**, **P-09**, el tramo largo de **P-10**) son de reloj: se cierran solos si están arrancados. Lo que **no** es aceptable es venderlos sin arrancar — el primer cliente sería el experimento.
+
+> **Medido en producción el 2026-08-24: el reloj todavía no arrancó.** `tenant_subscriptions` no tiene ninguna fila `active` con `mp_subscription_id`, y los dos complejos que existen están en `trialing` y `canceled`. Es decir que **P-01 no está hecho**, y con él siguen sin arrancar P-02 y P-10 — que son los dos que tardan 30 y 14 días. Todo lo demás de esta lista puede cerrarse en una tarde; esto no. Es el único ítem cuyo costo crece un día por cada día que pasa.
 
 **P-13 no es de reloj: es una obligación con fecha.** Va el día 31 sí o sí, o le seguís debitando $55.000 por mes a la tarjeta de tu pareja.

@@ -77,6 +77,14 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
       await expect(page.getByRole('heading', { name: 'Reserva cancelada' })).toBeVisible({
         timeout: 8_000,
       })
+      // Y SIGUE ahí un rato después. El assert de arriba solo prueba que
+      // apareció: la revalidación de la Server Action llega unos cientos de ms
+      // más tarde y, cuando el diálogo colgaba de la tarjeta cancelada, se lo
+      // llevaba puesto al reordenarse la lista. Un `toBeVisible` que reintenta
+      // puede caer justo en esa ventana y pasar igual.
+      await page.waitForTimeout(2_000)
+      await expect(page.getByRole('heading', { name: 'Reserva cancelada' })).toBeVisible()
+
       const waLink = page.getByRole('link', { name: /escribir por whatsapp/i })
       await expect(waLink).toBeVisible()
       // El número se normaliza a formato internacional: sin esto el link abre
@@ -84,12 +92,23 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
       expect(await waLink.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/54/)
       await page.keyboard.press('Escape')
 
-      // UI-sin-reload: revalidatePath + router.refresh(), sin recarga manual.
+      // UI-sin-reload: `revalidatePath` de la Server Action, sin recarga manual
+      // ni `router.refresh()`. La reserva sale de "Próximos" —esa tab filtra
+      // por estados jugables (B10)— y aparece en "Historial".
+      await expect(card).not.toBeVisible({ timeout: 8_000 })
+
+      await page.getByText('Historial', { exact: true }).first().click()
+      const historyCard = page.locator('li').filter({ hasText: `${TIME_START}–${TIME_END}` })
       // El badge dice "Cancelado" a secas: "con reembolso" prometía plata que
       // en este punto todavía no se movió. Quién debe qué lo cuenta el panel
-      // de devolución de la tarjeta.
-      await expect(card.getByText('Cancelado', { exact: true })).toBeVisible({ timeout: 8_000 })
-      await expect(card.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()
+      // de devolución de la tarjeta, que es el recordatorio que sigue estando
+      // mañana aunque el diálogo se haya cerrado.
+      await expect(historyCard.getByText('Cancelado', { exact: true })).toBeVisible({
+        timeout: 8_000,
+      })
+      await expect(historyCard.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()
+      await expect(historyCard.getByText('Devolución pendiente')).toBeVisible()
+      await expect(historyCard.getByRole('link', { name: /escribir por whatsapp/i })).toBeVisible()
 
       const { data: row, error } = await sb
         .from('bookings')

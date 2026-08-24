@@ -7,6 +7,7 @@ import { bookingCode } from '@/lib/booking-code'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
 import { cancelMyBookingAction, type RefundContactInfo } from './actions'
 import { UPCOMING_PLAYABLE_STATUSES } from './upcoming-count'
+import { RefundDialogProvider } from './RefundDialogProvider'
 
 function artToday(): string {
   return new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
@@ -43,6 +44,9 @@ type RawMisReservasRow = {
   cancellation_policy_hours: number
   /** `null` = no hay devolución en juego. Ver `refundContactFor`. */
   refund_status: 'approved' | 'pending' | null
+  /** Medio de la MISMA fila que dio `refund_status`. */
+  refund_method: 'mercadopago' | 'cash' | 'transfer' | 'other' | null
+  refund_processed_at: Date | string | null
 }
 
 /** Reservas por página. El jugador lee esto en el celular: 50 sobra. */
@@ -66,6 +70,11 @@ function refundContactFor(r: RawMisReservasRow): RefundContactInfo | undefined {
   return {
     amountCents: r.deposit_amount,
     state: r.refund_status === 'approved' ? 'settled' : 'pending',
+    settledMethod: r.refund_status === 'approved' ? r.refund_method : null,
+    settledAt:
+      r.refund_status === 'approved' && r.refund_processed_at
+        ? new Date(r.refund_processed_at).toISOString()
+        : null,
     bookingCode: bookingCode(r.id),
     dateLabel: r.date.slice(0, 10).split('-').reverse().slice(0, 2).join('/'),
     timeLabel: r.time_start.slice(0, 5),
@@ -125,11 +134,26 @@ export default async function MisReservasPage(props: {
              -- de la migración 070. Se prefiere la pendiente sobre la saldada:
              -- si algo quedó sin devolver, eso es lo que el jugador tiene que
              -- ver. Lo lee gracias a la policy de la migración 079.
+             -- Método y fecha viajan con el estado —una sola pasada por la
+             -- misma fila— porque el texto que ve el jugador depende de por
+             -- dónde volvió la plata: decirle "MercadoPago ya la procesó"
+             -- cuando el complejo se la dio en mano es mandarlo a mirar la app
+             -- equivocada.
              (SELECT pr.status FROM payments pr
                WHERE pr.booking_id = b.id AND pr.type = 'refund'
                  AND pr.status IN ('approved', 'pending')
                ORDER BY (pr.status = 'pending') DESC, pr.created_at ASC
-               LIMIT 1) AS refund_status
+               LIMIT 1) AS refund_status,
+             (SELECT pr.method::text FROM payments pr
+               WHERE pr.booking_id = b.id AND pr.type = 'refund'
+                 AND pr.status IN ('approved', 'pending')
+               ORDER BY (pr.status = 'pending') DESC, pr.created_at ASC
+               LIMIT 1) AS refund_method,
+             (SELECT pr.processed_at FROM payments pr
+               WHERE pr.booking_id = b.id AND pr.type = 'refund'
+                 AND pr.status IN ('approved', 'pending')
+               ORDER BY (pr.status = 'pending') DESC, pr.created_at ASC
+               LIMIT 1) AS refund_processed_at
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
@@ -195,13 +219,18 @@ export default async function MisReservasPage(props: {
   })
 
   return (
-    <MisReservasView
-      bookings={pageBookings}
-      tab={tab}
-      page={page}
-      hasMore={hasMore}
-      upcomingCount={upcoming}
-      cancelAction={cancelMyBookingAction}
-    />
+    // El provider envuelve la lista, no vive adentro de ella: la cancelación
+    // revalida esta ruta y la tarjeta cancelada desaparece de "Próximos", así
+    // que un diálogo montado adentro de la tarjeta se desmontaría con ella.
+    <RefundDialogProvider>
+      <MisReservasView
+        bookings={pageBookings}
+        tab={tab}
+        page={page}
+        hasMore={hasMore}
+        upcomingCount={upcoming}
+        cancelAction={cancelMyBookingAction}
+      />
+    </RefundDialogProvider>
   )
 }

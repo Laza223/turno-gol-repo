@@ -28,6 +28,7 @@ function row(overrides: Partial<PendingRefundRow> = {}): PendingRefundRow {
     since: new Date('2026-08-18T20:00:00Z'),
     debtorName: 'Tomás García',
     contactPhone: '+54 9 11 5566-7788',
+    contactEmail: 'tomas@jugador.test',
     courtName: 'Cancha 5',
     date: '2026-08-18',
     timeStart: '21:00:00',
@@ -61,12 +62,31 @@ export const ConDevoluciones: Story = {
   },
 }
 
-/** Sin teléfono no se ofrece WhatsApp: un link a un número que no existe hace perder el tiempo dos veces. */
+/**
+ * Sin teléfono no se ofrece WhatsApp: un link a un número que no existe hace
+ * perder el tiempo dos veces. Cae al email, que es NOT NULL para cualquier
+ * jugador con cuenta — medido en el navegador con un jugador real sin teléfono
+ * cargado, la fila no ofrecía NINGÚN canal.
+ */
 export const SinTelefonoDelJugador: Story = {
   args: { rows: [row({ contactPhone: null, debtorName: 'Sin nombre' })] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('link', { name: /avisarle por whatsapp/i })).toBeNull()
+    await expect(canvas.getByRole('link', { name: /avisarle por email/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('mailto:tomas@jugador.test'),
+    )
+    await expect(canvas.getByRole('link', { name: /ver el turno/i })).toBeInTheDocument()
+  },
+}
+
+/** Ni teléfono ni cuenta (turno de invitado): queda "Ver el turno" y nada más. */
+export const SinNingunContacto: Story = {
+  args: { rows: [row({ contactPhone: null, contactEmail: null, debtorName: 'Sin nombre' })] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('link', { name: /avisarle/i })).toBeNull()
     await expect(canvas.getByRole('link', { name: /ver el turno/i })).toBeInTheDocument()
   },
 }

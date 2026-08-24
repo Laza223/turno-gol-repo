@@ -62,7 +62,14 @@ test.describe('TG-HP-113 — Reseña post-partido', () => {
       await submitBtn.click()
       // Anti-doble-submit: disabled={pending} vía useState local (LeaveReviewButton.tsx:120-126).
 
-      await expect(page.getByText('¡Gracias por tu reseña!')).toBeVisible({ timeout: 10_000 })
+      // `.first()` no es cosmético: el toast rinde el texto DOS veces —el div
+      // visible y un `<span role="status">` para lectores de pantalla, que dice
+      // "Notification ¡Gracias por tu reseña!"—, así que el selector suelto
+      // rompe por strict mode. Rojo pre-existente, no de la reseña: el flujo
+      // funciona y la fila queda en `reviews`.
+      await expect(page.getByText('¡Gracias por tu reseña!').first()).toBeVisible({
+        timeout: 10_000,
+      })
       // Dialog se cierra + router.refresh() → el botón "Dejar reseña" ya no aparece.
       await expect(
         page.getByRole('heading', { name: `¿Cómo estuvo ${TENANT_NAME}?` }),

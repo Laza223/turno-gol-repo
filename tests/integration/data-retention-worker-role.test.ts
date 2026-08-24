@@ -30,6 +30,25 @@ const WORKER_TEST_PASSWORD = 'turnogol_worker_it'
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
 let prevWorkerUrl: string | undefined
+/**
+ * Credencial del rol worker ANTES de este archivo, para poder devolverla igual.
+ *
+ * Si el rol ya podía loguearse, es una máquina de desarrollo donde alguien
+ * corrió el `ALTER ROLE ... LOGIN PASSWORD` que pide
+ * `docs/operations/setup-local-roles.md` (en CI el rol nace NOLOGIN y esto
+ * queda en `null`). Dejarlo NOLOGIN —o con la password de prueba— rompe la app
+ * local entera: todo lo que pasa por `getWorkerDb()`, o sea el layout admin
+ * completo, tira 500 con un "password authentication failed" que miente,
+ * porque no es la password sino el LOGIN. Y no alcanza con leer la DSN del
+ * entorno: Vitest carga `.env.test`, no `.env.local`, así que acá esa variable
+ * normalmente no existe.
+ *
+ * `pg_authid.rolpassword` guarda el verifier SCRAM, y `ALTER ROLE ... PASSWORD`
+ * acepta un verifier ya hasheado — se restaura la credencial exacta sin
+ * conocerla ni escribirla en ningún lado.
+ */
+let prevWorkerVerifier: string | null = null
+let workerCouldLoginBefore = false
 let gateway: MockGateway
 
 beforeAll(async () => {
@@ -50,6 +69,12 @@ beforeAll(async () => {
 
   const su = getSql() // recreado desde DATABASE_URL: sigue siendo superusuario
   await ensureRoles(su)
+  const [before] = await su<{ can_login: boolean; verifier: string | null }[]>`
+    SELECT rolcanlogin AS can_login, rolpassword AS verifier
+    FROM pg_authid WHERE rolname = 'turnogol_worker'
+  `
+  workerCouldLoginBefore = before?.can_login === true
+  prevWorkerVerifier = before?.verifier ?? null
   // 038 crea el rol NOLOGIN (la password de prod se setea a mano fuera de las
   // migraciones). Habilitar LOGIN solo mientras dura este archivo.
   await su.unsafe(`ALTER ROLE turnogol_worker LOGIN PASSWORD '${WORKER_TEST_PASSWORD}'`)
@@ -62,8 +87,16 @@ beforeAll(async () => {
 afterAll(async () => {
   const su = getSql()
   await cleanupAll(su)
-  await su.unsafe('ALTER ROLE turnogol_worker NOLOGIN')
-  await su.unsafe('ALTER ROLE turnogol_worker PASSWORD NULL')
+  if (workerCouldLoginBefore && prevWorkerVerifier) {
+    // Máquina de desarrollo: se devuelve el verifier tal cual estaba, así la
+    // app local sigue conectando después de correr la suite.
+    await su.unsafe(
+      `ALTER ROLE turnogol_worker LOGIN PASSWORD '${prevWorkerVerifier.replaceAll("'", "''")}'`,
+    )
+  } else {
+    await su.unsafe('ALTER ROLE turnogol_worker NOLOGIN')
+    await su.unsafe('ALTER ROLE turnogol_worker PASSWORD NULL')
+  }
   if (prevWorkerUrl === undefined) {
     delete process.env.WORKER_DATABASE_URL
   } else {

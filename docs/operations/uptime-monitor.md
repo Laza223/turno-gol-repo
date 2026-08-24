@@ -1,5 +1,7 @@
 # Monitor externo de uptime — cómo darlo de alta
 
+> **Estado: dado de alta y verificado el 2026-08-24.** Hay dos monitores activos (`turnogol.app` y `turnogol.app/api/status`), cada 5 minutos, con aviso por mail. La alerta se probó de punta a punta: un monitor contra una ruta inexistente se detectó en 65 segundos y el mail *"Monitor is DOWN"* llegó a la casilla. Lo que sigue es la guía de cómo se hizo — sirve para rehacerlo o para agregar otro monitor.
+
 ## Qué es esto, en criollo
 
 Un **monitor de uptime** es un servicio de afuera que le pega a una dirección de tu sitio cada X minutos y, si la respuesta no es la esperada, te manda un mail. Nada más que eso. La gracia es que vive **fuera** de tu infraestructura: si tu servidor se prende fuego, el que avisa no se prende fuego con él.

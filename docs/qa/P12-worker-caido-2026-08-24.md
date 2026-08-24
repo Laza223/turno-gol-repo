@@ -85,4 +85,4 @@ Tres decisiones que valen más que el código:
 
 Cubierto por seis casos en `tests/unit/api-status.test.ts`, incluido el de P-12 exacto (worker muerto con base y pg-boss impecables → 503).
 
-**Paso 2 — pendiente, y es de consola, no de código.** Falta dar de alta el monitor externo (UptimeRobot gratis o equivalente) apuntando a `https://turnogol.app/api/status`, con aviso al mail del dueño. Sin eso, el 503 existe pero nadie lo mira: el `- [ ] monitor externo configurado` del checklist de la Fase B11 sigue sin tildar.
+**Paso 2 — pendiente, y es de consola, no de código.** Falta dar de alta el monitor externo (UptimeRobot gratis o equivalente) apuntando a `https://turnogol.app/api/status`, con aviso al mail del dueño. El paso a paso, con la prueba de que la alerta llega y qué hacer cuando llega, está en [docs/operations/uptime-monitor.md](../operations/uptime-monitor.md). Sin eso, el 503 existe pero nadie lo mira: el `- [ ] monitor externo configurado` del checklist de la Fase B11 sigue sin tildar.

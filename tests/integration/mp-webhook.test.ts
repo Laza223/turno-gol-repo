@@ -34,8 +34,6 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
       // realmente está probando.
       getSubscriptionChargeInfo = (...args: Parameters<MockGateway['getSubscriptionChargeInfo']>) =>
         mockGateway.getSubscriptionChargeInfo(...args)
-      createRefund = (...args: Parameters<MockGateway['createRefund']>) =>
-        mockGateway.createRefund(...args)
     },
   }
 })

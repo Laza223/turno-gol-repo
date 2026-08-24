@@ -22,7 +22,6 @@ import {
   renderAdminDepositAfterClose,
   type AdminDepositAfterCloseData,
 } from './admin-deposit-after-close'
-import { renderAdminRefundFailed, type AdminRefundFailedData } from './admin-refund-failed'
 import {
   renderAdminRefundPendingReminder,
   type AdminRefundPendingReminderData,
@@ -62,7 +61,6 @@ export {
   renderAdminTransferExpired,
   renderAdminLatePayment,
   renderPlayerLatePaymentRefunded,
-  renderAdminRefundFailed,
   renderAdminRefundPendingReminder,
   renderOnboardingAbandoned,
   // `renderAdminDepositAfterClose` y `renderAdminExternalRefundDetected` NO se
@@ -87,7 +85,6 @@ type TemplateDataMap = {
   admin_late_payment: AdminLatePaymentData
   player_late_payment_refunded: PlayerLatePaymentRefundedData
   admin_deposit_after_close: AdminDepositAfterCloseData
-  admin_refund_failed: AdminRefundFailedData
   admin_refund_pending_reminder: AdminRefundPendingReminderData
   admin_external_refund_detected: AdminExternalRefundDetectedData
   subscription_activated: SubscriptionActivatedData
@@ -116,7 +113,6 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   admin_late_payment: renderAdminLatePayment,
   player_late_payment_refunded: renderPlayerLatePaymentRefunded,
   admin_deposit_after_close: renderAdminDepositAfterClose,
-  admin_refund_failed: renderAdminRefundFailed,
   admin_refund_pending_reminder: renderAdminRefundPendingReminder,
   admin_external_refund_detected: renderAdminExternalRefundDetected,
   subscription_activated: renderSubscriptionActivated,

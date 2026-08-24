@@ -1,11 +1,7 @@
 import type PgBoss from 'pg-boss'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
-import {
-  dispatchPaymentInfo,
-  lockMpEvent,
-  settleLatePaymentRefund,
-} from '@/modules/payments/payment.service'
+import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.service'
 import { reconcileApprovedPaymentForBooking } from '@/modules/payments/mp-reconcile.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
@@ -93,8 +89,8 @@ export async function reconcilePendingPayments(): Promise<number> {
       if (outcome && !outcome.alreadyProcessed && outcome.preparedRefund) {
         // El booking salió de pending_payment entre el SELECT de este scan y
         // este dispatch (lo expiró el job por-booking) y MP ya había aprobado:
-        // pago tardío. El intent commiteó con la tx de arriba; se liquida acá.
-        await settleLatePaymentRefund(outcome.preparedRefund, row.tenantId, gateway)
+        // pago tardío. La devolución quedó registrada con la tx de arriba y la
+        // hace el complejo; acá solo se cuenta para el resumen de la corrida.
         refunded += 1
       }
 

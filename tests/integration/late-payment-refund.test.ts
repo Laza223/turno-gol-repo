@@ -150,14 +150,13 @@ afterEach(() => {
   mockGateway.statusCalls = []
   mockGateway.searchCalls = []
   mockGateway.searchResults = {}
-  mockGateway.refundCalls = []
   sendEmailSpy.mockClear()
 })
 
 afterAll(async () => closeSql())
 
-describe('pago tardio sobre reserva expirada, reembolso automatico', () => {
-  it('reembolsa, avisa al jugador y NO resucita el turno', async () => {
+describe('pago tardio sobre reserva expirada', () => {
+  it('anota la devolución, avisa al jugador y NO resucita el turno', async () => {
     const { tenantId, bookingId } = await setupExpiredBookingWithStartedCheckout()
     const mpPaymentId = `mp-late-${bookingId.slice(0, 8)}`
     approveInMp(bookingId, mpPaymentId)
@@ -173,18 +172,13 @@ describe('pago tardio sobre reserva expirada, reembolso automatico', () => {
     `
     expect(booking!.status).toBe('expired')
 
-    // 2. Se pidió la devolución a MP por el monto completo de la seña, y por eso
-    // viaja como reembolso TOTAL (sin `amount`): con monto sería parcial, que MP
-    // rechaza con 403 cuando la plata todavía no está liberada. La fila local
-    // sigue guardando el importe — se chequea abajo.
-    expect(mockGateway.refundCalls).toEqual([{ mpPaymentId }])
-
+    // 2. La devolución queda REGISTRADA por el monto completo de la seña, y
+    // nada más: no se le pide plata a MercadoPago. La salda el complejo.
     const refunds = await refundRows(bookingId)
     expect(refunds).toHaveLength(1)
     expect(refunds[0]!.amount).toBe(DEPOSIT)
-    // settleRefund la deja 'approved' y le graba el id del refund de MP.
-    expect(refunds[0]!.status).toBe('approved')
-    expect(refunds[0]!.mp_payment_id).toContain('mp-refund-')
+    expect(refunds[0]!.status).toBe('pending')
+    expect(refunds[0]!.mp_payment_id).toBeNull()
 
     // 3. Al jugador se le avisa: antes era el único que ponía plata y no
     //    recibía nada.
@@ -204,7 +198,7 @@ describe('pago tardio sobre reserva expirada, reembolso automatico', () => {
       getBookingDetail(tenantId, bookingId, tx),
     )
     expect(detail?.depositStatus).toBe('pending')
-    expect(detail?.refundState).toBe('settled')
+    expect(detail?.refundState).toBe('pending')
 
     // 5. El rastro de auditoría de siempre no se pierde.
     const [audit] = await sql<{ c: number }[]>`
@@ -214,28 +208,25 @@ describe('pago tardio sobre reserva expirada, reembolso automatico', () => {
     expect(audit!.c).toBe(1)
   }, 30_000)
 
-  it('un segundo barrido no genera un segundo reembolso', async () => {
+  it('un segundo barrido no anota una segunda devolución', async () => {
     const { bookingId } = await setupExpiredBookingWithStartedCheckout()
     const mpPaymentId = `mp-late2-${bookingId.slice(0, 8)}`
     approveInMp(bookingId, mpPaymentId)
 
     await reconcilePendingPayments()
-    mockGateway.refundCalls = []
     sendEmailSpy.mockClear()
 
     await reconcilePendingPayments()
 
-    expect(mockGateway.refundCalls).toEqual([])
     expect(await refundRows(bookingId)).toHaveLength(1)
   }, 30_000)
 
-  it('MP sin pago aprobado, ni reembolso ni aviso (nadie pagó)', async () => {
+  it('MP sin pago aprobado, ni devolución ni aviso (nadie pagó)', async () => {
     const { tenantId, bookingId } = await setupExpiredBookingWithStartedCheckout()
     // searchResults vacío: el caso normal, alguien abandonó el checkout.
 
     const resolved = await reconcilePendingPayments()
     expect(resolved).toBe(0)
-    expect(mockGateway.refundCalls).toEqual([])
     expect(await refundRows(bookingId)).toHaveLength(0)
 
     // Control negativo del estado de display: sin fila de refund queda en

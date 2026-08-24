@@ -170,12 +170,12 @@ describe('confirmManualDepositPayment — seña confirmada a mano tras un checko
     // (el viejo pago 'pending' de MP quedó desvinculado), así que se resuelve
     // como reembolso offline, sin tocar MP.
     const canceled = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'el complejo necesita el turno', 'complejo', gateway, tx),
+      cancelByAdmin(bookingId, staff.id, 'el complejo necesita el turno', 'complejo', tx),
     )
     expect(canceled.booking.status).toBe('canceled_refunded')
     expect(canceled.booking.depositStatus).toBe('refunded')
-    expect(canceled.pendingRefund).toBeUndefined()
-    expect(gateway.refundCalls).toHaveLength(0)
+    // La devolución queda anotada como manual: sin `payment_id` no hay pago
+    // original del que colgarse, y de todos modos la plata la mueve el complejo.
   })
 
   it('won=false cuando el booking ya salió de pending_payment (perdió la carrera) y no crea cash_flow', async () => {

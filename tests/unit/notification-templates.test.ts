@@ -12,7 +12,6 @@ import {
   renderAdminLatePayment,
   renderPlayerLatePaymentRefunded,
   renderAdminTransferExpired,
-  renderAdminRefundFailed,
   renderAdminRefundPendingReminder,
   renderOnboardingAbandoned,
   renderTemplate,
@@ -358,40 +357,6 @@ describe('renderAdminTransferExpired', () => {
   })
 })
 
-describe('renderAdminRefundFailed (ENS-19)', () => {
-  const DATA = {
-    refundPaymentId: 'abcdef12-3456-7890-aaaa-bbbbbbbbbbbb',
-    bookingId: '11112222-3456-7890-aaaa-bbbbbbbbbbbb',
-    amountArs: '3.000,00',
-    courtName: 'Cancha 5',
-    date: '02/06/2027',
-  }
-
-  it('subject flags required action', () => {
-    const { subject } = renderAdminRefundFailed(DATA)
-    expect(subject.toLowerCase()).toContain('reembolso')
-    expect(subject).toContain('24h')
-  })
-
-  it('html demands manual resolution in MP and shows the amount', () => {
-    const { html } = renderAdminRefundFailed(DATA)
-    expect(html).toContain('3.000,00')
-    expect(html).toContain('acción manual')
-    expect(html).toContain('MercadoPago')
-    expect(html).toContain('Cancha 5')
-  })
-
-  it('text omits optional detail rows when absent', () => {
-    const { text } = renderAdminRefundFailed({
-      refundPaymentId: 'abcdef12-3456-7890-aaaa-bbbbbbbbbbbb',
-      bookingId: null,
-      amountArs: '500,00',
-    })
-    expect(text).toContain('500,00')
-    expect(text).not.toContain('Cancha')
-  })
-})
-
 describe('renderAdminRefundPendingReminder', () => {
   const BASE = {
     refundPaymentId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
@@ -412,16 +377,13 @@ describe('renderAdminRefundPendingReminder', () => {
   })
 
   /**
-   * Distinto de `admin_refund_failed`, que manda al panel de MercadoPago: este
-   * cubre también las señas cobradas en efectivo, para las que ese panel no
-   * sirve de nada. Tiene que mandar a la pantalla propia.
+   * Es el único aviso de devolución sin saldar, y cubre las señas cobradas en
+   * efectivo, para las que el panel de MercadoPago no sirve de nada. Por eso
+   * tiene que mandar a la pantalla propia y ofrecer los tres medios.
    */
   it('manda a Devoluciones y no asume que la plata salió por MercadoPago', () => {
     const { html } = renderAdminRefundPendingReminder(BASE)
     expect(html).toContain('Devoluciones')
-    // Ofrece los tres medios. El hermano `admin_refund_failed` da UNA sola
-    // instrucción ("revisá el reembolso en el panel de MercadoPago"), que para
-    // una seña cobrada en efectivo no sirve de nada.
     expect(html).toContain('transferencia o efectivo')
     expect(html).not.toContain('Se requiere acción manual')
   })
@@ -550,7 +512,6 @@ describe('isTemplateName', () => {
       'deposit_expired',
       'admin_late_payment',
       'admin_transfer_expired',
-      'admin_refund_failed',
       'onboarding_abandoned',
     ]
     for (const name of valid) {

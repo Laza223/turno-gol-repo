@@ -20,8 +20,6 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
         mockGateway.createPreference(...args)
       getPaymentStatus = (...args: Parameters<MockGateway['getPaymentStatus']>) =>
         mockGateway.getPaymentStatus(...args)
-      createRefund = (...args: Parameters<MockGateway['createRefund']>) =>
-        mockGateway.createRefund(...args)
     },
   }
 })
@@ -35,7 +33,6 @@ import {
   InvalidCashFlowCategoryError,
 } from '@/modules/cashflow/cashflow.errors'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
-import { settleRefund } from '@/modules/payments/payment.service'
 
 function artDateOf(ts: Date): string {
   return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
@@ -464,20 +461,21 @@ describe('cashflow service', () => {
 
     await sql`UPDATE bookings SET payment_method = 'mercadopago', payment_id = ${paymentId} WHERE id = ${bookingId}`
 
-    const refundsBefore = mockGateway.refundCalls.length
     const beforeCount = await countCashFlows(tenant.id)
 
-    const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'test refund', mockGateway as never, tx),
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, 'test refund', tx),
     )
-    // caza-bugs #3: prepareRefund solo deja la fila 'pending'; la llamada a MP
-    // (settleRefund) corre después de que la tx de cancelación commiteó.
-    expect(outcome.pendingRefund).toBeDefined()
-    await settleRefund(outcome.pendingRefund!, mockGateway, tenant.id)
 
-    // Refund was called (money returned via MP)
-    expect(mockGateway.refundCalls.length).toBe(refundsBefore + 1)
-    // But no cashflow rows were created
+    // La devolución queda registrada como fila de `payments`…
+    const refunds = await sql<{ n: string }[]>`
+      SELECT count(*)::text AS n FROM payments
+      WHERE booking_id = ${bookingId} AND type = 'refund' AND status = 'pending'
+    `
+    expect(Number(refunds[0]!.n)).toBe(1)
+    // …y la caja NO se toca: la seña de MercadoPago nunca entró a la caja
+    // física, así que devolverla tampoco la mueve. El egreso aparece recién si
+    // el complejo la salda en efectivo o por transferencia.
     const afterCount = await countCashFlows(tenant.id)
     expect(afterCount).toBe(beforeCount)
   })

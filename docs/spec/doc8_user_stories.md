@@ -460,7 +460,7 @@ para que otro jugador pueda reservar y el complejo no pierda turnos.
 
 ❌ Edge Cases
 - [ ] Si el pago de MP llega en el segundo 05:59 (justo antes de expirar) → el booking se confirma (el webhook llega primero, el job de expiración lo encuentra ya en `confirmed` y no hace nada).
-- [ ] Si el job de expiración se ejecuta pero el webhook de MP llega 5 segundos después → el webhook encuentra el booking en `expired` → NO lo reactiva (estado final). El pago se reembolsa automáticamente.
+- [ ] Si el job de expiración se ejecuta pero el webhook de MP llega 5 segundos después → el webhook encuentra el booking en `expired` → NO lo reactiva (estado final). Queda **registrada** la devolución del pago tardío y se le avisa al jugador; la plata la devuelve el complejo.
 - [ ] Si el job de expiración falla → retry con exponential backoff. El booking puede quedar "zombie" hasta que el retry lo resuelva.
 
 🚫 Out of Scope
@@ -530,7 +530,7 @@ para que la caja y las estadísticas se actualicen correctamente.
 **Historia**:
 Como Tomás o Agustín,
 cuando quiero cancelar mi reserva y faltan más horas que las que exige la política del complejo,
-quiero cancelar desde mi celular y recibir el reembolso automáticamente,
+quiero cancelar desde mi celular y que me devuelvan la seña,
 para no tener que llamar al complejo ni esperar.
 
 **Criterios de Aceptación**:
@@ -539,11 +539,11 @@ para no tener que llamar al complejo ni esperar.
 - [ ] Dado que tengo una reserva confirmada y `NOW() < fecha + hora_inicio - cancellation_policy.hours_before`, cuando hago click en "Cancelar", entonces veo: "Tu seña de ${monto} se te devuelve."
 - [ ] Dado que confirmo la cancelación, entonces: booking.status → `canceled_refunded`, `canceled_by = 'player'`, `canceled_at = NOW()`.
 - [ ] Dado que la seña estaba pagada por MP, cuando se procesa la cancelación, entonces se crea un refund en MP y un Payment con type=`refund`.
-- [ ] Dado que el reembolso se procesó, entonces recibo email: "Tu turno del {fecha} {hora} fue cancelado. Tu seña de ${monto} se devuelve."
+- [ ] Dado que la cancelación entró en política, entonces recibo email: "Tu turno del {fecha} {hora} fue cancelado. Tu seña de ${monto} se devuelve." **La devolución la hace el complejo** (ver la corrección del 2026-08-24 en doc7 §Flujo 4): la app me muestra el monto, el código de reserva y el contacto hasta que me la devuelvan.
 - [ ] Dado que la reserva se canceló, entonces el slot se libera y aparece como "libre" en la grilla y en la página pública.
 
 ❌ Edge Cases
-- [ ] Si la seña fue pagada en efectivo (reserva manual) → no hay reembolso automático. Mostrar: "Contactá al complejo para el reembolso de tu seña."
+- [ ] La seña cobrada en efectivo se trata IGUAL que la de MercadoPago: no hay reembolso automático para ninguna de las dos. En los dos casos queda registrada la devolución y el complejo la salda.
 - [ ] Si el refund de MP falla → el booking se cancela igual. Se reintenta el refund 3 veces con backoff. Si falla → notificar al admin.
 - [ ] Si la reserva no tenía seña (`deposit_status = 'not_required'`) → se cancela sin refund. Mensaje: "Tu turno fue cancelado."
 - [ ] Si es una instancia de turno fijo (abonado) → la instancia se cancela. El abonado sigue activo para las próximas semanas.

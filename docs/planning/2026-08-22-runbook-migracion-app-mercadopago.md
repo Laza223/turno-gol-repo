@@ -208,7 +208,7 @@ Mirar en la hora siguiente el log `retry-refunds run summary` (o Sentry):
 - **Aprobada** → queda confirmado que una aplicación puede devolver lo que cobró la otra, **y la plata volvió**. Es la única pregunta que quedaba abierta del informe.
 - **403 de nuevo** → también queda respondida: hay que devolverla a mano desde el panel del complejo, y decidir el REQUIERE INPUT #1 del informe.
 
-> Si esa fila lleva más de 24 h en `pending`, el worker encola **una** alerta por email al dueño del complejo (`admin_refund_failed`, dedupeada). Al 22-08 17:00 UTC todavía no había ninguna.
+> **Desactualizado desde el 2026-08-24**: el reembolso automático se eliminó, y con él la alerta `admin_refund_failed` de las 24 h. Hoy la fila queda `pending` a la vista del complejo en `/caja/devoluciones` desde el momento cero, y a los 7 días sin saldar sale `admin_refund_pending_reminder`.
 
 ### 3.5 Prueba de fuego 2 — el bug original, con plata mínima
 

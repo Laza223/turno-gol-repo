@@ -7,7 +7,6 @@ import type {
   PreapprovalResult,
   GatewaySubscriptionState,
   PreferenceResult,
-  RefundResult,
 } from '@/modules/payments/payment.types'
 
 const OK_INFO: GatewayPaymentInfo = {
@@ -27,10 +26,6 @@ function makeInner(overrides: Partial<PaymentGateway> = {}): PaymentGateway {
       sandboxInitPoint: 'sip',
     })),
     getPaymentStatus: vi.fn(async (): Promise<GatewayPaymentInfo> => OK_INFO),
-    createRefund: vi.fn(async (): Promise<RefundResult> => ({
-      mpRefundId: 'r',
-      status: 'approved',
-    })),
     searchPaymentsByReference: vi.fn(async (): Promise<GatewayPaymentInfo[]> => [OK_INFO]),
     createPreapproval: vi.fn(async (): Promise<PreapprovalResult> => ({
       preapprovalId: 'pa',
@@ -62,9 +57,6 @@ describe('withCircuitBreaker', () => {
   it('forwards all arguments to the inner gateway', async () => {
     const inner = makeInner()
     const gw = withCircuitBreaker(inner, 'k', new CircuitBreaker({ now: () => 0 }))
-
-    await gw.createRefund('pay-1', 500, 'idem-1')
-    expect(inner.createRefund).toHaveBeenCalledWith('pay-1', 500, 'idem-1')
 
     await gw.updatePreapprovalAmount('pa-1', 9900)
     expect(inner.updatePreapprovalAmount).toHaveBeenCalledWith('pa-1', 9900)

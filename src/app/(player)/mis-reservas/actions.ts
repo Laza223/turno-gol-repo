@@ -3,29 +3,22 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { bookingCode } from '@/lib/booking-code'
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, boundedText } from '@/shared/validation/primitives'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce } from '@/shared/rate-limit'
-import { withPlayerContext, withTenantContext, getDb } from '@/shared/db/client'
-import { tenants } from '@/shared/db/schema'
-import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
-import { settleRefund } from '@/modules/payments/payment.service'
+import { withPlayerContext, withTenantContext } from '@/shared/db/client'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { cancelByPlayer, type CancellationOutcome } from '@/modules/bookings/booking.cancellation'
 import {
   BookingAlreadyEndedError,
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
-  RefundUnavailableError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
-import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import { captureMessage } from '@/lib/sentry'
-import { logger } from '@/shared/lib/logger'
-import { describeMpError } from '@/modules/payments/mp-token-refresh'
 
 const cancelSchema = z.object({
   bookingId: uuid,
@@ -162,20 +155,6 @@ export async function cancelMyBookingAction(
   })
   if (!pre) return { success: false, error: 'Reserva no encontrada.' }
 
-  let gateway: PaymentGateway | null = null
-  if (pre.deposit_status === 'paid') {
-    const db = getDb()
-    const tenantRows = await db
-      .select({ mpAccessToken: tenants.mpAccessToken })
-      .from(tenants)
-      .where(eq(tenants.id, pre.tenant_id))
-      .limit(1)
-    const mpAccessToken = tenantRows[0]?.mpAccessToken
-    if (mpAccessToken) {
-      gateway = resolveTenantGateway(pre.tenant_id, mpAccessToken)
-    }
-  }
-
   // Regla de la clase (rediseño Caja/Cantina): el catch va FUERA del contexto
   // transaccional — atrapar adentro y devolver un objeto commitea lo escrito
   // antes del throw. Acá cancelByPlayer tira antes de escribir, pero el patrón
@@ -183,7 +162,7 @@ export async function cancelMyBookingAction(
   let outcome: CancellationOutcome
   try {
     outcome = await withTenantContext(pre.tenant_id, (tx) =>
-      cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, gateway, tx),
+      cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, tx),
     )
   } catch (err) {
     if (err instanceof BookingNotOwnedByPlayerError) {
@@ -202,14 +181,6 @@ export async function cancelMyBookingAction(
     // de la Server Action, dejando el dialog colgado sin feedback inline.
     if (err instanceof TenantInactiveError) {
       return { success: false, error: 'El complejo no está disponible para cancelar online.' }
-    }
-    // Hallazgo 2: seña MP pero gateway no disponible (token delinkeado). No se
-    // puede procesar el reembolso automático; el jugador debe gestionarlo con el complejo.
-    if (err instanceof RefundUnavailableError) {
-      return {
-        success: false,
-        error: 'No se pudo procesar el reembolso automático. Contactá al complejo.',
-      }
     }
     throw err
   }
@@ -234,42 +205,6 @@ export async function cancelMyBookingAction(
     })
   }
 
-  // caza-bugs #3: el refund a MP se resuelve DESPUÉS de que la cancelación ya
-  // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
-  // tx). Si esta llamada falla, la cancelación del jugador ya es válida —no
-  // hay rollback— pero el refund queda pendiente de resolución manual/retry.
-  let refundSettled = false
-  if (outcome.pendingRefund && gateway) {
-    try {
-      const settled = await settleRefund(outcome.pendingRefund, gateway, pre.tenant_id)
-      refundSettled = settled.status === 'approved'
-    } catch (err) {
-      const motivo = describeMpError(err)
-      // `logger.error` ADEMÁS de Sentry, y primero: escribe a stderr de forma
-      // sincrónica, así que el renglón queda en los logs de Vercel sí o sí. El
-      // `captureMessage` de Sentry encola un evento asincrónico que la lambda
-      // puede congelar antes de despachar — el 2026-08-21 un reembolso falló en
-      // producción y no dejó rastro NI en Sentry NI en Vercel, así que
-      // diagnosticarlo fue imposible.
-      logger.error('mp refund settlement failed after player cancellation', {
-        module: 'refunds',
-        bookingId: parsed.data.bookingId,
-        tenantId: pre.tenant_id,
-        refundPaymentId: outcome.pendingRefund.refundPaymentId,
-        motivo,
-      })
-      captureMessage('mp refund settlement failed after player cancellation', {
-        level: 'error',
-        extra: {
-          bookingId: parsed.data.bookingId,
-          tenantId: pre.tenant_id,
-          refundPaymentId: outcome.pendingRefund.refundPaymentId,
-          error: motivo,
-        },
-      })
-    }
-  }
-
   const booking = toPlayerBookingRow(outcome.booking)
 
   // `canceled_refunded` es exactamente "corresponde devolver la seña": lo fija
@@ -281,13 +216,16 @@ export async function cancelMyBookingAction(
     booking.status === 'canceled_refunded'
       ? {
           amountCents: pre.deposit_amount,
-          state: refundSettled ? 'settled' : 'pending',
-          // Acá `settled` solo puede venir de `settleRefund`, o sea del refund
-          // automático de MercadoPago: es el único que resuelve dentro de esta
-          // misma request. Cualquier otro medio lo marca el complejo después,
-          // y esa pantalla lee el método de la fila de `payments`.
-          settledMethod: refundSettled ? 'mercadopago' : null,
-          settledAt: refundSettled ? new Date().toISOString() : null,
+          // Siempre 'pending', y no es un valor por defecto perezoso: en el
+          // instante de cancelar NUNCA hay una devolución hecha. La plata la
+          // devuelve el complejo después, por el medio que elija, y recién ahí
+          // `page.tsx` lee el estado real de la fila de `payments`. Hubo una
+          // versión de esto que podía nacer 'settled' porque el reembolso
+          // automático de MercadoPago resolvía dentro de esta misma request;
+          // ese camino se eliminó (devolvía 403 siempre).
+          state: 'pending',
+          settledMethod: null,
+          settledAt: null,
           bookingCode: bookingCode(parsed.data.bookingId),
           dateLabel: booking.date
             .toISOString()

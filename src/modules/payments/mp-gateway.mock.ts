@@ -9,7 +9,6 @@ import {
   type MpPaymentStatus,
   type PreapprovalResult,
   type PreferenceResult,
-  type RefundResult,
 } from './payment.types'
 
 type StatusOverride = (mpPaymentId: string) => GatewayPaymentInfo | undefined
@@ -22,12 +21,10 @@ type StatusOverride = (mpPaymentId: string) => GatewayPaymentInfo | undefined
  */
 export class MockGateway implements PaymentGateway {
   preferenceCalls: CreatePreferenceInput[] = []
-  refundCalls: Array<{ mpPaymentId: string; amount?: number }> = []
   statusCalls: string[] = []
 
   statusByPaymentId: Record<string, GatewayPaymentInfo> = {}
   preferenceCounter = 0
-  refundCounter = 0
 
   private readonly statusOverride?: StatusOverride
 
@@ -60,19 +57,6 @@ export class MockGateway implements PaymentGateway {
       amount: 0,
       externalReference: '',
       paymentMethodId: 'account_money',
-    }
-  }
-
-  async createRefund(
-    mpPaymentId: string,
-    amount?: number,
-    _idempotencyKey?: string,
-  ): Promise<RefundResult> {
-    this.refundCalls.push({ mpPaymentId, ...(amount !== undefined ? { amount } : {}) })
-    this.refundCounter += 1
-    return {
-      mpRefundId: `mp-refund-${this.refundCounter}-${mpPaymentId}`,
-      status: 'approved',
     }
   }
 

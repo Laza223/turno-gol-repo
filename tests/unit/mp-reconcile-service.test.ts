@@ -13,15 +13,10 @@ vi.mock('@/shared/db/client', () => ({
 vi.mock('@/modules/payments/payment.service', () => ({
   lockMpEvent: vi.fn(),
   dispatchPaymentInfo: vi.fn(),
-  settleLatePaymentRefund: vi.fn(),
 }))
 
 import { withTenantContext } from '@/shared/db/client'
-import {
-  dispatchPaymentInfo,
-  lockMpEvent,
-  settleLatePaymentRefund,
-} from '@/modules/payments/payment.service'
+import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.service'
 import {
   reconcileApprovedPaymentForBooking,
   ReconcileProcessingError,
@@ -30,7 +25,6 @@ import {
 const mockWithTenantContext = withTenantContext as ReturnType<typeof vi.fn>
 const mockLockMpEvent = lockMpEvent as ReturnType<typeof vi.fn>
 const mockDispatchPaymentInfo = dispatchPaymentInfo as ReturnType<typeof vi.fn>
-const mockSettleLatePaymentRefund = settleLatePaymentRefund as ReturnType<typeof vi.fn>
 
 const BOOKING_ID = '11111111-1111-4111-8111-111111111111'
 const TENANT_ID = 'tenant-1'
@@ -238,13 +232,13 @@ describe('reconcileApprovedPaymentForBooking — pago tardío', () => {
     externalReference: BOOKING_ID,
     paymentMethodId: 'account_money',
   }
-  const PREPARED = { refundPaymentId: 'refund-row-1', mpPaymentId: 'mp-late-1', refundAmount: 5000 }
+  const PREPARED = { refundPaymentId: 'refund-row-1', refundAmount: 5000 }
 
   function gatewayWithApproved() {
     return { searchPaymentsByReference: vi.fn().mockResolvedValue([APPROVED]) }
   }
 
-  it('won:false + preparedRefund → liquida contra MP y devuelve refunded:true', async () => {
+  it('won:false + devolución registrada → refunded:true, sin llamar a MercadoPago', async () => {
     mockTx()
     mockLockMpEvent.mockResolvedValue(true)
     mockDispatchPaymentInfo.mockResolvedValue({
@@ -264,10 +258,13 @@ describe('reconcileApprovedPaymentForBooking — pago tardío', () => {
     )
 
     expect(result).toEqual({ confirmed: false, notificationIds: ['n1', 'n2'], refunded: true })
-    expect(mockSettleLatePaymentRefund).toHaveBeenCalledWith(PREPARED, TENANT_ID, gateway)
+    // `refunded` significa "quedó anotado que hay que devolver", no "la plata
+    // volvió": el reembolso automático se eliminó y el gateway solo se usa para
+    // buscar el pago. Lo único que se le pidió fue esa búsqueda.
+    expect(Object.keys(gateway)).toEqual(['searchPaymentsByReference'])
   })
 
-  it('sin preparedRefund no llama a MP por un reembolso que nadie pidió', async () => {
+  it('sin devolución registrada, refunded:false', async () => {
     mockTx()
     mockLockMpEvent.mockResolvedValue(true)
     mockDispatchPaymentInfo.mockResolvedValue({
@@ -285,10 +282,9 @@ describe('reconcileApprovedPaymentForBooking — pago tardío', () => {
     )
 
     expect(result).toEqual({ confirmed: true, notificationIds: [], refunded: false })
-    expect(mockSettleLatePaymentRefund).not.toHaveBeenCalled()
   })
 
-  it('evento ya procesado (lock no fresco) → no liquida nada', async () => {
+  it('evento ya procesado (lock no fresco) → no reporta nada', async () => {
     mockTx()
     mockLockMpEvent.mockResolvedValue(false)
 
@@ -300,6 +296,6 @@ describe('reconcileApprovedPaymentForBooking — pago tardío', () => {
     )
 
     expect(result).toEqual({ confirmed: false, notificationIds: [] })
-    expect(mockSettleLatePaymentRefund).not.toHaveBeenCalled()
+    expect(mockDispatchPaymentInfo).not.toHaveBeenCalled()
   })
 })

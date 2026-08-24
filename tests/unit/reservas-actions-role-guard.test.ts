@@ -137,17 +137,8 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
   })
 
   it('cancelBookingAction (motivo jugador) funciona para manager y pasa el tipo a cancelByAdmin', async () => {
-    // El gateway se resuelve desde tenants.mp_access_token; sin token → null.
-    vi.mocked(getDb).mockReturnValue({
-      select: () => ({
-        from: () => ({
-          where: () => ({ limit: () => Promise.resolve([{ mpAccessToken: null }]) }),
-        }),
-      }),
-    } as never)
     vi.mocked(cancelByAdmin).mockResolvedValue({
       booking: { id: 'b-1' },
-      pendingRefund: undefined,
       notificationIds: [],
     } as never)
     const res = await cancelBookingAction('b-1', 'lluvia torrencial', 'jugador')
@@ -157,7 +148,6 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
       'staff-1',
       'lluvia torrencial',
       'jugador',
-      null,
       FAKE_TX,
     )
   })

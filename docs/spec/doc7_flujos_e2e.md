@@ -523,7 +523,9 @@ La reserva manual no tiene estados intermedios significativos. Se confirma en el
 
 > [!IMPORTANT]
 > Este flujo tiene 4 sub-flujos que comparten estructura pero difieren en quién cancela, cuándo, y qué pasa con la seña.
-> Es el flujo con más impacto financiero: involucra reembolsos, penalidades y liberación de slots.
+> Es el flujo con más impacto financiero: involucra devoluciones, penalidades y liberación de slots.
+>
+> **La devolución la hace el complejo, no la API (2026-08-24).** TurnoGol registra la obligación, se la muestra al complejo en `/caja/devoluciones`, se la recuerda a los 7 días y le da al jugador el monto y el contacto para reclamarla — pero **no llama a la API de reembolsos de MercadoPago**. El intento automático existió y se eliminó: MP deriva los permisos del PRODUCTO de la aplicación y ninguna concede `payments:refunds`, así que devolvía 403 siempre y ningún reembolso automático se completó jamás. `deposit_status='refunded'` significa *"corresponde devolución"*; quién dice si la plata volvió es `payments.status`.
 
 ### Variante 4A: Jugador Cancela Dentro del Plazo
 
@@ -555,8 +557,9 @@ PASO 2 — Procesamiento
   │     ├── canceled_at = NOW()
   │     └── canceled_reason = motivo ingresado
   ├── SI había seña pagada (deposit_status = 'paid'):
-  │     ├── Crear refund en MercadoPago (API de reembolso)
-  │     └── Actualizar deposit_status → 'refunded'
+  │     ├── Registrar la devolución: fila `payments` type='refund', status='pending'
+  │     │     (TurnoGol NO le pide el reembolso a la API de MercadoPago — ver abajo)
+  │     └── Actualizar deposit_status → 'refunded' (= "corresponde devolución")
   ├── SI no había seña:
   │     └── Solo cambiar status (no hay plata que devolver)
   ├── Liberar el slot (ahora otros pueden reservar)
@@ -569,7 +572,7 @@ PASO 2 — Procesamiento
 |---|---|
 | Booking cancelado | 📩 Email al jugador: "Tu turno del {fecha} {hora} fue cancelado. Tu seña de ${monto} se devuelve." |
 | Booking cancelado | 📩 Email al complejo: "Cancelación: {cancha} {fecha} {hora} — {jugador}. Slot liberado." |
-| Reembolso procesado | 💰 Payment: refund, status='approved', type='refund', method='mercadopago', amount=deposit_amount |
+| Devolución registrada | 💰 Payment: refund, status='**pending**', type='refund', amount=deposit_amount. Pasa a `approved` cuando el complejo la salda en `/caja/devoluciones`, o sola por webhook si devuelve desde el panel de MercadoPago |
 | Cualquier cancelación | 📊 AuditLog: `booking.canceled` con before_state + after_state |
 
 ---

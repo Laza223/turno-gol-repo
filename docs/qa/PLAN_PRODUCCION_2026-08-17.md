@@ -201,6 +201,9 @@ Todo este grupo va sobre `complejo-elite-padel`, que ya tiene el OAuth de Mercad
 
 **Qué tiene que pasar.** `expected_cash` = fondo inicial + efectivo real, `diff_amount` = 0 si contaste bien, la seña de MP **no** contada como efectivo, y el ledger de `stock_movements` con una línea por ítem atada al mismo `cash_flow_id`.
 
+
+**EJECUTADO 2026-08-24 — PASA.** En `complejo-titi`: esperado $9.100 = contado $9.100, `diff_amount = 0`. La reserva no-efectivo se hizo por transferencia en vez de MercadoPago (misma invariante, sin gastar plata otra vez). Detalle e invariantes verificadas: [P07-dia-operativo-guion.md](P07-dia-operativo-guion.md).
+
 ---
 
 ### Grupo 2 — Los crons corriendo solos (48 horas de observación, cero trabajo manual)
@@ -327,7 +330,7 @@ Se puede vender cuando, con evidencia pegada:
 - [ ] **P-03**: una seña real entró, se acreditó y aparece en la caja del complejo
 - [ ] **P-05**: una reserva pagada sobre el filo del hold terminó confirmada, no expirada
 - [ ] **P-06**: un reembolso real salió y se ve en MercadoPago
-- [ ] **P-07**: un día operativo cerró con `diff_amount = 0`
+- [x] **P-07**: un día operativo cerró con `diff_amount = 0` — 2026-08-24 en `complejo-titi`, esperado $9.100 = contado $9.100 ([registro](P07-dia-operativo-guion.md))
 - [ ] **P-01**: tu suscripción está `active` y cobrada de verdad
 - [ ] **P-08**: los 15 workers con último job dentro de su período
 - [ ] **P-12**: te llegó un aviso cuando algo se cayó

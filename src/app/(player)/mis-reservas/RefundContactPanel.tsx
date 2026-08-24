@@ -5,6 +5,33 @@ import { formatArs } from '@/lib/format'
 import { resolveTenantContact } from '@/lib/tenant-contact'
 import type { RefundContactInfo } from './actions'
 
+/** Cómo se nombra el medio en una frase, en criollo. */
+const METHOD_LABEL: Record<string, string> = {
+  mercadopago: 'por MercadoPago',
+  cash: 'en efectivo',
+  transfer: 'por transferencia',
+  other: 'por otro medio',
+}
+
+/**
+ * "el 24/08", o cadena vacía si la fila no tiene `processed_at`.
+ *
+ * Se pasa por `en-CA` (que da "YYYY-MM-DD") y se da vuelta a mano en vez de
+ * pedir `es-AR` con `2-digit`: ese locale devuelve "24/8", con el mes sin
+ * cero, y el resto de las fechas de esta pantalla —las del turno— vienen del
+ * `slice` de la fecha ISO, o sea "29/08". Dos formatos en el mismo párrafo se
+ * leen como un error.
+ */
+function settledOnLabel(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const [, month, day] = d
+    .toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+    .split('-')
+  return ` el ${day}/${month}`
+}
+
 /**
  * Los canales para reclamar la devolución de una seña, con el mensaje ya
  * escrito.
@@ -22,10 +49,17 @@ import type { RefundContactInfo } from './actions'
  * mañana.
  */
 export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
-  const message =
-    `Hola ${refund.tenantName}, cancelé mi reserva ${refund.bookingCode} ` +
-    `del ${refund.dateLabel} a las ${refund.timeLabel}. ` +
-    `Quería coordinar la devolución de la seña de ${formatArs(refund.amountCents)}. ¡Gracias!`
+  const settled = refund.state === 'settled'
+  // Ya saldada, el jugador escribe por una razón distinta: no le llegó. El
+  // mensaje no puede seguir pidiendo "coordinar" algo que el complejo ya dio
+  // por hecho, o la conversación arranca desencontrada.
+  const message = settled
+    ? `Hola ${refund.tenantName}, te escribo por la devolución de la seña de ` +
+      `${formatArs(refund.amountCents)} de mi reserva ${refund.bookingCode} ` +
+      `del ${refund.dateLabel} a las ${refund.timeLabel}. ¡Gracias!`
+    : `Hola ${refund.tenantName}, cancelé mi reserva ${refund.bookingCode} ` +
+      `del ${refund.dateLabel} a las ${refund.timeLabel}. ` +
+      `Quería coordinar la devolución de la seña de ${formatArs(refund.amountCents)}. ¡Gracias!`
 
   const contact = resolveTenantContact(
     {
@@ -42,12 +76,21 @@ export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        {refund.state === 'settled' ? (
-          <>
-            MercadoPago ya procesó la devolución de{' '}
-            <strong className="text-foreground">{formatArs(refund.amountCents)}</strong>. Puede
-            tardar unos días hábiles en aparecer en tu cuenta.
-          </>
+        {settled ? (
+          refund.settledMethod === 'mercadopago' ? (
+            <>
+              MercadoPago ya procesó la devolución de{' '}
+              <strong className="text-foreground">{formatArs(refund.amountCents)}</strong>. Puede
+              tardar unos días hábiles en aparecer en tu cuenta.
+            </>
+          ) : (
+            <>
+              <strong className="text-foreground">{refund.tenantName}</strong> marcó que te devolvió{' '}
+              <strong className="text-foreground">{formatArs(refund.amountCents)}</strong>
+              {refund.settledMethod ? ` ${METHOD_LABEL[refund.settledMethod]}` : ''}
+              {settledOnLabel(refund.settledAt)}. Si no te llegó, escribiles.
+            </>
+          )
         ) : (
           <>
             <strong className="text-foreground">{refund.tenantName}</strong> te tiene que devolver{' '}

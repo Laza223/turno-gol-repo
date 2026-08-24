@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, screen, userEvent, within } from 'storybook/test'
-import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
 import { CancelBookingButton } from './CancelBookingButton'
 
 /**
@@ -116,10 +115,19 @@ export const ErrorAlCancelar: Story = {
   },
 }
 
-/** Éxito: router.refresh() re-obtiene la lista sin la reserva cancelada. */
+/**
+ * Éxito: la action recibe el motivo y el diálogo se cierra solo.
+ *
+ * Ya NO se espera un `router.refresh()`: la Server Action termina con
+ * `revalidatePath('/mis-reservas')`, así que el refresh del cliente era
+ * redundante — y, peor, era lo que hacía desaparecer el aviso de la
+ * devolución, porque al reordenarse la lista React desmontaba esta tarjeta con
+ * todo lo que colgara de ella. El panel de contacto ahora lo muestra
+ * `RefundDialogProvider`, que vive por encima de la lista.
+ */
 export const CanceladoOk: Story = {
   args: { action: fn(async () => ({ success: true as const, booking: {} as never })) },
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
@@ -128,6 +136,9 @@ export const CanceladoOk: Story = {
       'Se suspendió por lluvia',
     )
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
-    await expect(getRouter().refresh).toHaveBeenCalled()
+    await expect(args.action).toHaveBeenCalledWith('booking-1', 'Se suspendió por lluvia')
+    await waitFor(async () =>
+      expect(screen.queryByText('¿Cancelar esta reserva?')).not.toBeInTheDocument(),
+    )
   },
 }

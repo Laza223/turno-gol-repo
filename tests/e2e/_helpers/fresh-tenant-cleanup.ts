@@ -71,6 +71,9 @@ export async function deleteFreshAdminTenants(
     await sql`DELETE FROM player_tenant_relationships WHERE tenant_id = ${tid}`
     await sql`DELETE FROM tenant_staff_members WHERE tenant_id = ${tid}`
     await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${tid}`
+    // Misma trampa que en seed-e2e.ts: la FK de analytics_events (migr. 072)
+    // no es CASCADE, y el tenant que dejó el wizard sí tiene tráfico propio.
+    await sql`DELETE FROM analytics_events WHERE tenant_id = ${tid}`
     await sql`DELETE FROM tenants WHERE id = ${tid}`
     deleted.push(tid)
   }

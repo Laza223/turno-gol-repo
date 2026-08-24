@@ -281,6 +281,8 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 
 **Y de paso**: con el worker parado, verificar que la web siga funcionando (reservar, cobrar, cerrar caja). Si la web se cae porque el worker no está, tenés un acoplamiento que no debería existir.
 
+**EJECUTADO 2026-08-24 — el ensayo PASA y el resultado es el peor posible: no llegó ningún aviso.** Se removió el deployment de Railway y el worker estuvo 26 minutos caído (14:11–14:37 ART). Ni Sentry, ni el health-ping, ni un mail. Cuatro causas verificadas: la sonda de salud corre DENTRO del worker (muere con él), no hay cron monitors de Sentry, no hay monitor externo (`/api/status` recibió 2 requests en 45 min y los dos eran de la prueba), y `/api/status` **responde `ok` con el worker muerto** porque mide la conexión a pg-boss desde la web, no si hay consumidor. Lo bueno: la web siguió operando (se creó una reserva) y al volver el worker drenó los 26 jobs encolados en menos de 2 minutos, 0 fallidos — una caída retrasa trabajo, no lo pierde. Detalle y recomendación: [P12-worker-caido-2026-08-24.md](P12-worker-caido-2026-08-24.md).
+
 ---
 
 #### P-13 · Dar de baja tu propia suscripción
@@ -333,7 +335,7 @@ Se puede vender cuando, con evidencia pegada:
 - [x] **P-07**: un día operativo cerró con `diff_amount = 0` — 2026-08-24 en `complejo-titi`, esperado $9.100 = contado $9.100 ([registro](P07-dia-operativo-guion.md))
 - [ ] **P-01**: tu suscripción está `active` y cobrada de verdad
 - [ ] **P-08**: los 15 workers con último job dentro de su período
-- [ ] **P-12**: te llegó un aviso cuando algo se cayó
+- [x] **P-12**: ejecutado 2026-08-24 — **NO llegó ningún aviso**. El worker estuvo 26 min caído y nada avisó; hallazgo abierto, no una casilla verde ([registro](P12-worker-caido-2026-08-24.md))
 - [ ] **P-11**: existe un backup restaurado, con RTO y RPO medidos
 
 Los tres que quedan (**P-02**, **P-09**, el tramo largo de **P-10**) son de reloj: se cierran solos si están arrancados. Lo que **no** es aceptable es venderlos sin arrancar — el primer cliente sería el experimento.

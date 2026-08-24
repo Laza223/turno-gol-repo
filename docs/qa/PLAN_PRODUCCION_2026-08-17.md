@@ -335,7 +335,7 @@ Se puede vender cuando, con evidencia pegada:
 - [x] **P-07**: un día operativo cerró con `diff_amount = 0` — 2026-08-24 en `complejo-titi`, esperado $9.100 = contado $9.100 ([registro](P07-dia-operativo-guion.md))
 - [ ] **P-01**: tu suscripción está `active` y cobrada de verdad
 - [ ] **P-08**: los 15 workers con último job dentro de su período
-- [x] **P-12**: ejecutado 2026-08-24 — **NO llegó ningún aviso**. El worker estuvo 26 min caído y nada avisó; hallazgo abierto, no una casilla verde ([registro](P12-worker-caido-2026-08-24.md))
+- [x] **P-12**: **CERRADO 2026-08-24**. El ensayo salió mal (26 min caído, cero avisos) y el hallazgo se arregló el mismo día: `/api/status` detecta el worker muerto y hay un monitor externo que avisa por mail, probado de punta a punta ([registro](P12-worker-caido-2026-08-24.md))
 - [ ] **P-11**: existe un backup restaurado, con RTO y RPO medidos
 
 Los tres que quedan (**P-02**, **P-09**, el tramo largo de **P-10**) son de reloj: se cierran solos si están arrancados. Lo que **no** es aceptable es venderlos sin arrancar — el primer cliente sería el experimento.

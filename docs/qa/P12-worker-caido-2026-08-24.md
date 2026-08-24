@@ -85,4 +85,20 @@ Tres decisiones que valen más que el código:
 
 Cubierto por seis casos en `tests/unit/api-status.test.ts`, incluido el de P-12 exacto (worker muerto con base y pg-boss impecables → 503).
 
-**Paso 2 — pendiente, y es de consola, no de código.** Falta dar de alta el monitor externo (UptimeRobot gratis o equivalente) apuntando a `https://turnogol.app/api/status`, con aviso al mail del dueño. Sin eso, el 503 existe pero nadie lo mira: el `- [ ] monitor externo configurado` del checklist de la Fase B11 sigue sin tildar.
+**Paso 2 — hecho y verificado (2026-08-24).** El monitor externo está dado de alta en UptimeRobot (plan gratuito), con dos monitores HTTP cada 5 minutos y aviso por mail:
+
+| Monitor | URL |
+|---|---|
+| `turnogol.app` | el sitio |
+| `turnogol.app/api/status` | el semáforo, que ahora incluye el latido del worker |
+
+**La alerta se probó de punta a punta**, que es lo único que distingue un monitor configurado de uno que sirve. Se creó un tercer monitor apuntando a `https://turnogol.app/api/prueba-de-alerta-p12`, una ruta que no existe:
+
+- **19:03:59 UTC** — monitor creado.
+- **19:05:04 UTC** — incidente registrado, causa `404 Not Found`. Detectó en **65 segundos**.
+- **16:05 ART** — mail recibido en la casilla del complejo: *"Monitor is DOWN: turnogol.app/api/prueba-de-alerta-p12"*.
+- El monitor de prueba se borró al terminar; quedaron los dos reales, ambos en verde.
+
+El circuito completo —caída, detección, mail a una persona— está verificado. **P-12 queda cerrado**: el ensayo salió mal y el hallazgo se arregló el mismo día.
+
+El paso a paso del alta, y qué hacer cuando llegue una alerta de verdad, están en [docs/operations/uptime-monitor.md](../operations/uptime-monitor.md).

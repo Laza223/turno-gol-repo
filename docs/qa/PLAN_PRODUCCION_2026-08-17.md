@@ -269,6 +269,8 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 
 **Beneficio colateral.** Cerrar `STAGING-001` significa que el próximo fix se prueba fuera de la base de tu cliente. Hoy no existe ese lugar.
 
+**EJECUTADO 2026-08-24 — PASA, y por un camino más barato que el previsto.** No hizo falta provisionar STAGING-001: el dashboard de Supabase tiene "Restore to new project", que restaura un backup a un proyecto nuevo sin tocar producción. Se restauró el backup del 24/08 03:45 UTC a un proyecto efímero, se verificaron los conteos (predichos antes de mirar, los seis exactos), 101 policies RLS, 2 roles, 7 extensiones y 5 `auth.users`, y se borró el proyecto. **RTO de la base: < 5 min. RPO real: hasta 24 h.** Hallazgo del ensayo: **PITR no está habilitado** — es un add-on sin contratar, contra lo que afirmaba el `RISK_REGISTER.md`. Detalle: [2026-08-24-drill.md](../audit/backup-drills/2026-08-24-drill.md).
+
 ---
 
 #### P-12 · El worker caído
@@ -334,7 +336,7 @@ Se puede vender cuando, con evidencia pegada:
 - [ ] **P-01**: tu suscripción está `active` y cobrada de verdad
 - [ ] **P-08**: los 15 workers con último job dentro de su período
 - [ ] **P-12**: te llegó un aviso cuando algo se cayó
-- [ ] **P-11**: existe un backup restaurado, con RTO y RPO medidos
+- [x] **P-11**: existe un backup restaurado, con RTO y RPO medidos — 2026-08-24: RTO < 5 min, RPO hasta 24 h (PITR NO contratado) ([drill](../audit/backup-drills/2026-08-24-drill.md))
 
 Los tres que quedan (**P-02**, **P-09**, el tramo largo de **P-10**) son de reloj: se cierran solos si están arrancados. Lo que **no** es aceptable es venderlos sin arrancar — el primer cliente sería el experimento.
 

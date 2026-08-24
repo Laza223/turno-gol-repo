@@ -137,10 +137,16 @@ const ROW_AUSENTE_SIN_COBRAR = row({
   pending: 1_500_000,
   totalPaid: 0,
 })
+/**
+ * Cancelación con la devolución YA saldada: la fila de `payments` está en
+ * 'approved'. Es lo único que autoriza a decir "devuelta" — sin esa evidencia,
+ * `deposit_status='refunded'` solo significa que corresponde devolver.
+ */
 const ROW_CANCELADA_REEMBOLSADA = row({
   id: uid(1007),
   status: 'canceled_refunded',
   depositStatus: 'refunded',
+  refundState: 'settled',
   timeStart: '18:00',
   timeEnd: '19:00',
 })
@@ -356,7 +362,7 @@ export const CanceladaConReembolso: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Cancelada')).toBeVisible()
-    await expect(canvas.getByText('Seña reembolsada', { exact: false })).toBeVisible()
+    await expect(canvas.getByText('Seña devuelta', { exact: false })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
   },
 }

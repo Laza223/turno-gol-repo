@@ -46,7 +46,12 @@ export const Minimal: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('img', { name: /logo/i })).not.toBeInTheDocument()
-    await expect(canvas.queryByRole('link', { name: /whatsapp/i })).not.toBeInTheDocument()
+    // El chip de WhatsApp SÍ aparece aunque el complejo no haya cargado el
+    // campo: cae al teléfono, que es NOT NULL. Antes de la cascada este assert
+    // era `not.toBeInTheDocument()` — y como en la práctica nadie tenía el
+    // campo cargado (no existía la pantalla para hacerlo), el chip no se
+    // mostraba en NINGÚN complejo.
+    await expect(canvas.getByRole('link', { name: /whatsapp/i })).toBeInTheDocument()
     await expect(canvas.queryByRole('img', { name: /estrellas/i })).not.toBeInTheDocument()
   },
 }

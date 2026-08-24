@@ -107,6 +107,87 @@ async function checkWorkerPool(): Promise<Check> {
   }
 }
 
+/** Cada cuánto late el worker: `health-ping.worker.ts` se agenda cada 5 minutos. */
+const HEARTBEAT_PERIOD_MS = 5 * 60_000
+
+/**
+ * Cuántos latidos seguidos pueden faltar antes de gritar. Tres, no uno: un
+ * deploy del worker lo reinicia y se saltea un ciclo sin que pase nada malo.
+ */
+const HEARTBEAT_MISSES_ALLOWED = 3
+
+const HEARTBEAT_STALE_MS = HEARTBEAT_PERIOD_MS * HEARTBEAT_MISSES_ALLOWED
+
+/**
+ * ¿Hay alguien atendiendo las colas, o solo la conexión está viva?
+ *
+ * Esto existe por P-12 (`docs/qa/P12-worker-caido-2026-08-24.md`): el worker
+ * estuvo 26 minutos caído en producción y NADA avisó. La razón de fondo es que
+ * la sonda de salud (`health-ping.worker.ts`) corre DENTRO del worker, así que
+ * muere con el proceso — un muerto no denuncia su propia muerte. La razón de
+ * forma es que este endpoint, que es lo que mira un monitor externo, devolvía
+ * `ok` igual: `checkPgBoss` prueba que la web puede CONECTARSE a pg-boss, no
+ * que exista un consumidor. Con el worker enterrado ese check pasa perfecto.
+ *
+ * El arreglo no agrega infraestructura: el latido ya se escribe en
+ * `pgboss.job` cada 5 minutos, y acá se lo mira desde afuera. Si el último es
+ * viejo, el semáforo pasa a 503 y el monitor externo avisa. La sonda que moría
+ * con el proceso pasa a ser justo la señal que se extraña desde afuera.
+ *
+ * **Fail-open a propósito** en dos casos —sin ningún latido registrado, o
+ * error al leerlos— y con el mismo criterio que `pingSupabaseAuth`: una alarma
+ * que no se puede apagar es peor que ninguna, porque entrena a ignorarlas.
+ *
+ * **Solo evalúa la antigüedad en producción.** En local y en CI el worker
+ * normalmente no corre, y un latido viejo de la última vez que sí corrió
+ * dejaría este endpoint en 503 para siempre: eso rompe el gate de readiness de
+ * Playwright y frena la suite e2e entera antes de arrancar. Fuera de
+ * producción reporta `ok` con la nota, que es información sin alarma.
+ */
+async function checkWorkerHeartbeat(): Promise<Check> {
+  const name = 'worker-heartbeat'
+  if (process.env.NODE_ENV !== 'production') {
+    return { name, status: 'ok', note: 'not checked outside production' }
+  }
+  const t0 = Date.now()
+  try {
+    const sql = getSql()
+    // Mismo par de tablas que `lastHealthPing` en /api/admin/system-status: el
+    // archiver de pg-boss mueve los completados a `archive` al rato, así que
+    // mirar solo `job` daría "sin latidos" con el worker perfectamente vivo.
+    const rows = await sql<{ last: Date | null }[]>`
+      SELECT max(completedon) AS last FROM (
+        SELECT completedon FROM pgboss.job
+        WHERE name = 'health-ping' AND state = 'completed'
+        UNION ALL
+        SELECT completedon FROM pgboss.archive
+        WHERE name = 'health-ping' AND state = 'completed'
+      ) pings
+    `
+    const last = rows[0]?.last
+    if (!last) return { name, status: 'ok', note: 'no heartbeat recorded yet' }
+
+    const ageMs = Date.now() - new Date(last).getTime()
+    if (ageMs > HEARTBEAT_STALE_MS) {
+      // El 503 alcanza para el monitor externo, pero Sentry es hoy el único
+      // canal que llega a una persona sin que nadie mire una pantalla.
+      captureException(
+        new Error(
+          `worker heartbeat stale: last health-ping ${Math.round(ageMs / 60_000)} min ago ` +
+            `(threshold ${HEARTBEAT_STALE_MS / 60_000} min) — background jobs are not running`,
+        ),
+      )
+      // La antigüedad NO sale en la respuesta: es pública. El detalle va a
+      // Sentry y a /api/admin/system-status, que sí tienen dueño.
+      return { name, status: 'down', error: GENERIC_CHECK_ERROR }
+    }
+    return { name, status: 'ok', latencyMs: Date.now() - t0 }
+  } catch (err) {
+    captureException(err)
+    return { name, status: 'ok', note: 'could not read heartbeat' }
+  }
+}
+
 async function checkUpstash(): Promise<Check> {
   const t0 = Date.now()
   // Not configured (dev/E2E): rate limiting degrades gracefully (enforce()
@@ -218,16 +299,18 @@ function canSeeDetail(req: Request): boolean {
 }
 
 export async function GET(req: Request): Promise<Response> {
-  const [db, workerPool, pgboss, upstash] = await Promise.all([
+  const [db, workerPool, pgboss, heartbeat, upstash] = await Promise.all([
     checkDb(),
     checkWorkerPool(),
     checkPgBoss(),
+    checkWorkerHeartbeat(),
     checkUpstash(),
   ])
   const checks: Check[] = [
     db,
     workerPool,
     pgboss,
+    heartbeat,
     upstash,
     checkEncryptionKey(),
     checkStorage(),

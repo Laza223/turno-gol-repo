@@ -70,3 +70,19 @@ Con esos dos pasos, el worker caído deja de ser invisible: la sonda que muere c
 ## Hallazgo colateral
 
 `retry-refunds: settle failed` acumula **85 eventos en 24 h** en Sentry (último: 17:00:13, antes del ensayo). Es un monitor encendido de forma permanente, con la misma forma que el caso ya documentado en el que "un reembolso correcto encendía la alarma". No se investigó acá para no mezclar dos cosas; queda anotado.
+
+---
+
+## Estado del arreglo
+
+**Paso 1 — hecho.** `/api/status` incorpora el check `worker-heartbeat`: lee el último `health-ping` completado de `pgboss.job`/`archive` y, si tiene más de 15 minutos (tres ciclos del cron de 5), el semáforo pasa a **503** y el detalle va a Sentry. La respuesta pública sigue sin decir qué se midió ni cuánto hace.
+
+Tres decisiones que valen más que el código:
+
+- **Fail-open** si no hay ningún latido registrado o si no se puede leer la tabla. Una alarma que no se puede apagar es peor que ninguna: entrena a ignorarlas. Es el mismo criterio con el que `pingSupabaseAuth` dejó de gritar "supabase-auth down" cada 5 minutos con el login andando perfecto.
+- **La antigüedad solo se evalúa en producción.** En local y en CI el worker normalmente no corre, y un latido viejo de la última vez que sí corrió dejaría el endpoint en 503 para siempre — eso frena el gate de readiness de Playwright y con él la suite e2e entera.
+- **Tres latidos de gracia, no uno**: un deploy del worker lo reinicia y se saltea un ciclo sin que pase nada.
+
+Cubierto por seis casos en `tests/unit/api-status.test.ts`, incluido el de P-12 exacto (worker muerto con base y pg-boss impecables → 503).
+
+**Paso 2 — pendiente, y es de consola, no de código.** Falta dar de alta el monitor externo (UptimeRobot gratis o equivalente) apuntando a `https://turnogol.app/api/status`, con aviso al mail del dueño. Sin eso, el 503 existe pero nadie lo mira: el `- [ ] monitor externo configurado` del checklist de la Fase B11 sigue sin tildar.

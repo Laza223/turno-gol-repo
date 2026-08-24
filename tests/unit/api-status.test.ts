@@ -11,11 +11,15 @@ vi.mock('@/shared/jobs/boss', () => ({
 vi.mock('@/shared/rate-limit/client', () => ({
   getRedis: vi.fn(),
 }))
+vi.mock('@/lib/sentry', () => ({
+  captureException: vi.fn(),
+}))
 
 import { GET, STATUS_TOKEN_HEADER } from '@/app/api/status/route'
 import { getSql, getWorkerSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { getRedis } from '@/shared/rate-limit/client'
+import { captureException } from '@/lib/sentry'
 
 /**
  * Un GET al endpoint. Bajo vitest `NODE_ENV` es 'test', así que sin header el
@@ -415,5 +419,127 @@ describe('GET /api/status', () => {
     const body = await res.json()
     const check = body.checks.find((c: { name: string }) => c.name === 'storage')
     expect(check.note).toMatch(/not configured/i)
+  })
+  // P-12 (docs/qa/P12-worker-caido-2026-08-24.md): el worker estuvo 26 minutos
+  // caído en producción y este endpoint contestó `ok` todo el tiempo, porque
+  // `checkPgBoss` prueba que la web puede CONECTARSE a pg-boss, no que exista
+  // alguien consumiendo la cola. El latido leído desde afuera es lo que
+  // convierte esa caída en un 503 que un monitor externo sí puede ver.
+  describe('worker-heartbeat', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    /**
+     * `getSql` como tagged template: distingue la consulta del latido de
+     * cualquier otra (el `SELECT 1` de `checkDb`) mirando el texto, porque un
+     * mock que devuelve lo mismo para todo no puede probar nada de esto.
+     */
+    function sqlConLatido(last: Date | 'ninguno' | 'error') {
+      const fn = vi.fn((strings: TemplateStringsArray) => {
+        const texto = Array.isArray(strings) ? strings.join(' ') : String(strings)
+        if (texto.includes('health-ping')) {
+          if (last === 'error') {
+            return Promise.reject(new Error('permission denied for schema pgboss'))
+          }
+          return Promise.resolve([{ last: last === 'ninguno' ? null : last }])
+        }
+        return Promise.resolve([{ '?column?': 1 }])
+      })
+      ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(fn)
+      ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        getQueueSize: vi.fn().mockResolvedValue(0),
+      })
+      return fn
+    }
+
+    function latidoHace(minutos: number): Date {
+      return new Date(Date.now() - minutos * 60_000)
+    }
+
+    const TOKEN = 'un-token-suficientemente-largo'
+
+    function prod() {
+      vi.stubEnv('NODE_ENV', 'production')
+      vi.stubEnv('STATUS_TOKEN', TOKEN)
+    }
+
+    it('latido fresco: sigue en 200', async () => {
+      prod()
+      sqlConLatido(latidoHace(3))
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      const check = body.checks.find((c: { name: string }) => c.name === 'worker-heartbeat')
+      expect(check.status).toBe('ok')
+    })
+
+    // El caso de P-12 exacto: worker muerto, base y pg-boss impecables.
+    it('latido viejo: 503 y reporte a Sentry, aunque el resto esté sano', async () => {
+      prod()
+      sqlConLatido(latidoHace(26))
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
+      expect(res.status).toBe(503)
+      const body = await res.json()
+      expect(body.status).toBe('down')
+      const check = body.checks.find((c: { name: string }) => c.name === 'worker-heartbeat')
+      expect(check.status).toBe('down')
+      // Ni la antigüedad ni qué se midió salen en una respuesta pública: el
+      // detalle va a Sentry, que tiene dueño.
+      expect(check.error).toBe('No se pudo verificar.')
+      expect(JSON.stringify(check)).not.toMatch(/min|stale|health-ping/i)
+      expect(captureException).toHaveBeenCalled()
+    })
+
+    // Tres ciclos de 5 minutos: un deploy del worker se saltea uno y no pasa nada.
+    it('a los 12 minutos todavía no grita', async () => {
+      prod()
+      sqlConLatido(latidoHace(12))
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
+      expect(res.status).toBe(200)
+    })
+
+    // Fail-open: una alarma que no se puede apagar entrena a ignorar alarmas.
+    it('sin ningún latido registrado no inventa una caída', async () => {
+      prod()
+      sqlConLatido('ninguno')
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      const check = body.checks.find((c: { name: string }) => c.name === 'worker-heartbeat')
+      expect(check.status).toBe('ok')
+      expect(check.note).toMatch(/no heartbeat/i)
+    })
+
+    it('si no puede leer el latido tampoco tumba el semáforo', async () => {
+      prod()
+      sqlConLatido('error')
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      const check = body.checks.find((c: { name: string }) => c.name === 'worker-heartbeat')
+      expect(check.status).toBe('ok')
+    })
+
+    // Sin esto, un latido viejo de la última vez que alguien corrió los workers
+    // deja /api/status en 503 para siempre en local, y el gate de readiness de
+    // Playwright frena la suite e2e entera antes de arrancar.
+    it('fuera de producción no evalúa la antigüedad', async () => {
+      const fn = sqlConLatido(latidoHace(600))
+
+      const res = await GET(pedir())
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      const check = body.checks.find((c: { name: string }) => c.name === 'worker-heartbeat')
+      expect(check.status).toBe('ok')
+      // Ni siquiera consultó: es un check que no existe fuera de producción.
+      const consultas = fn.mock.calls.map((c) => (Array.isArray(c[0]) ? c[0].join(' ') : ''))
+      expect(consultas.some((q) => q.includes('health-ping'))).toBe(false)
+    })
   })
 })

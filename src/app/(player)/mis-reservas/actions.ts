@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { bookingCode } from '@/lib/booking-code'
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, boundedText } from '@/shared/validation/primitives'
@@ -68,8 +69,39 @@ function toPlayerBookingRow(booking: BookingRow): PlayerBookingRow {
   }
 }
 
+/**
+ * Lo que el jugador necesita para reclamar la devolución de su seña.
+ *
+ * Va en el resultado de la cancelación —y no en una query aparte— porque es
+ * justo el momento en que hace falta: hasta ahora el jugador cancelaba, veía la
+ * tarjeta cambiar de color y no se le decía ni cuánto le tenían que devolver ni
+ * a quién escribirle. Los mensajes de error del propio archivo dicen "contactá
+ * al complejo" sin dar ningún canal.
+ *
+ * Solo contacto PÚBLICO del complejo: el mismo que ya se publica en /[slug].
+ */
+export type RefundContactInfo = {
+  /** Centavos. Es la seña entera: no existen devoluciones parciales. */
+  amountCents: number
+  /**
+   * `settled` = MercadoPago ya la procesó (hoy nunca pasa: el reembolso
+   * automático falla siempre con 403 de permisos). `pending` = la devolución la
+   * tiene que hacer el complejo.
+   */
+  state: 'settled' | 'pending'
+  bookingCode: string
+  /** "DD/MM" y "HH:MM" del turno, para que el mensaje identifique cuál era. */
+  dateLabel: string
+  timeLabel: string
+  tenantName: string
+  tenantWhatsapp: string | null
+  tenantPhone: string
+  tenantEmail: string
+}
+
 export type PlayerBookingActionResult =
-  { success: true; booking: PlayerBookingRow } | { success: false; error: string }
+  | { success: true; booking: PlayerBookingRow; refund?: RefundContactInfo }
+  | { success: false; error: string }
 
 async function requirePlayer() {
   const user = await extractAuthUser()
@@ -92,13 +124,30 @@ export async function cancelMyBookingAction(
   // filters to ONLY bookings owned by this player, even if the connection role bypasses RLS.
   // Defense in depth: avoids leaking tenant_id/deposit_status of arbitrary bookings.
   const pre = await withPlayerContext(user.playerId, async (tx) => {
+    // El JOIN a `tenants` trae el contacto público del complejo en la misma ida
+    // a la base: es lo que después se le ofrece al jugador para reclamar la
+    // devolución. `tenants` es tabla global sin RLS y estas cuatro columnas ya
+    // se publican en /[slug], así que no expone nada nuevo.
     const rows = await tx.execute(sql`
-      SELECT tenant_id, deposit_status
-      FROM bookings
-      WHERE id = ${parsed.data.bookingId}
+      SELECT b.tenant_id, b.deposit_status, b.deposit_amount,
+             t.name AS tenant_name, t.phone AS tenant_phone,
+             t.whatsapp AS tenant_whatsapp, t.email AS tenant_email
+      FROM bookings b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.id = ${parsed.data.bookingId}
       LIMIT 1
     `)
-    return (rows as unknown as Array<{ tenant_id: string; deposit_status: string }>)[0]
+    return (
+      rows as unknown as Array<{
+        tenant_id: string
+        deposit_status: string
+        deposit_amount: number
+        tenant_name: string
+        tenant_phone: string
+        tenant_whatsapp: string | null
+        tenant_email: string
+      }>
+    )[0]
   })
   if (!pre) return { success: false, error: 'Reserva no encontrada.' }
 
@@ -178,9 +227,11 @@ export async function cancelMyBookingAction(
   // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
   // tx). Si esta llamada falla, la cancelación del jugador ya es válida —no
   // hay rollback— pero el refund queda pendiente de resolución manual/retry.
+  let refundSettled = false
   if (outcome.pendingRefund && gateway) {
     try {
-      await settleRefund(outcome.pendingRefund, gateway, pre.tenant_id)
+      const settled = await settleRefund(outcome.pendingRefund, gateway, pre.tenant_id)
+      refundSettled = settled.status === 'approved'
     } catch (err) {
       const motivo = describeMpError(err)
       // `logger.error` ADEMÁS de Sentry, y primero: escribe a stderr de forma
@@ -208,5 +259,33 @@ export async function cancelMyBookingAction(
     }
   }
 
-  return { success: true, booking: toPlayerBookingRow(outcome.booking) }
+  const booking = toPlayerBookingRow(outcome.booking)
+
+  // `canceled_refunded` es exactamente "corresponde devolver la seña": lo fija
+  // `cancelByPlayer` solo cuando la cancelación entró en política Y había seña
+  // pagada. Fuera de política el turno queda `canceled_no_refund` y acá no se
+  // promete nada — el contacto del complejo igual se ofrece en la pantalla,
+  // pero bajo otro texto.
+  const refund: RefundContactInfo | undefined =
+    booking.status === 'canceled_refunded'
+      ? {
+          amountCents: pre.deposit_amount,
+          state: refundSettled ? 'settled' : 'pending',
+          bookingCode: bookingCode(parsed.data.bookingId),
+          dateLabel: booking.date
+            .toISOString()
+            .slice(0, 10)
+            .split('-')
+            .reverse()
+            .slice(0, 2)
+            .join('/'),
+          timeLabel: booking.timeStart.slice(0, 5),
+          tenantName: pre.tenant_name,
+          tenantWhatsapp: pre.tenant_whatsapp,
+          tenantPhone: pre.tenant_phone,
+          tenantEmail: pre.tenant_email,
+        }
+      : undefined
+
+  return { success: true, booking, ...(refund ? { refund } : {}) }
 }

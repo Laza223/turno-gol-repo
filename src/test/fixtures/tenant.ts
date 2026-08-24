@@ -93,6 +93,9 @@ export const tenant = (overrides: Partial<TenantRow> = {}): TenantRow => ({
   city: 'Ciudad Autónoma de Buenos Aires',
   province: 'CABA',
   phone: '+54 11 4567-8900',
+  // NULL a propósito: el caso real de casi todos los complejos, porque hasta
+  // ahora no había pantalla para cargarlo. El contacto cae al `phone`.
+  whatsapp: null,
   email: 'contacto@complejofenix.com.ar',
   status: 'active',
   trialEndsAt: null,

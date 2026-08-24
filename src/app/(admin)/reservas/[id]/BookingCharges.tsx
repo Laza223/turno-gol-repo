@@ -10,7 +10,7 @@ import { METHOD_LABELS } from '@/lib/payment-method'
 import { MoneyInput } from '@/components/ui/money-input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { resolveDepositDisplayStatus } from '../deposit-display'
+import { resolveDepositDisplayStatus, type RefundState } from '../deposit-display'
 import type { BookingChargeRow } from '../queries'
 import type { AddBookingChargeInput, BookingChargeActionResult } from '../actions'
 
@@ -19,8 +19,8 @@ type Props = {
   priceSnapshot: number
   depositAmount: number
   depositStatus: string
-  /** Ver `deposit-display.ts`: un pago tardío deja `depositStatus='pending'` con la plata ya devuelta. */
-  depositRefunded?: boolean
+  /** Ver `deposit-display.ts`: `depositStatus` se congela al cancelar, así que `payments` manda. */
+  refundState?: RefundState
   charges: BookingChargeRow[]
   chargesTotal: number
   /**
@@ -60,7 +60,9 @@ const PAYMENT_METHODS = [
 
 const DEPOSIT_STATUS_LABELS: Record<string, string> = {
   pending: 'pendiente',
-  refunded: 'reembolsada',
+  // La plata todavía no se movió: el complejo la debe. Ver `deposit-display.ts`.
+  refund_pending: 'a devolver',
+  refunded: 'devuelta',
   not_required: 'no requerida',
 }
 
@@ -69,7 +71,7 @@ export default function BookingCharges({
   priceSnapshot,
   depositAmount,
   depositStatus,
-  depositRefunded,
+  refundState,
   charges,
   chargesTotal,
   addBookingChargeAction,
@@ -99,7 +101,7 @@ export default function BookingCharges({
   const isPaidInFull = pendingAmount === 0
   // Solo la ETIQUETA. `summarizeBookingCharges` de arriba sigue recibiendo el
   // `depositStatus` crudo: los totales son plata, no texto.
-  const depositDisplayStatus = resolveDepositDisplayStatus(depositStatus, depositRefunded)
+  const depositDisplayStatus = resolveDepositDisplayStatus(depositStatus, refundState)
 
   const [chargeMode, setChargeMode] = useState<'single' | 'split'>('single')
   const [splitCents1, setSplitCents1] = useState<number | null>(null)

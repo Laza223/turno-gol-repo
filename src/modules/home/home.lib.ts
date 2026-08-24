@@ -5,8 +5,12 @@ export const ATTENTION_EMPTY_COPY = 'Nada pendiente. Todo cobrado y cerrado.'
 /** Prioridad P1→P3 de la taxonomía (docs/decisions/2026-08-02-taxonomia-alertas-hoy.md). */
 const ATTENTION_PRIORITY: Record<AttentionItem['kind'], number> = {
   unpaid_completed_booking: 1,
-  failed_deposit: 2,
-  yesterday_cash_unclosed: 3,
+  // P2: plata comprometida con un jugador que espera. No tiene una ventana que
+  // se cierre como el turno sin cobrar (P1, el cliente está en el mostrador
+  // AHORA), pero el daño crece con los días.
+  pending_refunds: 2,
+  failed_deposit: 3,
+  yesterday_cash_unclosed: 4,
 }
 
 export function compareToLastWeek(

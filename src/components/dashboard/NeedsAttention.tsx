@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Undo2, XCircle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,10 @@ function descriptionFor(item: AttentionItem): string {
       return `Seña rechazada — ${item.contactName} — ${item.courtName}`
     case 'yesterday_cash_unclosed':
       return 'La caja de ayer sigue sin cerrar'
+    case 'pending_refunds':
+      return item.count === 1
+        ? `1 devolución pendiente — ${formatArs(item.totalCents)} a devolver`
+        : `${item.count} devoluciones pendientes — ${formatArs(item.totalCents)} a devolver`
   }
 }
 
@@ -35,6 +39,8 @@ function actionFor(item: AttentionItem): { label: string; href: string } {
       return { label: 'Ver reserva', href: `/reservas/${item.bookingId}` }
     case 'yesterday_cash_unclosed':
       return { label: 'Cerrar caja de ayer', href: '/caja' }
+    case 'pending_refunds':
+      return { label: 'Gestionar', href: '/caja/devoluciones' }
   }
 }
 
@@ -42,6 +48,7 @@ const ICON_BY_KIND = {
   unpaid_completed_booking: AlertTriangle,
   failed_deposit: XCircle,
   yesterday_cash_unclosed: AlertTriangle,
+  pending_refunds: Undo2,
 } as const
 
 /**
@@ -69,7 +76,14 @@ export function NeedsAttention({ items }: { items: AttentionItem[] }) {
           {items.map((item) => {
             const Icon = ICON_BY_KIND[item.kind]
             const action = actionFor(item)
-            const key = 'bookingId' in item ? item.bookingId : `${item.kind}-${item.date}`
+            // `pending_refunds` no tiene ni bookingId ni date —es agregado— y
+            // además es único por render, así que su propio kind alcanza.
+            const key =
+              'bookingId' in item
+                ? item.bookingId
+                : 'date' in item
+                  ? `${item.kind}-${item.date}`
+                  : item.kind
             return (
               <li
                 key={key}

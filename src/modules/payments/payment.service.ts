@@ -278,9 +278,13 @@ export async function dispatchPaymentInfo(
     // jugador NO: el complejo hizo ese reembolso por afuera y puede tener una
     // conversación en curso con él. Ver el UPDATE más abajo.
     const refundedRows = await tx.execute(sql`
-      SELECT id FROM payments WHERE mp_payment_id = ${info.mpPaymentId} LIMIT 1
+      SELECT id, player_id AS "playerId"
+      FROM payments WHERE mp_payment_id = ${info.mpPaymentId} LIMIT 1
     `)
-    const refundedPaymentId = (refundedRows as unknown as Array<{ id: string }>)[0]?.id ?? null
+    const refundedRow = (
+      refundedRows as unknown as Array<{ id: string; playerId: string | null }>
+    )[0]
+    const refundedPaymentId = refundedRow?.id ?? null
 
     // Fix H1 (D4): el propio flujo LOCAL de cancelación (cancelByAdmin/
     // cancelByPlayer → prepareRefund → settleRefund) hace que MP mande este
@@ -393,7 +397,69 @@ export async function dispatchPaymentInfo(
         { onlyRole: 'admin' },
       )
 
+      // Sin esto, un reembolso externo sobre un turno TERMINAL no dejaba NINGÚN
+      // registro: el UPDATE de arriba afecta 0 filas a propósito (el trigger de
+      // la migr. 070) y el único rastro era un mail. La fila de refund es
+      // justamente lo que sí se puede escribir sobre un turno congelado, y es
+      // la que hace que el detalle diga "Seña devuelta" en vez de mentir.
+      //
+      // Idempotente por construcción: si llega un segundo evento del mismo
+      // pago, `hasKnownLocalRefund` ya da true y entra por la otra rama, que
+      // encuentra la fila en 'approved' y no hace nada.
+      if (refundedPaymentId) {
+        await tx.execute(sql`
+          INSERT INTO payments
+            (tenant_id, booking_id, player_id, amount, currency, type, method,
+             status, processed_at, description)
+          VALUES
+            (${tenantId}, ${info.externalReference}, ${refundedRow?.playerId ?? null},
+             ${info.amount}, 'ARS', 'refund', 'mercadopago', 'approved', NOW(),
+             ${'Refund of ' + refundedPaymentId})
+        `)
+      }
+
       return { alreadyProcessed: false, result: 'refunded', notificationIds }
+    }
+
+    // Refund local ya conocido. Antes esto era un no-op porque se asumía que
+    // `settleRefund` había dejado el estado correcto — pero `settleRefund` falla
+    // hoy siempre (403 de permisos), así que la fila queda en 'pending' y la
+    // devolución la termina haciendo el complejo desde el panel de MercadoPago.
+    // Este webhook es el aviso de que la plata efectivamente volvió: saldarla
+    // acá es lo que hace que el complejo no tenga que tildar nada a mano en el
+    // camino más común.
+    //
+    // Se salda UNA sola fila, la más vieja. Aprobar todas las pendientes de esa
+    // description por un solo evento sería inventar plata el día que existan
+    // devoluciones parciales.
+    if (refundedPaymentId) {
+      const settledRows = await tx.execute(sql`
+        UPDATE payments
+        SET status = 'approved', processed_at = NOW()
+        WHERE id = (
+          SELECT id FROM payments
+          WHERE type = 'refund'
+            AND description = ${'Refund of ' + refundedPaymentId}
+            AND status = 'pending'
+          ORDER BY created_at ASC
+          LIMIT 1
+        )
+        RETURNING id
+      `)
+      const settledId = (settledRows as unknown as Array<{ id: string }>)[0]?.id
+      if (settledId) {
+        await insertSystemAuditLog(tx, {
+          tenantId,
+          action: 'payment.refund_settled_by_mp',
+          resourceType: 'payment',
+          resourceId: settledId,
+          metadata: {
+            bookingId: info.externalReference,
+            mpPaymentId: info.mpPaymentId,
+            amount: info.amount,
+          },
+        })
+      }
     }
 
     return { alreadyProcessed: false, result: 'refunded' }
@@ -1198,7 +1264,14 @@ export async function settleRefund(
   await withTenantContext(tenantId, async (tx) => {
     await tx
       .update(payments)
-      .set({ mpPaymentId: refund.mpRefundId, status })
+      .set({
+        mpPaymentId: refund.mpRefundId,
+        status,
+        // `processed_at` = cuándo se movió la plata de verdad. Solo se sella si
+        // MP la dio por aprobada: en `pending` el dinero todavía no salió, y la
+        // fila sigue siendo una deuda de devolución hasta que alguien la salde.
+        ...(status === 'approved' ? { processedAt: new Date() } : {}),
+      })
       .where(eq(payments.id, prepared.refundPaymentId))
   })
 

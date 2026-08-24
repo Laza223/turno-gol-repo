@@ -4,6 +4,7 @@ import { getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { getDailyClose } from '@/modules/cashflow/daily-close.service'
 import { getDayOpen } from '@/modules/cashflow/cash-open.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
+import { countPendingRefunds } from '@/modules/payments/refund.service'
 import { addDays } from '@/shared/dates/art'
 import { operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { daySlotsFor, occupancyForDay, type DayBookingRow } from '@/lib/dashboard/day-bookings'
@@ -310,6 +311,7 @@ export async function getHoyData(
     onlineBookings,
     cancellations,
     depositsPaid,
+    pendingRefunds,
   ] = await Promise.all([
     getDaySummary(tenantId, date, cutoffMins, tx),
     getDaySummary(tenantId, lastWeekDate, cutoffMins, tx),
@@ -323,6 +325,7 @@ export async function getHoyData(
     getOnlineBookingsToday(tenantId, date, cutoffMins, tx),
     getCancellationsToday(tenantId, date, cutoffMins, tx),
     getDepositsPaidToday(tenantId, date, cutoffMins, tx),
+    countPendingRefunds(tenantId, tx),
   ])
 
   const unpaidBookingAlerts: AttentionItem[] = streetMoneyRows
@@ -351,10 +354,26 @@ export async function getHoyData(
         ]
       : []
 
+  // Tenant-wide y sin filtro por fecha, a diferencia de las otras tres: una
+  // devolución que el complejo debe desde hace una semana sigue debiéndose hoy.
+  // Por eso también es UN ítem agregado y no una fila por devolución.
+  const refundAlerts: AttentionItem[] =
+    pendingRefunds.count > 0
+      ? [
+          {
+            kind: 'pending_refunds',
+            count: pendingRefunds.count,
+            totalCents: pendingRefunds.totalCents,
+            since: pendingRefunds.oldestAt ?? new Date(),
+          },
+        ]
+      : []
+
   const needsAttention = sortAttentionItems([
     ...unpaidBookingAlerts,
     ...failedDeposits,
     ...yesterdayUnclosed,
+    ...refundAlerts,
   ])
   const whileYouWereAway = sortWhileAwayItems([
     ...onlineBookings,

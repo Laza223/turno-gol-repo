@@ -10,10 +10,24 @@ vi.mock('@/modules/auth/auth.middleware', () => ({
 }))
 vi.mock('@/shared/rate-limit', () => ({ enforce: vi.fn(async () => ({ ok: true })) }))
 // withPlayerContext devuelve el pre-read (tenant_id + deposit_status no-paid para
-// saltear el path de gateway MP); withTenantContext corre el callback con tx dummy.
+// saltear el path de gateway MP, más el contacto público del complejo que se le
+// ofrece al jugador para reclamar la devolución); withTenantContext corre el
+// callback con tx dummy.
 vi.mock('@/shared/db/client', () => ({
   withPlayerContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) =>
-    cb({ execute: async () => [{ tenant_id: 'tenant-1', deposit_status: 'pending' }] }),
+    cb({
+      execute: async () => [
+        {
+          tenant_id: 'tenant-1',
+          deposit_status: 'pending',
+          deposit_amount: 150000,
+          tenant_name: 'Complejo Norte',
+          tenant_phone: '+54 9 2323 346976',
+          tenant_whatsapp: null,
+          tenant_email: 'contacto@complejo.test',
+        },
+      ],
+    }),
   ),
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
   getDb: vi.fn(),
@@ -70,14 +84,97 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
   })
 
   it('devuelve success con la reserva cancelada en el happy path', async () => {
-    const booking = { id: 'booking-1', status: 'canceled_refunded' }
+    const booking = {
+      id: 'booking-1',
+      status: 'canceled_refunded',
+      date: new Date('2026-08-20'),
+      timeStart: '10:00:00',
+      timeEnd: '11:00:00',
+      depositStatus: 'refunded',
+      depositAmount: 150000,
+      priceSnapshot: 500000,
+      canceledReason: null,
+      canceledAt: new Date('2026-08-19'),
+    }
     vi.mocked(cancelByPlayer).mockResolvedValueOnce({
       booking,
       pendingRefund: undefined,
       notificationIds: [],
     } as never)
     const result = await cancelMyBookingAction(VALID_UUID)
-    expect(result).toEqual({ success: true, booking })
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error('expected success')
+    expect(result.booking.id).toBe('booking-1')
+  })
+
+  /**
+   * El jugador cancelaba y no se le decía ni cuánto le tenían que devolver ni a
+   * quién escribirle — los propios mensajes de error de este archivo dicen
+   * "contactá al complejo" sin dar un solo canal. La devolución la hace el
+   * complejo (el reembolso automático de MercadoPago falla siempre con 403),
+   * así que sin esto el jugador se queda sin forma de reclamar.
+   */
+  it('devuelve el contacto del complejo cuando corresponde devolución', async () => {
+    vi.mocked(cancelByPlayer).mockResolvedValueOnce({
+      booking: {
+        id: 'booking-1',
+        status: 'canceled_refunded',
+        date: new Date('2026-08-20'),
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        depositStatus: 'refunded',
+        depositAmount: 150000,
+        priceSnapshot: 500000,
+        canceledReason: null,
+        canceledAt: new Date('2026-08-19'),
+      },
+      pendingRefund: undefined,
+      notificationIds: [],
+    } as never)
+    const result = await cancelMyBookingAction(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error('expected success')
+    expect(result.refund).toEqual({
+      amountCents: 150000,
+      // Sin `pendingRefund` no hubo llamada a MercadoPago: la plata la debe el
+      // complejo, no está devuelta.
+      state: 'pending',
+      bookingCode: VALID_UUID.slice(0, 8).toUpperCase(),
+      dateLabel: '20/08',
+      timeLabel: '10:00',
+      tenantName: 'Complejo Norte',
+      tenantWhatsapp: null,
+      tenantPhone: '+54 9 2323 346976',
+      tenantEmail: 'contacto@complejo.test',
+    })
+  })
+
+  /**
+   * Control negativo: fuera de política el turno queda `canceled_no_refund` y
+   * no hay nada que devolver. Prometer una devolución ahí sería peor que no
+   * decir nada.
+   */
+  it('no promete devolución cuando la cancelación quedó fuera de política', async () => {
+    vi.mocked(cancelByPlayer).mockResolvedValueOnce({
+      booking: {
+        id: 'booking-1',
+        status: 'canceled_no_refund',
+        date: new Date('2026-08-20'),
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        depositStatus: 'captured',
+        depositAmount: 150000,
+        priceSnapshot: 500000,
+        canceledReason: null,
+        canceledAt: new Date('2026-08-19'),
+      },
+      pendingRefund: undefined,
+      notificationIds: [],
+    } as never)
+    const result = await cancelMyBookingAction(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error('expected success')
+    expect(result.refund).toBeUndefined()
   })
 
   it('no filtra campos internos de staff al jugador (auditoría #08-mis-reservas-data-leak)', async () => {

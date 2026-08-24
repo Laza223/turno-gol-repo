@@ -56,6 +56,7 @@ function tenantRow(status: TenantRow['status']): TenantRow {
     city: 'CABA',
     province: 'Buenos Aires',
     phone: '1122334455',
+    whatsapp: null,
     email: 'demo@turnogol.app',
     status,
     trialEndsAt: null,

@@ -52,7 +52,9 @@ const info: GatewayPaymentInfo = {
 }
 
 /**
- * tx fake. Llamadas a tx.execute, en orden:
+ * tx fake. Llamadas a tx.execute, en orden.
+ *
+ * Sin refund local conocido (refund EXTERNO):
  *   1. upsertPaymentRow (relink OK, corta antes del branch de INSERT)
  *   2. lookup del paymentId para el audit
  *   3. (fix H1) lookup de refund local vinculado (`type='refund'` +
@@ -60,9 +62,15 @@ const info: GatewayPaymentInfo = {
  *   4. UPDATE de reconciliación (decisión 2026-08-05) — devuelve la fila si
  *      matcheó, vacío si el booking estaba en un estado que no admite el cambio
  *   5. SOLO si 4 devolvió vacío: SELECT del status para el mail
+ *   6. INSERT de la fila de refund `approved` — el registro de que la plata
+ *      volvió, que es lo único escribible cuando el turno ya es terminal
+ *
+ * Con refund local conocido:
+ *   4. UPDATE que salda la fila local pendiente (pending → approved)
  */
 function mockTx(options?: {
   hasLocalRefund?: boolean
+  settledLocalRefund?: boolean
   reconciled?: boolean
   bookingStatus?: string
 }) {
@@ -71,9 +79,15 @@ function mockTx(options?: {
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // upsertPaymentRow: relink OK
   execute.mockResolvedValueOnce([{ id: PAYMENT_ID }]) // lookup del paymentId para el audit
   execute.mockResolvedValueOnce(options?.hasLocalRefund ? [{ id: 'refund-pay-1' }] : []) // lookup de refund local conocido (fix H1)
-  execute.mockResolvedValueOnce(reconciled ? [{ id: BOOKING_ID }] : []) // UPDATE de reconciliación
-  if (!reconciled) {
-    execute.mockResolvedValueOnce([{ status: options?.bookingStatus ?? 'no_show' }])
+  if (options?.hasLocalRefund) {
+    // UPDATE que salda la devolución local pendiente.
+    execute.mockResolvedValueOnce(options.settledLocalRefund ? [{ id: 'refund-pay-1' }] : [])
+  } else {
+    execute.mockResolvedValueOnce(reconciled ? [{ id: BOOKING_ID }] : []) // UPDATE de reconciliación
+    if (!reconciled) {
+      execute.mockResolvedValueOnce([{ status: options?.bookingStatus ?? 'no_show' }])
+    }
+    execute.mockResolvedValueOnce([]) // INSERT del registro de la devolución
   }
   return { execute } as never
 }
@@ -131,7 +145,12 @@ describe('dispatchPaymentInfo — refund externo (fuera de prepareRefund/settleR
     // se está testeando acá, pero confirma que el fix no lo tocó): lo prueba
     // implícitamente el hecho de que dispatchPaymentInfo no explota — el
     // upsert usa el mismo mock de execute que el caso externo.
-    expect(vi.mocked(insertSystemAuditLog)).not.toHaveBeenCalled()
+    // No se alerta como refund externo. El audit log que SI sale es otro
+    // (`payment.refund_settled_by_mp`, ver el describe de mas abajo).
+    expect(vi.mocked(insertSystemAuditLog)).not.toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ action: 'payment.external_refund_detected' }),
+    )
     expect(vi.mocked(captureMessage)).not.toHaveBeenCalled()
   })
 })
@@ -204,14 +223,58 @@ describe('dispatchPaymentInfo — reconciliación del refund externo (decisión 
     if (!outcome.alreadyProcessed) expect(outcome.notificationIds).toEqual(['notif-1'])
   })
 
-  it('un refund LOCAL conocido no reconcilia ni notifica: ese camino ya movió la seña', async () => {
+  it('un refund LOCAL conocido no reconcilia el booking ni notifica', async () => {
     const tx = mockTx({ hasLocalRefund: true })
     await dispatchPaymentInfo(info, TENANT_ID, tx)
 
     expect(vi.mocked(enqueueTenantOwnerNotification)).not.toHaveBeenCalled()
-    // Solo 3 execute: upsert + los dos lookups. Nunca se intenta el UPDATE.
+    // 4 execute: upsert + los dos lookups + el UPDATE que salda la fila local.
+    // Nunca se intenta el UPDATE sobre `bookings`: ese camino ya lo dejo como
+    // corresponde y la fila puede estar congelada por el trigger de la 070.
     expect((tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute).toHaveBeenCalledTimes(
-      3,
+      4,
     )
+    const updateSql = JSON.stringify(
+      vi.mocked(tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute.mock.calls[3],
+    )
+    expect(updateSql).not.toContain('bookings')
+  })
+})
+
+/**
+ * El complejo devuelve la sena desde el panel de MercadoPago, que es el camino
+ * mas comun hoy porque el reembolso automatico falla siempre (403 de permisos).
+ * Este webhook es el aviso de que la plata volvio: saldar la fila local aca es
+ * lo que hace que nadie tenga que tildar nada a mano.
+ */
+describe('dispatchPaymentInfo — MercadoPago salda una devolución local pendiente', () => {
+  it('marca la fila de refund como devuelta y lo asienta en audit_logs', async () => {
+    const tx = mockTx({ hasLocalRefund: true, settledLocalRefund: true })
+    await dispatchPaymentInfo(info, TENANT_ID, tx)
+
+    const settleSql = JSON.stringify(
+      vi.mocked(tx as unknown as { execute: ReturnType<typeof vi.fn> }).execute.mock.calls[3],
+    )
+    expect(settleSql).toContain('processed_at')
+    // Una sola fila, la mas vieja: aprobar todas las pendientes de esa
+    // description por un solo evento seria inventar plata el dia que existan
+    // devoluciones parciales.
+    expect(settleSql).toContain('LIMIT 1')
+
+    expect(vi.mocked(insertSystemAuditLog)).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        action: 'payment.refund_settled_by_mp',
+        resourceType: 'payment',
+        resourceId: 'refund-pay-1',
+      }),
+    )
+  })
+
+  it('si no quedaba nada pendiente no inventa un audit log', async () => {
+    const tx = mockTx({ hasLocalRefund: true, settledLocalRefund: false })
+    await dispatchPaymentInfo(info, TENANT_ID, tx)
+
+    expect(vi.mocked(insertSystemAuditLog)).not.toHaveBeenCalled()
   })
 })

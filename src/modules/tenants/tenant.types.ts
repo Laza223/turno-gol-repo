@@ -105,6 +105,8 @@ export type TenantRow = {
   city: string
   province: string
   phone: string
+  /** Opcional: si está vacío, el contacto cae al `phone`. Ver `resolveTenantContact`. */
+  whatsapp: string | null
   email: string
   status:
     | 'trialing'

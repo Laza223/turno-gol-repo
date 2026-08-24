@@ -9,17 +9,20 @@ import { resolveDepositDisplayStatus } from './deposit-display'
 import type { ReservaListRow } from './queries'
 
 function depositText(
-  booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount' | 'depositRefunded'>,
+  booking: Pick<ReservaListRow, 'depositStatus' | 'depositAmount' | 'refundState'>,
 ): string {
   if (booking.depositAmount <= 0) return 'Sin seña'
-  switch (resolveDepositDisplayStatus(booking.depositStatus, booking.depositRefunded)) {
+  switch (resolveDepositDisplayStatus(booking.depositStatus, booking.refundState)) {
     case 'paid':
     case 'captured':
       return `Seña pagada (${formatArs(booking.depositAmount)})`
     case 'pending':
       return `Seña pendiente (${formatArs(booking.depositAmount)})`
+    // La plata todavía no se movió: el complejo la debe. Ver `deposit-display.ts`.
+    case 'refund_pending':
+      return `Seña a devolver (${formatArs(booking.depositAmount)})`
     case 'refunded':
-      return 'Seña reembolsada'
+      return 'Seña devuelta'
     default:
       return 'Sin seña'
   }

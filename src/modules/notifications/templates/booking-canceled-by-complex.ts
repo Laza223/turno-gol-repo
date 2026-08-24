@@ -1,21 +1,40 @@
 import type { EmailContent } from './index'
 import { escapeHtml } from './html-escape'
+import {
+  tenantContactHtml,
+  tenantContactText,
+  type TenantContactFields,
+} from './tenant-contact-block'
 
-export type BookingCanceledByComplexData = {
+export type BookingCanceledByComplexData = TenantContactFields & {
   playerFirstName: string
   courtName: string
   date: string
   timeStart: string
   timeEnd: string
-  tenantName: string
+  /** Código corto de la reserva, para que el complejo la encuentre. */
+  bookingCode: string
+  /** El turno tenía seña pagada, así que corresponde devolverla. */
   refundConfirmed: boolean
 }
 
 export function renderBookingCanceledByComplex(data: BookingCanceledByComplexData): EmailContent {
   const subject = `Tu turno en ${data.tenantName} fue cancelado`
+  // Antes decía "te devolvemos la seña de forma automática". No hay nada
+  // automático: el reembolso vía API de MercadoPago falla siempre (403 — MP
+  // deriva los permisos del producto de la aplicación y ninguno concede el de
+  // reembolsos), así que la devolución la hace el complejo. Prometerla como
+  // hecha dejaba al jugador esperando plata que nadie había mandado.
   const refundLine = data.refundConfirmed
-    ? '<p style="color:#16a34a"><strong>Reembolso confirmado:</strong> te devolvemos la seña de forma automática.</p>'
+    ? '<p style="color:#b45309"><strong>Te corresponde la devolución de la seña.</strong> La gestiona el complejo; si en unos días no la ves acreditada, escribiles.</p>'
     : ''
+  const contactIntro = data.refundConfirmed
+    ? 'Para coordinar la devolución de la seña:'
+    : '¿Dudas? Escribile al complejo:'
+  const waMessage =
+    `Hola ${data.tenantName}, me cancelaron el turno ${data.bookingCode} del ${data.date} ` +
+    `a las ${data.timeStart}.` +
+    (data.refundConfirmed ? ' Quería coordinar la devolución de la seña. ¡Gracias!' : '')
   const html = `
 <!DOCTYPE html>
 <html lang="es">
@@ -26,13 +45,14 @@ export function renderBookingCanceledByComplex(data: BookingCanceledByComplexDat
   <table style="width:100%;border-collapse:collapse;margin:16px 0">
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600;width:40%">Cancha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${escapeHtml(data.courtName)}</td></tr>
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Fecha</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.date}</td></tr>
-    <tr><td style="padding:8px 0;font-weight:600">Horario</td><td style="padding:8px 0">${data.timeStart} – ${data.timeEnd}</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Horario</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.timeStart} – ${data.timeEnd}</td></tr>
+    <tr><td style="padding:8px 0;font-weight:600">Código</td><td style="padding:8px 0"><strong>${escapeHtml(data.bookingCode)}</strong></td></tr>
   </table>
   ${refundLine}
-  <p style="color:#64748b;font-size:14px">Si tenés dudas, contactá directamente al complejo.</p>
+  ${tenantContactHtml(data, contactIntro, waMessage)}
   <p style="color:#64748b;font-size:14px">— TurnoGol</p>
 </body>
 </html>`
-  const text = `Tu turno fue cancelado\n\nHola ${data.playerFirstName},\n\nEl complejo ${data.tenantName} canceló tu turno.\n\nCancha: ${data.courtName}\nFecha: ${data.date}\nHorario: ${data.timeStart} – ${data.timeEnd}${data.refundConfirmed ? '\n\nReembolso confirmado: te devolvemos la seña de forma automática.' : ''}\n\n— TurnoGol`
+  const text = `Tu turno fue cancelado\n\nHola ${data.playerFirstName},\n\nEl complejo ${data.tenantName} canceló tu turno.\n\nCancha: ${data.courtName}\nFecha: ${data.date}\nHorario: ${data.timeStart} – ${data.timeEnd}\nCódigo: ${data.bookingCode}${data.refundConfirmed ? '\n\nTe corresponde la devolución de la seña. La gestiona el complejo; si en unos días no la ves acreditada, escribiles.' : ''}\n\n${tenantContactText(data, contactIntro)}\n\n— TurnoGol`
   return { subject, html, text }
 }

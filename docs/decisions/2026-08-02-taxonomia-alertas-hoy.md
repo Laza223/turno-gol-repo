@@ -19,6 +19,22 @@ El contrato de Fase 2 (`decisiones-de-fase-v2.md:106`) exige "Alertas v1 operati
 | 2 | **Seña que falló** | P2 | Inmediato — un pago rechazado es un evento discreto, no hay espera prudencial razonable | `payments` WHERE `status IN ('rejected','canceled')` AND `type='deposit'` AND `p.id = b.payment_id` (solo si sigue siendo el pago ACTIVO del booking — un reintento exitoso posterior no debe dejar la alerta colgada), ocurrido hoy (rango `operatingDayRangeUtc`, nunca UTC calendario puro) | "Ver reserva" → `/reservas/[id]` |
 | 3 | **Caja de ayer sin cerrar** | P3 (no crece con el tiempo — problema de higiene contable ya contenido, no plata que sigue fugándose) | Binario: hubo apertura o actividad el día operativo `hoy−1` Y no existe `daily_cash_closes` para esa fecha. **Alcance v1 explícito: solo mira T-1**, no un backlog de N días sin cerrar | `daily_cash_opens`/`daily_cash_closes` vía `daily-close.service.ts`, mismo patrón que ya usa `dashboard/queries.ts` para HOY | "Cerrar caja de ayer" → `/caja` |
 
+## Enmienda 2026-08-23 — cuarto evento: devoluciones de seña pendientes
+
+Este documento exige por escrito volver acá antes de agregar un cuarto evento. Se agrega uno.
+
+**Qué cambió afuera:** el reembolso automático de señas vía API de MercadoPago no funciona y probablemente nunca funcione — MP deriva los permisos del PRODUCTO de la aplicación y ninguna de las tres probadas concede `payments:refunds`; medido en producción, ningún reembolso automático se completó jamás. La devolución la hace el complejo a mano, así que necesita enterarse de que la debe.
+
+| # | Evento | Prioridad | Umbral | Fuente de datos | Acción al lado |
+|---|---|---|---|---|---|
+| 4 | **Devoluciones de seña pendientes** | **P2**, arriba de "seña que falló" y debajo de "turno sin cobrar" | Inmediato para las que nunca pasaron por MercadoPago (no tienen ningún camino automático que las resuelva); **1 hora** para las de MercadoPago — el mismo intervalo que espera `retry-refunds.worker` antes de reintentar, para que la alerta nunca aparezca por algo que el sistema todavía podría resolver solo | `countPendingRefunds` (`refund.service.ts`): `payments` WHERE `type='refund' AND status='pending'`. **Tenant-wide, sin filtro por fecha** | "Gestionar" → `/caja/devoluciones` |
+
+**Por qué P2 y no P1:** una devolución no tiene una ventana que se cierre como el turno sin cobrar, donde el cliente está en el mostrador AHORA y se puede ir. Pero a diferencia de la caja sin cerrar (P3), el daño sí crece con los días: del otro lado hay una persona esperando plata.
+
+**Es UN ítem agregado, no una fila por devolución.** Esta es la parte que más se aparta de los tres eventos originales y la razón está en el propio espíritu del documento: los tres son anomalías "de hoy" que caducan solas. Una devolución pendiente no caduca — con tres meses sin tildar, N filas convertirían "Necesita tu atención" en la bandeja de notificaciones que esta taxonomía vino a evitar. Se muestra `"3 devoluciones pendientes — $12.000 a devolver"` en una sola línea, como `yesterday_cash_unclosed`.
+
+**Sigue siendo una lista cerrada.** Un quinto evento requiere volver acá otra vez.
+
 **Orden dentro de "Necesita tu atención":** prioridad P1→P3 primero, antigüedad ascendente dentro de cada prioridad (mismo criterio de ordenamiento que `getStreetMoney.sort`).
 
 **Estado vacío (copy exacto del contrato, verbatim — no parafrasear):** *"Nada pendiente. Todo cobrado y cerrado."*

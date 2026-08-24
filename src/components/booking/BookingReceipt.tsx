@@ -1,4 +1,5 @@
 import BookingQR from './BookingQR'
+import { bookingCode } from '@/lib/booking-code'
 
 export type BookingReceiptData = {
   bookingId: string
@@ -70,7 +71,7 @@ export default function BookingReceipt(props: BookingReceiptData) {
         ) : (
           <Row label="Pago" value="El total se abona en el complejo" />
         )}
-        <Row label="Código de reserva" value={props.bookingId.slice(0, 8).toUpperCase()} />
+        <Row label="Código de reserva" value={bookingCode(props.bookingId)} />
       </dl>
 
       <div className="mt-5 flex items-center gap-4">

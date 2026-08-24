@@ -3,8 +3,9 @@ import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { getCancellationPreview } from '@/modules/bookings/cancellation-preview'
+import { bookingCode } from '@/lib/booking-code'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
-import { cancelMyBookingAction } from './actions'
+import { cancelMyBookingAction, type RefundContactInfo } from './actions'
 import { UPCOMING_PLAYABLE_STATUSES } from './upcoming-count'
 
 function artToday(): string {
@@ -32,11 +33,16 @@ type RawMisReservasRow = {
   court_name: string
   tenant_name: string
   tenant_slug: string
+  tenant_phone: string
+  tenant_whatsapp: string | null
+  tenant_email: string
   has_review: boolean
   deposit_status: string
   deposit_amount: number
   starts_at: string
   cancellation_policy_hours: number
+  /** `null` = no hay devolución en juego. Ver `refundContactFor`. */
+  refund_status: 'approved' | 'pending' | null
 }
 
 /** Reservas por página. El jugador lee esto en el celular: 50 sobra. */
@@ -46,6 +52,28 @@ export const MIS_RESERVAS_PAGE_SIZE = 50
 function parsePage(raw: string | undefined): number {
   const n = Number.parseInt(raw ?? '', 10)
   return Number.isFinite(n) && n > 1 ? n - 1 : 0
+}
+
+/**
+ * Recordatorio de devolución de una reserva ya cancelada.
+ *
+ * Solo existe mientras la fila de `payments` diga que la plata no se movió. En
+ * cuanto alguien la salda —el complejo tildando, o MercadoPago avisando por
+ * webhook que devolvió— la tarjeta pasa a decir que está confirmada.
+ */
+function refundContactFor(r: RawMisReservasRow): RefundContactInfo | undefined {
+  if (!r.refund_status) return undefined
+  return {
+    amountCents: r.deposit_amount,
+    state: r.refund_status === 'approved' ? 'settled' : 'pending',
+    bookingCode: bookingCode(r.id),
+    dateLabel: r.date.slice(0, 10).split('-').reverse().slice(0, 2).join('/'),
+    timeLabel: r.time_start.slice(0, 5),
+    tenantName: r.tenant_name,
+    tenantWhatsapp: r.tenant_whatsapp,
+    tenantPhone: r.tenant_phone,
+    tenantEmail: r.tenant_email,
+  }
 }
 
 export default async function MisReservasPage(props: {
@@ -88,8 +116,20 @@ export default async function MisReservasPage(props: {
              b.type, b.status, b.price_snapshot,
              b.deposit_status, b.deposit_amount, b.starts_at,
              c.name AS court_name, t.name AS tenant_name, t.slug AS tenant_slug,
+             t.phone AS tenant_phone, t.whatsapp AS tenant_whatsapp, t.email AS tenant_email,
              COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS cancellation_policy_hours,
-             EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS has_review
+             EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS has_review,
+             -- Estado REAL de la devolución. deposit_status no sirve: dice
+             -- 'refunded' desde la transacción que cancela, antes de que la
+             -- plata se mueva, y después la fila queda congelada por el trigger
+             -- de la migración 070. Se prefiere la pendiente sobre la saldada:
+             -- si algo quedó sin devolver, eso es lo que el jugador tiene que
+             -- ver. Lo lee gracias a la policy de la migración 079.
+             (SELECT pr.status FROM payments pr
+               WHERE pr.booking_id = b.id AND pr.type = 'refund'
+                 AND pr.status IN ('approved', 'pending')
+               ORDER BY (pr.status = 'pending') DESC, pr.created_at ASC
+               LIMIT 1) AS refund_status
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
@@ -150,6 +190,7 @@ export default async function MisReservasPage(props: {
       has_review: r.has_review,
       cancellation_outcome: preview.kind,
       deposit_amount: preview.kind === 'no_deposit' ? 0 : preview.amountCents,
+      refund: refundContactFor(r),
     }
   })
 

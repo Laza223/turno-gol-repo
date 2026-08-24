@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatArs } from '@/lib/format'
-import type { PlayerBookingActionResult } from './actions'
+import { RefundContactPanel } from './RefundContactPanel'
+import type { PlayerBookingActionResult, RefundContactInfo } from './actions'
 
 /** Firma de la Server Action que ejecuta la cancelación. */
 export type CancelMyBookingAction = (
@@ -56,6 +58,11 @@ export function CancelBookingButton({
 }: Props) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
+  // Segundo diálogo, en vez de una pantalla de éxito adentro del primero:
+  // `ConfirmDialog` se cierra solo al recibir `{ success: true }`, así que no
+  // hay dónde mostrar nada después de confirmar sin tocar ese primitivo, que lo
+  // comparte medio repo.
+  const [refund, setRefund] = useState<RefundContactInfo | null>(null)
   const router = useRouter()
 
   async function handleConfirm() {
@@ -63,6 +70,7 @@ export function CancelBookingButton({
     if (!result.success) {
       return { success: false as const, error: result.error }
     }
+    if (result.refund) setRefund(result.refund)
     router.refresh()
     return { success: true as const }
   }
@@ -110,6 +118,15 @@ export function CancelBookingButton({
           />
         </div>
       </ConfirmDialog>
+
+      <Dialog open={refund !== null} onOpenChange={(v) => !v && setRefund(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reserva cancelada</DialogTitle>
+          </DialogHeader>
+          {refund && <RefundContactPanel refund={refund} />}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

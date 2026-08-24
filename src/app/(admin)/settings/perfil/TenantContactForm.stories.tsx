@@ -16,6 +16,10 @@ const meta = {
   args: {
     currentPhone: '+54 11 2233-4455',
     currentEmail: 'contacto@complejo.test',
+    // El caso real de casi todos los complejos: la columna existe desde la
+    // migración 003 pero nunca hubo pantalla para cargarla, así que está en
+    // NULL y los jugadores caen al teléfono de arriba.
+    currentWhatsapp: null,
   },
 } satisfies Meta<typeof TenantContactForm>
 
@@ -27,6 +31,28 @@ export const ConDatosGuardados: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByLabelText(/email/i)).toHaveValue('contacto@complejo.test')
+  },
+}
+
+/**
+ * Con WhatsApp propio cargado: es el canal que se le ofrece al jugador.
+ *
+ * Ojo con el valor que queda en el input: `parsePhoneNumber` BORRA el 9 de los
+ * móviles argentinos al parsear, así que un `+54 9 11 5566-7788` guardado se
+ * muestra —y se vuelve a guardar— como `11 5566-7788`, sin el marcador de
+ * móvil. Por eso `toWhatsappDigits` normaliza al construir el link y nunca
+ * confía en lo que está en la base. Este assert documenta ese comportamiento
+ * real: si algún día el form deja de comerse el 9, esta story se pone roja y
+ * hay que revisar la normalización.
+ */
+export const ConWhatsappPropio: Story = {
+  args: {
+    currentWhatsapp: '+54 9 11 5566-7788',
+    action: fn(async () => ({ success: true as const })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByLabelText(/whatsapp/i)).toHaveValue('11 5566-7788')
   },
 }
 

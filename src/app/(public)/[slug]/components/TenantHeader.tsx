@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { CalendarDays, MapPin, MessageCircle, Navigation, Phone } from 'lucide-react'
 import type { PublicTenant } from '@/modules/tenants/public.service'
-import { buildWhatsappUrl } from '@/lib/whatsapp'
+import { resolveTenantContact } from '@/lib/tenant-contact'
 import { telHref } from '@/lib/contact'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import RatingStars from '@/components/public/RatingStars'
@@ -28,8 +28,11 @@ const DAY_LABELS: Record<string, string> = {
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) {
-  const whatsappUrl = buildWhatsappUrl(
-    tenant.whatsapp,
+  // Cascada whatsapp -> phone: `tenants.whatsapp` es opcional y en la práctica
+  // casi siempre está vacío, así que antes de esto el chip de WhatsApp no se
+  // mostraba en ningún complejo. Ver `resolveTenantContact`.
+  const { whatsappUrl } = resolveTenantContact(
+    { whatsapp: tenant.whatsapp, phone: tenant.phone },
     `Hola, quiero consultar disponibilidad en ${tenant.name}.`,
   )
   const mapsQuery =

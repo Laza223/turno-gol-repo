@@ -26,5 +26,21 @@ export const updateTenantIdentitySchema = createTenantSchema.pick({
   province: true,
 })
 
-/** Contacto público del complejo, editable desde `/settings/perfil` (B15). */
-export const tenantContactSchema = createTenantSchema.pick({ phone: true, email: true })
+/**
+ * Contacto público del complejo, editable desde `/settings/perfil` (B15).
+ *
+ * `whatsapp` es opcional y NO está en `createTenantSchema`: al crear el
+ * complejo no se pide (igual que teléfono y email, doc10 §2). La columna
+ * existía desde la migración 003 y se leía en el perfil público, pero hasta
+ * ahora no había NINGUNA pantalla para cargarla — o sea que en la práctica
+ * estaba siempre en NULL. Vacío se guarda como NULL, no como cadena vacía, para
+ * que la cascada `whatsapp ?? phone` de `resolveTenantContact` caiga al
+ * teléfono en vez de quedarse con un dato que no sirve.
+ */
+export const tenantContactSchema = createTenantSchema.pick({ phone: true, email: true }).extend({
+  whatsapp: z
+    .string()
+    .trim()
+    .transform((v) => (v.length === 0 ? null : v))
+    .pipe(phone.nullable()),
+})

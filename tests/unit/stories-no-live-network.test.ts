@@ -57,6 +57,9 @@ const ALLOWLIST: Record<string, string> = {
   'src/components/public/ShareButton.stories.tsx':
     'url solo alimenta `navigator.clipboard.writeText()` (ShareButton.tsx) — nunca se ' +
     'fetchea ni se renderiza como recurso.',
+  'src/app/(player)/mis-reservas/RefundContactPanel.stories.tsx':
+    'El link de wa.me se deja INERTE, igual que en ShareActions: la story lee el atributo ' +
+    'href para comprobar que el número quedó normalizado, y nunca lo clickea.',
 }
 
 /** http(s) fuera de `data:`/`blob:` y de localhost/127.0.0.1. */

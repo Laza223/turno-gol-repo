@@ -73,3 +73,16 @@ export type AttentionItem =
       date: string
       since: Date
     }
+  /**
+   * Devoluciones de seña que el complejo debe. Es UN ítem agregado, no una fila
+   * por devolución: los otros tres son anomalías "de hoy" que caducan, y una
+   * devolución pendiente no caduca — con tres meses sin tildar, N filas
+   * convertirían esta sección en la bandeja de notificaciones que la taxonomía
+   * de alertas vino a evitar.
+   */
+  | {
+      kind: 'pending_refunds'
+      count: number
+      totalCents: number
+      since: Date
+    }

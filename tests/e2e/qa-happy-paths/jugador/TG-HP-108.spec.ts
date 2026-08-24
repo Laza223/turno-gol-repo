@@ -72,8 +72,23 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
         timeout: 8_000,
       })
 
+      // Apenas se cancela aparece el diálogo con los canales para reclamar la
+      // devolución: es el reemplazo del "contactá al complejo" sin contacto.
+      await expect(page.getByRole('heading', { name: 'Reserva cancelada' })).toBeVisible({
+        timeout: 8_000,
+      })
+      const waLink = page.getByRole('link', { name: /escribir por whatsapp/i })
+      await expect(waLink).toBeVisible()
+      // El número se normaliza a formato internacional: sin esto el link abre
+      // WhatsApp y dice que el número no existe.
+      expect(await waLink.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/54/)
+      await page.keyboard.press('Escape')
+
       // UI-sin-reload: revalidatePath + router.refresh(), sin recarga manual.
-      await expect(card.getByText('Cancelado (con reembolso)')).toBeVisible({ timeout: 8_000 })
+      // El badge dice "Cancelado" a secas: "con reembolso" prometía plata que
+      // en este punto todavía no se movió. Quién debe qué lo cuenta el panel
+      // de devolución de la tarjeta.
+      await expect(card.getByText('Cancelado', { exact: true })).toBeVisible({ timeout: 8_000 })
       await expect(card.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()
 
       const { data: row, error } = await sb

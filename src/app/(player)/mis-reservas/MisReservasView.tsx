@@ -14,6 +14,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { formatArs } from '@/lib/format'
+import { RefundContactPanel } from './RefundContactPanel'
+import type { RefundContactInfo } from './actions'
 import { CancelBookingButton, type CancelMyBookingAction } from './CancelBookingButton'
 import { LeaveReviewButton } from './LeaveReviewButton'
 
@@ -42,6 +44,11 @@ export type MisReservasBookingRow = {
   cancellation_outcome: 'no_deposit' | 'refund' | 'no_refund'
   /** Monto de la seña en centavos — solo relevante si cancellation_outcome !== 'no_deposit'. */
   deposit_amount: number
+  /**
+   * Devolución de seña en juego, si la hay. Sale de la fila `payments`, no de
+   * `deposit_status` — ver `refundContactFor` en page.tsx.
+   */
+  refund?: RefundContactInfo
 }
 
 const AR_TZ = 'America/Argentina/Buenos_Aires'
@@ -69,7 +76,10 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: 'Confirmado',
   pending_payment: 'Pago pendiente',
   completed: 'Jugada',
-  canceled_refunded: 'Cancelado (con reembolso)',
+  // "con reembolso" prometía plata que puede no haberse movido todavía: el
+  // estado se fija al cancelar, antes de que nadie devuelva nada. Quién debe
+  // qué lo cuenta el panel de devolución de abajo, que sí lee `payments`.
+  canceled_refunded: 'Cancelado',
   canceled_no_refund: 'Cancelado (sin reembolso)',
   no_show: 'Ausente',
   expired: 'Expirado',
@@ -308,6 +318,23 @@ export function MisReservasView({
                     </div>
                   </div>
                 </div>
+
+                {b.refund && (
+                  <div
+                    className={`mt-3 rounded-lg border p-3 ${
+                      b.refund.state === 'pending'
+                        ? 'border-amber-300 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10'
+                        : 'border-border bg-muted/50'
+                    }`}
+                  >
+                    <p className="mb-2 text-sm font-semibold text-foreground">
+                      {b.refund.state === 'pending'
+                        ? 'Devolución pendiente'
+                        : 'Devolución confirmada'}
+                    </p>
+                    <RefundContactPanel refund={b.refund} />
+                  </div>
+                )}
 
                 {b.status === 'completed' && (
                   <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border pt-2">

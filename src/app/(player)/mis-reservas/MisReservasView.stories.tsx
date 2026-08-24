@@ -134,7 +134,7 @@ export const HistorialTodosLosEstados: Story = {
     // 2 reservas 'completed' (con y sin reseña) → 2 badges "Jugada".
     await expect(canvas.getAllByText('Jugada')).toHaveLength(2)
     await expect(canvas.getByText('Ausente')).toBeInTheDocument()
-    await expect(canvas.getByText('Cancelado (con reembolso)')).toBeInTheDocument()
+    await expect(canvas.getByText('Cancelado', { exact: true })).toBeInTheDocument()
     await expect(canvas.getByText('Cancelado (sin reembolso)')).toBeInTheDocument()
     await expect(canvas.getByText('Expirado')).toBeInTheDocument()
     // Solo la reserva 'completed' sin reseña propia muestra el botón.

@@ -490,7 +490,7 @@ export function LegalFooter() {
 - [ ] doc19 leído por al menos 1 persona on-call
 - [ ] Magic link debugging procedure conocida (doc19 §3.10)
 - [ ] Webhook MP HMAC secret rotated (paranoia anual)
-- [ ] /api/status + /api/health monitor externo configurado (UptimeRobot free → support@email)
+- [x] /api/status + /api/health monitor externo configurado — UptimeRobot free, alta 2026-08-24, chequeo cada 5 min con aviso por mail; alerta probada de punta a punta (ver `docs/operations/uptime-monitor.md`)
 ```
 
 **Done:** LAUNCH.md exists + linked from README + linked from doc19.

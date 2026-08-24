@@ -74,7 +74,12 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+          {/* amber-800, no 700: el fondo es `bg-amber-500/5`, o sea ámbar con
+              opacidad sobre lo que haya atrás, y el par 700/ese compuesto mide
+              3.91 — por debajo de AA. Es el mismo par que ya se corrigió en
+              `PendingRefundsList`, que tiene una story donde axe lo mide; acá
+              no hay story, así que nadie lo iba a ver solo. */}
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
             Plata en la calle
           </p>
           <p className="mt-0.5 text-2xl font-bold tabular-nums text-amber-800 dark:text-amber-300">

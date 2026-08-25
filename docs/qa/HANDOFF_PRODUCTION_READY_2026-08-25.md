@@ -137,6 +137,15 @@ Las **dos** tienen que dar 200. Y el cuarto chequeo es del lado de MercadoPago: 
 ## 7. Cómo arrancar la sesión nueva
 
 1. **Verificá en qué rama estás.** El árbol de trabajo apareció hoy en un `main` atrasado dos commits, movido por otra sesión. `git fetch && git status`.
-2. Los PR #213 y #214 **ya están mergeados**. No hay trabajo sin commitear.
+2. ⚠️ **Corrección (2026-08-25, tarde).** Esta línea decía que los PR #213 y #214
+   estaban mergeados y que no había trabajo sin commitear. **El #214 se mergeó
+   contra `docs/p01-precondicion-payer-email`, que no es `main`** y que ya había
+   sido absorbida por el #213 — así que su contenido nunca llegó a `main`: la
+   corrección del motivo del 403 en `CLAUDE.md`, `EVIDENCIA_PROD_2026-08-25.md` y
+   la actualización de `PLAN_PRODUCCION_2026-08-17.md`. Lo mismo pasó con el
+   commit `8483f672` (sonda del token master + runbook de credenciales), que
+   quedó pusheado sin PR. Todo eso se recuperó después.
+   **La lección, que ya mordió tres veces: "el PR está mergeado" no implica "está
+   en `main`" — hay que mirar contra qué rama base se mergeó.**
 3. Empezá por §4.1 — las credenciales, que no cuestan nada y condicionan todo lo demás.
 4. Lo que decida el calendario es abrir la suscripción de $100 **y dejarla viva**: sin eso, P-02, P-09 y P-10 no existen.

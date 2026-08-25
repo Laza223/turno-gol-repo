@@ -354,18 +354,20 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 Se puede vender cuando, con evidencia pegada:
 
 - [ ] Los 6 🔴 del QA cerrados y verificados en producción
-- [ ] **P-03**: una seña real entró, se acreditó y aparece en la caja del complejo
-- [ ] **P-05**: una reserva pagada sobre el filo del hold terminó confirmada, no expirada
-- [ ] **P-06**: una devolución real quedó registrada, el complejo la saldó y la caja lo refleja (ya **no** es "sale por la API de MP": ver el ensayo)
+- [x] **P-03**: una seña real entró, se acreditó y aparece en la caja del complejo — **6 señas cobradas** entre el 18 y el 23/8 con `mp_payment_id` real, 9 filas en `cash_flows`, 6 emails `booking_confirmed` ([evidencia](EVIDENCIA_PROD_2026-08-25.md)). Queda solo lo visual: QR y push
+- [ ] **P-05**: una reserva pagada sobre el filo del hold terminó confirmada, no expirada — el caso exacto no se hizo, pero **los dos peores sí y salieron bien**: dos pagos aprobados que MercadoPago nunca notificó, uno rescatado dentro del hold y otro avisado y con devolución registrada ([evidencia §4-§5](EVIDENCIA_PROD_2026-08-25.md))
+- [ ] **P-06**: una devolución real quedó registrada, el complejo la saldó y la caja lo refleja (ya **no** es "sale por la API de MP": ver el ensayo) — el camino principal está probado (4 cancelaciones + el no-show con seña capturada); faltan **tres sub-casos**: cancelar fuera de política, el botón "Ya devolví" en efectivo, y el webhook saldando sola una devolución hecha desde el panel ([evidencia §6](EVIDENCIA_PROD_2026-08-25.md))
 - [x] **P-07**: un día operativo cerró con `diff_amount = 0` — 2026-08-24 en `complejo-titi`, esperado $9.100 = contado $9.100 ([registro](P07-dia-operativo-guion.md))
-- [ ] **P-01**: tu suscripción está `active` y cobrada de verdad
+- [x] **P-01**: tu suscripción está `active` y cobrada de verdad — **ejecutado el 2026-08-20** en `complejo-titi` con el plan interno de $100: preapproval real, webhook con la clave productiva, `trialing`→`active`, `current_period_end` correcto y email `subscription_activated` entregado. Se dio de baja 8 minutos después, lo que también cierra **P-13** pero deja **P-02 sin arrancar** ([evidencia §2](EVIDENCIA_PROD_2026-08-25.md))
 - [x] **P-08**: los 15 workers con último job dentro de su período — 2026-08-24: 15/15, 48 h corridas, **0 fallados** ([registro](P08-crons-2026-08-24.md))
 - [x] **P-12**: **CERRADO 2026-08-24**. El ensayo salió mal (26 min caído, cero avisos) y el hallazgo se arregló el mismo día: `/api/status` detecta el worker muerto y hay un monitor externo que avisa por mail, probado de punta a punta ([registro](P12-worker-caido-2026-08-24.md))
 - [x] **P-11**: existe un backup restaurado, con RTO y RPO medidos — 2026-08-24: RTO < 5 min, RPO hasta 24 h (PITR NO contratado) ([drill](../audit/backup-drills/2026-08-24-drill.md))
 
 Los tres que quedan (**P-02**, **P-09**, el tramo largo de **P-10**) son de reloj: se cierran solos si están arrancados. Lo que **no** es aceptable es venderlos sin arrancar — el primer cliente sería el experimento.
 
-> **Medido en producción el 2026-08-24: el reloj todavía no arrancó.** `tenant_subscriptions` no tiene ninguna fila `active` con `mp_subscription_id`, y los dos complejos que existen están en `trialing` y `canceled`. Es decir que **P-01 no está hecho**, y con él siguen sin arrancar P-02 y P-10 — que son los dos que tardan 30 y 14 días. Todo lo demás de esta lista puede cerrarse en una tarde; esto no. Es el único ítem cuyo costo crece un día por cada día que pasa.
+> **Corregido el 2026-08-25.** Antes decía que "P-01 no está hecho" porque medí el estado presente —cero suscripciones `active`— y de ahí concluí que nunca había pasado. **Pasó**: el 20/8, con el plan interno de $100, y se dio de baja 8 minutos después, por eso no queda rastro en el presente. `audit_logs` y `notifications` lo muestran entero ([evidencia](EVIDENCIA_PROD_2026-08-25.md)).
+>
+> Lo que sigue sin arrancar es **P-02**: hace falta una suscripción **viva 30 días**, y la del 20/8 se canceló enseguida. Eso, y el tramo largo de P-10, son lo único cuyo costo crece un día por cada día que pasa. La buena noticia es que sale **$100 por mes**, no $63.000: el monto no toca ninguna línea de código.
 >
 > **Re-medido el 2026-08-25**: sigue sin arrancar, y ahora se sabe qué lo frena — `complejo-elite-futbol` tiene `mp_payer_email` en `NULL`, así que el preapproval saldría a nombre de la cuenta master y MercadoPago lo rechaza por auto-pago. Es un campo de la UI de facturación, 30 segundos; el detalle está en P-01.
 

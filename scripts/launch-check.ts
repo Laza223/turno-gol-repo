@@ -727,7 +727,14 @@ async function main(): Promise<void> {
       console.log('FAIL')
       console.error(`  ${(e as Error).message}`)
       failed.push(step.name)
-      if (step.fatal) break
+      // En `--probe-only` un fatal NO corta la corrida. El modo existe para
+      // auditar un ambiente entero, y frenar en el primer rojo esconde los
+      // otros 20 resultados: la primera corrida real (2026-08-25) murió en
+      // `env vars present` por cinco variables ausentes del `.env.production`
+      // LOCAL y no reportó ni una sonda, con la producción andando perfecto.
+      // Cada sonda ya avisa por su cuenta si le falta lo suyo, así que seguir
+      // informa más de lo que arriesga. El exit code sigue siendo 1.
+      if (step.fatal && !probeOnly) break
     }
   }
   if (failed.length > 0) {

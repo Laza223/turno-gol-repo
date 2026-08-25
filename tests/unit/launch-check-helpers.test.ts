@@ -1,3 +1,4 @@
+import { createECDH } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -10,6 +11,7 @@ import {
   webhookTestBypassSecretAbsentCheck,
   selectSteps,
   REQUIRED_ENV,
+  vapidPairMatches,
 } from '../../scripts/launch-check.helpers'
 
 describe('encryptionKeyStrengthCheck', () => {
@@ -224,5 +226,48 @@ describe('REQUIRED_ENV', () => {
 
   it('no tiene duplicados', () => {
     expect(new Set(REQUIRED_ENV).size).toBe(REQUIRED_ENV.length)
+  })
+})
+
+describe('vapidPairMatches', () => {
+  // Par real generado con createECDH('prime256v1'), en base64url — el mismo
+  // formato en el que web-push espera las claves VAPID.
+  const ecdh = createECDH('prime256v1')
+  ecdh.generateKeys()
+  const publicKey = ecdh.getPublicKey().toString('base64url')
+  const privateKey = ecdh.getPrivateKey().toString('base64url')
+
+  const otro = createECDH('prime256v1')
+  otro.generateKeys()
+  const otraPublica = otro.getPublicKey().toString('base64url')
+
+  it('acepta un par que de verdad es par', () => {
+    expect(vapidPairMatches(publicKey, privateKey).ok).toBe(true)
+  })
+
+  it('rechaza una publica que no se deriva de la privada (rotar una sola)', () => {
+    const r = vapidPairMatches(otraPublica, privateKey)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/no se deriva|no son un par/i)
+  })
+
+  it('rechaza si falta cualquiera de las dos', () => {
+    expect(vapidPairMatches(undefined, privateKey).ok).toBe(false)
+    expect(vapidPairMatches(publicKey, undefined).ok).toBe(false)
+  })
+
+  it('rechaza una privada que no es un escalar P-256', () => {
+    const r = vapidPairMatches(publicKey, Buffer.from('no-soy-una-clave').toString('base64url'))
+    expect(r.ok).toBe(false)
+  })
+
+  it('rechaza cuando la clave del navegador difiere de la del servidor', () => {
+    const r = vapidPairMatches(publicKey, privateKey, otraPublica)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/NEXT_PUBLIC_VAPID_PUBLIC_KEY/)
+  })
+
+  it('acepta cuando la del navegador es la misma', () => {
+    expect(vapidPairMatches(publicKey, privateKey, publicKey).ok).toBe(true)
   })
 })

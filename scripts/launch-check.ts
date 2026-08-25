@@ -21,6 +21,7 @@ import {
   webhookTestBypassSecretAbsentCheck,
   selectSteps,
   REQUIRED_ENV,
+  vapidPairMatches,
 } from './launch-check.helpers'
 
 type Step = {
@@ -362,6 +363,248 @@ async function mpMasterTokenProbe(): Promise<boolean> {
   }
 }
 
+/**
+ * ─── Sondas de credenciales: presencia no es funcionamiento ──────────────────
+ *
+ * Todo lo de abajo existe porque `src/shared/env.ts` valida FORMA (que la
+ * variable esté y tenga la pinta correcta) y `/api/status` valida PRESENCIA
+ * (`!!process.env.X`) para MercadoPago, email y Sentry. Ninguno de los dos
+ * prueba que la credencial SIRVA. Una API key revocada, una clave pegada de
+ * otra cuenta o un bucket renombrado pasan los dos chequeos y fallan recién en
+ * producción, en el peor momento y casi siempre en silencio.
+ *
+ * Todas son de LECTURA y no mueven plata ni escriben datos de negocio. Ninguna
+ * imprime el secreto: cuando hace falta imprimen el identificador de la cuenta
+ * o del recurso, que es lo que de verdad hay que comparar.
+ */
+
+/**
+ * Resend: la key existe, y el dominio desde el que se manda está verificado.
+ *
+ * `GET /domains` es lectura pura. Lo segundo importa tanto como lo primero: una
+ * key válida con el dominio sin verificar manda igual, pero los mails caen en
+ * spam o rebotan, que es exactamente el modo de falla que nadie mira. Los mails
+ * salen como `no-reply@turnogol.app` (email.provider.ts) firmados por el
+ * subdominio `send.turnogol.app`.
+ */
+async function resendProbe(): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY
+  if (!key) {
+    console.error('RESEND_API_KEY not set')
+    return false
+  }
+  try {
+    const res = await fetch('https://api.resend.com/domains', {
+      headers: { Authorization: `Bearer ${key}` },
+    })
+    if (res.status === 401 || res.status === 403) {
+      console.error(`Resend rechazo la key (HTTP ${res.status}) — revocada o de otra cuenta`)
+      return false
+    }
+    if (!res.ok) {
+      console.error(`Resend probe devolvio HTTP ${res.status}`)
+      return false
+    }
+    const body = (await res.json()) as { data?: { name: string; status: string }[] }
+    const domains = body.data ?? []
+    if (domains.length === 0) {
+      console.error('Resend: la key sirve pero la cuenta no tiene ningun dominio cargado')
+      return false
+    }
+    console.log(`  Resend: ${domains.map((d) => `${d.name}=${d.status}`).join(', ')}`)
+    if (!domains.some((d) => d.status === 'verified')) {
+      console.error('Resend: ningun dominio VERIFICADO — los mails van a rebotar o caer en spam')
+      return false
+    }
+    return true
+  } catch (e) {
+    console.error(`Resend probe fallo: ${(e as Error).message}`)
+    return false
+  }
+}
+
+/**
+ * R2: las credenciales abren el bucket que dice `R2_BUCKET`.
+ *
+ * `HeadBucket` es la operación más barata que prueba las tres cosas a la vez:
+ * que la clave es válida, que tiene permiso, y que el bucket existe con ese
+ * nombre exacto. `/api/status` solo mira que las cinco variables estén
+ * definidas, así que un `R2_BUCKET` mal tipeado le da verde.
+ */
+async function r2Probe(): Promise<boolean> {
+  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET } = process.env
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET) {
+    console.error(
+      'R2_* incompletas (hacen falta ACCOUNT_ID, ACCESS_KEY_ID, SECRET_ACCESS_KEY, BUCKET)',
+    )
+    return false
+  }
+  try {
+    const { S3Client, HeadBucketCommand } = await import('@aws-sdk/client-s3')
+    const client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
+    })
+    await client.send(new HeadBucketCommand({ Bucket: R2_BUCKET }))
+    console.log(`  R2: bucket "${R2_BUCKET}" accesible`)
+    return true
+  } catch (e) {
+    const err = e as { name?: string; $metadata?: { httpStatusCode?: number }; message: string }
+    const code = err.$metadata?.httpStatusCode
+    if (code === 404) console.error(`R2: el bucket "${R2_BUCKET}" no existe en esa cuenta`)
+    else if (code === 401 || code === 403)
+      console.error(`R2: credenciales rechazadas (HTTP ${code})`)
+    else console.error(`R2 probe fallo: ${err.name ?? ''} ${err.message}`)
+    return false
+  }
+}
+
+/**
+ * El dominio público de las imágenes responde por HTTPS.
+ *
+ * Un 404 acá es ÉXITO: significa que el DNS resuelve, el certificado sirve y
+ * Cloudflare contesta; que no haya un objeto en la raíz es lo esperado. Lo que
+ * se está buscando es el otro caso — que `R2_PUBLIC_BASE_URL` apunte a un
+ * dominio que no existe, como pasaba con `media.turnogol.com` en
+ * `next.config.ts` hasta el 2026-08-25.
+ */
+async function r2PublicDomainProbe(): Promise<boolean> {
+  const base = process.env.R2_PUBLIC_BASE_URL
+  if (!base) {
+    console.error('R2_PUBLIC_BASE_URL not set')
+    return false
+  }
+  try {
+    const res = await fetch(base, { method: 'HEAD' })
+    console.log(`  R2 publico: ${base} responde HTTP ${res.status}`)
+    return true
+  } catch (e) {
+    console.error(`R2_PUBLIC_BASE_URL (${base}) no responde: ${(e as Error).message}`)
+    return false
+  }
+}
+
+/**
+ * Las dos claves de Supabase son de ESTE proyecto y tienen el poder que dicen.
+ *
+ * - La `service_role` se prueba contra `/auth/v1/admin/users`, que solo
+ *   responde con privilegios de admin: si alguien pegó ahí la `anon` por error
+ *   —mismo formato JWT, mismo largo, indistinguibles a ojo— el chequeo de
+ *   `env.ts` (`min(20)`) le da verde y recién falla al crear usuarios de staff.
+ * - La `anon` se prueba contra `/auth/v1/settings`, que rechaza una key de otro
+ *   proyecto. Esa es la que viaja al navegador.
+ */
+async function supabaseKeysProbe(): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !service || !anon) {
+    console.error(
+      'Falta NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    )
+    return false
+  }
+  let ok = true
+  try {
+    const res = await fetch(`${url}/auth/v1/admin/users?per_page=1`, {
+      headers: { apikey: service, Authorization: `Bearer ${service}` },
+    })
+    if (res.ok) console.log('  Supabase service_role: privilegios de admin confirmados')
+    else {
+      console.error(
+        `Supabase service_role rechazada (HTTP ${res.status}) — key de otro proyecto, revocada, ` +
+          'o es en realidad la anon pegada en el lugar equivocado',
+      )
+      ok = false
+    }
+  } catch (e) {
+    console.error(`Supabase service_role probe fallo: ${(e as Error).message}`)
+    ok = false
+  }
+  try {
+    const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: anon } })
+    if (res.ok) console.log('  Supabase anon: valida para este proyecto')
+    else {
+      console.error(`Supabase anon rechazada (HTTP ${res.status}) — no es de este proyecto`)
+      ok = false
+    }
+  } catch (e) {
+    console.error(`Supabase anon probe fallo: ${(e as Error).message}`)
+    ok = false
+  }
+  return ok
+}
+
+/**
+ * Upstash: la URL y el token abren la base de rate-limit, y se puede escribir.
+ *
+ * Va y vuelve sobre una clave descartable con TTL de 60 s. Sin esto el
+ * rate-limit falla abierto (`apply.ts`) y los caminos de plata quedan sin
+ * freno, que es justo lo contrario de lo que se supone que hacen.
+ */
+async function upstashProbe(): Promise<boolean> {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) {
+    console.error('Falta UPSTASH_REDIS_REST_URL o UPSTASH_REDIS_REST_TOKEN')
+    return false
+  }
+  const key = 'launch-check:probe'
+  try {
+    const res = await fetch(`${url}/set/${key}/ok?EX=60`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) {
+      console.error(`Upstash rechazo la escritura (HTTP ${res.status})`)
+      return false
+    }
+    const read = await fetch(`${url}/get/${key}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const body = (await read.json()) as { result?: string }
+    if (body.result !== 'ok') {
+      console.error(`Upstash escribio pero devolvio "${body.result}" al leer`)
+      return false
+    }
+    console.log('  Upstash: escritura y lectura confirmadas')
+    return true
+  } catch (e) {
+    console.error(`Upstash probe fallo: ${(e as Error).message}`)
+    return false
+  }
+}
+
+/**
+ * `IMPERSONATION_COOKIE_SECRET` firma y verifica de verdad.
+ *
+ * Es la cookie con la que un SuperAdmin entra como un complejo. `env.ts` solo
+ * exige 16 caracteres; esto hace el viaje completo (firmar, verificar, y que
+ * una firma con otro secreto sea rechazada) con el mismo HMAC que usa la app.
+ */
+async function impersonationSecretProbe(): Promise<boolean> {
+  const secret = process.env.IMPERSONATION_COOKIE_SECRET
+  if (!secret) {
+    console.error('IMPERSONATION_COOKIE_SECRET not set')
+    return false
+  }
+  const { createHmac, timingSafeEqual } = await import('node:crypto')
+  const sign = (payload: string, k: string) => createHmac('sha256', k).update(payload).digest('hex')
+  const payload = 'launch-check-probe'
+  const good = Buffer.from(sign(payload, secret))
+  const forged = Buffer.from(sign(payload, `${secret}-otro`))
+  if (good.length !== forged.length || timingSafeEqual(good, forged)) {
+    console.error('IMPERSONATION_COOKIE_SECRET: el HMAC no discrimina — secreto inservible')
+    return false
+  }
+  if (!timingSafeEqual(good, Buffer.from(sign(payload, secret)))) {
+    console.error('IMPERSONATION_COOKIE_SECRET: la firma no es reproducible')
+    return false
+  }
+  console.log('  Impersonation secret: firma y rechaza como corresponde')
+  return true
+}
+
 const steps: Step[] = [
   { name: 'env vars present', check: async () => envCheck(), fatal: true },
   {
@@ -416,6 +659,25 @@ const steps: Step[] = [
   },
   { name: 'mp credentials probe (Checkout Pro)', check: mpCredentialsProbe, fatal: false },
   { name: 'mp master token probe (Suscripciones)', check: mpMasterTokenProbe, fatal: false },
+  { name: 'resend probe (email)', check: resendProbe, fatal: false },
+  { name: 'r2 probe (bucket de imagenes)', check: r2Probe, fatal: false },
+  { name: 'r2 public domain probe', check: r2PublicDomainProbe, fatal: false },
+  { name: 'supabase keys probe (service_role + anon)', check: supabaseKeysProbe, fatal: false },
+  { name: 'upstash probe (rate-limit)', check: upstashProbe, fatal: false },
+  { name: 'impersonation secret probe', check: impersonationSecretProbe, fatal: false },
+  {
+    name: 'vapid pair (push)',
+    check: async () => {
+      const r = vapidPairMatches(
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY,
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      )
+      if (!r.ok) console.error(r.error)
+      return r.ok
+    },
+    fatal: false,
+  },
   { name: 'typecheck', cmd: () => execSync('pnpm typecheck', { stdio: 'inherit' }), fatal: true },
   { name: 'lint', cmd: () => execSync('pnpm lint', { stdio: 'inherit' }), fatal: true },
   { name: 'unit tests', cmd: () => execSync('pnpm test', { stdio: 'inherit' }), fatal: true },

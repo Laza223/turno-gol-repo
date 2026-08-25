@@ -312,6 +312,56 @@ async function mpCredentialsProbe(): Promise<boolean> {
   }
 }
 
+/**
+ * Sonda del token master, el que cobra la suscripción SaaS.
+ *
+ * Por qué hace falta aparte: `mpCredentialsProbe` valida `MP_CLIENT_ID` /
+ * `MP_CLIENT_SECRET`, que desde la migración del 2026-08-22 son los de la app
+ * de **Checkout Pro** (señas por OAuth). `MP_TURNOGOL_ACCESS_TOKEN` es de la
+ * **otra** aplicación, la de Suscripciones, y no lo tocaba ninguna sonda: la
+ * única credencial con la que TurnoGol cobra SU plata podía estar vencida,
+ * revocada o pegada de la cuenta equivocada y nadie se enteraba hasta que un
+ * complejo intentaba activar el plan.
+ *
+ * `GET /users/me` es de lectura pura y no mueve un peso. Además imprime el id
+ * de la cuenta, que es el chequeo que de verdad importa: un token válido pero
+ * de la cuenta de un complejo autentica igual, y cobraría a la cuenta
+ * equivocada. Compará ese id contra el de la cuenta master.
+ *
+ * Nunca imprime el token.
+ */
+async function mpMasterTokenProbe(): Promise<boolean> {
+  const token = process.env.MP_TURNOGOL_ACCESS_TOKEN
+  if (!token) {
+    console.error('MP_TURNOGOL_ACCESS_TOKEN not set — no se puede cobrar la suscripción SaaS')
+    return false
+  }
+  try {
+    const res = await fetch('https://api.mercadopago.com/users/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.status === 401 || res.status === 403) {
+      console.error(
+        `MP master token probe returned HTTP ${res.status} — token vencido, revocado o mal copiado`,
+      )
+      return false
+    }
+    if (!res.ok) {
+      console.error(`MP master token probe returned HTTP ${res.status} (esperado 200)`)
+      return false
+    }
+    const me = (await res.json()) as { id?: number; nickname?: string; site_id?: string }
+    console.log(
+      `MP master token OK — cuenta ${me.id ?? '?'} (${me.nickname ?? '?'}), site ${me.site_id ?? '?'}`,
+    )
+    console.log('  ^ verificá que ese id sea el de la cuenta master, no el de un complejo')
+    return true
+  } catch (e) {
+    console.error(`MP master token probe failed: ${(e as Error).message}`)
+    return false
+  }
+}
+
 const steps: Step[] = [
   { name: 'env vars present', check: async () => envCheck(), fatal: true },
   {
@@ -364,7 +414,8 @@ const steps: Step[] = [
     },
     fatal: true,
   },
-  { name: 'mp credentials probe', check: mpCredentialsProbe, fatal: false },
+  { name: 'mp credentials probe (Checkout Pro)', check: mpCredentialsProbe, fatal: false },
+  { name: 'mp master token probe (Suscripciones)', check: mpMasterTokenProbe, fatal: false },
   { name: 'typecheck', cmd: () => execSync('pnpm typecheck', { stdio: 'inherit' }), fatal: true },
   { name: 'lint', cmd: () => execSync('pnpm lint', { stdio: 'inherit' }), fatal: true },
   { name: 'unit tests', cmd: () => execSync('pnpm test', { stdio: 'inherit' }), fatal: true },

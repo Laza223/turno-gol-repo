@@ -452,3 +452,239 @@ introspección del panel de Supabase y de PostgREST —ruido— salvo una que **
 `SELECT max(completedon) FROM pgboss.job WHERE name = $1 AND state = $2 UNION …`, con
 **354 ms de promedio en 319 llamadas**. Es la que mira la salud de los jobs. No es urgente,
 pero es la única consulta propia que aparece en el top y merece un índice o una reescritura.
+*(Arreglada el mismo día: 12,35 ms → 0,43 ms medido, en PR #217 — pendiente de merge.)*
+
+---
+
+## 6. Capacidad: ¿aguanta 100 complejos y 1.000 usuarios recurrentes? — 2026-08-25
+
+> Pregunta del dueño: ¿el stack actual (Supabase Pro + Vercel Pro + Railway + Resend +
+> Sentry + Cloudflare R2) soporta 100 complejos y 1.000 usuarios recurrentes, o hay que
+> pensar en migrar (p. ej. a un VPS)? Método: mediciones reales sobre la base de
+> producción (solo lectura) + límites oficiales 2026 de cada proveedor relevados de sus
+> docs con fuente al lado (tres barridos independientes, agentes de research).
+
+### 6.1 Veredicto
+
+**Sí, alcanza — con un margen de entre 20× y 100× según la métrica.** A 100 complejos el
+stack actual opera entre el 1 % y el 5 % de sus límites en todas las dimensiones medibles
+(consultas, conexiones, requests, ancho de banda, Realtime, MAU). Lo que sí hay que tocar
+antes de tener clientes reales no es capacidad: son 5 llaves operativas (§6.5), todas de
+minutos u horas, ninguna una migración.
+
+### 6.2 La medición que ancla todo (producción, 2026-08-25)
+
+| Métrica medida | Valor |
+|---|---|
+| Consultas respondidas desde el 2026-07-18 (38 días) | **34.009.235** |
+| Tiempo total de ejecución de TODAS esas consultas | **37,8 minutos** |
+| Ocupación de la base que eso representa | **0,069 %** del período |
+| Tamaño de la base | 35 MB (las tablas de la app: < 2 MB; lo más pesado es `pgboss.archive`, 17 MB de historial de la cola) |
+| Conexiones: 22 de 60 — desglose | 5 pool web (idle) + 3 worker (idle) + 14 infraestructura propia de Supabase (pg_cron, exporter, PostgREST, auth del pooler, procesos internos) |
+| Promedio por consulta | 0,02–15 ms según la consulta; el fetch de pg-boss (26,7 M de llamadas) cuesta 0,02 ms |
+
+Dos lecturas de esto. Primera: **la base ya procesa hoy, con cero usuarios, ~895.000
+consultas por día** (el polling del worker), un volumen del mismo orden del que le
+sumarían 100 complejos de humanos — y le costó 1 minuto de trabajo por día. Segunda: las
+22 conexiones "en uso" no crecen con los usuarios: 14 son la maquinaria de Supabase y las
+8 nuestras son pools fijos, ociosos. El tráfico de usuarios entra por Supavisor en modo
+transacción (puerto 6543), que multiplexa: no abre una conexión por usuario.
+
+### 6.3 Modelo de carga a 100 complejos (supuestos explícitos)
+
+Supuestos: 100 complejos ≈ 400 canchas (promedio 4); ~5 turnos ocupados por cancha por
+día → **~2.000 reservas/día** en toda la plataforma; ~200 cuentas de staff (150 activas
+por día, uso intensivo de grilla); 1.000 jugadores recurrentes (~300–500 activos/día);
+pico viernes 19–22 ART con ~4× la densidad promedio.
+
+| Dimensión | Demanda proyectada | Límite del plan actual | Ocupación |
+|---|---|---|---|
+| Requests web | ~45.000/día ≈ 1,4 M/mes | 10 M edge requests incluidos (Vercel Pro) | ~14 % |
+| Invocaciones de función | ~0,7–1,5 M/mes | Sin tope; $0,60/M contra crédito de $20 | — |
+| Consultas a la DB (usuarios) | ~270.000/día; pico ~35/s | Techo del pool: 15 slots × ~200 consultas/s/slot ≈ 3.000/s | **~1 %** |
+| Tiempo de DB ocupada | ~22 min/día | 1.440 min/día | ~1,6 % |
+| Conexiones cliente al pooler | ~10–20 en pico (Fluid empaqueta; pool 3 por instancia + worker) | 200 (Micro) / 400 (Small) | ~5–10 % |
+| Realtime concurrente | 100–200 grillas abiertas | 500 en el precio; hard cap 10.000 | ~30 % de la cuota, 2 % del techo |
+| Mensajes Realtime | ~120.000/mes | 5 M/mes incluidos | ~2,4 % |
+| Auth MAU | ~1.200 | 100.000 incluidos | 1,2 % |
+| Egress de DB | ~40 GB/mes | 250 GB incluidos | 16 % |
+| Disco | 2–5 GB al año de operación | 8 GB incluidos, luego $0,125/GB | — |
+| Emails | ~30–60 k/mes | Resend Pro: 50 k ($20) o 100 k ($35) | requiere salir del Free |
+| Imágenes (R2) | pocos GB; egress alto | 10 GB gratis; **egress $0 siempre** | ~$0 |
+
+Aunque los supuestos de uso estén errados por un factor de 5–10×, ninguna fila se acerca
+a su límite salvo las que ya están señaladas como acción (email) — ese es el punto del
+margen.
+
+### 6.4 Los dos números que asustaban, explicados
+
+- **"Pool de 15"** (`pool_size` de Supavisor): no son 15 consultas ni 15 usuarios — son
+  15 líneas simultáneas hacia Postgres. Cada consulta ocupa una línea durante
+  milisegundos y la devuelve. A 5 ms por consulta, una sola línea despacha ~200/s; las 15
+  juntas, ~3.000/s. El pico proyectado de 100 complejos es ~35/s. El único incidente real
+  con este pool (F-002) fue un bug de conexiones que no se soltaban — arreglado con
+  `idle_timeout`/`max_lifetime`, no fue un problema de tamaño.
+- **"22 de 60 conexiones sin usuarios"**: el 60 es `max_connections` directas a Postgres.
+  De las 22, **14 son de Supabase mismo** y 8 nuestras (pools fijos, ociosos). Los
+  usuarios no suman conexiones directas: entran por el pooler. Este número va a seguir
+  siendo ~22–30 con 100 complejos.
+
+### 6.5 Lo que sí hay que hacer antes de clientes reales (las llaves, no la capacidad)
+
+1. **SMTP custom en Supabase Auth + subir el rate de OTP.** El magic link de jugadores
+   sale por Supabase Auth: con el SMTP built-in el límite es **2 emails/hora** (hard) y
+   el default de OTP es **30/hora por proyecto** (configurable). Verificar que Auth use
+   Resend como SMTP y subir el límite de OTP. Sin esto, el login de jugadores se ahoga
+   con el primer complejo real. Fuente: docs de auth rate-limits.
+2. **Resend Free → Pro al lanzar.** El Free tiene **100 emails/día (hard)**. Pro $20
+   (50 k/mes) alcanza; $35 (100 k) sobra.
+3. **Nano → Micro, posiblemente gratis.** Docs de compute: *"In paid organizations, Nano
+   Compute are billed at the same price as Micro Compute"* — en una org Pro el Nano se
+   cobra como Micro. Verificar en el panel de billing: si es así, el upgrade a Micro
+   (0,5 → 1 GB RAM) no cuesta nada más que un reinicio de ~2 min. Corrige la decisión de
+   §5.4, que asumía que quedarse en Nano ahorraba plata.
+4. **PITR (~$100/mes) cuando haya plata real en la base.** Hoy el RPO es 24 h (backup
+   diario). Con complejos pagando y reservas reales, perder hasta 24 h de datos es el
+   riesgo más caro de todo el stack. Disparador: primera cohorte paga (~10–20 complejos),
+   no antes. Es el único salto de costo grande y es una decisión de fecha, no de si.
+5. **Worker: sigue siendo el punto más frágil — pero de disponibilidad, no de
+   capacidad.** 1 réplica, healthcheck de plataforma pendiente (M-5), monitoreado por
+   UptimeRobot (P-12). Y **PR #217 sin mergear**: la mudanza a US East y el fix del
+   latido (12,35 ms → 0,43 ms) no están deployados.
+
+### 6.6 Costo mensual proyectado a 100 complejos
+
+| Proveedor | Hoy | A 100 complejos |
+|---|---|---|
+| Supabase Pro | $25 | $25 (Micro en el crédito; disco/egress dentro de lo incluido) **+ $100 PITR recomendado** |
+| Vercel Pro | $20 | $20 (uso estimado ~$12 ≤ crédito de $20) |
+| Railway | ~$5 | ~$5–10 |
+| Resend | $0 | $20–35 |
+| Sentry | $0 | $0 (el default al exceder cuota es descartar, no cobrar) — Team $26 opcional |
+| Cloudflare R2 | $0 | ~$0–2 (egress gratis) |
+| **Total** | **~$50** | **~$70–90 sin PITR · ~$170–200 con PITR + Sentry Team** |
+
+Contra ingresos a esa escala (100 × ~$85.000 ARS ≈ **$8,5 M ARS/mes**), la infraestructura
+completa queda en **~2–4 % de la facturación** — menos que la suscripción de un solo
+cliente.
+
+### 6.7 ¿VPS? No.
+
+Migrar a un VPS hoy sería cambiar ~$50–200/mes por convertir al dueño en su propio DBA y
+sysadmin: parches, backups, PITR artesanal, pooling, monitoreo, hardening — todo lo que
+hoy viene resuelto, sin equipo para operarlo. El punto de reevaluación honesto es una
+factura de infra sostenida > $1.000–2.000/mes (~500+ complejos). El stack además es
+portable si ese día llega: Postgres vanilla + RLS, worker Node, Next.js — el lock-in real
+se limita a Supabase Auth y Realtime.
+
+### 6.8 Techos honestos (cuándo sí habría que pensar)
+
+- **~500–1.000 complejos**: el CPU compartido de Micro/Small empieza a pesar → subir de
+  tier es un click por escalón (Small $15, Medium $60, Large $110… hasta 16XL), nunca una
+  migración.
+- **Realtime**: hard cap de 10.000 conexiones concurrentes ≈ miles de complejos.
+- **Lo primero que va a doler de verdad al crecer no es el fierro**: son detalles de la
+  app tipo el `LIMIT 200` sin cursor de Personas (B10) cuando un tenant tenga miles de
+  filas. Eso es trabajo de producto, barato, y con síntoma gradual — no un colapso.
+
+---
+
+## 7. Inventario de credenciales, y sondas que prueban que FUNCIONAN — 2026-08-25
+
+> Pedido del dueño: *"quiero que todas funcionen y actúen como deben, que todos los problemas
+> a futuro sean únicamente del código y no de configuración o infraestructura"*.
+
+La propuesta inicial era rotar todo. Se descartó y se hizo lo contrario, por una razón: rotar
+no responde la pregunta que genera el miedo —*¿está bien puesta?*— y además es la operación
+más peligrosa del repertorio. La evidencia es propia: la rotación del `ENCRYPTION_KEY` del
+22/8 mató el cobro **en silencio** durante días, y el 25/8 cambiar una palabra del DSN dejó al
+worker en bucle de crash 16 minutos. Encima, en Vercel los valores **no se pueden leer**: pisar
+uno sin copia es un camino de ida.
+
+Lo que sí cierra el problema es poder **probar** cada credencial cuando uno quiera.
+
+### 7.1 Lo que ya existía, y por qué no alcanzaba
+
+Había dos capas, y las dos miran lo mismo desde ángulos distintos:
+
+| Capa | Qué valida | Qué NO valida |
+|---|---|---|
+| `src/shared/env.ts` (Zod, al arrancar) | **forma**: que la variable esté y tenga la pinta correcta (largo, regex, URL) | que la credencial sirva |
+| `/api/status` (en vivo) | **presencia** (`!!process.env.X`) para MercadoPago, email y Sentry | ídem |
+| `scripts/launch-check.ts` | **funcionamiento real**, pero solo de MercadoPago, SSL y los roles de la base | todo el resto |
+
+O sea: una API key revocada, una clave pegada de otra cuenta o un bucket renombrado pasaban
+las tres capas y fallaban recién en producción. El caso testigo ya documentado: el
+`ENCRYPTION_KEY` estaba, con formato inválido, y el único lugar donde se manifestaba era el
+callback de OAuth de MercadoPago — un camino que se recorre **una vez por complejo**, durante
+el alta, y que por eso nadie mira.
+
+### 7.2 Inventario: cada variable de producción y cómo se prueba
+
+Sacado del código (`grep process.env` sobre `src/`, `next.config.ts`, `instrumentation*.ts`,
+`middleware.ts`), no de la memoria ni de un `.env.example`.
+
+| Variable | Quién la lee | Forma | Sonda de funcionamiento |
+|---|---|---|---|
+| `DATABASE_URL` | `db/client.ts`, `jobs/boss.ts` | Zod | `ssl in use`, `bypassrls`, `role identity` |
+| `WORKER_DATABASE_URL` | `db/client.ts` | REQUIRED_ENV | `worker bypassrls role check` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `lib/supabase/*` | Zod url | **nueva** `supabase keys probe` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `lib/supabase/*` | Zod min(20) | **nueva** `supabase keys probe` |
+| `SUPABASE_SERVICE_ROLE_KEY` | `lib/supabase/admin.ts` | Zod min(20) | **nueva** `supabase keys probe` |
+| `MP_CLIENT_ID` / `MP_CLIENT_SECRET` | `api/mp/*` | Zod min(1) | `mp credentials probe` |
+| `MP_TURNOGOL_ACCESS_TOKEN` | `billing.gateway.ts` | REQUIRED_ENV | `mp master token probe` |
+| `MP_WEBHOOK_SECRET` / `_CHECKOUT` | `webhook-auth.ts` | Zod min(16) | ⚠️ **no se puede sondear** |
+| `ENCRYPTION_KEY` | `lib/crypto/encrypt.ts` | Zod regex 64 hex | `encryption-key strength` |
+| `IMPERSONATION_COOKIE_SECRET` | `security/*-cookie.ts` | Zod min(16) | **nueva** `impersonation secret probe` |
+| `RESEND_API_KEY` | `email.provider.ts` | Zod min(1) | **nueva** `resend probe` |
+| `R2_ACCOUNT_ID` / `ACCESS_KEY_ID` / `SECRET_ACCESS_KEY` / `BUCKET` | `storage/r2.ts` | Zod (prod) | **nueva** `r2 probe` |
+| `R2_PUBLIC_BASE_URL` | `storage/r2.ts`, `next.config.ts` | Zod url | **nueva** `r2 public domain probe` |
+| `VAPID_PUBLIC_KEY` / `PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `lib/web-push.ts` | Zod (largos) | **nueva** `vapid pair` |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | `rate-limit/apply.ts`, `cache/slots-cache.ts` | Zod | **nueva** `upstash probe` |
+| `SENTRY_DSN` | `observability/sentry-worker.ts` | REQUIRED_ENV | ⚠️ sin sonda (ver 7.4) |
+| `NEXT_PUBLIC_SENTRY_DSN` | `instrumentation-client.ts` | REQUIRED_ENV | ⚠️ sin sonda |
+| `SENTRY_AUTH_TOKEN` / `ORG` / `PROJECT` | `next.config.ts` (build) | — | el build falla si están mal |
+| `APP_URL` / `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_SITE_URL` | billing, SEO, mails | Zod parcial | ⚠️ sin sonda (ver 7.4) |
+| `SYSTEM_ADMIN_EMAILS` | `system-admin.guards.ts` | opcional | fail-closed por diseño |
+| `STATUS_TOKEN` | `api/status/route.ts` | — | abre el detalle de `/api/status` |
+| `TERMS_VERSION` | `shared/terms.ts` | — | — |
+
+### 7.3 Las siete sondas nuevas
+
+Todas de **lectura**: no mueven plata, no escriben datos de negocio, y ninguna imprime el
+secreto — cuando hace falta imprimen el identificador de cuenta o recurso, que es lo que hay
+que comparar. Se corren con un solo comando:
+
+```bash
+LAUNCH_CHECK_ENV_FILE=.env.production pnpm launch:check --probe-only
+```
+
+| Sonda | Qué prueba de verdad |
+|---|---|
+| `resend probe` | La key sirve **y hay un dominio verificado**. Una key válida con el dominio sin verificar manda igual, pero los mails rebotan o caen en spam: ese es el modo de falla que nadie mira |
+| `r2 probe` | `HeadBucket`: la clave es válida, tiene permiso, **y el bucket existe con ese nombre exacto**. Un `R2_BUCKET` mal tipeado pasaba el chequeo de presencia |
+| `r2 public domain probe` | Que `R2_PUBLIC_BASE_URL` resuelva por HTTPS. Un 404 es éxito; lo que busca es el caso `media.turnogol.com`, un dominio que no existía y estuvo meses en `next.config.ts` |
+| `supabase keys probe` | Que la `service_role` tenga **privilegios de admin** (si alguien pegó ahí la `anon` —mismo formato JWT, indistinguibles a ojo— el `min(20)` le daba verde), y que la `anon` sea de **este** proyecto |
+| `upstash probe` | Escritura y lectura reales. Sin esto el rate-limit falla abierto y los caminos de plata quedan sin freno, que es lo contrario de lo que se supone |
+| `impersonation secret probe` | Viaje completo de HMAC: firma, verifica, y **rechaza** una firma hecha con otro secreto |
+| `vapid pair` | Que la pública **se derive** de la privada (P-256). Rotar una sola pasa todos los chequeos de largo y deja push roto en silencio: el navegador se suscribe con la vieja, el servidor firma con la nueva, cada envío muere con un 403 que nadie ve. El síntoma que ve el dueño es "dejaron de sonar las reservas" |
+
+`vapidPairMatches` es lógica pura y vive en `launch-check.helpers.ts` con 6 tests unitarios.
+Las de red viven en `launch-check.ts`, junto a las sondas de MercadoPago que ya existían.
+
+### 7.4 Lo que sigue sin poder probarse, dicho de frente
+
+- **`MP_WEBHOOK_SECRET` y `MP_WEBHOOK_SECRET_CHECKOUT`**: cualquier string "funciona" para
+  firmar; lo único que prueba que sea **la correcta** es un webhook real de MercadoPago
+  llegando y validando. No hay sonda posible desde afuera. La red de contención real es que
+  `webhook-auth.ts` loguea cada rechazo.
+- **`SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`**: sondearlos exige mandar un evento de verdad, que
+  ensucia el panel de issues. Se puede hacer a mano una vez y confirmar en Sentry.
+- **Las tres variables de URL** (`APP_URL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_URL`):
+  ninguna sonda puede saber cuál es la "correcta". `APP_URL` tiene fallback silencioso a
+  `http://localhost:3000` en `billing.service.ts`, y con eso el webhook de la suscripción SaaS
+  nunca llega. Merece consolidarse en una sola variable, que es cambio de código y no de
+  configuración.
+- **El entorno Preview de Vercel** sigue siendo el único 🔴 abierto de esta auditoría (C-3), y
+  ninguna sonda lo alcanza: los valores no se pueden leer y el gate corre contra el archivo de
+  env que uno le pase, no contra lo que Vercel tiene cargado.

@@ -133,7 +133,7 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
         notes:
           'Caso de plata: fila NO limpiada a propósito (queda canceled_refunded). Insertada vía ' +
           'service client sin payment_id real, así que cancelByPlayer marca deposit_status=refunded ' +
-          'a nivel DB sin invocar settleRefund/MP real (mismo patrón que player-bookings.spec.ts).',
+          'a nivel DB, sin pasar por la cancelación real (mismo patrón que player-bookings.spec.ts).',
       })
     } finally {
       await ctx.close()

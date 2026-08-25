@@ -55,7 +55,7 @@ async function setupApprovedPayment(amount = 100_000): Promise<string> {
   return rows[0]!.id
 }
 
-describe('MP createRefund validation gaps', () => {
+describe('prepareRefund — guards de monto', () => {
   it('refund amount > original.amount → currently allowed (potential bug)', async () => {
     const paymentId = await setupApprovedPayment(100_000)
 

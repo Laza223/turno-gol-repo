@@ -43,8 +43,6 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
         mockGateway.createPreference(...args)
       getPaymentStatus = (...args: Parameters<MockGateway['getPaymentStatus']>) =>
         mockGateway.getPaymentStatus(...args)
-      createRefund = (...args: Parameters<MockGateway['createRefund']>) =>
-        mockGateway.createRefund(...args)
     },
   }
 })
@@ -55,14 +53,12 @@ import {
   handleNoShow,
   handleNoShowRevert,
 } from '@/modules/bookings/booking.cancellation'
-import { settleRefund } from '@/modules/payments/payment.service'
 import {
   BookingAlreadyEndedError,
   BookingNotInConfirmedError,
   BookingNotInNoShowError,
   BookingNotOwnedByPlayerError,
   NoShowRevertWindowExpiredError,
-  RefundUnavailableError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
 
@@ -316,6 +312,22 @@ async function getRefundPayment(
   return r ? { amount: Number(r.amount), status: r.status } : undefined
 }
 
+/**
+ * El `description` de la fila de devolución. No es cosmético: distingue las dos
+ * clases de devolución. `'Refund of <pago original>'` es clave de join del
+ * webhook de MercadoPago; `'Manual refund of booking <id>'` existe justamente
+ * para NO colisionar con esa clave.
+ */
+async function getRefundDescription(bookingId: string): Promise<string | null> {
+  const sql = getSql()
+  const rows = await sql<{ description: string | null }[]>`
+    SELECT description FROM payments
+    WHERE booking_id = ${bookingId} AND type = 'refund'
+    LIMIT 1
+  `
+  return rows[0]?.description ?? null
+}
+
 // Cancellation audit columns on the booking row itself (separate from audit_logs).
 async function getBookingCancelMeta(
   bookingId: string,
@@ -370,9 +382,7 @@ describe('cancelByPlayer — Hallazgo 8: inactive tenant guard', () => {
       await sql`UPDATE tenants SET status = ${status} WHERE id = ${tenant.id}`
 
       await expect(
-        withTenantContext(tenant.id, (tx) =>
-          cancelByPlayer(bookingId, player.id, 'no va más', mockGateway, tx),
-        ),
+        withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'no va más', tx)),
       ).rejects.toBeInstanceOf(TenantInactiveError)
 
       // Booking untouched; no refund attempted against the dead MP account.
@@ -414,14 +424,12 @@ describe('cancelByPlayer — 4A: in-policy, deposit paid', () => {
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    // MockGateway.createRefund auto-resolves. prepareRefund solo deja la fila
-    // 'pending' durable dentro de la tx (caza-bugs #3); settleRefund, después
-    // del commit, llama a MP de verdad.
-    const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'ya no puedo', mockGateway, tx),
+    // La cancelación deja la devolución REGISTRADA y nada más: no se llama a
+    // MercadoPago (ese camino se eliminó, devolvía 403 siempre). La fila queda
+    // 'pending' hasta que el complejo la salde.
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, 'ya no puedo', tx),
     )
-    expect(outcome.pendingRefund).toBeDefined()
-    await settleRefund(outcome.pendingRefund!, mockGateway, tenant.id)
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
@@ -431,12 +439,7 @@ describe('cancelByPlayer — 4A: in-policy, deposit paid', () => {
     // Refund debe ser por el monto EXACTO de la seña (240_000 centavos), aprobado.
     // Aserción anterior (solo count===1) pasaba aunque el refund fuera por $0 o por el precio completo.
     const refund = await getRefundPayment(bookingId)
-    expect(refund).toEqual({ amount: 240_000, status: 'approved' })
-    // Sin `amount`: la seña se devuelve ENTERA, y un reembolso total contra MP
-    // va como POST sin body. Mandarle el monto lo convierte en parcial, que
-    // MP rechaza con 403 cuando la plata todavía no está liberada (visto en
-    // producción el 2026-08-21).
-    expect(mockGateway.refundCalls).toContainEqual({ mpPaymentId })
+    expect(refund).toEqual({ amount: 240_000, status: 'pending' })
 
     // canceled_by / canceled_reason deben persistir en la fila del booking.
     expect(await getBookingCancelMeta(bookingId)).toEqual({
@@ -484,7 +487,7 @@ describe('cancelByPlayer — 4B: out-of-policy, deposit paid', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByPlayer(bookingId, player.id, undefined, mockGateway, tx)
+      await cancelByPlayer(bookingId, player.id, undefined, tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
@@ -515,7 +518,7 @@ describe('cancelByPlayer — 4A: no deposit', () => {
     })
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByPlayer(bookingId, player.id, undefined, null, tx)
+      await cancelByPlayer(bookingId, player.id, undefined, tx)
     })
 
     // Bug: sin seña pagada (deposit_status='not_required'), 'canceled_refunded'
@@ -558,9 +561,7 @@ describe('cancelByPlayer — 07-cancelbyplayer-noshow-guard: turno ya terminado'
     const bookingId = rows[0]!.id
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByPlayer(bookingId, player.id, 'no pude ir', mockGateway, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'no pude ir', tx)),
     ).rejects.toBeInstanceOf(BookingAlreadyEndedError)
 
     // El booking queda intacto: nada de canceled_no_refund con la seña
@@ -603,20 +604,16 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', mockGateway, tx),
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', tx),
     )
-    expect(outcome.pendingRefund).toBeDefined()
-    await settleRefund(outcome.pendingRefund!, mockGateway, tenant.id)
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
     expect(await countCashFlows(bookingId)).toBe(0)
 
-    expect(await getRefundPayment(bookingId)).toEqual({ amount: 240_000, status: 'approved' })
-    // Igual que arriba: seña entera ⇒ reembolso TOTAL, sin `amount`.
-    expect(mockGateway.refundCalls).toContainEqual({ mpPaymentId })
+    expect(await getRefundPayment(bookingId)).toEqual({ amount: 240_000, status: 'pending' })
     // canceled_reason incluye el tipo de cancelación (Tarea #3).
     expect(await getBookingCancelMeta(bookingId)).toEqual({
       canceled_by: 'admin',
@@ -667,7 +664,7 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', mockGateway, tx)
+      await cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', tx)
     })
 
     // Aunque la política diría retener, el complejo reembolsa.
@@ -715,7 +712,7 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'no puede ir', 'jugador', mockGateway, tx)
+      await cancelByAdmin(bookingId, staff.id, 'no puede ir', 'jugador', tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
@@ -746,7 +743,7 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
     })
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'avisó tarde', 'jugador', null, tx)
+      await cancelByAdmin(bookingId, staff.id, 'avisó tarde', 'jugador', tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
@@ -1340,7 +1337,7 @@ describe('Guard: cancel terminal booking', () => {
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
-        await cancelByAdmin(bookingId, staff.id, 'test', 'jugador', null, tx)
+        await cancelByAdmin(bookingId, staff.id, 'test', 'jugador', tx)
       }),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
   })
@@ -1385,16 +1382,13 @@ describe('cancelByPlayer — ownership guard (IDOR)', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByPlayer(bookingId, attacker.id, 'no es mía', mockGateway, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, attacker.id, 'no es mía', tx)),
     ).rejects.toBeInstanceOf(BookingNotOwnedByPlayerError)
 
     // Booking del dueño intacto; sin refund contra la cuenta del dueño.
     expect(await getBookingStatus(bookingId)).toBe('confirmed')
     expect(await getBookingDepositStatus(bookingId)).toBe('paid')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
-    expect(mockGateway.refundCalls.some((c) => c.mpPaymentId === mpPaymentId)).toBe(false)
   })
 })
 
@@ -1421,9 +1415,7 @@ describe('cancelByPlayer — state guard', () => {
     await sql`UPDATE bookings SET status = 'canceled_no_refund' WHERE id = ${bookingId}`
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByPlayer(bookingId, player.id, 'doble click', mockGateway, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'doble click', tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
 
     // Estado terminal preservado (sin re-escritura a otro canceled_*).
@@ -1437,9 +1429,7 @@ describe('cancelByPlayer — state guard', () => {
     const ghostId = '00000000-0000-0000-0000-0000000000aa'
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByPlayer(ghostId, player.id, undefined, mockGateway, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(ghostId, player.id, undefined, tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
   })
 })
@@ -1478,17 +1468,23 @@ describe('cancelByAdmin — inactive tenant guard (H8, paridad con cancelByPlaye
     await sql`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
 
     await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByAdmin(bookingId, staff.id, 'x', 'complejo', mockGateway, tx),
-      ),
+      withTenantContext(tenant.id, (tx) => cancelByAdmin(bookingId, staff.id, 'x', 'complejo', tx)),
     ).rejects.toBeInstanceOf(TenantInactiveError)
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
   })
 })
 
-// ─── Hallazgo 2 (FIX): in-policy + seña paga sin refund MP ejecutable ──
-describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutable', () => {
-  it('seña MP pagada pero gateway no disponible → lanza RefundUnavailableError sin tocar nada', async () => {
+// ─── in-policy + seña paga, por los dos medios ──────────────────────────────
+describe('cancelByPlayer — in-policy con seña paga', () => {
+  /**
+   * Este caso probaba que, con el token de MercadoPago delinkeado, la
+   * cancelación tiraba `RefundUnavailableError` y no tocaba nada. Dejó de tener
+   * sentido el día que TurnoGol dejó de pedirle el reembolso a MercadoPago: la
+   * obligación de devolver existe igual —el jugador pagó— y no depende de
+   * ningún servicio externo. Bloquear la cancelación por un tercero que ya no
+   * participa era castigar al jugador por un problema que no era suyo.
+   */
+  it('seña MP pagada: cancela y deja la devolución registrada contra el pago original', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1515,17 +1511,14 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     })
     await linkPaymentToBooking(bookingId, paymentId) // seña MP (payment_id seteado)
 
-    // gateway = null simula token MP delinkeado: no se puede refundar.
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByPlayer(bookingId, player.id, undefined, null, tx),
-      ),
-    ).rejects.toBeInstanceOf(RefundUnavailableError)
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
 
-    // Estado consistente: nada cambió. No hay booking "refunded" con plata atrapada.
-    expect(await getBookingStatus(bookingId)).toBe('confirmed')
-    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
-    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
+    expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
+    expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
+    // Contra el pago original: ese `description` es lo que después le permite al
+    // webhook reconocer la devolución y saldarla sola.
+    expect(await getRefundDescription(bookingId)).toBe(`Refund of ${paymentId}`)
   })
 
   it('seña en efectivo (sin payment_id MP) → canceled_refunded + la deuda de devolución registrada', async () => {
@@ -1548,7 +1541,7 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'me arrepentí', null, tx),
+      cancelByPlayer(bookingId, player.id, 'me arrepentí', tx),
     )
 
     // Sin payment_id MP no hay nada que reembolsar por API, pero el booking
@@ -1568,13 +1561,18 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     expect(await countCashFlows(bookingId)).toBe(0)
   })
 
-  // Blindaje C (booking.cancellation.ts, ver confirmManualDepositPayment en
-  // payment.service.ts): payment_id apunta a un pago que NUNCA se aprobó
-  // (status='pending' — ej. un checkout de MP arrancado y abandonado). Con el
-  // gateway disponible, el código viejo intentaba prepareRefund y reventaba
-  // con RefundInvalidStateError sin catch en los callers. Ahora debe tratarse
-  // igual que "gateway no disponible": RefundUnavailableError, sin tocar MP.
-  it('payment_id apunta a un pago MP nunca aprobado (status=pending) → RefundUnavailableError, no RefundInvalidStateError', async () => {
+  // `payment_id` apunta a un pago que NUNCA se aprobó (status='pending' — ej.
+  // un checkout de MercadoPago arrancado y abandonado). Hubo dos versiones
+  // anteriores de esto: la primera reventaba con RefundInvalidStateError sin
+  // catch en los callers, y la segunda tiraba RefundUnavailableError, que
+  // **abortaba la cancelación entera**. Las dos eran del mundo en el que
+  // devolver significaba llamar a MercadoPago.
+  //
+  // Hoy la cancelación procede y la devolución queda registrada como manual: la
+  // obligación de devolver la seña existe igual —el jugador la pagó— y no
+  // depende de ningún servicio externo. Bloquear la cancelación por un pago mal
+  // vinculado era castigar al jugador por un dato roto nuestro.
+  it('payment_id apunta a un pago MP nunca aprobado: cancela igual y registra la devolución a mano', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1605,23 +1603,18 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     // acumula entre tests (mismo patrón que el resto del archivo, ver 4A: usa
     // toContainEqual/deltas, nunca toHaveLength(0) absoluto). Capturamos el
     // largo ANTES para verificar que ESTA cancelación no agregó nada.
-    const refundCallsBefore = mockGateway.refundCalls.length
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
 
-    // Gateway SÍ disponible (a diferencia del test de arriba) — el guard
-    // nuevo debe cortar por el status del payment, no por falta de gateway.
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByPlayer(bookingId, player.id, undefined, mockGateway, tx),
-      ),
-    ).rejects.toBeInstanceOf(RefundUnavailableError)
-
-    expect(await getBookingStatus(bookingId)).toBe('confirmed')
-    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
-    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
-    expect(mockGateway.refundCalls).toHaveLength(refundCallsBefore)
+    expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
+    expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
+    // Registrada como devolución MANUAL, con su propio prefijo de description:
+    // el pago original nunca se aprobó, así que no puede colgarse del
+    // `'Refund of <id>'` que el webhook usa como clave de join.
+    expect(await getRefundDescription(bookingId)).toContain('Manual refund of booking')
   })
 
-  it('cancelByAdmin: mismo blindaje contra un payment_id no aprobado', async () => {
+  it('cancelByAdmin: mismo criterio con un payment_id no aprobado', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1650,18 +1643,14 @@ describe('cancelByPlayer — in-policy con seña paga y refund no auto-ejecutabl
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    const refundCallsBefore = mockGateway.refundCalls.length
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', tx),
+    )
 
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', mockGateway, tx),
-      ),
-    ).rejects.toBeInstanceOf(RefundUnavailableError)
-
-    expect(await getBookingStatus(bookingId)).toBe('confirmed')
-    expect(await getBookingDepositStatus(bookingId)).toBe('paid')
-    expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
-    expect(mockGateway.refundCalls).toHaveLength(refundCallsBefore)
+    expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
+    expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
+    expect(await getRefundDescription(bookingId)).toContain('Manual refund of booking')
   })
 })
 
@@ -1700,7 +1689,7 @@ describe('cancelByPlayer — audit trail metadata', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'reembolso ok', mockGateway, tx),
+      cancelByPlayer(bookingId, player.id, 'reembolso ok', tx),
     )
 
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
@@ -1759,9 +1748,7 @@ describe('cancelByPlayer — audit trail metadata', () => {
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, undefined, mockGateway, tx),
-    )
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
 
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
     expect(meta).toMatchObject({ reason: null, inPolicy: false, depositStatus: 'captured' })
@@ -1856,7 +1843,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'no puedo ir', null, tx),
+      cancelByPlayer(bookingId, player.id, 'no puedo ir', tx),
     )
 
     const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled')
@@ -1892,7 +1879,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'avisó por teléfono', 'jugador', null, tx),
+      cancelByAdmin(bookingId, staff.id, 'avisó por teléfono', 'jugador', tx),
     )
 
     const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled')
@@ -1939,10 +1926,10 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', mockGateway, tx),
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', tx),
     )
-    expect(outcome.pendingRefund).toBeDefined()
+    expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
 
     const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled_by_complex')
     expect(notifs).toHaveLength(1)
@@ -1968,7 +1955,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'complejo cerrado', 'complejo', null, tx),
+      cancelByAdmin(bookingId, staff.id, 'complejo cerrado', 'complejo', tx),
     )
 
     expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled')).toHaveLength(0)
@@ -2030,21 +2017,13 @@ describe('cancelByAdmin — B3: turno ya terminado, nunca reembolsa (ni con comp
       depositAmount: 240_000,
     })
 
-    const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(
-        bookingId,
-        staff.id,
-        'se olvidaron de cerrar el turno',
-        'complejo',
-        mockGateway,
-        tx,
-      ),
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'se olvidaron de cerrar el turno', 'complejo', tx),
     )
 
     // Guard B3 gana: aunque 'complejo' normalmente fuerza el reembolso, el
-    // turno ya se jugó → no se prepara refund. Sin el guard, esto daría
-    // canceled_refunded + deposit_status='refunded' (el bug que B3 corrige).
-    expect(outcome.pendingRefund).toBeUndefined()
+    // turno ya se jugó → no se registra ninguna devolución. Sin el guard, esto
+    // daría canceled_refunded + deposit_status='refunded' (el bug que B3 corrige).
     expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
     expect(await getBookingDepositStatus(bookingId)).toBe('captured')
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)

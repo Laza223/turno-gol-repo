@@ -138,24 +138,16 @@ export type PendingRefundRow = {
  * el invariante que `street-money-total.test.ts` compara por dos caminos.
  */
 /**
- * Qué devolución le toca resolver al complejo, en un solo lugar.
+ * Qué devolución le toca resolver al complejo: **todas, desde el momento cero**.
  *
- * Una devolución que pasó por MercadoPago recién le corresponde al complejo
- * pasada una hora, que es lo que espera `retry-refunds.worker` antes de
- * reintentar: pedirle acción por algo que el camino automático todavía podría
- * resolver solo abre la ventana para que la plata salga dos veces —a mano y
- * después por el reintento—, y la clave de idempotencia del SDK de MercadoPago
- * no protege de eso (el cliente de `paymentRefund` descarta `requestOptions` y
- * genera un UUID nuevo por intento). Las que nunca pasaron por MercadoPago
- * corresponden enseguida, porque para esas no hay ningún camino automático.
- *
- * Vive acá y no repetido en cada query porque la lista y el contador del panel
- * TIENEN que decir lo mismo: divergían, y la pantalla mostraba una fila que la
- * alerta no contaba.
+ * Hubo una espera de una hora para las que habían pasado por MercadoPago, y
+ * tenía sentido mientras existía el reembolso automático: pedirle acción al
+ * complejo por algo que el reintento todavía podía resolver solo abría la
+ * ventana para que la plata saliera dos veces —a mano y después por la API—, y
+ * la clave de idempotencia del SDK no protegía de eso. Sin reembolso
+ * automático no hay segunda mano que pueda pagar, así que esperar una hora
+ * para mostrar una deuda que ya existe es solo esconderla.
  */
-const TENANT_OWNED_REFUND = sql`
-  (p.method <> 'mercadopago' OR p.created_at < NOW() - INTERVAL '1 hour')
-`
 
 export async function listPendingRefunds(tenantId: string, tx: DbTx): Promise<PendingRefundRow[]> {
   const rows = await tx.execute(sql`
@@ -177,7 +169,6 @@ export async function listPendingRefunds(tenantId: string, tx: DbTx): Promise<Pe
     WHERE p.tenant_id = ${tenantId}
       AND p.type = 'refund'
       AND p.status = 'pending'
-      AND ${TENANT_OWNED_REFUND}
     ORDER BY p.created_at ASC
   `)
   return rows as unknown as PendingRefundRow[]
@@ -186,8 +177,9 @@ export async function listPendingRefunds(tenantId: string, tx: DbTx): Promise<Pe
 /**
  * Resumen para la alerta del panel: cuántas devoluciones se deben y por cuánto.
  *
- * Cuenta exactamente las mismas filas que lista `listPendingRefunds` — ver
- * {@link TENANT_OWNED_REFUND}.
+ * Cuenta exactamente las mismas filas que lista `listPendingRefunds`: la
+ * pantalla y la alerta divergían, y el panel mostraba una fila que el contador
+ * no contaba. Cualquier filtro que se agregue va en las DOS queries.
  */
 export async function countPendingRefunds(
   tenantId: string,
@@ -201,7 +193,6 @@ export async function countPendingRefunds(
     WHERE p.tenant_id = ${tenantId}
       AND p.type = 'refund'
       AND p.status = 'pending'
-      AND ${TENANT_OWNED_REFUND}
   `)
   const row = (
     rows as unknown as Array<{ count: number; totalCents: number; oldestAt: Date | null }>

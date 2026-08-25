@@ -22,7 +22,7 @@ type PaymentEvent =
   // lo emite quien liquida contra MP; `.late_refunded` lo emite el barrido de
   // reconciliación, que es el único que además sabe que la reserva ya estaba
   // terminal cuando lo encontró.
-  | 'payment.late_payment.refunded'
+  | 'payment.late_payment.refund_registered'
   | 'payment.reconcile.late_refunded'
   | 'payment.refund.retry_succeeded'
   | 'payment.reconcile.drift_detected'

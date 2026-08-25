@@ -17,10 +17,10 @@ export type AdminRefundPendingReminderData = {
  * Recordatorio al complejo: una devolución de seña lleva más de una semana sin
  * saldarse.
  *
- * Distinto de `admin_refund_failed`, que es específico de MercadoPago y sale a
- * las 24h: este cubre CUALQUIER medio, incluidas las señas cobradas en efectivo
- * o por transferencia, que no tienen ningún camino automático que las resuelva.
- * Sin esto, esas devoluciones no tenían ninguna alerta.
+ * Es el ÚNICO aviso de devolución sin saldar, y cubre CUALQUIER medio. Hubo
+ * otro (`admin_refund_failed`) que a las 24 h avisaba de un reembolso de
+ * MercadoPago que la API había rechazado; se eliminó junto con el reembolso
+ * automático, porque un fallo que ya no puede ocurrir no necesita alerta.
  *
  * Al jugador no se le manda nada (decisión del dueño): un mail nuestro
  * diciéndole que su complejo no le pagó nos pondría de árbitro en un conflicto

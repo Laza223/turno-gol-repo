@@ -21,8 +21,6 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
         mockGateway.createPreference(...args)
       getPaymentStatus = (...args: Parameters<MockGateway['getPaymentStatus']>) =>
         mockGateway.getPaymentStatus(...args)
-      createRefund = (...args: Parameters<MockGateway['createRefund']>) =>
-        mockGateway.createRefund(...args)
     },
   }
 })
@@ -34,7 +32,6 @@ import {
 } from '@/modules/bookings/booking.cancellation'
 import { expirePendingBooking } from '@/modules/bookings/booking.service'
 import { BookingNotInConfirmedError } from '@/modules/bookings/booking.errors'
-import { settleRefund } from '@/modules/payments/payment.service'
 
 /**
  * Turno SIEMPRE a 30 días vista, calculado en cada corrida.
@@ -211,7 +208,6 @@ let tenantId: string
 let playerId: string
 let staffId: string
 let courtId: string
-const refundSpy = vi.spyOn(mockGateway, 'createRefund')
 
 beforeAll(async () => {
   // Falla RUIDOSAMENTE si el pool no permite las 3 transacciones simultáneas.
@@ -274,10 +270,10 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
       const [adminRes, playerRes, expiryRes] = await Promise.allSettled([
         withTenantContext(tenantId, (tx) =>
-          cancelByAdmin(bookingId, staffId, 'admin cancela', 'complejo', mockGateway, tx),
+          cancelByAdmin(bookingId, staffId, 'admin cancela', 'complejo', tx),
         ),
         withTenantContext(tenantId, (tx) =>
-          cancelByPlayer(bookingId, playerId, 'player cancela', mockGateway, tx),
+          cancelByPlayer(bookingId, playerId, 'player cancela', tx),
         ),
         withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
       ])
@@ -296,25 +292,16 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
         expect(expiryRes.value).toEqual({ won: false })
       }
 
-      // caza-bugs #3: cancelByAdmin/cancelByPlayer solo PREPARAN el refund
-      // (fila 'pending' durable dentro de la tx) — la llamada a MP la hace el
-      // caller después de que la tx commitee. El winner es el único fulfilled.
-      const winner = winners[0] as PromiseFulfilledResult<CancellationOutcome>
-      expect(winner.value.pendingRefund, `round ${i}: winner prepared a refund`).toBeDefined()
-      await settleRefund(winner.value.pendingRefund!, mockGateway, tenantId)
-
       // Final state is a single, consistent cancellation with a refund.
       const booking = await getBooking(bookingId)
       expect(booking.status).toBe('canceled_refunded')
       expect(booking.deposit_status).toBe('refunded')
       expect(['admin', 'player']).toContain(booking.canceled_by)
 
-      // No duplicated side effects.
+      // No duplicated side effects: UNA sola fila de devolución. Ese conteo es
+      // hoy la invariante entera — no hay ninguna llamada externa que pudiera
+      // duplicarse, porque la plata la mueve el complejo.
       expect(await countRefundRows(bookingId), `round ${i}: one refund row`).toBe(1)
-      const refundCallsForThisPayment = refundSpy.mock.calls.filter(
-        (c) => c[0] === mpPaymentId,
-      ).length
-      expect(refundCallsForThisPayment, `round ${i}: gateway refunded once`).toBe(1)
 
       // El audit superviviente debe atribuir al GANADOR real, no al perdedor:
       // un solo audit, con la acción/actor del que efectivamente canceló. Contar
@@ -349,11 +336,9 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
     const [adminRes, playerRes, expiryRes] = await Promise.allSettled([
       withTenantContext(tenantId, (tx) =>
-        cancelByAdmin(bookingId, staffId, 'admin', 'complejo', mockGateway, tx),
+        cancelByAdmin(bookingId, staffId, 'admin', 'complejo', tx),
       ),
-      withTenantContext(tenantId, (tx) =>
-        cancelByPlayer(bookingId, playerId, 'player', mockGateway, tx),
-      ),
+      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'player', tx)),
       withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
     ])
 
@@ -403,25 +388,21 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     })
 
     // Cancelación inicial: lleva el booking al estado terminal canceled_refunded.
-    const initial = await withTenantContext(tenantId, (tx) =>
-      cancelByPlayer(bookingId, playerId, 'cancela primero', mockGateway, tx),
+    await withTenantContext(tenantId, (tx) =>
+      cancelByPlayer(bookingId, playerId, 'cancela primero', tx),
     )
-    expect(initial.pendingRefund).toBeDefined()
-    await settleRefund(initial.pendingRefund!, mockGateway, tenantId)
 
     expect((await getBooking(bookingId)).status).toBe('canceled_refunded')
     expect(await countRefundRows(bookingId)).toBe(1)
     expect(await countCancelAudits(bookingId)).toBe(1)
-    const refundCallsBefore = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
-    expect(refundCallsBefore).toBe(1)
 
     // Tormenta de reintentos sobre el booking ya terminal.
     const [adminRes, playerRes, expiryRes] = await Promise.allSettled([
       withTenantContext(tenantId, (tx) =>
-        cancelByAdmin(bookingId, staffId, 'reintento admin', 'complejo', mockGateway, tx),
+        cancelByAdmin(bookingId, staffId, 'reintento admin', 'complejo', tx),
       ),
       withTenantContext(tenantId, (tx) =>
-        cancelByPlayer(bookingId, playerId, 'reintento player', mockGateway, tx),
+        cancelByPlayer(bookingId, playerId, 'reintento player', tx),
       ),
       withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
     ])
@@ -440,10 +421,8 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     const booking = await getBooking(bookingId)
     expect(booking.status).toBe('canceled_refunded')
     expect(booking.deposit_status).toBe('refunded')
-    expect(await countRefundRows(bookingId)).toBe(1)
+    expect(await countRefundRows(bookingId), 'no se anotó una segunda devolución').toBe(1)
     expect(await countCancelAudits(bookingId)).toBe(1)
-    const refundCallsAfter = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
-    expect(refundCallsAfter, 'el gateway MP no se reembolsó de nuevo').toBe(1)
   }, 30_000)
 
   it('carrera refund (admin/complejo) vs no-refund (player out-of-policy): el ganador define la seña, el perdedor no filtra', async () => {
@@ -474,10 +453,10 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
       const [adminRes, playerRes] = await Promise.allSettled([
         withTenantContext(tenantId, (tx) =>
-          cancelByAdmin(bookingId, staffId, 'complejo con refund', 'complejo', mockGateway, tx),
+          cancelByAdmin(bookingId, staffId, 'complejo con refund', 'complejo', tx),
         ),
         withTenantContext(tenantId, (tx) =>
-          cancelByPlayer(bookingId, playerId, 'player sin refund', mockGateway, tx),
+          cancelByPlayer(bookingId, playerId, 'player sin refund', tx),
         ),
       ])
 
@@ -490,15 +469,10 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
       const loser = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
       expect(loser.reason).toBeInstanceOf(BookingNotInConfirmedError)
 
-      // caza-bugs #3: solo el admin ('complejo' siempre reembolsa) puede haber
-      // preparado un refund — el player fuera de plazo no entra a esa rama.
-      if (fulfilled[0]!.value.pendingRefund) {
-        await settleRefund(fulfilled[0]!.value.pendingRefund, mockGateway, tenantId)
-      }
-
+      // Solo el admin ('complejo' siempre reembolsa) puede haber dejado anotada
+      // una devolución — el player fuera de plazo no entra a esa rama.
       const booking = await getBooking(bookingId)
       const refundRows = await countRefundRows(bookingId)
-      const gatewayCalls = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
       expect(await countCancelAudits(bookingId), 'un único audit, sin importar quién gane').toBe(1)
 
       if (booking.canceled_by === 'admin') {
@@ -506,14 +480,12 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
         expect(booking.status).toBe('canceled_refunded')
         expect(booking.deposit_status).toBe('refunded')
         expect(refundRows).toBe(1)
-        expect(gatewayCalls).toBe(1)
       } else {
-        // Ganó el jugador fuera de plazo: seña capturada, sin refund, gateway intacto.
+        // Ganó el jugador fuera de plazo: seña capturada, sin devolución anotada.
         expect(booking.canceled_by).toBe('player')
         expect(booking.status).toBe('canceled_no_refund')
         expect(booking.deposit_status).toBe('captured')
         expect(refundRows, 'el cancel perdedor no debe dejar una fila de refund').toBe(0)
-        expect(gatewayCalls, 'el cancel perdedor no debe llamar al gateway').toBe(0)
       }
     } finally {
       // Restaurar in-policy para los tests siguientes (tenant compartido).
@@ -547,12 +519,8 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     })
 
     const [click1, click2] = await Promise.allSettled([
-      withTenantContext(tenantId, (tx) =>
-        cancelByPlayer(bookingId, playerId, 'click 1', mockGateway, tx),
-      ),
-      withTenantContext(tenantId, (tx) =>
-        cancelByPlayer(bookingId, playerId, 'click 2', mockGateway, tx),
-      ),
+      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'click 1', tx)),
+      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'click 2', tx)),
     ])
 
     // Exactamente uno gana; el doble-click duplicado ve un booking no-confirmado.
@@ -563,9 +531,6 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     expect(fulfilled).toHaveLength(1)
     const loser = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
     expect(loser.reason).toBeInstanceOf(BookingNotInConfirmedError)
-
-    expect(fulfilled[0]!.value.pendingRefund).toBeDefined()
-    await settleRefund(fulfilled[0]!.value.pendingRefund!, mockGateway, tenantId)
 
     // Un único estado terminal coherente, con un solo efecto colateral de cada tipo.
     const booking = await getBooking(bookingId)
@@ -580,7 +545,6 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     expect(audits[0]!.actor_type).toBe('player')
     expect(audits[0]!.actor_id).toBe(playerId)
 
-    const gatewayCalls = refundSpy.mock.calls.filter((c) => c[0] === mpPaymentId).length
-    expect(gatewayCalls, 'el gateway MP se llama una sola vez').toBe(1)
+    expect(await countRefundRows(bookingId), 'una sola devolución anotada').toBe(1)
   }, 30_000)
 })

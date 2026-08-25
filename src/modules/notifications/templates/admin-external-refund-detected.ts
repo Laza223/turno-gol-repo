@@ -17,7 +17,7 @@ export type AdminExternalRefundDetectedData = {
 /**
  * Admin alert: alguien reembolsó un pago DESDE EL PANEL DE MERCADO PAGO, por
  * fuera de la app. El webhook llega como `status='refunded'` sin que exista un
- * `prepareRefund`/`settleRefund` local que lo explique.
+ * fila de devolución local que lo explique.
  *
  * Va SOLO al rol `admin` (`onlyRole: 'admin'` en el emisor): es plata y MP, el
  * mismo criterio con el que `requireAdminStaffAction` le cierra Configuración y

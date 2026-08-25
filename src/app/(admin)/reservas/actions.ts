@@ -1,14 +1,13 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
-import { withTenantContext, getDb } from '@/shared/db/client'
+import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
-import { tenants } from '@/shared/db/schema'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
 import {
   createManualBooking,
@@ -29,16 +28,12 @@ import {
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
-import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import {
-  settleRefund,
   confirmManualDepositPayment,
   type ManualDepositMethod,
 } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { captureMessage, captureException } from '@/lib/sentry'
-import { logger } from '@/shared/lib/logger'
-import { describeMpError } from '@/modules/payments/mp-token-refresh'
 import {
   createManualBookingSchema,
   rescheduleBookingSchema,
@@ -65,12 +60,10 @@ import {
   BookingNotYetEndedError,
   NoShowNotYetEndedError,
   NoShowRevertWindowExpiredError,
-  RefundUnavailableError,
   BookingNotReschedulableError,
   BookingDateOutOfRangeError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
-import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 
 export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
@@ -455,37 +448,17 @@ export async function cancelBookingAction(
 
   const staffUserId = user.staffUserId
 
-  // El reembolso lo decide el motivo dentro de cancelByAdmin (Tarea #3), no el
-  // cliente. Resolvemos el gateway siempre que el complejo tenga MP linkeado,
-  // porque ambos motivos pueden terminar en reembolso (complejo siempre;
-  // jugador si está dentro del plazo). resolveTenantGateway no hace I/O.
-  let gateway: PaymentGateway | null = null
-  const db = getDb()
-  const rows = await db
-    .select({ mpAccessToken: tenants.mpAccessToken })
-    .from(tenants)
-    .where(eq(tenants.id, tenant.id))
-    .limit(1)
-  const mpAccessToken = rows[0]?.mpAccessToken
-  if (mpAccessToken) {
-    gateway = resolveTenantGateway(tenant.id, mpAccessToken)
-  }
-
+  // Ya no se resuelve ningún gateway de MercadoPago acá: devolver la seña es
+  // registrar que el complejo la debe, no pedirle plata a MP. El reembolso lo
+  // decide el motivo dentro de cancelByAdmin (Tarea #3), no el cliente.
   let outcome: CancellationOutcome
   try {
     outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staffUserId, reason, cancellationType, gateway, tx),
+      cancelByAdmin(bookingId, staffUserId, reason, cancellationType, tx),
     )
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
       return { success: false, error: 'La reserva no está en estado confirmado.' }
-    }
-    // Hallazgo 2: corresponde refund pero MP no está disponible para este complejo.
-    if (err instanceof RefundUnavailableError) {
-      return {
-        success: false,
-        error: 'No se pudo procesar el reembolso por MercadoPago. Gestionalo manualmente.',
-      }
     }
     throw err
   }
@@ -510,36 +483,6 @@ export async function cancelBookingAction(
         error: err instanceof Error ? err.message : String(err),
       },
     })
-  }
-
-  // caza-bugs #3: el refund a MP se resuelve DESPUÉS de que la cancelación ya
-  // commiteó (prepareRefund solo dejó la fila 'pending' durable dentro de la
-  // tx). Si esta llamada falla, la cancelación ya es válida —no hay
-  // rollback— pero el refund queda pendiente de resolución manual/retry.
-  if (outcome.pendingRefund && gateway) {
-    try {
-      await settleRefund(outcome.pendingRefund, gateway, tenant.id)
-    } catch (err) {
-      // Mismo criterio que en la cancelación del jugador: stderr primero (queda
-      // en Vercel sí o sí), Sentry después. Ver describeMpError.
-      const motivo = describeMpError(err)
-      logger.error('mp refund settlement failed after admin cancellation', {
-        module: 'refunds',
-        bookingId,
-        tenantId: tenant.id,
-        refundPaymentId: outcome.pendingRefund.refundPaymentId,
-        motivo,
-      })
-      captureMessage('mp refund settlement failed after admin cancellation', {
-        level: 'error',
-        extra: {
-          bookingId,
-          tenantId: tenant.id,
-          refundPaymentId: outcome.pendingRefund.refundPaymentId,
-          error: motivo,
-        },
-      })
-    }
   }
 
   return { success: true, booking: outcome.booking }

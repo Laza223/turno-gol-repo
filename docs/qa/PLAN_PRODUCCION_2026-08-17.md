@@ -195,7 +195,7 @@ Todo este grupo va sobre `complejo-elite-padel`, que ya tiene el OAuth de Mercad
 
 **Y el complemento**: cancelar fuera de política → `canceled_no_refund` + `captured`, sin reembolso, con la seña quedando en la caja del complejo.
 
-**Estado 2026-08-24.** `complejo-titi` tiene dos devoluciones de $100 esperando desde el 22/8, visibles en su lista. Que sigan ahí no es una falla del sistema: es la tarea que el complejo todavía no hizo. Lo que **sí** hay que limpiar antes de cerrar este ensayo es que el código sigue intentando el camino automático descartado — 89 errores por día contra MercadoPago, todos 403 garantizados ([detalle](P08-crons-2026-08-24.md)).
+**Estado 2026-08-24.** `complejo-titi` tiene dos devoluciones de $100 esperando desde el 22/8, visibles en su lista. Que sigan ahí no es una falla del sistema: es la tarea que el complejo todavía no hizo. El código que seguía intentando el camino automático descartado —89 errores por día contra MercadoPago, todos 403 garantizados— **ya se eliminó** ([detalle](P08-crons-2026-08-24.md)).
 
 ---
 

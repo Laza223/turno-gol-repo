@@ -9,7 +9,6 @@ import type {
   GatewaySubscriptionState,
   PreapprovalResult,
   PreferenceResult,
-  RefundResult,
 } from './payment.types'
 
 /**
@@ -86,7 +85,7 @@ export class LocalMockGateway implements PaymentGateway {
       }
     }
     // El monto real de la seña vive en `bookings.deposit_amount` — un valor fijo
-    // acá (antes 1) queda menor que la seña real y `createRefund` explota con
+    // acá (antes 1) queda menor que la seña real y `prepareRefund` explota con
     // RefundAmountExceedsOriginalError al cancelar. Bypass RLS (worker pool):
     // este gateway solo existe fuera de producción (isNonProductionRuntime).
     const db = getWorkerDb()
@@ -101,10 +100,6 @@ export class LocalMockGateway implements PaymentGateway {
       externalReference: parsed.bookingId,
       paymentMethodId: 'mock',
     }
-  }
-
-  async createRefund(mpPaymentId: string, _amount?: number): Promise<RefundResult> {
-    return { mpRefundId: `mock-refund-${mpPaymentId}`, status: 'approved' }
   }
 
   async searchPaymentsByReference(_externalReference: string): Promise<GatewayPaymentInfo[]> {

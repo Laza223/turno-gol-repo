@@ -70,11 +70,6 @@ export type CreatePreferenceInput = {
   expiresAt: Date
 }
 
-export type RefundResult = {
-  mpRefundId: string
-  status: 'approved' | 'pending' | 'rejected'
-}
-
 export type WebhookEvent = {
   /** Event id from MP — top-level `id` in the IPN body. Idempotency key. */
   mpEventId: string
@@ -87,24 +82,23 @@ export type WebhookEvent = {
 }
 
 /**
- * Intent de reembolso ya persistido por `prepareRefund` (fase 1) y todavía sin
- * liquidar contra MP (fase 2, `settleRefund`). Vive acá y no en
- * `payment.service.ts` porque `WebhookOutcome` lo expone: el tipo tiene que ser
- * importable sin arrastrar el service entero (y sin ciclo, el service importa
- * de este archivo).
+ * La devolución que el complejo quedó debiendo, ya registrada en `payments`.
+ *
+ * Hubo una fase 2 que liquidaba esto contra la API de MercadoPago; se eliminó
+ * cuando el reembolso automático se descartó como producto (PR #203): MP deriva
+ * los permisos del PRODUCTO de la aplicación y ninguna concede
+ * `payments:refunds`, así que ese camino devolvía 403 siempre. Hoy la fila
+ * queda `pending` y la salda el complejo desde `/caja/devoluciones`, o se salda
+ * sola por webhook si devuelve desde el panel de MercadoPago.
+ *
+ * Vive acá y no en `payment.service.ts` porque `WebhookOutcome` lo expone: el
+ * tipo tiene que ser importable sin arrastrar el service entero (y sin ciclo,
+ * el service importa de este archivo).
  */
 export type PreparedRefund = {
   refundPaymentId: string
-  mpPaymentId: string
+  /** Centavos. Lo usa el mail al jugador para decirle cuánto le tienen que devolver. */
   refundAmount: number
-  /**
-   * El reembolso cubre el pago ORIGINAL entero y no hay refunds previos, así
-   * que contra MP va como reembolso TOTAL (POST sin body) en vez de parcial.
-   * No es cosmético: el parcial tiene reglas más duras del lado de MP y
-   * devolvía 403 sobre un pago con la plata todavía no liberada, mientras el
-   * total salía sin problema.
-   */
-  isTotal: boolean
 }
 
 export type WebhookOutcome =
@@ -129,14 +123,15 @@ export type WebhookOutcome =
        */
       won?: boolean
       /**
-       * Reembolso automático de un pago tardío (decisión del dueño 2026-08-19):
-       * MP aprobó DESPUÉS de que la reserva expirara, así que no hay turno que
-       * confirmar y la plata vuelve sola. El intent ya está commiteado con esta
-       * tx; el caller lo liquida contra MP DESPUÉS del commit vía
-       * `settleLatePaymentRefund` — misma frontera de side-effects post-commit
-       * que `notificationIds`. Si el caller se lo saltea no se pierde plata: el
-       * cron `retry-pending-refunds` levanta cualquier refund `pending` de más
-       * de una hora.
+       * Devolución de un pago tardío (decisión del dueño 2026-08-19): MP aprobó
+       * DESPUÉS de que la reserva expirara, así que no hay turno que confirmar
+       * y hay que devolverle la plata al jugador.
+       *
+       * Está presente = quedó REGISTRADA la obligación en la misma tx, no que
+       * la plata haya vuelto. Los callers lo usan solo para contar y para
+       * decidir la copy del mail; la devolución la hace el complejo desde
+       * `/caja/devoluciones` (hubo una fase que la pedía por API y se eliminó,
+       * devolvía 403 siempre).
        */
       preparedRefund?: PreparedRefund
     }

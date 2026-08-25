@@ -1,7 +1,7 @@
 import { withTenantContext } from '@/shared/db/client'
 import type { PaymentGateway } from './mp-gateway'
 import type { WebhookEvent } from './payment.types'
-import { dispatchPaymentInfo, lockMpEvent, settleLatePaymentRefund } from './payment.service'
+import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 
 export type ReconcileMpOutcome = {
   confirmed: boolean
@@ -97,15 +97,6 @@ export async function reconcileApprovedPaymentForBooking(
     return { confirmed: false, notificationIds: [] }
   }
 
-  // Pago tardío: el intent de reembolso ya commiteó con la tx de arriba; recién
-  // ahora se llama a MP. Va ACÁ y no en cada caller (booking.expiry.ts y el
-  // pase 2 del worker de reconciliación) a propósito: los dos ya nos pasaron el
-  // gateway, así que dejarlo en sus manos sería repetir la misma llamada en dos
-  // lugares y abrir la puerta a que uno se la olvide. `settleLatePaymentRefund`
-  // no tira nunca, así que no puede alterar el contrato de esta función.
-  if (outcome.preparedRefund) {
-    await settleLatePaymentRefund(outcome.preparedRefund, tenantId, gateway)
-  }
   // R1-B (rechazo review): `won` de transitionFromPendingPayment es la ÚNICA
   // fuente de verdad de que ESTA corrida confirmó la reserva — el lock fresco
   // (`fresh`) solo dice "primera vez que vemos este mpPaymentId", no que la

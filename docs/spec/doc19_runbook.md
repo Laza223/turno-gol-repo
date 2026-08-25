@@ -398,7 +398,8 @@ DIAGNÓSTICO Y ACCIÓN:
         canceled_by = 'system', canceled_reason = 'Conflicto de horarios (incidente)',
         canceled_at = NOW()
         WHERE id = '[booking-a-cancelar]';
-     → Si hubo seña pagada → procesar reembolso en MP
+     → Si hubo seña pagada → registrar la devolución (`payments` type='refund' 'pending');
+       la plata la devuelve el complejo desde /caja/devoluciones, TurnoGol no llama a la API de MP
 
   5. Prevención:
      → Verificar que el exclusion constraint existe y funciona
@@ -576,7 +577,7 @@ TurnoGol. Nuestra app sólo verifica JWTs emitidos por Supabase Auth.
 
 **Síntoma**: Las reservas `pending_payment` no expiran (los slots quedan "ocupados" y no reservables aunque nadie pagó la seña), los emails de confirmación no salen, no se generan los turnos de abonados, el dunning no reintenta. El cron `health-ping` deja de reportar.
 
-**Contexto**: El worker es la **única** pieza del stack que corre fuera de Vercel/Supabase — Railway, `Dockerfile.worker`, `startCommand = "pnpm jobs:start"` (→ `src/shared/jobs/run-workers.ts`). Es un **punto único de falla**: `numReplicas = 1`, `restartPolicyType = "ON_FAILURE"` (máx 10 reintentos). Corre los 13 workers (expiración de bookings, envío de emails, webhooks MP, generación de slots de abonados, expiración de trials, auto-completar, dunning, retención, refresh/reconcile/refund de MP, push, health-ping).
+**Contexto**: El worker es la **única** pieza del stack que corre fuera de Vercel/Supabase — Railway, `Dockerfile.worker`, `startCommand = "pnpm jobs:start"` (→ `src/shared/jobs/run-workers.ts`). Es un **punto único de falla**: `numReplicas = 1`, `restartPolicyType = "ON_FAILURE"` (máx 10 reintentos). Corre los 13 workers (expiración de bookings, envío de emails, webhooks MP, generación de slots de abonados, expiración de trials, auto-completar, dunning, retención, refresh/reconcile de MP, recordatorio de devoluciones, push, health-ping).
 
 **Por qué es crítico para las reservas**: el exclusion constraint `no_overlapping_bookings` bloquea el slot mientras el booking siga en `pending_payment` (`WHERE status IN ('pending_payment','confirmed')`). Las **dos** rutas de expiración —el job diferido por-booking (`expire-pending-booking`) y el barrido `*/5` (`expire-pending-booking-sweep`)— viven **solo** en el worker; no hay trigger de DB ni barrido web de respaldo. Además, el job por-booking se auto-descarta en pg-boss a la hora (`expireInHours: 1`): si el worker está caído **>1h**, ese job nunca corre y el slot solo se libera cuando el worker vuelve y el barrido de 5 min lo recoge.
 

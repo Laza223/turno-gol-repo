@@ -4,7 +4,6 @@ import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   createDepositPayment,
   prepareRefund,
-  settleRefund,
   processWebhook,
 } from '@/modules/payments/payment.service'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
@@ -84,9 +83,10 @@ async function getPaymentRows(bookingId: string) {
       amount: number
       mp_payment_id: string | null
       mp_preference_id: string | null
+      description: string | null
     }>
   >`
-    SELECT id, type, status, amount, mp_payment_id, mp_preference_id
+    SELECT id, type, status, amount, mp_payment_id, mp_preference_id, description
     FROM payments
     WHERE booking_id = ${bookingId}
     ORDER BY created_at
@@ -343,8 +343,8 @@ describe('processWebhook — race against expiry (Pilar C)', () => {
   })
 })
 
-describe('prepareRefund + settleRefund — new row, no cash_flow (Fix #9 Fase 3; saga split caza-bugs #3)', () => {
-  it('prepareRefund inserts a pending row inside the tx; settleRefund calls MP after commit and approves it', async () => {
+describe('prepareRefund — deja la devolución anotada y no toca la caja (Fix #9 Fase 3)', () => {
+  it('inserta la fila de devolución en pending, sin llamar a MercadoPago', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -373,28 +373,9 @@ describe('prepareRefund + settleRefund — new row, no cash_flow (Fix #9 Fase 3;
     `
     const originalId = insertRes[0]!.id
 
-    const gateway = new MockGateway()
-
     const prepared = await withTenantContext(tenant.id, (tx) =>
       prepareRefund(originalId, undefined, tx),
     )
-
-    // Phase 1 never touches MP: no gateway call yet, refund row inserted 'pending'.
-    expect(gateway.refundCalls).toHaveLength(0)
-    const afterPrepare = await getPaymentRows(bookingId)
-    const pendingRefund = afterPrepare.find((r) => r.id === prepared.refundPaymentId)
-    expect(pendingRefund).toMatchObject({
-      type: 'refund',
-      amount: 240000,
-      status: 'pending',
-      mp_payment_id: null,
-    })
-
-    const settled = await settleRefund(prepared, gateway, tenant.id)
-    expect(settled.status).toBe('approved')
-
-    expect(gateway.refundCalls).toHaveLength(1)
-    expect(gateway.refundCalls[0]!.mpPaymentId).toBe(mpPaymentId)
 
     const rows = await getPaymentRows(bookingId)
     const original = rows.find((r) => r.id === originalId)
@@ -402,12 +383,17 @@ describe('prepareRefund + settleRefund — new row, no cash_flow (Fix #9 Fase 3;
     expect(original!.status).toBe('approved')
     expect(original!.type).toBe('deposit')
 
+    // La fila nace 'pending' y sin `mp_payment_id`, y así se queda hasta que
+    // el complejo devuelva: TurnoGol no le pide plata a MercadoPago.
     const refund = rows.find((r) => r.id === prepared.refundPaymentId)
     expect(refund).toBeDefined()
     expect(refund!.type).toBe('refund')
     expect(refund!.amount).toBe(240000)
-    expect(refund!.status).toBe('approved')
-    expect(refund!.mp_payment_id).not.toBeNull()
+    expect(refund!.status).toBe('pending')
+    expect(refund!.mp_payment_id).toBeNull()
+    // Y apunta al pago original por `description`, que es la clave con la que
+    // el webhook la reconoce y la salda sola.
+    expect(refund!.description).toBe(`Refund of ${originalId}`)
 
     // Refund does NOT generate a cash_flow row (Fix #9).
     expect(await getCashFlowCount(bookingId)).toBe(0)
@@ -534,23 +520,17 @@ describe('createDepositPayment → webhook approval → cancelByPlayer — re-li
       amount: 240_000,
     })
 
-    // La cancelación debe refundar de verdad, no lanzar RefundInvalidStateError
-    // por encontrar mp_payment_id=NULL en la fila que payment_id todavía apuntaba.
-    // prepareRefund (dentro de la tx) no toca MP todavía — recién settleRefund,
-    // después de commitear, hace la llamada real (caza-bugs #3).
+    // La cancelación debe anotar la devolución contra el pago REAL, no lanzar
+    // RefundInvalidStateError por encontrar mp_payment_id=NULL en la fila que
+    // payment_id todavía apuntaba.
     const canceled = await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'me arrepentí', gateway, tx),
+      cancelByPlayer(bookingId, player.id, 'me arrepentí', tx),
     )
     expect(canceled.booking.status).toBe('canceled_refunded')
-    expect(canceled.pendingRefund).toBeDefined()
-    expect(gateway.refundCalls).toHaveLength(0)
 
-    await settleRefund(canceled.pendingRefund!, gateway, tenant.id)
-    // Sin `amount`: la seña se devuelve ENTERA, y un reembolso total contra MP
-    // va como POST sin body. Mandarle el monto lo convierte en parcial, que
-    // MP rechaza con 403 cuando la plata todavía no está liberada (visto en
-    // producción el 2026-08-21).
-    expect(gateway.refundCalls).toContainEqual({ mpPaymentId })
+    const refunds = (await getPaymentRows(bookingId)).filter((r) => r.type === 'refund')
+    expect(refunds).toHaveLength(1)
+    expect(refunds[0]!.description).toBe(`Refund of ${intentPaymentId}`)
   })
 })
 
@@ -721,10 +701,10 @@ describe('processWebhook — pago rechazado', () => {
   })
 })
 
-// ─── GAP: guards de createDepositPayment / createRefund ────────────────────
+// ─── GAP: guards de createDepositPayment / prepareRefund ───────────────────
 // Error paths que el archivo nunca ejercitaba. Ambos deben fallar ANTES de
 // tocar MP (no se crea preferencia ni refund en el gateway).
-describe('createDepositPayment / createRefund — guards', () => {
+describe('createDepositPayment / prepareRefund — guards', () => {
   it('createDepositPayment rechaza una reserva que no está en pending_payment, sin llamar a MP', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
@@ -778,14 +758,11 @@ describe('createDepositPayment / createRefund — guards', () => {
     `
     const pendingPaymentId = ins[0]!.id
 
-    const gateway = new MockGateway()
-
     await expect(
       withTenantContext(tenant.id, (tx) => prepareRefund(pendingPaymentId, undefined, tx)),
     ).rejects.toBeInstanceOf(RefundInvalidStateError)
 
-    // No se tocó MP ni se creó payment row de refund.
-    expect(gateway.refundCalls).toHaveLength(0)
+    // No se creó ninguna fila de devolución.
     const refunds = (await getPaymentRows(bookingId)).filter((r) => r.type === 'refund')
     expect(refunds).toHaveLength(0)
   })

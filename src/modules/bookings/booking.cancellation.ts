@@ -2,10 +2,9 @@ import { eq, sql } from 'drizzle-orm'
 import { bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
-import { prepareRefund, type PreparedRefund } from '@/modules/payments/payment.service'
+import { prepareRefund } from '@/modules/payments/payment.service'
 import { prepareManualRefund } from '@/modules/payments/refund.service'
 import { bookingCode } from '@/lib/booking-code'
-import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { applyNoShowStrike, revertNoShowStrike } from '@/modules/relationships/ptr.service'
 import { markNoShow, revertNoShow } from './booking.service'
@@ -17,7 +16,6 @@ import {
   BookingAlreadyEndedError,
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
-  RefundUnavailableError,
   TenantInactiveError,
 } from './booking.errors'
 import type { BookingRow, DepositStatus } from './booking.types'
@@ -89,6 +87,49 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
     FOR UPDATE
   `)
   return (result as unknown as LockedBooking[])[0]
+}
+
+/**
+ * Deja registrada la devolución que el complejo queda debiendo por una seña ya
+ * cobrada. Es el ÚNICO efecto de "devolver" del lado de TurnoGol: la plata la
+ * mueve el complejo, por el medio que elija, y la marca saldada en
+ * `/caja/devoluciones`.
+ *
+ * Las dos ramas dejan la misma obligación y difieren solo en el `description`
+ * de la fila, que no es cosmético:
+ *
+ * - Seña cobrada por MercadoPago y aprobada de verdad → `prepareRefund`, que
+ *   escribe `'Refund of <id del pago original>'`. Ese string es clave de join
+ *   del webhook: con él, un `status='refunded'` que llega de MP se reconoce
+ *   como una devolución que TurnoGol ya conocía —en vez de disparar la alerta
+ *   de reembolso externo— y salda la fila sola. Es el camino más común, porque
+ *   lo natural es que el complejo devuelva desde el panel de MercadoPago.
+ * - Cualquier otro caso —seña en efectivo o transferencia (sin `payment_id`), o
+ *   un `payment_id` que apunta a un pago que nunca se aprobó— → devolución
+ *   manual, con un prefijo de `description` distinto a propósito.
+ *
+ * Antes de que el reembolso automático se descartara, el segundo caso con
+ * `payment_id` tiraba `RefundUnavailableError` y **abortaba la cancelación**
+ * cuando el gateway de MercadoPago no estaba disponible. Eso dejó de tener
+ * sentido el día que dejamos de llamar a MercadoPago: la obligación de devolver
+ * existe igual, y bloquear una cancelación por un servicio que ya no se usa era
+ * negarle al jugador algo que no depende de nadie más.
+ */
+async function registerRefundDue(b: LockedBooking, tx: DbTx): Promise<void> {
+  if (b.payment_id && (await isPaymentApproved(b.payment_id, tx))) {
+    await prepareRefund(b.payment_id, b.deposit_amount, tx)
+    return
+  }
+  await prepareManualRefund(
+    {
+      bookingId: b.id,
+      tenantId: b.tenant_id,
+      playerId: b.player_id,
+      amount: b.deposit_amount,
+      paymentMethod: b.payment_method,
+    },
+    tx,
+  )
 }
 
 /**
@@ -174,10 +215,6 @@ type CancelEmailNames = {
 
 export type CancellationOutcome = {
   booking: BookingRow
-  /** Set when a paid MP deposit was refunded. Caller must pass this to
-   * `settleRefund` AFTER this function's transaction commits — see
-   * `prepareRefund`'s doc comment for why the MP call can't happen in here. */
-  pendingRefund?: PreparedRefund
   /**
    * IDs de notificaciones encoladas dentro de esta tx (doc7 Flujo 4:
    * booking_canceled / booking_canceled_by_complex al jugador). El caller
@@ -191,7 +228,6 @@ export async function cancelByPlayer(
   bookingId: string,
   playerId: string,
   reason: string | undefined,
-  gateway: PaymentGateway | null,
   tx: DbTx,
 ): Promise<CancellationOutcome> {
   track.booking('booking.cancel.by_player', { bookingId, playerId })
@@ -235,42 +271,15 @@ export async function cancelByPlayer(
   const hadPaidDeposit = b.deposit_status === 'paid'
   const targetStatus = inPolicy && hadPaidDeposit ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
-  let pendingRefund: PreparedRefund | undefined
 
   if (b.deposit_status === 'paid') {
     if (inPolicy) {
-      if (b.payment_id && gateway && (await isPaymentApproved(b.payment_id, tx))) {
-        // Seña MP: refund real vía gateway — solo se PREPARA acá (fila
-        // 'pending' durable); la llamada a MP la hace el caller después de
-        // que esta tx commitee (settleRefund).
-        pendingRefund = await prepareRefund(b.payment_id, b.deposit_amount, tx)
-        newDepositStatus = 'refunded'
-      } else if (b.payment_id) {
-        // Hallazgo 2: seña MP pero gateway no disponible → no se puede refundar.
-        // Blindaje (payment.service.ts confirmManualDepositPayment): también
-        // cubre payment_id apuntando a un pago que nunca se aprobó (dato
-        // legacy/corrupto) — mismo camino que "gateway no disponible", nunca
-        // una excepción cruda sin catch (RefundInvalidStateError).
-        // No marcamos canceled_refunded con deposit 'paid' (estado mentiroso).
-        throw new RefundUnavailableError(bookingId)
-      } else {
-        // Seña en efectivo/transferencia (sin payment_id MP): el reembolso se
-        // resuelve offline entre jugador y complejo. Marcamos la obligación en
-        // `bookings` Y la registramos como fila de refund pendiente: sin ella
-        // la deuda no existía en ningún lado y el complejo no tenía cómo
-        // saber que la debía, ni cómo marcar que la saldó.
-        await prepareManualRefund(
-          {
-            bookingId,
-            tenantId: b.tenant_id,
-            playerId: b.player_id,
-            amount: b.deposit_amount,
-            paymentMethod: b.payment_method,
-          },
-          tx,
-        )
-        newDepositStatus = 'refunded'
-      }
+      // Devolver NO es llamar a MercadoPago: es registrar que el complejo debe
+      // esa plata. Las dos ramas dejan la misma obligación y solo cambian por
+      // el `description` de la fila, que para una seña de MP tiene que ser el
+      // `'Refund of <pago original>'` que el webhook usa como clave de join.
+      await registerRefundDue(b, tx)
+      newDepositStatus = 'refunded'
     } else {
       newDepositStatus = 'captured'
     }
@@ -342,7 +351,7 @@ export async function cancelByPlayer(
     })
   }
 
-  return { booking: bookingRow, pendingRefund, notificationIds }
+  return { booking: bookingRow, notificationIds }
 }
 
 // Etiqueta legible que se antepone al motivo para que `canceled_reason`
@@ -357,7 +366,6 @@ export async function cancelByAdmin(
   staffUserId: string,
   reason: string,
   cancellationType: AdminCancellationType,
-  gateway: PaymentGateway | null,
   tx: DbTx,
 ): Promise<CancellationOutcome> {
   const b = await lockBooking(bookingId, tx)
@@ -400,34 +408,11 @@ export async function cancelByAdmin(
   const hadPaidDeposit = b.deposit_status === 'paid'
   const targetStatus = shouldRefund && hadPaidDeposit ? 'canceled_refunded' : 'canceled_no_refund'
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
-  let pendingRefund: PreparedRefund | undefined
 
   if (b.deposit_status === 'paid') {
     if (shouldRefund) {
-      if (b.payment_id && gateway && (await isPaymentApproved(b.payment_id, tx))) {
-        pendingRefund = await prepareRefund(b.payment_id, b.deposit_amount, tx)
-        newDepositStatus = 'refunded'
-      } else if (b.payment_id) {
-        // Hallazgo 2: refund MP pedido pero gateway no disponible → no fingir.
-        // Blindaje (payment.service.ts confirmManualDepositPayment): también
-        // cubre payment_id apuntando a un pago que nunca se aprobó (dato
-        // legacy/corrupto) — mismo camino, nunca una excepción cruda sin catch.
-        throw new RefundUnavailableError(bookingId)
-      } else {
-        // Seña en efectivo/transferencia: reembolso offline. Misma razón que en
-        // `cancelByPlayer` para dejar además la fila de refund pendiente.
-        await prepareManualRefund(
-          {
-            bookingId,
-            tenantId: b.tenant_id,
-            playerId: b.player_id,
-            amount: b.deposit_amount,
-            paymentMethod: b.payment_method,
-          },
-          tx,
-        )
-        newDepositStatus = 'refunded'
-      }
+      await registerRefundDue(b, tx)
+      newDepositStatus = 'refunded'
     } else {
       newDepositStatus = 'captured'
     }
@@ -528,7 +513,7 @@ export async function cancelByAdmin(
     }
   }
 
-  return { booking: bookingRow, pendingRefund, notificationIds }
+  return { booking: bookingRow, notificationIds }
 }
 
 /**

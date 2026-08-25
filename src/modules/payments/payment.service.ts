@@ -30,8 +30,7 @@ import {
   enqueueTenantOwnerNotification,
 } from '@/modules/notifications/notification.service'
 import { track } from '@/shared/observability'
-import { captureException, captureMessage } from '@/lib/sentry'
-import { logger } from '@/shared/lib/logger'
+import { captureMessage } from '@/lib/sentry'
 
 const TERMINAL_BOOKING_STATUSES = [
   'expired',
@@ -268,7 +267,7 @@ export async function dispatchPaymentInfo(
     await upsertPaymentRow(info, tenantId, 'refunded', tx)
 
     // Hallazgo recon 🔴 (D4): un refund hecho directo desde el dashboard de MP
-    // (fuera de prepareRefund/settleRefund) llega acá igual, como webhook
+    // (fuera del flujo local de cancelación) llega acá igual, como webhook
     // status='refunded' — el upsert de arriba pisa la fila `payments` sin
     // dejar rastro de que fue EXTERNO, y `bookings.deposit_status` quedaba
     // 'paid' divergiendo en silencio del estado real en MP.
@@ -287,7 +286,7 @@ export async function dispatchPaymentInfo(
     const refundedPaymentId = refundedRow?.id ?? null
 
     // Fix H1 (D4): el propio flujo LOCAL de cancelación (cancelByAdmin/
-    // cancelByPlayer → prepareRefund → settleRefund) hace que MP mande este
+    // cancelByPlayer → prepareRefund) hace que MP mande este
     // mismo webhook eco status='refunded' del pago ORIGINAL cuando confirma un
     // refund que TurnoGol mismo inició — sin este check, la alerta de "refund
     // externo" disparaba en CADA cancelación-con-reembolso rutinaria (falso
@@ -362,19 +361,16 @@ export async function dispatchPaymentInfo(
           bookingStatus,
         },
       })
-      captureMessage(
-        'external refund detected: MP status=refunded without a local prepareRefund/settleRefund flow',
-        {
-          level: 'warning',
-          extra: {
-            paymentId: refundedPaymentId,
-            mpPaymentId: info.mpPaymentId,
-            bookingId: info.externalReference,
-            amount: info.amount,
-            tenantId,
-          },
+      captureMessage('external refund detected: MP status=refunded without a local refund row', {
+        level: 'warning',
+        extra: {
+          paymentId: refundedPaymentId,
+          mpPaymentId: info.mpPaymentId,
+          bookingId: info.externalReference,
+          amount: info.amount,
+          tenantId,
         },
-      )
+      })
 
       // Solo al rol admin: es plata y MP, el mismo criterio con el que
       // `requireAdminStaffAction` le cierra facturación al encargado. Los ids
@@ -421,13 +417,11 @@ export async function dispatchPaymentInfo(
       return { alreadyProcessed: false, result: 'refunded', notificationIds }
     }
 
-    // Refund local ya conocido. Antes esto era un no-op porque se asumía que
-    // `settleRefund` había dejado el estado correcto — pero `settleRefund` falla
-    // hoy siempre (403 de permisos), así que la fila queda en 'pending' y la
-    // devolución la termina haciendo el complejo desde el panel de MercadoPago.
-    // Este webhook es el aviso de que la plata efectivamente volvió: saldarla
-    // acá es lo que hace que el complejo no tenga que tildar nada a mano en el
-    // camino más común.
+    // Refund local ya conocido: la fila quedó 'pending' porque TurnoGol solo
+    // registra la obligación, y la devolución la hace el complejo desde el
+    // panel de MercadoPago. Este webhook es el aviso de que la plata
+    // efectivamente volvió: saldarla acá es lo que hace que el complejo no
+    // tenga que tildar nada a mano en el camino más común.
     //
     // Se salda UNA sola fila, la más vieja. Aprobar todas las pendientes de esa
     // description por un solo evento sería inventar plata el día que existan
@@ -742,51 +736,17 @@ async function prepareLatePaymentRefund(
   `)
   if ((already as unknown[]).length > 0) return undefined
 
-  return prepareRefund(originalId, undefined, tx)
-}
-
-/**
- * Fase 2 del reembolso de un pago tardío: llama a MP. Va DESPUÉS del commit de
- * la tx que preparó el intent (misma frontera que `dispatchEmail` y el push de
- * admin) — `settleRefund` abre su propia tx corta y no puede correr adentro de
- * la del caller sin dejar la conexión colgada durante el round trip HTTP.
- *
- * No tira NUNCA: la fila de intent ya está commiteada, así que si MP falla el
- * cron `retry-pending-refunds` la levanta dentro de la hora reusando la misma
- * idempotency key (`refund:<refundPaymentId>`) y, si sigue trabada 24h, le
- * avisa al complejo. Propagar el error acá solo lograría que pg-boss reintente
- * todo el job y vuelva a pasar por el camino que ya hizo su parte.
- */
-export async function settleLatePaymentRefund(
-  prepared: PreparedRefund,
-  tenantId: string,
-  gateway: PaymentGateway,
-): Promise<void> {
-  try {
-    const result = await settleRefund(prepared, gateway, tenantId)
-    track.payment('payment.late_payment.refunded', {
-      tenantId,
-      paymentId: prepared.refundPaymentId,
-      mpPaymentId: prepared.mpPaymentId,
-      amountCents: prepared.refundAmount,
-    })
-    // `pending` = MP aceptó el pedido pero todavía no lo acreditó; el cron
-    // `retry-pending-refunds` lo sigue hasta `approved` y alerta si se traba.
-    logger.info('late_payment: refund settled', {
-      module: 'payments',
-      refundPaymentId: prepared.refundPaymentId,
-      status: result.status,
-    })
-  } catch (err) {
-    logger.error('late_payment: settle refund failed, dejándolo al cron de retry', {
-      module: 'payments',
-      refundPaymentId: prepared.refundPaymentId,
-      error: err instanceof Error ? err.message : String(err),
-    })
-    captureException(err, {
-      extra: { refundPaymentId: prepared.refundPaymentId, tenantId },
-    })
-  }
+  const registered = await prepareRefund(originalId, undefined, tx)
+  // El evento que había acá se llamaba `payment.late_payment.refunded` y lo
+  // emitía la fase 2 al volver de MercadoPago. Sin esa fase, "reembolsado"
+  // sería mentira: lo que ocurre es que quedó ANOTADA la devolución. El
+  // complejo la salda después, y ese momento tiene su propio registro.
+  track.payment('payment.late_payment.refund_registered', {
+    paymentId: registered.refundPaymentId,
+    bookingId: info.externalReference,
+    amountCents: registered.refundAmount,
+  })
+  return registered
 }
 
 /** Métodos que el staff puede elegir al confirmar una seña a mano (nunca 'mercadopago': esa la confirma el webhook). */
@@ -1076,8 +1036,9 @@ async function handleInProcess(
  * FIRST event for a booking, re-link that same row (UPDATE by
  * `p.id = b.payment_id AND p.mp_payment_id IS NULL`) instead of inserting a
  * new one — otherwise `bookings.payment_id` keeps pointing at a row that never
- * gets an `mp_payment_id`, and `createRefund` (which reads `bookings.payment_id`)
- * throws `RefundInvalidStateError` on every cancellation with a paid deposit.
+ * gets an `mp_payment_id`, and `prepareRefund` (which reads
+ * `bookings.payment_id`) throws `RefundInvalidStateError` on every cancellation
+ * with a paid deposit.
  * Once re-linked, subsequent events for the same `mp_payment_id` fall through
  * to the ON CONFLICT branch below and keep updating that same row.
  */
@@ -1133,21 +1094,29 @@ async function upsertPaymentRow(
 export type { PreparedRefund }
 
 /**
- * Refund, phase 1 ("prepare"). NEW row in `payments` (type='refund',
- * status='pending', mp_payment_id=NULL — a refund "intent", same shape as the
- * deposit intent row `createDepositPayment` inserts). Original payment is
- * immutable (Payment Invariante 1). NO `cash_flow` row generated (Fix #9,
- * Fase 3): la seña nunca tocó caja física; MP procesa el refund directo entre
- * cuentas.
+ * Registra la devolución que el complejo queda debiendo por una seña que se
+ * cobró por MercadoPago. Fila NUEVA en `payments` (type='refund',
+ * status='pending', mp_payment_id=NULL); el pago original es inmutable
+ * (Payment Invariante 1). NO genera fila de `cash_flows`: la seña de MP nunca
+ * tocó la caja física, así que devolverla tampoco la toca — cuando el complejo
+ * la salde por otro medio, `settleRefundManually` sí registra el egreso.
  *
- * Runs inside the CALLER's transaction (cancelByPlayer/cancelByAdmin) so the
- * booking cancellation and the refund-intent row commit atomically. Does NOT
- * call MP — see `settleRefund` for phase 2. Splitting it this way fixes a
- * money bug: calling `gateway.createRefund` from inside this same transaction
- * meant a later failure in the SAME tx (a lock timeout, a downstream insert
- * throwing, a crash before commit) rolled back the local refund record while
- * MP had already sent the money back — a retry would then refund a second
- * time, because nothing local recorded the first one.
+ * Corre dentro de la transacción del CALLER (cancelByPlayer/cancelByAdmin) para
+ * que la cancelación y la deuda commiteen juntas.
+ *
+ * **Acá NO se llama a MercadoPago, y no es un detalle de implementación: es la
+ * decisión de producto.** Existió una fase 2 (`settleRefund`) que pedía el
+ * reembolso por API; se eliminó porque MP deriva los permisos del PRODUCTO de
+ * la aplicación y ninguna concede `payments:refunds`, así que ese pedido
+ * devolvía 403 siempre — medido en producción, ningún reembolso automático se
+ * completó jamás. La devolución la hace el complejo y TurnoGol la registra, la
+ * lista en `/caja/devoluciones` y se la recuerda.
+ *
+ * El `description = 'Refund of <id del pago original>'` NO es decorativo: es
+ * clave de join en dos lugares que siguen vivos — el webhook usa esa fila para
+ * saber que un `status='refunded'` de MP corresponde a una devolución que
+ * TurnoGol ya conocía (y no disparar la alerta de reembolso externo), y para
+ * saldarla sola cuando el complejo devuelve desde el panel de MercadoPago.
  */
 export async function prepareRefund(
   paymentId: string,
@@ -1223,57 +1192,5 @@ export async function prepareRefund(
     })
     .returning({ id: payments.id })
 
-  return {
-    refundPaymentId: inserted[0]!.id,
-    mpPaymentId: original.mpPaymentId,
-    refundAmount,
-    // Total = cubre el pago entero Y no hay nada reembolsado antes. Con un
-    // refund previo, aunque este cubra el saldo, contra MP sigue siendo parcial.
-    isTotal: priorTotal === 0 && refundAmount === original.amount,
-  }
-}
-
-/**
- * Refund, phase 2 ("settle"). Calls MP with NO open transaction, then persists
- * the outcome in a short tx of its own.
- *
- * The idempotency key is the refund-intent row's OWN id, not the original
- * payment's id: a booking can have more than one refund against the same
- * original payment (the over-refund guard in `prepareRefund` explicitly sums
- * PRIOR refunds, so partial refunds are anticipated), and keying by the
- * original payment would make MP treat two distinct partial refunds as the
- * same request. Keying by the refund row's id is still deterministic across
- * RETRIES of settling the SAME attempt (a caller that re-invokes settleRefund
- * for a refund stuck in 'pending' — e.g. after a crash between the MP call and
- * this function's own tx — reuses the same key, so MP returns the original
- * result instead of refunding twice).
- */
-export async function settleRefund(
-  prepared: PreparedRefund,
-  gateway: PaymentGateway,
-  tenantId: string,
-): Promise<{ status: 'approved' | 'pending' }> {
-  const refund = await gateway.createRefund(
-    prepared.mpPaymentId,
-    // `undefined` = POST sin body = reembolso TOTAL. Ver `isTotal`.
-    prepared.isTotal ? undefined : prepared.refundAmount,
-    `refund:${prepared.refundPaymentId}`,
-  )
-  const status = refund.status === 'approved' ? ('approved' as const) : ('pending' as const)
-
-  await withTenantContext(tenantId, async (tx) => {
-    await tx
-      .update(payments)
-      .set({
-        mpPaymentId: refund.mpRefundId,
-        status,
-        // `processed_at` = cuándo se movió la plata de verdad. Solo se sella si
-        // MP la dio por aprobada: en `pending` el dinero todavía no salió, y la
-        // fila sigue siendo una deuda de devolución hasta que alguien la salde.
-        ...(status === 'approved' ? { processedAt: new Date() } : {}),
-      })
-      .where(eq(payments.id, prepared.refundPaymentId))
-  })
-
-  return { status }
+  return { refundPaymentId: inserted[0]!.id, refundAmount }
 }

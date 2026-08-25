@@ -35,12 +35,4 @@ describe('MockGateway', () => {
     expect(res.externalReference).toBe('booking-x')
     expect(gw.statusCalls).toEqual(['mp-1'])
   })
-
-  it('createRefund records call and returns refund id', async () => {
-    const gw = new MockGateway()
-    const res = await gw.createRefund('mp-payment-1', 50_000)
-    expect(res.mpRefundId).toContain('mp-payment-1')
-    expect(res.status).toBe('approved')
-    expect(gw.refundCalls).toEqual([{ mpPaymentId: 'mp-payment-1', amount: 50_000 }])
-  })
 })

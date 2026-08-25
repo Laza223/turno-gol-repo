@@ -119,6 +119,43 @@ const HEARTBEAT_MISSES_ALLOWED = 3
 const HEARTBEAT_STALE_MS = HEARTBEAT_PERIOD_MS * HEARTBEAT_MISSES_ALLOWED
 
 /**
+ * Último `health-ping` completado. Mismo criterio que `lastHealthPing` en
+ * /api/admin/system-status.
+ *
+ * Va en DOS consultas y no en el `UNION ALL` que había antes, por costo medido
+ * en producción (2026-08-25): `pgboss.archive` no tiene índice por `name` —solo
+ * por `archivedon` e `id`— así que la rama del archivo era un **Seq Scan** que
+ * descartaba 45.741 filas para quedarse con 2.012. Medido con EXPLAIN ANALYZE:
+ * 12,35 ms y 1.908 buffers contra **0,43 ms y 83 buffers** mirando solo `job`
+ * (que sí entra por `job_name`). En `pg_stat_statements` esa consulta promediaba
+ * **354 ms**, la única propia en el top de lentas. Y empeora sola: el archivo
+ * retiene 7 días de TODAS las colas.
+ *
+ * Mirar `job` primero es correcto porque el archiver corre recién a las 12 h
+ * (`archiveCompletedAfterSeconds: 43200` en `boss.ts`), 48 veces el umbral de
+ * 15 minutos con el que este chequeo grita. Verificado contra los datos reales:
+ * `job` tenía los pings de las últimas 12 h y el más nuevo del archivo era de
+ * hace 725 minutos.
+ *
+ * El archivo se consulta **solo si `job` no devuelve nada**, que es justo el
+ * caso en que importa: worker muerto hace más de 12 h. Sin ese respaldo, ese
+ * escenario devolvería "todavía no hay latidos" —o sea `ok`— en vez de `down`.
+ */
+async function lastCompletedHealthPing(sql: ReturnType<typeof getSql>): Promise<Date | null> {
+  const fresh = await sql<{ last: Date | null }[]>`
+    SELECT max(completedon) AS last FROM pgboss.job
+    WHERE name = 'health-ping' AND state = 'completed'
+  `
+  if (fresh[0]?.last) return fresh[0].last
+
+  const archived = await sql<{ last: Date | null }[]>`
+    SELECT max(completedon) AS last FROM pgboss.archive
+    WHERE name = 'health-ping' AND state = 'completed'
+  `
+  return archived[0]?.last ?? null
+}
+
+/**
  * ¿Hay alguien atendiendo las colas, o solo la conexión está viva?
  *
  * Esto existe por P-12 (`docs/qa/P12-worker-caido-2026-08-24.md`): el worker
@@ -152,19 +189,7 @@ async function checkWorkerHeartbeat(): Promise<Check> {
   const t0 = Date.now()
   try {
     const sql = getSql()
-    // Mismo par de tablas que `lastHealthPing` en /api/admin/system-status: el
-    // archiver de pg-boss mueve los completados a `archive` al rato, así que
-    // mirar solo `job` daría "sin latidos" con el worker perfectamente vivo.
-    const rows = await sql<{ last: Date | null }[]>`
-      SELECT max(completedon) AS last FROM (
-        SELECT completedon FROM pgboss.job
-        WHERE name = 'health-ping' AND state = 'completed'
-        UNION ALL
-        SELECT completedon FROM pgboss.archive
-        WHERE name = 'health-ping' AND state = 'completed'
-      ) pings
-    `
-    const last = rows[0]?.last
+    const last = await lastCompletedHealthPing(sql)
     if (!last) return { name, status: 'ok', note: 'no heartbeat recorded yet' }
 
     const ageMs = Date.now() - new Date(last).getTime()

@@ -68,7 +68,24 @@ Dos de los seis pagos aprobados **no fueron notificados por MercadoPago**. Los l
 
 **Por qué importa.** Es un tercio de los pagos. Si la reconciliación no existiera, serían dos reservas pagadas y colgadas. Que la red de seguridad haya atrapado las dos es la buena noticia; que haga falta tan seguido es lo que hay que mirar.
 
-**Qué falta saber.** Si es MercadoPago que no notifica, o TurnoGol que rechaza la notificación (firma, timeout, 5xx). Se responde leyendo los logs de Vercel de esas dos ventanas y el panel de notificaciones de MP, que muestra los reintentos y la respuesta que recibió.
+**Los dos son del mismo complejo, y eso apunta a algo.** Las 4 señas de `complejo-titi` llegaron por webhook; las 2 que no llegaron son las 2 de `complejo-elite-futbol`. No es aleatorio: es por conexión.
+
+Y la segunda cae **dentro de la ventana de la migración a dos aplicaciones**:
+
+| Momento (UTC) | Qué pasó |
+|---|---|
+| 22/8 16:58 | Deploy de PR #194 — el buzón empieza a aceptar la firma de las dos apps |
+| 22/8 17:00 | `complejo-titi` reconecta |
+| 22/8 23:06 | `complejo-elite-futbol` se desconecta |
+| 23/8 00:33 | Seña de titi — **webhook OK** |
+| 23/8 00:50 | Seña de elite — **webhook ausente**, la levanta la reconciliación |
+| 25/8 16:00 | `complejo-elite-futbol` reconecta de nuevo |
+
+**Hipótesis principal**: elite quedó cobrando por la aplicación de Checkout Pro cuando esa aplicación todavía no tenía sus webhooks configurados en el panel de MercadoPago, o cuando `MP_WEBHOOK_SECRET_CHECKOUT` todavía no estaba en Vercel. Cualquiera de las dos da el mismo resultado —la notificación no llega o vuelve 401— y desde adentro de TurnoGol se ve igual: no llega y listo.
+
+**Cómo se confirma, en 2 minutos y sin gastar nada.** Panel de MercadoPago → **Tus integraciones** → App B (Checkout Pro) → **Webhooks** → historial de notificaciones. Si hay 401 alrededor del 23/8 00:50, la clave estaba desalineada; si no hay ninguna entrega, la app no tenía configurada la URL. El procedimiento completo de verificación está en [`docs/operations/credenciales-mercadopago.md`](../operations/credenciales-mercadopago.md).
+
+**Qué NO explica la hipótesis**: la señal del 18/8, que es anterior a toda la migración. Esa queda sin causa conocida, y por eso el chequeo de las dos aplicaciones hay que hacerlo igual antes de dar por buena la explicación fácil.
 
 ---
 

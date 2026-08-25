@@ -24,7 +24,7 @@ La regla es una sola: **la cuenta de la pareja paga siempre, la tuya cobra siemp
 
 ### ⚠️ El preapproval de P-01 debita todos los meses
 
-La suscripción que abrís en P-01 queda atada a **la tarjeta de tu pareja** y le va a debitar $55.000 **cada mes, solo, hasta que la canceles**. No es un pago único.
+La suscripción que abrís en P-01 queda atada a **la tarjeta de tu pareja** y le va a debitar $63.000 **cada mes, solo, hasta que la canceles**. No es un pago único.
 
 Consecuencia práctica: en cuanto cierres **P-02** (el débito del mes 2, día 31), **dá de baja la suscripción**. Y eso no es limpieza: es el ensayo **P-13**, que va abajo.
 
@@ -36,7 +36,7 @@ El **Ensayo General del 2026-07-14** (`docs/qa/ENSAYO_GENERAL.md`) cubrió basta
 
 | Ensayo | Resultado 2026-07-14 |
 |---|---|
-| K1 · Trial → suscripción paga | ✅ preapproval real, $55.000 approved, `trialing→active`, email `subscription_activated` |
+| K1 · Trial → suscripción paga | ✅ preapproval real, $55.000 approved, `trialing→active`, email `subscription_activated` (ese era el precio de julio; hoy Predio vale $63.000) |
 | K2 · Cobro de suscripción rechazado | ✅ tarjeta OTHE, webhook firmado, `active→past_due`, dunning arrancado, email al dueño |
 | K3/K4 · Dunning día 7 y día 14 | ✅ `past_due→suspended→blocked→churned` + `scheduled_deletion_at` exacto |
 | K5 · Cancelación voluntaria | ✅ preapproval verificado `cancelled` en la API de MP |
@@ -106,19 +106,32 @@ Doce, agrupados por lo que hace falta para ejecutarlos. El orden importa: el Gru
 
 **Qué prueba.** El único circuito por el que entra tu facturación: `/settings/facturacion` → "Activar plan" → preapproval real contra la cuenta master productiva de TurnoGol → pago → webhook firmado con la clave productiva → `trialing→active`.
 
-**Precondición que puede frenar todo.** MercadoPago no siempre deja pagarle a tu propia cuenta con tu propia tarjeta. Hace falta que **el que paga sea una cuenta/tarjeta distinta de la cuenta master**. Si eso rebota, es hallazgo en sí mismo: un dueño de complejo también puede tener ese problema.
+**Precondición que puede frenar todo.** MercadoPago no deja pagarle a tu propia cuenta con tu propia cuenta: rechaza el preapproval con *"Both payer and collector must be real or test users"*. Hace falta que **el que paga sea una cuenta distinta de la master**.
 
-**Cómo se dispara.** Sobre un complejo de prueba en `trialing`, entrar como dueño → `/settings/facturacion` → elegir Predio mensual → pagar.
+**Medido en producción el 2026-08-25 — esto está sin resolver y frena el ensayo:**
+
+| Qué | Cómo está hoy |
+|---|---|
+| Complejo candidato | `complejo-elite-futbol`, `trialing`, plan Predio, 2 canchas, trial hasta el 2026-09-16 |
+| Dueño | `lazarofeijoo2004@gmail.com` — **la cuenta master** |
+| `tenant_subscriptions.mp_payer_email` | **`NULL`** |
+
+Con `mp_payer_email` en `NULL`, `resolvePayerEmail` cae al email del dueño (`billing.service.ts`), o sea que TurnoGol le va a pedir a MercadoPago que le cobre a la cuenta master **para pagarse a sí misma**. Eso rebota antes de que aparezca ninguna pantalla de pago.
+
+**El paso previo, entonces, es de UI y son 30 segundos**: `/settings/facturacion` → sección **"Cuenta de MercadoPago para pagar"** → poner el email de la cuenta de MercadoPago de tu pareja. Es el mismo campo que ya se usó en `complejo-titi` el 2026-08-19 (`lisantiziana@gmail.com`), así que el camino está probado. Hacerlo por la UI y no por SQL es a propósito: ese formulario es parte de lo que un dueño real va a tocar.
+
+**Cómo se dispara.** Entrar como dueño de `complejo-elite-futbol` → `/settings/facturacion` → setear el email pagador → elegir Predio mensual → pagar **desde la cuenta de MercadoPago de tu pareja**.
 
 **Qué tiene que pasar, exacto.**
 - `tenants.status`: `trialing → active`
-- `tenant_subscriptions`: `status='active'`, `mp_subscription_id` seteado, `current_period_start`/`current_period_end` a 30 días, `last_payment_at` con fecha
+- `tenant_subscriptions`: `status='active'`, `mp_subscription_id` seteado, `last_payment_at` con fecha
+- `current_period_end` **= fin del trial + 1 mes, no hoy + 30 días**. `extendPeriod` (`dunning.service.ts`) estira el período desde donde terminaba, así que pagar durante el trial no te come los días de trial que quedaban. Con el trial de `complejo-elite-futbol` venciendo el **2026-09-16**, lo correcto es ver **2026-10-16** — un `+30 días` desde hoy sería el bug, no al revés
 - Email `subscription_activated` al dueño (llega de verdad a la casilla, no "queued")
 - `audit_logs` con la transición
 
 **Cómo se verifica.** `SELECT` sobre `tenants` + `tenant_subscriptions` + el id de operación de MP.
 
-**Costo.** $55.000 que van de tu cuenta a tu cuenta master, menos la comisión de MercadoPago (el costo real del ensayo). Podés bajarlo creando un `price_version` temporal de monto chico, pero **no lo recomiendo**: MP trata distinto los montos chicos y querés probar exactamente lo que va a vivir el cliente.
+**Costo.** $63.000 que van de tu cuenta a tu cuenta master, menos la comisión de MercadoPago (el costo real del ensayo). Podés bajarlo creando un `price_version` temporal de monto chico, pero **no lo recomiendo**: MP trata distinto los montos chicos y querés probar exactamente lo que va a vivir el cliente.
 
 **Tiempo.** 20 minutos. **Bloquea a P-02, que tarda 30 días.**
 
@@ -132,8 +145,10 @@ Doce, agrupados por lo que hace falta para ejecutarlos. El orden importa: el Gru
 
 **Qué tiene que pasar.**
 - Débito automático en la cuenta master, sin intervención
-- `tenant_subscriptions.current_period_end` corrido +30 días, `last_payment_at` actualizado
+- `tenant_subscriptions.current_period_end` corrido un mes más, `last_payment_at` actualizado
 - El tenant sigue `active` (no cae a `past_due` por un webhook mal interpretado)
+
+**Ojo con las dos fechas, que no coinciden y no es un error.** MercadoPago debita según SU calendario (≈30 días desde el preapproval de P-01), mientras que `current_period_end` sale del trial + 1 mes. O sea que el segundo débito llega **antes** de que venza el período que ves en la DB. No hay dunning en el medio: el tenant está `active`, y el handler simplemente vuelve a estirar el período. **El reloj que hay que mirar para P-02 es el de MercadoPago, no el de la DB.**
 
 **Riesgo si falla y nadie mira.** Silencioso y caro: el cliente cree que paga, vos no cobrás, y la máquina de dunning puede empezar a escalarle el estado a alguien que está al día. **Poné un recordatorio en el calendario a 30 y a 31 días de P-01.**
 
@@ -351,5 +366,7 @@ Se puede vender cuando, con evidencia pegada:
 Los tres que quedan (**P-02**, **P-09**, el tramo largo de **P-10**) son de reloj: se cierran solos si están arrancados. Lo que **no** es aceptable es venderlos sin arrancar — el primer cliente sería el experimento.
 
 > **Medido en producción el 2026-08-24: el reloj todavía no arrancó.** `tenant_subscriptions` no tiene ninguna fila `active` con `mp_subscription_id`, y los dos complejos que existen están en `trialing` y `canceled`. Es decir que **P-01 no está hecho**, y con él siguen sin arrancar P-02 y P-10 — que son los dos que tardan 30 y 14 días. Todo lo demás de esta lista puede cerrarse en una tarde; esto no. Es el único ítem cuyo costo crece un día por cada día que pasa.
+>
+> **Re-medido el 2026-08-25**: sigue sin arrancar, y ahora se sabe qué lo frena — `complejo-elite-futbol` tiene `mp_payer_email` en `NULL`, así que el preapproval saldría a nombre de la cuenta master y MercadoPago lo rechaza por auto-pago. Es un campo de la UI de facturación, 30 segundos; el detalle está en P-01.
 
-**P-13 no es de reloj: es una obligación con fecha.** Va el día 31 sí o sí, o le seguís debitando $55.000 por mes a la tarjeta de tu pareja.
+**P-13 no es de reloj: es una obligación con fecha.** Va el día 31 sí o sí, o le seguís debitando $63.000 por mes a la tarjeta de tu pareja.

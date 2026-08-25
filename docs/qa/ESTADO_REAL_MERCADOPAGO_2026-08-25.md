@@ -191,6 +191,57 @@ explicación queda confirmada. **No es urgente para hoy** y no bloquea vender.
 
 ---
 
+## 4-ter. Las variables de entorno, verificadas a ojo en Vercel y Railway
+
+**Leído el 2026-08-25 en los paneles, solo los NOMBRES y las fechas — ningún
+valor.** Esto responde la duda de si la rotación del 22/8 pisó algo.
+
+### Vercel — las de MercadoPago
+
+| Variable | Entorno | Última actualización | Lectura |
+|---|---|---|---|
+| `MP_TURNOGOL_ACCESS_TOKEN` | Production | **18/7** | ✅ **nunca se rotó** — sigue siendo el de App A, que es lo correcto |
+| `MP_WEBHOOK_SECRET` | Production | **18/8** | ✅ **no se pisó** — la clave de App A quedó intacta |
+| `MP_WEBHOOK_SECRET_CHECKOUT` | Production **y** Preview | 22/8 | ✅ **se agregó como variable nueva**, no reemplazó a la anterior |
+| `MP_CLIENT_ID` | Production | 22/8 | ✅ rotada a App B, como mandaba el runbook |
+| `MP_CLIENT_SECRET` | Production | 22/8 | ✅ rotada a App B |
+| `MP_CLIENT_SECRET` | Preview | 22/8 | ⚠️ ver abajo |
+| `MP_CLIENT_ID` | **Preview** | **18/7** | 🟡 **quedó sin rotar** |
+
+**Conclusión: la migración se hizo prolija.** Se rotó lo que había que rotar
+(`MP_CLIENT_ID`/`MP_CLIENT_SECRET` de Production), se agregó lo nuevo
+(`MP_WEBHOOK_SECRET_CHECKOUT`) y **no se pisó nada** — ni el token master de
+suscripciones ni la clave de webhook de App A.
+
+### 🟡 El único hallazgo: Preview quedó con las credenciales cruzadas
+
+En **Preview**, `MP_CLIENT_ID` es del 18/7 (App A) y `MP_CLIENT_SECRET` del 22/8
+(App B). **Esa combinación no autentica contra ninguna de las dos aplicaciones**:
+es el id de una con el secreto de la otra.
+
+- **No afecta producción.** Production tiene las dos rotadas y coherentes.
+- **Sí afecta**: cualquier prueba de OAuth de MercadoPago en un deploy de Preview
+  va a fallar con credenciales rechazadas, y el síntoma no dice "están cruzadas".
+- **Arreglo**: poner en `MP_CLIENT_ID` de Preview el mismo valor que ya tiene
+  Production. Un campo.
+
+### Railway — el servicio de workers
+
+17 variables, todas presentes y con valor oculto. Las que importan para
+MercadoPago están las cuatro: `MP_TURNOGOL_ACCESS_TOKEN`, `MP_CLIENT_ID`,
+`MP_CLIENT_SECRET` y `ENCRYPTION_KEY`, más `WORKER_DATABASE_URL` y `APP_URL`.
+`MP_WEBHOOK_SECRET*` **no** están, y **está bien**: la firma se valida en el route
+handler, que corre en Vercel.
+
+Railway no muestra fechas de modificación, así que no se puede leer ahí si sus
+credenciales se rotaron a App B. **Pero hay prueba indirecta**: el cron
+`refresh-mp-tokens` corre en Railway, usa esas credenciales, y refrescó con éxito
+el token de Elite hoy a las 16:00 (§3.1). Un refresh token solo lo canjea la
+aplicación que lo emitió, así que **Railway y Vercel están apuntando a la misma
+aplicación**. El paso que el runbook advertía no saltear, no se salteó.
+
+---
+
 ## 5. Lo que NO se puede saber sin correr una sonda
 
 ### 5.1 De qué aplicación es el token de `complejo-titi`

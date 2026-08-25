@@ -29,6 +29,18 @@ type Step = {
   cmd?: () => void
   check?: () => Promise<boolean>
   fatal: boolean
+  /**
+   * Variables sin las cuales esta sonda no puede probar NADA. Si falta alguna,
+   * el step sale como SKIP y no como FAIL.
+   *
+   * La diferencia no es cosmética: una auditoría sirve si distingue "esta
+   * credencial está rota" de "esta credencial no está en el archivo que te di".
+   * La primera corrida contra producción (2026-08-25) devolvió 13 rojos, y
+   * NINGUNO era una credencial rota — el `.env.production` local estaba viejo e
+   * incompleto. Trece rojos que significan lo mismo que cero rojos son peor que
+   * no correr nada, porque enseñan a ignorar la salida.
+   */
+  needs?: readonly string[]
 }
 
 function envCheck(): boolean {
@@ -625,11 +637,26 @@ const steps: Step[] = [
     },
     fatal: true,
   },
-  { name: 'bypassrls role check', check: bypassRlsCheck, fatal: true },
-  { name: 'worker bypassrls role check', check: workerBypassRlsCheck, fatal: true },
-  { name: 'role identity check', check: roleIdentityCheck, fatal: true },
-  { name: 'role session timeouts', check: roleSessionTimeoutCheck, fatal: true },
-  { name: 'ssl in use', check: sslInUseCheck, fatal: true },
+  { name: 'bypassrls role check', check: bypassRlsCheck, fatal: true, needs: ['DATABASE_URL'] },
+  {
+    name: 'worker bypassrls role check',
+    check: workerBypassRlsCheck,
+    fatal: true,
+    needs: ['WORKER_DATABASE_URL'],
+  },
+  {
+    name: 'role identity check',
+    check: roleIdentityCheck,
+    fatal: true,
+    needs: ['DATABASE_URL', 'WORKER_DATABASE_URL'],
+  },
+  {
+    name: 'role session timeouts',
+    check: roleSessionTimeoutCheck,
+    fatal: true,
+    needs: ['DATABASE_URL'],
+  },
+  { name: 'ssl in use', check: sslInUseCheck, fatal: true, needs: ['DATABASE_URL'] },
   {
     name: 'mp mock mode disabled',
     check: async () => {
@@ -650,6 +677,7 @@ const steps: Step[] = [
   },
   {
     name: 'encryption-key strength',
+    needs: ['ENCRYPTION_KEY'],
     check: async () => {
       const r = encryptionKeyStrengthCheck(process.env.ENCRYPTION_KEY)
       if (!r.ok) console.error(r.error)
@@ -657,16 +685,56 @@ const steps: Step[] = [
     },
     fatal: true,
   },
-  { name: 'mp credentials probe (Checkout Pro)', check: mpCredentialsProbe, fatal: false },
-  { name: 'mp master token probe (Suscripciones)', check: mpMasterTokenProbe, fatal: false },
-  { name: 'resend probe (email)', check: resendProbe, fatal: false },
-  { name: 'r2 probe (bucket de imagenes)', check: r2Probe, fatal: false },
-  { name: 'r2 public domain probe', check: r2PublicDomainProbe, fatal: false },
-  { name: 'supabase keys probe (service_role + anon)', check: supabaseKeysProbe, fatal: false },
-  { name: 'upstash probe (rate-limit)', check: upstashProbe, fatal: false },
-  { name: 'impersonation secret probe', check: impersonationSecretProbe, fatal: false },
+  {
+    name: 'mp credentials probe (Checkout Pro)',
+    check: mpCredentialsProbe,
+    fatal: false,
+    needs: ['MP_CLIENT_ID', 'MP_CLIENT_SECRET'],
+  },
+  {
+    name: 'mp master token probe (Suscripciones)',
+    check: mpMasterTokenProbe,
+    fatal: false,
+    needs: ['MP_TURNOGOL_ACCESS_TOKEN'],
+  },
+  { name: 'resend probe (email)', check: resendProbe, fatal: false, needs: ['RESEND_API_KEY'] },
+  {
+    name: 'r2 probe (bucket de imagenes)',
+    check: r2Probe,
+    fatal: false,
+    needs: ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'],
+  },
+  {
+    name: 'r2 public domain probe',
+    check: r2PublicDomainProbe,
+    fatal: false,
+    needs: ['R2_PUBLIC_BASE_URL'],
+  },
+  {
+    name: 'supabase keys probe (service_role + anon)',
+    check: supabaseKeysProbe,
+    fatal: false,
+    needs: [
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    ],
+  },
+  {
+    name: 'upstash probe (rate-limit)',
+    check: upstashProbe,
+    fatal: false,
+    needs: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+  },
+  {
+    name: 'impersonation secret probe',
+    check: impersonationSecretProbe,
+    fatal: false,
+    needs: ['IMPERSONATION_COOKIE_SECRET'],
+  },
   {
     name: 'vapid pair (push)',
+    needs: ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY'],
     check: async () => {
       const r = vapidPairMatches(
         process.env.VAPID_PUBLIC_KEY,
@@ -713,7 +781,14 @@ async function main(): Promise<void> {
   }
 
   const failed: string[] = []
+  const skipped: string[] = []
   for (const step of selected) {
+    const missing = (step.needs ?? []).filter((k) => !process.env[k])
+    if (missing.length > 0) {
+      console.log(`▶ ${step.name}... SKIP (falta ${missing.join(', ')})`)
+      skipped.push(step.name)
+      continue
+    }
     const t0 = Date.now()
     process.stdout.write(`▶ ${step.name}... `)
     try {
@@ -736,6 +811,12 @@ async function main(): Promise<void> {
       // informa más de lo que arriesga. El exit code sigue siendo 1.
       if (step.fatal && !probeOnly) break
     }
+  }
+  if (skipped.length > 0) {
+    console.log(
+      `\n${skipped.length} sonda(s) sin correr por falta de variables: ${skipped.join(', ')}` +
+        '\n  (no dicen nada sobre el ambiente real — completá el env file para que signifiquen algo)',
+    )
   }
   if (failed.length > 0) {
     console.error(`\n${failed.length} step(s) failed: ${failed.join(', ')}`)

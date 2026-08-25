@@ -50,23 +50,29 @@ async function checkQueues(): Promise<SystemStatus['pgboss']> {
 }
 
 /**
- * Último health-ping completado, leído de las tablas internas de pg-boss
- * (job + archive: el archiver mueve los completados después de un rato).
+ * Último health-ping completado, leído de las tablas internas de pg-boss.
  * Fail-open: cualquier error (permisos, schema ausente) → null.
+ *
+ * Dos consultas y no un `UNION ALL`, por el mismo costo medido que explica
+ * `lastCompletedHealthPing` en /api/status: `pgboss.archive` no tiene índice
+ * por `name`, así que incluirla siempre es un Seq Scan de decenas de miles de
+ * filas (354 ms de promedio en `pg_stat_statements`). `job` retiene 12 h de
+ * pings, y el archivo solo se toca si `job` vino vacío.
  */
 async function lastHealthPing(): Promise<string | null> {
   try {
     const sql = getSql()
-    const rows = await sql<{ last: Date | null }[]>`
-      SELECT max(completedon) AS last FROM (
-        SELECT completedon FROM pgboss.job
-        WHERE name = 'health-ping' AND state = 'completed'
-        UNION ALL
-        SELECT completedon FROM pgboss.archive
-        WHERE name = 'health-ping' AND state = 'completed'
-      ) pings
+    const fresh = await sql<{ last: Date | null }[]>`
+      SELECT max(completedon) AS last FROM pgboss.job
+      WHERE name = 'health-ping' AND state = 'completed'
     `
-    return rows[0]?.last ? rows[0].last.toISOString() : null
+    if (fresh[0]?.last) return fresh[0].last.toISOString()
+
+    const archived = await sql<{ last: Date | null }[]>`
+      SELECT max(completedon) AS last FROM pgboss.archive
+      WHERE name = 'health-ping' AND state = 'completed'
+    `
+    return archived[0]?.last ? archived[0].last.toISOString() : null
   } catch {
     return null
   }

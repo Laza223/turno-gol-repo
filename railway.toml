@@ -8,6 +8,14 @@ dockerfilePath = "Dockerfile.worker"
 
 [deploy]
 startCommand = "pnpm jobs:start"
+# Región del worker. El default de Railway es US West (California) y la base
+# está en `sa-east-1` (São Paulo): ~180-190 ms de ida y vuelta por query.
+# US East (Virginia) es lo más cerca que llega Railway — NO tiene región en
+# Sudamérica (consultado a su API el 2026-08-25: solo EU West, US West,
+# US East y Sudeste asiático) — y baja el viaje a ~115-125 ms.
+# Se define ACÁ y no en el panel: con este archivo presente, Railway bloquea
+# el selector de región de la UI ("The value is set in /railway.toml").
+region = "us-east4-eqdc4a"
 # 1 réplica con auto-restart alcanza para año 1: pg-boss persiste los jobs en
 # Postgres, así que un reinicio los retoma donde quedaron. Subir a 2 para HA.
 numReplicas = 1
@@ -15,9 +23,15 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 # Variables de entorno (setear en el dashboard de Railway, NO acá):
-#   DATABASE_URL  -> conexión DIRECTA a Supabase Postgres (:5432), no el pooler,
-#                    con ?sslmode=require (DSN remoto — la conexión sin SSL no
-#                    aplica acá, no es localhost)
+#   DATABASE_URL  -> hoy va por el POOLER de Supabase (:6543). El host directo
+#                    `db.<ref>.supabase.co` ya no resuelve, así que el comentario
+#                    anterior ("conexión DIRECTA, no el pooler") quedó viejo.
+#                    Lleva `?sslmode=no-verify` y NO `require`: pg-boss usa
+#                    node-postgres, que VALIDA la cadena del certificado y se
+#                    cae con "self-signed certificate in certificate chain"
+#                    (incidente del 2026-08-25, 16 min de worker en bucle).
+#                    `WORKER_DATABASE_URL` sí va con `?sslmode=require` porque
+#                    lo lee `postgres` (porsager), que cifra sin validar.
 #   NODE_ENV=production
 #   RESEND_API_KEY, claves de MercadoPago, encryption key de tokens MP,
 #   SUPABASE_*, VAPID keys (push), SENTRY_DSN

@@ -37,7 +37,7 @@ const CSP_REPORT_PATH = '/api/csp-report'
 // dominio (docs/operations/dns-turnogol-app.md), y si `remotePatterns`/`img-src`
 // quedan atrás no se rompe la imagen sino la PÁGINA — `next/image` tira
 // "Invalid src prop" y el throw en cliente se lleva puesto el perfil público
-// entero del complejo (🔴 QA 2026-08-13). `media.turnogol.com` queda siempre en
+// entero del complejo (🔴 QA 2026-08-13). `media.turnogol.app` queda siempre en
 // la lista para no depender de que la var esté seteada en tiempo de build.
 function r2PublicHost(): string | null {
   const raw = process.env.R2_PUBLIC_BASE_URL
@@ -48,7 +48,7 @@ function r2PublicHost(): string | null {
     return null
   }
 }
-const MEDIA_HOSTS = [...new Set(['media.turnogol.com', r2PublicHost()].filter((h) => h !== null))]
+const MEDIA_HOSTS = [...new Set(['media.turnogol.app', r2PublicHost()].filter((h) => h !== null))]
 
 const securityHeaders = [
   {

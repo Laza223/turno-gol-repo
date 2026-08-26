@@ -688,3 +688,105 @@ Las de red viven en `launch-check.ts`, junto a las sondas de MercadoPago que ya 
 - **El entorno Preview de Vercel** sigue siendo el único 🔴 abierto de esta auditoría (C-3), y
   ninguna sonda lo alcanza: los valores no se pueden leer y el gate corre contra el archivo de
   env que uno le pase, no contra lo que Vercel tiene cargado.
+
+---
+
+## 8. Auditar los ambientes REALES, y lo que apareció al hacerlo — 2026-08-25/26
+
+> Idea de Lazar: *"en vez de apuntar al `.env.production`, ¿no podríamos hacer lo mismo pero
+> contra las variables de Vercel y de Railway? Es donde realmente viven"*. Es la corrección
+> correcta, y encontró un incidente activo en la primera corrida.
+
+### 8.1 El problema del método anterior
+
+El gate cargaba un archivo de env con `override: true`, o sea que **el archivo le ganaba a lo que
+la plataforma tuviera cargado**. Auditar así prueba lo que dice el archivo, no lo que usa la app.
+La corrida del 25/8 contra `.env.production` devolvió 13 rojos y ninguno era una credencial rota.
+
+Ahora hay dos modos explícitos:
+
+| Modo | Comando | Qué audita |
+|---|---|---|
+| Archivo | `LAUNCH_CHECK_ENV_FILE=.env.production pnpm launch:check --probe-only` | una copia local — sirve para contrastarla contra la realidad |
+| Plataforma | `LAUNCH_CHECK_ENV_FILE=platform railway run pnpm launch:check --probe-only` | las variables que la plataforma inyecta de verdad |
+| App | `GET /api/admin/system-status?probes=1` (super-admin) | las variables que Vercel tiene cargadas, corriendo dentro del runtime |
+
+`LAUNCH_CHECK_RUNTIME=worker` además saca de la lista de obligatorias las siete variables que solo
+usa el runtime web (`WEB_ONLY_ENV`). Sin eso el worker daba siete rojos permanentes que no eran
+problemas, y un rojo que siempre está rojo enseña a ignorar la salida entera.
+
+### 8.2 🔴 Lo que apareció: `withTenantContext` estaba caído en el worker
+
+Primera corrida contra Railway, y cuatro rojos con el mismo texto:
+`self-signed certificate in certificate chain`. Confirmado en los logs del servicio, cada 5
+minutos, durante horas:
+
+```
+{"module":"health-ping","level":"error","message":"health.ping.degraded","down":"database",
+ "checks":[{"name":"database","status":"down",
+            "error":"self-signed certificate in certificate chain"},
+           {"name":"pg-boss","status":"ok","latencyMs":201}, …]}
+```
+
+**Causa raíz.** El mismo `DATABASE_URL` lo consumen dos librerías con semánticas opuestas para el
+mismo `sslmode`:
+
+| Librería | Quién la usa | `sslmode=require` | `sslmode=no-verify` |
+|---|---|---|---|
+| `pg` (node-postgres) | pg-boss | valida la cadena → **se cae** | `{rejectUnauthorized:false}` → anda |
+| `postgres` (porsager) | `getDb()` / `getSql()` | cifra sin validar → anda | string desconocido → valida → **se cae** |
+
+El 25/8 se cambió a `no-verify` para que pg-boss arrancara. Eso arregló pg-boss y rompió el pool
+de la app **dentro del worker**: todo `withTenantContext` moría. Lo usan siete workers, entre
+ellos los que tocan plata — dunning de suscripciones, reconciliación de pagos pendientes,
+generación de slots de abonados y reintento de reembolsos.
+
+**Por qué no avisó nada.** El proceso seguía vivo y el latido seguía llegando, así que el
+dead-man's switch de P-12 no tenía por qué dispararse: mide *que el worker respire*, no *que
+pueda hablar con la base*. El `health.ping.degraded` quedó solo en los logs de Railway.
+
+**Arreglo.** `src/shared/db/ssl.ts`: el TLS lo decide el código y no el query param, que es
+editable desde un panel y que cada librería lee distinto. La opción explícita le gana al DSN en
+las dos librerías, así que a partir de acá ninguna edición de una variable puede volver a romper
+esto. Candado en `tests/unit/db-ssl-options.test.ts`, que además verifica que los dos pools de
+`client.ts` pasen la opción.
+
+### 8.3 `pg_stat_ssl` no sirve para medir esto (y el pooler acepta texto plano)
+
+El check `ssl in use` miraba `pg_stat_ssl.ssl`. Medido contra producción con las variables reales:
+
+```
+DATABASE_URL        tls      : CONECTA  pg_stat_ssl.ssl=false
+DATABASE_URL        plaintext: CONECTA  pg_stat_ssl.ssl=false
+WORKER_DATABASE_URL tls      : CONECTA  pg_stat_ssl.ssl=false
+WORKER_DATABASE_URL plaintext: CONECTA  pg_stat_ssl.ssl=false
+```
+
+Dos cosas de ahí:
+
+1. A través del pooler, `pg_stat_ssl` describe el tramo **Supavisor→Postgres** (interno, sin TLS),
+   no el tramo cliente→Supavisor que cruza internet. El check daba un rojo que no significaba nada.
+2. **El pooler acepta conexiones sin cifrar.** Ningún chequeo del lado del servidor puede
+   garantizar el cifrado: lo único que lo garantiza es que el cliente lo pida siempre — que es
+   exactamente lo que ahora hace `dbSslOptions`.
+
+Pendiente aparte (no urgente, no lo abre este cambio): hoy se cifra **sin validar la cadena**
+(`rejectUnauthorized: false`), que es lo que ya hacía el sistema. Validar de verdad exige
+empaquetar la CA de Supabase y pasar `sslrootcert`.
+
+### 8.4 Estado del worker de Railway después del arreglo
+
+`LAUNCH_CHECK_ENV_FILE=platform LAUNCH_CHECK_RUNTIME=worker railway run pnpm launch:check --probe-only`
+
+| Resultado | Sondas |
+|---|---|
+| ✅ 16 en verde | variables presentes · roles `turnogol_app`/`turnogol_worker` con la identidad y los timeouts correctos · TLS contra el pooler · MP Checkout Pro · MP Suscripciones (cuenta 381048203) · Resend con `turnogol.app=verified` · par VAPID derivado · `ENCRYPTION_KEY` · bypasses de E2E cerrados · `/api/status` sano |
+| ⏭ 5 sin correr | R2, dominio público de R2, claves de Supabase, Upstash e impersonación: son del runtime web, no viven en el worker y se auditan del lado de Vercel |
+
+### 8.5 Hallazgo lateral, sin arreglar
+
+Los workers que crean o cancelan reservas (`generate-abonado-slots`, `expire-pending-booking`) **no
+invalidan el cache de disponibilidad** (`invalidateAvailSearch` solo se llama desde
+`src/modules/bookings/*`, que es camino web). Un turno liberado por vencimiento de seña puede
+seguir apareciendo ocupado en la búsqueda pública hasta que expire el TTL. No se toca acá porque
+la decisión —invalidar desde el worker o bajar el TTL— es de producto.

@@ -11,8 +11,8 @@ import {
   webhookTestBypassSecretAbsentCheck,
   selectSteps,
   REQUIRED_ENV,
-  vapidPairMatches,
 } from '../../scripts/launch-check.helpers'
+import { vapidPairMatches } from '../../src/shared/observability/credential-probes'
 
 describe('encryptionKeyStrengthCheck', () => {
   it('rejects undefined with empty/length error', () => {

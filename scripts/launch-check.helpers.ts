@@ -1,5 +1,3 @@
-import { createECDH } from 'node:crypto'
-
 /**
  * Pure helpers for scripts/launch-check.ts, extracted so they can be
  * unit-tested without a live DB or network.
@@ -96,6 +94,34 @@ export const REQUIRED_ENV = [
   // las dos de arriba, esta SÍ vale un 503 del uptime monitor, y por eso además
   // tiene su propio check funcional en /api/status.
   'WORKER_DATABASE_URL',
+] as const
+
+/**
+ * De `REQUIRED_ENV`, las que consume ÚNICAMENTE el runtime web (Vercel) y que
+ * el worker de Railway no tiene por qué tener cargadas.
+ *
+ * Existe porque la lista de arriba se escribió pensando en un solo ambiente, y
+ * corrida contra el worker real (`railway run`, 2026-08-25) daba siete rojos que
+ * no eran problemas: el worker no sirve HTML, no valida firmas de webhook (eso
+ * pasa en el route handler de Vercel) y no emite cookies de impersonación.
+ * Un rojo que siempre está rojo enseña a ignorar la salida entera.
+ *
+ * `LAUNCH_CHECK_RUNTIME=worker` activa el filtro. Sin esa variable el gate sigue
+ * exigiendo la lista completa, que es lo correcto para Vercel y para CI.
+ */
+export const WEB_ONLY_ENV = [
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SENTRY_DSN',
+  // Las firmas de webhook de MercadoPago se validan en
+  // `api/webhooks/mercadopago/route.ts`, que corre en Vercel. El worker recibe
+  // el job ya autenticado.
+  'MP_WEBHOOK_SECRET',
+  'MP_WEBHOOK_SECRET_CHECKOUT',
+  // Cookie firmada del panel de super-admin: no existe fuera del request web.
+  'IMPERSONATION_COOKIE_SECRET',
+  // Rate-limit del middleware y cache de disponibilidad, los dos del lado web.
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
 ] as const
 
 /**
@@ -230,65 +256,6 @@ export function webhookTestBypassSecretAbsentCheck(value: string | undefined): C
       error:
         'MP_WEBHOOK_TEST_BYPASS_SECRET is set — this is a staging-only credential for ' +
         'scripts/replay-mp-webhook.ts and must never be configured in production',
-    }
-  }
-  return { ok: true }
-}
-
-/**
- * ¿El par de claves VAPID es realmente un par?
- *
- * `src/shared/env.ts` valida LARGOS (80+ y 40+ caracteres) y `web-push` valida
- * el formato al arrancar, pero ninguno de los dos comprueba lo único que
- * importa: que la pública se derive de la privada. Rotar una y olvidarse de la
- * otra pasa los dos chequeos y deja push roto **en silencio** — el navegador
- * del admin acepta la suscripción con la pública vieja y el servidor firma con
- * la privada nueva, así que cada envío muere con un 403 de los servidores de
- * push, que nadie mira. El síntoma que ve el dueño es "dejaron de sonar las
- * reservas online", sin un solo error en la app.
- *
- * VAPID es P-256: la pública es el punto sin comprimir (0x04 || X || Y, 65
- * bytes) que se deriva de la privada (escalar de 32 bytes). Derivarla y
- * compararla es determinístico y no toca la red.
- *
- * También compara `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, que viaja al navegador: si
- * difiere de `VAPID_PUBLIC_KEY`, el cliente se suscribe contra una clave con
- * la que el servidor no firma, con el mismo final silencioso.
- */
-export function vapidPairMatches(
-  publicKey: string | undefined,
-  privateKey: string | undefined,
-  clientPublicKey?: string | undefined,
-): { ok: true } | { ok: false; error: string } {
-  if (!publicKey || !privateKey) {
-    return { ok: false, error: 'VAPID_PUBLIC_KEY o VAPID_PRIVATE_KEY sin definir' }
-  }
-  if (clientPublicKey !== undefined && clientPublicKey !== publicKey) {
-    return {
-      ok: false,
-      error:
-        'NEXT_PUBLIC_VAPID_PUBLIC_KEY no coincide con VAPID_PUBLIC_KEY: el navegador se ' +
-        'suscribiría con una clave con la que el servidor no firma, y cada push moriría con 403',
-    }
-  }
-  let derived: Buffer
-  try {
-    const ecdh = createECDH('prime256v1')
-    ecdh.setPrivateKey(Buffer.from(privateKey, 'base64url'))
-    derived = ecdh.getPublicKey()
-  } catch (e) {
-    return {
-      ok: false,
-      error: `VAPID_PRIVATE_KEY no es un escalar P-256 válido: ${(e as Error).message}`,
-    }
-  }
-  const declared = Buffer.from(publicKey, 'base64url')
-  if (!derived.equals(declared)) {
-    return {
-      ok: false,
-      error:
-        'VAPID_PUBLIC_KEY no se deriva de VAPID_PRIVATE_KEY: no son un par. ' +
-        'Push queda roto en silencio (403 de los servidores de push, sin error en la app)',
     }
   }
   return { ok: true }

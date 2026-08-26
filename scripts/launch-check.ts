@@ -1,10 +1,22 @@
 import { config } from 'dotenv'
-// El archivo de env es configurable para poder auditar un ambiente REMOTO (prod)
-// sin tener que pisar `.env.local`:
+// De dónde salen las variables que audita el gate. Son dos modos, y la
+// diferencia entre ellos es la diferencia entre auditar y creer:
+//
 //   LAUNCH_CHECK_ENV_FILE=.env.production pnpm launch:check --probe-only
-// `override: true` hace que el archivo elegido gane sobre lo que ya haya en la
-// shell: un gate que mezcla mitad prod y mitad dev no verifica nada.
-config({ path: process.env.LAUNCH_CHECK_ENV_FILE ?? '.env.local', override: true })
+//     audita un ARCHIVO. Prueba lo que dice ese archivo, que no es lo mismo que
+//     lo que tiene cargado el ambiente real. Sirve para contrastar una copia
+//     local contra la realidad; no sirve para saber si producción está sana.
+//
+//   LAUNCH_CHECK_ENV_FILE=platform railway run pnpm launch:check --probe-only
+//     no carga ningún archivo: usa las variables que ya están en el proceso, o
+//     sea las que inyecta la plataforma (Railway, Vercel, CI). Es la única
+//     forma de auditar credenciales de producción desde afuera de la app.
+//
+// Sin el modo `platform` el archivo GANA (`override: true`) y taparía
+// exactamente lo que se quiere medir: un gate que mezcla mitad prod y mitad dev
+// no verifica nada.
+const ENV_SOURCE = process.env.LAUNCH_CHECK_ENV_FILE ?? '.env.local'
+if (ENV_SOURCE !== 'platform') config({ path: ENV_SOURCE, override: true })
 // .env.local sets NODE_ENV=development for the app's own runtime; that must
 // not leak into the execSync steps below (`pnpm build` needs Next.js to set
 // it to 'production' itself, otherwise it prerenders with a dev/prod chunk
@@ -21,21 +33,59 @@ import {
   webhookTestBypassSecretAbsentCheck,
   selectSteps,
   REQUIRED_ENV,
-  vapidPairMatches,
+  WEB_ONLY_ENV,
 } from './launch-check.helpers'
+import { dbSslOptions } from '@/shared/db/ssl'
+import {
+  probeImpersonationSecret,
+  probeMpMasterToken,
+  probeMpOauth,
+  probeR2,
+  probeR2PublicDomain,
+  probeResend,
+  probeSupabaseKeys,
+  probeUpstash,
+  probeVapidPair,
+  type ProbeResult,
+} from '@/shared/observability/credential-probes'
 
 type Step = {
   name: string
   cmd?: () => void
   check?: () => Promise<boolean>
   fatal: boolean
+  /**
+   * Variables sin las cuales esta sonda no puede probar NADA. Si falta alguna,
+   * el step sale como SKIP y no como FAIL.
+   *
+   * La diferencia no es cosmética: una auditoría sirve si distingue "esta
+   * credencial está rota" de "esta credencial no está en el archivo que te di".
+   * La primera corrida contra producción (2026-08-25) devolvió 13 rojos, y
+   * NINGUNO era una credencial rota — el `.env.production` local estaba viejo e
+   * incompleto. Trece rojos que significan lo mismo que cero rojos son peor que
+   * no correr nada, porque enseñan a ignorar la salida.
+   */
+  needs?: readonly string[]
 }
 
+/**
+ * `LAUNCH_CHECK_RUNTIME=worker` audita el proceso de background (Railway), que
+ * legítimamente no tiene las variables del runtime web. Ver `WEB_ONLY_ENV`.
+ */
 function envCheck(): boolean {
-  const missing = REQUIRED_ENV.filter((k) => !process.env[k])
+  const webOnly: readonly string[] = WEB_ONLY_ENV
+  const isWorker = process.env.LAUNCH_CHECK_RUNTIME === 'worker'
+  const required = isWorker ? REQUIRED_ENV.filter((k) => !webOnly.includes(k)) : REQUIRED_ENV
+  const missing = required.filter((k) => !process.env[k])
   if (missing.length > 0) {
     console.error(`Missing env vars: ${missing.join(', ')}`)
     return false
+  }
+  if (isWorker) {
+    console.log(
+      `  ${required.length} variables del worker presentes ` +
+        `(${webOnly.length} del runtime web no aplican acá)`,
+    )
   }
   return true
 }
@@ -73,7 +123,7 @@ async function bypassRlsCheck(): Promise<boolean> {
     return false
   }
   const postgres = (await import('postgres')).default
-  const sql = postgres(url, { max: 1 })
+  const sql = postgres(url, { max: 1, ssl: dbSslOptions(url) })
   try {
     const rows = await sql<{ rolname: string; bypass: boolean }[]>`
       SELECT rolname, rolbypassrls AS bypass
@@ -112,7 +162,7 @@ async function workerBypassRlsCheck(): Promise<boolean> {
     return false
   }
   const postgres = (await import('postgres')).default
-  const sql = postgres(url, { max: 1 })
+  const sql = postgres(url, { max: 1, ssl: dbSslOptions(url) })
   try {
     const rows = await sql<{ rolname: string; bypass: boolean }[]>`
       SELECT rolname, rolbypassrls AS bypass
@@ -159,7 +209,7 @@ async function roleIdentityCheck(): Promise<boolean> {
     console.error('DATABASE_URL not set; cannot probe role identity')
     return false
   }
-  const appSql = postgres(appUrl, { max: 1 })
+  const appSql = postgres(appUrl, { max: 1, ssl: dbSslOptions(appUrl) })
   try {
     const rows = await appSql<{ role_name: string }[]>`SELECT current_user AS role_name`
     if (rows[0]?.role_name !== 'turnogol_app') {
@@ -179,7 +229,7 @@ async function roleIdentityCheck(): Promise<boolean> {
     console.error('WORKER_DATABASE_URL not set; cannot probe worker role identity')
     return false
   }
-  const workerSql = postgres(workerUrl, { max: 1 })
+  const workerSql = postgres(workerUrl, { max: 1, ssl: dbSslOptions(workerUrl) })
   try {
     const rows = await workerSql<{ role_name: string }[]>`SELECT current_user AS role_name`
     if (rows[0]?.role_name !== 'turnogol_worker') {
@@ -214,7 +264,7 @@ async function roleSessionTimeoutCheck(): Promise<boolean> {
     return false
   }
   const postgres = (await import('postgres')).default
-  const sql = postgres(url, { max: 1 })
+  const sql = postgres(url, { max: 1, ssl: dbSslOptions(url) })
   try {
     const rows = await sql<{ statement_timeout: string }[]>`SHOW statement_timeout`
     if (rows[0]?.statement_timeout !== '15s') {
@@ -232,14 +282,25 @@ async function roleSessionTimeoutCheck(): Promise<boolean> {
 }
 
 /**
- * Fails if a DSN connection isn't using SSL (`pg_stat_ssl.ssl`). Meant for
- * prod/staging DSNs only (Supabase pooler/direct connections over the
- * internet) — localhost never negotiates SSL, so this check would always
- * fail against the local dev default
- * (postgres://postgres:postgres@127.0.0.1:54322/postgres). launch-check is
- * a pre-launch/pre-prod gate — same assumption `bypassRlsCheck`/
- * `workerBypassRlsCheck` already make: it expects to run against the real
- * deploy DSNs, not local Supabase.
+ * Verifica que las conexiones a Postgres viajen cifradas.
+ *
+ * OJO con `pg_stat_ssl`: **a través del pooler de Supabase siempre devuelve
+ * `false`**, y eso NO significa que la conexión sea en texto plano. `pg_stat_ssl`
+ * describe el tramo Supavisor→Postgres (interno, sin TLS), no el tramo
+ * cliente→Supavisor, que es el que cruza internet. Medido contra producción el
+ * 2026-08-25 con las variables reales de Railway: los dos DSN dan
+ * `pg_stat_ssl.ssl=false` conecten con TLS o sin TLS.
+ *
+ * Ese mismo experimento dejó ver algo más incómodo: **el pooler acepta también
+ * conexiones sin cifrar**. O sea que ningún chequeo del lado del servidor puede
+ * garantizar el cifrado — lo único que lo garantiza es que el cliente lo pida
+ * siempre, y eso hoy lo fija el código en `src/shared/db/ssl.ts` (con candado en
+ * `tests/unit/db-ssl-options.test.ts`) en vez del `?sslmode=` del DSN, que es
+ * editable desde un panel y que cada librería interpreta distinto.
+ *
+ * Así que este check hace lo único honesto que puede hacer: confirma que el DSN
+ * apunta a un host remoto y que se puede abrir una conexión TLS contra él. Si es
+ * una conexión directa (sin pooler), además exige `pg_stat_ssl.ssl = true`.
  */
 async function sslInUseCheck(): Promise<boolean> {
   const postgres = (await import('postgres')).default
@@ -252,13 +313,21 @@ async function sslInUseCheck(): Promise<boolean> {
       ok = false
       continue
     }
-    const sql = postgres(url, { max: 1 })
+    if (dbSslOptions(url) === false) {
+      console.error(`${envVar}: apunta a localhost — este gate espera los DSN de deploy`)
+      ok = false
+      continue
+    }
+    const throughPooler = new URL(url).hostname.includes('pooler.supabase.com')
+    const sql = postgres(url, { max: 1, ssl: dbSslOptions(url) })
     try {
       const rows = await sql<{ ssl: boolean }[]>`
         SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()
       `
-      if (rows[0]?.ssl !== true) {
-        console.error(`${envVar}: connection is not using SSL (pg_stat_ssl.ssl=false)`)
+      if (throughPooler) {
+        console.log(`  ${envVar}: TLS negociado contra el pooler`)
+      } else if (rows[0]?.ssl !== true) {
+        console.error(`${envVar}: conexión directa sin SSL (pg_stat_ssl.ssl=false)`)
         ok = false
       }
     } finally {
@@ -270,339 +339,32 @@ async function sslInUseCheck(): Promise<boolean> {
 }
 
 /**
- * Probes MP OAuth with a deliberately-invalid refresh token. MP responds:
- *   - 400 → client_id + client_secret authenticated successfully, grant rejected
- *           (this is what we want: credentials are valid)
- *   - 401 / 403 → bad client credentials
- *   - other → MP unavailable / unexpected (warn + fail; non-fatal at caller)
+ * ─── Sondas de credenciales ──────────────────────────────────────────────────
  *
- * Marked non-fatal in the steps list because MP itself can be slow or
- * unreachable from some build environments; we don't want a transient MP
- * outage to block a launch. Operators should re-run when MP is healthy.
+ * Las implementaciones viven en `src/shared/observability/credential-probes.ts`
+ * y NO acá, a propósito: correrlas contra un `.env` local prueba lo que dice
+ * ESE ARCHIVO, no lo que tiene cargado el ambiente real. La primera corrida
+ * contra producción (2026-08-25) devolvió 13 rojos y ninguno era una credencial
+ * rota — el `.env.production` local estaba viejo. Al vivir en `src/`, las mismas
+ * sondas las corre también el runtime de la app (`/api/admin/system-status`),
+ * donde las variables son las de verdad: las que Vercel tiene cargadas.
+ *
+ * Este archivo solo las adapta a la forma que espera el gate (boolean + salida
+ * por consola).
  */
-async function mpCredentialsProbe(): Promise<boolean> {
-  const id = process.env.MP_CLIENT_ID
-  const secret = process.env.MP_CLIENT_SECRET
-  if (!id || !secret) {
-    console.error('MP_CLIENT_ID or MP_CLIENT_SECRET not set')
-    return false
-  }
-  try {
-    const res = await fetch('https://api.mercadopago.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: id,
-        client_secret: secret,
-        grant_type: 'refresh_token',
-        refresh_token: 'probe-invalid',
-      }),
-    })
-    if (res.status === 400) return true
-    if (res.status === 401 || res.status === 403) {
-      console.error(
-        `MP oauth probe returned HTTP ${res.status} — credentials rejected (bad client_id/secret)`,
-      )
-      return false
+function adapt(fn: () => Promise<ProbeResult> | ProbeResult): () => Promise<boolean> {
+  return async () => {
+    const r = await fn()
+    if (r.status === 'ok') {
+      console.log(`  ${r.detail}`)
+      return true
     }
-    console.error(`MP oauth probe returned HTTP ${res.status} (expected 400 for valid creds)`)
-    return false
-  } catch (e) {
-    console.error(`MP oauth probe failed: ${(e as Error).message}`)
-    return false
+    console.error(`  ${r.detail}`)
+    // `skip` no es falla: la sonda no pudo probar nada porque falta la variable.
+    // El gate ya lo filtra antes vía `needs`; esto es la red por si alguna sonda
+    // exige una variable que el step no declaró.
+    return r.status === 'skip'
   }
-}
-
-/**
- * Sonda del token master, el que cobra la suscripción SaaS.
- *
- * Por qué hace falta aparte: `mpCredentialsProbe` valida `MP_CLIENT_ID` /
- * `MP_CLIENT_SECRET`, que desde la migración del 2026-08-22 son los de la app
- * de **Checkout Pro** (señas por OAuth). `MP_TURNOGOL_ACCESS_TOKEN` es de la
- * **otra** aplicación, la de Suscripciones, y no lo tocaba ninguna sonda: la
- * única credencial con la que TurnoGol cobra SU plata podía estar vencida,
- * revocada o pegada de la cuenta equivocada y nadie se enteraba hasta que un
- * complejo intentaba activar el plan.
- *
- * `GET /users/me` es de lectura pura y no mueve un peso. Además imprime el id
- * de la cuenta, que es el chequeo que de verdad importa: un token válido pero
- * de la cuenta de un complejo autentica igual, y cobraría a la cuenta
- * equivocada. Compará ese id contra el de la cuenta master.
- *
- * Nunca imprime el token.
- */
-async function mpMasterTokenProbe(): Promise<boolean> {
-  const token = process.env.MP_TURNOGOL_ACCESS_TOKEN
-  if (!token) {
-    console.error('MP_TURNOGOL_ACCESS_TOKEN not set — no se puede cobrar la suscripción SaaS')
-    return false
-  }
-  try {
-    const res = await fetch('https://api.mercadopago.com/users/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (res.status === 401 || res.status === 403) {
-      console.error(
-        `MP master token probe returned HTTP ${res.status} — token vencido, revocado o mal copiado`,
-      )
-      return false
-    }
-    if (!res.ok) {
-      console.error(`MP master token probe returned HTTP ${res.status} (esperado 200)`)
-      return false
-    }
-    const me = (await res.json()) as { id?: number; nickname?: string; site_id?: string }
-    console.log(
-      `MP master token OK — cuenta ${me.id ?? '?'} (${me.nickname ?? '?'}), site ${me.site_id ?? '?'}`,
-    )
-    console.log('  ^ verificá que ese id sea el de la cuenta master, no el de un complejo')
-    return true
-  } catch (e) {
-    console.error(`MP master token probe failed: ${(e as Error).message}`)
-    return false
-  }
-}
-
-/**
- * ─── Sondas de credenciales: presencia no es funcionamiento ──────────────────
- *
- * Todo lo de abajo existe porque `src/shared/env.ts` valida FORMA (que la
- * variable esté y tenga la pinta correcta) y `/api/status` valida PRESENCIA
- * (`!!process.env.X`) para MercadoPago, email y Sentry. Ninguno de los dos
- * prueba que la credencial SIRVA. Una API key revocada, una clave pegada de
- * otra cuenta o un bucket renombrado pasan los dos chequeos y fallan recién en
- * producción, en el peor momento y casi siempre en silencio.
- *
- * Todas son de LECTURA y no mueven plata ni escriben datos de negocio. Ninguna
- * imprime el secreto: cuando hace falta imprimen el identificador de la cuenta
- * o del recurso, que es lo que de verdad hay que comparar.
- */
-
-/**
- * Resend: la key existe, y el dominio desde el que se manda está verificado.
- *
- * `GET /domains` es lectura pura. Lo segundo importa tanto como lo primero: una
- * key válida con el dominio sin verificar manda igual, pero los mails caen en
- * spam o rebotan, que es exactamente el modo de falla que nadie mira. Los mails
- * salen como `no-reply@turnogol.app` (email.provider.ts) firmados por el
- * subdominio `send.turnogol.app`.
- */
-async function resendProbe(): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY
-  if (!key) {
-    console.error('RESEND_API_KEY not set')
-    return false
-  }
-  try {
-    const res = await fetch('https://api.resend.com/domains', {
-      headers: { Authorization: `Bearer ${key}` },
-    })
-    if (res.status === 401 || res.status === 403) {
-      console.error(`Resend rechazo la key (HTTP ${res.status}) — revocada o de otra cuenta`)
-      return false
-    }
-    if (!res.ok) {
-      console.error(`Resend probe devolvio HTTP ${res.status}`)
-      return false
-    }
-    const body = (await res.json()) as { data?: { name: string; status: string }[] }
-    const domains = body.data ?? []
-    if (domains.length === 0) {
-      console.error('Resend: la key sirve pero la cuenta no tiene ningun dominio cargado')
-      return false
-    }
-    console.log(`  Resend: ${domains.map((d) => `${d.name}=${d.status}`).join(', ')}`)
-    if (!domains.some((d) => d.status === 'verified')) {
-      console.error('Resend: ningun dominio VERIFICADO — los mails van a rebotar o caer en spam')
-      return false
-    }
-    return true
-  } catch (e) {
-    console.error(`Resend probe fallo: ${(e as Error).message}`)
-    return false
-  }
-}
-
-/**
- * R2: las credenciales abren el bucket que dice `R2_BUCKET`.
- *
- * `HeadBucket` es la operación más barata que prueba las tres cosas a la vez:
- * que la clave es válida, que tiene permiso, y que el bucket existe con ese
- * nombre exacto. `/api/status` solo mira que las cinco variables estén
- * definidas, así que un `R2_BUCKET` mal tipeado le da verde.
- */
-async function r2Probe(): Promise<boolean> {
-  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET } = process.env
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET) {
-    console.error(
-      'R2_* incompletas (hacen falta ACCOUNT_ID, ACCESS_KEY_ID, SECRET_ACCESS_KEY, BUCKET)',
-    )
-    return false
-  }
-  try {
-    const { S3Client, HeadBucketCommand } = await import('@aws-sdk/client-s3')
-    const client = new S3Client({
-      region: 'auto',
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
-    })
-    await client.send(new HeadBucketCommand({ Bucket: R2_BUCKET }))
-    console.log(`  R2: bucket "${R2_BUCKET}" accesible`)
-    return true
-  } catch (e) {
-    const err = e as { name?: string; $metadata?: { httpStatusCode?: number }; message: string }
-    const code = err.$metadata?.httpStatusCode
-    if (code === 404) console.error(`R2: el bucket "${R2_BUCKET}" no existe en esa cuenta`)
-    else if (code === 401 || code === 403)
-      console.error(`R2: credenciales rechazadas (HTTP ${code})`)
-    else console.error(`R2 probe fallo: ${err.name ?? ''} ${err.message}`)
-    return false
-  }
-}
-
-/**
- * El dominio público de las imágenes responde por HTTPS.
- *
- * Un 404 acá es ÉXITO: significa que el DNS resuelve, el certificado sirve y
- * Cloudflare contesta; que no haya un objeto en la raíz es lo esperado. Lo que
- * se está buscando es el otro caso — que `R2_PUBLIC_BASE_URL` apunte a un
- * dominio que no existe, como pasaba con `media.turnogol.com` en
- * `next.config.ts` hasta el 2026-08-25.
- */
-async function r2PublicDomainProbe(): Promise<boolean> {
-  const base = process.env.R2_PUBLIC_BASE_URL
-  if (!base) {
-    console.error('R2_PUBLIC_BASE_URL not set')
-    return false
-  }
-  try {
-    const res = await fetch(base, { method: 'HEAD' })
-    console.log(`  R2 publico: ${base} responde HTTP ${res.status}`)
-    return true
-  } catch (e) {
-    console.error(`R2_PUBLIC_BASE_URL (${base}) no responde: ${(e as Error).message}`)
-    return false
-  }
-}
-
-/**
- * Las dos claves de Supabase son de ESTE proyecto y tienen el poder que dicen.
- *
- * - La `service_role` se prueba contra `/auth/v1/admin/users`, que solo
- *   responde con privilegios de admin: si alguien pegó ahí la `anon` por error
- *   —mismo formato JWT, mismo largo, indistinguibles a ojo— el chequeo de
- *   `env.ts` (`min(20)`) le da verde y recién falla al crear usuarios de staff.
- * - La `anon` se prueba contra `/auth/v1/settings`, que rechaza una key de otro
- *   proyecto. Esa es la que viaja al navegador.
- */
-async function supabaseKeysProbe(): Promise<boolean> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !service || !anon) {
-    console.error(
-      'Falta NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY o NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    )
-    return false
-  }
-  let ok = true
-  try {
-    const res = await fetch(`${url}/auth/v1/admin/users?per_page=1`, {
-      headers: { apikey: service, Authorization: `Bearer ${service}` },
-    })
-    if (res.ok) console.log('  Supabase service_role: privilegios de admin confirmados')
-    else {
-      console.error(
-        `Supabase service_role rechazada (HTTP ${res.status}) — key de otro proyecto, revocada, ` +
-          'o es en realidad la anon pegada en el lugar equivocado',
-      )
-      ok = false
-    }
-  } catch (e) {
-    console.error(`Supabase service_role probe fallo: ${(e as Error).message}`)
-    ok = false
-  }
-  try {
-    const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: anon } })
-    if (res.ok) console.log('  Supabase anon: valida para este proyecto')
-    else {
-      console.error(`Supabase anon rechazada (HTTP ${res.status}) — no es de este proyecto`)
-      ok = false
-    }
-  } catch (e) {
-    console.error(`Supabase anon probe fallo: ${(e as Error).message}`)
-    ok = false
-  }
-  return ok
-}
-
-/**
- * Upstash: la URL y el token abren la base de rate-limit, y se puede escribir.
- *
- * Va y vuelve sobre una clave descartable con TTL de 60 s. Sin esto el
- * rate-limit falla abierto (`apply.ts`) y los caminos de plata quedan sin
- * freno, que es justo lo contrario de lo que se supone que hacen.
- */
-async function upstashProbe(): Promise<boolean> {
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  if (!url || !token) {
-    console.error('Falta UPSTASH_REDIS_REST_URL o UPSTASH_REDIS_REST_TOKEN')
-    return false
-  }
-  const key = 'launch-check:probe'
-  try {
-    const res = await fetch(`${url}/set/${key}/ok?EX=60`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) {
-      console.error(`Upstash rechazo la escritura (HTTP ${res.status})`)
-      return false
-    }
-    const read = await fetch(`${url}/get/${key}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const body = (await read.json()) as { result?: string }
-    if (body.result !== 'ok') {
-      console.error(`Upstash escribio pero devolvio "${body.result}" al leer`)
-      return false
-    }
-    console.log('  Upstash: escritura y lectura confirmadas')
-    return true
-  } catch (e) {
-    console.error(`Upstash probe fallo: ${(e as Error).message}`)
-    return false
-  }
-}
-
-/**
- * `IMPERSONATION_COOKIE_SECRET` firma y verifica de verdad.
- *
- * Es la cookie con la que un SuperAdmin entra como un complejo. `env.ts` solo
- * exige 16 caracteres; esto hace el viaje completo (firmar, verificar, y que
- * una firma con otro secreto sea rechazada) con el mismo HMAC que usa la app.
- */
-async function impersonationSecretProbe(): Promise<boolean> {
-  const secret = process.env.IMPERSONATION_COOKIE_SECRET
-  if (!secret) {
-    console.error('IMPERSONATION_COOKIE_SECRET not set')
-    return false
-  }
-  const { createHmac, timingSafeEqual } = await import('node:crypto')
-  const sign = (payload: string, k: string) => createHmac('sha256', k).update(payload).digest('hex')
-  const payload = 'launch-check-probe'
-  const good = Buffer.from(sign(payload, secret))
-  const forged = Buffer.from(sign(payload, `${secret}-otro`))
-  if (good.length !== forged.length || timingSafeEqual(good, forged)) {
-    console.error('IMPERSONATION_COOKIE_SECRET: el HMAC no discrimina — secreto inservible')
-    return false
-  }
-  if (!timingSafeEqual(good, Buffer.from(sign(payload, secret)))) {
-    console.error('IMPERSONATION_COOKIE_SECRET: la firma no es reproducible')
-    return false
-  }
-  console.log('  Impersonation secret: firma y rechaza como corresponde')
-  return true
 }
 
 const steps: Step[] = [
@@ -625,11 +387,26 @@ const steps: Step[] = [
     },
     fatal: true,
   },
-  { name: 'bypassrls role check', check: bypassRlsCheck, fatal: true },
-  { name: 'worker bypassrls role check', check: workerBypassRlsCheck, fatal: true },
-  { name: 'role identity check', check: roleIdentityCheck, fatal: true },
-  { name: 'role session timeouts', check: roleSessionTimeoutCheck, fatal: true },
-  { name: 'ssl in use', check: sslInUseCheck, fatal: true },
+  { name: 'bypassrls role check', check: bypassRlsCheck, fatal: true, needs: ['DATABASE_URL'] },
+  {
+    name: 'worker bypassrls role check',
+    check: workerBypassRlsCheck,
+    fatal: true,
+    needs: ['WORKER_DATABASE_URL'],
+  },
+  {
+    name: 'role identity check',
+    check: roleIdentityCheck,
+    fatal: true,
+    needs: ['DATABASE_URL', 'WORKER_DATABASE_URL'],
+  },
+  {
+    name: 'role session timeouts',
+    check: roleSessionTimeoutCheck,
+    fatal: true,
+    needs: ['DATABASE_URL'],
+  },
+  { name: 'ssl in use', check: sslInUseCheck, fatal: true, needs: ['DATABASE_URL'] },
   {
     name: 'mp mock mode disabled',
     check: async () => {
@@ -650,6 +427,7 @@ const steps: Step[] = [
   },
   {
     name: 'encryption-key strength',
+    needs: ['ENCRYPTION_KEY'],
     check: async () => {
       const r = encryptionKeyStrengthCheck(process.env.ENCRYPTION_KEY)
       if (!r.ok) console.error(r.error)
@@ -657,25 +435,62 @@ const steps: Step[] = [
     },
     fatal: true,
   },
-  { name: 'mp credentials probe (Checkout Pro)', check: mpCredentialsProbe, fatal: false },
-  { name: 'mp master token probe (Suscripciones)', check: mpMasterTokenProbe, fatal: false },
-  { name: 'resend probe (email)', check: resendProbe, fatal: false },
-  { name: 'r2 probe (bucket de imagenes)', check: r2Probe, fatal: false },
-  { name: 'r2 public domain probe', check: r2PublicDomainProbe, fatal: false },
-  { name: 'supabase keys probe (service_role + anon)', check: supabaseKeysProbe, fatal: false },
-  { name: 'upstash probe (rate-limit)', check: upstashProbe, fatal: false },
-  { name: 'impersonation secret probe', check: impersonationSecretProbe, fatal: false },
+  {
+    name: 'mp credentials probe (Checkout Pro)',
+    check: adapt(probeMpOauth),
+    fatal: false,
+    needs: ['MP_CLIENT_ID', 'MP_CLIENT_SECRET'],
+  },
+  {
+    name: 'mp master token probe (Suscripciones)',
+    check: adapt(probeMpMasterToken),
+    fatal: false,
+    needs: ['MP_TURNOGOL_ACCESS_TOKEN'],
+  },
+  {
+    name: 'resend probe (email)',
+    check: adapt(probeResend),
+    fatal: false,
+    needs: ['RESEND_API_KEY'],
+  },
+  {
+    name: 'r2 probe (bucket de imagenes)',
+    check: adapt(probeR2),
+    fatal: false,
+    needs: ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'],
+  },
+  {
+    name: 'r2 public domain probe',
+    check: adapt(probeR2PublicDomain),
+    fatal: false,
+    needs: ['R2_PUBLIC_BASE_URL'],
+  },
+  {
+    name: 'supabase keys probe (service_role + anon)',
+    check: adapt(probeSupabaseKeys),
+    fatal: false,
+    needs: [
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    ],
+  },
+  {
+    name: 'upstash probe (rate-limit)',
+    check: adapt(probeUpstash),
+    fatal: false,
+    needs: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+  },
+  {
+    name: 'impersonation secret probe',
+    check: adapt(probeImpersonationSecret),
+    fatal: false,
+    needs: ['IMPERSONATION_COOKIE_SECRET'],
+  },
   {
     name: 'vapid pair (push)',
-    check: async () => {
-      const r = vapidPairMatches(
-        process.env.VAPID_PUBLIC_KEY,
-        process.env.VAPID_PRIVATE_KEY,
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-      )
-      if (!r.ok) console.error(r.error)
-      return r.ok
-    },
+    needs: ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY'],
+    check: adapt(probeVapidPair),
     fatal: false,
   },
   { name: 'typecheck', cmd: () => execSync('pnpm typecheck', { stdio: 'inherit' }), fatal: true },
@@ -708,12 +523,19 @@ async function main(): Promise<void> {
     console.log(
       `Modo probe-only: ${selected.length} sondas de ambiente, ` +
         `${steps.length - selected.length} steps locales salteados ` +
-        `(env file: ${process.env.LAUNCH_CHECK_ENV_FILE ?? '.env.local'})\n`,
+        `(variables: ${ENV_SOURCE === 'platform' ? 'las de la plataforma, sin archivo' : ENV_SOURCE})\n`,
     )
   }
 
   const failed: string[] = []
+  const skipped: string[] = []
   for (const step of selected) {
+    const missing = (step.needs ?? []).filter((k) => !process.env[k])
+    if (missing.length > 0) {
+      console.log(`▶ ${step.name}... SKIP (falta ${missing.join(', ')})`)
+      skipped.push(step.name)
+      continue
+    }
     const t0 = Date.now()
     process.stdout.write(`▶ ${step.name}... `)
     try {
@@ -727,8 +549,21 @@ async function main(): Promise<void> {
       console.log('FAIL')
       console.error(`  ${(e as Error).message}`)
       failed.push(step.name)
-      if (step.fatal) break
+      // En `--probe-only` un fatal NO corta la corrida. El modo existe para
+      // auditar un ambiente entero, y frenar en el primer rojo esconde los
+      // otros 20 resultados: la primera corrida real (2026-08-25) murió en
+      // `env vars present` por cinco variables ausentes del `.env.production`
+      // LOCAL y no reportó ni una sonda, con la producción andando perfecto.
+      // Cada sonda ya avisa por su cuenta si le falta lo suyo, así que seguir
+      // informa más de lo que arriesga. El exit code sigue siendo 1.
+      if (step.fatal && !probeOnly) break
     }
+  }
+  if (skipped.length > 0) {
+    console.log(
+      `\n${skipped.length} sonda(s) sin correr por falta de variables: ${skipped.join(', ')}` +
+        '\n  (no dicen nada sobre el ambiente real — completá el env file para que signifiquen algo)',
+    )
   }
   if (failed.length > 0) {
     console.error(`\n${failed.length} step(s) failed: ${failed.join(', ')}`)

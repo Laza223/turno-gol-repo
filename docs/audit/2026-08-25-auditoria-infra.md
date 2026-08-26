@@ -157,7 +157,7 @@ los de Railway estén mal.
 | # | Hallazgo | Evidencia | Impacto |
 |---|---|---|---|
 | **M-4** ◐ | Worker en US West, base en sa-east-1 | Railway → Settings → Regions: "US West (California, USA)" | ~180 ms de ida y vuelta por query. Cambiar de región no cuesta plata — **Corrección 2026-08-25: Railway NO tiene región en Sudamérica. El destino es US East, y el cambio lo tiene que clickear Lazar — ver §5.3.** |
-| **M-5** | Railway sin healthcheck y con tope de 10 reinicios | Settings → *Healthcheck Path* vacío; `railway.toml`: `restartPolicyType = "ON_FAILURE"`, `restartPolicyMaxRetries = 10` | "Online" no prueba que el worker trabaje; un proceso colgado no reinicia nunca, y a la 11ª caída queda muerto. Hoy lo tapa UptimeRobot (P-12), pero el candado propio de la plataforma no existe |
+| **M-5** ✅ | Railway sin healthcheck y con tope de 10 reinicios — *cerrado el 2026-08-26, ver §14 y §15* | Settings → *Healthcheck Path* vacío; `railway.toml`: `restartPolicyType = "ON_FAILURE"`, `restartPolicyMaxRetries = 10` | "Online" no prueba que el worker trabaje; un proceso colgado no reinicia nunca, y a la 11ª caída queda muerto. Hoy lo tapa UptimeRobot (P-12), pero el candado propio de la plataforma no existe |
 | **M-6** ✅ | **100 policies RLS re-evalúan la función de contexto por fila** (`auth_rls_initplan`), 48 policies permissive duplicadas, 26 foreign keys sin índice | Supabase advisors (performance): 148 WARN + 49 INFO | Es el techo de performance de la grilla y de Personas cuando entre un complejo con miles de reservas. Se arregla envolviendo en `(select …)` y unificando policies — **Cerrado el 2026-08-25 sin tocar SQL: los 148 avisos WARN son falso positivo (100) o el diseño dual documentado (48). Medido con EXPLAIN bajo un rol sin BYPASSRLS — ver §5.2.** |
 | **M-7** ⏸️ | Compute **Nano** con el pool casi tomado en reposo | Panel: pool size 15 (default de Nano), `max_connections` 60. Medido ahora: 6 conexiones de `turnogol_app` + 3 de `turnogol_worker` = 9 de 15 **sin tráfico** | Es la causa estructural de F-002. Con Pro, subir a Micro entra casi entero en el crédito de cómputo incluido — **Medido el 2026-08-25: base de 35 MB, 22/60 conexiones. No se sube el compute — ver §5.4.** |
 | **M-8** ◐ | **DMARC en `p=none` y sin dirección de reportes** — *mitad hecha el 2026-08-25* | El TXT pasó a `"v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"`, resuelto contra `8.8.8.8`. Para que ese buzón exista se prendió **Cloudflare Email Routing** en la zona: destino `turnogol@gmail.com` **Verificado**, regla `dmarc@turnogol.app → turnogol@gmail.com` **Activa**, y los 5 registros que pide el servicio creados en el apex (3 MX `route{1,2,3}.mx.cloudflare.net`, el DKIM `cf2024-1._domainkey` y un `v=spf1 include:_spf.mx.cloudflare.net ~all`), todos resueltos por DNS. Estado del servicio: *Activado / Registros DNS Activado* | El correo saliente NO se toca: el Return-Path de Resend es `send.turnogol.app` con su propio SPF, y el DKIM `resend._domainkey.turnogol.app` firma con `d=turnogol.app`, así que la alineación DMARC sigue viniendo por DKIM. **Falta**: juntar dos semanas de reportes y recién ahí pasar a `p=quarantine`. **Sin verificar end-to-end**: no se mandó un mail de prueba a `dmarc@turnogol.app`; el primer reporte real (24-48 h) es la prueba |
@@ -1208,3 +1208,70 @@ figura en ~US$5/mes, que es Hobby y es pago, pero eso está inferido de la tabla
 de costos de §6, **no verificado contra la cuenta**. Va junto con el paso 2, con
 el plan confirmado antes de tocarlo — no se cambia la política de reinicio del
 proceso que corre los crons de plata sobre una inferencia.
+
+---
+
+## 15. M-5, segunda mitad: el candado enchufado — 2026-08-26
+
+La primera mitad (§14) dejó el `GET /health` andando dentro del proceso de
+workers, pero **Railway todavía no lo consultaba**. Faltaba el dato que no se
+podía saber sin deployar: contra qué puerto sondear.
+
+### El puerto, medido y no supuesto
+
+Deploy `f11dc5ee` (commit `36d836a7`, 2026-08-26 17:31 UTC), logs de Railway:
+
+```
+2026-08-26T17:32:13.733Z  info  health server listening
+    module = "health-server"
+    port   = 8080
+```
+
+8080 es el default del código, o sea que **Railway hoy no define `PORT`** en
+este servicio (se confirma aparte: la lista de variables del servicio tiene 17
+nombres y `PORT` no está entre ellos).
+
+La documentación de Railway dice que el healthcheck se hace *"against the `PORT`
+variable it injects, so listen on it"*. `healthPort()` usa esa variable cuando
+existe y cae a 8080 cuando no, que es también el default de Railway. Los dos
+caminos coinciden solos, y por eso **el `railway.toml` no fija un número**:
+escribirlo ahí los desalinearía el día que Railway empiece a inyectarlo.
+
+### Lo que se agregó
+
+```toml
+healthcheckPath = "/health"
+```
+
+Nada más. Con eso, cada deploy nuevo tiene que contestar 200 —los dos pools y
+pg-boss vivos— para entrar. Si no contesta, Railway marca el deploy como fallido
+y **el anterior sigue corriendo**: el modo de falla es "el cambio no entra",
+nunca "producción se cae". La reversión es borrar esa línea.
+
+Queda una verificación que solo existe del otro lado: **que el próximo deploy
+efectivamente entre**. Si quedara en `FAILED` con el worker viejo sirviendo, el
+diagnóstico es el puerto y la línea se saca.
+
+### El tope de reinicios: se deja como está, y no por falta de plata
+
+§14 lo dejó planteado como "subir a `ALWAYS` con el plan confirmado". Consultada
+la documentación de Railway (`deployments/restart-policy`):
+
+> Users on the Free plan and those trialing the platform have some limitations
+> on the restart policy: `Always` is not available. `On Failure` is limited to 10
+> restarts.
+
+O sea que la configuración actual (`ON_FAILURE` / 10) es exactamente el techo del
+plan gratuito, y el plan de la cuenta **sigue sin verificarse** — la API de
+Railway no lo expone y no se va a inferir de la tabla de costos otra vez.
+
+Pero el punto de fondo cambió al mirarlo de cerca: `ALWAYS` agrega **un solo
+caso** sobre lo que ya hay — que el proceso termine con código 0 sin que nadie
+se lo pida. Todo lo demás (crash, excepción sin capturar, el `process.exit(1)`
+del arranque cuando falta una variable) ya lo cubre `ON_FAILURE`. Y el agujero
+que realmente dolió el 25/8 no era que no reiniciara: era que **nadie avisó**
+durante horas. Eso no lo arregla ninguna política de reinicio; lo arregla P-12.
+
+Así que M-5 se cierra con el healthcheck, y el tope de 10 queda documentado como
+decisión, no como pendiente. Si algún día se ve una undécima caída seguida, ahí
+sí se revisa el plan.

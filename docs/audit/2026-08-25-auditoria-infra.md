@@ -790,3 +790,87 @@ invalidan el cache de disponibilidad** (`invalidateAvailSearch` solo se llama de
 `src/modules/bookings/*`, que es camino web). Un turno liberado por vencimiento de seña puede
 seguir apareciendo ocupado en la búsqueda pública hasta que expire el TTL. No se toca acá porque
 la decisión —invalidar desde el worker o bajar el TTL— es de producto.
+
+---
+
+## 9. El lado Vercel, auditado desde adentro de la app — 2026-08-26
+
+`GET /api/admin/system-status?probes=1`, como super-admin, contra las variables que Vercel tiene
+cargadas de verdad:
+
+| Sonda | Resultado |
+|---|---|
+| `mp-oauth` (Checkout Pro) | ✅ credenciales aceptadas |
+| `mp-master-token` (Suscripciones) | ✅ cuenta 381048203 (FEIJOOLAZARO) |
+| `resend` | ✅ `turnogol.app=verified` |
+| **`r2-bucket`** | 🔴 **credenciales rechazadas (HTTP 401)** |
+| `r2-public-domain` | ✅ `https://media.turnogol.app` responde |
+| `supabase-keys` | ✅ service_role con privilegios de admin, anon de este proyecto |
+| `upstash` | ✅ escritura y lectura confirmadas |
+| `impersonation-secret` | ✅ firma y rechaza como corresponde |
+| `vapid-pair` | ✅ la pública se deriva de la privada |
+
+### 9.1 🔴 R2: subir una imagen falla hoy
+
+`HeadBucket` devuelve **401**, o sea credenciales rechazadas — no 404, que sería nombre de bucket
+equivocado. Los dos buckets existen en Cloudflare (`turnogol-media`, `turnogol-dev`), así que lo
+que está mal es la clave, el secreto o el `R2_ACCOUNT_ID` cargados en Vercel.
+
+Consecuencia: logo del complejo, portada y fotos de cancha **no se pueden subir**. Coherente con
+los datos — en producción no hay una sola fila con `logo_url`, `cover_url` ni fotos de cancha:
+`SELECT count(*) FROM courts WHERE array_length(photos,1) > 0` da 0. Nunca funcionó; no es una
+regresión.
+
+No se puede arreglar desde acá: los valores de Vercel no se leen ni se escriben desde afuera.
+Requiere generar un token de API de R2 con permiso de lectura/escritura de objetos sobre
+`turnogol-media` y cargar los tres valores en Vercel. La sonda lo confirma en el acto.
+
+### 9.2 El super-admin estaba dado a medias
+
+El panel `/super-admin` no lo podía abrir **nadie**. El guard es un triple chequeo (claim del JWT +
+fila activa en `system_admins` + allowlist `SYSTEM_ADMIN_EMAILS`) y fallaba en el primero: la fila
+de `lazarofeijoo2004@gmail.com` estaba activa desde antes, pero el usuario de autenticación nunca
+recibió `app_metadata.is_system_admin` — lo escribe sólo `scripts/seed-system-admin.ts`, y por
+diseño no hay superficie HTTP para auto-promoverse. Se completó el claim (`is_system_admin` +
+`system_admin_id`) preservando el resto de la identidad, y con eso el panel abre.
+
+### 9.3 El panel decía `lastHealthPing: null` con 141 latidos vivos
+
+Encontrado mientras se leía la respuesta de arriba. `pgboss.job` tenía 141 health-pings completados
+—el último 20 segundos antes de la consulta— y el endpoint devolvía `null`.
+
+Causa: **drizzle muta los type parsers de la instancia de postgres-js que envuelve**, así que un
+`timestamptz` vuelve como string incluso desde un `sql` crudo sobre esa misma instancia. Reproducido
+contra producción con las variables reales:
+
+```
+SIN drizzle  -> object | Date   | 2026-08-26T01:00:38.874Z
+CON drizzle  -> string | String | 2026-08-26 01:00:38.874173+00
+toISOString() EXPLOTA: r2[0].last.toISOString is not a function
+```
+
+El código anotaba `Date` y llamaba `.toISOString()`: `TypeError`, tragado por un `catch` mudo. El
+`catch` ahora manda el error a Sentry: degradar a `null` está bien, hacerlo en silencio es como se
+escondió esto.
+
+**`/api/status` no estaba afectado** —envuelve en `new Date(...)` antes de restar—, así que el
+dead-man's switch de P-12 siguió funcionando todo este tiempo.
+
+### 9.4 La misma clase, buscada en todo el repo
+
+El candado que ya existía para esto (`tests/unit/raw-sql-row-shape.test.ts`) no lo detectó por dos
+motivos, los dos corregidos:
+
+1. No miraba los templates de porsager (`sql<{ … }[]>`), sólo `tx.execute<…>` y `as unknown as`.
+2. Su regex sólo funcionaba con tipos **multilínea**. La primera versión de la extensión dio verde
+   sobre el bug que decía cubrir; se descubrió con un control negativo, no leyendo el código.
+
+Ampliado, el barrido encontró **una infracción más con consecuencia real**:
+`countPendingRefunds` (`refund.service.ts`) declaraba `oldestAt: Date` sobre SQL crudo, y ese valor
+llega hasta `sortAttentionItems`, que hace `a.since.getTime()`. Con una devolución pendiente y otro
+ítem de atención en la misma lista, el inicio del panel reventaba. Hay **2 devoluciones pendientes
+reales** en producción (complejo titi, la más vieja del 22/8).
+
+Los otros dos casos que aparecieron (`paid-period.guard.ts`, `canteen-report.service.ts`) declaran
+`Date | string` y envuelven en `new Date(...)`: son correctos, y el candado ahora los exime a
+propósito — un candado ruidoso sobre código sano termina desactivado.

@@ -34,7 +34,7 @@ export async function getOrCreatePlayer(
   const agreed = opts.agreedToTerms === true
   const termsVersion = opts.termsVersion ?? CURRENT_TERMS_VERSION
 
-  const existing = await sql<{ id: string; agreed_to_terms_at: Date | null }[]>`
+  const existing = await sql<{ id: string; agreed_to_terms_at: string | null }[]>`
     SELECT id, agreed_to_terms_at FROM players WHERE email = ${lower} LIMIT 1
   `
   if (existing.length > 0) {
@@ -52,7 +52,7 @@ export async function getOrCreatePlayer(
     return { id: row.id, wasCreated: false, hasAgreedTerms }
   }
 
-  const created = await sql<{ id: string; agreed_to_terms_at: Date | null }[]>`
+  const created = await sql<{ id: string; agreed_to_terms_at: string | null }[]>`
     INSERT INTO players (email, first_name, last_name, phone, agreed_to_terms_at, terms_version, last_login_at)
     VALUES (
       ${lower}, ${firstName}, ${lastName}, ${opts.phone ?? null},

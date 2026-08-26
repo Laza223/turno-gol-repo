@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { withAuth } from '@/server/middleware/with-auth'
 import { getSql } from '@/shared/db/client'
+import { runCredentialProbes, type ProbeResult } from '@/shared/observability/credential-probes'
 import { getBoss } from '@/shared/jobs/boss'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
 import { forbidden } from '@/shared/api-error'
@@ -13,6 +14,8 @@ export const runtime = 'nodejs'
 export type QueueDepth = { queue: string; depth: number | null }
 
 export type SystemStatus = {
+  /** Sondas de credenciales; `null` salvo que se pida `?probes=1`. */
+  credentials?: ProbeResult[] | null
   db: { status: 'ok' | 'down'; latencyMs: number | null }
   pgboss: { queues: QueueDepth[] }
   lastHealthPing: string | null // ISO; null si no se pudo leer
@@ -108,10 +111,27 @@ export const GET = withAuth(async (_req, user): Promise<NextResponse> => {
   }
 
   const [db, pgboss, ping] = await Promise.all([checkDb(), checkQueues(), lastHealthPing()])
+
+  // `?probes=1` corre las sondas de credenciales CONTRA LAS VARIABLES REALES:
+  // las que Vercel tiene cargadas en este runtime, no las de un `.env` local que
+  // puede estar viejo. Es la única forma de auditar lo que de verdad usa la app,
+  // porque los valores de Vercel no se pueden leer desde afuera.
+  //
+  // Va detrás de un parámetro y no siempre porque son ~7 llamadas de red a
+  // terceros (MercadoPago, Resend, R2, Supabase, Upstash): en cada carga del
+  // panel serían latencia y consumo de rate-limit ajeno para nada.
+  //
+  // No filtra secretos: `ProbeResult.detail` trae identificadores de cuenta o
+  // recurso, nunca el valor. Igual queda detrás del guard de superadmin, que ya
+  // protege todo este endpoint.
+  const runProbes = new URL(_req.url).searchParams.get('probes') === '1'
+  const credentials = runProbes ? await runCredentialProbes() : null
+
   const payload: SystemStatus = {
     db,
     pgboss,
     lastHealthPing: ping,
+    credentials,
     timestamp: new Date().toISOString(),
   }
   return NextResponse.json({ data: payload })

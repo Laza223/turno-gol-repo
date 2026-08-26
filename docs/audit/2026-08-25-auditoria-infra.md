@@ -62,7 +62,7 @@ job de pg-boss.
 | # | Hallazgo | Evidencia | Impacto |
 |---|---|---|---|
 | **C-1** | **`www.turnogol.app` tira error de certificado.** El registro DNS existe y apunta a Vercel, pero el dominio **no está dado de alta en el proyecto** (Vercel solo lista `turnogol.app`) | `curl https://www.turnogol.app/` → `schannel: SNI or certificate check failed: SEC_E_WRONG_PRINCIPAL`. Panel → Domains: un solo dominio | Cualquiera que escriba "www" ve la pantalla roja de "conexión no privada" del navegador. Para un producto que se vende por boca en boca, es el peor error posible |
-| **C-2** | **El pooler acepta conexiones sin cifrar, desde cualquier IP — MEDIDO, no inferido** | Supabase → Database Settings → *Enforce SSL* = **OFF**; *Network restrictions* = "Your database can be accessed by all IP addresses". **Medición (`pg_stat_ssl`)**: las conexiones de `turnogol_app` y `turnogol_worker` llegan a Postgres **sin TLS**… pero llegan desde Supavisor (`application_name = 'Supavisor'`, `client_addr` privada de la red de Supabase), o sea que **eso es el salto interno pooler→Postgres, no el salto app→pooler**, que es el que cruza internet y que `pg_stat_ssl` no puede ver | Queda por saber si NUESTROS clientes usan TLS (los DSN están encriptados en los paneles). Lo que ya no está en duda es que el canal admite texto plano. **Y prender el enforce no es el clic inocuo que decía la primera versión de este documento**: si algún DSN nuestro va sin `sslmode`, el interruptor corta producción en el acto |
+| **C-2** ✅ | **El pooler aceptaba conexiones sin cifrar — CERRADO el 2026-08-26** (§12). Lo de "desde cualquier IP" sigue abierto y es otro problema | Supabase → Database Settings → *Enforce SSL* = **OFF**; *Network restrictions* = "Your database can be accessed by all IP addresses". **Medición (`pg_stat_ssl`)**: las conexiones de `turnogol_app` y `turnogol_worker` llegan a Postgres **sin TLS**… pero llegan desde Supavisor (`application_name = 'Supavisor'`, `client_addr` privada de la red de Supabase), o sea que **eso es el salto interno pooler→Postgres, no el salto app→pooler**, que es el que cruza internet y que `pg_stat_ssl` no puede ver | Queda por saber si NUESTROS clientes usan TLS (los DSN están encriptados en los paneles). Lo que ya no está en duda es que el canal admite texto plano. **Y prender el enforce no es el clic inocuo que decía la primera versión de este documento**: si algún DSN nuestro va sin `sslmode`, el interruptor corta producción en el acto |
 | **C-4** | **La cuenta de Cloudflare no tiene segundo factor** | Perfil → Autenticación → *Autenticación de dos factores*: **Inactivos** | Es la cuenta que manda sobre el DNS de `turnogol.app`. Quien entre puede apuntar el dominio a donde quiera, emitir certificados a nombre tuyo, agregar un MX y quedarse con el correo, y borrar el bucket de imágenes. Es el único punto del stack donde una sola credencial robada se lleva todo |
 | **C-5** ⏸️ | **Un token de OTRO proyecto tiene poder total sobre este** — *riesgo aceptado por el dueño el 2026-08-25* | Perfil → Tokens de API: `elite-padel build token`, **Todas las zonas**, +21 permisos, sin fecha de expiración (emitido 26/02/2026). En R2 → Tokens: el mismo token figura como **Todos los buckets · Administrador de lectura y escritura** | Si ese token se filtra desde el CI de Elite Padel —un log, un fork, un `.env` commiteado— el que lo tenga puede cambiar el DNS de TurnoGol y borrar `turnogol-media` entero. Los tokens propios de TurnoGol sí están bien acotados; el problema es este. **Decisión del dueño**: no se toca — el token es de la landing de un cliente y no vale el riesgo de romperle el deploy. Queda anotado que el riesgo corre al revés de lo que sugiere la importancia de cada proyecto: el permiso vive en el repo con MENOS escrutinio y alcanza al que tiene la plata. Si alguna vez se toca ese build, aprovechar para acotarlo |
 | **C-3** ✅ | **Preview corría con secretos de producción — CONFIRMADO Y CERRADO el 2026-08-26** (§10) | Vercel → Environment Variables: Preview tiene `MP_TURNOGOL_ACCESS_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `R2_*`, `RESEND_API_KEY`, `MP_CLIENT_SECRET` | Ya no es condicional: **el `DATABASE_URL` de Preview ES el de producción**, medido — un preview devolvió los complejos reales por `/api/public/search`. Cada push a cualquier rama levantaba una app con la base real, el token que cobra, la clave que manda mail y credenciales de escritura sobre las imágenes. **Cerrado apagando los previews** (`ignoreCommand` en `vercel.json`), no mitigándolos |
@@ -1002,3 +1002,53 @@ los dos runtimes. Falta el paso que necesita el panel:
 2. Verificar en el acto: `/api/status` sigue en 200 y el health-ping del worker
    sigue avanzando. Si algo iba sin cifrar, falla ahí y se revierte con un clic.
 3. Aparte y sin relación con TLS: *Network restrictions* sigue en "todas las IP".
+
+---
+
+## 12. C-2 cerrado: el canal a la base va cifrado, y esta vez se probó — 2026-08-26
+
+*Enforce SSL* prendido en Supabase → Database Settings, con el arreglo de §11 ya
+deployado en Vercel y en Railway.
+
+### La medición
+
+La misma sonda que había medido el problema, corrida de nuevo. Intenta hablar
+**en claro** con el pooler usando una contraseña deliberadamente inválida: la
+autenticación ocurre DESPUÉS de establecer el canal, así que si el servidor
+llega a contestar "contraseña incorrecta", el canal sin cifrar se aceptó.
+
+```
+5432  ssl=false  ->  XX000 (ESSLREQUIRED) SSL connection is required for user: postgres
+6543  ssl=false  ->  XX000 (ESSLREQUIRED) SSL connection is required for user: postgres
+6543  ssl=on     ->  28P01 password authentication failed for user "postgres"
+```
+
+Antes del interruptor, la fila de arriba daba **`28P01`**. Ahora el rechazo llega
+**antes** de mirar la contraseña. Y la tercera línea es el control positivo que
+le falta a la mitad de las verificaciones de seguridad: con TLS el canal sigue
+abierto y lo único que falla es la contraseña inventada — o sea que el cambio
+cortó lo que tenía que cortar y nada más.
+
+### Producción, en el mismo momento
+
+| Qué | Resultado |
+|---|---|
+| `GET https://turnogol.app/api/status` | 200 `{"status":"ok"}` — y ese semáforo exige que TODOS los checks pasen, incluido el de pg-boss, que era el cliente sospechado de ir en claro |
+| `GET /api/public/search` (pega a la base por el pool de la app) | 200 con los dos complejos |
+| Último `health-ping` del worker de Railway | **1 minuto atrás**, ya con el enforce puesto (142 en `pgboss.job`) |
+
+Los tres runtimes que tocan la base —el pool de la app, el pool worker y
+pg-boss— siguieron funcionando. Si alguno hubiera ido sin cifrar, se habría
+caído en el acto.
+
+### Lo que NO cierra: *Network restrictions*
+
+Sigue en "todas las IP", y **no es lo mismo que el TLS**: una cosa es que el
+canal vaya cifrado y otra es desde dónde se acepta abrirlo.
+
+Queda abierto **a sabiendas, no por olvido**: la app corre en lambdas de Vercel,
+que no tienen IP de salida fija fuera de los planes Enterprise (Secure Compute),
+y el worker corre en Railway. Una allowlist de IPs hoy le cortaría el acceso a
+nuestra propia app. Lo que sí queda como mitigación real es lo que ya está: la
+contraseña del rol, el TLS obligatorio, y RLS con `turnogol_app` como rol
+restringido.

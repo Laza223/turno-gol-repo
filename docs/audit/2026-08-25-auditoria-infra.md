@@ -57,13 +57,26 @@ job de pg-boss.
 
 ## 2. Matriz de riesgos
 
+> **Cómo leer esta matriz.** Un ✅ en el número significa cerrado **y verificado**,
+> con la evidencia en la celda. Sin ✅ está abierto.
+>
+> Esto no era así hasta el 2026-08-26: la matriz se escribió el 25/8 y varias
+> correcciones se hicieron ese mismo día sin volver a tocarla, así que quedó
+> marcando como abiertos C-1, C-4, M-11 y M-12, que ya estaban resueltos. El
+> costo fue real —se le pidió al dueño prender un 2FA que ya estaba prendido— y
+> la causa vale más que la corrección: **un informe que dice "cerrado" en un
+> lugar y "abierto" en otro no es un informe, es dos**. Los cuatro se
+> re-verificaron contra la plataforma antes de marcarlos, no contra el mensaje
+> de commit que decía que estaban hechos.
+
+
 ### 🔴 Crítico
 
 | # | Hallazgo | Evidencia | Impacto |
 |---|---|---|---|
-| **C-1** | **`www.turnogol.app` tira error de certificado.** El registro DNS existe y apunta a Vercel, pero el dominio **no está dado de alta en el proyecto** (Vercel solo lista `turnogol.app`) | `curl https://www.turnogol.app/` → `schannel: SNI or certificate check failed: SEC_E_WRONG_PRINCIPAL`. Panel → Domains: un solo dominio | Cualquiera que escriba "www" ve la pantalla roja de "conexión no privada" del navegador. Para un producto que se vende por boca en boca, es el peor error posible |
+| **C-1** ✅ | **`www.turnogol.app` tiraba error de certificado — CERRADO el 2026-08-25.** Re-verificado el 2026-08-26: `curl` devuelve `308` a `https://turnogol.app/`, con certificado válido. El registro DNS existe y apunta a Vercel, pero el dominio **no está dado de alta en el proyecto** (Vercel solo lista `turnogol.app`) | `curl https://www.turnogol.app/` → `schannel: SNI or certificate check failed: SEC_E_WRONG_PRINCIPAL`. Panel → Domains: un solo dominio | Cualquiera que escriba "www" ve la pantalla roja de "conexión no privada" del navegador. Para un producto que se vende por boca en boca, es el peor error posible |
 | **C-2** ✅ | **El pooler aceptaba conexiones sin cifrar — CERRADO el 2026-08-26** (§12). Lo de "desde cualquier IP" sigue abierto y es otro problema | Supabase → Database Settings → *Enforce SSL* = **OFF**; *Network restrictions* = "Your database can be accessed by all IP addresses". **Medición (`pg_stat_ssl`)**: las conexiones de `turnogol_app` y `turnogol_worker` llegan a Postgres **sin TLS**… pero llegan desde Supavisor (`application_name = 'Supavisor'`, `client_addr` privada de la red de Supabase), o sea que **eso es el salto interno pooler→Postgres, no el salto app→pooler**, que es el que cruza internet y que `pg_stat_ssl` no puede ver | Queda por saber si NUESTROS clientes usan TLS (los DSN están encriptados en los paneles). Lo que ya no está en duda es que el canal admite texto plano. **Y prender el enforce no es el clic inocuo que decía la primera versión de este documento**: si algún DSN nuestro va sin `sslmode`, el interruptor corta producción en el acto |
-| **C-4** | **La cuenta de Cloudflare no tiene segundo factor** | Perfil → Autenticación → *Autenticación de dos factores*: **Inactivos** | Es la cuenta que manda sobre el DNS de `turnogol.app`. Quien entre puede apuntar el dominio a donde quiera, emitir certificados a nombre tuyo, agregar un MX y quedarse con el correo, y borrar el bucket de imágenes. Es el único punto del stack donde una sola credencial robada se lleva todo |
+| **C-4** ✅ | **La cuenta de Cloudflare no tenía segundo factor — CERRADO el 2026-08-25** | Re-verificado el 2026-08-26 contra el panel: *"La autenticación móvil de dos factores está activa"*, con TOTP configurado | Es la cuenta que manda sobre el DNS de `turnogol.app`. Quien entre puede apuntar el dominio a donde quiera, emitir certificados a nombre tuyo, agregar un MX y quedarse con el correo, y borrar el bucket de imágenes. Es el único punto del stack donde una sola credencial robada se lleva todo |
 | **C-5** ⏸️ | **Un token de OTRO proyecto tiene poder total sobre este** — *riesgo aceptado por el dueño el 2026-08-25* | Perfil → Tokens de API: `elite-padel build token`, **Todas las zonas**, +21 permisos, sin fecha de expiración (emitido 26/02/2026). En R2 → Tokens: el mismo token figura como **Todos los buckets · Administrador de lectura y escritura** | Si ese token se filtra desde el CI de Elite Padel —un log, un fork, un `.env` commiteado— el que lo tenga puede cambiar el DNS de TurnoGol y borrar `turnogol-media` entero. Los tokens propios de TurnoGol sí están bien acotados; el problema es este. **Decisión del dueño**: no se toca — el token es de la landing de un cliente y no vale el riesgo de romperle el deploy. Queda anotado que el riesgo corre al revés de lo que sugiere la importancia de cada proyecto: el permiso vive en el repo con MENOS escrutinio y alcanza al que tiene la plata. Si alguna vez se toca ese build, aprovechar para acotarlo |
 | **C-3** ✅ | **Preview corría con secretos de producción — CONFIRMADO Y CERRADO el 2026-08-26** (§10) | Vercel → Environment Variables: Preview tiene `MP_TURNOGOL_ACCESS_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `R2_*`, `RESEND_API_KEY`, `MP_CLIENT_SECRET` | Ya no es condicional: **el `DATABASE_URL` de Preview ES el de producción**, medido — un preview devolvió los complejos reales por `/api/public/search`. Cada push a cualquier rama levantaba una app con la base real, el token que cobra, la clave que manda mail y credenciales de escritura sobre las imágenes. **Cerrado apagando los previews** (`ignoreCommand` en `vercel.json`), no mitigándolos |
 
@@ -150,11 +163,11 @@ los de Railway estén mal.
 | **M-8** ◐ | **DMARC en `p=none` y sin dirección de reportes** — *mitad hecha el 2026-08-25* | El TXT pasó a `"v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"`, resuelto contra `8.8.8.8`. Para que ese buzón exista se prendió **Cloudflare Email Routing** en la zona: destino `turnogol@gmail.com` **Verificado**, regla `dmarc@turnogol.app → turnogol@gmail.com` **Activa**, y los 5 registros que pide el servicio creados en el apex (3 MX `route{1,2,3}.mx.cloudflare.net`, el DKIM `cf2024-1._domainkey` y un `v=spf1 include:_spf.mx.cloudflare.net ~all`), todos resueltos por DNS. Estado del servicio: *Activado / Registros DNS Activado* | El correo saliente NO se toca: el Return-Path de Resend es `send.turnogol.app` con su propio SPF, y el DKIM `resend._domainkey.turnogol.app` firma con `d=turnogol.app`, así que la alineación DMARC sigue viniendo por DKIM. **Falta**: juntar dos semanas de reportes y recién ahí pasar a `p=quarantine`. **Sin verificar end-to-end**: no se mandó un mail de prueba a `dmarc@turnogol.app`; el primer reporte real (24-48 h) es la prueba |
 | **M-9** ◐ | Vercel Firewall **sin una sola regla propia** — *parcialmente cerrado el 2026-08-25, ver §5.1* | Panel → Firewall → Rules: solo "System Rule". Tráfico del período: 977 permitidos, 134 denegados, 7 desafiados | El rate-limit de la app vive en el runtime (Upstash): cada request abusiva ya gastó una función. Los caminos de plata (`/api/webhooks/*`, `/api/public/*`, login) deberían frenarse en el borde |
 | **M-10** | CSP con `script-src 'unsafe-inline'` en producción | Header medido en `https://turnogol.app/` | Anula buena parte de la defensa contra XSS. Next 16 soporta nonces por middleware |
-| **M-11** | Un secreto de más en el runtime de Vercel | `SENTRY_READ_TOKEN` en Production y Preview | Solo lo lee `scripts/sentry-issues.ts`, que corre local contra `.env.production`. **Corrección respecto de la primera versión de este documento**: `SENTRY_AUTH_TOKEN` NO sobra — `next.config.ts:125` se lo pasa a `withSentryConfig` para subir los sourcemaps, así que el build lo necesita y se queda |
+| **M-11** ✅ | Un secreto de más en el runtime de Vercel — *cerrado el 2026-08-25, ver paso 3* | `SENTRY_READ_TOKEN` en Production y Preview | Solo lo lee `scripts/sentry-issues.ts`, que corre local contra `.env.production`. **Corrección respecto de la primera versión de este documento**: `SENTRY_AUTH_TOKEN` NO sobra — `next.config.ts:125` se lo pasa a `withSentryConfig` para subir los sourcemaps, así que el build lo necesita y se queda |
 | **M-13** ✅ | El dominio de las imágenes aceptaba **TLS 1.0** — *corregido el 2026-08-25* | R2 → `turnogol-media` → Dominios personalizados: `media.turnogol.app`, *TLS mínimo* pasó de **1.0** a **1.2**. Verificado en el cable: `curl --tls-max 1.0` no completa el handshake, `curl --tlsv1.2` responde 404 (el dominio vive; el 404 es porque el bucket está vacío) | TLS 1.0 está roto y deprecado desde 2021 |
 | **M-14** 🟢 | **Las imágenes no tienen backup — pero hoy no hay imágenes** | R2 → `turnogol-media`: *Tamaño del bucket* = **0 B**, cero objetos ("Tu bucket está listo. Agrega archivos para comenzar"). Contrastado contra la base de producción: `tenants.logo_url`/`cover_url` NULL en los 2 complejos, `courts.photos` vacío en las 4 canchas, `players.avatar_url` NULL en los 3 jugadores | Degradado de 🟡 a 🟢: no hay nada que perder todavía. **Y el remedio que este mismo informe proponía era el equivocado**: una *regla de bloqueo de bucket* vuelve los objetos inmutables durante la retención, y la app borra objetos en el uso normal (`deleteImage` en `src/shared/storage/r2.ts:78`, llamada al reemplazar logo/portada en `settings/perfil/actions.ts:33,114` y foto de cancha en `settings/canchas/actions.ts:318`) — o sea que la habría roto: cambiar el logo empezaría a fallar. Cuando haya contenido real, el backup va por otro lado (copia programada a un segundo bucket o a otro proveedor), no por bucket lock |
 | **M-15** ✅ | **Alertas de seguridad apagadas en el registrador** — *corregido el 2026-08-25* | Namecheap → Profile → Security → Alerts: pasó de **OFF** a las tres categorías en **ON** (*Account Access* = login/password/recuperación · *Account Contacts* = email y dirección primaria · *Domain Names* = contactos WHOIS y host records), con destino `lazarofeijoo2004@gmail.com`. Verificado recargando la página de cero, no contra el cartel de éxito | Si alguien cambia los nameservers o pide una transferencia del dominio, ahora llega un mail. Es la alarma del activo más difícil de recuperar |
-| **M-12** | Protección de contraseñas filtradas **apagada** en Supabase Auth | Advisor `auth_leaked_password_protection` | El staff entra con email+password. Prenderlo (chequeo contra HaveIBeenPwned) es gratis y de un click |
+| **M-12** ✅ | Protección de contraseñas filtradas **apagada** en Supabase Auth — *cerrado el 2026-08-25, ver paso 2* | Advisor `auth_leaked_password_protection` | El staff entra con email+password. Prenderlo (chequeo contra HaveIBeenPwned) es gratis y de un click |
 
 ### 🟢 Bajo
 
@@ -249,7 +262,7 @@ arregla en minutos y no puede romper nada.
 Estas dos entraron después y van **antes** que el resto: son las únicas donde una
 sola credencial robada se lleva el producto entero.
 
-14. **Prender 2FA en la cuenta de Cloudflare.** Cierra C-4. Cinco minutos.
+14. ✅ **HECHO el 2026-08-25 — 2FA prendido en Cloudflare.** Re-verificado el 2026-08-26 contra el panel. **C-4 cerrado.**
 15. ~~**Acotar o borrar el `elite-padel build token`.**~~ **Riesgo aceptado por el dueño**
     (2026-08-25): es el token de la landing de un cliente y no se toca para no romperle el
     deploy. Si esa landing se vuelve a tocar, ahí se acota a su propia zona y bucket.
@@ -301,7 +314,7 @@ Al encontrar C-4 valía preguntarse dónde más pasa lo mismo:
 
 | Cuenta | 2FA |
 |---|---|
-| **Cloudflare** | 🔴 **Apagado** |
+| **Cloudflare** | ✅ TOTP — *estaba apagado cuando se hizo esta barrida; se prendió el mismo día* |
 | GitHub | ✅ TOTP + GitHub Mobile |
 | Namecheap | ✅ TOTP (pero con las alertas de seguridad apagadas, ver M-15) |
 | Vercel | ✅ TOTP |

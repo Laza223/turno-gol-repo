@@ -1,4 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["gru1"]
+  "regions": ["gru1"],
+  "ignoreCommand": "if [ \"$VERCEL_ENV\" = preview ]; then echo 'Preview deshabilitado a proposito: corria con las variables de PRODUCCION. Ver docs/decisions/2026-08-26-preview-deshabilitado.md'; exit 0; fi; exit 1"
 }

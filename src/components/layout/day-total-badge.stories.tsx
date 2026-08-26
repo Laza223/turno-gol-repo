@@ -98,10 +98,14 @@ export const DiaEnCero: Story = {
 }
 
 /**
- * El endpoint falla (rate limit, corte, sesión vencida). Se queda el
- * placeholder y NO se pinta un error en la barra de navegación: el número no es
- * accionable al segundo y el próximo pedido lo corrige. Lo que no puede pasar es
+ * El endpoint falla. Se queda el placeholder y NO se pinta un error en la barra
+ * de navegación: el número no es accionable al segundo. Lo que no puede pasar es
  * mostrar un monto inventado.
+ *
+ * Acá el mock devuelve 500 SIEMPRE, así que se ve el peor caso. En la vida real
+ * un 500 se reintenta solo a los 1, 3, 8 y 20 segundos, y basta con que uno de
+ * esos entre para que el número aparezca sin esperar el ciclo de un minuto (ver
+ * `day-total-badge-retry.test.tsx`, que sí puede scriptear el reloj).
  */
 export const EndpointCaido: Story = {
   parameters: {

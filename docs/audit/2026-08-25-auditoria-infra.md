@@ -1275,3 +1275,59 @@ durante horas. Eso no lo arregla ninguna política de reinicio; lo arregla P-12.
 Así que M-5 se cierra con el healthcheck, y el tope de 10 queda documentado como
 decisión, no como pendiente. Si algún día se ve una undécima caída seguida, ahí
 sí se revisa el plan.
+
+---
+
+## 16. El monitoreo externo, re-verificado: está vivo — 2026-08-26
+
+§15 cerró M-5 diciendo que el candado de deploy no reemplaza al monitor
+continuo, y que ese monitor es P-12. Al ir a buscarlo apareció una duda: la
+matriz dice *"hoy lo tapa UptimeRobot (P-12)"* y el registro de la sesión que
+ejecutó P-12 abre diciendo que **no llegó ninguna alerta**.
+
+No había contradicción: el registro describe el hallazgo del 24/8 y más abajo
+documenta que se cerró **ese mismo día**. La matriz tenía razón. Pero la duda
+valía la pena, porque el arreglo tiene **tres eslabones** y basta que uno se
+haya soltado para que todo el mecanismo sea decorativo. Medidos hoy, los tres:
+
+**1. El worker late.** Último `health-ping` completado **hace 1 minuto**; 136
+pings vivos en `pgboss.job`.
+
+**2. `/api/status` puede leer ese latido.** Este es el eslabón que podía estar
+roto en silencio: `checkWorkerHeartbeat` hace *fail-open* si no puede leer
+—devuelve `ok` con la nota "could not read heartbeat"—, y el rol de la app tiene
+prohibido introspeccionar el schema de pg-boss para otras cosas. Si también le
+faltara el `SELECT`, el semáforo diría verde para siempre con el worker muerto y
+nadie se enteraría. No es el caso:
+
+```sql
+has_schema_privilege('turnogol_app','pgboss','USAGE')         -> true
+has_table_privilege ('turnogol_app','pgboss.job','SELECT')    -> true
+has_table_privilege ('turnogol_app','pgboss.archive','SELECT')-> true
+pg_class.relrowsecurity de pgboss.job                         -> false
+```
+
+**3. El monitor externo sigue pegando.** Conteo de requests de producción de las
+últimas 3 horas, agrupado por ruta:
+
+| ruta | requests en 3 h |
+|---|---|
+| `/` | 38 |
+| `/api/status` | 35 |
+| `/terminos` | 2 |
+
+~12 por hora en cada una de las dos rutas monitoreadas = **un chequeo cada 5
+minutos por monitor**, que es exactamente la configuración del plan gratuito
+dada de alta el 24/8. El contraste con el día del hallazgo es el dato: entonces
+`/api/status` recibió **2 requests en 45 minutos, y los dos eran de la prueba**.
+
+### Lo que sigue sin prueba directa
+
+Que el 503 **realmente aparezca** con el worker caído más de 15 minutos. Los tres
+eslabones están verificados por separado y la alerta de UptimeRobot se probó de
+punta a punta el 24/8 (con un monitor contra una ruta inexistente: detectó en
+65 s y el mail llegó), pero la cadena completa —worker muerto → latido viejo →
+503 → mail— exige parar el worker ese rato en producción. Es barato en daño
+(una caída del worker retrasa trabajo, no lo pierde: el 24/8 drenó 26 jobs en
+menos de 2 minutos, 0 fallidos) y queda como prueba a pedido, no como pendiente
+silencioso.

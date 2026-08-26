@@ -65,7 +65,7 @@ job de pg-boss.
 | **C-2** | **El pooler acepta conexiones sin cifrar, desde cualquier IP — MEDIDO, no inferido** | Supabase → Database Settings → *Enforce SSL* = **OFF**; *Network restrictions* = "Your database can be accessed by all IP addresses". **Medición (`pg_stat_ssl`)**: las conexiones de `turnogol_app` y `turnogol_worker` llegan a Postgres **sin TLS**… pero llegan desde Supavisor (`application_name = 'Supavisor'`, `client_addr` privada de la red de Supabase), o sea que **eso es el salto interno pooler→Postgres, no el salto app→pooler**, que es el que cruza internet y que `pg_stat_ssl` no puede ver | Queda por saber si NUESTROS clientes usan TLS (los DSN están encriptados en los paneles). Lo que ya no está en duda es que el canal admite texto plano. **Y prender el enforce no es el clic inocuo que decía la primera versión de este documento**: si algún DSN nuestro va sin `sslmode`, el interruptor corta producción en el acto |
 | **C-4** | **La cuenta de Cloudflare no tiene segundo factor** | Perfil → Autenticación → *Autenticación de dos factores*: **Inactivos** | Es la cuenta que manda sobre el DNS de `turnogol.app`. Quien entre puede apuntar el dominio a donde quiera, emitir certificados a nombre tuyo, agregar un MX y quedarse con el correo, y borrar el bucket de imágenes. Es el único punto del stack donde una sola credencial robada se lleva todo |
 | **C-5** ⏸️ | **Un token de OTRO proyecto tiene poder total sobre este** — *riesgo aceptado por el dueño el 2026-08-25* | Perfil → Tokens de API: `elite-padel build token`, **Todas las zonas**, +21 permisos, sin fecha de expiración (emitido 26/02/2026). En R2 → Tokens: el mismo token figura como **Todos los buckets · Administrador de lectura y escritura** | Si ese token se filtra desde el CI de Elite Padel —un log, un fork, un `.env` commiteado— el que lo tenga puede cambiar el DNS de TurnoGol y borrar `turnogol-media` entero. Los tokens propios de TurnoGol sí están bien acotados; el problema es este. **Decisión del dueño**: no se toca — el token es de la landing de un cliente y no vale el riesgo de romperle el deploy. Queda anotado que el riesgo corre al revés de lo que sugiere la importancia de cada proyecto: el permiso vive en el repo con MENOS escrutinio y alcanza al que tiene la plata. Si alguna vez se toca ese build, aprovechar para acotarlo |
-| **C-3** | **Preview corre con secretos de producción** — y hay que confirmar a qué base apunta | Vercel → Environment Variables: Preview tiene `MP_TURNOGOL_ACCESS_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `R2_*`, `RESEND_API_KEY`, `MP_CLIENT_SECRET` | Si `DATABASE_URL` de Preview es la de producción, cualquier deploy de PR escribe sobre datos reales y puede mover plata real. **Mitigación parcial ya activa**: SSO protection en todo lo que no sea dominio propio, así que los previews no son públicos |
+| **C-3** ✅ | **Preview corría con secretos de producción — CONFIRMADO Y CERRADO el 2026-08-26** (§10) | Vercel → Environment Variables: Preview tiene `MP_TURNOGOL_ACCESS_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `R2_*`, `RESEND_API_KEY`, `MP_CLIENT_SECRET` | Ya no es condicional: **el `DATABASE_URL` de Preview ES el de producción**, medido — un preview devolvió los complejos reales por `/api/public/search`. Cada push a cualquier rama levantaba una app con la base real, el token que cobra, la clave que manda mail y credenciales de escritura sobre las imágenes. **Cerrado apagando los previews** (`ignoreCommand` en `vercel.json`), no mitigándolos |
 
 #### La sonda que lo midió (reproducible, sin credenciales válidas)
 
@@ -214,7 +214,7 @@ arregla en minutos y no puede romper nada.
 
 ### Tanda 2 — necesita una verificación previa
 
-5. **Confirmar a qué base apunta `DATABASE_URL` de Preview.** Si es la de producción: crear un proyecto Supabase aparte para Preview, o al menos degradar los secretos de MercadoPago de Preview a credenciales de sandbox. Cierra C-3.
+5. ✅ **HECHO el 2026-08-26 — era la de producción.** Se midió, no se supuso: un preview devolvió los complejos reales. Se apagaron los previews con un `ignoreCommand` en `vercel.json` en vez de darles un entorno propio, porque nada del pipeline los usaba. **C-3 cerrado** — detalle en §10 y en `docs/decisions/2026-08-26-preview-deshabilitado.md`. Queda un resto manual: las variables de producción siguen CARGADAS en el entorno Preview de Vercel, aunque ya no se usen.
 6. **C-2, en tres pasos y no en uno.** (a) Mirar el valor de `DATABASE_URL` y `WORKER_DATABASE_URL` en Railway —el panel los muestra— y confirmar `sslmode=require`; (b) confirmar en la documentación de Supabase que el enforce no corta a Supavisor, que hoy entra sin TLS; (c) recién ahí prender el interruptor, en un horario de poco tráfico y sabiendo que se revierte con un clic.
 7. **Mover el worker de Railway a la región más cercana a São Paulo** disponible en el plan. Cierra M-4.
 8. **Endurecer DMARC**: primero `p=none` **con `rua=`** para juntar dos semanas de reportes, después `p=quarantine`. Cierra M-8.
@@ -685,9 +685,9 @@ Las de red viven en `launch-check.ts`, junto a las sondas de MercadoPago que ya 
   `http://localhost:3000` en `billing.service.ts`, y con eso el webhook de la suscripción SaaS
   nunca llega. Merece consolidarse en una sola variable, que es cambio de código y no de
   configuración.
-- **El entorno Preview de Vercel** sigue siendo el único 🔴 abierto de esta auditoría (C-3), y
-  ninguna sonda lo alcanza: los valores no se pueden leer y el gate corre contra el archivo de
-  env que uno le pase, no contra lo que Vercel tiene cargado.
+- **El entorno Preview de Vercel** era el único 🔴 abierto de esta auditoría (C-3). Ninguna sonda
+  lo alcanzaba —los valores no se pueden leer y el gate corre contra el archivo de env que uno le
+  pase—, así que se lo midió por el otro lado: pidiéndole datos a un preview. Cerrado, §10.
 
 ---
 
@@ -874,3 +874,67 @@ reales** en producción (complejo titi, la más vieja del 22/8).
 Los otros dos casos que aparecieron (`paid-period.guard.ts`, `canteen-report.service.ts`) declaran
 `Date | string` y envuelven en `new Date(...)`: son correctos, y el candado ahora los exime a
 propósito — un candado ruidoso sobre código sano termina desactivado.
+
+---
+
+## 10. C-3 cerrado: el Preview era producción con otro nombre — 2026-08-26
+
+### Cómo se midió, si los valores no se pueden leer
+
+Los secretos de Vercel no se leen desde afuera, así que en vez de preguntarle al
+panel se le preguntó **a un preview**. El deploy de la rama
+`fix/tipos-fecha-sql-crudo` sigue vivo; `/api/public/search` es público y de solo
+lectura, y devuelve los complejos cargados en la base a la que ese deploy esté
+conectado:
+
+```json
+{"results":[
+  {"id":"9fcb4ecc-c1f8-43e2-9a53-5f1e599eb1e6","slug":"complejo-elite-futbol", ...},
+  {"id":"fbeda410-39eb-4ed0-b248-2f732ad14d26","slug":"complejo-titi", ...}
+],"total":2}
+```
+
+Esos son los ids de producción. No queda margen de interpretación: **el
+`DATABASE_URL` del entorno Preview es el de producción.**
+
+El primer intento fue más indirecto —`/api/status` daba `ok`, y ese semáforo
+exige que TODOS los checks pasen, incluido el del latido del worker, que solo
+existe en la base de producción—. Servía como indicio, pero tiene dos ramas de
+fail-open (sin latidos registrados, o error al leerlos) que también devuelven
+`ok`. Se buscó la medición que no admite otra lectura antes de escribir nada.
+
+### Qué había realmente expuesto
+
+De los últimos 20 deploys del proyecto, **12 fueron de rama**. Cada uno corría
+con la base real, `MP_TURNOGOL_ACCESS_TOKEN` (cobra de verdad), `MP_CLIENT_SECRET`,
+`RESEND_API_KEY` (le manda mail a jugadores reales desde `turnogol.app`),
+`ENCRYPTION_KEY` y credenciales de R2 con permiso de borrado.
+
+El SSO de Vercel que ya estaba prendido tapa el agujero equivocado: impide que
+un tercero mire, no impide que una rama a medio hacer escriba, ni que uno pruebe
+un flujo de pago creyendo que es un sandbox.
+
+### El arreglo
+
+`vercel.json` gana un `ignoreCommand` que omite el build cuando —y solo
+cuando— `VERCEL_ENV` vale exactamente `preview`. El contrato de Vercel va al
+revés de la intuición (**exit 0 ignora, exit 1 buildea**), así que la condición
+está escrita para que **todo lo demás buildee**: el modo de falla tiene que ser
+"volvieron los previews", nunca "producción dejó de deployarse en silencio".
+Probado en las cuatro combinaciones antes de commitear, incluida la variable
+vacía.
+
+Se eligió apagarlos en vez de darles un entorno propio porque **nada del
+pipeline los usaba**: los tests corren en GitHub Actions, no hay crons de
+Vercel —o sea que un preview nunca ejecutaba nada solo, solo respondía si
+alguien lo visitaba— y durante toda esta auditoría se probó contra producción.
+El razonamiento completo, y qué habría que hacer para volver a prenderlos bien,
+está en `docs/decisions/2026-08-26-preview-deshabilitado.md`.
+
+### Lo que NO cierra
+
+Las variables de producción **siguen cargadas** en el entorno Preview de Vercel.
+Con los builds apagados ya no se usan, pero ahí están, y alcanza con volver a
+habilitar un preview para que se usen otra vez. Borrarlas es un paso manual en
+Vercel → Settings → Environment Variables, y conviene hacerlo: es la diferencia
+entre "no se usa" y "no está".

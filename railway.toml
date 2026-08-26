@@ -21,6 +21,27 @@ region = "us-east4-eqdc4a"
 numReplicas = 1
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+# Segunda mitad de M-5. Railway solo sabía si el proceso RESPIRA, y eso no
+# distingue "el worker trabaja" de "el worker está vivo y no puede hablar con la
+# base" — que es exactamente lo que pasó el 2026-08-25: arrancó bien, latió cada
+# 5 minutos durante horas, y todo `withTenantContext` fallaba.
+#
+# Con esto Railway consulta `GET /health` (src/shared/jobs/health-server.ts) en
+# CADA deploy nuevo y solo lo deja pasar si los dos pools y pg-boss responden.
+# Si no, marca el deploy como fallido y **el anterior sigue corriendo**: el modo
+# de falla es "el cambio no entra", nunca "producción se cae".
+#
+# El puerto no se escribe acá y no es un olvido: Railway sondea contra el `PORT`
+# que él inyecta, y `healthPort()` usa esa variable cuando existe. Hoy no la
+# define, así que el server cae a 8080 —verificado en el deploy 36d836a7:
+# `health server listening { port: 8080 }`— que es también el default de
+# Railway. Los dos caminos coinciden solos; fijar un número acá los desalinearía
+# el día que Railway empiece a inyectarlo.
+#
+# Sigue siendo un candado de DEPLOY, no un monitor continuo: si el worker se
+# muere una hora después, esto no se entera. Ese es P-12 (dead-man's switch),
+# que va aparte.
+healthcheckPath = "/health"
 
 # Variables de entorno (setear en el dashboard de Railway, NO acá):
 #   DATABASE_URL  -> hoy va por el POOLER de Supabase (:6543). El host directo

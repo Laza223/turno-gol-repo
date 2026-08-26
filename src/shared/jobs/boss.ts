@@ -1,6 +1,7 @@
 import PgBoss from 'pg-boss'
 import { logger } from '@/shared/lib/logger'
 import { pgConnectionConfig } from '@/shared/db/ssl'
+import { describeBossError } from './boss-error'
 
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
@@ -54,10 +55,10 @@ export async function getBoss(): Promise<PgBoss> {
     maintenanceIntervalSeconds: 120, // default real: applyMaintenanceConfig() → 120
   })
   boss.on('error', (err) => {
-    logger.error('pg-boss error', {
-      module: 'pg-boss',
-      error: err instanceof Error ? err.message : String(err),
-    })
+    // `describeBossError` y no `err.message`: pg-boss emite un OBJETO PLANO, no
+    // un Error, y el `String(err)` que había acá escribía `[object Object]` —
+    // tirando el message, el stack, y sobre todo QUÉ COLA se rompió.
+    logger.error('pg-boss error', { module: 'pg-boss', ...describeBossError(err) })
   })
   await boss.start()
   _boss = boss

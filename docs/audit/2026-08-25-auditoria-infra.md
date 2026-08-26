@@ -1052,3 +1052,75 @@ y el worker corre en Railway. Una allowlist de IPs hoy le cortaría el acceso a
 nuestra propia app. Lo que sí queda como mitigación real es lo que ya está: la
 contraseña del rol, el TLS obligatorio, y RLS con `turnogol_app` como rol
 restringido.
+
+---
+
+## 13. El motor de colas gritaba `[object Object]` — 2026-08-26
+
+Encontrado revisando los logs de Railway justo después de prender *Enforce SSL*,
+o sea buscando otra cosa.
+
+### Lo que se vio
+
+El worker recién deployado (`d402b0e7`) emitió **14 `pg-boss error` en 5
+segundos** —04:59:56 a 05:00:00— y después nada: `health.ping.ok` a las 05:00:20
+y la barrida de reconciliación corriendo normal. Los deploys anteriores
+arrancaban limpios, sin un solo error.
+
+Lo grave no es la ráfaga: es que **no se puede saber qué decía**. En el log de
+Railway y en Sentry (`SENTRY-COQUELICOT-SCHOOL-N`, 14 eventos) quedó esto y nada
+más:
+
+```
+Contexto:
+    error = [object Object]
+    message = pg-boss error
+    module = pg-boss
+```
+
+### La causa
+
+`manager.js:256` de pg-boss v9.0.3 **no emite un `Error`**, emite un objeto
+plano:
+
+```js
+this.emit(events.error, { ...error, message: error.message, stack: error.stack,
+                          queue: name, worker: id })
+```
+
+Y el handler decía `err instanceof Error ? err.message : String(err)`. Ese
+objeto no es un `Error`, así que caía en `String(...)`. El motor de colas —el
+que corre el dunning de suscripciones, la reconciliación de pagos y la
+generación de slots de abonados— tenía su **único** canal de error escribiendo
+una constante. Y el objeto traía justo lo que hacía falta: `message`, `stack`,
+`code`, y sobre todo **`queue` y `worker`**, que dicen cuál de los 15
+consumidores se rompió.
+
+### Sobre la ráfaga en sí
+
+La hipótesis razonable es que el toggle de *Enforce SSL* hace que Supavisor
+recargue y corte las conexiones abiertas; el pool de pg-boss las ve morir,
+protesta y reconecta. Encaja con la forma —ráfaga corta, silencio después,
+worker sano— pero **no está probada, y no se puede probar hacia atrás**: el
+contenido del error se perdió, que es exactamente el defecto que este cambio
+arregla. Queda anotado como hipótesis, no como conclusión.
+
+### El arreglo
+
+`src/shared/jobs/boss-error.ts` aplana las tres formas posibles (Error, objeto
+plano de pg-boss, cualquier otra cosa) a campos que el logger manda a Sentry
+como contexto.
+
+Dos decisiones que no son obvias:
+
+1. **Nunca vuelca el objeto entero.** Un error de Postgres arrastra el texto de
+   la query, que puede traer datos de una persona (Ley 25.326). Si no hay
+   `message`, informa las **claves** que venían — sirve para diagnosticar sin
+   copiar valores.
+2. **Nunca devuelve vacío.** Lo encontró el test, no el código: `String('')` es
+   `''`, y una línea de error vacía en el log es el mismo problema que
+   `[object Object]`.
+
+El test abre con el control negativo literal: la forma exacta que emite pg-boss
+contra la expresión que había en el handler, afirmando que daba
+`[object Object]`.

@@ -1427,3 +1427,32 @@ Si eso se confirma, el alcance no es este chequeo: son los ~84 `captureException
 del código que corre en Vercel. Queda como hallazgo abierto, con dos candidatos
 —falta de `SENTRY_DSN` server-side en Vercel, o eventos que se pierden sin
 `flush()` antes de que la lambda se congele— y ninguno confirmado todavía.
+
+---
+
+## 18. La región ERA la causa — confirmado, no solo sospechado — 2026-08-26
+
+§17 dejó la mudanza a US East como "sospechoso principal, no probado". Dos horas
+después del deploy (commit `1411ef51`, activo desde 19:39 UTC), medido de
+nuevo:
+
+| período | worker en | latidos | hueco promedio | hueco máximo | ticks salteados |
+|---|---|---|---|---|---|
+| 12 h antes | US West (`sfo`) | 133 | 5,4 min | **20,0 min** | 6 |
+| 1h52 después | US East (`us-east4-eqdc4a`) | 22 | **5,00 min** | **5,0 min** | **0** |
+
+Los otros dos crons de 5 minutos que antes compartían el patrón roto ahora
+comparten el patrón perfecto: `reconcile-pending-payments` y
+`expire-pending-booking-sweep`, 22 de 22 jobs, 5,00 min parejo, cero huecos.
+
+Confirmado también en el panel de Railway y no solo por API: la API de
+`get-service-config` seguía devolviendo `multiRegionConfig: {sfo: ...}` minutos
+después del deploy exitoso —dato viejo, no descriptivo del estado real—; el
+panel de Settings → Scale mostraba "US East (Virginia, USA)" con la nota *"The
+value is set in /railway.toml"*, y el header del servicio ya decía "US East".
+Ante la discrepancia, manda la plataforma, no la API que la describe.
+
+Cierre: la latencia al pooler de Supabase (sa-east-1) explicaba el 7,6% de
+ejecuciones perdidas de los crons de 5 minutos, y moverse ~65 ms más cerca lo
+llevó a cero en la ventana medida. Sigue siendo una muestra corta (1h52); vale
+una relectura en unos días para confirmar que se sostiene.

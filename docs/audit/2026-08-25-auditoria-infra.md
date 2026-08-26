@@ -1456,3 +1456,65 @@ Cierre: la latencia al pooler de Supabase (sa-east-1) explicaba el 7,6% de
 ejecuciones perdidas de los crons de 5 minutos, y moverse ~65 ms más cerca lo
 llevó a cero en la ventana medida. Sigue siendo una muestra corta (1h52); vale
 una relectura en unos días para confirmar que se sostiene.
+
+---
+
+## 19. El hallazgo abierto de §17: por qué Sentry se quedaba mudo — 2026-08-26
+
+§17 dejó una pregunta sin cerrar: durante el simulacro, `checkWorkerHeartbeat`
+llamó a `captureException` unas diez veces en 503 y **ninguna llegó a
+Sentry**. Dos candidatos, ninguno confirmado todavía: falta de `SENTRY_DSN`
+server-side en Vercel, o eventos que se pierden sin `flush()` antes de que la
+lambda se congele.
+
+### El primero se descarta mirando el panel
+
+`SENTRY_DSN` sí está seteada en Production (fila propia en Environment
+Variables, separada de la de Preview — Vercel las separa cuando el valor
+difiere entre entornos). `sentry.server.config.ts` no logueó ningún "DSN
+invalid, skipping init" durante la ventana del simulacro. El init corrió.
+
+### El segundo es la causa real
+
+`captureException` solo **encola** el evento — lo despacha un transporte HTTP
+asíncrono que nadie esperaba. Vercel corta la función en cuanto la response
+sale, y nada en el código esperaba eso: ni el propio `captureException`
+(que no devuelve una promesa que valga la pena esperar) ni ningún flush
+explícito en los ~84 call sites.
+
+La instrumentación automática de `@sentry/nextjs` que normalmente resuelve
+esto (envolver cada route handler para flushear antes de responder) depende
+del bundler: con Webpack se inyecta en build-time; con **Turbopack** —el
+bundler por default de Next 16, el que corre este repo— Sentry documenta que
+la resuelve vía "telemetry" de Next en vez de esa inyección (docs de Sentry,
+`manual-setup/webpack-setup`, sección "Key Differences: Webpack vs
+Turbopack"). No hay garantía documentada de que ese camino cubra el flush en
+serverless, y la evidencia del simulacro dice que no.
+
+### El fix: un solo archivo, sin tocar los 84 call sites
+
+`src/lib/sentry.ts` — antes un simple re-export de `@sentry/nextjs` — ahora
+envuelve `captureException`/`captureMessage` para agendar `Sentry.flush(2000)`
+con `after()` (mismo patrón ya usado en
+`src/shared/observability/analytics.ts`): corre DESPUÉS de que la respuesta
+salió, así que no le suma latencia a nadie en el camino feliz.
+
+`after()` tira `Error: after() was called outside a request scope` en los 3
+call sites de `src/shared/jobs/workers` (proceso standalone de Railway, sin
+ciclo de request) — ahí el `try/catch` lo absorbe sin romper nada, y no hace
+falta: el worker no se congela entre eventos y ya vive bajo su propio
+`Sentry.init` (`sentry-worker.ts`).
+
+Como los 84 call sites importan `captureException`/`captureMessage` desde
+`@/lib/sentry` sin cambiar su firma, el fix es transparente para todos ellos.
+
+Test nuevo (`tests/unit/sentry-flush-after-response.test.ts`, 5 casos) contra
+la implementación REAL del archivo — no mockeado como el resto de la suite —
+con control negativo: revertido a la versión pre-fix, 2 de 5 tests fallan (los
+que verifican el flush), confirmando que miden comportamiento real.
+
+**No confirmado todavía**: que este fix por sí solo alcance para que el
+*próximo* simulacro o incidente real muestre el evento en Sentry — depende de
+que `after()` efectivamente sobreviva al ciclo de vida de la función en
+producción (en dev/test se simula, no se corrió contra Vercel real). Vale
+disparar un 503 real y mirar Sentry después de mergear esto.

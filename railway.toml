@@ -8,17 +8,6 @@ dockerfilePath = "Dockerfile.worker"
 
 [deploy]
 startCommand = "pnpm jobs:start"
-# Región del worker. El default de Railway es US West (California) y la base
-# está en `sa-east-1` (São Paulo): ~180-190 ms de ida y vuelta por query.
-# US East (Virginia) es lo más cerca que llega Railway — NO tiene región en
-# Sudamérica (consultado a su API el 2026-08-25: solo EU West, US West,
-# US East y Sudeste asiático) — y baja el viaje a ~115-125 ms.
-# Se define ACÁ y no en el panel: con este archivo presente, Railway bloquea
-# el selector de región de la UI ("The value is set in /railway.toml").
-region = "us-east4-eqdc4a"
-# 1 réplica con auto-restart alcanza para año 1: pg-boss persiste los jobs en
-# Postgres, así que un reinicio los retoma donde quedaron. Subir a 2 para HA.
-numReplicas = 1
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 # Segunda mitad de M-5. Railway solo sabía si el proceso RESPIRA, y eso no
@@ -42,6 +31,38 @@ restartPolicyMaxRetries = 10
 # muere una hora después, esto no se entera. Ese es P-12 (dead-man's switch),
 # que va aparte.
 healthcheckPath = "/health"
+
+# Región y réplicas del worker.
+#
+# ─── Por qué NO dice `region = "..."` ────────────────────────────────────────
+#
+# Decía exactamente eso, y NO SERVÍA PARA NADA. El 2026-08-26 el archivo pedía
+# `us-east4-eqdc4a` y Railway estaba corriendo el worker en **US West**: el
+# panel mostraba "US West" y la API devolvía `multiRegionConfig: {sfo: {...}}`.
+# O sea que la mudanza que se hizo el 25/8 por latencia nunca ocurrió, y nadie
+# se enteró porque un campo que la plataforma ignora no falla: se saltea.
+#
+# Las claves sueltas `region` y `numReplicas` quedaron viejas; la escala ahora
+# se declara con `multiRegionConfig` (docs de Railway, Config as Code →
+# Multi-region configuration). Se escriben las dos cosas en la tabla de abajo,
+# que es la única forma que la plataforma lee hoy.
+#
+# ─── Por qué US East ─────────────────────────────────────────────────────────
+#
+# El default de Railway es US West (California) y la base está en `sa-east-1`
+# (São Paulo): ~180-190 ms de ida y vuelta por query. US East (Virginia) es lo
+# más cerca que llega Railway —NO tiene región en Sudamérica (consultado a su
+# API el 2026-08-25: solo EU West, US West, US East y Sudeste asiático)— y baja
+# el viaje a ~115-125 ms.
+#
+# Es sospechoso principal, además, de los ticks de cron que pg-boss pierde:
+# cada operación de su reloj interno paga ese viaje, y el 26/8 se midió que
+# pierde el 7,6% de los ciclos de 5 minutos.
+#
+# 1 réplica con auto-restart alcanza para año 1: pg-boss persiste los jobs en
+# Postgres, así que un reinicio los retoma donde quedaron. Subir a 2 para HA.
+[deploy.multiRegionConfig.us-east4-eqdc4a]
+numReplicas = 1
 
 # Variables de entorno (setear en el dashboard de Railway, NO acá):
 #   DATABASE_URL  -> hoy va por el POOLER de Supabase (:6543). El host directo

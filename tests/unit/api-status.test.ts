@@ -478,7 +478,7 @@ describe('GET /api/status', () => {
     // El caso de P-12 exacto: worker muerto, base y pg-boss impecables.
     it('latido viejo: 503 y reporte a Sentry, aunque el resto esté sano', async () => {
       prod()
-      sqlConLatido(latidoHace(26))
+      sqlConLatido(latidoHace(45))
 
       const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
       expect(res.status).toBe(503)
@@ -493,13 +493,35 @@ describe('GET /api/status', () => {
       expect(captureException).toHaveBeenCalled()
     })
 
-    // Tres ciclos de 5 minutos: un deploy del worker se saltea uno y no pasa nada.
+    // Seis ciclos de 5 minutos: un deploy del worker se saltea uno y no pasa nada.
     it('a los 12 minutos todavía no grita', async () => {
       prod()
       sqlConLatido(latidoHace(12))
 
       const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
       expect(res.status).toBe(200)
+    })
+
+    /**
+     * El caso que costó una alerta falsa el 2026-08-26.
+     *
+     * El disparador de cron de pg-boss pierde ticks: en 12 horas creó 133 de
+     * los 144 health-ping esperados, con huecos de hasta **20 minutos**, y los
+     * otros dos crons de 5 minutos se saltean exactamente los mismos ciclos —o
+     * sea que no es de esta cola, es del reloj de pg-boss—. Con el umbral
+     * anterior de 15 minutos, ese hueco era indistinguible de un worker muerto
+     * y el monitor externo mandaba un mail de una caída que no existió.
+     *
+     * Si alguien vuelve a bajar el umbral sin arreglar antes la puntualidad del
+     * cron, este test se pone rojo y explica por qué.
+     */
+    it('a los 20 minutos tampoco: es el hueco REAL que mete pg-boss, no una caída', async () => {
+      prod()
+      sqlConLatido(latidoHace(20))
+
+      const res = await GET(pedir({ [STATUS_TOKEN_HEADER]: TOKEN }))
+      expect(res.status).toBe(200)
+      expect(captureException).not.toHaveBeenCalled()
     })
 
     // Fail-open: una alarma que no se puede apagar entrena a ignorar alarmas.

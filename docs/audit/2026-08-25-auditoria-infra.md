@@ -220,7 +220,7 @@ arregla en minutos y no puede romper nada.
 
 | | Hallazgo | Dónde |
 |---|---|---|
-| 🟡 | **Largo mínimo de contraseña = 6**, el default de Supabase. El staff entra con email+password | Auth → Email provider |
+| ✅ | **Largo mínimo de contraseña = 6**, el default de Supabase. El staff entra con email+password. **Subido a 8 el 2026-08-26** — el número no es arbitrario: `src/modules/auth/password.ts` dice que espeja el de Supabase, y no lo espejaba. Verificado contra la API, no contra la pantalla: un alta con contraseña de 5 caracteres devuelve `422 weak_password` / *"Password should be at least 8 characters"*. La sonda usa 5 a propósito — con 6 u 8 el mínimo viejo la habría dejado pasar y habría creado un usuario en producción; con 5 las dos salidas posibles son un rechazo, y el mensaje delata el valor configurado | Auth → Email provider |
 | 🟡 | **Captcha de Supabase Auth apagado** en los endpoints de autenticación | Auth → Attack Protection |
 | ✅ | Site URL (`https://turnogol.app`) y la única Redirect URL (`/api/auth/callback*`) están correctas | Auth → URL Configuration |
 | 🟢 | **El apex no tiene SPF**: el único TXT de `turnogol.app` es un `google-site-verification`. El correo sale como `From: no-reply@turnogol.app` (`src/modules/notifications/email.provider.ts:23`) y aun así alinea, porque el DKIM de Resend firma con `d=turnogol.app` y el Return-Path (`send.turnogol.app`) alinea en modo relajado. No hay nada roto; queda anotado porque condiciona el paso 8 | DNS del apex |

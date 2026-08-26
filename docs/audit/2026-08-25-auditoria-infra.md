@@ -1331,3 +1331,99 @@ punta a punta el 24/8 (con un monitor contra una ruta inexistente: detectó en
 (una caída del worker retrasa trabajo, no lo pierde: el 24/8 drenó 26 jobs en
 menos de 2 minutos, 0 fallidos) y queda como prueba a pedido, no como pendiente
 silencioso.
+
+---
+
+## 17. El simulacro de P-12, y las dos cosas que destapó — 2026-08-26
+
+§16 dejó un solo hueco: los tres eslabones estaban verificados por separado,
+pero la cadena completa —worker muerto → latido viejo → 503 → mail— nunca se
+había corrido junta. Se corrió, contra producción, con el dueño autorizándolo.
+
+### La línea de tiempo
+
+| hora (UTC) | qué pasó |
+|---|---|
+| 18:35:35 | último `health-ping` completado antes de la caída |
+| 18:38:21 | deployment del worker **removido** en Railway |
+| 18:50:35 | momento en que el umbral de 15 min se cumple |
+| **18:50:55** | `/api/status` responde **503** (la sonda medía cada 60 s) |
+| **18:52** | mail de UptimeRobot: *"Monitor is DOWN: turnogol.app/api/status"* |
+| 18:59:42 | redeploy |
+| **19:00:34** | `/api/status` vuelve a **200** |
+| 19:00:25 | latido nuevo, 29 s después de que el worker levantó |
+| **19:02** | mail de UptimeRobot: *"Monitor is UP"* |
+
+Once chequeos consecutivos en 200 y el primero pasado el umbral en 503. **El
+mecanismo funciona de punta a punta**, y el aviso llegó a una casilla humana en
+poco más de un minuto. El deploy de restauración, además, tuvo que pasar por el
+healthcheck de §15 para entrar: M-5 se probó solo, por segunda vez.
+
+### Lo primero que destapó: el monitor ya había mentido
+
+Buscando el mail del simulacro aparecieron **dos anteriores del mismo día**:
+`DOWN 08:37` y `UP 08:42` (UTC). Nadie los había mirado. No correspondían a
+ninguna caída: el worker estaba vivo. Los latidos de esa franja:
+
+```
+07:55 → 08:10   15,0 min
+08:20 → 08:40   20,0 min   ← esto disparó el DOWN de las 08:37
+08:45 → 08:58   13,0 min
+09:00 → 09:15   15,0 min
+```
+
+La causa no es de esta cola. Los **tres** crons de 5 minutos pierden
+exactamente los mismos ciclos, en 12 horas:
+
+| cola | jobs creados | hueco promedio | hueco máximo | ticks salteados |
+|---|---|---|---|---|
+| `health-ping` | 133 | 5,4 min | **20,0** | 6 |
+| `reconcile-pending-payments` | 133 | 5,4 min | **20,0** | 6 |
+| `expire-pending-booking-sweep` | 133 | 5,4 min | **20,0** | 6 |
+
+133 de 144 esperados: **el 7,6% de las ejecuciones no ocurre**. Y el hueco nace
+al **crear** el job, no al ejecutarlo — la espera entre `createdon` y
+`startedon` es de 9 segundos, constante, y el trabajo dura 2. O sea que el que
+falla es el reloj de pg-boss, no el consumidor. Lo confirma que su propio
+mantenimiento interno también se atrasa: 269 corridas con un máximo de 9,4 min
+para un ciclo configurado cada 2.
+
+**Arreglo aplicado**: `HEARTBEAT_MISSES_ALLOWED` pasa de 3 a 6, o sea el umbral
+de 15 a **30 minutos**. Deja pasar el peor hueco medido con margen y sigue
+detectando una caída real en menos de media hora — el 25/8 el worker estuvo
+*horas* roto sin que nadie se enterara. Un test nuevo ancla el caso de los 20
+minutos, así que bajar el umbral sin arreglar antes la puntualidad se pone rojo
+y explica por qué.
+
+### Lo segundo: la región del worker nunca se mudó
+
+`railway.toml` pedía `region = "us-east4-eqdc4a"` desde el 25/8. Railway estaba
+corriendo el worker en **US West**: el panel muestra "US West" y la API
+devuelve `multiRegionConfig: {sfo: {numReplicas: 1}}`.
+
+La mudanza por latencia nunca ocurrió, y nadie se enteró porque **un campo que
+la plataforma ignora no falla: se saltea**. Las claves sueltas `region` y
+`numReplicas` quedaron viejas; la escala se declara hoy con `multiRegionConfig`.
+Corregido a la forma que la plataforma lee.
+
+No es cosmético: la base está en São Paulo y cada operación del reloj de pg-boss
+paga ese viaje. US West son ~180-190 ms por query; US East, ~115-125. Es
+sospechoso principal de los ticks perdidos, aunque **no está probado** que sea
+la causa — se sabrá midiendo los mismos huecos después del cambio.
+
+### Lo que queda abierto: el 503 avisa, pero no dice por qué
+
+Durante todo el simulacro, `checkWorkerHeartbeat` llamó a `captureException` en
+cada request en 503 —unas diez— y **Sentry no registró ni uno**. Verificado por
+dos vías independientes: el script del repo (`pnpm sentry:issues 24h`) y la API
+de Sentry, ninguna encuentra el evento.
+
+No es demora de indexado: se miró a los 5, 10 y 15 minutos. Y hay un patrón que
+apunta más lejos: en 30 días, **todos** los eventos de `environment:production`
+con `runtime.name: node` vienen de nombres de contenedor de Railway. No hay uno
+solo que se pueda atribuir con certeza al runtime de servidor de Vercel.
+
+Si eso se confirma, el alcance no es este chequeo: son los ~84 `captureException`
+del código que corre en Vercel. Queda como hallazgo abierto, con dos candidatos
+—falta de `SENTRY_DSN` server-side en Vercel, o eventos que se pierden sin
+`flush()` antes de que la lambda se congele— y ninguno confirmado todavía.

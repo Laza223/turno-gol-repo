@@ -111,10 +111,30 @@ async function checkWorkerPool(): Promise<Check> {
 const HEARTBEAT_PERIOD_MS = 5 * 60_000
 
 /**
- * Cuántos latidos seguidos pueden faltar antes de gritar. Tres, no uno: un
- * deploy del worker lo reinicia y se saltea un ciclo sin que pase nada malo.
+ * Cuántos latidos seguidos pueden faltar antes de gritar.
+ *
+ * **Seis, y el número sale de medir, no de estimar.** Estaba en tres (15 min)
+ * con el argumento de que un deploy del worker se saltea un ciclo. Pero el
+ * 2026-08-26 este umbral mandó una alerta de una caída que NUNCA EXISTIÓ
+ * (mail de UptimeRobot a las 5:37 ART), y al mirar los datos apareció por qué:
+ * **el disparador de cron de pg-boss pierde ticks**. En 12 horas creó 133 de
+ * los 144 health-ping esperados —un 7,6% que no ocurre— con huecos de hasta
+ * **20 minutos** entre latidos, y los OTROS dos crons de 5 minutos
+ * (`reconcile-pending-payments`, `expire-pending-booking-sweep`) se saltean
+ * exactamente los mismos ciclos: 133 jobs, mismo promedio, mismo máximo. O sea
+ * que no es de esta cola, es del reloj de pg-boss, y hasta su propio
+ * mantenimiento interno se atrasa (máximo 9,4 min para un ciclo de 2).
+ *
+ * Con 15 minutos, ese hueco de 20 es indistinguible de un worker muerto. Y una
+ * alarma que miente es peor que ninguna: enseña a ignorarla, que es justo lo
+ * que hace que la próxima caída de verdad pase desapercibida.
+ *
+ * 30 minutos deja pasar el peor hueco medido con margen, y sigue detectando una
+ * caída real en menos de media hora — el 2026-08-25 el worker estuvo horas
+ * roto sin que nadie se enterara, así que media hora es una mejora enorme y no
+ * una concesión. Si algún día el cron se vuelve puntual, este número baja.
  */
-const HEARTBEAT_MISSES_ALLOWED = 3
+const HEARTBEAT_MISSES_ALLOWED = 6
 
 const HEARTBEAT_STALE_MS = HEARTBEAT_PERIOD_MS * HEARTBEAT_MISSES_ALLOWED
 

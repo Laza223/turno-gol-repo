@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Banknote } from 'lucide-react'
 import { formatArs } from '@/lib/format'
+import { fetchWithTimeout } from '@/shared/utils/async'
 
 /** Cada cuánto se vuelve a preguntar mientras la pestaña está a la vista. */
 const REFRESH_MS = 60_000
@@ -12,6 +13,56 @@ const REFRESH_MS = 60_000
  * menú) no tiene por qué disparar tres consultas de plata.
  */
 const MIN_GAP_MS = 5_000
+/**
+ * Corte por tiempo de cada pedido. Un `fetch` sin corte no falla: se queda
+ * colgado, y del lado del componente eso no se distingue de "todavía no llegó".
+ * Es la causa raíz que documenta `shared/utils/async.ts` y la razón por la que
+ * el placeholder podía quedarse en pantalla para siempre.
+ */
+const FETCH_TIMEOUT_MS = 8_000
+/**
+ * Espera entre reintentos después de un pedido que falló por algo pasajero.
+ * Cubre los primeros 32 segundos; pasado eso toma la posta el ciclo normal de
+ * {@link REFRESH_MS}. Corto al principio porque el caso típico es el primer
+ * pedido de la sesión —la pantalla arranca sin ningún número— y largo después
+ * para no martillar un backend que ya está en problemas.
+ */
+const RETRY_BACKOFF_MS = [1_000, 3_000, 8_000, 20_000]
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+type FetchOutcome =
+  | { kind: 'ok'; cents: number }
+  /** Pasajero: vale la pena volver a preguntar enseguida. */
+  | { kind: 'retry' }
+  /** Insistir no lo arregla: esperar al ciclo normal. */
+  | { kind: 'give-up' }
+
+async function fetchDayTotal(): Promise<FetchOutcome> {
+  try {
+    const res = await fetchWithTimeout(
+      '/api/admin/day-total',
+      { cache: 'no-store' },
+      FETCH_TIMEOUT_MS,
+    )
+    if (!res.ok) {
+      // 401/403: la sesión venció, y volver a pedir no la renueva. 429: el
+      // rate-limit del endpoint ya está lleno, así que insistir solo lo empeora
+      // —y su ventana es de 60 s, o sea exactamente el ciclo normal—. Los 5xx y
+      // el 408 sí son "probá de nuevo".
+      return res.status >= 500 || res.status === 408 ? { kind: 'retry' } : { kind: 'give-up' }
+    }
+    const body = (await res.json()) as { data?: { collectedCents?: number } }
+    const value = body.data?.collectedCents
+    // Un cuerpo con otra forma es un bug del servidor, no un corte de red:
+    // reintentar devolvería el mismo cuerpo.
+    return typeof value === 'number' ? { kind: 'ok', cents: value } : { kind: 'give-up' }
+  } catch {
+    // Sin respuesta: offline, DNS, TLS, o el corte de {@link FETCH_TIMEOUT_MS}.
+    // Es justo el caso que se arregla volviendo a preguntar.
+    return { kind: 'retry' }
+  }
+}
 
 /**
  * B14 — "Hoy: $X" en la barra lateral (visión v2 §3.3 / P2): el número del día
@@ -38,6 +89,13 @@ const MIN_GAP_MS = 5_000
  * número que ya tiene sigue siendo el mismo. El piso de {@link MIN_GAP_MS} lo
  * atenuaba, no lo evitaba.
  *
+ * **Un pedido que falla se reintenta solo** ({@link RETRY_BACKOFF_MS}). Sin eso,
+ * el único reintento era el ciclo de {@link REFRESH_MS}: una sola respuesta
+ * perdida al abrir el panel —el caso más común de todos, porque es cuando la
+ * pantalla todavía no tiene ningún número— dejaba la barra en "cargando" un
+ * minuto entero. Y si el pedido no fallaba sino que se colgaba, se quedaba ahí
+ * para siempre; por eso además va con {@link FETCH_TIMEOUT_MS}.
+ *
  * Límite conocido y aceptado: si el admin cobra desde `/caja` y se queda ahí, el
  * encabezado de esa pantalla se actualiza al instante (`router.refresh()`) y
  * este número puede tardar hasta {@link REFRESH_MS}. Los dos salen de la misma
@@ -48,21 +106,35 @@ export function DayTotalBadge() {
   const [cents, setCents] = useState<number | null>(null)
   const lastFetchRef = useRef(0)
   const aliveRef = useRef(true)
+  // Los reintentos viven dentro de una sola corrida de `refresh`. Sin este
+  // candado, el pedido de visibilidad podría arrancar una segunda cadena
+  // mientras la primera está en su espera, y quedarían dos escaleras de
+  // backoff pisándose.
+  const runningRef = useRef(false)
 
   const refresh = useCallback(async () => {
-    const now = Date.now()
-    if (now - lastFetchRef.current < MIN_GAP_MS) return
-    lastFetchRef.current = now
+    if (runningRef.current) return
+    if (Date.now() - lastFetchRef.current < MIN_GAP_MS) return
+    runningRef.current = true
     try {
-      const res = await fetch('/api/admin/day-total', { cache: 'no-store' })
-      if (!res.ok) return
-      const body = (await res.json()) as { data?: { collectedCents?: number } }
-      const value = body.data?.collectedCents
-      if (typeof value === 'number' && aliveRef.current) setCents(value)
-    } catch {
-      // Un total que no llega deja el anterior en pantalla. Pintar un error acá
-      // sería ruido en la barra de navegación: el número no es accionable al
-      // segundo, y el pedido siguiente ya lo corrige.
+      for (let attempt = 0; aliveRef.current; attempt++) {
+        lastFetchRef.current = Date.now()
+        const outcome = await fetchDayTotal()
+        if (!aliveRef.current) return
+        if (outcome.kind === 'ok') {
+          setCents(outcome.cents)
+          return
+        }
+        // Un total que no llega deja el anterior en pantalla y no pinta ningún
+        // error: el número no es accionable al segundo y la barra de navegación
+        // no es lugar para un cartel rojo. Lo que sí cambia es que ahora vuelve
+        // a intentar solo, en vez de esperar el minuto completo.
+        const wait = outcome.kind === 'retry' ? RETRY_BACKOFF_MS[attempt] : undefined
+        if (wait === undefined) return
+        await sleep(wait)
+      }
+    } finally {
+      runningRef.current = false
     }
   }, [])
 

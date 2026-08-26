@@ -26,10 +26,31 @@
  * reconciliación de pagos pendientes, generación de slots de abonados,
  * reintento de reembolsos) usan ese pool.
  *
- * La salida no es elegir mejor el string: es **dejar de depender de él**. La
- * opción explícita le gana al query param en las dos librerías, así que a
- * partir de acá el `sslmode` del DSN es cosmético y ninguna edición de una
- * variable de entorno puede volver a romper esto.
+ * La salida no es elegir mejor el string: es **dejar de depender de él**.
+ *
+ * ─── Corrección del 2026-08-26: no alcanzaba con la opción explícita ──────────
+ *
+ * La primera versión de este archivo decía que la opción explícita le gana al
+ * query param "en las dos librerías". **Es falso para `pg`**, y se midió con
+ * `pg@8.22.0` (`lib/connection-parameters.js`, que hace
+ * `Object.assign({}, config, parse(config.connectionString))` — o sea que el
+ * DSN PISA lo explícito):
+ *
+ *   DSN sin sslmode     + ssl explícito -> { rejectUnauthorized: false }  TLS
+ *   DSN sin sslmode     + sin explícito -> false                          TEXTO PLANO
+ *   DSN sslmode=no-verify + explícito   -> { rejectUnauthorized: false }  TLS
+ *   DSN sslmode=require   + explícito   -> {}   valida la cadena -> se cae
+ *   DSN sslmode=disable   + explícito   -> false                          TEXTO PLANO
+ *
+ * O sea que un `sslmode` en el DSN todavía puede tirar abajo el proceso
+ * (`require`) o bajar la conexión a texto plano (`disable`, o directamente no
+ * estar). Por eso `pgConnectionConfig()` le SACA el `sslmode` al DSN antes de
+ * dárselo a `pg`: recién ahí la decisión es del código y ninguna edición de una
+ * variable de entorno puede volver a romperlo.
+ *
+ * Para `postgres` (porsager) la afirmación original sí vale —`const value = k in o
+ * ? o[k] : k in query ? …`, lo explícito gana— y por eso el pool de la app se
+ * arregló pasando solo la opción.
  *
  * ─── Lo que NO hace ───────────────────────────────────────────────────────────
  *
@@ -59,4 +80,36 @@ function isLocalDsn(url: string): boolean {
  */
 export function dbSslOptions(url: string): { rejectUnauthorized: false } | false {
   return isLocalDsn(url) ? false : { rejectUnauthorized: false }
+}
+
+/**
+ * Config de conexión para un cliente de `pg` (node-postgres) — o sea, para
+ * pg-boss, que es el único que usa esa librería en este repo.
+ *
+ * Devuelve el DSN **sin `sslmode`** más la opción `ssl` explícita, por el
+ * motivo que explica el comentario de arriba: en `pg` el DSN le gana a la
+ * opción, así que sacarle el parámetro es lo único que vuelve determinista la
+ * decisión.
+ *
+ * El recorte se hace sobre el string y solo después del primer `?`: usuario,
+ * contraseña y host NO se tocan. Un round-trip por `new URL(...).toString()`
+ * los re-codificaría, y una contraseña de producción re-codificada es una
+ * conexión rota.
+ */
+export function pgConnectionConfig(url: string): {
+  connectionString: string
+  ssl: { rejectUnauthorized: false } | false
+} {
+  return { connectionString: stripSslmode(url), ssl: dbSslOptions(url) }
+}
+
+function stripSslmode(url: string): string {
+  const q = url.indexOf('?')
+  if (q === -1) return url
+  const base = url.slice(0, q)
+  const params = url
+    .slice(q + 1)
+    .split('&')
+    .filter((p) => p.length > 0 && !/^sslmode=/i.test(p))
+  return params.length > 0 ? `${base}?${params.join('&')}` : base
 }

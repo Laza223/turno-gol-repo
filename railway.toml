@@ -27,7 +27,11 @@ restartPolicyMaxRetries = 10
 #                    `db.<ref>.supabase.co` ya no resuelve, así que el comentario
 #                    anterior ("conexión DIRECTA, no el pooler") quedó viejo.
 #                    El `?sslmode=` del DSN YA NO DECIDE NADA: lo fija el código
-#                    en `src/shared/db/ssl.ts`. Fue a propósito, después de que
+#                    en `src/shared/db/ssl.ts`, que además se lo SACA al DSN
+#                    antes de dárselo a pg-boss (en node-postgres el DSN le gana
+#                    a la opción explícita, así que con solo pasarla no
+#                    alcanzaba — corrección del 2026-08-26). Fue a propósito,
+#                    después de que
 #                    el mismo valor arreglara una librería y rompiera la otra:
 #                    `no-verify` dejaba arrancar a pg-boss (node-postgres) y
 #                    tiraba abajo todo `withTenantContext` (porsager, que no

@@ -938,3 +938,67 @@ Con los builds apagados ya no se usan, pero ahí están, y alcanza con volver a
 habilitar un preview para que se usen otra vez. Borrarlas es un paso manual en
 Vercel → Settings → Environment Variables, y conviene hacerlo: es la diferencia
 entre "no se usa" y "no está".
+
+---
+
+## 11. Lo que bloqueaba C-2: pg-boss podía estar hablando en claro — 2026-08-26
+
+C-2 (el pooler acepta conexiones sin cifrar) se cierra prendiendo *Enforce SSL*
+en Supabase, y la auditoría ya advertía que ese interruptor **no es inocuo**: si
+algún cliente nuestro va sin TLS, corta producción en el acto. Antes de tocarlo
+había que saber si alguno iba sin TLS. Resultó que sí podía.
+
+### El agujero
+
+El arreglo del 2026-08-25 (`src/shared/db/ssl.ts`) cubrió los **dos pools de
+porsager**, y su comentario afirmaba que "la opción explícita le gana al query
+param en las dos librerías". **Es falso para `pg`**, que es lo que usa pg-boss.
+Medido contra `pg@8.22.0` —`lib/connection-parameters.js` hace
+`Object.assign({}, config, parse(config.connectionString))`, o sea que el DSN
+pisa lo explícito—:
+
+```
+DSN sin sslmode      + ssl explícito  ->  { rejectUnauthorized: false }   TLS
+DSN sin sslmode      + sin explícito  ->  false                           TEXTO PLANO
+DSN sslmode=no-verify + explícito     ->  { rejectUnauthorized: false }   TLS
+DSN sslmode=require   + explícito     ->  {}   valida la cadena -> se cae
+DSN sslmode=disable   + explícito     ->  false                           TEXTO PLANO
+```
+
+`boss.ts` pasaba `connectionString: url` **y nada más**. Y el DSN que Supabase
+entrega para copiar y pegar **no trae `sslmode`**. O sea que la conexión de
+pg-boss podía estar cruzando internet sin cifrar contra la base de producción —
+justo el canal que C-2 dice que el pooler acepta en claro.
+
+**Alcance honesto**: en Railway el DSN tiene `sslmode=no-verify` (se puso ahí el
+2026-08-25), así que el worker iba con TLS. El que no se puede confirmar es el
+de **Vercel**: sus valores no se leen desde afuera. Lo que sí se sabe es que no
+es `require` —con ese valor pg-boss se caería, y el check `pg-boss` de
+`/api/status` está verde—, así que es `no-verify` (TLS) o ausente (texto plano).
+No hay forma de distinguirlos sin mirar el panel; el arreglo vuelve la pregunta
+irrelevante.
+
+### El arreglo
+
+`pgConnectionConfig()` en `ssl.ts`: le **saca** el `sslmode` al DSN y devuelve la
+opción `ssl` aparte. Recién con el parámetro ausente la opción explícita gana en
+`pg`. El recorte es sobre el string y solo después del primer `?` — un
+round-trip por `new URL(...).toString()` re-codificaría la contraseña, y una
+contraseña de producción re-codificada es una conexión rota.
+
+El candado no comprueba lo que nosotros creemos que hace `pg`, sino lo que `pg`
+hace: el test instancia el `ConnectionParameters` real y afirma las tres cosas
+—que el DSN pelado da `ssl: false`, que nuestra config da TLS, y que un
+`sslmode=require` ya no puede pisarnos—. Si una versión futura cambia la
+precedencia, o si pg-boss deja de usar node-postgres, CI se entera.
+
+### Lo que sigue faltando para cerrar C-2
+
+Con esto, **los tres clientes de la base salen con TLS por construcción** desde
+los dos runtimes. Falta el paso que necesita el panel:
+
+1. Prender **Enforce SSL** en Supabase → Database Settings (después de que este
+   cambio esté deployado en Vercel y en Railway).
+2. Verificar en el acto: `/api/status` sigue en 200 y el health-ping del worker
+   sigue avanzando. Si algo iba sin cifrar, falla ahí y se revierte con un clic.
+3. Aparte y sin relación con TLS: *Network restrictions* sigue en "todas las IP".

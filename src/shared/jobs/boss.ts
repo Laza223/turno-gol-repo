@@ -1,5 +1,6 @@
 import PgBoss from 'pg-boss'
 import { logger } from '@/shared/lib/logger'
+import { pgConnectionConfig } from '@/shared/db/ssl'
 
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
@@ -26,7 +27,15 @@ export async function getBoss(): Promise<PgBoss> {
   }
   const url = process.env.DATABASE_URL ?? DEFAULT_URL
   const boss = new PgBoss({
-    connectionString: url,
+    // El DSN va SIN `sslmode` y el TLS se decide en código
+    // (`pgConnectionConfig`). No es cosmética: pg-boss corre sobre `pg`
+    // (node-postgres), y ahí el DSN le GANA a la opción explícita
+    // —`Object.assign({}, config, parse(config.connectionString))`—, así que un
+    // DSN sin `sslmode` dejaba esta conexión en TEXTO PLANO contra la base de
+    // producción, y uno con `sslmode=require` tiraba abajo el proceso contra el
+    // certificado del pooler. Medido con pg@8.22.0; la tabla está en
+    // `src/shared/db/ssl.ts`.
+    ...pgConnectionConfig(url),
     schema: 'pgboss',
     // Pool interno de pg-boss (node-pg `Pool` bajo pg-boss/src/db.js). Sin
     // `max`, node-pg usa su propio default (10). Prod comparte

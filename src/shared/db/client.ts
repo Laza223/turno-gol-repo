@@ -251,6 +251,27 @@ export async function assertWorkerDbVisibility(): Promise<void> {
 }
 
 /**
+ * Falla al arrancar si el pool RESTRINGIDO (`getSql()`, rol `turnogol_app`) no
+ * puede hablar con la base.
+ *
+ * Es el hermano de `assertWorkerDbVisibility`, y existe porque ese no alcanzó.
+ * El 2026-08-25 el worker de Railway arrancó perfecto —pg-boss conectado,
+ * `assertWorkerDbVisibility` en verde, latido cada 5 minutos— con **todo
+ * `withTenantContext` roto**: el pool de la app moría con "self-signed
+ * certificate in certificate chain" en cada transacción. Estuvo horas así. Los
+ * dos asserts miran pools DISTINTOS (`WORKER_DATABASE_URL` contra
+ * `DATABASE_URL`) y el que no se miraba era justo el que usan los crons que
+ * tocan plata: dunning de suscripciones, reconciliación de pagos pendientes,
+ * generación de slots de abonados, reintento de reembolsos.
+ *
+ * Un `SELECT 1` alcanza: lo que se rompía era el HANDSHAKE, no la query.
+ */
+export async function assertAppDbReachable(): Promise<void> {
+  const sql = getSql()
+  await sql`SELECT 1`
+}
+
+/**
  * Open a Drizzle transaction with `app.current_tenant_id` set via SET LOCAL
  * (transaction-scoped). Use for staff endpoints that need RLS isolation.
  */

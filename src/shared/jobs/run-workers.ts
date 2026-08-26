@@ -29,7 +29,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 import { getBoss, stopBoss } from './boss'
 import { registerAllWorkers } from './workers'
-import { assertWorkerDbVisibility } from '@/shared/db/client'
+import { assertAppDbReachable, assertWorkerDbVisibility } from '@/shared/db/client'
+import { startHealthServer } from './health-server'
 import { logger } from '@/shared/lib/logger'
 
 /**
@@ -61,12 +62,20 @@ async function main(): Promise<void> {
   // Fail fast (Fable 5 P0) if the worker DB role can't see across tenants —
   // otherwise every cron below just silently processes 0 rows forever.
   await assertWorkerDbVisibility()
+  // Y el pool RESTRINGIDO, que es el que se rompio el 2026-08-25 mientras el de
+  // arriba daba verde: son DSN distintos y solo uno se estaba mirando.
+  await assertAppDbReachable()
   const boss = await getBoss()
   await registerAllWorkers(boss)
+
+  // Despues de registrar las colas: un healthcheck que contesta 200 con las
+  // colas sin consumidor estaria certificando justo lo que no queremos.
+  const healthServer = startHealthServer(boss)
   logger.info('running. Ctrl+C to stop.', { module: 'workers' })
 
   const shutdown = async (signal: string) => {
     logger.info('received signal, stopping...', { module: 'workers', signal })
+    healthServer?.close()
     await stopBoss()
     process.exit(0)
   }

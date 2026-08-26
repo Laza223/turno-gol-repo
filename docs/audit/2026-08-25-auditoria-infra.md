@@ -1137,3 +1137,74 @@ Dos decisiones que no son obvias:
 El test abre con el control negativo literal: la forma exacta que emite pg-boss
 contra la expresión que había en el handler, afirmando que daba
 `[object Object]`.
+
+---
+
+## 14. M-5, primera mitad: el worker ahora puede decir si sirve — 2026-08-26
+
+M-5 son dos cosas distintas metidas en una fila: **no hay healthcheck** y **el
+tope de reinicios es 10**. Esta sección cierra la primera, y explica por qué la
+segunda va aparte.
+
+### El agujero que ni el arranque miraba
+
+El worker ya fallaba rápido si el pool BYPASSRLS no podía saltear RLS
+(`assertWorkerDbVisibility`). Pero el 2026-08-25 arrancó con ESE assert en verde
+y **todo `withTenantContext` roto**: son dos pools con DSN distintos
+—`WORKER_DATABASE_URL` contra `DATABASE_URL`— y el que nadie miraba era justo el
+que usan los crons que tocan plata.
+
+`assertAppDbReachable()` (`src/shared/db/client.ts`) cierra eso: un `SELECT 1`
+por el pool restringido antes de registrar una sola cola. Un `SELECT 1` alcanza
+porque lo que se rompía era el **handshake**, no la query.
+
+### El endpoint
+
+`src/shared/jobs/health-server.ts` levanta un `GET /health` dentro del proceso
+de workers que mira las tres cosas que tienen que andar: los **dos** pools y
+pg-boss. Devuelve 200 solo si las tres pasan.
+
+Tres decisiones que no son obvias:
+
+- **Se levanta DESPUÉS de registrar las colas.** Un 200 con las colas sin
+  consumidor certificaría justo lo que no queremos: un worker que responde y no
+  trabaja. Hay un test que compara las posiciones en el archivo.
+- **`permission denied` de pg-boss NO es falla.** En producción el rol no puede
+  introspeccionar ese schema, a propósito. Que la consulta llegue hasta el
+  permiso ya prueba que el pool vive. Sin esa rama el healthcheck daría rojo
+  permanente y **ningún deploy entraría nunca**.
+- **Nunca tira.** Si el puerto está tomado, lo dice en el log y los workers
+  siguen: quedarse sin healthcheck es malo, quedarse sin workers es peor. Y un
+  `PORT` basura cae al default en vez de dejarnos sin servidor.
+
+No expone el detalle de los errores: el semáforo es público, el motivo va al log
+y a Sentry. Mismo criterio que `/api/status`.
+
+### Por qué el `healthcheckPath` de Railway NO entra todavía
+
+Con `healthcheckPath` configurado, Railway consulta el endpoint en cada deploy y
+**si no contesta 200 marca el deploy como fallido y deja corriendo el
+anterior**. Ese es exactamente el candado que se busca. Pero también significa
+que, si Railway sondea un puerto distinto del que abrimos, **ningún deploy vuelve
+a entrar** — el worker viejo seguiría trabajando, así que no hay caída, pero los
+cambios dejarían de llegar en silencio. Que es la clase de falla que esta
+auditoría entera viene persiguiendo.
+
+Y no se puede probar sin deployar: la sonda de Railway no existe fuera de
+Railway. Así que va en dos pasos, a propósito:
+
+1. **Este cambio**: el servidor levanta y loguea `health server listening` con
+   su puerto. Se lee en los logs del deploy.
+2. **Después**, con ese dato confirmado: `healthcheckPath = "/health"` en
+   `railway.toml`, más el `restartPolicyType`. Ahí sí cierra M-5.
+
+### Sobre el tope de 10 reinicios
+
+`ON_FAILURE` solo reinicia con código de salida distinto de cero: si el proceso
+se va limpio —un `process.exit(0)` inesperado— no reinicia nunca. Y a la 11ª
+caída queda muerto. El arreglo es `restartPolicyType = "ALWAYS"`, que según la
+documentación de Railway está disponible **solo en planes pagos**; el nuestro
+figura en ~US$5/mes, que es Hobby y es pago, pero eso está inferido de la tabla
+de costos de §6, **no verificado contra la cuenta**. Va junto con el paso 2, con
+el plan confirmado antes de tocarlo — no se cambia la política de reinicio del
+proceso que corre los crons de plata sobre una inferencia.

@@ -194,10 +194,23 @@ export async function countPendingRefunds(
       AND p.type = 'refund'
       AND p.status = 'pending'
   `)
+  // `oldestAt` llega STRING, no Date: `tx.execute` crudo no parsea timestamptz.
+  // Estaba anotado `Date` y el tipo viajaba hasta `sortAttentionItems`, que hace
+  // `a.since.getTime()`: con una devolucion pendiente y otro item de atencion en
+  // la misma lista, el inicio del panel reventaba con "getTime is not a
+  // function". Encontrado el 2026-08-26 al ampliar el candado de
+  // `tests/unit/raw-sql-row-shape.test.ts`, con 2 devoluciones pendientes reales
+  // en produccion. `count` y `totalCents` no tienen el problema porque el SQL
+  // los castea con `::int`.
   const row = (
-    rows as unknown as Array<{ count: number; totalCents: number; oldestAt: Date | null }>
+    rows as unknown as Array<{ count: number; totalCents: number; oldestAt: string | null }>
   )[0]
-  return row ?? { count: 0, totalCents: 0, oldestAt: null }
+  if (!row) return { count: 0, totalCents: 0, oldestAt: null }
+  return {
+    count: row.count,
+    totalCents: row.totalCents,
+    oldestAt: row.oldestAt ? new Date(row.oldestAt) : null,
+  }
 }
 
 export type SettledRefund = {

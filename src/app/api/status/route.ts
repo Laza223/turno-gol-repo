@@ -141,14 +141,18 @@ const HEARTBEAT_STALE_MS = HEARTBEAT_PERIOD_MS * HEARTBEAT_MISSES_ALLOWED
  * caso en que importa: worker muerto hace más de 12 h. Sin ese respaldo, ese
  * escenario devolvería "todavía no hay latidos" —o sea `ok`— en vez de `down`.
  */
-async function lastCompletedHealthPing(sql: ReturnType<typeof getSql>): Promise<Date | null> {
-  const fresh = await sql<{ last: Date | null }[]>`
+async function lastCompletedHealthPing(sql: ReturnType<typeof getSql>): Promise<string | null> {
+  // `string` y no `Date`: drizzle muta los type parsers de esta instancia de
+  // postgres-js, así que un timestamptz vuelve como texto. El caller ya envuelve
+  // en `new Date(...)` y por eso este camino nunca se rompió — pero el tipo
+  // mentía, y el mismo tipo mentiroso SÍ rompió /api/admin/system-status.
+  const fresh = await sql<{ last: string | null }[]>`
     SELECT max(completedon) AS last FROM pgboss.job
     WHERE name = 'health-ping' AND state = 'completed'
   `
   if (fresh[0]?.last) return fresh[0].last
 
-  const archived = await sql<{ last: Date | null }[]>`
+  const archived = await sql<{ last: string | null }[]>`
     SELECT max(completedon) AS last FROM pgboss.archive
     WHERE name = 'health-ping' AND state = 'completed'
   `

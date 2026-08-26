@@ -17,7 +17,7 @@ async function loadBooking(bookingId: string, playerId: string) {
       SELECT b.status, b.created_at AS "createdAt"
       FROM bookings b
       WHERE b.id = ${bookingId} LIMIT 1
-    `)) as unknown as Array<{ status: string; createdAt: Date }>
+    `)) as unknown as Array<{ status: string; createdAt: string }>
     return rows[0] ?? null
   })
 }

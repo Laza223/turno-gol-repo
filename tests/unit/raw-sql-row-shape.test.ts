@@ -85,6 +85,16 @@ function rowTypeAnnotations(src: string): Site[] {
   }
   for (const m of src.matchAll(/as unknown as\s*/g)) push(m.index, m.index + m[0].length)
   for (const m of src.matchAll(/\.execute\s*</g)) push(m.index, m.index + m[0].length - 1)
+  // Templates de porsager: `await sql<{ … }[]>`. Entraron al candado el
+  // 2026-08-26, cuando el MISMO tipo mentiroso rompió /api/admin/system-status:
+  // `sql<{ last: Date | null }[]>` seguido de `.toISOString()` tiraba TypeError,
+  // el catch mudo se lo tragaba y el panel mostraba `lastHealthPing: null` con
+  // 141 latidos vivos en la tabla. La causa es la misma que la de `tx.execute`
+  // y estaba documentada: drizzle MUTA los type parsers de la instancia de
+  // postgres-js que envuelve, así que un timestamptz vuelve como string incluso
+  // desde un `sql` crudo. El `(?=\s*\{)` deja afuera cosas como
+  // `drizzleSql<number>`, que no son filas.
+  for (const m of src.matchAll(/sql\s*<(?=\s*\{)/g)) push(m.index, m.index + m[0].length - 1)
   return out
 }
 
@@ -105,7 +115,19 @@ for (const file of SOURCE_FILES) {
     const where = `${rel(file)}:${site.where}`
     // `Date` como TIPO de un campo (`x: Date`), no `new Date(...)` ni `Date[]`
     // en una firma de función.
-    if (/^\s*"?[A-Za-z_]\w*"?\??:\s*[^\n]*\bDate\b/m.test(site.type)) {
+    //
+    // El `(?:^|[{,;])` es lo que hace que valga también para tipos de UNA línea,
+    // no solo para objetos multilínea. Sin eso el candado miraba
+    // `sql<{ last: Date | null }[]>` y no veía nada: se descubrió con un control
+    // negativo el 2026-08-26 — la primera versión de esta extensión daba verde
+    // sobre el mismo bug que decía cubrir.
+    // `Date | string` NO es una infracción: es la anotación honesta de quien ya
+    // sabe que el driver puede devolver cualquiera de las dos y obliga al caller
+    // a envolver en `new Date(...)`. Marcarla llenaría el candado de ruido sobre
+    // código correcto, y un candado ruidoso termina desactivado — que es el
+    // riesgo que este mismo archivo se propone evitar.
+    const honestUnion = /\bDate\s*\|\s*string\b|\bstring\s*\|\s*Date\b/.test(site.type)
+    if (!honestUnion && /(?:^|[{,;])\s*"?[A-Za-z_]\w*"?\??:\s*[^\n]*\bDate\b/m.test(site.type)) {
       dateOffenders.push({ where, type: site.type.replace(/\s+/g, ' ').trim().slice(0, 120) })
     }
     if (/\$inferSelect\b/.test(site.type)) {

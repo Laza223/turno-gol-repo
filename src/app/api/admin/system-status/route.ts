@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { withAuth } from '@/server/middleware/with-auth'
 import { getSql } from '@/shared/db/client'
+import { captureException } from '@/lib/sentry'
 import { runCredentialProbes, type ProbeResult } from '@/shared/observability/credential-probes'
 import { getBoss } from '@/shared/jobs/boss'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
@@ -61,22 +62,35 @@ async function checkQueues(): Promise<SystemStatus['pgboss']> {
  * por `name`, así que incluirla siempre es un Seq Scan de decenas de miles de
  * filas (354 ms de promedio en `pg_stat_statements`). `job` retiene 12 h de
  * pings, y el archivo solo se toca si `job` vino vacío.
+ *
+ * OJO con el tipo de `last`: acá NO llega un `Date`. `getDb()` envuelve ESTA
+ * MISMA instancia de postgres-js con drizzle, y drizzle le MUTA los type
+ * parsers, así que un `timestamptz` vuelve como string
+ * (`2026-08-26 01:00:38.874173+00`) incluso desde un `sql` crudo. La versión
+ * anterior anotaba `Date` y llamaba `.toISOString()`: tiraba `TypeError`, el
+ * catch mudo se lo tragaba, y el panel mostró `lastHealthPing: null` con 141
+ * latidos vivos en la tabla. Medido contra producción el 2026-08-26 — el mismo
+ * query con una instancia SIN drizzle devuelve `Date`, y con drizzle `string`.
  */
 async function lastHealthPing(): Promise<string | null> {
   try {
     const sql = getSql()
-    const fresh = await sql<{ last: Date | null }[]>`
+    const fresh = await sql<{ last: string | null }[]>`
       SELECT max(completedon) AS last FROM pgboss.job
       WHERE name = 'health-ping' AND state = 'completed'
     `
-    if (fresh[0]?.last) return fresh[0].last.toISOString()
+    if (fresh[0]?.last) return new Date(fresh[0].last).toISOString()
 
-    const archived = await sql<{ last: Date | null }[]>`
+    const archived = await sql<{ last: string | null }[]>`
       SELECT max(completedon) AS last FROM pgboss.archive
       WHERE name = 'health-ping' AND state = 'completed'
     `
-    return archived[0]?.last ? archived[0].last.toISOString() : null
-  } catch {
+    return archived[0]?.last ? new Date(archived[0].last).toISOString() : null
+  } catch (err) {
+    // Un catch MUDO es como se escondió el bug de arriba durante todo el
+    // tiempo que existió. El error viaja a Sentry aunque la respuesta siga
+    // degradando a null: este endpoint nunca debe tirar 500.
+    captureException(err)
     return null
   }
 }

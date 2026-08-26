@@ -19,7 +19,7 @@ async function loadBooking(bookingId: string, playerId: string) {
       FROM bookings b
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.id = ${bookingId} LIMIT 1
-    `)) as unknown as Array<{ status: string; createdAt: Date; tenantSlug: string | null }>
+    `)) as unknown as Array<{ status: string; createdAt: string; tenantSlug: string | null }>
     return rows[0] ?? null
   })
 }

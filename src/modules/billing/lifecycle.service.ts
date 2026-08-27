@@ -292,7 +292,7 @@ export async function transitionToCanceled(
   })
 }
 
-// ─── canceled → blocked (sweep when period_end < NOW; sets deletion_at +67d)
+// ─── canceled → blocked (sweep when period_end < NOW; sets deletion_at +CANCELED_BLOCKED_DELETION_DAYSd)
 
 export async function transitionCanceledToBlocked(tenantId: string, tx: DbTx): Promise<void> {
   // B5 (huérfano MP↔DB): NO nulear `mp_subscription_id` acá. El único camino

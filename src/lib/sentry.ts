@@ -1,5 +1,6 @@
 import { after } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
+import { ensureWebSentry } from '@/shared/observability/sentry-web-init'
 
 /**
  * Reexporta captureException/captureMessage de @sentry/nextjs, pero
@@ -36,9 +37,31 @@ function flushAfterResponse(): void {
   }
 }
 
+/**
+ * Enciende el SDK si nadie lo encendió, ANTES de intentar capturar.
+ *
+ * Es la mitad que faltaba: `instrumentation.ts` —el único que cargaba
+ * `sentry.server.config.ts`— **no corre en el runtime de Vercel** (medido, ver
+ * el docstring de `sentry-web-init.ts`), así que estas dos funciones venían
+ * llamando a un SDK sin inicializar. Eso no falla: es un no-op silencioso, y
+ * por eso producción no reportó un solo error de servidor durante semanas.
+ *
+ * Va acá porque este archivo es el cuello de botella por el que pasan los ~84
+ * call sites del web: encenderlo en un solo lugar los cubre a todos. Mismo
+ * patrón que el worker de Railway, donde Sentry SÍ funciona porque
+ * `initWorkerSentry()` se llama desde el grafo normal de módulos.
+ *
+ * Idempotente y barato (un `getClient()`), así que llamarlo en cada captura no
+ * cuesta nada y no pisa el init del worker.
+ */
+function ensureInit(): void {
+  ensureWebSentry()
+}
+
 export function captureException(
   ...args: Parameters<typeof Sentry.captureException>
 ): ReturnType<typeof Sentry.captureException> {
+  ensureInit()
   const eventId = Sentry.captureException(...args)
   flushAfterResponse()
   return eventId
@@ -47,6 +70,7 @@ export function captureException(
 export function captureMessage(
   ...args: Parameters<typeof Sentry.captureMessage>
 ): ReturnType<typeof Sentry.captureMessage> {
+  ensureInit()
   const eventId = Sentry.captureMessage(...args)
   flushAfterResponse()
   return eventId

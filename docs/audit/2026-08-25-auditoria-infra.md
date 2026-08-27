@@ -1700,3 +1700,89 @@ Corregido a `console.error`/`console.info`, que existen en los dos runtimes;
 el build vuelve a compilar sin el warning ni el error del loader. Un test
 textual prohíbe `process.stderr`/`process.stdout` en ese archivo, mirando solo
 las líneas de código (el docstring lo nombra a propósito).
+
+---
+
+## 20. CERRADO: producción volvió a reportar sus errores — 2026-08-27
+
+§19 quedó con una causa acorralada pero sin determinar. Se determinó, se
+arregló y se verificó de punta a punta.
+
+### La causa
+
+`register()` de `instrumentation.ts` **no se ejecuta en el runtime de Vercel**.
+Como era el único que cargaba `sentry.server.config.ts`, nadie llamaba a
+`Sentry.init()`, y los ~84 `captureException`/`captureMessage` del web
+escribían a un SDK apagado. Eso **no falla**: es un no-op mudo.
+
+Medido con `probeSentrySdk` (#237) contra producción:
+
+```
+sentry-sdk: fail — "Sentry.init() no dejó un cliente activo en este runtime"
+```
+
+Segunda señal independiente, en la MISMA invocación (arranque en frío
+provocado a propósito): el visor de logs de Vercel mostró el request con la
+columna Messages **vacía** — faltaba el `console.info('instrumentation ok')`
+que `register()` escribe al final.
+
+### El arreglo (#238)
+
+Mover el encendido al grafo normal de módulos, exactamente como el worker de
+Railway —donde Sentry **siempre** funcionó— lo hace con `initWorkerSentry()`:
+
+| Archivo | Rol |
+|---|---|
+| `src/shared/observability/sentry-web-init.ts` | La config, detrás de `ensureWebSentry()`, idempotente |
+| `src/lib/sentry.ts` | La llama antes de capturar — es el cuello de botella de los ~84 call sites |
+| `sentry.server.config.ts` | Queda delegando, para los entornos donde `register()` sí corre |
+
+### La prueba
+
+`POST /api/csp-report` con marca única a las **19:17:21 UTC**, y el issue en
+Sentry con **ese mismo timestamp**:
+
+```
+WARNING  CSP violation: script-src blocked https://sonda-final-191720.example.invalid
+         último 2026-08-27T19:17:21.009000Z
+```
+
+Y la sonda pasó de `fail` a:
+
+```
+sentry-sdk: ok — "evento entregado por el SDK — NODE_ENV=production,
+                  environment=production, dsn=presente, eventId=sí, flush=ok"
+```
+
+Un error capturado por el camino real, desde el runtime de Vercel, llegando a
+Sentry. **El hallazgo se cierra.**
+
+### Dos regresiones propias en el camino, las dos del MISMO tipo
+
+`instrumentation.ts` y todo lo alcanzable desde `middleware.ts` **también se
+compilan para el runtime EDGE**, donde `process.stdout`/`process.stderr` no
+existen:
+
+1. **#233** metió `process.stderr` en `bootLog` → rompió el
+   `valueInjectionLoader` de `@sentry/nextjs`. Corregido en **#235**.
+2. **#238** creó la cadena `middleware.ts → rate-limit/apply.ts →
+   @/lib/sentry → sentry-web-init.ts → error-sink.ts → logger.ts`, y el
+   `process.stdout` del logger **volteó el deploy entero**. Corregido en
+   **#239** pasando el logger a `console`.
+
+**Regla que queda**: en este repo, cualquier archivo alcanzable desde
+`middleware.ts` usa `console`, nunca `process.stdout`/`process.stderr`.
+
+### Dos lecciones de método, que costaron caro
+
+**Una sonda mal apuntada fabrica hallazgos falsos.** El "discriminador
+`/monitoring`" de §19 era eso: se pedía la ruta sin los query params que su
+rewrite exige. Retractado en #236. Van tres veces en esta auditoría.
+
+**Un deploy fallado deja producción con el commit anterior.** El de #238 falló,
+así que la sonda seguía dando `fail` y parecía que el arreglo no servía. Antes
+de creerle a una medición post-merge hay que **verificar que el commit esté
+vivo** (`get_deployment` sobre el dominio). Del mismo modo, la primera
+verificación local del #239 corrió con el árbol tres PRs atrás —sin la cadena
+que rompe— y no probaba nada; se detectó porque la suite bajó de 3763 a 3753
+tests.

@@ -450,22 +450,86 @@ export async function probeSentry(): Promise<ProbeResult> {
 }
 
 /**
+ * Sentry **por el SDK**, no por HTTP crudo. Es el complemento de `probeSentry`.
+ *
+ * `probeSentry` prueba la credencial y la red salteándose `@sentry/nextjs` a
+ * propósito. Esta hace lo contrario: recorre el camino REAL que usan los ~84
+ * `captureException` de la app, y reporta en qué eslabón se corta. Nace porque
+ * en producción esos dos caminos NO coinciden — el crudo entrega y el del SDK
+ * no (docs/audit/2026-08-25-auditoria-infra.md §19), y sin instrumento no había
+ * forma de saber dónde se pierde.
+ *
+ * Los tres eslabones, en orden:
+ *   1. ¿hay cliente? — si `getClient()` es `undefined`, `Sentry.init()` no
+ *      corrió en ESTE runtime (o corrió sobre otra copia del SDK);
+ *   2. ¿el evento sobrevive a `beforeSend`? — `captureMessage` devuelve el id
+ *      igual, así que se mira el `dsn` del cliente y se confía en el flush;
+ *   3. ¿el transporte lo entrega? — `flush()` devuelve `false` si quedó algo
+ *      sin mandar antes del timeout.
+ *
+ * Manda un evento real, con el MISMO `fingerprint` que `probeSentry` para que
+ * las dos sondas agrupen en un solo issue y no ensucien el proyecto.
+ */
+export async function probeSentrySdk(): Promise<ProbeResult> {
+  const name = 'sentry-sdk'
+  const missing = missingFrom(['SENTRY_DSN'])
+  if (missing.length > 0) return skip(name, missing)
+  try {
+    const Sentry = await import('@sentry/nextjs')
+    const client = Sentry.getClient()
+    if (!client) {
+      return {
+        name,
+        status: 'fail',
+        detail:
+          'Sentry.init() no dejó un cliente activo en este runtime — ' +
+          'instrumentation.ts no corrió, o corrió sobre otra copia del SDK',
+      }
+    }
+    const opciones = client.getOptions()
+    // `NODE_ENV` no es un secreto y decide el `beforeSend` de
+    // sentry.server.config.ts, que descarta TODO si no vale 'production'.
+    const nodeEnv = process.env.NODE_ENV ?? '(sin definir)'
+    const eventId = Sentry.captureMessage(
+      'credential-probe: sonda de configuración, no es un error real',
+      { level: 'info', fingerprint: ['credential-probe-sentry'] },
+    )
+    const entregado = await Sentry.flush(5000)
+    const partes = [
+      `NODE_ENV=${nodeEnv}`,
+      `environment=${opciones.environment ?? '(sin definir)'}`,
+      `dsn=${opciones.dsn ? 'presente' : 'AUSENTE'}`,
+      `eventId=${eventId ? 'sí' : 'NO'}`,
+      `flush=${entregado ? 'ok' : 'incompleto'}`,
+    ].join(', ')
+    if (!eventId || !entregado) {
+      return { name, status: 'fail', detail: `el SDK no entregó — ${partes}` }
+    }
+    return { name, status: 'ok', detail: `evento entregado por el SDK — ${partes}` }
+  } catch (e) {
+    return { name, status: 'fail', detail: (e as Error).message }
+  }
+}
+
+/**
  * Corre todas las sondas en paralelo. El orden del resultado es estable.
  *
  * Ninguna lanza: cada una atrapa lo suyo y devuelve `fail`. Así el llamador
  * —panel o script— siempre recibe la lista completa.
  */
 export async function runCredentialProbes(): Promise<ProbeResult[]> {
-  const [resend, r2, r2Public, supabase, upstash, mpOauth, mpMaster, sentry] = await Promise.all([
-    probeResend(),
-    probeR2(),
-    probeR2PublicDomain(),
-    probeSupabaseKeys(),
-    probeUpstash(),
-    probeMpOauth(),
-    probeMpMasterToken(),
-    probeSentry(),
-  ])
+  const [resend, r2, r2Public, supabase, upstash, mpOauth, mpMaster, sentry, sentrySdk] =
+    await Promise.all([
+      probeResend(),
+      probeR2(),
+      probeR2PublicDomain(),
+      probeSupabaseKeys(),
+      probeUpstash(),
+      probeMpOauth(),
+      probeMpMasterToken(),
+      probeSentry(),
+      probeSentrySdk(),
+    ])
   return [
     mpOauth,
     mpMaster,
@@ -475,6 +539,7 @@ export async function runCredentialProbes(): Promise<ProbeResult[]> {
     supabase,
     upstash,
     sentry,
+    sentrySdk,
     probeImpersonationSecret(),
     probeVapidPair(),
   ]

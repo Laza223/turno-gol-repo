@@ -1,4 +1,4 @@
-import { createECDH, createHmac, timingSafeEqual } from 'node:crypto'
+import { createECDH, createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 
 /**
  * ─── Sondas de credenciales: presencia no es funcionamiento ──────────────────
@@ -367,13 +367,96 @@ export async function probeMpMasterToken(): Promise<ProbeResult> {
 }
 
 /**
+ * Sentry (servidor): `SENTRY_DSN` sirve para ingerir un evento real.
+ *
+ * `env.ts` NO valida esta var — Sentry se inicializa aparte, en
+ * `sentry.server.config.ts`/`instrumentation.ts`, y una clave vacía, un
+ * placeholder o una URL mal armada saltean el init EN SILENCIO: sin este
+ * chequeo, "la var está seteada" (`/api/status`, `!!process.env.SENTRY_DSN`)
+ * es la única señal que existe, y no distingue un DSN real de basura. Medido
+ * el 2026-08-26/27: 14 días sin un solo evento del runtime de servidor de
+ * Vercel — ver docs/audit/2026-08-25-auditoria-infra.md §19.
+ *
+ * Manda un evento de PRUEBA directo al endpoint de ingesta de Sentry (mismo
+ * formato de envelope que usa el SDK, verificado contra un receptor propio en
+ * dev) — no pasa por `@sentry/nextjs`, a propósito: si el SDK nunca arrancó,
+ * probar A TRAVÉS de él no distingue "DSN malo" de "SDK no inicializado". Un
+ * `fingerprint` fijo agrupa todas las corridas en un solo issue de Sentry, no
+ * uno por vez.
+ */
+export async function probeSentry(): Promise<ProbeResult> {
+  const name = 'sentry'
+  const missing = missingFrom(['SENTRY_DSN'])
+  if (missing.length > 0) return skip(name, missing)
+  const dsn = process.env.SENTRY_DSN as string
+  let url: URL
+  try {
+    url = new URL(dsn)
+  } catch {
+    return { name, status: 'fail', detail: 'SENTRY_DSN no es una URL válida' }
+  }
+  const publicKey = url.username
+  const projectId = url.pathname.replace(/^\//, '')
+  if (!publicKey || !projectId) {
+    return {
+      name,
+      status: 'fail',
+      detail: 'la URL no tiene clave pública o id de proyecto — no es un DSN',
+    }
+  }
+  const eventId = randomUUID().replace(/-/g, '')
+  const nowIso = new Date().toISOString()
+  const envelope = [
+    JSON.stringify({ event_id: eventId, sent_at: nowIso }),
+    JSON.stringify({ type: 'event', content_type: 'application/json' }),
+    JSON.stringify({
+      event_id: eventId,
+      timestamp: nowIso,
+      platform: 'node',
+      level: 'info',
+      logger: 'credential-probe',
+      message: { formatted: 'credential-probe: sonda de configuración, no es un error real' },
+      fingerprint: ['credential-probe-sentry'],
+    }),
+  ].join('\n')
+  try {
+    const res = await fetch(
+      `${url.origin}/api/${projectId}/envelope/?sentry_version=7&sentry_key=${publicKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-sentry-envelope' },
+        body: envelope,
+      },
+    )
+    if (res.status === 401 || res.status === 403) {
+      return {
+        name,
+        status: 'fail',
+        detail: `clave rechazada (HTTP ${res.status}) — DSN inválido o revocado`,
+      }
+    }
+    if (res.status === 404) {
+      return { name, status: 'fail', detail: `proyecto "${projectId}" no existe en ese host` }
+    }
+    if (!res.ok) return { name, status: 'fail', detail: `HTTP ${res.status}` }
+    return {
+      name,
+      status: 'ok',
+      detail: `evento de prueba aceptado (host ${url.host}, proyecto ${projectId})`,
+    }
+  } catch (e) {
+    return { name, status: 'fail', detail: (e as Error).message }
+  }
+}
+
+/**
  * Corre todas las sondas en paralelo. El orden del resultado es estable.
  *
  * Ninguna lanza: cada una atrapa lo suyo y devuelve `fail`. Así el llamador
  * —panel o script— siempre recibe la lista completa.
  */
 export async function runCredentialProbes(): Promise<ProbeResult[]> {
-  const [resend, r2, r2Public, supabase, upstash, mpOauth, mpMaster] = await Promise.all([
+  const [resend, r2, r2Public, supabase, upstash, mpOauth, mpMaster, sentry] = await Promise.all([
     probeResend(),
     probeR2(),
     probeR2PublicDomain(),
@@ -381,6 +464,7 @@ export async function runCredentialProbes(): Promise<ProbeResult[]> {
     probeUpstash(),
     probeMpOauth(),
     probeMpMasterToken(),
+    probeSentry(),
   ])
   return [
     mpOauth,
@@ -390,6 +474,7 @@ export async function runCredentialProbes(): Promise<ProbeResult[]> {
     r2Public,
     supabase,
     upstash,
+    sentry,
     probeImpersonationSecret(),
     probeVapidPair(),
   ]

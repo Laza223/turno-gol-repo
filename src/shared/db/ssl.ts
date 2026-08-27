@@ -52,13 +52,50 @@
  * ? o[k] : k in query ? …`, lo explícito gana— y por eso el pool de la app se
  * arregló pasando solo la opción.
  *
- * ─── Lo que NO hace ───────────────────────────────────────────────────────────
+ * ─── 2026-08-27: ahora sí valida la cadena ───────────────────────────────────
  *
- * `rejectUnauthorized: false` cifra pero no valida la cadena — es el
- * comportamiento que ya tenía el sistema, no un downgrade. Validar de verdad
- * exige empaquetar la CA de Supabase y pasar `sslrootcert`; queda como mejora
- * aparte, anotada en la auditoría de infraestructura.
+ * Hasta acá este archivo devolvía `{ rejectUnauthorized: false }`: ciframos el
+ * canal pero no comprobábamos contra QUIÉN. Eso deja la puerta a un
+ * man-in-the-middle activo — cualquiera que pueda desviar el tráfico hacia el
+ * pooler puede presentar su propio certificado y leer todo, credenciales
+ * incluidas. El comentario anterior lo dejaba anotado como mejora pendiente
+ * ("exige empaquetar la CA de Supabase"), y eso es exactamente lo que se hizo:
+ * `SUPABASE_ROOT_CA` (./supabase-ca) trae la raíz pública, verificada contra el
+ * handshake real del pooler de producción.
+ *
+ * MEDIDO contra `aws-1-sa-east-1.pooler.supabase.com` en los DOS puertos (5432
+ * y 6543) y con las DOS librerías, usando una contraseña deliberadamente
+ * inválida para separar "falló el TLS" de "falló la autenticación" —
+ * `pnpm tsx scripts/probe-db-tls.ts` lo reproduce sin necesitar credenciales:
+ *
+ *   pg / porsager  ssl actual  -> 28P01 password auth failed   (conecta, no valida)
+ *   pg / porsager  CON la CA   -> 28P01 password auth failed   (conecta Y VALIDA)
+ *   pg / porsager  SIN la CA   -> self-signed certificate in certificate chain
+ *
+ * La tercera fila es el control negativo, y es la que le da valor a las otras
+ * dos: prueba que la sonda SÍ sabe detectar un TLS que no valida, así que el
+ * verde de la segunda no es un falso positivo.
+ *
+ * ─── El riesgo asumido, dicho de frente ──────────────────────────────────────
+ *
+ * Esta función la comparten los TRES pools (app, worker y pg-boss) en DOS
+ * runtimes (Vercel y Railway). Si la CA dejara de servir, no se cae uno: se
+ * caen los tres a la vez. Es un modo de falla ruidoso y no silencioso —
+ * preferible al anterior, donde el sistema andaba igual sin validar nada— pero
+ * hay que saberlo: la raíz vence el 2031-04-26 y si Supabase la rota antes, el
+ * síntoma es `self-signed certificate in certificate chain` en todos lados.
+ *
+ * A propósito NO se agregan las CA del sistema (`tls.rootCertificates`) ni un
+ * override por variable de entorno. Lo primero exigiría importar `node:tls`
+ * acá, y este repo ya se rompió dos veces el mismo día por meter una API de
+ * Node en un archivo que después alguien arrastró al runtime edge. Lo segundo
+ * reintroduciría justo lo que los párrafos de arriba sacaron: una decisión de
+ * TLS editable desde un panel. Contra un host remoto que NO sea Supabase esto
+ * falla al conectar — hoy no existe ninguno (CI y dev van a 127.0.0.1, que ni
+ * siquiera negocia TLS), y si algún día aparece, falla fuerte y a la vista en
+ * vez de conectarse sin validar.
  */
+import { SUPABASE_ROOT_CA } from './supabase-ca'
 
 /** Hosts donde no hay TLS que negociar (Supabase local, CI, tests). */
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
@@ -72,14 +109,19 @@ function isLocalDsn(url: string): boolean {
   }
 }
 
+/** Config de TLS que valida la cadena contra la raíz de Supabase. */
+export type DbSslOptions = { ca: string; rejectUnauthorized: true }
+
 /**
  * Opción `ssl` para un pool de `postgres` (porsager) y para uno de `pg`.
  *
- * El objeto `{ rejectUnauthorized: false }` lo entienden las dos: porsager lo
- * pasa derecho a `tls.connect`, y `pg` lo usa como su config de SSL.
+ * El objeto lo entienden las dos: porsager lo pasa derecho a `tls.connect`, y
+ * `pg` lo usa como su config de SSL. `ca` reemplaza el almacén de confianza por
+ * la raíz de Supabase, y `rejectUnauthorized: true` es lo que hace que esa
+ * confianza se comprueba de verdad — sin él, `ca` no sirve de nada.
  */
-export function dbSslOptions(url: string): { rejectUnauthorized: false } | false {
-  return isLocalDsn(url) ? false : { rejectUnauthorized: false }
+export function dbSslOptions(url: string): DbSslOptions | false {
+  return isLocalDsn(url) ? false : { ca: SUPABASE_ROOT_CA, rejectUnauthorized: true }
 }
 
 /**
@@ -98,7 +140,7 @@ export function dbSslOptions(url: string): { rejectUnauthorized: false } | false
  */
 export function pgConnectionConfig(url: string): {
   connectionString: string
-  ssl: { rejectUnauthorized: false } | false
+  ssl: DbSslOptions | false
 } {
   return { connectionString: stripSslmode(url), ssl: dbSslOptions(url) }
 }

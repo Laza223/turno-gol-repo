@@ -26,7 +26,21 @@ COPY . .
 ENV NODE_ENV=production
 
 # Entrypoint: arranca pg-boss + registra los 14 workers.
-# Recordatorio: en este servicio, DATABASE_URL debe ser la conexión DIRECTA
-# a Postgres (:5432), no el pooler (:6543), y debe llevar ?sslmode=require
-# (DSN remoto de Supabase — no es localhost). Ver docs/infraestructura.md §4.
+#
+# El recordatorio que había acá quedó DESACTUALIZADO y era peligroso: decía que
+# DATABASE_URL debía ser la conexión DIRECTA a Postgres (:5432) y llevar
+# `?sslmode=require`. Las dos cosas son falsas hoy, y la segunda fue la causa
+# de un incidente (2026-08-25):
+#
+#   * La conexión directa (`db.<ref>.supabase.co:5432`) ya NO EXISTE — da
+#     ENOTFOUND. Todo el tráfico pasa por el pooler, sí o sí.
+#   * `?sslmode=require` hacía que `pg` (la librería de pg-boss) validara la
+#     cadena SIN tener la CA de Supabase, y el worker moría en bucle con
+#     "self-signed certificate in certificate chain".
+#
+# Hoy el `sslmode` del DSN NO decide nada: `pgConnectionConfig()` se lo saca
+# antes de dárselo a `pg`, y el TLS lo fija el código (`src/shared/db/ssl.ts`),
+# que además ya valida la cadena contra la raíz de Supabase. Ver
+# docs/audit/2026-08-25-auditoria-infra.md §11-12 y §22, y el mismo
+# razonamiento en railway.toml.
 CMD ["pnpm", "jobs:start"]

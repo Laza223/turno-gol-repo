@@ -1619,29 +1619,62 @@ otras 9 sondas también dieron `ok`.
 **Queda descartado el sospechoso que quedaba.** No es el flush (#232), no es
 el orden de `instrumentation.ts` (#233), y no es el valor de `SENTRY_DSN`.
 
-### El discriminador que sí sirve: `/monitoring`
+### ⚠️ El "discriminador `/monitoring`" era un ERROR DE MEDICIÓN mío
 
-Comparando el MISMO commit, mismo bundler (Turbopack en los dos lados —
-verificado en los logs de build, no asumido):
+La versión anterior de esta sección afirmaba que la ruta del túnel
+`/monitoring` existía en el build local y devolvía **404 en Vercel**, y
+concluía que "las piezas que el plugin de Sentry inyecta en el build no están
+en el artefacto de Vercel". **Eso es falso y queda retractado.**
 
-| | build local de producción | producción en Vercel |
-|---|---|---|
-| `<meta name="baggage">` en página dinámica | **presente** | ausente |
-| ruta del túnel `/monitoring` | **existe** (500 con un DSN falso) | **404** |
+El túnel NO es una ruta: es un **rewrite con condiciones `has`** sobre los
+query params `o` (org), `p` (proyecto) y `r` (región) —visto en
+`.next/routes-manifest.json`—, así que sin esos parámetros **no matchea y
+devolver 404 es lo correcto**. Se había probado pidiendo `/monitoring` pelado.
 
-`tunnelRoute: '/monitoring'` lo genera `withSentryConfig` (`next.config.ts`).
-Que en Vercel devuelva 404 dice que **las piezas que el plugin de Sentry
-inyecta en el build no están en el artefacto de Vercel**, y eso explica de una
-las dos ausencias: sin esa inyección no hay meta de traza ni túnel.
+Medido bien, con los ids reales que devolvió `probeSentry`:
 
-Dato que lo vuelve más grave: el CSP de producción es
+```
+POST /monitoring?o=<org>&p=<proyecto>&r=us   → 401   (respuesta de Sentry:
+                                                      rechaza el cuerpo basura)
+POST /monitoring                             → 404   (correcto: no matchea)
+```
+
+O sea que **el túnel funciona en producción** y `withSentryConfig` SÍ se
+aplicó en el build de Vercel. Lección repetida (van tres en esta auditoría):
+antes de tratar una respuesta como evidencia, verificar que la sonda esté
+midiendo lo que uno cree.
+
+Sigue en pie, eso sí, que el CSP de producción es
 `connect-src 'self' *.supabase.co wss://*.supabase.co *.mercadopago.com` — sin
-`*.sentry.io`. O sea que el navegador **solo** puede reportar por el túnel; con
-el túnel en 404, el camino del cliente también está cortado. Encaja con que el
-último `web-vital:*` en Sentry sea del 2026-08-26.
+`*.sentry.io`. No es un problema mientras el túnel ande, pero deja al cliente
+con un solo camino y sin red de respaldo.
 
-El plugin corre con `silent: true`, así que si se auto-desactiva no lo dice.
-Esa es la próxima línea de investigación.
+### Dónde quedó, con todo lo descartado
+
+Sonda nueva después de #235 (`POST /api/csp-report` con marca única,
+2026-08-27 17:35 UTC): la función respondió 204 y el evento **no llegó** a
+Sentry. Con eso, la lista de causas eliminadas —cada una con medición, no por
+descarte lógico— es:
+
+| Candidato | Cómo se descartó |
+|---|---|
+| Falta de `flush()` antes del freeze (#232) | Arreglado y mergeado; el evento sigue sin llegar |
+| Orden de arranque de `instrumentation.ts` (#233) | Reordenado y deployado; sin cambio |
+| Valor de `SENTRY_DSN` | `probeSentry` en producción: evento aceptado E INGERIDO |
+| Red / firewall hacia Sentry | Misma sonda: llega por HTTP directo desde el runtime |
+| Túnel `/monitoring` roto | Falso positivo propio; medido bien, funciona |
+| El plugin no se aplicó en el build | Refutado por lo mismo: el rewrite existe en Vercel |
+| Ubicación de `instrumentation.ts` | La raíz es válida — Next busca en raíz **y** en `src/` |
+| Error del `valueInjectionLoader` (#235) | Era regresión propia y ya está corregida; precede al síntoma igual |
+
+**Lo que queda en pie**: `Sentry.init()` no produce un cliente activo en el
+runtime de servidor de Vercel, con credencial y red probadas buenas. Sin
+determinar.
+
+**Camino pragmático disponible**: `probeSentry` demostró que el ingest por
+HTTP directo SÍ funciona desde ese runtime. O sea que se puede reportar sin
+depender del init del SDK. Es un rodeo, no un arreglo, y conviene decidirlo a
+conciencia antes de escribirlo.
 
 ### Una regresión propia, encontrada leyendo el log de build
 

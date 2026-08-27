@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // El 2026-08-26 se midió que producción no reportaba UN SOLO error de servidor:
@@ -50,9 +52,14 @@ vi.mock('@/shared/env', () => ({
 const runtimeOriginal = process.env.NEXT_RUNTIME
 
 describe('instrumentation register() — orden de arranque', () => {
-  // `process.stderr.write` tiene overloads, así que el tipo que infiere
-  // `vi.spyOn` no encaja en el genérico por defecto de MockInstance.
-  let stderr: { mock: { calls: unknown[][] }; mockRestore: () => void }
+  // Se espía `console`, NO `process.stderr`: este archivo se compila también
+  // para el runtime edge, donde `process.stderr` no existe — usarlo rompía el
+  // `valueInjectionLoader` de @sentry/nextjs en el build de Turbopack.
+  let consoleError: ReturnType<typeof vi.spyOn>
+  let consoleInfo: ReturnType<typeof vi.spyOn>
+
+  const loguedo = () =>
+    [...consoleError.mock.calls, ...consoleInfo.mock.calls].map((c) => String(c[0])).join('')
 
   beforeEach(() => {
     orden.length = 0
@@ -60,13 +67,29 @@ describe('instrumentation register() — orden de arranque', () => {
     envTira = false
     process.env.NEXT_RUNTIME = 'nodejs'
     vi.resetModules()
-    stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => {})
   })
 
   afterEach(() => {
-    stderr.mockRestore()
+    consoleError.mockRestore()
+    consoleInfo.mockRestore()
     if (runtimeOriginal === undefined) delete process.env.NEXT_RUNTIME
     else process.env.NEXT_RUNTIME = runtimeOriginal
+  })
+
+  it('no usa process.stderr: el archivo también se compila para el runtime edge', () => {
+    // Guard de regresión: con `process.stderr.write` acá, Turbopack avisaba
+    // "A Node.js API is used" y el valueInjectionLoader de @sentry/nextjs
+    // fallaba al transformar este archivo — el intento de arreglar la
+    // observabilidad rompía la instrumentación de Sentry en el build.
+    // Se miran solo las líneas de CÓDIGO: el docstring del archivo nombra
+    // `process.stderr` justamente para explicar por qué no se usa.
+    const codigo = readFileSync(path.resolve(process.cwd(), 'instrumentation.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    expect(codigo).not.toContain('process.stderr')
+    expect(codigo).not.toContain('process.stdout')
   })
 
   // VA PRIMERO A PROPÓSITO: el factory de `vi.mock('../../sentry.server.config')`
@@ -89,24 +112,24 @@ describe('instrumentation register() — orden de arranque', () => {
     expect(orden).toContain('zod.locale')
   })
 
-  it('un entorno inválido se reporta a Sentry y a stderr, y sigue tirando', async () => {
+  it('un entorno inválido se reporta a Sentry y al log, y sigue tirando', async () => {
     envTira = true
     const { register } = await import('../../instrumentation')
 
     await expect(register()).rejects.toThrow('Invalid environment')
 
     expect(capturados).toHaveLength(1)
-    const escrito = stderr.mock.calls.map((c) => String(c[0])).join('')
-    expect(escrito).toContain('server env invalid')
-    expect(escrito).toContain('R2_BUCKET')
+    // El nombre de la variable que falló, nunca su valor.
+    expect(loguedo()).toContain('server env invalid')
+    expect(loguedo()).toContain('R2_BUCKET')
+    expect(consoleError).toHaveBeenCalled()
   })
 
   it('en el camino feliz deja constancia de que register() corrió', async () => {
     const { register } = await import('../../instrumentation')
     await register()
 
-    const escrito = stderr.mock.calls.map((c) => String(c[0])).join('')
-    expect(escrito).toContain('instrumentation ok')
+    expect(loguedo()).toContain('instrumentation ok')
     expect(capturados).toHaveLength(0)
   })
 })

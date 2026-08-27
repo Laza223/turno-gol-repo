@@ -9,20 +9,20 @@ afterEach(() => {
   setErrorSink(null)
 })
 
+// Se espía `console`, no `process.stdout`: el logger entra al grafo del EDGE
+// MIDDLEWARE, donde esas APIs de Node no existen y voltean el build entero.
 function captureStdout(): { calls: string[] } {
   const calls: string[] = []
-  vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
-    calls.push(typeof chunk === 'string' ? chunk : chunk.toString())
-    return true
+  vi.spyOn(console, 'log').mockImplementation((chunk?: unknown) => {
+    calls.push(String(chunk))
   })
   return { calls }
 }
 
 function captureStderr(): { calls: string[] } {
   const calls: string[] = []
-  vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
-    calls.push(typeof chunk === 'string' ? chunk : chunk.toString())
-    return true
+  vi.spyOn(console, 'error').mockImplementation((chunk?: unknown) => {
+    calls.push(String(chunk))
   })
   return { calls }
 }
@@ -32,7 +32,8 @@ describe('logger output format', () => {
     const { calls } = captureStdout()
     logger.info('hello world')
     expect(calls).toHaveLength(1)
-    expect(calls[0]).toMatch(/\n$/)
+    // Ya no lleva `\n` propio: `console` agrega el salto de línea.
+    expect(calls[0]).not.toContain('\n')
     expect(() => JSON.parse(calls[0])).not.toThrow()
   })
 
@@ -81,9 +82,8 @@ describe('logger levels and output streams', () => {
 
   it('error writes to stderr (not stdout)', () => {
     const stdoutCalls: string[] = []
-    vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
-      stdoutCalls.push(typeof chunk === 'string' ? chunk : chunk.toString())
-      return true
+    vi.spyOn(console, 'log').mockImplementation((chunk?: unknown) => {
+      stdoutCalls.push(String(chunk))
     })
     const { calls: stderrCalls } = captureStderr()
 

@@ -32,7 +32,7 @@ description: Usar cuando se escribe o modifica código que toca la DB (Drizzle, 
 - **jsonb**: importar `jsonb` desde `src/shared/db/jsonb.ts`, NUNCA desde `drizzle-orm/pg-core`. El de pg-core doble-codifica con postgres-js y corrompe el dato at-rest (queda string escalar; `columna->>'campo'` devuelve NULL).
 - Merge de jsonb en `` sql`` ``: pasar el objeto crudo, NUNCA `JSON.stringify` (mismo doble-encode). Ojo con `||` sobre un array: concatena en vez de reemplazar.
 - Subquery correlacionado dentro de `` sql`` `` en `.select()` no califica columnas de la tabla externa → usar LEFT JOIN con tabla derivada.
-- **Migraciones**: fuente de verdad `src/shared/db/migrations/NNN_nombre.sql` (numeración secuencial; última hoy: 035). Después de crear una: `pnpm db:sync-supabase` genera el espejo en `supabase/migrations/`, y `pnpm supabase:reset` la aplica localmente. NUNCA editar una migración ya existente. Detalle en `docs/operations/MIGRATIONS.md`.
+- **Migraciones**: fuente de verdad `src/shared/db/migrations/NNN_nombre.sql` (numeración secuencial; la última se lee con `ls src/shared/db/migrations | tail -1` — no la fijes acá, un número que se incrementa solo queda viejo y se cita como vigente). Después de crear una: `pnpm db:sync-supabase` genera el espejo en `supabase/migrations/`, y `pnpm supabase:reset` la aplica localmente. NUNCA editar una migración ya existente. Detalle en `docs/operations/MIGRATIONS.md`.
 
 ## Multi-tenant / RLS
 

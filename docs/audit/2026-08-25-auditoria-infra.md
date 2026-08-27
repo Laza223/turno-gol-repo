@@ -1601,3 +1601,69 @@ secretos) es lo único que hace falta mirar para cerrar este hallazgo.
 
 Memoria: `sentry-servidor-muerto-en-vercel.md` y
 `vercel-logs-api-no-devuelve-salida-app.md`.
+
+### La sonda contestó: el DSN está bien. La hipótesis era equivocada
+
+Corrida contra producción (`/api/admin/system-status?probes=1`, 2026-08-27):
+
+```
+{"name":"sentry","status":"ok",
+ "detail":"evento de prueba aceptado (host o…ingest.us.sentry.io, proyecto …)"}
+```
+
+Y el evento **llegó de verdad**: issue `credential-probe: sonda de
+configuración, no es un error real`, visto 17:11:54. O sea que desde el
+runtime de Vercel la credencial es válida, la red llega y Sentry ingiere. Las
+otras 9 sondas también dieron `ok`.
+
+**Queda descartado el sospechoso que quedaba.** No es el flush (#232), no es
+el orden de `instrumentation.ts` (#233), y no es el valor de `SENTRY_DSN`.
+
+### El discriminador que sí sirve: `/monitoring`
+
+Comparando el MISMO commit, mismo bundler (Turbopack en los dos lados —
+verificado en los logs de build, no asumido):
+
+| | build local de producción | producción en Vercel |
+|---|---|---|
+| `<meta name="baggage">` en página dinámica | **presente** | ausente |
+| ruta del túnel `/monitoring` | **existe** (500 con un DSN falso) | **404** |
+
+`tunnelRoute: '/monitoring'` lo genera `withSentryConfig` (`next.config.ts`).
+Que en Vercel devuelva 404 dice que **las piezas que el plugin de Sentry
+inyecta en el build no están en el artefacto de Vercel**, y eso explica de una
+las dos ausencias: sin esa inyección no hay meta de traza ni túnel.
+
+Dato que lo vuelve más grave: el CSP de producción es
+`connect-src 'self' *.supabase.co wss://*.supabase.co *.mercadopago.com` — sin
+`*.sentry.io`. O sea que el navegador **solo** puede reportar por el túnel; con
+el túnel en 404, el camino del cliente también está cortado. Encaja con que el
+último `web-vital:*` en Sentry sea del 2026-08-26.
+
+El plugin corre con `silent: true`, así que si se auto-desactiva no lo dice.
+Esa es la próxima línea de investigación.
+
+### Una regresión propia, encontrada leyendo el log de build
+
+El log del deploy de #234 traía:
+
+```
+./instrumentation.ts:12:3
+A Node.js API is used (process.stderr) which is not supported in the Edge Runtime.
+Generated code of loaders [.../@sentry/nextjs/.../valueInjectionLoader.js]
+transform of file content of instrumentation.ts: Ecmascript file had an error
+```
+
+El `bootLog` que #233 agregó para que el arranque gritara usaba
+`process.stderr.write`, y `instrumentation.ts` **también se compila para el
+runtime edge** (por su rama `NEXT_RUNTIME === 'edge'`). Resultado: el
+`valueInjectionLoader` de `@sentry/nextjs` fallaba al transformar el archivo —
+el intento de arreglar la observabilidad estaba rompiendo la instrumentación
+de Sentry en el build.
+
+Confirmado que era regresión propia comparando contra el log del deploy
+inmediatamente anterior (#232, commit `eb6870f`), que compilaba limpio.
+Corregido a `console.error`/`console.info`, que existen en los dos runtimes;
+el build vuelve a compilar sin el warning ni el error del loader. Un test
+textual prohíbe `process.stderr`/`process.stdout` en ese archivo, mirando solo
+las líneas de código (el docstring lo nombra a propósito).

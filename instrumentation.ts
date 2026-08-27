@@ -1,23 +1,32 @@
 import * as Sentry from '@sentry/nextjs'
 
 /**
- * Log directo a stderr, sin pasar por `logger` ni por Sentry.
+ * Log de arranque, sin pasar por `logger` ni por Sentry.
  *
  * Existe porque esto tiene que poder gritar JUSTO cuando la observabilidad es
  * lo que está roto: si el reporte de un fallo de arranque dependiera de Sentry,
- * y Sentry no arrancó, el fallo volvería a ser mudo. Mismo idioma que el warn
- * de DSN inválido de `sentry.server.config.ts`.
+ * y Sentry no arrancó, el fallo volvería a ser mudo.
+ *
+ * Usa `console`, NO `process.stderr.write`. Este archivo se compila también
+ * para el runtime EDGE (por la rama `NEXT_RUNTIME === 'edge'` de abajo), donde
+ * `process.stderr` no existe. Con `process.stderr` acá, el build de Turbopack
+ * emitía `A Node.js API is used (process.stderr)` y —lo grave— el
+ * `valueInjectionLoader` de `@sentry/nextjs` fallaba al transformar este
+ * archivo ("Ecmascript file had an error"), o sea que el intento de arreglar la
+ * observabilidad rompía la instrumentación de Sentry en el build. Verificado
+ * comparando los logs de build de dos deploys consecutivos: el anterior
+ * compilaba limpio. `console` existe en los dos runtimes.
  */
 function bootLog(level: 'info' | 'error', message: string, extra?: Record<string, unknown>): void {
-  process.stderr.write(
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level,
-      module: 'instrumentation',
-      message,
-      ...extra,
-    }) + '\n',
-  )
+  const line = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level,
+    module: 'instrumentation',
+    message,
+    ...extra,
+  })
+  if (level === 'error') console.error(line)
+  else console.info(line)
 }
 
 /**

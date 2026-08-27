@@ -161,8 +161,8 @@ los de Railway estén mal.
 | **M-6** ✅ | **100 policies RLS re-evalúan la función de contexto por fila** (`auth_rls_initplan`), 48 policies permissive duplicadas, 26 foreign keys sin índice | Supabase advisors (performance): 148 WARN + 49 INFO | Es el techo de performance de la grilla y de Personas cuando entre un complejo con miles de reservas. Se arregla envolviendo en `(select …)` y unificando policies — **Cerrado el 2026-08-25 sin tocar SQL: los 148 avisos WARN son falso positivo (100) o el diseño dual documentado (48). Medido con EXPLAIN bajo un rol sin BYPASSRLS — ver §5.2.** |
 | **M-7** ⏸️ | Compute **Nano** con el pool casi tomado en reposo | Panel: pool size 15 (default de Nano), `max_connections` 60. Medido ahora: 6 conexiones de `turnogol_app` + 3 de `turnogol_worker` = 9 de 15 **sin tráfico** | Es la causa estructural de F-002. Con Pro, subir a Micro entra casi entero en el crédito de cómputo incluido — **Medido el 2026-08-25: base de 35 MB, 22/60 conexiones. No se sube el compute — ver §5.4.** |
 | **M-8** ◐ | **DMARC en `p=none` y sin dirección de reportes** — *mitad hecha el 2026-08-25* | El TXT pasó a `"v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"`, resuelto contra `8.8.8.8`. Para que ese buzón exista se prendió **Cloudflare Email Routing** en la zona: destino `turnogol@gmail.com` **Verificado**, regla `dmarc@turnogol.app → turnogol@gmail.com` **Activa**, y los 5 registros que pide el servicio creados en el apex (3 MX `route{1,2,3}.mx.cloudflare.net`, el DKIM `cf2024-1._domainkey` y un `v=spf1 include:_spf.mx.cloudflare.net ~all`), todos resueltos por DNS. Estado del servicio: *Activado / Registros DNS Activado* | El correo saliente NO se toca: el Return-Path de Resend es `send.turnogol.app` con su propio SPF, y el DKIM `resend._domainkey.turnogol.app` firma con `d=turnogol.app`, así que la alineación DMARC sigue viniendo por DKIM. **Falta**: juntar dos semanas de reportes y recién ahí pasar a `p=quarantine`. **Sin verificar end-to-end**: no se mandó un mail de prueba a `dmarc@turnogol.app`; el primer reporte real (24-48 h) es la prueba |
-| **M-9** ◐ | Vercel Firewall **sin una sola regla propia** — *parcialmente cerrado el 2026-08-25, ver §5.1* | Panel → Firewall → Rules: solo "System Rule". Tráfico del período: 977 permitidos, 134 denegados, 7 desafiados | El rate-limit de la app vive en el runtime (Upstash): cada request abusiva ya gastó una función. Los caminos de plata (`/api/webhooks/*`, `/api/public/*`, login) deberían frenarse en el borde |
-| **M-10** | CSP con `script-src 'unsafe-inline'` en producción | Header medido en `https://turnogol.app/` | Anula buena parte de la defensa contra XSS. Next 16 soporta nonces por middleware |
+| **M-9** ◐ | Vercel Firewall **sin una sola regla propia** — *parcialmente cerrado el 2026-08-25, ver §5.1; propuesta de 4 reglas concretas en §21* | Panel → Firewall → Rules: solo "System Rule". Tráfico del período: 977 permitidos, 134 denegados, 7 desafiados | El rate-limit de la app vive en el runtime (Upstash): cada request abusiva ya gastó una función. Los caminos de plata (`/api/webhooks/*`, `/api/public/*`, login) deberían frenarse en el borde |
+| **M-10** ⚠️ | CSP con `script-src 'unsafe-inline'` en producción — *intentado con nonce y REVERTIDO el 2026-08-27, ver §21: rompía la hidratación de toda página estática/ISR* | Header medido en `https://turnogol.app/` | Anula buena parte de la defensa contra XSS. Nonce por middleware NO sirve tal cual en esta app — requiere una decisión de arquitectura (§21) |
 | **M-11** ✅ | Un secreto de más en el runtime de Vercel — *cerrado el 2026-08-25, ver paso 3* | `SENTRY_READ_TOKEN` en Production y Preview | Solo lo lee `scripts/sentry-issues.ts`, que corre local contra `.env.production`. **Corrección respecto de la primera versión de este documento**: `SENTRY_AUTH_TOKEN` NO sobra — `next.config.ts:125` se lo pasa a `withSentryConfig` para subir los sourcemaps, así que el build lo necesita y se queda |
 | **M-13** ✅ | El dominio de las imágenes aceptaba **TLS 1.0** — *corregido el 2026-08-25* | R2 → `turnogol-media` → Dominios personalizados: `media.turnogol.app`, *TLS mínimo* pasó de **1.0** a **1.2**. Verificado en el cable: `curl --tls-max 1.0` no completa el handshake, `curl --tlsv1.2` responde 404 (el dominio vive; el 404 es porque el bucket está vacío) | TLS 1.0 está roto y deprecado desde 2021 |
 | **M-14** 🟢 | **Las imágenes no tienen backup — pero hoy no hay imágenes** | R2 → `turnogol-media`: *Tamaño del bucket* = **0 B**, cero objetos ("Tu bucket está listo. Agrega archivos para comenzar"). Contrastado contra la base de producción: `tenants.logo_url`/`cover_url` NULL en los 2 complejos, `courts.photos` vacío en las 4 canchas, `players.avatar_url` NULL en los 3 jugadores | Degradado de 🟡 a 🟢: no hay nada que perder todavía. **Y el remedio que este mismo informe proponía era el equivocado**: una *regla de bloqueo de bucket* vuelve los objetos inmutables durante la retención, y la app borra objetos en el uso normal (`deleteImage` en `src/shared/storage/r2.ts:78`, llamada al reemplazar logo/portada en `settings/perfil/actions.ts:33,114` y foto de cancha en `settings/canchas/actions.ts:318`) — o sea que la habría roto: cambiar el logo empezaría a fallar. Cuando haya contenido real, el backup va por otro lado (copia programada a un segundo bucket o a otro proveedor), no por bucket lock |
@@ -173,11 +173,11 @@ los de Railway estén mal.
 
 | # | Hallazgo | Evidencia |
 |---|---|---|
-| B-13 | **3 proyectos Supabase pausados** (ene/abr/may 2026), cada uno en su propia organización | `list_projects`: 3 × `INACTIVE` + el de producción `ACTIVE_HEALTHY` |
-| B-14 | `media.turnogol.com` **no existe** (NXDOMAIN) y sigue hardcodeado en `next.config.ts` (`MEDIA_HOSTS`) y por lo tanto en el CSP de producción | `nslookup media.turnogol.com` → Non-existent domain; header CSP contiene `media.turnogol.com media.turnogol.app` |
-| B-15 | Vercel recomienda migrar el apex de A a CNAME (`baf912ebe0c35da4.vercel-dns-017.com`) | Panel → Domains → badge "DNS Change Recommended" |
-| B-16 | Extensiones `pg_trgm` y `btree_gist` instaladas en el schema `public` | Advisor `extension_in_public` |
-| B-18 | **No hay MX en el apex**: un mail a cualquier dirección `@turnogol.app` rebota. Tampoco hay SPF en el apex (`v=spf1 -all` cerraría la suplantación) | `nslookup -type=MX turnogol.app` → sin respuesta; el único TXT del apex es la verificación de Google |
+| B-13 | **3 proyectos Supabase pausados** (ene/abr/may 2026), cada uno en su propia organización — *revisado el 2026-08-27: el MCP de esta sesión solo ve la org de producción, ver §21* | `list_projects`: 3 × `INACTIVE` + el de producción `ACTIVE_HEALTHY` |
+| B-14 ✅ | `media.turnogol.com` **no existe** (NXDOMAIN) y sigue hardcodeado en `next.config.ts` (`MEDIA_HOSTS`) y por lo tanto en el CSP de producción — *cerrado en Tanda 1, ver §3 punto 4* | `nslookup media.turnogol.com` → Non-existent domain; header CSP contiene `media.turnogol.com media.turnogol.app` |
+| B-15 | Vercel recomienda migrar el apex de A a CNAME (`baf912ebe0c35da4.vercel-dns-017.com`) — *sigue en A record, confirmado el 2026-08-27, ver §21* | Panel → Domains → badge "DNS Change Recommended" |
+| B-16 ⚠️ | Extensiones `pg_trgm` y `btree_gist` instaladas en el schema `public` — *intentado y REVERTIDO el 2026-08-27, ver §21: bloqueado por permisos de Supabase (`supabase_admin` es owner, no `postgres`), no por riesgo de código* | Advisor `extension_in_public` |
+| B-18 ✅ | **No hay MX en el apex**: un mail a cualquier dirección `@turnogol.app` rebota. Tampoco hay SPF en el apex (`v=spf1 -all` cerraría la suplantación) — *cerrado el 2026-08-27, ver §21: Cloudflare Email Routing ya propagó MX+SPF* | `nslookup -type=MX turnogol.app` → sin respuesta; el único TXT del apex es la verificación de Google |
 | B-17 | `push_send_log` con RLS prendido y sin policies | Advisor `rls_enabled_no_policy`. **No es un agujero**: es fail-closed y la escribe el worker con BYPASSRLS. Queda anotado para que nadie lo "arregle" agregando una policy |
 
 ### ✅ Lo que está bien y no hay que tocar
@@ -1786,3 +1786,161 @@ vivo** (`get_deployment` sobre el dominio). Del mismo modo, la primera
 verificación local del #239 corrió con el árbol tres PRs atrás —sin la cadena
 que rompe— y no probaba nada; se detectó porque la suite bajó de 3763 a 3753
 tests.
+## 21. Los últimos hallazgos de la matriz, revisados y esta vez PROBADOS contra infra real — 2026-08-27
+
+Seis hallazgos quedaban abiertos: M-8, M-9, M-10, B-13, B-15, B-16, B-18. Se
+investigaron los seis con evidencia fresca. Dos de ellos (M-10, B-16)
+llegaron a tener un fix propuesto que **se probó contra un build/DB real
+antes de proponerlo — y los dos fallaron esa prueba**, por razones que el
+análisis por grep/lectura de código no podía haber visto. Se documentan acá
+los dos intentos fallidos completos porque el próximo que lo intente (humano
+o IA) no debería repetirlos.
+
+### B-18 CERRADO — MX/SPF del apex, confirmado con DNS fresco
+
+`nslookup -type=MX turnogol.app` devuelve los 3 MX de Cloudflare Email
+Routing (`route{1,2,3}.mx.cloudflare.net`) y `nslookup -type=TXT turnogol.app`
+devuelve `v=spf1 include:_spf.mx.cloudflare.net ~all`. Los dos efectos
+colaterales que el paso 8 de la Tanda 2 (§3) esperaba que Email Routing
+agregara ya propagaron. **Cerrado, sin acción.**
+
+### M-8 — sigue en el estado ESPERADO, no es un hallazgo pendiente de acción
+
+`nslookup -type=TXT _dmarc.turnogol.app` → `v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app`.
+Sigue en `p=none` porque todavía no pasaron las ~2 semanas de reportes desde
+el 2026-08-25 (se cumplen ~2026-09-08). Nada que hacer hasta esa fecha.
+
+### B-15 — sigue abierto, es cambio de panel (Cloudflare), no de código
+
+`nslookup turnogol.app` → `216.198.79.1` (A record de Vercel), sin migrar al
+CNAME recomendado (`baf912ebe0c35da4.vercel-dns-017.com`). No hay vía de
+API/MCP para esto — es un cambio de DNS en el panel de Cloudflare que le
+corresponde hacer a Lazar. La IP actual es válida y funciona; no es urgente.
+
+### B-13 — el MCP de Supabase de esta sesión solo ve la org de producción
+
+`list_organizations()`/`list_projects()` devuelven UNA sola organización
+("turnogol production") y UN solo proyecto (el `ACTIVE_HEALTHY` de
+producción, `dpzicetvrgqlwfrqlaek`). Los 3 proyectos pausados que Lazar
+recuerda haber visto viven en organizaciones/cuentas distintas a las que este
+token de MCP tiene acceso — no es que no existan, es que esta sesión no
+puede verlos. Para decidir si borrarlos o no, hay que mirarlos con la cuenta
+que sí tiene acceso (selector de organización en supabase.com/dashboard).
+
+### M-9 — sin cambios ejecutados, con una propuesta concreta de 4 reglas
+
+Sigue vigente la decisión de §5.1 de NO poner rate-limit ciego en el borde
+(rompería locales con varios empleados en el mismo WiFi, y el webhook de MP
+no se puede frenar sin arriesgar pagos). Pero "no bloquear ciego" dejó una
+brecha real: nada en el borde frena a un atacante que reparte intentos de
+login entre muchos emails desde una sola IP (el rate-limit de runtime keyea
+por EMAIL, no por IP). Propuesta para tipear a mano en
+Panel Vercel → Firewall → Rules → Add Custom Rule (Vercel no expone esto por
+API/MCP — se buscó explícitamente y no existe la tool):
+
+| Regla | Path | Mitigación | Por qué |
+|---|---|---|---|
+| Rate limit API pública | prefix `/api/public` | 60 req/60s por IP → Deny | Corta ANTES de gastar la invocación; más alto que el runtime (30/60s) para no duplicar el mismo corte dos veces |
+| Challenge login staff | `/login` POST | 20 req/5min por IP → **Challenge** (no Deny) | El runtime ya frena por email; esto cubre IP rotando emails sin castigar un local compartido |
+| Rate limit magic-link jugador | `/ingresar` POST | 15 req/5min por IP → Deny | El jugador entra desde su propio dispositivo, no aplica el riesgo de "oficina compartida" |
+| Log-only webhook MP (opcional) | `/api/webhooks/mercadopago` | 150 req/60s por IP → **Log**, nunca Deny/Challenge | Visibilidad sin arriesgar pagos perdidos por reintentos cortados |
+
+### M-10 — INTENTADO Y REVERTIDO: nonce + strict-dynamic no es viable en esta app tal como está armada
+
+Se implementó CSP con nonce por request vía `middleware.ts` para reemplazar
+`'unsafe-inline'` en `script-src`. Dos rondas de revisión adversarial con
+contexto fresco encontraron, en orden, dos problemas reales:
+
+**Ronda 1**: el hash SHA-256 hardcodeado para el script inline de next-themes
+(el único script propio que quedaba, para no forzar `headers()` global y
+preservar el ISR del portal de torneos) no coincidía con el script real —
+next-themes lo hubiera bloqueado en cada página, con FOUC de tema y spam de
+reportes CSP a Sentry. Se corrigió midiendo contra un `pnpm build && pnpm start`
+REAL (Turbopack) en vez de simular el render con `react-dom/server`/`tsx` —
+**medido que ninguna simulación coincide con lo que Turbopack termina
+emitiendo**: tres cálculos distintos (el hardcodeado original, el que
+recalculó el primer reviewer con react-dom/server, y el medido contra el
+build real) dieron TRES hashes distintos entre sí.
+
+**Ronda 2, con el hash ya corregido**: un segundo reviewer adversarial,
+verificando con Playwright contra el MISMO build de producción real, encontró
+que **React nunca hidrata en ninguna página estática/SSG/ISR** — `/`,
+`/precios`, `/login`, `/ingresar`, `/terminos`, `/privacidad`, `/blog/*`, y
+el resto de las rutas `○`/`●` del build. La documentación de Next.js
+(empaquetada en `node_modules/next/dist/docs/.../content-security-policy.md`)
+lo dice explícito: los nonces se inyectan en SSR dinámico, nunca en páginas
+generadas en build time porque ahí no existe ni request ni response headers
+— y agrega textual "when you use nonces in your CSP, all pages must be
+dynamically rendered". Confirmado con Chrome real vía Playwright:
+`/precios` tira 18 violaciones de CSP (chunks JS + scripts de hidratación
+bloqueados) y `window.next` (el runtime hidratado) da `false` — la página
+queda HTML puro sin interactividad. `/explorar` (ruta dinámica) sí hidrata
+bien, confirmando que el mecanismo funciona, solo que no aplica a estáticas.
+Esto es **más grave que el problema original**: hubiera roto el login y la
+landing en producción real.
+
+**Revertido por completo** (`middleware.ts`, `next.config.ts`,
+`src/shared/security/csp.ts`, tests — vuelto al estado con `unsafe-inline`).
+M-10 sigue abierto. Cerrarlo bien requiere una decisión de arquitectura, no
+un fix de código — opciones, ninguna aplicada:
+
+1. CSP por hash (`experimental.sri` de Next.js) para todos los scripts
+   propios en vez de nonce — evita el problema de dynamic-only, pero tiene el
+   mismo riesgo de fragilidad que ya se vio con el hash de next-themes.
+2. Forzar `dynamic = 'force-dynamic'` en las rutas públicas — pierde ISR/SSG
+   (el portal de torneos usa ISR 300s a propósito, ver CLAUDE.md) a cambio de
+   poder usar nonce ahí.
+3. Nonce solo en las rutas que YA son dinámicas, `unsafe-inline` en las
+   estáticas — cierra M-10 a medias pero sin tocar el rendimiento.
+
+**REQUIERE INPUT de Lazar**: cuál de las tres (u otra) antes de reintentar.
+Adicional: ni el test unitario de CSP ni el e2e de CI (`pnpm test:e2e` corre
+contra `pnpm dev`, que nunca usa la rama de producción de la CSP) hubieran
+detectado ninguno de los dos problemas — cualquier reintento necesita
+verificarse contra un `pnpm build && pnpm start` real con un browser real,
+no contra la suite existente.
+
+### B-16 — INTENTADO Y REVERTIDO: bloqueado por permisos de Supabase, no por código
+
+El plan (mover `pg_trgm`/`btree_gist` de `public` a un schema `extensions`
+vía `ALTER EXTENSION ... SET SCHEMA`) se armó primero por grep — sin
+conectar a ninguna base, como pedía la tarea — y parecía seguro: los 3
+exclusion constraints GiST de `bookings`/`abonados` se resuelven por OID, no
+por nombre, así que no se iban a romper. Antes de proponerlo se escribió la
+migración `080_relocate_extensions_schema.sql` y se probó contra el Postgres
+local real (`pnpm supabase:reset`, mismo Docker que usa `pnpm dev`) — y
+**falló**:
+
+```
+ERROR: must be owner of extension btree_gist (SQLSTATE 42501)
+```
+
+Medido el motivo: `pg_trgm`/`btree_gist` están `OWNER TO supabase_admin`, no
+`postgres` — confirmado con `SELECT extowner::regrole FROM pg_extension`. El
+rol `postgres` (el que corren las migraciones, local y — por el mismo
+mecanismo de bootstrap — casi seguro en producción) ni siquiera puede
+`SET ROLE supabase_admin` (`permission denied to set role`). La propia
+documentación de Supabase, para el mismo problema con PostGIS, dice que la
+salida es "contact the Supabase Support Team and ask them to run the
+following SQL" — es decir, este advisor NO se puede resolver desde una
+migración de la app, necesita una acción privilegiada del lado de Supabase.
+
+Como Lazar pidió explícitamente no abrir tickets ni reclamos con
+proveedores, **B-16 queda sin acción viable dentro de este alcance**. Se
+revirtió la migración (borrada de `src/shared/db/migrations/` y de
+`supabase/migrations/`, DB local vuelta a `pnpm supabase:reset` limpio hasta
+079). Impacto real si se deja así: cosmético — dos funciones de `pg_trgm`
+(`similarity`, `word_similarity`) quedan expuestas como RPC de PostgREST sin
+uso real, y el advisor de Supabase sigue marcando WARN. Sigue 🟢 Bajo,
+ahora con la razón real de por qué no se cerró documentada en vez de
+quedar como "pendiente" sin más.
+
+### La lección repetida, dos veces en la misma tarde
+
+Un diagnóstico armado solo con grep/lectura de código sonaba razonable las
+dos veces (M-10 y B-16) y las dos veces algo que solo aparece corriendo
+contra infraestructura real —el bundler de verdad, el rol de Postgres de
+verdad— lo tumbó. Las dos veces se paró ANTES de proponer el PR, no después
+de romper producción, porque se corrió la prueba real primero. Reafirma
+[[harness-auditoria-mide-el-pasado]]: medir contra una simulación de la cosa
+no es medir la cosa.

@@ -1518,3 +1518,86 @@ que verifican el flush), confirmando que miden comportamiento real.
 que `after()` efectivamente sobreviva al ciclo de vida de la función en
 producción (en dev/test se simula, no se corrió contra Vercel real). Vale
 disparar un 503 real y mirar Sentry después de mergear esto.
+
+### El fix del flush no alcanzó — y la causa real es más grande
+
+Mergeado #232, se probó contra producción real: `POST /api/csp-report` (ruta
+pública que dispara `captureMessage`, mismo wrapper que el fix toca) devolvió
+204 —la función corrió entera— y el evento **nunca llegó** a Sentry. El flush
+no era suficiente.
+
+Ampliando la medición aparecieron dos señales que apuntan más lejos que un
+timing de red:
+
+- **14 días de historial de Sentry, 21 tipos de error, NINGUNO del runtime de
+  servidor de Vercel** — todos son del worker de Railway o del navegador.
+- **Páginas dinámicas de producción no traen rastro de Sentry en el HTML.**
+  `/reset-password` y `/reactivar` (`X-Vercel-Cache: MISS`, o sea que sí
+  ejecutan del lado del servidor) no tienen `<meta name="baggage">` ni
+  `sentry-trace` — el SDK del servidor no parece estar corriendo.
+
+Hipótesis descartada por sonda directa: **no son dos copias del SDK**
+(`instrumentation.ts` vs. el grafo de la app, la misma clase de bug que ya
+costó el locale de Zod y el sink de analytics — F-022, memoria
+`zod-locale-global-no-alcanza-schemas.md`). Una ruta de diagnóstico temporal
+en dev confirmó `Sentry.getClient()` presente en ambos lados. Se descartó y
+se removió esa ruta.
+
+**Control decisivo**: el MISMO commit, compilado con `pnpm build` +
+`NODE_ENV=production pnpm start` (build de producción real, corriendo local
+con Postgres local levantado) y un `SENTRY_DSN` apuntando a un receptor HTTP
+propio, **sí** emite la meta de Sentry en una página dinámica y **sí**
+transmite el evento del CSP con su marca exacta. O sea: no es el bundle, no es
+Turbopack, no es el código — es específico del entorno de Vercel.
+
+**Segundo intento**: `src/shared/env.ts` corría `validateServerEnv()` —que
+TIRA si falta o está mal una variable de producción— ANTES del init de Sentry
+dentro de `register()`. Si tiraba, se llevaba puesto todo lo de abajo, Sentry
+incluido, en silencio. Reordenado en #233: Sentry primero, el validador al
+final, y si tira ahora sí queda un log en stderr con el NOMBRE de la variable
+que falló. **Deployado y remedido: la meta de Sentry sigue sin aparecer.**
+El orden de `instrumentation.ts` no era la causa (o no toda la causa).
+
+**Gotcha de método, para no repetirlo**: `get_runtime_logs` (MCP de Vercel)
+**nunca** devuelve la salida de `console.*`/`stderr` de la aplicación — solo
+líneas de request (`GET /ruta 200`). El visor del dashboard sí la muestra.
+Se confirmó con un control: forzar un `logger.error` conocido
+(`/api/auth/callback?code=inválido`) y verificar que aparece en el dashboard
+pero no en la respuesta del MCP. Sin ese control, una búsqueda vacía por MCP
+no prueba que la app no haya escrito nada.
+
+**Sospechoso vivo, sin confirmar**: el VALOR de `SENTRY_DSN` en Vercel
+Production. La fila existe (verificado en el dashboard), pero si el valor no
+es un DSN parseable con clave pública, `isValidDsn()` da `false` y el init se
+saltea sin loguear nada salvo que el valor sea truthy-e-inválido — un valor
+vacío o un placeholder no dispara ni ese warn. Mismo patrón que
+`ENCRYPTION_KEY` en Railway (una causa, síntomas silenciosos).
+
+**No se pudo confirmar mirando el dashboard**: Vercel oculta el valor de las
+variables marcadas Sensitive incluso al dueño de la cuenta — a diferencia de
+Railway, no hay botón "Reveal" que sirva acá.
+
+### `probeSentry()`: la sonda que sí puede contestar sin ver el secreto
+
+Agregada a `src/shared/observability/credential-probes.ts` (mismo archivo que
+ya prueba Resend/R2/Supabase/Upstash/MP con la regla "nunca devuelve el
+valor de un secreto"). Manda un evento de PRUEBA real al endpoint de ingesta
+de Sentry —mismo formato de envelope que usa el SDK, verificado contra un
+receptor propio en dev— **sin pasar por `@sentry/nextjs`**, a propósito: si el
+problema es que el SDK nunca inicializó, probar a través de él no serviría de
+nada. Lee la respuesta:
+
+- `200` → el evento entró de verdad (queda un issue agrupado, `fingerprint`
+  fijo, así que correr la sonda mil veces no ensucia el proyecto con mil
+  issues)
+- `401`/`403` → la clave está mal o revocada
+- `404` → el proyecto no existe en ese host
+- error de red → el host no responde
+
+Se corre vía `/api/admin/system-status?probes=1` (gateado por
+`resolveSystemAdmin`, auth real de super-admin) o desde
+`scripts/launch-check.ts`. El resultado (`ok`/`fail`/`skip` + un `detail` sin
+secretos) es lo único que hace falta mirar para cerrar este hallazgo.
+
+Memoria: `sentry-servidor-muerto-en-vercel.md` y
+`vercel-logs-api-no-devuelve-salida-app.md`.

@@ -14,7 +14,7 @@ afterEach(() => {
 })
 
 function silenciarStderr(): void {
-  vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+  vi.spyOn(console, 'error').mockImplementation(() => {})
 }
 
 describe('registerSentryErrorSink', () => {

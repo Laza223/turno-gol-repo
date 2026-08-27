@@ -28,7 +28,7 @@ describe('attachFailureHandlers', () => {
   // logger.error writes a JSON line to stderr; intercept it (typed via helper so
   // the inferred signature matches the stderr.write overload under TS strict).
   function spyOnStderr() {
-    return vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    return vi.spyOn(console, 'error').mockImplementation(() => {})
   }
 
   beforeEach(() => {

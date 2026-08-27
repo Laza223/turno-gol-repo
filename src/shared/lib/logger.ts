@@ -57,12 +57,21 @@ function emit(level: LogLevel, message: string, meta?: LogMeta): void {
     ...(meta ?? {}),
   }
   const line = JSON.stringify(entry)
+  // `console`, NO `process.stdout`/`process.stderr`: este logger entra al grafo
+  // del EDGE MIDDLEWARE (middleware.ts → rate-limit/apply.ts → @/lib/sentry →
+  // sentry-web-init.ts → error-sink.ts → acá), y el runtime edge no tiene esas
+  // APIs. Con ellas, el build de Turbopack falla entero con
+  // "A Node.js API is used (process.stdout)". `console.log`/`console.error`
+  // escriben a stdout/stderr igual en Node y existen en los dos runtimes, así
+  // que además saca del camino la misma trampa para cualquier import futuro
+  // desde el edge. Misma clase que el `bootLog` de instrumentation.ts.
+  // `console` ya agrega el salto de línea.
   if (level !== 'error') {
-    process.stdout.write(line + '\n')
+    console.log(line)
     return
   }
 
-  process.stderr.write(line + '\n')
+  console.error(line)
   const sink = getErrorSink()
   if (!sink) return
   try {

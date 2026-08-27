@@ -9,11 +9,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const captureExceptionMock = vi.fn((..._args: unknown[]) => 'event-id-exception')
 const captureMessageMock = vi.fn((..._args: unknown[]) => 'event-id-message')
 const flushMock = vi.fn((..._args: unknown[]) => Promise.resolve(true))
+// El encendido del SDK, que es lo que le faltaba al web en Vercel: se mockea
+// para que este archivo siga midiendo SOLO el flush, y se verifica aparte que
+// se llame antes de capturar.
+const ensureWebSentryMock = vi.fn(() => true)
 
 vi.mock('@sentry/nextjs', () => ({
   captureException: (...args: unknown[]) => captureExceptionMock(...args),
   captureMessage: (...args: unknown[]) => captureMessageMock(...args),
   flush: (...args: unknown[]) => flushMock(...args),
+}))
+
+vi.mock('@/shared/observability/sentry-web-init', () => ({
+  ensureWebSentry: () => ensureWebSentryMock(),
 }))
 
 // after() real corre el callback tras la response; acá se simula ejecutándolo
@@ -29,7 +37,34 @@ describe('src/lib/sentry.ts — flush antes de que la función se congele', () =
     captureExceptionMock.mockClear()
     captureMessageMock.mockClear()
     flushMock.mockClear()
+    ensureWebSentryMock.mockClear()
     afterImpl = (cb) => cb()
+  })
+
+  it('enciende el SDK ANTES de capturar: sin eso, capturar es un no-op mudo', async () => {
+    // La causa medida del silencio de producción: instrumentation.ts no corre
+    // en Vercel, así que nadie llamaba a Sentry.init(). Sin este encendido,
+    // los ~84 call sites del web escriben a un SDK apagado y nada falla.
+    const orden: string[] = []
+    ensureWebSentryMock.mockImplementation(() => {
+      orden.push('ensure')
+      return true
+    })
+    captureExceptionMock.mockImplementation(() => {
+      orden.push('capture')
+      return 'event-id-exception'
+    })
+    const { captureException } = await import('@/lib/sentry')
+
+    captureException(new Error('boom'))
+
+    expect(orden).toEqual(['ensure', 'capture'])
+  })
+
+  it('captureMessage también lo enciende', async () => {
+    const { captureMessage } = await import('@/lib/sentry')
+    captureMessage('algo')
+    expect(ensureWebSentryMock).toHaveBeenCalled()
   })
 
   it('captureException delega en Sentry.captureException y devuelve el eventId', async () => {

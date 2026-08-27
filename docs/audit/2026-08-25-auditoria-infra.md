@@ -75,7 +75,7 @@ job de pg-boss.
 | # | Hallazgo | Evidencia | Impacto |
 |---|---|---|---|
 | **C-1** ✅ | **`www.turnogol.app` tiraba error de certificado — CERRADO el 2026-08-25.** Re-verificado el 2026-08-26: `curl` devuelve `308` a `https://turnogol.app/`, con certificado válido. El registro DNS existe y apunta a Vercel, pero el dominio **no está dado de alta en el proyecto** (Vercel solo lista `turnogol.app`) | `curl https://www.turnogol.app/` → `schannel: SNI or certificate check failed: SEC_E_WRONG_PRINCIPAL`. Panel → Domains: un solo dominio | Cualquiera que escriba "www" ve la pantalla roja de "conexión no privada" del navegador. Para un producto que se vende por boca en boca, es el peor error posible |
-| **C-2** ✅ | **El pooler aceptaba conexiones sin cifrar — CERRADO el 2026-08-26** (§12). Lo de "desde cualquier IP" sigue abierto y es otro problema | Supabase → Database Settings → *Enforce SSL* = **OFF**; *Network restrictions* = "Your database can be accessed by all IP addresses". **Medición (`pg_stat_ssl`)**: las conexiones de `turnogol_app` y `turnogol_worker` llegan a Postgres **sin TLS**… pero llegan desde Supavisor (`application_name = 'Supavisor'`, `client_addr` privada de la red de Supabase), o sea que **eso es el salto interno pooler→Postgres, no el salto app→pooler**, que es el que cruza internet y que `pg_stat_ssl` no puede ver | Queda por saber si NUESTROS clientes usan TLS (los DSN están encriptados en los paneles). Lo que ya no está en duda es que el canal admite texto plano. **Y prender el enforce no es el clic inocuo que decía la primera versión de este documento**: si algún DSN nuestro va sin `sslmode`, el interruptor corta producción en el acto |
+| **C-2** ✅✅ | **El pooler aceptaba conexiones sin cifrar — CERRADO el 2026-08-26** (§12), **y desde el 2026-08-27 el canal además VALIDA la cadena de certificados** (§22.1: la CA raíz de Supabase va embebida y `rejectUnauthorized: true`, medido contra el pooler de producción con las dos librerías y control negativo). Lo de "desde cualquier IP" sigue abierto y es otro problema | Supabase → Database Settings → *Enforce SSL* = **OFF**; *Network restrictions* = "Your database can be accessed by all IP addresses". **Medición (`pg_stat_ssl`)**: las conexiones de `turnogol_app` y `turnogol_worker` llegan a Postgres **sin TLS**… pero llegan desde Supavisor (`application_name = 'Supavisor'`, `client_addr` privada de la red de Supabase), o sea que **eso es el salto interno pooler→Postgres, no el salto app→pooler**, que es el que cruza internet y que `pg_stat_ssl` no puede ver | Queda por saber si NUESTROS clientes usan TLS (los DSN están encriptados en los paneles). Lo que ya no está en duda es que el canal admite texto plano. **Y prender el enforce no es el clic inocuo que decía la primera versión de este documento**: si algún DSN nuestro va sin `sslmode`, el interruptor corta producción en el acto |
 | **C-4** ✅ | **La cuenta de Cloudflare no tenía segundo factor — CERRADO el 2026-08-25** | Re-verificado el 2026-08-26 contra el panel: *"La autenticación móvil de dos factores está activa"*, con TOTP configurado | Es la cuenta que manda sobre el DNS de `turnogol.app`. Quien entre puede apuntar el dominio a donde quiera, emitir certificados a nombre tuyo, agregar un MX y quedarse con el correo, y borrar el bucket de imágenes. Es el único punto del stack donde una sola credencial robada se lleva todo |
 | **C-5** ⏸️ | **Un token de OTRO proyecto tiene poder total sobre este** — *riesgo aceptado por el dueño el 2026-08-25* | Perfil → Tokens de API: `elite-padel build token`, **Todas las zonas**, +21 permisos, sin fecha de expiración (emitido 26/02/2026). En R2 → Tokens: el mismo token figura como **Todos los buckets · Administrador de lectura y escritura** | Si ese token se filtra desde el CI de Elite Padel —un log, un fork, un `.env` commiteado— el que lo tenga puede cambiar el DNS de TurnoGol y borrar `turnogol-media` entero. Los tokens propios de TurnoGol sí están bien acotados; el problema es este. **Decisión del dueño**: no se toca — el token es de la landing de un cliente y no vale el riesgo de romperle el deploy. Queda anotado que el riesgo corre al revés de lo que sugiere la importancia de cada proyecto: el permiso vive en el repo con MENOS escrutinio y alcanza al que tiene la plata. Si alguna vez se toca ese build, aprovechar para acotarlo |
 | **C-3** ✅ | **Preview corría con secretos de producción — CONFIRMADO Y CERRADO el 2026-08-26** (§10) | Vercel → Environment Variables: Preview tiene `MP_TURNOGOL_ACCESS_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `R2_*`, `RESEND_API_KEY`, `MP_CLIENT_SECRET` | Ya no es condicional: **el `DATABASE_URL` de Preview ES el de producción**, medido — un preview devolvió los complejos reales por `/api/public/search`. Cada push a cualquier rama levantaba una app con la base real, el token que cobra, la clave que manda mail y credenciales de escritura sobre las imágenes. **Cerrado apagando los previews** (`ignoreCommand` en `vercel.json`), no mitigándolos |
@@ -162,7 +162,7 @@ los de Railway estén mal.
 | **M-7** ⏸️ | Compute **Nano** con el pool casi tomado en reposo | Panel: pool size 15 (default de Nano), `max_connections` 60. Medido ahora: 6 conexiones de `turnogol_app` + 3 de `turnogol_worker` = 9 de 15 **sin tráfico** | Es la causa estructural de F-002. Con Pro, subir a Micro entra casi entero en el crédito de cómputo incluido — **Medido el 2026-08-25: base de 35 MB, 22/60 conexiones. No se sube el compute — ver §5.4.** |
 | **M-8** ◐ | **DMARC en `p=none` y sin dirección de reportes** — *mitad hecha el 2026-08-25* | El TXT pasó a `"v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"`, resuelto contra `8.8.8.8`. Para que ese buzón exista se prendió **Cloudflare Email Routing** en la zona: destino `turnogol@gmail.com` **Verificado**, regla `dmarc@turnogol.app → turnogol@gmail.com` **Activa**, y los 5 registros que pide el servicio creados en el apex (3 MX `route{1,2,3}.mx.cloudflare.net`, el DKIM `cf2024-1._domainkey` y un `v=spf1 include:_spf.mx.cloudflare.net ~all`), todos resueltos por DNS. Estado del servicio: *Activado / Registros DNS Activado* | El correo saliente NO se toca: el Return-Path de Resend es `send.turnogol.app` con su propio SPF, y el DKIM `resend._domainkey.turnogol.app` firma con `d=turnogol.app`, así que la alineación DMARC sigue viniendo por DKIM. **Falta**: juntar dos semanas de reportes y recién ahí pasar a `p=quarantine`. **Sin verificar end-to-end**: no se mandó un mail de prueba a `dmarc@turnogol.app`; el primer reporte real (24-48 h) es la prueba |
 | **M-9** ◐ | Vercel Firewall **sin una sola regla propia** — *parcialmente cerrado el 2026-08-25, ver §5.1; propuesta de 4 reglas concretas en §21* | Panel → Firewall → Rules: solo "System Rule". Tráfico del período: 977 permitidos, 134 denegados, 7 desafiados | El rate-limit de la app vive en el runtime (Upstash): cada request abusiva ya gastó una función. Los caminos de plata (`/api/webhooks/*`, `/api/public/*`, login) deberían frenarse en el borde |
-| **M-10** ⚠️ | CSP con `script-src 'unsafe-inline'` en producción — *intentado con nonce y REVERTIDO el 2026-08-27, ver §21: rompía la hidratación de toda página estática/ISR* | Header medido en `https://turnogol.app/` | Anula buena parte de la defensa contra XSS. Nonce por middleware NO sirve tal cual en esta app — requiere una decisión de arquitectura (§21) |
+| **M-10** → 🟢 | CSP con `script-src 'unsafe-inline'` en producción — *degradado a 🟢 y ACEPTADO el 2026-08-27, ver §22.3* | Header medido en `https://turnogol.app/` | Relevada la superficie de XSS completa: sin vía de explotación práctica (los 3 `dangerouslySetInnerHTML` son constantes o van con escapado anti-`</script>`; sin campo de URL libre; todo el texto de usuario sale por JSX escapado). Es defensa en profundidad, no un agujero. Se reabre si aparece un campo de URL libre o un `dangerouslySetInnerHTML` con datos de la DB |
 | **M-11** ✅ | Un secreto de más en el runtime de Vercel — *cerrado el 2026-08-25, ver paso 3* | `SENTRY_READ_TOKEN` en Production y Preview | Solo lo lee `scripts/sentry-issues.ts`, que corre local contra `.env.production`. **Corrección respecto de la primera versión de este documento**: `SENTRY_AUTH_TOKEN` NO sobra — `next.config.ts:125` se lo pasa a `withSentryConfig` para subir los sourcemaps, así que el build lo necesita y se queda |
 | **M-13** ✅ | El dominio de las imágenes aceptaba **TLS 1.0** — *corregido el 2026-08-25* | R2 → `turnogol-media` → Dominios personalizados: `media.turnogol.app`, *TLS mínimo* pasó de **1.0** a **1.2**. Verificado en el cable: `curl --tls-max 1.0` no completa el handshake, `curl --tlsv1.2` responde 404 (el dominio vive; el 404 es porque el bucket está vacío) | TLS 1.0 está roto y deprecado desde 2021 |
 | **M-14** 🟢 | **Las imágenes no tienen backup — pero hoy no hay imágenes** | R2 → `turnogol-media`: *Tamaño del bucket* = **0 B**, cero objetos ("Tu bucket está listo. Agrega archivos para comenzar"). Contrastado contra la base de producción: `tenants.logo_url`/`cover_url` NULL en los 2 complejos, `courts.photos` vacío en las 4 canchas, `players.avatar_url` NULL en los 3 jugadores | Degradado de 🟡 a 🟢: no hay nada que perder todavía. **Y el remedio que este mismo informe proponía era el equivocado**: una *regla de bloqueo de bucket* vuelve los objetos inmutables durante la retención, y la app borra objetos en el uso normal (`deleteImage` en `src/shared/storage/r2.ts:78`, llamada al reemplazar logo/portada en `settings/perfil/actions.ts:33,114` y foto de cancha en `settings/canchas/actions.ts:318`) — o sea que la habría roto: cambiar el logo empezaría a fallar. Cuando haya contenido real, el backup va por otro lado (copia programada a un segundo bucket o a otro proveedor), no por bucket lock |
@@ -1944,3 +1944,180 @@ verdad— lo tumbó. Las dos veces se paró ANTES de proponer el PR, no después
 de romper producción, porque se corrió la prueba real primero. Reafirma
 [[harness-auditoria-mide-el-pasado]]: medir contra una simulación de la cosa
 no es medir la cosa.
+
+---
+
+## 22. El canal a la base ahora VALIDA, y dos cosas más que cerraron midiendo — 2026-08-27
+
+Misma tarde, después de §21. Tres frentes: el pendiente más viejo de TLS
+(que resultó accionable y se cerró), dos advisors nuevos de Supabase que no
+estaban en la matriz, y la decisión de M-10 que §21 había dejado como
+REQUIERE INPUT — resuelta con medición en vez de con opinión.
+
+### 22.1 🔴→✅ El canal a Postgres cifraba pero no validaba contra quién
+
+**El agujero.** `src/shared/db/ssl.ts` devolvía `{ rejectUnauthorized: false }`
+para todo host remoto. Eso cifra el tráfico pero **no comprueba el
+certificado del servidor**: cualquiera capaz de desviar el tráfico hacia el
+pooler puede presentar el suyo y leer todo lo que pasa, credenciales de
+Postgres incluidas. El propio archivo lo tenía anotado como pendiente
+("validar de verdad exige empaquetar la CA de Supabase") y este informe
+también, en §11. Nadie lo había tocado.
+
+Afecta a los **tres** pools a la vez, porque los tres salen de esa función:
+app (`turnogol_app`), worker (`turnogol_worker`) y pg-boss. Y a los dos
+runtimes: Vercel y Railway.
+
+**La premisa que faltaba, y que era medible.** El obstáculo declarado era que
+nadie había confirmado que el certificado del **pooler** (Supavisor) validara
+con la CA raíz que Supabase publica para conexión directa. Se midió:
+
+```
+$ openssl s_client -connect aws-1-sa-east-1.pooler.supabase.com:5432 -starttls postgres
+depth=0 CN=*.pooler.supabase.com
+depth=1 CN=Supabase Intermediate 2021 CA
+depth=2 CN=Supabase Root 2021 CA
+verify error:num=19:self-signed certificate in certificate chain
+```
+
+Encadena a `Supabase Root 2021 CA`. El "error" es simplemente que esa raíz no
+está en el almacén de confianza del sistema — es exactamente el síntoma que se
+espera antes de agregarla. Con la raíz como CA de confianza y verificación de
+hostname activada:
+
+```
+Verification: OK
+Verify return code: 0 (ok)
+```
+
+**Y la raíz es la oficial, no una copiada del handshake.** Se bajó de
+`supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt`
+y se comparó contra la que manda el pooler. Huellas SHA-256 idénticas:
+`80:70:25:AD:…:E6:CA:FA`.
+
+**La prueba en el cable, con las dos librerías y control negativo.** Este
+repo ya se rompió dos veces (25 y 26/8) por asumir el comportamiento de TLS
+de una librería, o por medirlo con la equivocada. Así que se midió con las
+dos —`postgres` (porsager, pools de la app) y `pg` (node-postgres, pg-boss)—
+en los dos puertos, contra el pooler de **producción**. Sin credenciales: la
+autenticación pasa DESPUÉS del handshake, así que una contraseña
+deliberadamente inválida separa "falló el TLS" de "falló el login":
+
+| config | porsager | pg |
+|---|---|---|
+| CON la CA | `28P01 password auth failed` → **validó** | `28P01` → **validó** |
+| sin validar (lo viejo) | `28P01` → conecta sin validar | `28P01` |
+| **SIN la CA (control −)** | `self-signed certificate in certificate chain` | idem |
+
+La tercera fila es la que le da valor a las otras dos: prueba que la sonda
+**sí sabe** detectar un TLS que no valida, así que el verde de la primera no
+es un falso positivo. 12 mediciones, todas consistentes.
+
+**El arreglo.**
+- `src/shared/db/supabase-ca.ts` (nuevo): la raíz como **constante de
+  TypeScript**, no como archivo. A propósito: el módulo lo cargan Vercel
+  (donde el file tracing de Next decide qué archivos viajan) y Railway; un
+  string en el grafo de módulos lo bundlean los dos por definición, un
+  archivo suelto hay que acordarse de incluirlo en ambos y el modo de falla
+  de olvidarse es que la app no conecta.
+- `dbSslOptions()` pasa a devolver `{ ca, rejectUnauthorized: true }`.
+- `scripts/probe-db-tls.ts` (nuevo): la sonda de arriba, permanente y sin
+  credenciales, importando la constante real. Si el control negativo no
+  falla, el script sale con código 1 en vez de cantar victoria.
+- `tests/unit/db-ssl-options.test.ts`: el candado sube de nivel. Además de
+  las aserciones nuevas, valida la CA embebida **como certificado X.509 de
+  verdad** (`node:crypto`), no como string: subject correcto, huella
+  SHA-256 exacta, `ca: true`, y sin vencer. Si alguien se come un salto de
+  línea del base64, salta el test y no producción.
+- `Dockerfile.worker`: el comentario de ahí mandaba usar conexión directa
+  `:5432` y `?sslmode=require`. **Las dos cosas son falsas y la segunda es la
+  que volteó el worker el 25/8** — la conexión directa ya no existe
+  (ENOTFOUND) y el `sslmode` del DSN hoy no decide nada. Reescrito con el
+  porqué, para que nadie lo lea y reintroduzca el incidente.
+
+**El riesgo asumido, dicho de frente.** La función la comparten los tres
+pools: si la CA dejara de servir no se cae uno, se caen los tres. Es un modo
+de falla **ruidoso**, preferible al anterior donde todo andaba igual sin
+validar nada. La raíz vence el **2031-04-26**. A propósito no se agregan las
+CA del sistema (exigiría importar `node:tls`, y este repo se rompió dos veces
+hoy mismo por meter una API de Node en un archivo que alguien arrastró al
+runtime edge) ni un override por variable de entorno (reintroduciría
+justamente la decisión de TLS editable desde un panel que este archivo
+eliminó). Contra un host remoto que no sea Supabase esto falla al conectar:
+hoy no existe ninguno —CI y dev van a `127.0.0.1`, que ni negocia TLS— y si
+aparece, falla a la vista en vez de conectarse sin validar.
+
+### 22.2 Dos advisors nuevos de Supabase: reales, no explotables, cerrados igual
+
+`get_advisors(security)` del 2026-08-27 trajo 4 WARN que no estaban en la
+matriz, sobre dos funciones: `audit_system_admins_change()` y
+`trg_courts_recalc_from_price()`. Las dos son SECURITY DEFINER y conservaban
+el `GRANT EXECUTE` a PUBLIC que Postgres da por default, heredado por `anon`
+y `authenticated`. Es el mismo hallazgo que la migración 056 cerró para
+`recalc_tenant_from_price`, que se ocupó solo de esa y dejó estas dos.
+
+**Medido: NO eran explotables.** El advisor dice que son invocables vía
+`/rest/v1/rpc/<nombre>`. Como `anon`, las dos:
+
+```
+ERROR:  trigger functions can only be called as triggers
+```
+
+Postgres mismo rechaza llamar directo a una función `RETURNS trigger`, tenga
+o no EXECUTE quien llame. A diferencia del caso de 056, donde
+`recalc_tenant_from_price` (`RETURNS void`) **sí** era invocable y recalculaba
+tenants ajenos salteándose RLS.
+
+Se cierran igual, por una razón que no es la seguridad: **cuatro WARN
+permanentes entrenan a ignorar el panel de advisors**, y el próximo WARN real
+se pierde ahí adentro.
+
+**Medido también que revocar no rompe el trigger** — que era el único riesgo
+verdadero. Postgres chequea EXECUTE al hacer `CREATE TRIGGER`, no cada vez
+que el trigger dispara. Con EXECUTE ya revocado de PUBLIC/anon/authenticated
+(y `has_function_privilege('turnogol_app', …)` devolviendo `false`), un
+INSERT en `courts` conectado **como** `turnogol_app` disparó igual el
+trigger: `tenants.from_price_cents` pasó de NULL a 800000, `court_formats` a
+`{5}`, `court_surfaces` a `{synthetic_grass}`.
+
+Migración `080_trigger_function_grants.sql`. Aplicada desde cero con
+`pnpm supabase:reset`. Gate: **aislamiento 170/170** e **integración
+994/994** en verde.
+
+### 22.3 M-10 resuelto: no es un agujero, es defensa en profundidad — y se documenta como riesgo aceptado
+
+§21 dejó M-10 como REQUIERE INPUT entre tres arquitecturas. Antes de elegir
+una, la pregunta que faltaba era más básica: **¿cuánto riesgo real cubre ese
+`unsafe-inline`?** Se relevó la superficie de XSS completa:
+
+- **3 `dangerouslySetInnerHTML` en todo `src/`**. Dos con datos constantes del
+  código (FAQ de `/precios`, metadata de artículo). El tercero, `JsonLd.tsx`,
+  sí serializa datos de tenant que vienen de la DB — pero `escapeForScriptTag`
+  (`src/lib/seo/structured-data.ts:119-134`) ya neutraliza `<`, `>`, `/`,
+  U+2028 y U+2029 justamente para matar un `</script>` embebido. El propio
+  código tiene el threat-model escrito ahí, nombrando el vector.
+- **Sin campo de URL libre en el schema.** Teléfono y WhatsApp pasan por
+  `telHref`/`buildWhatsappUrl`, que hacen `.replace(/\D/g, '')` — un
+  `javascript:alert(1)` guardado ahí queda reducido a sus dígitos. `mapsUrl`
+  usa `encodeURIComponent`.
+- **Todo el texto libre visible a terceros** (nombre/descripción de complejo,
+  reseñas de jugadores, nombres de equipo del portal público de torneos) sale
+  por interpolación JSX, que React escapa. Cero `innerHTML`,
+  `document.write`, `eval` o `new Function` en el repo.
+- **Ninguno de los 39 route handlers** devuelve `text/html`.
+
+**Veredicto: sin superficie encontrada.** Hoy `'unsafe-inline'` es una
+debilidad de defensa en profundidad **sin vía de explotación práctica**, no un
+agujero activo. Dado eso, y que §21 midió que la alternativa con nonce rompe
+la hidratación de toda la superficie pública estática, la decisión es
+**aceptar el riesgo y bajar M-10 de 🟡 a 🟢**, con dos condiciones de
+reapertura escritas para que no se olviden:
+
+1. Si se agrega un **campo de URL libre** editable por el complejo (ej. "sitio
+   web"), sin sanitizador de esquema.
+2. Si se agrega un **`dangerouslySetInnerHTML` nuevo** con datos que no sean
+   constantes del código, sin la disciplina de escapado de
+   `structured-data.ts`.
+
+Cualquiera de las dos vuelve a hacer de `unsafe-inline` un riesgo real, y ahí
+la conversación de arquitectura de §21 se reabre con la evidencia ya juntada.

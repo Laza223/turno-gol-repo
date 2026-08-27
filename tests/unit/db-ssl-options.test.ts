@@ -1,8 +1,10 @@
+import { X509Certificate } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { dbSslOptions, pgConnectionConfig } from '@/shared/db/ssl'
+import { SUPABASE_ROOT_CA } from '@/shared/db/supabase-ca'
 
 /**
  * Candado del incidente del 2026-08-25: el worker de Railway corría con
@@ -21,16 +23,27 @@ describe('dbSslOptions', () => {
     expect(dbSslOptions('postgres://postgres:postgres@localhost:54322/postgres')).toBe(false)
   })
 
-  it('cifra contra un host remoto', () => {
+  it('cifra contra un host remoto Y VALIDA la cadena con la CA de Supabase', () => {
     expect(
       dbSslOptions('postgres://u:p@aws-1-sa-east-1.pooler.supabase.com:6543/postgres'),
-    ).toEqual({ rejectUnauthorized: false })
+    ).toEqual({ ca: SUPABASE_ROOT_CA, rejectUnauthorized: true })
+  })
+
+  it('`rejectUnauthorized` es true: sin eso la CA no sirve de nada', () => {
+    // El par importa junto. Pasar `ca` con `rejectUnauthorized: false` cifra
+    // igual pero no comprueba nada — sería el comportamiento viejo disfrazado.
+    const ssl = dbSslOptions('postgres://u:p@aws-1-sa-east-1.pooler.supabase.com:6543/postgres')
+    expect(ssl).not.toBe(false)
+    expect((ssl as { rejectUnauthorized: boolean }).rejectUnauthorized).toBe(true)
   })
 
   it('ignora el sslmode del DSN, que es justo lo que rompía producción', () => {
     const base = 'postgres://u:p@aws-1-sa-east-1.pooler.supabase.com:6543/postgres'
     for (const mode of ['no-verify', 'require', 'verify-full', 'disable', 'prefer']) {
-      expect(dbSslOptions(`${base}?sslmode=${mode}`)).toEqual({ rejectUnauthorized: false })
+      expect(dbSslOptions(`${base}?sslmode=${mode}`)).toEqual({
+        ca: SUPABASE_ROOT_CA,
+        rejectUnauthorized: true,
+      })
     }
   })
 
@@ -72,7 +85,7 @@ describe('pgConnectionConfig (el lado de pg-boss)', () => {
     for (const mode of ['no-verify', 'require', 'verify-full', 'disable', 'prefer']) {
       const cfg = pgConnectionConfig(`${REMOTE}?sslmode=${mode}`)
       expect(cfg.connectionString).toBe(REMOTE)
-      expect(cfg.ssl).toEqual({ rejectUnauthorized: false })
+      expect(cfg.ssl).toEqual({ ca: SUPABASE_ROOT_CA, rejectUnauthorized: true })
     }
   })
 
@@ -126,13 +139,39 @@ describe('pg de verdad, no nuestra idea de pg', () => {
 
     // Lo que hace ahora.
     expect(new ConnectionParameters(pgConnectionConfig(dsn)).ssl).toEqual({
-      rejectUnauthorized: false,
+      ca: SUPABASE_ROOT_CA,
+      rejectUnauthorized: true,
     })
 
     // Y el caso que tiraba abajo al worker: `require` deja de poder pisarnos.
     expect(new ConnectionParameters(pgConnectionConfig(`${dsn}?sslmode=require`)).ssl).toEqual({
-      rejectUnauthorized: false,
+      ca: SUPABASE_ROOT_CA,
+      rejectUnauthorized: true,
     })
+  })
+})
+
+/**
+ * La CA es una constante pegada a mano en el código: si alguien la edita de
+ * más (un salto de línea que se come, una línea de base64 que se corta), el
+ * síntoma sería que los TRES pools dejan de conectar a producción a la vez.
+ * Este test la valida como certificado de verdad, no como string.
+ *
+ * La huella es la del certificado que Supabase publica en
+ * `prod-ca-2021.crt`, comparada el 2026-08-27 contra la que el pooler de
+ * producción manda en su propio handshake. La medición en el cable la
+ * reproduce `pnpm tsx scripts/probe-db-tls.ts`.
+ */
+describe('la CA embebida es un certificado válido y es el correcto', () => {
+  const HUELLA_SHA256 =
+    '80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA'
+
+  it('parsea como X.509 y es la Supabase Root 2021 CA, sin vencer', () => {
+    const cert = new X509Certificate(SUPABASE_ROOT_CA)
+    expect(cert.subject).toContain('Supabase Root 2021 CA')
+    expect(cert.fingerprint256).toBe(HUELLA_SHA256)
+    expect(cert.ca).toBe(true)
+    expect(new Date(cert.validTo).getTime()).toBeGreaterThan(Date.now())
   })
 })
 

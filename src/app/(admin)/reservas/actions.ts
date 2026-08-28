@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
+import { insertAuditLog } from '@/shared/db/audit'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
@@ -328,9 +329,18 @@ export async function completeBookingAction(bookingId: string): Promise<BookingA
 
   let booking: BookingRow
   try {
-    booking = await withTenantContext(tenant.id, (tx) =>
-      completeBooking(bookingId, 'admin', tx, user.staffUserId),
-    )
+    booking = await withTenantContext(tenant.id, async (tx) => {
+      const completed = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
+      await insertAuditLog(tx, {
+        tenantId: tenant.id,
+        actorId: user.staffUserId,
+        actorType: 'staff',
+        action: 'booking.completed',
+        resourceType: 'booking',
+        resourceId: bookingId,
+      })
+      return completed
+    })
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
       return { success: false, error: 'La reserva no está en estado confirmado.' }

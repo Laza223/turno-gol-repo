@@ -7,6 +7,7 @@ import {
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
+  renderTrialExpired,
   renderDunningPaymentFailed,
   renderDepositExpired,
   renderAdminLatePayment,
@@ -231,6 +232,24 @@ describe('renderTrialEnding', () => {
     })
     expect(subject).toContain('1 día ')
     expect(subject).not.toContain('días')
+  })
+})
+
+describe('renderTrialExpired', () => {
+  it('subject and body do not promise a data-retention deadline', () => {
+    const { subject, html, text } = renderTrialExpired({
+      ownerName: 'Marcelo',
+      tenantName: 'Norte',
+    })
+    // La transición que dispara este mail no fija scheduled_deletion_at —
+    // prometer un plazo acá sería mentirle al dueño.
+    expect(subject + html + text).not.toMatch(/\d+\s*días?/)
+  })
+
+  it('html greets owner and names the tenant', () => {
+    const { html } = renderTrialExpired({ ownerName: 'Marcelo', tenantName: 'Complejo Norte' })
+    expect(html).toContain('Marcelo')
+    expect(html).toContain('Complejo Norte')
   })
 })
 

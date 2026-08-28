@@ -30,7 +30,11 @@ async function loadPredioPlanId(sql: Sql): Promise<string> {
 }
 
 /** Complejo en prueba con dueño activo (el aviso se dirige a `tenant_staff_members`). */
-async function seedTrialing(sql: Sql, planId: string, trialEndsAt: Date): Promise<{ id: string }> {
+async function seedTrialing(
+  sql: Sql,
+  planId: string,
+  trialEndsAt: Date,
+): Promise<{ id: string; name: string }> {
   const tenant = await createTestTenant(sql)
   const staff = await createTestStaffUser(sql)
   await linkStaffToTenant(sql, tenant.id, staff.id)
@@ -46,7 +50,7 @@ async function seedTrialing(sql: Sql, planId: string, trialEndsAt: Date): Promis
       NOW() - INTERVAL '23 days', ${trialEndsAt.toISOString()}::timestamptz
     )
   `
-  return { id: tenant.id }
+  return { id: tenant.id, name: tenant.name }
 }
 
 function inDays(n: number): Date {
@@ -66,6 +70,14 @@ async function warnedThreshold(sql: Sql, tenantId: string): Promise<number | nul
     SELECT trial_warning_days_sent AS v FROM tenants WHERE id = ${tenantId}
   `
   return rows[0]!.v
+}
+
+async function expiredNotifications(sql: Sql, tenantId: string) {
+  return sql<{ content: Record<string, unknown> }[]>`
+    SELECT content FROM notifications
+    WHERE tenant_id = ${tenantId} AND template_name = 'trial_expired'
+    ORDER BY created_at
+  `
 }
 
 let planId: string
@@ -171,5 +183,43 @@ describe('aviso de fin de prueba', () => {
 
     const rows = await s<{ status: string }[]>`SELECT status FROM tenants WHERE id = ${tenant.id}`
     expect(rows[0]!.status).toBe('trialing')
+  })
+})
+
+describe('bloqueo por trial vencido', () => {
+  // Gap encontrado al arreglar item de auditoría: el sweep bloqueaba el tenant
+  // sin avisarle nunca al dueño (a diferencia de dunning-retry.worker.ts, que
+  // sí encola una notificación en cada transición de estado).
+  it('al vencer y bloquear, encola trial_expired con el nombre del dueño y del complejo', async () => {
+    const s = getSql()
+    const tenant = await seedTrialing(s, planId, inDays(-1))
+
+    await runExpireTrials()
+
+    const rows = await expiredNotifications(s, tenant.id)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.content.tenantName).toBe(tenant.name)
+    expect(typeof rows[0]!.content.ownerName).toBe('string')
+  })
+
+  it('correrlo de nuevo sobre el mismo tenant ya bloqueado no reenvía', async () => {
+    // El UPDATE de bloqueo filtra WHERE status = 'trialing': la 2da corrida no
+    // afecta filas y la notificación queda adentro del mismo `if (0 rows) return`.
+    const s = getSql()
+    const tenant = await seedTrialing(s, planId, inDays(-1))
+
+    await runExpireTrials()
+    await runExpireTrials()
+
+    expect(await expiredNotifications(s, tenant.id)).toHaveLength(1)
+  })
+
+  it('no vencido: no encola trial_expired', async () => {
+    const s = getSql()
+    const tenant = await seedTrialing(s, planId, inDays(5))
+
+    await runExpireTrials()
+
+    expect(await expiredNotifications(s, tenant.id)).toHaveLength(0)
   })
 })

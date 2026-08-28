@@ -178,6 +178,21 @@ export async function runExpireTrials(): Promise<void> {
           resourceId: t.id,
           metadata: { reason: 'trial_ends_at_passed' },
         })
+
+        // doc7 Flujo 7: día 31, el complejo se entera de que quedó bloqueado.
+        // Antes de este fix no se avisaba nada acá (issue original).
+        await enqueueTenantOwnerNotification(
+          {
+            tenantId: t.id,
+            templateName: 'trial_expired',
+            triggerEvent: 'sweep.trial_expired',
+            content: {
+              ownerName: await ownerFirstName(tx, t.id),
+              tenantName: t.name,
+            },
+          },
+          tx,
+        )
       })
       logger.info('blocked tenant trial expired', {
         module: 'expire-trials',

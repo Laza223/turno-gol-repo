@@ -32,3 +32,31 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 **Disparador de resolución**: sin fecha fija — es el mismo ciclo de vida que tuvo `doctor.config.mjs`. Buen candidato para la próxima sesión de auditoría de código o cuando el ruido en el job de CI moleste lo suficiente como para justificar la hora.
 
+
+---
+
+## No hay forma de ofrecerle un plan a un solo complejo
+
+**Qué es**: la tabla `plans` ([plans.ts](src/shared/db/schema/plans.ts)) tiene `is_active` y nada más para controlar visibilidad: un plan está prendido para todos o apagado para todos. Las dos consultas que arman el catálogo — `listActivePlans` ([billing.service.ts:92](src/modules/billing/billing.service.ts:92), pantalla del complejo) y su gemela del panel ([super-admin/tenants.service.ts:168](src/modules/super-admin/tenants.service.ts:168)) — filtran solo por `is_active = true`.
+
+**Por qué existe**: hasta ahora los planes eran tres y públicos (Predio, Complejo, Estadio), así que un flag booleano alcanzaba. El primer caso que no entra apareció el 2026-08-28: el plan "Prueba interna — NO OFRECER" de $100/mes tiene que estar visible para que un complejo puntual se suscriba y arranque el ensayo P-02, pero no debería existir para nadie más.
+
+**Costo de no resolverla ahora**: bajo mientras los complejos en producción sean los dos propios. El workaround es prender el plan, suscribir y apagarlo — verificado seguro para la suscripción que queda viva, porque los tres lugares que leen el plan de una suscripción en curso (`reconcile-subscriptions.worker.ts:346`, `billing.service.ts:816`, `dunning.service.ts:87`) hacen `JOIN plans` sin filtrar `is_active`. Dos agujeros conocidos: durante la ventana cualquier complejo en `trialing`/`active` que abra `/settings/facturacion` ve el plan, y **reactivar** una suscripción de un plan apagado falla con `PlanNotFoundError` porque ese camino sí pasa por `loadPlan` ([:283](src/modules/billing/billing.service.ts:283) y [:698](src/modules/billing/billing.service.ts:698)). El costo crece con el primer cliente pago real, y se vuelve bloqueante en el primer precio especial, plan heredado o piloto.
+
+**Costo estimado de resolverla**: bajo-medio, ~2-3h. Migración nueva con una columna nullable en `plans` que apunte al tenant dueño del plan (NULL = público), las dos consultas del catálogo respetándola, y `loadPlan` aceptando el plan privado cuando el tenant coincide — eso último es lo que además arregla el caso de reactivación. Tests: catálogo de un tenant ajeno no lo lista, el dueño sí, y reactivación sobre plan privado no rompe.
+
+**Disparador de resolución**: antes de que se suscriba el primer complejo que no sea de Lazar. Mientras tanto el workaround alcanza, y el procedimiento está escrito en [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).
+
+---
+
+## `application.deauthorized` se descarta con 400: TurnoGol no se entera de una desvinculación
+
+**Qué es**: MercadoPago emite `application.deauthorized` cuando un complejo revoca el permiso que le dio a TurnoGol para cobrar en su cuenta. TurnoGol no maneja ese evento — `grep` sobre [payment.schema.ts](src/modules/payments/payment.schema.ts), [mp-webhook.handler.ts](src/modules/payments/mp-webhook.handler.ts) y [el route handler](src/app/api/webhooks/mercadopago/route.ts) no devuelve una sola referencia. Además llega por el canal global del panel, sin `?tenant=` en la URL, así que el route corta con `missing tenant` (400) antes incluso de mirar la firma. Visto en el historial de webhooks de la app de Suscripciones el 2026-08-28: `400 - Fallida · application.deauthorized · 381048203 · 22/08 13:44 UTC`.
+
+**Por qué existe**: el diseño asumió que la desvinculación se hace desde TurnoGol, donde sí hay una acción que limpia las columnas (`tenant.service.ts:367` pone `mp_connected_at = NULL`). El camino inverso —desvincular desde el panel de MercadoPago— no se contempló. El caso del 22/8 es de la cuenta del propio dueño durante la migración a dos aplicaciones, así que hoy no hay daño.
+
+**Costo de no resolverla ahora**: ninguno mientras los complejos sean los dos propios. Con clientes reales, un complejo que revoque el permiso desde el panel de MercadoPago deja a TurnoGol creyendo que el token sigue vivo: `mp_connected_at` queda con fecha, el portal sigue exigiendo seña y el jugador se come el error recién al momento de pagar — o sea, el que descubre la desconexión es el cliente del cliente. Emparenta con F-003 de PROD_QA ("seña exigible sin MercadoPago conectado"), que sigue sin re-verificar.
+
+**Costo estimado de resolverla**: bajo, ~2h. Aceptar el tipo en el schema del webhook y resolver el tenant por `mp_user_id` en vez de por `?tenant=` (el payload trae el user id de MercadoPago, que ya está en `tenants.mp_user_id`); al recibirlo, limpiar las columnas de MP igual que hace la desvinculación desde la UI y avisarle al dueño. Ojo con el orden del route handler: hoy el guard de tenant corre antes de validar la firma, así que hay que mover ese caso sin debilitar el guard para el resto.
+
+**Disparador de resolución**: cuando se cierre el tema del par OAuth (`MP_CLIENT_ID` apuntando a la aplicación vieja) — decisión del dueño el 2026-08-28, para no tocar dos cosas del mismo circuito a la vez. Contexto completo en [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).

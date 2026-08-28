@@ -3,7 +3,7 @@ import { getBoss } from '@/shared/jobs/boss'
 import { MP_WEBHOOK_SEND_OPTIONS, QUEUE_PROCESS_MP_WEBHOOK } from '@/shared/jobs/queue-names'
 import { webhookPayloadSchema, webhookResponseSchema } from '@/modules/payments/payment.schema'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
-import { verifyWebhookSignature } from '@/modules/payments/webhook-auth'
+import { verifyWebhookSignature, webhookSecretsStatus } from '@/modules/payments/webhook-auth'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { track, withSpan } from '@/shared/observability'
@@ -83,6 +83,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // llamada a MercadoPago, y ese trabajo no se le regala a quien no probó
   // todavía que el evento es de MP.
   if (!verifyWebhookSignature(xSignature, xRequestId, dataId)) {
+    // Una firma rechazada con alguna clave SIN configurar no es tráfico hostil:
+    // es un aviso legítimo de MercadoPago que se está tirando a la basura con el
+    // pago ya hecho del otro lado y la reserva colgada. `rechazar` loguea `warn`,
+    // que no llega a Sentry — por eso esto va aparte y como `error`.
+    //
+    // La clave de Checkout Pro es `.optional()` en `env.ts` a propósito (exigirla
+    // apagaría toda la app si un deploy le gana a la carga de la variable), así
+    // que el arranque nunca va a avisar de su ausencia: este es el único lugar
+    // donde se puede notar. Caso real: 2026-08-28, la sonda de firma de Checkout
+    // Pro dio 401 en producción y el 401 era mudo.
+    const secretos = webhookSecretsStatus()
+    if (!secretos.suscripciones || !secretos.checkout) {
+      logger.error('mp-webhook: firma rechazada con una clave de webhook sin configurar', {
+        module: 'mp-webhook',
+        suscripcionesConfigurada: secretos.suscripciones,
+        checkoutConfigurada: secretos.checkout,
+      })
+    }
     return rechazar('invalid signature', 401, body)
   }
 

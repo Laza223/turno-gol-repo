@@ -54,7 +54,7 @@ export async function reconcilePendingPayments(): Promise<number> {
       t.mp_access_token AS "mpAccessToken"
     FROM bookings b
     JOIN tenants t ON t.id = b.tenant_id
-    JOIN payments p ON p.id = b.payment_id
+    JOIN payments p ON p.booking_id = b.id
     WHERE b.status = 'pending_payment'
       AND p.mp_preference_id IS NOT NULL
       AND p.status = 'pending'

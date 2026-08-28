@@ -15,7 +15,7 @@
 | 3 | Expiración de `pending_payment` | — | 🟢 Verificado seguro |
 | 3a | Comentario desactualizado (15min vs 6min real) | 🟢 Baja | ✅ Corregido en esta sesión |
 | 4 | Lock de cancha retenido durante toda la tx de creación | 🟡 Media (performance, hoy sin evidencia real) | ✅ Medido contra prod, sin acción — ver sección |
-| 5 | `reconcile-pending-payments` puede duplicar búsquedas a MP por booking | 🟢 Baja (eficiencia) | ✅ Corregido en esta sesión |
+| 5 | `reconcile-pending-payments` puede duplicar búsquedas a MP por booking | 🟢 Baja (eficiencia) | ↩️ Revertido — el "fix" rompía 3 tests, ver sección |
 
 ## Hallazgo 1 — Race conditions en reservas: 🟢 verificado seguro
 
@@ -136,22 +136,29 @@ La transición usa el mismo primitivo compare-and-set del Hallazgo 2 (`transitio
 
 **Conclusión: el hallazgo es arquitecturalmente correcto pero hoy es 100% teórico — no hay ninguna evidencia de contención real, porque el volumen de producción todavía es demasiado bajo para haber ejercitado el path concurrente.** No se justifica tocar el hot path de reservas para un problema que no está ocurriendo — sería el tipo exacto de refactor prematuro que el propio repo desaconseja. Queda registrado para revisar si el volumen de reservas concurrentes por cancha crece (franjas pico con varios complejos activos y tráfico real simultáneo); en ese momento repetir esta misma medición (`pg_stat_statements` sobre la query de `lockCourtOrThrow`) antes de decidir si vale la pena el cambio de (a) mover notificaciones/tracking a post-commit (patrón que el propio código ya usa en `mp-webhook.handler.ts:140-142`).
 
-## Hallazgo 5 — 🟢 Baja (eficiencia, corregido): `reconcile-pending-payments` podía duplicar búsquedas a MP por booking
+## Hallazgo 5 — 🟢 Baja (eficiencia, REVERTIDO): `reconcile-pending-payments` puede duplicar búsquedas a MP por booking
 
-[`reconcile-pending-payments.worker.ts:57`](../../../src/shared/jobs/workers/reconcile-pending-payments.worker.ts) hacía `JOIN payments p ON p.booking_id = b.id` sin filtrar a la fila de pago vigente. `retryDepositPaymentAction` puede dejar más de una fila `pending` en `payments` para el mismo booking (tolerado a propósito, documentado en `payment.service.ts:70-73`: "no UNIQUE on booking_id, a retry just creates another row"). Si eso pasaba, el JOIN devolvía 2 filas para el mismo booking y el loop llamaba 2 veces a `searchPaymentsByReference` — mismo booking, gasto duplicado de la API de búsqueda de MP. Inofensivo en cuanto a corrección (`lockMpEvent` con clave `reconcile-<mpPaymentId>` deduplica el efecto real), pero trabajo de más. Corregido para usar la fila vigente que `bookings.payment_id` ya apunta:
+[`reconcile-pending-payments.worker.ts:57`](../../../src/shared/jobs/workers/reconcile-pending-payments.worker.ts) hace `JOIN payments p ON p.booking_id = b.id` sin filtrar a la fila de pago vigente. `retryDepositPaymentAction` puede dejar más de una fila `pending` en `payments` para el mismo booking (tolerado a propósito, documentado en `payment.service.ts:70-73`: "no UNIQUE on booking_id, a retry just creates another row"). Si eso pasa, el JOIN devuelve 2 filas para el mismo booking y el loop llama 2 veces a `searchPaymentsByReference` — mismo booking, gasto duplicado de la API de búsqueda de MP. Inofensivo en cuanto a corrección (`lockMpEvent` con clave `reconcile-<mpPaymentId>` deduplica el efecto real), pero trabajo de más.
+
+**Se probó un fix y se revirtió — quedó mal calibrado el análisis inicial.** El cambio a `JOIN payments p ON p.id = b.payment_id` (usar la fila que `bookings.payment_id` apunta) se aplicó, pasó los 4 comandos del DoD local (format/lint/typecheck/knip) y se pusheó — pero **`pnpm test:integration` no se corrió localmente antes del push** (requiere Supabase local, no disponible en este entorno). CI lo agarró: `tests/integration/reconcile-pending-payments-idempotency.test.ts` (2 tests) y `tests/integration/mp-circuit-breaker-contract.test.ts` (1 test) rompieron — sus fixtures simulan un booking "atascado" insertando la fila de `payments` directo por SQL sin tocar `bookings.payment_id`, y con el JOIN nuevo el reconcile ya no encontraba nada.
+
+Eso no es solo un fixture desprolijo: es la razón real por la que el JOIN original está escrito por `booking_id`, no por `payment_id`. `reconcile-pending-payments` es la red de seguridad para plata que quedó pagada sin confirmar — depender de que `bookings.payment_id` esté sincronizado es una condición extra que, si algún día se rompe en cualquier otro punto del código (bug, dato tocado a mano, un camino de creación de pago futuro que no pase por `createDepositPayment`), deja a la red de seguridad ciega justo cuando más importa. El JOIN "ineficiente" es una elección defensiva, no un descuido — se revirtió a:
 
 ```diff
-- JOIN payments p ON p.booking_id = b.id
-+ JOIN payments p ON p.id = b.payment_id
+- JOIN payments p ON p.id = b.payment_id
++ JOIN payments p ON p.booking_id = b.id
 ```
+
+Severidad se mantiene Baja (duplicar una búsqueda de solo-lectura a la API de MP no es grave) y queda **sin fix** — no vale la pena perseguir la deduplicación a costa de acoplar la red de seguridad a un invariante que puede romperse en otro lado sin avisar.
 
 ## Cambios aplicados en esta sesión
 
-- [`expire-pending-booking.worker.ts:16`](../../../src/shared/jobs/workers/expire-pending-booking.worker.ts) — comentario corregido (Hallazgo 3a).
-- [`reconcile-pending-payments.worker.ts:57`](../../../src/shared/jobs/workers/reconcile-pending-payments.worker.ts) — JOIN corregido a la fila de pago vigente (Hallazgo 5).
+- [`expire-pending-booking.worker.ts:16`](../../../src/shared/jobs/workers/expire-pending-booking.worker.ts) — comentario corregido (Hallazgo 3a). Único cambio que se mantuvo.
+- [`reconcile-pending-payments.worker.ts:57`](../../../src/shared/jobs/workers/reconcile-pending-payments.worker.ts) — Hallazgo 5: se aplicó, CI lo tumbó (3 tests rojos), se **revirtió** al código original. Ver sección Hallazgo 5.
 
-Ambos son cambios de 1 línea sin impacto en comportamiento observable (comentario y precisión de un JOIN de solo-lectura de un cron). `pnpm format:check && pnpm lint && pnpm typecheck && pnpm knip` corridos tras los fixes — ver resultado en la sesión que generó este reporte.
+**Gap de proceso, para no repetirlo:** el DoD local de 4 comandos (`format:check`/`lint`/`typecheck`/`knip`) no corre `pnpm test:integration` — necesita Supabase local, no disponible en este entorno. Un cambio que toca una query de un worker de jobs necesita esa suite igual, aunque los 4 comandos den verde; acá la agarró CI en vez de local, un ciclo de PR más tarde de lo ideal, pero antes de mergear.
 
 ## Pendiente
 
 - Hallazgo 4 (lock de cancha) — sin acción por ahora, medido y descartado como problema actual (ver evidencia arriba). Revisar de nuevo si el volumen de reservas concurrentes por cancha crece.
+- Hallazgo 5 — sin fix, se documentó por qué el JOIN "ineficiente" es la elección correcta.

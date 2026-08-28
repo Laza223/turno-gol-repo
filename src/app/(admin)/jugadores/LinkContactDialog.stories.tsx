@@ -124,8 +124,10 @@ export const BusquedaConError: Story = {
     await userEvent.type(inDialog.getByLabelText('Buscar la cuenta del jugador'), 'Ro')
 
     await expect(await inDialog.findByText(/Demasiadas búsquedas/)).toBeTruthy()
-    // Con error no queda el listado anterior colgado ni el "Buscando…".
-    await expect(inDialog.queryByText('Buscando…')).toBeNull()
+    // Con error no queda el listado anterior colgado ni el "Buscando…" —
+    // waitFor porque el loading state puede tardar un tick más en limpiarse
+    // que el texto de error en aparecer (CI lo vio flaky con un assert síncrono).
+    await waitFor(() => expect(inDialog.queryByText('Buscando…')).toBeNull())
   },
 }
 

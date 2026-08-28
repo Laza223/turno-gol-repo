@@ -327,7 +327,7 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     expect(await cashFlowsFor(booking.id)).toHaveLength(0)
   })
 
-  it('caja ya cerrada: la reserva se crea igual y se le avisa al dueño por mail', async () => {
+  it('caja ya cerrada: la seña entra como AJUSTE y se le avisa al dueño por mail', async () => {
     const sql = getSql()
     const { tenantId, staffId, courtId } = await seed()
 
@@ -356,7 +356,33 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     const row = await bookingRow(booking.id)
     expect(row.status).toBe('confirmed')
     expect(row.deposit_status).toBe('paid')
-    expect(await cashFlowsFor(booking.id)).toHaveLength(0)
+
+    // 🔴 QA 2026-08-28 F-02: antes acá no se escribía NADA en Caja. La reserva
+    // decía "pagada" y esos pesos no figuraban en ninguna vista, así que la
+    // conciliación del día quedaba corta sin que nadie lo notara. Ahora entran
+    // como ajuste del mismo día operativo — 'other' porque el CHECK de DB no
+    // admite 'booking' con type 'adjustment'.
+    const flows = await cashFlowsFor(booking.id)
+    expect(flows).toHaveLength(1)
+    expect(flows[0]).toMatchObject({
+      type: 'adjustment',
+      category: 'other',
+      amount: DEPOSIT,
+      method: 'cash',
+    })
+    // Mismo literal que el camino feliz: getBookingCharges lo excluye por
+    // string, así que la seña no se cuenta dos veces en el cobrado del turno.
+    expect(flows[0]!.description).toBe(`Seña — turno ${booking.id}`)
+
+    // El snapshot del cierre NO se toca: sigue siendo la foto de lo contado esa
+    // noche. El ajuste se ve aparte, no reescribe el cierre.
+    const closes = await sql<Array<{ declared_cash: number; diff_amount: number }>>`
+      SELECT declared_cash, diff_amount FROM daily_cash_closes
+      WHERE tenant_id = ${tenantId} AND date = ${TODAY}
+    `
+    expect(closes).toHaveLength(1)
+    expect(closes[0]!.declared_cash).toBe(0)
+    expect(closes[0]!.diff_amount).toBe(0)
 
     const notifs = await sql<Array<{ template_name: string; status: string }>>`
       SELECT template_name, status FROM notifications

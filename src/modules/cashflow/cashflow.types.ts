@@ -112,4 +112,20 @@ export type CreateCashFlowInput = {
   occurredAt?: Date
   /** UUID v4 generado por el cliente al abrir el formulario. Previene duplicados por doble-submit. */
   clientIdempotencyKey?: string
+  /**
+   * Escribe aunque la caja de ese día operativo ya esté cerrada. Es el camino
+   * que el propio diálogo de cierre promete ("las correcciones posteriores van
+   * como ajustes"), así que SOLO vale con `type: 'adjustment'` — con cualquier
+   * otro tipo `createCashFlow` tira `AdjustmentRequiredForClosedDayError`.
+   *
+   * Único caller: la seña que el staff cobra de mostrador después de haber
+   * cerrado la caja. Antes eso quedaba fuera de Caja para siempre: la reserva
+   * decía "pagada" y la plata no figuraba en ningún lado (🔴 QA 2026-08-28
+   * F-02). No lo expone ninguna Server Action: abrirlo a la UI genérica
+   * convertiría el cierre en una sugerencia.
+   *
+   * El snapshot del cierre (`expected_cash`, `diff_amount`) NO se toca: queda
+   * como la foto de lo que se contó, y el ajuste se ve aparte.
+   */
+  allowClosedDay?: boolean
 }

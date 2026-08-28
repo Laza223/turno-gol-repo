@@ -358,10 +358,40 @@ async function recordManualBookingDepositCashFlow(
     )
   } catch (err) {
     if (err instanceof DayAlreadyClosedError) {
-      captureMessage('manual booking deposit cash_flow skipped: cash register already closed', {
-        level: 'warning',
-        extra: { bookingId: booking.id, tenantId, method },
-      })
+      // La plata está FÍSICAMENTE en la caja: el staff la cobró de mostrador.
+      // Antes acá solo se avisaba al dueño y el movimiento no existía en ningún
+      // lado, así que la reserva decía "pagada" y Caja no la mostraba nunca
+      // (🔴 QA 2026-08-28 F-02). Ahora entra como AJUSTE del mismo día
+      // operativo: es lo que el propio diálogo de cierre promete ("las
+      // correcciones posteriores van como ajustes"), y deja intacto el snapshot
+      // del cierre, que sigue siendo la foto de lo que se contó esa noche.
+      //
+      // category 'other' y no 'booking' porque el CHECK de DB
+      // (chk_cashflow_type_category) solo admite 'other'/'no_show_correction'
+      // con type 'adjustment'. La descripción es el MISMO literal exacto que el
+      // camino feliz: getBookingCharges la excluye por string, así que la seña
+      // no se cuenta dos veces en el "cobrado" del turno.
+      await createCashFlow(
+        tenantId,
+        staffUserId,
+        {
+          type: 'adjustment',
+          category: 'other',
+          amount: booking.depositAmount,
+          method,
+          description: depositCashFlowDescription(booking.id),
+          bookingId: booking.id,
+          allowClosedDay: true,
+        },
+        tx,
+      )
+      captureMessage(
+        'manual booking deposit recorded as adjustment: cash register already closed',
+        {
+          level: 'warning',
+          extra: { bookingId: booking.id, tenantId, method },
+        },
+      )
       // Los ids se descartan a propósito: el sweep por cron de send-email
       // levanta las notificaciones en `queued`, igual que hace
       // `createOnlineBooking` acá abajo. Despacharlas post-commit sería

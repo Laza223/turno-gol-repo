@@ -302,7 +302,7 @@ DIAGNÓSTICO Y ACCIÓN:
 
   2. ¿El magic link llega pero el verify falla?
      → Verificar Supabase Auth logs en el dashboard
-     → ¿El token expiró? (los magic links expiran en 10 minutos)
+     → ¿El token expiró? (los magic links expiran en 1 hora, confirmado 2026-08-28 — ver §3.10)
      → ¿El token ya fue usado? (single-use)
      → Si hay un error de Supabase Auth → reiniciar el servicio
        (Supabase Dashboard → Settings → Restart services)
@@ -464,10 +464,11 @@ DIAGNÓSTICO Y ACCIÓN:
 
 **Síntomas:** usuario reporta que no puede entrar; el magic link no funciona.
 
-**TTL:** SÍ es configurable en `supabase/config.toml` → `[auth.email] otp_expiry`
-(gobierna magic link + email OTP). El default local es `otp_expiry = 3600` (1 hora).
-Producción se configura aparte, en el dashboard de Supabase Auth — **verificar ahí
-el valor real antes de asumir 10 minutos** (REQUIERE INPUT, ver abajo).
+**TTL:** **1 hora (3600 segundos)** — confirmado 2026-08-28 en el dashboard de Supabase Auth de
+producción ("Email OTP Expiration"), coincide con el default local (`supabase/config.toml` →
+`[auth.email] otp_expiry = 3600`). Este doc decía "10 minutos" antes de esa verificación — era un
+número asumido, nunca chequeado contra la config real. SÍ es configurable ahí mismo si hace falta
+cambiarlo.
 **Single-use:** sí (Supabase invalida el token al primer uso exitoso).
 
 ```
@@ -479,8 +480,8 @@ el valor real antes de asumir 10 minutos** (REQUIERE INPUT, ver abajo).
 
 2. ¿EL EMAIL LLEGA PERO EL LINK NO FUNCIONA?
    → ¿Cuánto tardó el usuario en abrirlo?
-     * Si > 10 min → TTL vencido. Pedirle que re-solicite el link.
-     * Si < 10 min → continuar.
+     * Si > 1 hora → TTL vencido. Pedirle que re-solicite el link.
+     * Si < 1 hora → continuar.
    → ¿Hizo click en el link más de una vez? El primer click consume el token; clicks
      posteriores devuelven 400 desde Supabase. Re-solicitar link.
    → ¿Click desde otro device/browser que el que solicitó? Algunos clientes de email

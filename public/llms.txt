@@ -15,5 +15,6 @@ TurnoGol es un sistema de reservas y gestión diseñado específicamente para co
 3. **Simplicidad:** No requiere terminales complejas. Se gestiona desde el celular del dueño o encargado.
 
 ## Enlaces Oficiales
-- Sitio web para complejos: https://turnogol.com/para-complejos
-- Precios: https://turnogol.com/precios
+- Sitio web para complejos: https://turnogol.app/para-complejos
+- Precios: https://turnogol.app/precios
+- Buscador de complejos con reserva online: https://turnogol.app/explorar

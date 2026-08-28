@@ -27,8 +27,8 @@ export default async function TorneosPublicosPage(props: Props) {
   const tenant = await getPublicTenant(slug)
   if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) notFound()
 
-  // Devuelve [] si el complejo tiene el flag apagado: la página existe pero
-  // queda vacía, sin filtrar que el módulo no está habilitado.
+  // El flag ya lo chequeó el layout (404 si está apagado), así que un [] acá
+  // significa "tiene el módulo y todavía no publicó nada".
   const tournaments = await listPublicTournaments(tenant.id)
 
   return (

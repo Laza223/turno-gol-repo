@@ -167,6 +167,17 @@ async function cleanupAuthUsers(): Promise<void> {
 async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
   // Single all-day rule so calculatePrice never returns null for E2E slots.
   // Amounts in centavos: 100 ARS/hr = 10000 centavos.
+  //
+  // OJO SI HACÉS QA A OJO: $100/turno con capacity 10 es un fixture DEGENERADO.
+  // El precio por jugador (precio ÷ capacidad, redondeado hacia arriba a los
+  // $100) da $10 → $100, o sea EL MISMO número que el turno entero. Un QA de
+  // 2026-08-28 leyó eso como "no divide por la capacidad" y levantó un hallazgo
+  // que era falso. Para probar cualquier cuenta de plata contra estos fixtures,
+  // mové el input y mirá si el output se mueve; no compares dos números que un
+  // precio irreal hace coincidir. Subirlo a un valor realista es lo correcto,
+  // pero arrastra los baselines de `visual-regression` y varios specs e2e —
+  // ninguno de los dos corre en PRs, así que va en un cambio propio, verificado
+  // con la suite e2e corrida a mano.
   const pricing = {
     rules: [
       {

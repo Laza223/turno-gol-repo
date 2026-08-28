@@ -81,7 +81,13 @@ type Story = StoryObj<typeof meta>
 
 /** Motivo por defecto ("Reserva Telefónica"): contacto opcional, cotiza normal. */
 export const Default: Story = {
-  args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
+  args: {
+    action: fn(async () => ({
+      success: true as const,
+      booking: booking(),
+      depositAfterClose: false,
+    })),
+  },
 }
 
 /**
@@ -91,7 +97,13 @@ export const Default: Story = {
  */
 export const OpcionesAvanzadasExpandidas: Story = {
   name: 'Click en "Opciones avanzadas" — guestPhone y notesInternal quedan usables',
-  args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
+  args: {
+    action: fn(async () => ({
+      success: true as const,
+      booking: booking(),
+      depositAfterClose: false,
+    })),
+  },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     // forceMount: el campo queda en el DOM (serializa en FormData aun
@@ -114,7 +126,13 @@ export const OpcionesAvanzadasExpandidas: Story = {
 
 export const BloqueoInterno: Story = {
   name: 'Motivo "Mantenimiento": sin contacto, selector de duración 60/120',
-  args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
+  args: {
+    action: fn(async () => ({
+      success: true as const,
+      booking: booking(),
+      depositAfterClose: false,
+    })),
+  },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.selectOptions(body.getByLabelText('Motivo / Tipo de Bloqueo'), 'maintenance')
@@ -146,6 +164,7 @@ async function contestarSinCobro(body: ReturnType<typeof within>) {
 const guardando = pendingAction<BookingActionResult>({
   success: true as const,
   booking: booking(),
+  depositAfterClose: false,
 })
 
 export const Guardando: Story = {
@@ -186,7 +205,11 @@ export const Cerrado: Story = {
   name: 'open=false — el diálogo no se monta',
   args: {
     open: false,
-    action: fn(async () => ({ success: true as const, booking: booking() })),
+    action: fn(async () => ({
+      success: true as const,
+      booking: booking(),
+      depositAfterClose: false,
+    })),
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
@@ -202,7 +225,11 @@ export const Cerrado: Story = {
 export const AvisoDeColisionOptimista: Story = {
   name: 'checkAvailabilityAction → available:false — aviso temprano de colisión',
   args: {
-    action: fn(async () => ({ success: true as const, booking: booking() })),
+    action: fn(async () => ({
+      success: true as const,
+      booking: booking(),
+      depositAfterClose: false,
+    })),
     checkAvailabilityAction: fn(async () => ({ available: false })),
   },
   play: async ({ canvasElement }) => {
@@ -217,7 +244,13 @@ export const AvisoDeColisionOptimista: Story = {
 
 export const ExitoLlamaOnSuccess: Story = {
   name: 'La action resuelve success:true → onSuccess(booking), cierra el modal',
-  args: { action: fn(async () => ({ success: true as const, booking: booking() })) },
+  args: {
+    action: fn(async () => ({
+      success: true as const,
+      booking: booking(),
+      depositAfterClose: false,
+    })),
+  },
   // Sin BookingFormModalCloseOnSuccessDemo el overlay `bg-black/50` queda
   // abierto (open:true fijo) detrás del toast "Reserva creada" y axe mide el
   // contraste del texto contra ese negro translúcido: un estado que nunca

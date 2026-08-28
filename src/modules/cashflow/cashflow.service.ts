@@ -5,6 +5,7 @@ import {
   InvalidCashFlowTypeError,
   InvalidCashFlowCategoryError,
   DayAlreadyClosedError,
+  AdjustmentRequiredForClosedDayError,
 } from './cashflow.errors'
 import { nightCutoffMins, operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { rawRowToDailyCloseRow, type DailyCashCloseRawRow } from './daily-close.service'
@@ -115,9 +116,16 @@ function rawRowToCashFlowRow(r: CashFlowRawRow): CashFlowRow {
  * antes de que commiteara, quedando fuera del cierre y aterrizando en un día
  * ya cerrado.
  */
-async function assertDayOpen(tenantId: string, occurredAt: Date, tx: DbTx): Promise<void> {
+async function assertDayOpen(
+  tenantId: string,
+  occurredAt: Date,
+  tx: DbTx,
+  /** Toma el lock igual, pero no rechaza si el día ya cerró (ver `allowClosedDay`). */
+  allowClosed = false,
+): Promise<void> {
   const lockKey = `daily_close:${tenantId}`
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`)
+  if (allowClosed) return
 
   // cutoffMins se resuelve ACÁ, no como parámetro: createCashFlow (y por lo
   // tanto assertDayOpen) no cambia su firma pública en este esfuerzo — tiene
@@ -157,7 +165,13 @@ export async function createCashFlow(
 
   const occurredAt = input.occurredAt ?? new Date()
 
-  await assertDayOpen(tenantId, occurredAt, tx)
+  if (input.allowClosedDay && input.type !== 'adjustment') {
+    throw new AdjustmentRequiredForClosedDayError(input.type)
+  }
+  // Aun salteando el chequeo de cierre hay que ENTRAR igual: assertDayOpen toma
+  // el advisory lock que serializa contra un cierre concurrente. Saltear la
+  // llamada entera dejaría el ajuste corriendo en paralelo a closeDailyRegister.
+  await assertDayOpen(tenantId, occurredAt, tx, input.allowClosedDay ?? false)
 
   // Fix #55: si el cliente envía una idempotency key, usar ON CONFLICT DO NOTHING
   // para ignorar el segundo insert en caso de doble-submit o reintento de red.
@@ -273,6 +287,35 @@ export async function getCashFlows(
         ORDER BY occurred_at DESC`,
   )
   return [...rows].map(rawRowToCashFlowRow)
+}
+
+/**
+ * ¿La seña de este turno entró como AJUSTE porque la caja del día ya estaba
+ * cerrada? Se lee la fila REAL después de escribirla: dice lo que pasó, no lo
+ * que se predecía (entre un chequeo previo y la escritura puede cerrar otro).
+ *
+ * Existe para avisarle al encargado en el momento (🔴 QA 2026-08-28 F-02). La
+ * alternativa era ensanchar el retorno de `createManualBooking`, del que
+ * dependen 17 archivos de test y `bookingResponseSchema` (un `z.strictObject`);
+ * leer una fila dentro de la MISMA transacción sale mucho más barato.
+ *
+ * No hace falta comparar la descripción: `booking_id` + `adjustment` ya
+ * identifica esa fila sin ambigüedad — los cobros de mostrador son `income`.
+ */
+export async function depositEnteredAsAdjustment(
+  tenantId: string,
+  bookingId: string,
+  tx: DbTx,
+): Promise<boolean> {
+  const rows = await tx.execute<{ exists: boolean }>(
+    sql`SELECT EXISTS (
+          SELECT 1 FROM cash_flows
+          WHERE tenant_id = ${tenantId}
+            AND booking_id = ${bookingId}
+            AND type = 'adjustment'
+        ) AS exists`,
+  )
+  return [...rows][0]?.exists === true
 }
 
 export async function getDaySummary(

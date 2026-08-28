@@ -19,6 +19,18 @@ export class DayAlreadyClosedError extends Error {
   }
 }
 
+/**
+ * `allowClosedDay` sin `type: 'adjustment'`. Escribir un ingreso común en un día
+ * cerrado desincronizaría el resumen del día con el snapshot del cierre; el
+ * ajuste existe justamente para que esa plata se vea SIN pisar la foto.
+ */
+export class AdjustmentRequiredForClosedDayError extends Error {
+  constructor(type: string) {
+    super(`allowClosedDay requires type 'adjustment', got '${type}'.`)
+    this.name = 'AdjustmentRequiredForClosedDayError'
+  }
+}
+
 export class DayAlreadyCloseExistsError extends Error {
   constructor(date: string) {
     super(`A daily close already exists for ${date}.`)

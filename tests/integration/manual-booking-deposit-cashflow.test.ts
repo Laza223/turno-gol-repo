@@ -5,6 +5,7 @@ import { confirmManualDepositPayment } from '@/modules/payments/payment.service'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
+import { depositEnteredAsAdjustment } from '@/modules/cashflow/cashflow.service'
 import { openDay } from '@/modules/cashflow/cash-open.service'
 import { todayART } from '@/shared/time/art-date'
 import {
@@ -151,6 +152,12 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     // El literal EXACTO importa: es el marcador por el que getBookingCharges
     // excluye esta fila para no contar la seña dos veces.
     expect(flows[0]!.description).toBe(`Seña — turno ${booking.id}`)
+
+    // Control del aviso al encargado: con la caja ABIERTA no hay nada que
+    // avisar. Sin este caso, un lector que devolviera true siempre pasaría.
+    await expect(
+      withTenantContext(tenantId, (tx) => depositEnteredAsAdjustment(tenantId, booking.id, tx)),
+    ).resolves.toBe(false)
   })
 
   it('mercadopago: bookings.payment_method sigue NULL (contrato INV4) pero el cash_flow guarda el medio real', async () => {
@@ -327,7 +334,7 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     expect(await cashFlowsFor(booking.id)).toHaveLength(0)
   })
 
-  it('caja ya cerrada: la reserva se crea igual y se le avisa al dueño por mail', async () => {
+  it('caja ya cerrada: la seña entra como AJUSTE y se le avisa al dueño por mail', async () => {
     const sql = getSql()
     const { tenantId, staffId, courtId } = await seed()
 
@@ -356,7 +363,33 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     const row = await bookingRow(booking.id)
     expect(row.status).toBe('confirmed')
     expect(row.deposit_status).toBe('paid')
-    expect(await cashFlowsFor(booking.id)).toHaveLength(0)
+
+    // 🔴 QA 2026-08-28 F-02: antes acá no se escribía NADA en Caja. La reserva
+    // decía "pagada" y esos pesos no figuraban en ninguna vista, así que la
+    // conciliación del día quedaba corta sin que nadie lo notara. Ahora entran
+    // como ajuste del mismo día operativo — 'other' porque el CHECK de DB no
+    // admite 'booking' con type 'adjustment'.
+    const flows = await cashFlowsFor(booking.id)
+    expect(flows).toHaveLength(1)
+    expect(flows[0]).toMatchObject({
+      type: 'adjustment',
+      category: 'other',
+      amount: DEPOSIT,
+      method: 'cash',
+    })
+    // Mismo literal que el camino feliz: getBookingCharges lo excluye por
+    // string, así que la seña no se cuenta dos veces en el cobrado del turno.
+    expect(flows[0]!.description).toBe(`Seña — turno ${booking.id}`)
+
+    // El snapshot del cierre NO se toca: sigue siendo la foto de lo contado esa
+    // noche. El ajuste se ve aparte, no reescribe el cierre.
+    const closes = await sql<Array<{ declared_cash: number; diff_amount: number }>>`
+      SELECT declared_cash, diff_amount FROM daily_cash_closes
+      WHERE tenant_id = ${tenantId} AND date = ${TODAY}
+    `
+    expect(closes).toHaveLength(1)
+    expect(closes[0]!.declared_cash).toBe(0)
+    expect(closes[0]!.diff_amount).toBe(0)
 
     const notifs = await sql<Array<{ template_name: string; status: string }>>`
       SELECT template_name, status FROM notifications
@@ -364,6 +397,13 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     `
     expect(notifs).toHaveLength(1)
     expect(notifs[0]!.status).toBe('queued')
+
+    // La señal que `createBookingAction` le muestra al encargado en el toast.
+    // Se lee la fila escrita, no se predice: por eso el aviso no puede mentir
+    // aunque alguien cierre la caja en el medio.
+    await expect(
+      withTenantContext(tenantId, (tx) => depositEnteredAsAdjustment(tenantId, booking.id, tx)),
+    ).resolves.toBe(true)
   })
 
   it('el cierre del día cuadra: expected = fondo + seña, diferencia 0', async () => {

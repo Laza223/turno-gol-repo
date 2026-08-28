@@ -15,6 +15,14 @@ description: Usar cuando se escribe o modifica código que toca la DB (Drizzle, 
 - Mutaciones de UI = **Server Actions**. Route Handlers SOLO para webhooks de MP, `/api/public/*` y auth callbacks.
 - **El día NUNCA se deriva en UTC.** `new Date().toISOString().slice(0,10)` devuelve el día siguiente entre las 21:00 y medianoche ART: un default de listado o un bucketing de métricas que pase por ahí salta de día 3 horas por noche. Usar `artTodayStr()` (`@/shared/dates/art`) para "hoy", `artDateOf` (`@/shared/time/art-date`) para el día ART de un instante, u `operatingDateOf` (`@/shared/time/operating-day`) cuando el día es el OPERATIVO del complejo. Bloqueado por ESLint (`no-restricted-syntax`).
 
+## Plata en la UI
+
+- **Todo campo de monto es `MoneyInput`** (`@/components/ui/money-input`), nunca un `type="number"` suelto: pesos enteros, separador de miles mientras se tipea y relectura en palabras arriba de `MONEY_WORDS_THRESHOLD_CENTS`. El parseo vive en `@/lib/money` y es la única fuente.
+- **El campo se reformatea en CADA tecla, así que el parser tiene que sobrevivir a strings a medio tipear** — no alcanza con que parsee bien el string final. (pasó: `parsePesosToCents` borraba todo lo no-dígito, así que la coma se comía en el acto y los dígitos de los centavos se pegaban al entero en la tecla siguiente: `1500,50` terminaba valiendo $150.050. Afectaba los 7 campos de plata del admin, incluido el precio de cancha, que publicaba el error 100× en el portal público. El test que lo agarra tipea tecla por tecla; los que parseaban el string entero pasaban en verde.)
+- **Desambiguación es-AR**: el último separador es decimal solo si lo siguen 0, 1 o 2 dígitos; con 3 es grupo de miles (`35,000` son treinta y cinco mil). El caso de CERO dígitos es el instante en que se acaba de tipear la coma y es tan importante como los otros.
+- **Escribir en un día de caja ya cerrado exige `type='adjustment'`** vía `allowClosedDay` en `CreateCashFlowInput`, y ninguna Server Action lo expone. Ver `docs/decisions/2026-08-28-sena-cobrada-con-la-caja-cerrada.md`. (pasó: el `catch` de `DayAlreadyClosedError` avisaba al dueño pero no escribía nada, así que la reserva decía "pagada" y la plata no figuraba en Caja.)
+- **Saltear el chequeo de cierre no es saltear `assertDayOpen`**: ahí adentro está el `pg_advisory_xact_lock` que serializa contra un `closeDailyRegister` concurrente. Pasarle el flag, no evitar la llamada.
+
 ## Server Actions y forms
 
 - **Retorno**: `ActionResult` de `@/shared/types/action-result` — `{ success: true } & TExtra | { success: false; error: string }`. Nada de `{ success: boolean; error?: string }`: esa forma no discrimina, deja compilar un fallo sin motivo y termina mostrándole al usuario un error genérico donde había uno real.

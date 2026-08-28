@@ -1,0 +1,48 @@
+# Dependency Cruiser — resuelve el grafo real de imports (alias @/* y
+# relativos, incluye dynamic import()) y lo valida contra las mismas 6 zonas
+# de capas que ya impone eslint.config.mjs (turnogol/capas-*), más ciclos.
+#
+# Advisory: todas las reglas de .dependency-cruiser.mjs están en severity
+# 'warn' — depcruise solo sale con exit code != 0 por violaciones 'error' (no
+# hay ninguna todavía), así que este job no puede poner en rojo un PR. El
+# primer scan sin triagear tiene ruido esperado (import type cruzando capas,
+# que ESLint sí permite y esta herramienta no distingue) — leer el log del
+# step es la señal, no el color del job. Cuando una zona quede triageada y
+# limpia, subirla a 'error' en el config (mismo patrón de "trinquete" que ya
+# usa eslint.config.mjs).
+#
+# Docs: https://github.com/sverweij/dependency-cruiser
+# Config: .dependency-cruiser.mjs (raíz)
+
+name: Dependency Cruiser
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: dependency-cruiser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-cruiser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency graph rules
+        run: pnpm depcruise

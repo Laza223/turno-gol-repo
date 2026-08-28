@@ -21,6 +21,7 @@ playwright-report/
 .playwright-mcp/
 tests/e2e/.auth/
 _pw-push.json
+.ig-session/
 
 # Lighthouse CI artifacts (HTML reports — bulky, keep only config + summary)
 .lighthouseci/
@@ -30,6 +31,9 @@ docs/audit/reports/fase-f03-raw/lhci/*.html
 docs/audit/reports/fase-f03-raw/lhci/*.json
 docs/audit/reports/fase-f06-raw/lhci/*.html
 docs/audit/reports/fase-f06-raw/lhci/*.json
+
+# dependency-cruiser — grafo generado a demanda (pnpm depcruise:graph), no versionado.
+docs/architecture-graph.mmd
 
 # Storybook — build estático y evidencia de QA visual (screenshots, snapshots,
 # logs de consola). A git van solo los reportes resumidos, los manifiestos y los

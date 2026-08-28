@@ -26,6 +26,15 @@ export type GatewayPaymentInfo = {
    * `GatewayPaymentInfo` sin conocerlo.
    */
   preapprovalId?: string | null
+  /**
+   * `date_created` crudo de MP (ISO-8601 con offset), solo poblado por
+   * `searchPaymentsByReference` — historial de facturación SaaS
+   * (`billing.service.ts:listInvoices`). `getPaymentStatus` no lo necesita
+   * (booking deposits ya tienen su propio `created_at` en `payments`) y
+   * agregarlo ahí obligaría a tocar los mismos ~15 tests que ya evitó
+   * `preapprovalId` arriba. Opcional/string crudo por la misma razón.
+   */
+  dateCreated?: string
 }
 
 /**

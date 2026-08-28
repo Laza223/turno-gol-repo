@@ -45,14 +45,23 @@ email             string        Email de contacto
 timezone          string        DEFAULT 'America/Argentina/Buenos_Aires'
 opening_hours     JSONB         { "mon": {"open": "08:00", "close": "23:00"}, ... }
 closed_dates      date[]        Fechas cerradas (feriados, vacaciones) — gestión manual del admin
+closes_next_day   boolean       DEFAULT false. Día operativo: ver nota en ENTIDAD 2
 status            enum          ver state machine (8 estados, def. en Doc 4)
 trial_ends_at     timestamp?    Solo si status = 'trialing'
+trial_warning_days_sent integer? Umbral (días) del último aviso de fin de prueba enviado. NULL = ninguno (migr. 068)
+settings          JSONB         Configuraciones generales (ver desglose abajo)
+feature_overrides JSONB         Override de feature flags por tenant (ADR-010). DEFAULT '{}'
+amenities         JSONB         Servicios del complejo para filtros públicos (duchas, wifi, etc.). DEFAULT '{}'
+from_price_cents  integer?      "Desde $X" denormalizado (MIN de precios de canchas online). Mantenido por trigger
+court_surfaces    string[]      Superficies distintas de las canchas online, denormalizado. Mantenido por trigger
+court_formats     integer[]     Formatos de Fútbol distintos de las canchas online, denormalizado. Mantenido por trigger
 mp_access_token   string        Credencial OAuth de MP del complejo (encriptado at-rest)
 mp_refresh_token  string        Token de refresh OAuth MP (encriptado at-rest)
-mp_user_id        string?       ID del usuario MP del complejo
+mp_user_id        string?       ID del usuario MP del complejo. UNIQUE parcial: una cuenta MP cobra para un solo complejo (migr. 069)
+mp_nickname       string?       Nombre visible de la cuenta MP conectada (migr. 069)
 mp_public_key     string?       Public key MP del complejo
 mp_connected_at   timestamp?    Cuándo conectó su cuenta MP
-settings          JSONB         Configuraciones generales (ver desglose abajo)
+scheduled_deletion_at timestamp? 90 días post-churn (data retention)
 created_at        timestamp     UTC
 updated_at        timestamp     UTC
 ```
@@ -203,11 +212,14 @@ tenant_id         UUID          FK → tenants (RLS)
 court_id          UUID          FK → courts
 player_id         UUID?         FK → players. Null si es un bloqueo o reserva sin jugador registrado
 abonado_id        UUID?         FK → abonados. Populated si esta reserva viene de un turno fijo
+tournament_id     UUID?         FK → tournaments. Populated si son horas de un torneo (migr. 062)
 created_by_staff  UUID?         FK → staff_users. Quién la creó si fue manual
 date              date          Fecha de la reserva (en timezone del complejo)
 time_start        time          Hora de inicio
 time_end          time          Hora de fin
-type              enum          'spontaneous' | 'fixed' | 'block'
+starts_at         timestamp     Instante físico absoluto UTC (migr. 040/041). Fuente única para lógica fuerte
+ends_at           timestamp     Instante físico absoluto UTC (migr. 040/041)
+type              enum          'spontaneous' | 'fixed' | 'block' | 'tournament'
 status            enum          ver state machine
 price_snapshot    integer       Precio en centavos ARS al momento de crear la reserva (inmutable)
 deposit_amount    integer       Monto de seña cobrada en centavos (0 si no se exigió seña)
@@ -221,6 +233,7 @@ guest_phone       text?         Teléfono del jugador si player_id IS NULL
 canceled_reason   text?         Motivo de cancelación (si aplica). Cancelación admin (cambio #3): prefijado con el tipo, p.ej. "Cancelado por el complejo: {motivo}" / "Cancelado a pedido del jugador: {motivo}"
 canceled_by       enum?         'player' | 'admin' | 'system' (quién ejecutó la acción; el TIPO complejo/jugador va en canceled_reason + audit metadata)
 canceled_at       timestamp?    Cuándo se canceló
+completed_by_staff UUID?        FK → staff_users. Quién marcó completed manualmente, si fue el staff (migr. 047)
 created_at        timestamp     UTC
 updated_at        timestamp     UTC
 ```
@@ -329,6 +342,7 @@ calculan a demanda (no se materializan), sumando seña + CashFlows del booking:
 | `spontaneous` | Reserva normal (online o manual) | Requerido si online, opcional si manual | NULL |
 | `fixed` | Instancia de turno fijo | Opcional (puede ser el contacto del abonado) | Requerido |
 | `block` | Bloqueo de horario (evento privado, feriado, mantenimiento) | NULL | NULL |
+| `tournament` | Horas que posee un torneo (módulo Torneos, migr. 062). `price_snapshot=0`, tiene `tournament_id` | NULL | NULL |
 
 ### CHECK constraints recomendados
 ```sql
@@ -431,10 +445,13 @@ Un jugador es un usuario del B2C de TurnoGol. Es **cross-tenant**: puede reserva
 id                UUID          PK
 email             string        Único. Usado para autenticación (magic link)
 phone             string?       Teléfono (opcional en el registro)
+phone_hint8       string?       Últimos 8 dígitos de phone, GENERATED ALWAYS ... STORED (migr. 075). Solo lectura, para que el JOIN de sugerencia de /jugadores use índice bajo RLS
 first_name        string
 last_name         string
 avatar_url        string?
 preferred_area    string?       Ciudad/zona preferida
+notify_email      boolean       DEFAULT true. Preferencia para emails opcionales (recordatorios); los transaccionales se envían siempre (migr. 024)
+notify_push       boolean       DEFAULT true. Preferencia para Web Push al jugador (pipeline aún pendiente, migr. 024)
 status            enum          'active' | 'banned' | 'anonymized'
 agreed_to_terms_at timestamp?   Timestamp de aceptación de TyC y declaración jurada +18 (ADR-012)
 terms_version     string?       Versión de TyC aceptada (ej: '2026-04')
@@ -478,6 +495,7 @@ bookings_count    integer       Total de reservas (actualizado por triggers)
 noshow_count      integer       No-shows dentro de la ventana de reincidencia (escrito por applyNoShowStrike; se reinicia tras 90 días sin faltar)
 last_no_show_at   timestamp?    Fecha del último no-show (para la ventana de reincidencia)
 last_booking_at   timestamp?    Última reserva en este complejo
+tags              player_tag[]  Etiquetas del complejo sobre esta persona (B12 / decisión v2 D3, migr. 074). ENUM cerrado de 5 valores, sin texto libre (Ley 25.326). `[]` nunca NULL
 data_consent_at   timestamp     Consent de datos Ley 25.326 (set en primera reserva)
 created_at        timestamp     UTC
 ```
@@ -569,20 +587,24 @@ Representa un movimiento de caja del complejo: ingresos, ajustes y gastos.
 id                UUID          PK
 tenant_id         UUID          FK → tenants
 type              enum          'income' | 'adjustment' | 'expense'   (migración 025)
-category          enum          'booking' | 'product_sale' | 'other' | 'no_show_correction' | 'operating_expense' (025)
+category          enum          'booking' | 'product_sale' | 'other' | 'no_show_correction' | 'operating_expense' | 'merchandise' | 'salaries' | 'utilities' | 'maintenance' | 'other_expense' (025, 050) | 'tournament' (066)
 amount            integer       En centavos de ARS
 method            enum          'cash' | 'transfer' | 'mercadopago' | 'other'
 description       string        Descripción del movimiento
 booking_id        UUID?         FK → bookings (cobro de turno vinculado, cambio #8)
+tournament_team_id UUID?        FK → tournament_teams (cobro de inscripción a torneo, migr. 066). Siempre junto con category='tournament'
 registered_by     UUID          FK → staff_users
 occurred_at       timestamp     Cuándo ocurrió el movimiento
+client_idempotency_key text?    UUID v4 del cliente. Evita duplicados por doble-submit o reintento de red (Fix #55, migr. 023)
 created_at        timestamp     UTC
 ```
 
 > [!NOTE]
 > **Combinaciones type/category válidas** (CHECK `chk_cashflow_type_category`):
-> `income` → `booking` | `product_sale` | `other`;
-> `adjustment` → `other` | `no_show_correction`; `expense` → `operating_expense`.
+> `income` → `booking` | `product_sale` | `other` | `tournament`;
+> `adjustment` → `other` | `no_show_correction`;
+> `expense` → `operating_expense` (legacy) | `merchandise` | `salaries` | `utilities` | `maintenance` | `other_expense` (025, 050, 066).
+> `chk_cashflow_tournament_team` ata `category='tournament'` ⟺ `tournament_team_id IS NOT NULL` (bidireccional).
 
 ### Atributos derivados
 - `daily_balance(date)` = SUM(income) + SUM(adjustment) para ese día
@@ -602,9 +624,12 @@ tenant_id         UUID          FK → tenants
 date              date          Fecha del cierre (día operativo)
 total_income      integer       Suma de ingresos del día en centavos
 total_adjustments integer       Suma de ajustes compensatorios del día en centavos
+total_expense     integer       Suma de gastos del día en centavos (migr. 025)
 balance           integer       total_income + total_adjustments
 declared_cash     integer?      Efectivo contado en mano (si el admin lo declara)
-diff_amount       integer?      Diferencia entre balance y declared_cash
+opening_cash      integer?      Fondo inicial declarado al abrir el día (migr. 049). NULL = cierre legacy anterior a la apertura de caja
+expected_cash     integer?      opening_cash + neto de cash_flows en efectivo del día (migr. 049)
+diff_amount       integer?      declared_cash − expected_cash (semántica nueva, migr. 049) o balance − declared_cash (semántica legacy, expected_cash NULL). NUNCA se reinterpreta un valor viejo con la fórmula nueva
 note              text?         Observaciones del cierre
 closed_by         UUID          FK → staff_users
 closed_at         timestamp     Momento del cierre
@@ -617,9 +642,9 @@ created_at        timestamp     UTC
 
 ---
 
-## ENTIDAD 11: Product — ELIMINADA (cantina en JSONB)
+## ENTIDAD 11: Product — reemplazada por tablas reales de Cantina
 
-La tabla `products` fue **eliminada** (migr. 046, 2026-07-17). La cantina vive en `tenants.settings.canteen_products` (JSONB: `name`, `price` en centavos, `stock` opcional); la venta se hace con `sellCanteenProductAction` (descuenta stock atómicamente si el producto lo define) → `CashFlow` categoría `product_sale`. Ver doc13 §3.6.
+La tabla `products` original fue **eliminada** (migr. 046, 2026-07-17) y la cantina pasó a vivir en `tenants.settings.canteen_products` (JSONB). Ese JSONB fue **a su vez superado** por el rediseño "Caja y Cantina" (migrs. 048–051, 2026-07-22, `docs/decisions/2026-07-22-caja-cantina-redesign.md`): hoy la cantina son **tablas reales** — `canteen_products` (catálogo: nombre, precio, costo opcional, stock opcional/mínimo, soft-delete vía `is_active`), `canteen_tabs` (fiados: la venta queda a cobrar con nombre libre, el `CashFlow` se crea al saldar con `settleTab`) y `stock_movements` (ledger append-only: toda venta/merma/cortesía/consumo interno escribe una línea, aunque el producto no controle stock). La key JSONB `tenants.settings.canteen_products` se backfilleó a `canteen_products` en la 048 y se **eliminó** en la 051. Una venta simple genera 1 `CashFlow` categoría `product_sale` + N líneas en el ledger. Módulo: `src/modules/canteen/`. Ver doc13 §3.6.
 
 ---
 
@@ -639,11 +664,15 @@ current_period_start  timestamp
 current_period_end    timestamp
 price_locked_until    timestamp? Para clientes anuales con precio bloqueado
 mp_subscription_id    string?   ID de la suscripción en MercadoPago
+mp_payer_email        string?   Con qué cuenta de MP paga el complejo, desacoplado del email de login. NULL = el del dueño (migr. 078)
 pending_plan_change   UUID?     FK → plans (si hay un downgrade pendiente)
 pending_change_at     timestamp? Cuándo aplicar el cambio pendiente
 canceled_at           timestamp? Si canceló
 cancellation_reason   text?
-scheduled_deletion_at timestamp? 60+7 días post-bloqueo
+scheduled_deletion_at timestamp? `CANCELED_BLOCKED_DELETION_DAYS` = 97 días (90+7) tras bloqueo/cancelación; el path por `churned` usa `CHURNED_DELETION_DAYS` = 90 días (ver ENTIDAD 1)
+dunning_started_at    timestamp? Cuándo arrancó el dunning (cobro fallido)
+last_payment_failed_at timestamp? Último intento de cobro fallido
+last_payment_at        timestamp? Último cobro exitoso
 created_at        timestamp
 updated_at        timestamp
 ```
@@ -663,13 +692,14 @@ Definición global de un plan de suscripción (no por tenant). Los precios y fea
 ### Atributos propios
 ```
 id                    UUID          PK
-name                  string        'predio' | 'complejo' | 'estadio'
-display_name          string        'Predio' | 'Complejo' | 'Estadio'
-max_courts            integer       2 | 5 | NULL (ilimitado)
-monthly_price         integer       Precio mensual en centavos (sin IVA)
-annual_monthly_price  integer       Precio mensual del plan anual en centavos (sin IVA)
+name                  string        'Predio' | 'Complejo' | 'Estadio' (nombre para mostrar; NO el slug)
+slug                  string        Único. 'predio' | 'complejo' | 'estadio'
+max_courts            integer?      3 | 6 | NULL (ilimitado) — umbrales reales en `plans.max_courts`, ver Stack confirmado
+price_monthly         integer       Precio mensual en centavos (sin IVA)
+price_annual          integer       Precio mensual del plan anual en centavos, ya con el descuento anual (sin IVA)
 features              JSONB         Feature flags por plan
 is_active             boolean       DEFAULT true
+sort_order            integer       DEFAULT 0. Orden de presentación en la UI de precios
 created_at            timestamp     UTC
 ```
 
@@ -706,12 +736,14 @@ recipient_type    enum          'player' | 'staff' | 'tenant_owner'
 recipient_id      UUID          FK → players o staff_users
 channel           enum          'email'
 trigger_event     string        'booking.confirmed' | 'booking.canceled' | 'abonado.created' | etc. (NO hay recordatorio 24h/2h en v1, cambio #18)
-status            enum          'queued' | 'sent' | 'delivered' | 'failed'
+status            enum          'queued' | 'sending' | 'sent' | 'delivered' | 'failed'
 content           JSONB         El contenido del mensaje enviado
+template_name     string?       Nombre del template de email usado
 attempt_count     integer       DEFAULT 1
 last_error        text?         Si falló, el error
 queued_at         timestamp     Cuándo se encoló
 sent_at           timestamp?    Cuándo se envió efectivamente
+delivered_at      timestamp?    Cuándo se confirmó la entrega
 created_at        timestamp
 ```
 
@@ -960,7 +992,7 @@ Este glosario se traduce directamente en las siguientes tablas:
 | FeatureFlag | `feature_flags` |
 | SystemAdmin | `system_admins` |
 
-**Total: 22 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0**
+**Total: 34 tablas de negocio + 1 tabla de sistema (system_admins) para v1.0** — actualizado 2026-08-27, verificado contra `src/shared/db/schema/*.ts` (35 `pgTable` exports; ver doc13 §"Resumen" para el desglose por categoría de aislamiento)
 (12 aisladas con RLS + 6 globales + 3 híbridas + 1 operacional + 1 sistema)
 
 > Aisladas (12): courts, bookings, abonados, payments, cash_flows, daily_cash_closes,

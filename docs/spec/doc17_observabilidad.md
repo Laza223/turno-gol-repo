@@ -51,8 +51,16 @@
 
 Todos los logs son JSON en una sola línea, emitidos a `stdout`. Vercel captura `stdout` automáticamente y lo muestra en su dashboard de logs. No hay archivos de log, no hay rotación, no hay disco.
 
+> [!NOTE]
+> Path real: `src/shared/lib/logger.ts` (no `src/shared/utils/logger.ts` — esa carpeta no
+> existe). El contexto (`tenant_id`/`user_id`/`request_id`) sale de un `getRequestContext()`
+> centralizado, no de funciones sueltas `getCurrentTenantId()`/`getCurrentUserId()`. Usa
+> `console.log`/`console.error` (nunca `process.stdout`/`process.stderr`): el logger entra al
+> grafo del middleware edge, que no tiene esas APIs de Node — con ellas el build de Turbopack
+> falla entero.
+
 ```typescript
-// src/shared/utils/logger.ts
+// src/shared/lib/logger.ts
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -218,11 +226,32 @@ export function requestIdMiddleware(req: Request) {
 }
 ```
 
+> [!NOTE]
+> Path real: `src/shared/lib/request-id.ts`, con `newRequestId()`/`resolveRequestId()` — un
+> generador propio de 12 caracteres (edge-safe, sin `nanoid` ni Node built-ins), no el patrón de
+> middleware con `nanoid` mostrado arriba.
+
 Esto permite correlacionar: "el request `req-789` creó el booking `bk-012`, encoló la notificación `notif-678`, y el worker que procesó esa notificación falló con timeout de Resend".
 
 ---
 
 ## 3. Error Tracking — Sentry
+
+> [!IMPORTANT]
+> **La inicialización real NO sigue el patrón estándar de `@sentry/nextjs` de abajo (reconciliado
+> 2026-08-27, PR #235-#239).** `instrumentation.ts` — que es lo único que cargaría
+> `sentry.server.config.ts` — **no corre en el runtime de Vercel**: el SDK del servidor quedó sin
+> inicializar en producción durante semanas sin que ningún error se reportara (fallaba en
+> silencio, no con una excepción). El fix mueve el `Sentry.init()` al **grafo de la app**:
+> `src/lib/sentry.ts` expone `captureException`/`captureMessage` que llaman a
+> `ensureWebSentry()` (`src/shared/observability/sentry-web-init.ts`) antes de cada captura —
+> idempotente, así que cubre los ~84 call sites del lado web sin depender de un hook que no
+> corre. El worker standalone de Railway usa un init separado y sí funcional
+> (`src/shared/observability/sentry-worker.ts` / `initWorkerSentry()`). Además, `captureException`
+> ahora fuerza `Sentry.flush()` vía `after()` (Next 16) porque Vercel congela la función
+> serverless antes de que el transporte HTTP asíncrono despache el evento — sin eso, capturas
+> reales no llegaban a Sentry aunque el DSN estuviera bien configurado. Ver
+> `docs/audit/2026-08-25-auditoria-infra.md` §17 y el commit `1e795d25`.
 
 ### 3.1 Configuración
 
@@ -463,6 +492,14 @@ Estas métricas se obtienen de Vercel Analytics y Sentry Performance sin código
 
 Métricas de negocio que NO vienen de ninguna herramienta estándar. Se calculan con queries a la DB y se loguean periódicamente por un cron job.
 
+> [!IMPORTANT]
+> **No implementado en v1 (verificado 2026-08-27).** No existe `metrics-collector.worker.ts` ni
+> ningún worker equivalente entre los 17 registrados en `src/shared/jobs/workers/index.ts`
+> (`registerAllWorkers`, 17 llamadas `await register*Worker(boss)`) — no hay cron que loguee
+> `metrics.hourly`. Tampoco existe el API `Sentry.metrics.gauge`/`.increment` del SDK usado más
+> abajo (removido de versiones recientes de `@sentry/nextjs`). Lo que sigue es el diseño objetivo,
+> no algo activo hoy — mismo criterio que la nota de §5.3.
+
 ```typescript
 // src/shared/jobs/workers/metrics-collector.worker.ts
 // Cron: cada hora en producción
@@ -587,8 +624,20 @@ async function collectBusinessMetrics() {
 
 ### 5.4 Implementación del health check
 
+> [!NOTE]
+> **`/api/health` es un alias de `/api/status`** (mismo handler, re-exportado — predates doc17).
+> Los checks reales no son database/auth/job_queue como el ejemplo de abajo: son `database`,
+> `worker-pool` (rol capaz de bypassear RLS para lecturas cross-tenant), `pg-boss`,
+> `worker-heartbeat` (último `health-ping` del worker vía `pgboss.job`, tolerancia de 6 latidos
+> perdidos = 30 min — endurecido 2026-08-26 tras una falsa alarma, ver P-12), `upstash`
+> (rate-limit), `encryption-key`, `storage` (R2) y presencia de `mercadopago`/`email`/`sentry`. **No
+> se verifica Supabase Auth con `getSession()`** como muestra el ejemplo. El detalle por
+> subsistema (`checks[]`) requiere el header `x-status-token` en producción — el endpoint es
+> público pero solo expone el semáforo (200/503) sin credencial, para no anunciar qué pieza
+> específica está caída.
+
 ```typescript
-// src/app/api/health/route.ts
+// src/app/api/status/route.ts (alias: src/app/api/health/route.ts)
 
 export async function GET() {
   const startTime = Date.now();
@@ -673,10 +722,15 @@ Además del health check interno, un servicio **externo** verifica que la app es
 ```
 Servicio: UptimeRobot (plan gratuito: 50 monitores, check cada 5 min)
 
+Estado real (dado de alta y verificado el 2026-08-24, docs/operations/uptime-monitor.md):
+
 Monitores:
-  1. https://turnogol.app/api/health      → check cada 1 min (Pro plan: $7/mes)
-  2. https://turnogol.app                  → check cada 5 min
-  3. https://turnogol.app/api/auth/me      → check cada 5 min (verifica que auth funciona)
+  1. https://turnogol.app                  → check cada 5 min
+  2. https://turnogol.app/api/status       → check cada 5 min (cubre DB + worker vivo, no solo
+                                              "arriba"; /api/health es alias del mismo endpoint)
+
+No hay monitor separado a `/api/auth/me` (ese endpoint no existe) ni check cada 1 minuto de
+Pro plan — ambos siguen en $0/mes, plan gratuito.
 
 Si falla 3 veces consecutivas:
   → Email al equipo (UptimeRobot)

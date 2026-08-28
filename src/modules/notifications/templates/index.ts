@@ -10,6 +10,7 @@ import { renderBookingRescheduled, type BookingRescheduledData } from './booking
 import { renderAdminNewBooking, type AdminNewBookingData } from './admin-new-booking'
 import { renderTrialWelcome, type TrialWelcomeData } from './trial-welcome'
 import { renderTrialEnding, type TrialEndingData } from './trial-ending'
+import { renderTrialExpired, type TrialExpiredData } from './trial-expired'
 import { renderDunningPaymentFailed, type DunningPaymentFailedData } from './dunning-payment-failed'
 import { renderDepositExpired, type DepositExpiredData } from './deposit-expired'
 import { renderAdminTransferExpired, type AdminTransferExpiredData } from './admin-transfer-expired'
@@ -56,6 +57,7 @@ export {
   renderAdminNewBooking,
   renderTrialWelcome,
   renderTrialEnding,
+  renderTrialExpired,
   renderDunningPaymentFailed,
   renderDepositExpired,
   renderAdminTransferExpired,
@@ -79,6 +81,7 @@ type TemplateDataMap = {
   admin_new_booking: AdminNewBookingData
   trial_welcome: TrialWelcomeData
   trial_ending: TrialEndingData
+  trial_expired: TrialExpiredData
   dunning_payment_failed: DunningPaymentFailedData
   deposit_expired: DepositExpiredData
   admin_transfer_expired: AdminTransferExpiredData
@@ -107,6 +110,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   admin_new_booking: renderAdminNewBooking,
   trial_welcome: renderTrialWelcome,
   trial_ending: renderTrialEnding,
+  trial_expired: renderTrialExpired,
   dunning_payment_failed: renderDunningPaymentFailed,
   deposit_expired: renderDepositExpired,
   admin_transfer_expired: renderAdminTransferExpired,

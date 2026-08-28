@@ -130,8 +130,16 @@
 | Método | Ruta | Descripción |
 |---|---|---|
 | `GET` | `/api/public/complex/:slug` | Datos públicos del complejo |
-| `GET` | `/api/public/complex/:slug/courts` | Canchas activas del complejo |
-| `GET` | `/api/public/complex/:slug/availability` | Disponibilidad de canchas para una fecha |
+| `GET` | `/api/public/availability?slug=:slug&date=:date` | Disponibilidad de canchas para una fecha |
+| `GET` | `/api/public/availability/week?slug=:slug` | Disponibilidad semanal |
+
+> [!NOTE]
+> **Desactualizado**: no existe `/api/public/complex/:slug/courts` ni `/api/public/complex/:slug/availability`
+> como rutas anidadas (verificado: `src/app/api/public/` no tiene subcarpeta `courts` bajo
+> `complex/[slug]`). La disponibilidad vive en `src/app/api/public/availability/route.ts` con
+> `slug`/`date` como **query params**, no como segmento de path, más una variante
+> `/week` (`src/app/api/public/availability/week/route.ts`). Las canchas activas se devuelven
+> dentro del payload de `GET /api/public/complex/:slug`, no en un endpoint aparte.
 
 #### `GET /api/public/complex/:slug`
 
@@ -208,6 +216,15 @@ Response 200:
 ---
 
 ## 4. Endpoints de Autenticación
+
+> [!NOTE]
+> **Casi toda la sección es Server Actions**, no solo forgot/reset-password (footnote ¹ debajo).
+> Verificado: `src/app/api/auth/` tiene una sola ruta real, `GET /api/auth/callback` (OAuth
+> callback de Google). `magic-link`/`verify` (jugador) es `playerLoginAction`
+> (`src/app/(auth)/ingresar/actions.ts`); `login` (staff) es `loginAction`
+> (`src/app/(auth)/login/actions.ts`). **No existen** `/api/auth/refresh`, `/api/auth/logout` ni
+> `/api/auth/me` como Route Handlers — sesión/refresh/logout se manejan client-side con el SDK de
+> Supabase Auth, no con endpoints propios.
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
@@ -312,6 +329,23 @@ Errors:
 
 > [!IMPORTANT]
 > **Arquitectura de Implementación**: Según la directiva de `doc14_tech_stack.md`, todas las mutaciones del panel de administración (métodos `POST`, `PATCH`, `DELETE` listados en esta sección) se implementan como **Next.js Server Actions** en lugar de Route Handlers REST. Las firmas, payloads de entrada/salida y validaciones descriptas aquí se mapean 1:1 a los argumentos y retornos de dichas Server Actions.
+>
+> **Va bastante más allá de las mutaciones.** Verificado archivo por archivo contra
+> `src/app/api/*`: la mayoría de las carpetas de recurso de §5 son placeholders vacíos (solo
+> `.gitkeep`, sin `route.ts`) — **`courts/`, `staff/`, `players/`, `abonados/`, `cash-flows/`,
+> `notifications/`, `tenant/`, `payments/` no tienen NINGÚN Route Handler**, ni siquiera los
+> `GET` de sólo lectura, y `audit-logs/` no existe como carpeta. Esas subsecciones (5.2, 5.3, 5.4,
+> 5.6, 5.7, 5.10, 5.11) documentan el contrato completo (lectura + escritura) como abstracción:
+> en la realidad, los listados/detalle se leen directo desde Server Components contra la DB y las
+> mutaciones son Server Actions co-locadas (`src/app/(admin)/**/actions.ts`).
+> `POST /api/staff/accept-invite` (5.13) tampoco existe como Route Handler.
+>
+> Route Handlers que **sí existen** en `src/app/api/`: `GET /api/bookings` (solo listado — no hay
+> `[id]`, ni `POST` de creación, ni `/cancel`, `/complete`, `/no-show`: todo eso es Server Action),
+> `/api/billing/*` (6 rutas, ver 5.8), `GET /api/reports/revenue` (única de 5.9 — occupancy/players/export
+> no existen, ver nota en 5.9), `/api/mp/oauth-start` y `/api/mp/callback` (5.12), más un grupo
+> `/api/admin/*` (`day-total`, `jobs`, `metrics`, `push/*`, `system-status`) **no documentado en
+> este archivo**.
 
 
 ### 5.1 Reservas (Bookings)
@@ -521,9 +555,19 @@ Response 200:
 }
 ```
 
-### 5.5 Cantina (productos en JSONB, sin tabla)
+### 5.5 Cantina (tablas reales, sin REST)
 
-La tabla `products` fue eliminada (migr. 046): los productos viven en `tenants.settings.canteen_products` (JSONB). **No hay endpoints REST `/api/products`.** La venta se hace con el Server Action `sellCanteenProductAction` (descuenta el stock atómicamente si el producto lo define, se bloquea al llegar a 0) → `CashFlow` categoría `product_sale`; el alta/edición de productos es parte de la configuración del complejo (`settings.canteen_products`).
+**Desactualizado.** La tabla `products` original fue eliminada (migr. 046) y en su reemplazo vivió
+brevemente un JSONB (`tenants.settings.canteen_products`), pero el rediseño de Caja y Cantina
+(2026-07-22, migrs. 048–051) reemplazó ese JSONB por **tablas reales**: `canteen_products`
+(catálogo) + ledger append-only `stock_movements` (`cash_flow_id` cuando aplica) + `canteen_tabs`
+(fiados) — módulo `src/modules/canteen/`. El JSONB se backfilleó en la 048 y se **eliminó** en la
+051. `src/app/api/products/` sigue vacío (solo `.gitkeep`): sigue siendo cierto que **no hay
+endpoints REST `/api/products`**. La venta es un Server Action de ticket multi-ítem —
+`sellTicketAction` (`src/app/(admin)/caja/cantina/actions.ts`), no `sellCanteenProductAction` —
+que crea 1 `cash_flows` (`income`/`product_sale`) + N líneas de `stock_movements`; fiado descuenta
+stock al entregar y cobra al liquidar (`settleTabAction`); alta/edición/reposición de productos es
+`src/app/(admin)/caja/productos/actions.ts`, ya no configuración del tenant.
 
 ### 5.6 Configuración del Complejo
 
@@ -559,16 +603,24 @@ Errors:
 
 ### 5.8 Billing (Suscripción SaaS)
 
+> [!NOTE]
+> **Desactualizado — verificado contra `src/app/api/billing/*/route.ts`.** No existe
+> `GET /api/billing` (ruta raíz): el estado de la suscripción se sirve desde
+> `GET /api/billing/subscription`. Existe `POST /api/billing/reactivate` (no documentado abajo).
+> `GET /api/billing/invoices` **no está implementado** (no hay ningún endpoint ni acción con
+> "invoices" en el repo) — historial de pagos SaaS es un gap, no solo un endpoint mal nombrado.
+
 | Método | Ruta | Rol mínimo | Descripción |
 |---|---|---|---|
-| `GET` | `/api/billing` | admin | Estado de la suscripción |
+| `GET` | `/api/billing/subscription` | admin | Estado de la suscripción |
 | `POST` | `/api/billing/subscribe` | admin | Crear suscripción (→ MP checkout) |
 | `POST` | `/api/billing/upgrade` | admin | Upgrade de plan (→ MP pago prorrateo) |
 | `POST` | `/api/billing/downgrade` | admin | Solicitar downgrade (aplica próximo ciclo) |
+| `POST` | `/api/billing/reactivate` | admin | Revertir una baja voluntaria en curso (antes de fin de período) |
 | `POST` | `/api/billing/cancel` | admin | Cancelar suscripción |
-| `GET` | `/api/billing/invoices` | admin | Historial de pagos SaaS |
+| `GET` | `/api/billing/invoices` | admin | Historial de pagos SaaS — **no implementado** (ver nota arriba) |
 
-#### `GET /api/billing`
+#### `GET /api/billing/subscription`
 
 ```
 Response 200:
@@ -737,47 +789,74 @@ Response 200:
 
 ## 6. Endpoints del Jugador (Player Auth)
 
+> [!NOTE]
+> **Desactualizado — verificado contra `src/app/api/player/*`.** El único método/ruta de la tabla
+> de abajo que existe tal cual es `POST /api/player/reviews`. El resto:
+> - `/api/player/bookings` **no tiene ruta raíz** (ni `GET` listado ni `POST` de creación) — solo
+>   existe `GET /api/player/bookings/:id/status` (poll de estado durante el checkout de MP). El
+>   resto de "mis reservas" es Server Action (`src/app/(player)/mis-reservas/actions.ts`) o RSC.
+> - `/api/player/profile` **no existe como carpeta.**
+> - `/api/player/favorites` no tiene `GET`/`POST`/`DELETE` — existe un único
+>   `POST /api/player/favorites/toggle` (agregar/quitar en un solo endpoint idempotente).
+> - Dos endpoints reales **no documentados** en esta tabla: `GET /api/player/data-export`
+>   (exportar mis datos, Ley 25.326/ARCO) y `GET /api/player/session`.
+
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/api/player/bookings` | Mis reservas (todas, cross-tenant) |
-| `GET` | `/api/player/bookings/:id` | Detalle de mi reserva |
-| `POST` | `/api/player/bookings` | Crear reserva online (→ MP checkout) |
-| `POST` | `/api/player/bookings/:id/cancel` | Cancelar mi reserva |
-| `GET` | `/api/player/profile` | Mi perfil |
-| `PATCH` | `/api/player/profile` | Editar mi perfil |
-| `GET` | `/api/player/favorites` | Listar mis complejos favoritos |
-| `POST` | `/api/player/favorites` | Agregar un complejo a favoritos |
-| `DELETE` | `/api/player/favorites/:complexId` | Quitar complejo de favoritos |
+| `GET` | `/api/player/bookings/:id/status` | Poll de estado de mi reserva (checkout MP) |
+| `POST` | `/api/player/favorites/toggle` | Agregar/quitar un complejo de favoritos |
 | `POST` | `/api/player/reviews` | Dejar reseña de reserva completada |
+| `GET` | `/api/player/data-export` | Exportar mis datos personales (Ley 25.326) |
+| `GET` | `/api/player/session` | Estado de mi sesión |
 
-### 6.3 Búsqueda Pública Cross-Tenant (por zona)
+### 6.3 Búsqueda Pública Cross-Tenant
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/public/complexes/search` | Buscar complejos con disponibilidad por zona |
+> [!NOTE]
+> **Desactualizado — verificado contra `src/app/api/public/search/route.ts`.** La ruta real es
+> `GET /api/public/search` (no `/api/public/complexes/search`), y el contrato es mucho más rico
+> que "por zona con radio": no hay `radius_km`, y `lat`/`lng` (no `latitude`/`longitude`) son
+> opcionales, no requeridos — la búsqueda funciona sin geolocalización (por `q`/`city`/`province`).
+> El código comenta explícitamente "Contrato de salida (doc15)" al validar la respuesta, o sea que
+> el propio código se referencia contra ESTE documento — que ya no coincide con lo que implementa.
+> Existe además `GET /api/public/cities` (no documentado), para poblar un selector de ciudad.
 
 ```
-Request query params:
-  latitude (required): float
-  longitude (required): float
-  radius_km (optional): integer (default: 5)
-  date (required): YYYY-MM-DD
-  time_start (optional): HH:MM
+GET /api/public/search
+GET /api/public/cities
+
+Query params (todos opcionales salvo los de paginación, que tienen default):
+  q: string (búsqueda libre, max 128)
+  city, province: string (max 64)
+  online: '0' | '1'
+  surfaces: CSV de synthetic_grass|natural_grass|cement|tile
+  formats: CSV de 4-11
+  amenities: CSV de duchas|estacionamiento|bar|parrilla|vestuario|wifi|techado|iluminacion
+  minPrice, maxPrice: integer (centavos)
+  sort: name | price | rating | distance
+  lat, lng: float (habilita distanceKm y sort=distance)
+  date, time: YYYY-MM-DD / HH:MM (ambos juntos activan el filtro de disponibilidad real)
+  limit: integer (default 20, max 100)
+  offset: integer (default 0, max 10000)
+
 Response 200:
 {
-  "data": [
+  "results": [
     {
-      "id": "tenant-uuid",
-      "name": "Complejo San Martín",
-      "slug": "complejo-san-martin",
-      "latitude": -34.570,
-      "longitude": -59.105,
-      "distance_km": 1.2,
-      "available_courts_count": 2
+      "id": "uuid", "slug": "complejo-san-martin", "name": "Complejo San Martín",
+      "address": "...", "city": "...", "province": "...",
+      "logoUrl": "...", "coverUrl": "...", "allowOnlineBooking": true,
+      "fromPriceCents": 800000, "amenities": { "duchas": true, ... },
+      "avgRating": 4.5, "reviewCount": 12,
+      "distanceKm": 1.2, "latitude": -34.570, "longitude": -59.105,
+      "courtSurfaces": ["synthetic_grass"], "courtFormats": [5, 7]
     }
-  ]
+  ],
+  "total": 1
 }
 ```
+
+Nótese el envelope: `{ results, total }`, no el `{ data: [...] }` estándar de §2 — este endpoint no
+sigue el formato de respuesta general del documento.
 
 
 #### `POST /api/player/bookings`
@@ -891,6 +970,14 @@ Response: 200 OK (MP requiere 200 o reintenta)
 
 ## 8. Endpoints del Onboarding
 
+> [!NOTE]
+> **Toda la sección es Server Actions**, no solo `/api/onboarding/register` (ver footnote debajo).
+> `src/app/api/` no tiene carpeta `onboarding/` — cero Route Handlers. El wizard completo vive en
+> `src/app/onboarding/actions.ts`: `createTenantAction`, `updateWizardTenantAction`,
+> `saveWizardScheduleAction`, `createWizardCourtsAction`, `createOnboardingFirstBookingAction`,
+> `finishOnboardingAction`. No hay una acción de "checklist" separada equivalente a
+> `GET /api/onboarding/checklist`.
+
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
 | `POST` | `/api/onboarding/register` | Ninguna | Registrar nuevo complejo + dueño |
@@ -931,11 +1018,23 @@ Response 201:
 
 ## 9. Rate Limiting
 
+> [!NOTE]
+> **Desactualizado en el detalle** (verificado contra `POLICIES` en `src/shared/rate-limit/policies.ts`):
+> login y registro NO comparten el bucket de magic link/forgot-password (5 req/min/email) — tienen
+> políticas propias, más permisivas. `forgotPasswordAction` sí reusa el bucket de magic link
+> (`authMagicLink`, keyBy email) — eso ya estaba bien documentado en §4. La tabla de abajo lista
+> solo los grupos que corresponden a endpoints de este documento; hay políticas internas
+> adicionales (`pinAttempts`, `adminAvailabilityCheck`, `adminDayTotal`, `vapidPublic`,
+> `superAdminAction`, `cspReport`, `bookingStatus`) no listadas acá por no mapear a un grupo de
+> endpoint público de la tabla.
+
 | Endpoint group | Límite | Ventana | Por |
 |---|---|---|---|
-| Auth (magic link, login, forgot/reset password) | 5 requests | 1 minuto | email |
+| Auth (magic link, forgot/reset password) | 5 requests | 1 minuto | email |
+| Auth (login) | 8 requests | 5 minutos | email |
+| Auth (registro) | 5 requests | 10 minutos | IP |
 | Auth (verify, callback) | 10 requests | 1 minuto | IP |
-| Public (availability) | 30 requests | 1 minuto | IP |
+| Public (availability, search) | 30 requests | 1 minuto | IP |
 | Admin API (CRUD) | 100 requests | 1 minuto | tenant_id |
 | Player API (booking) | 20 requests | 1 minuto | player_id |
 | Webhooks (MP) | Sin límite | — | — |
@@ -969,6 +1068,17 @@ Response: { "data": [...], "pagination": { "page": 1, "per_page": 30, "total_pag
 
 ## 11. Resumen de Endpoints
 
+> [!NOTE]
+> Esta tabla cuenta el **contrato de diseño** (lectura + escritura, Route Handler o Server Action
+> equivalente), no Route Handlers reales bajo `src/app/api/`. Como detallan las notas de §4, §5,
+> §6 y §8, la enorme mayoría de las mutaciones y buena parte de las lecturas son Server Actions o
+> RSC — los Route Handlers reales son un subconjunto chico (bookings: solo GET listado; billing:
+> las 6 rutas completas; reports: solo `/revenue`; mp: oauth-start + callback; público: complex,
+> availability (+ /week), search, cities, reviews; webhooks: mercadopago; además un grupo
+> `/api/admin/*` no documentado en este archivo). No se recalculó el total de "~69" contra el
+> código: el número mezcla dos cosas distintas (endpoint de contrato vs. archivo real) y
+> recalcularlo requiere decidir cuál de las dos cuenta — ver `requiereInput`.
+
 | Grupo | Endpoints | Auth |
 |---|---|---|
 | Públicos | 3 | Ninguna |
@@ -987,11 +1097,20 @@ Response: { "data": [...], "pagination": { "page": 1, "per_page": 30, "total_pag
 | Player profile | 2 | Player |
 | Onboarding | 7 | Mixto |
 | Webhooks | 1 | Signature |
-| **Total** | **~69 endpoints** | |
+| **Total (contrato de diseño)** | **~69 endpoints** | |
 
 > [!IMPORTANT]
-> **69 endpoints para v1 es manejable en un monolito modular.**
-> Organizados en ~11 route files dentro de `app/api/`, cada archivo maneja
-> entre 3 y 7 endpoints del mismo recurso.
+> **Conteo separado por categoría (2026-08-27), resolviendo la nota de arriba**: la tabla de "~69" es el
+> contrato de diseño y se deja como está (documenta la superficie funcional completa, no cuánto código real
+> hay). Contra el código real, grep de `src/`:
+> - **Route Handlers reales**: 34 métodos HTTP (`GET`/`POST`/etc.) en 35 archivos `route.ts` bajo `src/app/api/`.
+> - **Server Actions reales**: 113 funciones exportadas con sufijo `Action` en archivos `actions.ts` bajo `src/app/`.
+> - El resto de la tabla de "~69" son lecturas server-side (RSC directo a servicios, sin Server Action ni Route
+>   Handler) o casillas de diseño que terminaron implementadas de otra forma — no hay un mapeo 1:1 limpio entre
+>   la tabla de contrato y estas dos cifras, así que no se fuerza una reconciliación exacta.
+
+> [!IMPORTANT]
+> **147 endpoints reales (34 + 113) es manejable en un monolito modular.**
+> Organizados en ~11 route files dentro de `app/api/` + Server Actions co-localizadas por módulo en `actions.ts`.
 > La complejidad no está en la cantidad de endpoints sino en la lógica de negocio
 > detrás de cada uno (state machines, concurrencia, pagos, notificaciones).

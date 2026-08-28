@@ -15,13 +15,13 @@
 ## MercadoPago
 - [ ] App MP en "Producción" (no sandbox)
 - [ ] Webhook URL: https://<dominio>/api/webhooks/mercadopago
-- [ ] Webhook secret rotado y cargado en MP_WEBHOOK_SECRET
+- [ ] Webhook secret rotado y cargado en `MP_WEBHOOK_SECRET` (app Suscripciones) **y** `MP_WEBHOOK_SECRET_CHECKOUT` (app Checkout Pro) — dos apps de MP, cada una firma con su propia clave (`src/modules/payments/webhook-auth.ts`)
 - [ ] OAuth redirect_uri whitelisted: https://<dominio>/api/mp/callback
 - [ ] Test OAuth completo con 1 tenant piloto (link + delink)
 
 ## Email (Resend)
 - [ ] Dominio verificado (SPF + DKIM + DMARC)
-- [ ] From address activa: noreply@<dominio>
+- [ ] From address activa: no-reply@turnogol.app (`src/modules/notifications/email.provider.ts`)
 - [ ] Test end-to-end (magic link recibido en gmail + outlook)
 
 ## Sentry
@@ -33,8 +33,8 @@
 - [ ] Source maps subidos en build de producción
 
 ## Privacy / Legal (Ley 25.326)
-- [ ] Términos +18 publicados en /legal/terminos
-- [ ] Política de privacidad en /legal/privacidad
+- [ ] Términos +18 publicados en /terminos
+- [ ] Política de privacidad en /privacidad
 - [ ] Process documentado para ARCO requests
 - [ ] Email legal@<dominio> configurado
 
@@ -52,7 +52,7 @@
 - [ ] `/explorar` muestra al menos 1 tenant
 - [ ] Login admin → /dashboard sin errores
 - [ ] Crear booking manual desde grilla admin → OK
-- [ ] Crear booking online como player → redirige a MP (o confirma si deposit_mode=off)
+- [ ] Crear booking online como player → redirige a MP (o confirma si `settings.requires_deposit=false`)
 - [ ] Webhook MP llega y procesa (1 booking confirmado, 1 cash_flow, 1 payment)
 - [ ] Cancelación player → estado canceled_*, cashflow ajustado
 
@@ -68,7 +68,7 @@
 **[DEPRECADO por Addendum Launch-First Día 0]**
 La decisión (B11) de usar Vercel Preview compartiendo base de datos con producción fue revertida por motivos de seguridad.
 Staging **REQUIERE** su propia base de datos Supabase dedicada.
-Ver `turnogol-launch-addendum-dia0.md` para la estrategia actualizada de Staging.
+Ver `docs/launch/addendum-dia0.md` para la estrategia actualizada de Staging.
 
 ## Backup restore drill
 
@@ -80,8 +80,8 @@ Cumple done-criterion MASTER_PLAN B11 ("backup restaurado exitosamente al menos 
 
 ## Migration strategy
 
-Ver `docs/MIGRATIONS.md`. Dos trees coexistentes:
-- `src/shared/db/migrations/` → autoridad CI (orden numérico 001…012).
+Ver `docs/operations/MIGRATIONS.md`. Dos trees coexistentes:
+- `src/shared/db/migrations/` → autoridad CI (orden numérico `NNN_nombre.sql`, sin huecos).
 - `supabase/migrations/` → mirror Supabase CLI (timestamped).
 
 - [ ] Última migration aplicada está en AMBOS trees (verificar antes de cada deploy).

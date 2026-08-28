@@ -69,10 +69,12 @@ Las dos tienen que dar 200. Que una dé 200 no dice nada de la otra — es el er
 ### 3.3 Los permisos del token de cada complejo
 
 ```bash
-pnpm tsx scripts/probe-mp-permissions.ts <tenantId>
+pnpm tsx scripts/probe-mp-permissions.ts <slug-del-complejo>
 ```
 
 Le pregunta a MercadoPago qué puede hacer ese token, con POSTs contra ids inexistentes: **403** = no tiene el permiso, **404** = sí lo tiene (pasó la policy y no encontró el recurso). Se cree la respuesta de la API, no el string de `scope`, que resultó mala evidencia.
+
+> A diferencia de la sonda de firma (§3.2), esta toma el **slug** del complejo (ej. `complejo-elite-futbol`), no el `tenantId` — busca `tenants WHERE slug = ...` (`scripts/probe-mp-permissions.ts`).
 
 ### 3.4 El historial del lado de MercadoPago
 

@@ -15,7 +15,7 @@
 > hero "siempre clara" se reinterpreta como **theme-adaptive** (clara en light, slab en dark).
 
 **Proyecto:** TurnoGol — SaaS B2B2C para complejos de fútbol (Argentina)
-**Stack:** Next.js 14 · TypeScript · shadcn/ui · Tailwind CSS · Lucide · next-themes
+**Stack:** Next.js 16 · TypeScript · shadcn/ui · Tailwind CSS v4 · Lucide · next-themes
 **Versión:** 2.1 — 2026-07-03 (§9: la cláusula ética se reemplaza por la cláusula de agresividad
 comercial — marketing a fondo, límite único en claims verificables falsos; incorpora las tácticas
 FOMO/Escasez, Anclaje de precio y Compromiso progresivo de `737091a` con ejemplos calculables)
@@ -626,7 +626,7 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 
 ### P1 — vistas
 3. **Reportes**: KPIs con formato propio (no `StatCard`), vacío gigante sin empty state didáctico ni ejemplo espectral → §6.4, §7.2.
-6. **Coherencia de journey de tema**: RESUELTA la parte de vistas (opción (a) aplicada: público + landing + checkout theme-adaptive, rediseño 2026-07-03). Residuo: `tests/e2e/theme-toggle.spec.ts` #2 todavía espera un wrapper `div.dark` always-dark en `/explorar` que ya no existe — actualizar el spec (REQUIERE INPUT de QA). Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
+6. **Coherencia de journey de tema**: RESUELTA (opción (a) aplicada: público + landing + checkout theme-adaptive, rediseño 2026-07-03). `tests/e2e/theme-toggle.spec.ts` #2 ya no espera el wrapper `div.dark` always-dark — verificado contra el archivo: el test actual chequea que `/explorar` sigue la clase `dark` del `<html>` en ambas direcciones (líneas 36-47). Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
 
 ### P2 — polish
 7. **Landing**: los números de prueba social ("+10.000 reservas", "+1.200 turnos libres hoy", "50+
@@ -710,5 +710,5 @@ mudo), `Tooltip` en el trigger icon-only del menú de acciones, `loading.tsx` co
 ---
 
 *Mantenimiento: este archivo se versiona con cada cambio de reglas (no de deuda). Cambios de
-paleta/tokens exigen actualizar `globals.css` + `tailwind.config.ts` en el mismo PR y re-verificar
-§2.4 con medición real, no de memoria.*
+paleta/tokens exigen actualizar `globals.css` (Tailwind v4 no usa `tailwind.config.ts` — la config
+vive en CSS vía `@theme`) en el mismo PR y re-verificar §2.4 con medición real, no de memoria.*

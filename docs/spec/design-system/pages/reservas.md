@@ -33,11 +33,14 @@ Anti-objetivo: NO reemplaza la grilla como herramienta de carga rápida por hora
 - `reservaStatusVisual(booking)`: color de acento + ícono + texto (§2.6), vocabulario §8.5 exacto
   — a diferencia de la grilla (`BookingCard.slotVisual`), acá **no** se distingue "Señada" de
   "Confirmada" (esa nuance ya vive en la línea secundaria "Seña pagada ($X)" de cada ítem); los 5
-  estados de negocio son: `pending_payment` → **Esperando seña** (`Clock`, warning) ·
+  estados de negocio son: `pending_payment` → **Pagando ahora** (`Clock`, warning) ·
   `confirmed` → **Confirmada** (`HandCoins`, info) · `completed` → **Jugada** (`CheckCheck`,
   success) · `no_show` → **Ausente** (`UserX`, destructive) · `canceled_*` → **Cancelada**
-  (`XCircle`, muted). `expired` → **Expirada** (muted) y `type==='block'` → **Bloqueo** (`Ban`,
-  muted) se mantienen aparte del vocabulario de negocio.
+  (`XCircle`, muted). `expired` → **Expirada** (muted) y `type==='block'` → **Bloqueado** (`Ban`,
+  muted) se mantienen aparte del vocabulario de negocio. (`pending_payment` se renombró de
+  "Esperando seña" a "Pagando ahora" por Decisión v2 D1, posterior a este rediseño — fuente única
+  hoy es `SLOT_STATES` en `src/lib/booking/slot-visual.ts`, compartida con la grilla desde Fase 3;
+  `status-visual.tsx` quedó como adaptador delgado sobre `bookingBadgeVisual`.)
 - `<ReservaStatusBadge visual={...} />`: pill dual-theme §6.5 (ícono + texto, nunca color solo).
   Se usa en `BookingListItem` (lista) y en `[id]/page.tsx` (fila "Estado" del `dl`, antes texto
   plano).
@@ -113,7 +116,8 @@ es su propio link, así que no puede tener su propio estado hover).
 ## §8 Contratos de test
 
 - e2e `reservas-crud`: TEST 1 y TEST 5 actualizados al vocabulario nuevo ("Jugada" en vez de
-  "Completada", "Esperando seña" en vez de "Pago pendiente"). El resto de selectores (roles,
+  "Completada", "Pagando ahora" en vez de "Pago pendiente" — el label pasó por "Esperando seña" en
+  este rediseño y se renombró de nuevo por Decisión v2 D1). El resto de selectores (roles,
   botones, `#cancel-reason`) intacto.
 - Unit `reservas-page-render`, `reservas-quick-actions`, `reservas-toolbar`: pasan sin cambios de
   contrato — `aria-label` del `<article>` se preserva explícitamente pese al `Link` estirado.

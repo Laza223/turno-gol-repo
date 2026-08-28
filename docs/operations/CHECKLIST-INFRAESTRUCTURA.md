@@ -25,15 +25,15 @@ Con **un solo complejo** en el plan Predio ($55.000 ARS/mes) pagás toda la infr
 
 ---
 
-## Estado real (verificado 2026-07-27, 12:53 ART)
+## Estado real (verificado 2026-07-27, 12:53 ART; Vercel y Railway re-verificados 2026-08-27)
 
 | Servicio | Cómo está | Nota |
 |---|---|---|
-| Supabase | ✅ plan **`pro`**, org *"turnogol production"* | Backups diarios activos. Confirmado contra la API |
+| Supabase | ✅ plan **`pro`**, org *"turnogol production"* | Backups diarios activos. Confirmado contra la API (re-confirmado 2026-08-27 vía MCP) |
 | Secrets de GitHub | ✅ **los 3 cargados** | Pipeline **probado end-to-end 16:13 UTC**: link + dry-run + push + verificación, todo verde |
 | Usuario de la base | ✅ **`turnogol_app` en web y cola de trabajos** | Ver abajo — era peor de lo reportado |
-| Vercel | ✅ **Pro** | Reportado por el dueño 2026-07-27. La API no expone el plan, así que no está verificado por mí |
-| Railway | ❓ sin verificar | Sin acceso por API. El worker está sano: 59 trabajos / 15 min, 0 fallados |
+| Vercel | ✅ **Pro** | Confirmado 2026-08-27 vía API (`list_teams` → `"plan":"pro"`, equipo *"Lazaro's projects"*) — sí se puede verificar, la nota anterior estaba mal |
+| Railway | ✅ **Hobby** | Confirmado por el dueño 2026-08-27. Railway no expone el plan de cuenta por su API/MCP, así que sigue sin verificación automática — si cambia de plan, hay que actualizar esto a mano |
 
 ---
 
@@ -168,7 +168,7 @@ El cartel de "Hobby" al lado del nombre de tu cuenta cambia a "Pro".
 
 ---
 
-## ❓ Paso 4 — Railway (US$5/mes + uso) — sin verificar
+## ✅ Paso 4 — Railway (US$5/mes + uso) — Hobby, confirmado 2026-08-27
 
 **Para qué pagás esto** — este es el que más cuesta entender, así que va largo:
 
@@ -274,16 +274,16 @@ contra tu máquina y alcanza.
 ```
 ✅ 1. Los 3 secrets de GitHub          gratis      HECHO — pipeline probado en verde
 ✅ 2. Supabase Pro                     US$25/mes   HECHO — org en plan `pro` (verificado)
-✅ 3. Vercel Pro                       US$20/mes   HECHO — reportado por el dueño
-❓ 4. Railway plan Hobby               US$5/mes    sin verificar (sin acceso por API)
+✅ 3. Vercel Pro                       US$20/mes   HECHO — verificado por API 2026-08-27
+✅ 4. Railway plan Hobby               US$5/mes    HECHO — confirmado por el dueño 2026-08-27
 ✅ 5. Usuario de la base               gratis      HECHO — web Y cola de trabajos (verificado)
 ✅ 6. Pipeline de migraciones          gratis      PROBADO end-to-end 2026-07-27 16:13 UTC
 
 ☐ (a los 5 complejos) PITR            US$100/mes
 ```
 
-**Único pendiente**: confirmar el plan de Railway — es el único que no se puede ver por API.
-Entrá al dashboard y fijate que no diga *Trial*.
+**Nada pendiente en este checklist** — los 6 ítems confirmados (Railway y Vercel, los últimos dos
+sin verificar automática, cerrados 2026-08-27). PITR sigue como opcional para más adelante.
 
 ### El pipeline de migraciones, probado
 

@@ -67,7 +67,8 @@ CREATE TYPE surface_type AS ENUM (
 CREATE TYPE booking_type AS ENUM (
   'spontaneous',  -- Reserva normal (online o manual)
   'fixed',        -- Turno fijo de abonado
-  'block'         -- Bloqueo de cancha (mantenimiento, evento privado)
+  'block',        -- Bloqueo de cancha (mantenimiento, evento privado)
+  'tournament'    -- Horas que posee un torneo (migr. 062, módulo Torneos). price_snapshot=0
 );
 
 -- Estado de la reserva (state machine más crítica del sistema)
@@ -140,7 +141,13 @@ CREATE TYPE cashflow_category AS ENUM (
   'product_sale',         -- Venta de cantina
   'other',                -- Otros ingresos/egresos
   'no_show_correction',   -- Corrección compensatoria por no-show (Doc 7 Flujo 4D)
-  'operating_expense'     -- Gasto operativo (migración 025)
+  'operating_expense',    -- Gasto operativo (migración 025) — legacy, la UI ya no lo ofrece
+  'merchandise',          -- Gasto categorizado (migración 050)
+  'salaries',             -- Gasto categorizado (migración 050)
+  'utilities',            -- Gasto categorizado (migración 050)
+  'maintenance',          -- Gasto categorizado (migración 050)
+  'other_expense',        -- Gasto categorizado (migración 050)
+  'tournament'            -- Inscripción a torneo (migración 066). Siempre con tournament_team_id
 );
 -- NOTA: 'abonado_payment' (migración 033, cambio #4) fue removida del enum en migración 042
 -- (2026-07-10): el sistema de saldo a favor de abonados se descartó (modelo ATC no aplica a fútbol).
@@ -162,6 +169,17 @@ CREATE TYPE notification_status AS ENUM ('queued', 'sending', 'sent', 'delivered
 
 -- Tipo de actor en audit log
 CREATE TYPE audit_actor_type AS ENUM ('staff', 'player', 'system');
+
+-- Etiquetas de cliente sobre player_tenant_relationships (B12 / decisión v2 D3,
+-- migración 074). ENUM CERRADO a propósito: sin texto libre sobre personas
+-- (Ley 25.326). Labels en español en src/modules/relationships/player-tags.ts.
+CREATE TYPE player_tag AS ENUM (
+  'gets_credit',      -- Se le fía
+  'no_credit',         -- No fiar (mutuamente excluyente con gets_credit)
+  'group_organizer',   -- Organiza el grupo
+  'agreed_price',       -- Tiene precio acordado
+  'difficult'           -- Trato conflictivo
+);
 ```
 
 ---
@@ -217,6 +235,9 @@ CREATE TABLE tenants (
   -- Estado del tenant (state machine Doc 6 §1)
   status          tenant_status NOT NULL DEFAULT 'trialing',
   trial_ends_at   TIMESTAMPTZ,                   -- Solo si status = 'trialing'
+  -- Umbral en días del último aviso de fin de prueba enviado (el más chico).
+  -- NULL = ninguno todavía. Gate de idempotencia del cron de avisos (migr. 068).
+  trial_warning_days_sent INTEGER,
 
   -- Configuraciones del complejo (JSONB, desglose en Doc 6 §1)
   settings        JSONB NOT NULL DEFAULT '{
@@ -254,7 +275,10 @@ CREATE TABLE tenants (
   -- IMPORTANTE: mp_access_token y mp_refresh_token se almacenan ENCRIPTADOS at-rest
   mp_access_token   TEXT,                        -- Token OAuth del complejo en MP (encriptado)
   mp_refresh_token  TEXT,                        -- Refresh token para renovar acceso (encriptado)
-  mp_user_id        TEXT,                        -- ID de la cuenta de MP del complejo
+  mp_user_id        TEXT,                        -- ID de la cuenta de MP del complejo. UNIQUE parcial
+                                                 -- (migr. 069, WHERE mp_user_id IS NOT NULL): una cuenta
+                                                 -- de MP cobra para UN solo complejo.
+  mp_nickname       TEXT,                        -- Nombre visible de la cuenta MP conectada (migr. 069)
   mp_public_key     TEXT,                        -- Clave pública para el frontend de checkout
   mp_connected_at   TIMESTAMPTZ,                 -- Cuándo conectó su cuenta
 
@@ -288,10 +312,19 @@ CREATE TABLE players (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email           TEXT NOT NULL UNIQUE,
   phone           TEXT,                          -- Celular (opcional en registro)
+  phone_hint8     TEXT,                          -- Últimos 8 dígitos, GENERATED ALWAYS ... STORED
+                                                 -- (migr. 075). Solo lectura: la escribe Postgres, para
+                                                 -- que el JOIN de sugerencia de /jugadores use índice.
   first_name      TEXT NOT NULL,
   last_name       TEXT NOT NULL,
   avatar_url      TEXT,
   preferred_area  TEXT,                          -- Ciudad/zona preferida
+
+  -- Preferencias de notificación del jugador (toggles en /perfil, migr. 024).
+  -- notify_email solo gobierna emails opcionales (recordatorios); los
+  -- transaccionales se envían siempre. notify_push: pipeline al jugador pendiente.
+  notify_email    BOOLEAN NOT NULL DEFAULT true,
+  notify_push     BOOLEAN NOT NULL DEFAULT true,
 
   status          player_status NOT NULL DEFAULT 'active',
   ban_reason      TEXT,
@@ -552,6 +585,9 @@ CREATE TABLE bookings (
   court_id        UUID NOT NULL REFERENCES courts(id),
   player_id       UUID REFERENCES players(id),   -- NULL si es bloqueo o sin jugador registrado
   abonado_id      UUID REFERENCES abonados(id),  -- Populated si viene de turno fijo
+  -- Migr. 062: espejo exacto de abonado_id para el módulo Torneos. FK sin
+  -- ON DELETE a propósito: borrar un torneo con horas tomadas tiene que fallar.
+  tournament_id   UUID REFERENCES tournaments(id),
   created_by_staff UUID REFERENCES staff_users(id), -- Quién la creó si fue manual
 
   date            DATE NOT NULL,                 -- Día OPERATIVO (no calendario). Día operativo: un
@@ -560,6 +596,12 @@ CREATE TABLE bookings (
   time_start      TIME NOT NULL,
   time_end        TIME NOT NULL,                 -- El slot 23:00→00:00 se guarda como '24:00'
                                                  -- (TIME válido, > '23:00' → pasa chk_time_valid).
+
+  -- Instante físico absoluto en UTC (migr. 040/041). Fuente única para lógica
+  -- fuerte ("ya pasó" / "falta X"); date/time_start/time_end quedan para día
+  -- operativo y display.
+  starts_at       TIMESTAMPTZ NOT NULL,
+  ends_at         TIMESTAMPTZ NOT NULL,
 
   type            booking_type NOT NULL DEFAULT 'spontaneous',
   status          booking_status NOT NULL DEFAULT 'pending_payment',
@@ -588,6 +630,9 @@ CREATE TABLE bookings (
   canceled_by     cancellation_actor,
   canceled_at     TIMESTAMPTZ,
 
+  -- Quién marcó completed manualmente, si fue el staff (migr. 047)
+  completed_by_staff UUID REFERENCES staff_users(id),
+
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -599,11 +644,12 @@ CREATE TABLE bookings (
   -- Fix #13: Consistencia semántica entre payment_method y payment_id (Auditoría Opus 4.7 #2)
   -- Si payment_method='mercadopago' debe existir payment_id (el cobro está en payments).
   -- Para cash/transfer/other (cobro manual), payment_id IS NULL (el cobro está en cash_flows).
-  -- Si payment_method IS NULL, la seña no fue exigida (deposit_status='not_required').
+  -- payment_method IS NULL no exige deposit_status='not_required': la migración 009 relajó
+  -- esta condición para permitir pending_payment con seña aún no reflejada en payment_method.
   CONSTRAINT chk_booking_payment_consistency CHECK (
     (payment_method = 'mercadopago' AND payment_id IS NOT NULL) OR
     (payment_method IN ('cash', 'transfer', 'other') AND payment_id IS NULL) OR
-    (payment_method IS NULL AND deposit_status = 'not_required')
+    (payment_method IS NULL)
   )
 );
 
@@ -838,19 +884,33 @@ CREATE TABLE cash_flows (
 
   -- Relaciones opcionales
   booking_id      UUID REFERENCES bookings(id),
+  -- Migr. 066. Equipo del torneo al que corresponde el cobro de inscripción.
+  -- Sin ON DELETE: borrar un equipo que ya pagó tiene que fallar. Va SIEMPRE
+  -- junto con category='tournament' (chk_cashflow_tournament_team, bidireccional).
+  tournament_team_id UUID REFERENCES tournament_teams(id),
 
   registered_by   UUID NOT NULL REFERENCES staff_users(id),
   occurred_at     TIMESTAMPTZ NOT NULL,          -- Cuándo ocurrió (puede diferir de created_at)
+
+  -- Fix #55: clave de idempotencia generada por el cliente (UUID v4). Evita que
+  -- un doble-submit o reintento de red cree movimientos duplicados. UNIQUE
+  -- parcial (WHERE client_idempotency_key IS NOT NULL, migr. 023).
+  client_idempotency_key TEXT,
 
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   -- Constraints
   CONSTRAINT chk_cashflow_amount_positive CHECK (amount > 0),
-  -- Combinaciones válidas de type+category (migración 025 sumó expense/operating_expense)
+  -- Combinaciones válidas de type+category (migración 025 sumó expense/operating_expense;
+  -- migración 050 sumó los gastos categorizados; migración 066 sumó 'tournament')
   CONSTRAINT chk_cashflow_type_category CHECK (
-    (type = 'income'     AND category IN ('booking', 'product_sale', 'other')) OR
+    (type = 'income'     AND category IN ('booking', 'product_sale', 'other', 'tournament')) OR
     (type = 'adjustment' AND category IN ('other', 'no_show_correction')) OR
-    (type = 'expense'    AND category = 'operating_expense')
+    (type = 'expense'    AND category IN ('operating_expense', 'merchandise', 'salaries', 'utilities', 'maintenance', 'other_expense'))
+  ),
+  -- Migr. 066. Bidireccional: categoría 'tournament' ⟺ hay equipo.
+  CONSTRAINT chk_cashflow_tournament_team CHECK (
+    (category = 'tournament') = (tournament_team_id IS NOT NULL)
   )
 );
 
@@ -876,9 +936,22 @@ CREATE POLICY tenant_isolation_delete ON cash_flows FOR DELETE
 COMMENT ON TABLE cash_flows IS 'Movimientos de caja. Ingresos, ajustes y egresos (gastos).';
 ```
 
-### 3.6 Cantina — sin tabla (JSONB en `tenants.settings`)
+### 3.6 Cantina — tablas reales (`canteen_products`, `canteen_tabs`, `stock_movements`)
 
-La tabla `products` fue **eliminada** (migr. 046, 2026-07-17): la cantina nunca necesitó una tabla propia. Los productos viven en `tenants.settings.canteen_products` (JSONB: `name`, `price` en centavos, `stock` opcional). La venta se registra con `sellCanteenProductAction` (descuenta el stock atómicamente si el producto lo define, se bloquea al llegar a 0; sin `stock` = sin límite) y genera un `CashFlow` categoría `product_sale`. Con la tabla se borró también la columna `cash_flows.product_id` (FK nunca poblada). Decisión: `docs/decisions/2026-07-17-deprecate-products-table.md`.
+La tabla `products` original fue **eliminada** (migr. 046, 2026-07-17; con ella se borró también `cash_flows.product_id`, FK nunca poblada — decisión: `docs/decisions/2026-07-17-deprecate-products-table.md`). La cantina pasó primero a `tenants.settings.canteen_products` (JSONB), pero ese diseño **también quedó superado**: el rediseño "Caja y Cantina" (migrs. 048–051, 2026-07-22, `docs/decisions/2026-07-22-caja-cantina-redesign.md`) promovió la cantina a tres tablas reales, todas aisladas (`tenant_id` + RLS estándar):
+
+- **`canteen_products`** — catálogo: `name`, `price` (centavos), `cost` opcional, `stock`/`min_stock` opcionales, `is_active` (soft-delete: nunca se borra una fila porque el ledger la referencia).
+- **`canteen_tabs`** — fiados ("anotáselo al capitán"): la venta queda a cobrar con nombre libre; el `cash_flow` se crea recién al saldar (`settleTab`). `canteen_tab_status`: `open` | `paid` | `canceled`.
+- **`stock_movements`** — ledger append-only de stock (`stock_movement_kind`: `purchase` | `sale` | `waste` | `courtesy` | `internal_use` | `adjustment`). Toda venta escribe líneas acá aunque el producto no controle stock: es auditoría y la fuente del ranking de ventas.
+
+Una venta simple genera 1 fila en `cash_flows` (categoría `product_sale`) + N líneas en `stock_movements` (`cash_flow_id`). La key JSONB `tenants.settings.canteen_products` se backfilleó a `canteen_products` en la 048 y se **eliminó** en la 051 (muerta desde entonces). Módulo: `src/modules/canteen/`.
+
+> [!NOTE]
+> Esta sección resume el módulo Cantina para no dejar la referencia rota tras el rediseño; el detalle
+> completo de columnas, constraints, índices y RLS de `canteen_products`/`canteen_tabs`/`stock_movements`
+> (y del resto de tablas agregadas después de la v1.0 original de este documento — módulo Torneos,
+> `daily_cash_opens`, `push_send_log`, `analytics_events`) **queda pendiente de documentar** en este doc.
+> Fuente de verdad mientras tanto: `src/shared/db/migrations/048_canteen_tables.sql` y `src/shared/db/schema/{canteen-products,canteen-tabs,stock-movements}.ts`.
 
 
 ### 3.7 `tenant_staff_members` — Relación staff ↔ tenant
@@ -945,6 +1018,9 @@ CREATE TABLE tenant_subscriptions (
 
   -- MercadoPago
   mp_subscription_id    TEXT,                    -- ID de la suscripción en MP
+  -- Con qué cuenta de MP paga el complejo, desacoplado del email de login
+  -- (migr. 078). NULL = el del dueño (staff_users).
+  mp_payer_email        TEXT,
 
   -- Cambios de plan pendientes (downgrade se aplica al próximo ciclo)
   pending_plan_change   UUID REFERENCES plans(id),
@@ -956,6 +1032,11 @@ CREATE TABLE tenant_subscriptions (
 
   -- Data retention
   scheduled_deletion_at TIMESTAMPTZ,             -- 90 días post-churn
+
+  -- Dunning (cobro fallido → past_due → suspended)
+  dunning_started_at     TIMESTAMPTZ,
+  last_payment_failed_at TIMESTAMPTZ,
+  last_payment_at        TIMESTAMPTZ,
 
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -1191,6 +1272,11 @@ CREATE TABLE player_tenant_relationships (
   status           TEXT NOT NULL DEFAULT 'active'   -- 'active' | 'blocked'
                    CHECK (status IN ('active', 'blocked')),
 
+  -- Etiquetas del complejo sobre esta persona (B12 / decisión v2 D3, migr. 074).
+  -- ENUM cerrado de 5 valores (player_tag[]) — sin texto libre, por Ley 25.326.
+  -- '{}' = sin etiquetas, nunca NULL. chk_ptr_tags_unique prohíbe repetidos.
+  tags             player_tag[] NOT NULL DEFAULT '{}',
+
   -- Consentimiento de datos (Ley 25.326)
   -- El jugador consintió que este complejo vea sus datos al hacer la primera reserva
   data_consent_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1198,6 +1284,11 @@ CREATE TABLE player_tenant_relationships (
   -- Un jugador tiene una única relación por complejo
   CONSTRAINT uq_player_tenant UNIQUE (player_id, tenant_id)
 );
+
+-- CHECK adicional (migr. 074): la misma etiqueta no puede repetirse en el array.
+-- player_tags_are_unique() es IMMUTABLE (predicado puro sobre el array).
+ALTER TABLE player_tenant_relationships
+  ADD CONSTRAINT chk_ptr_tags_unique CHECK (player_tags_are_unique(tags));
 
 -- Índices
 CREATE INDEX idx_ptr_tenant ON player_tenant_relationships(tenant_id);
@@ -1311,11 +1402,18 @@ CREATE TABLE daily_cash_closes (
   -- Totales calculados automáticamente de cash_flows del día
   total_income     INTEGER NOT NULL DEFAULT 0,      -- Centavos ARS (suma de ingresos del día)
   total_adjustments INTEGER NOT NULL DEFAULT 0,     -- Centavos ARS (suma de ajustes compensatorios)
+  total_expense    INTEGER NOT NULL DEFAULT 0,      -- Centavos ARS (suma de gastos del día, migr. 025)
   balance          INTEGER NOT NULL DEFAULT 0,      -- total_income + total_adjustments
 
   -- Efectivo del cajón (declarado manualmente por el admin)
   declared_cash    INTEGER NOT NULL DEFAULT 0,      -- Lo que hay físicamente en el cajón
   diff_amount      INTEGER NOT NULL DEFAULT 0,      -- Ver COMMENT abajo
+
+  -- Apertura de caja (migr. 049). NULL = cierre legacy anterior a la apertura:
+  -- la UI branchea por NULL y NUNCA reinterpreta diff_amount viejo (semántica
+  -- vieja: balance − declared; nueva: declared − expected).
+  opening_cash     INTEGER,                         -- Fondo inicial declarado al abrir el día
+  expected_cash    INTEGER,                         -- opening_cash + lo esperado en efectivo del día
 
   -- Metadata
   note             TEXT,                            -- Observaciones del cierre
@@ -1325,7 +1423,8 @@ CREATE TABLE daily_cash_closes (
   -- Constraints
   CONSTRAINT uq_daily_close_per_tenant UNIQUE (tenant_id, date),
   CONSTRAINT chk_income_non_negative CHECK (total_income >= 0),
-  CONSTRAINT chk_adjustments_non_negative CHECK (total_adjustments >= 0)
+  CONSTRAINT chk_adjustments_non_negative CHECK (total_adjustments >= 0),
+  CONSTRAINT chk_expense_non_negative CHECK (total_expense >= 0)
 );
 
 -- Índices
@@ -1346,8 +1445,11 @@ REVOKE UPDATE, DELETE ON daily_cash_closes FROM turnogol_app;
 COMMENT ON TABLE daily_cash_closes IS
   'Cierre de caja diario. INMUTABLE post-cierre. Correcciones = cash_flows compensatorios.';
 COMMENT ON COLUMN daily_cash_closes.diff_amount IS
-  'Diferencia entre declared_cash y la suma de cash_flows del día filtrados '
-  'por method=''cash'' (NO incluye transfer ni mercadopago, que no están en el cajón físico). '
+  'Semántica NUEVA (cierres con expected_cash NOT NULL, post migr. 049): '
+  'declared_cash − expected_cash, donde expected_cash = opening_cash + neto de '
+  'cash_flows en efectivo del día. Semántica LEGACY (expected_cash NULL, '
+  'cierres previos a la apertura de caja): balance − declared_cash. NUNCA se '
+  'reinterpreta un diff_amount viejo con la fórmula nueva. '
   'Positivo = sobrante (más efectivo del esperado). Negativo = faltante. '
   'Calculado en el momento del cierre, NUNCA recalculado después.';
 ```
@@ -1761,7 +1863,7 @@ FROM plans;
 | 21 | `player_favorites` | Híbrida | Jugador‡ | ~120.000 |
 | 22 | `feature_flags` | Operacional | No (service role) | ~50 |
 
-**Total: 22 tablas de negocio + 1 tabla de sistema (`system_admins`)** (6 globales + 12 aisladas con RLS + 3 híbridas + 1 operacional + 1 sistema).
+**Total: 34 tablas de negocio + 1 tabla de sistema (`system_admins`)** (6 globales + 23 aisladas con RLS + 3 híbridas + 2 operacionales `feature_flags`/`push_send_log` + 1 sistema) — actualizado 2026-08-27, verificado contra `src/shared/db/schema/*.ts` (35 `pgTable` exports).
 
 > [!NOTE]
 > **‡ Tablas híbridas**: tienen `tenant_id` y RLS por jugador (`app.current_player_id`):

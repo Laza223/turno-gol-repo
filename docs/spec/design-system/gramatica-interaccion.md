@@ -187,13 +187,23 @@ cancelado. Podés intentar de nuevo con otro medio."* — no *"Hubo un error"*.
 armado a mano. Un vacío nunca contradice la UI que lo rodea — si hay un botón "Crear" visible en
 otra parte de la pantalla, el copy del vacío invita a usarlo, no dice "Próximamente" al lado.
 
-**Errores de validación (Zod)**: locale es-AR global (`z.config(z.locales.es())`, instalado en
-`instrumentation.ts` después de Sentry y en `tests/setup.ts`). Un mensaje de validación en inglés
-en producción es un bug de infraestructura, no algo a traducir campo por campo.
+**Errores de validación (Zod)**: `installZodLocale()` (`z.config(z.locales.es())`,
+`src/shared/validation/zod-locale.ts`) se llama desde `instrumentation.ts` y desde
+`tests/setup.ts` — pero **NO alcanza los schemas de la app en runtime**: `instrumentation.ts`
+se bundlea en un layer aparte y su copia de Zod no es la que usan los schemas del grafo de la
+app (medido en runtime 2026-08-01, ver el comentario de `zod-locale.ts`). El locale global
+queda solo como default de esa copia de instrumentación y de los tests. La defensa real es
+**mensaje explícito en cada `.max()`/`.min()` cuyo error pueda llegar a pantalla** (ver
+`boundedText` en `primitives.ts`) — un mensaje de validación en inglés en producción es un bug
+de ese schema puntual (falta el mensaje explícito), no de infraestructura.
 
-**`not-found`/`error` de cada route group** ((admin), (super-admin)) renderizan dentro del shell
-de esa sección — un `notFound()` que expulsa al 404 raíz de Next.js (sin sidebar, sin logo) es
-peor que informativo: hace pensar que la app entera se rompió.
+**`not-found`/`error` de cada route group** renderizan dentro del shell de esa sección — un
+`notFound()` que expulsa al 404 raíz de Next.js (sin sidebar, sin logo) es peor que informativo:
+hace pensar que la app entera se rompió. Implementado en `(admin)`
+(`src/app/(admin)/not-found.tsx` + `error.tsx`, en la raíz del grupo) y también en `(super-admin)`
+(`src/app/(super-admin)/super-admin/not-found.tsx` + `error.tsx` — un nivel más adentro porque ese
+grupo tiene un solo segmento de ruta real, `super-admin/`, así que cubre lo mismo). Ambos archivos
+citan explícitamente el mismo motivo (auditoría 2026-08-01 §7).
 
 ---
 

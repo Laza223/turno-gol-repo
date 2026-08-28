@@ -3,6 +3,11 @@
  * surface (services + API). Internal-only shapes can stay in the .ts files.
  */
 
+// Type-only: no arrastra el bundle de payments (mismo motivo que el comentario
+// de TENANT_STATUSES más abajo — este archivo tiene que seguir siendo seguro
+// de importar desde un componente cliente).
+import type { MpPaymentStatus } from '@/modules/payments/payment.types'
+
 export type TenantStatus =
   'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned' | 'deleted'
 
@@ -86,4 +91,25 @@ export type PlanSummary = {
   priceMonthly: number
   /** Centavos ARS/mes pagando el ciclo anual. */
   priceAnnual: number
+}
+
+/**
+ * Un cobro recurrente de la suscripción SaaS (doc15 §5.8, `GET
+ * /api/billing/invoices`). Se lee EN VIVO de MercadoPago
+ * (`billing.service.ts:listInvoices`) — no hay tabla local: `external_reference`
+ * del preapproval es el `tenantId` (`createPreapproval`) y MP lo propaga a cada
+ * pago recurrente que cuelga de él (confirmado contra producción,
+ * `docs/superpowers/specs/2026-08-20-reconcile-subscriptions-design.md` §7), así
+ * que `searchPaymentsByReference(tenantId)` ya trae el historial completo sin
+ * duplicar estado que se puede desincronizar. Deja afuera a propósito los pagos
+ * de upgrade (proraeo): esos usan `saas-upgrade:<tenantId>:<planId>` como
+ * referencia (`buildSaasUpgradeRef`), no el tenantId pelado.
+ */
+export type InvoiceEntry = {
+  mpPaymentId: string
+  status: MpPaymentStatus
+  /** Centavos ARS. */
+  amount: number
+  /** `null` si MP no mandó `date_created` en el resultado de búsqueda. */
+  date: Date | null
 }

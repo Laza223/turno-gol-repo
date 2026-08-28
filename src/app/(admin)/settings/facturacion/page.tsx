@@ -5,13 +5,16 @@ import {
   getBillingPayerEmail,
   getSubscriptionState,
   listActivePlans,
+  listInvoices,
 } from '@/modules/billing/billing.service'
+import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { listCourts } from '@/modules/courts/court.service'
 import { SettingsTabs } from '../SettingsTabs'
 import { ActivatePlanSection } from './ActivatePlanSection'
 import { ChangePlanSection } from './ChangePlanSection'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
 import { DisconnectMpSection } from './DisconnectMpSection'
+import { InvoiceHistorySection } from './InvoiceHistorySection'
 import { MpPayerEmailSection } from './MpPayerEmailSection'
 import { updateMpPayerEmailAction } from './actions'
 
@@ -84,6 +87,16 @@ export default async function FacturacionPage(
     ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx))
     : []
 
+  // doc15 §5.8: historial de cobros, leído en vivo de MercadoPago (sin tabla
+  // local, ver InvoiceEntry). Igual que `sub` arriba: si MP no responde, la
+  // página se sigue mostrando en vez de romper por un dato que no es crítico.
+  let invoices: Awaited<ReturnType<typeof listInvoices>> = []
+  try {
+    invoices = await listInvoices(tenant.id, getBillingGateway())
+  } catch {
+    invoices = []
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
@@ -122,6 +135,8 @@ export default async function FacturacionPage(
           </p>
         )}
       </section>
+
+      <InvoiceHistorySection invoices={invoices} />
 
       {sub?.status === 'trialing' && activePlans.length > 0 && (
         <ActivatePlanSection plans={activePlans} defaultCourts={defaultCourts} />

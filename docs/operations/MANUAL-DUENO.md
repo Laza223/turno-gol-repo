@@ -69,13 +69,13 @@ Es **la pieza más crítica y la menos visible**. Si Railway se cae, la web sigu
 
 ## 2. Qué pagar, cuánto y por qué
 
-### Estado real (verificado 2026-07-26)
+### Estado real (verificado 2026-08-27, vía API — corrige la tabla de 2026-07-26 que había quedado desactualizada)
 
-| Servicio | Plan actual | Problema |
+| Servicio | Plan actual | Estado |
 |---|---|---|
-| **Supabase** | 🔴 **FREE** | **Sin backups.** Y el free tier pausa el proyecto por inactividad (ya te pasó una vez) |
-| **Vercel** | 🟡 Hobby (personal) | El plan Hobby **prohíbe uso comercial** en sus términos. TurnoGol cobra suscripciones |
-| **Railway** | 🟢 Andando | El worker corre. Verificado: 8 conexiones activas |
+| **Supabase** | 🟢 **Pro** | Backups diarios, no se pausa por inactividad |
+| **Vercel** | 🟢 **Pro** | Uso comercial habilitado |
+| **Railway** | 🟢 Andando | El worker corre |
 | **El resto** | 🟢 Free tier | Alcanza de sobra para arrancar |
 
 ### La cuenta
@@ -216,7 +216,7 @@ Por eso: **cada vez que mergees algo que toque la base, hay que aplicar la migra
 ```bash
 pnpm launch:check
 ```
-Corre 20 verificaciones (variables de entorno, permisos de base, SSL, credenciales de MP, tests, build). Si dice que sí, salís tranquilo.
+Corre 29 verificaciones (variables de entorno, permisos de base, SSL, credenciales de MP, tests, build). Si dice que sí, salís tranquilo.
 
 ---
 

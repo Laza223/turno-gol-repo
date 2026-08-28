@@ -118,11 +118,15 @@ Runbook de emergencia (documentar antes de lanzar):
 - Email + contraseña (hasheada con bcrypt/Supabase Auth). Magic link queda deprecado para staff (ADR-013 reemplaza ADR-002 para este caso).
 - JWT access token: válido 1 hora
 - JWT refresh token: válido 30 días, rotación en cada uso
-- Sesiones: invalidadas al cambiar de dispositivo (configurable)
-- SuperAdmin: alta por script + MFA TOTP (panel `/internal`)
+- SuperAdmin: alta por script (`seed:system-admin` + allowlist `SYSTEM_ADMIN_EMAILS`), panel
+  `/super-admin` (no `/internal`). MFA TOTP: columnas `mfa_secret`/`mfa_verified_at` existen en
+  `system_admins` (`src/shared/db/schema/system-admins.ts`) pero el guard
+  (`src/modules/auth/system-admin.guards.ts`) todavía NO las chequea — sin enforcement.
 
 **Para jugadores (B2C):**
-- Magic link por email O autenticación con Google/Apple (menor fricción)
+- Magic link por email O Google OAuth (`signInWithGooglePlayer`, `src/modules/auth/auth.service.ts`,
+  alcance decidido 2026-08-14: solo jugador, staff sigue en password por ADR-013). Apple NO está
+  implementado (no hay provider `apple` en el código; era aspiracional en este doc).
 - JWT con refresh token
 - Sesión persistente en el dispositivo (no queremos que tengan que loguearse cada vez)
 
@@ -180,7 +184,13 @@ CREATE POLICY tenant_isolation ON bookings
 SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 ```
 
-### Tablas que tienen `tenant_id` (datos aislados — **12 tablas con RLS**)
+### Tablas que tienen `tenant_id` (datos aislados)
+
+> [!NOTE]
+> **Conteo desactualizado.** El "12 tablas con RLS" de abajo es el conjunto original; el schema
+> creció desde entonces (canteen, torneos, caja, analytics). CLAUDE.md cuenta 19 tablas
+> tenant-aisladas con RLS hoy. La lista de abajo no se reenumera acá a propósito — ver el
+> [!IMPORTANT] siguiente: la autoridad es CLAUDE.md/doc12, no esta sección.
 
 > [!IMPORTANT]
 > Lista canónica. En caso de discrepancia, **CLAUDE.md y doc12 ganan**.
@@ -208,7 +218,7 @@ SET app.current_tenant_id = '[id del complejo del usuario logueado]';
 - `tenants` — la propia tabla de complejos
 - `players` — un jugador puede reservar en varios complejos
 - `staff_users` — un staff puede ser admin de N complejos
-- `system_admins` — equipo interno de TurnoGol (panel `/internal`)
+- `system_admins` — equipo interno de TurnoGol (panel `/super-admin`)
 - `plans` — planes de suscripción SaaS (globales)
 - `price_versions` — historial de precios para inflación ARS
 - `processed_webhooks` — idempotencia de webhooks de MercadoPago
@@ -265,8 +275,13 @@ audit_logs
 └── created_at (timestamp UTC)
 ```
 
-**Retención**: 12 meses mínimo (obligatorio para eventuales disputas de pago).
-**Inmutabilidad**: Los registros de audit_logs son INSERT only. Nunca se editan ni eliminan.
+**Retención**: 12 meses mínimo (obligatorio para eventuales disputas de pago). En la práctica son
+24 meses: `purgeOldAuditLogs` (`src/shared/jobs/workers/data-retention-cleanup.worker.ts`) borra
+lo que supera `NOW() - INTERVAL '24 months'`, decisión D5 aprobada por el dueño 2026-07-23
+(`docs/decisions/2026-07-23-wipe-retencion-sin-replica-role.md`).
+**Inmutabilidad**: `turnogol_app` tiene UPDATE/DELETE revocado sobre `audit_logs` (migr. 008/037)
+— la app nunca edita ni borra una fila. La purga por antigüedad de arriba es la única excepción,
+y corre con el rol de servicio `turnogol_worker` (BYPASSRLS), no con el rol de la aplicación.
 
 ---
 

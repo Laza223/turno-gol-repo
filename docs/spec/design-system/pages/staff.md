@@ -1,12 +1,13 @@
 # Staff / Equipo (admin) — spec de vista
 
-> Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de `/staff`.
+> Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de
+> `/settings/equipo` (`/staff` fue reubicado ahí — redirect permanente).
 > Hermana de `pages/reservas.md`, `pages/abonados.md`, `pages/canchas.md`, `pages/caja.md`,
 > `pages/dashboard.md` y `pages/grilla.md`: mismos tokens, mismo `PageHeader`/badge/empty-state.
 
 ## §0 Objetivo y anti-objetivo
 
-Staff (`/staff`, título "Equipo") es el listado admin-only de miembros del equipo del complejo:
+Staff (`/settings/equipo`, título "Equipo") es el listado admin-only de miembros del equipo del complejo:
 invitar, cambiar rol (Administrador/Encargado), desactivar, reenviar invitación. No tiene vista de
 detalle por miembro.
 
@@ -38,9 +39,13 @@ un rediseño de listado, mismo criterio que Canchas dejó `CourtForm` fuera).
   el rol por defecto al invitar (`DEFAULT_INVITE_ROLE` en `roles.ts`). Vocabulario sin cambios
   (`STAFF_ROLE_LABELS`: "Administrador"/"Encargado").
 - **Estado de cuenta**: `active` → **Activo** (`CheckCircle2`, success) · `inactive` → **Inactivo**
-  (`XCircle`, muted) — mismo patrón success/muted que `abonados` (`canceled`) y `canchas`
-  (`offline`). Vocabulario sin cambios, fijado por `tests/e2e/staff-crud.spec.ts`
-  (`getByText('Inactivo')`).
+  (`XCircle`, muted) · `pending` → **Invitación pendiente** (`Clock`, warning) — mismo patrón
+  success/muted que `abonados` (`canceled`) y `canchas` (`offline`). El tercer estado es posterior a
+  este rediseño (F-024, QA prod 2026-08-17, migr. 076): un invitado que nunca aceptó nace
+  `isActive=true` sin `lastLoginAt` — sin distinguirlo, el badge decía "Activo" para una invitación
+  sin usar. `StaffStatusBadge` deriva `pending` de `isActive=true` + `lastLoginAt` nulo
+  (`status-visual.tsx`). Vocabulario Activo/Inactivo sin cambios, fijado por
+  `tests/e2e/staff-crud.spec.ts` (`getByText('Inactivo')`).
 
 ## §3 Header, CTA
 
@@ -60,7 +65,7 @@ Densidad `p-3` por celda (antes `px-6 py-4`, §6.6 "base, nunca inflar por esté
 `divide-border` (antes `divide-slate-100`), hover `bg-accent/50` con `transition-colors` (antes
 `bg-accent` sin opacidad), header "Acciones" gana texto (antes `<th>` vacío).
 
-**Sin fila clickeable a un detalle**: no existe `/staff/[id]` — mismo criterio que
+**Sin fila clickeable a un detalle**: no existe `/settings/equipo/[id]` — mismo criterio que
 `pages/abonados.md` §3 (no se agrega un `Link` estirado porque no hay destino).
 
 ## §5 Guided UX
@@ -83,7 +88,7 @@ Densidad `p-3` por celda (antes `px-6 py-4`, §6.6 "base, nunca inflar por esté
    `pages/reservas.md` §7.1: se tokeniza en su propio barrido, no por vista.
 2. **[CERRADO]** `InviteStaffDialog.tsx` (`SubmitButton`): El botón primario y sus variants fueron tokenizados/corregidos en el commit `a377479`.
 3. **[CERRADO]** `ui/button.tsx` (`Button`, variant `default`): Corregido por la barrida de commit `a377479`.
-4. No hay fila clickeable a un detalle de staff: no existe `/staff/[id]`. Si en el futuro se
+4. No hay fila clickeable a un detalle de staff: no existe `/settings/equipo/[id]`. Si en el futuro se
    quisiera una ficha de miembro (historial de acciones, sesiones activas), es una decisión de
    producto nueva, no un fix visual — **REQUIERE INPUT** si se quiere construir esa vista.
 
@@ -97,4 +102,4 @@ Densidad `p-3` por celda (antes `px-6 py-4`, §6.6 "base, nunca inflar por esté
   /Opciones/i })` (el `aria-label` no lo pisa el `Tooltip` agregado), `getByRole('menuitem', {
   name: /Desactivar|Reenviar invitación/i })`.
 - Unit `actions.test.ts` (10 tests, server actions) — sin cambios, no cubre UI. No existe unit
-  test de presentación para `/staff` (ni antes ni después de este rediseño).
+  test de presentación para `/settings/equipo` (ni antes ni después de este rediseño).

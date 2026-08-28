@@ -173,7 +173,7 @@ El valor de TurnoGol radica en su modelo **B2B2C**. La solución al problema del
 
 **Para el dueño del complejo (B2B)**:
 
-> TurnoGol es el único software diseñado exclusivamente para fútbol que automatiza el cobro de abonados, elimina los no-shows con señas digitales, y le da al dueño visibilidad total de su negocio — configurable en menos de 20 minutos.
+> TurnoGol es el único software diseñado exclusivamente para fútbol que centraliza y da visibilidad total del cobro de abonados, elimina los no-shows con señas digitales, y le da al dueño visibilidad total de su negocio — configurable en menos de 20 minutos.
 
 **Para el jugador (B2C)**:
 
@@ -185,7 +185,7 @@ El valor de TurnoGol radica en su modelo **B2B2C**. La solución al problema del
 
 - Gestión de clubes institucionales (socios, cuotas, múltiples disciplinas) → Clubify
 - Marketplace masivo como objetivo principal → EasyCancha
-- Torneos y ligas → módulo futuro (v2)
+- Torneos y ligas → módulo futuro (v2) — **desactualizado**: se reabrió el 2026-07-24 (`docs/decisions/2026-07-24-torneos.md`) y ya está construido en v1 (`src/modules/tournaments/`, migrs. 062-066, portal público `/[slug]/torneos`), detrás del feature flag `tournaments` (global `false`, se habilita por complejo)
 - Escuelas de fútbol (seguimiento de alumnos, pedagogía) → fuera de scope
 - Operación fuera de Argentina → hasta validar el modelo localmente
 
@@ -197,6 +197,6 @@ El valor de TurnoGol radica en su modelo **B2B2C**. La solución al problema del
 | --------------------------------- | ---------------------------- | ------------------------------ |
 | Tiempo en gestión de reservas/día | 2-3 horas                    | < 20 minutos                   |
 | Tasa de no-show                   | 15-25%                       | < 5%                           |
-| Mora en cobro de abonados         | 25-35% de abonados con deuda | < 5% (cobro automático)        |
+| Mora en cobro de abonados         | 25-35% de abonados con deuda | < 5% (visibilidad + gestión centralizada — el cobro en sí es manual, v1) |
 | Visibilidad de ingresos           | "A ojo"                      | Dashboard en tiempo real       |
 | Tiempo de onboarding al sistema   | N/A                          | < 20 minutos para estar "live" |

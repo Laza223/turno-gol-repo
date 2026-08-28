@@ -1,4 +1,13 @@
-# Abonados (admin) — spec de vista
+# Turnos fijos (admin, ruta `/abonados`) — spec de vista
+
+> **Renombrado 2026-08-27** (Módulo Personas, B13): la UI real dice "Turnos fijos" en todos lados
+> (`PageHeader title="Turnos fijos"`, CTA "Nuevo turno fijo") aunque la ruta sigue siendo
+> `/abonados` (sin cambio de URL) — este doc usaba "Abonados" en el título y en el CTA de §4, ya
+> corregido abajo. También agregado (B13, no estaba en este doc): la página ahora abre con
+> `<ClientesTabs active="/abonados" />`, la misma tab bar de `/jugadores` — Turnos fijos es una de
+> las pestañas del módulo Personas unificado, no una pantalla aislada. "Abonado"/`abonados` siguen
+> siendo los nombres reales de tabla/tipo/servicio (`abonado_status`, `abonados.service.ts`) — el
+> rename es solo de UI, no de schema ni de código interno.
 
 > Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de `/abonados`.
 > Hermana de `pages/reservas.md`, `pages/caja.md`, `pages/dashboard.md` y `pages/grilla.md`
@@ -56,9 +65,10 @@ diálogos. No se agregó un Link estirado porque no hay destino; ver §7.4 REQUI
   criterio que el subtítulo de Reservas, adaptado a que acá el "scope" es el filtro de estado en
   vez del rango de fechas).
 - **CTA "+ Nuevo Abonado"** → `bg-primary text-primary-foreground` + ícono `UserPlus` + texto
-  "Nuevo abonado" (sentence case §8.4, sin el `+` literal — mismo tratamiento que el CTA de
-  Reservas/Dashboard). Radio `rounded-md` → `rounded-lg` (§4.2: los botones son `rounded-lg`, no
-  `rounded-md` — ese radio es para inputs/ítems de menú).
+  **"Nuevo turno fijo"** (corregido 2026-08-27, era "Nuevo abonado" — el rename de B13; sentence
+  case §8.4, sin el `+` literal — mismo tratamiento que el CTA de Reservas/Dashboard). Radio
+  `rounded-md` → `rounded-lg` (§4.2: los botones son `rounded-lg`, no `rounded-md` — ese radio es
+  para inputs/ítems de menú).
 - **Píldoras de filtro** (activa): `bg-foreground text-background` → `bg-primary
   text-primary-foreground` (mismo acento que Reservas para el mismo patrón de UI; ambos eran
   tokens válidos, esto es consistencia cross-página, no un fix de contraste).

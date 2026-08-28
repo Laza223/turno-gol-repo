@@ -34,7 +34,7 @@
 - Safari iOS <16.4: no soportado → manager F9 muestra status `'unsupported'` (UI degrada gracefully)
 
 ### `env(safe-area-inset-*)` (notch / dynamic island)
-- Safari iOS / iPadOS 11.1+: full ✓ (requiere viewport-fit=cover, ya configurado en `src/app/layout.tsx:33`)
+- Safari iOS / iPadOS 11.1+: full ✓ (requiere viewport-fit=cover, ya configurado en `src/app/layout.tsx:58`)
 - Chrome Android 69+: full ✓
 - Firefox: NO soporta → resuelve a `0px` (no rompe layout, solo no respeta safe area en devices con notch)
 - Chrome desktop: no relevante (sin notch)
@@ -88,7 +88,7 @@ Ejecutar este checklist en cada uno de los 5 browsers target la primera vez ante
 5. (Admin onboarded) Navegar `/grilla` → grilla visible con canchas + horarios
 6. Click slot libre → modal "Crear reserva" abre, fit en viewport
 7. Cerrar modal (Esc o X) → vuelve a grilla
-8. (En otro tab) DevTools → Application → Service Workers → confirmar `sw.js` activo con scope `/admin/`
+8. (En otro tab) DevTools → Application → Service Workers → confirmar `sw.js` activo con scope `/`
 9. Click botón "Habilitar notificaciones" → prompt browser nativo → Permitir → toast "Notificaciones habilitadas"
 10. Logout → vuelve a `/login`
 
@@ -150,7 +150,7 @@ pnpm playwright test --project axe-audit
 ```
 
 Los tests automatizados cubren:
-- Public landing + search + portal smoke en 3 browsers (chromium, webkit, firefox) + 2 mobile (mobile-chrome, mobile-safari)
+- Public landing + search + portal smoke en 3 projects (`webkit`, `firefox`, `mobile-safari` — `tests/e2e/cross-browser/`; `chromium` los excluye explícitamente vía `testIgnore` y `mobile-chrome` no los matchea, ver `playwright.config.ts`)
 - No horizontal scroll en cada viewport
 - Skip-to-content link visible en focus
 
@@ -166,4 +166,4 @@ NO cubren (requieren humano):
 - F10 Responsive/Mobile — `docs/audit/reports/fase-f10-responsive-mobile-report.md`
 - F11 Accessibility — `docs/audit/reports/fase-f11-accessibility-report.md`
 - F12 Performance — `docs/audit/reports/fase-f12-performance-report.md`
-- MASTER_PLAN líneas 231-234 — done-criteria F13
+- MASTER_PLAN líneas 234-237 — done-criteria F13

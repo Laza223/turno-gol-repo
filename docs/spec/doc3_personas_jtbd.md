@@ -84,7 +84,7 @@
 | "Ya tengo ATC" | "TurnoGol es más barato y tiene mejor UX. Probalo 30 días gratis." |
 | "No tengo tiempo de configurarlo" | "Lo configurás en 20 min. La interfaz te guía paso a paso." |
 | "¿Y si mis clientes no quieren reservar online?" | "Vos podés seguir cargando reservas manuales. Ellos pueden reservar si quieren." |
-| "¿Y mis datos si me voy?" | "Exportás todo en CSV en cualquier momento." |
+| "¿Y mis datos si me voy?" | Sin respuesta hoy — no hay exportación de datos del complejo en código (retirado del doc 2026-08-27; solo existe export ARCO a nivel jugador). |
 | "¿Le enseño esto al empleado?" | "El empleado lo aprende en 10 minutos. La interfaz es más simple que Instagram." |
 
 ### Canal de adquisición
@@ -262,9 +262,9 @@ El "jugador" no es un perfil monolítico. Tiene dos modos de uso:
 |---|:---:|:---:|:---:|
 | Panel Admin - Grilla | ✅ | ✅ | |
 | Panel Admin - Caja | ✅ | ✅ (limitada) | |
-| Panel Admin - Reportes | ✅ | | |
+| Panel Admin - Reportes | ✅ | ✅ (sin métricas de sistema) | |
 | Panel Admin - Config | ✅ | | |
-| Panel Admin - Abonados (gestión turnos fijos) | ✅ | ✅ (ver) | |
+| Panel Admin - Abonados (gestión turnos fijos) | ✅ | ✅ | |
 | App - Búsqueda de canchas | | | ✅ |
 | App - Mis turnos (espontáneos + fijos) | | | ✅ |
 | Email - Confirmación de reserva | | | ✅ |

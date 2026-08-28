@@ -1,4 +1,11 @@
-# Reportes (admin) — spec de vista
+# Reportes (admin) — spec de vista [ARCHIVADO 2026-08-27]
+
+> ⚠️ **`/reportes` ya no existe como pantalla propia.** Hace redirect permanente a `/analiticas`, que
+> fusionó `/metricas` + `/reportes` en una sola página (título "Métricas", el KPI que antes se llamaba
+> "Balance" ahora es "Saldo"). Este doc queda como referencia histórica del diseño previo a la fusión —
+> las decisiones de UX de abajo (semáforo financiero, formato contable, empty states) pueden seguir
+> siendo válidas para `/analiticas`, pero no describen la pantalla real tal cual está hoy. No reescrito
+> a `/analiticas` — si hace falta un spec vivo de esa pantalla, es tarea aparte.
 
 > Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de `/reportes`.
 > Hermana de `pages/dashboard.md` y `pages/caja.md` (2026-07-03): mismos tokens, mismo semáforo

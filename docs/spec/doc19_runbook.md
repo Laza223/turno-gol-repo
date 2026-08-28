@@ -84,7 +84,7 @@ SEV-1 → All hands. Email + llamada telefónica. Rollback inmediato si es deplo
 **En producción el endpoint público devuelve SOLO el semáforo.** Eso alcanza para
 UptimeRobot (que mira el código HTTP: 200 = ok, 503 = algo caído), pero **no dice
 qué se cayó**. El desglose por subsistema (`database`, `worker-pool`, `pg-boss`,
-`upstash`, `encryption-key`, `storage`, MP/email/Sentry) exige un token:
+`worker-heartbeat`, `upstash`, `encryption-key`, `storage`, MP/email/Sentry) exige un token:
 
 ```bash
 curl -H "x-status-token: $STATUS_TOKEN" https://turnogol.app/api/status
@@ -464,7 +464,10 @@ DIAGNÓSTICO Y ACCIÓN:
 
 **Síntomas:** usuario reporta que no puede entrar; el magic link no funciona.
 
-**TTL:** 10 minutos (Supabase-managed, no configurable en `supabase/config.toml`).
+**TTL:** SÍ es configurable en `supabase/config.toml` → `[auth.email] otp_expiry`
+(gobierna magic link + email OTP). El default local es `otp_expiry = 3600` (1 hora).
+Producción se configura aparte, en el dashboard de Supabase Auth — **verificar ahí
+el valor real antes de asumir 10 minutos** (REQUIERE INPUT, ver abajo).
 **Single-use:** sí (Supabase invalida el token al primer uso exitoso).
 
 ```
@@ -490,8 +493,9 @@ DIAGNÓSTICO Y ACCIÓN:
    → Documentar en audit_logs.
 
 4. NOTA:
-   El TTL de 10 min no es configurable desde nuestro código. Si se requiere extensión
-   por casos especiales, hay que abrir ticket con Supabase support (rara vez se hace).
+   El TTL SÍ se puede cambiar (`[auth.email] otp_expiry` en `supabase/config.toml`
+   para local; dashboard de Supabase Auth para producción) — no hace falta ticket
+   de soporte para extenderlo, solo redeployar la config.
 ```
 
 ---
@@ -567,7 +571,7 @@ TurnoGol. Nuestra app sólo verifica JWTs emitidos por Supabase Auth.
    Plan deferido. En v1 mantener single-key con rotación operacional.
 
 4. VALIDACIÓN POST-ROTACIÓN:
-   → `pnpm launch-check` valida que `ENCRYPTION_KEY` cumple length + hex + no es placeholder.
+   → `pnpm launch:check` valida que `ENCRYPTION_KEY` cumple length + hex + no es placeholder.
    → Sentry watch: tasa de errores `MpGatewayError: ... 401` debe volver a baseline en < 24h.
 ```
 
@@ -577,7 +581,7 @@ TurnoGol. Nuestra app sólo verifica JWTs emitidos por Supabase Auth.
 
 **Síntoma**: Las reservas `pending_payment` no expiran (los slots quedan "ocupados" y no reservables aunque nadie pagó la seña), los emails de confirmación no salen, no se generan los turnos de abonados, el dunning no reintenta. El cron `health-ping` deja de reportar.
 
-**Contexto**: El worker es la **única** pieza del stack que corre fuera de Vercel/Supabase — Railway, `Dockerfile.worker`, `startCommand = "pnpm jobs:start"` (→ `src/shared/jobs/run-workers.ts`). Es un **punto único de falla**: `numReplicas = 1`, `restartPolicyType = "ON_FAILURE"` (máx 10 reintentos). Corre los 13 workers (expiración de bookings, envío de emails, webhooks MP, generación de slots de abonados, expiración de trials, auto-completar, dunning, retención, refresh/reconcile de MP, recordatorio de devoluciones, push, health-ping).
+**Contexto**: El worker es la **única** pieza del stack que corre fuera de Vercel/Supabase — Railway, `Dockerfile.worker`, `startCommand = "pnpm jobs:start"` (→ `src/shared/jobs/run-workers.ts`). Es un **punto único de falla**: `numReplicas = 1`, `restartPolicyType = "ON_FAILURE"` (máx 10 reintentos). Corre los 17 workers registrados en `src/shared/jobs/workers/index.ts` (expiración de bookings, envío de emails, webhooks MP, generación de slots de abonados, expiración de trials, auto-completar, dunning, retención, refresh de tokens MP, reconciliación de pagos pendientes, reconciliación de drift contable, reconciliación de suscripciones, reintento de devoluciones, push, health-ping, resumen diario, abandono de onboarding).
 
 **Por qué es crítico para las reservas**: el exclusion constraint `no_overlapping_bookings` bloquea el slot mientras el booking siga en `pending_payment` (`WHERE status IN ('pending_payment','confirmed')`). Las **dos** rutas de expiración —el job diferido por-booking (`expire-pending-booking`) y el barrido `*/5` (`expire-pending-booking-sweep`)— viven **solo** en el worker; no hay trigger de DB ni barrido web de respaldo. Además, el job por-booking se auto-descarta en pg-boss a la hora (`expireInHours: 1`): si el worker está caído **>1h**, ese job nunca corre y el slot solo se libera cuando el worker vuelve y el barrido de 5 min lo recoge.
 
@@ -621,16 +625,15 @@ PREVENCIÓN: para HA, subir numReplicas a 2 (railway.toml). pg-boss coordina los
 | Health check | Cada 1-5 min | UptimeRobot | Verifica que la app responde |
 | Expiración de bookings | Job por-booking (+6 min) + barrido `*/5` | pg-boss worker | Expira reservas `pending_payment` > 6 min. Job diferido al crear el booking + cron de barrido cada 5 min como red de seguridad |
 | Envío de emails programados | Continuo | pg-boss worker | Procesa cola de notificaciones email |
-| Métricas de negocio | Cada 1 hora | pg-boss cron | Recolecta y loguea métricas hourly |
 
 ### 4.2 Tareas semanales (automáticas)
 
 | Tarea | Horario | Ejecutor | Qué hace |
 |---|---|---|---|
-| Data retention cleanup | Domingos 04:00 ART | pg-boss cron | Purga datos según política de retención (Doc 18 §7.2) |
+| Data retention cleanup | Domingos 07:00 ART | pg-boss cron | Purga datos según política de retención (Doc 18 §7.2) |
 | Generación de slots de abonados | Diario 03:00 ART | pg-boss cron | Genera instancias de booking para la semana siguiente |
 | Trial expiration check | Diario 08:00 ART | pg-boss cron | Chequea trials vencidos → churn |
-| Dunning retry | Diario 10:00 ART | pg-boss cron | Reintenta cobros fallidos |
+| Dunning retry | Diario 13:00 ART | pg-boss cron | Reintenta cobros fallidos |
 
 ### 4.3 Tareas mensuales (manuales)
 
@@ -654,7 +657,7 @@ alguien se acuerde de correr un ritual manual antes de cada deploy.
 > [!NOTE]
 > **Decisión de auditoría 2026-07-21 (TEC-06):** se reemplaza el "stress test de 2 terminales"
 > como paso obligatorio por la cobertura en CI, que sí se sostiene con un on-call de 1 persona.
-> Quitar el step del `pnpm launch-check` como `fatal: true` queda como implementación de código
+> Quitar el step del `pnpm launch:check` como `fatal: true` queda como implementación de código
 > pendiente.
 
 **Opcional (prueba de carga local, ad-hoc):** existe `pnpm stress:bookings`. Requiere la app
@@ -966,7 +969,9 @@ INFRAESTRUCTURA:
 SEGURIDAD:
   □ Todas las env vars de producción son diferentes a las de desarrollo
   □ Supabase service role key NO está expuesta al frontend
-  □ RLS activado en las 13 tablas aisladas
+  □ RLS activado en todas las tablas tenant-aisladas (lista completa y vigente
+    en CLAUDE.md — sección Multi-tenancy; el conteo creció desde las 13
+    originales y sigue creciendo con cada feature nuevo, no hardcodear el número acá)
   □ Tests de isolation corren y pasan en CI
   □ HTTPS activo en todo el sitio
   □ Rate limiting configurado

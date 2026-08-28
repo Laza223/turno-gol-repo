@@ -25,9 +25,11 @@ muestre un indicador de sesión.
 
 ## 1. Color y superficie
 
-- **Cabecera (`PortalHeader`)**: superficie clara — `bg-white/90 backdrop-blur-md` con
-  `border-b border-slate-200` (mismo tratamiento que `SiteNav variant="solid"`). **Nunca** fondo
-  oscuro como cabecera de página.
+- **Cabecera (`PortalHeader`)**: actualizado 2026-08-27 al diseño real (`src/components/site/PortalHeader.tsx`,
+  reusado por `SiteNav`, que hoy es un re-export suyo) — pill flotante, no barra con borde inferior:
+  `<header>` externo `sticky top-0 z-50 bg-transparent`; el contenido vive en un `<div>` interno
+  `rounded-full border border-border bg-card/80 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.06)]`,
+  altura `h-14` (no `h-16`). **Nunca** fondo oscuro como cabecera de página.
 - **Primario**: `emerald-600` (`#059669`). Texto y bordes interactivos.
 - **Anti-pattern (heredado del MASTER)**: nunca `emerald-500` para texto sobre blanco (~2.97:1, falla
   AA). Para texto/acciones siempre `emerald-600`+.
@@ -62,7 +64,8 @@ Reglas:
 
 - **Iniciales** del jugador (1–2 letras de `firstName`/`lastName`), círculo `emerald` claro con texto
   `emerald-700` — reusar el patrón existente de `(player)/perfil/page.tsx`.
-- Tamaño: `h-8 w-8` en el chip del header; `h-5 w-5` para el ícono dentro de ítems de menú.
+- Tamaño: `h-8 w-8` en el chip del header (`h-10 w-10` en el bloque de identidad del panel
+  desplegado); `h-4 w-4` para los íconos (`Calendar`/`Settings`/`LogOut`) dentro de ítems de menú.
 - Si en el futuro hay `avatarUrl`, la imagen reemplaza las iniciales (mismo contenedor).
 - Nunca depender solo de color para transmitir estado: el chip siempre lleva **nombre** junto al avatar.
 
@@ -70,13 +73,17 @@ Reglas:
 
 ## 4. `AccountMenu` (dropdown de cuenta)
 
-Construido sobre `src/components/ui/dropdown-menu.tsx` (Radix — ya provee teclado, foco y `aria`).
+Construido sobre `src/components/ui/popover.tsx` (Radix `Popover`, **no** `DropdownMenu`: el panel
+mezcla links de navegación con el `ThemeToggle` (`role="radiogroup"`), que por ARIA no puede vivir
+dentro de un `role="menu"` — Radix igual provee teclado, foco y `aria`).
 
 Ítems (en orden):
 1. `Mis reservas` — ícono `Calendar` → `/mis-reservas`
 2. `Cuenta` — ícono `Settings` → `/configuracion` (hub; incluye Perfil, Datos, Eliminar)
 3. separador
-4. `Salir` — ícono `LogOut`, invoca `signOutAction` (server action compartido)
+4. `Tema` — `ThemeToggle` (claro/oscuro/sistema), no es un link
+5. separador
+6. `Salir` — ícono `LogOut`, invoca `signOutAction` (server action compartido)
 
 `Perfil` **no** es ítem de primer nivel: vive dentro del hub "Cuenta" (decisión 2026-06-09). El dropdown
 (desktop) y el bottom-nav (mobile) comparten el mismo set para un mental model único entre dispositivos.

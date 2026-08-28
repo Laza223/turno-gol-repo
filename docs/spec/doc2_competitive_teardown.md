@@ -6,6 +6,8 @@
 
 > **🔄 ACTUALIZACIÓN 2026-07-19** — Pricing de ATC corregido con verificación DESDE Argentina (captura del founder + navegación real a atcsports.io desde IP argentina): la lista argentina está **en pesos** — la versión en USD que circula corresponde a otros mercados (el sitio localiza por país; selector de 14 países al pie). Se agregó la sección "Competidores argentinos verticales" (7 jugadores que este doc no cubría) y los hallazgos del flujo de alta de ATC. **Regla de método permanente: ningún precio de competidor se considera verificado sin captura tomada desde Argentina, fechada** — un fetch remoto puede devolver pricing de otro país. Research completo con fuentes: [docs/gtm/research/2026-07-18-competidores.md](../gtm/research/2026-07-18-competidores.md) (con fe de erratas) y [TURNOGOL_MARKETING_RED_TEAM.md](../gtm/TURNOGOL_MARKETING_RED_TEAM.md) §5.
 
+> ⚠️ **DESACTUALIZADO 2026-08-27 (auditoría de docs)** — Los precios y cortes de TurnoGol de esta sección (Debilidad 7, tabla "Comparación por franja", tabla de Posicionamiento) son de la versión previa. Desde `src/shared/db/migrations/071_align_plan_tiers_with_atc.sql` (2026-08-07, `docs/planning/2026-08-07-analisis-rubro-y-decisiones.md` §4) los planes son: **Predio 1-3 canchas $63.000/mes, Complejo 4-6 $99.000/mes, Estadio 7+ $129.000/mes** (confirmado en `src/app/(business)/precios/plans-data.ts`) — los cortes ahora calzan con los de ATC (1-3/4-6/7+), a propósito, para dejar de tener franjas donde ATC gana. El comentario de la migración cita además una referencia de ATC del mismo día ($71.000/$111.000/$145.000, navegada por el founder desde Argentina) bajo la cual TurnoGol queda ~11% abajo en las tres franjas — pero esa cifra de ATC no tiene la captura fechada que esta misma sección exige como regla de método, así que no se vuelca acá como verificada. La narrativa de "Debilidad 7" y de "Decisión Estratégica" que sigue está escrita sobre los cortes viejos (1-2/3-5/6+) y sobre el pricing de ATC de 2026-07-19; **requiere reescritura por Lazar** con pricing de ATC re-verificado, no solo un reemplazo de números — ver `requiereInput` de la auditoría de docs.
+
 ---
 
 ## ATC Sports — Análisis en Profundidad
@@ -64,10 +66,10 @@
 - No tienen gestión de gastos del complejo (luz, gas, mantenimiento, empleados).
 - **Oportunidad**: Si incorporamos gastos, el dueño puede ver el resultado neto real de su negocio.
 
-#### Debilidad 7 — Pricing: ya no es "alto" — es una guerra de franjas (REESCRITA 2026-07-19)
+#### Debilidad 7 — Pricing: ya no es "alto" — es una guerra de franjas (REESCRITA 2026-07-19; números actualizados 2026-08-27, narrativa sin reescribir — ver nota de arriba)
 - La versión vieja de esta debilidad ("precio alto, $60.500") quedó obsoleta: hoy ATC Base cuesta $66.000 (1-3 canchas) y el mapa por franja está repartido (ver tabla de pricing arriba).
-- La debilidad real que queda: para el complejo de 1-2 canchas, TurnoGol Predio ($55.000) sigue ganando; y la presión de abajo la ponen los free tiers de los locales (Korus hasta 2 canchas, Don Potrero Amateur), no ATC.
-- El flanco propio a vigilar: **con 3 canchas ATC es 22% más barato que TurnoGol** ($66k vs $85k) y con 6, 10% más barato — franjas dentro del ICP-1. Mitigación de corto plazo: precio fundador (-20/30%) ≈ empata la franja de 3. Decisión estructural: red team §21.11.
+- La debilidad real que queda: para el complejo de 1-3 canchas, TurnoGol Predio ($63.000) sigue ganando; y la presión de abajo la ponen los free tiers de los locales (Korus hasta 2 canchas, Don Potrero Amateur), no ATC.
+- ⚠️ **Este bullet quedó obsoleto por el cambio de cortes (migr. 071, 2026-08-07), no solo de precio**: TurnoGol alineó sus cortes a 1-3/4-6/7+ (antes eran 1-2/3-5/6+), los mismos que ATC ya usa (1-2-3/4-5-6/7+) — ya no hay una franja de "3 canchas" ni de "6 canchas" separada de su tier. Con los cortes nuevos, TurnoGol queda MÁS BARATO que ATC en las tres franjas (~5% en cada una, ver tabla actualizada abajo) — la conclusión de "flanco propio a vigilar" de esta sección puede haber quedado invertida. **Requiere que Lazar revise si la debilidad 7 sigue siendo una debilidad real.**
 
 ---
 
@@ -83,17 +85,17 @@
 - FAQ oficial: *"El único costo de ATC es el abono mensual"* — sin costos de instalación/capacitación/soporte. **IVA: el sitio NO lo aclara en ninguna parte** (precios, FAQ ni formulario de alta) — falta determinar si $66.000 es final o +IVA. Cómo cerrarlo: factura real de un cliente ATC (preguntar en charlas con ex/actuales usuarios) o consulta al comercial.
 - Pago: mensual adelantado (días 1-10), medios: tarjeta, transferencia, Mercado Pago. Ancla de la página: "Automatizá tu complejo desde $53.000 por mes" (usa el precio ANUAL como "desde").
 
-**Comparación por franja con TurnoGol ($55k/$85k/$115k + IVA) — los rangos cortan distinto y eso reparte el mapa:**
+**Comparación por franja — actualizada 2026-08-27 (migr. 071 alineó los cortes de TurnoGol a los de ATC, ver nota arriba). Tabla vieja (cortes 1-2/3/4-5/6/7+, $55k/$85k/$115k) reemplazada, sigue con IVA sin verificar de ningún lado:**
 
 | Canchas | TurnoGol | ATC | Más barato |
 |---|---|---|---|
-| 1-2 | $55.000 | $66.000 | TurnoGol (-17%) |
-| **3** | $85.000 | $66.000 | **ATC (-22%)** |
-| 4-5 | $85.000 | $104.000 | TurnoGol (-18%) |
-| **6** | $115.000 | $104.000 | **ATC (-10%)** |
-| 7+ | $115.000 | $136.000 | TurnoGol (-15%) |
+| 1-3 | $63.000 | $66.000 | TurnoGol (-5%) |
+| 4-6 | $99.000 | $104.000 | TurnoGol (-5%) |
+| 7+ | $129.000 | $136.000 | TurnoGol (-5%) |
 
-**Implicancia para TurnoGol (actualizada)**: el modelo de pricing sigue validado por el mercado, pero **la pelea de precio contra ATC no es terreno ganador**: precios comparables, dos franjas perdedoras (3 y 6 canchas — dentro del ICP-1 de 3-6) y la asimetría de IVA sin verificar. NO usar "sale menos que ATC" como claim general; comparar solo por franja, en charla, con números del día. El diferencial real está en producto y trato (mobile-first, fútbol-only, caja con gastos, onboarding self-service vs formulario+reunión, setup hecho por el founder). Decisión pendiente sobre boundaries de planes: red team §21.11.
+> ⚠️ **La tabla ya no muestra ninguna franja donde ATC gane** (antes ATC ganaba en 3 y 6 canchas con los cortes viejos) — pero el párrafo de implicancia de abajo todavía habla de "dos franjas perdedoras" y "no es terreno ganador". Esa conclusión está escrita sobre la tabla vieja y no se reescribió (decisión: solo actualizar números, la narrativa la revisa Lazar). No usar el párrafo de abajo para pricing hasta que se reconcilie con esta tabla.
+
+**Implicancia para TurnoGol (sin reescribir — contradice la tabla de arriba, ver aviso)**: el modelo de pricing sigue validado por el mercado, pero **la pelea de precio contra ATC no es terreno ganador**: precios comparables, dos franjas perdedoras (3 y 6 canchas — dentro del ICP-1 de 3-6) y la asimetría de IVA sin verificar. NO usar "sale menos que ATC" como claim general; comparar solo por franja, en charla, con números del día. El diferencial real está en producto y trato (mobile-first, fútbol-only, caja con gastos, onboarding self-service vs formulario+reunión, setup hecho por el founder). Decisión pendiente sobre boundaries de planes: red team §21.11.
 
 ---
 
@@ -201,10 +203,10 @@ El switching cost de ATC Sports es **real pero superable**:
 
 | Barrera | Solución TurnoGol |
 |---|---|
-| "Mis datos están en ATC" | Importador de datos (clientes, abonados, canchas) desde CSV/Excel |
+| "Mis datos están en ATC" | Carga manual en el onboarding (no hay importador CSV/Excel — retirado del doc 2026-08-27, no existe en código ni está en roadmap) |
 | "Mi equipo ya sabe usar ATC" | Onboarding interactivo en el sistema. Interfaz más intuitiva = menos capacitación |
 | "Mis jugadores tienen la app de ATC" | Web pública del complejo (no requiere app). El jugador llega por link. |
-| "¿Y si TurnoGol cierra?" | Exportación de datos en cualquier momento (CSV). Transparencia total. |
+| "¿Y si TurnoGol cierra?" | Sin exportación de datos del complejo hoy (retirado del doc 2026-08-27 — no existe en código; solo hay export ARCO a nivel jugador, `/api/player/data-export`) |
 | "Ya pagué el año" | No podemos hacer nada aquí. El timing importa: captarlos cuando renuevan. |
 
 ---

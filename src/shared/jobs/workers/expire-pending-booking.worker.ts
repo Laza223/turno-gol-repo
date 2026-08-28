@@ -13,8 +13,8 @@ import { logger } from '@/shared/lib/logger'
 
 /**
  * Registers the pending_payment expiry consumer (Hallazgo 1 + 2):
- *   - per-booking job armed 15min after creation by `scheduleBookingExpiry`
- *     (re-armed to 48h when an in_process transfer is detected);
+ *   - per-booking job armed DEFAULT_EXPIRY_SECONDS (6min) after creation by
+ *     `scheduleBookingExpiry` (re-armed to 48h when an in_process transfer is detected);
  *   - a 5-minute sweep cron as a safety net for jobs that never ran.
  */
 export async function registerExpirePendingBookingWorker(boss: PgBoss): Promise<void> {

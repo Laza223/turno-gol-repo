@@ -36,9 +36,24 @@ cargar esa plata.
 
 `CreateCashFlowInput` acepta `allowClosedDay?: boolean`. Con esa bandera `createCashFlow`
 no rechaza el día cerrado, pero **exige `type: 'adjustment'`** — con cualquier otro tipo
-tira `AdjustmentRequiredForClosedDayError`. El único caller es
-`recordManualBookingDepositCashFlow`; no lo expone ninguna Server Action, porque abrirlo a
-la UI genérica convertiría el cierre en una sugerencia.
+tira `AdjustmentRequiredForClosedDayError`. No lo expone ninguna Server Action, porque
+abrirlo a la UI genérica convertiría el cierre en una sugerencia.
+
+**Los tres emisores de la seña lo usan, no uno solo.** El primer intento arregló sólo
+`recordManualBookingDepositCashFlow` (alta manual con la seña ya cobrada) y dio el
+agujero por cerrado. Un barrido de la clase encontró las otras dos puertas al MISMO
+estado, las dos en `payment.service.ts` y las dos con el mismo `catch` que se tragaba la
+plata:
+
+| Emisor | Cuándo corre |
+|---|---|
+| `recordManualBookingDepositCashFlow` (booking.service.ts) | el staff carga el turno con la seña ya cobrada |
+| `recordManualDepositCashFlow` (payment.service.ts) | el staff confirma a mano una seña que estaba pendiente |
+| `recordDepositCashFlow` (payment.service.ts) | el webhook de MP aprueba la seña |
+
+En el caso de MP la plata no está en el cajón sino en la cuenta del complejo: no mueve
+el conteo de efectivo del cierre, pero es ingreso del día igual y tiene que verse en
+Caja. Cada uno tiene su test con control negativo (sin el fix, `cash_flows` queda vacío).
 
 Es lo que el propio diálogo de cierre ya prometía y no cumplía: *"El cierre es inmutable:
 una vez cerrada no se puede editar ni agregar movimientos a este día. Las correcciones
@@ -72,13 +87,25 @@ Detalles que no son arbitrarios:
   corta.
 - **Dejarlo como estaba**, tratando el mail al dueño como red de seguridad suficiente.
 
-## Lo que quedó afuera a propósito
+## El aviso al encargado (cerrado en el segundo pase)
 
-**El encargado sigue sin ver un aviso en el momento.** La opción elegida lo incluía, pero
-surfacear la señal exige ensanchar el retorno de `createManualBooking`, del que dependen 17
-archivos de test (contarlos: `grep -rln "createManualBooking" tests/ | wc -l`) más
-`bookingResponseSchema`, que es un `z.strictObject`. Con la plata ya registrada el aviso
-pasó de ser el arreglo a ser una comodidad, y no justifica ese churn. Queda pendiente.
+La opción elegida incluía avisarle al encargado en el momento, y el primer pase lo dejó
+afuera: surfacear la señal parecía exigir ensanchar el retorno de `createManualBooking`,
+del que dependen 17 archivos de test más `bookingResponseSchema` (un `z.strictObject`).
+
+Se resolvió sin tocar nada de eso: `createBookingAction` **lee la fila recién escrita**
+dentro de la misma transacción (`depositEnteredAsAdjustment`) y devuelve
+`depositAfterClose`. Leer en vez de predecir tiene una ventaja propia: entre un chequeo
+previo y la escritura puede cerrar la caja otro encargado, y ahí el aviso saldría al
+revés.
+
+El toast de "Reserva creada" agrega entonces *"La caja de hoy ya estaba cerrada: la seña
+quedó cargada como ajuste"* — en las dos puertas de alta manual (el popover rápido de la
+grilla y el modal completo). Sigue siendo `variant: 'success'`: no falló nada, la reserva
+se creó y la plata quedó registrada; lo que cambia es dónde hay que ir a buscarla.
+
+`BookingActionResult` no se tocó — lo comparten seis acciones a las que la bandera no les
+dice nada. El alta manual tiene el suyo, `CreateBookingActionResult`.
 
 ## Cómo verificarlo
 

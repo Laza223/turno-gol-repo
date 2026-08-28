@@ -118,11 +118,14 @@ export type CreateCashFlowInput = {
    * como ajustes"), así que SOLO vale con `type: 'adjustment'` — con cualquier
    * otro tipo `createCashFlow` tira `AdjustmentRequiredForClosedDayError`.
    *
-   * Único caller: la seña que el staff cobra de mostrador después de haber
-   * cerrado la caja. Antes eso quedaba fuera de Caja para siempre: la reserva
-   * decía "pagada" y la plata no figuraba en ningún lado (🔴 QA 2026-08-28
-   * F-02). No lo expone ninguna Server Action: abrirlo a la UI genérica
-   * convertiría el cierre en una sugerencia.
+   * Únicos callers: los TRES emisores del cash_flow de una seña —
+   * `recordManualBookingDepositCashFlow` (booking.service.ts, alta manual con
+   * la seña ya cobrada), `recordManualDepositCashFlow` y
+   * `recordDepositCashFlow` (payment.service.ts: confirmación a mano y webhook
+   * de MP). Antes esa plata quedaba fuera de Caja para siempre: la reserva
+   * decía "pagada" y no figuraba en ningún lado (🔴 QA 2026-08-28 F-02). No lo
+   * expone ninguna Server Action: abrirlo a la UI genérica convertiría el
+   * cierre en una sugerencia.
    *
    * El snapshot del cierre (`expected_cash`, `diff_amount`) NO se toca: queda
    * como la foto de lo que se contó, y el ajuste se ve aparte.

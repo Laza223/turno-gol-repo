@@ -6,6 +6,8 @@ import {
   confirmManualDepositPayment,
 } from '@/modules/payments/payment.service'
 import { cancelByAdmin } from '@/modules/bookings/booking.cancellation'
+import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
+import { todayART } from '@/shared/time/art-date'
 import {
   cleanupAll,
   createTestPlayer,
@@ -201,5 +203,70 @@ describe('confirmManualDepositPayment — seña confirmada a mano tras un checko
     )
     expect(outcome.won).toBe(false)
     expect(await getCashFlowsForBooking(bookingId)).toHaveLength(0)
+  })
+  it('caja ya cerrada: la seña entra como AJUSTE y se le avisa al dueño por mail', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const depositAmount = 240_000
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      timeStart: '13:00',
+      timeEnd: '14:00',
+      depositAmount,
+    })
+
+    // El encargado ya cerró la caja de la noche y después cobra la seña.
+    await withTenantContext(tenant.id, (tx) =>
+      closeDailyRegister(tenant.id, todayART(), staff.id, { declaredCash: 0 }, 0, tx),
+    )
+
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      confirmManualDepositPayment(bookingId, 'cash', staff.id, tenant.id, tx),
+    )
+    expect(outcome.won).toBe(true)
+    if (!outcome.won) throw new Error('unreachable')
+
+    const row = await getBookingRow(bookingId)
+    expect(row.status).toBe('confirmed')
+    expect(row.deposit_status).toBe('paid')
+
+    // 🔴 QA 2026-08-28 F-02, hermana del caso de createManualBooking: acá el
+    // agujero seguía abierto después del primer fix. La plata está en el cajón
+    // y la reserva dice "pagada": si Caja no la ve, la conciliación del día
+    // queda corta y nadie lo nota.
+    const flows = await getCashFlowsForBooking(bookingId)
+    expect(flows).toHaveLength(1)
+    expect(flows[0]).toMatchObject({
+      type: 'adjustment',
+      category: 'other',
+      method: 'cash',
+      amount: depositAmount,
+    })
+    // Literal canónico: getBookingCharges lo excluye por string exacto.
+    expect(flows[0]!.description).toBe(`Seña — turno ${bookingId}`)
+
+    // El snapshot del cierre queda intacto: es la foto de lo que se contó.
+    const closes = await sql<Array<{ declared_cash: number; diff_amount: number }>>`
+      SELECT declared_cash, diff_amount FROM daily_cash_closes
+      WHERE tenant_id = ${tenant.id} AND date = ${todayART()}
+    `
+    expect(closes).toHaveLength(1)
+    expect(closes[0]!.declared_cash).toBe(0)
+    expect(closes[0]!.diff_amount).toBe(0)
+
+    const notifs = await sql<Array<{ template_name: string; status: string }>>`
+      SELECT template_name, status FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'admin_deposit_after_close'
+    `
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.status).toBe('queued')
+    expect(outcome.notificationIds).toHaveLength(1)
   })
 })

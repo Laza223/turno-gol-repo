@@ -23,6 +23,7 @@ import type {
   BillingCycle,
   CancelResult,
   DowngradeResult,
+  InvoiceEntry,
   PlanSummary,
   SubscribeResult,
   SubscriptionState,
@@ -879,4 +880,39 @@ export async function setBillingPayerEmail(
   const row = (rows as unknown as Array<{ previous: string | null }>)[0]
   if (!row) throw new SubscriptionNotFoundError(tenantId)
   return { previous: row.previous }
+}
+
+// ─── invoices (doc15 §5.8, GET /api/billing/invoices) ───────────────────────
+
+/**
+ * MP manda `date_created` en ISO-8601 con offset. `null` = ausente/no
+ * parseable — mismo criterio que `parseMpDate` en `mp-gateway.implementation.ts`
+ * (no vive acá para no importar ese archivo desde el módulo billing).
+ */
+function toInvoiceDate(v: string | undefined): Date | null {
+  if (!v) return null
+  const d = new Date(v)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/**
+ * Historial de cobros de la suscripción SaaS del tenant, leído EN VIVO de
+ * MercadoPago — no hay tabla local (ver `InvoiceEntry`). Sin `tx`: no toca la
+ * DB, solo el gateway master de billing.
+ *
+ * No lanza si el tenant nunca tuvo una suscripción o nunca pagó: MP
+ * simplemente no devuelve resultados para esa referencia, y `[]` es la
+ * respuesta correcta ("todavía no hay cobros"), no un error.
+ */
+export async function listInvoices(
+  tenantId: string,
+  gateway: PaymentGateway,
+): Promise<InvoiceEntry[]> {
+  const payments = await gateway.searchPaymentsByReference(tenantId)
+  return payments.map((p) => ({
+    mpPaymentId: p.mpPaymentId,
+    status: p.status,
+    amount: p.amount,
+    date: toInvoiceDate(p.dateCreated),
+  }))
 }

@@ -62,11 +62,22 @@ vi.mock('@/modules/billing/billing.service', () => ({
     ownerEmail: 'a@b.com',
   })),
   listActivePlans: vi.fn(async () => []),
+  // doc15 §5.8: historial de pagos SaaS. Sin este mock, `page.tsx` llama
+  // `undefined(...)` — el `try/catch` de ahí lo traga en silencio y las
+  // tests de este archivo pasarían igual sin haber tocado nunca la rama con
+  // datos (hallazgo de la verificación adversarial, 2026-08-27).
+  listInvoices: vi.fn(async () => []),
+}))
+// getBillingGateway() construye el gateway REAL de MP (SDK + circuit breaker).
+// La page lo pasa a `listInvoices`, que acá está mockeado y nunca lo toca —
+// alcanza con que no explote al llamarse.
+vi.mock('@/modules/billing/billing.gateway', () => ({
+  getBillingGateway: vi.fn(() => ({})),
 }))
 
 import FacturacionPage from '@/app/(admin)/settings/facturacion/page'
 import { requireAdminStaff } from '@/modules/staff/guards'
-import { getSubscriptionState } from '@/modules/billing/billing.service'
+import { getSubscriptionState, listInvoices } from '@/modules/billing/billing.service'
 
 const STAFF_USER = {
   type: 'staff',
@@ -145,5 +156,35 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
 
     expect(screen.getByText(/Todavía no tenés una suscripción activa/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
+  })
+})
+
+describe('/settings/facturacion — historial de pagos (doc15 §5.8)', () => {
+  it('con cobros, renderiza la tabla con fecha/monto/estado', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('active') as never)
+    vi.mocked(listInvoices).mockResolvedValue([
+      {
+        mpPaymentId: 'mp-pay-1',
+        status: 'approved',
+        amount: 8_500_000,
+        date: new Date('2026-08-01T12:00:00.000Z'),
+      },
+    ] as never)
+
+    render(await FacturacionPage())
+
+    expect(screen.getByText('Historial de pagos')).toBeTruthy()
+    expect(screen.getByText('Aprobado')).toBeTruthy()
+    expect(screen.queryByText('Todavía no hay cobros registrados.')).toBeNull()
+  })
+
+  it('sin cobros (o si MP falla), muestra el estado vacío en vez de romper', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('active') as never)
+    vi.mocked(listInvoices).mockRejectedValue(new Error('MP down'))
+
+    render(await FacturacionPage())
+
+    expect(screen.getByText('Historial de pagos')).toBeTruthy()
+    expect(screen.getByText('Todavía no hay cobros registrados.')).toBeTruthy()
   })
 })

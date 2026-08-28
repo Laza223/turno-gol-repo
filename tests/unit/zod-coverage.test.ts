@@ -22,6 +22,8 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   'src/app/(admin)/dashboard/actions.ts',
   // GET with no query params; tenantId comes from session via withTenant.
   'src/app/api/billing/subscription/route.ts',
+  // Same shape as subscription/route.ts above (doc15 §5.8, historial de pagos SaaS).
+  'src/app/api/billing/invoices/route.ts',
   // Grilla admin (F5 audit): GET-only tras borrar el POST duplicado de
   // reservas/actions.ts (Capa 5, Shadow API). Query params (date/court_id/
   // status/cursor/limit) son todos opcionales y de solo lectura; van a un

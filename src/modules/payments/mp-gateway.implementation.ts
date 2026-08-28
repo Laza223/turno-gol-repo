@@ -218,6 +218,7 @@ export class MercadoPagoGateway implements PaymentGateway {
         transaction_amount?: number
         external_reference?: string
         payment_method_id?: string
+        date_created?: string
         point_of_interaction?: { transaction_data?: { subscription_id?: unknown } }
       }>
       return results.map((r) => {
@@ -237,6 +238,9 @@ export class MercadoPagoGateway implements PaymentGateway {
           paymentMethodId: r.payment_method_id ?? 'unknown',
           ...(typeof suscripcion === 'string' && suscripcion !== ''
             ? { preapprovalId: suscripcion }
+            : {}),
+          ...(typeof r.date_created === 'string' && r.date_created !== ''
+            ? { dateCreated: r.date_created }
             : {}),
         }
       })

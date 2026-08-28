@@ -32,6 +32,7 @@ import {
 } from '../helpers/tenant'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
+import { runAutoCompleteBookings } from '@/shared/jobs/workers/auto-complete-bookings.worker'
 
 const PRICING = {
   rules: [
@@ -1406,5 +1407,42 @@ describe('autoCompleteOverdueBookings devuelve filas completas (B8)', () => {
     expect(row!.createdAt).toBeInstanceOf(Date)
     expect(row!.updatedAt).toBeInstanceOf(Date)
     expect(Number.isNaN(row!.createdAt.getTime())).toBe(false)
+  })
+})
+
+// doc8 US-RES-007 edge case: el cron (`runAutoCompleteBookings`, worker de
+// auto-complete-bookings) deja rastro en audit_logs de que NADIE marcó
+// asistencia — actor=system, distinto de "Jugó"/"No se presentó" (manuales).
+describe('runAutoCompleteBookings — audit log actor=system (doc8 US-RES-007)', () => {
+  it('deja una fila booking.auto_completed por cada booking auto-completado', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: PAST_DATE,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+    })
+    await sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}`
+
+    const completed = await runAutoCompleteBookings()
+    expect(completed.some((b) => b.id === bookingId)).toBe(true)
+
+    const audits = await sql<
+      Array<{ action: string; actor_type: string; actor_id: string; tenant_id: string }>
+    >`
+      SELECT action, actor_type, actor_id, tenant_id FROM audit_logs
+      WHERE resource_id = ${bookingId}
+    `
+    expect(audits).toHaveLength(1)
+    expect(audits[0]!.action).toBe('booking.auto_completed')
+    expect(audits[0]!.actor_type).toBe('system')
+    expect(audits[0]!.tenant_id).toBe(tenant.id)
   })
 })

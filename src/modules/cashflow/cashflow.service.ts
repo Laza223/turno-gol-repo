@@ -289,6 +289,35 @@ export async function getCashFlows(
   return [...rows].map(rawRowToCashFlowRow)
 }
 
+/**
+ * ¿La seña de este turno entró como AJUSTE porque la caja del día ya estaba
+ * cerrada? Se lee la fila REAL después de escribirla: dice lo que pasó, no lo
+ * que se predecía (entre un chequeo previo y la escritura puede cerrar otro).
+ *
+ * Existe para avisarle al encargado en el momento (🔴 QA 2026-08-28 F-02). La
+ * alternativa era ensanchar el retorno de `createManualBooking`, del que
+ * dependen 17 archivos de test y `bookingResponseSchema` (un `z.strictObject`);
+ * leer una fila dentro de la MISMA transacción sale mucho más barato.
+ *
+ * No hace falta comparar la descripción: `booking_id` + `adjustment` ya
+ * identifica esa fila sin ambigüedad — los cobros de mostrador son `income`.
+ */
+export async function depositEnteredAsAdjustment(
+  tenantId: string,
+  bookingId: string,
+  tx: DbTx,
+): Promise<boolean> {
+  const rows = await tx.execute<{ exists: boolean }>(
+    sql`SELECT EXISTS (
+          SELECT 1 FROM cash_flows
+          WHERE tenant_id = ${tenantId}
+            AND booking_id = ${bookingId}
+            AND type = 'adjustment'
+        ) AS exists`,
+  )
+  return [...rows][0]?.exists === true
+}
+
 export async function getDaySummary(
   tenantId: string,
   date: string,

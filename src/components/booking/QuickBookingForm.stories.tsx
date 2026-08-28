@@ -28,7 +28,11 @@ const meta = {
       timeEnd: '21:00',
     },
     price: 2400000,
-    action: fn(async () => ({ success: true as const, booking: { id: 'nueva' } as never })),
+    action: fn(async () => ({
+      success: true as const,
+      booking: { id: 'nueva' } as never,
+      depositAfterClose: false,
+    })),
     searchPlayersAction: fn(async () => ({ success: true as const, players: [] })),
     onSuccess: fn(),
     onMoreOptions: fn(),

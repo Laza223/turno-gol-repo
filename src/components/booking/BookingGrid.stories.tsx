@@ -49,7 +49,11 @@ const meta = {
     openingHours: openingHours(),
     closedDates: [],
     closesNextDay: false,
-    action: fn(async () => ({ success: true as const, booking: booking() })),
+    action: fn(async () => ({
+      success: true as const,
+      booking: booking(),
+      depositAfterClose: false,
+    })),
   },
   decorators: [
     (Story) => (

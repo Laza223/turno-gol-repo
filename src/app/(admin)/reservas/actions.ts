@@ -26,7 +26,7 @@ import {
   searchTenantPlayers,
   type PlayerSearchResult,
 } from '@/modules/players/player-search.service'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { createCashFlow, depositEnteredAsAdjustment } from '@/modules/cashflow/cashflow.service'
 import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import {
@@ -69,10 +69,22 @@ import type { BookingRow } from '@/modules/bookings/booking.types'
 export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
 
+/**
+ * Igual que `BookingActionResult` más la única señal que el alta manual puede
+ * dar y las otras acciones no: la seña se cobró con la caja del día ya cerrada,
+ * así que la plata entró como AJUSTE en vez de como ingreso del día.
+ *
+ * Es un tipo aparte y no un campo en `BookingActionResult` porque ese lo
+ * comparten seis acciones a las que la bandera no les significa nada.
+ */
+export type CreateBookingActionResult =
+  | { success: true; booking: BookingRow; depositAfterClose: boolean }
+  | { success: false; error: string }
+
 export type BookingChargeActionResult =
   { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
 
-export async function createBookingAction(data: unknown): Promise<BookingActionResult> {
+export async function createBookingAction(data: unknown): Promise<CreateBookingActionResult> {
   // Cruce #1: rol leído de DB — solo admin/manager operan reservas.
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
@@ -101,10 +113,21 @@ export async function createBookingAction(data: unknown): Promise<BookingActionR
   // antes del throw. Acá los services tiran antes de escribir, pero el patrón
   // uniforme evita que un refactor futuro herede la mina.
   let booking: BookingRow
+  // La seña puede haber entrado como ajuste porque la caja del día ya estaba
+  // cerrada (🔴 QA 2026-08-28 F-02). Se LEE la fila escrita, en la misma tx: si
+  // se predijera antes de crear, un cierre concurrente dejaría el aviso al
+  // revés. Solo se pregunta cuando hubo plata; sin seña la respuesta es no.
+  let depositAfterClose = false
   try {
-    booking = await withTenantContext(tenant.id, (tx) =>
-      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx),
-    )
+    ;({ booking, depositAfterClose } = await withTenantContext(tenant.id, async (tx) => {
+      const created = await createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx)
+      return {
+        booking: created,
+        depositAfterClose:
+          created.depositAmount > 0 &&
+          (await depositEnteredAsAdjustment(tenant.id, created.id, tx)),
+      }
+    }))
   } catch (err) {
     if (err instanceof SlotTakenError) {
       return { success: false, error: 'Este turno acaba de ser tomado.' }
@@ -141,7 +164,7 @@ export async function createBookingAction(data: unknown): Promise<BookingActionR
   // would otherwise still show the slot as free even after success.
   revalidatePath('/reservas')
   revalidatePath('/grilla')
-  return { success: true, booking }
+  return { success: true, booking, depositAfterClose }
 }
 
 const checkSlotAvailabilitySchema = z.object({

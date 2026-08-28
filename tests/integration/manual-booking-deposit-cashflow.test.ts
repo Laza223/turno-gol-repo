@@ -5,6 +5,7 @@ import { confirmManualDepositPayment } from '@/modules/payments/payment.service'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
 import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
+import { depositEnteredAsAdjustment } from '@/modules/cashflow/cashflow.service'
 import { openDay } from '@/modules/cashflow/cash-open.service'
 import { todayART } from '@/shared/time/art-date'
 import {
@@ -151,6 +152,12 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     // El literal EXACTO importa: es el marcador por el que getBookingCharges
     // excluye esta fila para no contar la seña dos veces.
     expect(flows[0]!.description).toBe(`Seña — turno ${booking.id}`)
+
+    // Control del aviso al encargado: con la caja ABIERTA no hay nada que
+    // avisar. Sin este caso, un lector que devolviera true siempre pasaría.
+    await expect(
+      withTenantContext(tenantId, (tx) => depositEnteredAsAdjustment(tenantId, booking.id, tx)),
+    ).resolves.toBe(false)
   })
 
   it('mercadopago: bookings.payment_method sigue NULL (contrato INV4) pero el cash_flow guarda el medio real', async () => {
@@ -390,6 +397,13 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     `
     expect(notifs).toHaveLength(1)
     expect(notifs[0]!.status).toBe('queued')
+
+    // La señal que `createBookingAction` le muestra al encargado en el toast.
+    // Se lee la fila escrita, no se predice: por eso el aviso no puede mentir
+    // aunque alguien cierre la caja en el medio.
+    await expect(
+      withTenantContext(tenantId, (tx) => depositEnteredAsAdjustment(tenantId, booking.id, tx)),
+    ).resolves.toBe(true)
   })
 
   it('el cierre del día cuadra: expected = fondo + seña, diferencia 0', async () => {

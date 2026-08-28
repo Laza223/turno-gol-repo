@@ -24,8 +24,8 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - `doc10` — Onboarding: wizard 4 pasos, Aha Moment = primera reserva online
 
 ### Capa Técnica
-- `doc11` — 12 ADRs (RLS, Magic Link, Resend, MercadoPago, pg-boss, monolito, AFIP out-of-scope, +18 declaración jurada). NOTA: ADR-002 (Magic Link) en migración — ver `docs/superpowers/specs/2026-06-16-auth-password-migration-design.md`.
-- `doc12` — Tenant isolation: 12 tablas RLS, 6 globales + 1 híbrida + system_admins, SET LOCAL, JWT, RLS dual para jugadores
+- `doc11` — 13 ADRs (RLS, Magic Link, Resend, MercadoPago, pg-boss, monolito, AFIP out-of-scope, +18 declaración jurada, ADR-013 auth de staff email+password). NOTA: ADR-002 (Magic Link) en migración — ver `docs/superpowers/specs/2026-06-16-auth-password-migration-design.md`.
+- `doc12` — Tenant isolation: 18 tablas aisladas con RLS, 6 globales + 3 híbridas + feature_flags + system_admins + analytics_events, SET LOCAL, JWT, RLS dual para jugadores
 - `doc13` — SQL completo: 19 tablas + system_admins, ENUMs, exclusion constraints, índices, RLS policies
 - `doc14` — Tech stack (doc desactualizado: el stack real migró a Next.js 16 / React 19 / Tailwind 4 / Zod 4 — ver "Stack confirmado" abajo)
 - `doc15` — API contracts: endpoints, payloads, auth, error codes
@@ -55,7 +55,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 - `pnpm test` — unit tests (SOLO `tests/unit/`)
 - `pnpm test:integration` — tests con DB real (`tests/integration/`; requiere Postgres local: `pnpm supabase:start`, puerto 54322)
 - `pnpm test:isolation` — tests de aislamiento RLS (`tests/integration/isolation.test.ts`), BLOQUEANTES en CI
-- `pnpm test:e2e` — Playwright (`tests/e2e/`, 6 projects: chromium, mobile-chrome, axe-audit, webkit, firefox, mobile-safari); levanta `pnpm dev` solo con `MP_MOCK_MODE=1` y `NEXT_PUBLIC_E2E=1`
+- `pnpm test:e2e` — Playwright (`tests/e2e/`, 8 projects: chromium, mobile-chrome, axe-audit, webkit, firefox, mobile-safari, visual, visual-mobile); levanta `pnpm dev` solo con `MP_MOCK_MODE=1` y `NEXT_PUBLIC_E2E=1`
 - `pnpm jobs:start` — workers pg-boss standalone (`src/shared/jobs/run-workers.ts`)
 - `pnpm supabase:start|stop|reset` — Postgres + Auth local (puerto 54322)
 - `pnpm db:studio` — Drizzle Studio
@@ -69,7 +69,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 
 ### Migraciones (importante)
 - `db:push` y `db:migrate` son alias de `drizzle-kit push:pg` y están DENEGADOS por `.claude/settings.json` — no usarlos
-- Las migraciones reales son SQL escritas a mano en `src/shared/db/migrations/0*.sql` (numeradas 001–070; incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/` (`pnpm db:sync-supabase` sincroniza)
+- Las migraciones reales son SQL escritas a mano en `src/shared/db/migrations/0*.sql` (numeradas 001–080; incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/` (`pnpm db:sync-supabase` sincroniza)
 - Una tabla tenant-aislada nueva arrastra un costo fijo: RLS ENABLE+FORCE con policies estilo 048 pero ya envueltas en el subselect de 052, filtro explícito por `tenant_id` en las queries, DELETE en `data-retention-cleanup.worker.ts` (hijos antes que padres; el test `data-retention-cleanup-worker-pool` cuenta los statements y va rojo si te la olvidás), y caso en `tests/integration/isolation.test.ts`
 - CI las aplica en orden vía psql; NUNCA modificar migraciones existentes — crear una nueva
 
@@ -77,7 +77,7 @@ La carpeta `docs/spec/` contiene 19 documentos (doc9 eliminado; lifecycle SaaS u
 
 Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive en el App Router.
 
-- `src/modules/*` — 25 slices de dominio (`bookings`, `payments`, `billing`, `auth`, `staff`, `abonados`, `cashflow`, `relationships`, `notifications`, `super-admin`, …), cada uno con `*.service.ts` / `*.schema.ts` (Zod) / `*.types.ts` / `*.errors.ts`. Acá vive la lógica.
+- `src/modules/*` — 23 slices de dominio (`bookings`, `payments`, `billing`, `auth`, `staff`, `abonados`, `cashflow`, `relationships`, `notifications`, `super-admin`, …), cada uno con `*.service.ts` / `*.schema.ts` (Zod) / `*.types.ts` / `*.errors.ts`. Acá vive la lógica.
 - `src/app/*` — capa fina de presentación/ruteo. Route groups: `(admin)` (dashboard staff, rutas en español: `grilla`, `caja`, `jugadores`…), `(player)`, `(public)` (portal + SEO), `(auth)`, `(business)`, `(super-admin)`. Server Actions co-locadas en `src/app/**/actions.ts`, exportan funciones con sufijo `Action`: guard → service del módulo. Route handlers notables: `api/webhooks/mercadopago`, `api/public/*`, `api/billing/*`, `api/mp/{oauth-start,callback}`.
 - `src/shared/` — infraestructura interna: `db/`, `jobs/`, `middleware/` (solo `observability.ts`), `time/`, `rate-limit/`, `observability/`, `security/`. `src/lib/` — adapters de terceros: `supabase/`, `mercadopago.ts`, `web-push.ts`, `crypto/`. `src/components/` y `src/hooks/` — UI.
 - `src/server/` — **composition root del runtime web** (B6): `middleware/{with-auth,with-player,with-role,with-tenant}.ts`, los wrappers de route handler. Importan dominio A PROPÓSITO — orquestarlo es su función, igual que `src/shared/jobs/` para el runtime de background. No es una capa más de la cadena `app → modules → shared`: está al lado de `app`. Por eso `@/shared` no puede importar `@/modules` (regla `turnogol/capas-shared`, en `error`) pero `@/server` sí.
@@ -94,12 +94,12 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - `middleware.ts` raíz (edge): Fetch-Metadata anti-CSRF + rate-limit + request-id en rutas públicas/de dinero.
 
 ### Background jobs
-- Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 14 workers registrados en `src/shared/jobs/workers/index.ts` (15 colas: expire-pending-booking suma una `-sweep`); colas y retry-config en `definitions.ts` / `queue-names.ts`. OJO: los crons registrados sin `SendOptions` corren con retryLimit=0 real — el "retry" es el próximo tick del cron, no pg-boss.
+- Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 17 workers registrados en `src/shared/jobs/workers/index.ts` (colas: expire-pending-booking suma una `-sweep`); colas y retry-config en `definitions.ts` / `queue-names.ts`. OJO: los crons registrados sin `SendOptions` corren con retryLimit=0 real — el "retry" es el próximo tick del cron, no pg-boss.
 - Webhook MP: `api/webhooks/mercadopago/route.ts` verifica firma → `boss.send(QUEUE_PROCESS_MP_WEBHOOK, …)`; con `MP_MOCK_ENABLED` (E2E) procesa inline.
 
 ### Tests y CI
-- `tests/unit/` (~200 archivos), `tests/integration/` (~90, DB real: aislamiento, carreras, idempotencia de webhooks), `tests/e2e/` (`critical-flows/`, `a11y/`, `mobile/`, `cross-browser/`).
-- CI (5 jobs): lint+types → unit → integration+isolation (BLOQUEANTE; postgres:15 en 54322, aplica `0*.sql` vía psql) → e2e (solo PRs a main) + `visual-regression` (regresión visual, solo PRs a main, `continue-on-error` a nivel job — corre en paralelo con integración/e2e porque solo depende de lint+unit). Deploy automático a Vercel tras CI verde en main. OJO: con `continue-on-error` GitHub pinta el job VERDE aunque los tests fallen adentro — el color del check de regresión visual no prueba nada, hay que leer el log (ver `docs/testing/VISUAL_REGRESSION.md`).
+- `tests/unit/` (~360 archivos), `tests/integration/` (~140, DB real: aislamiento, carreras, idempotencia de webhooks), `tests/e2e/` (~100 archivos: `critical-flows/`, `a11y/`, `mobile/`, `cross-browser/`).
+- CI (7 jobs): lint-and-types → unit-tests → stories-shards + stories → integration-and-isolation (BLOQUEANTE; postgres:15 en 54322, aplica `0*.sql` vía psql) → e2e-tests + `visual-regression`. Required status checks en branch protection: solo Lint & Types, Unit Tests, Integration & Isolation, Stories. Desde 2026-08-10, `e2e-tests` y `visual-regression` NO corren en PRs — corren solo en push a main o `workflow_dispatch` (no protegen ningún merge; siguen corriendo antes del deploy de Vercel en main). `visual-regression` ya NO tiene `continue-on-error` a nivel job (se sacó el 2026-08-10 junto con lo anterior — el color del check ya es confiable). Deploy automático a Vercel tras CI verde en main.
 
 ## Reglas críticas
 - TypeScript strict, nunca `any`
@@ -121,7 +121,7 @@ Patrón: **feature-modules + shared por capas**. La lógica de negocio NO vive e
 - Si falta info, preguntar antes de inventar
 
 ## Multi-tenancy
-- Tablas aisladas (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events, analytics_events
+- Tablas aisladas (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events, analytics_events, canteen_products, canteen_tabs, stock_movements, daily_cash_opens
 - **`analytics_events`** (migr. 072): destino durable de `track.*`. `tenant_id` NULLABLE — el tráfico público (búsqueda cross-tenant, magic link) no tiene complejo, y la policy de INSERT acepta NULL por eso; la de SELECT sigue estricta. Append-only (sin policy de UPDATE + REVOKE). **No guarda identificadores de persona** (`PII_KEYS` en `src/shared/observability/analytics.ts` filtra `playerId`/`staffUserId`/`endpoint`), lo que la mantiene fuera del régimen de datos personales. La escribe el pool BYPASSRLS vía `after()`, así no le suma latencia al request. `breadcrumbs.ts` es isomórfico y NO la importa: el sink se registra al revés, desde `instrumentation.ts` y `run-workers.ts`.
 - Tablas globales (sin tenant_id): tenants, players, staff_users, plans, price_versions, processed_webhooks
 - Tablas híbridas (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (solo el jugador, por `app.current_player_id`)

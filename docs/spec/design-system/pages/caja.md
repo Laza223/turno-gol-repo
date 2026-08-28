@@ -1,5 +1,11 @@
 # Caja (admin) — spec de vista
 
+> **Nota de alcance (2026-08-27):** este doc cubre la pestaña `/caja` (raíz) en detalle — su
+> contenido seguía vigente contra el código real, no estaba "desactualizado" como tal. Lo que
+> faltaba era que `/caja` es hoy 1 de 5 pestañas (rediseño "Caja y Cantina", 2026-07-22); las otras
+> 4 (`/caja/deudas`, `/caja/devoluciones`, `/caja/cantina`, `/caja/productos`) se agregaron como
+> resumen en el §2.5 nuevo de abajo, sin el mismo nivel de detalle que el resto de este doc.
+
 > Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de `/caja`.
 > Hermana de `pages/grilla.md`, `pages/dashboard.md` y `pages/horarios-precios.md` (2026-07-02):
 > mismos tokens, mismo semáforo financiero §2.5, mismo vocabulario §8.5, misma `PageHeader`/`StatCard`.
@@ -73,6 +79,25 @@ Anti-objetivo: NO es Reportes (sin tendencias mensuales ni gráficos) y NO es co
   día; su peso lo pone el ritual, no el botón). Con caja cerrada ambos desaparecen (guard
   existente intacto).
 
+## §2.5 Tab bar y pantallas hermanas (agregado 2026-08-27 — el resto de este doc solo cubría la pestaña raíz `/caja`)
+
+Desde el rediseño "Caja y Cantina" (2026-07-22, migrs. 048-051), `/caja` es una de **5 pestañas**
+(`CajaTabs`, `src/app/(admin)/caja/components/CajaTabs.tsx`, mismo patrón que `SettingsTabs`),
+todas bajo el mismo item de sidebar "Caja y Cantina". Este doc (§0-§9 de abajo) solo describe la
+primera; las otras 4 no tenían spec — resumen mínimo, no el detalle línea a línea de las demás
+secciones:
+
+| Ruta | Label del tab | Qué muestra |
+|---|---|---|
+| `/caja` | Caja del día | Lo que describe el resto de este doc (KPIs, movimientos, cierre) |
+| `/caja/deudas` | Plata en la calle | Turnos jugados sin cobrar + fiados de cantina abiertos + cuotas de torneo impagas, en una lista con "Cobrar" por fila. Tenant-wide (no depende del día seleccionado en `/caja`) — misma fuente (`getStreetMoney`) que alimenta el número del encabezado perpetuo de `/caja`. Ventana por defecto: últimos 12 meses (`?todas=1` trae todo, B11). |
+| `/caja/devoluciones` | Devoluciones | Señas que el complejo TODAVÍA debe devolver — vive separada de "Plata en la calle" a propósito (son opuestos: lo que le deben al complejo vs. lo que el complejo debe; mezclarlos rompería el invariante que compara el total por dos caminos). El reembolso automático por API de MP se eliminó (403 siempre — ver CLAUDE.md), esta pantalla es donde el admin marca que ya devolvió una seña a mano. |
+| `/caja/cantina` | Cantina | Venta por ticket multi-ítem (un toque por producto) + fiados (`canteen_tabs`). |
+| `/caja/productos` | Productos y stock | Catálogo de productos, ledger de stock (`stock_movements`, reposición/mermas/consumo interno), y un reporte de ventas con rango 7/30 días. |
+
+Las 5 comparten guard (`requireCajaContext`, en `../queries`) y renderizan `<CajaTabs active="...">`
+como segunda card bajo el `PageHeader` de cada una.
+
 ## §3 KPIs — StatCard, semáforo §2.5
 
 Tres `StatCard` (formato único §6.4). Orden desktop: **Ingresos · Egresos · Saldo** (orden
@@ -124,10 +149,16 @@ Solo se renderiza si hubo movimientos.
 - `ConfirmDialog` pasa de `variant="destructive"` a **`default`** (fix #5): cerrar el día no es
   destruir — el guard de inmutabilidad ya lo pone el type-to-confirm `CERRAR` (que se mantiene,
   contrato e2e `#confirm-phrase`).
-- El resumen del diálogo suma la línea **"En efectivo según los movimientos: $ X"** (neto de
-  `byMethod.cash`): es el número que el admin compara con el cajón antes de tipear lo contado.
-- Sin cambios de contrato: `#declared` opcional, diferencia ≠ 0 → warning amber "Diferencia de
-  $X. La nota es obligatoria." + `#close-note` obligatoria (e2e caja-crud #4 intacto).
+- **Actualizado (migr. 049, apertura de caja):** el diálogo pasó a 3 pasos numerados ("1. Esperado
+  — ya calculado" / "2. Contá e ingresá lo real" / "3. Confirmar"). El bloque "Esperado" suma, además
+  de Ingresos/Egresos/Saldo neto/"En efectivo según los movimientos" (`byMethod.cash`), **Fondo
+  inicial** (`daily_cash_opens.opening_cash`, si el día se abrió) y **Efectivo esperado**
+  (`openingCash + byMethod.cash`) — es contra ESTE número, no contra `byMethod.cash` a secas, que
+  compara `#declared`.
+- `#declared` opcional, diferencia ≠ 0 → warning amber **"Diferencia de $X con el efectivo
+  esperado: falta/sobra plata. La nota es obligatoria."** (texto actualizado; el test e2e ancla por
+  regex `/Diferencia/i`, no por el string exacto — contrato caja-crud #4 sigue intacto)
+  + `#close-note` obligatoria.
 
 ### CierreCard (el artefacto)
 
@@ -135,11 +166,24 @@ Al cerrar (`router.refresh()`), la vista abre con la **CierreCard**: card verde
 (`border-emerald-600/30 bg-emerald-600/5`, dark `bg-emerald-500/10`) primera bajo el header,
 `CheckCircle2` + título según resultado:
 
-| Caso | Título | Extra |
+**Actualizado (migr. 049):** `closeView()` (`caja-lib.ts`) bifurca por `expectedCash`. `NULL` (cierre
+legacy, pre-049) reproduce el comportamiento histórico exacto de la tabla original:
+
+| Caso (legacy, `expectedCash IS NULL`) | Título | Extra |
 |---|---|---|
 | Contó efectivo y cuadró (`diff === 0`, declaró) | "Caja cerrada — el efectivo cuadró" | — |
 | No declaró efectivo (`declaredCash === 0 && diff === balance`) | "Caja cerrada" | se ocultan las filas Efectivo/Diferencia (heurística: el server guarda 0 cuando no se declara — indistinguible de "declaró 0"; mostrar "dif. $ saldo" sería una alarma falsa) |
 | Diferencia anotada (`diff !== 0`) | "Caja cerrada — con diferencia anotada" | fila "Diferencia" amber + nota visible |
+
+Cierres NUEVOS (`expectedCash` no NULL — el día tuvo apertura de caja) usan mensajes distintos, y
+el `<dl>` suma las filas Fondo inicial/Efectivo esperado/Diferencia:
+
+| Caso (v2, `expectedCash` no NULL) | Título |
+|---|---|
+| `diff === 0 && declaredCash > 0` | "Caja cerrada — el efectivo cuadró" |
+| `declaredCash === 0` (sin arqueo) | "Caja cerrada — sin arqueo declarado" |
+| `diff > 0` (sobró plata) | "Caja cerrada — sobraron $X" |
+| `diff < 0` (faltó plata) | "Caja cerrada — faltaron $X" |
 
 Cuerpo: hora de cierre + `dl` Ingresos / Egresos / Saldo neto / Efectivo contado (+ diferencia)
 / Nota. Subtítulo: "El día quedó bloqueado: los movimientos ya no se pueden tocar." La card ES
@@ -197,11 +241,11 @@ desplegar (Hick: son 3/≤3/4 opciones — caben todas), touch 44px (h-11).
 
 ## §10 Deuda declarada / fuera de scope
 
-1. **REQUIERE INPUT (negocio)**: `daily_cash_closes.diff_amount` compara efectivo contado contra
-   el **saldo total** (todos los métodos), no contra el neto en efectivo. Para un día con MP o
-   transferencias, la "diferencia" miente. UI mitigada (línea "En efectivo según los
-   movimientos" en el diálogo) sin tocar la semántica del server. Decidir: ¿el arqueo debería
-   comparar contra `byMethod.cash`? (cambio de service + significado histórico de la columna).
+1. **RESUELTO (migr. 049, `daily_cash_opens` — apertura de caja):** este punto quedó saldado.
+   `diff_amount` de un cierre nuevo ya compara `declaredCash` contra `expectedCash` (=
+   `openingCash + byMethod.cash`, `daily-close.service.ts`), no contra el saldo total mezclando
+   métodos. Los cierres anteriores a la migración (`expected_cash IS NULL`) mantienen la semántica
+   vieja (`balance − declared`) — `closeView()` los bifurca, nunca se reinterpretan (ver §5).
 2. `EmptyState` y `ConfirmDialog` siguen con clases light hardcodeadas (P0.1 §13 — se tokenizan
    en su propio barrido de primitives, no acá).
 3. El nombre de quién cerró (`closedBy`) no se muestra (solo hora): requiere join a

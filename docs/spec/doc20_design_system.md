@@ -77,7 +77,7 @@ El design system de TurnoGol se persiste en `design-system/MASTER.md` y define:
 | **Font Pairing** | Tipografías con imports de Google Fonts |
 | **UX Guidelines** | Best practices, anti-patrones, accesibilidad |
 | **Chart Types** | Para dashboards y reportes |
-| **Iconos** | Librería de iconos seleccionada (Lucide React, ver MASTER §9) |
+| **Iconos** | Librería de iconos seleccionada (Lucide React, ver MASTER §2.6) |
 
 ### 2.2 Cómo se genera
 
@@ -165,7 +165,7 @@ Cuando se necesita profundizar en un aspecto específico, agregar secciones al M
 2. Verificar que los cambios respetan el design system
 3. Si el cambio requiere una desviación → documentar en el override de la página
 4. Nunca hardcodear colores/fuentes/espaciado "a dedo"
-   → Usar los tokens definidos en MASTER.md o tailwind.config.ts
+   → Usar los tokens definidos en MASTER.md o `globals.css` (Tailwind v4 no usa `tailwind.config.ts`)
 ```
 
 ### 4.3 Al hacer code review
@@ -203,14 +203,14 @@ Definidos en la documentación funcional (docs 4, 7, 8) y mapeados a tokens:
 | Semántica | Uso en TurnoGol | Token Tailwind |
 |---|---|---|
 | **Success** (verde) | Slot libre, pago aprobado, tenant activo | `text-success`, `bg-success` |
-| **Danger** (rojo) | Slot ocupado, error, tenant suspended, cobro fallido | `text-danger`, `bg-danger` |
+| **Danger** (rojo) | Slot ocupado, error, tenant suspended, cobro fallido | `text-destructive`, `bg-destructive` |
 | **Warning** (amarillo/naranja) | Trial, past_due, pago pendiente | `text-warning`, `bg-warning` |
 | **Info** (azul) | Turno fijo de abonado, información neutral | `text-info`, `bg-info` |
 | **Muted** (gris) | Slot fuera de horario, cancha inactiva, deshabilitado | `text-muted`, `bg-muted` |
 
 > [!NOTE]
-> Los **colores semánticos** (success, danger, warning, info) se definen dentro del
-> tailwind.config.ts con valores que armonicen con la paleta del design system.
+> Los **colores semánticos** (success, danger/destructive, warning, info) se definen dentro de
+> `globals.css` (Tailwind v4 no usa `tailwind.config.ts`) con valores que armonicen con la paleta del design system.
 > No son colores "genéricos" — se seleccionan para que sean consistentes con la paleta
 > general definida en el design system.
 

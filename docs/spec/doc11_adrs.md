@@ -119,9 +119,20 @@ CREATE POLICY tenant_insert ON bookings
 - `plans` — los planes de suscripción son globales
 - `tenants` — la propia tabla
 - `price_versions` — precios globales por plan
+- `staff_users` — cuenta global de staff (migr. 003), no listada en la versión original de esta ADR
+- `processed_webhooks` — idempotencia de webhooks de MP (migr. 003, ver ADR-004), no listada en la versión original de esta ADR
 
 **Tablas con `tenant_id` (aisladas, 13 tablas):**
 - `courts`, `bookings`, `abonados`, `payments`, `cash_flows`, `daily_cash_closes`, `tenant_staff_members`, `notifications`, `audit_logs`, `tenant_subscriptions`, `tenant_player_bans`, `push_subscriptions`
+
+> [!NOTE]
+> **Lista y conteo desactualizados (verificado contra migraciones, 2026-08-27).** El schema creció
+> mucho después de esta ADR (2026-04-17): además de la lista de arriba, hoy también son tablas
+> tenant-aisladas con RLS `daily_cash_opens` (migr. 049), `canteen_products`/`canteen_tabs`/`stock_movements`
+> (migr. 048), `tournaments`/`tournament_teams`/`tournament_team_players`/`tournament_stages`/`tournament_matches`/`tournament_match_events`
+> (migr. 062–065) y `analytics_events` con `tenant_id` NULLABLE (migr. 072). CLAUDE.md mantiene la lista
+> vigente en "Multi-tenancy". No se reescribe la lista completa acá para no perder el registro histórico
+> de qué tablas existían al momento de esta decisión.
 
 ### Consecuencias
 
@@ -233,6 +244,14 @@ Refresh Token:
 ```
 
 **Supabase Auth**: Implementa ambos flows out-of-the-box (magic link + Google OAuth). Los JWT de Supabase se complementan o se usan directamente como nuestros access tokens. Las sesiones son manejadas por Supabase con refresh token rotation incluida.
+
+> [!NOTE]
+> **El pseudocódigo de "Magic link" de arriba no es lo que corre.** El código real llama directo a
+> `supabase.auth.signInWithOtp()` (`src/modules/auth/auth.service.ts`) — no hay generación propia de
+> token de 256 bits, hash SHA-256 en una tabla propia, ni expiración de 15 minutos manejados por
+> TurnoGol. Supabase Auth gestiona el token (flujo PKCE con `token_hash`) internamente, tal como dice
+> el párrafo anterior. JWT: `jwt_expiry = 3600` y `enable_refresh_token_rotation = true` en
+> `supabase/config.toml` sí coinciden con lo documentado (1h / rotación).
 
 ### Consecuencias
 
@@ -476,6 +495,12 @@ Razones:
 6. Si falla: MP reintenta 3 veces en 7 días + envía `payment.rejected`
 ```
 
+> [!NOTE]
+> **Los nombres de evento de arriba no son los reales.** El `type` que MP manda de verdad para el
+> circuito de Suscripciones es `subscription_preapproval` (cambio de estado del preapproval) y
+> `subscription_authorized_payment` (cobro recurrente hijo del preapproval) — no `subscription.created`,
+> `payment.approved` ni `payment.rejected` (ver `src/app/api/webhooks/mercadopago/route.ts`).
+
 **Idempotencia de webhooks:**
 ```sql
 -- Antes de procesar cualquier webhook
@@ -488,11 +513,15 @@ RETURNING id;
 -- Si devuelve un id → procesar normalmente
 ```
 
-**Graceful degradation (MP caído):**
-Cuando MP está caído (timeout > 8 segundos o respuesta 5xx):
-- Las reservas se crean como `confirmed` sin seña (`deposit_status: 'not_required'`).
-- Banner visible para el admin: "⚠️ MercadoPago no disponible. Las reservas se crean sin seña."
-- Cuando MP vuelve: el admin puede cobrar la seña manualmente desde el panel o presencialmente.
+**Graceful degradation (MP caído) — reescrito 2026-08-27, ver decisión más abajo.**
+Este bloque describía la decisión original (auto-confirmar sin seña + banner de admin). Se reemplazó por lo que el sistema hace hoy en producción, decisión deliberada de BK-03 (circuit breaker, P0, memoria `mp-circuit-breaker-bk03` CERRADO):
+
+- Cada llamada saliente a MP (crear Preference, consultar estado, etc.) pasa por un circuit breaker en memoria, con clave por cuenta lógica (`tenant:<id>` para señas, `saas-master` para el cobro SaaS) — la caída de un complejo no afecta al resto.
+- Si MP acumula fallas consecutivas, el circuito se abre y las siguientes llamadas fallan rápido con `CircuitOpenError` en vez de agotar el timeout de 8s del SDK.
+- `CircuitOpenError` es **intencionalmente transitorio**: nunca se convierte en un "payment failed" terminal. La reserva NO se auto-confirma sin seña y NO hay banner de admin — el jugador cae en el mismo camino que un pago que no se completó a tiempo: expira por el sweep normal (~6 min) o puede reintentar el pago (`retryDepositPaymentAction`). Los workers ya tratan cualquier excepción como reintentable (el webhook handler revierte la transacción y pg-boss reintenta).
+- Estado del circuito en memoria por proceso (`Map`), a propósito para v1 — ver `mp-circuit-breaker.ts`.
+
+Fuente: `src/modules/payments/mp-breaker.gateway.ts`, `src/modules/payments/mp-circuit-breaker.ts`.
 
 ### Consecuencias
 
@@ -592,6 +621,16 @@ const QUEUES = {
   'trial-notification':  { retryLimit: 2, retryDelay: 300 },
 };
 ```
+
+> [!NOTE]
+> **Esta tabla de colas es la del diseño original y no la lista actual.** Hoy son 17 workers /
+> colas registradas en `src/shared/jobs/workers/index.ts` (nombres reales en `src/shared/jobs/queue-names.ts`
+> y `definitions.ts`), con nombres distintos a varios de los de arriba (`generate-abonado-slots` en vez de
+> pertenecer a esta lista corta, más `expire-pending-booking(-sweep)`, `refresh-mp-tokens`,
+> `reconcile-pending-payments`, `retry-pending-refunds`, `health-ping`, `reconcile-accounting-drift`,
+> `daily-summary`, `onboarding-abandonment-sweep`, `reconcile-subscriptions`, `push-send`; no existe una
+> cola `trial-notification`). El principio de la ADR (pg-boss sobre Postgres, transaccional) sigue vigente;
+> el detalle de colas no.
 
 **Ejemplo de encolado transaccional:**
 ```typescript
@@ -729,7 +768,7 @@ if (!realtimeConnected) {
 | Booking created | `bookings` | Slot ocupado en la grilla (se pone rojo) |
 | Booking canceled | `bookings` | Slot liberado en la grilla (se pone verde) |
 | Booking status changed | `bookings` | Actualiza color/estado del slot |
-| Payment received | `payments` | Badge de "nueva reserva pagada" |
+| ~~Payment received~~ | ~~`payments`~~ | **Desactualizado**: `payments` nunca se agregó a la publication de Realtime — solo `public.bookings` (migración `013_realtime_publication.sql`, `ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings`). No hay evento en vivo sobre `payments`. |
 
 ### Consecuencias
 
@@ -858,6 +897,15 @@ src/
 ```
 
 **Regla de módulos**: Un módulo puede importar de `shared/` y de sus propios archivos. Si un módulo necesita algo de otro módulo, lo accede a través de la interfaz pública del módulo (el `.service.ts`), nunca importando archivos internos directamente.
+
+> [!NOTE]
+> **El árbol de arriba es el boceto original, no la estructura actual.** Hoy son 23 slices en
+> `src/modules/*` (no ~10; CLAUDE.md dice "25" pero el conteo directo del directorio da 23 — también
+> desactualizado), no hay `.routes.ts` (Next.js App Router: Server Actions en
+> `src/app/**/actions.ts` + Route Handlers), y existe una capa adicional `src/server/` (composition
+> root del runtime web) que no estaba prevista acá. El principio — un módulo expone su lógica vía
+> `.service.ts`/`.schema.ts`/`.types.ts` — sigue vigente. Ver CLAUDE.md, sección "Arquitectura del
+> código", como fuente de verdad de la estructura actual.
 
 ### Consecuencias
 
@@ -1506,7 +1554,7 @@ Razones:
 **Positivas:**
 - Mayor seguridad y auditoría en el panel de administración.
 - Mayor confiabilidad al no depender de la latencia de entrega de correos de Resend para el trabajo diario.
-- Facilidad para dar de baja a miembros de staff: la revocación es **efectiva en el próximo request** (no hay blacklist de tokens). Como el rol y el status del staff se re-leen de `tenant_staff_members` en cada request (el claim `role` del JWT nunca se confía), un staff dado de baja o inactivado queda rechazado en su siguiente request; el JWT vive 1h pero no habilita ninguna acción tras la baja. Esta re-lectura por request es el mecanismo de revocación (no se requiere blacklist de tokens). (Decisión de auditoría 2026-07-21: se suaviza "invalidación inmediata de tokens de sesión"; implementación: extender el re-read para rechazar staff inactivo si aún no lo hace — pendiente.)
+- Facilidad para dar de baja a miembros de staff: la revocación es **efectiva en el próximo request** (no hay blacklist de tokens). Como el rol y el status del staff se re-leen de `tenant_staff_members` en cada request (el claim `role` del JWT nunca se confía), un staff dado de baja o inactivado queda rechazado en su siguiente request; el JWT vive 1h pero no habilita ninguna acción tras la baja. Esta re-lectura por request es el mecanismo de revocación (no se requiere blacklist de tokens). (Decisión de auditoría 2026-07-21: se suaviza "invalidación inmediata de tokens de sesión". **Actualización 2026-08-27**: el "pendiente" ya está resuelto — `getStaffRole` filtra `tenantStaffMembers.isActive = true` [`src/modules/staff/staff.service.ts:85`] y devuelve `null` para staff inactivo; `requireOperatorStaffAction`/`requireAdminStaffAction` rechazan con `role` `null` [`src/modules/staff/guards.ts:80-81`].)
 
 **Negativas:**
 - Requiere implementar un flujo de restablecimiento de contraseña para el staff (envío de email con token de reset y pantalla de nueva contraseña). Esto es manejado nativamente por Supabase Auth.

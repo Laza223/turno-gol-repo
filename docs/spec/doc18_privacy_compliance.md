@@ -328,6 +328,15 @@ VALUES (NULL, 'system', 'player.data_deleted', 'player', $player_id,
 COMMIT;
 ```
 
+> [!NOTE]
+> **Pseudocódigo. La implementación real** (`anonymizePlayer`, `src/modules/players/player.anonymization.ts`,
+> invocada desde el flujo self-service `/eliminar-cuenta`) difiere en el detalle: el email queda
+> `anon-<player_id>@anon.local` (no un hash SHA-256 del email original), `ban_reason`/`ban_until`
+> se limpian a `NULL` (no se setea `'LEY_25326_DATA_DELETION'`), `notes_player` de `bookings` no
+> se toca, y además borra `player_tenant_relationships` de todos los tenants (no solo bans). El
+> resultado — jugador no identificable, historial financiero preservado sin `player_id` — es el
+> mismo.
+
 ### 5.4 Derecho de Oposición
 
 **Qué es**: El titular puede oponerse al tratamiento de sus datos para fines de marketing.
@@ -416,9 +425,19 @@ SOLUCIÓN:
 
 ### 7.2 Job de limpieza automatizada
 
+> [!WARNING]
+> **Gap pendiente de implementar (auditado 2026-08-27), no doc desactualizado.** El worker real
+> (`src/shared/jobs/workers/data-retention-cleanup.worker.ts`) purga `audit_logs`, `notifications` y
+> `analytics_events` — pero NO tiene el bloque de abajo: no hay anonimización automática de jugadores
+> inactivos >12 meses, ni el email de reactivación previo, ni la purga de `player_id`/datos personales del
+> historial de reservas. Es una obligación de la Ley 25.326 (retención razonable + derecho al olvido), no una
+> promesa de producto — hasta que se implemente, la fila "Datos del jugador inactivo" / "Historial de reservas"
+> de la tabla de §7.1 describe el diseño, no lo que corre hoy.
+
 ```typescript
 // src/shared/jobs/workers/data-retention-cleanup.worker.ts
-// Cron: domingos 04:00 ART (Doc 14 §8)
+// Cron real: domingos 07:00 ART = '0 10 * * 0' UTC (registerDataRetentionCleanupWorker,
+// verificado 2026-08-27; Doc 14 §8 decía 04:00 ART)
 
 async function dataRetentionCleanup() {
   // 1. Anonimizar jugadores inactivos > 12 meses sin reservas
@@ -656,13 +675,13 @@ Operativo:
 │    HTTPS obligatorio                                           │
 │    RLS con 6 capas (Doc 12)                                   │
 │    Cifrado at rest (Supabase AES-256)                         │
-│    Audit logs INSERT-only, 12 meses                           │
+│    Audit logs INSERT-only, 24 meses                           │
 │                                                                │
 │  RETENCIÓN:                                                    │
 │    Jugador inactivo: 12 meses → anonimizar                    │
 │    Tenant churned: 90 días → eliminar                         │
 │    Datos financieros: 5 años (obligación contable)            │
-│    Logs: 30 días (sistema), 12 meses (auditoría)             │
+│    Logs: 30 días (sistema), 24 meses (auditoría)             │
 │                                                                │
 │  REGISTRO: AAIP (obligatorio antes de operar comercialmente)  │
 │  DOCUMENTOS: Política de Privacidad, TyC, DPA, Cookie Policy │

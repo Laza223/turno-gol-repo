@@ -4,6 +4,29 @@ Fotografía tomada el **2026-07-31**, antes de mover el DNS a Cloudflare. Existe
 para una sola cosa: poder verificar, después de la mudanza, que **no se perdió
 ningún registro**.
 
+> **Verificado 2026-08-27:** la migración a Cloudflare ya ocurrió — los
+> nameservers de `turnogol.app` son `olivia.ns.cloudflare.com` /
+> `keenan.ns.cloudflare.com`, y los cinco registros de la tabla de abajo
+> (A, CNAME, DKIM, SPF, MX) siguen respondiendo iguales contra `8.8.8.8`: no se
+> perdió ninguno.
+>
+> **§"Orden seguro" paso 6/7 (dominio personalizado `media.turnogol.app` en
+> R2): SÍ está configurado — corregido 2026-08-27, la auditoría de docs de hoy
+> lo había marcado como pendiente por un falso negativo de DNS.**
+> `nslookup -type=CNAME media.turnogol.app` no devuelve nada porque Cloudflare
+> aplana (flattening) el CNAME de un registro proxeado (nube naranja) — no expone
+> el CNAME real a una consulta que pide ese tipo específico. Verificado en vivo
+> con el tipo correcto y con HTTP:
+> `nslookup -type=A media.turnogol.app 8.8.8.8` → `172.67.141.253` / `104.21.87.62`
+> (IPs de borde de Cloudflare) y `curl -I https://media.turnogol.app/` → `404
+> Not Found` con `Server: cloudflare` — el 404 es el de R2 devolviendo "no existe
+> el objeto", no un error de DNS ni de Cloudflare sin backend (hoy no hay fotos
+> subidas, así que un 404 es lo esperado). `R2_PUBLIC_BASE_URL` sí corre sobre
+> dominio propio. Lección para el próximo chequeo de DNS de un registro
+> proxeado por Cloudflare: usar `-type=A`/`-type=AAAA` o `curl`, nunca
+> `-type=CNAME` a secas — dio falso negativo acá y en la propia sugerencia de
+> comando de este doc (línea ~83, ver abajo).
+
 ## Dónde está hoy
 
 | | |
@@ -72,6 +95,10 @@ nslookup -type=TXT send.turnogol.app 8.8.8.8
 nslookup -type=MX  send.turnogol.app 8.8.8.8
 nslookup -type=A   turnogol.app 8.8.8.8
 nslookup -type=CNAME www.turnogol.app 8.8.8.8
+# Para media.turnogol.app (proxeado, nube naranja): -type=CNAME da falso negativo
+# por CNAME flattening de Cloudflare. Usar -type=A o curl -I en su lugar:
+nslookup -type=A media.turnogol.app 8.8.8.8
+curl -I https://media.turnogol.app/
 ```
 
 Los valores tienen que coincidir con la tabla. Y el chequeo que de verdad

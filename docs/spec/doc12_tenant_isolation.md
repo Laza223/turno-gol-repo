@@ -47,8 +47,14 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 10 | `tenant_player_bans` | TenantPlayerBan | Bans de jugadores por complejo |
 | 11 | `daily_cash_closes` | DailyCashClose | Cierre de caja diario del complejo (INMUTABLE post-cierre) |
 | 12 | `push_subscriptions` | PushSubscription | Suscripciones Web Push del staff (aviso de reserva online) |
+| 13 | `tournaments` | Tournament | Torneos del complejo (módulo Torneos, migr. 062) |
+| 14 | `tournament_teams` | TournamentTeam | Equipos inscriptos en un torneo del complejo |
+| 15 | `tournament_team_players` | TournamentTeamPlayer | Plantel de un equipo del complejo |
+| 16 | `tournament_stages` | TournamentStage | Fases/zonas del fixture (migr. 064) |
+| 17 | `tournament_matches` | TournamentMatch | Partidos del fixture (migr. 064) |
+| 18 | `tournament_match_events` | TournamentMatchEvent | Acta de partido: goles/tarjetas, append-only (migr. 065, sin policy de UPDATE) |
 
-**Total: 12 tablas aisladas con RLS.**
+**Total: 18 tablas aisladas con RLS** (las 12 originales + las 6 del módulo Torneos, nacido detrás del feature flag `tournaments` — ver CLAUDE.md).
 
 ### Tablas SIN `tenant_id` — Datos globales (cross-tenant o del sistema)
 
@@ -63,10 +69,11 @@ El contexto de tenant se setea al inicio de cada request autenticado.
 | 7 | `player_tenant_relationships` | PlayerTenantRelationship | Relación jugador↔complejo. `tenant_id` + RLS dual (staff por tenant, jugador por player_id). |
 | 8 | `reviews` | Review | Reseñas post-partido. `tenant_id` + RLS híbrida: lectura **pública** + INSERT del jugador dueño del booking. |
 | 9 | `player_favorites` | PlayerFavorite | Favoritos del jugador. `tenant_id` + RLS por jugador (`app.current_player_id`). Sin lectura pública. |
-| 10 | `feature_flags` | FeatureFlag | Toggle operacional. Fila `tenant_id` NULL = default global; seteado = override por complejo. Acceso vía service role. |
+| 10 | `feature_flags` | FeatureFlag | Toggle operacional. Fila `tenant_id` NULL = default global; seteado = override por complejo. SELECT vía RLS normal (`turnogol_app`: propio tenant o fila global); sin policy de escritura — los flags se mutan solo por migración/seed o el rol elevado `turnogol_worker` (ver §3.4). |
 | 11 | `system_admins` | SystemAdmin | Equipo interno de TurnoGol. RLS basada en self-id (`app.current_system_admin_id`). Acceso solo vía panel de super-admin; login por email+password (igual que staff, ADR-013) + allowlist `SYSTEM_ADMIN_EMAILS` + fila `active` (MFA TOTP deferido, IP whitelist descartada en v1 — ver §4.4). |
+| 12 | `analytics_events` | AnalyticsEvent | Destino durable de `track.*` (migr. 072). `tenant_id` NULLABLE: hay tráfico legítimamente sin complejo (búsqueda pública cross-tenant, login antes de resolver el tenant). SELECT/DELETE exigen `tenant_id` propio (las filas NULL no las lee ningún tenant); INSERT acepta el propio tenant_id **o** NULL. Append-only: sin policy de UPDATE + `REVOKE UPDATE`. No guarda identificadores de persona (`PII_KEYS` filtra `playerId`/`staffUserId`), por eso no entra al régimen ARCO de doc18. |
 
-**Total: 6 tablas globales + 3 híbridas (RLS por jugador: `player_tenant_relationships`, `reviews`, `player_favorites`) + 1 operacional (`feature_flags`) + 1 sistema (`system_admins`).**
+**Total: 6 tablas globales + 3 híbridas (RLS por jugador: `player_tenant_relationships`, `reviews`, `player_favorites`) + 1 operacional (`feature_flags`) + 1 sistema (`system_admins`) + 1 con `tenant_id` nullable (`analytics_events`).**
 
 > [!NOTE]
 > † Las **híbridas** tienen `tenant_id` y RLS por jugador. `player_tenant_relationships`: dual staff (por tenant) + jugador (por player_id). `reviews`: lectura pública + INSERT del jugador dueño de un booking `completed`. `player_favorites`: solo el jugador (`app.current_player_id`).
@@ -145,11 +152,19 @@ CREATE INDEX idx_audit_logs_tenant_created ON audit_logs(tenant_id, created_at);
 ```sql
 -- ================================================
 -- PATRÓN: Activar RLS y crear policies para cada tabla aislada
--- Se repite para las 12 tablas aisladas (las híbridas agregan policies de jugador)
+-- Se repite para las 18 tablas aisladas (las híbridas agregan policies de jugador)
 -- ================================================
 
 -- 1. Activar RLS (la tabla rechaza acceso por defecto hasta que exista un policy)
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+
+-- 1b. FORCE: sin esto, el DUEÑO de la tabla bypassa las policies por default.
+-- Aplicado en las 12 tablas aisladas originales + player_tenant_relationships
+-- por la migración 021, y extendido al resto de las tablas RLS por la 036.
+-- Superusuarios y roles BYPASSRLS (turnogol_worker, ver §3.4) lo siguen
+-- ignorando — Postgres no permite forzar eso — por lo que sigue siendo
+-- obligatorio que la app conecte con un rol NO superusuario.
+ALTER TABLE bookings FORCE ROW LEVEL SECURITY;
 
 -- 2. Policy de lectura: solo ve filas de su tenant
 CREATE POLICY tenant_isolation_select ON bookings
@@ -193,10 +208,25 @@ ALTER ROLE turnogol_app SET app.current_tenant_id = '';
 ```
 
 > [!WARNING]
-> **El usuario de base de datos NUNCA debe ser superuser ni tener `BYPASSRLS`.**
+> **El usuario de base de datos de la APP NUNCA debe ser superuser ni tener `BYPASSRLS`.**
 > Un superuser bypassa todos los policies de RLS automáticamente. Si la app se conecta
 > como superuser, el RLS no existe. Esto es la causa #1 de "RLS que no funciona"
 > en producción.
+
+**Segundo rol, exclusivo de background jobs (migr. 038): `turnogol_worker`.**
+
+```sql
+-- Rol para los workers de pg-boss (Railway) — NUNCA se usa para requests HTTP.
+CREATE ROLE turnogol_worker NOLOGIN BYPASSRLS;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO turnogol_worker;
+```
+
+A diferencia de `turnogol_app`, `turnogol_worker` SÍ tiene `BYPASSRLS` — a propósito: los
+crons de cross-tenant (dunning, expiración de trials, retention, reconciliación,
+métricas de super-admin — ver `getWorkerDb()` en `src/shared/db/client.ts`) necesitan
+ver filas de todos los tenants sin pasar por RLS. No contradice el WARNING de arriba:
+ese rol no se expone nunca a un request HTTP de usuario, solo a procesos internos
+del sistema con su propio pool de conexión (`WORKER_DATABASE_URL`).
 
 ### 3.5 Integración con Supabase
 
@@ -302,36 +332,49 @@ SET app.current_tenant_id = 'uuid-del-tenant';
 
 ### 4.3 El orden del middleware stack
 
+> [!NOTE]
+> **Corrección (drift 2026-08-27).** No hay un único pipeline lineal aplicado a TODO
+> request — hay dos capas separadas. `middleware.ts` raíz (Edge) corre Fetch-Metadata
+> anti-CSRF + rate-limit + request-id, pero SOLO en el matcher explícito
+> (`/api/public/*`, `/api/auth/*`, `/verify`, `/api/billing/*`, `/api/bookings/*`,
+> `/api/player/bookings/*`) — no en las páginas/Server Actions del dashboard admin.
+> Ahí, `withTenant()` (`src/server/middleware/with-tenant.ts`) hace todo el trabajo,
+> y en OTRO orden que el que este documento asumía: auth → **rol re-leído de
+> `tenant_staff_members`** (nunca el claim del JWT) → estado del tenant
+> (Subscription Guard) → rate-limit opcional (`options.rateLimit`, no todas las
+> rutas lo piden) → recién ahí `withTenantContext()` (SET LOCAL), envolviendo el
+> handler. Tampoco existen "Feature Gate" ni "Audit Logger" como pasos de
+> middleware universales: los feature flags se chequean ad hoc por página/Server
+> Action (`src/shared/feature-flags.ts`) y `audit_logs` se escribe ad hoc dentro
+> de cada service (~24 call sites), no como un paso final automático.
+
 ```
-Request HTTP entrante
+Request HTTP a una ruta de staff (withTenant)
       │
       ▼
-  1. Rate Limiter        (protección contra abuso)
+  1. Auth               (extractAuthUser: verifica JWT, extrae user)
       │
       ▼
-  2. Auth Middleware      (verifica JWT, extrae user)
+  2. Role Check          (re-lee el rol desde tenant_staff_members — NUNCA el JWT)
       │
       ▼
-  3. Tenant Context       (setea app.current_tenant_id con SET LOCAL)
+  3. Subscription Guard  (SELECT status FROM tenants: bloqueado/solo-lectura?)
       │
       ▼
-  4. Subscription Guard   (verifica que el tenant no esté suspended/churned)
+  4. Rate Limiter        (opcional, solo si la ruta pasa options.rateLimit)
       │
       ▼
-  5. Feature Gate         (verifica que el plan permite la acción)
+  5. Tenant Context       (withTenantContext: SET LOCAL app.current_tenant_id, envuelve el handler)
       │
       ▼
-  6. Route Handler        (lógica de negocio — todos los queries ya están filtrados por RLS)
-      │
-      ▼
-  7. Audit Logger         (registra la acción en audit_logs con tenant_id)
+  6. Route Handler        (lógica de negocio — los queries ya están filtrados por RLS)
 ```
 
 **Invariantes**:
-- Para requests de **staff**: `app.current_tenant_id` está seteado. Si el middleware 3 falla, el request se rechaza con 403.
-- Para requests de **jugador**: `app.current_player_id` está seteado. No se setea `app.current_tenant_id`. Steps 4 (Subscription Guard) y 5 (Feature Gate) se saltean.
-- Para requests de **system_admin** (panel `/internal`): `app.current_system_admin_id` está seteado. Ver §4.4 abajo.
-- **Nunca más de uno**: un request es de staff, jugador O system_admin. Nunca combinados.
+- Para requests de **staff**: `app.current_tenant_id` está seteado recién en el paso 5, DESPUÉS de que el rol y el estado del tenant ya se validaron con una lectura directa (sin RLS de tenant, porque `tenants` es global). Si algún paso previo falla, el request se rechaza con 403 antes de llegar a SET LOCAL.
+- Para requests de **jugador**: `app.current_player_id` está seteado. No se setea `app.current_tenant_id`. No hay Subscription Guard (el jugador no tiene suscripción SaaS).
+- Para requests de **system_admin** (panel `/super-admin`): `app.current_system_admin_id` está seteado. Ver §4.4 abajo.
+- **Nunca más de uno**: un request es de staff, jugador O system_admin. Nunca combinados (excepción formalizada en §4.5).
 
 ### 4.4 Middleware del panel interno (`/internal/*`)
 
@@ -353,7 +396,7 @@ Request HTTP al panel de super-admin
   3. System Admin Context  (setea app.current_system_admin_id con SET LOCAL)
       │
       ▼
-  4. Route Handler         (acceso cross-tenant via service role para dashboard interno)
+  4. Route Handler         (acceso cross-tenant via getWorkerDb() para dashboard interno)
 ```
 
 > [!NOTE]
@@ -370,10 +413,12 @@ Request HTTP al panel de super-admin
 
 **Diferencias clave vs staff y jugador:**
 - El paso de System Admin Context setea `app.current_system_admin_id`, NO `app.current_tenant_id` ni `app.current_player_id`.
-- El service role se usa para acceder cross-tenant (ver métricas globales de la plataforma).
 - Los steps de Subscription Guard y Feature Gate no aplican (el sistema no tiene suscripción SaaS).
 - La variable `app.current_system_admin_id` protege la tabla `system_admins` (un admin solo lee su propio registro).
-- Las queries del panel interno que acceden a datos de tenants usan el service role de Supabase (bypasea RLS), NO `app.current_tenant_id`.
+- **Corrección (drift 2026-08-27): NO es "el service role de Supabase".** TurnoGol no usa PostgREST/service_role de
+  Supabase para las queries de negocio — usa Drizzle contra Postgres directo. El acceso cross-tenant real es
+  `getWorkerDb()` (`src/shared/db/client.ts`), un pool sobre el rol de Postgres `turnogol_worker` con `BYPASSRLS`
+  (migr. 038, ver §3.4). `src/modules/super-admin/dashboard.service.ts` y `tenants.service.ts` lo usan así.
 
 ### 4.5 Modo jugador-en-complejo (helper de primera clase)
 
@@ -404,22 +449,19 @@ await withPlayerInTenantContext(playerId, tenantId, async (tx) => {
   "sub": "staff-user-uuid",
   "iat": 1713390000,
   "exp": 1713393600,
-  "type": "staff",
-  "tenant_id": "tenant-uuid",
-  "role": "admin",
   "email": "marcelo@complejo.com",
   "app_metadata": {
     "tenant_id": "tenant-uuid",
     "role": "admin",
-    "tenant_name": "Complejo San Martín"
+    "staff_user_id": "staff-user-uuid"
   }
 }
 ```
 
-**Campos clave:**
-- `tenant_id` en el payload raíz Y en `app_metadata` (Supabase usa `app_metadata` para sus policies).
-- `role`: `admin` | `manager` (Modelo ATC, 2 roles). El gating de acciones sensibles es por **rol** en la capa de app (`requireAdminStaff` / `requireOperatorStaff`), **sin PIN**.
-- El JWT se genera al autenticarse (staff: email + contraseña, ADR-013) y tiene el tenant_id del complejo donde se autenticó.
+**Campos clave (corregido drift 2026-08-27 contra `src/modules/auth/auth.service.ts` y `auth.middleware.ts`):**
+- `tenant_id` vive SOLO en `app_metadata` — `extractAuthUser()` lo lee de ahí (`user.app_metadata.tenant_id`), no hay un claim duplicado en la raíz del JWT.
+- `role` en `app_metadata` queda **hardcodeado a `'admin'`** al crear el usuario de Supabase Auth y NUNCA se actualiza; es puro legado. El rol real (`admin` | `manager`, Modelo ATC) vive en `tenant_staff_members` y se re-lee en cada request (`getStaffRole()` — ver el IMPORTANT de §4.1, GAP-05). El gating de acciones sensibles es por ese rol re-leído (`requireAdminStaff` / `requireOperatorStaff`), **sin PIN**.
+- El JWT se genera al autenticarse (staff: email + contraseña, ADR-013) y `app_metadata.tenant_id` es el complejo donde se autenticó.
 
 **¿Qué pasa si un staff es admin de 2 complejos?** Al loguearse, elige el complejo. El JWT se emite con el `tenant_id` del complejo elegido. Para cambiar de complejo, hace "switch" → se genera un nuevo JWT con el otro `tenant_id`. Nunca tiene un JWT con acceso a 2 tenants simultáneamente.
 
@@ -441,17 +483,26 @@ Login → Selector de complejo (si tiene múltiples)
   "sub": "player-uuid",
   "iat": 1713390000,
   "exp": 1713393600,
-  "type": "player",
   "email": "agustin@gmail.com",
   "app_metadata": {
+    "is_player": true,
     "player_id": "player-uuid"
   }
 }
 ```
 
 **Diferencia crítica:** El JWT del jugador **NO tiene `tenant_id`**. El jugador es cross-tenant — puede reservar en cualquier complejo. El filtrado se hace por `player_id`, no por `tenant_id`.
+**Corrección (drift 2026-08-27):** no hay un claim `type` en la raíz — `extractRealAuthUser()` (`src/modules/auth/auth.middleware.ts`) deriva el tipo de sesión leyendo `app_metadata.is_player` (y `is_system_admin` para super-admin); si ninguno está, cae por default a `staff`. `is_player` es, entonces, el campo que de verdad importa acá.
 
-### 5.3 JWT del Sistema (background jobs, cron)
+### 5.3 "JWT del Sistema" (background jobs, cron) — identidad conceptual, no un JWT real
+
+> [!NOTE]
+> **Corrección (drift 2026-08-27):** los background jobs (pg-boss en Railway) NO pasan por
+> Supabase Auth y NO tienen un JWT — no hay `sub`/`app_metadata.is_system` en ningún lado del
+> código. La "identidad de sistema" es, en la práctica, el rol de Postgres `turnogol_worker`
+> (`BYPASSRLS`, ver §3.4) usado a través de `getWorkerDb()`, sobre una conexión separada
+> (`WORKER_DATABASE_URL`). El JSON de abajo queda como ilustración conceptual de la idea
+> "hay una identidad de sistema que no es tenant ni jugador", no como un payload real.
 
 ```json
 {
@@ -620,14 +671,18 @@ Cuando Agustín consulta "mis reservas", ve reservas de TODOS los complejos:
 
 SELECT b.*, c.name as court_name, t.name as complex_name
 FROM bookings b
-JOIN public_courts_summary c ON c.id = b.court_id
+JOIN courts c ON c.id = b.court_id
 JOIN tenants t ON t.id = b.tenant_id
 WHERE b.player_id = $player_id  -- filtrado por jugador, no por tenant
 ORDER BY b.date DESC, b.time_start DESC;
 
--- NOTA: Para obtener court_name, el jugador hace JOIN contra la view 
--- public_courts_summary (sin RLS) en vez de contra la tabla courts (con RLS por tenant), 
--- ya que courts no tiene policy para jugadores y devolvería 0 filas sin contexto de tenant.
+-- NOTA (corrección drift 2026-08-27): NO existe una view `public_courts_summary`
+-- en el schema — nunca se implementó. El JOIN real es directo contra `courts`,
+-- habilitado por la policy `player_read_court` (migración 027): el jugador
+-- (app.current_player_id) puede leer SOLO las canchas donde tiene al menos una
+-- reserva propia. Sin esta policy, courts (RLS solo por app.current_tenant_id +
+-- FORCE) devolvía 0 filas y el INNER JOIN vaciaba "Mis Reservas" entero.
+-- Implementación real: src/app/(player)/mis-reservas/page.tsx.
 ```
 
 > > [!IMPORTANT]
@@ -1058,12 +1113,18 @@ describe('Tenant Isolation', () => {
 ### 10.2 Test de aislamiento para CADA tabla
 
 ```typescript
-// Generar tests de aislamiento automáticamente para las 12 tablas aisladas
+// Generar tests de aislamiento automáticamente para las 18 tablas aisladas
+// (12 originales + 6 del módulo Torneos). Implementación real: `tablesAll` en
+// tests/integration/isolation.test.ts (incluye además player_tenant_relationships,
+// que es híbrida — cubierta acá para el aislamiento por tenant y en §10.3 para
+// el de jugador).
 const ISOLATED_TABLES = [
   'courts', 'bookings', 'abonados', 'payments', 'cash_flows',
   'tenant_staff_members', 'daily_cash_closes',
   'notifications', 'audit_logs', 'tenant_subscriptions', 'tenant_player_bans',
-  'push_subscriptions'
+  'push_subscriptions',
+  'tournaments', 'tournament_teams', 'tournament_team_players',
+  'tournament_stages', 'tournament_matches', 'tournament_match_events'
 ];
 // Híbridas (reviews, player_favorites, player_tenant_relationships) tienen su propio
 // test de aislamiento por jugador (ver §10.3) además del de tenant.
@@ -1129,7 +1190,7 @@ test:isolation:
 
 - [ ] ¿Tiene `tenant_id UUID NOT NULL REFERENCES tenants(id)`? (Si es aislada)
 - [ ] ¿Tiene `CREATE INDEX idx_{table}_tenant ON {table}(tenant_id)`?
-- [ ] ¿Tiene `ALTER TABLE {table} ENABLE ROW LEVEL SECURITY`?
+- [ ] ¿Tiene `ALTER TABLE {table} ENABLE ROW LEVEL SECURITY` **Y** `FORCE ROW LEVEL SECURITY` (ver §3.3)?
 - [ ] ¿Tiene policies para SELECT, INSERT, UPDATE, DELETE?
 - [ ] ¿Está incluida en el test suite de aislamiento?
 - [ ] ¿El service correspondiente setea `tenant_id` en los INSERTs?

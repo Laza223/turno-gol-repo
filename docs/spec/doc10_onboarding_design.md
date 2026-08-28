@@ -270,7 +270,7 @@ DÍA 7
 
 ### ¿Por qué contraseña para Staff y Magic Link para Jugadores?
 - **Para el Staff (Marcelo/Rodrigo)**: Usamos email + contraseña por seguridad, control de accesos por roles (admin/manager) y estabilidad de sesión en la administración del complejo. Al ser su herramienta diaria, la memorización de la contraseña no representa una fricción en el funnel.
-- **Para los Jugadores (Tomás/Agustín)**: Usamos magic link por email y OAuth (Google/Apple) para minimizar la fricción en la reserva. En compras espontáneas, obligar a recordar contraseñas es la causa #1 de abandono. Magic link permite reservar en menos de 1 minuto sin fricción de registro.
+- **Para los Jugadores (Tomás/Agustín)**: Usamos magic link por email y OAuth (Google) para minimizar la fricción en la reserva. Apple Sign-In no está implementado (ver ADR-002, doc11): fue una opción evaluada, no la decisión tomada. En compras espontáneas, obligar a recordar contraseñas es la causa #1 de abandono. Magic link permite reservar en menos de 1 minuto sin fricción de registro.
 
 ### ¿Por qué 4 pasos y no 7?
 - Cada paso adicional pierde ~15% de completados.

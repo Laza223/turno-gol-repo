@@ -41,7 +41,7 @@
 ## FLUJO 1: Onboarding de un Nuevo Complejo (Trial)
 
 ### Punto de entrada
-- **URL**: `turnogol.app/registrar` (landing page pública)
+- **URL**: `turnogol.app/register` (landing page pública)
 - **Trigger**: El dueño de un complejo hace click en "Probá gratis 30 días"
 - **Origen probable**: Google Ads, referido de otro complejo, Instagram del complejo, visita directa
 
@@ -65,54 +65,59 @@ PASO 2 — Verificación de email
   ├── Acción: verificar token → activar cuenta y crear sesión JWT
   └── Output: redirect a wizard de onboarding (paso 3)
 
-PASO 3 — Datos del complejo (wizard paso 1 de 4)
+PASO 3 — Datos del complejo (wizard paso 1 de 4: "Tu complejo")
   ├── Input: nombre del complejo, dirección, ciudad, provincia
-  ├── Valores pre-cargados: timezone = 'America/Argentina/Buenos_Aires'
-  ├── Opcional (salteable): logo, foto de portada, descripción
-  ├── Acción: crear Tenant con status='trialing', trial_ends_at = NOW() + 30 días
-  ├── Acción: crear TenantSubscription con status='trialing'
+  │     (el teléfono NO se pide de nuevo: se toma de la cuenta creada en el registro)
+  ├── Sin logo/foto de portada/descripción en este paso (se cargan después, desde Settings)
+  ├── Acción: crear Tenant con status='trialing', trial_ends_at = NOW() + 30 días, slug auto-generado
+  ├── Acción: crear TenantSubscription con status='trialing' (plan default 'predio')
   ├── Acción: crear relación tenant_staff_members (admin)
-  └── Output: avanzar al paso 2
+  └── Output: avanzar al paso 2 (Horarios)
 
-PASO 4 — Crear primera cancha (wizard paso 2 de 4)
-  ├── Input: nombre de la cancha, tipo de superficie, formato de fútbol (5/7/11)
-  ├── Valores pre-cargados: 
-  │     pricing default basado en el promedio del mercado AR (centavos ARS)
-  │     {rules: [{days:['mon','tue','wed','thu','fri'], from:'08:00', to:'18:00', price:800000},
-  │             {days:['mon','tue','wed','thu','fri'], from:'18:00', to:'24:00', price:1200000},
-  │             {days:['sat','sun'], from:'08:00', to:'24:00', price:1500000}]}
-  ├── El usuario puede editar los precios o dejar los default
+PASO 4 — Horarios de apertura (wizard paso 2 de 4: "Horarios")
+  ├── Valores pre-cargados: Lun a Dom 08:00-00:00 (mismo horario los 7 días — migr. 077,
+  │     corrige un default viejo que variaba vie/sáb/dom sin que nadie lo hubiera elegido)
+  ├── El usuario puede personalizar por día
+  ├── Feriados (closed_dates) NO se configuran acá: se agregan después desde Settings → Feriados
+  ├── Acción: guardar opening_hours en Tenant (los precios del paso siguiente se calculan
+  │     sobre estos horarios: por eso Horarios va ANTES que Canchas)
+  └── Output: avanzar al paso 3 (Canchas)
+
+PASO 5 — Crear canchas y precio (wizard paso 3 de 4: "Canchas")
+  ├── Input: nombre, tipo de superficie, formato de fútbol (4 a 11), si es cubierta,
+  │     y UN precio por turno (no hay franjas horarias distintas en el wizard)
+  ├── Sin pricing default pre-cargado: el precio ingresado se expande de forma uniforme
+  │     sobre TODOS los horarios ya confirmados en el paso anterior (`uniformRulesFromOpeningHours`)
+  ├── Sin fotos en este paso (se suben después desde Settings → Canchas)
   ├── Botón "Agregar otra cancha" (puede agregar N canchas)
   ├── Acción: crear Court con status='online' para cada cancha
-  └── Output: avanzar al paso 3
+  └── Output: avanzar al paso 4 (Primera reserva)
 
-PASO 5 — Horarios de apertura (wizard paso 3 de 4)
-  ├── Valores pre-cargados: Lun-Jue 08:00-00:00, Vie 08:00-01:00, Sáb 09:00-01:00, Dom 09:00-23:00
-  ├── El usuario puede personalizar por día
-  ├── Puede marcar días cerrados (ej: 25 de diciembre)
-  ├── Acción: guardar opening_hours y closed_dates en Tenant.settings
-  └── Output: avanzar al paso 4
+PASO 6 — Primera reserva (wizard paso 4 de 4: "Primera reserva")
+  ├── Muestra los slots libres de HOY en las canchas recién creadas
+  ├── El dueño puede cargar ahí mismo un turno real (reserva manual, `createdByStaff` seteado)
+  │     — el paso es salteable, con o sin turno cargado
+  ├── Acción (al terminar): settings.onboarding_completed = true
+  └── Output: redirect a `/onboarding/listo` → dashboard
 
-PASO 6 — Configurar seña (wizard paso 4 de 4)
-  ├── Pregunta: "¿Querés cobrar seña para reservas online?"
-  ├── SI → input de porcentaje (default 30%) + setup de MercadoPago
-  │     ├── Redirect a OAuth de MercadoPago del complejo
-  │     ├── Acción: guardar MP credentials del complejo
-  │     └── Acción: settings.requires_deposit = true, deposit_percentage = X
-  ├── NO → saltear (se puede configurar después)
-  │     └── Acción: settings.requires_deposit = false
-  └── Output: wizard completo → redirect al dashboard
+> [!NOTE]
+> **La seña y MercadoPago salieron del wizard** (refactor de onboarding, fase 5): antes era
+> un paso obligatorio que mandaba al dueño a un OAuth de MP en el peor momento. Todo tenant
+> nuevo arranca con `settings.requires_deposit = false` sin que se le pregunte; conectar
+> MercadoPago y activar la seña se hace después, desde el dashboard (`/settings/facturacion`),
+> como un ítem más del checklist de abajo — no bloquea nada del wizard.
 
 PASO 7 — Dashboard con checklist
-  ├── Mostrar: "Tu complejo está al 75% listo" (barra de progreso)
-  ├── Checklist visible:
+  ├── Mostrar: barra de progreso de configuración
+  ├── Checklist visible (7 ítems, `getChecklistState`):
   │     ✅ Cuenta creada
   │     ✅ Datos del complejo
-  │     ✅ Primera cancha configurada
-  │     ✅ Horarios definidos
-  │     ⬜ Configurar seña y MercadoPago (si lo salteó)
+  │     ✅/⬜ Canchas (según haya al menos 1)
+  │     ✅/⬜ Horarios definidos (según tenga al menos un día operable)
+  │     ⬜ MercadoPago conectado (si no lo hizo)
   │     ⬜ Compartir tu link público
-  │     ⬜ Recibir tu primera reserva online ← EL "AHA MOMENT"
+  │     ⬜ Recibir tu primera reserva ONLINE ← EL "AHA MOMENT" (una reserva sin
+  │           `created_by_staff`; la del paso 6, si la cargó el dueño, NO cuenta acá)
   └── Acción: el complejo ya está live en turnogol.app/{slug}
 ```
 
@@ -122,8 +127,8 @@ PASO 7 — Dashboard con checklist
 |---|---|
 | ¿El email ya existe como StaffUser? | Error: "Ya tenés una cuenta. Iniciá sesión." |
 | ¿El slug del complejo ya existe? | Auto-generar variante: `complejo-san-martin` → `complejo-san-martin-2` |
-| ¿Salteó la configuración de MP? | El complejo funciona pero las reservas online son sin seña (cobro presencial) |
-| ¿Salteó crear canchas? | El complejo se crea pero no aparece en búsquedas hasta tener al menos 1 cancha activa |
+| ¿No conectó MercadoPago? (ya no se pregunta en el wizard) | `settings.requires_deposit = false` por default. El complejo funciona pero las reservas online son sin seña (cobro presencial) hasta que conecte MP desde `/settings/facturacion` |
+| ¿Salteó el paso 4 (Primera reserva)? | Se puede: el wizard termina igual. `firstBookingReceived` del checklist solo se marca con una reserva online real (sin `created_by_staff`), no con lo que haya cargado acá |
 | ¿El link de verificación expiró (15 min)? | Botón "Reenviar link" en la pantalla de espera |
 
 ### Estados intermedios
@@ -131,16 +136,14 @@ PASO 7 — Dashboard con checklist
 | Estado | Qué ve el usuario | Duración máxima |
 |---|---|---|
 | Email enviado, sin verificar | "Revisá tu email. ¿No llegó? Reenviar." | 15 minutos (luego el link expira) |
-| Wizard incompleto | Dashboard con checklist y barra de progreso | Mientras dure el trial (30 días) |
-| Setup de MP en progreso | Redirect a MP, luego callback a TurnoGol | ~2 minutos |
+| Wizard incompleto | Redirect automático al paso pendiente (no se puede saltar adelante; volver atrás sí) | Mientras dure el trial (30 días) |
 
 ### Puntos de salida
 
 - **Éxito**: Tenant creado con status `trialing`, al menos 1 cancha, horarios configurados. Link público activo.
 - **Abandono en paso 1**: No se crea nada. Solo un email sin verificar.
 - **Abandono en paso 2** (verificó email, no completó wizard): StaffUser creado, Tenant NO creado. Al volver a loguearse → retomar wizard.
-- **Abandono en paso 3+** (empezó wizard, no terminó): Tenant creado con lo que haya puesto. Dashboard con checklist pendiente.
-- **Error de MP OAuth**: El complejo se crea sin MP. Puede configurarlo después desde Settings.
+- **Abandono en paso 3+** (empezó wizard, no terminó): Tenant creado con lo que haya puesto. Al volver, redirect automático al paso pendiente.
 
 ### Efectos secundarios
 
@@ -150,7 +153,7 @@ PASO 7 — Dashboard con checklist
 | Tenant creado | 📊 AuditLog: `tenant.created` |
 | Trial iniciado | ⏰ Cron job programado: notificaciones según el cronograma único de doc4 §3 (días 0, 1, 7, 14, 21, 25, 28, 30, 31, 37) |
 | Primera cancha creada | 📊 AuditLog: `court.created` |
-| MP conectado | 📊 AuditLog: `tenant.mp_connected` |
+| MP conectado (desde `/settings/facturacion`, fuera del wizard) | 📊 AuditLog: `tenant.mp_connected` |
 | Wizard completado | 📩 Email: "Tu complejo está listo. Compartí tu link: turnogol.app/{slug}" |
 
 ### Edge cases explícitos
@@ -160,7 +163,7 @@ PASO 7 — Dashboard con checklist
 3. **Dos socios quieren registrar el mismo complejo**: El primero que lo registra es el admin. Puede invitar al segundo como admin desde Settings.
 4. **El dueño ya usa ATC Sports y quiere migrar**: v1 no tiene importación automática. El onboarding es desde cero. Documentar como feature futuro.
 5. **El dueño pone un slug que ya existe** (ej: "cancha"): Auto-sufijo numérico. Informar al usuario del slug asignado.
-6. **Se corta la conexión durante el OAuth de MP**: Al volver a TurnoGol, detectar que el callback no llegó. Mostrar botón "Reintentar conexión con MercadoPago".
+6. **Se corta la conexión durante el OAuth de MP**: Ya no ocurre en este flujo — MP se conecta después, desde `/settings/facturacion`, no como parte del wizard.
 
 ### Out of scope
 
@@ -724,7 +727,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 | Condición | Resultado |
 |---|---|
 | `deposit_status = 'not_required'` y jugador cancela | Sin impacto financiero. Slot liberado. |
-| `deposit_status = 'paid'` y cancela en plazo | Refund vía API de MP |
+| `deposit_status = 'paid'` y cancela en plazo | `deposit_status → 'refunded'` (corresponde devolución). NO hay llamada a la API de reembolsos de MP: la devolución la hace el complejo (ver nota al inicio del Flujo 4) |
 | `deposit_status = 'paid'` y cancela fuera de plazo | Sin refund. `deposit_status → 'captured'` |
 | Booking tiene `abonado_id` (turno fijo) | El admin decide: el abonado pierde ese turno, o "se corre" = **cancelar esa instancia + crear manualmente una reserva nueva** (gestión manual; en v1 NO hay endpoint ni transición de reprogramación dedicada, consistente con el out-of-scope que prohíbe modificar el horario de una reserva). (Decisión de auditoría 2026-07-21) |
 | Jugador tiene ban activo | Bloqueado para reservar online en este complejo hasta que el ban expire o sea levantado |
@@ -732,7 +735,7 @@ ESCENARIO B — Auto-completado por el sistema (30 min después de time_end)
 
 ### Edge cases explícitos (todas las variantes)
 
-1. **El reembolso de MP falla** (error de API, cuenta del jugador cerrada): El booking se cancela igual (status → `canceled_refunded`), pero se crea un Payment con status='pending'. Se reintenta el refund 3 veces con backoff. Si falla definitivamente → notificar al admin para gestión manual.
+1. **El jugador tenía la seña pagada por MP**: El booking se cancela igual (status → `canceled_refunded`) y se crea un Payment `refund` con status='pending' (`prepareRefund`, `payment.service.ts`). No hay reintento automático contra la API de MP — no existe ese camino (ver nota al inicio del Flujo 4) —: el complejo hace la devolución y el sistema solo la registra en `/caja/devoluciones`.
 2. **El jugador cancela una reserva de turno fijo (abonado)**: La instancia individual se cancela. El abonado sigue activo — la próxima semana se genera normalmente.
 3. **El admin cancela una reserva que está en `pending_payment`**: Se puede cancelar directamente (no hay seña que devolver). Status → `expired` (no `canceled`, porque nunca se confirmó).
 4. **El jugador quiere cancelar pero no tiene la app** (no está registrado, reserva manual): No puede cancelar online. Tiene que llamar/escribir al complejo → el admin cancela (variante 4C).
@@ -907,7 +910,7 @@ Job diario (cron: 03:00 ART):
 
 - **URL**: Panel admin → Jugadores (`/jugadores`)
 - **Actor**: admin o manager (`requireOperatorStaff()`)
-- **Alcance**: solo jugadores **vinculados al complejo** (`player_tenant_relationships`). Los invitados telefónicos (`guest_name`) NO aparecen (decisión #10 cancelada: no se fuerza creación de perfiles).
+- **Alcance (actualizado por B13)**: la lista es un `UNION ALL` de DOS orígenes (`listTenantClients`, `jugadores/queries.ts`): `kind:'player'` (vinculados al complejo vía `player_tenant_relationships`) Y `kind:'contact'` (derivado de `abonados` con `player_id NULL`, agrupados por teléfono — la persona que el complejo solo conoce como nombre + celular por ser titular de un turno fijo). No hay tabla nueva para los contactos. Los invitados de `bookings.guest_name` siguen sin aparecer (decisión #10 cancelada). Una persona `kind:'contact'` NO puede tener etiquetas (viven en PTR, que exige `player_id`) hasta que se la vincula.
 
 ```
 LISTADO (/jugadores)
@@ -921,7 +924,8 @@ FICHA (/jugadores/{playerId})
   │     └── Acciones: "+ Crear Ban" (razón, duración) o "Levantar Ban" (activos)
   │           ├── Crear/desactivar en tenant_player_bans
   │           └── El jugador queda bloqueado o desbloqueado para reservar online
-  ├── Abonados: abonos activos del jugador en este complejo (ver Flujo 5)
+  ├── Etiquetas (B12): hasta 5 valores del enum cerrado (`player_tag[]` en PTR) — sin texto libre
+  ├── Turnos fijos: abonados del jugador en este complejo, con botón "Desvincular" (ver Flujo 5)
   └── Historial: últimas reservas con estado
 ```
 
@@ -930,7 +934,7 @@ FICHA (/jugadores/{playerId})
 | Condición | Resultado |
 |---|---|
 | Ban expirado o levantado | El jugador vuelve a estar habilitado para reservar online. |
-| Jugador no vinculado al complejo | 404 (no aparece en el módulo). |
+| Persona no vinculada al complejo (ni como `player` ni como `contact` derivado de un abonado) | 404 (no aparece en el módulo). |
 
 ### Efectos secundarios
 
@@ -1043,15 +1047,15 @@ PASO 4 — Generación del cierre
 | Caja cerrada | 📊 AuditLog: `cashflow.daily_close` con resumen completo |
 | Caja cerrada | 📩 Email al admin/dueño: "Cierre de caja {fecha}: Balance ${balance}" |
 | Diferencia de efectivo detectada | 📊 AuditLog: `cashflow.discrepancy` con monto y nota |
-| CashFlows congelados | 🔒 Los movimientos del día ya no son editables (solo el admin puede deshacer el cierre) |
+| CashFlows congelados | 🔒 Los movimientos del día ya no son editables. El cierre es INMUTABLE de verdad: las migraciones 008/037/038 revocan `UPDATE`/`DELETE` sobre `daily_cash_closes` para `turnogol_app` Y `turnogol_worker` — no hay "deshacer el cierre" para nadie, ni siquiera el admin. Un error se corrige con un CashFlow de ajuste al día siguiente |
 
 ### Edge cases explícitos
 
 1. **El complejo no cierra caja un día**: No pasa nada. La caja queda abierta. Los movimientos siguen acumulándose. El admin puede cerrar retroactivamente.
 2. **Llega un webhook de MP a las 2am para un pago del día anterior**: El CashFlow se registra con `occurred_at` del día actual. Si la caja del día anterior ya se cerró, el movimiento queda en el día siguiente.
-3. **El admin quiere reabrir una caja cerrada**: Solo el admin puede "reabrir" una caja (no el recepcionista). Se crea un AuditLog especial: `cashflow.reopen`.
+3. **El admin quiere reabrir una caja cerrada**: NO se puede — no existe "reabrir caja" para nadie. Las migraciones 008/037/038 revocan `UPDATE`/`DELETE` sobre `daily_cash_closes` a nivel de rol de DB, así que ningún flujo de la app puede modificarlo tras el INSERT. Un error se corrige con un CashFlow de ajuste al día siguiente.
 4. **Dos recepcionistas intentan cerrar la caja al mismo tiempo**: El primero que confirma gana. El segundo ve "Esta caja ya fue cerrada."
-5. **El complejo tiene turnos tarde (cierra a las 2am)**: El cierre de caja se hace por "día operativo" (configurable), no necesariamente por día calendario. En v1, es por día calendario.
+5. **El complejo tiene turnos tarde (cierra a las 2am)**: El cierre de caja se hace por **día operativo** (alineado 2026-07-24, `docs/decisions/2026-07-24-caja-cantina-dia-operativo.md`), no por día calendario ART puro — un cutoff único por tenant (`nightCutoffMins`, `operating-day.ts`), no configurable día por día. Una venta de madrugada de un complejo `closes_next_day` cae en la noche anterior, igual que `bookings.date`.
 
 ### Out of scope
 
@@ -1083,9 +1087,9 @@ PASO 4 — Generación del cierre
 ```
 PASO 1 — Selección de plan
   ├── Vista: tabla comparativa de planes
-  │     ├── Plan Predio (1-2 canchas): $55.000/mes | $44.000/mes pago anual
-  │     ├── Plan Complejo (3-5 canchas): $85.000/mes | $68.000/mes pago anual
-  │     └── Plan Estadio (6+ canchas): $115.000/mes | $92.000/mes pago anual
+  │     ├── Plan Predio (1-3 canchas): $63.000/mes | $50.400/mes pago anual
+  │     ├── Plan Complejo (4-6 canchas): $99.000/mes | $79.200/mes pago anual
+  │     └── Plan Estadio (7+ canchas): $129.000/mes | $103.200/mes pago anual
   ├── Pre-seleccionado: el plan que corresponde según la cantidad de canchas activas del complejo
   ├── Selector: ciclo de facturación (mensual | anual)
   │     └── Si anual: mostrar ahorro: "Ahorrás ${diferencia}/año (20% descuento)"
@@ -1162,6 +1166,15 @@ Trial activo (30 días):
 - **Pago rechazado**: Subscription no se activa. Dueño puede reintentar.
 - **Abandono**: Si está en trial → sigue en trial. Si trial venció → sigue bloqueado.
 - **No convierte nunca**: Día 31 → BLOCKED (solo lectura, 60 días). Día 91 → CHURNED. Día 98 → DELETED.
+
+> [!WARNING]
+> **Gap de código confirmado (auditado 2026-08-27, flaggeado para implementar — no es solo drift de doc).**
+> `expire-trials.worker.ts` sí pasa el tenant a `blocked` al vencer el trial, pero a diferencia de la baja
+> voluntaria (`transitionCanceledToBlocked`, que sí agenda `scheduled_deletion_at`) y del dunning por impago
+> (que agenda `dunning_started_at`), este camino NO agenda ninguno de los dos campos. El tenant queda
+> `blocked` indefinidamente, sin la línea de tiempo Día 91 CHURNED / Día 98 DELETED que describe este mismo
+> párrafo — contradice la promesa de retención con plazo de `/terminos`. Fuente:
+> `src/modules/billing/lifecycle.service.ts`, `src/shared/jobs/workers/expire-trials.worker.ts`.
 
 ### Efectos secundarios
 
@@ -1423,18 +1436,26 @@ PASO 5 — Expiración del período pago → BLOCKED
   ├── Página pública del complejo: "Este complejo ya no está en TurnoGol."
   └── Iniciar cuenta regresiva de 60 días
 
-PASO 6 — Retención en 60 días + eliminación
-  ├── Día 30 post-expiración: 📩 Email: "Tus datos se eliminan en 30 días. Reactivá tu cuenta."
-  ├── Día 55 post-expiración: 📩 Email urgente: "Quedan 5 días para que tus datos se bloqueen."
-  ├── Día 60: CHURNED
-  │     ├── TenantSubscription: status → 'churned'
-  │     ├── Tenant: status → 'churned'
-  │     └── 📩 Email: "Última oportunidad: tus datos se borran en 7 días."
-  ├── Día 67: DELETED
-  │     ├── Anonimización/eliminación de datos según Ley 25.326
-  │     ├── 📊 AuditLog: `tenant.data_deleted`
-  │     └── Fin del ciclo de vida del Tenant
+PASO 6 — Retención + eliminación (reescrito 2026-08-27 al comportamiento real, ver aviso abajo)
+  └── Día 97 post-bloqueo: DELETED
+        ├── `transitionCanceledToBlocked` agenda `scheduled_deletion_at = NOW() + 97 días` directo
+        │    al bloquear (no hay estado 'churned' intermedio en este camino)
+        ├── Anonimización/eliminación de datos según Ley 25.326 (data-retention-cleanup.worker.ts)
+        ├── 📊 AuditLog: `tenant.data_deleted`
+        └── Fin del ciclo de vida del Tenant
 ```
+
+> [!WARNING]
+> **PASO 6 reescrito al comportamiento real (auditado 2026-08-27).** La versión anterior prometía un estado
+> `churned` intermedio a los 60 días con emails de recordatorio en día 30 y 55, y borrado a los 67. Verificado
+> contra `src/modules/billing/lifecycle.service.ts`: `transitionCanceledToBlocked` (baja voluntaria) agenda
+> `scheduled_deletion_at = NOW() + CANCELED_BLOCKED_DELETION_DAYS` (`CHURNED_DELETION_DAYS` 90 + 7 = **97 días**)
+> directo desde `blocked`, sin pasar nunca por `status = 'churned'` — ese estado intermedio con emails de
+> recordatorio día 30/55 es exclusivo del camino de dunning por impago (`blocked → churned` a los 90 días
+> de `dunning_started_at`, ver Flujo de Dunning más abajo), que la baja voluntaria nunca setea. `data-retention-cleanup.worker.ts`
+> no manda ningún email de recordatorio intermedio, solo borra cuando `scheduled_deletion_at <= NOW()`. Si
+> querés el mismo colchón de recordatorios/reactivación para la baja voluntaria, es código nuevo a construir
+> (no estaba en el JSON de esta corrida — pedilo aparte si lo priorizás).
 
 ### Decisiones del negocio (if/else)
 
@@ -1450,20 +1471,20 @@ PASO 6 — Retención en 60 días + eliminación
 | El dueño quiere exportar sus datos antes de irse | Botón "Exportar datos" en Settings. Genera CSV con: reservas, clientes, ingresos. |
 | El dueño quiere transferir su cuenta a otro admin | Puede agregar otro admin y luego irse. La suscripción la gestiona el nuevo admin. |
 
-### Estados intermedios
+### Estados intermedios (reescrito 2026-08-27, ver aviso en PASO 6)
 
 ```
-CANCELACIÓN ──── ACTIVO hasta fin de período ──── BLOCKED ──── CHURNED ──── DELETED
-    │                    │                              │            │            │
-    │               (sigue funcionando)          (solo lectura)  (pre-delete) (datos borrados)
-    │                    │                              │            │
-    └── REACTIVABLE ─────┴──── REACTIVABLE ─────────────┴── 60 días ─┘
+CANCELACIÓN ──── ACTIVO hasta fin de período ──── BLOCKED ──────────── DELETED
+    │                    │                              │                    │
+    │               (sigue funcionando)          (solo lectura)      (datos borrados)
+    │                    │                              │
+    └── REACTIVABLE ─────┴──── REACTIVABLE ─────────────┴─── 97 días ────────┘
 ```
 
 ### Puntos de salida
 
-- **Reactivación**: En cualquier momento antes del CHURNED → paga → `active`. Todo restaurado.
-- **Churn definitivo**: 60 días post-expiración → CHURNED. 7 días después → DELETED. Irrecuperable.
+- **Reactivación**: En cualquier momento antes de los 97 días de `blocked` → paga → `active`. Todo restaurado. (No hay estado `churned` en este camino — ver PASO 6.)
+- **Churn definitivo**: 97 días post-bloqueo → DELETED. Irrecuperable.
 - **Cancelación abortada**: El dueño acepta la oferta de retención (downgrade o pausa) → no cancela.
 
 ### Efectos secundarios
@@ -1476,10 +1497,7 @@ CANCELACIÓN ──── ACTIVO hasta fin de período ──── BLOCKED ─�
 | Suscripción de MP cancelada | 📊 AuditLog: `tenant_subscription.mp_canceled` |
 | Período de gracia termina | 🔒 Bloqueo de acceso + cancelación de abonados |
 | Período de gracia termina | 📩 Email a contactos de abonados afectados |
-| Día 30 post-expiración | 📩 Email de retención: "Tus datos se borran en 30 días" |
-| Día 55 post-expiración | 📩 Email urgente: "Quedan 5 días" |
-| Día 60 — CHURNED | 📩 Email: "Última oportunidad: 7 días para reactivar" |
-| Día 67 — DELETED | 📊 AuditLog: `tenant.data_deleted` (el último registro) |
+| Día 97 post-bloqueo — DELETED | 📊 AuditLog: `tenant.data_deleted` (el último registro; sin emails de recordatorio intermedios en este camino — ver PASO 6) |
 
 ### Edge cases explícitos
 
@@ -1535,22 +1553,22 @@ FLUJO 8 (Dunning) ◄──── Requiere: TenantSubscription activa (Flujo 7)
   └── Puede generar: Suspensión → Bloqueo → Churn → Deleted
 
 FLUJO 9 (Cancelación cuenta) ◄──── Requiere: TenantSubscription (Flujo 7)
-  └── Genera: Cancelación → Blocked 60 días → Churned → Deleted 7 días
+  └── Genera: Cancelación → Blocked → Deleted 97 días (sin Churned intermedio, ver PASO 6 arriba)
 ```
 
 ## Jobs automáticos (cron) consolidados
 
 | Job | Frecuencia | Flujo origen | Descripción |
 |---|---|---|---|
-| Expiración de bookings | Cada 1 minuto (o delayed job al crear) | Flujo 2 | Bookings en `pending_payment` > **6 min** → `expired` |
+| Expiración de bookings | Delayed job al crear (por-booking, `startAfter` 6 min) + sweep cada 5 min de red de seguridad. NO hay cron cada 1 minuto (el único `* * * * *` es el envío de emails) | Flujo 2 | Bookings en `pending_payment` > **6 min** → `expired` |
 | Auto-completar bookings | Cada 30 minutos | Flujo 4D | Bookings `confirmed` con time_end < NOW() - 30min → `completed` |
 | Generación rolling de abonados | Diario 03:00 | Flujo 5 | Generar instancias futuras para abonados con < 4 semanas |
-| Notificaciones de trial | Diario 10:00 | Flujo 7 | Emails según día del trial (7, 14, 21, 28, 30, 31) |
+| Notificaciones de trial | Diario | Flujo 7 | Aspiracional, no implementado tal cual (auditado 2026-08-27): el código real (`TRIAL_ENDING_WARNING_DAYS`) solo manda 2 avisos (día 1 y 7), no los 6-10 días de este listado ni de doc4 §3 — ver aviso en doc4_monetizacion.md |
 | Dunning reintentos | Según programación | Flujo 8 | Reintentar cobros de suscripción (día 2, 5) |
 | Suspensión por dunning | Diario | Flujo 8 | Tenants con payment > 7 días sin pagar → suspended |
 | Bloqueo por dunning | Diario | Flujo 8 | Tenants suspended > 14 días → blocked |
 | Churn por inactividad | Diario | Flujo 8 | Tenants blocked > 90 días → churned + eliminación día 97 |
-| Emails de retención pre-churn | Diario | Flujo 9 | Emails a día 30 y 55 post-cancelación |
+| Emails de retención pre-churn | — | Flujo 9 | RETIRADO (auditado 2026-08-27): no existe ningún cron/worker que mande emails de recordatorio en la baja voluntaria — `data-retention-cleanup.worker.ts` solo borra al llegar `scheduled_deletion_at`, sin avisos previos. Ver PASO 6 de Flujo 9. |
 
 ---
 

@@ -55,7 +55,7 @@
 >
 > Es una decisión de negocio + fiscal, no técnica: queda como **REQUIERE INPUT** hasta que el
 > dueño defina si el precio publicado es final o si el IVA se discrimina. Las menciones de IVA
-> que quedan en §7 y §11 de este documento describen ese estado no implementado.
+> que quedan en §10 y §11 de este documento describen ese estado no implementado.
 
 **Trial**: 30 días gratis, sin tarjeta requerida al inicio.
 **Sin costos de instalación, capacitación ni mantenimiento** (igual que ATC, ya es expectativa del mercado).
@@ -194,6 +194,13 @@
 | 30 | 📩 Email | Automático | "Último día. Suscribite para no perder acceso." |
 | 31 | 📩 Email | Automático | "Tu prueba venció. Tus datos están seguros 60 días." + estado → BLOCKED |
 | 37 | 📩 Email | Automático | "Te perdimos. Contanos qué pasó." (win-back) |
+
+> [!WARNING]
+> **Aspiracional, no implementado (auditado 2026-08-27).** El código real (`TRIAL_ENDING_WARNING_DAYS` en
+> `src/shared/constants.ts`) solo dispara 2 de estos 10 checkpoints: día 1 y día 7. Los 8 restantes
+> (14, 21, 25, 28 humano, 30, 31, 37) no tienen worker ni template que los mande — "ÚNICO Y DEFINITIVO"
+> describe el diseño querido, no el estado actual. Antes de prometer este cronograma a soporte/marketing,
+> confirmar si se construye el resto o se recorta el diseño a los 2 avisos reales.
 
 > [!NOTE]
 > **Canal v1: solo email.** WhatsApp Business API se evalúa para v1.5 cuando haya escala para
@@ -417,13 +424,24 @@ Si el jugador no paga en 6 minutos → Booking.status = 'expired', slot se liber
 Jugador cancela la reserva
       ↓
 Sistema evalúa cancellation_policy del complejo:
-  - Si cancela con > X horas de anticipación → refund automático vía MP
+  - Si cancela con > X horas de anticipación → deposit_status = 'refunded',
+    la devolución queda REGISTRADA como deuda del complejo (no se ejecuta por
+    API) y aparece en /caja/devoluciones para que el complejo la haga a mano
   - Si cancela con < X horas → seña retenida (va al complejo)
       ↓
 Si la seña fue pagada en efectivo (reserva manual del admin):
-  → No hay refund automático
+  → Mismo camino: se registra como devolución pendiente en /caja/devoluciones
   → Mensaje: "Contactá al complejo para el reembolso de tu seña."
 ```
+
+> [!IMPORTANT]
+> **No hay reembolso automático vía API de MercadoPago (revertido).** MP deriva el permiso
+> `payments:refunds` del producto de la aplicación y no se puede dar por concedido: la cuenta
+> del complejo típico (un tercero, no el dueño de la app) daba 403 en todos los intentos. El
+> camino automático se ELIMINÓ (PR #212); hoy el sistema solo **registra** la devolución que el
+> complejo queda debiendo (`registerRefundDue`, `src/modules/bookings/booking.cancellation.ts`)
+> y la lista en `/caja/devoluciones`. Ver `CLAUDE.md` (sección MercadoPago) y
+> `docs/decisions/` (reembolso automático descartado).
 
 **Comisión MP:** la absorbe el complejo (~5% de Checkout Pro sobre la seña; distinta del 2.99% de MP Suscripciones sobre la cuota SaaS). El complejo recibe el monto neto.
 No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita en su cuenta.
@@ -464,24 +482,18 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 ---
 
-## 8. Feature Flags por Plan
+## 8. Diferenciación entre planes
 
-> Los feature flags definen qué puede hacer cada plan.
-> Tienen que estar en la DB (no hardcodeados) para poder cambiarlos sin deployar.
-
-| Feature | Predio (1-3) | Complejo (4-6) | Estadio (7+) |
-|---|:---:|:---:|:---:|
-| Cantidad máxima de canchas | 3 | 6 | Ilimitado |
-| Historial de reservas | 6 meses | 12 meses | Ilimitado |
-| Reportes | ✅ Completos | ✅ Completos | ✅ Completos |
-| Exportación de datos | CSV | CSV + Excel | CSV + Excel |
-| API access (futuro) | ❌ | ❌ | ✅ |
-| Soporte | Email | Email | Email prioritario |
+> Retirada la tabla de "Feature Flags por Plan" (2026-08-27, auditoría de docs) — prometía gates de historial de
+> reservas, exportación CSV vs CSV+Excel, API access y soporte prioritario que no existen en el código: todos los
+> planes tienen exactamente las mismas features hoy. El único diferenciador real entre Predio/Complejo/Estadio es
+> la cantidad de canchas (`plans.max_courts`, ver §1) y el precio. Si se quiere diferenciar por feature en el
+> futuro, es una decisión de producto a tomar explícitamente, no algo que este doc deba dar por hecho.
 
 > [!NOTE]
-> **Regla de diseño de feature flags**: El sistema NUNCA muestra un error crudo cuando se supera un límite.
-> Siempre muestra un mensaje que explica el límite, la solución, y un CTA de upgrade claro.
-> Ejemplo: "Tu plan permite 2 canchas. Para agregar más, actualizá a Complejo →"
+> **Regla de diseño para cuando exista algún límite real (ej. cantidad de canchas)**: El sistema NUNCA muestra un
+> error crudo cuando se supera un límite. Siempre muestra un mensaje que explica el límite, la solución, y un CTA
+> de upgrade claro. Ejemplo: "Tu plan permite 3 canchas. Para agregar más, actualizá a Complejo →"
 
 ---
 
@@ -489,17 +501,22 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 | Parámetro | Valor | Configurable |
 |---|---|---|
-| Retención (oferta de downgrade) | Sí, para "muy caro" y "no lo uso" | No |
+| Retención (oferta de downgrade) | Roadmap, no implementado (auditado 2026-08-27): la UI real (`CancelSubscriptionSection.tsx`) es un campo de texto libre para el motivo, sin flujo estructurado ni oferta de downgrade | No |
 | Acceso post-cancelación | Hasta fin del período pago | No |
 | Datos post-expiración | 60 días en BLOCKED | No |
 | Reembolso del período restante | No | No |
 | Exportación de datos | Sí (CSV) | No |
 
 ### Acciones automáticas al expirar el período (post-cancelación)
-1. Estado → BLOCKED (sin acceso)
-2. Cancelar todos los turnos fijos (abonados) activos → email a contactos del admin
+1. Estado → BLOCKED (sin acceso) — `transitionCanceledToBlocked`, `lifecycle.service.ts`
+2. Turnos fijos (abonados): **NO se cancelan ni se avisa al admin.** El único efecto implementado
+   es que `generate-abonado-slots.worker.ts` deja de generarles nuevas instancias
+   (`SKIP_STATUSES` incluye `blocked`) — las filas de `abonados` siguen `active` en la DB. No hay
+   `email a contactos del admin` sobre esto en ningún lado del código (barrido 2026-08-27). Este
+   punto describe una automatización que no está construida.
 3. Reservas futuras: se mantienen hasta su fecha, después no se generan nuevas
-4. Página pública del complejo: "Este complejo ya no está en TurnoGol"
+4. Página pública del complejo: se oculta (mensaje real: "Este complejo no está disponible
+   temporalmente", `src/app/(public)/[slug]/page.tsx`; la copy de arriba es ilustrativa)
 5. Iniciar cuenta regresiva de 60 días → CHURNED → 7 días → DELETED
 
 ---
@@ -531,6 +548,11 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 ## 11. Unit Economics
 
 > No es un documento contable. Es para entender qué escala necesitamos para ser viables.
+
+> [!NOTE]
+> **Precios desactualizados.** La tabla de abajo usa los precios PRE-migr. 071 ($55.000/$85.000/
+> $115.000). Los vigentes desde 2026-08-07 son $63.000/$99.000/$129.000 (ver §1) — el MRR y la
+> comisión de MP de más abajo están calculados con los precios viejos y no se recalcularon.
 
 ### Con 100 clientes activos (mix estimado)
 

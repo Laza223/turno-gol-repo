@@ -16,29 +16,30 @@
 
 | Capa | Tecnología | Versión target | ADR |
 |---|---|---|---|
-| **Lenguaje** | TypeScript | 5.x | — |
-| **Runtime** | Node.js | 20 LTS | — |
-| **Framework fullstack** | Next.js (App Router) | 14.x / 15.x | ADR-008 |
-| **UI Library** | React | 18.x / 19.x | ADR-008 |
+| **Lenguaje** | TypeScript | 6.x (`package.json`: `^6.0.3`) | — |
+| **Runtime** | Node.js | 20 LTS (`engines.node: >=20.9`) | — |
+| **Framework fullstack** | Next.js (App Router, Turbopack) | 16.x (`^16.2.11`) | ADR-008 |
+| **UI Library** | React | 19.x (`^19.2.7`) | ADR-008 |
 | **Component Library** | shadcn/ui + Radix UI | Latest | — |
-| **Estilos** | Tailwind CSS | 3.x | — |
+| **Estilos** | Tailwind CSS | 4.x (`^4.3.2`) | — |
 | **Design System** | Propio (design-system/MASTER.md) | — | — |
 | **Base de datos** | PostgreSQL | 15.x (vía Supabase) | ADR-001 |
-| **ORM / Query Builder** | Drizzle ORM | Latest | — |
+| **ORM / Query Builder** | Drizzle ORM | `^0.45.2` | — |
 | **Autenticación** | Supabase Auth | Managed | ADR-002 |
 | **Real-time** | Supabase Realtime | Managed | ADR-006 |
-| **Storage** | Supabase Storage | Managed | ADR-009 |
-| **Background Jobs** | pg-boss | Latest | ADR-005 |
-| **Pagos** | MercadoPago SDK | Latest | ADR-004 |
-| **Email** | Resend | Latest | ADR-003 |
-| **Validación** | Zod | Latest | — |
+| **Storage** | **Cloudflare R2** (`src/shared/storage/r2.ts`, SDK `@aws-sdk/client-s3`) — NO Supabase Storage | Managed | — |
+| **Background Jobs** | pg-boss | `^9.0` | ADR-005 |
+| **Pagos** | MercadoPago SDK | `^2.0` | ADR-004 |
+| **Email** | Resend | `^6.18` | ADR-003 |
+| **Validación** | Zod | `^4.4` | — |
 | **Hosting App** | Vercel | Pro plan | ADR-009 |
 | **Hosting DB** | Supabase | Pro plan | ADR-009 |
-| **Error Tracking** | Sentry | Latest | — |
+| **Hosting Worker (pg-boss)** | Railway (`Dockerfile.worker` + `railway.toml`) | — | — |
+| **Error Tracking** | Sentry | `@sentry/nextjs ^10.65` | — |
 | **Analytics** | Vercel Analytics | Included | — |
 | **Autocompletado de direcciones** | Google Places API | Latest | — |
-| **Testing** | Vitest + Playwright | Latest | — |
-| **Package Manager** | pnpm | 8.x+ | — |
+| **Testing** | Vitest + Playwright | `vitest ^3.2` / `@playwright/test ^1.61` | — |
+| **Package Manager** | pnpm | 10.x+ (`packageManager: pnpm@10.34.5`) | — |
 
 > [!NOTE]
 > **Google Places API** (Decisión de auditoría 2026-07-21 — ARG-10): se usa en el onboarding
@@ -188,6 +189,17 @@
 ---
 
 ## 3. Estructura del Proyecto
+
+> [!NOTE]
+> El árbol de 3.1 es el layout **original de diseño**, previo a la implementación, y quedó
+> desactualizado en varios puntos: `src/modules/*` tiene **23 slices** reales (no ~11 —
+> faltan acá `canteen`, `tournaments`, `relationships`, `staff`, `players`, `bans`, `favorites`,
+> `reviews`, `metrics`, `onboarding`, `super-admin`, `home`, entre otros), `src/app/*` tiene
+> además los route groups `(business)` y `(super-admin)` (no listados acá), y existe una capa
+> `src/server/` (composition root del runtime web: middleware de auth/tenant/rol, wrappers de
+> route handler) que no aparece en este árbol — ver CLAUDE.md "Arquitectura del código" para el
+> mapa real y actualizado. Se conserva el árbol de abajo como referencia histórica del diseño
+> original de carpetas, no como fuente de verdad de la estructura actual.
 
 ### 3.1 Layout del repositorio (monorepo con Next.js)
 
@@ -504,16 +516,21 @@ FLUJO DE DEPENDENCIAS (unidireccional):
 
 ### 4.1 Dependencias de producción
 
+> [!NOTE]
+> Verificado contra `package.json` (2026-08-27). Se listan las libs con equivalente directo en
+> el diseño original; el `package.json` real tiene más (R2/S3, rate limiting con Upstash,
+> Storybook, Leaflet para mapas, `mercadopago`, `web-push`, etc.) — ver el archivo para la lista completa.
+
 ```json
 {
   "dependencies": {
     // Framework
-    "next": "^14.2",
-    "react": "^18.3",
-    "react-dom": "^18.3",
+    "next": "^16.2.11",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
 
     // Base de datos
-    "drizzle-orm": "^0.30",
+    "drizzle-orm": "^0.45.2",
     "postgres": "^3.4",               // PostgreSQL driver (postgres.js)
 
     // Autenticación
@@ -527,28 +544,30 @@ FLUJO DE DEPENDENCIAS (unidireccional):
     "mercadopago": "^2.0",             // SDK oficial de MercadoPago
 
     // Email
-    "resend": "^3.2",
+    "resend": "^6.18.0",
 
     // Validación
-    "zod": "^3.23",
+    "zod": "^4.4.3",
+
+    // Storage (Cloudflare R2, NO Supabase Storage)
+    "@aws-sdk/client-s3": "^3.1079.0",
 
     // UI (componentes primitivos — el design system visual se define en design-system/MASTER.md)
     "@radix-ui/react-dialog": "^1.0",
     "@radix-ui/react-dropdown-menu": "^2.0",
-    "@radix-ui/react-select": "^2.0",
+    "@radix-ui/react-popover": "^1.0",
     "@radix-ui/react-toast": "^1.1",
     "class-variance-authority": "^0.7",
     "clsx": "^2.1",
-    "tailwind-merge": "^2.3",
+    "tailwind-merge": "^3.6.0",
     // Iconos: lucide-react (definido en doc20, master design system)
 
     // Utilidades
     "date-fns": "^3.6",               // Manipulación de fechas
     "date-fns-tz": "^3.1",            // Timezone conversions (UTC ↔ ART)
-    "nanoid": "^5.0",                  // IDs cortos para tokens
 
     // Monitoring
-    "@sentry/nextjs": "^7.110"
+    "@sentry/nextjs": "^10.65.0"
   }
 }
 ```
@@ -559,30 +578,30 @@ FLUJO DE DEPENDENCIAS (unidireccional):
 {
   "devDependencies": {
     // TypeScript
-    "typescript": "^5.4",
+    "typescript": "^6.0.3",
     "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/react": "^19.2.17",
 
     // Testing
-    "vitest": "^1.6",
-    "@playwright/test": "^1.43",
+    "vitest": "^3.2.7",
+    "@playwright/test": "^1.61",
 
     // Linting
-    "eslint": "^8",
-    "eslint-config-next": "^14",
-    "@typescript-eslint/eslint-plugin": "^7",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.10",
+    "typescript-eslint": "^8.64.0",
 
     // DB tooling
-    "drizzle-kit": "^0.20",           // Migrations CLI
+    "drizzle-kit": "^0.31.10",        // Migrations CLI (drizzle-kit push/generate; usar SÓLO para generar tipos — las migraciones reales son SQL a mano, ver §7.4)
     "supabase": "^1.150",             // Supabase CLI
 
     // Estilos
-    "tailwindcss": "^3.4",
+    "tailwindcss": "^4.3.2",
+    "@tailwindcss/postcss": "^4.3.2",
     "postcss": "^8",
-    "autoprefixer": "^10",
 
     // Formatting
-    "prettier": "^3.2"
+    "prettier": "^3.9"
   }
 }
 ```
@@ -738,32 +757,38 @@ NODE_ENV=production
 
 ### 6.3 Validación de env vars al iniciar
 
+> [!NOTE]
+> Ejemplo desactualizado (verificado contra `src/shared/env.ts`, no `shared/config/env.ts` —
+> ese archivo no existe). El schema real usa Zod 4 y valida, entre otras, `ENCRYPTION_KEY`
+> (64 hex exactos), `IMPERSONATION_COOKIE_SECRET`, `MP_CLIENT_ID`/`MP_CLIENT_SECRET`
+> (OAuth Checkout Pro) + `MP_WEBHOOK_SECRET`/`MP_WEBHOOK_SECRET_CHECKOUT` (dos apps MP, ver
+> CLAUDE.md), `R2_ACCOUNT_ID`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET`/`R2_PUBLIC_BASE_URL`
+> (storage), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (push), `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`
+> (rate limiting) y `SYSTEM_ADMIN_EMAILS`. No valida `MP_ACCESS_TOKEN` ni `EMAIL_FROM` con ese
+> nombre. Varias son opcionales en dev/test y requeridas solo en prod (`isProd` branch), no un
+> único schema fijo como el ejemplo original sugiere.
+
 ```typescript
-// shared/config/env.ts
+// src/shared/env.ts
 import { z } from 'zod';
 
-const envSchema = z.object({
-  // Supabase
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  DATABASE_URL: z.string().startsWith('postgres'),
+function makeSchema(isProd: boolean) {
+  return z.object({
+    DATABASE_URL: z.string().min(1),
+    NEXT_PUBLIC_SUPABASE_URL: z.url(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
+    ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/),
+    MP_CLIENT_ID: z.string().min(1),
+    MP_CLIENT_SECRET: z.string().min(1),
+    MP_WEBHOOK_SECRET: isProd ? z.string().min(16) : z.string().min(16).optional(),
+    RESEND_API_KEY: z.string().min(1),
+    // ...ver src/shared/env.ts para el schema completo
+  });
+}
 
-  // MercadoPago
-  MP_ACCESS_TOKEN: z.string().min(1),
-  MP_WEBHOOK_SECRET: z.string().min(1),
-
-  // Email (Resend)
-  RESEND_API_KEY: z.string().startsWith('re_'),
-  EMAIL_FROM: z.string().email(),
-
-  // App
-  NEXT_PUBLIC_APP_URL: z.string().url(),
-  NODE_ENV: z.enum(['development', 'test', 'production']),
-});
-
-// Si falta alguna variable, la app falla al iniciar con un error claro
-export const env = envSchema.parse(process.env);
+// Si falta alguna variable requerida, la app falla al iniciar con un error claro
+export const env = validateServerEnv(process.env);
 ```
 
 ---
@@ -771,6 +796,17 @@ export const env = envSchema.parse(process.env);
 ## 7. Pipeline de CI/CD
 
 ### 7.1 En cada Pull Request
+
+> [!NOTE]
+> Ejemplo ilustrativo del diseño original, desactualizado frente al `.github/workflows/ci.yml`
+> real: hoy tiene 7 jobs (`lint-and-types`, `unit-tests`, `stories-shards`, `stories`,
+> `integration-and-isolation`, `e2e-tests`, `visual-regression`), no 3. `e2e-tests` y
+> `visual-regression` solo corren en push a `main` (no en todos los PRs, ver CLAUDE.md §CI).
+> `visual-regression` **ya NO usa** `continue-on-error` (se sacó el 2026-08-10, PR #123 —
+> comentario en el propio `ci.yml` job `visual-regression`: "ya no hay que fingir verde para no
+> trabar un merge que este job nunca pudo trabar"): hoy el check refleja el resultado real.
+> (`docs/testing/VISUAL_REGRESSION.md` no está actualizado con este cambio — sigue documentando
+> `continue-on-error`, pero ese archivo no forma parte de este lote de sync.)
 
 ```yaml
 # .github/workflows/ci.yml
@@ -814,32 +850,21 @@ jobs:
 
 ### 7.2 Deploy a producción
 
-```yaml
-# .github/workflows/deploy-production.yml
-name: Deploy Production
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-      - run: pnpm install --frozen-lockfile
-
-      # 1. Correr TODOS los tests
-      - run: pnpm test:unit
-      - run: pnpm test:integration
-      - run: pnpm test:isolation
-
-      # 2. Correr migrations en Supabase producción
-      - run: npx supabase db push --linked
-
-      # 3. Deploy a Vercel (automático vía integración Git)
-      # Vercel deploya automáticamente al detectar push a main
-```
+> [!NOTE]
+> No existe `deploy-production.yml` (verificado: `.github/workflows/` no lo tiene). Dos
+> mecanismos separados, ambos disparados por push a `main`, sin dependencia explícita entre sí:
+>
+> - **Deploy de la app**: Vercel por integración Git directa (no un GitHub Action) — no re-corre
+>   tests, ya corrieron en `ci.yml`.
+> - **Migraciones de producción**: `.github/workflows/db-migrate.yml`, dispara SOLO si cambiaron
+>   archivos en `supabase/migrations/**`. Corre `supabase db push` con `--dry-run` primero (deja
+>   registrado qué va a aplicar antes de tocar nada) y tiene `concurrency` para que dos merges
+>   seguidos no pusheen en paralelo. Si falla, el workflow queda rojo y la app sigue con el
+>   schema viejo (estado seguro).
+>
+> Hay una **carrera conocida** entre ambos: Vercel puede deployar código nuevo unos segundos
+> antes de que termine la migración. Por eso las migraciones son obligatoriamente
+> backward-compatible (expand & contract, ver §7.3 y `docs/operations/MIGRATIONS.md`).
 
 ### 7.3 Estrategia de deploy zero-downtime
 
@@ -900,11 +925,13 @@ npx supabase start
 cp .env.example .env.local
 # → Editar con los valores de Supabase local (se muestran al iniciar)
 
-# 5. Correr migrations
-pnpm db:migrate
+# 5. Aplicar migraciones (SQL a mano en src/shared/db/migrations/0*.sql,
+#    vía psql o el CLI de Supabase — drizzle-kit push NO es el camino:
+#    "db:migrate"/"db:push" están DENEGADOS en .claude/settings.json, ver §7.4)
 
-# 6. Seed de datos de desarrollo
-pnpm db:seed
+# 6. Seed de datos (según necesidad)
+pnpm e2e:seed            # datos para e2e
+pnpm seed:system-admin    # bootstrap del primer super-admin
 
 # 7. Iniciar la app
 pnpm dev
@@ -913,6 +940,12 @@ pnpm dev
 
 ### 8.2 Scripts de package.json
 
+> [!NOTE]
+> Lista real verificada contra `package.json` (2026-08-27) — la fuente de verdad viva es
+> `CLAUDE.md` §Comandos, este bloque es un subset ilustrativo. `db:push`/`db:migrate` (alias de
+> `drizzle-kit push`) están **DENEGADOS** en `.claude/settings.json`: las migraciones reales son
+> los SQL a mano de `src/shared/db/migrations/0*.sql` (§7.4). No existe script `db:seed`.
+
 ```json
 {
   "scripts": {
@@ -920,27 +953,24 @@ pnpm dev
     "build": "next build",
     "start": "next start",
 
-    "lint": "eslint src/ --ext .ts,.tsx",
-    "type-check": "tsc --noEmit",
-    "format": "prettier --write src/",
+    "lint": "eslint src/ tests/ scripts/",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src/ tests/ scripts/",
 
-    "db:migrate": "drizzle-kit push:pg",
-    "db:migrate:test": "drizzle-kit push:pg --config=drizzle.test.config.ts",
-    "db:generate": "drizzle-kit generate:pg",
+    "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx supabase/seed.ts",
+    "db:sync-supabase": "node scripts/sync-supabase-migrations.mjs",
 
-    "test:unit": "vitest run --dir tests/unit",
-    "test:integration": "vitest run --dir tests/integration",
+    "test": "vitest run tests/unit src",
+    "test:integration": "vitest run --dir tests/integration --exclude \"**/isolation.test.ts\"",
     "test:isolation": "vitest run tests/integration/isolation.test.ts",
     "test:e2e": "playwright test",
-    "test": "pnpm test:unit && pnpm test:integration",
 
-    "jobs:dev": "tsx src/shared/jobs/worker.ts",
+    "jobs:start": "tsx src/shared/jobs/run-workers.ts",
 
-    "supabase:start": "npx supabase start",
-    "supabase:stop": "npx supabase stop",
-    "supabase:reset": "npx supabase db reset"
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset"
   }
 }
 ```
@@ -954,18 +984,17 @@ En desarrollo, los background jobs corren en un proceso separado:
 pnpm dev
 
 # Terminal 2: Background jobs worker
-pnpm jobs:dev
+pnpm jobs:start
 ```
 
-En producción, el worker se inicia junto con la app o como un proceso separado (depende del hosting). En Vercel, los cron jobs simples se manejan con `vercel.json` cron, y los workers de colas con un servicio auxiliar si es necesario.
-
-> [!WARNING]
-> **pg-boss en Vercel serverless tiene una limitación**: las funciones de Vercel son efímeras
-> (mueren después de cada request). Un worker de pg-boss necesita un proceso persistente
-> que escuche la cola. **Solución para v1**: correr el worker en un servicio separado
-> (Railway, Fly.io, o un VPS de $5/mes) que se conecte a la misma DB de Supabase.
-> Alternativa: usar Supabase Edge Functions con `pg_cron` para jobs scheduled,
-> y procesar los jobs de colas en un Vercel Cron que corre cada minuto.
+> [!NOTE]
+> **Decidido e implementado** (ya no es una decisión pendiente): el worker de pg-boss corre como
+> proceso standalone, desacoplado de Next.js, en un servicio separado — **Railway**
+> (`Dockerfile.worker` + `railway.toml` en la raíz del repo), conectado a la misma DB de Supabase
+> vía `WORKER_DATABASE_URL` (rol `turnogol_worker`, BYPASSRLS). Entrypoint: `src/shared/jobs/run-workers.ts`
+> (14 workers registrados, ver CLAUDE.md). La limitación original de pg-boss en funciones
+> serverless efímeras de Vercel sigue siendo la razón de fondo, pero ya no aplica: la app web
+> vive en Vercel y el worker vive en Railway.
 
 ---
 
@@ -978,18 +1007,26 @@ En producción, el worker se inicia junto con la app o como un proceso separado 
 | **Autenticación** | Staff: email+password (ADR-013). Jugadores: Magic Link/OAuth. | Supabase Auth |
 | **JWT** | Access 1h, Refresh 30d rotativo | Supabase Auth config |
 | **HTTPS** | Obligatorio | Vercel SSL automático |
-| **Tenant Isolation** | RLS en 13 tablas | Doc 12 — 6 capas de protección (incluye `push_subscriptions`) |
+| **Tenant Isolation** | RLS en 23 tablas tenant-aisladas (actualizado 2026-08-27, verificado contra `src/shared/db/migrations/*.sql`; no cuenta híbridas ni self-scoped como `system_admins`) | Doc 12 — 6 capas de protección (incluye `push_subscriptions`) |
 | **Input Validation** | Todos los inputs | Zod schemas en cada endpoint |
 | **SQL Injection** | Queries parametrizadas | Drizzle ORM (nunca concatenar SQL) |
 | **XSS** | CSP headers | next.config.js headers |
 | **CSRF** | SameSite cookies | Supabase Auth maneja cookies |
-| **Rate Limiting** | Por IP en auth y búsqueda | Middleware custom o Vercel WAF |
+| **Rate Limiting** | Por IP/email/tenant/player según endpoint (§9 doc15) | Upstash Redis (`@upstash/ratelimit`, `src/shared/rate-limit/`) |
 | **Secrets** | Env vars | Vercel encrypted env vars |
 | **Datos de tarjeta** | NUNCA almacenados | MP maneja PCI DSS |
 | **Audit Trail** | INSERT only, 12 meses | Tabla audit_logs + RLS |
 | **OWASP Top 10** | Mitigaciones documentadas | Doc 5 §4 |
 
 ### 9.2 Content Security Policy
+
+> [!NOTE]
+> Ejemplo simplificado — desactualizado frente a `next.config.ts` (no `next.config.js`; el repo
+> es TypeScript). La CSP real es condicional dev/prod (`unsafe-eval` en `script-src` solo en dev),
+> agrega `img-src` para `images.unsplash.com`, tiles de OpenStreetMap y los hosts de media (R2),
+> y agrega `report-uri`/`report-to` apuntando a `/api/csp-report`
+> (`src/shared/observability/csp-report.ts`) — endpoint no documentado en este archivo ni en
+> doc15. Ver `next.config.ts` para las directivas completas.
 
 ```javascript
 // next.config.js

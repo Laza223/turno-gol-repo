@@ -42,7 +42,7 @@ Archivo suelto vigente: [`infraestructura.md`](./infraestructura.md) (plan de in
 - `doc10` — Onboarding: wizard 4 pasos, Aha Moment = primera reserva online
 
 ### Capa Técnica
-- `doc11` — 12 ADRs
+- `doc11` — 13 ADRs
 - `doc12` — Tenant isolation (RLS, SET LOCAL, JWT, RLS dual)
 - `doc13` — SQL completo (19 tablas + system_admins, ENUMs, índices, RLS)
 - `doc14` — Tech stack

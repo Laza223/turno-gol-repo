@@ -49,13 +49,14 @@ Cada día está en uno de **3 estados**: `general` (default, hereda los 2 campos
 `custom` (par propio de open/close) o `closed` (checkbox destildado; finalmente expone el flag).
 Caso común = 2 campos; caso "finde distinto" = 2+4; caso anterior completo sigue disponible.
 
-### 2.2 Derivación al cargar (pura, `horarios-lib.ts`)
+### 2.2 Derivación al cargar (pura, `lib/schedule/schedule-view.ts`)
 
 - `general` = el par `(open, close)` **más frecuente** entre los días abiertos; empate → el del
   primer día en orden lun..dom. Sin días abiertos/sin datos → default `08:00`/`23:00`.
 - Día con par distinto al general → modo `custom`. `closed: true` → modo `closed`.
 - Round-trip garantizado: derivar y volver a expandir reproduce el `OpeningHours` original
-  (testeado en `tests/unit/horarios-lib.test.ts`).
+  (testeado en `tests/unit/horarios-lib.test.ts`, que ejercita `deriveScheduleView` de
+  `schedule-view.ts` — el mismo módulo que reusa `StepSchedule` del wizard de onboarding).
 
 ### 2.3 Contrato de persistencia (sin migración)
 

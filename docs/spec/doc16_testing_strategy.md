@@ -30,29 +30,32 @@ TurnoGol no es Google. No podemos tener 95% de coverage ni una suite de 10.000 t
 ```
                 ┌──────────┐
                 │   E2E    │  ~10% del esfuerzo
-                │ (Playwright)│  7-10 tests de happy path
+                │ (Playwright)│  ~102 tests de happy path
                 ├──────────┤
                 │          │
             ┌───┤Integration├───┐  ~25% del esfuerzo
-            │   │(Vitest+DB)│   │  35-50 tests con DB real
+            │   │(Vitest+DB)│   │  ~143 tests con DB real
             │   ├──────────┤   │
             │   │          │   │
         ┌───┤   │   Unit   │   ├───┐  ~65% del esfuerzo
-        │   │   │ (Vitest) │   │   │  100-140 tests de lógica pura
+        │   │   │ (Vitest) │   │   │  ~357 tests de lógica pura
         └───┴───┴──────────┴───┴───┘
 ```
 
 | Capa | Framework | DB | Red | Velocidad | Cuántos |
 |---|---|---|---|---|---|
-| **Unit** | Vitest | ❌ No | ❌ No | < 50ms/test | 100-140 |
-| **Integration** | Vitest | ✅ PostgreSQL real (Supabase local) | ❌ No (mocks) | < 500ms/test | 35-50 |
-| **E2E** | Playwright | ✅ Sí (app completa) | ✅ Sí | 5-15s/test | 7-10 |
+| **Unit** | Vitest | ❌ No | ❌ No | < 50ms/test | ~357 |
+| **Integration** | Vitest | ✅ PostgreSQL real (Supabase local) | ❌ No (mocks) | < 500ms/test | ~143 |
+| **E2E** | Playwright | ✅ Sí (app completa) | ✅ Sí | 5-15s/test | ~102 |
 
 > [!NOTE]
-> **Totales reconciliados (Decisión de auditoría 2026-07-21 — TEC-02):** unit **100-140**,
-> integration **35-50**, e2e **7-10** → **~142-200 tests** para v1. Estos son los números que
+> **Totales actualizados (auditoría de docs 2026-08-27, reemplaza la reconciliación 2026-07-21 —
+> TEC-02, que quedó muy por debajo de la suite real):** unit **~357** archivos, integration **~143**,
+> e2e **~102** (conteo de archivos `*.test.ts`/`*.spec.ts`, no de casos individuales — un archivo
+> suele tener varios `it()`/`test()`) → **~600 archivos de test** para v1. Estos son los números que
 > usan §2.1, §3.1, §4.1 y el resumen §13; cualquier otra cifra en el doc es un remanente a
-> corregir.
+> corregir. Los rangos "100-140"/"35-50"/"7-10" de la decisión 2026-07-21 (TEC-02) describían un piso
+> mínimo de esa fecha, no un techo — la suite creció mucho desde entonces.
 
 ---
 
@@ -77,7 +80,7 @@ Business logic pura que no toca base de datos, red ni servicios externos.
 | `zod schemas` | Validación de inputs: boundaries, tipos inválidos, campos requeridos | 10-15 tests |
 | `slug.ts` | Generación y sanitización de slugs | 3-5 tests |
 
-**Total estimado: 100-140 unit tests.**
+**Total real: ~357 archivos unit (actualizado 2026-08-27; el estimado original de 100-140 era de una etapa mucho más temprana).**
 
 ### 2.2 Patrón de test unitario
 
@@ -189,7 +192,7 @@ Flujos que involucran la base de datos, incluyendo transacciones, RLS, constrain
 | `abonado-flow.test.ts` | Crear abonado → genera slots → cancela → elimina futuros | 🟡 Alto (no gate) |
 | `billing-lifecycle.test.ts` | Trial → active → past_due → suspended → active | 🟢 Incremental (post-launch) |
 
-**Total estimado: 35-50 integration tests.**
+**Total real: ~143 archivos integration (actualizado 2026-08-27).**
 
 > [!IMPORTANT]
 > **Scope de v1 — qué BLOQUEA el deploy (Decisión de auditoría 2026-07-21 — TEC-02).**
@@ -278,6 +281,16 @@ test-isolation:
     - pnpm test:isolation
   allow_failure: false  # ← Si falla, el pipeline MUERE
 ```
+
+> [!NOTE]
+> **El código real (`tests/integration/isolation.test.ts`) creció mucho más allá de este
+> esqueleto.** No es un loop sobre un array `ISOLATED_TABLES` de 12-13 tablas: es un catálogo
+> explícito (`tablesAll`) con bloques A-N (positivo, cross-tenant SELECT/INSERT/UPDATE/DELETE,
+> REVOKE de UPDATE/DELETE en tablas append-only, fail-safe sin contexto, tablas RLS post-021 —
+> `push_subscriptions`, `player_favorites`, `feature_flags`, `reviews` — y las de cantina
+> migración 048). Cubre las ~19 tablas aisladas vigentes (ver CLAUDE.md), no las ~12-13 de este
+> ejemplo. El patrón sigue siendo válido como introducción; para el contrato real, leer el
+> archivo.
 
 ### 3.3 Test de concurrencia en reservas — El antidoble-booking
 
@@ -477,7 +490,7 @@ Solo los flujos críticos de negocio, end-to-end, desde el browser hasta la DB. 
 | `auth-flow.spec.ts` | Login staff (email+password) → dashboard visible → logout | 🟡 Alto |
 | `billing.spec.ts` | Trial → pantalla de upgrade → (mock MP) → plan activo | 🟢 Medio |
 
-**Total estimado: 7-10 e2e tests.**
+**Total real: ~102 archivos e2e (actualizado 2026-08-27).**
 
 ### 4.2 Configuración de Playwright
 
@@ -516,6 +529,16 @@ export default defineConfig({
   ],
 });
 ```
+
+> [!NOTE]
+> **`playwright.config.ts` real tiene 8 projects, no 1.** `chromium` (funcional), `mobile-chrome`
+> (Pixel 5, specs de `mobile/`), `axe-audit` (a11y, specs de `a11y/`), `webkit` y `mobile-safari`
+> (cross-browser + `admin-login.spec.ts`), `firefox` (cross-browser), y `visual`/`visual-mobile`
+> (regresión visual de pantalla completa, ver Doc 16 §6 y `docs/testing/VISUAL_REGRESSION.md`). El
+> gate de PR (`pnpm exec playwright test --project chromium --grep @critical`) corre solo un
+> subconjunto en `chromium`; la suite completa (`test:e2e:ci` + `test:e2e:cross-browser`) corre
+> local antes de un release o en push a main (ver nota de §10). El `webServer` real apunta a
+> `/api/status` (no `pnpm dev` liso) con `NEXT_PUBLIC_E2E=1` y `MP_MOCK_MODE=1`.
 
 ### 4.3 Ejemplo: test E2E del flujo de reserva del admin
 
@@ -883,6 +906,17 @@ export async function seedIsolationData(tenantId: string) {
 
 ## 9. Configuración de Vitest
 
+> [!NOTE]
+> **El `vitest.config.ts` real no tiene bloque `coverage` ni thresholds** (verificado
+> 2026-08-27) — ni los targets pragmáticos de abajo ni el `pnpm test:coverage` de §10.2. Sí
+> comparte lo esencial: `environment: 'node'`, alias `@`, y agrega `pool: 'threads'` con
+> `singleThread: true` — necesario para que los tests de integración (Postgres compartido, RLS)
+> no se corran en paralelo real y se pisen entre sí (probado y revertido para `unit`: la ganancia
+> no valía la carrera que introducía). `include`/`exclude` corren sobre `configDefaults.exclude`
+> más `tests/e2e/**` y los worktrees anidados, no el patrón `tests/**/*.test.ts` de abajo. Los
+> targets de coverage de §12.1 siguen siendo el objetivo de negocio; solo no están enforced por
+> config.
+
 ```typescript
 // vitest.config.ts
 import { defineConfig } from 'vitest/config';
@@ -933,6 +967,24 @@ export default defineConfig({
 ---
 
 ## 10. Pipeline de Testing en CI/CD
+
+> [!IMPORTANT]
+> **`.github/workflows/ci.yml` real diverge de este ejemplo en varios puntos (verificado
+> 2026-08-27):**
+> - Hay un job más: **Stories (BLOCKING)** — corre `pnpm test:storybook:ci` (render + play + axe
+>   en Storybook) en una matriz de 3 shards × 2 temas (light/dark), agregados por un job
+>   `stories` que falla si cualquier shard falló. Es required status check junto con Lint & Types,
+>   Unit Tests e Integration & Isolation.
+> - **`e2e-tests` y `visual-regression` NO corren en Pull Requests desde el 2026-08-10.** Corren
+>   solo en `push` a `main` (antes del deploy a Vercel) o por `workflow_dispatch` manual — no son
+>   required status check. La condición real es
+>   `(push a main) || workflow_dispatch`, no `github.base_ref == 'main'` sobre un `pull_request`.
+> - El job de e2e en CI corre **solo `--grep @critical` en `chromium`** (no las 3 suites de
+>   `test:e2e:ci`): el runner estándar de 2 cores no las banca encima del stack de Supabase. La
+>   suite completa (mobile, axe, cross-browser) corre local o en un futuro job nightly.
+> - `lint-and-types` también corre `pnpm format:check` y `pnpm knip` (código muerto), no solo
+>   lint + typecheck.
+> - Job 1 (`lint-and-types`) usa `pnpm typecheck`, no `pnpm type-check` (ver §10.2 corregido).
 
 ### 10.1 Workflow completo
 
@@ -1017,16 +1069,22 @@ jobs:
 
 ### 10.2 Scripts de package.json
 
+> [!NOTE]
+> Bloque corregido contra `package.json` real (2026-08-27). No existen `test:unit`,
+> `test:watch` ni `test:coverage` con esos nombres; `test` a secas ES la corrida de unit tests
+> (no un combinado de las tres capas).
+
 ```json
 {
   "scripts": {
-    "test:unit": "vitest run --dir tests/unit",
-    "test:integration": "vitest run --dir tests/integration --exclude tests/integration/isolation.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ tests/ scripts/",
+    "test": "vitest run tests/unit src",
+    "test:integration": "vitest run --dir tests/integration --exclude \"**/isolation.test.ts\"",
     "test:isolation": "vitest run tests/integration/isolation.test.ts",
     "test:e2e": "playwright test",
-    "test": "pnpm test:unit && pnpm test:integration && pnpm test:isolation",
-    "test:watch": "vitest --dir tests/unit",
-    "test:coverage": "vitest run --coverage"
+    "test:e2e:ci": "playwright test --project chromium --reporter=github,html && playwright test --project mobile-chrome --reporter=github,html && playwright test --project axe-audit --reporter=github,html",
+    "test:e2e:cross-browser": "playwright test --project webkit --project firefox --project mobile-safari"
   }
 }
 ```
@@ -1121,7 +1179,7 @@ Requisitos de infra local:
 │                  TESTING MAP - TURNOGOL                        │
 │                                                                │
 │  ┌────────────────────┐                                        │
-│  │    UNIT TESTS       │  100-140 tests · Vitest · < 30s      │
+│  │    UNIT TESTS       │  ~357 tests · Vitest · < 30s          │
 │  │                     │                                        │
 │  │  • State machines   │  Sin DB, sin red, sin filesystem      │
 │  │  • Pricing logic    │  Mocks para dependencias externas     │
@@ -1134,7 +1192,7 @@ Requisitos de infra local:
 │           │                                                    │
 │           ▼                                                    │
 │  ┌────────────────────┐                                        │
-│  │ INTEGRATION TESTS   │  35-50 tests · Vitest + DB · < 2min  │
+│  │ INTEGRATION TESTS   │  ~143 tests · Vitest + DB · < 2min    │
 │  │                     │                                        │
 │  │  🔴 ISOLATION TESTS │  11 tablas × 4 ops = 44 assertions   │
 │  │  🔴 CONCURRENCY     │  Double booking, exclusion constraint │
@@ -1146,7 +1204,7 @@ Requisitos de infra local:
 │           │                                                    │
 │           ▼                                                    │
 │  ┌────────────────────┐                                        │
-│  │    E2E TESTS        │  7-10 tests · Playwright · < 5min    │
+│  │    E2E TESTS        │  ~102 tests · Playwright · < 5min     │
 │  │                     │                                        │
 │  │  • Onboarding flow  │  Solo happy paths críticos            │
 │  │  • Booking (admin)  │  Browser → API → DB → response       │

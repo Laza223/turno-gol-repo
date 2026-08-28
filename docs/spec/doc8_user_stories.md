@@ -79,7 +79,7 @@ para empezar a configurar mi complejo sin fricción.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en `turnogol.app/registrar`, cuando ingreso email válido + password seguro + nombre completo + celular con formato argentino y hago click en "Crear cuenta", entonces se crea un StaffUser con contraseña hasheada y recibo un email de verificación de cuenta.
+- [ ] Dado que estoy en `turnogol.app/register`, cuando ingreso email válido + password seguro + nombre + apellido + celular con formato argentino y hago click en "Crear cuenta", entonces se crea un StaffUser con contraseña hasheada y recibo un email de verificación de cuenta.
 - [ ] Dado que recibí el email de verificación, cuando hago click en el link de confirmación dentro de los 15 minutos, entonces mi cuenta se activa, quedo autenticado y soy redirigido al wizard de onboarding.
 - [ ] Dado que completé el registro, cuando inicio sesión con email y contraseña, entonces mi rol es `admin` automáticamente.
 
@@ -117,27 +117,27 @@ para tener mi complejo operativo en menos de 20 minutos.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy autenticado y no tengo un Tenant creado, cuando entro al panel, entonces soy redirigido automáticamente al wizard de onboarding (paso 1 de 4).
-- [ ] **Paso 1 (Datos del complejo)**: Dado que estoy en el paso 1, cuando ingreso nombre + dirección + ciudad + provincia, entonces se crea un Tenant con status=`trialing`, trial_ends_at=NOW()+30 días, y un slug auto-generado desde el nombre.
-- [ ] **Paso 2 (Canchas)**: Dado que estoy en el paso 2, cuando creo al menos 1 cancha con nombre + tipo de superficie + formato, entonces se crea un Court con status=`online` y pricing pre-cargado según franja horaria.
-- [ ] **Paso 2 (Canchas)**: Los precios default son: mañana $8.000, tarde $10.000, noche $12.000 (weekday), mañana $10.000, noche $15.000 (weekend). Editables por el usuario.
-- [ ] **Paso 3 (Horarios)**: Dado que estoy en el paso 3, cuando veo los horarios pre-cargados (Lun-Dom 08:00-00:00), entonces puedo editarlos por día o dejar los default.
-- [ ] **Paso 4 (Seña)**: Dado que estoy en el paso 4, cuando elijo "Sí, cobrar seña", entonces soy redirigido al OAuth de MercadoPago para conectar mi cuenta.
-- [ ] **Paso 4 (Seña)**: Dado que elijo "No cobrar seña", entonces se guarda `settings.requires_deposit = false` y el wizard termina.
+- [ ] Dado que estoy autenticado y no tengo un Tenant creado, cuando entro al panel, entonces soy redirigido automáticamente al wizard de onboarding (paso 1 de 4, `/onboarding/complejo`).
+- [ ] **Paso 1 (Tu complejo)**: Dado que estoy en el paso 1, cuando ingreso nombre + dirección + ciudad + provincia, entonces se crea un Tenant con status=`trialing`, trial_ends_at=NOW()+30 días, y un slug auto-generado desde el nombre. El teléfono NO se pide de nuevo (se toma de la cuenta creada en el registro).
+- [ ] **Paso 2 (Horarios)**: Dado que estoy en el paso 2, cuando veo los horarios pre-cargados (Lun a Dom 08:00-00:00, mismo horario los 7 días), entonces puedo editarlos por día o dejar los default. Este paso va ANTES que Canchas porque los precios del paso 3 se calculan sobre estos horarios.
+- [ ] **Paso 3 (Canchas)**: Dado que estoy en el paso 3, cuando creo al menos 1 cancha con nombre + tipo de superficie + formato + si es cubierta + UN precio por turno, entonces se crea un Court con status=`online`. El precio ingresado se expande de forma uniforme sobre todos los horarios del paso 2 (no hay pricing pre-cargado por franja en el wizard).
+- [ ] **Paso 4 (Primera reserva)**: Dado que estoy en el paso 4, cuando veo los slots libres de hoy en mis canchas, puedo cargar ahí mismo un turno real (opcional, el paso es salteable) y terminar la configuración.
 - [ ] Dado que completé el wizard, cuando llego al dashboard, entonces veo un checklist de progreso y mi complejo ya está live en `turnogol.app/{slug}`.
 - [ ] El wizard guarda progreso automáticamente en DB (no en localStorage). Si cierro el browser y vuelvo, retomo donde quedé.
+- [ ] MercadoPago y la seña NO forman parte del wizard: todo tenant nuevo arranca con `settings.requires_deposit = false` y se conecta MP después, desde `/settings/facturacion` (ver US-ONB-004).
 
 ❌ Edge Cases
 - [ ] Si el slug auto-generado ya existe → agregar sufijo numérico (`complejo-san-martin-2`).
-- [ ] Si no creo ninguna cancha y skipeo el paso 2 → el complejo se crea pero NO aparece en búsquedas públicas. Checklist muestra "Agregá al menos 1 cancha".
-- [ ] Si el OAuth de MercadoPago falla o es cancelado → el wizard termina sin MP. Se puede configurar después desde Settings. Checklist muestra "Conectá MercadoPago".
-- [ ] Si cierro el wizard en el paso 3 y vuelvo mañana → levanto el wizard desde el paso 3 (progreso guardado).
+- [ ] Si no creo ninguna cancha en el paso 3 → el wizard no me deja avanzar al paso 4 (el paso 4 necesita al menos una cancha para mostrar slots).
+- [ ] Si mis horarios quedan sin ningún día operable → el checklist del dashboard muestra "Horarios" sin marcar (`hasOperableDay`), aunque el paso ya esté completado.
+- [ ] Si cierro el wizard en el paso 3 y vuelvo mañana → levanto el wizard desde el paso 3 (progreso guardado); ir hacia atrás siempre está permitido, adelantarse no.
 - [ ] Si ingreso un nombre de complejo con caracteres especiales → el slug se sanitiza (ej: "Fútbol & Amigos" → "futbol-amigos").
 
 🚫 Out of Scope
-- NO incluye subir fotos del complejo en el wizard (es opcional, se hace después)
+- NO incluye subir fotos del complejo ni de las canchas en el wizard (se hace después, desde Settings)
 - NO incluye importación de datos desde otro sistema
-- NO incluye configuración de políticas de cancelación en el wizard (defaults aplicados)
+- NO incluye configuración de políticas de cancelación ni de feriados en el wizard (defaults aplicados; feriados se cargan después desde Settings → Feriados)
+- NO incluye conectar MercadoPago en el wizard (se mudó a `/settings/facturacion`, US-ONB-004)
 
 **Dependencias**: US-ONB-001
 **Bloquea**: US-RES-001, US-RES-002, US-ADM-001
@@ -190,7 +190,7 @@ para no olvidarme de nada y llegar al "aha moment" (primera reserva online) lo a
 **Epic**: Onboarding
 **Persona**: Marcelo (Dueño del Complejo)
 **Prioridad**: P0 — Bloqueante
-**Flujo relacionado**: Doc 7, Flujo 1 (paso 6) + Doc 7, Flujo 2 (paso 4)
+**Flujo relacionado**: `/settings/facturacion` (fuera del wizard desde el refactor de onboarding fase 5 — ver Doc 7, Flujo 1) + Doc 7, Flujo 2 (paso 4)
 
 **Historia**:
 Como Marcelo,
@@ -201,7 +201,7 @@ para que los pagos lleguen directamente a mi cuenta sin intermediarios.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → MercadoPago (o en el paso 4 del wizard), cuando hago click en "Conectar MercadoPago", entonces soy redirigido al flujo OAuth de MP.
+- [ ] Dado que estoy en `/settings/facturacion` (MercadoPago ya NO es un paso del wizard de onboarding), cuando hago click en "Conectar MercadoPago", entonces soy redirigido al flujo OAuth de MP.
 - [ ] Dado que autorizo la aplicación en MP, cuando soy redirigido de vuelta a TurnoGol, entonces mis credenciales de MP se guardan encriptadas y el complejo queda habilitado para cobrar señas.
 - [ ] Dado que MP está conectado, cuando un jugador paga una seña, entonces el dinero va directo a la cuenta de MP de Marcelo (TurnoGol no retiene fondos).
 - [ ] Dado que MP está conectado, cuando voy a Settings → MercadoPago, entonces veo "Conectado ✅" con la cuenta asociada y un botón "Desconectar".
@@ -213,7 +213,7 @@ para que los pagos lleguen directamente a mi cuenta sin intermediarios.
 
 🚫 Out of Scope
 - NO incluye integración con otros procesadores de pago (solo MP en v1)
-- NO incluye configuración del porcentaje de seña desde este flujo (eso es US-ADM-003)
+- NO incluye configuración del porcentaje de seña desde este flujo (eso es US-ADM-002)
 
 **Dependencias**: US-ONB-001
 **Bloquea**: US-RES-003 (pago de seña)
@@ -503,7 +503,7 @@ para que la caja y las estadísticas se actualicen correctamente.
 - [ ] Dado que hago click en "❌ No se presentó", entonces el booking pasa a status=`no_show`, se captura la seña y se registra la ausencia (`noshow_count` + `last_no_show_at`); la 2da ausencia en 90 días dispara un softban de 14 días (`tenant_player_bans`).
 
 ❌ Edge Cases
-- [ ] Si nadie marca asistencia en los 30 minutos posteriores a `time_end` → el sistema auto-completa como `completed` (benefit of the doubt). AuditLog: `booking.auto_completed` con actor=system.
+- [ ] Si nadie marca asistencia en los 30 minutos posteriores a `time_end` → el sistema auto-completa como `completed` (benefit of the doubt). AuditLog: `booking.auto_completed` con actor=system — **gap confirmado 2026-08-27, no implementado**: `autoCompleteOverdueBookings`, `completeBookingAction` y `markNoShowAction` no llaman `insertAuditLog` (grep de `auto_completed`/`autoCompleted` en `src/` sin resultados). Flaggeado para implementar.
 - [ ] Si el admin quiere cambiar un `completed` a `no_show` → permitido SI está dentro de las 24hs. Después de 24hs → inmutable.
 - [ ] Si la reserva es tipo `block` (sin jugador) → solo se puede marcar como `completed`. No aplica no-show.
 
@@ -538,13 +538,13 @@ para no tener que llamar al complejo ni esperar.
 ✅ Happy Path
 - [ ] Dado que tengo una reserva confirmada y `NOW() < fecha + hora_inicio - cancellation_policy.hours_before`, cuando hago click en "Cancelar", entonces veo: "Tu seña de ${monto} se te devuelve."
 - [ ] Dado que confirmo la cancelación, entonces: booking.status → `canceled_refunded`, `canceled_by = 'player'`, `canceled_at = NOW()`.
-- [ ] Dado que la seña estaba pagada por MP, cuando se procesa la cancelación, entonces se crea un refund en MP y un Payment con type=`refund`.
+- [ ] Dado que la seña estaba pagada por MP, cuando se procesa la cancelación, entonces se crea un Payment con type=`refund`, status=`pending` (`deposit_status → 'refunded'` = "corresponde devolución"). NO se llama a la API de reembolsos de MP: la devolución la hace el complejo.
 - [ ] Dado que la cancelación entró en política, entonces recibo email: "Tu turno del {fecha} {hora} fue cancelado. Tu seña de ${monto} se devuelve." **La devolución la hace el complejo** (ver la corrección del 2026-08-24 en doc7 §Flujo 4): la app me muestra el monto, el código de reserva y el contacto hasta que me la devuelvan.
 - [ ] Dado que la reserva se canceló, entonces el slot se libera y aparece como "libre" en la grilla y en la página pública.
 
 ❌ Edge Cases
 - [ ] La seña cobrada en efectivo se trata IGUAL que la de MercadoPago: no hay reembolso automático para ninguna de las dos. En los dos casos queda registrada la devolución y el complejo la salda.
-- [ ] Si el refund de MP falla → el booking se cancela igual. Se reintenta el refund 3 veces con backoff. Si falla → notificar al admin.
+- [ ] No hay reintento automático contra la API de MP — ese camino no existe (se eliminó por dar 403 siempre, ver doc7 §Flujo 4). El booking se cancela igual y la devolución queda registrada para que el complejo la salde.
 - [ ] Si la reserva no tenía seña (`deposit_status = 'not_required'`) → se cancela sin refund. Mensaje: "Tu turno fue cancelado."
 - [ ] Si es una instancia de turno fijo (abonado) → la instancia se cancela. El abonado sigue activo para las próximas semanas.
 
@@ -858,24 +858,26 @@ para llevar el control de cuánto pagó cada abonado sin doble-contar la plata e
 
 **Historia**:
 Como Marcelo,
-quiero un módulo central "Jugadores" con la ficha de cada cliente vinculado al complejo,
-para ver su historial, gestionar sus bans de no-show y cargar saldo de sus abonos en un solo lugar.
+quiero un módulo central "Jugadores" con la ficha de cada persona que el complejo conoce,
+para ver su historial, gestionar sus bans de no-show y sus etiquetas en un solo lugar.
 
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que entro a `/jugadores`, entonces veo solo jugadores vinculados al complejo (no invitados telefónicos), con buscador por nombre/teléfono/email y badge rojo si tienen un ban activo.
-- [ ] Dado que abro una ficha, entonces veo stats (reservas, ausencias (noshow_count), tasa), bans activos/historial, abonados con saldo, e historial de reservas.
+- [ ] Dado que entro a `/jugadores` (actualizado por B13), entonces veo dos orígenes en una sola lista: jugadores vinculados al complejo (`kind:'player'`) Y contactos derivados de abonados sin cuenta (`kind:'contact'`, agrupados por teléfono) — los invitados de `bookings.guest_name` siguen sin aparecer. Buscador por nombre/teléfono/email, badge rojo si tienen un ban activo.
+- [ ] Dado que abro una ficha, entonces veo stats (reservas, ausencias (noshow_count), tasa), bans activos/historial, etiquetas (B12, enum cerrado de 5, sin texto libre), turnos fijos con botón "Desvincular", e historial de reservas.
 - [ ] Dado que el jugador tiene un ban activo, cuando hago click en "Levantar ban", entonces se desactiva el registro en `tenant_player_bans` y el jugador queda habilitado para volver a reservar online.
+- [ ] Dado que abro la ficha de una persona `kind:'contact'` (sin cuenta), entonces NO puedo asignarle etiquetas (viven en `player_tenant_relationships`, que exige `player_id`) hasta vincularla a un `Player` (`linkContactToPlayer`).
 
 ❌ Edge Cases
 - [ ] Si el jugador tiene ban activo, se ofrece el botón "Levantar ban"; si no, se ofrece la opción "+ Crear ban".
 - [ ] El módulo está protegido con `requireOperatorStaff()` (admin + manager).
 
 🚫 Out of Scope
-- NO crea perfiles automáticamente para invitados telefónicos (decisión #10 cancelada).
+- NO crea perfiles automáticamente para invitados de `bookings.guest_name` (decisión #10 cancelada).
+- NO incluye saldo a favor de abonados (`credit_balance`): revertido (US-ABO-005, migr. 044/042). La ficha no carga ni muestra saldo.
 
-**Dependencias**: US-ABO-005, cambio #5 (softban por reincidencia de no-show)
+**Dependencias**: cambio #5 (softban por reincidencia de no-show), B12 (etiquetas), B13 (unificación con contactos)
 **Bloquea**: Ninguna
 
 ---
@@ -1539,7 +1541,7 @@ para tener acceso completo sin interrupciones después del trial.
 **Criterios de Aceptación**:
 
 ✅ Happy Path
-- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Predio (1-2 canchas), Complejo (3-5 canchas), Estadio (6+ canchas), con el plan que corresponde pre-seleccionado.
+- [ ] Dado que estoy en Settings → Suscripción o hago click en "Suscribirme" del banner de trial, cuando veo la tabla de planes, entonces están: Predio (1-3 canchas), Complejo (4-6 canchas), Estadio (7+ canchas), con el plan que corresponde pre-seleccionado.
 - [ ] Dado que selecciono un plan y ciclo (mensual/anual), cuando hago click en "Continuar al pago", entonces soy redirigido al checkout de MercadoPago para registrar mi medio de pago.
 - [ ] Si selecciono anual → mostrar ahorro: "Ahorrás ${diferencia}/año (20% descuento)".
 - [ ] Dado que el pago se aprobó via webhook, cuando se actualiza el sistema, entonces: TenantSubscription.status → `active`, Tenant.status → `active`.
@@ -1689,8 +1691,8 @@ para irme sin sorpresas y poder volver si cambio de opinión.
 - [ ] Dado que el motivo es "No lo uso", cuando veo la oferta de pausa de 1 mes, entonces puedo aceptarla o rechazarla.
 - [ ] Dado que rechazo las ofertas y llego al paso final, cuando veo las consecuencias claras + checkbox + input de nombre del complejo, entonces al confirmar: TenantSubscription.status → `canceled`, suscripción de MP cancelada, acceso activo hasta fin del período pago.
 - [ ] Dado que el período pago termina, cuando se bloquea el acceso, entonces: abonados cancelados + página pública: "Ya no está en TurnoGol."
-- [ ] Dado que pasaron 60 días post-expiración (BLOCKED), entonces: status → `churned`. 7 días después: datos eliminados/anonimizados según Ley 25.326.
-- [ ] Dado que quiero reactivar antes del churn, cuando hago click en "Reactivar", entonces creo nueva suscripción → datos restaurados → `active`.
+- [ ] Dado que pasaron 97 días post-bloqueo (BLOCKED), entonces: datos eliminados/anonimizados según Ley 25.326. Corregido 2026-08-27: verificado contra `lifecycle.service.ts` (`transitionCanceledToBlocked`) — no hay estado `churned` intermedio ni emails de recordatorio en este camino (eso es exclusivo del dunning por impago, US-SAS-003), la baja voluntaria agenda el borrado directo a los 97 días.
+- [ ] Dado que quiero reactivar antes de los 97 días, cuando hago click en "Reactivar", entonces creo nueva suscripción → datos restaurados → `active`.
 
 ❌ Edge Cases
 - [ ] Si cancelo durante el trial → cancelación inmediata (no hay período pago).

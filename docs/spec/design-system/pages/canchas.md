@@ -1,6 +1,9 @@
 # Canchas (admin) — spec de vista
 
-> Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de `/canchas`.
+> Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de esta vista,
+> reubicada de `/canchas` a **`/settings/canchas`** (tab de Configuración; `/canchas` quedó como
+> redirect permanente — `src/app/(admin)/canchas/page.tsx`). El contenido de este doc (listado,
+> radio, e2e) sigue vigente, solo cambió la URL.
 > Hermana de `pages/reservas.md`, `pages/abonados.md`, `pages/caja.md`, `pages/dashboard.md` y
 > `pages/grilla.md` (2026-07-02/03): mismos tokens, mismo `PageHeader`/badge/empty-state.
 
@@ -113,8 +116,9 @@ jerarquía tipográfica que no corresponde — verificado, no ignorado.
 
 ## §8 Contratos de test
 
-- e2e `canchas-crud`: los 4 tests dependen de 3 selectores exactos que **no se tocaron**:
+- e2e `canchas-crud`: los 5 tests (un 5º test sumó cobertura de la sección Fotos, ver
+  `CourtForm.tsx`) dependen de 3 selectores exactos que **no se tocaron**:
   `getByRole('heading', { name: 'Canchas' })`, `getByRole('button', { name: '+ Nueva cancha' })`,
   `page.locator('div.rounded-lg').filter({ hasText: courtName })`, y los textos de badge
-  `'Online'`/`'Offline'`. Ningún unit test cubre `CourtList.tsx` (no existe
-  `courts-list.test.tsx`).
+  `'Online'`/`'Offline'`. Los tests navegan a `/settings/canchas` (no a `/canchas`). Ningún unit
+  test cubre `CourtList.tsx` (no existe `courts-list.test.tsx`).

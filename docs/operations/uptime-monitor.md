@@ -8,7 +8,7 @@ Un **monitor de uptime** es un servicio de afuera que le pega a una dirección d
 
 Por qué hace falta acá: TurnoGol tiene una sonda de salud que corre **adentro** del worker, así que cuando el worker se muere, la sonda se muere con él y nadie se entera. Eso pasó de verdad — el worker estuvo 26 minutos caído en producción y no llegó ningún aviso ([P-12](../qa/P12-worker-caido-2026-08-24.md)).
 
-Ya está resuelta la mitad de código: `https://turnogol.app/api/status` ahora **responde 503 si el worker dejó de latir hace más de 15 minutos**. Falta la otra mitad, que es de consola y no de código: alguien que mire ese 503 y te escriba.
+Ya está resuelta la mitad de código: `https://turnogol.app/api/status` ahora **responde 503 si el worker dejó de latir hace más de 30 minutos**. Falta la otra mitad, que es de consola y no de código: alguien que mire ese 503 y te escriba.
 
 ## Qué vas a tener cuando termines
 
@@ -62,5 +62,5 @@ Tranquilo con el reloj: un worker caído **retrasa** trabajo, no lo pierde. Los 
 ## Detalles finos
 
 - **El monitor no necesita ninguna credencial.** `/api/status` es público a propósito: devuelve el semáforo (200 o 503) sin decir qué pieza falló. El detalle por subsistema exige el header `x-status-token`, y eso queda para vos, no para el monitor.
-- **15 minutos de tolerancia, no 5.** El worker late cada 5 minutos y el endpoint aguanta tres latidos perdidos antes de gritar. Es para que un deploy del worker, que lo reinicia, no dispare una falsa alarma.
+- **30 minutos de tolerancia, no 5.** El worker late cada 5 minutos y el endpoint aguanta seis latidos perdidos antes de gritar (`HEARTBEAT_MISSES_ALLOWED` en `src/app/api/status/route.ts`). Subió de 15 a 30 minutos el 2026-08-26 (PR #230): con 15, el cron de pg-boss perdiendo ticks (huecos medidos de hasta 20 min) disparaba alertas de una caída que nunca existió.
 - **Alternativa equivalente**: Better Stack (ex Better Uptime) tiene plan gratuito con menos monitores pero avisos más ricos. Cualquiera sirve; lo que no sirve es no tener ninguno.

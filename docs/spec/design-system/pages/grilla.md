@@ -6,7 +6,7 @@
 
 **Versión:** 1.0 — 2026-07-02
 **Código:** `src/app/(admin)/grilla/page.tsx` · `src/components/booking/BookingGrid.tsx` ·
-`BookingCard.tsx` · `WeekStrip.tsx` · `BookingPopover.tsx` · `src/lib/booking/grid-cells.ts`
+`BookingCard.tsx` · `WeekStrip.tsx` · `BookingSlotPanel.tsx` · `src/lib/booking/grid-cells.ts`
 **Personalidad:** Admin ("El Mostrador") — densidad alta, motion ≤ 200 ms, cero decoración.
 
 ---
@@ -47,18 +47,24 @@ el tinte de fondo es refuerzo. Siempre color + ícono + texto (§1.4). Tintes v�
 | Estado (derivación) | Borde-l | Tinte | Label (color light/dark) | Ícono |
 |---|---|---|---|---|
 | Libre (`kind=free`, futuro, cancha online) | — | `bg-card`, borde `border-border/60` | — (aria: "Reservar turno HH:MM en X") | `Plus` centrado, 40 % → 100 % hover/focus |
-| Esperando seña (`pending_payment`) | `border-l-warning` | `bg-warning/10` (dark `/15`) | "Esperando seña" `text-amber-800`/`text-amber-300` | `Clock` |
+| Pagando ahora (`pending_payment`) | `border-l-warning` | `bg-warning/10` (dark `/15`) | "Pagando ahora" `text-amber-800`/`text-amber-300` | `Clock` |
 | Confirmada (`confirmed`, sin seña paga) | `border-l-info` | `bg-info/10` (dark `/15`) | "Confirmada" `text-blue-800`/`text-blue-300` | `HandCoins` |
 | Señada (`confirmed` + deposit `paid`/`captured`) | `border-l-success` | `bg-success/10` (dark `/15`) | "Señada" `text-emerald-800`/`text-emerald-300` | `CheckCircle2` |
 | Jugada (`completed`) | `border-l-success` | `bg-success/15` (dark `/20`) — fill más fuerte | "Jugada" `text-emerald-800`/`text-emerald-300` | `CheckCheck` |
+| **Sin cobrar (`unpaid_alarm`)** | `border-l-destructive` | `bg-destructive/10` (dark `/15`) + `.slot-alarm-ring` (anillo pulsante) | "Sin cobrar" `text-red-700`/`text-red-300` | `CheckCheck` |
 | Ausente (`no_show`) | `border-l-destructive` | `bg-destructive/10` (dark `/15`) | "Ausente" `text-red-700`/`text-red-300` | `UserX` |
 | Abonado (`type=fixed`, confirmada) | `border-l-info` | `bg-info/10` (dark `/15`) | "Abonado" `text-blue-800`/`text-blue-300` | `Repeat` |
+| **Torneo (`type=tournament`)** | `border-l-warning` | `.slot-blocked-stripes` + `bg-warning/10` (dark `/15`) | "Torneo" `text-amber-800`/`text-amber-300` | `Trophy` |
 | Bloqueado (`type=block`) | `border-l-slate-400` | `.slot-blocked-stripes` (rayado diagonal `--muted`) | "Bloqueado" `text-muted-foreground` | `Ban` |
 | Pasado (modificador) | — | `opacity-60 saturate-50` sobre el estado base | — | — |
 | Libre pasado / cancha pausada | — | transparente / `bg-muted/40`, no interactivo | — | — |
 
-Prioridad cuando compiten: `block` > `no_show` > `completed` > `pending_payment` > señada > abonado > confirmada.
-Un abonado ausente es "Ausente" (la ausencia importa más que el origen).
+Prioridad cuando compiten (Fase 3, `src/lib/booking/slot-visual.ts` — fuente única, reemplazó 3
+copias que ya habían divergido): torneo > bloqueo > **alarma (sin cobrar)** > ausente > jugada >
+pagando ahora > señada > abonado > cancelada/expirada > confirmada. La alarma existe para el turno
+que ya se prestó (`completed` con saldo pendiente, o `no_show` sin un peso cobrado) y antes se
+pintaba igual que uno cobrado; un `no_show` que sí capturó la seña NO alarma (ya se cobró lo único
+cobrable). Un abonado ausente es "Ausente" (la ausencia importa más que el origen).
 
 **Desvío deliberado de §2.6:** el `Plus` del slot libre es **siempre visible** (40 % de opacidad),
 no solo en hover — en touch no existe hover y el admin de 55 años necesita ver la affordance,
@@ -68,14 +74,19 @@ no adivinarla. Hover/focus lo llevan a 100 % + borde emerald.
 
 El eje horario sticky de la izquierda es la **única** fuente de la hora (fix del bug "hora
 duplicada" de MASTER §13.5). Las celdas no renderizan `HH:MM`; el rango completo vive en el
-`aria-label` (`"Cancha 1 16:00–17:00: Tomás García, Señada"`) y en el popover de detalle.
+`aria-label` (`"Cancha 1 16:00–17:00: Tomás García, Señada"`) y en el panel de detalle.
 
 - **Densidad cómoda** (fila 3.25rem): línea 1 = nombre (`text-xs font-semibold text-foreground`, truncado a 24 chars); línea 2 = ícono 12 px + label de estado (`text-[11px]`).
 - **Densidad compacta** (fila 2.75rem = 44 px, mínimo touch §10): una sola línea = ícono de estado + nombre. El label textual se omite (el ícono + borde siguen comunicando; aria completo).
 - Sin precio en la celda (vive en el popover). Sin `font-display` (esto es tabla, §3).
 
-Popover de detalle (hover con intent 300 ms / focus / tap): quién, horario, precio, pago, seña.
-Sin cambios de comportamiento; superficies con tokens (`bg-popover`, `border-border`).
+**Panel lateral del turno** (`BookingSlotPanel.tsx`, Sheet — click/tap, ya no hover): quién,
+horario, precio, pago, seña, y las acciones del turno (cobrar, cantina, marcar ausente,
+reprogramar) sin salir de la grilla. Reemplaza al popover de sólo-lectura que abría con hover
+intent 300 ms — el hover se sacó a propósito: es una affordance que no existe en touch (el admin
+del mostrador usa tablet), y un panel que solo mira obliga a irse a `/reservas` justo cuando hay
+alguien esperando para pagar (Fase 3, criterio de salida #2). Superficies con tokens (`bg-card`,
+`border-border`).
 
 ## 4. Densidad
 
@@ -163,12 +174,14 @@ Vocabulario canónico §8.5 + extensiones de grilla:
 
 | Código | UI |
 |---|---|
-| `pending_payment` | **Esperando seña** |
+| `pending_payment` | **Pagando ahora** (Decisión v2 D1 — reemplaza "Esperando seña", que se leía como espera indefinida) |
 | `confirmed` sin seña | **Confirmada** |
 | `confirmed` + seña paga | **Señada** |
 | `completed` | **Jugada** |
+| `unpaid_alarm` (Fase 3) | **Sin cobrar** |
 | `no_show` | **Ausente** |
 | `type=fixed` | **Abonado** |
+| `type=tournament` (Fase 3) | **Torneo** |
 | `type=block` | **Bloqueado** |
 | court `offline` | **(pausada)** — nunca "(offline)" |
 
@@ -193,7 +206,7 @@ Lista al pie con swatch + **ícono** + label por cada estado de §2 (la leyenda 
 |---|---|
 | Hover/focus de celdas, botones | 150 ms color-only |
 | Navegación de día (transición atenuada) | 150 ms opacity |
-| Popover detalle | 200 ms fade+zoom |
+| Panel lateral del turno (Sheet) | 300 ms slide al abrir, 200 ms al cerrar |
 | Modal de reserva | 300 ms |
 | Pulso Realtime | 600 ms, una vez (excepción §5.3) |
 

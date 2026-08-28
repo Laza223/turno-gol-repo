@@ -161,7 +161,7 @@ los de Railway estén mal.
 | **M-6** ✅ | **100 policies RLS re-evalúan la función de contexto por fila** (`auth_rls_initplan`), 48 policies permissive duplicadas, 26 foreign keys sin índice | Supabase advisors (performance): 148 WARN + 49 INFO | Es el techo de performance de la grilla y de Personas cuando entre un complejo con miles de reservas. Se arregla envolviendo en `(select …)` y unificando policies — **Cerrado el 2026-08-25 sin tocar SQL: los 148 avisos WARN son falso positivo (100) o el diseño dual documentado (48). Medido con EXPLAIN bajo un rol sin BYPASSRLS — ver §5.2.** |
 | **M-7** ⏸️ | Compute **Nano** con el pool casi tomado en reposo | Panel: pool size 15 (default de Nano), `max_connections` 60. Medido ahora: 6 conexiones de `turnogol_app` + 3 de `turnogol_worker` = 9 de 15 **sin tráfico** | Es la causa estructural de F-002. Con Pro, subir a Micro entra casi entero en el crédito de cómputo incluido — **Medido el 2026-08-25: base de 35 MB, 22/60 conexiones. No se sube el compute — ver §5.4.** |
 | **M-8** ◐ | **DMARC en `p=none` y sin dirección de reportes** — *mitad hecha el 2026-08-25* | El TXT pasó a `"v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"`, resuelto contra `8.8.8.8`. Para que ese buzón exista se prendió **Cloudflare Email Routing** en la zona: destino `turnogol@gmail.com` **Verificado**, regla `dmarc@turnogol.app → turnogol@gmail.com` **Activa**, y los 5 registros que pide el servicio creados en el apex (3 MX `route{1,2,3}.mx.cloudflare.net`, el DKIM `cf2024-1._domainkey` y un `v=spf1 include:_spf.mx.cloudflare.net ~all`), todos resueltos por DNS. Estado del servicio: *Activado / Registros DNS Activado* | El correo saliente NO se toca: el Return-Path de Resend es `send.turnogol.app` con su propio SPF, y el DKIM `resend._domainkey.turnogol.app` firma con `d=turnogol.app`, así que la alineación DMARC sigue viniendo por DKIM. **Falta**: juntar dos semanas de reportes y recién ahí pasar a `p=quarantine`. **Sin verificar end-to-end**: no se mandó un mail de prueba a `dmarc@turnogol.app`; el primer reporte real (24-48 h) es la prueba |
-| **M-9** ◐ | Vercel Firewall **sin una sola regla propia** — *parcialmente cerrado el 2026-08-25, ver §5.1; propuesta de 4 reglas concretas en §21* | Panel → Firewall → Rules: solo "System Rule". Tráfico del período: 977 permitidos, 134 denegados, 7 desafiados | El rate-limit de la app vive en el runtime (Upstash): cada request abusiva ya gastó una función. Los caminos de plata (`/api/webhooks/*`, `/api/public/*`, login) deberían frenarse en el borde |
+| **M-9** ✅ | Vercel Firewall **sin una sola regla propia** — *CERRADO el 2026-08-28, ver §23.1: las 4 reglas de §21 están publicadas y activas* | Panel → Firewall → Rules: 5 reglas activas (la de vulnerability paths + las 4 nuevas). Tráfico del día del cierre: 870 permitidos, 2.8k denegados | El rate-limit de la app vive en el runtime (Upstash): cada request abusiva ya gastó una función. Los caminos de plata (`/api/webhooks/*`, `/api/public/*`, login) ahora se frenan en el borde |
 | **M-10** → 🟢 | CSP con `script-src 'unsafe-inline'` en producción — *degradado a 🟢 y ACEPTADO el 2026-08-27, ver §22.3* | Header medido en `https://turnogol.app/` | Relevada la superficie de XSS completa: sin vía de explotación práctica (los 3 `dangerouslySetInnerHTML` son constantes o van con escapado anti-`</script>`; sin campo de URL libre; todo el texto de usuario sale por JSX escapado). Es defensa en profundidad, no un agujero. Se reabre si aparece un campo de URL libre o un `dangerouslySetInnerHTML` con datos de la DB |
 | **M-11** ✅ | Un secreto de más en el runtime de Vercel — *cerrado el 2026-08-25, ver paso 3* | `SENTRY_READ_TOKEN` en Production y Preview | Solo lo lee `scripts/sentry-issues.ts`, que corre local contra `.env.production`. **Corrección respecto de la primera versión de este documento**: `SENTRY_AUTH_TOKEN` NO sobra — `next.config.ts:125` se lo pasa a `withSentryConfig` para subir los sourcemaps, así que el build lo necesita y se queda |
 | **M-13** ✅ | El dominio de las imágenes aceptaba **TLS 1.0** — *corregido el 2026-08-25* | R2 → `turnogol-media` → Dominios personalizados: `media.turnogol.app`, *TLS mínimo* pasó de **1.0** a **1.2**. Verificado en el cable: `curl --tls-max 1.0` no completa el handshake, `curl --tlsv1.2` responde 404 (el dominio vive; el 404 es porque el bucket está vacío) | TLS 1.0 está roto y deprecado desde 2021 |
@@ -173,9 +173,9 @@ los de Railway estén mal.
 
 | # | Hallazgo | Evidencia |
 |---|---|---|
-| B-13 | **3 proyectos Supabase pausados** (ene/abr/may 2026), cada uno en su propia organización — *revisado el 2026-08-27: el MCP de esta sesión solo ve la org de producción, ver §21* | `list_projects`: 3 × `INACTIVE` + el de producción `ACTIVE_HEALTHY` |
+| B-13 ✅ | **3 proyectos Supabase pausados** — *DISUELTO el 2026-08-28, ver §23.2: no existen en la cuenta que Lazar usa* | Panel de Supabase con su sesión: **una** organización (`turnogol production`) con **un** proyecto (`Laza223's Project`), y el filtro de estado en blanco (muestra activos Y pausados). El hallazgo original salió de otra cuenta o de proyectos ya borrados |
 | B-14 ✅ | `media.turnogol.com` **no existe** (NXDOMAIN) y sigue hardcodeado en `next.config.ts` (`MEDIA_HOSTS`) y por lo tanto en el CSP de producción — *cerrado en Tanda 1, ver §3 punto 4* | `nslookup media.turnogol.com` → Non-existent domain; header CSP contiene `media.turnogol.com media.turnogol.app` |
-| B-15 | Vercel recomienda migrar el apex de A a CNAME (`baf912ebe0c35da4.vercel-dns-017.com`) — *sigue en A record, confirmado el 2026-08-27, ver §21* | Panel → Domains → badge "DNS Change Recommended" |
+| B-15 ✅ | Vercel recomienda migrar el apex de A a CNAME (`baf912ebe0c35da4.vercel-dns-017.com`) — *CERRADO el 2026-08-28, ver §23.3: apex **y** `www` migrados* | Panel → Domains: los dos pasaron de "DNS Change Recommended" a **"Valid Configuration"**. El apex resuelve a `216.150.16.1` + `216.150.1.1` (dos IPs, antes una), `ssl_verify_result=0`, MX intactos |
 | B-16 ⚠️ | Extensiones `pg_trgm` y `btree_gist` instaladas en el schema `public` — *intentado y REVERTIDO el 2026-08-27, ver §21: bloqueado por permisos de Supabase (`supabase_admin` es owner, no `postgres`), no por riesgo de código* | Advisor `extension_in_public` |
 | B-18 ✅ | **No hay MX en el apex**: un mail a cualquier dirección `@turnogol.app` rebota. Tampoco hay SPF en el apex (`v=spf1 -all` cerraría la suplantación) — *cerrado el 2026-08-27, ver §21: Cloudflare Email Routing ya propagó MX+SPF* | `nslookup -type=MX turnogol.app` → sin respuesta; el único TXT del apex es la verificación de Google |
 | B-17 | `push_send_log` con RLS prendido y sin policies | Advisor `rls_enabled_no_policy`. **No es un agujero**: es fail-closed y la escribe el worker con BYPASSRLS. Queda anotado para que nadie lo "arregle" agregando una policy |
@@ -2121,3 +2121,111 @@ reapertura escritas para que no se olviden:
 
 Cualquiera de las dos vuelve a hacer de `unsafe-inline` un riesgo real, y ahí
 la conversación de arquitectura de §21 se reabre con la evidencia ya juntada.
+
+---
+
+## 23. Los tres de panel que faltaban, cerrados con la mano del dueño — 2026-08-28
+
+Los tres hallazgos que quedaban abiertos no eran de código: vivían en paneles
+de terceros. Se cerraron los tres el mismo día, uno por medición y dos
+tocando el panel. Queda **solo M-8**, que es de calendario.
+
+### 23.1 M-9 — Firewall: de una regla a cinco
+
+La matriz decía "sin una sola regla propia". **Era falso al momento de
+cerrarlo**: ya existía `Block common vulnerability paths` → Deny, y es la que
+explica el tráfico del día — **870 permitidos contra 2.8k denegados**, casi
+todo bots buscando WordPress. El número de §5.1 (134 denegados) era de otro
+período.
+
+Se publicaron las 4 reglas propuestas en §21. Vercel las deja *staged* y pide
+un **Publish** explícito, así que se crearon las cuatro y se publicaron de una
+sola vez:
+
+| Regla | Condición | Ventana | Acción |
+|---|---|---|---|
+| Rate limit API publica | path empieza con `/api/public` | 60 req / 60 s por IP | **429** |
+| Rate limit login staff | path `/login` **AND** método POST | 20 req / 5 min por IP | **Challenge** |
+| Rate limit magic link jugador | path `/ingresar` **AND** método POST | 15 req / 5 min por IP | **429** |
+| Observar webhook MercadoPago | path `/api/webhooks/mercadopago` | 150 req / 60 s por IP | **Log** |
+
+Tres desvíos deliberados respecto de la propuesta, y el motivo de cada uno:
+
+1. **429 en vez de Deny (403)** donde el plan decía Deny. Vercel ofrece "Too
+   Many Requests (429)" como acción propia del rate limit, y es el código
+   semánticamente correcto: le dice al cliente *reintentá más tarde* en vez de
+   *prohibido*. Bloquea igual.
+2. **Challenge y no Deny en `/login`**, tal como se había razonado: un complejo
+   entero sale por el WiFi del local con **una sola IP**. Un Deny ahí deja
+   afuera a todo el personal; un Challenge solo le pide verificarse.
+3. **Log y nunca Deny en el webhook de MP.** MP reintenta en ráfagas; un
+   bloqueo ahí es un pago perdido. La regla existe para *ver*, no para frenar.
+
+**Costo**: Vercel cobra el rate limiting a **USD 0,50 por millón de requests
+permitidos** (los bloqueados son gratis). Con 870 permitidos/día en todo el
+sitio, son centavos por mes.
+
+Rutas confirmadas contra el código antes de escribirlas: `/login` (staff) e
+`/ingresar` (jugador) existen en `src/app/(auth)/`. Las dos son Server
+Actions, que hacen POST a su propia ruta — o sea que la condición de método
+sí agarra el submit del formulario.
+
+### 23.2 B-13 — no existían
+
+Se abrió el panel de Supabase con la sesión de Lazar: **una** organización
+(`turnogol production`, Pro) con **un** proyecto (`Laza223's Project`,
+sa-east-1, Nano), y el filtro de estado en blanco — o sea mostrando activos
+**y** pausados. Los 3 proyectos `INACTIVE` del hallazgo original salieron de
+otra cuenta, o ya fueron borrados. No hay nada que limpiar.
+
+### 23.3 B-15 — apex y `www`, los dos
+
+El panel de Vercel mostraba **"DNS Change Recommended" en los dos dominios**,
+no solo en el apex como decía la matriz. Los dos apuntan al mismo destino.
+
+Antes de escribir nada se verificó que el destino resolviera —
+`baf912ebe0c35da4.vercel-dns-017.com` → `216.150.16.1` + `216.150.1.1`, **dos
+IPs contra la única que tenía el apex**. Y se empezó por `www`, que es el de
+menor impacto (solo hace 308 al apex): recién con `www` verificado en verde se
+tocó el apex.
+
+Vercel aclara en su propio panel que *"los registros legacy van a seguir
+funcionando"*. Esto es futuro-proof —les permite rotar IPs sin que el dueño
+toque nada—, no un arreglo de algo roto.
+
+Estado final, medido: los dos dominios en **"Valid Configuration"**, apex
+`200`, `www` `308 → https://turnogol.app/`, `/api/status` `200`,
+`ssl_verify_result=0` y los tres MX de Cloudflare Email Routing intactos.
+
+**El apex lo escribió Lazar**: el clasificador de permisos bloqueó dos veces
+la escritura sobre el DNS de producción, y no se rodeó. Es la clase de acción
+para la que ese freno existe.
+
+### 23.4 De yapa: el archivo que leen las IAs mandaba a un dominio inexistente
+
+Lazar preguntó si las reglas nuevas no bloquearían a los bots que pueden
+recomendar TurnoGol. **No lo hacen** —tres de las cuatro miran POST de
+formularios, y un crawler solo hace GET— y se midió en vez de afirmarlo:
+GPTBot, ClaudeBot, PerplexityBot, Googlebot, OAI-SearchBot y bingbot devuelven
+**200** en `/`, `/explorar`, `/precios` y las fichas de complejo.
+
+Pero la revisión destapó un bug real: `public/llms.txt` —lo único del sitio
+escrito para que un LLM entienda el producto— tenía sus dos únicos enlaces
+apuntando a **`turnogol.com`**, que es NXDOMAIN. Misma clase que B-14
+(`media.turnogol.com`). Corregido en el PR #246, ya en producción.
+
+También quedan anotados los **tres interruptores que pueden excluir al sitio
+de las IAs**, ninguno en el código y ninguno avisa al prenderse:
+
+| Dónde | Qué | Valor correcto hoy |
+|---|---|---|
+| Vercel → Firewall → Bot Management | AI Bots | `Allow` |
+| Vercel → Firewall → Bot Management | Bot Protection | `Off` |
+| Cloudflare → AI Crawl Control | robots.txt gestionado | **apagado** |
+
+El tercero es el traicionero: al prenderse, Cloudflare **reescribe el
+robots.txt** para declarar que el contenido no puede usarse para IA.
+
+Dato que importa más que los tres: AI Crawl Control registra **0 solicitudes y
+0 fallidas** en 24 h en las 10 familias de crawlers. No los bloquean —
+todavía no vienen. Eso no se arregla con infraestructura.

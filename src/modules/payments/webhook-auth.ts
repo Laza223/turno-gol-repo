@@ -75,6 +75,23 @@ export function verifyWebhookSignature(
   return false
 }
 
+/**
+ * Qué claves de webhook están configuradas, sin exponer ningún valor.
+ *
+ * Existe para que una firma rechazada se pueda diagnosticar: con las dos claves
+ * puestas, un 401 puede ser tráfico hostil; con una faltando, es un error de
+ * configuración y significa que los avisos de esa aplicación se están tirando a
+ * la basura con el pago ya hecho del otro lado. Caso real: el 2026-08-28 la
+ * sonda de firma de Checkout Pro dio 401 en producción y el único rastro era un
+ * `logger.warn` que no distinguía entre las dos causas.
+ */
+export function webhookSecretsStatus(): { suscripciones: boolean; checkout: boolean } {
+  return {
+    suscripciones: Boolean(process.env.MP_WEBHOOK_SECRET),
+    checkout: Boolean(process.env.MP_WEBHOOK_SECRET_CHECKOUT),
+  }
+}
+
 function matchesHmac(secret: string, manifest: string, v1: string): boolean {
   const expectedSignature = createHmac('sha256', secret).update(manifest).digest('hex')
 

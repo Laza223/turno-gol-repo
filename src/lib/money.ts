@@ -7,9 +7,41 @@
  * interpreta como decimal. "35.000" y "35000" son el mismo monto.
  */
 
-/** "35.000" / "35000" / "$35.000" → 3500000 centavos. null si no hay dígitos. */
+/**
+ * Separa un monto tipeado en su parte entera y su cola decimal, si la hay.
+ *
+ * El dominio es de pesos enteros, pero el separador NO se puede simplemente
+ * borrar: "1.500,50" con los dígitos pegados da 150050 pesos, cien veces el
+ * monto tipeado y sin ningún aviso (🔴 QA 2026-08-28 F-01).
+ *
+ * Desambiguación es-AR: el ÚLTIMO separador es decimal solo si lo siguen 0, 1 o
+ * 2 dígitos. Con 3 es un grupo de miles — "35,000" son treinta y cinco mil, no
+ * treinta y cinco con cero centavos, y así lo fija `tests/unit/money.test.ts`
+ * desde antes que existiera esta función.
+ *
+ * El caso de CERO dígitos importa tanto como los otros: es el instante en que
+ * se acaba de tipear la coma. Si ahí se descartara, la coma desaparecería del
+ * campo y el dígito siguiente se pegaría al entero, que es exactamente cómo
+ * "1500,50" terminaba valiendo $150.050.
+ */
+export function splitPesosInput(input: string): { digits: string; decimals: string | null } {
+  const decimalMatch = /[.,](\d{0,2})$/.exec(input)
+  const integerSource = decimalMatch ? input.slice(0, decimalMatch.index) : input
+  return {
+    digits: integerSource.replace(/[^\d]/g, ''),
+    decimals: decimalMatch ? decimalMatch[1] : null,
+  }
+}
+
+/**
+ * "35.000" / "35000" / "$35.000" → 3500000 centavos. null si no hay dígitos.
+ *
+ * Los centavos tipeados se DESCARTAN (no se redondean): el campo es de pesos
+ * enteros y `MoneyInput` deja la cola decimal a la vista mientras se tipea, así
+ * que el usuario ve que "1.500,50" vale $1.500 en vez de enterarse después.
+ */
 export function parsePesosToCents(input: string): number | null {
-  const digits = input.replace(/[^\d]/g, '')
+  const { digits } = splitPesosInput(input)
   if (digits === '') return null
   return Number(digits) * 100
 }

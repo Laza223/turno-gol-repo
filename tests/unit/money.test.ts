@@ -5,6 +5,7 @@ import {
   integerToWordsEsAr,
   MONEY_WORDS_THRESHOLD_CENTS,
   parsePesosToCents,
+  splitPesosInput,
 } from '@/lib/money'
 
 describe('parsePesosToCents', () => {
@@ -23,6 +24,42 @@ describe('parsePesosToCents', () => {
 
   it('nunca produce un negativo (el signo se descarta como separador)', () => {
     expect(parsePesosToCents('-500')).toBe(50_000)
+  })
+
+  // 🔴 QA 2026-08-28 F-01: borrar el separador pegaba los centavos al entero y
+  // multiplicaba el monto por 100 sin ningún aviso. Afectaba los 7 campos de
+  // plata del admin, incluido el precio de cancha que ve el público.
+  it('descarta los centavos en vez de pegarlos al entero', () => {
+    expect(parsePesosToCents('1500,50')).toBe(150_000)
+    expect(parsePesosToCents('1.500,50')).toBe(150_000)
+    expect(parsePesosToCents('1500.50')).toBe(150_000)
+    expect(parsePesosToCents('18500,75')).toBe(1_850_000)
+    expect(parsePesosToCents('0,99')).toBe(0)
+  })
+
+  it('con 3 dígitos después del separador sigue siendo grupo de miles', () => {
+    expect(parsePesosToCents('1.850.075')).toBe(185_007_500)
+    expect(parsePesosToCents('20.050')).toBe(2_005_000)
+  })
+
+  it('round-trip con el display: lo que formatea vuelve a parsear igual', () => {
+    for (const cents of [0, 100, 150_000, 2_005_000, 185_007_500]) {
+      expect(parsePesosToCents(centsToInputDisplay(cents))).toBe(cents)
+    }
+  })
+})
+
+describe('splitPesosInput', () => {
+  it('separa la cola decimal solo cuando son 1 o 2 dígitos', () => {
+    expect(splitPesosInput('1.500,50')).toEqual({ digits: '1500', decimals: '50' })
+    expect(splitPesosInput('1500,5')).toEqual({ digits: '1500', decimals: '5' })
+    expect(splitPesosInput('35,000')).toEqual({ digits: '35000', decimals: null })
+    expect(splitPesosInput('1.850.075')).toEqual({ digits: '1850075', decimals: null })
+  })
+
+  it('reconoce el separador recién tipeado, todavía sin dígitos detrás', () => {
+    expect(splitPesosInput('1.500,')).toEqual({ digits: '1500', decimals: '' })
+    expect(splitPesosInput('18.500.')).toEqual({ digits: '18500', decimals: '' })
   })
 })
 

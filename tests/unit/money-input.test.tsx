@@ -117,3 +117,45 @@ describe('MoneyInput — entrada inválida normalizada a la vista', () => {
     expect(screen.getByTestId('cents').textContent).toBe('null')
   })
 })
+
+// 🔴 QA 2026-08-28 F-01. El bug no estaba en parsear el string final: el campo
+// se reformatea en CADA tecla, así que la coma se borraba en el acto y los
+// dígitos de los centavos se pegaban al entero en la tecla siguiente.
+// "1500,50" tipeado de a una tecla terminaba valiendo $150.050 — cien veces el
+// monto, y en /settings/canchas eso se publicaba en el portal del complejo.
+describe('MoneyInput — centavos tipeados (regresión F-01)', () => {
+  function typeSequence(input: HTMLInputElement, text: string) {
+    for (const char of text) {
+      fireEvent.change(input, { target: { value: input.value + char } })
+    }
+  }
+
+  it('tipear "1500,50" tecla por tecla vale $1.500, no $150.050', () => {
+    render(<Controlled />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    typeSequence(input, '1500,50')
+    expect(screen.getByTestId('cents').textContent).toBe('150000')
+  })
+
+  it('la coma tipeada sobrevive en pantalla en vez de desaparecer', () => {
+    render(<Controlled />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    typeSequence(input, '1500,50')
+    expect(input.value).toBe('1.500,50')
+  })
+
+  it('el punto como decimal tampoco infla el monto (teclado numérico de mobile)', () => {
+    render(<Controlled />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    typeSequence(input, '18500.75')
+    expect(screen.getByTestId('cents').textContent).toBe('1850000')
+  })
+
+  it('un monto entero grande sigue tipeándose entero, sin cola decimal', () => {
+    render(<Controlled />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    typeSequence(input, '1850075')
+    expect(input.value).toBe('1.850.075')
+    expect(screen.getByTestId('cents').textContent).toBe('185007500')
+  })
+})

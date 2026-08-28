@@ -7,6 +7,7 @@ import {
   centsToWordsEsAr,
   MONEY_WORDS_THRESHOLD_CENTS,
   parsePesosToCents,
+  splitPesosInput,
 } from '@/lib/money'
 
 export interface MoneyInputProps {
@@ -79,8 +80,16 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(fu
   }, [isControlled, valueCents])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const parsed = parsePesosToCents(e.target.value)
-    const nextDisplay = centsToInputDisplay(parsed)
+    const raw = e.target.value
+    const parsed = parsePesosToCents(raw)
+    // La cola decimal se conserva en el display aunque no valga: si se borrara
+    // acá, la coma desaparecería en la misma tecla y los dígitos de los
+    // centavos se pegarían al entero en la siguiente ("1.500" + "5" = "15.005"
+    // camino a $150.050 — 🔴 QA 2026-08-28 F-01). Dejarla a la vista hace
+    // evidente que el campo es de pesos enteros mientras se tipea.
+    const { decimals } = splitPesosInput(raw)
+    const nextDisplay =
+      parsed == null ? '' : centsToInputDisplay(parsed) + (decimals == null ? '' : `,${decimals}`)
     setDisplay(nextDisplay)
     if (!isControlled) setInternalCents(parsed)
     onValueChange?.(parsed)

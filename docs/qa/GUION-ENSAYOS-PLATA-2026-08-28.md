@@ -27,12 +27,12 @@ no arranca es un dia mas lejos de saber si la renovacion automatica anda.
 
 ## Precondiciones — verificadas el 2026-08-28, no hace falta rehacerlas
 
-| Que | Estado |
-|---|---|
-| Los dos fixes de plata del QA (#251 y #252) estan en produccion | Deploy `b39c982c` y `3282b709`, los dos `READY` / production en Vercel |
+| Que                                                                | Estado                                                                                                                        |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Los dos fixes de plata del QA (#251 y #252) estan en produccion    | Deploy `b39c982c` y `3282b709`, los dos `READY` / production en Vercel                                                        |
 | El bug que guardaba 100x de mas dejo datos corruptos en produccion | **No.** Los dos complejos publican `$ 100/turno` en `/explorar`; el fix no incluyo migracion ni backfill porque no hizo falta |
-| Los scripts de sonda existen | `scripts/probe-mp-webhook-signature.ts` y `pnpm launch:check` (sondas `mp master token probe` y `mp credentials probe`) |
-| El plan de prueba de $100 se puede elegir desde la pantalla | **No.** Ver el paso B0 |
+| Los scripts de sonda existen                                       | `scripts/probe-mp-webhook-signature.ts` y `pnpm launch:check` (sondas `mp master token probe` y `mp credentials probe`)       |
+| El plan de prueba de $100 se puede elegir desde la pantalla        | **No.** Ver el paso B0                                                                                                        |
 
 ## Bloque A — credenciales · ~30 min · $0
 
@@ -88,10 +88,10 @@ $env:MP_WEBHOOK_SECRET="<clave de Checkout Pro>"; pnpm tsx scripts/probe-mp-webh
 
 ### Resultado de A2 y A3 — 2026-08-28
 
-| Aplicacion | Resultado |
-|---|---|
-| Suscripciones | `HTTP 200 — {"ok":true,"ignored":"sonda_de_firma"}` — la clave del deploy coincide |
-| **Checkout Pro** | 401 al primer intento; **200 despues de rotar la clave y redeployar** |
+| Aplicacion       | Resultado                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| Suscripciones    | `HTTP 200 — {"ok":true,"ignored":"sonda_de_firma"}` — la clave del deploy coincide |
+| **Checkout Pro** | 401 al primer intento; **200 despues de rotar la clave y redeployar**              |
 
 Las claves se sacaron de "Credenciales de produccion" del panel de MercadoPago, asi
 que el 401 no es el falso positivo circular de usar el archivo local.
@@ -136,11 +136,11 @@ build no falla y nada avisa.
 Se planteo que el 401 explicaba los dos pendientes que el handoff del 25/8 habia
 dejado sin causa. Consultada la base de produccion, no es asi:
 
-| Lo que decia el handoff | Lo que dicen los datos |
-|---|---|
-| "2 de 6 senas no llegaron por webhook, las dos del mismo complejo" | Las dos son de **Elite**, no de titi. Y una es del 18/8 19:13, anterior al primer registro de `analytics_events` (18/8 17:48) y de `processed_webhooks` (19/8 11:40): su "no llego" es falta de datos, no evidencia. La otra (22/8 21:50) la levanto el cron de rescate |
-| "`complejo-titi` debe 2 devoluciones de $100 desde el 22/8" | **Confirmado**: dos filas `payments` type `refund` en `pending`, $100 cada una, del 22/8 12:07 y 21:33 |
-| El 401 causo esas devoluciones | **No.** Las dos senas originales tienen `mp.webhook.processed` — llegaron por aviso — y las reservas quedaron `canceled_refunded` correctamente. Lo que esta pendiente es la **devolucion**, no el cobro, y eso es el diseno: TurnoGol no reembolsa por API, la hace el complejo y el sistema la registra |
+| Lo que decia el handoff                                            | Lo que dicen los datos                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "2 de 6 senas no llegaron por webhook, las dos del mismo complejo" | Las dos son de **Elite**, no de titi. Y una es del 18/8 19:13, anterior al primer registro de `analytics_events` (18/8 17:48) y de `processed_webhooks` (19/8 11:40): su "no llego" es falta de datos, no evidencia. La otra (22/8 21:50) la levanto el cron de rescate                                   |
+| "`complejo-titi` debe 2 devoluciones de $100 desde el 22/8"        | **Confirmado**: dos filas `payments` type `refund` en `pending`, $100 cada una, del 22/8 12:07 y 21:33                                                                                                                                                                                                    |
+| El 401 causo esas devoluciones                                     | **No.** Las dos senas originales tienen `mp.webhook.processed` — llegaron por aviso — y las reservas quedaron `canceled_refunded` correctamente. Lo que esta pendiente es la **devolucion**, no el cobro, y eso es el diseno: TurnoGol no reembolsa por API, la hace el complejo y el sistema la registra |
 
 **El 401 no alcanzo a hacer dano.** La ultima sena de produccion es del 2026-08-22
 21:50; la clave se rompio con la migracion a dos aplicaciones y no hubo ni un cobro
@@ -178,26 +178,26 @@ Webhooks → historial.
 
 Cual es cual, confirmado en el propio panel (el sidebar de cada una lo dice):
 
-| Aplicacion | Numero | Es la de |
-|---|---|---|
-| **TurnoGol Cobros** | 345699471468974 | "Integracion con CheckoutPro" — las **senas** |
-| **TurnoGol** | 1654083475779552 | "Integracion con Suscripciones" — el **plan SaaS** |
+| Aplicacion          | Numero           | Es la de                                           |
+| ------------------- | ---------------- | -------------------------------------------------- |
+| **TurnoGol Cobros** | 345699471468974  | "Integracion con CheckoutPro" — las **senas**      |
+| **TurnoGol**        | 1654083475779552 | "Integracion con Suscripciones" — el **plan SaaS** |
 
 **Suscripciones — ultimo mes, 6 notificaciones:**
 
-| Estado | Evento | Recurso | Fecha (UTC) |
-|---|---|---|---|
-| **400 - Fallida** | `application.deauthorized` | 381048203 | 22/08 13:44 |
-| 200 - Entregada | `payment.created` | 174269620415 | 23/08 00:33 |
-| 200 - Entregada | `payment.created` | 174177392859 | 22/08 15:07 |
-| 200 - Entregada | `payment.updated` | 175029618908 | 21/08 23:01 |
-| 200 - Entregada | `payment.updated` | 173833098759 | 20/08 14:47 |
-| 200 - Entregada | `payment.updated` | 173841538187 | 20/08 15:31 |
+| Estado            | Evento                     | Recurso      | Fecha (UTC) |
+| ----------------- | -------------------------- | ------------ | ----------- |
+| **400 - Fallida** | `application.deauthorized` | 381048203    | 22/08 13:44 |
+| 200 - Entregada   | `payment.created`          | 174269620415 | 23/08 00:33 |
+| 200 - Entregada   | `payment.created`          | 174177392859 | 22/08 15:07 |
+| 200 - Entregada   | `payment.updated`          | 175029618908 | 21/08 23:01 |
+| 200 - Entregada   | `payment.updated`          | 173833098759 | 20/08 14:47 |
+| 200 - Entregada   | `payment.updated`          | 173841538187 | 20/08 15:31 |
 
 **Checkout Pro — ultimo mes, 1 sola notificacion:**
 
-| Estado | Evento | Recurso | Fecha (UTC) |
-|---|---|---|---|
+| Estado            | Evento            | Recurso      | Fecha (UTC) |
+| ----------------- | ----------------- | ------------ | ----------- |
 | **401 - Fallida** | `payment.updated` | 174271786893 | 23/08 00:50 |
 
 **Lecturas:**
@@ -249,11 +249,11 @@ Confirmar que devolvio **exactamente 1 fila** antes de seguir.
 
 **Quien puede ver el plan mientras esta prendido** — medido el 2026-08-28, no asumido:
 
-| Superficie | Lo muestra? |
-|---|---|
-| `/precios`, la pagina publica | **No.** Usa `plans-data.ts`, un archivo estatico; no lee la tabla `plans` |
+| Superficie                             | Lo muestra?                                                                                                          |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `/precios`, la pagina publica          | **No.** Usa `plans-data.ts`, un archivo estatico; no lee la tabla `plans`                                            |
 | `/settings/facturacion` de un complejo | Solo si ese complejo esta en `trialing` o `active` y abre la pantalla durante la ventana (`facturacion/page.tsx:86`) |
-| Panel de super admin | Si, pero ese sos vos |
+| Panel de super admin                   | Si, pero ese sos vos                                                                                                 |
 
 Con dos complejos en produccion y los dos propios, la exposicion real de la ventana
 es nula. Aun asi, prendelo recien cuando Tiziana este por pagar y apagalo apenas
@@ -324,10 +324,10 @@ debito que hay que vigilar.
 **No se configura en TurnoGol.** Lo decide MercadoPago segun con que credencial se
 creo la operacion:
 
-| Cobro | Credencial que lo crea | Aplicacion que notifica |
-|---|---|---|
-| Suscripcion del plan SaaS | `MP_TURNOGOL_ACCESS_TOKEN` (`billing.gateway.ts:20`) | la duena de ese token |
-| Sena del jugador | el token OAuth guardado del complejo (`mp-oauth.ts:37`) | **la duena del `MP_CLIENT_ID` con el que ese complejo autorizo** |
+| Cobro                     | Credencial que lo crea                                  | Aplicacion que notifica                                          |
+| ------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------- |
+| Suscripcion del plan SaaS | `MP_TURNOGOL_ACCESS_TOKEN` (`billing.gateway.ts:20`)    | la duena de ese token                                            |
+| Sena del jugador          | el token OAuth guardado del complejo (`mp-oauth.ts:37`) | **la duena del `MP_CLIENT_ID` con el que ese complejo autorizo** |
 
 De ahi la consecuencia que no es obvia: **cambiar `MP_CLIENT_ID` en Vercel no migra
 los tokens ya guardados**. Un complejo que autorizo cuando la variable apuntaba a la
@@ -335,10 +335,10 @@ aplicacion vieja sigue cobrando por la vieja hasta que **reconecte**.
 
 **Estado medido el 2026-08-28:**
 
-| Complejo | Cuenta MP | `mp_connected_at` | Cobra por |
-|---|---|---|---|
-| complejo titi | TIZIANALISANTI.TL | 22/08 14:00 | **Suscripciones** (la vieja) — sus `payment.*` figuran en el historial de esa app |
-| Complejo Elite Futbol | FEIJOOLAZARO | 28/08 17:00 | Checkout Pro — su `174271786893` figura en el historial de esa app |
+| Complejo              | Cuenta MP         | `mp_connected_at` | Cobra por                                                                         |
+| --------------------- | ----------------- | ----------------- | --------------------------------------------------------------------------------- |
+| complejo titi         | TIZIANALISANTI.TL | 22/08 14:00       | **Suscripciones** (la vieja) — sus `payment.*` figuran en el historial de esa app |
+| Complejo Elite Futbol | FEIJOOLAZARO      | 28/08 17:00       | Checkout Pro — su `174271786893` figura en el historial de esa app                |
 
 **Por eso el bloque C, tal como estaba escrito, no probaria Checkout Pro**: una sena
 en titi volveria a salir por la aplicacion de Suscripciones.
@@ -349,10 +349,10 @@ en titi volveria a salir por la aplicacion de Suscripciones.
 **TurnoGol Cobros** (Checkout Pro), se redeployo y se reconectaron los dos
 complejos. Medido en la base al terminar:
 
-| Complejo | Cuenta MP | `mp_connected_at` | token + refresh |
-|---|---|---|---|
-| Complejo Elite Futbol | FEIJOOLAZARO (381048203) | 28/08 18:30 | si |
-| complejo titi | TIZIANALISANTI.TL (1059888348) | 28/08 18:12 | si |
+| Complejo              | Cuenta MP                      | `mp_connected_at` | token + refresh |
+| --------------------- | ------------------------------ | ----------------- | --------------- |
+| Complejo Elite Futbol | FEIJOOLAZARO (381048203)       | 28/08 18:30       | si              |
+| complejo titi         | TIZIANALISANTI.TL (1059888348) | 28/08 18:12       | si              |
 
 **Lo que eso prueba, ademas de arreglar el caso**: dos autorizaciones nuevas
 completaron el flujo entero, asi que **un complejo nuevo ya puede conectar su
@@ -378,11 +378,11 @@ Contra los Client ID reales, leidos de "Credenciales de produccion" de cada
 aplicacion (en MercadoPago el Client ID **es** el numero de aplicacion — se
 verificaron los dos):
 
-| Aplicacion | Client ID |
-|---|---|
-| TurnoGol Cobros (Checkout Pro) | `345699471468974` |
-| TurnoGol (Suscripciones) | `1654083475779552` |
-| **El que usa produccion** | **`6071527690767040`** — ninguna de las dos |
+| Aplicacion                     | Client ID                                   |
+| ------------------------------ | ------------------------------------------- |
+| TurnoGol Cobros (Checkout Pro) | `345699471468974`                           |
+| TurnoGol (Suscripciones)       | `1654083475779552`                          |
+| **El que usa produccion**      | **`6071527690767040`** — ninguna de las dos |
 
 Y MercadoPago, al pedirle la autorizacion, contesta:
 
@@ -409,8 +409,8 @@ refrescar su token.
 
 ### No hacen falta dos client_id: cada aplicacion usa un mecanismo distinto
 
-Duda que aparecio y conviene dejar zanjada: *"si son dos aplicaciones, no tienen que
-convivir dos `MP_CLIENT_ID` en Vercel?"*. **No.**
+Duda que aparecio y conviene dejar zanjada: _"si son dos aplicaciones, no tienen que
+convivir dos `MP_CLIENT_ID` en Vercel?"_. **No.**
 
 - **Suscripciones cobra en la cuenta propia de TurnoGol.** No hay a quien pedirle
   permiso, asi que no hay OAuth: usa un token directo, `MP_TURNOGOL_ACCESS_TOKEN`
@@ -419,16 +419,16 @@ convivir dos `MP_CLIENT_ID` en Vercel?"*. **No.**
 - **Checkout Pro cobra en la cuenta de un tercero** (el complejo). Ahi si hace falta
   que ese tercero autorice, y para eso —y solo para eso— existe el par
   `MP_CLIENT_ID`/`MP_CLIENT_SECRET`. El comentario de `billing.gateway.ts:8` lo dice
-  explicito: las credenciales OAuth por complejo *"son para las senas (ADR-004)"*.
+  explicito: las credenciales OAuth por complejo _"son para las senas (ADR-004)"_.
 
 Por eso las cuatro variables ya conviven, una por funcion:
 
-| Variable | Aplicacion | Para que |
-|---|---|---|
-| `MP_TURNOGOL_ACCESS_TOKEN` | Suscripciones | cobrar el plan SaaS en la cuenta propia |
-| `MP_WEBHOOK_SECRET` | Suscripciones | validar la firma de sus avisos |
+| Variable                            | Aplicacion       | Para que                                     |
+| ----------------------------------- | ---------------- | -------------------------------------------- |
+| `MP_TURNOGOL_ACCESS_TOKEN`          | Suscripciones    | cobrar el plan SaaS en la cuenta propia      |
+| `MP_WEBHOOK_SECRET`                 | Suscripciones    | validar la firma de sus avisos               |
 | `MP_CLIENT_ID` + `MP_CLIENT_SECRET` | **Checkout Pro** | que cada complejo autorice el cobro de senas |
-| `MP_WEBHOOK_SECRET_CHECKOUT` | Checkout Pro | validar la firma de sus avisos |
+| `MP_WEBHOOK_SECRET_CHECKOUT`        | Checkout Pro     | validar la firma de sus avisos               |
 
 No hay nada que rediseniar: el esquema ya soporta las dos aplicaciones. Lo unico mal
 es a que aplicacion apunta el par de OAuth.
@@ -436,8 +436,8 @@ es a que aplicacion apunta el par de OAuth.
 ### Como se arregla
 
 **Que ID va**: el de **Checkout Pro**, `345699471468974`. No es una eleccion, ya
-esta fijado en CLAUDE.md — *"Checkout Pro es el OAuth por complejo para senas
-(`MP_CLIENT_ID`/`MP_CLIENT_SECRET`)"* — y el codigo lo usa solo en el circuito de
+esta fijado en CLAUDE.md — _"Checkout Pro es el OAuth por complejo para senas
+(`MP_CLIENT_ID`/`MP_CLIENT_SECRET`)"_ — y el codigo lo usa solo en el circuito de
 senas: armar la URL de autorizacion (`oauth-start/route.ts:28`), canjear el codigo
 por el token (`callback/route.ts:138`) y **refrescar** ese token
 (`mp-oauth.ts:37`). El plan SaaS no lo toca: usa `MP_TURNOGOL_ACCESS_TOKEN`.
@@ -461,8 +461,7 @@ Por eso reconectar no es opcional ni "cuando se pueda": va en la misma sesion.
    `client_id=345699471468974`, y la pantalla de MercadoPago tiene que ofrecer
    autorizar en vez de "La aplicacion no esta preparada".
 4. **Reconectar los dos complejos**, y ojo que **son dos pasos, no uno**:
-   **desvincular primero** y despues conectar. El callback tiene un guard (migr.
-   069) que rechaza con `mp_already_connected` si esa cuenta de MercadoPago ya
+   **desvincular primero** y despues conectar. El callback tiene un guard (migr. 069) que rechaza con `mp_already_connected` si esa cuenta de MercadoPago ya
    figura en otro complejo — una cuenta cobra para UN solo complejo. Elite lo hace
    Lazar con su cuenta; titi lo hace Tiziana con la suya (son cuentas distintas,
    asi que entre ellos no chocan).
@@ -536,10 +535,11 @@ complejo nuevo pueda conectarse — que es lo que bloquea vender.
    identifica a la aplicacion que pide permiso. **Leerla no autoriza nada** — la
    autorizacion recien ocurre al confirmar en la pantalla de MercadoPago.
 
-   | `client_id` en la URL | Significa |
-   |---|---|
-   | `345699471468974` | apunta a **TurnoGol Cobros** (Checkout Pro). Correcto: seguir al paso 2 |
-   | `1654083475779552` | apunta a **TurnoGol** (Suscripciones). **Parar**: hay que corregir `MP_CLIENT_ID`/`MP_CLIENT_SECRET` en Vercel y redeployar ANTES de que ningun complejo reconecte, o quedaria autorizado otra vez a la aplicacion equivocada |
+   | `client_id` en la URL | Significa                                                                                                                                                                                                                     |
+   | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `345699471468974`     | apunta a **TurnoGol Cobros** (Checkout Pro). Correcto: seguir al paso 2                                                                                                                                                       |
+   | `1654083475779552`    | apunta a **TurnoGol** (Suscripciones). **Parar**: hay que corregir `MP_CLIENT_ID`/`MP_CLIENT_SECRET` en Vercel y redeployar ANTES de que ningun complejo reconecte, o quedaria autorizado otra vez a la aplicacion equivocada |
+
 2. **Tiziana reconecta**: entra como admin de titi a `/settings/facturacion` y usa
    el boton de conectar MercadoPago (`/api/mp/oauth-start`). Eso reemplaza el token
    guardado por uno de la aplicacion nueva.
@@ -554,3 +554,172 @@ que pasaria por Checkout Pro.
 Los bloques C a H del plan del 25/8. Si sobra tiempo, el siguiente por valor es el
 **E** (simular trial vencido y dunning adelantando fechas en Elite): cierra dos
 ensayos, no cuesta plata y no depende de nadie.
+
+---
+
+## Resultados de la noche del 2026-08-28 — bloques B, C, D y F CERRADOS
+
+Todo lo de abajo salio de produccion real, con plata real. Cada afirmacion tiene su
+evidencia en `analytics_events`, `processed_webhooks`, `audit_logs` y `payments`.
+
+### Precondiciones que hubo que arreglar antes de empezar
+
+Dos cosas que el plan no habia previsto y que sin ellas la prueba no probaba nada:
+
+1. **La senia estaba apagada en los dos complejos** (`settings.requires_deposit = false`).
+   Una reserva online no cobraba un peso, asi que el circuito de Checkout Pro nunca se
+   habria ejercitado. Se prendio en `complejo titi`, al 100%.
+2. **Riesgo de plata al prenderla**: con el porcentaje en 100 y la Cancha 2 de titi a
+   $70.000, un click en la cancha equivocada eran $70.000 reales. Se paso la Cancha 2 a
+   `offline` mientras duraron los ensayos, dejando solo la de $100.
+
+Ademas se verifico que **el portal publico de un tenant `canceled` sigue abierto** mientras
+su periodo pago este vigente (`public.service.ts:338` lee `canceledPeriodEnd` solo en ese
+estado). Por eso la reserva no dependia de la reactivacion: eran independientes.
+
+### Bloque B — reactivacion de la suscripcion, con cobro real de $100
+
+No fue un alta nueva: titi ya tenia `mp_subscription_id`, en estado `canceled` con periodo
+vigente. El camino ejercitado fue `reactivate()`, no `subscribe()`.
+
+```
+22:36:35  audit  subscription.reactivate_initiated  (preapproval nuevo 0a01b114…)
+22:36:45  MP crea el pago 175171843317 — user_id 381048203 (cuenta master), live_mode true
+22:36:47.765071  webhook 'payment' procesado
+22:36:47.765071  audit  tenant.reactivated  ← mismo microsegundo, misma transaccion
+22:38:22 / 22:38:24  subscription_authorized_payment (created + updated), ambos aceptados
+```
+
+El timestamp identico es lo que prueba que al tenant lo movio **el pago acreditado** y no el
+boton de soporte del panel: `transitionToActiveFromAny` tiene dos llamadores
+(`dunning.service.ts:337` por pago, `support.service.ts:254` por soporte) y solo el primero
+corre dentro del procesamiento del webhook.
+
+**Sin preapproval huerfano**: el viejo (`34e84bd0…`) se cancelo antes de crear el nuevo — el
+`cancelPreapproval` de `billing.service.ts:735` corrio de verdad, y a las 22:36:42 llego su
+propio `subscription_preapproval` confirmandolo. Ese es justo el 🔴 de doble cobro que el
+comentario del codigo dice cubrir; aca quedo verificado contra MP real, no contra el comentario.
+
+Estado final: tenant `active`, periodo hasta **2026-11-18**.
+
+### Bloque C — primera senia real que entra por Checkout Pro
+
+El circuito que **nunca habia funcionado**: hasta la manana del 2026-08-28 esa aplicacion
+devolvia 401 y sus avisos se descartaban.
+
+```
+22:43:28  MP crea el evento — user_id 1059888348  ← la cuenta del COMPLEJO, no la master
+22:43:33  payment.deposit.approved      (mpPaymentId 176120451286)
+22:43:34  booking.transition.confirmed
+22:43:36  mp.webhook.processed  eventType=payment
+```
+
+El orden importa y es el discriminador: `booking.transition.confirmed` sale **dentro** del
+procesamiento del webhook, y **no hay ningun `payment.reconcile.confirmed`**. O sea la reserva
+la confirmo el aviso de MercadoPago, no el retorno del checkout ni el cron de rescate.
+
+El `user_id` distinto (1059888348 vs 381048203) es lo que confirma que las dos aplicaciones
+conviven bien: cada circuito notifica desde su propia cuenta al mismo buzon, y `webhook-auth.ts`
+valida cada uno contra su clave.
+
+Se repitio identico con la segunda reserva (`176122306154`, 22:50): dos entregas consecutivas.
+
+### Bloque F — cancelacion FUERA de politica (nunca se habia ejercitado)
+
+Politica de titi: `hours_before: 6`, `penalty_type: deposit`.
+
+Reserva del 28/8 21:00, cancelada por el jugador a **1.15 h** del turno:
+
+- `status = canceled_no_refund`, `canceled_by = player`
+- La senia quedo `approved` y **no se genero ninguna fila de `refund`**
+- El ingreso de $100 quedo en la caja del complejo (`cash_flows`: income / booking)
+
+Correcto: fuera de plazo, el complejo se queda la senia.
+
+### Bloque D — cancelacion DENTRO de politica, y las devoluciones pendientes
+
+Reserva del 29/8 21:00, cancelada a **25 h** del turno:
+
+- `status = canceled_refunded`
+- Fila `refund` en `pending` de $100 creada en el mismo instante del cancel (22:52:14)
+
+Y antes, a las 22:30, se saldaron a mano las dos devoluciones pendientes que venian del 22 y
+23/8 (`payment.refund_settled_manually` x2). Al cierre de la noche el sistema quedo con **una
+sola** devolucion pendiente: la recien generada, que sirve de material para el video que falta
+(ver `docs/tech-debt.md`).
+
+### Lo que quedo sin hacer
+
+### P-04 idempotencia — CERRADO, y no hizo falta reenviar nada
+
+La idea original era reenviar un aviso a mano desde el panel de MercadoPago. **Esa premisa era
+falsa**: la pantalla de detalle del evento no ofrece reenviar (verificado el 2026-08-28 en el
+panel de TurnoGol Cobros). El harness `scripts/replay-mp-webhook.ts` existe para esto pero
+**rechaza produccion por diseno** — `assertNotProduction()` mas guardas por `VERCEL_ENV` y
+hostname, y firma con `MP_WEBHOOK_TEST_BYPASS_SECRET`, que a su vez esta hard-gateado a
+`NODE_ENV !== 'production'` en `webhook-auth.ts`. Correcto que sea asi: no se le inyectan
+eventos falsos a produccion.
+
+No hizo falta, porque **el experimento ya habia ocurrido solo**. MercadoPago mando avisos
+repetidos del mismo recurso durante los ensayos:
+
+| Recurso                                          | Avisos entregados | Tipo                            |
+| ------------------------------------------------ | ----------------- | ------------------------------- |
+| `0a01b114…` (preapproval nuevo)                  | **3**             | subscription_preapproval        |
+| `34e84bd0…` (preapproval viejo)                  | **3**             | subscription_preapproval        |
+| `7031353017` (pago de suscripcion)               | **2**             | subscription_authorized_payment |
+| `175171843317` / `176120451286` / `176122306154` | 1 c/u             | payment                         |
+
+Ocho avisos, tres recursos repetidos. Efecto: **`tenant.reactivated` figura UNA sola vez** en
+`audit_logs`, un solo cambio de estado, un solo periodo extendido, cero audits duplicados. La
+idempotencia quedo probada con trafico real de MP, que es mejor evidencia que un replay
+sintetico.
+
+- **Bloque E**: trial vencido (P-09) y dunning (P-10), simulados moviendo fechas en Elite.
+- **Bloque H**: apagar el plan de $100 (`is_active = false`) y devolver `complejo titi` a su
+  configuracion normal — la Cancha 2 sigue en `offline` y la senia quedo al 100%.
+
+---
+
+## Bloque E — P-09 trial vencido · EN MARCHA desde el 2026-08-28 22:36 UTC
+
+**No toca plata.** El MercadoPago conectado en Elite es el de cobrar senias de reservas
+(Checkout Pro); esto de aca es el reloj de la suscripcion SaaS, y Elite nunca se suscribio
+(`mp_subscription_id` y `mp_payer_email` en NULL). El bloqueo por trial vencido no intenta
+cobrar nada: solo apaga el acceso.
+
+Aplicado sobre `Complejo Elite Futbol` (`9fcb4ecc-c1f8-43e2-9a53-5f1e599eb1e6`):
+
+```sql
+UPDATE tenants
+SET trial_ends_at = NOW() + INTERVAL '20 hours', trial_warning_days_sent = NULL, updated_at = NOW()
+WHERE id = '9fcb4ecc-c1f8-43e2-9a53-5f1e599eb1e6' AND status = 'trialing';
+```
+
+`trial_ends_at` quedo en **2026-08-29 20:36:11 UTC**. Una sola preparacion cubre los dos
+escalones porque `expire-trials` corre **todos los dias a las 11:00 UTC** (08:00 ART):
+
+| Cuando             | Que tiene que pasar                                                                     | Por que                                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **29/8 11:00 UTC** | Mail de "te queda 1 dia" al duenio, y `trial_warning_days_sent = 1`                     | Faltan 9.6 h, o sea `days_left = CEIL(9.6/24) = 1`, y el umbral mas chico de `TRIAL_ENDING_WARNING_DAYS = [1, 7]` que aplica es el 1 |
+| **30/8 11:00 UTC** | Elite pasa a `blocked` (tenant Y suscripcion), audit con `reason: trial_ends_at_passed` | `trial_ends_at < NOW()` — segunda fase del mismo worker                                                                              |
+
+Verificado por calculo antes de esperar: `entra_al_aviso = true`, `days_left = 1`,
+`se_bloquea_el_30 = true`.
+
+**Restaurar** (una linea, cuando se quiera cortar el ensayo):
+
+```sql
+UPDATE tenants
+SET trial_ends_at = '2026-09-16 17:50:43.751+00', trial_warning_days_sent = NULL,
+    status = 'trialing', updated_at = NOW()
+WHERE id = '9fcb4ecc-c1f8-43e2-9a53-5f1e599eb1e6';
+```
+
+Ojo: si Elite llega a `blocked`, restaurar tambien exige devolver la suscripcion a `trialing`
+(`tenant_subscriptions.status`), no solo la fila de `tenants`.
+
+**P-10 (dunning) queda pendiente**: necesita el mismo complejo en `past_due` con
+`dunning_started_at` de hace 8 dias, y el cron `dunning-retry` (16:00 UTC / 13:00 ART) lo
+escala a `suspended`. Se hace despues de restaurar Elite — no se encadenan dos cambios de
+estado sobre el mismo complejo a la vez.

@@ -22,7 +22,6 @@ export const playerFavorites = pgTable(
       table.playerId,
       table.tenantId,
     ),
-    playerIdx: index('idx_player_favorites_player').on(table.playerId),
     tenantIdx: index('idx_player_favorites_tenant').on(table.tenantId),
   }),
 )

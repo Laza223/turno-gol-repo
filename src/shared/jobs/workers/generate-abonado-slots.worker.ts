@@ -2,6 +2,7 @@ import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
+import { getAbonadoSlotConflicts } from '@/modules/abonados/abonado.service'
 import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
 import { paidPeriodCutoffFrom } from '@/modules/bookings/paid-period.guard'
 import { physicalRange } from '@/shared/time/physical-range'
@@ -57,25 +58,34 @@ export async function runRollingSlotGeneration(): Promise<void> {
   // sesiones desde el día uno de una baja con dos meses pagos por delante.
   const SKIP_STATUSES = new Set(['suspended', 'blocked', 'churned', 'deleted'])
 
-  for (const abonado of abonadoRows) {
-    if (SKIP_STATUSES.has(abonado.tenant_status)) continue
+  const candidates = abonadoRows.filter((a) => !SKIP_STATUSES.has(a.tenant_status))
+
+  // El estado futuro de TODOS los abonados en una sola consulta cross-tenant,
+  // antes del loop. Antes cada abonado abría su propio `withTenantContext`
+  // (transacción + SET LOCAL) solo para preguntar cuántas sesiones futuras
+  // tenía y cuál era la última — dos consultas por abonado, y la transacción se
+  // abría incluso para los que salían en el acto por tener el cupo lleno, que
+  // en régimen estable son la mayoría. Ahora esos ni entran.
+  const futureByAbonado = new Map<string, { n: number; last: string | null }>()
+  if (candidates.length > 0) {
+    const futureRows = await sql<{ abonado_id: string; n: number; last: string | null }[]>`
+      SELECT abonado_id, COUNT(*)::int AS n, MAX(date::text) AS last
+      FROM bookings
+      WHERE abonado_id = ANY(${candidates.map((a) => a.id)}::uuid[])
+        AND date >= ${today}::date
+      GROUP BY abonado_id
+    `
+    for (const r of futureRows) futureByAbonado.set(r.abonado_id, { n: r.n, last: r.last })
+  }
+
+  for (const abonado of candidates) {
+    const future = futureByAbonado.get(abonado.id) ?? { n: 0, last: null }
+    if (future.n >= 4) continue
 
     // Tenant is known per-abonado — the reads and the INSERT below run
     // tenant-scoped (Fable 5 P0), not on the service-role pool above.
     const generated = await withTenantContext(abonado.tenant_id, async (tx) => {
-      const countRows = await tx.execute(drizzleSql`
-        SELECT COUNT(*)::int AS n FROM bookings
-        WHERE abonado_id = ${abonado.id} AND date >= ${today}::date
-      `)
-      const futureCnt = (countRows as unknown as Array<{ n: number }>)[0]!.n
-      if (futureCnt >= 4) return 0
-
-      // Find last future booking date to anchor fromDate
-      const lastRows = await tx.execute(drizzleSql`
-        SELECT MAX(date::text) AS last FROM bookings
-        WHERE abonado_id = ${abonado.id} AND date >= ${today}::date
-      `)
-      const lastDate = (lastRows as unknown as Array<{ last: string | null }>)[0]!.last
+      const lastDate = future.last
 
       // fromDate = day after last booking (7 days later, same weekday), or today
       let fromDate: string
@@ -112,42 +122,54 @@ export async function runRollingSlotGeneration(): Promise<void> {
             )
           : false
 
-      let count = 0
-      for (const dateStr of bookableDates) {
-        const conflictRows = await tx.execute(drizzleSql`
-          SELECT COUNT(*)::int AS n FROM bookings
-          WHERE court_id = ${abonado.court_id}
-            AND date = ${dateStr}::date
-            AND status NOT IN ('canceled_refunded','canceled_no_refund')
-            AND time_start < ${abonado.time_end}::time
-            AND time_end > ${abonado.time_start}::time
-        `)
-        if ((conflictRows as unknown as Array<{ n: number }>)[0]!.n > 0) continue
+      // Un chequeo de conflicto para las 4 fechas (reusa el mismo predicado
+      // por día + franja horaria que la vista previa del alta) y un INSERT
+      // multi-fila, en vez de dos consultas por fecha.
+      const conflicting = new Set(
+        await getAbonadoSlotConflicts(
+          abonado.tenant_id,
+          abonado.court_id,
+          abonado.time_start,
+          abonado.time_end,
+          bookableDates,
+          tx,
+        ),
+      )
+      const freeDates = bookableDates.filter((d) => !conflicting.has(d))
+      if (freeDates.length === 0) return 0
 
-        const { startsAt, endsAt } = physicalRange({
-          date: dateStr,
-          timeStart: abonado.time_start,
-          timeEnd: abonado.time_end,
-          physicallyNextDay,
-        })
-
-        await tx.execute(drizzleSql`
-          INSERT INTO bookings (
-            tenant_id, court_id, player_id, abonado_id,
-            date, time_start, time_end,
-            starts_at, ends_at,
-            type, status, price_snapshot, deposit_amount, deposit_status
-          ) VALUES (
+      const values = drizzleSql.join(
+        freeDates.map((dateStr) => {
+          const { startsAt, endsAt } = physicalRange({
+            date: dateStr,
+            timeStart: abonado.time_start,
+            timeEnd: abonado.time_end,
+            physicallyNextDay,
+          })
+          return drizzleSql`(
             ${abonado.tenant_id}, ${abonado.court_id}, ${abonado.player_id ?? null}, ${abonado.id},
             ${dateStr}::date, ${abonado.time_start}::time, ${abonado.time_end}::time,
             ${startsAt.toISOString()}::timestamptz, ${endsAt.toISOString()}::timestamptz,
             'fixed', 'confirmed', ${abonado.price_per_session}, 0, 'not_required'
-          )
-          ON CONFLICT DO NOTHING
-        `)
-        count++
-      }
-      return count
+          )`
+        }),
+        drizzleSql`, `,
+      )
+
+      // `ON CONFLICT DO NOTHING` cubre el exclusion constraint igual que antes:
+      // si otra transacción ganó una de estas horas entre el chequeo optimista
+      // y este INSERT, esa fila se saltea sin voltear las demás.
+      const inserted = await tx.execute(drizzleSql`
+        INSERT INTO bookings (
+          tenant_id, court_id, player_id, abonado_id,
+          date, time_start, time_end,
+          starts_at, ends_at,
+          type, status, price_snapshot, deposit_amount, deposit_status
+        ) VALUES ${values}
+        ON CONFLICT DO NOTHING
+        RETURNING id
+      `)
+      return (inserted as unknown as unknown[]).length
     })
 
     if (generated > 0) {

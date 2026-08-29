@@ -3,7 +3,7 @@ import { getWorkerSql } from '@/shared/db/client'
 import { QUEUE_SEND_EMAIL } from '../definitions'
 import {
   claimNotificationForSend,
-  getNotificationById,
+  listNotificationsByIds,
   markNotificationSent,
   markNotificationFailed,
   updateNotificationLastError,
@@ -81,8 +81,12 @@ export async function processQueuedNotifications(): Promise<void> {
     ORDER BY queued_at
     LIMIT 50
   `
+  // Las 50 filas en una sola query, no una por id. `listNotificationsByIds` no
+  // garantiza el orden, así que se re-ordena por el de `rows` (queued_at ASC):
+  // la cola de mails se despacha en el orden en que entró.
+  const byId = new Map((await listNotificationsByIds(rows.map((r) => r.id))).map((n) => [n.id, n]))
   for (const { id } of rows) {
-    const notif = await getNotificationById(id)
+    const notif = byId.get(id)
     if (!notif) continue
     try {
       await processSingleNotification(notif)

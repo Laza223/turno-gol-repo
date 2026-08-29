@@ -151,20 +151,31 @@ export async function createTab(
     return { tab: rowToTab((existing as unknown as TabRowRaw[])[0]!), duplicate: true }
   }
 
-  for (const p of resolved) {
+  // Un INSERT y un UPDATE para todo el ticket, no dos por producto (mismo
+  // cambio que en `canteen-sale.service.ts`).
+  await tx.execute(sql`
+    INSERT INTO stock_movements
+      (tenant_id, product_id, kind, qty, unit_price, tab_id, created_by)
+    VALUES ${sql.join(
+      resolved.map(
+        (p) =>
+          sql`(${tenantId}, ${p.id}, 'sale', ${-p.qty}, ${p.price}, ${tabRow.id}, ${staffUserId})`,
+      ),
+      sql`, `,
+    )}
+  `)
+
+  const tracked = resolved.filter((p) => typeof p.stock === 'number')
+  if (tracked.length > 0) {
     await tx.execute(sql`
-      INSERT INTO stock_movements
-        (tenant_id, product_id, kind, qty, unit_price, tab_id, created_by)
-      VALUES
-        (${tenantId}, ${p.id}, 'sale', ${-p.qty}, ${p.price}, ${tabRow.id}, ${staffUserId})
+      UPDATE canteen_products p
+      SET stock = p.stock - v.qty
+      FROM (VALUES ${sql.join(
+        tracked.map((p) => sql`(${p.id}::uuid, ${p.qty}::int)`),
+        sql`, `,
+      )}) AS v(product_id, qty)
+      WHERE p.id = v.product_id AND p.tenant_id = ${tenantId}
     `)
-    if (typeof p.stock === 'number') {
-      await tx.execute(sql`
-        UPDATE canteen_products
-        SET stock = stock - ${p.qty}
-        WHERE id = ${p.id} AND tenant_id = ${tenantId}
-      `)
-    }
   }
 
   return { tab: rowToTab(tabRow), duplicate: false }
@@ -280,24 +291,36 @@ export async function cancelTab(
     FOR UPDATE OF cp
   `)
 
-  for (const line of lineRows as unknown as Array<{
-    product_id: string
-    qty: number
-    stock: number | null
-  }>) {
-    const returnQty = -line.qty // las líneas 'sale' son negativas
+  // Las líneas 'sale' son negativas: devolver al stock es sumar su opuesto.
+  // Un INSERT y un UPDATE para todas, no dos por línea.
+  const lines = (
+    lineRows as unknown as Array<{ product_id: string; qty: number; stock: number | null }>
+  ).map((l) => ({ ...l, returnQty: -l.qty }))
+  const cancelNote = `Anulación de fiado — ${input.reason}`
+
+  if (lines.length > 0) {
     await tx.execute(sql`
       INSERT INTO stock_movements
         (tenant_id, product_id, kind, qty, note, tab_id, created_by)
-      VALUES
-        (${tenantId}, ${line.product_id}, 'adjustment', ${returnQty},
-         ${`Anulación de fiado — ${input.reason}`}, ${tab.id}, ${staffUserId})
+      VALUES ${sql.join(
+        lines.map(
+          (l) =>
+            sql`(${tenantId}, ${l.product_id}, 'adjustment', ${l.returnQty}, ${cancelNote}, ${tab.id}, ${staffUserId})`,
+        ),
+        sql`, `,
+      )}
     `)
-    if (typeof line.stock === 'number') {
+
+    const tracked = lines.filter((l) => typeof l.stock === 'number')
+    if (tracked.length > 0) {
       await tx.execute(sql`
-        UPDATE canteen_products
-        SET stock = stock + ${returnQty}
-        WHERE id = ${line.product_id} AND tenant_id = ${tenantId}
+        UPDATE canteen_products p
+        SET stock = p.stock + v.qty
+        FROM (VALUES ${sql.join(
+          tracked.map((l) => sql`(${l.product_id}::uuid, ${l.returnQty}::int)`),
+          sql`, `,
+        )}) AS v(product_id, qty)
+        WHERE p.id = v.product_id AND p.tenant_id = ${tenantId}
       `)
     }
   }

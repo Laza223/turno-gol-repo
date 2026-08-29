@@ -176,20 +176,36 @@ export async function sellTicket(
     tx,
   )
 
-  for (const { product, qty } of resolved) {
+  // Un INSERT y un UPDATE para todo el ticket, no dos por producto. Las
+  // LECTURAS ya venían en lote (`lockProducts` usa `= ANY(ARRAY[...])`); las
+  // escrituras habían quedado fila por fila, y esto corre en el camino más
+  // repetido del turno de un encargado.
+  await tx.execute(sql`
+    INSERT INTO stock_movements
+      (tenant_id, product_id, kind, qty, unit_price, cash_flow_id, created_by)
+    VALUES ${sql.join(
+      resolved.map(
+        ({ product, qty }) =>
+          sql`(${tenantId}, ${product.id}, 'sale', ${-qty}, ${product.price}, ${cashFlow.id}, ${staffUserId})`,
+      ),
+      sql`, `,
+    )}
+  `)
+
+  // Solo los productos con stock llevado. `stock = NULL` significa "no se
+  // controla", y restarle algo lo dejaría en NULL igual — pero se excluyen para
+  // no tocar filas de gusto.
+  const tracked = resolved.filter(({ product }) => typeof product.stock === 'number')
+  if (tracked.length > 0) {
     await tx.execute(sql`
-      INSERT INTO stock_movements
-        (tenant_id, product_id, kind, qty, unit_price, cash_flow_id, created_by)
-      VALUES
-        (${tenantId}, ${product.id}, 'sale', ${-qty}, ${product.price}, ${cashFlow.id}, ${staffUserId})
+      UPDATE canteen_products p
+      SET stock = p.stock - v.qty
+      FROM (VALUES ${sql.join(
+        tracked.map(({ product, qty }) => sql`(${product.id}::uuid, ${qty}::int)`),
+        sql`, `,
+      )}) AS v(product_id, qty)
+      WHERE p.id = v.product_id AND p.tenant_id = ${tenantId}
     `)
-    if (typeof product.stock === 'number') {
-      await tx.execute(sql`
-        UPDATE canteen_products
-        SET stock = stock - ${qty}
-        WHERE id = ${product.id} AND tenant_id = ${tenantId}
-      `)
-    }
   }
 
   return { cashFlowId: cashFlow.id, total, duplicate: false }

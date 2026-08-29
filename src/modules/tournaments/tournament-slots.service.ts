@@ -3,7 +3,10 @@ import { bookings } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import { physicalRange } from '@/shared/time/physical-range'
-import { hasActiveBookingOverlap } from '@/modules/bookings/booking.overlap'
+import {
+  findActiveBookingOverlaps,
+  type OverlapCandidate,
+} from '@/modules/bookings/booking.overlap'
 import { assertWithinPaidPeriod } from '@/modules/bookings/paid-period.guard'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { expandRangeToHourSlots } from './slot-expansion'
@@ -96,8 +99,12 @@ export async function reserveTournamentSlots(
   await assertWithinPaidPeriod(tenantId, input.dates, tx)
   await lockCourtsOrThrow(input.courtIds, tenantId, tx)
 
-  const conflicts: SlotConflict[] = []
-  const rows: Array<typeof bookings.$inferInsert> = []
+  // Primero se expanden TODAS las horas candidatas (fechas × canchas × slots) y
+  // recién después se pregunta de una sola vez cuáles chocan. Antes había una
+  // consulta de solapamiento por candidato — 144 para 8 fechas × 3 canchas × 6
+  // horas — y todas corrían con los `FOR UPDATE` de `lockCourtsOrThrow` ya
+  // tomados, o sea bloqueando esas canchas durante todo el barrido.
+  const candidates: Array<OverlapCandidate & SlotConflict> = []
 
   for (const date of input.dates) {
     // La apertura depende del día de la semana: define qué cuenta como
@@ -120,37 +127,53 @@ export async function reserveTournamentSlots(
           timeEnd: slot.timeEnd,
           physicallyNextDay: slot.physicallyNextDay,
         })
-        if (await hasActiveBookingOverlap(courtId, startsAt, endsAt, tx)) {
-          conflicts.push({
-            courtId,
-            date,
-            timeStart: slot.timeStart,
-            timeEnd: slot.timeEnd,
-          })
-          continue
-        }
-        rows.push({
-          tenantId,
+        candidates.push({
           courtId,
-          tournamentId,
-          playerId: null,
-          date: new Date(`${date}T00:00:00Z`),
+          date,
           timeStart: slot.timeStart,
           timeEnd: slot.timeEnd,
           startsAt,
           endsAt,
-          type: 'tournament',
-          status: 'confirmed',
-          // La hora del torneo no se cobra por hora: se cobra la inscripción.
-          priceSnapshot: 0,
-          depositAmount: 0,
-          depositStatus: 'not_required',
-          paymentMethod: null,
-          createdByStaff: staffUserId,
         })
       }
     }
   }
+
+  const taken = await findActiveBookingOverlaps(candidates, tx)
+
+  const conflicts: SlotConflict[] = []
+  const rows: Array<typeof bookings.$inferInsert> = []
+
+  candidates.forEach((c, i) => {
+    if (taken.has(i)) {
+      conflicts.push({
+        courtId: c.courtId,
+        date: c.date,
+        timeStart: c.timeStart,
+        timeEnd: c.timeEnd,
+      })
+      return
+    }
+    rows.push({
+      tenantId,
+      courtId: c.courtId,
+      tournamentId,
+      playerId: null,
+      date: new Date(`${c.date}T00:00:00Z`),
+      timeStart: c.timeStart,
+      timeEnd: c.timeEnd,
+      startsAt: c.startsAt,
+      endsAt: c.endsAt,
+      type: 'tournament',
+      status: 'confirmed',
+      // La hora del torneo no se cobra por hora: se cobra la inscripción.
+      priceSnapshot: 0,
+      depositAmount: 0,
+      depositStatus: 'not_required',
+      paymentMethod: null,
+      createdByStaff: staffUserId,
+    })
+  })
 
   if (rows.length === 0) {
     // Todo en conflicto: es un error real, no un éxito vacío. Que la action lo

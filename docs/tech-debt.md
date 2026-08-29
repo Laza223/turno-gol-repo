@@ -73,3 +73,31 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 **Costo estimado de resolverla**: (a) trivial, ~15 min — reescribir el empty state para que diga lo que el código hace. Ojo que el mismo archivo tiene más abajo ([:181-182](<src/app/(admin)/caja/devoluciones/PendingRefundsList.tsx:181-182>)) un texto que SÍ es correcto; el arreglo es alinear el de arriba con ese. (b) ~1h de grabación. **Verificar antes de grabar**: lo que TurnoGol manda a MercadoPago como `external_reference` es el UUID completo de la reserva ([mp-gateway.implementation.ts:129](src/modules/payments/mp-gateway.implementation.ts:129)), pero la pantalla de devoluciones le muestra al complejo el código corto — los primeros 8 caracteres en mayúscula ([booking-code.ts](src/lib/booking-code.ts)). Habría que confirmar en el panel real si buscar por ese código corto encuentra el pago; si no lo encuentra, el video tiene que enseñar a ubicarlo por monto y fecha, no por código.
 
 **Disparador de resolución**: (a) en el próximo lote de fixes de UI de caja — es de 15 minutos y ya está localizado. (b) antes del primer complejo cliente, junto al resto del material de onboarding. Hay una devolución pendiente real de $100 en `complejo titi` (generada el 2026-08-28 en los ensayos) que sirve de material para grabarlo.
+
+---
+
+## La invitación de staff escanea hasta 10.000 usuarios de Supabase Auth para encontrar uno
+
+**Qué es**: `findAuthUserByEmail` ([settings/equipo/actions.ts:42](<src/app/(admin)/settings/equipo/actions.ts:42>), duplicada en [super-admin/tenants/[id]/actions.ts](<src/app/(super-admin)/super-admin/tenants/[id]/actions.ts>)) pagina `listUsers` de a 1.000, hasta 10 páginas, y va comparando el email en memoria. Son hasta **10 llamadas a la API de Supabase Auth por cada invitación de staff**, y el propio comentario reconoce que es un rodeo: "supabase-js no expone lookup por email, así que paginamos listUsers de forma acotada".
+
+**Por qué existe**: cuando se escribió, el SDK efectivamente no ofrecía búsqueda por email y la cantidad de usuarios era despreciable. Es best-effort declarado: si no lo ubica, el callback de login sincroniza `staff_user_id` igual (#47), así que nunca fue un bug, solo un costo.
+
+**Costo de no resolverla ahora**: ninguno hoy. Es, eso sí, el **único hallazgo de la auditoría de performance del 2026-08-29 que escala con el total de usuarios de la plataforma y no con los de un complejo**: cada complejo nuevo, cada jugador registrado, hace más lenta la invitación de staff de todos los demás. Con 10.000 usuarios el corte de 10 páginas se alcanza y la búsqueda empieza a devolver `null` por agotamiento, no por ausencia — o sea que además deja de funcionar en silencio y cae siempre al fallback.
+
+**Costo estimado de resolverla**: ~1-2h, pero necesita verificación real y por eso no entró en la auditoría. GoTrue expone `GET /auth/v1/admin/users?filter=<email>` desde v2; hay que confirmar contra el GoTrue que corre hoy en el proyecto (no contra la documentación) que el filtro existe y matchea por igualdad, no por prefijo. Alternativa si no: consultar `auth.users` directamente, que exige revisar qué permisos tiene el rol de servicio sobre el schema `auth`. Ninguna de las dos se puede probar sin Docker levantado o sin tocar producción, que es exactamente lo que frenó el fix.
+
+**Disparador de resolución**: cuando la plataforma pase los ~2.000 usuarios registrados, o antes si alguna invitación de staff empieza a tardar de forma perceptible. Contexto completo en [docs/audit/BACKLOG-PERFORMANCE-DB.md](audit/BACKLOG-PERFORMANCE-DB.md).
+
+---
+
+## 20 índices sin uso registrado, que no se pueden dropear todavía
+
+**Qué es**: el advisor de performance de Supabase reporta 20 índices con `idx_scan = 0` en producción (`idx_players_phone`, `idx_bookings_starts_at`, `idx_notifications_recipient`, los cinco de Torneos, etc.). Cada índice hace más lenta **cada escritura** de su tabla y ocupa disco, así que uno que nunca se lee es costo puro.
+
+**Por qué existe**: no es un error — es que todavía no hay con qué decidir. La base de producción tiene 15 reservas y 2 complejos (medido el 2026-08-29), y varios de esos índices son de Torneos, un módulo detrás de un feature flag global apagado. "Nunca usado" sobre una base sin tráfico no dice nada sobre si el índice sirve.
+
+**Costo de no resolverla ahora**: despreciable. 20 índices de más sobre tablas de 200 kB no se sienten.
+
+**Costo estimado de resolverla**: ~1h cuando haya datos. El bloque 3 de [scripts/audit/top-queries.sql](../scripts/audit/top-queries.sql) ya lista los candidatos y marca cuáles respaldan un `UNIQUE` o una `EXCLUDE` constraint (esos **no se dropean nunca**, aunque nunca se escaneen: están para hacer cumplir la restricción). El resto se dropea en una migración nueva, como hizo `053_index_hygiene.sql`.
+
+**Disparador de resolución**: cuando haya ~6 meses de tráfico real acumulado y el bloque 4 del script confirme que la ventana de estadísticas los cubre. Antes de eso, cualquier drop es adivinanza.

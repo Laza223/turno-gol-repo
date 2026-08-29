@@ -21,7 +21,6 @@ export const tenantStaffMembers = pgTable(
   },
   (table) => ({
     uqTenantStaff: unique('uq_tenant_staff').on(table.tenantId, table.staffUserId),
-    tenantIdx: index('idx_tenant_staff_tenant').on(table.tenantId),
     userIdx: index('idx_tenant_staff_user').on(table.staffUserId),
     activeIdx: index('idx_tenant_staff_active').on(table.tenantId, table.isActive),
   }),

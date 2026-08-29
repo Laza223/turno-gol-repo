@@ -1,6 +1,6 @@
 import type PgBoss from 'pg-boss'
 import { sql } from 'drizzle-orm'
-import { getWorkerDb, getWorkerSql, type DbTx } from '@/shared/db/client'
+import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
@@ -43,18 +43,34 @@ async function warnEndingTrials(): Promise<void> {
 
   // Sólo los que todavía NO vencieron: el que ya venció se apaga en la fase de
   // abajo y avisarle "te quedan N días" a esa altura sería mentira.
+  // `owner_name` viene por LATERAL en la misma pasada: antes se resolvía con un
+  // SELECT por tenant adentro de la transacción de cada aviso (`ownerFirstName`).
   const candidates = await readSql<
-    { id: string; name: string; days_left: number; warned: number | null }[]
+    {
+      id: string
+      name: string
+      days_left: number
+      warned: number | null
+      owner_name: string | null
+    }[]
   >`
-    SELECT id,
-           name,
-           CEIL(EXTRACT(EPOCH FROM (trial_ends_at - NOW())) / 86400)::int AS days_left,
-           trial_warning_days_sent AS warned
-    FROM tenants
-    WHERE status = 'trialing'
-      AND trial_ends_at IS NOT NULL
-      AND trial_ends_at > NOW()
-      AND trial_ends_at <= NOW() + (${maxDays} || ' days')::interval
+    SELECT t.id,
+           t.name,
+           CEIL(EXTRACT(EPOCH FROM (t.trial_ends_at - NOW())) / 86400)::int AS days_left,
+           t.trial_warning_days_sent AS warned,
+           o.first_name AS owner_name
+    FROM tenants t
+    LEFT JOIN LATERAL (
+      SELECT su.first_name
+      FROM tenant_staff_members tsm
+      JOIN staff_users su ON su.id = tsm.staff_user_id
+      WHERE tsm.tenant_id = t.id AND tsm.is_active = true
+      LIMIT 1
+    ) o ON TRUE
+    WHERE t.status = 'trialing'
+      AND t.trial_ends_at IS NOT NULL
+      AND t.trial_ends_at > NOW()
+      AND t.trial_ends_at <= NOW() + (${maxDays} || ' days')::interval
   `
 
   if (candidates.length === 0) return
@@ -88,7 +104,7 @@ async function warnEndingTrials(): Promise<void> {
             templateName: 'trial_ending',
             triggerEvent: 'sweep.trial_ending',
             content: {
-              ownerName: await ownerFirstName(tx, t.id),
+              ownerName: t.owner_name ?? 'Hola',
               tenantName: t.name,
               daysLeft: Math.max(1, t.days_left),
             },
@@ -112,18 +128,6 @@ async function warnEndingTrials(): Promise<void> {
   }
 }
 
-/** Nombre de pila del primer staff activo, para encabezar el mail. */
-async function ownerFirstName(tx: DbTx, tenantId: string): Promise<string> {
-  const rows = (await tx.execute(sql`
-    SELECT su.first_name
-    FROM tenant_staff_members tsm
-    JOIN staff_users su ON su.id = tsm.staff_user_id
-    WHERE tsm.tenant_id = ${tenantId} AND tsm.is_active = true
-    LIMIT 1
-  `)) as unknown as Array<{ first_name: string | null }>
-  return rows[0]?.first_name ?? 'Hola'
-}
-
 /**
  * Mueve tenants trialing con trial_ends_at vencido a 'blocked' y sincroniza
  * su tenant_subscriptions + audit log. La lectura de candidatos corre en el
@@ -142,11 +146,21 @@ export async function runExpireTrials(): Promise<void> {
   await warnEndingTrials()
 
   const readSql = getWorkerSql()
-  const candidates = await readSql<{ id: string; name: string }[]>`
-    SELECT id, name FROM tenants
-    WHERE status = 'trialing'
-      AND trial_ends_at IS NOT NULL
-      AND trial_ends_at < NOW()
+  // `owner_name` por LATERAL, igual que en `warnEndingTrials`: evita un SELECT
+  // por tenant dentro de cada transacción de bloqueo.
+  const candidates = await readSql<{ id: string; name: string; owner_name: string | null }[]>`
+    SELECT t.id, t.name, o.first_name AS owner_name
+    FROM tenants t
+    LEFT JOIN LATERAL (
+      SELECT su.first_name
+      FROM tenant_staff_members tsm
+      JOIN staff_users su ON su.id = tsm.staff_user_id
+      WHERE tsm.tenant_id = t.id AND tsm.is_active = true
+      LIMIT 1
+    ) o ON TRUE
+    WHERE t.status = 'trialing'
+      AND t.trial_ends_at IS NOT NULL
+      AND t.trial_ends_at < NOW()
   `
 
   if (candidates.length === 0) return
@@ -187,7 +201,7 @@ export async function runExpireTrials(): Promise<void> {
             templateName: 'trial_expired',
             triggerEvent: 'sweep.trial_expired',
             content: {
-              ownerName: await ownerFirstName(tx, t.id),
+              ownerName: t.owner_name ?? 'Hola',
               tenantName: t.name,
             },
           },

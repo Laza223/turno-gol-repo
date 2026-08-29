@@ -91,8 +91,6 @@ export const bookings = pgTable(
           (${table.paymentMethod} IN ('cash', 'transfer', 'other') AND ${table.paymentId} IS NULL) OR
           (${table.paymentMethod} IS NULL)`,
     ),
-    tenantIdx: index('idx_bookings_tenant').on(table.tenantId),
-    tenantDateIdx: index('idx_bookings_tenant_date').on(table.tenantId, table.date),
     tenantCourtDateIdx: index('idx_bookings_tenant_court_date').on(
       table.tenantId,
       table.courtId,

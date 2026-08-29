@@ -57,7 +57,19 @@ export async function putImage(key: string, bytes: Uint8Array, contentType: stri
   const c = getConfig()
   try {
     await getClient().send(
-      new PutObjectCommand({ Bucket: c.bucket, Key: key, Body: bytes, ContentType: contentType }),
+      new PutObjectCommand({
+        Bucket: c.bucket,
+        Key: key,
+        Body: bytes,
+        ContentType: contentType,
+        // Seguro porque las keys son inmutables por construcción: cada subida
+        // genera una key nueva con `crypto.randomUUID()` y la anterior se borra
+        // (`settings/perfil/actions.ts:65`, `settings/canchas/actions.ts:261`).
+        // Nunca se sobreescribe una key existente, así que el objeto que hay en
+        // una URL no cambia jamás. Sin esta cabecera, el TTL en el borde lo
+        // decidía Cloudflare por default en vez del código.
+        CacheControl: 'public, max-age=31536000, immutable',
+      }),
     )
   } catch (err) {
     // Bucket y key sí: son nombres internos, no secretos, y sin ellos el error

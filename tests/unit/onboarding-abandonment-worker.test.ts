@@ -26,23 +26,19 @@ import { runOnboardingAbandonmentSweep } from '@/shared/jobs/workers/onboarding-
 const mockGetWorkerSql = vi.mocked(getWorkerSql)
 const mockGetWorkerDb = vi.mocked(getWorkerDb)
 
-const CANDIDATE = { id: 'tenant-1', name: 'Complejo Norte', onboarding_step: 2 }
+const CANDIDATE = {
+  id: 'tenant-1',
+  name: 'Complejo Norte',
+  onboarding_step: 2,
+  owner_name: 'Marcelo',
+}
 
-// `tx.execute` por ORDEN de llamada, no por contenido de la query: el objeto
-// `sql\`...\`` de drizzle no stringifica a un texto grepeable de forma
-// confiable (probado — un match por `String(query).includes(...)` daba
-// siempre el branch equivocado). El worker llama SIEMPRE en este orden fijo:
-// 1) el UPDATE...RETURNING de la marca de idempotencia, 2) ownerFirstName
-// (solo si (1) devolvió alguna fila).
+// El worker hace UNA sola escritura dentro de la transacción: el
+// UPDATE...RETURNING de la marca de idempotencia. El nombre del dueño ya no se
+// busca acá — viene por LATERAL en la query de candidatos, que corre en el pool
+// worker antes del loop.
 function fakeTx(claimRows: Array<{ id: string }>) {
-  let call = 0
-  return {
-    execute: vi.fn(async () => {
-      call += 1
-      if (call === 1) return claimRows
-      return [{ first_name: 'Marcelo' }]
-    }),
-  }
+  return { execute: vi.fn(async () => claimRows) }
 }
 
 beforeEach(() => {
@@ -111,7 +107,7 @@ describe('runOnboardingAbandonmentSweep', () => {
   it('sin onboarding_step guardado (paso 1, todavía sin completar ninguno): usa el label del paso 1', async () => {
     mockGetWorkerSql.mockReturnValue(
       vi.fn(async () => [
-        { id: 'tenant-2', name: 'Complejo Sur', onboarding_step: null },
+        { id: 'tenant-2', name: 'Complejo Sur', onboarding_step: null, owner_name: 'Marcelo' },
       ]) as unknown as ReturnType<typeof getWorkerSql>,
     )
     const tx = fakeTx([{ id: 'tenant-2' }])

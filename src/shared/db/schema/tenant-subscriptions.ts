@@ -67,7 +67,6 @@ export const tenantSubscriptions = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    tenantIdx: index('idx_tenant_subs_tenant').on(table.tenantId),
     statusIdx: index('idx_tenant_subs_status').on(table.status),
     periodEndIdx: index('idx_tenant_subs_period_end').on(table.currentPeriodEnd),
     dunningIdx: index('idx_tenant_subs_dunning').on(table.dunningStartedAt),

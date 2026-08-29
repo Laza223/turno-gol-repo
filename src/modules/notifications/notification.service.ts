@@ -122,10 +122,19 @@ export async function dispatchEmail(notificationId: string): Promise<void> {
 
 // ─── Worker helpers (getWorkerSql()/getWorkerDb() → service-role, no RLS) ──────
 
-export async function getNotificationById(id: string): Promise<NotificationRow | null> {
+/**
+ * Trae varias notificaciones por id, en una sola query.
+ *
+ * Reemplaza al `getNotificationById` de a una: el barrido de `send-email` corre
+ * cada minuto, selecciona hasta 50 ids y después releía la fila de cada uno —
+ * 50 consultas por minuto para traer filas que la primera query ya había
+ * localizado.
+ */
+export async function listNotificationsByIds(ids: string[]): Promise<NotificationRow[]> {
+  if (ids.length === 0) return []
   const db = getWorkerDb()
-  const rows = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1)
-  return (rows[0] as NotificationRow | undefined) ?? null
+  const rows = await db.select().from(notifications).where(inArray(notifications.id, ids))
+  return rows as NotificationRow[]
 }
 
 /**

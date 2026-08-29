@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { playerStatusEnum } from './enums'
 
@@ -44,7 +44,6 @@ export const players = pgTable(
     }),
   },
   (table) => ({
-    emailIdx: uniqueIndex('idx_players_email').on(table.email),
     phoneIdx: index('idx_players_phone')
       .on(table.phone)
       .where(sql`phone IS NOT NULL`),

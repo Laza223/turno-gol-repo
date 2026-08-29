@@ -17,6 +17,13 @@
  *      función no-LEAKPROOF queda inusable bajo RLS (Postgres se niega a
  *      empujar quals no-leakproof bajo la barrera de seguridad de las
  *      policies) → Seq Scan silencioso. Debe haber CERO.
+ *   5. Índices: todo índice declarado en Drizzle EXISTE en la DB. Nació de la
+ *      auditoría de performance del 2026-08-29: el schema declaraba 21 índices
+ *      que `053_index_hygiene.sql` ya había dropeado, y nada lo detectaba
+ *      porque las secciones 1-3 comparan tablas, columnas y enums, nunca
+ *      índices. Un schema que declara índices inexistentes miente como
+ *      documentación (se lee para decidir si una query tiene soporte) y haría
+ *      que `db:generate` produjera un diff fantasma.
  *
  * Drift real conocido, allowlisteado explícitamente más abajo (no arreglar acá,
  * ver comentarios en cada allowlist).
@@ -365,5 +372,39 @@ describe('D5 #6 — schema drift Drizzle vs DB migrada', () => {
 
       expect(offenders).toEqual([])
     })
+  })
+
+  // ─── 5. Índices declarados en Drizzle que no existen en la DB ────────
+  describe('5. índices', () => {
+    it('todo índice declarado en Drizzle existe en la DB', async () => {
+      const sql = getSql()
+      const rows = await sql<{ indexname: string }[]>`
+        SELECT indexname FROM pg_indexes WHERE schemaname = 'public'
+      `
+      const dbIndexNames = new Set(rows.map((r) => r.indexname))
+
+      const missing: string[] = []
+      for (const [, table] of drizzleTables) {
+        const { name: tableName, indexes } = getTableConfig(table)
+        for (const idx of indexes) {
+          const name = idx.config.name
+          if (!name || dbIndexNames.has(name)) continue
+          missing.push(`${tableName}: índice '${name}' declarado en Drizzle, ausente en la DB`)
+        }
+      }
+
+      expect(missing).toEqual([])
+    })
+
+    // La dirección inversa (índice en la DB ausente en Drizzle) NO se valida, y
+    // es deliberado: las migraciones SQL a mano son la fuente de verdad de este
+    // repo (drizzle.config.ts, `db:push`/`db:generate` denegados), y muchas
+    // crean cosas que Drizzle no modela — las EXCLUDE constraints GiST
+    // (`no_overlapping_bookings`), los índices parciales con predicado sobre
+    // enums, y los UNIQUE inline que Drizzle sí declara pero con otra sintaxis
+    // (`.unique()` en la columna, que no aparece como índice en
+    // `getTableConfig`). Exigirlo obligaría a una allowlist de ~28 entradas que
+    // se pudre sola. Lo que importa —y lo que efectivamente se rompió— es la
+    // dirección de arriba: que el schema no declare índices que no existen.
   })
 })

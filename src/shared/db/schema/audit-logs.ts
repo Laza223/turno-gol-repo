@@ -24,7 +24,6 @@ export const auditLogs = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    tenantIdx: index('idx_audit_logs_tenant').on(table.tenantId),
     tenantCreatedIdx: index('idx_audit_logs_tenant_created').on(table.tenantId, table.createdAt),
     resourceIdx: index('idx_audit_logs_resource').on(
       table.tenantId,

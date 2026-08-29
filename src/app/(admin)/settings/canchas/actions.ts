@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidatePublicListings } from '@/shared/cache/public-listings'
 import { and, eq, inArray, sql as dsql } from 'drizzle-orm'
 import { requireAdminStaffAction, requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
@@ -274,6 +275,7 @@ export async function uploadCourtPhotoAction(
     if (photos === null) return { success: false, error: 'Cancha no encontrada' }
     revalidatePath('/settings/canchas')
     revalidatePath(`/${tenant.slug}`)
+    revalidatePublicListings()
     return { success: true, photos }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'No se pudo guardar la foto' }
@@ -319,6 +321,7 @@ export async function removeCourtPhotoAction(
 
   revalidatePath('/settings/canchas')
   revalidatePath(`/${tenant.slug}`)
+  revalidatePublicListings()
   return { success: true, photos }
 }
 
@@ -340,6 +343,7 @@ export async function reorderCourtPhotosAction(
     if (photos === null) return { success: false, error: 'Cancha no encontrada' }
     revalidatePath('/settings/canchas')
     revalidatePath(`/${tenant.slug}`)
+    revalidatePublicListings()
     return { success: true, photos }
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : 'No se pudo reordenar' }

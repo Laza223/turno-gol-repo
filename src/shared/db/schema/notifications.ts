@@ -32,9 +32,6 @@ export const notifications = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    tenantIdx: index('idx_notifications_tenant')
-      .on(table.tenantId)
-      .where(sql`tenant_id IS NOT NULL`),
     tenantStatusIdx: index('idx_notifications_tenant_status').on(table.tenantId, table.status),
     recipientIdx: index('idx_notifications_recipient').on(table.recipientId),
     triggerIdx: index('idx_notifications_trigger').on(table.triggerEvent),

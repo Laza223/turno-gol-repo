@@ -49,7 +49,6 @@ export const abonados = pgTable(
     timeValid: check('chk_abonado_time_valid', sql`${table.timeEnd} > ${table.timeStart}`),
     dayValid: check('chk_abonado_day_valid', sql`${table.dayOfWeek} BETWEEN 0 AND 6`),
     pricePositive: check('chk_abonado_price_positive', sql`${table.pricePerSession} > 0`),
-    tenantIdx: index('idx_abonados_tenant').on(table.tenantId),
     tenantStatusIdx: index('idx_abonados_tenant_status').on(table.tenantId, table.status),
     courtIdx: index('idx_abonados_court').on(table.tenantId, table.courtId),
     playerIdx: index('idx_abonados_player')

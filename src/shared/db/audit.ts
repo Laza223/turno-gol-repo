@@ -88,3 +88,35 @@ export async function insertSystemAuditLog(tx: DbTx, entry: SystemAuditEntry): P
     actorType: 'system',
   })
 }
+
+/**
+ * Varias entradas de sistema en UN solo INSERT.
+ *
+ * Para los crons que tocan muchas filas de una (auto-completar reservas
+ * vencidas, por ejemplo): antes hacían un INSERT por fila, y encima cada uno
+ * volvía a resolver el override de impersonación —con su `import('next/headers')`
+ * dinámico— para un contexto de worker donde ese override nunca existe.
+ * Acá se resuelve una sola vez para todo el lote, que es correcto: un lote
+ * pertenece siempre a la misma request (o a ninguna).
+ */
+export async function insertSystemAuditLogs(
+  tx: DbTx,
+  entries: readonly SystemAuditEntry[],
+): Promise<void> {
+  if (entries.length === 0) return
+  const override = await resolveImpersonationOverride()
+
+  await tx.insert(auditLogs).values(
+    entries.map((entry) => ({
+      tenantId: entry.tenantId,
+      actorId: override ? override.systemAdminId : SYSTEM_ACTOR_ID,
+      actorType: 'system' as const,
+      action: entry.action,
+      resourceType: entry.resourceType,
+      resourceId: entry.resourceId,
+      metadata: override
+        ? { ...(entry.metadata ?? {}), impersonated_tenant_id: override.tenantId }
+        : (entry.metadata ?? null),
+    })),
+  )
+}

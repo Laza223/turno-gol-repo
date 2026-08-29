@@ -47,7 +47,6 @@ export const courts = pgTable(
   (table) => ({
     capacityCheck: check('chk_capacity_positive', sql`${table.capacity} > 0`),
     formatCheck: check('courts_format_check', sql`${table.format} IN (4, 5, 6, 7, 8, 9, 10, 11)`),
-    tenantIdx: index('idx_courts_tenant').on(table.tenantId),
     tenantStatusIdx: index('idx_courts_tenant_status').on(table.tenantId, table.status),
   }),
 )

@@ -92,6 +92,13 @@ const nextConfig: NextConfig = {
   transpilePackages: ['react-leaflet', '@react-leaflet/core'],
   images: {
     formats: ['image/avif', 'image/webp'],
+    // Un año. Es el TTL con el que el optimizador de Next guarda la versión ya
+    // convertida a AVIF/WebP; sin esto queda el default corto y cada expiración
+    // vuelve a bajar el original de R2 y a re-optimizarlo. Seguro porque las
+    // URLs de imágenes de este producto son inmutables: las keys de R2 llevan
+    // `crypto.randomUUID()` y nunca se sobreescriben (ver `shared/storage/r2.ts`),
+    // y las de Unsplash son fijas por URL.
+    minimumCacheTTL: 31_536_000,
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '**.supabase.co' },

@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { tournamentTeamPlayers, tournamentTeams } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
@@ -266,6 +266,47 @@ export async function listTeamPlayers(
     )
     .orderBy(asc(tournamentTeamPlayers.shirtNumber), asc(tournamentTeamPlayers.fullName))
   return rows.map(rowToTeamPlayer)
+}
+
+/**
+ * Los planteles de varios equipos en UNA query, agrupados por equipo.
+ *
+ * La ficha del torneo (`app/(admin)/torneos/[id]/page.tsx`) necesita el plantel
+ * de todos los equipos para la UI de altas y bajas. Antes lo resolvía con
+ * `teams.map(t => listTeamPlayers(...))`: una consulta por equipo en cada carga
+ * de la página. El `Promise.all` que las envolvía no ayudaba — corren sobre el
+ * mismo `tx`, o sea la misma conexión, así que se serializan igual (es el mismo
+ * motivo por el que `doctor.config.mjs:36-57` prohíbe "arreglar" estos loops con
+ * `Promise.all`).
+ *
+ * Devuelve una entrada por cada id pedido, aunque el equipo no tenga jugadores,
+ * para que el llamador no tenga que defenderse de un `undefined`.
+ */
+export async function listTeamPlayersByTeams(
+  tenantId: string,
+  teamIds: string[],
+  tx: DbTx,
+): Promise<Record<string, TournamentTeamPlayerRow[]>> {
+  const byTeam: Record<string, TournamentTeamPlayerRow[]> = {}
+  for (const id of teamIds) byTeam[id] = []
+  if (teamIds.length === 0) return byTeam
+
+  const rows = await tx
+    .select()
+    .from(tournamentTeamPlayers)
+    .where(
+      and(
+        eq(tournamentTeamPlayers.tenantId, tenantId),
+        inArray(tournamentTeamPlayers.teamId, teamIds),
+      ),
+    )
+    .orderBy(asc(tournamentTeamPlayers.shirtNumber), asc(tournamentTeamPlayers.fullName))
+
+  for (const row of rows) {
+    const bucket = byTeam[row.teamId]
+    if (bucket) bucket.push(rowToTeamPlayer(row))
+  }
+  return byTeam
 }
 
 export async function addTeamPlayer(

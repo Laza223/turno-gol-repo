@@ -32,7 +32,6 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 **Disparador de resolución**: sin fecha fija — es el mismo ciclo de vida que tuvo `doctor.config.mjs`. Buen candidato para la próxima sesión de auditoría de código o cuando el ruido en el job de CI moleste lo suficiente como para justificar la hora.
 
-
 ---
 
 ## No hay forma de ofrecerle un plan a un solo complejo
@@ -60,3 +59,17 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 **Costo estimado de resolverla**: bajo, ~2h. Aceptar el tipo en el schema del webhook y resolver el tenant por `mp_user_id` en vez de por `?tenant=` (el payload trae el user id de MercadoPago, que ya está en `tenants.mp_user_id`); al recibirlo, limpiar las columnas de MP igual que hace la desvinculación desde la UI y avisarle al dueño. Ojo con el orden del route handler: hoy el guard de tenant corre antes de validar la firma, así que hay que mover ese caso sin debilitar el guard para el resto.
 
 **Disparador de resolución**: cuando se cierre el tema del par OAuth (`MP_CLIENT_ID` apuntando a la aplicación vieja) — decisión del dueño el 2026-08-28, para no tocar dos cosas del mismo circuito a la vez. Contexto completo en [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).
+
+---
+
+## La devolución manual no está explicada, y la pantalla todavía promete el reembolso automático que se eliminó
+
+**Qué es**: dos cosas del mismo tema. (a) El empty state de `/caja/devoluciones` ([PendingRefundsList.tsx:100](<src/app/(admin)/caja/devoluciones/PendingRefundsList.tsx:100>)) dice que las devoluciones pagadas por MercadoPago "aparecen una hora después: durante esa hora el sistema intenta devolverlas solo". Eso ya no es cierto: el reembolso automático por API se eliminó (PR #212) y la espera de una hora se sacó con él — el comentario de [refund.service.ts:141-150](src/modules/payments/refund.service.ts:141-150) lo dice explícitamente ("todas, desde el momento cero ... esperar una hora para mostrar una deuda que ya existe es solo esconderla"). O sea, el texto de la pantalla contradice al código que la alimenta. (b) No hay material que le explique al complejo cómo devolver de verdad: entrar a MercadoPago, ubicar el pago y usar "Devolver dinero". Es el gemelo del video que ya existe sobre los plazos de acreditación.
+
+**Por qué existe**: el texto se escribió cuando el reembolso automático existía y era el camino principal; al eliminarlo se cambió el servicio y no la copia. El video nunca se grabó porque hasta el 2026-08-28 el circuito de Checkout Pro no había entregado un solo pago real, así que no había devolución real que mostrar.
+
+**Costo de no resolverla ahora**: bajo con los dos complejos propios, real con clientes. El complejo lee "el sistema lo intenta solo" y espera una hora que no va a resolver nada; mientras tanto el jugador sigue sin su plata y el que queda mal es el complejo. Es la clase de detalle que erosiona la confianza justo en el flujo donde más importa.
+
+**Costo estimado de resolverla**: (a) trivial, ~15 min — reescribir el empty state para que diga lo que el código hace. Ojo que el mismo archivo tiene más abajo ([:181-182](<src/app/(admin)/caja/devoluciones/PendingRefundsList.tsx:181-182>)) un texto que SÍ es correcto; el arreglo es alinear el de arriba con ese. (b) ~1h de grabación. **Verificar antes de grabar**: lo que TurnoGol manda a MercadoPago como `external_reference` es el UUID completo de la reserva ([mp-gateway.implementation.ts:129](src/modules/payments/mp-gateway.implementation.ts:129)), pero la pantalla de devoluciones le muestra al complejo el código corto — los primeros 8 caracteres en mayúscula ([booking-code.ts](src/lib/booking-code.ts)). Habría que confirmar en el panel real si buscar por ese código corto encuentra el pago; si no lo encuentra, el video tiene que enseñar a ubicarlo por monto y fecha, no por código.
+
+**Disparador de resolución**: (a) en el próximo lote de fixes de UI de caja — es de 15 minutos y ya está localizado. (b) antes del primer complejo cliente, junto al resto del material de onboarding. Hay una devolución pendiente real de $100 en `complejo titi` (generada el 2026-08-28 en los ensayos) que sirve de material para grabarlo.

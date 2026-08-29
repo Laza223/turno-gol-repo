@@ -787,7 +787,7 @@ export async function autoCompleteOverdueBookings(
   // Cuando el cron las pasaba a `completed`, el panel "Horarios tomados" se
   // vaciaba, el guard de borrado daba 0 y el DELETE moría con el 23503 crudo de
   // la FK que ese guard existe para evitar; además dejaban de bloquear reservas
-  // nuevas en `hasActiveBookingOverlap` (doble booking). Tiene que ser
+  // nuevas en `findActiveBookingOverlaps` (doble booking). Tiene que ser
   // preventivo: una vez en `completed`, el trigger de la 070 las vuelve
   // inmutables y no hay vuelta atrás (🔴 QA 2026-08-13).
   const rows = await tx.execute<BookingRawRow>(sql`

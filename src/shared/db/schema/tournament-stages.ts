@@ -57,7 +57,6 @@ export const tournamentStages = pgTable(
     ),
 
     orderIdx: uniqueIndex('uq_tournament_stages_order').on(table.tournamentId, table.orderIndex),
-    tournamentIdx: index('idx_tournament_stages_tournament').on(table.tournamentId),
     tenantIdx: index('idx_tournament_stages_tenant').on(table.tenantId),
   }),
 )

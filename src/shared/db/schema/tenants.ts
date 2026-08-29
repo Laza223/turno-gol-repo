@@ -132,7 +132,6 @@ export const tenants = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
-    slugIdx: index('idx_tenants_slug').on(table.slug),
     statusIdx: index('idx_tenants_status').on(table.status),
     cityIdx: index('idx_tenants_city').on(table.city),
   }),

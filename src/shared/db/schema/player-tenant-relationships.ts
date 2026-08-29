@@ -52,8 +52,6 @@ export const playerTenantRelationships = pgTable(
   (table) => ({
     statusCheck: check('chk_ptr_status_valid', sql`${table.status} IN ('active', 'blocked')`),
     uqPlayerTenant: unique('uq_player_tenant').on(table.playerId, table.tenantId),
-    tenantIdx: index('idx_ptr_tenant').on(table.tenantId),
-    playerIdx: index('idx_ptr_player').on(table.playerId),
     tenantStatusIdx: index('idx_ptr_tenant_status').on(table.tenantId, table.status),
   }),
 )

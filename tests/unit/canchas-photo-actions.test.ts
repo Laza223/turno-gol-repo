@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }))
 vi.mock('@/modules/staff/guards', () => ({
   requireAdminStaffAction: vi.fn(),
   requireOperatorStaff: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock('@/modules/courts/court.service', () => ({
   reorderCourtPhotos: vi.fn(),
 }))
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import {
   uploadCourtPhotoAction,
   removeCourtPhotoAction,
@@ -83,6 +83,11 @@ describe('uploadCourtPhotoAction', () => {
     expect(key).toMatch(/^tenant-1\/courts\/court-1\/.+\.webp$/)
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/canchas')
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
+    // Y las dos superficies que agregan complejos: `/explorar` (cachea la
+    // búsqueda por defecto con `unstable_cache`) y la home (ISR). Una foto
+    // nueva tardaba hasta 5 minutos en verse ahí.
+    expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-tenants')
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/')
   })
 
   it('cancha inexistente devuelve error sin subir', async () => {

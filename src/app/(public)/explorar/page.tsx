@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { unstable_cache } from 'next/cache'
+import { PUBLIC_CITIES_TAG, PUBLIC_TENANTS_TAG } from '@/shared/cache/public-listings'
 import {
   getCourtPhotosByTenant,
   listPublicCities,
@@ -29,11 +30,16 @@ import EmptyResults from './components/EmptyResults'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 
-// Limitación de Next 14: una página que lee `searchParams` es SIEMPRE dynamic;
-// no existe ISR condicional por searchParams (PPR es experimental y no se usa).
-// Además los favoritos del jugador leen cookies. El cacheo acá es de DATOS: la
-// carga inicial sin filtros y el listado de ciudades salen de unstable_cache
-// (5 min) en vez de pegarle a la DB de búsqueda en cada visita.
+// Esta página es SIEMPRE dinámica, por dos causas independientes: lee
+// `searchParams` y los favoritos del jugador leen cookies. El cacheo acá es de
+// DATOS: la carga inicial sin filtros y el listado de ciudades salen de
+// unstable_cache (5 min) en vez de pegarle a la DB de búsqueda en cada visita.
+// Las dos entradas están etiquetadas, así que un cambio en el panel del
+// complejo las refresca sin esperar el TTL (`@/shared/cache/public-listings`).
+// El comentario original atribuía esto a una "limitación de Next 14"; el repo
+// corre Next 16 y esa premisa nunca se revalidó — cambiar la estrategia de
+// esta página (PPR / Cache Components) es una discusión aparte, no un
+// subproducto de la auditoría de performance.
 export const metadata = buildMetadata({
   title: 'Complejos de fútbol con reserva online',
   description:
@@ -51,12 +57,13 @@ const SORTS: SortOption[] = ['name', 'price', 'rating', 'distance']
 const getDefaultSearchCached = unstable_cache(
   () => searchPublicTenants({ limit: PAGE_SIZE, offset: 0 }),
   ['explorar-default-search'],
-  { revalidate: 300 },
+  { revalidate: 300, tags: [PUBLIC_TENANTS_TAG] },
 )
 
 // El listado de ciudades no depende de filtros ni de sesión: cacheado siempre.
 const listPublicCitiesCached = unstable_cache(() => listPublicCities(), ['explorar-cities'], {
   revalidate: 300,
+  tags: [PUBLIC_CITIES_TAG],
 })
 
 type SP = Record<string, string | undefined>

@@ -1,6 +1,6 @@
 import type PgBoss from 'pg-boss'
 import { sql } from 'drizzle-orm'
-import { getWorkerDb, getWorkerSql, type DbTx } from '@/shared/db/client'
+import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 import { track } from '@/shared/observability/breadcrumbs'
@@ -30,12 +30,26 @@ const ABANDONMENT_HOURS = 24
  */
 export async function runOnboardingAbandonmentSweep(): Promise<void> {
   const readSql = getWorkerSql()
-  const candidates = await readSql<{ id: string; name: string; onboarding_step: number | null }[]>`
-    SELECT id, name, (settings->>'onboarding_step')::int AS onboarding_step
-    FROM tenants
-    WHERE COALESCE((settings->>'onboarding_completed')::boolean, false) = false
-      AND settings->>'onboarding_abandoned_notified_at' IS NULL
-      AND created_at <= NOW() - (${ABANDONMENT_HOURS} || ' hours')::interval
+  // `owner_name` por LATERAL, igual que expire-trials.worker.ts: evita un
+  // SELECT por tenant dentro de la transacción de cada recordatorio.
+  const candidates = await readSql<
+    { id: string; name: string; onboarding_step: number | null; owner_name: string | null }[]
+  >`
+    SELECT t.id,
+           t.name,
+           (t.settings->>'onboarding_step')::int AS onboarding_step,
+           o.first_name AS owner_name
+    FROM tenants t
+    LEFT JOIN LATERAL (
+      SELECT su.first_name
+      FROM tenant_staff_members tsm
+      JOIN staff_users su ON su.id = tsm.staff_user_id
+      WHERE tsm.tenant_id = t.id AND tsm.is_active = true
+      LIMIT 1
+    ) o ON TRUE
+    WHERE COALESCE((t.settings->>'onboarding_completed')::boolean, false) = false
+      AND t.settings->>'onboarding_abandoned_notified_at' IS NULL
+      AND t.created_at <= NOW() - (${ABANDONMENT_HOURS} || ' hours')::interval
   `
 
   if (candidates.length === 0) return
@@ -63,7 +77,7 @@ export async function runOnboardingAbandonmentSweep(): Promise<void> {
             templateName: 'onboarding_abandoned',
             triggerEvent: 'sweep.onboarding_abandoned',
             content: {
-              ownerName: await ownerFirstName(tx, t.id),
+              ownerName: t.owner_name ?? 'Hola',
               tenantName: t.name,
               lastStepLabel,
             },
@@ -89,18 +103,6 @@ export async function runOnboardingAbandonmentSweep(): Promise<void> {
       })
     }
   }
-}
-
-/** Nombre de pila del primer staff activo, para encabezar el mail. Mismo helper que expire-trials.worker.ts. */
-async function ownerFirstName(tx: DbTx, tenantId: string): Promise<string> {
-  const rows = (await tx.execute(sql`
-    SELECT su.first_name
-    FROM tenant_staff_members tsm
-    JOIN staff_users su ON su.id = tsm.staff_user_id
-    WHERE tsm.tenant_id = ${tenantId} AND tsm.is_active = true
-    LIMIT 1
-  `)) as unknown as Array<{ first_name: string | null }>
-  return rows[0]?.first_name ?? 'Hola'
 }
 
 export async function registerOnboardingAbandonmentWorker(boss: PgBoss): Promise<void> {

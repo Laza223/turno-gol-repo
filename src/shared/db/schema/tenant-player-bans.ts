@@ -24,7 +24,6 @@ export const tenantPlayerBans = pgTable(
     bannedBy: uuid('banned_by').references(() => staffUsers.id),
   },
   (table) => ({
-    tenantIdx: index('idx_tenant_player_bans_tenant').on(table.tenantId),
     playerIdx: index('idx_tenant_player_bans_player').on(table.playerId),
     activeIdx: index('idx_tenant_player_bans_active').on(
       table.tenantId,

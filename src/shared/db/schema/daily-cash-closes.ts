@@ -1,15 +1,5 @@
 import { sql } from 'drizzle-orm'
-import {
-  check,
-  date,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { check, date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { staffUsers } from './staff-users'
 
@@ -53,7 +43,5 @@ export const dailyCashCloses = pgTable(
       sql`${table.totalAdjustments} >= 0`,
     ),
     expenseNonNegative: check('chk_expense_non_negative', sql`${table.totalExpense} >= 0`),
-    tenantIdx: index('idx_daily_closes_tenant').on(table.tenantId),
-    tenantDateIdx: index('idx_daily_closes_tenant_date').on(table.tenantId, table.date),
   }),
 )

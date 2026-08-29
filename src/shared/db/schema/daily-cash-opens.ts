@@ -1,15 +1,5 @@
 import { sql } from 'drizzle-orm'
-import {
-  check,
-  date,
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uuid,
-} from 'drizzle-orm/pg-core'
+import { check, date, integer, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { staffUsers } from './staff-users'
 
@@ -39,6 +29,5 @@ export const dailyCashOpens = pgTable(
   (table) => ({
     perTenantDay: unique('uq_daily_open_per_tenant').on(table.tenantId, table.date),
     openingCashNonneg: check('chk_opening_cash_nonneg', sql`${table.openingCash} >= 0`),
-    tenantIdx: index('idx_daily_opens_tenant').on(table.tenantId, table.date),
   }),
 )

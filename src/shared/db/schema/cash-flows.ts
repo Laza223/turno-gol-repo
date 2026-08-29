@@ -72,7 +72,6 @@ export const cashFlows = pgTable(
       'chk_cashflow_tournament_team',
       sql`(${table.category} = 'tournament') = (${table.tournamentTeamId} IS NOT NULL)`,
     ),
-    tenantIdx: index('idx_cash_flows_tenant').on(table.tenantId),
     tenantDateIdx: index('idx_cash_flows_tenant_date').on(table.tenantId, table.occurredAt),
     tenantTypeIdx: index('idx_cash_flows_tenant_type').on(table.tenantId, table.type),
     tenantCategoryIdx: index('idx_cash_flows_tenant_category').on(table.tenantId, table.category),

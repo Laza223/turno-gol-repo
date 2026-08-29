@@ -31,16 +31,12 @@ export const payments = pgTable(
   },
   (table) => ({
     amountPositive: check('chk_payment_amount_positive', sql`${table.amount} > 0`),
-    tenantIdx: index('idx_payments_tenant').on(table.tenantId),
     bookingIdx: index('idx_payments_booking')
       .on(table.bookingId)
       .where(sql`booking_id IS NOT NULL`),
     playerIdx: index('idx_payments_player')
       .on(table.playerId)
       .where(sql`player_id IS NOT NULL`),
-    mpIdIdx: index('idx_payments_mp_id')
-      .on(table.mpPaymentId)
-      .where(sql`mp_payment_id IS NOT NULL`),
     mpPreferenceIdx: index('idx_payments_mp_preference')
       .on(table.mpPreferenceId)
       .where(sql`mp_preference_id IS NOT NULL`),

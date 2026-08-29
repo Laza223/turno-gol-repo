@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidatePublicListings } from '@/shared/cache/public-listings'
 import { z } from 'zod'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
@@ -84,6 +85,7 @@ export async function setTenantImageAction(
 
   revalidatePath('/settings/perfil')
   revalidatePath(`/${tenant.slug}`)
+  revalidatePublicListings()
   return { success: true, url }
 }
 
@@ -116,6 +118,7 @@ export async function removeTenantImageAction(
 
   revalidatePath('/settings/perfil')
   revalidatePath(`/${tenant.slug}`)
+  revalidatePublicListings()
   return { success: true }
 }
 
@@ -152,6 +155,7 @@ export async function updateTenantContactAction(
   await updateTenant(tenant.id, parsed.data)
   revalidatePath('/settings/perfil')
   revalidatePath(`/${tenant.slug}`)
+  revalidatePublicListings()
   return { success: true }
 }
 

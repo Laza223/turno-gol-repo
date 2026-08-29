@@ -8,6 +8,7 @@ import { generateSlotDates } from './slot-generator'
 import { isExclusionViolation, slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
 import { paidPeriodCutoff } from '@/modules/bookings/paid-period.guard'
 import { physicalRange } from '@/shared/time/physical-range'
+import { findAbonadoBookingOverlaps } from '@/modules/bookings/booking.overlap'
 import {
   AbonadoConflictError,
   AbonadoNotFoundError,
@@ -79,22 +80,6 @@ export async function checkAbonadoSlotConflict(
   return (rows as unknown[]).length > 0
 }
 
-async function checkBookingOverlap(
-  courtId: string,
-  startsAt: Date,
-  endsAt: Date,
-  tx: DbTx,
-): Promise<boolean> {
-  const rows = await tx.execute(sql`
-    SELECT id FROM bookings
-    WHERE court_id = ${courtId}
-      AND status NOT IN ('canceled_refunded','canceled_no_refund')
-      AND tstzrange(starts_at, ends_at) && tstzrange(${startsAt.toISOString()}, ${endsAt.toISOString()})
-    LIMIT 1
-  `)
-  return (rows as unknown[]).length > 0
-}
-
 /**
  * SELECT ... FOR UPDATE sobre la fila de la cancha: serializa transacciones
  * concurrentes que van a insertar bookings para este court. Mismo mecanismo
@@ -105,8 +90,8 @@ async function checkBookingOverlap(
  * fix. Cierra en el origen la ventana de carrera entre createAbonado/
  * reactivateAbonado concurrentes (o contra createManualBooking/
  * createOnlineBooking) sobre la misma cancha: mientras el lock está tomado,
- * ninguna otra transacción puede insertar un booking que el
- * checkBookingOverlap optimista de abajo todavía no vio.
+ * ninguna otra transacción puede insertar un booking que el chequeo optimista de
+ * solapamiento (`findAbonadoBookingOverlaps`) todavía no vio.
  */
 async function lockCourtRow(courtId: string, tx: DbTx): Promise<void> {
   await tx.execute(sql`SELECT id FROM courts WHERE id = ${courtId} FOR UPDATE`)
@@ -126,20 +111,26 @@ async function insertBookingsForSlots(
       ? await slotIsPhysicallyNextDay(tenantId, slotDates[0]!, abonado.timeStart, tx)
       : false
 
-  for (const dateStr of slotDates) {
+  // Los rangos de todas las fechas primero, y una sola consulta de solapamiento
+  // para el lote. Antes había un SELECT por fecha: 8 fijos por alta o
+  // reactivación de abonado (`count: 8` más abajo). El predicado que usa
+  // `findAbonadoBookingOverlaps` es el ANCHO —cualquier reserva no cancelada
+  // ocupa el turno—, idéntico al de la función fila-por-fila que reemplaza.
+  const candidates = slotDates.map((dateStr) => {
     const { startsAt, endsAt } = physicalRange({
       date: dateStr,
       timeStart: abonado.timeStart,
       timeEnd: abonado.timeEnd,
       physicallyNextDay,
     })
-    const hasConflict = await checkBookingOverlap(abonado.courtId, startsAt, endsAt, tx)
-    if (hasConflict) {
-      conflictDates.push(dateStr)
-    } else {
-      validRows.push({ dateStr, startsAt, endsAt })
-    }
-  }
+    return { courtId: abonado.courtId, dateStr, startsAt, endsAt }
+  })
+
+  const taken = await findAbonadoBookingOverlaps(candidates, tx)
+  candidates.forEach((c, i) => {
+    if (taken.has(i)) conflictDates.push(c.dateStr)
+    else validRows.push({ dateStr: c.dateStr, startsAt: c.startsAt, endsAt: c.endsAt })
+  })
 
   if (validRows.length === 0) {
     return { slotsGenerated: 0, conflictDates }
@@ -175,8 +166,8 @@ async function insertBookingsForSlots(
     return { slotsGenerated: validRows.length, conflictDates }
   } catch (err) {
     if (!isExclusionViolation(err)) throw err
-    // Otro proceso ganó alguno de estos slots entre el checkBookingOverlap
-    // optimista de arriba y este INSERT (misma carrera que
+    // Otro proceso ganó alguno de estos slots entre el chequeo optimista de
+    // solapamiento de arriba y este INSERT (misma carrera que
     // createManualBooking/createOnlineBooking cierran con
     // isExclusionViolation) — el batch entero abortó en Postgres. Reintentar
     // fila por fila, cada una en su propio savepoint, para no perder las
@@ -459,7 +450,8 @@ export async function cancelAbonado(
 
 /**
  * Returns the subset of `dates` that have at least one conflicting booking
- * (same overlap semantics as checkBookingOverlap, but does NOT abort on first hit).
+ * (same overlap semantics as `findAbonadoBookingOverlaps`, but keyed by
+ * calendar date + time instead of physical instants).
  * Used by the preview action before creating an abonado.
  */
 export async function getAbonadoSlotConflicts(

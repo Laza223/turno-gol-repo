@@ -34,29 +34,24 @@ type TenantOwnerInfo = {
 }
 
 async function loadTenantOwners(tenantIds: string[]): Promise<TenantOwnerInfo[]> {
+  if (tenantIds.length === 0) return []
   const sql = getWorkerSql()
-  const out: TenantOwnerInfo[] = []
-  for (const id of tenantIds) {
-    // secuencial: `sql` (getWorkerSql) es una conexión postgres-js compartida; no
-    // corre queries en paralelo → Promise.all crashea. Mejora futura: una sola
-    // query con WHERE id = ANY(${tenantIds}) en lugar de N lookups.
-    // react-doctor-disable-next-line react-doctor/async-await-in-loop
-    const rows = await sql<TenantOwnerInfo[]>`
-      SELECT t.id AS "tenantId",
-             t.name AS "tenantName",
-             (
-               SELECT su.first_name FROM tenant_staff_members tsm
-               JOIN staff_users su ON su.id = tsm.staff_user_id
-               WHERE tsm.tenant_id = t.id AND tsm.is_active = true LIMIT 1
-             ) AS "ownerName"
-      FROM tenants t
-      WHERE t.id = ${id}
-      LIMIT 1
-    `
-    const row = rows[0]
-    if (row) out.push(row)
-  }
-  return out
+  // Una sola query para todos los complejos morosos del barrido. Antes había un
+  // SELECT por id — la "mejora futura" que el comentario de esta función venía
+  // anotando. Sigue sin `Promise.all` a propósito: `getWorkerSql()` es una
+  // conexión postgres-js compartida y no corre queries en paralelo.
+  const rows = await sql<TenantOwnerInfo[]>`
+    SELECT t.id AS "tenantId",
+           t.name AS "tenantName",
+           (
+             SELECT su.first_name FROM tenant_staff_members tsm
+             JOIN staff_users su ON su.id = tsm.staff_user_id
+             WHERE tsm.tenant_id = t.id AND tsm.is_active = true LIMIT 1
+           ) AS "ownerName"
+    FROM tenants t
+    WHERE t.id = ANY(${tenantIds}::uuid[])
+  `
+  return [...rows]
 }
 
 function ownerName(map: Map<string, TenantOwnerInfo>, tenantId: string): string {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }))
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`)
@@ -24,7 +24,7 @@ vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://lo
 vi.mock('@/modules/auth/auth.service', () => ({ isStaffEmailTaken: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import {
   setTenantImageAction,
   removeTenantImageAction,
@@ -82,6 +82,13 @@ describe('setTenantImageAction — admin', () => {
     )
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/perfil')
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
+    // Además del perfil público: `/explorar` cachea la búsqueda por defecto y
+    // el listado de ciudades con `unstable_cache`, y la home los sirve bajo su
+    // propio ISR. Sin esto, un cambio de logo o de nombre tardaba hasta 5
+    // minutos en verse en las dos superficies que agregan complejos.
+    expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-tenants')
+    expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-cities')
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/')
   })
 
   it('borra el objeto anterior si se pasa previousUrl', async () => {

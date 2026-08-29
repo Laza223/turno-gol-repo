@@ -7,11 +7,10 @@ import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { getTournament } from '@/modules/tournaments/tournament.service'
-import { listTeamPlayers, listTeams } from '@/modules/tournaments/tournament-team.service'
+import { listTeamPlayersByTeams, listTeams } from '@/modules/tournaments/tournament-team.service'
 import { listTournamentSlots } from '@/modules/tournaments/tournament-slots.service'
 import { TournamentNotFoundError } from '@/modules/tournaments/tournament.errors'
 import { listCourts } from '@/modules/courts/court.service'
-import type { TournamentTeamPlayerRow } from '@/modules/tournaments/tournament.types'
 import {
   addTeamAction,
   addTeamPlayerAction,
@@ -58,12 +57,15 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
         listTournamentSlots(tenant.id, id, tx),
         listCourts(tenant.id, tx),
       ])
-      // Plantel de cada equipo, para la UI de altas/bajas de jugadores.
-      const rosterLists = await Promise.all(teams.map((t) => listTeamPlayers(tenant.id, t.id, tx)))
-      const rosters: Record<string, TournamentTeamPlayerRow[]> = {}
-      teams.forEach((t, i) => {
-        rosters[t.id] = rosterLists[i]!
-      })
+      // Plantel de cada equipo, para la UI de altas/bajas de jugadores. Una
+      // sola query para todos: antes era una por equipo (N+1), y el
+      // `Promise.all` que las envolvía no las paralelizaba porque comparten el
+      // mismo `tx`.
+      const rosters = await listTeamPlayersByTeams(
+        tenant.id,
+        teams.map((t) => t.id),
+        tx,
+      )
       return { tournament, teams, slots, courts, rosters }
     })
   } catch (err) {

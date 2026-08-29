@@ -120,8 +120,5 @@ export const tournaments = pgTable(
     tenantSlugIdx: uniqueIndex('uq_tournaments_tenant_slug').on(table.tenantId, table.slug),
     tenantIdx: index('idx_tournaments_tenant').on(table.tenantId, table.startsOn.desc()),
     tenantStatusIdx: index('idx_tournaments_tenant_status').on(table.tenantId, table.status),
-    publicIdx: index('idx_tournaments_public')
-      .on(table.tenantId, table.slug)
-      .where(sql`is_public`),
   }),
 )

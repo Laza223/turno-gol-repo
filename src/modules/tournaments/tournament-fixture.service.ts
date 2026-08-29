@@ -231,14 +231,23 @@ export async function generateFixture(
     })
 
     // La zona de cada equipo se persiste: la 062 dejó la columna en NULL y sin
-    // esto la ficha del equipo no sabe en qué zona juega.
-    for (const group of groups) {
-      for (const teamId of group.teamIds) {
-        await tx.execute(sql`
-          UPDATE tournament_teams SET group_label = ${group.label}
-          WHERE id = ${teamId} AND tenant_id = ${tenantId}
-        `)
-      }
+    // esto la ficha del equipo no sabe en qué zona juega. Un solo UPDATE para
+    // todos los equipos: antes era uno por equipo (16 o 32 idas y vueltas
+    // secuenciales dentro de la transacción).
+    const groupAssignments = groups.flatMap((g) =>
+      g.teamIds.map((teamId) => ({ teamId, label: g.label })),
+    )
+    if (groupAssignments.length > 0) {
+      const values = sql.join(
+        groupAssignments.map((a) => sql`(${a.teamId}::uuid, ${a.label}::text)`),
+        sql`, `,
+      )
+      await tx.execute(sql`
+        UPDATE tournament_teams t
+        SET group_label = v.label
+        FROM (VALUES ${values}) AS v(team_id, label)
+        WHERE t.id = v.team_id AND t.tenant_id = ${tenantId}
+      `)
     }
 
     let local = 0
@@ -369,16 +378,29 @@ export async function generateFixture(
     })
     unscheduled = result.unscheduled.length
 
-    for (const s of result.scheduled) {
-      await tx
-        .update(tournamentMatches)
-        .set({
-          bookingId: s.bookingId,
-          courtId: s.courtId,
-          startsAt: s.startsAt,
-          endsAt: s.endsAt,
-        })
-        .where(eq(tournamentMatches.id, s.ref))
+    // Un solo UPDATE para todos los partidos agendados. Antes era uno por
+    // partido: un round-robin de 16 equipos en 2 zonas son ~56 partidos, o sea
+    // 56 idas y vueltas secuenciales. El filtro por tenant_id no estaba en la
+    // versión fila por fila; se agrega por defensa en profundidad (los ids
+    // salen de matches insertados en esta misma transacción, así que no cambia
+    // qué filas se tocan).
+    if (result.scheduled.length > 0) {
+      const values = sql.join(
+        result.scheduled.map(
+          (s) =>
+            sql`(${s.ref}::uuid, ${s.bookingId}::uuid, ${s.courtId}::uuid, ${s.startsAt.toISOString()}::timestamptz, ${s.endsAt.toISOString()}::timestamptz)`,
+        ),
+        sql`, `,
+      )
+      await tx.execute(sql`
+        UPDATE tournament_matches m
+        SET booking_id = v.booking_id,
+            court_id   = v.court_id,
+            starts_at  = v.starts_at,
+            ends_at    = v.ends_at
+        FROM (VALUES ${values}) AS v(id, booking_id, court_id, starts_at, ends_at)
+        WHERE m.id = v.id AND m.tenant_id = ${tenantId}
+      `)
     }
   }
 

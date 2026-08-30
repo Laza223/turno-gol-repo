@@ -29,6 +29,33 @@ import {
 
 const REFRESH_INTERVAL_MS = 60_000
 
+const GENERIC_LOAD_ERROR = 'No pudimos cargar las métricas. Probá de nuevo en unos segundos.'
+
+/**
+ * El motivo real del rechazo, cuando el servidor se molestó en darlo.
+ *
+ * `withTenant` responde los cortes de ciclo de vida con un cuerpo propio
+ * (`{ error: { code, message } }`, ej. `TENANT_BLOCKED` /
+ * `TENANT_SUSPENDED_READ_ONLY`), pero acá se descartaba y todo 4xx caía en el
+ * mensaje genérico de "probá de nuevo". Contra un complejo bloqueado eso es
+ * mentira útil para nadie: reintentar no lo va a desbloquear, y el que mira la
+ * pantalla —típicamente soporte impersonando, porque la impersonación bypassea
+ * el lock en las páginas pero NO en los route handlers— se queda sin saber por
+ * qué falla solo este panel mientras el resto de la página carga.
+ *
+ * Mismo criterio que ya usaban `ActivatePlanSection` y `ChangePlanSection`:
+ * mostrar el `message` del servidor y guardar el genérico para cuando no hay
+ * cuerpo que leer (corte de red, HTML de un proxy, JSON roto).
+ */
+async function rejectionMessage(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: { message?: string } }
+    return body.error?.message ?? GENERIC_LOAD_ERROR
+  } catch {
+    return GENERIC_LOAD_ERROR
+  }
+}
+
 const GRANULARITY_LABELS: Record<RevenueGranularity, string> = {
   day: 'Día',
   week: 'Semana',
@@ -306,20 +333,20 @@ export default function MetricsDashboard({
 }) {
   const [metrics, setMetrics] = useState<TenantMetrics | null>(null)
   const [system, setSystem] = useState<SystemStatus | null>(null)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const chart = useChartTheme()
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/metrics', { cache: 'no-store' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) throw new Error(await rejectionMessage(res))
       const json = (await res.json()) as { data: TenantMetrics }
       setMetrics(json.data)
-      setError(false)
-    } catch {
+      setError(null)
+    } catch (err) {
       // Conservamos los últimos datos buenos; el banner avisa solo si nunca cargó.
-      setError(true)
+      setError(err instanceof Error ? err.message : GENERIC_LOAD_ERROR)
     }
     if (canSeeSystem) {
       try {
@@ -350,7 +377,7 @@ export default function MetricsDashboard({
   if (!metrics && error) {
     return (
       <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-400">
-        No pudimos cargar las métricas. Probá de nuevo en unos segundos.
+        {error}
       </div>
     )
   }
@@ -378,7 +405,7 @@ export default function MetricsDashboard({
     <div className="space-y-4">
       {error && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
-          La última actualización falló; estás viendo datos anteriores.
+          {error} Estás viendo datos anteriores.
         </div>
       )}
 

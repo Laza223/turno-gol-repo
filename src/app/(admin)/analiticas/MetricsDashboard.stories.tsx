@@ -88,6 +88,34 @@ export const ErrorSinDatosPrevios: Story = {
   },
 }
 
+/**
+ * Complejo bloqueado: `withTenant` corta con `TENANT_BLOCKED` y su propio
+ * mensaje, y el panel lo muestra en vez del genérico de "probá de nuevo".
+ *
+ * El caso real es soporte impersonando: la impersonación bypassea el lock de
+ * ciclo de vida en las páginas pero no en los route handlers, así que la
+ * página carga entera y solo este panel falla. Con el mensaje genérico eso se
+ * leía como una caída transitoria y no lo era — reintentar no desbloquea nada.
+ */
+export const ComplejoBloqueado: Story = {
+  parameters: {
+    fetchMock: [
+      {
+        match: '/api/admin/metrics',
+        json: { error: { code: 'TENANT_BLOCKED', message: 'El complejo está bloqueado.' } },
+        status: 403,
+      },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('El complejo está bloqueado.')).toBeVisible()
+    await expect(
+      canvas.queryByText('No pudimos cargar las métricas. Probá de nuevo en unos segundos.'),
+    ).not.toBeInTheDocument()
+  },
+}
+
 /** Complejo recién arrancado: series en cero, sin top-5 horarios → ghost + CTA a la grilla. */
 export const SinDatos: Story = {
   parameters: {

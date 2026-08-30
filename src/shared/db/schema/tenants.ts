@@ -57,6 +57,7 @@ export const tenants = pgTable(
     closesNextDay: boolean('closes_next_day').notNull().default(false),
 
     status: tenantStatusEnum('status').notNull().default('trialing'),
+    marketplaceVisible: boolean('marketplace_visible').notNull().default(true),
     trialEndsAt: timestamp('trial_ends_at', { withTimezone: true, mode: 'date' }),
     // Umbral en días del último aviso de fin de prueba enviado (el más chico).
     // NULL = ninguno todavía. Es el gate de idempotencia del cron: el complejo

@@ -1,13 +1,6 @@
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
-import {
-  CalendarCheck,
-  ChartLine,
-  Download,
-  SlidersHorizontal,
-  TrendingUp,
-  Wallet,
-} from 'lucide-react'
+import { CalendarCheck, ChartLine, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { StatCard } from '@/components/admin/StatCard'
 import { ResponsiveList } from '@/components/ui/responsive-list'
@@ -26,6 +19,7 @@ import {
   isReportEmpty,
 } from '@/modules/reports/report.utils'
 import { formatArsContable, formatPct } from '@/lib/format'
+import { ExportCsvButton } from './ExportCsvButton'
 import { GhostKpis } from './GhostKpis'
 import { OccupancyChart, TrendChart } from './ReportCharts'
 
@@ -315,13 +309,7 @@ export default async function AnaliticasPage(props: {
         {/* CSV export — pointless on an empty month, so hidden with the empty state */}
         {!isEmpty && (
           <div className="flex justify-end">
-            <a
-              href={`/api/reports/revenue?from=${csvFrom}&to=${csvTo}&format=csv`}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-xs hover:bg-accent"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Exportar CSV
-            </a>
+            <ExportCsvButton from={csvFrom} to={csvTo} />
           </div>
         )}
       </div>

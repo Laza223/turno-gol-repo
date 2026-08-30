@@ -58,13 +58,19 @@ function parseAllowlist(raw: string | undefined): string[] {
 export async function isSystemAdminActiveAndAllowlisted(systemAdminId: string): Promise<boolean> {
   const rows = await withSystemAdminContext(systemAdminId, (tx) =>
     tx
-      .select({ email: systemAdmins.email, status: systemAdmins.status })
+      .select({
+        email: systemAdmins.email,
+        status: systemAdmins.status,
+        mfaSecret: systemAdmins.mfaSecret,
+        mfaVerifiedAt: systemAdmins.mfaVerifiedAt,
+      })
       .from(systemAdmins)
       .where(eq(systemAdmins.id, systemAdminId))
       .limit(1),
   )
   const row = rows[0]
   if (!row || row.status !== 'active') return false
+  if (row.mfaSecret && !row.mfaVerifiedAt) return false
   const allowlist = parseAllowlist(process.env.SYSTEM_ADMIN_EMAILS)
   return allowlist.length > 0 && allowlist.includes(row.email.trim().toLowerCase())
 }
@@ -95,6 +101,8 @@ export async function resolveSystemAdmin(): Promise<SystemAdminAuth | null> {
         firstName: systemAdmins.firstName,
         lastName: systemAdmins.lastName,
         status: systemAdmins.status,
+        mfaSecret: systemAdmins.mfaSecret,
+        mfaVerifiedAt: systemAdmins.mfaVerifiedAt,
       })
       .from(systemAdmins)
       .where(eq(systemAdmins.id, user.systemAdminId))
@@ -107,6 +115,11 @@ export async function resolveSystemAdmin(): Promise<SystemAdminAuth | null> {
   //    no el del JWT. Sin env o lista vacía: fail-closed, nadie pasa.
   const allowlist = parseAllowlist(process.env.SYSTEM_ADMIN_EMAILS)
   if (allowlist.length === 0 || !allowlist.includes(row.email.trim().toLowerCase())) {
+    return null
+  }
+
+  // 4) MFA TOTP: si el superadmin tiene secreto configurado, exige verificación.
+  if (row.mfaSecret && !row.mfaVerifiedAt) {
     return null
   }
 

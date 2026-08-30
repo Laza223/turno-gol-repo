@@ -97,6 +97,7 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
 
   const conds: SQL[] = [
     inArray(tenants.status, VISIBLE as never),
+    eq(tenants.marketplaceVisible, true),
     // F-004 (QA prod 2026-08-17): la visibilidad pública decidía solo por
     // `status`, así que un trial recién arrancado y abandonado (wizard a medio
     // terminar, sin ninguna cancha) quedaba publicado para siempre.
@@ -302,6 +303,7 @@ export async function listPublicCities(): Promise<CityCount[]> {
       SEARCHABLE_TENANT_STATUSES.map((st) => sql`${st}`),
       sql`, `,
     )}]::tenant_status[])
+      AND marketplace_visible = true
       -- F-004 (QA prod 2026-08-17): mismo filtro de completitud que
       -- searchPublicTenants/listSitemapTenants — sin esto un tenant de
       -- prueba con onboarding incompleto sigue apareciendo en el selector de

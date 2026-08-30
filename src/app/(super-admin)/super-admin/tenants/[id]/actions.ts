@@ -46,6 +46,7 @@ import {
   reactivateTenant,
   TenantNotFoundError,
   TrialNotActiveError,
+  updateTenantMarketplaceVisibility,
   updateTenantSettingsForSupport,
 } from '@/modules/super-admin/support.service'
 import { getTenantSummary } from '@/modules/super-admin/tenants.service'
@@ -365,6 +366,31 @@ export async function resetStaffPasswordAction(input: unknown): Promise<SupportA
   return {
     success: true,
     message: `Contraseña temporal: ${temp} — dictásela al titular. Deberá cambiarla al entrar.`,
+  }
+}
+
+export async function updateTenantMarketplaceVisibilityAction(
+  tenantId: string,
+  visible: boolean,
+): Promise<SupportActionResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+
+  const parsed = uuid.safeParse(tenantId)
+  if (!parsed.success) return { success: false, error: 'Tenant inválido.' }
+
+  try {
+    await updateTenantMarketplaceVisibility(parsed.data, visible, auth.admin.id)
+  } catch (err) {
+    return mapKnownError(err)
+  }
+
+  revalidateTenantPaths(parsed.data)
+  return {
+    success: true,
+    message: visible
+      ? 'El complejo ahora es visible en el marketplace.'
+      : 'El complejo fue ocultado del marketplace.',
   }
 }
 

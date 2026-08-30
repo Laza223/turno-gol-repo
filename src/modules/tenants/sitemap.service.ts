@@ -1,4 +1,4 @@
-import { and, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { VISIBLE_TENANT_STATUSES } from './search.service'
@@ -23,6 +23,7 @@ export async function listSitemapTenants(): Promise<SitemapTenant[]> {
     .where(
       and(
         inArray(tenants.status, VISIBLE_TENANT_STATUSES as never),
+        eq(tenants.marketplaceVisible, true),
         sql`COALESCE((${tenants.settings} ->> 'onboarding_completed')::boolean, false) = true`,
       ),
     )

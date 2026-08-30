@@ -305,8 +305,26 @@ export function setAnalyticsSink(sink: AnalyticsSink | null): void {
   ;(globalThis as SinkHolder)[SINK_KEY] = sink
 }
 
-function getAnalyticsSink(): AnalyticsSink | null {
-  return (globalThis as SinkHolder)[SINK_KEY] ?? null
+function getAnalyticsSink(): AnalyticsSink | null | undefined {
+  return (globalThis as SinkHolder)[SINK_KEY]
+}
+
+let initPromise: Promise<AnalyticsSink> | null = null
+
+function ensureSink(): Promise<AnalyticsSink> | null {
+  if (typeof window !== 'undefined') return null
+  if (!initPromise) {
+    initPromise = import('./analytics')
+      .then(({ recordEvent }) => {
+        setAnalyticsSink(recordEvent)
+        return recordEvent
+      })
+      .catch((err) => {
+        initPromise = null
+        throw err
+      })
+  }
+  return initPromise
 }
 
 /**
@@ -323,17 +341,52 @@ function emit(category: string, message: string, data: Record<string, unknown>):
 
   // Medición: destino durable, independiente de que haya o no error.
   const sink = getAnalyticsSink()
-  if (!sink) {
+  if (sink) {
+    try {
+      sink(category, message, data)
+    } catch {
+      // Un sink roto no puede voltear el flujo que lo emitió.
+    }
+    return
+  }
+
+  // Si sink === null explícito (sin sink) y estamos en el servidor, avisar una vez
+  if (sink === null) {
     if (typeof window === 'undefined' && !warnedMissingSink) {
       warnedMissingSink = true
       Sentry.captureMessage('analytics sink no registrado: los eventos no se persisten', 'warning')
     }
     return
   }
-  try {
-    sink(category, message, data)
-  } catch {
-    // Un sink roto no puede voltear el flujo que lo emitió.
+
+  // Si no hay sink configurado y estamos en el servidor, auto-inicializar bajo demanda
+  if (typeof window === 'undefined') {
+    const promise = ensureSink()
+    if (promise) {
+      void promise
+        .then((s) => {
+          try {
+            s(category, message, data)
+          } catch {
+            // Un sink roto no puede voltear el flujo que lo emitió.
+          }
+        })
+        .catch(() => {
+          if (!warnedMissingSink) {
+            warnedMissingSink = true
+            Sentry.captureMessage(
+              'analytics sink no registrado: los eventos no se persisten',
+              'warning',
+            )
+          }
+        })
+      return
+    }
+
+    if (!warnedMissingSink) {
+      warnedMissingSink = true
+      Sentry.captureMessage('analytics sink no registrado: los eventos no se persisten', 'warning')
+    }
   }
 }
 

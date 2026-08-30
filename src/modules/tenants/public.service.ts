@@ -278,6 +278,7 @@ export async function listTopPublicTenantSlugs(limit = 50): Promise<string[]> {
         ON b.tenant_id = t.id
        AND b.created_at >= now() - interval '60 days'
       WHERE t.status IN ('active', 'trialing')
+        AND t.marketplace_visible = true
       GROUP BY t.id
       ORDER BY count(b.id) DESC, t.name ASC
       LIMIT ${limit}

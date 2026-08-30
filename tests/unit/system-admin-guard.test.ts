@@ -121,6 +121,11 @@ describe('requireSystemAdmin — rechazos (todo termina en /login, sin motivo)',
     vi.mocked(extractRealAuthUser).mockResolvedValue(null)
     await expect(requireSystemAdmin()).rejects.toThrow('REDIRECT:/login')
   })
+
+  it('mfa_secret configurado pero mfa_verified_at null → redirect (MFA no verificado)', async () => {
+    h.state.dbRows = [{ ...ACTIVE_ROW, mfaSecret: 'JBSWY3DPEHPK3PXP', mfaVerifiedAt: null }]
+    await expect(requireSystemAdmin()).rejects.toThrow('REDIRECT:/login')
+  })
 })
 
 describe('requireSystemAdmin — happy path', () => {
@@ -135,6 +140,19 @@ describe('requireSystemAdmin — happy path', () => {
       lastName: 'Dueño',
     })
     expect(vi.mocked(withSystemAdminContext)).toHaveBeenCalledWith('sa-row-1', expect.any(Function))
+    expect(vi.mocked(redirect)).not.toHaveBeenCalled()
+  })
+
+  it('mfa_secret configurado y mfa_verified_at presente → pasa con éxito', async () => {
+    h.state.dbRows = [
+      {
+        ...ACTIVE_ROW,
+        mfaSecret: 'JBSWY3DPEHPK3PXP',
+        mfaVerifiedAt: new Date('2026-08-30T12:00:00Z'),
+      },
+    ]
+    const auth = await requireSystemAdmin()
+    expect(auth.user).toEqual(SYSTEM_ADMIN_USER)
     expect(vi.mocked(redirect)).not.toHaveBeenCalled()
   })
 

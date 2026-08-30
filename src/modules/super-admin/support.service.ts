@@ -448,3 +448,30 @@ export async function updateTenantSettingsForSupport(
     })
   })
 }
+
+export async function updateTenantMarketplaceVisibility(
+  tenantId: string,
+  visible: boolean,
+  systemAdminId: string,
+): Promise<void> {
+  const db = getDb()
+  const rows = await db.execute(sql`
+    UPDATE tenants
+    SET marketplace_visible = ${visible}, updated_at = now()
+    WHERE id = ${tenantId}
+    RETURNING marketplace_visible
+  `)
+  if ((rows as unknown[]).length === 0) {
+    throw new TenantNotFoundError(tenantId)
+  }
+
+  await withTenantContext(tenantId, async (tx) => {
+    await supportAudit(
+      tx,
+      systemAdminId,
+      tenantId,
+      'support.tenant.marketplace_visibility_updated',
+      { visible },
+    )
+  })
+}

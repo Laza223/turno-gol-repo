@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ImageUploader } from '@/components/ui/image-uploader'
+import { toast } from '@/hooks/use-toast'
 import type { TenantImageActionResult } from './actions'
 
 /** Firmas de setTenantImageAction/removeTenantImageAction — DI, ver ReservasPolicyForm.tsx. */
@@ -40,10 +41,20 @@ export function PerfilImagesForm({
     const result = await setImageAction(kind, fd)
     if (!result.success) {
       setError(result.error)
+      toast({
+        title: kind === 'logo' ? 'Error al actualizar el logo' : 'Error al actualizar la portada',
+        description: result.error,
+        variant: 'destructive',
+      })
       return
     }
     if (kind === 'logo') setLogoUrl(result.url)
     else setCoverUrl(result.url)
+    toast({
+      title:
+        kind === 'logo' ? 'Logo actualizado correctamente' : 'Portada actualizada correctamente',
+      variant: 'success',
+    })
   }
 
   async function remove(kind: 'logo' | 'cover', url: string) {
@@ -51,10 +62,19 @@ export function PerfilImagesForm({
     const result = await removeImageAction(kind, url)
     if (!result.success) {
       setError(result.error)
+      toast({
+        title: kind === 'logo' ? 'Error al eliminar el logo' : 'Error al eliminar la portada',
+        description: result.error,
+        variant: 'destructive',
+      })
       return
     }
     if (kind === 'logo') setLogoUrl(null)
     else setCoverUrl(null)
+    toast({
+      title: kind === 'logo' ? 'Logo eliminado' : 'Portada eliminada',
+      variant: 'success',
+    })
   }
 
   return (

@@ -20,7 +20,7 @@ export const Default: Story = {
     ).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Contactar a soporte' })).toHaveAttribute(
       'href',
-      'mailto:soporte@turnogol.app',
+      'mailto:turnogol@gmail.com',
     )
   },
 }

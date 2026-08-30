@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -69,8 +70,8 @@ export default async function PublicComplexPage(props: Props) {
     listPublicTournaments(tenant.id).catch(() => []),
   ])
 
-  const galleryPhotos = Array.from(
-    new Set([tenant.coverUrl, ...courtCards.flatMap((c) => c.photos)].filter(Boolean)),
+  const courtPhotos = Array.from(
+    new Set(courtCards.flatMap((c) => c.photos).filter(Boolean)),
   ) as string[]
 
   return (
@@ -87,79 +88,113 @@ export default async function PublicComplexPage(props: Props) {
       />
 
       {/* Clean sheet — structured, premium, deep soft shadow */}
-      <div className="rounded-3xl border border-border bg-card p-4 shadow-[0_24px_70px_-38px_rgba(2,6,23,.4)] sm:p-6 lg:p-8 space-y-7">
-        {galleryPhotos.length > 0 && <TenantGallery photos={galleryPhotos} name={tenant.name} />}
-
-        <TenantHeader tenant={tenant} avgRating={summary.average} reviewCount={summary.count} />
-
-        {courtCards.length > 0 && (
-          <section aria-label="Canchas" className="space-y-3.5">
-            <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
-              Canchas{' '}
-              <span className="font-sans text-sm font-normal text-muted-foreground">
-                ({courtCards.length})
-              </span>
-            </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {courtCards.map((court) => (
-                <CourtCard key={court.id} court={court} />
-              ))}
-            </div>
-          </section>
+      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-[0_24px_70px_-38px_rgba(2,6,23,.4)]">
+        {tenant.coverUrl && (
+          <div className="relative h-48 w-full overflow-hidden bg-muted sm:h-64 md:h-72 lg:h-80">
+            <Image
+              src={tenant.coverUrl}
+              alt={`Portada de ${tenant.name}`}
+              fill
+              priority
+              sizes="(max-width: 1400px) 100vw, 1400px"
+              className="object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-black/25 to-transparent" />
+          </div>
         )}
 
-        {tournaments.length > 0 && (
-          <section aria-label="Torneos" className="space-y-3.5">
-            <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
-              Torneos{' '}
-              <span className="font-sans text-sm font-normal text-muted-foreground">
-                ({tournaments.length})
-              </span>
-            </h2>
-            <ul className="grid gap-2.5 sm:grid-cols-2">
-              {tournaments.slice(0, 4).map((t) => (
-                <li key={t.slug}>
-                  <Link
-                    href={`/${tenant.slug}/torneos/${t.slug}`}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-accent/50"
-                  >
-                    <Trophy className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-foreground">
-                        {t.name}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {STATUS_LABELS[t.status]} · {formatDateRange(t.startsOn, t.endsOn)}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            {tournaments.length > 4 && (
-              <Link
-                href={`/${tenant.slug}/torneos`}
-                className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Ver los {tournaments.length} torneos
-              </Link>
-            )}
-          </section>
-        )}
+        <div className="space-y-7 p-4 sm:p-6 lg:p-8">
+          <TenantHeader
+            tenant={tenant}
+            avgRating={summary.average}
+            reviewCount={summary.count}
+            hasCover={Boolean(tenant.coverUrl)}
+          />
 
-        {/* La grilla es 100% client-side (fetch a /api/public/availability): el
+          {courtPhotos.length > 0 && (
+            <section aria-label="Fotos del complejo" className="space-y-3.5">
+              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
+                Fotos{' '}
+                <span className="font-sans text-sm font-normal text-muted-foreground">
+                  ({courtPhotos.length})
+                </span>
+              </h2>
+              <TenantGallery photos={courtPhotos} name={tenant.name} />
+            </section>
+          )}
+
+          {courtCards.length > 0 && (
+            <section aria-label="Canchas" className="space-y-3.5">
+              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
+                Canchas{' '}
+                <span className="font-sans text-sm font-normal text-muted-foreground">
+                  ({courtCards.length})
+                </span>
+              </h2>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {courtCards.map((court) => (
+                  <CourtCard key={court.id} court={court} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {tournaments.length > 0 && (
+            <section aria-label="Torneos" className="space-y-3.5">
+              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
+                Torneos{' '}
+                <span className="font-sans text-sm font-normal text-muted-foreground">
+                  ({tournaments.length})
+                </span>
+              </h2>
+              <ul className="grid gap-2.5 sm:grid-cols-2">
+                {tournaments.slice(0, 4).map((t) => (
+                  <li key={t.slug}>
+                    <Link
+                      href={`/${tenant.slug}/torneos/${t.slug}`}
+                      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-accent/50"
+                    >
+                      <Trophy
+                        className="h-5 w-5 shrink-0 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-foreground">
+                          {t.name}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {STATUS_LABELS[t.status]} · {formatDateRange(t.startsOn, t.endsOn)}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {tournaments.length > 4 && (
+                <Link
+                  href={`/${tenant.slug}/torneos`}
+                  className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Ver los {tournaments.length} torneos
+                </Link>
+              )}
+            </section>
+          )}
+
+          {/* La grilla es 100% client-side (fetch a /api/public/availability): el
             Suspense es obligatorio porque AvailabilityGrid usa useSearchParams()
             dentro de una ruta prerenderada estáticamente. */}
-        <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
-          <AvailabilityGrid tenant={tenant} />
-        </Suspense>
+          <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
+            <AvailabilityGrid tenant={tenant} />
+          </Suspense>
 
-        <ReviewsSection
-          tenantId={tenant.id}
-          initial={reviewsPage.reviews}
-          total={reviewsPage.total}
-          average={summary.average}
-        />
+          <ReviewsSection
+            tenantId={tenant.id}
+            initial={reviewsPage.reviews}
+            total={reviewsPage.total}
+            average={summary.average}
+          />
+        </div>
       </div>
     </div>
   )

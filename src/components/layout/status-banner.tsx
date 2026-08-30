@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { AlertTriangle, Clock, XCircle } from 'lucide-react'
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_NUMBER, SUPPORT_WHATSAPP_URL } from '@/shared/constants'
 
 interface StatusBannerProps {
   tenantStatus: string
@@ -124,12 +125,21 @@ export function StatusBanner({
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200">
         <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
         <span>
-          Tu cuenta está suspendida. Contactá a{' '}
+          Tu cuenta está suspendida. Contactá a soporte por{' '}
           <a
-            href="mailto:soporte@turnogol.app"
+            href={SUPPORT_WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="font-medium underline underline-offset-2 hover:text-red-900 dark:hover:text-red-300 transition-colors duration-150"
           >
-            soporte@turnogol.app
+            WhatsApp ({SUPPORT_WHATSAPP_NUMBER})
+          </a>{' '}
+          o por mail a{' '}
+          <a
+            href={`mailto:${SUPPORT_EMAIL}`}
+            className="font-medium underline underline-offset-2 hover:text-red-900 dark:hover:text-red-300 transition-colors duration-150"
+          >
+            {SUPPORT_EMAIL}
           </a>
         </span>
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PauseCircle } from 'lucide-react'
+import { SUPPORT_EMAIL } from '@/shared/constants'
 
 export const metadata: Metadata = {
   // Sin el sufijo "— TurnoGol": el layout raíz aplica el template `%s · TurnoGol`,
@@ -39,7 +40,7 @@ export default function SuspendedPage() {
           del repo para links de texto (ver "¿Olvidaste tu contraseña?" en
           LoginCard.tsx). */}
       <a
-        href="mailto:soporte@turnogol.app"
+        href={`mailto:${SUPPORT_EMAIL}`}
         className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0"
       >
         Contactar a soporte

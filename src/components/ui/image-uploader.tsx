@@ -23,6 +23,12 @@ const ASPECT_CLASS: Record<ImagePreset, string> = {
   court: 'aspect-4/3',
 }
 
+const WIDTH_CLASS: Record<ImagePreset, string> = {
+  logo: 'w-28 sm:w-32',
+  cover: 'w-56 sm:w-72 max-w-full',
+  court: 'w-32',
+}
+
 export function ImageUploader({
   preset,
   value,
@@ -111,7 +117,8 @@ export function ImageUploader({
         <div className="flex flex-wrap items-center gap-4">
           <div
             className={cn(
-              'relative w-32 overflow-hidden rounded-lg border border-border bg-muted shadow-xs',
+              'relative overflow-hidden rounded-lg border border-border bg-muted shadow-xs',
+              WIDTH_CLASS[preset],
               ASPECT_CLASS[preset],
             )}
           >
@@ -152,7 +159,8 @@ export function ImageUploader({
             <div
               key={url}
               className={cn(
-                'relative w-32 overflow-hidden rounded-lg border border-border bg-muted shadow-xs',
+                'relative overflow-hidden rounded-lg border border-border bg-muted shadow-xs',
+                WIDTH_CLASS[preset],
                 ASPECT_CLASS[preset],
               )}
             >
@@ -204,7 +212,8 @@ export function ImageUploader({
               onClick={() => inputRef.current?.click()}
               disabled={disabled || busy}
               className={cn(
-                'flex w-32 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border text-center text-xs text-muted-foreground hover:border-emerald-500/60 hover:text-foreground',
+                'flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border text-center text-xs text-muted-foreground hover:border-emerald-500/60 hover:text-foreground',
+                WIDTH_CLASS[preset],
                 ASPECT_CLASS[preset],
                 (disabled || busy) && 'pointer-events-none opacity-50',
               )}

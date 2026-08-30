@@ -101,3 +101,17 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 **Costo estimado de resolverla**: ~1h cuando haya datos. El bloque 3 de [scripts/audit/top-queries.sql](../scripts/audit/top-queries.sql) ya lista los candidatos y marca cuáles respaldan un `UNIQUE` o una `EXCLUDE` constraint (esos **no se dropean nunca**, aunque nunca se escaneen: están para hacer cumplir la restricción). El resto se dropea en una migración nueva, como hizo `053_index_hygiene.sql`.
 
 **Disparador de resolución**: cuando haya ~6 meses de tráfico real acumulado y el bloque 4 del script confirme que la ventana de estadísticas los cubre. Antes de eso, cualquier drop es adivinanza.
+
+---
+
+## La impersonación entra a las páginas pero no a los route handlers
+
+**Qué es**: `isBlockedForStaff` ([guards.ts:47-51](src/modules/staff/guards.ts:47)) bypassea a propósito el lock de ciclo de vida cuando la sesión es una impersonación de SuperAdmin — soporte tiene que poder entrar a un complejo bloqueado para revisarlo antes de que el dueño reactive el pago. `withTenant` ([with-tenant.ts:96](src/server/middleware/with-tenant.ts:96)) hace el mismo chequeo de estado pero **no consulta la impersonación**, así que los 12 route handlers que lo usan responden 403 en esa sesión mientras la página que los llama carga entera.
+
+**Por qué existe**: los dos guards nacieron en momentos distintos. El bypass se agregó al camino de páginas y Server Actions (hallazgo R2 del ensayo general, comentado en `guards.ts:28-33`); `withTenant` conserva el chequeo original, más viejo.
+
+**Costo de no resolverla ahora**: acotado y ya mitigado en lo que se veía. El síntoma reportado —el panel de métricas mostrando "probá de nuevo en unos segundos" contra un complejo bloqueado, que era mentira— se arregló mostrando el mensaje real del servidor. Quedan dos superficies sin cubrir, ninguna con mensaje engañoso: el link **Exportar CSV** de `/analiticas` es un `<a href>` directo a `/api/reports/revenue`, así que durante una impersonación navega al JSON del 403 en vez de bajar el archivo; y `/api/admin/push/*` falla en silencio, que ahí sí es deliberado (`PushNotificationManager` es fire-and-forget por diseño). Lo que incomoda del diseño: durante una impersonación se pueden **crear reservas y mover caja** —las Server Actions sí tienen el bypass— pero no leer las métricas. El gate laxo quedó en el camino que muta y el estricto en el que solo lee.
+
+**Costo estimado de resolverla**: bajo, ~1-2h. `withTenant` consultando `getImpersonationSession()` con el mismo criterio que `isBlockedForStaff`, y un test que fije que un tenant `blocked` sigue cortado SIN impersonación (el riesgo real del cambio es aflojar el gate para todos). El CSV se arregla aparte: ocultar el link cuando el tenant no está operativo, o que el route handler responda un CSV de una línea con el motivo en vez de JSON.
+
+**Disparador de resolución**: cuando soporte necesite de verdad operar sobre un complejo bloqueado —hoy no pasó nunca fuera de los ensayos— o si aparece una tercera superficie afectada. Decisión del dueño el 2026-08-30: arreglar el mensaje ahora y dejar el gate como está.

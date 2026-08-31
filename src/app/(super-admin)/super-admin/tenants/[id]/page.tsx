@@ -30,6 +30,7 @@ import {
   reactivateTenantAction,
   resetStaffPasswordAction,
   startImpersonationAction,
+  updateTenantMarketplaceVisibilityAction,
   updateTenantSettingsAction,
 } from './actions'
 
@@ -121,7 +122,11 @@ export default async function SuperAdminTenantDetailPage(props: {
       </nav>
 
       {tab === 'resumen' && (
-        <ResumenTab detail={detail} impersonateAction={startImpersonationAction} />
+        <ResumenTab
+          detail={detail}
+          impersonateAction={startImpersonationAction}
+          updateMarketplaceVisibilityAction={updateTenantMarketplaceVisibilityAction}
+        />
       )}
       {tab === 'suscripcion' && <SuscripcionTab detail={detail} plans={plansList} />}
       {tab === 'actividad' && activity && <ActividadTab tenantId={tenant.id} activity={activity} />}

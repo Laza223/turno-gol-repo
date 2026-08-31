@@ -3,6 +3,10 @@ import type { TenantDetail } from '@/modules/super-admin/tenants.service'
 import { formatDateArt, formatDateTimeArt } from '../../_components/format'
 import { Card, Dt } from './detail-primitives'
 import { ImpersonateButton, type StartImpersonationAction } from './impersonate-button'
+import {
+  MarketplaceVisibilityToggle,
+  type UpdateMarketplaceVisibilityAction,
+} from './marketplace-visibility-toggle'
 
 /**
  * Tab "Resumen" del detalle de tenant: soporte (impersonar), datos del
@@ -12,9 +16,11 @@ import { ImpersonateButton, type StartImpersonationAction } from './impersonate-
 export function ResumenTab({
   detail,
   impersonateAction,
+  updateMarketplaceVisibilityAction,
 }: {
   detail: TenantDetail
   impersonateAction: StartImpersonationAction
+  updateMarketplaceVisibilityAction: UpdateMarketplaceVisibilityAction
 }) {
   const { tenant, courts, staff } = detail
   const s = tenant.settings
@@ -41,6 +47,13 @@ export function ResumenTab({
             {tenant.mpConnectedAt
               ? `Conectado el ${formatDateArt(tenant.mpConnectedAt)}`
               : 'No conectado'}
+          </Dt>
+          <Dt label="Marketplace público">
+            <MarketplaceVisibilityToggle
+              tenantId={tenant.id}
+              initialVisible={tenant.marketplaceVisible}
+              action={updateMarketplaceVisibilityAction}
+            />
           </Dt>
           {tenant.scheduledDeletionAt && (
             <Dt label="Eliminación programada">

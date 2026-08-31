@@ -20,6 +20,7 @@ const meta = {
   args: {
     detail: tenantDetail(),
     impersonateAction: fn(async () => ({ success: true as const })),
+    updateMarketplaceVisibilityAction: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof ResumenTab>
 

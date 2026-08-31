@@ -97,7 +97,7 @@ export function PendingRefundsList({
         <EmptyState
           icon={CheckCircle2}
           title="No debés ninguna devolución"
-          description="Cuando canceles un turno con seña o la cancele un jugador dentro del plazo, la devolución va a aparecer acá. Las que se pagaron por MercadoPago aparecen una hora después: durante esa hora el sistema intenta devolverlas solo."
+          description="Cuando canceles un turno con seña o la cancele un jugador dentro del plazo, la devolución va a aparecer acá. Devolvés vos desde MercadoPago, transferencia o efectivo; acá queda registrado."
         />
       ) : (
         <ul className="space-y-2" role="list">

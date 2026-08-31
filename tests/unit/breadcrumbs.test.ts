@@ -154,4 +154,28 @@ describe('sink de analytics', () => {
       'warning',
     )
   })
+
+  it('auto-registra el sink de analytics en el servidor si no estaba configurado (B3)', async () => {
+    delete (globalThis as { __turnogol_analytics_sink__?: unknown }).__turnogol_analytics_sink__
+    vi.resetModules()
+
+    const mockRecordEvent = vi.fn()
+    vi.doMock('@/shared/observability/analytics', () => ({
+      recordEvent: mockRecordEvent,
+    }))
+
+    const fresh = await import('@/shared/observability/breadcrumbs')
+    fresh.track.search('search.public.query', { hasQuery: true, results: 5 })
+
+    // Esperar al tick de la promesa dinámica de import
+    await vi.waitFor(() => {
+      expect(mockRecordEvent).toHaveBeenCalledTimes(1)
+      expect(mockRecordEvent).toHaveBeenCalledWith('search', 'search.public.query', {
+        hasQuery: true,
+        results: 5,
+      })
+    })
+
+    setAnalyticsSink(null)
+  })
 })

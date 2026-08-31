@@ -1,3 +1,5 @@
+import { CONTACT_WHATSAPP_DISPLAY, contactWhatsappUrl } from '@/lib/contact'
+
 /** Constantes globales del dominio. */
 
 /**
@@ -51,3 +53,10 @@ export const TRIAL_DAYS = 30
  * último llamado. Ascendente, el primero que matchea es el correcto.
  */
 export const TRIAL_ENDING_WARNING_DAYS = [1, 7] as const
+
+/**
+ * Canales oficiales de soporte de TurnoGol (B9).
+ */
+export const SUPPORT_EMAIL = 'turnogol@gmail.com'
+export const SUPPORT_WHATSAPP_NUMBER = CONTACT_WHATSAPP_DISPLAY
+export const SUPPORT_WHATSAPP_URL = contactWhatsappUrl()

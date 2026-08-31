@@ -367,6 +367,7 @@ export type SaTenantDetail = {
     phone: string
     email: string
     status: SaTenantStatus
+    marketplaceVisible: boolean
     trialEndsAt: Date | null
     scheduledDeletionAt: Date | null
     mpConnectedAt: Date | null
@@ -451,6 +452,7 @@ const tenantDefault = (): SaTenantDetail['tenant'] => ({
   phone: t.phone,
   email: t.email,
   status: 'active',
+  marketplaceVisible: true,
   trialEndsAt: null,
   scheduledDeletionAt: null,
   mpConnectedAt: daysFromNow(-180),

@@ -17,6 +17,7 @@ import { CancelSubscriptionSection } from '@/app/(admin)/settings/facturacion/Ca
 import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 import { MpPayerEmailSection } from '@/app/(admin)/settings/facturacion/MpPayerEmailSection'
 import { updateMpPayerEmailAction } from '@/app/(admin)/settings/facturacion/actions'
+import { SUPPORT_EMAIL } from '@/shared/constants'
 
 // ENS-20: destino del "recovery por UI" del ciclo de dunning
 // (past_due → suspended → blocked → churned). Vive fuera de (admin) para
@@ -186,7 +187,7 @@ export default async function ReactivarPage() {
       {(!canReactivate || activePlans.length === 0) && (
         <div className="flex flex-col items-center gap-3 text-center">
           <a
-            href="mailto:soporte@turnogol.app"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Contactar a soporte

@@ -9,10 +9,13 @@ import RatingStars from '@/components/public/RatingStars'
 import FavoriteButton from '@/components/public/FavoriteButton'
 import ShareButton from '@/components/public/ShareButton'
 
+import { cn } from '@/lib/utils'
+
 type Props = {
   tenant: PublicTenant
   avgRating: number
   reviewCount: number
+  hasCover?: boolean
 }
 
 const DAY_LABELS: Record<string, string> = {
@@ -27,7 +30,7 @@ const DAY_LABELS: Record<string, string> = {
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
-export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) {
+export default function TenantHeader({ tenant, avgRating, reviewCount, hasCover }: Props) {
   // Cascada whatsapp -> phone: `tenants.whatsapp` es opcional y en la práctica
   // casi siempre está vacío, así que antes de esto el chip de WhatsApp no se
   // mostraba en ningún complejo. Ver `resolveTenantContact`.
@@ -50,14 +53,22 @@ export default function TenantHeader({ tenant, avgRating, reviewCount }: Props) 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           {tenant.logoUrl && (
-            <Image
-              src={tenant.logoUrl}
-              alt={`Logo de ${tenant.name}`}
-              width={64}
-              height={64}
-              sizes="64px"
-              className="h-16 w-16 shrink-0 rounded-xl border border-border object-cover shadow-xs"
-            />
+            <div
+              className={cn(
+                'relative shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-md',
+                hasCover
+                  ? '-mt-12 sm:-mt-16 md:-mt-20 h-20 w-20 sm:h-24 sm:w-24 ring-4 ring-card z-10'
+                  : 'h-16 w-16 sm:h-20 sm:w-20',
+              )}
+            >
+              <Image
+                src={tenant.logoUrl}
+                alt={`Logo de ${tenant.name}`}
+                fill
+                sizes="(max-width: 640px) 80px, 96px"
+                className="object-cover"
+              />
+            </div>
           )}
           <div className="min-w-0 space-y-1.5">
             <h1 className="font-display text-[26px] font-black italic tracking-tight text-foreground sm:text-3xl">

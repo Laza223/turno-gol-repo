@@ -209,6 +209,7 @@ export type TenantDetail = {
     phone: string
     email: string
     status: TenantStatus
+    marketplaceVisible: boolean
     trialEndsAt: Date | null
     scheduledDeletionAt: Date | null
     mpConnectedAt: Date | null
@@ -269,6 +270,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
       phone: tenants.phone,
       email: tenants.email,
       status: tenants.status,
+      marketplaceVisible: tenants.marketplaceVisible,
       trialEndsAt: tenants.trialEndsAt,
       scheduledDeletionAt: tenants.scheduledDeletionAt,
       mpConnectedAt: tenants.mpConnectedAt,

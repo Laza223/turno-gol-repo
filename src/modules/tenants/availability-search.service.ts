@@ -1,4 +1,4 @@
-import { inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { readThroughAvailSearch } from '@/shared/cache/slots-cache'
@@ -152,7 +152,12 @@ async function loadAvailableTenantIds({
       settings: tenants.settings,
     })
     .from(tenants)
-    .where(inArray(tenants.status, SEARCHABLE_TENANT_STATUSES as never))
+    .where(
+      and(
+        inArray(tenants.status, SEARCHABLE_TENANT_STATUSES as never),
+        eq(tenants.marketplaceVisible, true),
+      ),
+    )
 
   // Current time in ART. Argentina = UTC-3, no DST.
   const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)

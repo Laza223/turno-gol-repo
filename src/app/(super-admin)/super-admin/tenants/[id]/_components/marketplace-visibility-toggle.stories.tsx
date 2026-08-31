@@ -20,6 +20,18 @@ const meta = {
         }) as unknown as ReturnType<UpdateMarketplaceVisibilityAction>,
     ),
   },
+  // En la app real siempre vive dentro del <Card title="Datos del complejo"> de
+  // detail-primitives.tsx (bg-card blanco) — ver resumen-tab.tsx.
+  decorators: [
+    (Story) => (
+      <section className="rounded-lg border border-border bg-card p-6 shadow-xs">
+        <h2 className="text-base font-semibold text-foreground">Datos del complejo</h2>
+        <div className="mt-4">
+          <Story />
+        </div>
+      </section>
+    ),
+  ],
 } satisfies Meta<typeof MarketplaceVisibilityToggle>
 
 export default meta

@@ -145,7 +145,7 @@ export function ImageUploader({
               aria-label="Quitar imagen"
               disabled={disabled || busy}
               onClick={() => handleRemove(urls[0]!)}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-500/10 dark:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-500/10 dark:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
               Quitar

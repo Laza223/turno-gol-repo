@@ -72,7 +72,7 @@ export function MarketplaceVisibilityToggle({ tenantId, initialVisible, action }
         )}
       </div>
       {error && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <p role="alert" className="text-xs text-red-700 dark:text-red-400">
           {error}
         </p>
       )}

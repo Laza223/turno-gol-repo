@@ -309,24 +309,6 @@ function getAnalyticsSink(): AnalyticsSink | null | undefined {
   return (globalThis as SinkHolder)[SINK_KEY]
 }
 
-let initPromise: Promise<AnalyticsSink> | null = null
-
-function ensureSink(): Promise<AnalyticsSink> | null {
-  if (typeof window !== 'undefined') return null
-  if (!initPromise) {
-    initPromise = import('./analytics')
-      .then(({ recordEvent }) => {
-        setAnalyticsSink(recordEvent)
-        return recordEvent
-      })
-      .catch((err) => {
-        initPromise = null
-        throw err
-      })
-  }
-  return initPromise
-}
-
 /**
  * El aviso de "sink ausente" se emite UNA vez por instancia. Sin esto, el modo de
  * falla de F-022 es invisible: no hay forma de distinguir "el evento no se emitió"
@@ -350,43 +332,10 @@ function emit(category: string, message: string, data: Record<string, unknown>):
     return
   }
 
-  // Si sink === null explícito (sin sink) y estamos en el servidor, avisar una vez
-  if (sink === null) {
-    if (typeof window === 'undefined' && !warnedMissingSink) {
-      warnedMissingSink = true
-      Sentry.captureMessage('analytics sink no registrado: los eventos no se persisten', 'warning')
-    }
-    return
-  }
-
-  // Si no hay sink configurado y estamos en el servidor, auto-inicializar bajo demanda
-  if (typeof window === 'undefined') {
-    const promise = ensureSink()
-    if (promise) {
-      void promise
-        .then((s) => {
-          try {
-            s(category, message, data)
-          } catch {
-            // Un sink roto no puede voltear el flujo que lo emitió.
-          }
-        })
-        .catch(() => {
-          if (!warnedMissingSink) {
-            warnedMissingSink = true
-            Sentry.captureMessage(
-              'analytics sink no registrado: los eventos no se persisten',
-              'warning',
-            )
-          }
-        })
-      return
-    }
-
-    if (!warnedMissingSink) {
-      warnedMissingSink = true
-      Sentry.captureMessage('analytics sink no registrado: los eventos no se persisten', 'warning')
-    }
+  // Sin sink en el servidor: avisar una vez para detectar si instrumentation falló.
+  if (typeof window === 'undefined' && !warnedMissingSink) {
+    warnedMissingSink = true
+    Sentry.captureMessage('analytics sink no registrado: los eventos no se persisten', 'warning')
   }
 }
 

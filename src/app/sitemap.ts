@@ -64,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   ]
 
-  const tenants = await listSitemapTenants()
+  const tenants = await listSitemapTenants().catch(() => [] as SitemapTenant[])
   const tenantRoutes: MetadataRoute.Sitemap = tenants.map((t) => ({
     url: absoluteUrl(`/${t.slug}`),
     lastModified: t.updatedAt,

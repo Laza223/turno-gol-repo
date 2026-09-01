@@ -1,3 +1,15 @@
+> ## ⚠️ OBSOLETO — no usar como referencia (marcado el 2026-09-01)
+>
+> Este documento razona sobre `player_tenant_relationships.balance`, una columna que
+> **ya no existe**: se eliminó en la migración 044 y el modelo entero quedó vetado en
+> `CLAUDE.md` ("**No-show NO es deuda** — REVERTIDO 2026-07-11"). Lo vigente es el
+> softban por reincidencia vía `tenant_player_bans`.
+>
+> La sección "BLOCKER #2/#7/#23 — `balance`" de abajo describe una feature de gestión de
+> deuda que **no se va a construir**, y proponerla de nuevo sería reabrir una decisión ya
+> tomada. Se conserva el archivo como registro histórico de los 8 BLOCKERs del Sprint 0
+> —los otros 7 siguen siendo ciertos— pero no debe leerse como backlog.
+
 # Decisiones pendientes — Sprint 0 (BLOCKERS)
 
 > Acompaña a `docs/qa/triage_fixes.md`. Registra: (a) hallazgos BLOCKER que se

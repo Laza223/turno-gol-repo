@@ -39,7 +39,14 @@ de usuario para entender por qué alguien abandona.
 La diferencia práctica:
 
 - **Vendérselo a un complejo conocido, con vos mirando** → listo.
-- **Vendérselo a un desconocido que se enoja si algo falla** → faltan los puntos B1 a B4.
+- **Vendérselo a un desconocido que se enoja si algo falla** → falta **B1** (la escalada de
+  morosidad, el único ❌ del documento) y conviene cerrar **B11** (el upgrade de plan, que
+  cobra plata real y nunca se ensayó).
+
+> **Revisión del 2026-09-01**: B3 a B10 quedaron cerrados en el PR #259 — cuatro con
+> código y dos por decisión de negocio (PITR y staging, diferidos hasta 10 clientes).
+> B2 sigue esperando el reloj (28/9). El repaso agregó **B11**, que no estaba en ningún
+> documento: apareció auditando el registro de riesgos, no midiendo el producto.
 
 ---
 
@@ -193,6 +200,31 @@ en `processed_webhooks` y el período de la suscripción tiene que correrse un m
 
 **Cierre**: Registro TXT de DMARC activo y verificado en Cloudflare DNS (`v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app`).
 
+### B11. ❌ Nunca ocurrió: el upgrade de plan cobra plata real y no se probó
+
+**Cómo apareció**: auditando el registro de riesgos el 2026-09-01. `TG-P1-MP-02` seguía
+diciendo que `/api/billing/upgrade` devuelve 501 detrás de un flag apagado. **Ya no**: la
+migración `067_enable_saas_upgrade_flag.sql` arregló el bug de fondo (la
+`notification_url` de la cuenta master lleva `&source=saas` y el handler elige la cuenta
+con ese discriminador, más el cross-check de `external_reference`) y prendió el flag con
+una fila global.
+
+**Por qué importa**: el proraeo de un upgrade es **un quinto circuito de plata**, y no está
+entre los cuatro de §A1. Está prendido en producción y nunca cobró un peso de verdad. La
+propia migración lo dice: "es plata real por un camino recién estrenado".
+
+**Qué puede salir mal**: es exactamente la clase de camino donde el bug anterior ya mordió
+una vez — el pago entra como evento `payment`, igual que la seña de una reserva, y la
+elección de cuenta depende de un discriminador en la URL. Si algo lo pierde, el complejo
+paga y el upgrade no se aplica.
+
+**Cómo se cierra**: mismo método que los otros cuatro. Un upgrade real de un plan barato a
+otro, y verificar que el `payment` llegue con `source=saas`, que el `external_reference`
+concuerde, y que el plan quede efectivamente cambiado con `pending_plan_change` limpio.
+Mientras tanto, el flag permite apagarlo por complejo o global sin esperar un deploy.
+
+---
+
 ---
 
 ## C. Lo que el producto NO hace, y hay que decirlo al vender
@@ -271,6 +303,7 @@ conocido" de "le vendo a cualquiera".
 | 8   | **B5** — ambiente de staging                                | USD 10/mes                  | No, pero cada prueba es sobre datos reales |
 | 9   | **B7** — flag de visibilidad del marketplace                | ~2 h                        | Al primer cliente que lo pida              |
 | 10  | **B10** — DMARC                                             | Ya agendado 8/9             | No                                         |
+| 11  | **B11** — ensayar el upgrade de plan                        | 1 cobro real                | Al primer complejo que cambie de plan      |
 
 **Los ítems 1, 2, 3 y 4 son lo que yo cerraría antes de la primera venta a alguien que no
 conocés.** Suman dos días de reloj, cinco minutos de prueba y dos decisiones tuyas.

@@ -6,17 +6,15 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 ---
 
-## `searchPaymentsByReference` sin paginación
+## ~~`searchPaymentsByReference` sin paginación~~ — RESUELTA 2026-09-01
 
-**Qué es**: [mp-gateway.implementation.ts:204-214](src/modules/payments/mp-gateway.implementation.ts:204-214) llama `new Payment(this.config).search(...)` sin `limit`/`offset`. `PaymentSearchOptions` (SDK `mercadopago@2.13.0`, `search/types.d.ts:174`) soporta paginación y la respuesta trae `paging: {total, limit, offset}` — hoy no se lee.
+**Qué era**: [mp-gateway.implementation.ts](src/modules/payments/mp-gateway.implementation.ts) llamaba `search(...)` sin `limit`/`offset` y sin leer `paging`, así que devolvía sólo la primera página.
 
-**Por qué existe**: los dos consumidores reales de hoy no la necesitan — [reconcile-subscriptions.worker.ts:200](src/shared/jobs/workers/reconcile-subscriptions.worker.ts:200) solo quiere el `approved` más reciente (`sort: date_created, criteria: desc`, toma `[0]`), y [reconcile-pending-payments.worker.ts:72](src/shared/jobs/workers/reconcile-pending-payments.worker.ts:72) / [mp-reconcile.service.ts:71](src/modules/payments/mp-reconcile.service.ts:71) buscan por booking individual (resultado chico). No es descuido: nunca hizo falta.
+**Por qué esta entrada estaba MAL**: el disparador escrito acá era "cuando se implemente `GET /api/billing/invoices` / `listInvoices` (doc15 §5.8)", y la entrada afirmaba que ese endpoint estaba "**sin implementar todavía**: no existe route handler ni Server Action". Era falso — existen los dos: [route.ts](<src/app/api/billing/invoices/route.ts>) y `listInvoices` ([billing.service.ts:907](src/modules/billing/billing.service.ts:907)), que llama a este método y mapea lo que llega sin mirar `paging`. **El disparador se había cumplido sin que nadie lo notara**, y el síntoma era silencioso: en cuanto un complejo acumulara más cobros mensuales que el tamaño de página de MP, su historial de facturación se veía cortado sin ningún aviso.
 
-**Costo de no resolverla ahora**: ninguno hoy. Crece con la antigüedad de cada tenant — un historial de facturación SaaS completo (`GET /api/billing/invoices`, spec'd en doc15 §5.8, **sin implementar todavía**: no existe route handler ni Server Action) se vería incompleto sin aviso una vez que un tenant acumule más cobros mensuales que el límite de página default de MP.
+**Cómo se resolvió**: loop interno sobre `paging.total`, sin cambiar la firma. La primera llamada queda idéntica (sin `limit`/`offset`) y es MercadoPago quien informa su propio tamaño de página — elegirlo nosotros sería adivinar un valor que el endpoint puede rechazar y que no se puede verificar sin credenciales reales. Sin `paging` degrada a una página; tope de 20 páginas por si MP reportara un total inconsistente. Tests: `tests/unit/mp-gateway-search-paging.test.ts` (7 casos, control positivo corrido).
 
-**Costo estimado de resolverla**: bajo, ~1-2h. Loop interno sobre `paging.total` en `searchPaymentsByReference`, sin cambiar la firma (los 2 consumidores actuales no necesitan enterarse). No agregar parámetro de paginación explícito salvo que un consumidor futuro sí necesite control de página.
-
-**Disparador de resolución**: cuando se implemente `GET /api/billing/invoices` / `listInvoices` (doc15 §5.8) — recién ahí hay un consumidor real que necesita el historial completo, no solo el último pago.
+**Lección para el ledger**: un disparador escrito contra "cuando exista X" envejece sin avisar si nadie vuelve a verificar que X siga sin existir.
 
 ---
 
@@ -48,31 +46,35 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 ---
 
-## `application.deauthorized` se descarta con 400: TurnoGol no se entera de una desvinculación
+## ~~`application.deauthorized` se descarta con 400~~ — RESUELTA 2026-09-01
 
-**Qué es**: MercadoPago emite `application.deauthorized` cuando un complejo revoca el permiso que le dio a TurnoGol para cobrar en su cuenta. TurnoGol no maneja ese evento — `grep` sobre [payment.schema.ts](src/modules/payments/payment.schema.ts), [mp-webhook.handler.ts](src/modules/payments/mp-webhook.handler.ts) y [el route handler](src/app/api/webhooks/mercadopago/route.ts) no devuelve una sola referencia. Además llega por el canal global del panel, sin `?tenant=` en la URL, así que el route corta con `missing tenant` (400) antes incluso de mirar la firma. Visto en el historial de webhooks de la app de Suscripciones el 2026-08-28: `400 - Fallida · application.deauthorized · 381048203 · 22/08 13:44 UTC`.
+**Qué era**: MercadoPago emite `application.deauthorized` cuando un complejo revoca el permiso que le dio a TurnoGol para cobrar en su cuenta. TurnoGol no manejaba ese evento: llega por el canal global del panel, sin `?tenant=` en la URL, así que moría en `missing tenant` (400). Visto en el historial de webhooks de la app de Suscripciones el 2026-08-28: `400 - Fallida · application.deauthorized · 381048203 · 22/08 13:44 UTC`.
 
-**Por qué existe**: el diseño asumió que la desvinculación se hace desde TurnoGol, donde sí hay una acción que limpia las columnas (`tenant.service.ts:367` pone `mp_connected_at = NULL`). El camino inverso —desvincular desde el panel de MercadoPago— no se contempló. El caso del 22/8 es de la cuenta del propio dueño durante la migración a dos aplicaciones, así que hoy no hay daño.
+**El daño que evitaba quedar abierto**: con clientes reales, un complejo que revoca el permiso desde el panel de MercadoPago dejaba a TurnoGol creyendo que el token seguía vivo — `mp_connected_at` con fecha, el portal exigiendo seña — y el que descubría la desconexión era el jugador, al momento de pagar. O sea, el cliente del cliente.
 
-**Costo de no resolverla ahora**: ninguno mientras los complejos sean los dos propios. Con clientes reales, un complejo que revoque el permiso desde el panel de MercadoPago deja a TurnoGol creyendo que el token sigue vivo: `mp_connected_at` queda con fecha, el portal sigue exigiendo seña y el jugador se come el error recién al momento de pagar — o sea, el que descubre la desconexión es el cliente del cliente. Emparenta con F-003 de PROD_QA ("seña exigible sin MercadoPago conectado"), que sigue sin re-verificar.
+**Cómo se resolvió**: el complejo se resuelve por `mp_user_id` contra el UNIQUE parcial de la migr. 069, y el `?tenant=` de la query se IGNORA a propósito — esto termina en un UPDATE destructivo sobre credenciales de cobro, así que el criterio del propio route ("el complejo lo dice MercadoPago, no quien manda el request") tiene que valer sin excepción. Los efectos reusan `disconnectMercadoPago`, el mismo camino que la desvinculación desde la UI, que además apaga `requires_deposit` (F-003). Audit log con la cuenta y el origen, y mail sólo al rol admin. Tests: `tests/unit/mp-webhook-deauthorized-route.test.ts` + `tests/unit/mp-webhook-handler-deauthorized.test.ts` (11 casos).
 
-**Costo estimado de resolverla**: bajo, ~2h. Aceptar el tipo en el schema del webhook y resolver el tenant por `mp_user_id` en vez de por `?tenant=` (el payload trae el user id de MercadoPago, que ya está en `tenants.mp_user_id`); al recibirlo, limpiar las columnas de MP igual que hace la desvinculación desde la UI y avisarle al dueño. Ojo con el orden del route handler: hoy el guard de tenant corre antes de validar la firma, así que hay que mover ese caso sin debilitar el guard para el resto.
+**Dos correcciones a lo que decía esta entrada**:
+1. "el route corta con `missing tenant` (400) **antes incluso de mirar la firma**" — ya no era cierto cuando se resolvió. El PR #254 invirtió ese orden: la firma se valida primero (comentario explícito en el route: "La firma se valida ANTES de resolver el complejo"). La parte delicada del fix, mover el caso sin debilitar el guard, no hizo falta.
+2. El schema NO necesitó una excepción para `data.id`: lo que trae es el id de usuario de MercadoPago, numérico, que `MP_ID_RE` ya aceptaba. Por eso el evento del 22/8 murió en "missing tenant" y no en "invalid payload".
 
-**Disparador de resolución**: cuando se cierre el tema del par OAuth (`MP_CLIENT_ID` apuntando a la aplicación vieja) — decisión del dueño el 2026-08-28, para no tocar dos cosas del mismo circuito a la vez. Contexto completo en [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).
+**Lo que quedó sin confirmar**: si el nombre del evento viaja en `type` o en `action`. El panel muestra una sola columna y no lo distingue, y los dominios de MercadoPago están bloqueados por el proxy de egress del entorno donde se escribió el fix. Se aceptan las dos codificaciones —el string exacto es el mismo— así que no hace falta resolverlo, pero conviene saberlo si alguien depura esto.
 
 ---
 
-## La devolución manual no está explicada, y la pantalla todavía promete el reembolso automático que se eliminó
+## El video de la devolución manual todavía no existe
 
-**Qué es**: dos cosas del mismo tema. (a) El empty state de `/caja/devoluciones` ([PendingRefundsList.tsx:100](<src/app/(admin)/caja/devoluciones/PendingRefundsList.tsx:100>)) dice que las devoluciones pagadas por MercadoPago "aparecen una hora después: durante esa hora el sistema intenta devolverlas solo". Eso ya no es cierto: el reembolso automático por API se eliminó (PR #212) y la espera de una hora se sacó con él — el comentario de [refund.service.ts:141-150](src/modules/payments/refund.service.ts:141-150) lo dice explícitamente ("todas, desde el momento cero ... esperar una hora para mostrar una deuda que ya existe es solo esconderla"). O sea, el texto de la pantalla contradice al código que la alimenta. (b) No hay material que le explique al complejo cómo devolver de verdad: entrar a MercadoPago, ubicar el pago y usar "Devolver dinero". Es el gemelo del video que ya existe sobre los plazos de acreditación.
+**Qué es**: no hay material que le explique al complejo cómo devolver de verdad — entrar a MercadoPago, ubicar el pago y usar "Devolver dinero". Es el gemelo del video que ya existe sobre los plazos de acreditación.
 
-**Por qué existe**: el texto se escribió cuando el reembolso automático existía y era el camino principal; al eliminarlo se cambió el servicio y no la copia. El video nunca se grabó porque hasta el 2026-08-28 el circuito de Checkout Pro no había entregado un solo pago real, así que no había devolución real que mostrar.
+**Corrección a lo que decía esta entrada** (verificado el 2026-09-01): la mitad (a) —el empty state de `/caja/devoluciones` prometiendo que "el sistema intenta devolverlas solo" durante una hora— **ya se corrigió en el PR #259**. Hoy [PendingRefundsList.tsx](<src/app/(admin)/caja/devoluciones/PendingRefundsList.tsx>) dice "Devolvés vos desde MercadoPago, transferencia o efectivo; acá queda registrado", que es lo que el código hace. El ledger la seguía cobrando como abierta.
 
-**Costo de no resolverla ahora**: bajo con los dos complejos propios, real con clientes. El complejo lee "el sistema lo intenta solo" y espera una hora que no va a resolver nada; mientras tanto el jugador sigue sin su plata y el que queda mal es el complejo. Es la clase de detalle que erosiona la confianza justo en el flujo donde más importa.
+**Por qué existe la mitad que queda**: el video nunca se grabó porque hasta el 2026-08-28 el circuito de Checkout Pro no había entregado un solo pago real, así que no había devolución real que mostrar.
 
-**Costo estimado de resolverla**: (a) trivial, ~15 min — reescribir el empty state para que diga lo que el código hace. Ojo que el mismo archivo tiene más abajo ([:181-182](<src/app/(admin)/caja/devoluciones/PendingRefundsList.tsx:181-182>)) un texto que SÍ es correcto; el arreglo es alinear el de arriba con ese. (b) ~1h de grabación. **Verificar antes de grabar**: lo que TurnoGol manda a MercadoPago como `external_reference` es el UUID completo de la reserva ([mp-gateway.implementation.ts:129](src/modules/payments/mp-gateway.implementation.ts:129)), pero la pantalla de devoluciones le muestra al complejo el código corto — los primeros 8 caracteres en mayúscula ([booking-code.ts](src/lib/booking-code.ts)). Habría que confirmar en el panel real si buscar por ese código corto encuentra el pago; si no lo encuentra, el video tiene que enseñar a ubicarlo por monto y fecha, no por código.
+**Costo de no resolverla ahora**: bajo con los dos complejos propios, real con clientes — es el flujo donde más importa que el complejo sepa qué hacer, porque mientras tanto el jugador sigue sin su plata.
 
-**Disparador de resolución**: (a) en el próximo lote de fixes de UI de caja — es de 15 minutos y ya está localizado. (b) antes del primer complejo cliente, junto al resto del material de onboarding. Hay una devolución pendiente real de $100 en `complejo titi` (generada el 2026-08-28 en los ensayos) que sirve de material para grabarlo.
+**Costo estimado de resolverla**: ~1h de grabación. **Verificar antes de grabar**: lo que TurnoGol manda a MercadoPago como `external_reference` es el UUID completo de la reserva ([mp-gateway.implementation.ts](src/modules/payments/mp-gateway.implementation.ts)), pero la pantalla de devoluciones le muestra al complejo el código corto — los primeros 8 caracteres en mayúscula ([booking-code.ts](src/lib/booking-code.ts)). Habría que confirmar en el panel real si buscar por ese código corto encuentra el pago; si no lo encuentra, el video tiene que enseñar a ubicarlo por monto y fecha, no por código.
+
+**Disparador de resolución**: antes del primer complejo cliente, junto al resto del material de onboarding. Hay una devolución pendiente real de $100 en `complejo titi` (generada el 2026-08-28 en los ensayos) que sirve de material para grabarlo.
 
 ---
 
@@ -104,14 +106,32 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 ---
 
-## La impersonación entra a las páginas pero no a los route handlers
+## ~~La impersonación entra a las páginas pero no a los route handlers~~ — RESUELTA 2026-09-01
 
-**Qué es**: `isBlockedForStaff` ([guards.ts:47-51](src/modules/staff/guards.ts:47)) bypassea a propósito el lock de ciclo de vida cuando la sesión es una impersonación de SuperAdmin — soporte tiene que poder entrar a un complejo bloqueado para revisarlo antes de que el dueño reactive el pago. `withTenant` ([with-tenant.ts:96](src/server/middleware/with-tenant.ts:96)) hace el mismo chequeo de estado pero **no consulta la impersonación**, así que los 12 route handlers que lo usan responden 403 en esa sesión mientras la página que los llama carga entera.
+**Qué era**: `isBlockedForStaff` ([guards.ts:47-51](src/modules/staff/guards.ts:47)) bypassea a propósito el lock de ciclo de vida cuando la sesión es una impersonación de SuperAdmin — soporte tiene que poder entrar a un complejo bloqueado para revisarlo antes de que el dueño reactive el pago. `withTenant` ([with-tenant.ts](src/server/middleware/with-tenant.ts)) hacía el mismo chequeo de estado pero **no consultaba la impersonación**, así que los 12 route handlers que lo usan respondían 403 en esa sesión mientras la página que los llama cargaba entera.
 
-**Por qué existe**: los dos guards nacieron en momentos distintos. El bypass se agregó al camino de páginas y Server Actions (hallazgo R2 del ensayo general, comentado en `guards.ts:28-33`); `withTenant` conserva el chequeo original, más viejo.
+**Lo que incomodaba del diseño**: durante una impersonación se podían **crear reservas y mover caja** —las Server Actions sí tienen el bypass— pero no leer las métricas. El gate laxo había quedado en el camino que muta y el estricto en el que sólo lee.
 
-**Costo de no resolverla ahora**: acotado y ya mitigado en lo que se veía. El síntoma reportado —el panel de métricas mostrando "probá de nuevo en unos segundos" contra un complejo bloqueado, que era mentira— se arregló mostrando el mensaje real del servidor. Quedan dos superficies sin cubrir, ninguna con mensaje engañoso: el link **Exportar CSV** de `/analiticas` es un `<a href>` directo a `/api/reports/revenue`, así que durante una impersonación navega al JSON del 403 en vez de bajar el archivo; y `/api/admin/push/*` falla en silencio, que ahí sí es deliberado (`PushNotificationManager` es fire-and-forget por diseño). Lo que incomoda del diseño: durante una impersonación se pueden **crear reservas y mover caja** —las Server Actions sí tienen el bypass— pero no leer las métricas. El gate laxo quedó en el camino que muta y el estricto en el que solo lee.
+**Cómo se resolvió**: `withTenant` consulta `getImpersonationSession()` con el mismo criterio que `isBlockedForStaff` — es la misma función que ya usa el guard de páginas, no se escribió lógica nueva. La consulta se hace sólo cuando el estado ya es bloqueante, así que el 99% de las requests de un complejo sano no la paga (hay un test que lo fija).
 
-**Costo estimado de resolverla**: bajo, ~1-2h. `withTenant` consultando `getImpersonationSession()` con el mismo criterio que `isBlockedForStaff`, y un test que fije que un tenant `blocked` sigue cortado SIN impersonación (el riesgo real del cambio es aflojar el gate para todos). El CSV se arregla aparte: ocultar el link cuando el tenant no está operativo, o que el route handler responda un CSV de una línea con el motivo en vez de JSON.
+**El riesgo del cambio era aflojar el gate para todos**, así que los tests están escritos con el negativo primero: `blocked`/`churned`/`deleted` siguen en 403 SIN impersonación, y `suspended` sigue siendo sólo-lectura para las mutaciones. Control positivo corrido: anulando el fix, los 5 tests del bypass se ponen rojos y los 5 del guard siguen verdes. `tests/unit/with-tenant-impersonation-bypass.test.ts`.
 
-**Disparador de resolución**: cuando soporte necesite de verdad operar sobre un complejo bloqueado —hoy no pasó nunca fuera de los ensayos— o si aparece una tercera superficie afectada. Decisión del dueño el 2026-08-30: arreglar el mensaje ahora y dejar el gate como está.
+**El síntoma del CSV, aparte**: `Exportar CSV` de `/analiticas` es un `<a href>` directo a `/api/reports/revenue`, así que durante una impersonación navegaba al JSON del 403 en vez de bajar el archivo. El PR #259 le puso manejo de error al botón ([ExportCsvButton.tsx](<src/app/(admin)/analiticas/ExportCsvButton.tsx>)) — el ledger no lo registraba; esto arregla la causa. `/api/admin/push/*` sigue fallando en silencio, que ahí sí es deliberado (`PushNotificationManager` es fire-and-forget por diseño).
+
+---
+
+## La auditoría de tests del 29-30/8 no está en el repositorio
+
+**Qué es**: la [bitácora](BITACORA.md) registra, los días 29 y 30 de agosto, una auditoría de tests completa: coverage instalado y medido por primera vez en el repo (línea base corregida a **76,70%**), grafo import→test, métricas por archivo, un runner de mutación con tripwire de árbol limpio, y `docs/qa/TEST_AUDIT.md` — 901 líneas, 15 ítems de plan en 2 bloques, 204 de 327 archivos auditados uno por uno, 722 mutantes emitidos y **397 huecos demostrados** (190 en roja, 207 en amarilla), más un 🔴 de plazo de borrado verificado contra el código.
+
+**Nada de eso existe.** Verificado el 2026-09-01: `git log --all -- docs/qa/TEST_AUDIT.md` no devuelve un solo commit, no hay dependencia de coverage en `package.json`, y no hay runner de mutación en `scripts/`. El PR #256 mergeó únicamente la parte de performance del esfuerzo; el resto quedó en el contenedor de esa sesión y se fue con él.
+
+**Por qué existe**: el trabajo se hizo sobre la rama `perf/indices-n1-cache` DESPUÉS de que su PR se mergeara (#256 entró 04:06 del 29/8; las entradas de bitácora siguen hasta las 16:47 del 30/8). Sin un commit y un push, una sesión remota no deja rastro: la bitácora la escribe un hook al cerrar y registra lo que se hizo, no lo que quedó guardado.
+
+**Costo de no resolverla ahora**: no hay riesgo en producción — es trabajo de diagnóstico perdido, no código faltante. El costo es que la próxima vez que alguien quiera saber qué tan cubierto está el repo, arranca de cero: sin línea base, sin grafo y sin los 397 huecos ya localizados.
+
+**Costo estimado de resolverla**: ~2 días para reconstruirlo completo. Partible: el **harness** solo (instalar `@vitest/coverage-v8`, agregar el script y medir la línea base) son ~1-2h y es la parte durable — con un número medido, la próxima sesión arranca comparando en vez de descubriendo. Los 397 huecos hay que volver a demostrarlos igual.
+
+**Disparador de resolución**: la próxima sesión que vaya a tocar la estrategia de tests. Decisión del dueño el 2026-09-01: registrarla ahora y no reconstruirla, para no competir con los fixes de plata de esa sesión.
+
+**Lección, y es la razón por la que esta entrada existe**: lo que no está commiteado y pusheado no existe, por más que la bitácora lo cuente en detalle.

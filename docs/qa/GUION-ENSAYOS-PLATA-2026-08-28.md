@@ -676,8 +676,34 @@ idempotencia quedo probada con trafico real de MP, que es mejor evidencia que un
 sintetico.
 
 - **Bloque E**: trial vencido (P-09) y dunning (P-10), simulados moviendo fechas en Elite.
-- **Bloque H**: apagar el plan de $100 (`is_active = false`) y devolver `complejo titi` a su
-  configuracion normal — la Cancha 2 sigue en `offline` y la senia quedo al 100%.
+- ~~**Bloque H**~~: **EJECUTADO el 2026-09-01** — ver abajo.
+
+### Bloque H — limpieza de los ensayos · CERRADO 2026-09-01
+
+Se midio el estado real de produccion antes de tocar nada, y **dos de los tres restos ya
+estaban resueltos**. Vale registrarlo porque la suposicion contraria (que los tres seguian
+vivos) era razonable y habria llevado a correr UPDATEs innecesarios:
+
+| Resto | Estado medido el 1/9 | Accion |
+| --- | --- | --- |
+| Elite con el reloj de trial adelantado | Ya restaurado: `trialing` en tenant Y suscripcion, `trial_ends_at` exactamente en el valor de restauracion | Ninguna |
+| Plan "Prueba interna — NO OFRECER" | Ya apagado (`is_active = false`) | Ninguna |
+| `complejo titi` con senia al 100% y Cancha 2 en `offline` | **Vigente**: `requires_deposit = true`, Cancha 2 (`$70.000`) en `offline` | Corregido |
+
+Lo que se corrigio en titi, **en este orden y no al reves**: primero
+`requires_deposit = false`, despues Cancha 2 a `online`. Invertirlo abre una ventana con
+una cancha de $70.000 reservable y la senia al 100% — el mismo riesgo que el ensayo
+mitigo poniendola offline.
+
+El `deposit_percentage` se dejo en 100. No es un resto del ensayo: es un valor de
+configuracion inerte mientras `requires_deposit` este en `false`, igual que en Elite.
+
+Verificacion posterior: los dos complejos con `requires_deposit = false`, cero canchas en
+`offline`, Elite `trialing`/`trialing` y titi `active`/`active`.
+
+**Leccion**: el Bloque H figuraba como pendiente en esta lista y nadie sabia que dos de
+sus tres items ya se habian hecho. Una limpieza sin registro es indistinguible de una
+limpieza que no ocurrio, y obliga a medir de nuevo cada vez que alguien pregunta.
 
 ---
 

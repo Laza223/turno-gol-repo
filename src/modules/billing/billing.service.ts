@@ -74,27 +74,48 @@ function toDate(v: Date | string): Date {
   return v instanceof Date ? v : new Date(v)
 }
 
-async function loadPlan(planId: string, tx: DbTx): Promise<PlanRow | null> {
+/**
+ * Un plan que ESTE complejo puede contratar.
+ *
+ * `owner_tenant_id` (migr. 083) acota la visibilidad: NULL = público, y un plan
+ * privado sólo existe para su dueño. Pedir el plan privado de otro complejo
+ * devuelve `null`, igual que un id inexistente — los llamadores ya traducen eso
+ * a `PlanNotFoundError`, así que no hace falta un error nuevo y, de paso, no se
+ * filtra por el mensaje que ese plan existe.
+ *
+ * `is_active` sigue significando lo de siempre (interruptor de encendido). La
+ * razón por la que esta columna arregla además el caso de reactivación es
+ * indirecta: un plan privado ya no necesita apagarse para dejar de ofrecerse,
+ * así que sigue activo y este SELECT lo encuentra.
+ */
+async function loadPlan(planId: string, tenantId: string, tx: DbTx): Promise<PlanRow | null> {
   const rows = await tx.execute(sql`
     SELECT id, slug, name, max_courts, price_monthly, price_annual
     FROM plans
-    WHERE id = ${planId} AND is_active = true
+    WHERE id = ${planId}
+      AND is_active = true
+      AND (owner_tenant_id IS NULL OR owner_tenant_id = ${tenantId})
     LIMIT 1
   `)
   return (rows as unknown as Array<PlanRow>)[0] ?? null
 }
 
 /**
- * Planes activos ordenados (selector de "Activar plan" — Fix 1b). Mismo
- * patrón que `loadPlan`: SQL crudo sobre la tx del caller. `plans` es tabla
- * global sin RLS, así que no depende de que `app.current_tenant_id` esté seteado.
+ * Planes que ESTE complejo puede contratar (selector de "Activar plan" — Fix 1b).
+ * Mismo patrón que `loadPlan`: SQL crudo sobre la tx del caller.
+ *
+ * `plans` es tabla global y **sin RLS**, así que el filtro por complejo es la
+ * única barrera: sin el `owner_tenant_id` de abajo, un plan privado aparecía en
+ * el catálogo de cualquiera que abriera `/settings/facturacion`. Por eso el
+ * `tenantId` es obligatorio y no tiene default.
  */
-export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
+export async function listActivePlans(tenantId: string, tx: DbTx): Promise<PlanSummary[]> {
   const rows = await tx.execute(sql`
     SELECT id, slug, name, max_courts AS "maxCourts",
            price_monthly AS "priceMonthly", price_annual AS "priceAnnual"
     FROM plans
     WHERE is_active = true
+      AND (owner_tenant_id IS NULL OR owner_tenant_id = ${tenantId})
     ORDER BY sort_order
   `)
   return rows as unknown as PlanSummary[]
@@ -280,7 +301,7 @@ export async function subscribe(
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
 
-  const plan = await loadPlan(planId, tx)
+  const plan = await loadPlan(planId, tenantId, tx)
   if (!plan) throw new PlanNotFoundError(planId)
 
   const owner = await loadTenantOwner(tenantId, tx)
@@ -371,10 +392,10 @@ export async function upgrade(
     throw new UpgradeAlreadyPendingError(tenantId, sub.pending_plan_change)
   }
 
-  const targetPlan = await loadPlan(targetPlanId, tx)
+  const targetPlan = await loadPlan(targetPlanId, tenantId, tx)
   if (!targetPlan) throw new PlanNotFoundError(targetPlanId)
 
-  const currentPlan = await loadPlan(sub.plan_id, tx)
+  const currentPlan = await loadPlan(sub.plan_id, tenantId, tx)
   if (!currentPlan) throw new PlanNotFoundError(sub.plan_id)
 
   const newAmount = planAmount(targetPlan, sub.billing_cycle)
@@ -452,7 +473,7 @@ export async function handleUpgradeApproved(
   if (sub.status !== 'active') return
   if (sub.pending_plan_change !== targetPlanId) return // race / stale event
 
-  const targetPlan = await loadPlan(targetPlanId, tx)
+  const targetPlan = await loadPlan(targetPlanId, tenantId, tx)
   if (!targetPlan) return
 
   const newAmount = planAmount(targetPlan, sub.billing_cycle)
@@ -529,7 +550,7 @@ export async function downgrade(
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
 
-  const targetPlan = await loadPlan(targetPlanId, tx)
+  const targetPlan = await loadPlan(targetPlanId, tenantId, tx)
   if (!targetPlan) throw new PlanNotFoundError(targetPlanId)
 
   if (targetPlan.max_courts !== null) {
@@ -695,7 +716,7 @@ export async function reactivate(
     throw new ReactivateNotAllowedError(tenantId, `${sub.status}_past_deletion`)
   }
 
-  const plan = await loadPlan(planId, tx)
+  const plan = await loadPlan(planId, tenantId, tx)
   if (!plan) throw new PlanNotFoundError(planId)
 
   const owner = await loadTenantOwner(tenantId, tx)

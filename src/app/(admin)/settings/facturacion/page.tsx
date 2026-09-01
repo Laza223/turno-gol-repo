@@ -84,7 +84,7 @@ export default async function FacturacionPage(
   // no cambiar de plan, y `upgrade()` los rechaza igual.
   const needsPlanCatalog = sub?.status === 'trialing' || sub?.status === 'active'
   const activePlans = needsPlanCatalog
-    ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx))
+    ? await withTenantContext(tenant.id, (tx) => listActivePlans(tenant.id, tx))
     : []
 
   // doc15 §5.8: historial de cobros, leído en vivo de MercadoPago (sin tabla

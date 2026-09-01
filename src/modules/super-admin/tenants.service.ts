@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, isNull, or, type SQL } from 'drizzle-orm'
 import { getDb, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import {
   auditLogs,
@@ -165,8 +165,28 @@ export type PlanSummary = {
   priceAnnual: number
 }
 
-export async function listActivePlans(): Promise<PlanSummary[]> {
+/**
+ * Planes activos para el panel de SuperAdmin.
+ *
+ * `forTenantId` decide qué significa "activo" acá, porque los dos llamadores
+ * quieren cosas distintas (migr. 083, planes privados):
+ *
+ * - **Sin argumento** → TODOS los planes activos, privados incluidos. Es el caso
+ *   del filtro de la lista de complejos: SuperAdmin ve la plataforma entera y un
+ *   plan privado es un valor de filtro legítimo. No se está ofreciendo nada.
+ * - **Con `forTenantId`** → los públicos más el privado de ESE complejo. Es el
+ *   caso de la ficha, donde la lista sí se usa para ofrecerle un plan: mostrarle
+ *   ahí el plan privado de otro complejo sería el mismo agujero que la migración
+ *   viene a cerrar, sólo que del lado del panel.
+ */
+export async function listActivePlans(forTenantId?: string): Promise<PlanSummary[]> {
   const db = getDb()
+  const visibles = forTenantId
+    ? and(
+        eq(plans.isActive, true),
+        or(isNull(plans.ownerTenantId), eq(plans.ownerTenantId, forTenantId)),
+      )
+    : eq(plans.isActive, true)
   return db
     .select({
       id: plans.id,
@@ -177,7 +197,7 @@ export async function listActivePlans(): Promise<PlanSummary[]> {
       priceAnnual: plans.priceAnnual,
     })
     .from(plans)
-    .where(eq(plans.isActive, true))
+    .where(visibles)
     .orderBy(plans.sortOrder)
 }
 

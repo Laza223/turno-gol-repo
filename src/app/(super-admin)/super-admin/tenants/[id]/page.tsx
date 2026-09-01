@@ -72,7 +72,7 @@ export default async function SuperAdminTenantDetailPage(props: {
   if (!detail) notFound()
 
   const tab = parseTab(searchParams.tab)
-  const plansList = await listActivePlans()
+  const plansList = await listActivePlans(params.id)
 
   const activity =
     tab === 'actividad'

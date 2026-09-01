@@ -1,7 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getBoss } from '@/shared/jobs/boss'
 import { MP_WEBHOOK_SEND_OPTIONS, QUEUE_PROCESS_MP_WEBHOOK } from '@/shared/jobs/queue-names'
-import { webhookPayloadSchema, webhookResponseSchema } from '@/modules/payments/payment.schema'
+import {
+  isMpDeauthorizationEvent,
+  MP_DEAUTHORIZED_EVENT,
+  webhookPayloadSchema,
+  webhookResponseSchema,
+} from '@/modules/payments/payment.schema'
+import { findTenantIdByMpUserId } from '@/modules/tenants/tenant.service'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
 import { verifyWebhookSignature, webhookSecretsStatus } from '@/modules/payments/webhook-auth'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
@@ -59,6 +65,34 @@ function rechazar(motivo: string, status: number, body: unknown): NextResponse {
   return NextResponse.json({ error: motivo }, { status })
 }
 
+/**
+ * Encola el job y ACKea, o devuelve 500 para que MercadoPago reintente.
+ *
+ * No traza: `mp.webhook.received` se emite antes, en el caller, porque también
+ * cubre los avisos que se descartan sin encolar.
+ */
+async function enqueueWebhookJob(job: MpWebhookJob): Promise<NextResponse> {
+  try {
+    await withSpan('mp.webhook.process', 'webhook.mp', async () => {
+      if (MP_MOCK_ENABLED) {
+        await handleMpWebhookJob(job) // process inline → deterministic for E2E
+      } else {
+        const boss = await getBoss()
+        await boss.send(QUEUE_PROCESS_MP_WEBHOOK, job, MP_WEBHOOK_SEND_OPTIONS)
+      }
+    })
+  } catch (err) {
+    // Enqueue/processing failure → MP will retry. Return 5xx so MP doesn't mark delivered.
+    logger.error('webhook processing failed', {
+      module: 'mp-webhook',
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
+  }
+
+  return validatedJson(webhookResponseSchema, { ok: true }, 'POST /api/webhooks/mercadopago')
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url)
 
@@ -102,6 +136,73 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
     }
     return rechazar('invalid signature', 401, body)
+  }
+
+  // Desvinculación: el complejo le revocó a TurnoGol el permiso para cobrar en
+  // su nombre, desde el panel de MercadoPago.
+  //
+  // Va ANTES de la resolución genérica de abajo y IGNORA `?tenant=` a
+  // propósito. Llega por el canal global del panel, así que en la práctica
+  // nunca trae query; pero además esto termina en un UPDATE destructivo sobre
+  // las credenciales de cobro de un complejo, y para eso el criterio del propio
+  // route —"el complejo lo dice MercadoPago, no quien manda el request"— tiene
+  // que valer sin excepción. El único vínculo confiable es el id de usuario de
+  // MercadoPago, que viene firmado dentro del payload.
+  //
+  // Antes de esto el evento moría en `missing tenant` (400) y TurnoGol seguía
+  // creyendo que el token estaba vivo: `mp_connected_at` con fecha, el portal
+  // exigiendo seña, y el primero en enterarse de la desconexión era el jugador
+  // al intentar pagar.
+  if (isMpDeauthorizationEvent(payload)) {
+    // `user_id` primero y `data.id` como respaldo: los dos vienen en el payload
+    // firmado y cuál de ellos trae la cuenta depende de la codificación del
+    // evento (ver `isMpDeauthorizationEvent`). Se prueban contra el UNIQUE
+    // parcial de `mp_user_id`, así que un valor que no sea una cuenta conocida
+    // simplemente no matchea — no hay forma de que el respaldo apunte a otro
+    // complejo.
+    const candidatos = [payload.user_id, payload.data.id]
+      .filter((v) => v !== undefined && v !== null)
+      .map((v) => String(v))
+
+    let deauthTenantId: string | null = null
+    for (const candidato of candidatos) {
+      deauthTenantId = await findTenantIdByMpUserId(candidato)
+      if (deauthTenantId) break
+    }
+
+    if (!deauthTenantId) {
+      // Ninguna fila reclama esa cuenta: ya se desvinculó por otro camino, o
+      // nunca fue de este sistema. 200 como el resto de lo inaccionable —
+      // reintentarlo no lo va a resolver nunca.
+      logger.warn('mp-webhook: desvinculación de una cuenta de MP sin complejo asociado', {
+        module: 'mp-webhook',
+        mpEventId: payload.id,
+      })
+      return validatedJson(
+        webhookResponseSchema,
+        { ok: true, ignored: MP_DEAUTHORIZED_EVENT },
+        'POST /api/webhooks/mercadopago',
+      )
+    }
+
+    track.webhook('mp.webhook.received', {
+      mpEventId: payload.id,
+      tenantId: deauthTenantId,
+      eventType: payload.type,
+      mpPaymentId: payload.data.id,
+    })
+
+    // `eventType` se normaliza al literal canónico y no se propaga el `type`
+    // crudo: el handler ramifica por este campo y `lockMpEvent` lo escribe en
+    // `processed_webhooks`, así que las dos codificaciones posibles del evento
+    // tienen que quedar guardadas bajo el mismo nombre.
+    return enqueueWebhookJob({
+      tenantId: deauthTenantId,
+      mpEventId: payload.id,
+      eventType: MP_DEAUTHORIZED_EVENT,
+      mpPaymentId: payload.data.id,
+      rawPayload: payload,
+    })
   }
 
   // De qué complejo es este evento.
@@ -199,32 +300,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const source =
     url.searchParams.get('source') === 'saas' || resueltoPorMp ? ('saas' as const) : undefined
 
-  const job: MpWebhookJob = {
+  return enqueueWebhookJob({
     tenantId,
     mpEventId: payload.id,
     eventType: payload.type,
     mpPaymentId: payload.data.id,
     rawPayload: payload,
     ...(source ? { source } : {}),
-  }
-
-  try {
-    await withSpan('mp.webhook.process', 'webhook.mp', async () => {
-      if (MP_MOCK_ENABLED) {
-        await handleMpWebhookJob(job) // process inline → deterministic for E2E
-      } else {
-        const boss = await getBoss()
-        await boss.send(QUEUE_PROCESS_MP_WEBHOOK, job, MP_WEBHOOK_SEND_OPTIONS)
-      }
-    })
-  } catch (err) {
-    // Enqueue/processing failure → MP will retry. Return 5xx so MP doesn't mark delivered.
-    logger.error('webhook processing failed', {
-      module: 'mp-webhook',
-      error: err instanceof Error ? err.message : String(err),
-    })
-    return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
-  }
-
-  return validatedJson(webhookResponseSchema, { ok: true }, 'POST /api/webhooks/mercadopago')
+  })
 }

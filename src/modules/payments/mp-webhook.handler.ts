@@ -5,12 +5,18 @@ import { resolveTenantGateway } from './mp-oauth'
 import type { PaymentGateway } from './mp-gateway'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { TenantMpNotConnectedError } from './payment.errors'
+import { MP_DEAUTHORIZED_EVENT } from './payment.schema'
+import { disconnectMercadoPago } from '@/modules/tenants/tenant.service'
+import { insertAuditLog } from '@/shared/db/audit'
 import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import { buildSubscriptionChargeKey } from '@/modules/billing/subscription-reconcile.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
-import { dispatchEmail } from '@/modules/notifications/notification.service'
+import {
+  dispatchEmail,
+  enqueueTenantOwnerNotification,
+} from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
 import { track } from '@/shared/observability'
 
@@ -54,6 +60,9 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   const rows = await db
     .select({
       id: tenants.id,
+      // `name` lo usa el aviso de desvinculación, para que el asunto diga de
+      // qué complejo se desvinculó MercadoPago.
+      name: tenants.name,
       mpAccessToken: tenants.mpAccessToken,
     })
     .from(tenants)
@@ -72,6 +81,73 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     SELECT 1 FROM processed_webhooks WHERE mp_event_id = ${job.mpEventId} LIMIT 1
   `)
   if ((seen as unknown as unknown[]).length > 0) {
+    track.webhook('mp.webhook.processed', {
+      mpEventId: job.mpEventId,
+      tenantId: job.tenantId,
+      eventType: job.eventType,
+      mpPaymentId: job.mpPaymentId,
+    })
+    return
+  }
+
+  // Desvinculación: el complejo le revocó a TurnoGol el permiso para cobrar en
+  // su cuenta, desde el panel de MercadoPago.
+  //
+  // Corta ACÁ, antes de resolver el gateway, y no por optimización: no hay
+  // ningún pago que consultar, y el token con el que se consultaría es
+  // justamente el que este evento viene a invalidar. Pasar por el `else` de
+  // abajo terminaría llamando a MercadoPago con una credencial ya revocada.
+  if (job.eventType === MP_DEAUTHORIZED_EVENT) {
+    const notificationIds = await withTenantContext(job.tenantId, async (tx) => {
+      // Misma idempotencia que el resto: dos entregas del mismo aviso
+      // desvinculan una sola vez y mandan un solo mail. El pre-check de arriba
+      // ya atajó la mayoría; este lock es el que decide bajo carrera.
+      const fresh = await lockMpEvent(
+        {
+          mpEventId: job.mpEventId,
+          eventType: job.eventType,
+          mpPaymentId: job.mpPaymentId,
+          rawPayload: job.rawPayload,
+        },
+        tx,
+      )
+      if (!fresh) return []
+
+      const { mpUserId } = await disconnectMercadoPago(job.tenantId, tx)
+
+      await insertAuditLog(tx, {
+        tenantId: job.tenantId,
+        // El actor es MercadoPago, no una persona: `system` es el único
+        // actorType que representa "esto no lo hizo nadie del complejo".
+        actorId: job.tenantId,
+        actorType: 'system',
+        // Misma acción que la desvinculación desde la UI: para quien audita, lo
+        // que pasó es lo mismo — el complejo dejó de tener MP conectado. El
+        // `origin` distingue por dónde entró.
+        action: 'tenant.mp_disconnected',
+        resourceType: 'tenant',
+        resourceId: job.tenantId,
+        // El mpUserId permite reconstruir a qué cuenta estaba vinculado; el
+        // token nunca se audita.
+        metadata: { mpUserId, origin: 'mp_webhook_deauthorized', mpEventId: job.mpEventId },
+      })
+
+      return enqueueTenantOwnerNotification(
+        {
+          tenantId: job.tenantId,
+          templateName: 'admin_mp_disconnected',
+          content: { tenantName: tenant?.name ?? 'tu complejo' },
+          triggerEvent: 'tenant.mp_deauthorized',
+        },
+        tx,
+        { onlyRole: 'admin' },
+      )
+    })
+
+    // Post-commit, igual que el resto de los avisos del handler: las filas
+    // tienen que existir cuando el worker de mails las lea.
+    await Promise.all(notificationIds.map((id) => dispatchEmail(id)))
+
     track.webhook('mp.webhook.processed', {
       mpEventId: job.mpEventId,
       tenantId: job.tenantId,

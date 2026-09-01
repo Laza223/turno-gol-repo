@@ -348,6 +348,29 @@ export async function connectMercadoPago(
  * El `%` de seña se deja como está: es la preferencia del complejo y sirve tal
  * cual cuando vuelva a conectar.
  */
+/**
+ * De qué complejo es una cuenta de MercadoPago.
+ *
+ * Existe para el webhook de desvinculación (`application.deauthorized`), que
+ * llega por el canal global del panel de MP y por lo tanto SIN `?tenant=` en la
+ * URL: el único dato que trae para identificar al complejo es el id de usuario
+ * de MercadoPago. La migr. 069 puso un UNIQUE parcial sobre `mp_user_id`
+ * (`WHERE mp_user_id IS NOT NULL`) — una cuenta de MP cobra para un solo
+ * complejo — así que este lookup es unívoco y va por índice.
+ *
+ * `getSql()` sin contexto de tenant: `tenants` es global y sin RLS, mismo
+ * criterio con el que `with-tenant.ts` lee `status` antes de tener contexto.
+ * Devuelve `null` si ninguna fila la reclama, que es un resultado legítimo
+ * (una cuenta que ya se desvinculó, o que nunca fue de este sistema) y no un error.
+ */
+export async function findTenantIdByMpUserId(mpUserId: string): Promise<string | null> {
+  const sqlClient = getSql()
+  const rows = await sqlClient<{ id: string }[]>`
+    SELECT id FROM tenants WHERE mp_user_id = ${mpUserId} LIMIT 1
+  `
+  return rows[0]?.id ?? null
+}
+
 export async function disconnectMercadoPago(
   tenantId: string,
   tx: DbTx,

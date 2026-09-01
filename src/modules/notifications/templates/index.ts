@@ -31,6 +31,7 @@ import {
   renderAdminExternalRefundDetected,
   type AdminExternalRefundDetectedData,
 } from './admin-external-refund-detected'
+import { renderAdminMpDisconnected, type AdminMpDisconnectedData } from './admin-mp-disconnected'
 import {
   renderSubscriptionActivated,
   type SubscriptionActivatedData,
@@ -90,6 +91,7 @@ type TemplateDataMap = {
   admin_deposit_after_close: AdminDepositAfterCloseData
   admin_refund_pending_reminder: AdminRefundPendingReminderData
   admin_external_refund_detected: AdminExternalRefundDetectedData
+  admin_mp_disconnected: AdminMpDisconnectedData
   subscription_activated: SubscriptionActivatedData
   subscription_renewed: SubscriptionRenewedData
   subscription_canceled: SubscriptionCanceledData
@@ -119,6 +121,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   admin_deposit_after_close: renderAdminDepositAfterClose,
   admin_refund_pending_reminder: renderAdminRefundPendingReminder,
   admin_external_refund_detected: renderAdminExternalRefundDetected,
+  admin_mp_disconnected: renderAdminMpDisconnected,
   subscription_activated: renderSubscriptionActivated,
   subscription_renewed: renderSubscriptionRenewed,
   subscription_canceled: renderSubscriptionCanceled,

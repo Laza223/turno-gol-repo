@@ -23,6 +23,39 @@ const SUBSCRIPTION_EVENT_TYPES = new Set([
 ])
 
 /**
+ * El complejo revocó, DESDE EL PANEL DE MERCADOPAGO, el permiso que le había
+ * dado a TurnoGol para cobrar en su nombre.
+ *
+ * El string es evidencia observada, no inventado: aparece así en el historial
+ * de webhooks de la aplicación de Suscripciones
+ * (`400 - Fallida · application.deauthorized · 381048203 · 22/08 13:44 UTC`,
+ * leído del panel el 2026-08-28).
+ *
+ * `data.id` NO necesita una excepción en el `superRefine` de abajo: lo que trae
+ * es el id de usuario de MercadoPago, numérico, que `MP_ID_RE` ya acepta. Por
+ * eso el evento del 22/8 murió en "missing tenant" y no en "invalid payload".
+ */
+export const MP_DEAUTHORIZED_EVENT = 'application.deauthorized'
+
+/**
+ * `true` si el aviso es una desvinculación.
+ *
+ * Mira `type` **y** `action` porque MercadoPago no usa un solo criterio para
+ * nombrar sus eventos: en unos el nombre fino va en `action` (`payment.created`
+ * sobre `type: 'payment'`) y en otros el `type` ya es el nombre completo. El
+ * panel muestra una sola columna y no distingue cuál de los dos campos lo
+ * traía, y la documentación de MercadoPago no es alcanzable desde el entorno
+ * donde se escribió esto. Aceptar cualquiera de los dos cubre las dos
+ * codificaciones sin adivinar ninguna: el string exacto es el mismo en ambas.
+ */
+export function isMpDeauthorizationEvent(payload: {
+  type: string
+  action?: string | undefined
+}): boolean {
+  return payload.type === MP_DEAUTHORIZED_EVENT || payload.action === MP_DEAUTHORIZED_EVENT
+}
+
+/**
  * MP IPN/webhook v2 payload. The top-level `id` is the **event id** (idempotency
  * key); `data.id` is the MP payment id (used to fetch payment details).
  *

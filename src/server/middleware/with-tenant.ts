@@ -15,6 +15,7 @@ import {
   BLOCKED_TENANT_STATUSES,
   READ_ONLY_TENANT_STATUSES,
 } from '@/modules/tenants/tenant.lifecycle'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 import { runRequestObservability } from '@/shared/middleware/observability'
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -93,17 +94,43 @@ export function withTenant(
       return forbidden('El complejo no existe.', { code: 'TENANT_NOT_FOUND' })
     }
     const status = rows[0].status
-    if (BLOCKED_TENANT_STATUSES.has(status)) {
-      return forbidden('El complejo está bloqueado.', {
-        code: 'TENANT_BLOCKED',
-        details: { status },
-      })
-    }
-    if (READ_ONLY_TENANT_STATUSES.has(status) && !READ_METHODS.has(req.method)) {
-      return forbidden('El complejo está suspendido (solo lectura).', {
-        code: 'TENANT_SUSPENDED_READ_ONLY',
-        details: { status },
-      })
+    // La impersonación de SuperAdmin bypassea el lock de ciclo de vida, igual
+    // que en `isBlockedForStaff` (guards.ts) y en (admin)/layout.tsx: soporte
+    // tiene que poder entrar a un complejo bloqueado para revisarlo ANTES de
+    // que el dueño reactive el pago.
+    //
+    // Este guard no lo consultaba, y los dos guards nacieron en momentos
+    // distintos: el bypass se agregó al camino de páginas y Server Actions
+    // (hallazgo R2 del ensayo general) y `withTenant` quedó con el chequeo
+    // viejo. El resultado era un reparto al revés — durante una impersonación
+    // se podían crear reservas y mover caja (las Server Actions sí tienen el
+    // bypass) pero no LEER las métricas, porque los 12 route handlers que
+    // pasan por acá respondían 403 mientras la página que los llama cargaba
+    // entera. El gate laxo había quedado en el camino que muta y el estricto
+    // en el que sólo lee.
+    //
+    // Se consulta sólo cuando el estado ya es bloqueante: es una lectura de
+    // cookie más una verificación en base (`getImpersonationSessionFor`
+    // re-chequea la fila y la allowlist en cada lectura), y no tiene por qué
+    // pagarla el 99% de las requests de un complejo sano.
+    const lifecycleLocked =
+      BLOCKED_TENANT_STATUSES.has(status) ||
+      (READ_ONLY_TENANT_STATUSES.has(status) && !READ_METHODS.has(req.method))
+    const impersonating = lifecycleLocked ? await getImpersonationSession() : null
+
+    if (impersonating === null) {
+      if (BLOCKED_TENANT_STATUSES.has(status)) {
+        return forbidden('El complejo está bloqueado.', {
+          code: 'TENANT_BLOCKED',
+          details: { status },
+        })
+      }
+      if (READ_ONLY_TENANT_STATUSES.has(status) && !READ_METHODS.has(req.method)) {
+        return forbidden('El complejo está suspendido (solo lectura).', {
+          code: 'TENANT_SUSPENDED_READ_ONLY',
+          details: { status },
+        })
+      }
     }
     if (options?.rateLimit) {
       const throttled = await guard(options.rateLimit, user.tenantId)

@@ -25,6 +25,21 @@ const ALLOWED_STATUSES: ReadonlyArray<MpPaymentStatus> = [
   'cancelled',
 ]
 
+/**
+ * Una fila del search de pagos de MercadoPago, con sólo los campos que TurnoGol
+ * lee. Estaba escrito inline en `searchPaymentsByReference`; salió acá cuando
+ * ese método pasó a acumular varias páginas.
+ */
+type RawMpSearchResult = {
+  id?: number
+  status?: string
+  transaction_amount?: number
+  external_reference?: string
+  payment_method_id?: string
+  date_created?: string
+  point_of_interaction?: { transaction_data?: { subscription_id?: unknown } }
+}
+
 function mapStatus(raw: string | undefined): MpPaymentStatus {
   if (raw && (ALLOWED_STATUSES as ReadonlyArray<string>).includes(raw)) {
     return raw as MpPaymentStatus
@@ -203,24 +218,49 @@ export class MercadoPagoGateway implements PaymentGateway {
 
   async searchPaymentsByReference(externalReference: string): Promise<GatewayPaymentInfo[]> {
     try {
-      const res = await this.withRefresh(() =>
-        new Payment(this.config).search({
-          options: {
-            criteria: 'desc',
-            sort: 'date_created',
-            external_reference: externalReference,
-          },
-        }),
-      )
-      const results = (res.results ?? []) as Array<{
-        id?: number
-        status?: string
-        transaction_amount?: number
-        external_reference?: string
-        payment_method_id?: string
-        date_created?: string
-        point_of_interaction?: { transaction_data?: { subscription_id?: unknown } }
-      }>
+      /**
+       * Una página del search, o `null` si MP no informó paginación.
+       *
+       * La PRIMERA llamada va sin `limit`/`offset`, exactamente como antes: el
+       * tamaño de página lo decide MercadoPago y lo informa en `paging`. Es
+       * deliberado no elegirlo nosotros — un `limit` inventado puede caer fuera
+       * de lo que el endpoint acepta, y no hay forma de verificarlo sin pegarle
+       * a MP con credenciales reales.
+       */
+      const traerPagina = async (offset: number | null) =>
+        this.withRefresh(() =>
+          new Payment(this.config).search({
+            options: {
+              criteria: 'desc',
+              sort: 'date_created',
+              external_reference: externalReference,
+              ...(offset === null ? {} : { offset }),
+            },
+          }),
+        )
+
+      const primera = await traerPagina(null)
+      const crudos = [...((primera.results ?? []) as RawMpSearchResult[])]
+
+      // Paginar sólo si MP dice que hay más de lo que entró en esta página.
+      // Sin esto, el historial de facturación de un complejo con muchos meses
+      // se veía CORTADO y sin ningún aviso: `listInvoices` (GET
+      // /api/billing/invoices) mapea lo que llega y nunca miró `paging`.
+      const total = primera.paging?.total ?? crudos.length
+      // Tope de seguridad: si MP reportara un `total` inconsistente, esto corta
+      // en vez de girar para siempre contra su API.
+      const MAX_PAGINAS = 20
+      for (let pagina = 1; crudos.length < total && pagina < MAX_PAGINAS; pagina++) {
+        const siguiente = await traerPagina(crudos.length)
+        const nuevos = (siguiente.results ?? []) as RawMpSearchResult[]
+        // Una página vacía con `total` sin alcanzar significa que el conteo de
+        // MP y sus resultados no coinciden. Cortar es lo correcto: seguir
+        // pidiendo el mismo offset no va a traer nada nuevo.
+        if (nuevos.length === 0) break
+        crudos.push(...nuevos)
+      }
+
+      const results = crudos
       return results.map((r) => {
         // `subscription_id` es el MISMO camino que ya usa `getPaymentStatus`
         // (verificado contra un cobro real). Acá se propaga para que

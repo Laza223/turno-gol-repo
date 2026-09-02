@@ -83,11 +83,11 @@ export default function ParaComplejosPage() {
 
 function Hero() {
   return (
-    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-6 pt-[120px] pb-[84px]">
+    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-4 pt-[110px] pb-16 sm:px-6 sm:pt-[130px] sm:pb-[84px]">
       {/* KIT-HEROBG */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 opacity-30"
+        className="pointer-events-none absolute inset-0 z-0 opacity-25 sm:opacity-30"
         style={{
           backgroundImage: "url('/hero-bg.png')",
           backgroundSize: 'cover',
@@ -96,6 +96,11 @@ function Hero() {
           maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
           WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
         }}
+      />
+      {/* Dark gradient overlay for superior text and button contrast */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-[#020617]/85 via-[#020617]/65 to-[#020617]"
       />
       {/* KIT-GLOW-R */}
       <div
@@ -113,15 +118,15 @@ function Hero() {
           background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)',
         }}
       />
-      {/* KIT-PARTICLE x2 */}
+      {/* KIT-PARTICLE x2 — solo en desktop para no colisionar con texto en mobile */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-[8%] top-[24%] z-0 h-[6px] w-[6px] animate-tg-float rounded-full bg-emerald-400 motion-reduce:hidden"
+        className="pointer-events-none absolute left-[8%] top-[24%] z-0 hidden h-[6px] w-[6px] animate-tg-float rounded-full bg-emerald-400 motion-reduce:hidden lg:block"
         style={{ boxShadow: '0 0 16px 4px rgba(52,211,153,.6)' }}
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute bottom-[18%] right-[40%] z-0 h-[5px] w-[5px] rounded-full bg-emerald-300 motion-reduce:hidden"
+        className="pointer-events-none absolute bottom-[18%] right-[40%] z-0 hidden h-[5px] w-[5px] rounded-full bg-emerald-300 motion-reduce:hidden lg:block"
         style={{
           boxShadow: '0 0 14px 3px rgba(110,231,183,.55)',
           animation: 'tg-float 10s ease-in-out infinite 0.8s',
@@ -133,8 +138,8 @@ function Hero() {
           <h1
             className="mt-[22px] font-display font-black italic text-[#f8fafc]"
             style={{
-              fontSize: 'clamp(44px, 5.2vw, 74px)',
-              lineHeight: '0.95',
+              fontSize: 'clamp(38px, 5.2vw, 74px)',
+              lineHeight: '0.96',
               letterSpacing: '-0.035em',
               textShadow: '0 12px 60px rgba(0,0,0,.5)',
             }}
@@ -157,20 +162,20 @@ function Hero() {
           </h1>
 
           <p
-            className="mt-6 max-w-[540px] text-slate-400"
-            style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}
+            className="mt-6 max-w-[540px] text-slate-300"
+            style={{ fontSize: 'clamp(15px, 1.5vw, 20px)', lineHeight: '1.6' }}
           >
             El que reserva deja una seña por MercadoPago: si te clavan, la seña queda para vos.
             Reservas online por link, grilla en tiempo real y la caja del día en un solo lugar.{' '}
-            <span className="font-semibold text-slate-200">
+            <span className="font-semibold text-white">
               Hecho específicamente para complejos de fútbol en Argentina.
             </span>
           </p>
 
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="mt-8 sm:mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-500/5 px-5 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] sm:px-7 sm:text-sm whitespace-nowrap"
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-500 px-6 text-sm font-bold text-slate-950 shadow-[0_0_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_0_32px_rgba(16,185,129,0.5)] active:scale-[0.98] sm:px-8"
             >
               Empezar gratis
               <ArrowRight
@@ -180,17 +185,17 @@ function Hero() {
             </Link>
             <Link
               href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-7 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-slate-900/80 backdrop-blur-md px-7 text-sm font-semibold text-white transition-all hover:bg-white/10 hover:border-white/25 active:scale-[0.98]"
             >
               Ingresar
             </Link>
           </div>
 
-          <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-slate-400">
+          <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-slate-300">
             {['Sin tarjeta de crédito', 'Configurado en 20 minutos', 'Soporte dedicado'].map(
               (t) => (
                 <li key={t} className="flex items-center gap-2 font-medium">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden />
                   {t}
                 </li>
               ),

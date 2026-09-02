@@ -31,14 +31,12 @@ export default function BusinessHeader() {
     // pt combina el respiro visual con el safe-area del notch: era el único
     // header fixed sin compensarlo (los dos de admin sí lo hacen), y se nota
     // sobre todo con la app instalada, donde no hay barra de navegador arriba.
-    <header className="fixed top-0 z-50 w-full px-6 pt-[calc(18px+env(safe-area-inset-top))]">
+    <header className="fixed top-0 z-50 w-full px-3 pt-[calc(12px+env(safe-area-inset-top))] sm:px-6 sm:pt-[calc(18px+env(safe-area-inset-top))]">
       <div className="mx-auto max-w-[1240px]">
         <div
-          className="flex items-center justify-between gap-6"
+          className="flex items-center justify-between gap-3 sm:gap-6 rounded-full px-3.5 py-2 sm:px-6 sm:py-3"
           style={{
-            padding: '12px 14px 12px 24px',
-            borderRadius: '9999px',
-            background: 'rgba(8,15,32,.62)',
+            background: 'rgba(8,15,32,.75)',
             backdropFilter: 'blur(18px) saturate(1.2)',
             WebkitBackdropFilter: 'blur(18px) saturate(1.2)',
             border: '1px solid rgba(255,255,255,.09)',
@@ -52,7 +50,7 @@ export default function BusinessHeader() {
           >
             <Logo variant="horizontal" textClassName="text-white" />
           </Link>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Rutas absolutas: el header se comparte con /precios, donde los anchors sueltos no existen. */}
             <Link
               href="/para-complejos#features"
@@ -79,18 +77,26 @@ export default function BusinessHeader() {
             >
               Ingresar
             </Link>
-            {/* modal={false}: menú de navegación liviano, no un diálogo — con
-                el default (modal=true) Radix aria-hidea el resto del header
-                (incluido "Empezar gratis") mientras está abierto. Mismo
-                criterio que HeroSearch/QuickActions. */}
+
+            <Link
+              href="/register"
+              className="inline-flex h-9 items-center rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3.5 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/20 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 sm:h-11 sm:px-6 sm:text-sm whitespace-nowrap"
+            >
+              Empezar gratis
+            </Link>
+
+            {/* Menú hamburguesa en mobile alineado al extremo derecho */}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 aria-label="Abrir menú"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 sm:hidden"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 sm:hidden"
               >
                 <Menu className="h-5 w-5" aria-hidden />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44">
+              <DropdownMenuContent
+                align="end"
+                className="min-w-44 border-white/10 bg-slate-950/95 text-slate-200 backdrop-blur-xl"
+              >
                 <DropdownMenuItem asChild className={MOBILE_LINK_CLS}>
                   <Link href="/para-complejos#features">Funciones</Link>
                 </DropdownMenuItem>
@@ -105,12 +111,6 @@ export default function BusinessHeader() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link
-              href="/register"
-              className="inline-flex h-10 items-center rounded-full border border-emerald-400/60 bg-emerald-500/5 px-3.5 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 sm:h-11 sm:px-6 sm:text-sm whitespace-nowrap"
-            >
-              Empezar gratis
-            </Link>
           </div>
         </div>
       </div>

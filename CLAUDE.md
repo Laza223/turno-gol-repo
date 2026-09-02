@@ -161,6 +161,10 @@ Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no 
 - `SET LOCAL` para tenant context — **nunca `SET` sin LOCAL**.
 - En auditoría: citar archivo + línea, con evidencia (qué dice el código vs qué debería decir) y severidad 🔴/🟡/🟢. Registrar en `docs/audit/PROGRESS.md`.
 
+**FEATURE FREEZE hasta 2026-11-01** (decisión del dueño, [`docs/decisions/2026-09-02-experimento-30-dias.md`](docs/decisions/2026-09-02-experimento-30-dias.md) D4)
+- **Permitido**: bugs · seguridad · circuitos de plata · blockers observados en usuarios/clientes reales · fricción de adopción observada · instrumentación necesaria para medir · mejoras pequeñas justificadas directamente por uso real. Antes de programar cualquiera de estas, la observación se registra en `docs/gtm/ejecucion/10-aprendizajes.md`.
+- **No permitido**: features especulativas · features copiadas de competidores sin evidencia · North Star · rankings · Cam · Falta Uno · profesores · marketplace · nuevas expansiones de producto. Tampoco cambiar default anual, seña default, lifecycle, referidos, pricing en código ni la web comercial hasta tener evidencia del caso cero. Si un pedido cae acá, señalarlo y devolver "REQUIERE INPUT" en vez de implementar.
+
 **PREGUNTAR ANTES**
 - Decisiones de negocio: **NO aplicarlas** — reportarlas como "REQUIERE INPUT" con pregunta numerada al dueño.
 - Eliminar código o cambiar estructura.

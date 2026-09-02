@@ -80,7 +80,7 @@ export default function BusinessHeader() {
 
             <Link
               href="/register"
-              className="inline-flex h-9 items-center rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3.5 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/20 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 sm:h-11 sm:px-6 sm:text-sm whitespace-nowrap"
+              className="inline-flex h-9 items-center rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3.5 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-[background-color,border-color,box-shadow,transform] duration-300 hover:bg-emerald-500/20 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 sm:h-11 sm:px-6 sm:text-sm whitespace-nowrap"
             >
               Empezar gratis
             </Link>

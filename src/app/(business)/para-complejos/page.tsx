@@ -175,7 +175,7 @@ function Hero() {
           <div className="mt-8 sm:mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-500 px-6 text-sm font-bold text-slate-950 shadow-[0_0_24px_rgba(16,185,129,0.35)] transition-all duration-200 hover:bg-emerald-400 hover:shadow-[0_0_32px_rgba(16,185,129,0.5)] active:scale-[0.98] sm:px-8"
+              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-500 px-6 text-sm font-bold text-slate-950 shadow-[0_0_24px_rgba(16,185,129,0.35)] transition-[background-color,box-shadow,transform] duration-200 hover:bg-emerald-400 hover:shadow-[0_0_32px_rgba(16,185,129,0.5)] active:scale-[0.98] sm:px-8"
             >
               Empezar gratis
               <ArrowRight
@@ -185,7 +185,7 @@ function Hero() {
             </Link>
             <Link
               href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-slate-900/80 backdrop-blur-md px-7 text-sm font-semibold text-white transition-all hover:bg-white/10 hover:border-white/25 active:scale-[0.98]"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-slate-900/80 backdrop-blur-md px-7 text-sm font-semibold text-white transition-[background-color,border-color,transform] hover:bg-white/10 hover:border-white/25 active:scale-[0.98]"
             >
               Ingresar
             </Link>

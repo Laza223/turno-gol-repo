@@ -4,7 +4,8 @@ import type { NextRequest, NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { PlayerUser } from '@/modules/auth/types'
 import { withPlayerContext, type DbTx } from '@/shared/db/client'
-import { forbidden, unauthorized } from '@/shared/api-error'
+import { captureException } from '@/lib/sentry'
+import { forbidden, internal, unauthorized } from '@/shared/api-error'
 import { runRequestObservability } from '@/shared/middleware/observability'
 
 export type PlayerHandler = (
@@ -22,7 +23,12 @@ export function withPlayer(handler: PlayerHandler): (req: NextRequest) => Promis
     if (user.type !== 'player') {
       return forbidden('Se requiere una cuenta de jugador.', { code: 'PLAYER_REQUIRED' })
     }
-    return withPlayerContext(user.playerId, async (tx) => handler(req, user, tx))
+    try {
+      return await withPlayerContext(user.playerId, async (tx) => handler(req, user, tx))
+    } catch (err) {
+      captureException(err)
+      return internal('Ocurrió un error inesperado. Probá de nuevo en unos segundos.')
+    }
   }
   return (req) => runRequestObservability(req, () => run(req))
 }

@@ -10,6 +10,7 @@ import type {
   PricingRule,
   CourtPricingData,
 } from './court.types'
+import { CourtPhotoLimitError, CourtPhotoOrderMismatchError } from './court.errors'
 
 function timeToMins(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
@@ -237,7 +238,7 @@ export async function appendCourtPhoto(
   const current = await getCourtPhotos(courtId, tenantId, tx)
   if (current === null) return null
   if (current.length >= MAX_COURT_PHOTOS) {
-    throw new Error(`No se pueden cargar más de ${MAX_COURT_PHOTOS} fotos por cancha`)
+    throw new CourtPhotoLimitError(MAX_COURT_PHOTOS)
   }
   const next = [...current, url]
   const rows = await tx
@@ -278,7 +279,7 @@ export async function reorderCourtPhotos(
   const sameSet =
     current.length === urls.length && [...current].sort().join('|') === [...urls].sort().join('|')
   if (!sameSet) {
-    throw new Error('El nuevo orden no coincide con las fotos existentes')
+    throw new CourtPhotoOrderMismatchError()
   }
   const rows = await tx
     .update(courts)

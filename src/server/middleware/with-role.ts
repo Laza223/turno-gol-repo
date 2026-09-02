@@ -33,6 +33,13 @@ export function withRole(required: Role, handler: RoleInnerHandler): RoleInnerHa
         details: { required },
       })
     }
+    // Sin try/catch acá a propósito: este layer corre DENTRO de la transacción
+    // que abre withTenantContext (withRole/withAnyRole siempre se componen
+    // adentro de withTenant). Atajar la excepción acá la convierte en un valor
+    // resuelto normal para `db.transaction`, que hace COMMIT en vez de
+    // ROLLBACK aunque el handler haya fallado a mitad de una escritura
+    // multi-paso — el catch+captureException+internal() vive en with-tenant.ts,
+    // que envuelve la llamada a withTenantContext DESDE AFUERA de la tx.
     return handler(req, user, tx)
   }
 }
@@ -55,6 +62,7 @@ export function withAnyRole(allowed: readonly Role[], handler: RoleInnerHandler)
         details: { required: allowed },
       })
     }
+    // Ídem withRole: sin try/catch, corre dentro de la tx de withTenantContext.
     return handler(req, user, tx)
   }
 }

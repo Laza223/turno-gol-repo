@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { dateStr, slug } from '@/shared/validation/primitives'
 import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/public.service'
 import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { captureException } from '@/lib/sentry'
+import { internal } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,20 +34,27 @@ export async function GET(req: NextRequest) {
   const artNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
   const todayStr = artNow.toISOString().slice(0, 10)
 
-  const tenant = await getPublicTenant(tenantSlug)
-  if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
-    // Mismo gate que la API de disponibilidad diaria (security scan F15): un
-    // complejo suspendido/bloqueado/dado de baja no debe seguir exponiendo
-    // una semana entera de horarios/precios vía esta API.
-    return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  }
+  let tenant
+  let week
+  try {
+    tenant = await getPublicTenant(tenantSlug)
+    if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
+      // Mismo gate que la API de disponibilidad diaria (security scan F15): un
+      // complejo suspendido/bloqueado/dado de baja no debe seguir exponiendo
+      // una semana entera de horarios/precios vía esta API.
+      return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    }
 
-  const maxStart = addDays(todayStr, tenant.bookingAdvanceDays)
-  if (start < todayStr || start > maxStart) {
-    return NextResponse.json({ error: 'date_out_of_range' }, { status: 400 })
-  }
+    const maxStart = addDays(todayStr, tenant.bookingAdvanceDays)
+    if (start < todayStr || start > maxStart) {
+      return NextResponse.json({ error: 'date_out_of_range' }, { status: 400 })
+    }
 
-  const week = await getPublicWeeklyAvailability(tenant, start)
+    week = await getPublicWeeklyAvailability(tenant, start)
+  } catch (err) {
+    captureException(err)
+    return internal('No se pudo procesar la solicitud.')
+  }
   return NextResponse.json(week, {
     headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' },
   })

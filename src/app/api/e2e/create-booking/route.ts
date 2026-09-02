@@ -5,6 +5,7 @@ import { SlotTakenError } from '@/modules/bookings/booking.errors'
 import { withTenantContext } from '@/shared/db/client'
 import { secretMatches } from '@/shared/security/secret-compare'
 import { notFound, badRequest, validationError, conflict, internal } from '@/shared/api-error'
+import { captureException } from '@/lib/sentry'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (e instanceof SlotTakenError || /SlotTaken|exclusion|23P01/i.test(msg)) {
       return conflict('El turno ya fue tomado.', { code: 'SLOT_TAKEN' })
     }
-    return internal(msg)
+    captureException(e)
+    return internal('No se pudo crear la reserva de prueba.', { code: 'E2E_BOOKING_FAILED' })
   }
 }

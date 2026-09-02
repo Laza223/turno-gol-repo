@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { passwordSchema } from '@/modules/auth/password'
+import { captureException } from '@/lib/sentry'
 
 // `success` NO navega desde acá — mismo motivo que login/actions.ts: un
 // redirect() server-side depende de que el navegador aplique el Set-Cookie
@@ -54,6 +55,7 @@ export async function resetPasswordAction(
     if (error.code === 'same_password') {
       return { status: 'error', message: 'Esa ya es tu contraseña actual. Elegí una diferente.' }
     }
+    captureException(error)
     return { status: 'error', message: 'No pudimos actualizar la contraseña. Probá de nuevo.' }
   }
 

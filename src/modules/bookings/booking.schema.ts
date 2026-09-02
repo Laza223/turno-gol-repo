@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { boundedText } from '@/shared/validation/primitives'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -21,14 +22,14 @@ export const createManualBookingSchema = z
     type: z.enum(['spontaneous', 'block']),
     staffUserId: uuid,
     playerId: uuid.optional(),
-    guestName: z.string().min(1).max(200).optional(),
-    guestPhone: z.string().min(1).max(50).optional(),
+    guestName: boundedText(200).min(1, 'El nombre del invitado no puede estar vacío.').optional(),
+    guestPhone: boundedText(50).min(1, 'El teléfono del invitado no puede estar vacío.').optional(),
     priceOverride: z.number().int().nonnegative().optional(),
     depositAmount: z.number().int().nonnegative().optional(),
     depositMethod: z.enum(['cash', 'transfer', 'mercadopago', 'other']).optional(),
     depositStatus: z.enum(['not_required', 'pending', 'paid', 'refunded', 'captured']).optional(),
-    notesInternal: z.string().max(1000).optional(),
-    notesPlayer: z.string().max(1000).optional(),
+    notesInternal: boundedText(1000).optional(),
+    notesPlayer: boundedText(1000).optional(),
   })
   .refine(
     (v) => {

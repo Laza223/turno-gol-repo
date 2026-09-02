@@ -18,6 +18,7 @@ import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { TenantMetrics } from '@/modules/metrics/metrics.service'
 import type { SystemStatus } from '@/app/api/admin/system-status/route'
 import { useChartTheme } from '@/components/admin/useChartTheme'
+import { rejectionMessage } from '@/shared/lib/rejection-message'
 import {
   dayLabel,
   formatARS,
@@ -30,31 +31,6 @@ import {
 const REFRESH_INTERVAL_MS = 60_000
 
 const GENERIC_LOAD_ERROR = 'No pudimos cargar las métricas. Probá de nuevo en unos segundos.'
-
-/**
- * El motivo real del rechazo, cuando el servidor se molestó en darlo.
- *
- * `withTenant` responde los cortes de ciclo de vida con un cuerpo propio
- * (`{ error: { code, message } }`, ej. `TENANT_BLOCKED` /
- * `TENANT_SUSPENDED_READ_ONLY`), pero acá se descartaba y todo 4xx caía en el
- * mensaje genérico de "probá de nuevo". Contra un complejo bloqueado eso es
- * mentira útil para nadie: reintentar no lo va a desbloquear, y el que mira la
- * pantalla —típicamente soporte impersonando, porque la impersonación bypassea
- * el lock en las páginas pero NO en los route handlers— se queda sin saber por
- * qué falla solo este panel mientras el resto de la página carga.
- *
- * Mismo criterio que ya usaban `ActivatePlanSection` y `ChangePlanSection`:
- * mostrar el `message` del servidor y guardar el genérico para cuando no hay
- * cuerpo que leer (corte de red, HTML de un proxy, JSON roto).
- */
-async function rejectionMessage(res: Response): Promise<string> {
-  try {
-    const body = (await res.json()) as { error?: { message?: string } }
-    return body.error?.message ?? GENERIC_LOAD_ERROR
-  } catch {
-    return GENERIC_LOAD_ERROR
-  }
-}
 
 const GRANULARITY_LABELS: Record<RevenueGranularity, string> = {
   day: 'Día',
@@ -340,7 +316,7 @@ export default function MetricsDashboard({
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/metrics', { cache: 'no-store' })
-      if (!res.ok) throw new Error(await rejectionMessage(res))
+      if (!res.ok) throw new Error(await rejectionMessage(res, GENERIC_LOAD_ERROR))
       const json = (await res.json()) as { data: TenantMetrics }
       setMetrics(json.data)
       setError(null)

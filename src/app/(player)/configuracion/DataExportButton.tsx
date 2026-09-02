@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { rejectionMessage } from '@/shared/lib/rejection-message'
+
+const EXPORT_ERROR_FALLBACK = 'No se pudo generar la exportación. Intentá de nuevo en unos minutos.'
 
 export function DataExportButton() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -15,7 +18,7 @@ export function DataExportButton() {
 
       if (!res.ok) {
         setStatus('error')
-        setError('No se pudo generar la exportación. Intentá de nuevo en unos minutos.')
+        setError(await rejectionMessage(res, EXPORT_ERROR_FALLBACK))
         return
       }
 
@@ -27,7 +30,7 @@ export function DataExportButton() {
       // "undefined". Validar la forma antes de descargar.
       if (bundle === undefined || bundle === null) {
         setStatus('error')
-        setError('No se pudo generar la exportación. Intentá de nuevo en unos minutos.')
+        setError(EXPORT_ERROR_FALLBACK)
         return
       }
 
@@ -48,7 +51,7 @@ export function DataExportButton() {
       setStatus('idle')
     } catch {
       setStatus('error')
-      setError('No se pudo generar la exportación. Intentá de nuevo en unos minutos.')
+      setError(EXPORT_ERROR_FALLBACK)
     }
   }
 

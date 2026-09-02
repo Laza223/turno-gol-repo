@@ -6,7 +6,8 @@ import type { NextRequest, NextResponse } from 'next/server'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { StaffUser } from '@/modules/auth/types'
 import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'
-import { forbidden, unauthorized } from '@/shared/api-error'
+import { captureException } from '@/lib/sentry'
+import { forbidden, internal, unauthorized } from '@/shared/api-error'
 import { guard } from '@/shared/rate-limit/route-guard'
 import type { PolicyName } from '@/shared/rate-limit/policies'
 import { getStaffRole } from '@/modules/staff/staff.service'
@@ -109,7 +110,12 @@ export function withTenant(
       const throttled = await guard(options.rateLimit, user.tenantId)
       if (throttled) return throttled
     }
-    return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
+    try {
+      return await withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
+    } catch (err) {
+      captureException(err)
+      return internal('Ocurrió un error inesperado. Probá de nuevo en unos segundos.')
+    }
   }
   return (req) => runRequestObservability(req, () => run(req))
 }
@@ -160,7 +166,12 @@ export function withBillingTenant(
         details: { status },
       })
     }
-    return withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
+    try {
+      return await withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
+    } catch (err) {
+      captureException(err)
+      return internal('Ocurrió un error inesperado. Probá de nuevo en unos segundos.')
+    }
   }
   return (req) => runRequestObservability(req, () => run(req))
 }

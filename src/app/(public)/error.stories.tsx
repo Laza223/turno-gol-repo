@@ -22,7 +22,9 @@ export const Default: Story = {
   args: { error: errorWithDigest() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'Algo salió mal' })).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('heading', { name: 'No pudimos cargar esta página' }),
+    ).toBeInTheDocument()
     await expect(canvas.queryByText(/código de referencia/i)).not.toBeInTheDocument()
     await userEvent.click(canvas.getByRole('button', { name: 'Reintentar' }))
     await expect(args.reset).toHaveBeenCalledTimes(1)

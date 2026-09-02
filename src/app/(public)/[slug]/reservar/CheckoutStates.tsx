@@ -15,7 +15,8 @@ const alertDestructive =
 const alertWarning =
   'rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-warning/30 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30'
 
-export type CheckoutErrorCode = 'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable'
+export type CheckoutErrorCode =
+  'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable' | 'date_out_of_range'
 
 // MEJORA-UX QA: los 4 banners inline eran solo texto, sin salida — a
 // diferencia de `CheckoutInvalidState`, que siempre ofrece "Elegir otro
@@ -109,6 +110,17 @@ export function CheckoutErrorBanner({
         <p>
           No pudimos procesar la reserva: la cancha no está disponible o no tiene precio configurado
           para ese horario.
+        </p>
+        <ElegirOtroTurnoLink slug={slug} />
+      </div>
+    )
+  }
+  if (error === 'date_out_of_range') {
+    return (
+      <div role="alert" className={alertDestructive}>
+        <p>
+          Ese turno ya no se puede reservar: quedó fuera de la fecha disponible para reservar
+          online. Elegí otro turno.
         </p>
         <ElegirOtroTurnoLink slug={slug} />
       </div>

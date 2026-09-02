@@ -17,8 +17,10 @@ import {
   removeCourtPhoto,
   reorderCourtPhotos,
 } from '@/modules/courts/court.service'
+import { CourtPhotoLimitError, CourtPhotoOrderMismatchError } from '@/modules/courts/court.errors'
 import { createCourtSchema, updateCourtSchema } from '@/modules/courts/court.schema'
 import { bookings, abonados } from '@/shared/db/schema'
+import { captureException } from '@/lib/sentry'
 
 export type CourtActionResult =
   { success: true; courtId?: string } | { success: false; error: string }
@@ -262,8 +264,9 @@ export async function uploadCourtPhotoAction(
 
   try {
     await putImage(key, bytes, 'image/webp')
-  } catch {
-    return { success: false, error: 'No se pudo subir la imagen' }
+  } catch (err) {
+    captureException(err)
+    return { success: false, error: 'No pudimos subir la imagen. Probá de nuevo en un momento.' }
   }
 
   const url = publicUrl(key)
@@ -278,7 +281,11 @@ export async function uploadCourtPhotoAction(
     revalidatePublicListings()
     return { success: true, photos }
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'No se pudo guardar la foto' }
+    if (e instanceof CourtPhotoLimitError) {
+      return { success: false, error: e.message }
+    }
+    captureException(e)
+    return { success: false, error: 'No pudimos guardar la foto. Probá de nuevo en un momento.' }
   }
 }
 
@@ -346,6 +353,13 @@ export async function reorderCourtPhotosAction(
     revalidatePublicListings()
     return { success: true, photos }
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'No se pudo reordenar' }
+    if (e instanceof CourtPhotoOrderMismatchError) {
+      return { success: false, error: e.message }
+    }
+    captureException(e)
+    return {
+      success: false,
+      error: 'No pudimos reordenar las fotos. Probá de nuevo en un momento.',
+    }
   }
 }

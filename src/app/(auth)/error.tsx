@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Home } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import * as Sentry from '@sentry/nextjs'
 import { ErrorState } from '@/components/ui/error-state'
 
-/** Public-facing error boundary (complex pages, search, booking flow). */
-export default function PublicError({
+/** Error boundary del grupo (auth): login, register, forgot/reset-password, verify. */
+export default function AuthError({
   error,
   reset,
 }: {
@@ -19,14 +19,14 @@ export default function PublicError({
 
   return (
     <ErrorState
-      variant="full"
+      variant="contained"
       title="No pudimos cargar esta página"
-      description="Se nos escapó un error de nuestro lado, ya lo tenemos en la mira. Probá de nuevo o explorá otros complejos mientras tanto."
+      description="Tuvimos un problema. El equipo ya fue notificado. Probá recargar."
       digest={error.digest}
       onRetry={reset}
-      secondaryHref="/explorar"
-      secondaryLabel="Explorar complejos"
-      secondaryIcon={Home}
+      secondaryHref="/login"
+      secondaryLabel="Ir a iniciar sesión"
+      secondaryIcon={LogIn}
     />
   )
 }

@@ -37,7 +37,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) {
-    return NextResponse.json({ error: 'mp_config_missing' }, { status: 500 })
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
   }
   const redirectUri = `${appUrl}/api/mp/callback`
 

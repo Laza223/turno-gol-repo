@@ -114,7 +114,9 @@ export async function forceTenantStatusAction(input: unknown): Promise<SupportAc
   if (!auth.ok) return { success: false, error: auth.error }
 
   const parsed = forceStatusInputSchema.safeParse(input)
-  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
   const { tenantId, targetStatus, confirmName } = parsed.data
 
   const summary = await getTenantSummary(tenantId)
@@ -165,7 +167,10 @@ export async function extendTrialAction(input: unknown): Promise<SupportActionRe
 
   const parsed = extendTrialInputSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: 'Datos inválidos: días entre 1 y 90.' }
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Datos inválidos: días entre 1 y 90.',
+    }
   }
 
   try {
@@ -211,7 +216,10 @@ export async function cancelSubscriptionAction(input: unknown): Promise<SupportA
 
   const parsed = cancelSubscriptionInputSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: 'Datos inválidos: motivo de 3 a 500 caracteres.' }
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Datos inválidos: motivo de 3 a 500 caracteres.',
+    }
   }
   const { tenantId, reason, confirmName } = parsed.data
 
@@ -246,7 +254,12 @@ export async function updateTenantSettingsAction(input: unknown): Promise<Suppor
 
   const parsed = updateSettingsInputSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: 'Datos inválidos: solo campos whitelisteados de settings.' }
+    return {
+      success: false,
+      error:
+        parsed.error.issues[0]?.message ??
+        'Datos inválidos: solo campos whitelisteados de settings.',
+    }
   }
 
   try {
@@ -305,7 +318,9 @@ export async function resetStaffPasswordAction(input: unknown): Promise<SupportA
   if (!auth.ok) return { success: false, error: auth.error }
 
   const parsed = resetStaffPasswordInputSchema.safeParse(input)
-  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
   const { tenantId, email } = parsed.data
 
   const summary = await getTenantSummary(tenantId)

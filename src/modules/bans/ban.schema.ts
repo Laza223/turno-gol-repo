@@ -12,7 +12,7 @@ export type ManualBanDuration = (typeof BAN_DURATIONS)[number]
 
 export const banPlayerInputSchema = z.object({
   playerId: uuid,
-  reason: z.string().trim().min(1, 'El motivo es obligatorio.').max(500),
+  reason: z.string().trim().min(1, 'El motivo es obligatorio.').max(500, 'Máximo 500 caracteres'),
   duration: z.enum(BAN_DURATIONS),
 })
 

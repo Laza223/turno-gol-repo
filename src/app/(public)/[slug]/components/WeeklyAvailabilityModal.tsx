@@ -7,6 +7,9 @@ import type { PublicTenant, WeeklyAvailabilityResponse } from '@/modules/tenants
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { capitalizeFirst, formatArs } from '@/lib/format'
+import { rejectionMessage } from '@/shared/lib/rejection-message'
+
+const WEEK_LOAD_ERROR = 'Ocurrió un error al cargar la disponibilidad de la semana.'
 
 const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
 const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', {
@@ -51,7 +54,7 @@ export default function WeeklyAvailabilityModal({
   const [weekStart, setWeekStart] = useState<string | null>(selectedDate ?? today)
   const [weekData, setWeekData] = useState<WeeklyAvailabilityResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [activeDateIndex, setActiveDateIndex] = useState(0)
 
   // Al abrir (o al cambiar el día elegido con el modal abierto) la semana
@@ -74,27 +77,29 @@ export default function WeeklyAvailabilityModal({
     // efecto no depende de `loading`, así que no se re-dispara a sí mismo.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    setError(false)
+    setError(null)
 
-    fetch(
-      `/api/public/availability/week?slug=${encodeURIComponent(tenant.slug)}&start=${weekStart}`,
-    )
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Fetch failed')
-        return (await res.json()) as WeeklyAvailabilityResponse
-      })
-      .then((data) => {
+    async function loadWeek() {
+      try {
+        const res = await fetch(
+          `/api/public/availability/week?slug=${encodeURIComponent(tenant.slug)}&start=${weekStart}`,
+        )
+        if (!res.ok) {
+          if (active) setError(await rejectionMessage(res, WEEK_LOAD_ERROR))
+          return
+        }
+        const data = (await res.json()) as WeeklyAvailabilityResponse
         if (!active) return
         setWeekData(data)
         const idx = data.days.findIndex((d) => d.date === selectedDate)
         setActiveDateIndex(idx >= 0 ? idx : 0)
-      })
-      .catch(() => {
-        if (active) setError(true)
-      })
-      .finally(() => {
+      } catch {
+        if (active) setError(WEEK_LOAD_ERROR)
+      } finally {
         if (active) setLoading(false)
-      })
+      }
+    }
+    void loadWeek()
 
     return () => {
       active = false
@@ -177,9 +182,7 @@ export default function WeeklyAvailabilityModal({
             <Skeleton className="h-40 w-full rounded-xl" />
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-sm text-red-700 dark:text-red-300">
-            Ocurrió un error al cargar la disponibilidad de la semana.
-          </div>
+          <div className="py-8 text-center text-sm text-red-700 dark:text-red-300">{error}</div>
         ) : weekData ? (
           <div className="space-y-4 pt-2">
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x">

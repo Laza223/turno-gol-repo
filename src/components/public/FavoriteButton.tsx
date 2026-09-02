@@ -5,6 +5,9 @@ import { Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { usePortalSession } from '@/components/site/PortalSessionProvider'
+import { rejectionMessage } from '@/shared/lib/rejection-message'
+
+const FAVORITE_TOGGLE_ERROR = 'No pudimos actualizar tus favoritos.'
 
 type Props = {
   tenantId: string
@@ -53,12 +56,16 @@ export default function FavoriteButton({
         window.location.href = `/ingresar?next=${back}`
         return
       }
-      if (!res.ok) throw new Error('toggle failed')
+      if (!res.ok) {
+        setOverride(prev)
+        toast({ title: await rejectionMessage(res, FAVORITE_TOGGLE_ERROR), variant: 'destructive' })
+        return
+      }
       const json = (await res.json()) as { data?: { favorited?: boolean } }
       setOverride(json.data?.favorited ?? next)
     } catch {
       setOverride(prev)
-      toast({ title: 'No pudimos actualizar tus favoritos.', variant: 'destructive' })
+      toast({ title: FAVORITE_TOGGLE_ERROR, variant: 'destructive' })
     } finally {
       setPending(false)
     }

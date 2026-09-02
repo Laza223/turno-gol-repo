@@ -21,9 +21,9 @@ import {
 export const createAbonadoSchema = z.object({
   courtId: uuid,
   playerId: uuid.optional(),
-  contactName: boundedText(120).min(1),
-  contactPhone: boundedText(40).min(1),
-  dayOfWeek: z.number().int().min(0).max(6),
+  contactName: boundedText(120).min(1, 'Ingresá el nombre de contacto'),
+  contactPhone: boundedText(40).min(1, 'Ingresá un teléfono de contacto'),
+  dayOfWeek: z.number().int().min(0, 'Elegí un día válido').max(6, 'Elegí un día válido'),
   timeStart: hhmm,
   timeEnd: hhmmEnd,
   pricePerSession: moneyCents,

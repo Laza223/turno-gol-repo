@@ -15,8 +15,13 @@ export const createReviewSchema = z.object({
 })
 
 export const listReviewsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).optional(),
-  offset: z.coerce.number().int().min(0).optional(),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1, 'El límite debe ser al menos 1')
+    .max(50, 'El límite no puede superar 50')
+    .optional(),
+  offset: z.coerce.number().int().min(0, 'El offset no puede ser negativo').optional(),
 })
 
 // ─── Output (contract, doc15) ───────────────────────────────────

@@ -2,6 +2,8 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { listReviewsQuerySchema } from '@/modules/reviews/review.schema'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
+import { captureException } from '@/lib/sentry'
+import { internal } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,10 +26,16 @@ export async function GET(req: NextRequest, props: { params: Promise<{ tenantId:
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 })
   }
 
-  const [page, summary] = await Promise.all([
-    getReviewsByTenant(tenantId, parsed.data.limit, parsed.data.offset),
-    getAverageRating(tenantId),
-  ])
+  let page, summary
+  try {
+    ;[page, summary] = await Promise.all([
+      getReviewsByTenant(tenantId, parsed.data.limit, parsed.data.offset),
+      getAverageRating(tenantId),
+    ])
+  } catch (err) {
+    captureException(err)
+    return internal('No se pudo procesar la solicitud.')
+  }
 
   return NextResponse.json(
     { reviews: page.reviews, total: page.total, summary },

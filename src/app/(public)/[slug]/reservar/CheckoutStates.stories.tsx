@@ -103,3 +103,11 @@ export const NoDisponible: Story = {
     )
   },
 }
+
+export const FueraDeFecha: Story = {
+  args: { error: 'date_out_of_range' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent(/ya no se puede reservar/i)
+  },
+}

@@ -147,7 +147,7 @@ export async function signInWithPassword(
 export async function signUpStaff(
   params: { email: string; password: string; firstName: string; lastName: string; phone: string },
   emailRedirectTo: string,
-): Promise<SignInResult> {
+): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.auth.signUp({
     email: params.email,
@@ -161,7 +161,7 @@ export async function signUpStaff(
       },
     },
   })
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: error.message, code: error.code }
   return { ok: true }
 }
 

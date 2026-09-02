@@ -198,7 +198,8 @@ describe('inviteStaffAction — rollback ante fallo real de entrega (03-invite-s
     // al usuario -- lo que cambió es que ahora la tx real hace rollback.
     expect(res).toEqual({
       success: false,
-      error: 'Error enviando invitación: SMTP error: could not send email',
+      error:
+        'No pudimos enviar la invitación por email. Verificá que el email esté bien escrito y probá de nuevo en unos minutos.',
     })
   })
 })

@@ -19,7 +19,7 @@ export const downgradeSchema = z.object({
 })
 
 export const cancelSchema = z.object({
-  reason: z.string().min(1).max(500),
+  reason: z.string().min(1, 'Ingresá el motivo').max(500, 'Máximo 500 caracteres'),
 })
 
 export const reactivateSchema = z.object({

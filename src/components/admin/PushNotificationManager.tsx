@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import * as Sentry from '@sentry/nextjs'
 import { Bell, X } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { fetchWithTimeout, withTimeout } from '@/shared/utils/async'
@@ -280,10 +281,11 @@ export function PushNotificationManager() {
       })
     } catch (e) {
       setStatus('unsubscribed')
-      const msg = e instanceof Error ? e.message : 'Error desconocido'
+      Sentry.captureException(e)
       toast({
         title: 'No pudimos habilitar notificaciones',
-        description: msg,
+        description:
+          'No pudimos activar las notificaciones en este dispositivo. Probá de nuevo o revisá los permisos del navegador.',
         variant: 'destructive',
       })
     }

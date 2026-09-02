@@ -17,6 +17,7 @@ import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
 import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { captureException } from '@/lib/sentry'
 
 type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
 
@@ -32,6 +33,28 @@ type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, 
  */
 class InviteDeliveryError extends Error {
   name = 'InviteDeliveryError'
+  code?: string
+
+  constructor(message: string, code?: string) {
+    super(message)
+    this.code = code
+  }
+}
+
+/**
+ * GoTrue no distingue "SMTP caído" con un código propio (ver ErrorCode en
+ * @supabase/auth-js/lib/error-codes.ts): esos fallos llegan como
+ * unexpected_failure o sin código. Solo el rate limit de envío de email es
+ * distinguible por .code, así que es el único caso con mensaje propio — el
+ * resto (SMTP incluido) cae en el mensaje fijo.
+ */
+const INVITE_RATE_LIMIT_CODES = new Set(['over_email_send_rate_limit', 'over_request_rate_limit'])
+
+function mapInviteDeliveryError(code: string | undefined): string {
+  if (code && INVITE_RATE_LIMIT_CODES.has(code)) {
+    return 'Se enviaron demasiadas invitaciones en poco tiempo. Esperá unos minutos y volvé a intentar.'
+  }
+  return 'No pudimos enviar la invitación por email. Verificá que el email esté bien escrito y probá de nuevo en unos minutos.'
 }
 
 /**
@@ -203,9 +226,12 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
   let staffUser: Awaited<ReturnType<typeof upsertStaffUser>>
   try {
     staffUser = await upsertStaffUser(lowerEmail, firstName, lastName)
-  } catch {
-    // Error de negocio prolijo en vez de excepción cruda del Server Action.
-    return { success: false, error: 'Error creando usuario.' }
+  } catch (err) {
+    captureException(err)
+    return {
+      success: false,
+      error: 'No pudimos crear el usuario. Volvé a intentar en un momento.',
+    }
   }
 
   // Fase 3 (pool de tenant): vincula al tenant (con policies propias) + invita.
@@ -240,7 +266,7 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
         })
 
       if (inviteError && !inviteError.message.includes('already been registered')) {
-        throw new InviteDeliveryError(inviteError.message)
+        throw new InviteDeliveryError(inviteError.message, inviteError.code)
       }
 
       if (inviteData?.user?.id) {
@@ -273,7 +299,8 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
     })
   } catch (err) {
     if (err instanceof InviteDeliveryError) {
-      return { success: false, error: `Error enviando invitación: ${err.message}` }
+      captureException(err)
+      return { success: false, error: mapInviteDeliveryError(err.code) }
     }
     throw err
   }
@@ -451,6 +478,12 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
   })
 
-  if (error) return { success: false, error: `Error reenviando invitación: ${error.message}` }
+  if (error) {
+    captureException(error)
+    return {
+      success: false,
+      error: 'No pudimos reenviar la invitación. Probá de nuevo en unos minutos.',
+    }
+  }
   return { success: true }
 }

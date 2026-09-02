@@ -51,21 +51,51 @@ export const createTournamentSchema = z
     restBetweenMatchesMinutes: z
       .number()
       .int()
-      .min(0)
+      .min(0, 'El descanso no puede ser negativo.')
       .max(240, 'El descanso no puede superar las 4 horas.')
       .default(0),
     inscriptionFee: moneyCents.default(0),
-    pointsWin: z.number().int().min(0).max(10).default(3),
-    pointsDraw: z.number().int().min(0).max(10).default(1),
-    pointsLoss: z.number().int().min(0).max(10).default(0),
+    pointsWin: z
+      .number()
+      .int()
+      .min(0, 'Los puntos no pueden ser negativos.')
+      .max(10, 'El máximo son 10 puntos.')
+      .default(3),
+    pointsDraw: z
+      .number()
+      .int()
+      .min(0, 'Los puntos no pueden ser negativos.')
+      .max(10, 'El máximo son 10 puntos.')
+      .default(1),
+    pointsLoss: z
+      .number()
+      .int()
+      .min(0, 'Los puntos no pueden ser negativos.')
+      .max(10, 'El máximo son 10 puntos.')
+      .default(0),
     tiebreakers: z
       .array(tiebreakerSchema)
       .min(1, 'Hace falta al menos un criterio de desempate.')
-      .max(TIEBREAKERS.length)
+      .max(TIEBREAKERS.length, 'Hay más criterios de desempate de los que existen.')
       .default(['goal_diff', 'goals_for', 'head_to_head', 'fair_play', 'drawn_lots']),
-    yellowCardsForSuspension: z.number().int().min(1).max(20).default(3),
-    redCardSuspensionMatches: z.number().int().min(0).max(20).default(1),
-    walkoverGoalsFor: z.number().int().min(0).max(20).default(3),
+    yellowCardsForSuspension: z
+      .number()
+      .int()
+      .min(1, 'Tiene que ser al menos 1 amarilla.')
+      .max(20, 'El máximo son 20 amarillas.')
+      .default(3),
+    redCardSuspensionMatches: z
+      .number()
+      .int()
+      .min(0, 'Las fechas de suspensión no pueden ser negativas.')
+      .max(20, 'El máximo son 20 fechas de suspensión.')
+      .default(1),
+    walkoverGoalsFor: z
+      .number()
+      .int()
+      .min(0, 'Los goles no pueden ser negativos.')
+      .max(20, 'El máximo son 20 goles.')
+      .default(3),
     notes: boundedText(1000).nullish(),
   })
   .refine((v) => !v.endsOn || v.endsOn >= v.startsOn, {
@@ -92,17 +122,66 @@ export const updateTournamentSchema = z.object({
   name: tournamentName.optional(),
   endsOn: dateStr.nullish(),
   registrationDeadline: dateStr.nullish(),
-  maxTeams: z.number().int().min(2).max(256).nullish(),
-  matchDurationMinutes: z.number().int().min(10).max(120).optional(),
-  restBetweenMatchesMinutes: z.number().int().min(0).max(240).optional(),
+  maxTeams: z
+    .number()
+    .int()
+    .min(2, 'Un torneo necesita al menos 2 equipos.')
+    .max(256, 'El máximo es 256 equipos.')
+    .nullish(),
+  matchDurationMinutes: z
+    .number()
+    .int()
+    .min(10, 'Un partido no puede durar menos de 10 minutos.')
+    .max(120, 'Un partido no puede durar más de 120 minutos.')
+    .optional(),
+  restBetweenMatchesMinutes: z
+    .number()
+    .int()
+    .min(0, 'El descanso no puede ser negativo.')
+    .max(240, 'El descanso no puede superar las 4 horas.')
+    .optional(),
   inscriptionFee: moneyCents.optional(),
-  pointsWin: z.number().int().min(0).max(10).optional(),
-  pointsDraw: z.number().int().min(0).max(10).optional(),
-  pointsLoss: z.number().int().min(0).max(10).optional(),
-  tiebreakers: z.array(tiebreakerSchema).min(1).max(TIEBREAKERS.length).optional(),
-  yellowCardsForSuspension: z.number().int().min(1).max(20).optional(),
-  redCardSuspensionMatches: z.number().int().min(0).max(20).optional(),
-  walkoverGoalsFor: z.number().int().min(0).max(20).optional(),
+  pointsWin: z
+    .number()
+    .int()
+    .min(0, 'Los puntos no pueden ser negativos.')
+    .max(10, 'El máximo son 10 puntos.')
+    .optional(),
+  pointsDraw: z
+    .number()
+    .int()
+    .min(0, 'Los puntos no pueden ser negativos.')
+    .max(10, 'El máximo son 10 puntos.')
+    .optional(),
+  pointsLoss: z
+    .number()
+    .int()
+    .min(0, 'Los puntos no pueden ser negativos.')
+    .max(10, 'El máximo son 10 puntos.')
+    .optional(),
+  tiebreakers: z
+    .array(tiebreakerSchema)
+    .min(1, 'Hace falta al menos un criterio de desempate.')
+    .max(TIEBREAKERS.length, 'Hay más criterios de desempate de los que existen.')
+    .optional(),
+  yellowCardsForSuspension: z
+    .number()
+    .int()
+    .min(1, 'Tiene que ser al menos 1 amarilla.')
+    .max(20, 'El máximo son 20 amarillas.')
+    .optional(),
+  redCardSuspensionMatches: z
+    .number()
+    .int()
+    .min(0, 'Las fechas de suspensión no pueden ser negativas.')
+    .max(20, 'El máximo son 20 fechas de suspensión.')
+    .optional(),
+  walkoverGoalsFor: z
+    .number()
+    .int()
+    .min(0, 'Los goles no pueden ser negativos.')
+    .max(20, 'El máximo son 20 goles.')
+    .optional(),
   status: z.enum(['draft', 'registration', 'in_progress', 'finished', 'canceled']).optional(),
   isPublic: z.boolean().optional(),
   notes: boundedText(1000).nullish(),
@@ -128,7 +207,12 @@ export const updateTeamSchema = z.object({
   contactName: boundedText(120).nullish(),
   contactPhone: boundedText(30).nullish(),
   status: z.enum(['registered', 'confirmed', 'withdrawn', 'disqualified']).optional(),
-  groupLabel: z.string().trim().min(1).max(10).nullish(),
+  groupLabel: z
+    .string()
+    .trim()
+    .min(1, 'La zona no puede estar vacía.')
+    .max(10, 'La zona no puede superar los 10 caracteres.')
+    .nullish(),
   seed: z.number().int().positive().nullish(),
   inscriptionFee: moneyCents.optional(),
   notes: boundedText(500).nullish(),
@@ -149,7 +233,12 @@ export const createTeamPlayerSchema = z.object({
     .trim()
     .regex(/^\d{7,9}$/, 'El DNI tiene que tener entre 7 y 9 dígitos.')
     .nullish(),
-  shirtNumber: z.number().int().min(0).max(999).nullish(),
+  shirtNumber: z
+    .number()
+    .int()
+    .min(0, 'El número no puede ser negativo.')
+    .max(999, 'El número no puede superar 999.')
+    .nullish(),
 })
 
 export const teamPlayerIdSchema = z.object({ id: uuid })
@@ -191,7 +280,7 @@ export const generateFixtureSchema = z
       .number()
       .int()
       .min(1, 'Tiene que clasificar al menos 1 equipo por zona.')
-      .max(16)
+      .max(16, 'El máximo es 16 equipos por zona.')
       .optional(),
     thirdPlace: z.boolean().default(false),
     /** false = generar sin día ni hora, para agendar a mano. */
@@ -286,7 +375,7 @@ export const addMatchEventSchema = z
     suspensionMatches: z
       .number()
       .int()
-      .min(0)
+      .min(0, 'Las fechas de suspensión no pueden ser negativas.')
       .max(20, 'Máximo 20 fechas de suspensión.')
       .nullable()
       .optional(),
@@ -312,7 +401,7 @@ export const seedPlayoffsSchema = z.object({ tournamentId: uuid })
 // ─── Autocomplete de capitán (Equipos) ──────────────────────────────
 
 export const searchPlayersForCaptainSchema = z.object({
-  query: z.string().trim().max(120),
+  query: z.string().trim().max(120, 'La búsqueda no puede superar los 120 caracteres.'),
 })
 
 // Método mixto (D2, Fase 1): 1-5 líneas de {monto, método}.
@@ -326,7 +415,10 @@ const inscriptionChargeSchema = z.object({
 
 export const registerInscriptionPaymentSchema = z.object({
   teamId: uuid,
-  charges: z.array(inscriptionChargeSchema).min(1, 'Ingresá al menos un cobro.').max(5),
+  charges: z
+    .array(inscriptionChargeSchema)
+    .min(1, 'Ingresá al menos un cobro.')
+    .max(5, 'No se pueden cargar más de 5 cobros a la vez.'),
   note: boundedText(300).nullable().optional(),
   // Cruce #10: sin la clave en el schema, z.object() la strippea y el
   // ON CONFLICT del service nunca corre → doble-tap = cobro duplicado.

@@ -2,9 +2,10 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { boundedText, dateStr, hhmm } from '@/shared/validation/primitives'
-import { captureMessage } from '@/lib/sentry'
+import { captureException, captureMessage } from '@/lib/sentry'
 import { searchPublicTenants } from '@/modules/tenants/search.service'
 import { findAvailableTenantIds } from '@/modules/tenants/availability-search.service'
+import { internal } from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -120,28 +121,35 @@ export async function GET(req: NextRequest) {
   // complejos con al menos una cancha libre a esa hora (cacheado 30s). Con uno
   // solo de los dos params el comportamiento es idéntico al histórico.
   const availabilityActive = p.date !== undefined && p.time !== undefined
-  const tenantIds = availabilityActive
-    ? await findAvailableTenantIds({ date: p.date!, time: p.time!, formats: p.formats })
-    : undefined
 
-  // 'distance' sin coordenadas no tiene sentido → cae a orden por nombre en el service.
-  const result = await searchPublicTenants({
-    q: p.q,
-    city: p.city,
-    province: p.province,
-    onlineOnly: p.online === '1',
-    surfaces: p.surfaces,
-    formats: p.formats,
-    amenities: p.amenities,
-    minPriceCents: p.minPrice,
-    maxPriceCents: p.maxPrice,
-    sort: p.sort,
-    lat: p.lat,
-    lng: p.lng,
-    limit: p.limit,
-    offset: p.offset,
-    ...(tenantIds !== undefined ? { tenantIds } : {}),
-  })
+  let result
+  try {
+    const tenantIds = availabilityActive
+      ? await findAvailableTenantIds({ date: p.date!, time: p.time!, formats: p.formats })
+      : undefined
+
+    // 'distance' sin coordenadas no tiene sentido → cae a orden por nombre en el service.
+    result = await searchPublicTenants({
+      q: p.q,
+      city: p.city,
+      province: p.province,
+      onlineOnly: p.online === '1',
+      surfaces: p.surfaces,
+      formats: p.formats,
+      amenities: p.amenities,
+      minPriceCents: p.minPrice,
+      maxPriceCents: p.maxPrice,
+      sort: p.sort,
+      lat: p.lat,
+      lng: p.lng,
+      limit: p.limit,
+      offset: p.offset,
+      ...(tenantIds !== undefined ? { tenantIds } : {}),
+    })
+  } catch (err) {
+    captureException(err)
+    return internal('No se pudo procesar la solicitud.')
+  }
 
   // Validación del contrato de salida en fail-open: un drift de shape (datos
   // sucios en jsonb, campo nuevo mal tipado) se reporta pero NUNCA tumba el

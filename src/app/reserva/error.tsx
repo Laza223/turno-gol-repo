@@ -5,8 +5,12 @@ import { CalendarDays } from 'lucide-react'
 import * as Sentry from '@sentry/nextjs'
 import { ErrorState } from '@/components/ui/error-state'
 
-/** Player-facing error boundary (mis reservas, reserva flows). */
-export default function PlayerError({
+/**
+ * Error boundary de /reserva/[bookingId]/{exito,pendiente,verificar}: el cierre
+ * del checkout de plata real. El copy aclara que un pago ya hecho está a salvo,
+ * porque el genérico raíz no sabe nada de eso.
+ */
+export default function ReservaError({
   error,
   reset,
 }: {
@@ -19,9 +23,9 @@ export default function PlayerError({
 
   return (
     <ErrorState
-      variant="full"
-      title="No pudimos cargar tus reservas"
-      description="Se nos escapó un error de nuestro lado, ya lo tenemos en la mira. Probá de nuevo en un toque."
+      variant="contained"
+      title="No pudimos cargar esta página"
+      description="Tuvimos un problema mostrando tu reserva. Si ya pagaste, el pago está a salvo — no perdiste nada. Probá recargar; si seguís viendo esto, revisá 'Mis reservas' o escribinos."
       digest={error.digest}
       onRetry={reset}
       secondaryHref="/mis-reservas"

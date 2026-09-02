@@ -9,11 +9,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 import { holdRemainingLabel } from '@/lib/booking/hold'
 import { telHref } from '@/lib/contact'
+import { rejectionMessage } from '@/shared/lib/rejection-message'
 import WeeklyAvailabilityModal from './WeeklyAvailabilityModal'
 
 type Props = {
   tenant: PublicTenant
 }
+
+const AVAILABILITY_LOAD_ERROR =
+  'No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e intentá de nuevo.'
 
 const DATE_ES_FORMATTER = new Intl.DateTimeFormat('es-AR', {
   weekday: 'long',
@@ -201,7 +205,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
   const [date, setDate] = useState<string | null>(null)
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [courtFilter, setCourtFilter] = useState<string>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -231,21 +235,25 @@ export default function AvailabilityGrid({ tenant }: Props) {
 
     let active = true
     setLoading(true)
-    setError(false)
-    fetch(`/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${initialDate}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error('fetch failed')
-        return (await res.json()) as AvailabilityResponse
-      })
-      .then((data) => {
+    setError(null)
+    async function loadInitial() {
+      try {
+        const res = await fetch(
+          `/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${initialDate}`,
+        )
+        if (!res.ok) {
+          if (active) setError(await rejectionMessage(res, AVAILABILITY_LOAD_ERROR))
+          return
+        }
+        const data = (await res.json()) as AvailabilityResponse
         if (active) setAvailability(data)
-      })
-      .catch(() => {
-        if (active) setError(true)
-      })
-      .finally(() => {
+      } catch {
+        if (active) setError(AVAILABILITY_LOAD_ERROR)
+      } finally {
         if (active) setLoading(false)
-      })
+      }
+    }
+    void loadInitial()
     return () => {
       active = false
     }
@@ -255,12 +263,15 @@ export default function AvailabilityGrid({ tenant }: Props) {
     if (!today || !maxDate) return
     if (newDate < today || newDate > maxDate) return
     setLoading(true)
-    setError(false)
+    setError(null)
     try {
       const res = await fetch(
         `/api/public/availability?slug=${encodeURIComponent(tenant.slug)}&date=${newDate}`,
       )
-      if (!res.ok) throw new Error('fetch failed')
+      if (!res.ok) {
+        setError(await rejectionMessage(res, AVAILABILITY_LOAD_ERROR))
+        return
+      }
       const data = (await res.json()) as AvailabilityResponse
       // Solo avanzamos la fecha cuando el fetch tuvo exito: asi la etiqueta de
       // fecha y los slots visibles siempre corresponden al mismo dia. Si el
@@ -273,7 +284,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
       url.searchParams.set('date', newDate)
       window.history.replaceState(null, '', url.toString())
     } catch {
-      setError(true)
+      setError(AVAILABILITY_LOAD_ERROR)
     } finally {
       setLoading(false)
     }
@@ -355,7 +366,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
           // text-red-600 sobre bg-red-50 mide 4.41:1 — bajo AA. text-red-700 da 5.9:1.
           className="text-sm text-red-700 bg-red-50 ring-1 ring-inset ring-red-600/20 rounded-md px-3 py-2 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20"
         >
-          No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e intentá de nuevo.
+          {error}
         </p>
       )}
 

@@ -5,6 +5,7 @@ import { revalidatePublicListings } from '@/shared/cache/public-listings'
 import { z } from 'zod'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { captureException } from '@/lib/sentry'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
@@ -67,8 +68,9 @@ export async function setTenantImageAction(
 
   try {
     await putImage(key, bytes, 'image/webp')
-  } catch {
-    return { success: false, error: 'No se pudo subir la imagen' }
+  } catch (err) {
+    captureException(err)
+    return { success: false, error: 'No pudimos subir la imagen. Probá de nuevo en un momento.' }
   }
 
   const url = publicUrl(key)
@@ -77,9 +79,10 @@ export async function setTenantImageAction(
     await deletePreviousIfOwned(typeof previousUrl === 'string' ? previousUrl : null, tenant.id)
     await updateTenant(tenant.id, kind === 'logo' ? { logoUrl: url } : { coverUrl: url })
   } catch (e) {
+    captureException(e)
     return {
       success: false,
-      error: e instanceof Error ? e.message : 'No se pudo guardar la imagen',
+      error: 'No pudimos guardar los cambios. Probá de nuevo.',
     }
   }
 
@@ -229,7 +232,11 @@ export async function updateUserEmailAction(newEmail: string): Promise<UpdateEma
     if (isEmailTakenAuthError(error)) {
       return { success: false, error: EMAIL_TAKEN_MESSAGE }
     }
-    return { success: false, error: error.message }
+    captureException(error)
+    return {
+      success: false,
+      error: 'No pudimos actualizar tu email. Probá de nuevo o escribinos si sigue fallando.',
+    }
   }
 
   revalidatePath('/settings/perfil')

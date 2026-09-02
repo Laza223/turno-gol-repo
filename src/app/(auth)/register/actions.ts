@@ -6,6 +6,7 @@ import { headers } from 'next/headers'
 import { getWorkerDb } from '@/shared/db/client'
 import { staffUsers } from '@/shared/db/schema'
 import { signUpStaff } from '@/modules/auth/auth.service'
+import { captureMessage } from '@/lib/sentry'
 import { passwordSchema } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
 import { parseClientIp } from '@/shared/rate-limit/key'
@@ -119,6 +120,48 @@ export async function registerAction(
     `${origin}/api/auth/callback?next=${encodeURIComponent('/onboarding')}`,
   )
   if (!result.ok) {
+    // GoTrue expone `error.code` (mismo patrón que "otp_disabled" arriba y
+    // "email_not_confirmed" en loginAction): mapeamos los códigos conocidos a
+    // un mensaje de campo específico en vez del genérico de siempre — así el
+    // dueño se entera, por ejemplo, de que fue la contraseña la rechazada.
+    if (result.code === 'weak_password') {
+      return {
+        status: 'error',
+        fieldErrors: {
+          password:
+            'Esa contraseña es fácil de adivinar o está en una base de datos de filtraciones conocidas. Probá con otra.',
+        },
+        values,
+      }
+    }
+    // No debería pasar nunca acá porque arriba ya chequeamos staff_users, pero
+    // si Supabase igual lo rechaza por email duplicado en auth.users, seguimos
+    // el mismo camino que ese chequeo previo en vez del error genérico.
+    if (result.code === 'user_already_exists' || result.code === 'email_exists') {
+      return { status: 'existing', email: parsed.data.email }
+    }
+    if (result.code === 'email_address_invalid') {
+      return {
+        status: 'error',
+        fieldErrors: { email: 'Ese email no es válido.' },
+        values,
+      }
+    }
+    if (result.code === 'over_email_send_rate_limit') {
+      return {
+        status: 'error',
+        fieldErrors: {
+          _form: 'Demasiados intentos con este email. Esperá unos minutos y probá de nuevo.',
+        },
+        values,
+      }
+    }
+    // Código no mapeado: mensaje genérico al usuario, pero el motivo real
+    // queda auditable en Sentry (no siempre conviene revelárselo tal cual).
+    captureMessage('signUpStaff: código de error de Supabase sin mapear', {
+      level: 'warning',
+      extra: { email: parsed.data.email, code: result.code, reason: result.error },
+    })
     return {
       status: 'error',
       fieldErrors: { _form: 'No pudimos crear la cuenta. Probá de nuevo.' },

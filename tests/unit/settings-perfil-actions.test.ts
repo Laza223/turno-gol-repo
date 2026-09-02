@@ -109,7 +109,12 @@ describe('setTenantImageAction — admin', () => {
   it('devuelve error controlado (sin throw) si putImage falla por caída de R2', async () => {
     vi.mocked(putImage).mockRejectedValueOnce(new Error('R2 unreachable'))
     const res = await setTenantImageAction('logo', fakeFormData())
-    expect(res).toEqual({ success: false, error: 'No se pudo subir la imagen' })
+    // El error real (R2 unreachable) se loguea a Sentry (captureException) en vez
+    // de mostrarse crudo — el usuario ve un mensaje fijo accionable.
+    expect(res).toEqual({
+      success: false,
+      error: 'No pudimos subir la imagen. Probá de nuevo en un momento.',
+    })
     expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
   })
 
@@ -117,7 +122,11 @@ describe('setTenantImageAction — admin', () => {
     vi.mocked(updateTenant).mockRejectedValueOnce(new Error('DB down'))
     const res = await setTenantImageAction('logo', fakeFormData())
     expect(res.success).toBe(false)
-    expect(res.success === false && res.error).toBe('DB down')
+    // Antes exponía 'DB down' (mensaje crudo de la excepción) — ahora se loguea
+    // a Sentry y se muestra un mensaje fijo en español.
+    expect(res.success === false && res.error).toBe(
+      'No pudimos guardar los cambios. Probá de nuevo.',
+    )
   })
 })
 

@@ -21,9 +21,24 @@ export const createProductSchema = z.object({
   // acá pasaría Zod y explotaría en el INSERT con un 23514 crudo.
   price: z.number().int().positive('El precio debe ser mayor a 0.'),
   cost: moneyCents.nullish(),
-  stock: z.number().int().min(0).max(100_000).nullish(),
-  minStock: z.number().int().min(0).max(100_000).nullish(),
-  sortOrder: z.number().int().min(0).max(10_000).optional(),
+  stock: z
+    .number()
+    .int()
+    .min(0, 'El stock no puede ser negativo.')
+    .max(100_000, 'El stock no puede superar 100.000 unidades.')
+    .nullish(),
+  minStock: z
+    .number()
+    .int()
+    .min(0, 'El stock mínimo no puede ser negativo.')
+    .max(100_000, 'El stock mínimo no puede superar 100.000 unidades.')
+    .nullish(),
+  sortOrder: z
+    .number()
+    .int()
+    .min(0, 'El orden no puede ser negativo.')
+    .max(10_000, 'El orden no puede superar 10.000.')
+    .optional(),
 })
 
 export const updateProductSchema = z.object({
@@ -36,11 +51,18 @@ export const updateProductSchema = z.object({
 // Ticket: hasta 20 líneas distintas; qty por línea acotada como la venta actual.
 const ticketLineSchema = z.object({
   productId: uuid,
-  qty: z.number().int().min(1).max(99),
+  qty: z
+    .number()
+    .int()
+    .min(1, 'La cantidad debe ser al menos 1.')
+    .max(99, 'La cantidad no puede superar 99.'),
 })
 
 export const sellTicketSchema = z.object({
-  lines: z.array(ticketLineSchema).min(1, 'El ticket necesita al menos un producto.').max(20),
+  lines: z
+    .array(ticketLineSchema)
+    .min(1, 'El ticket necesita al menos un producto.')
+    .max(20, 'El ticket no puede tener más de 20 productos distintos.'),
   method: z.enum(['cash', 'transfer', 'mercadopago']),
   clientIdempotencyKey: uuid,
   // Opcional: la venta desde /caja/cantina no lo manda; la del panel del turno sí.
@@ -49,8 +71,15 @@ export const sellTicketSchema = z.object({
 
 // Fiados: nombre libre (no exige jugador registrado).
 export const createTabSchema = z.object({
-  debtorName: z.string().trim().min(1, 'Poné un nombre para el fiado.').max(80),
-  lines: z.array(ticketLineSchema).min(1, 'El fiado necesita al menos un producto.').max(20),
+  debtorName: z
+    .string()
+    .trim()
+    .min(1, 'Poné un nombre para el fiado.')
+    .max(80, 'El nombre no puede superar 80 caracteres.'),
+  lines: z
+    .array(ticketLineSchema)
+    .min(1, 'El fiado necesita al menos un producto.')
+    .max(20, 'El fiado no puede tener más de 20 productos distintos.'),
   note: boundedText(300).optional(),
   clientIdempotencyKey: uuid,
 })
@@ -64,7 +93,10 @@ const settleTabChargeSchema = z.object({
 
 export const settleTabSchema = z.object({
   tabId: uuid,
-  charges: z.array(settleTabChargeSchema).min(1, 'Ingresá al menos un cobro.').max(5),
+  charges: z
+    .array(settleTabChargeSchema)
+    .min(1, 'Ingresá al menos un cobro.')
+    .max(5, 'No podés ingresar más de 5 cobros.'),
   clientIdempotencyKey: uuid,
 })
 
@@ -77,7 +109,11 @@ export const cancelTabSchema = z.object({
 export const registerPurchaseSchema = z
   .object({
     productId: uuid,
-    units: z.number().int().min(1).max(100_000),
+    units: z
+      .number()
+      .int()
+      .min(1, 'Ingresá al menos 1 unidad.')
+      .max(100_000, 'No podés cargar más de 100.000 unidades.'),
     unitCost: moneyCents.nullish(),
     updateProductCost: z.boolean().optional(),
     // "Pagalo de la caja" (migr. 050): crea el gasto expense/merchandise por
@@ -93,7 +129,11 @@ export const registerPurchaseSchema = z
 
 export const registerStockExitSchema = z.object({
   productId: uuid,
-  units: z.number().int().min(1).max(100_000),
+  units: z
+    .number()
+    .int()
+    .min(1, 'Ingresá al menos 1 unidad.')
+    .max(100_000, 'No podés cargar más de 100.000 unidades.'),
   reason: z.enum(['waste', 'courtesy', 'internal_use']),
   // Motivo obligatorio: es lo que hace auditable una salida sin venta.
   note: boundedText(300).min(1, 'Contá el motivo de la salida.'),
@@ -102,7 +142,11 @@ export const registerStockExitSchema = z.object({
 
 export const adjustStockSchema = z.object({
   productId: uuid,
-  newStock: z.number().int().min(0).max(100_000),
+  newStock: z
+    .number()
+    .int()
+    .min(0, 'El stock no puede ser negativo.')
+    .max(100_000, 'El stock no puede superar 100.000 unidades.'),
   note: boundedText(300).min(1, 'Contá el motivo del ajuste.'),
   clientIdempotencyKey: uuid,
 })

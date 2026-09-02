@@ -15,7 +15,11 @@ export const wizardCourtsSchema = z.object({
   courts: z
     .array(
       z.object({
-        name: z.string().trim().min(1, 'Poné un nombre a cada cancha').max(100),
+        name: z
+          .string()
+          .trim()
+          .min(1, 'Poné un nombre a cada cancha')
+          .max(100, 'Máximo 100 caracteres'),
         format: z.number().int(),
         surfaceType: z.enum(['synthetic_grass', 'natural_grass', 'cement', 'tile']),
         isCovered: z.boolean(),
@@ -42,7 +46,11 @@ export const wizardFirstBookingSchema = z.object({
   date: dateStr,
   timeStart: hhmm,
   timeEnd: hhmmEnd,
-  guestName: z.string().trim().min(1, 'Poné a nombre de quién va el turno.').max(200),
+  guestName: z
+    .string()
+    .trim()
+    .min(1, 'Poné a nombre de quién va el turno.')
+    .max(200, 'Máximo 200 caracteres'),
 })
 
 export type WizardFirstBookingInput = z.infer<typeof wizardFirstBookingSchema>

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { uuid } from '@/shared/validation/primitives'
+import { uuid, boundedText } from '@/shared/validation/primitives'
 import type { TenantStatus } from '@/modules/billing/billing.types'
 
 /**
@@ -26,7 +26,11 @@ export function confirmNameMatches(expectedName: string, provided: string): bool
 
 export const extendTrialInputSchema = z.object({
   tenantId: uuid,
-  days: z.number().int().min(1).max(90),
+  days: z
+    .number()
+    .int()
+    .min(1, 'La extensión debe ser de al menos 1 día.')
+    .max(90, 'La extensión no puede superar los 90 días.'),
 })
 
 export const forceStatusInputSchema = z.object({
@@ -41,7 +45,7 @@ export const forceStatusInputSchema = z.object({
     'churned',
     'deleted',
   ]),
-  confirmName: z.string().max(120).optional(),
+  confirmName: boundedText(120).optional(),
 })
 
 export const reactivateInputSchema = z.object({ tenantId: uuid })
@@ -53,8 +57,12 @@ export const changePlanInputSchema = z.object({
 
 export const cancelSubscriptionInputSchema = z.object({
   tenantId: uuid,
-  reason: z.string().trim().min(3).max(500),
-  confirmName: z.string().max(120),
+  reason: z
+    .string()
+    .trim()
+    .min(3, 'Contá el motivo de la cancelación (mínimo 3 caracteres).')
+    .max(500, 'Máximo 500 caracteres'),
+  confirmName: boundedText(120),
 })
 
 /**
@@ -65,10 +73,19 @@ export const cancelSubscriptionInputSchema = z.object({
 export const settingsPatchSchema = z
   .strictObject({
     requires_deposit: z.boolean().optional(),
-    deposit_percentage: z.number().int().min(0).max(100).optional(),
+    deposit_percentage: z
+      .number()
+      .int()
+      .min(0, 'El porcentaje de seña no puede ser negativo.')
+      .max(100, 'El porcentaje de seña no puede superar 100.')
+      .optional(),
     cancellation_policy: z
       .object({
-        hours_before: z.number().int().min(0).max(168),
+        hours_before: z
+          .number()
+          .int()
+          .min(0, 'Las horas de anticipación no pueden ser negativas.')
+          .max(168, 'Las horas de anticipación no pueden superar 168 (7 días).'),
         penalty_type: z.enum(['deposit', 'full']),
         penalty_amount: z.number().int().nonnegative().nullable(),
       })
@@ -77,8 +94,18 @@ export const settingsPatchSchema = z
     accepts_transfer: z.boolean().optional(),
     accepts_mercadopago: z.boolean().optional(),
     allow_online_booking: z.boolean().optional(),
-    booking_advance_days: z.number().int().min(1).max(60).optional(),
-    auto_complete_minutes: z.number().int().min(0).max(1440).optional(),
+    booking_advance_days: z
+      .number()
+      .int()
+      .min(1, 'La anticipación de reserva debe ser de al menos 1 día.')
+      .max(60, 'La anticipación de reserva no puede superar 60 días.')
+      .optional(),
+    auto_complete_minutes: z
+      .number()
+      .int()
+      .min(0, 'Los minutos no pueden ser negativos.')
+      .max(1440, 'Los minutos no pueden superar 1440 (24 horas).')
+      .optional(),
   })
   .refine((patch) => Object.keys(patch).length > 0, {
     message: 'El patch de settings no puede estar vacío.',

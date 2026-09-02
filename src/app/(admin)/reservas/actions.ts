@@ -616,7 +616,11 @@ export async function listRescheduleSlotsAction(
     return { success: true, slots, minDate, maxDate }
   } catch (err) {
     captureException(err)
-    return { success: false, error: 'No pudimos cargar los horarios. Probá de nuevo.' }
+    return {
+      success: false,
+      error:
+        'No pudimos calcular los horarios disponibles. Cerrá y volvé a abrir el panel de reprogramar.',
+    }
   }
 }
 

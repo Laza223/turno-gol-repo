@@ -1,5 +1,7 @@
 # 04 — Oferta Piloto Fundador (para cerrar en la demo)
 
+> ⚠️ **ACTUALIZADO PARCIALMENTE (2026-09-02)** — (1) **No hay precio fundador**: la sección "Precio fundador — REQUIERE INPUT" quedó cerrada con "no"; se sale con precio de lista. (2) El precio se dice **el día 0**, por escrito, no el día 21. (3) Los 3 meses gratis del primer piloto son una **excepción de aprendizaje**, no la oferta estándar (que sigue siendo 30 días). (4) En la semana 1 se pide **un solo compromiso** (el cuaderno de fijos); los otros tres (link en bio, QR, responder con el link) recién después de la activación A1. (5) La conversación de continuidad es el día 60 en pilotos de 90. Procedimiento vigente: [`ejecucion/01-checklist-caso-cero.md`](./ejecucion/01-checklist-caso-cero.md). Decisión: [`docs/decisions/2026-09-02-experimento-30-dias.md`](../decisions/2026-09-02-experimento-30-dias.md).
+
 > Objetivo de la oferta: que decir "sí" sea más fácil que decir "lo pienso". Toda la fricción la absorbés vos, todo el riesgo lo absorbe la prueba gratis.
 
 ## La oferta (texto para decir en la demo)

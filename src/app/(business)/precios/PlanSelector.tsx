@@ -17,7 +17,7 @@ const COURT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8] as const
  */
 export default function PlanSelector() {
   const [courts, setCourts] = useState(3)
-  const [cycle, setCycle] = useState<BillingCycle>('monthly')
+  const [cycle, setCycle] = useState<BillingCycle>('annual')
   const active = planForCourts(courts)
 
   return (

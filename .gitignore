@@ -56,3 +56,7 @@ ds-bundle/
 # Ver docs/testing/VISUAL_REGRESSION.md.
 tests/e2e/visual/__screenshots__/*/win32/
 tests/e2e/visual/__screenshots__/*/darwin/
+
+# GTM — datos crudos del experimento comercial (CRM, baseline del piloto, entrevistas):
+# contienen datos personales de terceros (Ley 25.326). En git solo va lo anonimizado en docs/gtm/ejecucion/.
+docs/gtm/data/

@@ -1,5 +1,7 @@
 # 02 — ICP inicial: a quién atacar primero, a quién evitar
 
+> ⚠️ **ACTUALIZADO PARCIALMENTE (2026-09-02)** — Decisión D1: el ICP-1 provisional pasa a **4-6 canchas (5-6 ideal), con fijos y al menos un encargado**; 3 y 7+ excelentes no se rechazan; 1-2 canchas no se prospectan. Scorecard vigente: [`ejecucion/05-scorecard-icp.md`](./ejecucion/05-scorecard-icp.md). Razones y trigger de reversión: [`docs/decisions/2026-09-02-experimento-30-dias.md`](../decisions/2026-09-02-experimento-30-dias.md). El resto de este documento (señales observables, a quién evitar, fuentes de lista) sigue vigente.
+
 > El ICP no es "quien podría pagar". Es "quien compra rápido, activa rápido y refiere". Los primeros 20 clientes definen el boca a boca de la zona: elegirlos bien vale más que venderle a cualquiera.
 
 ## ICP-1: el objetivo de los primeros 90 días

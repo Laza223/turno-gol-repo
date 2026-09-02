@@ -1,5 +1,7 @@
 # 03 — Posicionamiento: qué decir, en idioma dueño de cancha
 
+> ⚠️ **SUPERSEDED PARCIALMENTE (2026-09-02)** — Decisión D2 (provisional, no validada): el orden de pilares pasa a **D → C → B → A**: fijos como puerta, "el complejo funciona bajo control aunque no estés" como promesa, caja como prueba diaria, **seña como mecanismo opcional, nunca titular ni condición** (un dueño la rechazó culturalmente en demo). La frase central de este doc y sus versiones de 10/30 segundos abren por la seña: **no usarlas como apertura** hasta que 10 entrevistas sin inducir lo resuelvan. Siguen vigentes: vocabulario, claims permitidos/prohibidos, tabla "contra cada alternativa". Trigger de reversión y detalle: [`docs/decisions/2026-09-02-experimento-30-dias.md`](../decisions/2026-09-02-experimento-30-dias.md).
+
 > Regla: si la frase no la diría un dueño de complejo tomando mate, no se usa. Prohibido: "solución integral", "digitalizá tu negocio", "optimizá tu gestión", "plataforma líder".
 
 ## La frase central (aprenderla de memoria)

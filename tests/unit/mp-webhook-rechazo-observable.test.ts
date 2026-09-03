@@ -10,7 +10,7 @@
  * Lo que se loguea es FORMA, no contenido: tipo de evento y formato del id.
  * Nunca el payload entero, y nada que identifique a una persona.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
 
 const SECRET = 'secreto-de-prueba'
@@ -64,6 +64,8 @@ function ultimoWarn(): Record<string, unknown> {
 
 describe('webhook de MercadoPago — todo rechazo queda explicado en el log', () => {
   const env = process.env as Record<string, string | undefined>
+  const secretOriginal = env['MP_WEBHOOK_SECRET']
+  const checkoutOriginal = env['MP_WEBHOOK_SECRET_CHECKOUT']
 
   beforeEach(() => {
     // Sin `vi.resetModules()` a propósito: `verifyWebhookSignature` lee
@@ -76,6 +78,17 @@ describe('webhook de MercadoPago — todo rechazo queda explicado en el log', ()
     env['MP_WEBHOOK_SECRET'] = SECRET
     // Estado conocido: los casos que necesitan la segunda clave la ponen ellos.
     delete env['MP_WEBHOOK_SECRET_CHECKOUT']
+  })
+
+  // Bajo `singleThread` el `process.env` es el MISMO para todos los archivos del
+  // worker: sin esto, las dos claves quedaban puestas para todo lo que corriera
+  // después, y qué archivo las veía dependía del orden de ejecución.
+  afterEach(() => {
+    if (secretOriginal === undefined) delete env['MP_WEBHOOK_SECRET']
+    else env['MP_WEBHOOK_SECRET'] = secretOriginal
+
+    if (checkoutOriginal === undefined) delete env['MP_WEBHOOK_SECRET_CHECKOUT']
+    else env['MP_WEBHOOK_SECRET_CHECKOUT'] = checkoutOriginal
   })
 
   it('un payload que no pasa el schema dice qué tipo era y qué forma tenía el id', async () => {

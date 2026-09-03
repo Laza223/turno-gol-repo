@@ -1,9 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-
-// Deterministic key for encrypt/decrypt (read at call-time, so set before use).
-process.env.ENCRYPTION_KEY = 'a'.repeat(64)
-process.env.MP_CLIENT_ID = 'client-123'
-process.env.MP_CLIENT_SECRET = 'secret-456'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encrypt } from '@/lib/crypto/encrypt'
 import { refreshMpAccessToken } from '@/modules/payments/mp-oauth'
@@ -11,7 +6,15 @@ import { MpGatewayError } from '@/modules/payments/payment.errors'
 
 let encryptedRefresh: string
 
-beforeAll(() => {
+// Las tres se leen en el momento de la llamada, no al importar, así que van acá
+// y no a nivel de módulo: una asignación de módulo corre una sola vez, y quedaba
+// a merced de lo que hiciera con esas claves cualquier otro archivo del worker
+// (los archivos comparten `process.env` bajo `singleThread`). Este archivo
+// pasaba sólo porque `mp-oauth-state-csrf.test.ts` filtraba las suyas.
+beforeEach(() => {
+  vi.stubEnv('ENCRYPTION_KEY', 'a'.repeat(64))
+  vi.stubEnv('MP_CLIENT_ID', 'client-123')
+  vi.stubEnv('MP_CLIENT_SECRET', 'secret-456')
   encryptedRefresh = encrypt('old-refresh-token')
 })
 

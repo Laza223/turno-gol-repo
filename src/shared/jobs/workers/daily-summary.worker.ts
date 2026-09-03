@@ -109,9 +109,14 @@ async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {
 
   const collectedArs = formatArsNumber(data.numbers.collectedTodayCents)
   const occupiedLabel = `${data.numbers.occupancy.occupied}/${data.numbers.occupancy.available}`
-  const cajaLabel = data.numbers.cashClosed
-    ? 'caja cerrada sin diferencia'
-    : 'caja sin cerrar todavía'
+  // "caja cerrada" a secas, MISMO texto que el mail
+  // (templates/daily-summary.ts): `cashClosed` sale de `todayClose !== null`,
+  // o sea prueba que hubo cierre, NO que la caja haya cuadrado. Decía "caja
+  // cerrada sin diferencia" y un cierre con faltante o sobrante disparaba el
+  // "sin diferencia" igual (hallazgo #3, campaña de mutación). Si algún día se
+  // quiere informar el faltante/sobrante real, el dato es `diff_amount` del
+  // cierre — no este booleano.
+  const cajaLabel = data.numbers.cashClosed ? 'caja cerrada' : 'caja sin cerrar todavía'
   const summaryLabel = `${dateLabelMedium(yesterday)}: $${collectedArs} · ${occupiedLabel} · ${cajaLabel}`
 
   await notifyAdminPush(tenant.id, {

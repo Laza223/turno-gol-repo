@@ -2,19 +2,13 @@ import { sql } from 'drizzle-orm'
 import { dailyCashCloses } from '@/shared/db/schema'
 import { insertAuditLog } from '@/shared/db/audit'
 import type { DbTx } from '@/shared/db/client'
+import { isUniqueViolation } from '@/shared/db/pg-errors'
 import { operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { CloseDateInFutureError, DayAlreadyCloseExistsError } from './cashflow.errors'
 import type { DailyCashCloseRow, CashFlowType } from './cashflow.types'
 import { balanceFrom } from './totals'
 
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: string }).code === '23505'
-  )
-}
+const UQ_DAILY_CLOSE_PER_TENANT = 'uq_daily_close_per_tenant'
 
 async function aggregateTotals(
   tenantId: string,
@@ -126,7 +120,8 @@ export async function closeDailyRegister(
       .returning()
     closeRow = rows[0]!
   } catch (err) {
-    if (isUniqueViolation(err)) throw new DayAlreadyCloseExistsError(date)
+    if (isUniqueViolation(err, UQ_DAILY_CLOSE_PER_TENANT))
+      throw new DayAlreadyCloseExistsError(date)
     throw err
   }
 

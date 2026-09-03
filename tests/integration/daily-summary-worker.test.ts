@@ -57,7 +57,7 @@ async function seedTenantWithYesterdayActivity(
     RETURNING id
   `
 
-  // Actividad de ayer: un cash_flow + cierre de caja (para exigir "caja cerrada sin diferencia").
+  // Actividad de ayer: un cash_flow + cierre de caja (para exigir "caja cerrada").
   // Tenant de test → closesNextDay=false → cutoffMins=0 → operatingDateOf === artDateOf.
   const today = artDateOf(new Date())
   const yesterdayDate = addDays(today, -1)
@@ -103,7 +103,12 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
     }
     expect(jobData.payload.type).toBe('daily_summary')
     expect(jobData.payload.summaryLabel).toContain('9.000')
-    expect(jobData.payload.summaryLabel).toContain('caja cerrada sin diferencia')
+    // "caja cerrada" a secas, igual que el mail: `cashClosed` prueba que hubo
+    // cierre, no que la caja haya cuadrado (hallazgo #3, campaña de mutación —
+    // ver tests/unit/daily-summary-caja-label.test.ts). Este assert codificaba
+    // el texto viejo, que afirmaba de más.
+    expect(jobData.payload.summaryLabel).toContain('caja cerrada')
+    expect(jobData.payload.summaryLabel).not.toContain('sin diferencia')
     // Hallazgo de revisión adversarial: sin dedupeKey, un retry de pg-boss
     // (retryLimit=3 real en push-send) duplicaría el push visible al admin —
     // push.worker.ts solo reclama push_send_log si dedupeKey viene seteada.

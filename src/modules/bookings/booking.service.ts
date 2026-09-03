@@ -134,6 +134,15 @@ export async function slotIsPhysicallyNextDay(
   return timeToMins(timeStart.slice(0, 5)) < openMins
 }
 
+// Misma forma naive que la que rompió en cashflow (hallazgo #2, campaña de
+// mutación): mira `err.code` en el nivel superior, no en `cause`. Sobrevive
+// SOLO porque el INSERT que la dispara (abajo, `checkOverlapOrThrow` /
+// `insertBookingRow`) va por `tx.execute(sql\`...\`)` crudo, no por el query
+// builder de Drizzle — y postgres-js no envuelve el error, Drizzle 0.45 sí.
+// Si algún día ese INSERT se pasa a `.insert(bookings).values()`, esta
+// función deja de reconocer el 23P01 igual que le pasó a cashflow. Unificar
+// con `@/shared/db/pg-errors` (que sí camina `cause`) queda para cuando eso
+// pase — no antes, por mantener el fix de cashflow acotado a lo que rompió.
 export function isExclusionViolation(err: unknown): boolean {
   return (
     typeof err === 'object' &&

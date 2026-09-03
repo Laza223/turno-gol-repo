@@ -30,8 +30,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL('/settings/facturacion?error=mp_not_configured', req.url))
   }
 
+  // Falla CERRADO: sin la variable, NUNCA se firma con clave vacía (un valor
+  // que cualquiera puede reproducir). El `?? ''` de antes dejaba la protección
+  // anti-CSRF apagada en silencio en vez de romper el flujo (hallazgo #5,
+  // campaña de mutación — mismo patrón que el incidente de ENCRYPTION_KEY).
+  const secret = process.env.MP_CLIENT_SECRET
+  if (!secret) {
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
+  }
   const payload = Buffer.from(`${tenant.id}:${Date.now()}`).toString('base64url')
-  const secret = process.env.MP_CLIENT_SECRET ?? ''
   const sig = createHmac('sha256', secret).update(payload).digest('base64url')
   const state = `${payload}.${sig}`
 

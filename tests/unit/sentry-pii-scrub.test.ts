@@ -90,5 +90,25 @@ describe('Sentry PII scrub helpers (B9.4)', () => {
     it('case-insensitive', () => {
       expect(scrubQueryString('?Email=a@b.com')).toBe('?Email=[REDACTED]')
     })
+
+    // Hallazgo #7 (campaña de mutación, docs/qa/TEST_AUDIT.md): PII_KEYS y el
+    // regex de acá tenían DOS listas separadas. `mp_access_token` está en
+    // PII_KEYS (es justo la credencial que CLAUDE.md prohíbe loguear) pero el
+    // regex viejo solo reconocía el término `access_token` pegado a `?`/`&` —
+    // el prefijo `mp_` rompe esa adyacencia y el patrón nunca matchea.
+    it('redacta mp_access_token y mp_refresh_token (el patrón sale de PII_KEYS, no de una lista aparte)', () => {
+      expect(scrubQueryString('?mp_access_token=TEST-1234&id=1')).toBe(
+        '?mp_access_token=[REDACTED]&id=1',
+      )
+      expect(scrubQueryString('?mp_refresh_token=TG-xyz&foo=bar')).toBe(
+        '?mp_refresh_token=[REDACTED]&foo=bar',
+      )
+    })
+
+    it('redacta el resto de PII_KEYS que el regex viejo no cubría (phone, phone_number, dni)', () => {
+      expect(scrubQueryString('?phone=+5491100000000')).toBe('?phone=[REDACTED]')
+      expect(scrubQueryString('?phone_number=+5491100000000')).toBe('?phone_number=[REDACTED]')
+      expect(scrubQueryString('?dni=30111222')).toBe('?dni=[REDACTED]')
+    })
   })
 })

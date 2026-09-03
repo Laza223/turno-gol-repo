@@ -3,6 +3,13 @@ import { closeSql, getSql } from '@/shared/db/client'
 import { createTenantWithTrial } from '@/modules/tenants/tenant.service'
 import { cleanupAll, createTestStaffUser, ensureRoles } from '../helpers/tenant'
 
+/** Días entre ahora y un timestamp que puede llegar como Date o como string
+ *  (el driver lo devuelve distinto según la columna). */
+function daysFromNow(value: Date | string): number {
+  const ts = new Date(value as unknown as string).getTime()
+  return (ts - Date.now()) / (24 * 60 * 60 * 1000)
+}
+
 // Bug raíz confirmado: createTenantWithTrial nunca insertaba una fila en
 // tenant_subscriptions, así que subscribe() tiraba SubscriptionNotFoundError
 // para todo tenant nuevo y ningún complejo podía pagar. Este test cubre el fix.
@@ -106,5 +113,78 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
     expect(rows[0]!.status).toBe('queued')
     expect(rows[0]!.content.tenantName).toBe('Complejo Bienvenida')
     expect(rows[0]!.content.ownerName).toBe(staffRows[0]!.first_name)
+  })
+
+  // Guardrail del veto de D4 ("no cambiar el lifecycle hasta tener evidencia del
+  // caso cero"): el self-signup NO pasa `trialDays`, así que tiene que seguir
+  // dando 30. Si alguien mueve TRIAL_DAYS, este test se pone rojo.
+  it('sin trialDays usa el default de 30 días y el mail no afirma plazo', async () => {
+    const sql = getSql()
+    const staff = await createTestStaffUser(sql)
+
+    const tenant = await createTenantWithTrial({
+      name: 'Complejo Default',
+      address: 'Calle 789',
+      city: 'CABA',
+      province: 'Buenos Aires',
+      phone: '1122334455',
+      email: 'default@test.local',
+      staffUserId: staff.id,
+    })
+
+    const rows = await sql<{ trial_ends_at: Date | string }[]>`
+      SELECT trial_ends_at FROM tenants WHERE id = ${tenant.id}
+    `
+    const days = daysFromNow(rows[0]!.trial_ends_at)
+    expect(days).toBeGreaterThan(29.9)
+    expect(days).toBeLessThan(30.1)
+
+    // Y el mail NO lleva el número: a los pilotos se les extiende el trial desde
+    // soporte cuando este mail ya salió, así que afirmar "30 días" acá terminaba
+    // contradiciendo lo que el dueño tenía pactado.
+    const mailRows = await sql<{ content: Record<string, unknown> }[]>`
+      SELECT content FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'trial_welcome'
+    `
+    expect(mailRows[0]!.content).not.toHaveProperty('trialDays')
+  })
+
+  // El alta asistida del super-admin fija el trial de los pilotos. Los TRES
+  // lugares que el cliente puede comparar entre sí — `trial_ends_at`,
+  // `current_period_end` y el copy del mail — salen del mismo número.
+  it('con trialDays propaga el mismo valor a trial_ends_at, period_end y el mail', async () => {
+    const sql = getSql()
+    const staff = await createTestStaffUser(sql)
+
+    const tenant = await createTenantWithTrial({
+      name: 'Complejo Piloto',
+      address: 'Calle 901',
+      city: 'CABA',
+      province: 'Buenos Aires',
+      phone: '1122334455',
+      email: 'piloto@test.local',
+      staffUserId: staff.id,
+      trialDays: 90,
+    })
+
+    const tenantRows = await sql<{ trial_ends_at: Date | string }[]>`
+      SELECT trial_ends_at FROM tenants WHERE id = ${tenant.id}
+    `
+    const days = daysFromNow(tenantRows[0]!.trial_ends_at)
+    expect(days).toBeGreaterThan(89.9)
+    expect(days).toBeLessThan(90.1)
+
+    const subRows = await sql<{ current_period_end: Date | string }[]>`
+      SELECT current_period_end FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+    `
+    expect(new Date(subRows[0]!.current_period_end as unknown as string).toISOString()).toBe(
+      new Date(tenantRows[0]!.trial_ends_at as unknown as string).toISOString(),
+    )
+
+    const mailRows = await sql<{ content: Record<string, unknown> }[]>`
+      SELECT content FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'trial_welcome'
+    `
+    expect(mailRows[0]!.content.trialDays).toBe(90)
   })
 })

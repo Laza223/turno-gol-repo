@@ -99,26 +99,15 @@ export const HoverResaltaPinEnMapa: Story = {
     // Era emerald-600 hasta que se descubrió que daba 3.76:1 con su texto blanco.
     const INACTIVO = 'rgb(4, 120, 87)' // #047857
     const ACTIVO = 'rgb(6, 95, 70)' // #065f46 — emerald-800, el resalte
-    // Con `waitFor`, igual que las de abajo: `findByText` espera a que
-    // exista el NODO, no a que Leaflet le haya aplicado el ícono con su color. En
-    // CI el reposo se pescaba a veces antes de eso y el shard quedaba rojo con un
-    // `backgroundColor` vacío. La aserción es la misma, sólo deja de correr una
-    // carrera contra el montaje del mapa.
-    await waitFor(async () =>
-      expect(await mapa.findByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO }),
-    )
-    await waitFor(async () =>
-      expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO }),
-    )
+    await expect(await mapa.findByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO })
+    await expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO })
 
     await userEvent.hover(fila)
     // El pin de Fénix se resalta; el de Belgrano queda sin cambios.
     // getByText (no findByText): el nodo ya existe, lo que cambia es su estilo —
     // waitFor reintenta la aserción hasta que Leaflet termine de aplicar el ícono nuevo.
     await waitFor(() => expect(mapa.getByText('$ 9.000')).toHaveStyle({ backgroundColor: ACTIVO }))
-    await waitFor(() =>
-      expect(mapa.getByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO }),
-    )
+    await expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO })
 
     await userEvent.unhover(fila)
     await waitFor(() =>

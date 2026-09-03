@@ -3,6 +3,8 @@ import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import {
+  CANCELED_BLOCKED_DELETION_DAYS,
+  CHURNED_DELETION_DAYS,
   transitionBlockedToChurned,
   transitionCanceledToBlocked,
   transitionPastDueToSuspended,
@@ -182,7 +184,7 @@ export async function runDunningSweep(): Promise<void> {
 
   for (const id of blockedIds) {
     try {
-      const deletionDate = new Date(Date.now() + 7 * 86_400_000)
+      const deletionDate = new Date(Date.now() + CHURNED_DELETION_DAYS * 86_400_000)
       await withTenantContext(id, async (tx) => {
         await transitionBlockedToChurned(id, tx)
         await enqueueTenantOwnerNotification(
@@ -194,7 +196,7 @@ export async function runDunningSweep(): Promise<void> {
               ownerName: ownerName(ownerMap, id),
               tenantName: tenantName(ownerMap, id),
               deletionDate: `${String(deletionDate.getUTCDate()).padStart(2, '0')}/${String(deletionDate.getUTCMonth() + 1).padStart(2, '0')}/${deletionDate.getUTCFullYear()}`,
-              daysRemaining: 7,
+              daysRemaining: CHURNED_DELETION_DAYS,
             },
           },
           tx,
@@ -215,7 +217,7 @@ export async function runDunningSweep(): Promise<void> {
 
   for (const id of canceledIds) {
     try {
-      const deletionDate = new Date(Date.now() + 67 * 86_400_000)
+      const deletionDate = new Date(Date.now() + CANCELED_BLOCKED_DELETION_DAYS * 86_400_000)
       await withTenantContext(id, async (tx) => {
         await transitionCanceledToBlocked(id, tx)
         await enqueueTenantOwnerNotification(
@@ -227,7 +229,7 @@ export async function runDunningSweep(): Promise<void> {
               ownerName: ownerName(ownerMap, id),
               tenantName: tenantName(ownerMap, id),
               deletionDate: `${String(deletionDate.getUTCDate()).padStart(2, '0')}/${String(deletionDate.getUTCMonth() + 1).padStart(2, '0')}/${deletionDate.getUTCFullYear()}`,
-              daysRemaining: 67,
+              daysRemaining: CANCELED_BLOCKED_DELETION_DAYS,
             },
           },
           tx,

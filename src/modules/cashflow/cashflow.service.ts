@@ -193,10 +193,13 @@ export async function createCashFlow(
     const inserted = [...result][0]
     if (inserted) return rawRowToCashFlowRow(inserted)
 
-    // Row already existed — fetch it to return a consistent result.
+    // Row already existed — fetch it to return a consistent result. El índice
+    // único de client_idempotency_key es GLOBAL (migr. 023), sin tenant_id:
+    // filtro explícito SIEMPRE además de RLS (defensa en profundidad, CLAUDE.md
+    // — en dev la app conecta como superusuario y RLS no aplica).
     const existing = await tx.execute<CashFlowRawRow>(sql`
       SELECT * FROM cash_flows
-      WHERE client_idempotency_key = ${input.clientIdempotencyKey}
+      WHERE tenant_id = ${tenantId} AND client_idempotency_key = ${input.clientIdempotencyKey}
       LIMIT 1
     `)
     return rawRowToCashFlowRow([...existing][0]!)

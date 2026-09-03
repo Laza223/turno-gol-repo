@@ -94,10 +94,12 @@ export async function sellTicket(
   const lines = normalizeTicketLines(input.lines)
   if (lines.length === 0) throw new EmptyTicketError()
 
-  // (1) Fast path de reintento: la venta ya existe, no tocar nada.
+  // (1) Fast path de reintento: la venta ya existe, no tocar nada. El índice
+  // único de client_idempotency_key es GLOBAL (migr. 023), sin tenant_id:
+  // filtro explícito SIEMPRE además de RLS (defensa en profundidad, CLAUDE.md).
   const preCheck = await tx.execute(sql`
     SELECT id, amount FROM cash_flows
-    WHERE client_idempotency_key = ${input.clientIdempotencyKey}
+    WHERE tenant_id = ${tenantId} AND client_idempotency_key = ${input.clientIdempotencyKey}
     LIMIT 1
   `)
   const existing = (preCheck as unknown as Array<{ id: string; amount: number }>)[0]
@@ -134,7 +136,7 @@ export async function sellTicket(
   // (2) Re-check bajo lock: cierra la carrera de dos requests con la misma key.
   const postCheck = await tx.execute(sql`
     SELECT id, amount FROM cash_flows
-    WHERE client_idempotency_key = ${input.clientIdempotencyKey}
+    WHERE tenant_id = ${tenantId} AND client_idempotency_key = ${input.clientIdempotencyKey}
     LIMIT 1
   `)
   const existingLocked = (postCheck as unknown as Array<{ id: string; amount: number }>)[0]

@@ -24,7 +24,7 @@ import type {
 
 // Los helpers viven en pg-errors.ts desde la fase 3 (los comparte el service de
 // resultados). Se re-exporta para no romper el import del test unitario.
-import { isUniqueViolation } from './pg-errors'
+import { isUniqueViolation } from '@/shared/db/pg-errors'
 export { isUniqueViolation }
 
 function rowToTeam(r: typeof tournamentTeams.$inferSelect): TournamentTeamRow {

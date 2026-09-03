@@ -356,6 +356,21 @@ describe('MP OAuth callback error paths', () => {
     expect(connectMercadoPago).not.toHaveBeenCalled()
   })
 
+  it('MP_CLIENT_SECRET ausente → falla CERRADO (mp_config_missing), nunca verifica el state con clave vacía (hallazgo #5)', async () => {
+    // Antes del fix: `process.env.MP_CLIENT_SECRET ?? ''` deja `secret = ''`
+    // cuando falta la variable. Un state firmado con esa MISMA clave vacía
+    // (que cualquiera puede reproducir — es un valor público, no un secreto)
+    // pasaba `timingSafeEqual` igual y el flujo seguía andando: la protección
+    // anti-CSRF se apaga en silencio en vez de romper el arranque.
+    delete process.env.MP_CLIENT_SECRET
+    const state = makeState(TENANT, '') // clave vacía: lo que cualquiera puede forjar
+    const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
+    const res = await mpCallback(req)
+    expect(res.headers.get('location')).toMatch(/mp_config_missing/)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(connectMercadoPago).not.toHaveBeenCalled()
+  })
+
   it('MP devuelve token no-ok (400) → mp_token_failed, no persiste ni completa onboarding', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400 }),

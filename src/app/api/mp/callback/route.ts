@@ -80,8 +80,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
   const { code, state } = parsed.data
 
-  // Verify CSRF state
-  const secret = process.env.MP_CLIENT_SECRET ?? ''
+  // Verify CSRF state. Falla CERRADO: sin la variable, NUNCA se verifica con
+  // clave vacía (un valor que cualquiera puede reproducir para forjar un
+  // state válido). El `?? ''` de antes dejaba la protección anti-CSRF apagada
+  // en silencio en vez de romper el flujo (hallazgo #5, campaña de mutación —
+  // mismo patrón que el incidente de ENCRYPTION_KEY).
+  const secret = process.env.MP_CLIENT_SECRET
+  if (!secret) {
+    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
+  }
   const dot = state.indexOf('.')
   if (dot < 0) {
     return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))

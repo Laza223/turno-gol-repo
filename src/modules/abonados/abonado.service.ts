@@ -304,10 +304,16 @@ export async function pauseAbonado(
   // fecha operativa ART correcta.
   const today = artToday()
 
+  // starts_at >= NOW() ADEMÁS de date >= hoy (hallazgo #4, campaña de
+  // mutación): `date` es el día operativo, no cuándo pasó de verdad. Una
+  // sesión de hoy a las 09:00 sigue en 'confirmed' hasta que el trigger de
+  // 24h la mueva — sin este filtro, pausar a las 15:00 la borraba igual.
+  // starts_at/ends_at (TIMESTAMPTZ) son la fuente única para "ya pasó" (CLAUDE.md).
   await tx.execute(sql`
     DELETE FROM bookings
     WHERE abonado_id = ${abonadoId}
       AND date >= ${today}::date
+      AND starts_at >= NOW()
       AND status IN ('confirmed','pending_payment')
   `)
 
@@ -422,10 +428,15 @@ export async function cancelAbonado(
   const current = existing[0]!
   if (current.status === 'canceled') throw new AbonadoAlreadyCanceledError()
 
+  // starts_at >= NOW() ADEMÁS de date >= fromDate (hallazgo #4, campaña de
+  // mutación): misma razón que pauseAbonado — `date` es el día operativo, no
+  // cuándo pasó de verdad, así que cancelar con fromDate=hoy borraba una
+  // sesión ya jugada. starts_at/ends_at son la fuente única para "ya pasó".
   await tx.execute(sql`
     DELETE FROM bookings
     WHERE abonado_id = ${abonadoId}
       AND date >= ${fromDate}::date
+      AND starts_at >= NOW()
       AND status IN ('confirmed','pending_payment')
   `)
 

@@ -79,9 +79,15 @@ describe('daily close — idempotency + integrity (B8.4)', () => {
 
     const results = await Promise.allSettled(attempts)
     const ok = results.filter((r) => r.status === 'fulfilled').length
-    const errs = results.filter((r) => r.status === 'rejected').length
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
     expect(ok).toBe(1)
-    expect(errs).toBe(4)
+    expect(rejected).toHaveLength(4)
+    // No alcanza con "4 fallaron": tienen que fallar CON DayAlreadyCloseExistsError,
+    // no con el 23505 crudo que Drizzle 0.45 envuelve en `cause` (hallazgo #2,
+    // campaña de mutación — ver tests/unit/daily-close-unique-violation.test.ts).
+    for (const r of rejected) {
+      expect(r.reason).toBeInstanceOf(DayAlreadyCloseExistsError)
+    }
 
     // Only 1 row in DB.
     const sql = getSql()

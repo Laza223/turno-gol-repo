@@ -115,3 +115,17 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 **Costo estimado de resolverla**: bajo, ~1-2h. `withTenant` consultando `getImpersonationSession()` con el mismo criterio que `isBlockedForStaff`, y un test que fije que un tenant `blocked` sigue cortado SIN impersonación (el riesgo real del cambio es aflojar el gate para todos). El CSV se arregla aparte: ocultar el link cuando el tenant no está operativo, o que el route handler responda un CSV de una línea con el motivo en vez de JSON.
 
 **Disparador de resolución**: cuando soporte necesite de verdad operar sobre un complejo bloqueado —hoy no pasó nunca fuera de los ensayos— o si aparece una tercera superficie afectada. Decisión del dueño el 2026-08-30: arreglar el mensaje ahora y dejar el gate como está.
+
+---
+
+## El mapa de `/explorar` no siempre monta sus pines bajo la carga del shard de Stories
+
+**Qué es**: [ExplorarSplitView.stories.tsx](<src/app/(public)/explorar/components/ExplorarSplitView.stories.tsx>) falla de forma intermitente en `Stories shard 1/3 (light)`, y solo ahí. Dos formas distintas del mismo síntoma: `HoverResaltaPinEnMapa` encuentra el pin de precio sin el `backgroundColor` esperado, y `Composicion` no encuentra el nodo del pin en absoluto (`findByText('$ 11.000')` en la línea 75). Cuando falla, el archivo tarda ~16 s; corriéndolo aislado tarda ~1,1 s y pasa 3 de 3.
+
+**Por qué existe**: el mapa entra por `next/dynamic({ ssr: false })` y los marcadores los monta Leaflet de forma asincrónica. Las stories esperan con `findBy*`/`waitFor`, que alcanza en condiciones normales. Lo que no está claro es por qué bajo la carga del shard —94 archivos de story compartiendo una sola página de Chromium, que `@vitest/browser` nunca recarga entre archivos— el montaje a veces no llega nunca dentro del timeout. La hipótesis viva es presión de memoria del renderer, la misma clase que ya obligó a poner `--disable-dev-shm-usage` en [vitest.storybook.config.ts](vitest.storybook.config.ts) por el cuelgue del PR #122.
+
+**Costo de no resolverla ahora**: un check BLOQUEANTE que se pone rojo sin causa en el diff, y que se destraba re-corriendo. El costo real no es el minuto de rerun: es que entrena a leer ese check como ruido, y el día que marque una regresión de verdad nadie le va a creer. Frecuencia observada: 2 de 3 corridas en una rama, 0 en las 10 corridas previas de otras ramas — o sea que aparece en rachas, no de forma pareja.
+
+**Costo estimado de resolverla**: medio, ~2-4h, y la mayor parte es diagnóstico, no arreglo. No se reproduce localmente corriendo el archivo solo: hay que correr el shard 1/3 completo con `--shard=1/3` para recrear la carga, y recién ahí instrumentar si el iframe llega a montar Leaflet. Ojo con el atajo: envolver las aserciones en más `waitFor` NO alcanza y puede empeorar — `findByText` anidado dentro de `waitFor` se come el presupuesto del `waitFor` y le deja un solo intento (probado y revertido en el PR #264, commits 39668e2b y b041b72f). El patrón correcto, si el camino termina siendo esperar mejor, es `getByText` adentro del `waitFor`.
+
+**Disparador de resolución**: cuando el rojo aparezca en una rama que no sea la que lo descubrió —o sea, cuando deje de ser una racha y empiece a costarle reruns a otro—, o cuando se toque `ExplorarMap`/`ExplorarSplitView` por producto. Si en el medio aparece un tercer test del mismo archivo fallando, subir la prioridad: sería señal de que el montaje del mapa empeora, no de que la aserción es frágil.

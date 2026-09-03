@@ -60,6 +60,10 @@ export type CreateTenantInput = {
   phone: string
   email: string
   staffUserId: string
+  /** Días de prueba gratuita. Omitido = `TRIAL_DAYS` (30), el default del
+   *  self-signup — el wizard de onboarding NO lo pasa y no debe pasarlo.
+   *  Solo el alta asistida del super-admin fija un valor distinto (pilotos). */
+  trialDays?: number
 }
 
 export type UpdateTenantInput = Partial<{

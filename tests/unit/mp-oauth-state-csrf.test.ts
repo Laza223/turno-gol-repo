@@ -87,9 +87,9 @@ function tokenRequestBody(): Record<string, unknown> {
 }
 
 beforeEach(() => {
-  process.env.MP_CLIENT_SECRET = SECRET
-  process.env.MP_CLIENT_ID = 'test-client-id'
-  process.env.NEXT_PUBLIC_APP_URL = APP_URL
+  vi.stubEnv('MP_CLIENT_SECRET', SECRET)
+  vi.stubEnv('MP_CLIENT_ID', 'test-client-id')
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', APP_URL)
   fetchMock.mockClear()
   vi.mocked(connectMercadoPago).mockClear()
   vi.mocked(completeOnboarding).mockClear()
@@ -347,7 +347,7 @@ describe('MP OAuth callback — sesión/rol revalidados (audit_report.md 3-15)',
 
 describe('MP OAuth callback error paths', () => {
   it('NEXT_PUBLIC_APP_URL ausente → mp_config_missing, sin fetch ni persistencia', async () => {
-    delete process.env.NEXT_PUBLIC_APP_URL // restored by beforeEach
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', undefined)
     const state = makeState(TENANT, SECRET)
     const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)
@@ -362,7 +362,11 @@ describe('MP OAuth callback error paths', () => {
     // (que cualquiera puede reproducir — es un valor público, no un secreto)
     // pasaba `timingSafeEqual` igual y el flujo seguía andando: la protección
     // anti-CSRF se apaga en silencio en vez de romper el arranque.
-    delete process.env.MP_CLIENT_SECRET
+    // `vi.stubEnv(..., undefined)` y no `delete process.env`: el beforeEach
+    // stubea las tres variables y `unstubEnvs` las restaura sola (PR #264, que
+    // cerró justamente las fugas de estado entre archivos). Un `delete` sobre
+    // una var stubeada se saltea ese ciclo.
+    vi.stubEnv('MP_CLIENT_SECRET', undefined)
     const state = makeState(TENANT, '') // clave vacía: lo que cualquiera puede forjar
     const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)

@@ -28,9 +28,12 @@ const ADMIN_USER = {
 }
 
 beforeEach(() => {
-  process.env.MP_CLIENT_ID = 'test-client-id'
-  process.env.MP_CLIENT_SECRET = 'test-mp-client-secret-1234567890'
-  process.env.NEXT_PUBLIC_APP_URL = APP_URL
+  // `vi.stubEnv` y no asignación directa: `unstubEnvs` (vitest.config.ts) las
+  // restaura solo, sin filtrar estado a los demás archivos de la suite — la
+  // convención que fijó el PR #264 al cerrar esa clase de flake.
+  vi.stubEnv('MP_CLIENT_ID', 'test-client-id')
+  vi.stubEnv('MP_CLIENT_SECRET', 'test-mp-client-secret-1234567890')
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', APP_URL)
   vi.mocked(extractAuthUser)
     .mockReset()
     .mockResolvedValue(ADMIN_USER as never)
@@ -42,7 +45,7 @@ beforeEach(() => {
 
 describe('MP OAuth start — MP_CLIENT_SECRET requerido (hallazgo #5)', () => {
   it('MP_CLIENT_SECRET ausente → falla CERRADO (mp_config_missing), nunca firma con clave vacía', async () => {
-    delete process.env.MP_CLIENT_SECRET
+    vi.stubEnv('MP_CLIENT_SECRET', undefined)
     const req = new NextRequest(`${APP_URL}/api/mp/oauth-start`)
 
     const res = await oauthStart(req)

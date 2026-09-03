@@ -73,7 +73,7 @@ function mockExchange(result: { data: { user: unknown } | null; error: unknown }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+  vi.stubEnv('IMPERSONATION_COOKIE_SECRET', 'test-secret-at-least-16-chars-long')
   mockCookieGet.mockReturnValue(undefined) // por default, sin cookie (/ingresar)
   mockCreateAdminClient.mockReturnValue({
     auth: { admin: { updateUserById: vi.fn().mockResolvedValue({}) } },

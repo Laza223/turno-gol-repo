@@ -13,7 +13,7 @@
  * el viejo no se haya aflojado: un `payment` sin tenant sigue siendo 400, y una
  * firma inválida sigue cortando ANTES de gastar una llamada a MP.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
 
 const SECRET = 'secreto-de-prueba'
@@ -39,13 +39,28 @@ function firmar(dataId: string): Record<string, string> {
   }
 }
 
-async function postear(
+/**
+ * El grafo del route se carga UNA vez, y en un hook.
+ *
+ * Importarlo adentro del primer `it` hacía que sus ~2 s de carga (drizzle,
+ * schema, payment/billing/notification service) corrieran contra el
+ * `testTimeout` de 10 s. Con la suite completa compitiendo por CPU eso se
+ * pasaba y el archivo quedaba rojo 2 de cada 4 corridas sobre el mismo commit.
+ * Acá se paga contra el `hookTimeout` de 30 s y una sola vez.
+ */
+let POST: (typeof import('@/app/api/webhooks/mercadopago/route'))['POST']
+let NextRequest: (typeof import('next/server'))['NextRequest']
+
+beforeAll(async () => {
+  ;({ POST } = await import('@/app/api/webhooks/mercadopago/route'))
+  ;({ NextRequest } = await import('next/server'))
+})
+
+function postear(
   url: string,
   payload: Record<string, unknown>,
   headers: Record<string, string>,
 ): Promise<Response> {
-  const { POST } = await import('@/app/api/webhooks/mercadopago/route')
-  const { NextRequest } = await import('next/server')
   return POST(new NextRequest(url, { method: 'POST', headers, body: JSON.stringify(payload) }))
 }
 
@@ -57,7 +72,14 @@ describe('webhook de MercadoPago — resolución del complejo', () => {
   const secretOriginal = env['MP_WEBHOOK_SECRET']
 
   beforeEach(() => {
-    vi.resetModules()
+    // Sin `vi.resetModules()` a propósito: resetear obliga a re-ejecutar el grafo
+    // entero del route (drizzle, schema, payment/billing/notification service) en
+    // CADA caso. Con eso el archivo tardaba ~3 s aislado y se ponía rojo por
+    // timeout cuando la suite completa competía por CPU — un flake que aparecía
+    // 2 de cada 4 corridas sobre el mismo commit. No hace falta: lo único que
+    // varía entre casos es `MP_WEBHOOK_SECRET`, y `verifyWebhookSignature` lo lee
+    // de `process.env` en cada llamada. Mismo arreglo que ya tiene
+    // `mp-webhook-rechazo-observable.test.ts`.
     resolveSubscriptionTenant.mockReset()
     send.mockReset()
     env['MP_WEBHOOK_SECRET'] = SECRET

@@ -8,7 +8,7 @@
  * build, así que decide el valor de compilación y no el de runtime) y pasó a ser
  * un secreto server-only que además hay que presentar en un header.
  */
-import { describe, expect, it, vi, afterEach } from 'vitest'
+import { beforeAll, describe, expect, it, vi, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const SECRETO = 'secreto-de-stress-test-largo'
@@ -25,8 +25,20 @@ function pedir(headers: Record<string, string> = {}): NextRequest {
   })
 }
 
-async function postear(headers: Record<string, string> = {}): Promise<Response> {
-  const { POST } = await import('@/app/api/e2e/create-booking/route')
+/**
+ * El route se carga UNA vez y en un hook: adentro del primer `it` sus ~2 s de
+ * carga corrían contra el `testTimeout` de 10 s, y con la suite completa
+ * compitiendo por CPU eso se pasa y el archivo queda rojo sin que nada haya
+ * cambiado. Acá se paga contra el `hookTimeout` de 30 s. Los `stubEnv` de cada
+ * caso siguen valiendo: el guard lee el entorno en cada request, no al importar.
+ */
+let POST: (typeof import('@/app/api/e2e/create-booking/route'))['POST']
+
+beforeAll(async () => {
+  ;({ POST } = await import('@/app/api/e2e/create-booking/route'))
+})
+
+function postear(headers: Record<string, string> = {}): Promise<Response> {
   return POST(pedir(headers))
 }
 

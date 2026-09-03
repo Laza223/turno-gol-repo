@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildGoogleTermsCookie,
   GOOGLE_TERMS_COOKIE_TTL_MS,
@@ -12,7 +12,7 @@ import {
 const NOW = 1_750_000_000_000
 
 beforeEach(() => {
-  process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+  vi.stubEnv('IMPERSONATION_COOKIE_SECRET', 'test-secret-at-least-16-chars-long')
 })
 
 describe('buildGoogleTermsCookie / verifyGoogleTermsCookie', () => {
@@ -57,14 +57,14 @@ describe('buildGoogleTermsCookie / verifyGoogleTermsCookie', () => {
   })
 
   it('una cookie firmada con OTRO secreto no verifica (anti-forja, el ataque original)', () => {
-    process.env.IMPERSONATION_COOKIE_SECRET = 'attacker-secret-also-16-chars-xx'
+    vi.stubEnv('IMPERSONATION_COOKIE_SECRET', 'attacker-secret-also-16-chars-xx')
     const forged = buildGoogleTermsCookie('v1', NOW)
-    process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'
+    vi.stubEnv('IMPERSONATION_COOKIE_SECRET', 'test-secret-at-least-16-chars-long')
     expect(verifyGoogleTermsCookie(forged, NOW + 1000)).toBeNull()
   })
 
   it('lanza si falta el secreto', () => {
-    delete process.env.IMPERSONATION_COOKIE_SECRET
+    vi.stubEnv('IMPERSONATION_COOKIE_SECRET', undefined)
     expect(() => buildGoogleTermsCookie('v1', NOW)).toThrow(/IMPERSONATION_COOKIE_SECRET/)
   })
 

@@ -50,16 +50,18 @@ const validPayload: PushPayload = {
 }
 
 function setVapidEnv() {
-  process.env.VAPID_SUBJECT = 'mailto:test@turnogol.local'
-  process.env.VAPID_PUBLIC_KEY =
-    'BJzYxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-  process.env.VAPID_PRIVATE_KEY = 'AAAAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+  vi.stubEnv('VAPID_SUBJECT', 'mailto:test@turnogol.local')
+  vi.stubEnv(
+    'VAPID_PUBLIC_KEY',
+    'BJzYxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  )
+  vi.stubEnv('VAPID_PRIVATE_KEY', 'AAAAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
 }
 
 function clearVapidEnv() {
-  delete process.env.VAPID_SUBJECT
-  delete process.env.VAPID_PUBLIC_KEY
-  delete process.env.VAPID_PRIVATE_KEY
+  vi.stubEnv('VAPID_SUBJECT', undefined)
+  vi.stubEnv('VAPID_PUBLIC_KEY', undefined)
+  vi.stubEnv('VAPID_PRIVATE_KEY', undefined)
 }
 
 beforeEach(() => {

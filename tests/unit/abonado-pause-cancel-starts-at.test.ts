@@ -19,6 +19,10 @@ function sqlText(sqlObj: unknown): string {
   const chunks = (sqlObj as { queryChunks: unknown[] }).queryChunks
   return chunks.map((c) => (isStringChunk(c) ? c.value.join('') : '?')).join('')
 }
+function sqlValues(sqlObj: unknown): unknown[] {
+  const chunks = (sqlObj as { queryChunks: unknown[] }).queryChunks
+  return chunks.filter((c) => !isStringChunk(c))
+}
 
 vi.mock('@/shared/db/audit', () => ({ insertAuditLog: vi.fn() }))
 
@@ -66,8 +70,17 @@ function makeTx(onDelete: (arg: unknown) => void): DbTx {
   return { select, update, execute } as unknown as DbTx
 }
 
+let captured: unknown
+
+function makeTxCapturing(): DbTx {
+  return makeTx((arg) => {
+    captured = arg
+  })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  captured = undefined
 })
 
 describe('pauseAbonado — el DELETE de sesiones futuras nunca toca una ya jugada', () => {
@@ -95,5 +108,35 @@ describe('cancelAbonado — el DELETE de sesiones futuras nunca toca una ya juga
 
     expect(captured).toBeDefined()
     expect(sqlText(captured)).toMatch(/starts_at/)
+  })
+})
+
+// El corte se liga como parámetro desde JS y NO como `NOW()` de Postgres: la
+// otra mitad del WHERE ya sale del reloj de la app (`artToday()`), y mezclar
+// los dos relojes rompe todo test que simule el tiempo — `vi.setSystemTime`
+// congela el de JS y no el del server. Lo cazó el CI: el caso de las 22:00 ART
+// en tests/integration/abonados.test.ts quedaba con la reserva viva porque
+// `NOW()` real ubicaba la fecha simulada meses en el pasado.
+describe('el corte de tiempo usa UN SOLO reloj, el de la app', () => {
+  it.each([
+    ['pauseAbonado', () => pauseAbonado('tenant-1', 'abonado-1', 'staff-1', makeTxCapturing())],
+    [
+      'cancelAbonado',
+      () => cancelAbonado('tenant-1', 'abonado-1', '2026-06-15', 'staff-1', makeTxCapturing()),
+    ],
+  ])('%s liga el instante simulado, no NOW() del server', async (_name, run) => {
+    captured = undefined
+    vi.setSystemTime(new Date('2026-06-16T01:00:00.000Z'))
+    try {
+      await run()
+
+      expect(captured).toBeDefined()
+      // Sin `NOW()` en el texto: si estuviera, el reloj de Postgres decidiría.
+      expect(sqlText(captured)).not.toMatch(/NOW\(\)/)
+      // Y el instante simulado viaja como parámetro.
+      expect(sqlValues(captured)).toContain('2026-06-16T01:00:00.000Z')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

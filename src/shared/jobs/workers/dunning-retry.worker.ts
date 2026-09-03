@@ -185,6 +185,7 @@ export async function runDunningSweep(): Promise<void> {
   for (const id of blockedIds) {
     try {
       const deletionDate = new Date(Date.now() + CHURNED_DELETION_DAYS * 86_400_000)
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
       await withTenantContext(id, async (tx) => {
         await transitionBlockedToChurned(id, tx)
         await enqueueTenantOwnerNotification(
@@ -218,6 +219,7 @@ export async function runDunningSweep(): Promise<void> {
   for (const id of canceledIds) {
     try {
       const deletionDate = new Date(Date.now() + CANCELED_BLOCKED_DELETION_DAYS * 86_400_000)
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
       await withTenantContext(id, async (tx) => {
         await transitionCanceledToBlocked(id, tx)
         await enqueueTenantOwnerNotification(

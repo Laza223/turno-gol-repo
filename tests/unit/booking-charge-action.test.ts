@@ -311,6 +311,36 @@ describe('addBookingChargeAction', () => {
     expect(chargesIdx).toBeGreaterThan(lockIdx)
   })
 
+  // Mismo patrón de fuga que el hallazgo #8 de la campaña de mutación
+  // (cashflow.service.ts / canteen-tab.service.ts / canteen-sale.service.ts):
+  // el índice único de client_idempotency_key en cash_flows es GLOBAL (migr.
+  // 023), sin tenant_id. El SELECT de dedupe acá debe filtrar por tenant_id
+  // explícitamente además de RLS (CLAUDE.md) o un complejo B puede leer un
+  // reintento idempotente insertado por el complejo A y tratarlo como propio.
+  it('el SELECT de dedupe por clientIdempotencyKey filtra por tenant_id', async () => {
+    const dialect = new PgDialect()
+    const KEY = '55555555-5555-4555-8555-555555555555'
+    const tx = mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
+      [{ exists: 1 }], // SELECT por idempotency key: ya existe
+    ])
+    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-tenant-scoped' } as never)
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      amount: 100_00,
+      method: 'cash',
+      clientIdempotencyKey: KEY,
+    })
+
+    expect(res.success).toBe(true)
+    const queries = vi.mocked(tx.execute).mock.calls.map(([q]) => dialect.sqlToQuery(q as SQL))
+    const dedupeQuery = queries.find((q) => q.sql.includes('client_idempotency_key'))
+    expect(dedupeQuery).toBeDefined()
+    expect(dedupeQuery!.sql).toMatch(/tenant_id/)
+    expect(dedupeQuery!.params).toContain('tenant-1')
+  })
+
   // El reintento idempotente NO toma el lock: alreadyRegistered=true corta
   // antes de la validación de pendiente (ver test de arriba), así que el
   // lock — que solo protege ese camino de validar+insertar — no aparece.

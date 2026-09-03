@@ -87,9 +87,9 @@ function tokenRequestBody(): Record<string, unknown> {
 }
 
 beforeEach(() => {
-  process.env.MP_CLIENT_SECRET = SECRET
-  process.env.MP_CLIENT_ID = 'test-client-id'
-  process.env.NEXT_PUBLIC_APP_URL = APP_URL
+  vi.stubEnv('MP_CLIENT_SECRET', SECRET)
+  vi.stubEnv('MP_CLIENT_ID', 'test-client-id')
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', APP_URL)
   fetchMock.mockClear()
   vi.mocked(connectMercadoPago).mockClear()
   vi.mocked(completeOnboarding).mockClear()
@@ -347,7 +347,7 @@ describe('MP OAuth callback — sesión/rol revalidados (audit_report.md 3-15)',
 
 describe('MP OAuth callback error paths', () => {
   it('NEXT_PUBLIC_APP_URL ausente → mp_config_missing, sin fetch ni persistencia', async () => {
-    delete process.env.NEXT_PUBLIC_APP_URL // restored by beforeEach
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', undefined)
     const state = makeState(TENANT, SECRET)
     const req = new NextRequest(`${APP_URL}/api/mp/callback?code=authcode&state=${state}`)
     const res = await mpCallback(req)

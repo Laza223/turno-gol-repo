@@ -27,6 +27,14 @@ export default defineConfig({
         singleThread: true,
       },
     },
+    // Bajo `singleThread` todos los archivos comparten worker, así que un
+    // `vi.stubGlobal`/`vi.stubEnv` sin deshacer se filtra a TODO lo que corra
+    // después, y qué archivo lo ve depende del orden de ejecución — o sea que
+    // falla como flake no reproducible. Con esto Vitest lo deshace antes de cada
+    // test y el olvido deja de ser posible. No alcanza para las asignaciones
+    // directas a `process.env`: esas hay que hacerlas con `vi.stubEnv()`.
+    unstubEnvs: true,
+    unstubGlobals: true,
     setupFiles: ['./tests/setup.ts'],
   },
   // Use the automatic JSX runtime (same as Next.js production build) so server

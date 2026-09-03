@@ -203,14 +203,61 @@ describe('renderAdminNewBooking', () => {
 })
 
 describe('renderTrialWelcome', () => {
+  const WELCOME_DATA = { ownerName: 'Marcelo', tenantName: 'Complejo Norte' }
+
   it('subject contains tenant name', () => {
-    const { subject } = renderTrialWelcome({ ownerName: 'Marcelo', tenantName: 'Complejo Norte' })
+    const { subject } = renderTrialWelcome(WELCOME_DATA)
     expect(subject).toContain('Complejo Norte')
   })
 
   it('html greets owner by name', () => {
-    const { html } = renderTrialWelcome({ ownerName: 'Marcelo', tenantName: 'Complejo Norte' })
+    const { html } = renderTrialWelcome(WELCOME_DATA)
     expect(html).toContain('Marcelo')
+  })
+
+  // El copy tenía "30 días" fijo. El self-signup crea el trial en 30 y a los
+  // pilotos se les extiende después desde soporte, cuando este mail ya salió:
+  // el número quedaba contradiciendo lo pactado. Sin días explícitos no se
+  // afirma ninguno.
+  it('sin días explícitos no afirma ningún plazo', () => {
+    const { html, text } = renderTrialWelcome(WELCOME_DATA)
+    expect(html).not.toContain('30 días')
+    expect(text).not.toContain('30 días')
+    expect(html).toContain('Tu prueba gratuita ya está activa')
+    expect(text).toContain('Tu prueba gratuita ya está activa')
+  })
+
+  it('con días explícitos los dice, en html y en text', () => {
+    const { html, text } = renderTrialWelcome({ ...WELCOME_DATA, trialDays: 90 })
+    expect(html).toContain('90 días')
+    expect(text).toContain('90 días')
+    expect(html).not.toContain('30 días')
+  })
+
+  it('singulariza un trial de un solo día', () => {
+    const { html, text } = renderTrialWelcome({ ...WELCOME_DATA, trialDays: 1 })
+    expect(html).toContain('1 día de prueba')
+    expect(text).toContain('1 día de prueba')
+    expect(html).not.toContain('1 días')
+  })
+
+  // `content` sale del JSONB de `notifications`: el tipo no rige en runtime.
+  // Una fila encolada antes de este cambio no trae la clave, y un 0 o un
+  // negativo tampoco describen un plazo real. Los tres caen en la frase neutra
+  // en vez de renderizar "undefined días".
+  it.each([
+    ['ausente', undefined],
+    ['cero', 0],
+    ['negativo', -5],
+  ])('con trialDays %s cae en la frase sin número', (_caso, dias) => {
+    const { html, text } = renderTrialWelcome({
+      ...WELCOME_DATA,
+      trialDays: dias as number | undefined,
+    })
+    expect(html).toContain('Tu prueba gratuita ya está activa')
+    expect(html).not.toContain('undefined')
+    expect(text).not.toContain('undefined')
+    expect(html).not.toMatch(/-?\d+ días? de prueba/)
   })
 })
 

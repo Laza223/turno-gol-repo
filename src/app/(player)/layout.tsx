@@ -28,7 +28,9 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
   return (
     <PortalShell
       signOutAction={signOutAction}
-      initialSession={session ? { session, favoriteTenantIds: new Set() } : undefined}
+      initialSession={
+        session ? { session, favoriteTenantIds: new Set(), staffPanelPath: null } : undefined
+      }
     >
       {children}
     </PortalShell>

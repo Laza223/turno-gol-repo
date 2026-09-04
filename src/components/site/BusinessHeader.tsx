@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { usePortalSession } from '@/components/site/PortalSessionProvider'
 
 const MOBILE_LINK_CLS =
   'flex w-full items-center rounded-lg px-2.5 py-2 text-sm font-semibold text-slate-200 focus:text-white'
@@ -27,6 +28,15 @@ const MOBILE_LINK_CLS =
  * siempre.
  */
 export default function BusinessHeader() {
+  // Sesión de complejo (staff o superadmin). Sin provider alrededor, el default
+  // del contexto da null y el header renderiza EXACTAMENTE como antes — por eso
+  // no se agrega ninguna prop obligatoria y las stories/tests siguen verdes.
+  //
+  // Por qué acá: estas son las páginas donde aterriza un dueño de complejo
+  // (precios, funciones, blog), y su link "Ingresar" → /login era literalmente
+  // el botón que apretaba alguien que YA tenía la sesión abierta.
+  const { staffPanelPath } = usePortalSession()
+
   return (
     // pt combina el respiro visual con el safe-area del notch: era el único
     // header fixed sin compensarlo (los dos de admin sí lo hacen), y se nota
@@ -72,10 +82,10 @@ export default function BusinessHeader() {
             </Link>
             <span aria-hidden className="mx-1.5 hidden h-[22px] w-px bg-white/10 sm:inline-flex" />
             <Link
-              href="/login"
+              href={staffPanelPath ?? '/login'}
               className="hidden h-11 items-center rounded-full px-5 text-sm font-semibold text-slate-200 transition-colors hover:text-white sm:inline-flex focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
-              Ingresar
+              {staffPanelPath ? 'Ir a mi panel' : 'Ingresar'}
             </Link>
 
             <Link
@@ -107,7 +117,9 @@ export default function BusinessHeader() {
                   <Link href="/blog">Blog</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className={MOBILE_LINK_CLS}>
-                  <Link href="/login">Ingresar</Link>
+                  <Link href={staffPanelPath ?? '/login'}>
+                    {staffPanelPath ? 'Ir a mi panel' : 'Ingresar'}
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

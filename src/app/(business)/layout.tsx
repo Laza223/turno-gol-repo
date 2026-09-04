@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import BusinessHeader from '@/components/site/BusinessHeader'
 import BusinessFooter from '@/components/site/BusinessFooter'
+import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 
 export default function BusinessLayout({ children }: { children: ReactNode }) {
   return (
@@ -11,7 +12,13 @@ export default function BusinessLayout({ children }: { children: ReactNode }) {
     // bajo AA. Ver ThemeProvider.tsx: "las páginas always-dark se blindan con
     // su propio wrapper .dark de layout".
     <div className="dark min-h-dvh text-slate-300" style={{ background: '#020617' }}>
-      <BusinessHeader />
+      {/* El provider envuelve SOLO al header, igual que en la home
+          (src/app/page.tsx): hidrata la sesión después de montar, así que estas
+          páginas siguen siendo estáticas y nada del árbol server lee cookies.
+          Fail-open: si el fetch falla, el header queda como el de un visitante. */}
+      <PortalSessionProvider>
+        <BusinessHeader />
+      </PortalSessionProvider>
       <main id="main-content">{children}</main>
       <BusinessFooter />
     </div>

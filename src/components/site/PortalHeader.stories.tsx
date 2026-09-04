@@ -28,14 +28,19 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function withSession(session: PortalSession | null): Decorator[] {
+function withSession(
+  session: PortalSession | null,
+  staffPanelPath: string | null = null,
+): Decorator[] {
   return [
     (Story) => (
       <div
         style={{ transform: 'translateZ(0)', height: 110 }}
         className="relative isolate overflow-hidden"
       >
-        <PortalSessionProvider initialValue={{ session, favoriteTenantIds: new Set() }}>
+        <PortalSessionProvider
+          initialValue={{ session, favoriteTenantIds: new Set(), staffPanelPath }}
+        >
           <Story />
         </PortalSessionProvider>
       </div>
@@ -72,5 +77,28 @@ export const SolidLogueado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('link', { name: /mis reservas/i })).toBeInTheDocument()
+  },
+}
+
+/**
+ * Un COMPLEJO con la sesión abierta que cae en una página pública. Antes veía
+ * "Ingresar", entraba, y el login lo devolvía acá mismo. Ahora tiene el camino
+ * directo a su panel.
+ */
+export const OverlayComplejoLogueado: Story = {
+  args: { variant: 'overlay' },
+  decorators: withSession(null, '/dashboard'),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: 'Ir a mi panel' })).toBeInTheDocument()
+  },
+}
+
+export const SolidComplejoLogueado: Story = {
+  args: { variant: 'solid' },
+  decorators: withSession(null, '/dashboard'),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: 'Ir a mi panel' })).toBeInTheDocument()
   },
 }

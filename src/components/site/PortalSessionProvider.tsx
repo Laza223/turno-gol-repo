@@ -8,6 +8,12 @@ export type PortalSessionContextValue = {
   session: PortalSession | null
   /** Complejos favoritos del jugador (vacío para anónimos). */
   favoriteTenantIds: ReadonlySet<string>
+  /**
+   * Ruta al panel cuando la sesión es de un COMPLEJO (staff o superadmin).
+   * null para anónimo, para jugador y mientras hidrata. Es solo una ruta: no
+   * viaja email, ni nombre, ni id de complejo.
+   */
+  staffPanelPath: string | null
 }
 
 const EMPTY_FAVORITES: ReadonlySet<string> = new Set()
@@ -16,12 +22,14 @@ const EMPTY_FAVORITES: ReadonlySet<string> = new Set()
 const PortalSessionContext = createContext<PortalSessionContextValue>({
   session: null,
   favoriteTenantIds: EMPTY_FAVORITES,
+  staffPanelPath: null,
 })
 
 type SessionPayload = {
   data?: {
     session?: PortalSession | null
     favoriteTenantIds?: string[]
+    staffPanelPath?: string | null
   }
 }
 
@@ -48,6 +56,7 @@ export function PortalSessionProvider({
       cachedSessionValue ?? {
         session: null,
         favoriteTenantIds: EMPTY_FAVORITES,
+        staffPanelPath: null,
       }
     )
   })
@@ -59,7 +68,11 @@ export function PortalSessionProvider({
       .then(async (res) => {
         if (!res.ok) {
           if (active) {
-            const fallback = { session: null, favoriteTenantIds: EMPTY_FAVORITES }
+            const fallback = {
+              session: null,
+              favoriteTenantIds: EMPTY_FAVORITES,
+              staffPanelPath: null,
+            }
             cachedSessionValue = fallback
             setValue(fallback)
           }
@@ -71,6 +84,7 @@ export function PortalSessionProvider({
         const newValue = {
           session: json.data?.session ?? null,
           favoriteTenantIds: new Set(json.data?.favoriteTenantIds ?? []),
+          staffPanelPath: json.data?.staffPanelPath ?? null,
         }
         cachedSessionValue = newValue
         setValue(newValue)
@@ -78,7 +92,11 @@ export function PortalSessionProvider({
       .catch(() => {
         // Anónimo por defecto: el portal funciona igual sin sesión.
         if (active) {
-          const fallback = { session: null, favoriteTenantIds: EMPTY_FAVORITES }
+          const fallback = {
+            session: null,
+            favoriteTenantIds: EMPTY_FAVORITES,
+            staffPanelPath: null,
+          }
           cachedSessionValue = fallback
           setValue(fallback)
         }

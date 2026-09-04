@@ -47,7 +47,9 @@ type Story = StoryObj<typeof meta>
 export const SinSesion: Story = {
   decorators: [
     (Story) => (
-      <PortalSessionProvider initialValue={{ session: null, favoriteTenantIds: new Set() }}>
+      <PortalSessionProvider
+        initialValue={{ session: null, favoriteTenantIds: new Set(), staffPanelPath: null }}
+      >
         <Story />
       </PortalSessionProvider>
     ),
@@ -64,7 +66,9 @@ export const SinSesion: Story = {
 export const ConSesion: Story = {
   decorators: [
     (Story) => (
-      <PortalSessionProvider initialValue={{ session: SESSION, favoriteTenantIds: new Set() }}>
+      <PortalSessionProvider
+        initialValue={{ session: SESSION, favoriteTenantIds: new Set(), staffPanelPath: null }}
+      >
         <Story />
       </PortalSessionProvider>
     ),

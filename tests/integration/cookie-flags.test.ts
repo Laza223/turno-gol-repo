@@ -25,8 +25,16 @@ describe('cookie flags', () => {
     it(`${rel} sets httpOnly + sameSite + secure(prod)`, () => {
       const block = src.match(/\.set\(\s*\{[\s\S]*?\}\s*\)/g) ?? []
       for (const b of block) {
-        // Skip framework cookie adapters that forward flags via `...options`
-        // (e.g. @supabase/ssr); the flags are set by the library, not us.
+        // Los adaptadores de cookies de la librería (hoy `cookieAdapter` en
+        // src/lib/supabase/server.ts) reenvían los flags con `...options`.
+        //
+        // No es solo "los pone la librería": para las cookies de sesión de
+        // Supabase, `httpOnly: false` es INTENCIONAL. El cliente del navegador
+        // las lee de `document.cookie` para autorizar el canal en vivo de la
+        // grilla (src/hooks/use-booking-realtime.ts). Es el default de
+        // @supabase/ssr y exigirle httpOnly acá rompería Realtime.
+        // Ese contrato se cubre en tests/unit/supabase-cookie-adapter.test.ts,
+        // que verifica que las options viajen intactas.
         if (/\.\.\.options/.test(b)) continue
         expect(b, `${rel}: cookie .set must include httpOnly: true`).toMatch(/httpOnly:\s*true/)
         expect(b, `${rel}: cookie .set must include sameSite`).toMatch(

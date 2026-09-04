@@ -3,6 +3,21 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { publicTenantCard } from '@/test/fixtures/tenant'
 import { uid } from '@/test/fixtures/ids'
 import ExplorarSplitView from './ExplorarSplitView'
+// Precarga deliberada, no un import de más.
+//
+// `ExplorarMapLoader` trae `ExplorarMap` por `next/dynamic({ ssr: false })`, o sea
+// un `import()` que en este runner es un pedido al dev server de Vite. La PRIMERA
+// story del archivo paga ahí la transformación de `ExplorarMap` + react-leaflet +
+// `leaflet/dist/leaflet.css`, y bajo la carga del shard eso se pasa de los 15 s de
+// `asyncUtilTimeout`: medido con una sonda, a los 15 s la columna del mapa seguía
+// siendo el placeholder `aria-busy="true"`, con cero `.leaflet-container`. O sea
+// que el rojo intermitente de este archivo nunca fue Leaflet montando lento —
+// era el chunk que no llegaba, y por eso caía siempre en la primera story que
+// mira el mapa (la segunda ya lo encuentra en cache).
+//
+// Importarlo acá lo mete en el grafo de módulos del ARCHIVO: se carga antes de que
+// arranque el primer test, fuera del presupuesto de cualquier `findBy*`.
+import './ExplorarMap'
 
 /**
  * Vista mapa de /explorar (`?view=map`): renderiza directo sobre el fondo de la

@@ -3,6 +3,21 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { publicTenantCard } from '@/test/fixtures/tenant'
 import { uid } from '@/test/fixtures/ids'
 import ExplorarSplitView from './ExplorarSplitView'
+// Precarga deliberada, no un import de más.
+//
+// `ExplorarMapLoader` trae `ExplorarMap` por `next/dynamic({ ssr: false })`, o sea
+// un `import()` que en este runner es un pedido al dev server de Vite. La PRIMERA
+// story del archivo paga ahí la transformación de `ExplorarMap` + react-leaflet +
+// `leaflet/dist/leaflet.css`, y bajo la carga del shard eso se pasa de los 15 s de
+// `asyncUtilTimeout`: medido con una sonda, a los 15 s la columna del mapa seguía
+// siendo el placeholder `aria-busy="true"`, con cero `.leaflet-container`. O sea
+// que el rojo intermitente de este archivo nunca fue Leaflet montando lento —
+// era el chunk que no llegaba, y por eso caía siempre en la primera story que
+// mira el mapa (la segunda ya lo encuentra en cache).
+//
+// Importarlo acá lo mete en el grafo de módulos del ARCHIVO: se carga antes de que
+// arranque el primer test, fuera del presupuesto de cualquier `findBy*`.
+import './ExplorarMap'
 
 /**
  * Vista mapa de /explorar (`?view=map`): renderiza directo sobre el fondo de la
@@ -50,11 +65,15 @@ const complejoBelgrano = publicTenantCard({
  * sin acotar es ambiguo. `.lg:order-2` es la columna del mapa (clase propia de
  * ExplorarSplitView, no markup interno de Leaflet), así que sirve para desambiguar.
  */
-function mapColumnOf(canvasElement: HTMLElement) {
+function mapColumnElement(canvasElement: HTMLElement): HTMLElement {
   const el = canvasElement.querySelector('.lg\\:order-2')
   if (!el)
     throw new Error('No se encontró la columna del mapa (`.lg:order-2`) de ExplorarSplitView')
-  return within(el as HTMLElement)
+  return el as HTMLElement
+}
+
+function mapColumnOf(canvasElement: HTMLElement) {
+  return within(mapColumnElement(canvasElement))
 }
 
 /** Escritorio (viewport default ≥1024px, breakpoint `lg`): grid de 2 columnas, lista a la izquierda y mapa sticky a la derecha. */
@@ -90,29 +109,76 @@ export const HoverResaltaPinEnMapa: Story = {
   args: { results: [complejoFenix, complejoBelgrano], favoritedIds: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const mapa = mapColumnOf(canvasElement)
-    const heading = await canvas.findByRole('heading', { name: 'Complejo Fénix' })
-    const fila = heading.closest('article')
-    if (!fila) throw new Error('TenantCard (variant compact) debería renderizar un <article>')
+    const colMapa = mapColumnElement(canvasElement)
+    const mapa = within(colMapa)
+    const filaDe = async (nombre: string) => {
+      const h = await canvas.findByRole('heading', { name: nombre })
+      const art = h.closest('article')
+      if (!art) throw new Error('TenantCard (variant compact) debería renderizar un <article>')
+      return art
+    }
+    const fila = await filaDe('Complejo Fénix')
+    const filaBelgrano = await filaDe('Polideportivo Belgrano')
+
+    // Esta story NO puede asumir que arranca sin hover, y ese era el rojo del shard.
+    //
+    // El mouse real es uno solo para toda la página del runner y `@vitest/browser`
+    // no la recarga entre archivos, así que una story anterior lo deja donde
+    // terminó. Si queda parado sobre una fila de la lista, Chromium le dispara
+    // `mouseenter` al montar —re-evalúa el hover cuando cambia el layout, sin que
+    // nadie mueva nada— y `activeId` arranca seteado. Medido en CI: el pin de Fénix
+    // salía en `rgb(6, 95, 70)` (ACTIVO) desde el arranque y se quedaba así los 15 s
+    // del `waitFor`, sin que ningún `hover` del test lo hubiera tocado. Caía solo en
+    // el shard porque el orden de archivos decide dónde quedó el puntero, y en
+    // cualquiera de los dos pines según sobre qué fila cayó.
+    //
+    // Se limpia con `unhover` sobre las DOS filas, no moviendo el puntero: acá
+    // `userEvent` despacha eventos sintéticos, así que estacionar el mouse en otro
+    // lado no dispara el `mouseleave` que la fila necesita para soltar `activeId`.
+    const soltarHoverDeLaLista = async () => {
+      await userEvent.unhover(fila)
+      await userEvent.unhover(filaBelgrano)
+    }
 
     // Reposo: ambos pines en el color por defecto (emerald-700, #047857).
     // Era emerald-600 hasta que se descubrió que daba 3.76:1 con su texto blanco.
     const INACTIVO = 'rgb(4, 120, 87)' // #047857
     const ACTIVO = 'rgb(6, 95, 70)' // #065f46 — emerald-800, el resalte
-    await expect(await mapa.findByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO })
-    await expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO })
 
-    await userEvent.hover(fila)
+    // Un solo `findBy*` para esperar a que Leaflet monte los pines. De ahí en más
+    // el color se lee RE-CONSULTANDO el nodo en cada intento, nunca por una
+    // referencia guardada: Leaflet no muta el ícono de un marker, lo reemplaza.
+    //
+    // Se compara el string y no `toHaveStyle` a propósito: cuando `toHaveStyle`
+    // falla NO imprime el valor recibido —el mensaje sale con "Expected" y sin
+    // "Received"—, y eso fue exactamente lo que hizo caro este diagnóstico: el
+    // rojo de CI no dejaba distinguir "el pin quedó activo" de "el nodo estaba
+    // huérfano". Con `toBe` el mensaje canta el valor y se resolvió en una corrida.
+    //
+    // `getByText` (no `findByText`) adentro del `waitFor`: un `findBy*` anidado
+    // se come el presupuesto del `waitFor` y le deja un solo intento.
+    await mapa.findByText('$ 9.000')
+    const bg = (texto: string) => getComputedStyle(mapa.getByText(texto)).backgroundColor
+
+    await soltarHoverDeLaLista()
+    await waitFor(async () => {
+      await expect(bg('$ 9.000')).toBe(INACTIVO)
+      await expect(bg('$ 11.000')).toBe(INACTIVO)
+    })
+
     // El pin de Fénix se resalta; el de Belgrano queda sin cambios.
-    // getByText (no findByText): el nodo ya existe, lo que cambia es su estilo —
-    // waitFor reintenta la aserción hasta que Leaflet termine de aplicar el ícono nuevo.
-    await waitFor(() => expect(mapa.getByText('$ 9.000')).toHaveStyle({ backgroundColor: ACTIVO }))
-    await expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO })
+    await userEvent.hover(fila)
+    await waitFor(async () => {
+      await expect(bg('$ 9.000')).toBe(ACTIVO)
+      await expect(bg('$ 11.000')).toBe(INACTIVO)
+    })
 
     await userEvent.unhover(fila)
-    await waitFor(() =>
-      expect(mapa.getByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO }),
-    )
+    await soltarHoverDeLaLista()
+    await waitFor(async () => {
+      await expect(bg('$ 9.000')).toBe(INACTIVO)
+      await expect(bg('$ 11.000')).toBe(INACTIVO)
+    })
   },
 }
 

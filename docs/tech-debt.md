@@ -133,3 +133,19 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 **El disparador se cumplió (2026-09-03)**: apareció en `claude/turnogol-8-bugs-mutation-da6095` (PR #265, campaña de mutación), una rama que no toca nada de `explorar` ni de mapas — su diff contra main no tiene un solo archivo de esa zona. Confirmado como flake por el experimento que corresponde: re-correr el MISMO commit (`2e1de76f`) pasó en verde sin tocar una línea. Costó dos reruns y ~20 minutos de diagnóstico a alguien que no tenía forma de saber que era conocido. No apareció un tercer test del archivo, así que la prioridad queda donde está, pero ya no es "una racha en una rama".
 
 **Corrección al diagnóstico: NO es solo `light`.** Cuatro corridas de esa misma rama, sin cambios en `explorar` entre ellas: `7849d87e` verde · `2e1de76f` rojo en **shard 1/3 (light)** con las dos stories · rerun de `2e1de76f` verde · `c2639595` rojo en **shard 1/3 (dark)**, esta vez solo `HoverResaltaPinEnMapa`. O sea que el tema no es una variable —falla igual en los dos— y la cantidad de stories que caen tampoco es fija. Lo estable es el archivo y el shard. Quien lo agarre: no gaste tiempo buscando qué tiene `light` de distinto, y mida sobre `--shard=1/3` en ambos temas.
+
+### RESUELTA (2026-09-03) — no era Leaflet montando lento, era el chunk que no llegaba
+
+Escaló a romper `main` (run `33815294877`, los **dos** intentos rojos sobre `c1c2f3cc`), así que se diagnosticó.
+
+**Cómo se reprodujo, que era la parte cara**: el shard solo no alcanza en una máquina de 16 núcleos —3 de 3 verde—; lo que lo reproduce es shard **más contención de CPU**. Con 14 procesos quemando núcleos en paralelo al `--shard=1/3`, la frecuencia sube a **5 de 14**. Ese harness es la herramienta reusable para cualquier flake de Stories que solo aparezca en CI: el runner de GitHub tiene 4 núcleos, no 16, y la diferencia era todo.
+
+**Causa raíz, medida con una sonda en el `catch` del `findByText`**: a los 15 s (el `asyncUtilTimeout` de `.storybook/preview.tsx`) la columna del mapa seguía siendo **el placeholder de `next/dynamic`** — `aria-busy="true"`, cero `.leaflet-container`, cero `.leaflet-marker-icon`. O sea que Leaflet no estaba montando despacio: el `import('./ExplorarMap')` **no resolvía nunca** dentro del presupuesto. En este runner ese `import()` es un pedido al dev server de Vite, y la primera story del archivo paga ahí la transformación de `ExplorarMap` + react-leaflet + `leaflet/dist/leaflet.css`. Por eso caía siempre en la primera story que mira el mapa y la segunda pasaba: para entonces el módulo ya estaba en cache. La hipótesis vieja (presión de memoria del renderer) queda descartada.
+
+**Fix**: un `import './ExplorarMap'` estático arriba del archivo de story. Lo mete en el grafo de módulos del ARCHIVO, así se carga antes de que arranque el primer test —fuera del presupuesto de cualquier `findBy*`— y el `import()` del loader resuelve del cache. No se tocó ninguna aserción.
+
+**Evidencia**: mismo harness de contención, **0 fallos en 14 corridas** con el fix, contra 5 en 14 sin él.
+
+**Dos hipótesis que se falsearon en el camino**, para que nadie las vuelva a pagar: (1) que el puntero quedara sobre una fila de la lista por culpa de una story anterior de la misma página, dejando `activeId` seteado — se reprodujo el escenario a mano y los dos pines salen inactivos; (2) que el `<Popup>` de cada marker duplicara el nodo del precio dentro de la columna del mapa — react-leaflet no monta el contenido del popup hasta abrirlo (medido: 1 nodo por precio, 0 `.leaflet-popup` en el documento).
+
+**La clase**: se barrieron los 8 archivos de story que renderizan un componente con un loader `next/dynamic` adentro. `ExplorarSplitView` era el único que **asserta sobre el hijo dinámico**; el más parecido, `BookingSuccessExtras.stories.tsx` (también carga Leaflet así), nunca lo mira. No hay más instancias que arreglar hoy.

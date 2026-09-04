@@ -66,3 +66,5 @@ Ratchet a futuro: cuando una suite queda migrada del todo deja de importar `getS
 | Integration: "tuple concurrently updated" | Race de GRANT en Supabase local → `pnpm test:integration --retry=3` |
 | `abonados-crud` e2e falla en paralelo local | Choca consigo mismo; correr solo ese spec aparte |
 | Vitest verde pero la página revienta | Borde RSC/`'use client'` no se ve en unit — verificar en el server real (`pnpm dev`) |
+| Story que espera un hijo que entra por `next/dynamic` y falla solo en CI | El `import()` es un pedido al dev server de Vite: la PRIMERA story del archivo paga la transformación del chunk y se pasa de `asyncUtilTimeout` (15 s). Importar el módulo estático arriba del archivo de story lo carga fuera del presupuesto de los `findBy*`. Caso medido: `ExplorarSplitView` (`docs/tech-debt.md`) |
+| Flake de Stories que NO reproduce local | El runner de GitHub tiene 4 núcleos. Correr `--shard=N/3` con ~14 procesos quemando CPU en paralelo: eso lo trae de 0/3 a 5/14 |

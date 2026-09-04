@@ -103,9 +103,43 @@ describe('refresh-mp-tokens concurrency', () => {
     expect(new Date(meta.ts).getTime()).toBeGreaterThan(Date.now() - 60_000)
   }, 30_000)
 
-  it('refreshTenantMpToken (per-request path, no advisory lock) still throws when no refresh token', async () => {
-    // This is the path used by `resolveTenantGateway`'s 401 retry — single
-    // in-flight request, so no advisory lock needed (B11/T2).
+  it('refreshTenantMpToken concurrente: gana uno solo y el perdedor NO pisa la fila', async () => {
+    // El camino per-request (`resolveTenantGateway` → onUnauthorized), que corre
+    // DENTRO del webhook de pagos. Se asumía "una sola request en vuelo", pero
+    // dos 401 simultáneos disparan dos refrescos con el MISMO refresh token: MP
+    // rota y mata el viejo, los dos escribían, y el último en llegar dejaba
+    // persistido un par que MP ya había invalidado. Resultado: el complejo
+    // quedaba desconectado en silencio, sin poder cobrar señas.
+    //
+    // El compare-and-set del UPDATE (WHERE mp_refresh_token = el que usé) hace
+    // que el segundo no pise nada y falle explícito.
+    const tenantId = await seedTenantWithMpTokens()
+    mpCallDelayMs = 150
+
+    const results = await Promise.allSettled([
+      refreshTenantMpToken(tenantId),
+      refreshTenantMpToken(tenantId),
+    ])
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled')
+    const rejected = results.filter((r) => r.status === 'rejected')
+    expect(fulfilled).toHaveLength(1)
+    expect(rejected).toHaveLength(1)
+
+    const sql = getSql()
+    const [row] = await sql<{ access: string; refresh: string }[]>`
+      SELECT mp_access_token AS access, mp_refresh_token AS refresh
+      FROM tenants WHERE id = ${tenantId}
+    `
+    // La fila quedó con un PAR COHERENTE: el access y el refresh de la misma
+    // llamada a MP, no uno de cada una.
+    const accessSeq = decrypt(row.access).replace('fresh-access-', '')
+    const refreshSeq = decrypt(row.refresh).replace('fresh-refresh-', '')
+    expect(accessSeq).toBe(refreshSeq)
+  }, 30_000)
+
+  it('refreshTenantMpToken (per-request path) still throws when no refresh token', async () => {
+    // Este es el camino del retry por 401 de `resolveTenantGateway`.
     const sql = getSql()
     const tenant = await createTestTenant(sql)
 

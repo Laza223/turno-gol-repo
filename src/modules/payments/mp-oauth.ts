@@ -1,7 +1,9 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
 import { getDb } from '@/shared/db/client'
 import { decrypt, encrypt } from '@/lib/crypto/encrypt'
+import { logger } from '@/shared/lib/logger'
+import { captureException } from '@/lib/sentry'
 import { MercadoPagoGateway } from './mp-gateway.implementation'
 import { withCircuitBreaker } from './mp-breaker.gateway'
 import { MpGatewayError, TenantMpNotConnectedError } from './payment.errors'
@@ -92,10 +94,23 @@ export async function refreshTenantMpToken(tenantId: string): Promise<string> {
   const encryptedRefresh = rows[0]?.mpRefreshToken
   if (!encryptedRefresh) throw new TenantMpNotConnectedError(tenantId)
 
+  // La llamada a MP va FUERA de toda transacción (convenciones-stack: un efecto
+  // externo nunca adentro de una tx SQL). A partir de acá el refresh token
+  // viejo ya está MUERTO del lado de MercadoPago: rota y es de un solo uso.
   const fresh = await refreshMpAccessToken(encryptedRefresh)
   const encryptedAccess = encrypt(fresh.accessToken)
 
-  await db
+  // Compare-and-set: solo pisamos la fila si el refresh token sigue siendo el
+  // que usamos para pedir este par. Resuelve la concurrencia sin candado y sin
+  // meter la llamada HTTP adentro de una transacción.
+  //
+  // El caso real: este camino corre DENTRO del webhook de pagos (onUnauthorized
+  // → withTokenRefresh), donde dos 401 simultáneos disparaban dos refrescos con
+  // el mismo token. Antes los dos escribían y el último en llegar dejaba
+  // persistido un token que MP ya había invalidado, y el complejo quedaba
+  // desconectado en silencio: sin poder cobrar señas y sin que nadie se entere.
+  // Con el WHERE de abajo, el segundo no pisa nada.
+  const updated = await db
     .update(tenants)
     .set({
       mpAccessToken: encryptedAccess,
@@ -105,7 +120,23 @@ export async function refreshTenantMpToken(tenantId: string): Promise<string> {
       mpConnectedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(tenants.id, tenantId))
+    .where(and(eq(tenants.id, tenantId), eq(tenants.mpRefreshToken, encryptedRefresh)))
+    .returning({ id: tenants.id })
+
+  if (updated.length === 0) {
+    // Cero filas no es un no-op inocente, y hasta ahora era indistinguible de
+    // un éxito. Dos lecturas posibles, las dos graves si quedan mudas:
+    //   - otro proceso ganó la carrera y ya persistió su par: el nuestro se
+    //     pierde, pero la fila quedó consistente;
+    //   - el complejo desapareció en el medio.
+    // En ambos casos el token que devolveríamos no es el que la base tiene.
+    logger.error('mp token refresh did not persist', { module: 'mp-oauth', tenantId })
+    const err = new MpGatewayError(
+      `El refresh de MP del complejo ${tenantId} no se persistió (otro refresco ganó la carrera o el complejo ya no existe).`,
+    )
+    captureException(err)
+    throw err
+  }
 
   return encryptedAccess
 }

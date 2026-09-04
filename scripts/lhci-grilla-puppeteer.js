@@ -7,7 +7,10 @@
  * them into the page so Next.js middleware sees a valid Supabase session.
  *
  * Format of the JSON file: Array<{ name, value, domain, path, expires,
- *   httpOnly, secure, sameSite }>  — exactly the @supabase/ssr cookie shape.
+ *   httpOnly, secure, sameSite }> — el shape de SessionCookie que produce
+ *   lighthouse-grilla.ts, equivalente a StorageState['cookies'] de Playwright.
+ *   No es el shape de @supabase/ssr: la librería solo emite name/value/options,
+ *   los campos domain/expires los agrega el minteador.
  *
  * @param {import('puppeteer').Browser} browser
  * @param {import('puppeteer').Page} page

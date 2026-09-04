@@ -37,7 +37,7 @@ import { mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 
 const ADMIN_EMAIL = 'e2e-admin@turnogol.test'
 
@@ -98,25 +98,35 @@ async function mintAdminCookies(email: string): Promise<SessionCookie[]> {
   // Step 3: setSession through a @supabase/ssr client to produce SSR cookies
   // in exactly the format the app's middleware expects.
   const jar: SessionCookie[] = []
+
+  /** Valor vacío = fragmento sobrante que la librería está expirando; se saca
+   *  del jar en vez de inyectar una cookie huérfana. */
+  function upsert(name: string, value: string): void {
+    const i = jar.findIndex((c) => c.name === name)
+    if (value === '') {
+      if (i >= 0) jar.splice(i, 1)
+      return
+    }
+    const cookie: SessionCookie = {
+      name,
+      value,
+      domain: 'localhost',
+      path: '/',
+      expires: -1,
+      httpOnly: false,
+      secure: false,
+      sameSite: 'Lax',
+    }
+    if (i >= 0) jar[i] = cookie
+    else jar.push(cookie)
+  }
+
+  // Espejo de tests/e2e/_helpers/auth-state.ts: si cambia este adaptador, cambia el otro.
   const ssr = createServerClient(url, anon, {
     cookies: {
-      get(): string | undefined {
-        return undefined
-      },
-      set(name: string, value: string, _options: CookieOptions): void {
-        jar.push({
-          name,
-          value,
-          domain: 'localhost',
-          path: '/',
-          expires: -1,
-          httpOnly: false,
-          secure: false,
-          sameSite: 'Lax',
-        })
-      },
-      remove(): void {
-        // no-op for minting purposes
+      getAll: () => jar.map(({ name, value }) => ({ name, value })),
+      setAll: (cookiesToSet) => {
+        for (const { name, value } of cookiesToSet) upsert(name, value)
       },
     },
   })

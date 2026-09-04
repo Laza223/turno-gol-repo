@@ -535,7 +535,7 @@ FLUJO DE DEPENDENCIAS (unidireccional):
 
     // Autenticación
     "@supabase/supabase-js": "^2.43",  // Client SDK
-    "@supabase/ssr": "^0.3",           // Server-side helpers
+    "@supabase/ssr": "0.12.6",         // Server-side helpers. PIN EXACTO: el caret en semver 0.x congela la minor y dejó el paquete 9 minors atrás (bug de sesión 2026-09-04)
 
     // Background Jobs
     "pg-boss": "^9.0",

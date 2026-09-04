@@ -22,7 +22,7 @@
  * Pre-generating once in globalSetup eliminates the race architecturally.
  */
 import { createClient } from '@supabase/supabase-js'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 
 export type StorageState = {
   cookies: Array<{
@@ -67,25 +67,43 @@ export async function buildStorageState(email: string): Promise<StorageState> {
   const { access_token, refresh_token } = otpData.session
 
   const jar: StorageState['cookies'] = []
+
+  /**
+   * Un valor vacío significa que la librería está EXPIRANDO un fragmento
+   * sobrante (`sb-<ref>-auth-token.N` de una sesión anterior). Si lo
+   * empujáramos al jar, Playwright inyectaría esa cookie vacía en cada worker
+   * y estaríamos reproduciendo en el harness el mismo bug de fragmentos
+   * huérfanos que este cambio vino a arreglar en producción.
+   */
+  function upsert(name: string, value: string): void {
+    const i = jar.findIndex((c) => c.name === name)
+    if (value === '') {
+      if (i >= 0) jar.splice(i, 1)
+      return
+    }
+    const cookie = {
+      name,
+      value,
+      domain: 'localhost',
+      path: '/',
+      expires: -1,
+      httpOnly: false,
+      secure: false,
+      sameSite: 'Lax' as const,
+    }
+    if (i >= 0) jar[i] = cookie
+    else jar.push(cookie)
+  }
+
+  // Espejo de scripts/lighthouse-grilla.ts: si cambia este adaptador, cambia el otro.
   const ssr = createServerClient(url, anon, {
     cookies: {
-      get(): string | undefined {
-        return undefined
-      },
-      set(name: string, value: string, _options: CookieOptions): void {
-        jar.push({
-          name,
-          value,
-          domain: 'localhost',
-          path: '/',
-          expires: -1,
-          httpOnly: false,
-          secure: false,
-          sameSite: 'Lax',
-        })
-      },
-      remove(): void {
-        // no-op
+      // Devolver el jar REAL (antes `get` devolvía siempre undefined) es lo que
+      // le permite a @supabase/ssr calcular qué fragmentos sobran, y hace que
+      // el harness ejercite el mismo camino que producción.
+      getAll: () => jar.map(({ name, value }) => ({ name, value })),
+      setAll: (cookiesToSet) => {
+        for (const { name, value } of cookiesToSet) upsert(name, value)
       },
     },
   })

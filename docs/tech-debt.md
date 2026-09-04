@@ -146,6 +146,20 @@ Escaló a romper `main` (run `33815294877`, los **dos** intentos rojos sobre `c1
 
 **Evidencia**: mismo harness de contención, **0 fallos en 14 corridas** con el fix, contra 5 en 14 sin él.
 
-**Dos hipótesis que se falsearon en el camino**, para que nadie las vuelva a pagar: (1) que el puntero quedara sobre una fila de la lista por culpa de una story anterior de la misma página, dejando `activeId` seteado — se reprodujo el escenario a mano y los dos pines salen inactivos; (2) que el `<Popup>` de cada marker duplicara el nodo del precio dentro de la columna del mapa — react-leaflet no monta el contenido del popup hasta abrirlo (medido: 1 nodo por precio, 0 `.leaflet-popup` en el documento).
+**Una hipótesis falseada en el camino**: que el `<Popup>` de cada marker duplicara el nodo del precio dentro de la columna del mapa — react-leaflet no monta el contenido del popup hasta abrirlo (medido: 1 nodo por precio, 0 `.leaflet-popup` en el documento).
 
 **La clase**: se barrieron los 8 archivos de story que renderizan un componente con un loader `next/dynamic` adentro. `ExplorarSplitView` era el único que **asserta sobre el hijo dinámico**; el más parecido, `BookingSuccessExtras.stories.tsx` (también carga Leaflet así), nunca lo mira. No hay más instancias que arreglar hoy.
+
+### CORRECCIÓN (2026-09-04) — eran DOS bugs, y el que rompía CI era el otro
+
+Lo de arriba es real y quedó arreglado, pero **no era lo que ponía rojo el check**. Con el chunk precargado, `Composicion` dejó de dar timeout y `HoverResaltaPinEnMapa` siguió cayendo, ahora en los **dos** shards 1/3 (light y dark), en la aserción **EN REPOSO** —antes de cualquier `hover`— y en 112 ms, o sea sin timeout de por medio. Dos bugs distintos en el mismo archivo, y el diagnóstico del primero tapó al segundo.
+
+**Lo que hizo caro el segundo**: `toHaveStyle`, cuando falla, **no imprime el valor recibido** — el mensaje sale con "Expected" y sin "Received". Medido: da el MISMO mensaje para un nodo huérfano, para un color equivocado y para un elemento sin fondo. Con eso, tres causas incompatibles eran indistinguibles desde el log de CI. Cambiar la aserción a comparar el string (`getComputedStyle(...).backgroundColor` con `toBe`) resolvió el diagnóstico **en una sola corrida**: `expected 'rgb(6, 95, 70)' to be 'rgb(4, 120, 87)'`. Regla que se lleva puesta: si un check solo se reproduce en CI, lo primero es hacer que el mensaje de error cante el valor, antes de intentar reproducirlo.
+
+**Causa raíz**: `rgb(6, 95, 70)` es el color ACTIVO, o sea que `activeId` ya venía seteado antes de que el test tocara nada, y se quedaba así los 15 s del `waitFor`. La única forma de setearlo es un `mouseenter` sobre una fila de la lista. El mouse real es **uno solo para toda la página del runner** y `@vitest/browser` no la recarga entre archivos, así que una story anterior lo deja donde terminó; si queda parado sobre una fila, Chromium dispara `mouseenter` al montar, porque re-evalúa el hover cuando cambia el layout, sin que nadie mueva el mouse. Eso explica todo lo que antes parecía capricho: por qué solo el shard (el orden de archivos decide dónde quedó el puntero), por qué en los dos temas, y por qué caía indistintamente en cualquiera de los dos pines.
+
+**O sea que la hipótesis (1) que arriba figura como "falseada" era la correcta.** Se descartó mal: el experimento la reprodujo con `userEvent.hover` en una story previa, y acá `userEvent` despacha eventos **sintéticos**, que no mueven el puntero real. El escenario nunca se llegó a montar, y el verde se leyó como refutación. Un experimento que no puede fallar no refuta nada.
+
+**Fix**: la story suelta el hover de las DOS filas (`unhover`) antes de mirar el reposo y otra vez después del `unhover` propio, en vez de asumir que arranca limpia. Con `unhover` y no moviendo el puntero, justamente porque los eventos son sintéticos.
+
+**Evidencia**: `1fb481fc` pasó los 6 jobs de Stories, incluidos los dos shards 1/3 que venían fallando 2 de 2.

@@ -69,3 +69,4 @@ lo que está abierto se consulta en los PRs y el CI, no se escribe acá.
 - **2026-09-03 23:54** `claude/turnogol-8-bugs-mutation-da6095` — Los 9 arreglos y sus tests están en main, verificados uno por uno.
 - **2026-09-04 02:15** `claude/turnogol-8-bugs-mutation-da6095` — Causa raíz medida con sonda, arreglada y verificada; entrada de deuda técnica cerrada con la evidencia y las dos hipótesis que falseé. Los cuatro chequeos en verde.
 - **2026-09-04 02:22** `claude/turnogol-8-bugs-mutation-da6095` — Flake del mapa arreglado y verificado. Plan de auditorías rescatado del temporal y puesto en el repo, con la Fase 0 marcada como cerrada.
+- **2026-09-04 16:07** `claude/turnogol-8-bugs-mutation-da6095` — Rama reescrita sobre `main`, sin conflicto, mismo contenido final, force-pushed.

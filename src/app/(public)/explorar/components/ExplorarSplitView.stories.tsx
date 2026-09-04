@@ -114,20 +114,40 @@ export const HoverResaltaPinEnMapa: Story = {
     // Era emerald-600 hasta que se descubrió que daba 3.76:1 con su texto blanco.
     const INACTIVO = 'rgb(4, 120, 87)' // #047857
     const ACTIVO = 'rgb(6, 95, 70)' // #065f46 — emerald-800, el resalte
-    await expect(await mapa.findByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO })
-    await expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO })
 
-    await userEvent.hover(fila)
+    // Un solo `findBy*` para esperar a que Leaflet monte los pines. De ahí en más
+    // el color se lee RE-CONSULTANDO el nodo en cada intento, nunca por una
+    // referencia guardada: Leaflet no muta el ícono, lo reemplaza, así que una
+    // referencia vieja queda desconectada del documento y `getComputedStyle`
+    // devuelve '' sobre un nodo huérfano. Ese era el rojo intermitente del shard.
+    //
+    // Se compara el string y no `toHaveStyle` a propósito: cuando `toHaveStyle`
+    // falla no imprime el valor recibido —el mensaje sale con "Expected" y sin
+    // "Received"—, así que un rojo en CI no dejaba distinguir "el pin quedó
+    // activo" de "el nodo estaba huérfano". Con `toBe` el mensaje lo dice.
+    //
+    // `getByText` (no `findByText`) adentro del `waitFor`: un `findBy*` anidado
+    // se come el presupuesto del `waitFor` y le deja un solo intento.
+    await mapa.findByText('$ 9.000')
+    const bg = (texto: string) => getComputedStyle(mapa.getByText(texto)).backgroundColor
+
+    await waitFor(async () => {
+      await expect(bg('$ 9.000')).toBe(INACTIVO)
+      await expect(bg('$ 11.000')).toBe(INACTIVO)
+    })
+
     // El pin de Fénix se resalta; el de Belgrano queda sin cambios.
-    // getByText (no findByText): el nodo ya existe, lo que cambia es su estilo —
-    // waitFor reintenta la aserción hasta que Leaflet termine de aplicar el ícono nuevo.
-    await waitFor(() => expect(mapa.getByText('$ 9.000')).toHaveStyle({ backgroundColor: ACTIVO }))
-    await expect(await mapa.findByText('$ 11.000')).toHaveStyle({ backgroundColor: INACTIVO })
+    await userEvent.hover(fila)
+    await waitFor(async () => {
+      await expect(bg('$ 9.000')).toBe(ACTIVO)
+      await expect(bg('$ 11.000')).toBe(INACTIVO)
+    })
 
     await userEvent.unhover(fila)
-    await waitFor(() =>
-      expect(mapa.getByText('$ 9.000')).toHaveStyle({ backgroundColor: INACTIVO }),
-    )
+    await waitFor(async () => {
+      await expect(bg('$ 9.000')).toBe(INACTIVO)
+      await expect(bg('$ 11.000')).toBe(INACTIVO)
+    })
   },
 }
 

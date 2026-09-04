@@ -65,11 +65,15 @@ const complejoBelgrano = publicTenantCard({
  * sin acotar es ambiguo. `.lg:order-2` es la columna del mapa (clase propia de
  * ExplorarSplitView, no markup interno de Leaflet), así que sirve para desambiguar.
  */
-function mapColumnOf(canvasElement: HTMLElement) {
+function mapColumnElement(canvasElement: HTMLElement): HTMLElement {
   const el = canvasElement.querySelector('.lg\\:order-2')
   if (!el)
     throw new Error('No se encontró la columna del mapa (`.lg:order-2`) de ExplorarSplitView')
-  return within(el as HTMLElement)
+  return el as HTMLElement
+}
+
+function mapColumnOf(canvasElement: HTMLElement) {
+  return within(mapColumnElement(canvasElement))
 }
 
 /** Escritorio (viewport default ≥1024px, breakpoint `lg`): grid de 2 columnas, lista a la izquierda y mapa sticky a la derecha. */
@@ -105,10 +109,36 @@ export const HoverResaltaPinEnMapa: Story = {
   args: { results: [complejoFenix, complejoBelgrano], favoritedIds: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const mapa = mapColumnOf(canvasElement)
-    const heading = await canvas.findByRole('heading', { name: 'Complejo Fénix' })
-    const fila = heading.closest('article')
-    if (!fila) throw new Error('TenantCard (variant compact) debería renderizar un <article>')
+    const colMapa = mapColumnElement(canvasElement)
+    const mapa = within(colMapa)
+    const filaDe = async (nombre: string) => {
+      const h = await canvas.findByRole('heading', { name: nombre })
+      const art = h.closest('article')
+      if (!art) throw new Error('TenantCard (variant compact) debería renderizar un <article>')
+      return art
+    }
+    const fila = await filaDe('Complejo Fénix')
+    const filaBelgrano = await filaDe('Polideportivo Belgrano')
+
+    // Esta story NO puede asumir que arranca sin hover, y ese era el rojo del shard.
+    //
+    // El mouse real es uno solo para toda la página del runner y `@vitest/browser`
+    // no la recarga entre archivos, así que una story anterior lo deja donde
+    // terminó. Si queda parado sobre una fila de la lista, Chromium le dispara
+    // `mouseenter` al montar —re-evalúa el hover cuando cambia el layout, sin que
+    // nadie mueva nada— y `activeId` arranca seteado. Medido en CI: el pin de Fénix
+    // salía en `rgb(6, 95, 70)` (ACTIVO) desde el arranque y se quedaba así los 15 s
+    // del `waitFor`, sin que ningún `hover` del test lo hubiera tocado. Caía solo en
+    // el shard porque el orden de archivos decide dónde quedó el puntero, y en
+    // cualquiera de los dos pines según sobre qué fila cayó.
+    //
+    // Se limpia con `unhover` sobre las DOS filas, no moviendo el puntero: acá
+    // `userEvent` despacha eventos sintéticos, así que estacionar el mouse en otro
+    // lado no dispara el `mouseleave` que la fila necesita para soltar `activeId`.
+    const soltarHoverDeLaLista = async () => {
+      await userEvent.unhover(fila)
+      await userEvent.unhover(filaBelgrano)
+    }
 
     // Reposo: ambos pines en el color por defecto (emerald-700, #047857).
     // Era emerald-600 hasta que se descubrió que daba 3.76:1 con su texto blanco.
@@ -117,20 +147,20 @@ export const HoverResaltaPinEnMapa: Story = {
 
     // Un solo `findBy*` para esperar a que Leaflet monte los pines. De ahí en más
     // el color se lee RE-CONSULTANDO el nodo en cada intento, nunca por una
-    // referencia guardada: Leaflet no muta el ícono, lo reemplaza, así que una
-    // referencia vieja queda desconectada del documento y `getComputedStyle`
-    // devuelve '' sobre un nodo huérfano. Ese era el rojo intermitente del shard.
+    // referencia guardada: Leaflet no muta el ícono de un marker, lo reemplaza.
     //
     // Se compara el string y no `toHaveStyle` a propósito: cuando `toHaveStyle`
-    // falla no imprime el valor recibido —el mensaje sale con "Expected" y sin
-    // "Received"—, así que un rojo en CI no dejaba distinguir "el pin quedó
-    // activo" de "el nodo estaba huérfano". Con `toBe` el mensaje lo dice.
+    // falla NO imprime el valor recibido —el mensaje sale con "Expected" y sin
+    // "Received"—, y eso fue exactamente lo que hizo caro este diagnóstico: el
+    // rojo de CI no dejaba distinguir "el pin quedó activo" de "el nodo estaba
+    // huérfano". Con `toBe` el mensaje canta el valor y se resolvió en una corrida.
     //
     // `getByText` (no `findByText`) adentro del `waitFor`: un `findBy*` anidado
     // se come el presupuesto del `waitFor` y le deja un solo intento.
     await mapa.findByText('$ 9.000')
     const bg = (texto: string) => getComputedStyle(mapa.getByText(texto)).backgroundColor
 
+    await soltarHoverDeLaLista()
     await waitFor(async () => {
       await expect(bg('$ 9.000')).toBe(INACTIVO)
       await expect(bg('$ 11.000')).toBe(INACTIVO)
@@ -144,6 +174,7 @@ export const HoverResaltaPinEnMapa: Story = {
     })
 
     await userEvent.unhover(fila)
+    await soltarHoverDeLaLista()
     await waitFor(async () => {
       await expect(bg('$ 9.000')).toBe(INACTIVO)
       await expect(bg('$ 11.000')).toBe(INACTIVO)

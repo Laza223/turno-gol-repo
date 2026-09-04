@@ -15,7 +15,9 @@ const meta = {
   parameters: { layout: 'centered' },
   decorators: [
     (Story) => (
-      <PortalSessionProvider initialValue={{ session: null, favoriteTenantIds: new Set() }}>
+      <PortalSessionProvider
+        initialValue={{ session: null, staffPanelPath: null, favoriteTenantIds: new Set() }}
+      >
         <Story />
       </PortalSessionProvider>
     ),

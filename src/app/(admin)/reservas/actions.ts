@@ -801,8 +801,14 @@ export async function addBookingChargeAction(
       // o un reintento legítimo se rechazaría por error.
       let alreadyRegistered = false
       if (clientIdempotencyKey) {
+        // El índice único de client_idempotency_key en cash_flows es GLOBAL
+        // (migr. 023), sin tenant_id — filtro explícito además de RLS
+        // (mismo patrón que cashflow.service.ts / canteen-tab.service.ts /
+        // canteen-sale.service.ts, hallazgo #8 de la campaña de mutación).
         const dup = await tx.execute(sql`
-        SELECT 1 FROM cash_flows WHERE client_idempotency_key = ${clientIdempotencyKey} LIMIT 1
+        SELECT 1 FROM cash_flows
+        WHERE client_idempotency_key = ${clientIdempotencyKey} AND tenant_id = ${tenant.id}
+        LIMIT 1
       `)
         alreadyRegistered = (dup as unknown[]).length > 0
       }

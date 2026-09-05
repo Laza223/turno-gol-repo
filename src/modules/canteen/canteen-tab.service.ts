@@ -93,9 +93,13 @@ export async function createTab(
   const lines = normalizeTicketLines(input.lines)
   if (lines.length === 0) throw new EmptyTicketError()
 
-  // Fast path de reintento (pre-lock).
+  // Fast path de reintento (pre-lock). El índice único de
+  // client_idempotency_key es GLOBAL (migr. 048): filtrar por tenant_id
+  // explícitamente además de RLS (hallazgo #8, campaña de mutación).
   const pre = await tx.execute(sql`
-    SELECT * FROM canteen_tabs WHERE client_idempotency_key = ${input.clientIdempotencyKey} LIMIT 1
+    SELECT * FROM canteen_tabs
+    WHERE client_idempotency_key = ${input.clientIdempotencyKey} AND tenant_id = ${tenantId}
+    LIMIT 1
   `)
   const preRow = (pre as unknown as TabRowRaw[])[0]
   if (preRow) return { tab: rowToTab(preRow), duplicate: true }
@@ -110,7 +114,9 @@ export async function createTab(
 
   // Re-check bajo lock (misma carrera de doble-tap concurrente que sellTicket).
   const post = await tx.execute(sql`
-    SELECT * FROM canteen_tabs WHERE client_idempotency_key = ${input.clientIdempotencyKey} LIMIT 1
+    SELECT * FROM canteen_tabs
+    WHERE client_idempotency_key = ${input.clientIdempotencyKey} AND tenant_id = ${tenantId}
+    LIMIT 1
   `)
   const postRow = (post as unknown as TabRowRaw[])[0]
   if (postRow) return { tab: rowToTab(postRow), duplicate: true }
@@ -146,7 +152,9 @@ export async function createTab(
   if (!tabRow) {
     // Perdimos una carrera que el re-check no vio (ventana mínima): tratar como duplicado.
     const existing = await tx.execute(sql`
-      SELECT * FROM canteen_tabs WHERE client_idempotency_key = ${input.clientIdempotencyKey} LIMIT 1
+      SELECT * FROM canteen_tabs
+      WHERE client_idempotency_key = ${input.clientIdempotencyKey} AND tenant_id = ${tenantId}
+      LIMIT 1
     `)
     return { tab: rowToTab((existing as unknown as TabRowRaw[])[0]!), duplicate: true }
   }

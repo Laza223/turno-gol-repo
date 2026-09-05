@@ -36,6 +36,9 @@ Una **Routine** (tarea programada de Claude) que a las 11:00 ART abre una sesió
 - **Qué corre**: el mismo protocolo que el slash command `/sentry-triage` ([`.claude/commands/sentry-triage.md`](../../.claude/commands/sentry-triage.md))
 - **Para verla, pausarla o cambiarle la hora**: panel de Routines de Claude, o pedírselo a Claude en una sesión
 
+> [!WARNING]
+> **El prefijo de las herramientas del connector cambia según el tipo de sesión.** En una sesión interactiva son `mcp__Sentry__*`; en la sesión que levanta la Routine, el mismo connector aparece bajo el ID del servidor MCP (`mcp__472c6277-…__`). La primera versión del prompt tenía el prefijo hardcodeado y la corrida abortó en 17 segundos sin leer nada, reportando "no tengo el connector" — un falso negativo perfecto, porque el connector estaba y respondía. Se verificó pidiéndole a una sesión disparada que escribiera el resultado en una rama del repo. Cualquier prompt automatizado que hable con un connector busca sus herramientas con ToolSearch por palabra clave, nunca por nombre exacto.
+
 **El triage no arregla nada solo.** Diagnostica y te lo cuenta; el fix lo autorizás vos. Es deliberado: un agente que pushea fixes a producción sin que nadie lea el diagnóstico es una forma cara de romper cosas de madrugada.
 
 ## A pedido, en cualquier momento

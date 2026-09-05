@@ -8,12 +8,15 @@ Ventana: `$ARGUMENTS` si viene algo (`24h`, `7d`, `14d`, `30d`); si no, `24h`.
 
 ## Cómo leés Sentry
 
-Por el **connector de Sentry** (herramientas `mcp__Sentry__*`), no por el dashboard:
+Por el **connector de Sentry**, no por el dashboard.
+
+> [!IMPORTANT]
+> **El prefijo de las herramientas no es estable.** En una sesión interactiva se llaman `mcp__Sentry__*`; en una sesión disparada por una Routine el mismo connector aparece bajo el ID del servidor MCP (`mcp__472c6277-…__find_organizations`). Buscalas **siempre** con ToolSearch por palabra clave — `query: "sentry issues errors"` — y usá el nombre que devuelva, nunca uno hardcodeado. Asumir el prefijo hizo que la primera corrida de la Routine abortara sin leer nada (2026-09-04).
 
 - Organización: `turnogol` · Proyecto: `sentry-coquelicot-school` (el slug es el autogenerado cuando se creó el proyecto, no un typo)
 - `search_issues` para listar · `get_issue_details` para el stack trace · `get_issue_breadcrumbs` para la secuencia previa
 
-Si el connector no está disponible en la sesión, el fallback es `pnpm sentry:issues 24h` (necesita `SENTRY_READ_TOKEN` en `.env.production`, scope `event:read`; el `SENTRY_AUTH_TOKEN` del build devuelve 403).
+Si la búsqueda no devuelve ninguna herramienta de Sentry, el fallback es `pnpm sentry:issues 24h` (necesita `SENTRY_READ_TOKEN` en `.env.production`, scope `event:read`; el `SENTRY_AUTH_TOKEN` del build devuelve 403).
 
 ## Paso 1 — Traer y clasificar
 
@@ -40,7 +43,9 @@ Para cada uno:
 
 ## Paso 3 — Reportar
 
-Formato, un bloque por error real:
+Abrí **siempre** con una línea de resumen: es lo único que se ve en la notificación del celular antes de abrirla. `3 errores reales, 1 toca plata` o `Sin errores reales en 24h`.
+
+Después, un bloque por error real:
 
 ```
 🔴/🟡/🟢  TÍTULO DE LA ISSUE  ·  N eventos · M usuarios · último <cuándo>
@@ -50,7 +55,7 @@ Formato, un bloque por error real:
    Link:       <permalink de Sentry>
 ```
 
-Cerrá con una línea de ruido: `Ruido filtrado: N issues (web-vitals, health-ping)`. Si no hubo ningún error real, decilo en una línea y terminá — un reporte largo para decir "no pasó nada" es exactamente la fatiga de alertas que doc17 §5.1 quiere evitar.
+Cerrá con una línea de ruido: `Ruido filtrado: N issues (web-vitals, health-ping)`. Si no hubo ningún error real, esas dos líneas son todo el reporte — un reporte largo para decir "no pasó nada" es exactamente la fatiga de alertas que doc17 §5.1 quiere evitar.
 
 ## Límites
 

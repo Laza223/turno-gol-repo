@@ -1,0 +1,41 @@
+HERRAMIENTAS_SENTRY: mcp__472c6277-a849-4db4-b699-0f2200d200c0__
+ISSUES_LEIDAS: 6
+
+1 error real, 0 tocan plata
+
+[1] Resend caído: la sonda de salud lo reporta hace 21 horas seguidas
+Qué pasa: el chequeo `pingResend` llama a `https://api.resend.com/domains` con un
+timeout de 5 s y la petición se aborta ("The operation was aborted due to
+timeout"). Con eso el worker marca `resend: down` y emite dos eventos por cada
+corrida: un `captureMessage` de nivel warning y un `logger.error`. Los otros
+cuatro chequeos (database, pg-boss, supabase-auth, mercadopago) vienen ok en
+todas las muestras; database 1093 ms y pg-boss 119 ms.
+Dónde:
+  src/shared/jobs/workers/health-ping.worker.ts:79  (pingResend)
+  src/shared/jobs/workers/health-ping.worker.ts:86  (GET a api.resend.com/domains)
+  src/shared/jobs/workers/health-ping.worker.ts:22  (FETCH_TIMEOUT_MS = 5000)
+  src/shared/jobs/workers/health-ping.worker.ts:131 (Sentry.captureMessage "Health ping degraded: ...")
+  src/shared/jobs/workers/health-ping.worker.ts:136 (logger.error "health.ping.degraded")
+Por qué no es ruido: la regla filtra la sonda salvo que caiga database o
+pg-boss, o que el mismo servicio se repita varias horas. Acá se repite: resend
+aparece caído en 9 horas distintas dentro de la ventana de 24 h (04:00, 08:05,
+09:00, 12:00, 16:00, 20:00, 21:00, 00:00 y 01:00 UTC). Es un patrón sostenido,
+no un pico aislado.
+Impacto: no toca plata. El cobro va por MercadoPago, que responde ok con 20 ms.
+Lo que está en riesgo es el correo transaccional que sale por Resend.
+Matiz sobre la causa: el chequeo se aborta por timeout, no devuelve un HTTP de
+error. Puede ser Resend degradado o puede ser que 5 s no alcancen para ese
+endpoint desde el worker. El código ya trata 429 como "up", así que el corte por
+tiempo es la única vía que queda para un falso positivo.
+Sentry:
+  https://turnogol.sentry.io/issues/SENTRY-COQUELICOT-SCHOOL-D  (Health ping degraded: resend, 9 eventos en 24 h)
+  https://turnogol.sentry.io/issues/SENTRY-COQUELICOT-SCHOOL-F  (health.ping.degraded, 9 eventos en 24 h)
+Los dos grupos son la misma corrida de la sonda: comparten trace_id
+f90526a8db194949b571d34078aefbd4, release 2eb8500a63041fc6b7a994b80e75641b45600aba
+y el mismo bloque de checks. Se cuentan como un solo error.
+
+Ruido filtrado: 4 issues (web-vitals, health-ping)
+  - SENTRY-COQUELICOT-SCHOOL-4  web-vital:LCP  (/login)
+  - SENTRY-COQUELICOT-SCHOOL-6  web-vital:CLS  (/)
+  - SENTRY-COQUELICOT-SCHOOL-3  web-vital:FID  (/super-admin)
+  - SENTRY-COQUELICOT-SCHOOL-1  web-vital:FCP  (/super-admin)

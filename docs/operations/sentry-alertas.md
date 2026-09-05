@@ -53,6 +53,8 @@ Al 2026-09-04, de las 10 issues sin resolver de los últimos 14 días, **una sol
 - **6 `web-vital:*`** (LCP, TTFB, INP, FCP, CLS, FID) — métricas de performance que el SDK del navegador manda como issue cuando se pasan del presupuesto de `src/shared/observability/latency-budgets.ts`. Son números, no fallas.
 - **3 `health.ping.degraded` / `Health ping degraded: <servicio>`** — la sonda del worker avisando que un subsistema no contestó. Importa si el servicio es `database` o `pg-boss`, o si el mismo se repite varias horas.
 
+El primer triage automático (2026-09-05) usó justamente esa segunda regla para levantar un hallazgo real: `resend` figuraba caído en 9 horas distintas del día. **Era falsa alarma y el hallazgo igual valía.** Resend estaba arriba, el dominio verificado y los mails entregándose; lo que fallaba era la sonda, que declaraba la caída con el primer fetch que no llegaba, sobre un enlace que pierde cerca del 3% de las conexiones. Corregido: el fallo de red se confirma en tres intentos antes de reportarse, y un status HTTP sigue alertando en el acto porque es la respuesta autoritativa del servicio.
+
 Por eso el triage empieza filtrando: sin ese filtro, el 90% del reporte es ruido y se deja de leer (doc17 §5.1).
 
 ## Lo que sigue sin estar

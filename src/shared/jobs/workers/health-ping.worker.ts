@@ -21,8 +21,45 @@ type PingResult = {
 
 const FETCH_TIMEOUT_MS = 5000
 
-async function timedFetch(url: string, init?: RequestInit): Promise<Response> {
-  return fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+/**
+ * Intentos por sonda y pausa entre ellos. Solo aplican al fallo de RED — un
+ * status HTTP, sea el que sea, es una respuesta y corta en el primer intento.
+ */
+const PROBE_ATTEMPTS = 3
+const PROBE_RETRY_DELAY_MS = 250
+
+/**
+ * Un timeout NO prueba que el servicio esté caído: prueba que esta conexión no
+ * llegó. Distinción que la sonda no hacía, y por eso `resend` aparecía caído 9
+ * veces por día en Sentry (2026-09-04) con Resend arriba, el dominio verificado
+ * y los mails entregándose — un 3% de conexiones perdidas contra
+ * `api.resend.com` alcanzaba para llenar el canal de alertas de humo.
+ *
+ * Un fallo de red se confirma antes de reportarlo; con tres intentos, un 3% de
+ * pérdida cae a 0,003%. Un status HTTP, en cambio, es la respuesta AUTORITATIVA
+ * del servicio (un 401 = credencial rota) y se devuelve en el acto, sin
+ * reintentos: reintentarlo solo retrasaría una alerta que ya es cierta.
+ *
+ * Es el mismo criterio que el header `apikey` de `pingSupabaseAuth`: una alarma
+ * que no puede apagarse nunca entrena a ignorar el canal donde después aparece
+ * el problema real (doc17 §5.1).
+ */
+async function probeFetch(url: string, init?: RequestInit): Promise<Response> {
+  let ultimo: Error | undefined
+  for (let intento = 1; intento <= PROBE_ATTEMPTS; intento++) {
+    try {
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    } catch (err) {
+      ultimo = err as Error
+      if (intento < PROBE_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, PROBE_RETRY_DELAY_MS))
+      }
+    }
+  }
+  // El contador viaja en el mensaje porque es lo que termina en el `extra` del
+  // evento de Sentry: sin él, "operation was aborted" no dice si fue un pico o
+  // una caída sostenida.
+  throw new Error(`${ultimo?.message ?? 'network error'} (${PROBE_ATTEMPTS} intentos)`)
 }
 
 async function pingDb(): Promise<PingResult> {
@@ -68,7 +105,7 @@ export async function pingSupabaseAuth(): Promise<PingResult> {
   if (!anonKey) return { name: 'supabase-auth', status: 'ok', note: 'not configured' }
   const t0 = Date.now()
   try {
-    const res = await timedFetch(`${base}/auth/v1/health`, { headers: { apikey: anonKey } })
+    const res = await probeFetch(`${base}/auth/v1/health`, { headers: { apikey: anonKey } })
     if (res.ok) return { name: 'supabase-auth', status: 'ok', latencyMs: Date.now() - t0 }
     return { name: 'supabase-auth', status: 'down', error: `HTTP ${res.status}` }
   } catch (err) {
@@ -76,14 +113,14 @@ export async function pingSupabaseAuth(): Promise<PingResult> {
   }
 }
 
-async function pingResend(): Promise<PingResult> {
+export async function pingResend(): Promise<PingResult> {
   const key = process.env.RESEND_API_KEY
   if (!key) return { name: 'resend', status: 'ok', note: 'not configured' }
   const t0 = Date.now()
   try {
     // /domains is a cheap authenticated GET — never sends an email. A 401 means
     // the key is broken (a real, alert-worthy problem); 429 = rate-limited but up.
-    const res = await timedFetch('https://api.resend.com/domains', {
+    const res = await probeFetch('https://api.resend.com/domains', {
       headers: { Authorization: `Bearer ${key}` },
     })
     if (res.ok || res.status === 429) {
@@ -102,7 +139,7 @@ async function pingMercadoPago(): Promise<PingResult> {
     // so any HTTP response (even 401) proves the MP API is up. A network/timeout
     // error means it's unreachable. Per-token validity is covered by
     // refresh-mp-tokens.worker.
-    await timedFetch('https://api.mercadopago.com/v1/payment_methods')
+    await probeFetch('https://api.mercadopago.com/v1/payment_methods')
     return { name: 'mercadopago', status: 'ok', latencyMs: Date.now() - t0 }
   } catch (err) {
     return { name: 'mercadopago', status: 'down', error: (err as Error).message }

@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { MP_MOCK_ENABLED, isNonProductionRuntime } from '@/modules/payments/mock-mp'
+import { logger } from '@/shared/lib/logger'
+import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
+import { isNonProductionRuntime } from '@/shared/runtime-env'
 
 /**
  * Validates Mercado Pago webhook signatures via HMAC SHA-256.
@@ -26,9 +28,10 @@ import { MP_MOCK_ENABLED, isNonProductionRuntime } from '@/modules/payments/mock
  *   - MP_MOCK_ENABLED → bypass validation (E2E/Local dev without ngrok).
  *   - missing headers/env → fail closed (unless not production and no secret).
  *   - valid HMAC against MP_WEBHOOK_SECRET (app de Suscripciones) or
- *     MP_WEBHOOK_SECRET_CHECKOUT (app de Checkout Pro) → return true
- *     (timing-safe compare). Se prueba primero la de Suscripciones sólo por
- *     costo: es la histórica y hoy firma la mayoría del tráfico.
+ *     MP_WEBHOOK_SECRET_CHECKOUT (app de Checkout Pro) → return true si además
+ *     el `ts` del manifiesto entra en la ventana de antigüedad (`notTooOld`,
+ *     abajo). El compare es timing-safe. Se prueba primero la de Suscripciones
+ *     sólo por costo: es la histórica y hoy firma la mayoría del tráfico.
  *   - invalid against BOTH, but isNonProductionRuntime() AND
  *     MP_WEBHOOK_TEST_BYPASS_SECRET is set → retry the SAME HMAC check against
  *     that secret (MP-WEBHOOK-001: lets scripts/replay-mp-webhook.ts sign
@@ -65,13 +68,54 @@ export function verifyWebhookSignature(
 
   const manifest = `id:${dataId.toLowerCase()};request-id:${xRequestId};ts:${ts};`
 
-  if (secrets.some((secret) => matchesHmac(secret, manifest, v1))) return true
+  if (secrets.some((secret) => matchesHmac(secret, manifest, v1))) return notTooOld(ts)
 
   const testSecret = process.env.MP_WEBHOOK_TEST_BYPASS_SECRET
   if (testSecret && isNonProductionRuntime()) {
-    return matchesHmac(testSecret, manifest, v1)
+    return matchesHmac(testSecret, manifest, v1) && notTooOld(ts)
   }
 
+  return false
+}
+
+/**
+ * Ventana de antigüedad del `ts` del manifiesto.
+ *
+ * Seis horas es enorme para lo que mide: MercadoPago reintenta cada 15 minutos
+ * y después espacia, así que ni una cadena larga de reintentos llega acá. El
+ * margen es deliberado — este chequeo puede RECHAZAR un aviso de un pago ya
+ * cobrado, y ese error cuesta plata; el que evita (repetir un aviso firmado
+ * cuyas ramas ya son idempotentes por `processed_webhooks`) no cuesta nada.
+ * Lo que cierra es el replay INDEFINIDO, que era el hallazgo.
+ */
+const WEBHOOK_TS_TOLERANCE_MS = 6 * 60 * 60 * 1000
+
+/**
+ * `false` sólo cuando hay certeza de que el aviso es viejo. Cualquier duda
+ * —`ts` ilegible, fechado en el futuro por desfasaje de reloj— acepta: la firma
+ * ya dio bien y antes de este chequeo no había ninguna ventana, así que
+ * fallar abierto acá nunca es peor que el comportamiento anterior.
+ *
+ * MercadoPago documenta el `ts` en milisegundos, pero la normalización existe
+ * igual: si algún día llegara en segundos, restarlo crudo daría una antigüedad
+ * de décadas y rechazaría TODOS los avisos de producción a la vez.
+ */
+function notTooOld(ts: string): boolean {
+  const raw = Number(ts)
+  if (!Number.isFinite(raw) || raw <= 0) return true
+  // Menos de 1e12 no puede ser un instante en milisegundos posterior a 2001.
+  const emitidoMs = raw < 1e12 ? raw * 1000 : raw
+  const edadMs = Date.now() - emitidoMs
+  if (edadMs <= WEBHOOK_TS_TOLERANCE_MS) return true
+
+  // `error` y no `warn`: si esto aparece, un aviso con firma VÁLIDA se está
+  // tirando por antigüedad, y eso puede ser un pago cobrado que no se registró.
+  // Es la señal de que la ventana quedó corta. Sin id ni firma en el log.
+  logger.error('mp-webhook: firma válida pero el aviso es demasiado viejo', {
+    module: 'mp-webhook',
+    edadHoras: Math.round(edadMs / 3_600_000),
+    toleranciaHoras: WEBHOOK_TS_TOLERANCE_MS / 3_600_000,
+  })
   return false
 }
 

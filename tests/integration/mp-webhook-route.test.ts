@@ -67,7 +67,9 @@ function sign(
   secret: string,
   dataId: string,
   requestId = 'req-1',
-  ts = '1718000000',
+  // Instante actual, no uno congelado: desde el hardening de la auditoría
+  // integral del 2026-09-06 el manifiesto tiene ventana de antigüedad.
+  ts = String(Date.now()),
 ): Record<string, string> {
   const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`
   const v1 = createHmac('sha256', secret).update(manifest).digest('hex')

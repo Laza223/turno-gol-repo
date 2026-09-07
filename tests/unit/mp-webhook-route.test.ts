@@ -7,6 +7,16 @@ vi.mock('@/modules/payments/mock-mp', () => ({
   MP_MOCK_ENABLED: false,
 }))
 
+/**
+ * El manifiesto se firma con un `ts` y desde el hardening de la auditoría
+ * integral del 2026-09-06 hay una ventana de antigüedad, así que un instante
+ * congelado (acá estaba fijo en 2021) ya no puede verificar. Cada caso firma
+ * con el instante actual, que es además lo que hace MercadoPago.
+ */
+function TS_ACTUAL(): string {
+  return String(Date.now())
+}
+
 describe('verifyWebhookSignature', () => {
   const env = process.env as Record<string, string | undefined>
   const originalSecret = env['MP_WEBHOOK_SECRET']
@@ -48,7 +58,7 @@ describe('verifyWebhookSignature', () => {
 
   it('returns true when HMAC signature is correct', () => {
     process.env.MP_WEBHOOK_SECRET = 'super-secret'
-    const ts = '1620000000'
+    const ts = TS_ACTUAL()
     const requestId = 'req-123'
     const dataId = 'data-456'
 
@@ -69,7 +79,7 @@ describe('verifyWebhookSignature', () => {
     // MP delivers subscription/preapproval data.id in uppercase but signs the
     // manifest with the lowercased value. Passing the uppercase id must verify.
     process.env.MP_WEBHOOK_SECRET = 'super-secret'
-    const ts = '1620000000'
+    const ts = TS_ACTUAL()
     const requestId = 'req-123'
     const upperDataId = 'ORD01JQ4S4KY8HWQ6NA5PXB65B3D3'
 

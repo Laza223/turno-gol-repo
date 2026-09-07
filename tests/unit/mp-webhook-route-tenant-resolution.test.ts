@@ -29,7 +29,9 @@ vi.mock('@/modules/billing/billing.gateway', () => ({
 vi.mock('@/shared/jobs/boss', () => ({ getBoss: async () => ({ send }) }))
 
 function firmar(dataId: string): Record<string, string> {
-  const ts = '1700000000'
+  // Instante actual, no uno congelado: desde el hardening de la auditoría
+  // integral del 2026-09-06 el manifiesto tiene ventana de antigüedad.
+  const ts = String(Date.now())
   const manifest = `id:${dataId.toLowerCase()};request-id:req-1;ts:${ts};`
   const v1 = createHmac('sha256', SECRET).update(manifest).digest('hex')
   return {

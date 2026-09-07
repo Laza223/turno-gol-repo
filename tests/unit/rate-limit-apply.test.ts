@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // `.env.test` sets NEXT_PUBLIC_E2E=1 (loaded by tests/setup.ts) so the rest of
 // the suite can exercise E2E-bypassed flows. This file is the ONLY one that
@@ -116,5 +116,67 @@ describe('rateLimit429', () => {
     expect(body.error.code).toBe('RATE_LIMITED')
     expect(typeof body.error.message).toBe('string')
     expect(body.meta).toHaveProperty('request_id')
+  })
+})
+
+/**
+ * Hardening de la auditoría integral del 2026-09-06.
+ *
+ * `NEXT_PUBLIC_E2E=1` apaga el rate limiting entero. Que "nunca se setea en un
+ * entorno real" era una convención escrita en un comentario, no un candado — y
+ * el prefijo `NEXT_PUBLIC_` significa que la variable viaja al bundle, así que
+ * alcanza con que quede cargada una vez en el proyecto de Vercel para dejar
+ * producción sin límites, en silencio y sin que ningún test lo note.
+ *
+ * `MP_MOCK_ENABLED` apaga una defensa del mismo calibre y ya estaba
+ * duro-gateada por el runtime. Ahora esta también.
+ */
+describe('el bypass de E2E no puede quedar prendido en producción', () => {
+  // `NODE_ENV` es readonly en los tipos de Node; el resto del repo usa este
+  // mismo cast para poder simular entornos (ver webhook-auth.test.ts).
+  const env = process.env as Record<string, string | undefined>
+  const ORIGINAL_VERCEL_ENV = env['VERCEL_ENV']
+  const ORIGINAL_NODE_ENV = env['NODE_ENV']
+
+  afterEach(() => {
+    if (ORIGINAL_VERCEL_ENV === undefined) delete env['VERCEL_ENV']
+    else env['VERCEL_ENV'] = ORIGINAL_VERCEL_ENV
+    if (ORIGINAL_NODE_ENV === undefined) delete env['NODE_ENV']
+    else env['NODE_ENV'] = ORIGINAL_NODE_ENV
+    delete env['NEXT_PUBLIC_E2E']
+  })
+
+  it('en el deploy de producción real la variable NO desactiva nada', async () => {
+    env['NODE_ENV'] = 'production'
+    env['VERCEL_ENV'] = 'production'
+    env['NEXT_PUBLIC_E2E'] = '1'
+
+    for (let i = 0; i < 30; i++) await enforce('publicAvailability', 'prod-key')
+    const r = await enforce('publicAvailability', 'prod-key')
+
+    expect(r.ok).toBe(false)
+    expect(r.unavailable).toBe(false)
+  })
+
+  it('en un deploy de preview sí desactiva: ahí es donde corre Playwright', async () => {
+    env['NODE_ENV'] = 'production'
+    env['VERCEL_ENV'] = 'preview'
+    env['NEXT_PUBLIC_E2E'] = '1'
+
+    for (let i = 0; i < 40; i++) {
+      const r = await enforce('publicAvailability', 'preview-key')
+      expect(r.ok).toBe(true)
+    }
+  })
+
+  it('en local/CI (NODE_ENV != production) sigue desactivando como siempre', async () => {
+    env['NODE_ENV'] = 'test'
+    delete env['VERCEL_ENV']
+    env['NEXT_PUBLIC_E2E'] = '1'
+
+    for (let i = 0; i < 40; i++) {
+      const r = await enforce('publicAvailability', 'local-key')
+      expect(r.ok).toBe(true)
+    }
   })
 })

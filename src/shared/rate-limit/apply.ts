@@ -1,6 +1,7 @@
 import { captureMessage } from '@/lib/sentry'
 import { POLICIES, type PolicyName } from './policies'
 import { getLimiter } from './client'
+import { isNonProductionRuntime } from '@/shared/runtime-env'
 
 export type RateLimitOutcome = {
   ok: boolean
@@ -48,11 +49,20 @@ export async function enforce(name: PolicyName, key: string): Promise<RateLimitO
   // pinAttempts) would otherwise block every request and make those flows
   // untestable. NEXT_PUBLIC_E2E=1 is
   // set ONLY by the playwright webServer config and never in real envs.
+  //
+  // Hardening (auditoría integral 2026-09-06): "nunca se setea en un entorno
+  // real" era una convención, no un candado — y `NEXT_PUBLIC_` viaja al bundle,
+  // así que basta con que quede escrita una vez en el proyecto de Vercel para
+  // apagar el rate limiting de producción entera, en silencio. Ahora está
+  // duro-gateada por el runtime, igual que `MP_MOCK_ENABLED`, que apaga una
+  // defensa del mismo calibre y ya lo hacía así.
   const isDevWithoutUpstash =
     process.env.NODE_ENV === 'development' &&
     (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN)
 
-  if (process.env.NEXT_PUBLIC_E2E === '1' || isDevWithoutUpstash) {
+  const e2eBypass = process.env.NEXT_PUBLIC_E2E === '1' && isNonProductionRuntime()
+
+  if (e2eBypass || isDevWithoutUpstash) {
     const p = POLICIES[name]
     return { ok: true, limit: p.limit, remaining: p.limit, reset: 0, unavailable: true }
   }

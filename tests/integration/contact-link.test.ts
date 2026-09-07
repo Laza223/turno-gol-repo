@@ -87,6 +87,7 @@ async function insertAbonadoBooking(
   abonadoId: string,
   date: string,
   timeStart = '20:00',
+  status = 'confirmed',
 ): Promise<string> {
   const sql = getSql()
   const timeEnd = `${String(Number(timeStart.slice(0, 2)) + 1).padStart(2, '0')}:00`
@@ -100,7 +101,7 @@ async function insertAbonadoBooking(
       ${timeStart}::time, ${timeEnd}::time,
       ${`${date}T${timeStart}:00-03:00`}::timestamptz,
       ${`${date}T${timeEnd}:00-03:00`}::timestamptz,
-      'fixed', 'confirmed', ${800000}, 0, 'not_required'
+      'fixed', ${status}::booking_status, ${800000}, 0, 'not_required'
     )
     RETURNING id
   `
@@ -316,6 +317,43 @@ describe('linkContactToPlayer / unlinkContactFromPlayer (B13)', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ kind: 'player', playerId: player.id, fixedCount: 1 })
     expect(rows[0]!.bookingsCount).toBe(after.bookings_count)
+  })
+
+  it('vincula aunque el fijo ya tenga sesiones jugadas (AUD-06)', async () => {
+    // El fijo del lunes lleva semanas: la primera sesión ya está `completed`.
+    // El UPDATE no filtraba por estado y el trigger de invariantes bloquea
+    // cualquier modificación de una reserva en estado terminal, así que la
+    // vinculación —el único camino para que un fijo pase a tener dueño— tiraba
+    // check_violation desde la segunda semana del abono.
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
+
+    const abonadoId = await insertAbonado(tenant.id, courtId, 'Diego', '11 4455-6677')
+    const jugada = await insertAbonadoBooking(
+      tenant.id,
+      courtId,
+      abonadoId,
+      '2020-01-06',
+      '20:00',
+      'completed',
+    )
+    await insertAbonadoBooking(tenant.id, courtId, abonadoId, '2030-01-07')
+    await insertAbonadoBooking(tenant.id, courtId, abonadoId, '2030-01-14')
+
+    const result = await withTenantContext(tenant.id, (tx) =>
+      linkContactToPlayer(tenant.id, normalizeContactPhone('11 4455-6677'), player.id, tx),
+    )
+
+    // Se reasignan las dos futuras; la jugada queda como historial del contacto.
+    expect(result).toEqual({ abonadosLinked: 1, bookingsReassigned: 2 })
+
+    const [vieja] = await sql<{ player_id: string | null }[]>`
+      SELECT player_id FROM bookings WHERE id = ${jugada}
+    `
+    expect(vieja!.player_id).toBeNull()
   })
 
   it('es idempotente: el segundo click no vuelve a contar', async () => {

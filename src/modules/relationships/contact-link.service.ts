@@ -135,6 +135,17 @@ export async function linkContactToPlayer(
 
   // Solo las reservas que todavía no tienen dueño: si una la generó otro camino
   // y ya apunta a alguien, no se la robamos.
+  //
+  // Y solo las que NO están en estado terminal (AUD-06). `enforce_booking_invariants_fn`
+  // (migr. 070) bloquea todo UPDATE sobre una reserva jugada, ausente, vencida o
+  // cancelada, y su única excepción para `player_id` exige que el nuevo valor sea
+  // NULL. Sin este filtro, la vinculación —el único camino para que un fijo pase a
+  // tener dueño— tiraba check_violation apenas el abono tenía una sesión jugada, o
+  // sea desde su segunda semana. Las sesiones ya jugadas quedan como historial del
+  // contacto: la persona no se pierde, sigue en `abonados` con su nombre y teléfono.
+  //
+  // La lista va en positivo, no como "todo menos los terminales": un estado nuevo
+  // queda afuera, que es el lado seguro del error.
   const moved = await tx
     .update(bookings)
     .set({ playerId })
@@ -143,6 +154,7 @@ export async function linkContactToPlayer(
         eq(bookings.tenantId, tenantId),
         inArray(bookings.abonadoId, abonadoIds),
         isNull(bookings.playerId),
+        inArray(bookings.status, ['pending_payment', 'confirmed']),
       ),
     )
     .returning({ id: bookings.id, startsAt: bookings.startsAt })

@@ -30,7 +30,10 @@ Si hace falta cerrar la Capa 6, es una auditoría nueva, no la continuación de 
   Los 5 🟡 restantes y un 🟢 se cerraron el 2026-09-06 en dos pasadas más (migraciones 084 y
   085, tapado único del reporte de errores, identidad del rol en staging). Queda 1 🟢: los
   oráculos de existencia de cuenta, que son decisión de producto y no arreglo técnico. El arnés vive en
-  `tests/integration/isolation-app-role.test.ts`, bloqueante en CI.
+  `tests/integration/isolation-app-role.test.ts`, bloqueante en CI. La **fase 2A** (contenido
+  de producción) se corrió el 2026-09-07: sin contaminación, con denominadores chicos —12
+  reservas con jugador, 3 relaciones— así que dice que no hay daño hoy, no que el sistema
+  haya resistido volumen. Sonda re-ejecutable: `scripts/probe-tenant-contamination.ts`.
 
 ## Los "REQUIERE INPUT" que vivían acá ya no requieren input
 

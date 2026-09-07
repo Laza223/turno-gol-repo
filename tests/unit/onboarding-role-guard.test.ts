@@ -15,7 +15,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // ANTES de tocar la DB), no un falso positivo por un mock a medio configurar
 // que hubiera hecho fallar la acción por otro motivo.
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }))
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`)

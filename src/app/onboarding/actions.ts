@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { revalidatePublicListings } from '@/shared/cache/public-listings'
 import { createClient } from '@/lib/supabase/server'
 import { withTenantContext } from '@/shared/db/client'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -333,6 +334,11 @@ export async function finishOnboardingAction(): Promise<void> {
   }
 
   await completeOnboarding(tenant.id)
+  // Este es el instante exacto en que el complejo pasa a ser visible: la
+  // búsqueda pública exige `onboarding_completed`. Sin invalidar los tags,
+  // `/explorar` y la home lo mostraban recién hasta 300 s después de que el
+  // wizard ya le había dicho al dueño que había terminado.
+  revalidatePublicListings()
   track.onboarding('onboarding.completed', { tenantId: tenant.id, courtsCount, hasFirstBooking })
   redirect('/onboarding/listo')
 }

@@ -19,7 +19,9 @@ export const createTenantSchema = z.object({
  * verdad (`UpdateTenantInput` es `Partial<...>`) igual requeriría mandar
  * phone/email en el FormData para pasar `createTenantSchema` completo.
  */
-export const updateTenantIdentitySchema = createTenantSchema.pick({
+// Sin `export`: ahora sólo lo consume `updateWizardIdentitySchema`, acá abajo.
+// knip corre con `ignoreExportsUsedInFile` en falso y lo marcaría muerto.
+const updateTenantIdentitySchema = createTenantSchema.pick({
   name: true,
   address: true,
   city: true,
@@ -44,3 +46,76 @@ export const tenantContactSchema = createTenantSchema.pick({ phone: true, email:
     .transform((v) => (v.length === 0 ? null : v))
     .pipe(phone.nullable()),
 })
+
+/**
+ * Coordenada opcional que viene de un FormData, o sea siempre string.
+ *
+ * El `transform` a null ANTES del coerce no es estilo: `Number('')` es `0`, así
+ * que un campo vacío con `z.coerce.number()` a pelo guardaría el punto (0, 0)
+ * — el Golfo de Guinea, a diez mil kilómetros de cualquier complejo argentino,
+ * y sin ningún error visible. Mismo patrón que `whatsapp` acá arriba.
+ */
+function optionalCoordinate(min: number, max: number, label: string) {
+  return (
+    z
+      .string()
+      .trim()
+      .optional()
+      // Ausente y vacío son el mismo caso: "todavía no cargó el punto".
+      .transform((v) => (!v ? null : Number(v)))
+      .refine((v) => v === null || (Number.isFinite(v) && v >= min && v <= max), {
+        // `Number.isFinite` cubre de una el texto no numérico: `Number('abc')`
+        // es NaN, y NaN no pasa ninguna comparación de rango por sí solo.
+        message: `${label} inválida`,
+      })
+  )
+}
+
+/** Campos de coordenada, para extender los schemas que las aceptan. */
+const coordinateFields = {
+  latitude: optionalCoordinate(-90, 90, 'Latitud'),
+  longitude: optionalCoordinate(-180, 180, 'Longitud'),
+}
+
+/**
+ * "Ambas o ninguna". Defiende un invariante que TODO el lado lector ya asume
+ * (`ExplorarMap` exige las dos, el Haversine devuelve NULL si falta una):
+ * media coordenada es un estado que nadie sabe renderizar.
+ */
+function bothOrNeither(v: { latitude: number | null; longitude: number | null }): boolean {
+  return (v.latitude === null) === (v.longitude === null)
+}
+
+const COORDINATE_PAIR_MESSAGE = {
+  message: 'Marcá el punto en el mapa o quitalo por completo',
+  path: ['latitude'],
+}
+
+/** Alta del complejo en el paso 1 del wizard, con el punto opcional. */
+export const createTenantWithLocationSchema = createTenantSchema
+  .extend(coordinateFields)
+  .refine(bothOrNeither, COORDINATE_PAIR_MESSAGE)
+
+/** Revisita del paso 1: mismos campos que el alta, sin teléfono ni email. */
+export const updateWizardIdentitySchema = updateTenantIdentitySchema
+  .extend(coordinateFields)
+  .refine(bothOrNeither, COORDINATE_PAIR_MESSAGE)
+
+/**
+ * Ubicación del complejo, editable desde `/settings/perfil`.
+ *
+ * Incluye dirección/ciudad/provincia porque hasta ahora NO existía ninguna
+ * pantalla que las editara después del wizard (ver el comentario de
+ * `updateWizardTenantAction`): una dirección mal tipeada quedaba así para
+ * siempre, y como `city` se filtra con igualdad exacta en la búsqueda pública,
+ * un tipeo ahí deja al complejo infindable — cargar el punto en el mapa no lo
+ * arregla. `name` queda afuera a propósito: arrastra la decisión del slug.
+ *
+ * El `refine` de "ambas o ninguna" defiende un invariante que TODO el lado
+ * lector ya asume (`ExplorarMap` exige las dos, el Haversine devuelve NULL si
+ * falta una): media coordenada es un estado que nadie sabe renderizar.
+ */
+export const tenantLocationSchema = createTenantSchema
+  .pick({ address: true, city: true, province: true })
+  .extend(coordinateFields)
+  .refine(bothOrNeither, COORDINATE_PAIR_MESSAGE)

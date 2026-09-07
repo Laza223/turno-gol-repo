@@ -98,7 +98,8 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
     <>
       {/* Revisita del paso 1: el complejo ya existe, así que el form edita en vez
           de crear. Antes rebotaba al paso pendiente y un nombre mal tipeado no
-          tenía arreglo — el wizard es la única pantalla que pide estos campos. */}
+          tenía arreglo. Dirección, ciudad, provincia y el punto del mapa hoy
+          también se corrigen en `/settings/perfil`; el nombre, sólo acá. */}
       {step === 1 && (
         <StepIdentity
           action={updateWizardTenantAction}
@@ -108,6 +109,8 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
             city: tenant.city,
             province: tenant.province,
             slug: tenant.slug,
+            latitude: tenant.latitude,
+            longitude: tenant.longitude,
           }}
         />
       )}

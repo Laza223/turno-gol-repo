@@ -105,6 +105,8 @@ export const tenant = (overrides: Partial<TenantRow> = {}): TenantRow => ({
   closesNextDay: false,
   mpConnectedAt: daysFromNow(-180),
   mpNickname: 'COMPLEJOFENIX',
+  latitude: -34.6091,
+  longitude: -58.4416,
   ...overrides,
 })
 

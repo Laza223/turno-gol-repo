@@ -60,3 +60,8 @@ tests/e2e/visual/__screenshots__/*/darwin/
 # GTM — datos crudos del experimento comercial (CRM, baseline del piloto, entrevistas):
 # contienen datos personales de terceros (Ley 25.326). En git solo va lo anonimizado en docs/gtm/ejecucion/.
 docs/gtm/data/
+
+# Config local de Codex: lleva el token de acceso personal de Supabase (`sbp_...`)
+# en texto plano, igual que `.env.local`. Nunca se commiteó, y esta línea es lo
+# que evita que un `git add -A` lo suba.
+.codex/

@@ -29,6 +29,7 @@ import {
   setTenantImageAction,
   removeTenantImageAction,
   updateUserEmailAction,
+  updateTenantLocationAction,
 } from '@/app/(admin)/settings/perfil/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant, updateTenant } from '@/modules/tenants/tenant.service'
@@ -219,5 +220,83 @@ describe('updateUserEmailAction', () => {
     expect(res.success).toBe(false)
     expect(vi.mocked(isStaffEmailTaken)).not.toHaveBeenCalled()
     expect(updateUser).not.toHaveBeenCalled()
+  })
+})
+
+function locationFormData(fields: Record<string, string> = {}) {
+  const fd = new FormData()
+  fd.set('address', 'Av. Corrientes 1234')
+  fd.set('city', 'Rosario')
+  fd.set('province', 'Santa Fe')
+  fd.set('latitude', '-32.9468')
+  fd.set('longitude', '-60.6393')
+  for (const [k, v] of Object.entries(fields)) fd.set(k, v)
+  return fd
+}
+
+const INITIAL = { success: true } as const
+
+describe('updateTenantLocationAction', () => {
+  it('manager no puede editar la ubicación', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
+    const res = await updateTenantLocationAction(INITIAL, locationFormData())
+    expect(res.success).toBe(false)
+    expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+  })
+
+  describe('admin', () => {
+    beforeEach(() => {
+      vi.mocked(getStaffRole).mockResolvedValue('admin')
+    })
+
+    it('guarda el punto como número y revalida las superficies públicas', async () => {
+      const res = await updateTenantLocationAction(INITIAL, locationFormData())
+      expect(res.success).toBe(true)
+      expect(vi.mocked(updateTenant)).toHaveBeenCalledWith('tenant-1', {
+        address: 'Av. Corrientes 1234',
+        city: 'Rosario',
+        province: 'Santa Fe',
+        latitude: -32.9468,
+        longitude: -60.6393,
+      })
+      expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/perfil')
+      expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
+      // Sin esto, el pin nuevo tarda hasta 5 minutos en aparecer en el mapa
+      // del buscador, y la localidad no entra al catálogo de ciudades.
+      expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-tenants')
+      expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-cities')
+    })
+
+    it('el par vacío borra el punto, no lo guarda en (0, 0)', async () => {
+      const res = await updateTenantLocationAction(
+        INITIAL,
+        locationFormData({ latitude: '', longitude: '' }),
+      )
+      expect(res.success).toBe(true)
+      expect(vi.mocked(updateTenant)).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ latitude: null, longitude: null }),
+      )
+    })
+
+    it('una latitud fuera de rango no toca la base ni la cache', async () => {
+      const res = await updateTenantLocationAction(INITIAL, locationFormData({ latitude: '95' }))
+      expect(res.success).toBe(false)
+      expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+      expect(vi.mocked(updateTag)).not.toHaveBeenCalled()
+    })
+
+    it('media coordenada se rechaza', async () => {
+      const res = await updateTenantLocationAction(INITIAL, locationFormData({ longitude: '' }))
+      expect(res.success).toBe(false)
+      expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+    })
+
+    it('respeta el rate limit', async () => {
+      vi.mocked(adminRateLimited).mockResolvedValue('Demasiados intentos')
+      const res = await updateTenantLocationAction(INITIAL, locationFormData())
+      expect(res.success).toBe(false)
+      expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+    })
   })
 })

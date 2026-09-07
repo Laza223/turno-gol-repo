@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { abonados, bookings } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { significantPhoneSql } from './contact-identity'
+import { playerBelongsToTenant } from './ptr.service'
 
 /**
  * Vinculación manual de una persona sin cuenta con su jugador registrado (B13).
@@ -24,25 +25,6 @@ export type LinkContactResult = {
 export type UnlinkContactResult = {
   abonadosUnlinked: number
   bookingsReverted: number
-}
-
-/**
- * ¿El jugador ya es cliente de ESTE complejo? Vincular contra un `player_id`
- * arbitrario sería escribirle una relación a alguien de otro complejo, y encima
- * revelaría su nombre en la lista. La única fuente admisible de candidatos es
- * `player_tenant_relationships` de este tenant — la misma que alimenta la lista.
- */
-async function playerBelongsToTenant(
-  tenantId: string,
-  playerId: string,
-  tx: DbTx,
-): Promise<boolean> {
-  const rows = await tx.execute<{ ok: number }>(sql`
-    SELECT 1 AS ok FROM player_tenant_relationships
-    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
-    LIMIT 1
-  `)
-  return [...rows].length > 0
 }
 
 /**

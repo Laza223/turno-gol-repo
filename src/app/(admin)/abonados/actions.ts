@@ -19,6 +19,7 @@ import {
   AbonadoAlreadyCanceledError,
   ReactivationConflictError,
   CourtNotFoundError,
+  PlayerNotClientError,
 } from '@/modules/abonados/abonado.errors'
 import type { AbonadoRow, CreateAbonadoInput } from '@/modules/abonados/abonado.types'
 
@@ -53,6 +54,9 @@ export async function createAbonadoAction(input: CreateAbonadoInput): Promise<Ab
     }
     if (err instanceof CourtNotFoundError) {
       return { success: false, error: 'Cancha no encontrada.' }
+    }
+    if (err instanceof PlayerNotClientError) {
+      return { success: false, error: err.message }
     }
     throw err
   }

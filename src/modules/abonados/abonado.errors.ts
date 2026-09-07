@@ -32,3 +32,10 @@ export class CourtNotFoundError extends Error {
     super(`Cancha ${courtId} no encontrada.`)
   }
 }
+
+export class PlayerNotClientError extends Error {
+  constructor() {
+    super('El jugador no es cliente de este complejo.')
+    this.name = 'PlayerNotClientError'
+  }
+}

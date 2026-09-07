@@ -15,6 +15,33 @@ export async function ensurePTR(playerId: string, tenantId: string, tx: DbTx): P
   `)
 }
 
+/**
+ * ¿El jugador ya es cliente de ESTE complejo?
+ *
+ * Aceptar un `player_id` arbitrario es escribirle una relación a alguien de otro
+ * complejo, y de paso revelarle el nombre: la fila de
+ * `player_tenant_relationships` es exactamente la condición de la policy
+ * `staff_can_see_related_players` sobre `players`. La única fuente admisible de
+ * candidatos es esa misma tabla, que es la que alimenta el buscador del panel.
+ *
+ * Vive acá, y no duplicada en cada llamador, porque el hallazgo H-1 de la
+ * auditoría de aislamiento del 2026-09-05 fue justamente eso: el guard existía
+ * en el camino de vinculación de contactos y la carga manual de reservas no lo
+ * llamaba.
+ */
+export async function playerBelongsToTenant(
+  tenantId: string,
+  playerId: string,
+  tx: DbTx,
+): Promise<boolean> {
+  const rows = await tx.execute<{ ok: number }>(sql`
+    SELECT 1 AS ok FROM player_tenant_relationships
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+    LIMIT 1
+  `)
+  return [...rows].length > 0
+}
+
 const NO_SHOW_SOFTBAN_REASON = `Ausencias reiteradas (2+ en ${NO_SHOW_STRIKE_WINDOW_DAYS} días)`
 
 export type NoShowStrikeResult = {

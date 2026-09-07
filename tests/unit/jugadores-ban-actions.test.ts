@@ -42,6 +42,9 @@ beforeEach(() => {
     tenant: { id: 'tenant-1' },
   } as never)
   vi.mocked(adminRateLimited).mockResolvedValue(null as never)
+  // Por defecto el jugador es cliente del complejo; el caso contrario (H-10)
+  // tiene su propio test más abajo.
+  vi.mocked(banPlayerManually).mockResolvedValue(true)
 })
 
 describe('banPlayerAction', () => {
@@ -82,6 +85,17 @@ describe('banPlayerAction', () => {
       expect.anything(),
       expect.objectContaining({ action: 'player.banned', resourceId: PLAYER_ID }),
     )
+  })
+
+  it('si el jugador no es cliente del complejo: sin auditoría y con mensaje propio', async () => {
+    mockTx()
+    vi.mocked(banPlayerManually).mockResolvedValue(false)
+
+    const res = await banPlayerAction(PLAYER_ID, 'Motivo', '7d')
+
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toBe('Esa persona no es cliente de este complejo.')
+    expect(vi.mocked(insertAuditLog)).not.toHaveBeenCalled()
   })
 
   it('rechaza un playerId con formato inválido', async () => {

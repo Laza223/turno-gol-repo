@@ -42,7 +42,9 @@ function isVigente(b: FakeBan, now: Date): boolean {
  * predicado documentado que la SQL real) — la correctitud del WHERE real
  * está verificada en vivo (contrato ENS-8), esto ejercita el control flow.
  */
-function makeFakeTx(opts: { playerStatus?: string; playerBanUntil?: Date | null } = {}) {
+function makeFakeTx(
+  opts: { playerStatus?: string; playerBanUntil?: Date | null; esCliente?: boolean } = {},
+) {
   const store: FakeBan[] = []
   let seq = 0
 
@@ -73,6 +75,10 @@ function makeFakeTx(opts: { playerStatus?: string; playerBanUntil?: Date | null 
   }
 
   const tx = {
+    // Único `tx.execute` del service: el guard de pertenencia
+    // (`playerBelongsToTenant`, H-10). Cliente del complejo por defecto — lo
+    // contrario es el caso excepcional, y es el que prueba (f).
+    execute: vi.fn(async () => (opts.esCliente === false ? [] : [{ ok: 1 }])),
     select: vi.fn(() => ({ from: vi.fn((table: unknown) => chain(table)) })),
     insert: vi.fn((table: unknown) => ({
       values: vi.fn((row: Record<string, unknown>) => {
@@ -210,6 +216,18 @@ describe('banPlayerManually + checkPlayerBanned', () => {
     const result = await checkPlayerBanned(PLAYER_ID, TENANT_ID, tx)
     expect(result.banned).toBe(true)
     if (result.banned) expect(result.reason).toBe('Segundo motivo')
+  })
+
+  it('(f) un jugador que no es cliente del complejo no se puede banear: devuelve false y no escribe', async () => {
+    // H-10 de la auditoría de aislamiento del 2026-09-05: el bloqueo lo ve la
+    // persona bloqueada, así que un identificador ajeno le escribe un
+    // antecedente a alguien que nunca visitó el complejo.
+    const { tx, store } = makeFakeTx({ esCliente: false })
+
+    const aplicado = await banPlayerManually(TENANT_ID, PLAYER_ID, STAFF_ID, 'Motivo', null, tx)
+
+    expect(aplicado).toBe(false)
+    expect(store).toHaveLength(0)
   })
 
   it('un jugador con ban global (players.status=banned) sigue detectándose aparte del ban manual', async () => {

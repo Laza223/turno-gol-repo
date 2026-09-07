@@ -3,7 +3,7 @@ import { bookings, courts, tenants } from '@/shared/db/schema'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import type { DbTx } from '@/shared/db/client'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
-import { ensurePTR } from '@/modules/relationships/ptr.service'
+import { ensurePTR, playerBelongsToTenant } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
 import { priceForSlot } from '@/lib/booking/pricing'
 import type { CourtPricingData } from '@/modules/courts/court.types'
@@ -207,6 +207,16 @@ export async function createManualBooking(
   // varias horas, así que no se validan.
   if (input.type !== 'block') {
     assertSlotDuration(input.timeStart, input.timeEnd)
+  }
+
+  // H-1 de la auditoría de aislamiento del 2026-09-05: el `player_id` llega del
+  // cliente y la policy de alta sobre `bookings` sólo mira `tenant_id`, así que
+  // sin esto un complejo cargaba una reserva a nombre de un jugador ajeno y,
+  // marcándola ausente, se fabricaba la relación que le destraba leerle nombre,
+  // correo y teléfono. El buscador del panel sólo ofrece jugadores con relación
+  // previa, así que exigirla acá no cierra ningún flujo legítimo.
+  if (input.playerId && !(await playerBelongsToTenant(tenantId, input.playerId, tx))) {
+    throw new BookingValidationError('El jugador no es cliente de este complejo.')
   }
 
   // La carga manual NUNCA tuvo ventana de anticipación (el admin carga el turno

@@ -10,6 +10,7 @@
 
 const PG_UNIQUE_VIOLATION = '23505'
 const PG_FOREIGN_KEY_VIOLATION = '23503'
+const PG_LOCK_NOT_AVAILABLE = '55P03'
 
 type PgErrorLike = { code?: string; constraint_name?: string; constraint?: string }
 
@@ -40,4 +41,21 @@ export function isForeignKeyViolation(err: unknown, constraint: string): boolean
   const pg = asPgError(err)
   if (!pg || pg.code !== PG_FOREIGN_KEY_VIOLATION) return false
   return constraintOf(pg).includes(constraint)
+}
+
+/**
+ * `55P03 lock_not_available`: la fila estaba tomada por otra transacción y el
+ * `lock_timeout` del rol se agotó esperándola.
+ *
+ * El rol web tiene `lock_timeout = '3s'` (migr. 055) y los `FOR UPDATE` de
+ * facturación siguen tomados mientras la operación viaja a MercadoPago
+ * (`billing.service.ts:34-41`, hasta 8 s de timeout). Dos pestañas o un doble
+ * click sobre "Activar plan" dejan a la segunda esperando una fila que no se
+ * libera a tiempo.
+ *
+ * No es un fallo del sistema: es concurrencia normal y el reintento del usuario
+ * funciona. Sin este predicado salía como 500 y encima iba a Sentry.
+ */
+export function isLockTimeout(err: unknown): boolean {
+  return asPgError(err)?.code === PG_LOCK_NOT_AVAILABLE
 }

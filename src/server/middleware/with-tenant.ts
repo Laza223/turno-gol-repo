@@ -7,7 +7,8 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import type { StaffUser } from '@/modules/auth/types'
 import { getSql, withTenantContext, type DbTx } from '@/shared/db/client'
 import { captureException } from '@/lib/sentry'
-import { forbidden, internal, unauthorized } from '@/shared/api-error'
+import { conflict, forbidden, internal, unauthorized } from '@/shared/api-error'
+import { isLockTimeout } from '@/shared/db/pg-errors'
 import { guard } from '@/shared/rate-limit/route-guard'
 import type { PolicyName } from '@/shared/rate-limit/policies'
 import { getStaffRole } from '@/modules/staff/staff.service'
@@ -19,6 +20,30 @@ import {
 import { runRequestObservability } from '@/shared/middleware/observability'
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+/**
+ * AUD-08 de la auditoría integral del 2026-09-06.
+ *
+ * Una fila tomada por otra transacción que agota el `lock_timeout` de 3 s del
+ * rol web (migr. 055) no es un fallo del sistema: es concurrencia normal —
+ * doble click en "Activar plan", dos pestañas, o el webhook de MercadoPago
+ * llegando en medio de un `reactivate`. Salía como 500 "Ocurrió un error
+ * inesperado" y encima se reportaba a Sentry como si fuera un bug.
+ *
+ * Se mapea acá, en los dos wrappers, y no en los seis route handlers de
+ * facturación: la condición no es de facturación sino de cualquier ruta que
+ * abra una transacción, y el catch de abajo es el único lugar por el que pasan
+ * todas.
+ */
+function mapInfrastructureError(err: unknown): NextResponse | null {
+  if (!isLockTimeout(err)) return null
+  return conflict(
+    'Hay otra operación en curso sobre estos datos. Probá de nuevo en unos segundos.',
+    {
+      code: 'CONCURRENT_OPERATION',
+    },
+  )
+}
 
 const BILLING_REACTIVATE_ALLOWED = new Set(['canceled', 'churned', 'blocked'])
 
@@ -113,6 +138,8 @@ export function withTenant(
     try {
       return await withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
     } catch (err) {
+      const mapped = mapInfrastructureError(err)
+      if (mapped) return mapped
       captureException(err)
       return internal('Ocurrió un error inesperado. Probá de nuevo en unos segundos.')
     }
@@ -169,6 +196,8 @@ export function withBillingTenant(
     try {
       return await withTenantContext(user.tenantId, async (tx) => handler(req, user, tx))
     } catch (err) {
+      const mapped = mapInfrastructureError(err)
+      if (mapped) return mapped
       captureException(err)
       return internal('Ocurrió un error inesperado. Probá de nuevo en unos segundos.')
     }

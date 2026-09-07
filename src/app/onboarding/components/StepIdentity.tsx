@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import type { WizardActionResult } from '../actions'
 import { generateSlug } from '@/modules/tenants/tenant.utils'
+import { PROVINCES, resolveMapCenter } from '@/modules/tenants/tenant.geo'
+import LocationPickerField from '@/components/maps/LocationPickerField'
 import { fieldClass, labelClass } from './wizard-styles'
 import { useWizardNavigation } from './use-wizard-navigation'
 import { WizardShell } from './WizardShell'
@@ -15,33 +17,6 @@ export type CreateTenantAction = (
   prevState: WizardActionResult,
   formData: FormData,
 ) => Promise<WizardActionResult>
-
-const PROVINCES = [
-  'Buenos Aires',
-  'CABA',
-  'Catamarca',
-  'Chaco',
-  'Chubut',
-  'Córdoba',
-  'Corrientes',
-  'Entre Ríos',
-  'Formosa',
-  'Jujuy',
-  'La Pampa',
-  'La Rioja',
-  'Mendoza',
-  'Misiones',
-  'Neuquén',
-  'Río Negro',
-  'Salta',
-  'San Juan',
-  'San Luis',
-  'Santa Cruz',
-  'Santa Fe',
-  'Santiago del Estero',
-  'Tierra del Fuego',
-  'Tucumán',
-]
 
 const PROVINCE_OPTIONS: ComboboxOption[] = PROVINCES.map((p) => ({ value: p, label: p }))
 
@@ -61,6 +36,9 @@ type TenantIdentityValues = {
   province: string
   /** Slug YA asignado: en revisita se muestra el real, no el derivado del nombre. */
   slug: string
+  /** Punto en el mapa, si ya se cargó. Opcional: el paso nunca se bloquea por él. */
+  latitude: number | null
+  longitude: number | null
 }
 
 type Props = {
@@ -96,6 +74,9 @@ export function StepIdentity({ action, defaultValues }: Props) {
   const [city, setCity] = useState(defaultValues?.city ?? '')
   const [province, setProvince] = useState(defaultValues?.province ?? '')
   const navigate = useWizardNavigation()
+  // La provincia elegida es lo único que tenemos para abrir el mapa cerca del
+  // complejo: sin geocodificador (doc10 §82), es eso o el centro del país.
+  const mapFallback = useMemo(() => resolveMapCenter(province, null, null), [province])
 
   const isEdit = defaultValues !== undefined
   // En revisita el slug es el de la DB: se fijó al crear el complejo y renombrar
@@ -214,6 +195,18 @@ export function StepIdentity({ action, defaultValues }: Props) {
               <input type="hidden" name="province" value={province} />
             </div>
           </div>
+
+          {/* Opcional y colapsado: doc10 §82 — el Paso 1 nunca se bloquea por
+              la ubicación. Pero si no está acá, todo complejo nuevo nace sin
+              punto y tiene que descubrir la pantalla de Configuración por
+              accidente. */}
+          <LocationPickerField
+            initialLatitude={defaultValues?.latitude ?? null}
+            initialLongitude={defaultValues?.longitude ?? null}
+            fallbackCenter={mapFallback.center}
+            fallbackZoom={mapFallback.zoom}
+            collapsible
+          />
 
           {error && (
             <p role="alert" className="text-sm text-red-600 dark:text-red-400">

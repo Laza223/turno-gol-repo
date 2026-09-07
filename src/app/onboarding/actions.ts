@@ -13,7 +13,10 @@ import {
   completeOnboarding,
   updateTenant,
 } from '@/modules/tenants/tenant.service'
-import { createTenantSchema, updateTenantIdentitySchema } from '@/modules/tenants/tenant.schema'
+import {
+  createTenantWithLocationSchema,
+  updateWizardIdentitySchema,
+} from '@/modules/tenants/tenant.schema'
 import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/opening-hours.schema'
 import {
   createOnboardingCourts,
@@ -90,9 +93,11 @@ export async function createTenantAction(
     province: formData.get('province'),
     phone: contact.phone,
     email: contact.email,
+    latitude: formData.get('latitude') ?? '',
+    longitude: formData.get('longitude') ?? '',
   }
 
-  const parsed = createTenantSchema.safeParse(raw)
+  const parsed = createTenantWithLocationSchema.safeParse(raw)
   if (!parsed.success) {
     const error = parsed.error.issues[0]?.message ?? 'Datos inválidos'
     track.onboarding('onboarding.step.error', { step: 1, stepName: stepSlug(1), reason: error })
@@ -148,11 +153,13 @@ export async function updateWizardTenantAction(
   // Sin phone/email: este paso ya no los pide (se editan en /settings/perfil,
   // ver tenantContactSchema). `updateTenant` hace SET parcial —omitirlos acá
   // no los toca en la fila.
-  const parsed = updateTenantIdentitySchema.safeParse({
+  const parsed = updateWizardIdentitySchema.safeParse({
     name: formData.get('name'),
     address: formData.get('address'),
     city: formData.get('city'),
     province: formData.get('province'),
+    latitude: formData.get('latitude') ?? '',
+    longitude: formData.get('longitude') ?? '',
   })
   if (!parsed.success) {
     const error = parsed.error.issues[0]?.message ?? 'Datos inválidos'

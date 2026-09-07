@@ -122,6 +122,10 @@ export const RevisitaEditando: Story = {
       city: 'Luján',
       province: 'Buenos Aires',
       slug: 'complejo-san-martin-lujan',
+      // El caso real de todo complejo existente: el punto nunca se pudo
+      // cargar, porque hasta ahora ninguna pantalla lo pedía.
+      latitude: null,
+      longitude: null,
     },
   },
   play: async ({ canvasElement }) => {

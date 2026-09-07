@@ -60,6 +60,12 @@ export type CreateTenantInput = {
   phone: string
   email: string
   staffUserId: string
+  /** Punto en el mapa. Opcional: el wizard nunca se bloquea por la ubicación
+   *  (doc10 §82). Se cargan las dos o ninguna — todo el lado lector asume ese
+   *  invariante (`ExplorarMap` exige ambas, el Haversine devuelve NULL si
+   *  falta una). */
+  latitude?: number | null
+  longitude?: number | null
   /** Días de prueba gratuita. Omitido = `TRIAL_DAYS` (30), el default del
    *  self-signup — el wizard de onboarding NO lo pasa y no debe pasarlo.
    *  Solo el alta asistida del super-admin fija un valor distinto (pilotos). */
@@ -80,6 +86,12 @@ export type UpdateTenantInput = Partial<{
   openingHours: OpeningHours
   closedDates: string[]
   closesNextDay: boolean
+  /** `null` explícito borra el punto; ausente lo deja como está. El tipo es
+   *  `number` a propósito aunque la columna sea `numeric` (que drizzle habla
+   *  como string): la conversión vive en `updateTenant`, y TypeScript la
+   *  fuerza ahí en vez de dejar que un spread ciego escriba el tipo errado. */
+  latitude: number | null
+  longitude: number | null
 }>
 
 export type UpdateTenantSettingsInput = Partial<
@@ -129,4 +141,8 @@ export type TenantRow = {
   mpConnectedAt: Date | null
   /** Apodo de la cuenta de MP conectada. Sirve para mostrar CUÁL quedó. */
   mpNickname: string | null
+  /** Punto en el mapa, ya convertido a número (la columna es `numeric` y
+   *  drizzle la devuelve como string). `null` = todavía sin cargar. */
+  latitude: number | null
+  longitude: number | null
 }

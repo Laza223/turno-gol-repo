@@ -2,11 +2,13 @@ import { requireAdminStaff } from '@/modules/staff/guards'
 import { PerfilImagesForm } from './PerfilImagesForm'
 import { AccountEmailForm } from './AccountEmailForm'
 import { TenantContactForm } from './TenantContactForm'
+import { TenantLocationForm } from './TenantLocationForm'
 import {
   setTenantImageAction,
   removeTenantImageAction,
   updateUserEmailAction,
   updateTenantContactAction,
+  updateTenantLocationAction,
 } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
@@ -26,6 +28,15 @@ export default async function PerfilPage() {
         currentEmail={tenant.email}
         currentWhatsapp={tenant.whatsapp}
         action={updateTenantContactAction}
+      />
+
+      <TenantLocationForm
+        currentAddress={tenant.address}
+        currentCity={tenant.city}
+        currentProvince={tenant.province}
+        currentLatitude={tenant.latitude}
+        currentLongitude={tenant.longitude}
+        action={updateTenantLocationAction}
       />
 
       <div className="card-premium rounded-lg p-6">

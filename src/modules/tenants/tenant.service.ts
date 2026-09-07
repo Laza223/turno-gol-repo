@@ -54,6 +54,25 @@ const DEFAULT_SETTINGS: TenantSettings = {
   onboarding_completed: false,
 }
 
+/**
+ * Borde de conversión de las coordenadas, lado ESCRITURA.
+ *
+ * La columna es `numeric(10,7)` y drizzle la habla como string (sin `mode`),
+ * mientras que el dominio (`TenantRow`, `UpdateTenantInput`) habla números.
+ * `toFixed(7)` en vez de `String(n)` por dos motivos: lo guardado queda
+ * idéntico a lo enviado (ida y vuelta estable con la escala de la columna) y
+ * se elimina la clase de bug de la notación exponencial (`String(1e-7)` da
+ * `'1e-7'`).
+ */
+function coordinateToColumn(value: number | null): string | null {
+  return value === null ? null : value.toFixed(7)
+}
+
+/** Idem, lado LECTURA. `Number(null)` es 0, así que el null se preserva antes. */
+function coordinateFromColumn(value: string | null): number | null {
+  return value === null ? null : Number(value)
+}
+
 export async function createTenantWithTrial(
   input: CreateTenantInput,
 ): Promise<{ id: string; slug: string }> {
@@ -76,6 +95,8 @@ export async function createTenantWithTrial(
       province: input.province,
       phone: input.phone,
       email: input.email,
+      latitude: coordinateToColumn(input.latitude ?? null),
+      longitude: coordinateToColumn(input.longitude ?? null),
       status: 'trialing',
       trialEndsAt,
       settings: DEFAULT_SETTINGS as unknown as Record<string, unknown>,
@@ -175,6 +196,8 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     closesNextDay: t.closesNextDay,
     mpConnectedAt: t.mpConnectedAt,
     mpNickname: t.mpNickname,
+    latitude: coordinateFromColumn(t.latitude),
+    longitude: coordinateFromColumn(t.longitude),
   }
 }
 
@@ -221,9 +244,20 @@ export async function getTenantById(tenantId: string): Promise<TenantRow | null>
 
 export async function updateTenant(tenantId: string, data: UpdateTenantInput): Promise<void> {
   const db = getDb()
+  // Las coordenadas salen del spread: el input las trae como number y la
+  // columna las quiere como string. El spread condicional conserva la
+  // semántica de update parcial que el resto del objeto ya tenía — quien no
+  // manda coordenadas (el wizard, el form de contacto) no las pisa; quien
+  // manda `null` explícito (el form de ubicación, botón "Quitar") las borra.
+  const { latitude, longitude, ...rest } = data
   await db
     .update(tenants)
-    .set({ ...data, updatedAt: new Date() })
+    .set({
+      ...rest,
+      ...(latitude !== undefined ? { latitude: coordinateToColumn(latitude) } : {}),
+      ...(longitude !== undefined ? { longitude: coordinateToColumn(longitude) } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(tenants.id, tenantId))
 }
 

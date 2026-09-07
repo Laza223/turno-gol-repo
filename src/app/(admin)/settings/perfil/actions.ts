@@ -9,7 +9,7 @@ import { captureException } from '@/lib/sentry'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
-import { tenantContactSchema } from '@/modules/tenants/tenant.schema'
+import { tenantContactSchema, tenantLocationSchema } from '@/modules/tenants/tenant.schema'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import {
   isR2Configured,
@@ -150,6 +150,52 @@ export async function updateTenantContactAction(
     phone: formData.get('phone'),
     email: formData.get('email'),
     whatsapp: formData.get('whatsapp') ?? '',
+  })
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  await updateTenant(tenant.id, parsed.data)
+  revalidatePath('/settings/perfil')
+  revalidatePath(`/${tenant.slug}`)
+  revalidatePublicListings()
+  return { success: true }
+}
+
+export type UpdateTenantLocationResult = { success: true } | { success: false; error: string }
+
+/**
+ * Ubicación del complejo: dirección/ciudad/provincia y el punto en el mapa.
+ *
+ * Es la ÚNICA pantalla que edita esos cuatro datos. El wizard los pide al
+ * crear y después nunca más (ver `updateWizardTenantAction`), así que hasta
+ * acá una dirección mal tipeada quedaba así para siempre y las coordenadas
+ * nunca se cargaban — quedaban en NULL para todos, dejando degradadas en
+ * silencio seis superficies que dependen de ellas (mapa de `/explorar`, orden
+ * por cercanía, distancia en la card, "Cómo llegar", el bloque `geo` del
+ * JSON-LD y la sugerencia de ciudad al jugador).
+ *
+ * `revalidatePublicListings()` no es decorativa: sin ella el pin nuevo tarda
+ * hasta 300 s en aparecer en el buscador, y `city` además mueve el catálogo de
+ * localidades.
+ */
+export async function updateTenantLocationAction(
+  _prevState: UpdateTenantLocationResult,
+  formData: FormData,
+): Promise<UpdateTenantLocationResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsed = tenantLocationSchema.safeParse({
+    address: formData.get('address'),
+    city: formData.get('city'),
+    province: formData.get('province'),
+    latitude: formData.get('latitude') ?? '',
+    longitude: formData.get('longitude') ?? '',
   })
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }

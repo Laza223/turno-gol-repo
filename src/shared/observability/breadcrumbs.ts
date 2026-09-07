@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { scrub } from './pii-keys'
 
 type BookingEvent =
   | 'booking.online.create.start'
@@ -318,14 +319,21 @@ function getAnalyticsSink(): AnalyticsSink | null | undefined {
 let warnedMissingSink = false
 
 function emit(category: string, message: string, data: Record<string, unknown>): void {
+  // El filtro de PII se aplica UNA vez, acá, y vale para los dos destinos.
+  // Antes solo lo aplicaba el destino durable, así que el identificador de la
+  // persona viajaba igual a Sentry adjunto a cada evento de error (AUD-14, y
+  // H-8 de la auditoría de aislamiento). Sentry conserva `user.id` para poder
+  // rastrear: lo que se va de acá es la copia, no la trazabilidad.
+  const limpia = scrub(data)
+
   // Contexto para depurar un error: se transmite solo si después hay excepción.
-  Sentry.addBreadcrumb({ category, message, data, level: 'info' })
+  Sentry.addBreadcrumb({ category, message, data: limpia, level: 'info' })
 
   // Medición: destino durable, independiente de que haya o no error.
   const sink = getAnalyticsSink()
   if (sink) {
     try {
-      sink(category, message, data)
+      sink(category, message, limpia)
     } catch {
       // Un sink roto no puede voltear el flujo que lo emitió.
     }

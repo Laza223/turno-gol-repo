@@ -2,6 +2,7 @@ import { after } from 'next/server'
 import { getWorkerDb } from '@/shared/db/client'
 import { analyticsEvents } from '@/shared/db/schema'
 import { logger } from '@/shared/lib/logger'
+import { scrub } from './pii-keys'
 
 /**
  * Destino durable de `track.*` (ver `./breadcrumbs`). **Solo servidor.**
@@ -17,33 +18,8 @@ import { logger } from '@/shared/lib/logger'
  * desde `instrumentation.ts` y desde `run-workers.ts`.
  */
 
-/**
- * Claves que NUNCA se persisten. Criterio: identificadores DIRECTOS de una
- * persona o de su dispositivo.
- *
- * `bookingId`/`courtId`/`paymentId` no están en la lista y es deliberado: son
- * identificadores de recursos del complejo, no de personas, y sin cruzarlos
- * contra otra tabla no identifican a nadie. Sirven para depurar un embudo raro.
- *
- * `endpoint` sí está: es la URL de la suscripción push, o sea un identificador
- * estable de dispositivo.
- *
- * Mantener esta lista chica y explícita es lo que sostiene la afirmación de la
- * migr. 072 de que `analytics_events` no es dato personal. Antes de agregar una
- * clave nueva a cualquier `*Ctx` de `breadcrumbs.ts`, preguntarse si identifica
- * a una persona; si la respuesta es "sí" o "no sé", va acá.
- */
-export const PII_KEYS = new Set(['playerId', 'staffUserId', 'endpoint'])
-
-/** Descarta las claves PII y los `undefined` (que solo ensucian el jsonb). */
-export function scrub(data: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(data)) {
-    if (PII_KEYS.has(k) || v === undefined) continue
-    out[k] = v
-  }
-  return out
-}
+// La lista y el filtro viven en `./pii-keys` porque los DOS destinos de
+// `track.*` los necesitan y `./breadcrumbs` no puede importar este archivo.
 
 type EventRow = {
   category: string

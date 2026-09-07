@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { closeSql, getSql, getWorkerSql } from '@/shared/db/client'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
-import { recordEvent, scrub, PII_KEYS } from '@/shared/observability/analytics'
+import { recordEvent } from '@/shared/observability/analytics'
+import { scrub, PII_KEYS } from '@/shared/observability/pii-keys'
 import { setAnalyticsSink, track } from '@/shared/observability/breadcrumbs'
 
 /**

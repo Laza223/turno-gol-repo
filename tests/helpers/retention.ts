@@ -189,6 +189,8 @@ export async function setupTenant(
         mp_refresh_token = ${'enc-refresh'},
         mp_user_id = ${`mp-user-${tenant.id}`},
         mp_public_key = ${'mp-pub-key'},
+        mp_nickname = ${'MARCELO PEREZ'},
+        mp_connected_at = NOW(),
         description = ${'Complejo de prueba'},
         logo_url = ${'https://cdn.example/logo.png'},
         cover_url = ${'https://cdn.example/cover.png'},

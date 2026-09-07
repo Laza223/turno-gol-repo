@@ -435,6 +435,13 @@ export async function wipeTenant(
           mp_refresh_token = NULL,
           mp_user_id = NULL,
           mp_public_key = NULL,
+          -- El apodo de la cuenta de MercadoPago es el nombre VISIBLE de esa
+          -- cuenta, y en un monotributista es el de una persona (AUD-09).
+          -- Mismo conjunto que limpia la desvinculación en tenant.service.ts:
+          -- después del borrado no puede quedar rastro de a qué cuenta estaba
+          -- atado el complejo.
+          mp_nickname = NULL,
+          mp_connected_at = NULL,
           scheduled_deletion_at = NULL,
           updated_at = NOW()
       WHERE id = ${tenantId}

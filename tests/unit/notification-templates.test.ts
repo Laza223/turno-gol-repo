@@ -365,18 +365,68 @@ describe('renderAdminLatePayment', () => {
     expect(text).not.toContain('Cancha')
   })
 
-  // Decisión del dueño 2026-08-19: sobre una reserva `expired` el reembolso
-  // sale solo, así que pedirle al complejo "acción manual" pasó a ser mentira.
-  // Los otros estados terminales SÍ la siguen necesitando, por eso la copy es
-  // condicional y no un reemplazo.
-  it('con refundIssued deja de pedir acción manual, en subject, html y text', () => {
+  // Los PR #203/#212 eliminaron el reembolso automático por API (el scope
+  // payments:refunds de MercadoPago da 403 con cuentas de terceros), pero este
+  // mail conservó el copy de cuando existía y afirmaba una mentira: que
+  // TurnoGol ya le pidió la devolución a MercadoPago y que el complejo no
+  // tiene que hacer nada. Lo único que ocurre de verdad sobre una reserva
+  // `expired` es que queda REGISTRADA una fila de devolución pendiente en
+  // Caja y Cantina → Devoluciones; el que tiene que devolver la plata sigue
+  // siendo el complejo. Los otros estados terminales SÍ siguen necesitando
+  // acción manual explícita, por eso la copy es condicional y no un reemplazo.
+  it('con refundIssued avisa que la devolución quedó pendiente en Devoluciones, en subject, html y text', () => {
     const { subject, html, text } = renderAdminLatePayment({ ...DATA, refundIssued: true })
-    expect(subject).not.toContain('acción requerida')
-    expect(html).not.toContain('acción manual')
-    expect(text).not.toContain('acción manual')
-    expect(html).toContain('automáticamente')
-    expect(text).toContain('automáticamente')
-    expect(html).toContain('3.000,00')
+    for (const value of [subject, html, text]) {
+      expect(value).not.toContain('automáticamente')
+      expect(value).not.toContain('reembolsado')
+      expect(value).not.toContain('No tenés que hacer nada')
+      expect(value).not.toContain('pidió la devolución')
+    }
+    expect(subject.toLowerCase()).toContain('pendiente')
+    for (const value of [html, text]) {
+      expect(value).toContain('Devoluciones')
+      expect(value).toContain('3.000,00')
+      expect(value).toContain('abcdef12')
+      expect(value).toContain('expired')
+      // En POSITIVO lo que el complejo tiene que saber y hacer. Sólo con las
+      // aserciones negativas de arriba, un copy "tranquilizador" que evite las
+      // frases prohibidas sin decirle que la plata no volvió ni que la devuelve
+      // él pasaba igual (la revisión adversarial lo demostró con un mutante).
+      // Cada frase está respaldada por código: el aviso al jugador y la fila
+      // pendiente en payment.service.ts (handleApproved / prepareRefund), la
+      // pestaña en CajaTabs.tsx, y el "se marca sola" en la detección de
+      // devolución externa del mismo service.
+      expect(value).toContain('se le avisó al jugador')
+      expect(value).toContain('La plata todavía no volvió')
+      expect(value).toContain('devolvésela vos')
+      expect(value).toContain('marcala en Caja y Cantina → Devoluciones')
+      expect(value).toContain('Si la devolvés desde el panel de MercadoPago, se marca sola')
+    }
+  })
+
+  it('con refundIssued conserva el nombre de cancha escapado en el html', () => {
+    const { html } = renderAdminLatePayment({
+      ...DATA,
+      courtName: 'Cancha <5> & Río',
+      refundIssued: true,
+    })
+    expect(html).not.toContain('<5>')
+    expect(html).toContain('&lt;5&gt;')
+    expect(html).toContain('&amp;')
+  })
+
+  it('sin refundIssued (ausente) sigue pidiendo acción manual', () => {
+    const { subject, html, text } = renderAdminLatePayment(DATA)
+    expect(subject).toContain('acción requerida')
+    expect(html).toContain('acción manual')
+    expect(text).toContain('acción manual')
+  })
+
+  it('con refundIssued: false explícito sigue pidiendo acción manual', () => {
+    const { subject, html, text } = renderAdminLatePayment({ ...DATA, refundIssued: false })
+    expect(subject).toContain('acción requerida')
+    expect(html).toContain('acción manual')
+    expect(text).toContain('acción manual')
   })
 })
 

@@ -10,11 +10,17 @@ export type AdminLatePaymentData = {
   courtName?: string
   date?: string
   /**
-   * `true` cuando TurnoGol ya pidió la devolución solo (pago tardío sobre una
-   * reserva `expired`, decisión del dueño 2026-08-19). El mail se manda igual
-   * —al complejo le entró y le salió plata, tiene que enterarse— pero deja de
-   * pedirle una acción que el sistema ya hizo. Ausente/`false` = los otros
-   * estados terminales, donde sigue haciendo falta que decida un humano.
+   * `true` cuando el pago tardío cayó sobre una reserva `expired`: TurnoGol
+   * dejó REGISTRADA la devolución (una fila en `payments`, type `refund`,
+   * status `pending`) y avisó al jugador que está en curso. NO significa que
+   * la plata ya volvió: TurnoGol no reembolsa por API (el scope
+   * `payments:refunds` de MercadoPago da 403 con cuentas de terceros, PR
+   * #203/#212), así que la devuelve el complejo desde Caja y Cantina →
+   * Devoluciones. El nombre se conserva pese a que ya no significa "se
+   * resolvió solo" porque viaja en `notifications.content` de filas ya
+   * encoladas; renombrarlo rompería su render (y tocaría payment.service.ts,
+   * fuera de este alcance). Ausente/`false` = los otros estados terminales,
+   * donde sigue haciendo falta que decida un humano.
    */
   refundIssued?: boolean
 }
@@ -27,14 +33,14 @@ export type AdminLatePaymentData = {
 export function renderAdminLatePayment(data: AdminLatePaymentData): EmailContent {
   const ref = data.bookingId.slice(0, 8)
   const subject = data.refundIssued
-    ? `Pago tardío reembolsado automáticamente (reserva #${ref})`
+    ? `⚠️ Pago tardío recibido — devolución pendiente (reserva #${ref})`
     : `⚠️ Pago tardío recibido — acción requerida (reserva #${ref})`
-  const headline = data.refundIssued ? 'Pago tardío reembolsado' : 'Pago tardío recibido'
+  const headline = 'Pago tardío recibido'
   const actionHtml = data.refundIssued
-    ? '<p>El turno ya se había liberado, así que <strong>TurnoGol pidió la devolución a MercadoPago automáticamente</strong> y le avisó al jugador. No tenés que hacer nada.</p>'
+    ? '<p>El turno ya se había liberado, así que quedó <strong>registrada una devolución pendiente</strong> en Caja y Cantina → Devoluciones, y se le avisó al jugador que está en curso. <strong>La plata todavía no volvió</strong>: devolvésela vos por donde te quede más cómodo — MercadoPago, transferencia o efectivo — y después marcala en Caja y Cantina → Devoluciones. Si la devolvés desde el panel de MercadoPago, se marca sola.</p>'
     : '<p>El jugador pagó pero no tiene turno asignado. <strong>Se requiere acción manual</strong> para reembolsar o reasignar.</p>'
   const actionText = data.refundIssued
-    ? 'El turno ya se había liberado, así que TurnoGol pidió la devolución a MercadoPago automáticamente y le avisó al jugador. No tenés que hacer nada.'
+    ? 'El turno ya se había liberado, así que quedó registrada una devolución pendiente en Caja y Cantina → Devoluciones, y se le avisó al jugador que está en curso. La plata todavía no volvió: devolvésela vos por donde te quede más cómodo — MercadoPago, transferencia o efectivo — y después marcala en Caja y Cantina → Devoluciones. Si la devolvés desde el panel de MercadoPago, se marca sola.'
     : 'El jugador pagó pero no tiene turno. Se requiere acción manual para reembolsar o reasignar.'
   const detailRows = [
     data.courtName

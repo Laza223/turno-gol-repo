@@ -79,12 +79,17 @@ export async function findActiveBookingOverlaps(
 }
 
 /**
- * El predicado ANCHO que usa abonados: cualquier reserva que no esté cancelada
- * ocupa el turno (también `expired`, `completed` y `no_show`).
+ * El predicado ANCHO que usa abonados: además de las activas, `completed` y
+ * `no_show` ocupan el turno. La diferencia con `findActiveBookingOverlaps` es
+ * deliberada: abonados a propósito no vuelve a ofrecer una hora donde ya hubo
+ * un turno jugado.
  *
- * La diferencia con `findActiveBookingOverlaps` es deliberada: unificarlas
- * cambiaría el comportamiento de abonados, que a propósito no vuelve a ofrecer
- * una hora donde ya hubo un turno vencido o jugado.
+ * `expired` NO entra (AUD-02). Es el único de los tres que puede existir en una
+ * fecha FUTURA: un hold online abandonado vence a los 6 minutos y quedaba
+ * bloqueando la sesión del cliente fijo de esa semana, en silencio — y encima el
+ * slot se volvía a ofrecer online, porque el constraint de solapamiento sólo
+ * cuenta `pending_payment|confirmed`. `completed`/`no_show` sólo existen en el
+ * pasado, así que no tocan la generación de sesiones.
  */
 export async function findAbonadoBookingOverlaps(
   candidates: readonly OverlapCandidate[],
@@ -92,7 +97,7 @@ export async function findAbonadoBookingOverlaps(
 ): Promise<Set<number>> {
   return findOverlapIndexes(
     candidates,
-    sql`b.status NOT IN ('canceled_refunded', 'canceled_no_refund')`,
+    sql`b.status NOT IN ('canceled_refunded', 'canceled_no_refund', 'expired')`,
     tx,
   )
 }

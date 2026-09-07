@@ -112,6 +112,7 @@ import {
   TournamentHasBookingsError,
   TournamentNotDeletableError,
   TournamentNotFoundError,
+  TournamentPlayerNotClientError,
   TournamentSlotRangeError,
   TournamentTeamNotFoundError,
 } from '@/modules/tournaments/tournament.errors'
@@ -167,6 +168,9 @@ function mapTournamentError(err: unknown): string | null {
   }
   if (err instanceof TournamentCourtUnavailableError) {
     return 'Alguna de las canchas elegidas no está disponible.'
+  }
+  if (err instanceof TournamentPlayerNotClientError) {
+    return 'Esa persona no es cliente del complejo. Elegila del buscador o cargala sin cuenta.'
   }
   if (err instanceof TournamentSlotRangeError) return err.message
   if (err instanceof NoSlotsReservedError) {

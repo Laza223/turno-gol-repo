@@ -12,7 +12,12 @@ import { Button } from '@/components/ui/button'
 const LocationPicker = dynamic(() => import('./LocationPicker'), {
   ssr: false,
   loading: () => (
+    // `role="status"` no es decorativo: un `aria-label` sobre un div SIN rol es
+    // una violacion de axe (aria-prohibited-attr), y con el mapa detras de un
+    // `next/dynamic` el esqueleto es un estado que la auditoria alcanza a medir
+    // cuando el runner va lento. Ademas es el rol correcto para "cargando".
     <div
+      role="status"
       className="h-64 w-full animate-pulse rounded-xl border border-border bg-muted"
       aria-busy="true"
       aria-label="Cargando mapa"

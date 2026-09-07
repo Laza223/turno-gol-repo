@@ -1,7 +1,7 @@
 'use client'
 
 import 'leaflet/dist/leaflet.css'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import L, { type Map as LeafletMap } from 'leaflet'
 
@@ -66,29 +66,32 @@ export default function LocationPicker({
   /** Expone el mapa al padre para el botón "Poner el punto acá" (centro actual). */
   onMapReady?: (map: LeafletMap | null) => void
 }) {
-  const [map, setMap] = useState<LeafletMap | null>(null)
   const hasPoint = latitude !== null && longitude !== null
 
-  useEffect(() => {
-    onMapReady?.(map)
-  }, [map, onMapReady])
-
+  // Un ref callback en vez de estado local más un efecto que se lo empuja al
+  // padre: hace lo mismo sin el render extra, y deja el nombre accesible del
+  // contenedor en el único lugar donde tenemos la instancia del mapa.
+  //
   // `MapContainer` solo reenvía className/id/style al div: el resto de las
   // props viajan como MapOptions de Leaflet, que las ignora en silencio. Sin
   // esto el contenedor queda focuseable (Leaflet le pone tabindex=0) pero sin
   // nombre accesible. Mismo arreglo que en `BookingMiniMap`.
-  useEffect(() => {
-    map
-      ?.getContainer()
-      .setAttribute(
-        'aria-label',
-        'Mapa para marcar la ubicación del complejo. Tocá para colocar el punto.',
-      )
-  }, [map])
+  const attachMap = useCallback(
+    (map: LeafletMap | null) => {
+      map
+        ?.getContainer()
+        .setAttribute(
+          'aria-label',
+          'Mapa para marcar la ubicación del complejo. Tocá para colocar el punto.',
+        )
+      onMapReady?.(map)
+    },
+    [onMapReady],
+  )
 
   return (
     <MapContainer
-      ref={setMap}
+      ref={attachMap}
       center={hasPoint ? [latitude, longitude] : fallbackCenter}
       zoom={hasPoint ? 16 : fallbackZoom}
       scrollWheelZoom={false}

@@ -68,7 +68,7 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
   // `turnogol_app` NO lo lleva, y es el arreglo del hallazgo H-6 de la auditoría
   // de aislamiento del 2026-09-05. Antes esto otorgaba las cuatro operaciones
   // sobre TODAS las tablas y después re-aplicaba a mano la lista acumulada de
-  // revocaciones (migr. 008, 037, 048, 049, 059, 065, 072, 083, 084). Ese espejo
+  // revocaciones (migr. 008, 037, 048, 049, 059, 065, 072, 084, 085). Ese espejo
   // se mantenía a mano: una revocación nueva que llegara a una migración y no
   // acá dejaba al rol con permisos que producción no le da, y los tests de esa
   // tabla pasaban midiendo otra cosa.

@@ -466,7 +466,7 @@ describe('0. controles', () => {
     const actual: Record<string, string> = Object.fromEntries(
       rows.map((r) => [r.table_name, r.privs]),
     )
-    // Las revocaciones acumuladas (008, 037, 048, 049, 059, 065, 072 y 083). Si
+    // Las revocaciones acumuladas (008, 037, 048, 049, 059, 065, 072, 084 y 085). Si
     // una tabla nueva llega sin su REVOKE, o si alguien re-otorga de más, esto
     // se pone rojo ANTES de que la grilla mida nada.
     const recortes: Record<string, string> = {
@@ -478,7 +478,7 @@ describe('0. controles', () => {
       daily_cash_opens: 'INSERT,SELECT,UPDATE',
       tournament_match_events: 'DELETE,INSERT,SELECT',
       analytics_events: 'DELETE,INSERT,SELECT',
-      // Migración 083 (H-3): las seis globales, sin borrado; el catálogo
+      // Migración 085 (H-3): las seis globales, sin borrado; el catálogo
       // comercial, de sólo lectura.
       tenants: 'INSERT,SELECT,UPDATE',
       players: 'INSERT,SELECT,UPDATE',
@@ -1006,7 +1006,7 @@ describe('4. tablas globales: alcance real del rol de la aplicación', () => {
     // revocar la modificación acá — la aplicación edita su PROPIA fila de
     // complejo (ajustes, credenciales de MercadoPago) y la tabla no tiene RLS
     // que distinga una de otra. Queda registrado como límite, no como
-    // aprobación: lo que sí se cerró en la migración 083 es el borrado.
+    // aprobación: lo que sí se cerró en la migración 085 es el borrado.
     const pisadas = await rowCount(
       { kind: 'tenant', id: tenantA.id },
       drizzleSql`UPDATE tenants SET name = 'pisado por otro complejo' WHERE id = ${tenantB.id}::uuid RETURNING id`,
@@ -1021,7 +1021,7 @@ describe('4. tablas globales: alcance real del rol de la aplicación', () => {
     expect(pisadas).toBe(1)
   })
 
-  it('4.6 el catálogo comercial es de sólo lectura para el rol de la app (migr. 083)', async () => {
+  it('4.6 el catálogo comercial es de sólo lectura para el rol de la app (migr. 085)', async () => {
     for (const tabla of ['plans', 'price_versions']) {
       let mecanismo = ''
       try {
@@ -1044,7 +1044,7 @@ describe('4. tablas globales: alcance real del rol de la aplicación', () => {
     }
   })
 
-  it('4.7 ninguna de las seis tablas globales se puede BORRAR desde el rol de la app (migr. 083)', async () => {
+  it('4.7 ninguna de las seis tablas globales se puede BORRAR desde el rol de la app (migr. 085)', async () => {
     const globales = [
       'tenants',
       'players',

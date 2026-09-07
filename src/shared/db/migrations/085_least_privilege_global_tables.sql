@@ -1,5 +1,5 @@
 -- ============================================================
--- 083_least_privilege_global_tables.sql
+-- 085_least_privilege_global_tables.sql
 -- H-3 de la auditoría de aislamiento del 2026-09-05
 -- (docs/audit/2026-09-05-aislamiento-rls.md).
 --

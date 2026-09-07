@@ -7,6 +7,7 @@ import {
   markNotificationSent,
   markNotificationFailed,
   updateNotificationLastError,
+  reclaimStalledSendingNotifications,
   resolveRecipientEmail,
   type NotificationRow,
 } from '@/modules/notifications/notification.service'
@@ -73,6 +74,24 @@ async function processSingleNotification(notif: NotificationRow): Promise<void> 
  */
 export async function processQueuedNotifications(): Promise<void> {
   const sql = getWorkerSql()
+
+  // AUD-15: antes de barrer la cola, rescatar lo que quedó a medias. El claim
+  // pasa la fila a 'sending' y las tres salidas de ese estado viven en esta
+  // misma función; si el proceso murió en el medio (deploy, OOM), la fila se
+  // quedó ahí y este barrido —que sólo mira 'queued'— no la volvía a ver nunca.
+  // Va PRIMERO para que lo reclamado entre en la tanda de este mismo tick.
+  const { requeued, failed } = await reclaimStalledSendingNotifications()
+  if (requeued.length || failed.length) {
+    // warn y no info: que haya algo para rescatar significa que un worker se
+    // cayó con un envío tomado. Es la única señal de que eso pasó.
+    logger.warn('reclaimed stalled notifications', {
+      module: 'send-email',
+      requeued: requeued.length,
+      failed: failed.length,
+      ids: [...requeued, ...failed],
+    })
+  }
+
   // Fetch up to 50 queued notifications (attempt_count ≤ 3 → includes final attempt)
   const rows = await sql<{ id: string }[]>`
     SELECT id FROM notifications

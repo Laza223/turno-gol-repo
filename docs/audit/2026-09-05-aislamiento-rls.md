@@ -711,6 +711,29 @@ vencidas y el intento murió con `28P01 password authentication failed`. Las con
 corrieron por el conector de Supabase. Vale arreglar ese archivo, porque es el mismo que
 usa `pnpm launch:check --probe-only`.
 
+## Estado final
+
+**La auditoría está cerrada.** Se midieron las reglas (fase 1) y el contenido de producción
+(fase 2A), y los diez hallazgos se arreglaron y se mergearon.
+
+Lo que queda vivo, y queda por decisión y no por olvido:
+
+| Qué | Por qué se deja | Dónde vive |
+|---|---|---|
+| 🟢 H-9 · las dos pantallas que confirman si un correo ya tiene cuenta | decisión de producto sobre las respuestas del alta, no un arreglo técnico; tienen límite de frecuencia | acá, en su hallazgo |
+| límite · la app puede modificar la fila de complejo de otro | cerrarlo es un cambio de arquitectura: edita la propia y esa tabla no tiene seguridad de fila que las distinga. El filtro explícito por complejo es la barrera, y el caso 4.4 del arnés lo mide | acá, y medido en cada corrida |
+| el `.env.production` local con credenciales vencidas | no toca producción; sólo impide sondearla desde la máquina | `docs/tech-debt.md` |
+| la suplantación hereda el resolvedor señalado como rojo | misma causa raíz que el rojo de la auditoría integral; su precondición da **cero** en producción | `docs/tech-debt.md` |
+
+Los otros tres candidatos que la fase 1 dejó sin medir se resolvieron: dos los cerró la
+auditoría integral del día siguiente —uno resultó correcto y el otro es su hallazgo rojo— y
+el tercero, que los parámetros de una consulta fallida se colaran por la cadena de causas de
+la excepción, lo cierra el arreglo de H-7 y H-8, con su test.
+
+**Para volver a medir**: `pnpm test:isolation:rol-real` (las reglas, y corre bloqueante en
+cada integración) y `scripts/probe-tenant-contamination.ts` (el contenido). El segundo vale
+la pena cuando el volumen crezca: sus denominadores de hoy son chicos.
+
 ## Límites de esta auditoría
 
 Lo que sigue es lo que **no** quedó cubierto, para que nadie lea la grilla como una

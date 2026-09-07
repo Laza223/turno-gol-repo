@@ -6,6 +6,34 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 ---
 
+## El `.env.production` local tiene credenciales vencidas
+
+**Qué es**: el archivo `.env.production` de la máquina de Lazar apunta a la base con un usuario y una contraseña que producción ya no acepta. Medido el 2026-09-07 al correr la sonda de la fase 2A: `28P01 password authentication failed for user "postgres"`.
+
+**Por qué existe**: la contraseña rotó en producción y la copia local quedó vieja. No es un bug del código: es una copia local desincronizada. Ya pasó antes y está anotado en el docstring de [launch-check.ts](scripts/launch-check.ts) — aquella vez costó tiempo porque el gate reportó cinco credenciales rotas que en realidad estaban bien.
+
+**Costo de no resolverla ahora**: producción anda igual; esto no la toca. Lo que queda inutilizable es sondearla desde la máquina: `pnpm launch:check --probe-only` y `scripts/probe-tenant-contamination.ts` no pueden conectarse. El riesgo real es la FALSA ALARMA: la próxima vez que alguien corra el gate va a leer "credenciales rotas" y va a salir a buscar un incidente que no existe.
+
+**Costo estimado de resolverla**: minutos, y no es trabajo de código. Copiar el DSN vigente desde el panel de Supabase al archivo local. **Es de Lazar**: son sus credenciales y el archivo no está en el repo.
+
+**Disparador de resolución**: la próxima vez que haga falta sondear producción desde la máquina, o antes del próximo despliegue que se quiera verificar con el gate. Mientras tanto, el camino que sí funciona es el conector de Supabase.
+
+---
+
+## La suplantación hereda el resolvedor de complejo que ya está señalado como rojo
+
+**Qué es**: `resolveImpersonatedStaffContextFor` ([impersonation.server.ts:91](src/modules/auth/impersonation.server.ts:91)) resuelve bien: toma el complejo de la cookie firmada y busca un admin activo DE ESE complejo para actuar en su nombre. Lo que puede desviarse es el paso siguiente, cuando los guards resuelven el complejo a partir de ese admin con `getStaffTenant(staffUserId)`, que devuelve la membresía MÁS ANTIGUA y no la elegida. Si ese admin fuera staff de dos complejos, el panel operaría sobre el equivocado.
+
+**Por qué existe**: es la misma causa raíz que el hallazgo rojo de la auditoría integral del 2026-09-06 (dos fuentes para "el complejo activo": el claim del JWT contra la membresía más antigua), visto desde la suplantación. No es un bug aparte: es el mismo, alcanzado por otro camino.
+
+**Costo de no resolverla ahora**: **cero hoy, y está medido.** La precondición es que exista personal activo en dos complejos, y la sonda de la fase 2A contra producción dio 0 sobre 3 personas de personal activas (2026-09-07). Sin esa precondición no puede dispararse. Si algún día se invita a la misma persona a un segundo complejo, pasa a ser el escenario del rojo: escrituras de reservas y caja en el complejo equivocado, sin error visible.
+
+**Costo estimado de resolverla**: ninguno adicional. Se cierra sola cuando se arregle el rojo, porque comparten el resolvedor. **Lo que sí hay que hacer al arreglarlo: incluir el camino de suplantación en la prueba de aceptación**, o el arreglo va a quedar verificado sólo por el camino del login normal.
+
+**Disparador de resolución**: cuando se tome el hallazgo rojo de la auditoría integral. Antes de eso, cualquier invitación de una persona que ya es staff de otro complejo enciende la precondición — vale re-correr la sonda si eso pasa.
+
+---
+
 ## `searchPaymentsByReference` sin paginación
 
 **Qué es**: [mp-gateway.implementation.ts:204-214](src/modules/payments/mp-gateway.implementation.ts:204-214) llama `new Payment(this.config).search(...)` sin `limit`/`offset`. `PaymentSearchOptions` (SDK `mercadopago@2.13.0`, `search/types.d.ts:174`) soporta paginación y la respuesta trae `paging: {total, limit, offset}` — hoy no se lee.

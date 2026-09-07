@@ -34,6 +34,8 @@ Si hace falta cerrar la Capa 6, es una auditoría nueva, no la continuación de 
   de producción) se corrió el 2026-09-07: sin contaminación, con denominadores chicos —12
   reservas con jugador, 3 relaciones— así que dice que no hay daño hoy, no que el sistema
   haya resistido volumen. Sonda re-ejecutable: `scripts/probe-tenant-contamination.ts`.
+  **Cerrada del todo el 2026-09-07.** Lo que queda vivo son dos decisiones y dos entradas de
+  deuda registrada, todas en la sección "Estado final" del informe.
 
 ## Los "REQUIERE INPUT" que vivían acá ya no requieren input
 

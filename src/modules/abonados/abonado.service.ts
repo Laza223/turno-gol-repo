@@ -498,7 +498,10 @@ export async function getAbonadoSlotConflicts(
         dates.map((d) => sql`${d}::date`),
         sql`, `,
       )}])
-      AND status NOT IN ('canceled_refunded','canceled_no_refund')
+      -- Mismo predicado que findAbonadoBookingOverlaps: expired queda afuera
+      -- (AUD-02), un hold abandonado no le come la sesion al cliente fijo.
+      -- (Sin backticks en este comentario: cierran el template literal de JS.)
+      AND status NOT IN ('canceled_refunded','canceled_no_refund','expired')
       AND time_start < ${timeEnd}::time
       AND time_end > ${timeStart}::time
   `)

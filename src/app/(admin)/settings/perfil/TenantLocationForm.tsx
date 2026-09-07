@@ -47,7 +47,17 @@ export function TenantLocationForm({
   const [state, formAction] = useActionState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
   // La provincia elegida recentra el mapa mientras todavía no haya punto: es
-  // lo único que evita que abra en medio del Atlántico.
+  // lo único que evita que abra en medio del Atlántico. Tiene que ser estado
+  // porque el Combobox no es un control nativo y el usuario la cambia ANTES de
+  // guardar.
+  //
+  // El "valor viejo" que la regla teme acá es justamente lo que hay que
+  // conservar: si otro form de esta misma pantalla revalida la página, la prop
+  // vuelve con el valor de la base y pisaría una provincia que el dueño ya
+  // eligió y todavía no guardó. Los campos de dirección y localidad de al lado
+  // se comportan igual, con `defaultValue`: acá el estado es lo que los hace
+  // consistentes, no lo que los rompe. Mismo patrón que `StepIdentity`.
+  // react-doctor-disable-next-line react-doctor/no-derived-useState
   const [province, setProvince] = useState(currentProvince)
   const fallback = useMemo(() => resolveMapCenter(province, null, null), [province])
 

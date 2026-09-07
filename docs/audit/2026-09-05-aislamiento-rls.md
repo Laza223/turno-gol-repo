@@ -537,7 +537,7 @@ Sentry conserva `user.id`: lo que se fue es la copia, no la trazabilidad.
 
 ### H-3 · Mínimo privilegio sobre las seis tablas globales
 
-Migración 083. Antes de revocar nada, el barrido sobre el código:
+Migración 085. Antes de revocar nada, el barrido sobre el código:
 
 | Qué se revocó | Por qué no rompe nada |
 |---|---|
@@ -556,7 +556,7 @@ Prueba de mutación del arnés: devolviendo a mano los dos permisos revocados, l
 nuevos se ponen rojos.
 
 ```
-× 4.6 el catálogo comercial es de sólo lectura para el rol de la app (migr. 083)
+× 4.6 el catálogo comercial es de sólo lectura para el rol de la app (migr. 085)
   → expected 'plans: ESCRITO' to contain '42501'
 × 4.7 ninguna de las seis tablas globales se puede BORRAR desde el rol de la app
   → expected [ 'players' ] to deeply equal []

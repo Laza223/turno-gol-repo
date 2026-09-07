@@ -27,8 +27,8 @@ Si hace falta cerrar la Capa 6, es una auditoría nueva, no la continuación de 
   relación con un jugador ajeno y le leía los datos personales) se **arregló el mismo
   día**, junto con los otros dos caminos de su clase (alta de abonado y baneo manual, este
   último anotado como H-10), con los tests demostrados en rojo antes.
-  Los 5 🟡 restantes y un 🟢 se cerraron el 2026-09-06 en dos pasadas más (migraciones 083 y
-  084, tapado único del reporte de errores, identidad del rol en staging). Queda 1 🟢: los
+  Los 5 🟡 restantes y un 🟢 se cerraron el 2026-09-06 en dos pasadas más (migraciones 084 y
+  085, tapado único del reporte de errores, identidad del rol en staging). Queda 1 🟢: los
   oráculos de existencia de cuenta, que son decisión de producto y no arreglo técnico. El arnés vive en
   `tests/integration/isolation-app-role.test.ts`, bloqueante en CI.
 

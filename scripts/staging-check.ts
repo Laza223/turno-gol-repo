@@ -71,7 +71,18 @@ async function statusCheck(): Promise<boolean> {
  * Same defense as launch-check.ts's bypassRlsCheck — if the staging DB role
  * has BYPASSRLS, every RLS policy on bookings/payments/etc. is silently
  * ignored, which would hide a broken policy instead of catching it.
+ *
+ * Y también la identidad del rol, igual que `roleIdentityCheck` en
+ * launch-check.ts (H-4 de la auditoría de aislamiento del 2026-09-05): el
+ * atributo de bypass no alcanza. Un DSN que apunte al DUEÑO de las tablas
+ * (`postgres`) tiene `rolbypassrls=false` y aun así esquiva RLS, porque RLS
+ * sólo restringe a los que no son dueños en tablas sin FORCE. Hoy todas las
+ * tablas de complejo tienen FORCE, así que no muerde — pero es exactamente el
+ * agujero que el chequeo de producción existe para tapar, y staging es donde
+ * uno espera enterarse primero.
  */
+const ROL_APP_ESPERADO = 'turnogol_app'
+
 async function bypassRlsCheck(): Promise<boolean> {
   const url = process.env.DATABASE_URL
   if (!url) {
@@ -93,6 +104,14 @@ async function bypassRlsCheck(): Promise<boolean> {
     }
     if (row.bypass) {
       console.error(`current_user '${row.rolname}' has BYPASSRLS=true — RLS would be ignored`)
+      return false
+    }
+    if (row.rolname !== ROL_APP_ESPERADO) {
+      console.error(
+        `DATABASE_URL logs in as '${row.rolname}', expected '${ROL_APP_ESPERADO}' — ` +
+          'a DSN pointing at the table owner (e.g. `postgres`) silently bypasses RLS ' +
+          'even with rolbypassrls=false, because RLS only restricts non-owners without FORCE.',
+      )
       return false
     }
     return true
@@ -232,7 +251,11 @@ const steps: Step[] = [
     fatal: true,
   },
   { name: 'migrations applied', check: migrationsAppliedCheck, fatal: true },
-  { name: 'bypassrls role check', check: bypassRlsCheck, fatal: true },
+  {
+    name: 'db role: sin BYPASSRLS y con la identidad esperada',
+    check: bypassRlsCheck,
+    fatal: true,
+  },
   { name: 'webhook harness secret present', check: webhookHarnessSecretCheck, fatal: true },
   { name: 'mp credentials probe', check: mpCredentialsProbe, fatal: false },
   { name: '/api/status healthy', check: statusCheck, fatal: true },

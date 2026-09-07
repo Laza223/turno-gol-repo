@@ -311,6 +311,12 @@ jobs:
       - name: Isolation tests (BLOCKING — data leak check)
         run: pnpm test:isolation
 
+      # Corre APARTE del resto: reapunta DATABASE_URL al rol restringido real y
+      # le habilita LOGIN mientras dura el archivo. Comparte la base con los
+      # pasos de arriba, así que va último y nunca en paralelo.
+      - name: Isolation tests bajo el rol real de la app (BLOCKING)
+        run: pnpm test:isolation:rol-real
+
   # ── Job 5: e2e — push a main + dispatch manual (NO en PRs) ─────────────────
   #
   # 2026-08-10: se sacó del PR. Ni e2e-tests ni visual-regression son required

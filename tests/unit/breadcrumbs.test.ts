@@ -28,7 +28,10 @@ describe('track.booking', () => {
     expect(addBreadcrumb).toHaveBeenCalledWith({
       category: 'booking',
       message: 'booking.online.create.start',
-      data: { tenantId: 'tenant-1', courtId: 'court-1', playerId: 'player-1' },
+      // Sin `playerId`: el filtro de PII se aplica en `emit`, así que el
+      // identificador de la persona no viaja adjunto a cada evento de error
+      // (AUD-14). Sentry conserva `user.id`, que es lo que sirve para rastrear.
+      data: { tenantId: 'tenant-1', courtId: 'court-1' },
       level: 'info',
     })
   })
@@ -100,7 +103,8 @@ describe('track.auth', () => {
     expect(addBreadcrumb).toHaveBeenCalledWith({
       category: 'auth',
       message: 'staff.login',
-      data: { staffUserId: 's-1', tenantCount: 1 },
+      // Sin `staffUserId`, por lo mismo que el caso de `track.booking`.
+      data: { tenantCount: 1 },
       level: 'info',
     })
   })

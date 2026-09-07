@@ -26,6 +26,9 @@ import type {
   CreateCashFlowInput,
 } from '@/modules/cashflow/cashflow.types'
 
+/** Margen para el desfasaje de reloj del navegador contra el del servidor. */
+const OCCURRED_AT_CLOCK_SKEW_MS = 5 * 60_000
+
 const createCashFlowSchema = z.object({
   type: z.enum(['income', 'adjustment', 'expense']),
   category: z.enum([
@@ -59,7 +62,20 @@ const createCashFlowSchema = z.object({
   // bookingId para sus callers legítimos (addBookingChargeAction,
   // recordDepositCashFlow) — no tocar esa firma.
   // coerce: a Server Action may deliver this as a Date or an ISO string across the boundary.
-  occurredAt: z.coerce.date().optional(),
+  //
+  // Hardening (auditoría integral 2026-09-06): no tenía cota superior, así que
+  // un movimiento se podía fechar en el futuro. La caja bucketea por día
+  // operativo: una fecha adelantada mete plata en un cierre que todavía no
+  // ocurrió, y el cierre de hoy nunca la cuenta. La tolerancia son minutos, no
+  // cero, porque el instante lo pone el navegador y su reloj no es el del
+  // servidor — sin margen, un cliente adelantado por segundos vería rechazado
+  // un movimiento perfectamente normal.
+  occurredAt: z.coerce
+    .date()
+    .refine((d) => d.getTime() <= Date.now() + OCCURRED_AT_CLOCK_SKEW_MS, {
+      message: 'Un movimiento no se puede cargar con fecha futura.',
+    })
+    .optional(),
   // Cruce #10: sin esta clave en el schema, z.object() la strippeaba en
   // safeParse y el ON CONFLICT (client_idempotency_key) DO NOTHING del
   // service nunca corría → doble-tap = venta duplicada en la caja.

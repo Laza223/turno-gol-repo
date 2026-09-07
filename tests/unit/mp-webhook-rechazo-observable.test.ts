@@ -34,7 +34,10 @@ vi.mock('@/shared/lib/logger', () => ({
 const URL_WEBHOOK = 'https://turnogol.app/api/webhooks/mercadopago'
 
 function firmar(dataId: string): Record<string, string> {
-  const ts = '1700000000'
+  // Instante actual, no uno congelado: desde el hardening de la auditoría
+  // integral del 2026-09-06 el manifiesto tiene ventana de antigüedad, y un
+  // `ts` fijo de 2023 haría que estas firmas válidas se rechacen por viejas.
+  const ts = String(Date.now())
   const v1 = createHmac('sha256', SECRET)
     .update(`id:${dataId.toLowerCase()};request-id:req-1;ts:${ts};`)
     .digest('hex')

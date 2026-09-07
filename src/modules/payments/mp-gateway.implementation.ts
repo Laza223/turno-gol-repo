@@ -325,8 +325,13 @@ export class MercadoPagoGateway implements PaymentGateway {
    * (5xx, red), que sí sube como excepción para que el job reintente.
    */
   private async mpGet(path: string): Promise<Record<string, unknown> | null> {
+    // Hardening (auditoría integral 2026-09-06): este `fetch` no tenía timeout,
+    // a diferencia del resto del gateway. Lo llama el route handler del webhook
+    // ANTES de encolar, así que un MercadoPago lento colgaba la función serverless
+    // entera — y con ella el aviso de un pago ya cobrado. Mismo bound que el SDK.
     const res = await fetch(`https://api.mercadopago.com${path}`, {
       headers: { Authorization: `Bearer ${this.config.accessToken}` },
+      signal: AbortSignal.timeout(MP_GET_TIMEOUT_MS),
     })
     if (res.status === 404) return null
     if (!res.ok) {

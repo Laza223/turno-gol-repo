@@ -13,7 +13,9 @@ process.env.MP_WEBHOOK_SECRET = SECRET
 // Firmamos cada request para que el guard de SSRF se pruebe DESPUÉS de la
 // autenticación: un data.id malicioso debe rebotar (400) aun con firma válida.
 function mk(body: { data: { id: string } } & Record<string, unknown>): NextRequest {
-  const ts = '1718000000'
+  // Instante actual, no uno congelado: desde el hardening de la auditoría
+  // integral del 2026-09-06 el manifiesto tiene ventana de antigüedad.
+  const ts = String(Date.now())
   const requestId = 'req-ssrf-test'
   const manifest = `id:${body.data.id.toLowerCase()};request-id:${requestId};ts:${ts};`
   const v1 = createHmac('sha256', SECRET).update(manifest).digest('hex')

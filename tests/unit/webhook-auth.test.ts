@@ -23,7 +23,12 @@ const CHECKOUT_SECRET = 'checkout-secret-'.repeat(2)
 const TEST_BYPASS_SECRET = 'staging-bypass-secret-'.repeat(2)
 const DATA_ID = '12345'
 const REQUEST_ID = 'req-1'
-const TS = '1718000000'
+/**
+ * Instante actual, no uno congelado: desde el hardening de la auditoría
+ * integral del 2026-09-06 el manifiesto tiene ventana de antigüedad. Los casos
+ * de la ventana en sí están al final del archivo.
+ */
+const TS = String(Date.now())
 
 function sign(secret: string, dataId = DATA_ID, requestId = REQUEST_ID, ts = TS): string {
   const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`
@@ -149,5 +154,72 @@ describe('verifyWebhookSignature — VERCEL_ENV=preview signal (Vercel sets NODE
     env['VERCEL_ENV'] = 'production'
     env['MP_WEBHOOK_TEST_BYPASS_SECRET'] = TEST_BYPASS_SECRET
     expect(verifyWebhookSignature(sign(TEST_BYPASS_SECRET), REQUEST_ID, DATA_ID)).toBe(false)
+  })
+})
+
+/**
+ * Hardening de la auditoría integral del 2026-09-06: el manifiesto trae `ts` y
+ * no se miraba, así que un aviso firmado se podía repetir para siempre. La
+ * ventana es de 6 horas y el criterio, en la duda, es ACEPTAR: rechazar un
+ * aviso legítimo cuesta un pago no registrado, y repetir uno cuyas ramas son
+ * idempotentes no cuesta nada.
+ */
+describe('verifyWebhookSignature — ventana de antigüedad del ts', () => {
+  const HORA_MS = 3_600_000
+
+  it('acepta un aviso firmado recién', () => {
+    expect(verifyWebhookSignature(sign(REAL_SECRET), REQUEST_ID, DATA_ID)).toBe(true)
+  })
+
+  it('acepta uno de hace 5 horas: entra en la ventana', () => {
+    const ts = String(Date.now() - 5 * HORA_MS)
+    expect(
+      verifyWebhookSignature(sign(REAL_SECRET, DATA_ID, REQUEST_ID, ts), REQUEST_ID, DATA_ID),
+    ).toBe(true)
+  })
+
+  it('rechaza uno de hace 7 horas aunque la firma sea válida', () => {
+    const ts = String(Date.now() - 7 * HORA_MS)
+    expect(
+      verifyWebhookSignature(sign(REAL_SECRET, DATA_ID, REQUEST_ID, ts), REQUEST_ID, DATA_ID),
+    ).toBe(false)
+  })
+
+  it('un ts en SEGUNDOS se normaliza en vez de rechazar todo', () => {
+    // MercadoPago documenta milisegundos, pero si alguna vez llegara en
+    // segundos, restarlo crudo daría una antigüedad de décadas y tiraría TODOS
+    // los avisos de producción a la vez. Este caso es el seguro contra eso.
+    const tsEnSegundos = String(Math.floor(Date.now() / 1000))
+    expect(
+      verifyWebhookSignature(
+        sign(REAL_SECRET, DATA_ID, REQUEST_ID, tsEnSegundos),
+        REQUEST_ID,
+        DATA_ID,
+      ),
+    ).toBe(true)
+  })
+
+  it('un ts ilegible NO tumba el aviso: la firma ya dio bien', () => {
+    expect(
+      verifyWebhookSignature(
+        sign(REAL_SECRET, DATA_ID, REQUEST_ID, 'no-es-un-numero'),
+        REQUEST_ID,
+        DATA_ID,
+      ),
+    ).toBe(true)
+  })
+
+  it('un ts en el futuro tampoco lo tumba: es reloj desfasado, no replay', () => {
+    const ts = String(Date.now() + 2 * HORA_MS)
+    expect(
+      verifyWebhookSignature(sign(REAL_SECRET, DATA_ID, REQUEST_ID, ts), REQUEST_ID, DATA_ID),
+    ).toBe(true)
+  })
+
+  it('la ventana no le abre la puerta a una firma inválida vieja', () => {
+    // Contraparte: el chequeo de antigüedad corre DESPUÉS del HMAC, así que no
+    // puede convertir un rechazo en aceptación por ningún camino.
+    const ts = String(Date.now())
+    expect(verifyWebhookSignature(`ts=${ts},v1=firma-inventada`, REQUEST_ID, DATA_ID)).toBe(false)
   })
 })

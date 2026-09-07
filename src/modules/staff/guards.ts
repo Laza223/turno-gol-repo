@@ -71,7 +71,7 @@ async function requireStaffWithRole(
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) return { ok: false, error: 'Tenant no encontrado' }
 
   // Rol SIEMPRE leído de la DB: extractAuthUser hardcodea role 'admin' en el
@@ -134,7 +134,7 @@ export async function requireAdminStaff(): Promise<AdminStaff> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) redirect('/login')
 
   const role = await getStaffRole(tenant.id, user.staffUserId)

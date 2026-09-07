@@ -133,7 +133,7 @@ const inviteSchema = z.object({
 async function requireStaffTenant() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   // Spread para fijar staffUserId como string: el narrowing del if se pierde
   // dentro de los callbacks de withTenantContext.
   return { user: { ...user, staffUserId: user.staffUserId }, tenant }

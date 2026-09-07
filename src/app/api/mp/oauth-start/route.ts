@@ -15,7 +15,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) {
     return NextResponse.redirect(new URL('/onboarding', req.url))
   }

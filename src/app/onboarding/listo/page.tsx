@@ -19,7 +19,7 @@ export default async function OnboardingListoPage() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) redirect('/onboarding')
   const settings = tenant.settings as TenantSettings
   if (!settings.onboarding_completed) redirect('/onboarding')

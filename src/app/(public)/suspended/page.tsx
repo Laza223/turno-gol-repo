@@ -2,6 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PauseCircle } from 'lucide-react'
 import { SUPPORT_EMAIL } from '@/shared/constants'
+import { SwitchTenantLink } from '@/app/(public)/SwitchTenantLink'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { resolveStaffTenants } from '@/modules/auth/auth.service'
+
+// El link de cambio de complejo lee la sesión, así que esta página deja de
+// poder prerenderizarse. Explícito para que no dependa de la inferencia.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   // Sin el sufijo "— TurnoGol": el layout raíz aplica el template `%s · TurnoGol`,
@@ -11,7 +18,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function SuspendedPage() {
+export default async function SuspendedPage() {
+  // Con un solo complejo el link sobra: /select-tenant sería una lista de un
+  // elemento. Sin sesión de staff tampoco corresponde.
+  const user = await extractAuthUser()
+  const variosComplejos =
+    user?.type === 'staff' && user.staffUserId
+      ? (await resolveStaffTenants(user.staffUserId)).length > 1
+      : false
+
   return (
     <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50 dark:bg-amber-500/10 dark:ring-amber-400/20">
@@ -45,6 +60,8 @@ export default function SuspendedPage() {
       >
         Contactar a soporte
       </a>
+
+      {variosComplejos && <SwitchTenantLink />}
 
       <Link
         href="/"

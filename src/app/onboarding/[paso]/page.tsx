@@ -44,7 +44,7 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
 
   // Sin tenant solo existe el paso 1: es el que lo crea. Cualquier otro paso
   // renderizaría una card vacía — antes lo hacía, literalmente.

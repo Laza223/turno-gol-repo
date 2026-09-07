@@ -650,6 +650,67 @@ format:check                  solo scripts/ig-follow/accounts.json, sin relació
 Las dos migraciones se aplicaron a la base local para poder medir contra ellas. **En
 producción entran solas al mergear**, por el flujo de migraciones de integración continua.
 
+## Fase 2A · El contenido de producción
+
+La fase 1 midió las REGLAS. Esto mide el CONTENIDO: si hay datos ya escritos que sólo pudo
+haber creado el agujero que se arregló. Corrida el 2026-09-07, después de que las
+migraciones entraran a producción.
+
+La sonda vive en `scripts/probe-tenant-contamination.ts` y es re-ejecutable. Devuelve
+conteos y ningún dato de persona.
+
+### El resultado
+
+| Qué se buscó | Encontrado | Sobre un total de | Veredicto |
+|---|---|---|---|
+| bloqueos a alguien que nunca fue cliente | 0 | 0 | sin datos |
+| reservas a nombre de alguien que nunca fue cliente | 0 | 12 | limpio |
+| turnos fijos a nombre de alguien que nunca fue cliente | 0 | 0 | sin datos |
+| relaciones que ninguna acción legítima justifica | 0 | 3 | limpio |
+| credenciales de MercadoPago sin forma de sobre cifrado | 0 | 2 | limpio |
+| personal activo en más de un complejo | 0 | 3 | limpio |
+
+**No hay contaminación.** Y el último renglón cierra además el hallazgo rojo de la
+auditoría integral del día siguiente —las dos fuentes para "el complejo activo"—: su
+precondición es que exista personal en dos complejos, y hoy no existe. El problema es real
+en el código, pero no está mordiéndole a nadie.
+
+### El límite honesto de este resultado
+
+**Los denominadores son chicos.** Doce reservas con jugador, tres relaciones, dos complejos
+con credenciales, tres personas de personal. Un cero sobre esos números es una buena
+noticia, no una garantía: dice que hoy no hay daño, no que el sistema haya resistido
+volumen. Y tres de las seis preguntas se hicieron sobre tablas vacías, así que ahí no se
+midió nada — se reportan como "sin datos" y no como limpias a propósito.
+
+La conclusión que sí se sostiene: **el agujero se arregló antes de que alguien lo pisara.**
+
+### El lazo de las migraciones, cerrado en producción
+
+Las dos migraciones nuevas se aplicaron y hacen lo que dicen. Los dos controles negativos
+están para que un "todo denegado" por una conexión rota no pase por aprobado:
+
+| Chequeo | Valor | Esperado |
+|---|---|---|
+| `reviews.player_id` legible por el rol web | no | no |
+| `reviews.rating` legible por el rol web (control negativo) | sí | sí |
+| el rol web puede borrar complejos | no | no |
+| el rol web puede borrar jugadores | no | no |
+| el rol web puede escribir el catálogo de planes | no | no |
+| el rol web puede leer complejos (control negativo) | sí | sí |
+
+### Cómo se corrió, y un hallazgo lateral
+
+La sonda del repo abre la sesión con `default_transaction_read_only`, así que una escritura
+moriría con error antes de tocar nada, y ella misma lo demuestra al final intentando
+escribir. Se probó en local con una fila contaminada sembrada a mano: la detecta y la
+reporta. Sin esa prueba, un cero no diría nada.
+
+Contra producción **no se pudo usar**: el `.env.production` local tiene credenciales
+vencidas y el intento murió con `28P01 password authentication failed`. Las consultas se
+corrieron por el conector de Supabase. Vale arreglar ese archivo, porque es el mismo que
+usa `pnpm launch:check --probe-only`.
+
 ## Límites de esta auditoría
 
 Lo que sigue es lo que **no** quedó cubierto, para que nadie lea la grilla como una
@@ -658,7 +719,8 @@ promesa más amplia de lo que es.
 - La grilla mide la base local. El esquema de producción es idéntico —35 tablas, 31 con
   seguridad de fila, cero sin forzarla, 101 policies, rol sin bypass— así que las
   conclusiones sobre policies y permisos trasladan. Lo que no traslada es el contenido:
-  la grilla no dice nada sobre datos ya guardados en producción. Eso es la fase 2A.
+  la grilla no dice nada sobre datos ya guardados en producción. **Eso lo cubrió la fase 2A,
+  arriba**, con la advertencia de que sus denominadores son chicos.
 - El barrido de código corrió con verificación adversarial de tres revisores por
   candidato. **Dieciséis de esas verificaciones murieron por límite de sesión**, así que
   cuatro candidatos quedaron sin ningún voto y no entraron ni como confirmados ni como

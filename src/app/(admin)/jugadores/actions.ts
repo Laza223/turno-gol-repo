@@ -46,8 +46,8 @@ export async function banPlayerAction(
 
   const bannedUntil = resolveManualBanUntil(parsed.data.duration, new Date())
 
-  await withTenantContext(tenant.id, async (tx) => {
-    await banPlayerManually(
+  const aplicado = await withTenantContext(tenant.id, async (tx) => {
+    const banned = await banPlayerManually(
       tenant.id,
       parsed.data.playerId,
       user.staffUserId!,
@@ -55,6 +55,9 @@ export async function banPlayerAction(
       bannedUntil,
       tx,
     )
+    // El jugador no es cliente de este complejo: sin bloqueo y sin registro de
+    // auditoría, igual que liftPlayerBanAction cuando no había nada que levantar.
+    if (!banned) return false
     await insertAuditLog(tx, {
       tenantId: tenant.id,
       actorId: user.staffUserId!,
@@ -68,7 +71,10 @@ export async function banPlayerAction(
         bannedUntil: bannedUntil ? bannedUntil.toISOString() : null,
       },
     })
+    return true
   })
+
+  if (!aplicado) return { success: false, error: 'Esa persona no es cliente de este complejo.' }
 
   revalidatePath(`/jugadores/${parsed.data.playerId}`)
   return { success: true }

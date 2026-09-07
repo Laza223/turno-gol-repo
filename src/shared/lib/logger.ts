@@ -1,4 +1,5 @@
 import { getRequestContext } from './request-context'
+import { redactQueryParams } from './redact-query-params'
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 type LogMeta = Record<string, unknown>
@@ -44,6 +45,29 @@ function getErrorSink(): ErrorSink | null {
   return (globalThis as SinkHolder)[SINK_KEY] ?? null
 }
 
+/**
+ * Recorta los parámetros de una consulta fallida en TODO lo que se loguea
+ * (H-7 de la auditoría de aislamiento del 2026-09-05).
+ *
+ * Va acá y no en los 49 lugares que escriben `error: err.message`: es el único
+ * punto por el que pasan todos, y cubre la salida estándar además del reporte
+ * de errores, que recibe esta misma entrada. El filtro de Sentry no alcanzaba
+ * porque compara nombres de clave y la clave es `error`.
+ *
+ * El recorrido corta a profundidad 5, igual que el filtro de Sentry, y sólo
+ * toca cadenas.
+ */
+function redactDeep(value: unknown, depth = 0): unknown {
+  if (typeof value === 'string') return redactQueryParams(value)
+  if (depth >= 5 || value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map((v) => redactDeep(v, depth + 1))
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    out[k] = redactDeep(v, depth + 1)
+  }
+  return out
+}
+
 function emit(level: LogLevel, message: string, meta?: LogMeta): void {
   const ctx = getRequestContext()
   const entry = {
@@ -54,7 +78,7 @@ function emit(level: LogLevel, message: string, meta?: LogMeta): void {
     ...(ctx?.tenantId ? { tenant_id: ctx.tenantId } : {}),
     ...(ctx?.userId ? { user_id: ctx.userId } : {}),
     ...(ctx?.userType ? { user_type: ctx.userType } : {}),
-    ...(meta ?? {}),
+    ...((meta ? (redactDeep(meta) as LogMeta) : undefined) ?? {}),
   }
   const line = JSON.stringify(entry)
   // `console`, NO `process.stdout`/`process.stderr`: este logger entra al grafo

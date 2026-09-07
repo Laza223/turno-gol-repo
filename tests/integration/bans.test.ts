@@ -9,6 +9,7 @@ import {
   createTestStaffUser,
   createTestTenant,
   ensureRoles,
+  linkPlayerToTenant,
 } from '../helpers/tenant'
 
 const PRICING = {
@@ -190,6 +191,7 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
     const courtId = await insertCourt(tenant.id)
 
     await withTenantContext(tenant.id, (tx) =>
@@ -240,6 +242,7 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
 
     await withTenantContext(tenant.id, (tx) =>
       banPlayerManually(
@@ -283,6 +286,7 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
     const courtId = await insertCourt(tenant.id)
 
     await withTenantContext(tenant.id, (tx) =>
@@ -348,6 +352,7 @@ describe('banPlayerManually / liftPlayerBan — ciclo manual end-to-end bajo RLS
     const tenantB = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
     const staff = await createTestStaffUser(sql)
+    await linkPlayerToTenant(sql, tenantA.id, player.id)
     const courtB = await insertCourt(tenantB.id)
 
     await withTenantContext(tenantA.id, (tx) =>

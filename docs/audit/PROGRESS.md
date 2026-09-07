@@ -12,6 +12,7 @@ nunca se ejecutó**: existe el anuncio *"arrancando Capa 6"* y nada más — nin
 de auditoría de seguridad/RLS en `docs/audit/` ni en `docs/qa/`.
 
 Si hace falta cerrar la Capa 6, es una auditoría nueva, no la continuación de esta.
+**Se cerró así el 2026-09-05**, como Fase 1 del plan de auditorías vigente.
 
 ## Qué pasó con cada capa
 
@@ -20,7 +21,16 @@ Si hace falta cerrar la Capa 6, es una auditoría nueva, no la continuación de 
 - [x] **Capa 3** — Reglas de negocio y permisos: 22 hallazgos, 6 bloqueantes, fixes aplicados.
 - [x] **Capa 4** — Dead code: 140 candidatos, grupos 1-3 aplicados.
 - [x] **Capa 5** — Consistencia de patrones: 57 candidatos, "Shadow API" y C5-G3 aplicados.
-- [ ] **Capa 6** — Seguridad (RLS/Auth): **nunca se ejecutó.**
+- [x] **Capa 6** — Seguridad (RLS/Auth): **cerrada el 2026-09-05** como auditoría nueva,
+  no como continuación de ésta → [`2026-09-05-aislamiento-rls.md`](2026-09-05-aislamiento-rls.md).
+  147 celdas medidas con el rol restringido real. El 🔴 (un complejo se fabricaba la
+  relación con un jugador ajeno y le leía los datos personales) se **arregló el mismo
+  día**, junto con los otros dos caminos de su clase (alta de abonado y baneo manual, este
+  último anotado como H-10), con los tests demostrados en rojo antes.
+  Los 5 🟡 restantes y un 🟢 se cerraron el 2026-09-06 en dos pasadas más (migraciones 083 y
+  084, tapado único del reporte de errores, identidad del rol en staging). Queda 1 🟢: los
+  oráculos de existencia de cuenta, que son decisión de producto y no arreglo técnico. El arnés vive en
+  `tests/integration/isolation-app-role.test.ts`, bloqueante en CI.
 
 ## Los "REQUIERE INPUT" que vivían acá ya no requieren input
 

@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { scrubObject, scrubQueryString } from '@/lib/sentry-pii-scrub'
+import { scrubEvent } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 import { registerSentryErrorSink } from './error-sink'
 
@@ -95,28 +95,10 @@ export function ensureWebSentry(): boolean {
       if (process.env.NODE_ENV !== 'production') return null
 
       // PII scrub (Ley 25.326 / B9 audit) — never let email, phone, MP tokens,
-      // or auth headers leak into error reports.
-      if (event.request) {
-        delete event.request.data
-        if (event.request.headers) {
-          const h = event.request.headers as Record<string, string>
-          delete h.cookie
-          delete h.Cookie
-          delete h.authorization
-          delete h.Authorization
-        }
-        if (typeof event.request.query_string === 'string') {
-          event.request.query_string = scrubQueryString(event.request.query_string)
-        }
-      }
-      if (event.extra) event.extra = scrubObject(event.extra) as typeof event.extra
-      if (event.contexts) {
-        event.contexts = scrubObject(event.contexts) as typeof event.contexts
-      }
-      if (event.user) {
-        // Keep id for traceability, drop email/username/ip_address.
-        event.user = { id: event.user.id }
-      }
+      // or auth headers leak into error reports. El tapado vive en
+      // `scrubEvent` y no acá para que el web y los workers no tapen distinto:
+      // los dos venían dejando afuera las migas y la excepción (H-8).
+      scrubEvent(event)
       return event
     },
   })

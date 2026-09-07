@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { players, tenantPlayerBans } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
+import { playerBelongsToTenant } from '@/modules/relationships/ptr.service'
 import type { ManualBanDuration } from './ban.schema'
 
 export type BanCheckResult =
@@ -118,6 +119,13 @@ export function resolveManualBanUntil(duration: ManualBanDuration, now: Date): D
  * enforce_single_active_ban (migración 005) rechaza un 2do INSERT mientras
  * el primero siga vigente. FOR UPDATE lockea la fila existente para
  * serializar clicks concurrentes del mismo mostrador.
+ *
+ * Devuelve false, sin escribir nada, si el jugador no es cliente del complejo
+ * (H-10 de la auditoría de aislamiento del 2026-09-05): el bloqueo lo ve la
+ * persona bloqueada, así que un `player_id` ajeno le escribe un antecedente a
+ * alguien que nunca visitó el complejo. El guard vive acá y no en la Server
+ * Action a propósito — el hallazgo H-1 de esa misma auditoría nació de un guard
+ * que existía sólo en uno de los llamadores.
  */
 export async function banPlayerManually(
   tenantId: string,
@@ -126,7 +134,9 @@ export async function banPlayerManually(
   reason: string,
   bannedUntil: Date | null,
   tx: DbTx,
-): Promise<void> {
+): Promise<boolean> {
+  if (!(await playerBelongsToTenant(tenantId, playerId, tx))) return false
+
   const existing = await tx
     .select({ id: tenantPlayerBans.id })
     .from(tenantPlayerBans)
@@ -145,7 +155,7 @@ export async function banPlayerManually(
       .update(tenantPlayerBans)
       .set({ reason, bannedUntil, bannedBy: staffUserId, bannedAt: new Date() })
       .where(eq(tenantPlayerBans.id, existing[0].id))
-    return
+    return true
   }
 
   await tx.insert(tenantPlayerBans).values({
@@ -155,6 +165,7 @@ export async function banPlayerManually(
     bannedUntil,
     bannedBy: staffUserId,
   })
+  return true
 }
 
 /**

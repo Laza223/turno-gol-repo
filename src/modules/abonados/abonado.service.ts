@@ -2,7 +2,7 @@ import { sql, eq, and } from 'drizzle-orm'
 import { abonados, bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
-import { ensurePTR } from '@/modules/relationships/ptr.service'
+import { ensurePTR, playerBelongsToTenant } from '@/modules/relationships/ptr.service'
 import { getCourtById } from '@/modules/courts/court.service'
 import { generateSlotDates } from './slot-generator'
 import { isExclusionViolation, slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
@@ -15,6 +15,7 @@ import {
   AbonadoAlreadyCanceledError,
   ReactivationConflictError,
   CourtNotFoundError,
+  PlayerNotClientError,
 } from './abonado.errors'
 import type {
   AbonadoRow,
@@ -200,6 +201,13 @@ export async function createAbonado(
   // cancha ajena. getCourtById ya filtra por tenant_id en la query.
   const court = await getCourtById(input.courtId, tenantId, tx)
   if (!court) throw new CourtNotFoundError(input.courtId)
+  // Misma clase que el `courtId` de arriba, y el mismo hallazgo H-1 de la
+  // auditoría de aislamiento del 2026-09-05: sin esto, un abonado a nombre de
+  // un jugador ajeno llegaba al `ensurePTR` del final y le fabricaba la
+  // relación que destraba leerle nombre, correo y teléfono.
+  if (input.playerId && !(await playerBelongsToTenant(tenantId, input.playerId, tx))) {
+    throw new PlayerNotClientError()
+  }
 
   // Cierra la ventana de carrera con OTRA createAbonado/reactivateAbonado (o
   // con createManualBooking/createOnlineBooking) concurrente sobre la misma

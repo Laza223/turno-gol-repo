@@ -60,34 +60,27 @@ export async function ensureRoles(sql?: Sql): Promise<void> {
       END IF;
     END $$;
   `)
-  // Grant privileges so RLS (not GRANT) is what blocks.
+  // Privilegios para que lo que bloquee sea RLS y no el GRANT.
+  //
+  // `authenticated` sí necesita el otorgamiento masivo: es un rol de Supabase
+  // que este helper crea si falta, así que ninguna migración le da nada.
+  //
+  // `turnogol_app` NO lo lleva, y es el arreglo del hallazgo H-6 de la auditoría
+  // de aislamiento del 2026-09-05. Antes esto otorgaba las cuatro operaciones
+  // sobre TODAS las tablas y después re-aplicaba a mano la lista acumulada de
+  // revocaciones (migr. 008, 037, 048, 049, 059, 065, 072, 083, 084). Ese espejo
+  // se mantenía a mano: una revocación nueva que llegara a una migración y no
+  // acá dejaba al rol con permisos que producción no le da, y los tests de esa
+  // tabla pasaban midiendo otra cosa.
+  //
+  // Ahora los permisos del rol salen ÚNICAMENTE de las migraciones, que es donde
+  // ya estaban definidos. El único requisito es que la base local las tenga
+  // aplicadas, cosa que la suite de integración ya exige. Si alguna vez faltaran,
+  // el caso 0.2 del arnés del rol real se pone rojo con la diferencia exacta en
+  // vez de esconderla.
   await s.unsafe(`
     GRANT USAGE ON SCHEMA public TO authenticated, turnogol_app;
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO turnogol_app;
-  `)
-  // Re-apply REVOKE because GRANT ALL above re-granted UPDATE/DELETE on inmutable tables.
-  // Migración 048 (rediseño Caja y Cantina) sumó 3 tablas al mismo patrón append-only/
-  // soft-delete: sin este re-apply, isolation.test.ts bloque N (REVOKE) da falso verde
-  // localmente — el rol turnogol_app recupera DELETE/UPDATE apenas corre CUALQUIER test
-  // de integración, porque el GRANT ALL de arriba corre en cada beforeAll.
-  await s.unsafe(`
-    REVOKE UPDATE, DELETE ON audit_logs FROM turnogol_app;
-    REVOKE UPDATE, DELETE ON daily_cash_closes FROM turnogol_app;
-    REVOKE UPDATE, DELETE ON stock_movements FROM turnogol_app;
-    REVOKE DELETE ON canteen_products FROM turnogol_app;
-    REVOKE DELETE ON canteen_tabs FROM turnogol_app;
-    REVOKE DELETE ON daily_cash_opens FROM turnogol_app;
-    REVOKE UPDATE ON tournament_match_events FROM turnogol_app;
-    REVOKE UPDATE ON analytics_events FROM turnogol_app;
-  `)
-  // push_send_log (migr. 059, F3): deny-all para turnogol_app — el GRANT ALL
-  // de arriba también le re-otorga SELECT/INSERT/UPDATE/DELETE (a diferencia
-  // de las tablas de arriba, acá NO queda ningún permiso, ni siquiera
-  // SELECT/INSERT). Sin este re-apply, isolation.test.ts bloque P da falso
-  // verde localmente por el mismo motivo que el comentario de arriba.
-  await s.unsafe(`
-    REVOKE ALL ON push_send_log FROM turnogol_app;
   `)
 }
 

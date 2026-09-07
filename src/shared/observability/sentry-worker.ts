@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { scrubObject } from '@/lib/sentry-pii-scrub'
+import { scrubEvent } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 import { logger } from '@/shared/lib/logger'
 import { registerSentryErrorSink } from './error-sink'
@@ -42,11 +42,11 @@ export function initWorkerSentry(): boolean {
       beforeSend(event, hint) {
         if (isDroppableDomainError(hint)) return null
         if (process.env.NODE_ENV !== 'production') return null
-        // Mismo scrub PII que el runtime web (Ley 25.326): los workers pasan
-        // emails, teléfonos y tokens de MP por `extra` sin pensarlo.
-        if (event.extra) event.extra = scrubObject(event.extra) as typeof event.extra
-        if (event.contexts) event.contexts = scrubObject(event.contexts) as typeof event.contexts
-        if (event.user) event.user = { id: event.user.id }
+        // Mismo scrub PII que el runtime web (Ley 25.326), y literalmente la
+        // misma función: los workers pasan emails, teléfonos y tokens de MP por
+        // `extra` sin pensarlo, y son los que corren el cron que renueva las
+        // credenciales de MercadoPago (H-7).
+        scrubEvent(event)
         return event
       },
     })

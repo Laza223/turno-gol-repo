@@ -26,6 +26,10 @@ export const notifications = pgTable(
     lastError: text('last_error'),
 
     queuedAt: timestamp('queued_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    // Migr. 086 (AUD-15): instante del claim. Sólo tiene valor mientras
+    // `status = 'sending'`; el barrido lo usa para reclamar los envíos que
+    // quedaron colgados por una caída del worker.
+    sendingSince: timestamp('sending_since', { withTimezone: true, mode: 'date' }),
     sentAt: timestamp('sent_at', { withTimezone: true, mode: 'date' }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true, mode: 'date' }),
 
@@ -38,5 +42,8 @@ export const notifications = pgTable(
     queuedIdx: index('idx_notifications_queued')
       .on(table.status, table.queuedAt)
       .where(sql`status = 'queued'`),
+    sendingIdx: index('idx_notifications_sending')
+      .on(table.sendingSince)
+      .where(sql`status = 'sending'`),
   }),
 )

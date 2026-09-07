@@ -155,7 +155,7 @@ export async function claimNotificationForSend(
   const sql = getWorkerSql()
   const rows = await sql<{ id: string }[]>`
     UPDATE notifications
-    SET status = 'sending', attempt_count = attempt_count + 1
+    SET status = 'sending', attempt_count = attempt_count + 1, sending_since = now()
     WHERE id = ${id}
       AND status = 'queued'
       AND attempt_count = ${expectedAttemptCount}
@@ -168,7 +168,7 @@ export async function markNotificationSent(id: string): Promise<void> {
   const db = getWorkerDb()
   await db
     .update(notifications)
-    .set({ status: 'sent', sentAt: new Date() })
+    .set({ status: 'sent', sentAt: new Date(), sendingSince: null })
     .where(and(eq(notifications.id, id), eq(notifications.status, 'sending')))
 }
 
@@ -176,7 +176,7 @@ export async function markNotificationFailed(id: string, error: string): Promise
   const db = getWorkerDb()
   await db
     .update(notifications)
-    .set({ status: 'failed', lastError: error })
+    .set({ status: 'failed', lastError: error, sendingSince: null })
     .where(and(eq(notifications.id, id), inArray(notifications.status, ['queued', 'sending'])))
 }
 
@@ -188,8 +188,67 @@ export async function updateNotificationLastError(
   const db = getWorkerDb()
   await db
     .update(notifications)
-    .set({ status: 'queued', lastError: error, attemptCount: newAttemptCount })
+    .set({ status: 'queued', lastError: error, attemptCount: newAttemptCount, sendingSince: null })
     .where(and(eq(notifications.id, id), eq(notifications.status, 'sending')))
+}
+
+/**
+ * Cuánto puede estar una fila en 'sending' antes de darla por abandonada.
+ *
+ * Un envío sano tarda menos de un segundo; el margen es enorme a propósito,
+ * porque reclamar una fila cuyo envío TODAVÍA está en vuelo manda el mismo mail
+ * dos veces (`email.provider.ts` no tiene timeout explícito, así que un fetch
+ * colgado no se corta solo). Diez minutos es varias veces el peor caso creíble
+ * y sigue siendo muchísimo menos que "nunca".
+ */
+export const SENDING_STALE_AFTER_MINUTES = 10
+
+/** Espejo del MAX_ATTEMPTS de send-email.worker.ts. */
+const MAX_SEND_ATTEMPTS = 3
+
+const STALLED_ERROR = `El envío quedó a medias: el proceso se cayó después de tomar la notificación y antes de marcarla (más de ${SENDING_STALE_AFTER_MINUTES} min en 'sending').`
+
+export type ReclaimedNotifications = {
+  /** Vuelven a la cola: les queda al menos un intento. */
+  requeued: string[]
+  /** Agotaron los intentos; se cierran como fallidas en vez de quedar colgadas. */
+  failed: string[]
+}
+
+/**
+ * AUD-15: rescata las notificaciones que quedaron clavadas en 'sending'.
+ *
+ * Las tres salidas de 'sending' (sent / failed / vuelta a queued) viven en la
+ * misma invocación del worker que hizo el claim. Si el proceso muere en el
+ * medio — deploy de Railway, OOM, kill — la fila se queda ahí y el barrido, que
+ * sólo mira `status = 'queued'`, no la vuelve a ver jamás. El mail no sale y
+ * nadie se entera.
+ *
+ * `coalesce(sending_since, queued_at)`: las filas que ya estaban clavadas antes
+ * de la migración 086 no tienen `sending_since`, y para ellas el alta en la cola
+ * es una cota inferior perfectamente buena — si entró hace más de diez minutos y
+ * sigue en 'sending', está abandonada.
+ */
+export async function reclaimStalledSendingNotifications(): Promise<ReclaimedNotifications> {
+  const sql = getWorkerSql()
+  const rows = await sql<{ id: string; status: string }[]>`
+    UPDATE notifications
+    SET
+      status = CASE
+        WHEN attempt_count >= ${MAX_SEND_ATTEMPTS} THEN 'failed'::notification_status
+        ELSE 'queued'::notification_status
+      END,
+      last_error = ${STALLED_ERROR},
+      sending_since = NULL
+    WHERE status = 'sending'
+      AND coalesce(sending_since, queued_at)
+          < now() - make_interval(mins => ${SENDING_STALE_AFTER_MINUTES})
+    RETURNING id, status
+  `
+  return {
+    requeued: rows.filter((r) => r.status === 'queued').map((r) => r.id),
+    failed: rows.filter((r) => r.status === 'failed').map((r) => r.id),
+  }
 }
 
 export async function resolveRecipientEmail(

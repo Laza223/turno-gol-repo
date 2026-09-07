@@ -10,8 +10,10 @@ import {
   TeamHasFixtureError,
   TeamPlayerHasEventsError,
   TournamentFullError,
+  TournamentPlayerNotClientError,
   TournamentTeamNotFoundError,
 } from './tournament.errors'
+import { playerBelongsToTenant } from '@/modules/relationships/ptr.service'
 import { countEventsForTeam, countEventsForTeamPlayer } from './tournament-result.service'
 import { assertTeamHasNoPayments } from './tournament-payment.service'
 import type {
@@ -103,6 +105,16 @@ export async function addTeam(
 ): Promise<TournamentTeamRow> {
   const tournament = await getTournament(tenantId, tournamentId, tx)
 
+  // Misma clase que H-1 (auditoría de aislamiento del 2026-09-05): el id del
+  // capitán llega del cliente y sin este guard el complejo se quedaba con un
+  // puntero a una persona ajena en su propia fila de torneo.
+  if (
+    input.contactPlayerId &&
+    !(await playerBelongsToTenant(tenantId, input.contactPlayerId, tx))
+  ) {
+    throw new TournamentPlayerNotClientError(input.contactPlayerId)
+  }
+
   if (tournament.maxTeams !== null) {
     const counted = (await tx.execute(sql`
       SELECT count(*)::int AS "count"
@@ -161,6 +173,16 @@ export async function updateTeam(
   tx: DbTx,
 ): Promise<TournamentTeamRow> {
   await getTeam(tenantId, input.id, tx)
+
+  // Tercera puerta al mismo campo: la auditoría sólo nombró `addTeam` y
+  // `addTeamPlayer`, pero editar el equipo también escribe `contact_player_id`.
+  // Cerrar el alta y dejar la edición abierta no cierra nada.
+  if (
+    input.contactPlayerId &&
+    !(await playerBelongsToTenant(tenantId, input.contactPlayerId, tx))
+  ) {
+    throw new TournamentPlayerNotClientError(input.contactPlayerId)
+  }
 
   const patch: Partial<typeof tournamentTeams.$inferInsert> = {}
   if (input.name !== undefined) patch.name = input.name.trim()
@@ -317,6 +339,12 @@ export async function addTeamPlayer(
   tx: DbTx,
 ): Promise<TournamentTeamPlayerRow> {
   await getTeam(tenantId, teamId, tx)
+
+  // Igual que en addTeam: el plantel se carga a mano y `playerId` es el vínculo
+  // con una cuenta real. Sin cuenta vinculada (`null`) no hay nada que exigir.
+  if (input.playerId && !(await playerBelongsToTenant(tenantId, input.playerId, tx))) {
+    throw new TournamentPlayerNotClientError(input.playerId)
+  }
 
   try {
     const inserted = await tx

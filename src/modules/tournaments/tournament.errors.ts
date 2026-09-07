@@ -52,6 +52,21 @@ export class DuplicateShirtNumberError extends Error {
   }
 }
 
+/**
+ * El capitán o el jugador del plantel no es cliente de este complejo.
+ *
+ * Misma clase que H-1 de la auditoría de aislamiento del 2026-09-05: el id de
+ * la persona llega del cliente y hay que exigir la relación previa antes de
+ * dejarlo escrito en una fila del complejo. El buscador del panel sólo ofrece
+ * jugadores con relación, así que exigirla no cierra ningún flujo legítimo.
+ */
+export class TournamentPlayerNotClientError extends Error {
+  constructor(public readonly playerId: string) {
+    super(`Player '${playerId}' is not a client of this tenant.`)
+    this.name = 'TournamentPlayerNotClientError'
+  }
+}
+
 /** La cancha no existe, no es de este complejo, o está offline. */
 export class TournamentCourtUnavailableError extends Error {
   constructor(public readonly courtId: string) {

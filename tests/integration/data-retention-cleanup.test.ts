@@ -96,12 +96,14 @@ describe('data-retention-cleanup', () => {
         mp_refresh_token: string | null
         mp_user_id: string | null
         mp_public_key: string | null
+        mp_nickname: string | null
+        mp_connected_at: Date | null
         scheduled_deletion_at: Date | null
       }>
     >`
       SELECT status, name, email, address, phone, description, logo_url, cover_url,
              whatsapp, latitude, longitude, mp_access_token, mp_refresh_token,
-             mp_user_id, mp_public_key, scheduled_deletion_at
+             mp_user_id, mp_public_key, mp_nickname, mp_connected_at, scheduled_deletion_at
       FROM tenants WHERE id = ${tenantId}
     `
     expect(tenant.status).toBe('deleted')
@@ -122,6 +124,11 @@ describe('data-retention-cleanup', () => {
     expect(tenant.mp_refresh_token).toBeNull()
     expect(tenant.mp_user_id).toBeNull()
     expect(tenant.mp_public_key).toBeNull()
+    // AUD-09: `mp_nickname` es el nombre visible de la cuenta de MercadoPago, y
+    // en un monotributista es el nombre de una PERSONA. Quedaba en la fila
+    // después del borrado, que es justo lo que /terminos promete que no pasa.
+    expect(tenant.mp_nickname).toBeNull()
+    expect(tenant.mp_connected_at).toBeNull()
 
     // Player record itself NOT deleted (cross-tenant, Ley 25.326).
     const [playerRow] = await sql<{ id: string }[]>`

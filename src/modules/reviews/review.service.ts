@@ -9,12 +9,24 @@ import {
 } from './review.errors'
 import type { RatingSummary, ReviewRow, ReviewsPage } from './review.types'
 
-function rowToReviewRow(r: typeof reviews.$inferSelect): ReviewRow {
+/**
+ * `playerId` y `bookingId` NO se leen de la fila: llegan como argumentos de
+ * quien acaba de crearla. Desde la migración 084 el rol web ya no tiene permiso
+ * de lectura sobre `reviews.player_id` (H-2 de la auditoría del 2026-09-05: la
+ * policy de lectura es abierta y esa columna ata la reseña a una persona), así
+ * que un `.returning()` pelado acá rompería en runtime. La respuesta de la API
+ * no cambia: son los mismos valores, y son del jugador que la está pidiendo.
+ */
+function rowToReviewRow(
+  r: { id: string; tenantId: string; rating: number; comment: string | null; createdAt: Date },
+  playerId: string,
+  bookingId: string,
+): ReviewRow {
   return {
     id: r.id,
     tenantId: r.tenantId,
-    playerId: r.playerId,
-    bookingId: r.bookingId,
+    playerId,
+    bookingId,
     rating: r.rating,
     comment: r.comment ?? null,
     createdAt: r.createdAt,
@@ -71,8 +83,14 @@ export async function createReview(
       rating,
       comment,
     })
-    .returning()
-  return rowToReviewRow(inserted[0]!)
+    .returning({
+      id: reviews.id,
+      tenantId: reviews.tenantId,
+      rating: reviews.rating,
+      comment: reviews.comment,
+      createdAt: reviews.createdAt,
+    })
+  return rowToReviewRow(inserted[0]!, playerId, bookingId)
 }
 
 /**

@@ -18,6 +18,8 @@ import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 import { MpPayerEmailSection } from '@/app/(admin)/settings/facturacion/MpPayerEmailSection'
 import { updateMpPayerEmailAction } from '@/app/(admin)/settings/facturacion/actions'
 import { SUPPORT_EMAIL } from '@/shared/constants'
+import { SwitchTenantLink } from '@/app/(public)/SwitchTenantLink'
+import { resolveStaffTenants } from '@/modules/auth/auth.service'
 
 // ENS-20: destino del "recovery por UI" del ciclo de dunning
 // (past_due → suspended → blocked → churned). Vive fuera de (admin) para
@@ -95,8 +97,11 @@ export default async function ReactivarPage() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) redirect('/login')
+
+  // Mismo criterio que /suspended: la salida solo se ofrece si hay a dónde ir.
+  const variosComplejos = (await resolveStaffTenants(user.staffUserId)).length > 1
 
   // Ya regularizado (o todavía en trial): no hay nada que reactivar acá.
   if (tenant.status === 'active' || tenant.status === 'trialing') redirect('/dashboard')
@@ -111,6 +116,7 @@ export default async function ReactivarPage() {
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
           Pedile al dueño del complejo que regularice el pago para volver a operar.
         </p>
+        {variosComplejos && <SwitchTenantLink />}
       </section>
     )
   }
@@ -221,6 +227,12 @@ export default async function ReactivarPage() {
           accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
           context="reactivar"
         />
+      )}
+
+      {variosComplejos && (
+        <div className="flex flex-col items-center">
+          <SwitchTenantLink />
+        </div>
       )}
     </section>
   )

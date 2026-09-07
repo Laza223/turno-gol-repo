@@ -1,12 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import SuspendedPage from './page'
+import { SuspendedView } from './SuspendedView'
 
+// La story monta la vista y no `page.tsx`: desde AUD-01 la página resuelve la
+// sesión, y eso arrastra `node:async_hooks`, que en el navegador de Storybook
+// no existe.
 const meta = {
   title: 'Public/SuspendedPage',
-  component: SuspendedPage,
+  component: SuspendedView,
   parameters: { layout: 'fullscreen' },
-} satisfies Meta<typeof SuspendedPage>
+  args: { mostrarCambioDeComplejo: false },
+} satisfies Meta<typeof SuspendedView>
 
 export default meta
 type Story = StoryObj<typeof meta>

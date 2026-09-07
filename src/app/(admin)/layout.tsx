@@ -57,7 +57,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (user.forcePasswordChange) redirect('/reset-password')
   if (!user.tenantId) redirect('/onboarding')
 
-  const tenant = await getStaffTenant(user.staffUserId)
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) redirect('/login')
 
   // Billing-driven hard lock: tenants in these terminal/restricted states cannot

@@ -51,9 +51,16 @@ import type {
 // caza-bugs #7: los pasos 2-4 del wizard (horarios, canchas, cerrar
 // onboarding) son Configuración — solo-admin, igual que /settings y /canchas
 // fuera del wizard. requireAdminStaffAction resuelve tenant+rol por DB
-// (getStaffTenant + getStaffRole, NUNCA por el claim JWT), así que sigue
-// funcionando aunque setStaffTenantClaim del Paso 1 todavía no haya
-// propagado al JWT — no reintroduce el problema que este guard evitaba.
+// (getStaffTenant + getStaffRole), así que sigue funcionando aunque
+// setStaffTenantClaim del Paso 1 todavía no haya propagado al JWT — no
+// reintroduce el problema que este guard evitaba. AUD-01 le agregó a
+// getStaffTenant el claim como PREFERENCIA, no como fuente: si falta, o
+// apunta a un complejo sin membresía activa, cae igual a la membresía por DB.
+// La preferencia importa acá por la impersonación del SuperAdmin, que entra
+// al wizard con el staff_user_id de un admin proxy: sin ella, un proxy que
+// además administra otro complejo más viejo resolvía ESE en las páginas del
+// wizard, y el POST escribía sobre el impersonado con datos precargados del
+// ajeno.
 
 export async function createTenantAction(
   _prevState: WizardActionResult,
@@ -69,7 +76,7 @@ export async function createTenantAction(
   // #35: idempotencia. Si el staff ya tiene un tenant (ej. volvio con "atras" del
   // navegador y reenvio el Paso 1), no crear un duplicado ni una segunda fila en
   // tenant_staff_members: devolver success con el tenant existente.
-  const existingTenant = await getStaffTenant(user.staffUserId)
+  const existingTenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (existingTenant) return { success: true, next: stepPath(2), hardNavigate: true }
 
   // doc10 §2: el wizard NO pide teléfono/email del complejo — ya los pidió

@@ -208,9 +208,21 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
  * base en otra región cada repetición es una ida y vuelta entera. La ventana es
  * un request: ninguna Server Action lo lee dos veces esperando ver una escritura
  * intermedia.
+ *
+ * Resuelve el complejo activo de la sesión con DOS fuentes posibles (AUD-01):
+ * la membresía en `tenant_staff_members` (la fuente de verdad) y el
+ * `preferredTenantId` opcional, que es el claim `app_metadata.tenant_id` del
+ * JWT — lo que el staff eligió en /select-tenant. Si viene y el staff tiene
+ * una membresía ACTIVA ahí, se devuelve ese. Si no viene, o el claim apunta a
+ * un complejo donde el staff no tiene membresía activa, se cae a la membresía
+ * activa más antigua (comportamiento de siempre). El claim nunca se honra a
+ * ciegas: nadie lo revalida al escribirlo, y esta función alimenta lo que se
+ * pinta en el panel sin volver a mirar el rol — un claim hacia un complejo
+ * ajeno jamás puede hacer que esto devuelva ese complejo.
  */
 export const getStaffTenant = cache(async function getStaffTenant(
   staffUserId: string,
+  preferredTenantId?: string | null,
 ): Promise<TenantRow | null> {
   // Called before any tenant_id is known (that's what it's resolving) —
   // RLS on tenant_staff_members requires app.current_tenant_id, which
@@ -226,8 +238,11 @@ export const getStaffTenant = cache(async function getStaffTenant(
       and(eq(tenantStaffMembers.staffUserId, staffUserId), eq(tenantStaffMembers.isActive, true)),
     )
     .orderBy(tenantStaffMembers.createdAt)
-    .limit(1)
   if (!rows.length) return null
+  if (preferredTenantId) {
+    const preferido = rows.find((row) => row.tenants.id === preferredTenantId)
+    if (preferido) return rowToTenantRow(preferido.tenants)
+  }
   return rowToTenantRow(rows[0].tenants)
 })
 

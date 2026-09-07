@@ -18,6 +18,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
+// AUD-01: la página ofrece "Cambiar de complejo" al staff multi-complejo.
+vi.mock('@/modules/auth/auth.service', () => ({ resolveStaffTenants: vi.fn(async () => []) }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
 // listCourts (llamada desde ReactivarPage para defaultCourts) hace

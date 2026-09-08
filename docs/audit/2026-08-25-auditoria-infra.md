@@ -160,7 +160,7 @@ los de Railway estén mal.
 | **M-5** ✅ | Railway sin healthcheck y con tope de 10 reinicios — *cerrado el 2026-08-26, ver §14 y §15* | Settings → *Healthcheck Path* vacío; `railway.toml`: `restartPolicyType = "ON_FAILURE"`, `restartPolicyMaxRetries = 10` | "Online" no prueba que el worker trabaje; un proceso colgado no reinicia nunca, y a la 11ª caída queda muerto. Hoy lo tapa UptimeRobot (P-12), pero el candado propio de la plataforma no existe |
 | **M-6** ✅ | **100 policies RLS re-evalúan la función de contexto por fila** (`auth_rls_initplan`), 48 policies permissive duplicadas, 26 foreign keys sin índice | Supabase advisors (performance): 148 WARN + 49 INFO | Es el techo de performance de la grilla y de Personas cuando entre un complejo con miles de reservas. Se arregla envolviendo en `(select …)` y unificando policies — **Cerrado el 2026-08-25 sin tocar SQL: los 148 avisos WARN son falso positivo (100) o el diseño dual documentado (48). Medido con EXPLAIN bajo un rol sin BYPASSRLS — ver §5.2.** |
 | **M-7** ⏸️ | Compute **Nano** con el pool casi tomado en reposo | Panel: pool size 15 (default de Nano), `max_connections` 60. Medido ahora: 6 conexiones de `turnogol_app` + 3 de `turnogol_worker` = 9 de 15 **sin tráfico** | Es la causa estructural de F-002. Con Pro, subir a Micro entra casi entero en el crédito de cómputo incluido — **Medido el 2026-08-25: base de 35 MB, 22/60 conexiones. No se sube el compute — ver §5.4.** |
-| **M-8** ◐ | **DMARC en `p=none` y sin dirección de reportes** — *mitad hecha el 2026-08-25* | El TXT pasó a `"v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"`, resuelto contra `8.8.8.8`. Para que ese buzón exista se prendió **Cloudflare Email Routing** en la zona: destino `turnogol@gmail.com` **Verificado**, regla `dmarc@turnogol.app → turnogol@gmail.com` **Activa**, y los 5 registros que pide el servicio creados en el apex (3 MX `route{1,2,3}.mx.cloudflare.net`, el DKIM `cf2024-1._domainkey` y un `v=spf1 include:_spf.mx.cloudflare.net ~all`), todos resueltos por DNS. Estado del servicio: *Activado / Registros DNS Activado* | El correo saliente NO se toca: el Return-Path de Resend es `send.turnogol.app` con su propio SPF, y el DKIM `resend._domainkey.turnogol.app` firma con `d=turnogol.app`, así que la alineación DMARC sigue viniendo por DKIM. **Falta**: juntar dos semanas de reportes y recién ahí pasar a `p=quarantine`. **Sin verificar end-to-end**: no se mandó un mail de prueba a `dmarc@turnogol.app`; el primer reporte real (24-48 h) es la prueba |
+| **M-8** ✅ | **DMARC en `p=none` y sin dirección de reportes** — *mitad hecha el 2026-08-25, **CERRADO el 2026-09-08** en `p=quarantine; pct=25`, ver §24* | El TXT pasó a `"v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"`, resuelto contra `8.8.8.8`. Para que ese buzón exista se prendió **Cloudflare Email Routing** en la zona: destino `turnogol@gmail.com` **Verificado**, regla `dmarc@turnogol.app → turnogol@gmail.com` **Activa**, y los 5 registros que pide el servicio creados en el apex (3 MX `route{1,2,3}.mx.cloudflare.net`, el DKIM `cf2024-1._domainkey` y un `v=spf1 include:_spf.mx.cloudflare.net ~all`), todos resueltos por DNS. Estado del servicio: *Activado / Registros DNS Activado* | El correo saliente NO se toca: el Return-Path de Resend es `send.turnogol.app` con su propio SPF, y el DKIM `resend._domainkey.turnogol.app` firma con `d=turnogol.app`, así que la alineación DMARC sigue viniendo por DKIM. Confirmado por los reportes: las dos semanas de observación dejaron 6 reportes con 12 mensajes, **todos DKIM y SPF `pass`, cero fuentes ajenas**. El 2026-09-08 el TXT pasó a `"v=DMARC1; p=quarantine; pct=25; rua=mailto:dmarc@turnogol.app"` — ver §24 |
 | **M-9** ✅ | Vercel Firewall **sin una sola regla propia** — *CERRADO el 2026-08-28, ver §23.1: las 4 reglas de §21 están publicadas y activas* | Panel → Firewall → Rules: 5 reglas activas (la de vulnerability paths + las 4 nuevas). Tráfico del día del cierre: 870 permitidos, 2.8k denegados | El rate-limit de la app vive en el runtime (Upstash): cada request abusiva ya gastó una función. Los caminos de plata (`/api/webhooks/*`, `/api/public/*`, login) ahora se frenan en el borde |
 | **M-10** → 🟢 | CSP con `script-src 'unsafe-inline'` en producción — *degradado a 🟢 y ACEPTADO el 2026-08-27, ver §22.3* | Header medido en `https://turnogol.app/` | Relevada la superficie de XSS completa: sin vía de explotación práctica (los 3 `dangerouslySetInnerHTML` son constantes o van con escapado anti-`</script>`; sin campo de URL libre; todo el texto de usuario sale por JSX escapado). Es defensa en profundidad, no un agujero. Se reabre si aparece un campo de URL libre o un `dangerouslySetInnerHTML` con datos de la DB |
 | **M-11** ✅ | Un secreto de más en el runtime de Vercel — *cerrado el 2026-08-25, ver paso 3* | `SENTRY_READ_TOKEN` en Production y Preview | Solo lo lee `scripts/sentry-issues.ts`, que corre local contra `.env.production`. **Corrección respecto de la primera versión de este documento**: `SENTRY_AUTH_TOKEN` NO sobra — `next.config.ts:125` se lo pasa a `withSentryConfig` para subir los sourcemaps, así que el build lo necesita y se queda |
@@ -2128,7 +2128,8 @@ la conversación de arquitectura de §21 se reabre con la evidencia ya juntada.
 
 Los tres hallazgos que quedaban abiertos no eran de código: vivían en paneles
 de terceros. Se cerraron los tres el mismo día, uno por medición y dos
-tocando el panel. Queda **solo M-8**, que es de calendario.
+tocando el panel. Quedaba **solo M-8**, que era de calendario: se cerró el
+2026-09-08, ver §24.
 
 ### 23.1 M-9 — Firewall: de una regla a cinco
 
@@ -2229,3 +2230,85 @@ robots.txt** para declarar que el contenido no puede usarse para IA.
 Dato que importa más que los tres: AI Crawl Control registra **0 solicitudes y
 0 fallidas** en 24 h en las 10 familias de crawlers. No los bloquean —
 todavía no vienen. Eso no se arregla con infraestructura.
+
+---
+
+## 24. M-8 CERRADO — DMARC en `p=quarantine; pct=25` — 2026-09-08
+
+Se cumplieron las dos semanas de observación que pedía la fila M-8. Antes de
+endurecer se verificó todo lo que, de estar mal, mandaría a spam
+los propios mails de TurnoGol (confirmaciones de reserva, magic links,
+recupero de contraseña):
+
+| Chequeo | Resultado |
+|---|---|
+| SPF del apex | `v=spf1 include:_spf.mx.cloudflare.net ~all` |
+| SPF del Return-Path | `send.turnogol.app`: `v=spf1 include:amazonses.com ~all` |
+| DKIM de Resend | `resend._domainkey.turnogol.app` publica la clave `p=MIGf…` |
+| Dominio en Resend | `verified`, envío habilitado, región `sa-east-1` |
+| Últimos 10 envíos reales | los 10 en `delivered`, varios a Gmail |
+
+### 24.1 Los reportes: 6 en la ventana, cero fallas
+
+Llegaron a `dmarc@turnogol.app` (Cloudflare Email Routing lo reenvía a
+`turnogol@gmail.com`), los seis emitidos por `google.com`. Se leyeron los
+seis XML —descomprimidos desde el navegador, sin bajar los adjuntos:
+
+| Día del reporte | Registros | Mensajes | DKIM | SPF | Disposición |
+|---|---|---|---|---|---|
+| 2026-08-28 | 5 | 7 | pass | pass | none |
+| 2026-08-29 | 1 | 1 | pass | pass | none |
+| 2026-08-30 | 1 | 1 | pass | pass | none |
+| 2026-09-02 | 1 | 1 | pass | pass | none |
+| 2026-09-05 | 1 | 1 | pass | pass | none |
+| 2026-09-06 | 1 | 1 | pass | pass | none |
+
+12 mensajes en total. Todos con `header_from = turnogol.app`, todos desde el
+rango `23.249.215.0/24` de Resend, todos con doble firma DKIM válida
+(`turnogol.app` selector `resend` **y** `amazonses.com`) y SPF `pass` sobre
+`send.turnogol.app`. **Ninguna fuente ajena y ninguna falla de autenticación
+en toda la ventana.**
+
+Eso confirma lo que la fila M-8 daba por sentado: la alineación viene por
+DKIM, y con `adkim=r` publicado el Return-Path en un subdominio no rompe
+nada.
+
+**El punto ciego, dicho explícitamente**: los seis reportes son de Google.
+Microsoft no emite reportes agregados DMARC, así que del lado Outlook/Hotmail
+no hay datos. Es exactamente la razón del `pct=25`.
+
+### 24.2 El cambio
+
+Un solo renglón, en Cloudflare → `turnogol.app` → DNS → Registros → TXT
+`_dmarc`:
+
+```
+antes:    "v=DMARC1; p=none; rua=mailto:dmarc@turnogol.app"
+después:  "v=DMARC1; p=quarantine; pct=25; rua=mailto:dmarc@turnogol.app"
+```
+
+El `pct=25` aplica la política a un cuarto del correo sospechoso: si algo se
+rompe, se rompe con un cuarto del daño y los reportes lo muestran igual.
+
+Verificado contra dos resolvers, no uno:
+
+```
+nslookup -type=TXT _dmarc.turnogol.app 8.8.8.8
+nslookup -type=TXT _dmarc.turnogol.app keenan.ns.cloudflare.com
+```
+
+Los dos devuelven el valor nuevo.
+
+**Nota de método, igual que en §23.3**: el clasificador de permisos volvió a
+bloquear la escritura directa sobre el DNS de producción vía JavaScript en la
+página. No se rodeó: el cambio se hizo por el formulario del panel, que es la
+vía normal, y con autorización explícita de Lazar en el momento.
+
+### 24.3 Lo que sigue, y cuándo
+
+1. **1-2 semanas limpias** (hasta ~2026-09-22): revisar los reportes nuevos.
+   Lo único que importa es que no aparezca una fuente legítima con
+   `disposition = quarantine`.
+2. Si están limpias, subir a `pct=100` manteniendo `p=quarantine`.
+3. `p=reject` recién después, y solo si para entonces hay volumen real de
+   correo. Con 12 mensajes en dos semanas, apurarlo no compra nada.

@@ -1,0 +1,7 @@
+gh[[:space:]]+pr[[:space:]]+review
+--approve
+createPullRequestReview
+pulls/[^[:space:]]*/reviews
+["']?event["']?[[:space:]]*[:=][[:space:]]*["']?APPROVE
+auto-approve-action
+approve-pull-request

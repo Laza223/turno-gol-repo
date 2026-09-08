@@ -33,3 +33,35 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --prod --audit-level=high
+
+  # El repo tiene habilitado "Allow GitHub Actions to create and approve pull
+  # requests", porque sentry-triage-pr.yml necesita la mitad "create" para
+  # dejar el arreglo del triage diario como PR. GitHub no las separa: viene con
+  # la mitad "approve" incluida, y esa es la que preocupa — una aprobación
+  # emitida por un workflow puede contar como revisión y abrirle la puerta a un
+  # merge que ninguna persona miró.
+  #
+  # Este job es el trinquete. Ninguno de los workflows aprueba nada hoy
+  # (verificado el 2026-09-08); esto hace que el día que alguno lo intente, el
+  # CI se ponga en rojo antes de que llegue a main.
+  #
+  # Los patrones viven en .github/no-aprobar-pr.grep, FUERA de workflows/, por
+  # una razón concreta: si estuvieran escritos acá adentro, el propio grep se
+  # encontraría a sí mismo y el job fallaría siempre. Sacarlos afuera también
+  # deja que el escaneo cubra este mismo archivo.
+  workflows-no-aprueban:
+    name: Ningún workflow aprueba PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar llamadas de aprobación en los workflows
+        run: |
+          set -uo pipefail
+          if grep -rEn -f .github/no-aprobar-pr.grep .github/workflows/; then
+            echo "::error::Un workflow aprueba pull requests. Con 'Allow GitHub Actions to create and approve pull requests' habilitado, esa aprobación puede contar como revisión humana y dejar mergear algo que nadie miró. Si el caso es legítimo, la discusión es en el PR y este job se ajusta a mano — no se saca."
+            exit 1
+          fi
+          echo "Ningún workflow aprueba pull requests."

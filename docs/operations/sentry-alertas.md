@@ -54,7 +54,13 @@ El contrato entre los dos es el **mensaje del commit**: su primera línea es el 
 Nada se mergea solo. Abrir el PR es todo lo que hace la automatización; revisar y mergear es siempre de una persona. Ese es el punto de que el arreglo llegue como PR y no como un commit en main.
 
 > [!IMPORTANT]
-> El workflow necesita que esté activo **Allow GitHub Actions to create and approve pull requests** en Settings → Actions → General. Si no lo está, el job falla con un mensaje que lo dice, y la rama igual queda pusheada: el PR se puede abrir a mano desde GitHub mientras tanto.
+> El workflow necesita que esté activo **Allow GitHub Actions to create and approve pull requests** en Settings → Actions → General. **Habilitado el 2026-09-08** y probado de punta a punta: sin él, el job muere con `GitHub Actions is not permitted to create or approve pull requests (createPullRequest)`; con él, el PR se abre. Si alguna vez se apaga, el circuito degrada sin perder nada: la rama igual queda pusheada y el PR se abre a mano.
+
+**El costo de ese permiso, y cómo se paga.** GitHub no separa las dos mitades: para que Actions pueda *crear* un PR, también puede *aprobarlo*. Y una aprobación emitida por un workflow puede contar como revisión, que es justo lo que hace falta para que algo se mergee sin que nadie lo haya mirado. El reparo lo levantó el dueño al habilitarlo, y es correcto.
+
+Se paga con un trinquete, no con una promesa: el job **`Ningún workflow aprueba PRs`** de [`security.yml`](../../.github/workflows/security.yml) corre en cada PR y pone el CI en rojo si algún workflow gana una llamada de aprobación. Hoy ninguno la tiene. Los patrones viven en `.github/no-aprobar-pr.grep`, **fuera** de `workflows/`, para que el grep no se encuentre a sí mismo y para que el escaneo cubra también al archivo que lo ejecuta.
+
+Ese job cubre lo que pasa *dentro* del repo. Lo que no puede cubrir es el otro lado: que `main` exija revisión humana y que el auto-merge esté apagado. Eso es configuración de GitHub y hay que mirarlo a mano — desde una sesión de Claude Code la API de protección de ramas devuelve 403.
 
 ## A pedido, en cualquier momento
 

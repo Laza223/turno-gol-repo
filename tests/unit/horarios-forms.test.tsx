@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { HorariosActionResult } from '@/app/(admin)/settings/horarios/actions'
 
 // RemoveClosedDateForm usa useRouter() para refrescar tras el Deshacer (§6.2 clase A).
@@ -86,6 +86,28 @@ describe('HorariosForms — feedback (#19)', () => {
     formState.mockReturnValue({ success: true })
     render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  // Auto-relleno de precios al cambiar el horario (decisión del dueño): el
+  // dueño tiene que enterarse de que algo se completó solo, no descubrirlo
+  // después con un jugador chocándose con un turno sin precio.
+  it('avisa cuántos horarios se completaron solos cuando el cambio de horario dejó huecos', () => {
+    formState.mockReturnValue({
+      success: true,
+      pricingFilled: { courts: 2, cells: 5 },
+    })
+    render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
+    expect(screen.getByRole('status').textContent).toMatch(
+      /Completamos 5 horarios sin precio en 2 canchas/,
+    )
+  })
+
+  it('sin huecos que completar, el aviso de guardado no menciona precios', () => {
+    formState.mockReturnValue({ success: true })
+    render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
+    expect(screen.getByRole('status').textContent).toBe('Horarios guardados.')
   })
 })
 

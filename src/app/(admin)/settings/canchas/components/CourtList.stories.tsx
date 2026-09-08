@@ -22,6 +22,8 @@ const meta = {
   args: {
     initialCourts: courts(),
     openingHours: openingHours(),
+    tenantId: 'tenant-story',
+    closesNextDay: false,
     isAdmin: true,
     tenantName: 'Complejo Fénix',
     toggleStatusAction: fn(async () => ({ success: true as const, courtId: 'court-1' })),

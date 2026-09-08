@@ -28,6 +28,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     openingHours: HOURS,
+    closesNextDay: false,
     initialRules: [],
     otherCourts: [],
     onRulesChange: fn(),

@@ -64,7 +64,12 @@ const SURFACE_LABELS: Record<string, string> = {
 
 type Props = {
   initialCourts: CourtRow[]
+  /** Solo para telemetría: el evento de "me trabé cargando precios" tiene que
+   *  decir QUÉ complejo se trabó, y en el cliente no hay otra forma de saberlo
+   *  (una cancha nueva todavía no existe, así que no lo trae en `court`). */
+  tenantId: string
   openingHours: OpeningHours
+  closesNextDay: boolean
   isAdmin: boolean
   tenantName: string
   toggleStatusAction: ToggleCourtStatusAction
@@ -78,7 +83,9 @@ type Props = {
 
 export function CourtList({
   initialCourts,
+  tenantId,
   openingHours,
+  closesNextDay,
   isAdmin,
   tenantName,
   toggleStatusAction,
@@ -153,7 +160,9 @@ export function CourtList({
         {header}
         <CourtForm
           court={editingCourt}
+          tenantId={tenantId}
           openingHours={openingHours}
+          closesNextDay={closesNextDay}
           otherCourts={courts
             .filter((c) => c.id !== editingCourt?.id)
             .map((c) => ({ id: c.id, name: c.name, rules: c.pricing.rules }))}

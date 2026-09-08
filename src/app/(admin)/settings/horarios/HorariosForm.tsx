@@ -60,6 +60,20 @@ export function HorariosForm({
         {didSubmit && state.success && (
           <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
             Horarios guardados.
+            {state.pricingFilled && (
+              <>
+                {' '}
+                Completamos {state.pricingFilled.cells} horario
+                {state.pricingFilled.cells === 1 ? '' : 's'} sin precio en{' '}
+                {state.pricingFilled.courts} cancha
+                {state.pricingFilled.courts === 1 ? '' : 's'} con el de la hora de al lado.
+                Revisalos en{' '}
+                <a href="/settings/canchas" className="font-medium underline underline-offset-2">
+                  Canchas
+                </a>
+                .
+              </>
+            )}
           </p>
         )}
       </div>

@@ -17,6 +17,8 @@ const meta = {
   args: {
     court: null,
     openingHours: HOURS,
+    tenantId: 'tenant-story',
+    closesNextDay: false,
     otherCourts: [],
     onSaved: fn(),
     onCancel: fn(),

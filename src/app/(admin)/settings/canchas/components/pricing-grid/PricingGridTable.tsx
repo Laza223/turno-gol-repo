@@ -14,6 +14,7 @@ import { cellKey, heatStyle } from './cell-utils'
 
 type Props = {
   openingHours: OpeningHours
+  closesNextDay: boolean
   grid: PriceGrid
   hours: number[]
   dayCount: number
@@ -33,6 +34,7 @@ type Props = {
 /** Matriz día × hora: encabezados, celdas de precio (heat map) y editor inline. */
 export function PricingGridTable({
   openingHours,
+  closesNextDay,
   grid,
   hours,
   dayCount,
@@ -82,7 +84,7 @@ export function PricingGridTable({
               </th>
               {DAY_KEYS.map((day) => {
                 const key = cellKey(day, hour)
-                const active = isHourActive(openingHours[day], hour)
+                const active = isHourActive(openingHours[day], hour, closesNextDay)
                 if (!active) {
                   return (
                     <td

@@ -7,6 +7,7 @@ import { cellKey, parseCellKey } from './cell-utils'
 
 type Params = {
   openingHours: OpeningHours
+  closesNextDay: boolean
   grid: PriceGrid
   onGridChange: (next: PriceGrid) => void
 }
@@ -18,7 +19,7 @@ type Params = {
  * tabla. Recibe la grilla controlada (`grid`/`onGridChange`, spec §3.3): nunca
  * muta estado propio de precios, sólo re-emite hacia arriba.
  */
-export function useCellSelection({ openingHours, grid, onGridChange }: Params) {
+export function useCellSelection({ openingHours, closesNextDay, grid, onGridChange }: Params) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [anchor, setAnchor] = useState<string | null>(null)
   const [selectMode, setSelectMode] = useState(false)
@@ -43,7 +44,7 @@ export function useCellSelection({ openingHours, grid, onGridChange }: Params) {
     const next: PriceGrid = { ...grid }
     for (const key of keys) {
       const { day, hour } = parseCellKey(key)
-      if (!isHourActive(openingHours[day], hour)) continue
+      if (!isHourActive(openingHours[day], hour, closesNextDay)) continue
       const dayCells = { ...(next[day] ?? {}) }
       if (cents == null) delete dayCells[hour]
       else dayCells[hour] = cents
@@ -65,7 +66,7 @@ export function useCellSelection({ openingHours, grid, onGridChange }: Params) {
     for (let di = dLo; di <= dHi; di++) {
       const day = DAY_KEYS[di]!
       for (let h = hLo; h <= hHi; h++) {
-        if (isHourActive(openingHours[day], h)) out.push(cellKey(day, h))
+        if (isHourActive(openingHours[day], h, closesNextDay)) out.push(cellKey(day, h))
       }
     }
     return out

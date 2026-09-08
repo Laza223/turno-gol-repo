@@ -29,7 +29,9 @@ export default async function SettingsCanchasPage() {
       <div className="card-entrance" style={{ animationDelay: '120ms' }}>
         <CourtList
           initialCourts={courts}
+          tenantId={tenant.id}
           openingHours={tenant.openingHours}
+          closesNextDay={tenant.closesNextDay}
           isAdmin={role === 'admin'}
           tenantName={tenant.name}
           toggleStatusAction={toggleCourtStatusAction}

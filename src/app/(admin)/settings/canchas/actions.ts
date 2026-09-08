@@ -20,7 +20,7 @@ import {
 import { CourtPhotoLimitError, CourtPhotoOrderMismatchError } from '@/modules/courts/court.errors'
 import { createCourtSchema, updateCourtSchema } from '@/modules/courts/court.schema'
 import { bookings, abonados } from '@/shared/db/schema'
-import { captureException } from '@/lib/sentry'
+import { captureException, captureMessage } from '@/lib/sentry'
 
 export type CourtActionResult =
   { success: true; courtId?: string } | { success: false; error: string }
@@ -67,18 +67,33 @@ export async function createCourtAction(formData: FormData): Promise<CourtAction
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  const coverage = validatePricingRulesCoverage(parsed.data.pricing.rules, tenant.openingHours)
+  const coverage = validatePricingRulesCoverage(
+    parsed.data.pricing.rules,
+    tenant.openingHours,
+    tenant.closesNextDay,
+  )
   if (!coverage.valid) {
     const sample = coverage.gaps
       .slice(0, 3)
       .map((g) => `${g.day} ${g.time}`)
       .join(', ')
+    // Regla de negocio funcionando, no una excepción — pero sin esto queda
+    // invisible: un complejo real quedó trabado sin poder cargar canchas y
+    // sólo se supo por WhatsApp (docs/gtm/ejecucion/10-aprendizajes.md).
+    captureMessage('crear cancha: cobertura de precios incompleta', {
+      level: 'warning',
+      extra: { tenantId: tenant.id, gapsCount: coverage.gaps.length, sample },
+    })
     return { success: false, error: `Precios sin cubrir: ${sample}` }
   }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
     const { count, maxCourts } = await getCourtCountAndLimit(tenant.id, tx)
     if (maxCourts !== null && count >= maxCourts) {
+      captureMessage('crear cancha: techo de plan alcanzado', {
+        level: 'warning',
+        extra: { tenantId: tenant.id, count, maxCourts },
+      })
       return {
         success: false as const,
         error: `Tu plan soporta hasta ${maxCourts} canchas. Hacé upgrade para agregar más.`,
@@ -130,12 +145,21 @@ export async function updateCourtAction(
   }
 
   if (parsed.data.pricing) {
-    const coverage = validatePricingRulesCoverage(parsed.data.pricing.rules, tenant.openingHours)
+    const coverage = validatePricingRulesCoverage(
+      parsed.data.pricing.rules,
+      tenant.openingHours,
+      tenant.closesNextDay,
+    )
     if (!coverage.valid) {
       const sample = coverage.gaps
         .slice(0, 3)
         .map((g) => `${g.day} ${g.time}`)
         .join(', ')
+      // Ver comentario en createCourtAction: sin esto el bloqueo es mudo.
+      captureMessage('editar cancha: cobertura de precios incompleta', {
+        level: 'warning',
+        extra: { tenantId: tenant.id, courtId, gapsCount: coverage.gaps.length, sample },
+      })
       return { success: false, error: `Precios sin cubrir: ${sample}` }
     }
   }

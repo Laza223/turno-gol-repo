@@ -4,6 +4,7 @@ import { useCallback, useState, useTransition } from 'react'
 import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { countEmptyCells, expandRulesToGrid } from '@/modules/courts/pricing-grid'
+import { track } from '@/shared/observability/breadcrumbs'
 import type { CourtActionResult, CourtPhotoActionResult } from '../actions'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
 import { Button } from '@/components/ui/button'
@@ -41,7 +42,12 @@ const FORMAT_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11] as const
 
 type Props = {
   court: CourtRow | null
+  /** Complejo dueño del formulario. Llega por prop y no de `court` porque al
+   *  crear una cancha `court` es null, y ese —el alta de la primera cancha— es
+   *  justo el caso donde más importa saber quién se trabó. */
+  tenantId: string
   openingHours: OpeningHours
+  closesNextDay: boolean
   /** Otras canchas del complejo, para "Copiar precios de otra cancha". */
   otherCourts: CourtPricingSource[]
   onSaved: (court: CourtRow) => void
@@ -55,7 +61,9 @@ type Props = {
 
 export function CourtForm({
   court,
+  tenantId,
   openingHours,
+  closesNextDay,
   otherCourts,
   onSaved,
   onCancel,
@@ -77,7 +85,11 @@ export function CourtForm({
   const initialRules = court?.pricing.rules ?? []
   const [rules, setRules] = useState<PricingRule[]>(initialRules)
   const [emptyCount, setEmptyCount] = useState<number>(() =>
-    countEmptyCells(expandRulesToGrid(initialRules, openingHours), openingHours),
+    countEmptyCells(
+      expandRulesToGrid(initialRules, openingHours, closesNextDay),
+      openingHours,
+      closesNextDay,
+    ),
   )
 
   const [photos, setPhotos] = useState<string[]>(court?.photos ?? [])
@@ -118,7 +130,12 @@ export function CourtForm({
     setError(null)
     // Gate client-side (el server valida cobertura igual, de backstop): guardar
     // con huecos dejaría horas operativas sin precio → irreservables online.
+    // El auto-relleno (PricingSection) ya completa las celdas al abrir el
+    // editor, así que llegar acá significa que la persona las vació a mano
+    // después (ej. "Ajustar por hora" → borrar selección) — antes este corte
+    // era mudo, sin ninguna señal de que alguien se había atascado justo acá.
     if (emptyCount > 0) {
+      track.courts('courts.pricing_save_blocked', { tenantId, emptyCount })
       setError(
         `No se puede guardar: falta${emptyCount === 1 ? '' : 'n'} ${emptyCount} horario${
           emptyCount === 1 ? '' : 's'
@@ -242,6 +259,7 @@ export function CourtForm({
 
         <PricingSection
           openingHours={openingHours}
+          closesNextDay={closesNextDay}
           initialRules={initialRules}
           otherCourts={otherCourts}
           onRulesChange={handleRulesChange}

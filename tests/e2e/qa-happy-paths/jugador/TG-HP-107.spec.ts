@@ -48,7 +48,7 @@ test.describe('TG-HP-107 — Mis reservas: tabs Próximos/Historial', () => {
 
       // Tab default = Próximos: el futuro está, el pasado NO.
       await expect(page.getByText(`${FUTURE_TIME_START}–${FUTURE_TIME_END}`)).toBeVisible()
-      await expect(page.getByText('Confirmado').first()).toBeVisible()
+      await expect(page.getByText('Confirmada').first()).toBeVisible()
       await expect(page.getByText(`${PAST_TIME_START}–${PAST_TIME_END}`)).not.toBeVisible()
 
       // Click en tab Historial → navega con ?tab=historial y refiltra server-side.

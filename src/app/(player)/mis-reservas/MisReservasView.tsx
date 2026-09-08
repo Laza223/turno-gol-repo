@@ -1,19 +1,12 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import {
-  CalendarX,
-  CheckCheck,
-  CheckCircle2,
-  Clock,
-  Compass,
-  MapPin,
-  RotateCcw,
-  UserX,
-  XCircle,
-  type LucideIcon,
-} from 'lucide-react'
+import { CalendarX, Compass, MapPin, RotateCcw } from 'lucide-react'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { Pager } from '@/components/ui/pager'
+import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badge'
+import { TONE_BADGE, TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
+import { playerBookingVisual } from './status-visual'
 import { RefundContactPanel } from './RefundContactPanel'
 import type { RefundContactInfo } from './actions'
 import { CancelBookingButton, type CancelMyBookingAction } from './CancelBookingButton'
@@ -72,52 +65,14 @@ function dateParts(dateStr: string): { weekday: string; day: string; month: stri
   }
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  confirmed: 'Confirmado',
-  pending_payment: 'Pago pendiente',
-  completed: 'Jugada',
-  // "con reembolso" prometía plata que puede no haberse movido todavía: el
-  // estado se fija al cancelar, antes de que nadie devuelva nada. Quién debe
-  // qué lo cuenta el panel de devolución de abajo, que sí lee `payments`.
-  canceled_refunded: 'Cancelado',
-  canceled_no_refund: 'Cancelado (sin reembolso)',
-  no_show: 'Ausente',
-  expired: 'Expirado',
+/**
+ * El bloque-fecha toma el MISMO tono que el badge: el tinte de fondo y el color
+ * del label salen de la tabla del sistema, así la tarjeta no puede decir una
+ * cosa en el badge y otra en el bloque de la izquierda.
+ */
+function dateBlockClass(tone: StatusBadgeVisual['tone']): string {
+  return cn(TONE_TINT[tone], TONE_TEXT[tone])
 }
-
-// §6.5: estado = color + ícono + texto, nunca color solo. Los textos son
-// contrato e2e (player-bookings.spec) — el ícono suma, no reemplaza.
-const STATUS_ICONS: Record<string, LucideIcon> = {
-  confirmed: CheckCircle2,
-  pending_payment: Clock,
-  completed: CheckCheck,
-  canceled_refunded: XCircle,
-  canceled_no_refund: XCircle,
-  no_show: UserX,
-  expired: XCircle,
-}
-
-const STATUS_CLASSES: Record<string, string> = {
-  confirmed:
-    'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
-  pending_payment:
-    'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20',
-  completed: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
-  canceled_refunded: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
-  canceled_no_refund: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
-  no_show:
-    'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20',
-  expired: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
-}
-
-/** Color del bloque-fecha según estado (esmeralda activo, atenuado si cerrado). */
-const DATE_BLOCK_CLASSES: Record<string, string> = {
-  confirmed:
-    'bg-emerald-50 text-emerald-700 ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
-  pending_payment:
-    'bg-amber-50 text-amber-700 ring-amber-600/15 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20',
-}
-const DATE_BLOCK_MUTED = 'bg-muted text-muted-foreground ring-border'
 
 /** `/mis-reservas?…` preservando el tab. `?pagina=` es 1-based en la URL. */
 function pageHref(tab: 'proximos' | 'historial', page: number): string {
@@ -267,7 +222,8 @@ export function MisReservasView({
         <ul className="space-y-3">
           {bookings.map((b) => {
             const dp = dateParts(b.date)
-            const blockClass = DATE_BLOCK_CLASSES[b.status] ?? DATE_BLOCK_MUTED
+            const visual = playerBookingVisual(b.status)
+            const blockClass = dateBlockClass(visual.tone)
             return (
               <li
                 key={b.id}
@@ -276,7 +232,10 @@ export function MisReservasView({
                 <div className="flex gap-4">
                   {/* Bloque-fecha */}
                   <div
-                    className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 ring-1 ring-inset ${blockClass}`}
+                    className={cn(
+                      'flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-2 ring-1 ring-inset ring-border',
+                      blockClass,
+                    )}
                   >
                     {/* Sin opacity-70: sobre bg-emerald-50/bg-amber-50 el color heredado (emerald-700/amber-700, ya AA por su cuenta) cae a ~2.9:1 con el alfa reducido. */}
                     <span className="font-logo text-[10px] font-bold uppercase tracking-wide">
@@ -308,19 +267,7 @@ export function MisReservasView({
                           {b.tenant_name}
                         </p>
                       </div>
-                      {(() => {
-                        const StatusIcon = STATUS_ICONS[b.status]
-                        return (
-                          <span
-                            className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-                              STATUS_CLASSES[b.status] ?? STATUS_CLASSES.completed
-                            }`}
-                          >
-                            {StatusIcon && <StatusIcon className="h-3 w-3" aria-hidden />}
-                            {STATUS_LABELS[b.status] ?? b.status}
-                          </span>
-                        )
-                      })()}
+                      <StatusBadge visual={visual} className="shrink-0 whitespace-nowrap" />
                     </div>
 
                     <div className="mt-2.5 flex items-end justify-between gap-2">
@@ -335,7 +282,12 @@ export function MisReservasView({
 
                       <div className="flex items-center gap-2">
                         {b.type === 'fixed' && (
-                          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                              TONE_BADGE.neutral,
+                            )}
+                          >
                             Turno fijo
                           </span>
                         )}

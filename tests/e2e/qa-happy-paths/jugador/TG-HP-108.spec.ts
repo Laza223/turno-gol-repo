@@ -53,7 +53,7 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
       // otras reservas vivas de otros casos de plata en Próximos).
       const card = page.locator('li').filter({ hasText: `${TIME_START}–${TIME_END}` })
       await expect(card).toBeVisible()
-      await expect(card.getByText('Confirmado')).toBeVisible()
+      await expect(card.getByText('Confirmada')).toBeVisible()
 
       await card.getByRole('button', { name: 'Cancelar' }).click()
 
@@ -99,11 +99,11 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
 
       await page.getByText('Historial', { exact: true }).first().click()
       const historyCard = page.locator('li').filter({ hasText: `${TIME_START}–${TIME_END}` })
-      // El badge dice "Cancelado" a secas: "con reembolso" prometía plata que
+      // El badge dice "Cancelada" a secas: "con reembolso" prometía plata que
       // en este punto todavía no se movió. Quién debe qué lo cuenta el panel
       // de devolución de la tarjeta, que es el recordatorio que sigue estando
       // mañana aunque el diálogo se haya cerrado.
-      await expect(historyCard.getByText('Cancelado', { exact: true })).toBeVisible({
+      await expect(historyCard.getByText('Cancelada', { exact: true })).toBeVisible({
         timeout: 8_000,
       })
       await expect(historyCard.getByRole('button', { name: 'Cancelar' })).not.toBeVisible()

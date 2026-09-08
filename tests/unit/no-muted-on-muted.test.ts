@@ -30,6 +30,7 @@ const YA_MIGRADOS = [
   'src/app/(admin)/settings/facturacion/InvoiceHistorySection.tsx',
   'src/app/(admin)/torneos/torneos-lib.ts',
   'src/app/(super-admin)/super-admin/tenants/[id]/_components/resumen-tab.tsx',
+  'src/app/(player)/mis-reservas/MisReservasView.tsx',
   'src/components/booking/BookingFormModal.tsx',
   'src/components/schedule/ScheduleFields.tsx',
   'src/lib/tournaments/status-visual.ts',

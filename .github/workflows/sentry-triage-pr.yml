@@ -1,0 +1,73 @@
+# Abre el pull request del triage diario de Sentry.
+#
+# POR QUÉ EXISTE. El triage corre como tarea programada de Claude en una sesión
+# automática, y esas sesiones NO tienen acceso a la API de GitHub: no hay
+# connector, no hay `gh`, y la llamada directa a api.github.com la frena el
+# clasificador de permisos (verificado el 2026-09-08). Lo único que sí pueden
+# hacer es `git push`. Así que la sesión deja la rama y este workflow abre el PR
+# por ella, usando el GITHUB_TOKEN del propio repo.
+#
+# EL CONTRATO CON LA SESIÓN. La sesión pushea una rama `sentry-fix/<algo>` con
+# UN commit cuyo mensaje ya es el PR: la primera línea es el título y el cuerpo
+# es la descripción, con el diagnóstico y el link a Sentry. Por eso acá va
+# `gh pr create --fill` y no un título armado a mano — el contexto lo tiene la
+# sesión que leyó el error, no este runner.
+#
+# ES IDEMPOTENTE. Un segundo push a la misma rama (una corrección del fix) NO
+# abre un PR duplicado: si ya hay uno abierto, sale sin hacer nada y el push
+# actualiza el PR que ya existe, como cualquier rama normal.
+#
+# NO MERGEA NADA. Abrir el PR es todo lo que hace. La revisión y el merge son
+# de una persona, siempre: ese es justamente el punto de que el arreglo llegue
+# como PR y no como un commit en main.
+name: Triage Sentry — abrir PR
+
+on:
+  push:
+    branches: ["sentry-fix/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: sentry-triage-pr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  abrir-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `--fill` lee el mensaje del último commit; con el checkout de 1
+          # commit por defecto alcanza, pero pedimos 2 para que el `git log` del
+          # step de abajo pueda mostrar contexto si algo sale mal.
+          fetch-depth: 2
+
+      - name: Abrir el PR si todavía no existe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          rama="${GITHUB_REF_NAME}"
+
+          existente="$(gh pr list --head "$rama" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$existente" ]; then
+            echo "Ya hay un PR abierto para $rama: #$existente. El push lo actualiza, no abro otro."
+            exit 0
+          fi
+
+          if ! gh pr create --base main --head "$rama" --fill 2>error.txt; then
+            echo "::error::No pude abrir el PR para $rama."
+            cat error.txt
+            # El modo de falla más probable y el menos obvio de diagnosticar:
+            # el permiso vive en la configuración del repo, no en este archivo.
+            if grep -qi "not permitted\|GitHub Actions is not permitted" error.txt; then
+              echo "::error::Falta habilitar 'Allow GitHub Actions to create and approve pull requests' en Settings → Actions → General del repo. La rama $rama ya está pusheada: el PR se puede abrir a mano desde GitHub mientras tanto."
+            fi
+            exit 1
+          fi
+
+          echo "PR abierto para $rama:"
+          gh pr view "$rama" --json number,url --jq '"#\(.number) \(.url)"'

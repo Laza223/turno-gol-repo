@@ -4,6 +4,7 @@ import { useCallback, useState, useTransition } from 'react'
 import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { countEmptyCells, expandRulesToGrid } from '@/modules/courts/pricing-grid'
+import * as Sentry from '@sentry/nextjs'
 import { track } from '@/shared/observability/breadcrumbs'
 import type { CourtActionResult, CourtPhotoActionResult } from '../actions'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
@@ -136,6 +137,17 @@ export function CourtForm({
     // era mudo, sin ninguna señal de que alguien se había atascado justo acá.
     if (emptyCount > 0) {
       track.courts('courts.pricing_save_blocked', { tenantId, emptyCount })
+      // `track` en el navegador deja SOLO un breadcrumb: el sink durable de
+      // analytics se registra desde instrumentation.ts y run-workers.ts, los dos
+      // en el server, así que acá no hay dónde persistirlo y un breadcrumb sin
+      // excepción posterior no llega a ningún lado. Este corte es justo el que
+      // dejó a un complejo trabado una semana sin que nos enteráramos, así que
+      // además se emite un evento propio con el SDK del navegador.
+      Sentry.captureMessage('courts.pricing_save_blocked', {
+        level: 'warning',
+        tags: { tenantId },
+        extra: { emptyCount },
+      })
       setError(
         `No se puede guardar: falta${emptyCount === 1 ? '' : 'n'} ${emptyCount} horario${
           emptyCount === 1 ? '' : 's'

@@ -395,12 +395,22 @@ function circularDayDistance(a: DayKey, b: DayKey): number {
  * precio, irreservable y sin que nadie se entere — que es exactamente el
  * agujero que este relleno viene a tapar. Quien llama es el que sabe si hubo
  * precio antes; sin ese dato el default sigue siendo no inventar nada.
+ *
+ * `soloVecinoDelMismoDia` limita el relleno a los pasos (a) y (b), los únicos
+ * donde "el precio de al lado" es literal. Los pasos (c) y (d) cruzan de día:
+ * un complejo con precio sólo en sábado terminaría con la tarifa de fin de
+ * semana copiada a los cinco días hábiles enteros. Con el dueño mirando la
+ * grilla antes de guardar eso es una sugerencia razonable; escrito solo, en la
+ * transacción del cambio de horario, es cobrarle a los jugadores una tarifa que
+ * nadie eligió. Por eso el editor de canchas llama sin este flag y el guardado
+ * de horarios llama con él, dejando el resto como huecos avisados.
  */
 export function fillGridGaps(
   grid: PriceGrid,
   openingHours: OpeningHours,
   closesNextDay: boolean,
   seedPrice?: number | null,
+  soloVecinoDelMismoDia = false,
 ): FillGridGapsResult {
   const out = {} as PriceGrid
   const activeByDay = {} as Record<DayKey, number[]>
@@ -417,7 +427,10 @@ export function fillGridGaps(
   const filled: FilledCell[] = []
 
   if (!anyPriceAtAll) {
-    if (seedPrice == null) return { grid: out, filled: [] }
+    // Cubrir toda la cancha con una sola tarifa es exactamente lo que no puede
+    // pasar sin que el dueño lo vea, así que la semilla solo aplica cuando hay
+    // alguien mirando la grilla antes de guardar.
+    if (seedPrice == null || soloVecinoDelMismoDia) return { grid: out, filled: [] }
     for (const day of DAY_KEYS) {
       for (const h of activeByDay[day]) {
         out[day][h] = seedPrice
@@ -452,6 +465,14 @@ export function fillGridGaps(
         filled.push({ day, hour: h, price: nextPrice })
       }
     }
+  }
+
+  // Los pasos que siguen cruzan de día: acá termina "el precio de al lado" y
+  // empieza "un precio de otro día". Quien no tiene a nadie mirando la grilla
+  // se planta con lo que consiguió y reporta el resto como hueco.
+  if (soloVecinoDelMismoDia) {
+    filled.sort((a, b) => DAY_KEYS.indexOf(a.day) - DAY_KEYS.indexOf(b.day) || a.hour - b.hour)
+    return { grid: out, filled }
   }
 
   // c) misma hora, día abierto más cercano (ya con el relleno intra-día de

@@ -573,6 +573,51 @@ describe('fillGridGaps', () => {
     expect(coverage.gaps).toEqual([])
   })
 
+  it('b2) con soloVecinoDelMismoDia NO copia la tarifa del sábado a los días de semana', () => {
+    // Mismo complejo que el caso b, pero por el camino que corre SIN que nadie
+    // mire la grilla (guardado de horarios). Ahí completar lunes a viernes con
+    // el precio del sábado sería cobrarle al jugador la tarifa de fin de semana
+    // toda la semana, escrita sola y sin confirmación: preferimos el hueco
+    // avisado. El relleno del mismo día sí corre.
+    const oh: OpeningHours = {
+      mon: day('08:00', '01:00'),
+      tue: day('08:00', '01:00'),
+      wed: day('08:00', '01:00'),
+      thu: day('08:00', '01:00'),
+      fri: day('08:00', '01:00'),
+      sat: day('08:00', '22:00'),
+      sun: day('00:00', '00:00', true),
+    }
+    const grid = emptyGrid()
+    for (const h of activeHoursForDay(oh, 'sat', true)) grid.sat[h] = 2000000
+
+    const { grid: out, filled } = fillGridGaps(grid, oh, true, null, true)
+
+    expect(filled).toEqual([])
+    for (const d of ['mon', 'tue', 'wed', 'thu', 'fri'] as const) {
+      for (const h of activeHoursForDay(oh, d, true)) {
+        expect(out[d][h]).toBeUndefined()
+      }
+    }
+    // Y el hueco queda contado, que es lo que dispara el aviso al dueño.
+    expect(countEmptyCells(out, oh, true)).toBeGreaterThan(0)
+  })
+
+  it('b3) con soloVecinoDelMismoDia sí completa la hora nueva desde su vecina', () => {
+    const before = uniformHours('08:00', '00:00')
+    const grid = emptyGrid()
+    for (const d of DAYS) {
+      for (const h of activeHoursForDay(before, d, false)) grid[d][h] = 1800000
+    }
+    const after: OpeningHours = { ...before, mon: day('08:00', '01:00') }
+
+    const { grid: out, filled } = fillGridGaps(grid, after, true, null, true)
+
+    expect(out.mon[24]).toBe(1800000)
+    expect(filled).toEqual([{ day: 'mon', hour: 24, price: 1800000 }])
+    expect(countEmptyCells(out, after, true)).toBe(0)
+  })
+
   it('c) ampliar el horario (cerrar más tarde) deja la hora nueva cubierta, no vacía', () => {
     const before = uniformHours('08:00', '00:00') // slots 8..23, todos los días
     const grid = emptyGrid()

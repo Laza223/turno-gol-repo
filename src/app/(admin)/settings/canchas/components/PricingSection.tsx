@@ -17,6 +17,7 @@ import {
   fillGridGaps,
   getOperativeHours,
   hourLabel,
+  mostFrequentRulePrice,
 } from '@/modules/courts/pricing-grid'
 import { Button } from '@/components/ui/button'
 import { MoneyInput } from '@/components/ui/money-input'
@@ -70,11 +71,18 @@ export function PricingSection({
   // lado, nunca vacías. `autoFilled` es el detalle de esa primera pasada
   // (fijo: solo importa lo que se completó AL ABRIR, no lo que la persona
   // borre o pise después a mano), para el aviso de abajo.
+  // La semilla cubre el caso extremo: el horario nuevo dejó fuera de rango
+  // TODAS las horas que tenían precio, así que no queda vecino de quien
+  // heredar. Se reusa la tarifa que esa misma cancha ya venía cobrando —del
+  // propio complejo, no un número inventado— y acá se puede porque el dueño la
+  // ve en la grilla antes de guardar. El guardado de horarios, que escribe sin
+  // que nadie mire, no usa este camino a propósito.
   const [autoFilled] = useState(() =>
     fillGridGaps(
       expandRulesToGrid(initialRules, openingHours, closesNextDay),
       openingHours,
       closesNextDay,
+      mostFrequentRulePrice(initialRules),
     ),
   )
   const [grid, setGrid] = useState<PriceGrid>(() => autoFilled.grid)
@@ -162,9 +170,14 @@ export function PricingSection({
           role="status"
           className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-sm text-blue-900 dark:text-blue-200"
         >
+          {/* El precio sugerido puede venir de la hora de al lado o de otro día
+              parecido (fillGridGaps), así que el aviso no promete de dónde
+              salió: prometer "el de la hora de al lado" era falso justo en el
+              caso que más plata mueve, el del día entero sin precio. */}
           Completamos {autoFilled.filled.length} horario
-          {autoFilled.filled.length === 1 ? '' : 's'} sin precio con el de la hora de al lado.
-          Revisalo{autoFilled.filled.length === 1 ? '' : 's'} antes de guardar.
+          {autoFilled.filled.length === 1 ? '' : 's'} que{' '}
+          {autoFilled.filled.length === 1 ? 'estaba' : 'estaban'} sin precio, tomando el de horarios
+          parecidos de esta misma cancha. Revisá que esté bien antes de guardar.
         </div>
       )}
 

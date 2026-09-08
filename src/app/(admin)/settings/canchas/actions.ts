@@ -188,6 +188,19 @@ export async function toggleCourtStatusAction(
   if (limited) return { success: false, error: limited }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
+    // Prender una cancha ocupa cupo igual que crearla, así que pasa por el
+    // mismo techo. Sin esto el techo se esquiva en dos pasos: apagar canchas,
+    // bajar a un plan más chico (que desde este PR cuenta solo las activas) y
+    // volver a prenderlas — operando de más y pagando de menos.
+    if (status === 'online') {
+      const { count, maxCourts } = await getCourtCountAndLimit(tenant.id, tx)
+      if (maxCourts !== null && count >= maxCourts) {
+        return {
+          success: false as const,
+          error: `Tu plan cubre hasta ${maxCourts} canchas activas. Pasá a un plan más grande para volver a prender esta.`,
+        }
+      }
+    }
     const court = await toggleStatus(courtId, tenant.id, status, tx)
     if (!court) return { success: false as const, error: 'Cancha no encontrada' }
     return { success: true as const, courtId: court.id }

@@ -9,9 +9,16 @@
 #
 # EL CONTRATO CON LA SESIÓN. La sesión pushea una rama `sentry-fix/<algo>` con
 # UN commit cuyo mensaje ya es el PR: la primera línea es el título y el cuerpo
-# es la descripción, con el diagnóstico y el link a Sentry. Por eso acá va
-# `gh pr create --fill` y no un título armado a mano — el contexto lo tiene la
-# sesión que leyó el error, no este runner.
+# es la descripción, con el diagnóstico y el link a Sentry. El contexto lo tiene
+# la sesión que leyó el error, no este runner, así que acá no se arma ningún
+# título: se lee el del commit y listo.
+#
+# Y se lee con `git log`, no con `gh pr create --fill`. `--fill` parece hacer lo
+# mismo pero por dentro necesita `origin/main` para calcular el diff, y con el
+# checkout corto de este job esa referencia no existe: falla con "ambiguous
+# argument 'origin/main...<rama>'" antes de llegar a la API (pasó en la primera
+# corrida, 2026-09-08). Traer toda la historia solo para eso es pagar un clone
+# entero por un dato que ya está en el commit.
 #
 # ES IDEMPOTENTE. Un segundo push a la misma rama (una corrección del fix) NO
 # abre un PR duplicado: si ya hay uno abierto, sale sin hacer nada y el push
@@ -40,10 +47,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # `--fill` lee el mensaje del último commit; con el checkout de 1
-          # commit por defecto alcanza, pero pedimos 2 para que el `git log` del
-          # step de abajo pueda mostrar contexto si algo sale mal.
-          fetch-depth: 2
+          # Alcanza con el último commit: de ahí salen el título y el cuerpo del
+          # PR. No hace falta la historia completa ni la rama base.
+          fetch-depth: 1
 
       - name: Abrir el PR si todavía no existe
         env:
@@ -58,7 +64,14 @@ jobs:
             exit 0
           fi
 
-          if ! gh pr create --base main --head "$rama" --fill 2>error.txt; then
+          titulo="$(git log -1 --pretty=%s)"
+          cuerpo="$(git log -1 --pretty=%b)"
+          if [ -z "$titulo" ]; then
+            echo "::error::El commit de $rama no tiene mensaje. El mensaje ES el PR: sin él no hay título."
+            exit 1
+          fi
+
+          if ! gh pr create --base main --head "$rama" --title "$titulo" --body "$cuerpo" 2>error.txt; then
             echo "::error::No pude abrir el PR para $rama."
             cat error.txt
             # El modo de falla más probable y el menos obvio de diagnosticar:

@@ -159,9 +159,23 @@ async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | nu
 async function loadTenantOwner(
   tenantId: string,
   tx: DbTx,
-): Promise<{ tenantName: string; ownerName: string | null; ownerEmail: string | null } | null> {
+): Promise<{
+  tenantName: string
+  ownerName: string | null
+  ownerEmail: string | null
+  /**
+   * Fix trial-first-charge: se suma acá (en vez de una query nueva) para no
+   * alterar la secuencia de `tx.execute` que ya cubren
+   * `billing-subscribe-orphan-guard.test.ts` / `billing-payer-email.test.ts` /
+   * `billing-invalid-payer.test.ts`. `Date | string` porque viene de SQL
+   * crudo (mismo patrón que `SubRow.current_period_end`); `null` = tenant sin
+   * trial (ya pasó a otro estado, o dato inconsistente).
+   */
+  trialEndsAt: Date | string | null
+} | null> {
   const rows = await tx.execute(sql`
     SELECT t.name AS "tenantName",
+           t.trial_ends_at AS "trialEndsAt",
            o."ownerName",
            o."ownerEmail"
     FROM tenants t
@@ -182,9 +196,26 @@ async function loadTenantOwner(
         tenantName: string
         ownerName: string | null
         ownerEmail: string | null
+        trialEndsAt: Date | string | null
       }>
     )[0] ?? null
   )
+}
+
+/**
+ * Fix trial-first-charge: cuándo tiene que salir el PRIMER cobro de la
+ * suscripción — `undefined` = ya (comportamiento actual), sea porque el
+ * trial no existe (dato inconsistente) o porque ya venció. Nunca una fecha
+ * pasada: MP no tiene un comportamiento documentado y confirmado para eso
+ * (ver decisión), así que directamente no se manda el campo.
+ */
+function resolveFirstChargeAt(
+  trialEndsAt: Date | string | null | undefined,
+  now: Date,
+): Date | undefined {
+  if (!trialEndsAt) return undefined
+  const d = toDate(trialEndsAt)
+  return d > now ? d : undefined
 }
 
 /**
@@ -211,6 +242,22 @@ function resolvePayerEmail(
 
 function planAmount(plan: PlanRow, cycle: BillingCycle): number {
   return cycle === 'annual' ? plan.price_annual : plan.price_monthly
+}
+
+/**
+ * Canchas ONLINE del tenant — mismo criterio que `getCourtCountAndLimit`
+ * (court.service.ts): una cancha apagada no genera reservas ni ingresos, así
+ * que no debe contar contra el techo de ningún plan. Compartida por
+ * `downgrade()` y `subscribe()` para que los dos gates midan exactamente lo
+ * mismo (antes de este fix, `subscribe()` no tenía gate alguno).
+ */
+async function countOnlineCourts(tenantId: string, tx: DbTx): Promise<number> {
+  const courtRows = await tx.execute(sql`
+    SELECT COUNT(*)::int AS n
+    FROM courts
+    WHERE tenant_id = ${tenantId} AND status = 'online'
+  `)
+  return (courtRows as unknown as Array<{ n: number }>)[0]!.n
 }
 
 function formatDate(d: Date): string {
@@ -273,6 +320,7 @@ export async function subscribe(
   billingCycle: BillingCycle,
   gateway: PaymentGateway,
   tx: DbTx,
+  now: Date = new Date(),
 ): Promise<SubscribeResult> {
   const sub = await loadSubForUpdate(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
@@ -282,6 +330,18 @@ export async function subscribe(
 
   const plan = await loadPlan(planId, tx)
   if (!plan) throw new PlanNotFoundError(planId)
+
+  // Guard que faltaba (mismo criterio y mismo error que `downgrade()`, ver
+  // `countOnlineCourts`): sin esto, un complejo con más canchas online que el
+  // techo del plan elegido podía suscribirse igual y quedar por encima del
+  // límite desde el minuto cero — el gate solo existía para BAJAR de plan,
+  // nunca para elegir uno por primera vez.
+  if (plan.max_courts !== null) {
+    const courtCount = await countOnlineCourts(tenantId, tx)
+    if (courtCount > plan.max_courts) {
+      throw new DowngradeBlockedError(tenantId, courtCount, plan.max_courts)
+    }
+  }
 
   const owner = await loadTenantOwner(tenantId, tx)
   const payerEmail = resolvePayerEmail(sub, owner)
@@ -316,6 +376,10 @@ export async function subscribe(
     reason: `TurnoGol — ${plan.name} (${billingCycle === 'annual' ? 'anual' : 'mensual'})`,
     returnUrl: computeReturnUrl(),
     notificationUrl: computeNotificationUrl(tenantId),
+    // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
+    // termine la prueba (decisión del dueño). `undefined` = trial vencido o
+    // inconsistente → cobra de inmediato, igual que antes de este fix.
+    firstChargeAt: resolveFirstChargeAt(owner?.trialEndsAt, now),
   })
 
   await tx.execute(sql`
@@ -533,12 +597,7 @@ export async function downgrade(
   if (!targetPlan) throw new PlanNotFoundError(targetPlanId)
 
   if (targetPlan.max_courts !== null) {
-    const courtRows = await tx.execute(sql`
-      SELECT COUNT(*)::int AS n
-      FROM courts
-      WHERE tenant_id = ${tenantId} AND status = 'online'
-    `)
-    const courtCount = (courtRows as unknown as Array<{ n: number }>)[0]!.n
+    const courtCount = await countOnlineCourts(tenantId, tx)
     if (courtCount > targetPlan.max_courts) {
       throw new DowngradeBlockedError(tenantId, courtCount, targetPlan.max_courts)
     }

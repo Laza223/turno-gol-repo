@@ -161,6 +161,21 @@ export type CreatePreapprovalInput = {
   returnUrl: string
   /** MP webhook URL (`/api/webhooks/mercadopago?tenant=<id>`). */
   notificationUrl: string
+  /**
+   * Fix trial-first-charge: cuándo debe salir el PRIMER cobro
+   * (`auto_recurring.start_date` en MP — ver `mp-gateway.implementation.ts`).
+   * `undefined` = cobrar de inmediato (comportamiento actual): el trial ya
+   * terminó, o no aplica (ej. `reactivate()`, que nunca lo pasa). Cuando
+   * está presente SIEMPRE debe venir de `tenants.trial_ends_at` — NUNCA de
+   * `tenant_subscriptions.current_period_end` (se desincroniza cuando
+   * soporte extiende el trial a mano).
+   *
+   * Opcional a propósito (no requerido): la decisión de "¿ya pasó el trial?"
+   * es del caller (`billing.service.subscribe()`, que tiene el reloj de
+   * negocio vía su parámetro `now`), no del gateway — este solo lo reenvía
+   * si vino.
+   */
+  firstChargeAt?: Date
 }
 
 export type PreapprovalResult = {

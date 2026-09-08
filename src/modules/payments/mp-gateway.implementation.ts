@@ -266,6 +266,13 @@ export class MercadoPagoGateway implements PaymentGateway {
             frequency_type: input.frequency === 'annual' ? 'years' : 'months',
             transaction_amount: centsToPesos(input.amount),
             currency_id: 'ARS',
+            // Fix trial-first-charge: `start_date` SÍ está tipado en
+            // `AutoRecurringRequest` (a diferencia de `notification_url` más
+            // abajo), así que no hace falta spread+cast. `input.firstChargeAt`
+            // ausente = comportamiento actual (cobro inmediato); la decisión
+            // de si el trial sigue vigente es de `billing.service.subscribe()`,
+            // este método solo reenvía lo que llega.
+            ...(input.firstChargeAt ? { start_date: input.firstChargeAt.toISOString() } : {}),
           },
           // `notification_url` NO está declarado en `PreApprovalRequest` del SDK
           // (sí en `PreferenceRequest`), pero la API REST de preapproval lo

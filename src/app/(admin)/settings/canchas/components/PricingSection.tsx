@@ -14,8 +14,10 @@ import {
   countEmptyCells,
   describeRules,
   expandRulesToGrid,
+  fillGridGaps,
   getOperativeHours,
   hourLabel,
+  mostFrequentRulePrice,
 } from '@/modules/courts/pricing-grid'
 import { Button } from '@/components/ui/button'
 import { MoneyInput } from '@/components/ui/money-input'
@@ -39,6 +41,7 @@ const MODE_OPTIONS: { value: TemplateMode; label: string }[] = [
 
 type Props = {
   openingHours: OpeningHours
+  closesNextDay: boolean
   initialRules: PricingRule[]
   otherCourts: CourtPricingSource[]
   /** Reglas comprimidas + celdas sin precio, en cada cambio (contrato con CourtForm). */
@@ -51,9 +54,38 @@ type Props = {
  * cancha + resumen legible de reglas + la matriz hora×día plegada como ajuste
  * fino. Dueña única del estado de la grilla; comprime a reglas para el padre.
  */
-export function PricingSection({ openingHours, initialRules, otherCourts, onRulesChange }: Props) {
-  const hours = useMemo(() => getOperativeHours(openingHours), [openingHours])
-  const [grid, setGrid] = useState<PriceGrid>(() => expandRulesToGrid(initialRules, openingHours))
+export function PricingSection({
+  openingHours,
+  closesNextDay,
+  initialRules,
+  otherCourts,
+  onRulesChange,
+}: Props) {
+  const hours = useMemo(
+    () => getOperativeHours(openingHours, closesNextDay),
+    [openingHours, closesNextDay],
+  )
+  // Auto-relleno al abrir el editor (decisión del dueño, no re-litigar): las
+  // celdas activas sin precio —cancha vieja con huecos, o un horario que se
+  // amplió después de cargarla— aparecen YA completadas con el precio de al
+  // lado, nunca vacías. `autoFilled` es el detalle de esa primera pasada
+  // (fijo: solo importa lo que se completó AL ABRIR, no lo que la persona
+  // borre o pise después a mano), para el aviso de abajo.
+  // La semilla cubre el caso extremo: el horario nuevo dejó fuera de rango
+  // TODAS las horas que tenían precio, así que no queda vecino de quien
+  // heredar. Se reusa la tarifa que esa misma cancha ya venía cobrando —del
+  // propio complejo, no un número inventado— y acá se puede porque el dueño la
+  // ve en la grilla antes de guardar. El guardado de horarios, que escribe sin
+  // que nadie mire, no usa este camino a propósito.
+  const [autoFilled] = useState(() =>
+    fillGridGaps(
+      expandRulesToGrid(initialRules, openingHours, closesNextDay),
+      openingHours,
+      closesNextDay,
+      mostFrequentRulePrice(initialRules),
+    ),
+  )
+  const [grid, setGrid] = useState<PriceGrid>(() => autoFilled.grid)
 
   // Plantilla
   const [mode, setMode] = useState<TemplateMode>('uniform')
@@ -73,8 +105,14 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
   // Ajuste fino plegado (progressive disclosure).
   const [showGrid, setShowGrid] = useState(false)
 
-  const rules = useMemo(() => compressGridToRules(grid, openingHours), [grid, openingHours])
-  const emptyCount = useMemo(() => countEmptyCells(grid, openingHours), [grid, openingHours])
+  const rules = useMemo(
+    () => compressGridToRules(grid, openingHours, closesNextDay),
+    [grid, openingHours, closesNextDay],
+  )
+  const emptyCount = useMemo(
+    () => countEmptyCells(grid, openingHours, closesNextDay),
+    [grid, openingHours, closesNextDay],
+  )
   const summary = useMemo(() => describeRules(rules), [rules])
 
   useEffect(() => {
@@ -105,13 +143,13 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
 
   function applyTemplate() {
     if (!template) return
-    setGrid(buildTemplateGrid(openingHours, template))
+    setGrid(buildTemplateGrid(openingHours, template, closesNextDay))
   }
 
   function copyFromCourt() {
     const source = otherCourts.find((c) => c.id === copyFromId)
     if (!source) return
-    setGrid(expandRulesToGrid(source.rules, openingHours))
+    setGrid(expandRulesToGrid(source.rules, openingHours, closesNextDay))
   }
 
   if (hours.length === 0) {
@@ -127,6 +165,22 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
 
   return (
     <div className="space-y-4">
+      {autoFilled.filled.length > 0 && (
+        <div
+          role="status"
+          className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-sm text-blue-900 dark:text-blue-200"
+        >
+          {/* El precio sugerido puede venir de la hora de al lado o de otro día
+              parecido (fillGridGaps), así que el aviso no promete de dónde
+              salió: prometer "el de la hora de al lado" era falso justo en el
+              caso que más plata mueve, el del día entero sin precio. */}
+          Completamos {autoFilled.filled.length} horario
+          {autoFilled.filled.length === 1 ? '' : 's'} que{' '}
+          {autoFilled.filled.length === 1 ? 'estaba' : 'estaban'} sin precio, tomando el de horarios
+          parecidos de esta misma cancha. Revisá que esté bien antes de guardar.
+        </div>
+      )}
+
       {/* Plantilla rápida: el caso común son 1–2 campos, no 105 celdas. */}
       <fieldset className="space-y-3 rounded-lg border border-border p-4">
         <legend className="px-1 text-sm font-semibold text-foreground">Plantilla rápida</legend>
@@ -310,7 +364,12 @@ export function PricingSection({ openingHours, initialRules, otherCourts, onRule
         </button>
         {showGrid && (
           <div className="border-t border-border p-3">
-            <PricingGrid openingHours={openingHours} grid={grid} onGridChange={setGrid} />
+            <PricingGrid
+              openingHours={openingHours}
+              closesNextDay={closesNextDay}
+              grid={grid}
+              onGridChange={setGrid}
+            />
           </div>
         )}
       </div>

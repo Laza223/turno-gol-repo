@@ -60,6 +60,37 @@ export function HorariosForm({
         {didSubmit && state.success && (
           <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
             Horarios guardados.
+            {state.pricingFilled && (
+              <>
+                {' '}
+                Completamos {state.pricingFilled.cells} horario
+                {state.pricingFilled.cells === 1 ? '' : 's'} sin precio en{' '}
+                {state.pricingFilled.courts} cancha
+                {state.pricingFilled.courts === 1 ? '' : 's'} con el de la hora de al lado.
+                Revisalos en{' '}
+                <a href="/settings/canchas" className="font-medium underline underline-offset-2">
+                  Canchas
+                </a>
+                .
+              </>
+            )}
+          </p>
+        )}
+        {/* Los huecos que el sistema NO completó solo (habría tenido que traer
+            una tarifa de otro día, y esa decisión es del dueño) son turnos que
+            hoy nadie puede reservar: van aparte y con la acción encima, no
+            escondidos dentro del "Horarios guardados" en verde. */}
+        {didSubmit && state.success && state.pricingPending && (
+          <p role="alert" className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            Quedaron {state.pricingPending.cells} horario
+            {state.pricingPending.cells === 1 ? '' : 's'} sin precio en{' '}
+            {state.pricingPending.courts} cancha
+            {state.pricingPending.courts === 1 ? '' : 's'}. Hasta que les pongas precio, esos turnos
+            no se pueden reservar:{' '}
+            <a href="/settings/canchas" className="font-semibold underline underline-offset-2">
+              cargalos en Canchas
+            </a>
+            .
           </p>
         )}
       </div>

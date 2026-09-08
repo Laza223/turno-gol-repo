@@ -23,6 +23,7 @@ vi.mock('@/shared/storage/r2', () => ({
 vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://localhost:3000' }) }))
 vi.mock('@/modules/auth/auth.service', () => ({ isStaffEmailTaken: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/modules/auth/impersonation.server', () => ({ getImpersonationSession: vi.fn() }))
 
 import { revalidatePath, updateTag } from 'next/cache'
 import {
@@ -38,6 +39,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { isR2Configured, putImage, deleteImage } from '@/shared/storage/r2'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import { createClient } from '@/lib/supabase/server'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 
 const STAFF_USER = { type: 'staff', staffUserId: 'staff-1' }
 const TENANT = { id: 'tenant-1', slug: 'demo' }
@@ -48,6 +50,7 @@ beforeEach(() => {
   vi.mocked(getStaffTenant).mockResolvedValue(TENANT as never)
   vi.mocked(adminRateLimited).mockResolvedValue(null)
   vi.mocked(isR2Configured).mockReturnValue(true)
+  vi.mocked(getImpersonationSession).mockResolvedValue(null)
 })
 
 function fakeFormData(fileBytes = 'abc', previousUrl: string | null = null) {
@@ -218,6 +221,23 @@ describe('updateUserEmailAction', () => {
     vi.mocked(getStaffRole).mockResolvedValue('manager')
     const res = await updateUserEmailAction('nuevo@complejo.com')
     expect(res.success).toBe(false)
+    expect(vi.mocked(isStaffEmailTaken)).not.toHaveBeenCalled()
+    expect(updateUser).not.toHaveBeenCalled()
+  })
+
+  it('bajo impersonación de SuperAdmin, rechaza SIN llamar a Supabase Auth (evita pisar la cuenta del SuperAdmin)', async () => {
+    // supabase.auth.updateUser() actúa sobre la sesión de las cookies — que
+    // durante una impersonación es la del SuperAdmin real, no la del tenant
+    // impersonado. Si esto pasara, el cambio de email de login se aplicaría a
+    // la cuenta más privilegiada del sistema en vez de a la del complejo.
+    vi.mocked(getImpersonationSession).mockResolvedValue({
+      systemAdminId: 'sa-1',
+      tenantId: 'tenant-1',
+    })
+    const res = await updateUserEmailAction('nuevo@complejo.com')
+    expect(res.success).toBe(false)
+    // Antes del pre-check de unicidad: no tiene sentido gastar esa query en
+    // un camino que ya está bloqueado.
     expect(vi.mocked(isStaffEmailTaken)).not.toHaveBeenCalled()
     expect(updateUser).not.toHaveBeenCalled()
   })

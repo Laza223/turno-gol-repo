@@ -55,6 +55,7 @@ function makeSubscribeTx() {
     .fn()
     .mockResolvedValueOnce([subRow]) // loadSub
     .mockResolvedValueOnce([planRow]) // loadPlan
+    .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts (guard de plan nuevo, 0 < max_courts)
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
   return { execute } as unknown as DbTx
 }

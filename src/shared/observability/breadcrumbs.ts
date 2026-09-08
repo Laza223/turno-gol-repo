@@ -253,6 +253,24 @@ type OnboardingCtx = {
 }
 
 /**
+ * Gate del lado del cliente en el editor de cancha (CourtForm.tsx): corta el
+ * submit ANTES de llamar al server si quedan celdas activas sin precio —
+ * guardar con huecos dejaría horas operativas irreservables online. Era
+ * completamente mudo: un complejo real quedó trabado sin poder cargar
+ * canchas y nos enteramos por WhatsApp, sin ninguna señal en Sentry (ver
+ * también el `captureMessage` en settings/canchas/actions.ts, el mismo
+ * bloqueo pero del lado server — éste es el punto donde probablemente se
+ * atascó, porque corta ANTES de llegar a la Server Action).
+ */
+type CourtsEvent = 'courts.pricing_save_blocked'
+
+type CourtsCtx = {
+  tenantId?: string
+  /** Cuántas celdas activas seguían sin precio al intentar guardar. */
+  emptyCount?: number
+}
+
+/**
  * El aha moment real (doc10, §C del plan): la primera reserva que entra SOLA,
  * sin que el staff la haya cargado (`created_by_staff IS NULL` — mismo
  * predicado que `firstBookingReceived` en dashboard/queries.ts). Categoría
@@ -360,4 +378,5 @@ export const track = {
   funnel: (ev: FunnelEvent, ctx: FunnelCtx) => emit('funnel', ev, ctx),
   onboarding: (ev: OnboardingEvent, ctx: OnboardingCtx) => emit('onboarding', ev, ctx),
   activation: (ev: ActivationEvent, ctx: ActivationCtx) => emit('activation', ev, ctx),
+  courts: (ev: CourtsEvent, ctx: CourtsCtx) => emit('courts', ev, ctx),
 }

@@ -36,14 +36,15 @@ function GridHarness({
   rules: PricingRule[]
   onRules?: (rules: PricingRule[]) => void
 }) {
-  const [grid, setGrid] = useState<PriceGrid>(() => expandRulesToGrid(rules, OPENING))
+  const [grid, setGrid] = useState<PriceGrid>(() => expandRulesToGrid(rules, OPENING, false))
   return (
     <PricingGrid
       openingHours={OPENING}
+      closesNextDay={false}
       grid={grid}
       onGridChange={(next) => {
         setGrid(next)
-        onRules?.(compressGridToRules(next, OPENING))
+        onRules?.(compressGridToRules(next, OPENING, false))
       }}
     />
   )
@@ -85,12 +86,58 @@ describe('PricingGrid render (controlada)', () => {
   })
 })
 
+// Bug real "El Vagón Deportivo": la grilla mostraba precios SOLO en Sábado y
+// lun-vie aparecían como puntos inertes ("·", sin editor) porque
+// activeHoursForDay/getOperativeHours no conocían closesNextDay. Este test
+// reproduce el layout real (lun-vie 08:00→01:00, closesNextDay) contra el
+// componente completo, no solo la función pura.
+describe('PricingGrid render — closesNextDay (madrugada)', () => {
+  const NEXT_DAY_OPENING: OpeningHours = {
+    mon: { open: '08:00', close: '01:00', closed: false },
+    tue: { open: '08:00', close: '01:00', closed: false },
+    wed: { open: '08:00', close: '01:00', closed: false },
+    thu: { open: '08:00', close: '01:00', closed: false },
+    fri: { open: '08:00', close: '01:00', closed: false },
+    sat: { open: '08:00', close: '22:00', closed: false },
+    sun: { open: '08:00', close: '22:00', closed: true },
+  }
+
+  function NextDayHarness() {
+    const [grid, setGrid] = useState<PriceGrid>({} as PriceGrid)
+    return (
+      <PricingGrid
+        openingHours={NEXT_DAY_OPENING}
+        closesNextDay
+        grid={grid}
+        onGridChange={setGrid}
+      />
+    )
+  }
+
+  it('dibuja la fila de madrugada (00:00) como celda editable de lunes, no como punto inerte', () => {
+    render(<NextDayHarness />)
+    // Antes del fix esta fila ni se dibujaba: getOperativeHours devolvía
+    // como máximo 23 (sat cerraba antes) y activeHoursForDay('mon') era [].
+    expect(screen.getByRole('rowheader', { name: '00:00' })).toBeTruthy()
+    // Celda de lunes 00:00 (post-medianoche, mismo día operativo): activa y
+    // clickeable — ANTES del fix era un "·" sin aria-label, imposible de
+    // editar, exactamente el síntoma reportado.
+    expect(screen.getByRole('button', { name: 'Lun 00:00 sin precio' })).toBeTruthy()
+  })
+
+  it('domingo (cerrado) sigue sin fila editable a las 00:00: la fila nueva no infla días que no operan', () => {
+    render(<NextDayHarness />)
+    expect(screen.queryByRole('button', { name: /^Dom 00:00/ })).not.toBeInTheDocument()
+  })
+})
+
 describe('PricingSection — plantilla rápida y copiar', () => {
   it('al montar emite las reglas iniciales y las celdas sin precio', () => {
     const onRulesChange = vi.fn()
     render(
       <PricingSection
         openingHours={OPENING}
+        closesNextDay={false}
         initialRules={[]}
         otherCourts={[]}
         onRulesChange={onRulesChange}
@@ -108,6 +155,7 @@ describe('PricingSection — plantilla rápida y copiar', () => {
     render(
       <PricingSection
         openingHours={OPENING}
+        closesNextDay={false}
         initialRules={[]}
         otherCourts={[]}
         onRulesChange={onRulesChange}
@@ -130,6 +178,7 @@ describe('PricingSection — plantilla rápida y copiar', () => {
     render(
       <PricingSection
         openingHours={OPENING}
+        closesNextDay={false}
         initialRules={[]}
         otherCourts={[]}
         onRulesChange={onRulesChange}
@@ -153,6 +202,7 @@ describe('PricingSection — plantilla rápida y copiar', () => {
     render(
       <PricingSection
         openingHours={OPENING}
+        closesNextDay={false}
         initialRules={[]}
         otherCourts={[{ id: 'c1', name: 'Cancha 1', rules: RULES }]}
         onRulesChange={onRulesChange}
@@ -166,10 +216,50 @@ describe('PricingSection — plantilla rápida y copiar', () => {
     expect(meta.emptyCount).toBe(0)
   })
 
+  // Auto-relleno al abrir el editor (decisión del dueño): una cancha vieja
+  // con huecos —o un horario recién ampliado— no debe mostrar celdas vacías
+  // apenas se abre el form. Reproduce el caso real: precio cargado SOLO en
+  // sábado, el resto de la semana vacío.
+  it('auto-completa las celdas vacías al montar y avisa cuántas', () => {
+    const onRulesChange = vi.fn()
+    const partialRules: PricingRule[] = [
+      { days: ['sat'], from: '08:00', to: '12:00', price: 500000 },
+    ]
+    render(
+      <PricingSection
+        openingHours={OPENING}
+        closesNextDay={false}
+        initialRules={partialRules}
+        otherCourts={[]}
+        onRulesChange={onRulesChange}
+      />,
+    )
+
+    // 6 días × 4 slots quedaron sin precio propio y se completan solos.
+    const [rules, meta] = onRulesChange.mock.calls.at(-1)!
+    expect(meta.emptyCount).toBe(0)
+    expect((rules as PricingRule[]).every((r) => r.price === 500000)).toBe(true)
+    expect(screen.getByRole('status').textContent).toMatch(/Completamos 24 horarios/)
+  })
+
+  it('sin huecos que rellenar, no muestra ningún aviso de auto-relleno', () => {
+    render(
+      <PricingSection
+        openingHours={OPENING}
+        closesNextDay={false}
+        initialRules={RULES}
+        otherCourts={[]}
+        onRulesChange={() => {}}
+      />,
+    )
+    expect(screen.queryByText(/Completamos/)).toBeNull()
+  })
+
   it('"Ajustar por hora" está plegado y expande la matriz', () => {
     render(
       <PricingSection
         openingHours={OPENING}
+        closesNextDay={false}
         initialRules={RULES}
         otherCourts={[]}
         onRulesChange={() => {}}

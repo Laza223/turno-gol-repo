@@ -31,7 +31,17 @@ const PLAN_ROW = {
 
 const OWNER_ROW = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: OWNER_EMAIL }
 
-function makeTx(overrides: { status: string; mp_payer_email: string | null }): DbTx {
+/**
+ * `subscribe()` (a diferencia de `reactivate()`) ahora tiene el guard de
+ * cupo de plan (`countOnlineCourts`, billing.service.ts) entre `loadPlan` y
+ * `loadTenantOwner` — `forSubscribe` inserta esa respuesta intermedia (0
+ * canchas, siempre por debajo de `PLAN_ROW.max_courts`) solo cuando la tx se
+ * usa para probar `subscribe()`.
+ */
+function makeTx(
+  overrides: { status: string; mp_payer_email: string | null },
+  forSubscribe = true,
+): DbTx {
   const subRow = {
     status: overrides.status,
     plan_id: 'plan-old',
@@ -49,12 +59,11 @@ function makeTx(overrides: { status: string; mp_payer_email: string | null }): D
     last_payment_failed_at: null,
     last_payment_at: null,
   }
-  const execute = vi
-    .fn()
-    .mockResolvedValueOnce([subRow]) // loadSubForUpdate
-    .mockResolvedValueOnce([PLAN_ROW]) // loadPlan
-    .mockResolvedValueOnce([OWNER_ROW]) // loadTenantOwner
-    .mockResolvedValue([]) // UPDATE + lo que siga
+  const execute = vi.fn().mockResolvedValueOnce([subRow]) // loadSubForUpdate
+  execute.mockResolvedValueOnce([PLAN_ROW]) // loadPlan
+  if (forSubscribe) execute.mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
+  execute.mockResolvedValueOnce([OWNER_ROW]) // loadTenantOwner
+  execute.mockResolvedValue([]) // UPDATE + lo que siga
   return { execute } as unknown as DbTx
 }
 
@@ -112,7 +121,7 @@ describe('payer_email de MercadoPago (migr. 078)', () => {
       PLAN_ID,
       'monthly',
       gateway,
-      makeTx({ status: 'suspended', mp_payer_email: MP_EMAIL }),
+      makeTx({ status: 'suspended', mp_payer_email: MP_EMAIL }, false),
     )
 
     expect(gateway.createPreapproval).toHaveBeenCalledWith(

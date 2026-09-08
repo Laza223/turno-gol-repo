@@ -5,6 +5,7 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { subscribeSchema } from '@/modules/billing/billing.schema'
 import { subscribe } from '@/modules/billing/billing.service'
 import {
+  DowngradeBlockedError,
   InvalidPayerEmailError,
   PlanNotFoundError,
   ReactivateNotAllowedError,
@@ -41,6 +42,23 @@ export const POST = withTenant(
       )
       return NextResponse.json({ data: result }, { status: 201 })
     } catch (err) {
+      // El plan elegido no le entra por cantidad de canchas. Sin este catch el
+      // error salía como 500 genérico justo en el alta —el momento donde el
+      // complejo confirma su plan por primera vez— y el dueño se quedaba sin
+      // saber qué hacer. Mensaje propio, no `err.message`: el del error es
+      // técnico y en inglés, pensado para los logs.
+      if (err instanceof DowngradeBlockedError) {
+        return businessRule(
+          `Ese plan cubre hasta ${err.targetMaxCourts} canchas y tenés ${err.currentCourtCount} activas. Elegí un plan más grande, o desactivá las canchas que no estés usando.`,
+          {
+            code: 'DOWNGRADE_BLOCKED',
+            details: {
+              currentCourtCount: err.currentCourtCount,
+              targetMaxCourts: err.targetMaxCourts,
+            },
+          },
+        )
+      }
       if (err instanceof PlanNotFoundError) {
         return notFound(err.message, { code: 'PLAN_NOT_FOUND' })
       }

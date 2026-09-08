@@ -6,8 +6,8 @@ import { PricingGridTable } from './PricingGridTable'
 import { cellKey } from './cell-utils'
 
 const HOURS_ = openingHours()
-const GRID = expandRulesToGrid(pricingSynthetic().rules, HOURS_)
-const HOURS = getOperativeHours(HOURS_)
+const GRID = expandRulesToGrid(pricingSynthetic().rules, HOURS_, false)
+const HOURS = getOperativeHours(HOURS_, false)
 
 // Story-only: agujero de precio en lunes 10:00 (hora activa, sin regla) para
 // mostrar el estado amber "sin precio" — la fixture sintética cubre 24hs.
@@ -26,6 +26,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     openingHours: HOURS_,
+    closesNextDay: false,
     grid: GRID,
     hours: HOURS,
     dayCount: 7,

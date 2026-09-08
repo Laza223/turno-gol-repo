@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { getUser, updateUser, refreshSession, adminUpdateUserById } = vi.hoisted(() => ({
-  getUser: vi.fn(),
-  updateUser: vi.fn(async () => ({ error: null })),
-  refreshSession: vi.fn(async () => ({ error: null })),
-  adminUpdateUserById: vi.fn(async () => ({ error: null })),
-}))
+const { getUser, updateUser, refreshSession, adminUpdateUserById, getImpersonationSession } =
+  vi.hoisted(() => ({
+    getUser: vi.fn(),
+    updateUser: vi.fn(async () => ({ error: null })),
+    refreshSession: vi.fn(async () => ({ error: null })),
+    adminUpdateUserById: vi.fn(async () => ({ error: null })),
+    // Sin implementación acá: `async () => null` le fija el tipo a Promise<null>
+    // y el caso de impersonación activa no compila. El default va en beforeEach.
+    getImpersonationSession: vi.fn(),
+  }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => ({ auth: { getUser, updateUser, refreshSession } }),
@@ -13,6 +17,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({ auth: { admin: { updateUserById: adminUpdateUserById } } }),
 }))
+vi.mock('@/modules/auth/impersonation.server', () => ({ getImpersonationSession }))
 
 import { resetPasswordAction } from '@/app/(auth)/reset-password/actions'
 
@@ -27,6 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   updateUser.mockResolvedValue({ error: null })
   getUser.mockResolvedValue({ data: { user: { id: 'u1', app_metadata: {} } }, error: null })
+  getImpersonationSession.mockResolvedValue(null)
 })
 
 describe('resetPasswordAction', () => {
@@ -53,6 +59,17 @@ describe('resetPasswordAction', () => {
     const res = await resetPasswordAction({ status: 'idle' }, fd())
     expect(res).toEqual({ status: 'success', path: '/dashboard' })
     expect(updateUser).toHaveBeenCalledWith({ password: 'unaClaveSegura' })
+    expect(adminUpdateUserById).not.toHaveBeenCalled()
+  })
+
+  it('bajo impersonación de SuperAdmin, rechaza SIN llamar a Supabase Auth (evitaría cambiar la contraseña del SuperAdmin real)', async () => {
+    // supabase.auth.updateUser() actúa sobre la sesión de cookies, que durante
+    // una impersonación es la del SuperAdmin — alcanzable escribiendo la URL
+    // a mano mientras impersona. Mismo patrón que updateUserEmailAction.
+    getImpersonationSession.mockResolvedValueOnce({ systemAdminId: 'sa-1', tenantId: 't1' })
+    const res = await resetPasswordAction({ status: 'idle' }, fd())
+    expect(res.status).toBe('error')
+    expect(updateUser).not.toHaveBeenCalled()
     expect(adminUpdateUserById).not.toHaveBeenCalled()
   })
 

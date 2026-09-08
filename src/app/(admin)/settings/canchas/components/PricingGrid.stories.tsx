@@ -6,21 +6,23 @@ import { expandRulesToGrid, type PriceGrid } from '@/modules/courts/pricing-grid
 import { PricingGrid } from './PricingGrid'
 
 const HOURS = openingHours()
-const GRID = expandRulesToGrid(pricingSynthetic().rules, HOURS)
+const GRID = expandRulesToGrid(pricingSynthetic().rules, HOURS, false)
 
 // Wrapper controlado: PricingGrid es "grid/onGridChange" puro (spec §3.3), así
 // que la story necesita dueño de estado para que la edición se vea reflejada
 // — igual que PricingSection en la app real.
 function ControlledPricingGrid({ initial }: { initial: PriceGrid }) {
   const [grid, setGrid] = useState(initial)
-  return <PricingGrid openingHours={HOURS} grid={grid} onGridChange={setGrid} />
+  return (
+    <PricingGrid openingHours={HOURS} closesNextDay={false} grid={grid} onGridChange={setGrid} />
+  )
 }
 
 const meta = {
   title: 'Admin/Canchas/PricingGrid',
   component: PricingGrid,
   parameters: { layout: 'padded' },
-  args: { openingHours: HOURS, grid: GRID, onGridChange: () => {} },
+  args: { openingHours: HOURS, closesNextDay: false, grid: GRID, onGridChange: () => {} },
 } satisfies Meta<typeof PricingGrid>
 
 export default meta

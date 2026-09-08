@@ -3,6 +3,7 @@ import { courts, tenantSubscriptions, plans, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { priceForSlot } from '@/lib/booking/pricing'
+import { effectiveCloseMins } from '@/shared/time/operating-day'
 import type {
   CourtRow,
   CreateCourtInput,
@@ -123,8 +124,16 @@ export async function toggleStatus(
 }
 
 /**
- * Cuenta las canchas del complejo y devuelve el techo que le impone su plan.
- * `maxCourts: null` = sin techo.
+ * Cuenta las canchas ONLINE del complejo y devuelve el techo que le impone su
+ * plan. `maxCourts: null` = sin techo.
+ *
+ * Solo cuenta canchas `status = 'online'`: una apagada no genera reservas ni
+ * ingresos, así que no consume cupo del plan (decisión del dueño). Antes de
+ * este fix esta función contaba TODAS las canchas (incluidas las apagadas) —
+ * distinto del criterio que ya usaba `downgrade()` en billing.service.ts
+ * (solo online), así que un complejo con una cancha de prueba apagada, o rota
+ * y en obra, gastaba cupo para siempre y no podía cargar una cancha nueva
+ * aunque su plan sí tuviera lugar. Ahora los dos gates usan el MISMO criterio.
  *
  * **Durante el trial NO hay techo.** `createTenantWithTrial` arranca a todos en
  * el plan `predio` (max_courts=3 desde la migr. 071; era 2), así que sin esta
@@ -147,7 +156,7 @@ export async function getCourtCountAndLimit(
   const [countRow] = await tx
     .select({ count: sql<number>`COUNT(*)::int` })
     .from(courts)
-    .where(eq(courts.tenantId, tenantId))
+    .where(and(eq(courts.tenantId, tenantId), eq(courts.status, 'online')))
 
   const subRows = await tx
     .select({ maxCourts: plans.maxCourts, planSlug: plans.slug })
@@ -183,11 +192,22 @@ export function calculatePrice(pricing: CourtPricingData, date: Date): number | 
   return priceForSlot(pricing, dayKey, slotTime)
 }
 
+/**
+ * Backstop de cobertura: ¿hay un precio para cada hora operativa? El rango
+ * recorre el eje continuo de `effectiveCloseMins` (soporta madrugada,
+ * `closesNextDay`), pero las reglas guardan horas de PARED (0–23) — mismo
+ * corte que `priceForSlot`/`priceForCell` (pricing-grid.ts): la franja de
+ * madrugada de un complejo que cierra pasada medianoche está etiquetada con el
+ * MISMO día operativo, así que el chequeo de cobertura busca la regla módulo
+ * 24hs, no en el eje extendido.
+ */
 export function validatePricingRulesCoverage(
   rules: PricingRule[],
   openingHours: OpeningHours,
+  closesNextDay: boolean,
 ): { valid: boolean; gaps: { day: string; time: string }[] } {
   const gaps: { day: string; time: string }[] = []
+  const DAY_MINS = 24 * 60
 
   for (const [day, hours] of Object.entries(openingHours) as [
     string,
@@ -195,15 +215,16 @@ export function validatePricingRulesCoverage(
   ][]) {
     if (!hours || hours.closed) continue
     const openMins = timeToMins(hours.open)
-    const closeMins = hours.close === '00:00' ? 24 * 60 : timeToMins(hours.close)
+    const closeMins = effectiveCloseMins(hours.open, hours.close, closesNextDay)
 
     for (let m = openMins; m < closeMins; m += 60) {
-      const slotTime = `${String(Math.floor(m / 60)).padStart(2, '0')}:00`
+      const wallMins = m % DAY_MINS
+      const slotTime = `${String(Math.floor(wallMins / 60)).padStart(2, '0')}:00`
       const covered = rules.some((r) => {
         if (!r.days.includes(day)) return false
         const fm = timeToMins(r.from)
-        const tm = r.to === '00:00' ? 24 * 60 : timeToMins(r.to)
-        return m >= fm && m < tm
+        const tm = r.to === '00:00' ? DAY_MINS : timeToMins(r.to)
+        return wallMins >= fm && wallMins < tm
       })
       if (!covered) gaps.push({ day, time: slotTime })
     }

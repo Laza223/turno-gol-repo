@@ -12,6 +12,7 @@ import { useCellSelection } from './pricing-grid/use-cell-selection'
 // contenedor (PricingSection), que comprime a reglas y muestra el resumen.
 type Props = {
   openingHours: OpeningHours
+  closesNextDay: boolean
   grid: PriceGrid
   onGridChange: (next: PriceGrid) => void
 }
@@ -21,10 +22,13 @@ type Props = {
  * toolbar de asignación masiva + la matriz. La lógica de dominio (reglas,
  * compresión, horas operativas) vive en `@/modules/courts/pricing-grid`.
  */
-export function PricingGrid({ openingHours, grid, onGridChange }: Props) {
+export function PricingGrid({ openingHours, closesNextDay, grid, onGridChange }: Props) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const hours = useMemo(() => getOperativeHours(openingHours), [openingHours])
+  const hours = useMemo(
+    () => getOperativeHours(openingHours, closesNextDay),
+    [openingHours, closesNextDay],
+  )
 
   const priceStats = useMemo(() => {
     let min = Infinity
@@ -38,7 +42,7 @@ export function PricingGrid({ openingHours, grid, onGridChange }: Props) {
     return { min, max }
   }, [grid])
 
-  const sel = useCellSelection({ openingHours, grid, onGridChange })
+  const sel = useCellSelection({ openingHours, closesNextDay, grid, onGridChange })
   const dayCount = DAY_KEYS.length
 
   // Sin horas operativas no hay nada que editar; PricingSection ya muestra el
@@ -61,6 +65,7 @@ export function PricingGrid({ openingHours, grid, onGridChange }: Props) {
 
       <PricingGridTable
         openingHours={openingHours}
+        closesNextDay={closesNextDay}
         grid={grid}
         hours={hours}
         dayCount={dayCount}

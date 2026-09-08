@@ -96,7 +96,7 @@ const FULL_OPENING_HOURS: OpeningHours = {
 
 describe('validatePricingRulesCoverage', () => {
   it('full coverage → {valid: true, gaps: []}', () => {
-    const result = validatePricingRulesCoverage(SAMPLE_PRICING.rules, FULL_OPENING_HOURS)
+    const result = validatePricingRulesCoverage(SAMPLE_PRICING.rules, FULL_OPENING_HOURS, false)
     expect(result.valid).toBe(true)
     expect(result.gaps).toHaveLength(0)
   })
@@ -110,7 +110,7 @@ describe('validatePricingRulesCoverage', () => {
         price: 800000,
       },
     ]
-    const result = validatePricingRulesCoverage(weekdayOnlyRules, FULL_OPENING_HOURS)
+    const result = validatePricingRulesCoverage(weekdayOnlyRules, FULL_OPENING_HOURS, false)
     expect(result.valid).toBe(false)
     expect(result.gaps.some((g) => g.day === 'sat' && g.time === '08:00')).toBe(true)
     expect(result.gaps.some((g) => g.day === 'sun')).toBe(true)
@@ -129,7 +129,55 @@ describe('validatePricingRulesCoverage', () => {
         price: 800000,
       },
     ]
-    const result = validatePricingRulesCoverage(weekdayFriRules, hours)
+    const result = validatePricingRulesCoverage(weekdayFriRules, hours, false)
     expect(result.valid).toBe(true)
+  })
+
+  // d) Bug real "El Vagón Deportivo": sin closesNextDay el backstop de server
+  // recorría openMins..closeMins con closeMins=timeToMins('01:00')=60 < 480
+  // (openMins) — el `for` nunca corría, CERO horas exigidas, CERO huecos
+  // reportados. El complejo guardaba una cancha sin un solo precio de
+  // lun-vie y el server igual decía "cobertura completa".
+  it('closesNextDay: detecta un hueco real de lun-vie en vez de decir valid=true', () => {
+    const vagonHours: OpeningHours = {
+      mon: { open: '08:00', close: '01:00' },
+      tue: { open: '08:00', close: '01:00' },
+      wed: { open: '08:00', close: '01:00' },
+      thu: { open: '08:00', close: '01:00' },
+      fri: { open: '08:00', close: '01:00' },
+      sat: { open: '08:00', close: '22:00' },
+      sun: { open: '08:00', close: '22:00', closed: true },
+    }
+    // Sin ninguna regla cargada para lun-vie (el estado real reportado: la
+    // grilla solo mostraba precios editables en la columna Sábado).
+    const onlySatRules: PricingRule[] = [
+      { days: ['sat'], from: '08:00', to: '22:00', price: 2000000 },
+    ]
+    const result = validatePricingRulesCoverage(onlySatRules, vagonHours, true)
+    expect(result.valid).toBe(false)
+    expect(result.gaps.some((g) => g.day === 'mon' && g.time === '08:00')).toBe(true)
+    // La franja de madrugada (día operativo del lunes, wall-clock 00:00) también
+    // tiene que salir como hueco: es la hora que la UI mostraba como "punto inerte".
+    expect(result.gaps.some((g) => g.day === 'mon' && g.time === '00:00')).toBe(true)
+  })
+
+  it('closesNextDay: reglas de madrugada correctamente etiquetadas SÍ cubren (sin falsos huecos)', () => {
+    const vagonHours: OpeningHours = {
+      mon: { open: '08:00', close: '01:00' },
+      tue: { open: '08:00', close: '01:00' },
+      wed: { open: '08:00', close: '01:00' },
+      thu: { open: '08:00', close: '01:00' },
+      fri: { open: '08:00', close: '01:00' },
+      sat: { open: '08:00', close: '22:00' },
+      sun: { open: '08:00', close: '22:00', closed: true },
+    }
+    const weekdayRules: PricingRule[] = [
+      { days: ['mon', 'tue', 'wed', 'thu', 'fri'], from: '08:00', to: '00:00', price: 2000000 },
+      { days: ['mon', 'tue', 'wed', 'thu', 'fri'], from: '00:00', to: '01:00', price: 2000000 },
+      { days: ['sat'], from: '08:00', to: '22:00', price: 2000000 },
+    ]
+    const result = validatePricingRulesCoverage(weekdayRules, vagonHours, true)
+    expect(result.valid).toBe(true)
+    expect(result.gaps).toHaveLength(0)
   })
 })

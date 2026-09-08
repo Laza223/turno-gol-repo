@@ -99,7 +99,7 @@ function buildCourtInputsFromDrafts(
 
     // Backstop de cobertura (mismo gate que /settings/canchas): un hueco entre
     // reglas es una hora operativa que nadie puede reservar online.
-    const coverage = validatePricingRulesCoverage(rules, tenant.openingHours)
+    const coverage = validatePricingRulesCoverage(rules, tenant.openingHours, tenant.closesNextDay)
     if (!coverage.valid) {
       const sample = coverage.gaps
         .slice(0, 3)

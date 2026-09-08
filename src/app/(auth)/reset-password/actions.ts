@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { passwordSchema } from '@/modules/auth/password'
 import { captureException } from '@/lib/sentry'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 
 // `success` NO navega desde acá — mismo motivo que login/actions.ts: un
 // redirect() server-side depende de que el navegador aplique el Set-Cookie
@@ -37,6 +38,20 @@ export async function resetPasswordAction(
   })
   if (!parsed.success) {
     return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  // Mismo patrón que updateUserEmailAction (settings/perfil/actions.ts):
+  // supabase.auth.updateUser() actúa sobre la sesión REAL de cookies, que
+  // durante una impersonación es la del SuperAdmin, no la del tenant
+  // impersonado. Esta pantalla es alcanzable escribiendo la URL a mano
+  // mientras impersona (no hay link ni CTA que lleve acá en ese estado); sin
+  // este bloqueo se terminaría cambiando la contraseña de la cuenta más
+  // privilegiada del sistema en vez de la del tenant.
+  if (await getImpersonationSession()) {
+    return {
+      status: 'error',
+      message: 'No podés cambiar contraseñas mientras estás impersonando un complejo.',
+    }
   }
 
   const supabase = await createClient()

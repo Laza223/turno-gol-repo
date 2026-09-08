@@ -11,6 +11,7 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
 import { tenantContactSchema, tenantLocationSchema } from '@/modules/tenants/tenant.schema'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 import {
   isR2Configured,
   putImage,
@@ -234,10 +235,28 @@ function isEmailTakenAuthError(error: { code?: string; message: string }): boole
   )
 }
 
+/**
+ * A diferencia de `updateTenantContactAction`/`updateTenantLocationAction`/
+ * `set|removeTenantImageAction` (que escriben con `updateTenant(tenant.id,
+ * ...)` contra el tenant impersonado, exactamente lo que se espera), esta
+ * action llama a `supabase.auth.updateUser(...)`, que actúa sobre la SESIÓN
+ * REAL de cookies — que durante una impersonación es la del SuperAdmin, no la
+ * del tenant. Se bloquea en vez de intentar redirigir la escritura porque
+ * `updateUser` no acepta actuar "como otro usuario" sin service role, y abrir
+ * esa vía dejaría a un SuperAdmin cambiar la credencial de login de un
+ * cliente sin su consentimiento — peor que el bug que esto cierra.
+ */
+const IMPERSONATION_EMAIL_BLOCK_MESSAGE =
+  'Estás impersonando este complejo: el email de login lo tiene que cambiar el dueño desde su propia cuenta, en Configuración → Perfil.'
+
 export async function updateUserEmailAction(newEmail: string): Promise<UpdateEmailActionResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
+
+  if (await getImpersonationSession()) {
+    return { success: false, error: IMPERSONATION_EMAIL_BLOCK_MESSAGE }
+  }
 
   const parsed = z
     .string()

@@ -8,12 +8,9 @@ import { getPublicTournamentView } from '@/modules/tournaments/tournament-public
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 import JsonLd from '@/components/seo/JsonLd'
-import {
-  FORMAT_SHORT,
-  STATUS_LABELS,
-  formatDateRange,
-  statusBadgeClass,
-} from '@/app/(admin)/torneos/torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { TOURNAMENT_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { FORMAT_SHORT, formatDateRange } from '@/app/(admin)/torneos/torneos-lib'
 import { TorneoPublicView } from '../components/TorneoPublicView'
 
 // Un torneo en curso cambia cada vez que se carga un resultado. 5 min de ISR
@@ -58,11 +55,7 @@ export default async function TorneoPublicoPage(props: Props) {
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{card.name}</h1>
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(card.status)}`}
-          >
-            {STATUS_LABELS[card.status]}
-          </span>
+          <StatusBadge visual={TOURNAMENT_STATUS_VISUAL[card.status]} className="px-2.5 py-1" />
         </div>
         <p className="text-sm text-muted-foreground">
           {FORMAT_SHORT[card.format]} · {formatDateRange(card.startsOn, card.endsOn)} ·{' '}

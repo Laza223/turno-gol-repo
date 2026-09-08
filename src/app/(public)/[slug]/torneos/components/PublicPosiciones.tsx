@@ -1,6 +1,8 @@
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import type { StandingsGroup } from '@/modules/tournaments/standings/types'
-import { formatGoalDiff, qualificationBadgeClass } from '@/app/(admin)/torneos/torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { QUALIFICATION_VISUAL, TEAM_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { formatGoalDiff } from '@/app/(admin)/torneos/torneos-lib'
 
 /**
  * Tabla de posiciones pública.
@@ -116,21 +118,16 @@ export function PublicPosiciones({
                         <span className="flex items-center gap-2">
                           <span className="font-medium text-foreground">{row.teamName}</span>
                           {qualifies ? (
-                            <span
-                              className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${qualificationBadgeClass}`}
-                            >
-                              Clasifica
-                            </span>
+                            <StatusBadge
+                              visual={QUALIFICATION_VISUAL}
+                              className="rounded px-1.5 text-[11px]"
+                            />
                           ) : null}
-                          {row.teamStatus === 'withdrawn' ? (
-                            <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                              Se bajó
-                            </span>
-                          ) : null}
-                          {row.teamStatus === 'disqualified' ? (
-                            <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[11px] text-red-700 dark:text-red-300">
-                              Descalificado
-                            </span>
+                          {row.teamStatus === 'withdrawn' || row.teamStatus === 'disqualified' ? (
+                            <StatusBadge
+                              visual={TEAM_STATUS_VISUAL[row.teamStatus]}
+                              className="rounded px-1.5 text-[11px]"
+                            />
                           ) : null}
                         </span>
                       </td>

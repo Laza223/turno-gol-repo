@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  formatDate,
-  formatDateRange,
-  statusBadgeClass,
-  summarizeSlots,
-  teamStatusBadgeClass,
-} from '@/app/(admin)/torneos/torneos-lib'
+import { formatDate, formatDateRange, summarizeSlots } from '@/app/(admin)/torneos/torneos-lib'
 
 describe('formatDate', () => {
   it('pasa ISO a formato argentino sin corrimiento de zona', () => {
@@ -30,8 +24,8 @@ describe('formatDateRange', () => {
   })
 })
 
-// H027: el `formatArs` local se borró y ahora este módulo re-exporta el
-// canónico de `@/lib/format`, que tiene su propia batería de tests.
+// H027: el `formatArs` local se borró; el canónico de `@/lib/format` tiene su
+// propia batería de tests.
 
 describe('summarizeSlots', () => {
   it('resume horas, canchas y fechas distintas', () => {
@@ -52,23 +46,5 @@ describe('summarizeSlots', () => {
 
   it('avisa cuando no hay nada tomado', () => {
     expect(summarizeSlots([])).toBe('Sin horarios tomados')
-  })
-})
-
-describe('badges de estado', () => {
-  it('da una clase distinta por cada estado de torneo', () => {
-    const classes = (['draft', 'registration', 'in_progress', 'finished', 'canceled'] as const).map(
-      statusBadgeClass,
-    )
-    expect(classes.every((c) => c.length > 0)).toBe(true)
-    // 'finished' y 'draft' comparten familia pero no clase: el resto es único.
-    expect(new Set(classes).size).toBeGreaterThanOrEqual(4)
-  })
-
-  it('da una clase por cada estado de equipo', () => {
-    const classes = (['registered', 'confirmed', 'withdrawn', 'disqualified'] as const).map(
-      teamStatusBadgeClass,
-    )
-    expect(new Set(classes).size).toBe(4)
   })
 })

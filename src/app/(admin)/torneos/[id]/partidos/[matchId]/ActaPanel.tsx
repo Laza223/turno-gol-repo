@@ -16,7 +16,9 @@ import type {
   TournamentTeamPlayerRow,
 } from '@/modules/tournaments/tournament.types'
 import type { TournamentActionResult } from '../../../actions'
-import { EVENT_TYPE_LABELS, eventTypeBadgeClass, formatScore } from '../../../torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { EVENT_TYPE_LABELS, EVENT_TYPE_VISUAL } from '@/lib/tournaments/status-visual'
+import { formatScore } from '../../../torneos-lib'
 
 export type ResultAction = (input: unknown) => Promise<TournamentActionResult>
 
@@ -323,11 +325,7 @@ export function ActaPanel({
           <ul className="divide-y divide-border">
             {events.map((ev) => (
               <li key={ev.id} className="flex items-center gap-3 px-4 py-2.5">
-                <span
-                  className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${eventTypeBadgeClass(ev.type)}`}
-                >
-                  {EVENT_TYPE_LABELS[ev.type]}
-                </span>
+                <StatusBadge visual={EVENT_TYPE_VISUAL[ev.type]} className="shrink-0 rounded" />
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                   {ev.playerName ?? 'Sin autor'}
                   <span className="ml-1.5 text-xs text-muted-foreground">{ev.teamName}</span>

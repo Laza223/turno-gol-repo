@@ -8,13 +8,10 @@ import { listPublicTournaments } from '@/modules/tournaments/tournament-public.s
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 import JsonLd from '@/components/seo/JsonLd'
-import {
-  FORMAT_SHORT,
-  STATUS_LABELS,
-  formatArs,
-  formatDateRange,
-  statusBadgeClass,
-} from '@/app/(admin)/torneos/torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { formatArs } from '@/lib/format'
+import { TOURNAMENT_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { FORMAT_SHORT, formatDateRange } from '@/app/(admin)/torneos/torneos-lib'
 
 // El listado depende de datos que cambian cuando el complejo publica o
 // despublica un torneo: 5 min de ISR, igual que el perfil.
@@ -76,11 +73,7 @@ export default async function TorneosPublicosPage(props: Props) {
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-foreground">{t.name}</span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(t.status)}`}
-                    >
-                      {STATUS_LABELS[t.status]}
-                    </span>
+                    <StatusBadge visual={TOURNAMENT_STATUS_VISUAL[t.status]} />
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {FORMAT_SHORT[t.format]} · {formatDateRange(t.startsOn, t.endsOn)}

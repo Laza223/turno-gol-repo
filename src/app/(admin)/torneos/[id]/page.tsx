@@ -24,7 +24,9 @@ import {
   updateTeamAction,
   updateTournamentAction,
 } from '../actions'
-import { FORMAT_SHORT, STATUS_LABELS, formatDateRange, statusBadgeClass } from '../torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { TOURNAMENT_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { FORMAT_SHORT, formatDateRange } from '../torneos-lib'
 import { BorrarTorneo } from './BorrarTorneo'
 import { CancelarTorneo } from './CancelarTorneo'
 import { PortalPanel } from './PortalPanel'
@@ -93,11 +95,10 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
                 Inscripción {formatArs(tournament.inscriptionFee)}
               </span>
             )}
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(tournament.status)}`}
-            >
-              {STATUS_LABELS[tournament.status]}
-            </span>
+            <StatusBadge
+              visual={TOURNAMENT_STATUS_VISUAL[tournament.status]}
+              className="px-2.5 py-1"
+            />
           </div>
         }
       />

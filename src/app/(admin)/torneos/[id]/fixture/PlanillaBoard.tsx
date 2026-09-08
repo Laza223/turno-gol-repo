@@ -11,12 +11,9 @@ import { formatDateLong } from '@/lib/format'
 import { openingsForMatch, type MatchOpening } from '@/modules/tournaments/fixture/placement'
 import type { TournamentMatchView, TournamentSlotRow } from '@/modules/tournaments/tournament.types'
 import type { TournamentActionResult } from '../../actions'
-import {
-  MATCH_STATUS_LABELS,
-  formatArtTime,
-  formatScore,
-  matchStatusBadgeClass,
-} from '../../torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { MATCH_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { formatArtTime, formatScore } from '../../torneos-lib'
 
 /**
  * La Planilla: las horas que el torneo posee, dibujadas como lo que son.
@@ -533,11 +530,10 @@ function MatchCard({
             <span className="text-xs font-semibold text-foreground tabular-nums">
               {formatScore(match.homeScore, match.awayScore)}
             </span>
-            <span
-              className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[11px] font-medium ${matchStatusBadgeClass(match.status)}`}
-            >
-              {MATCH_STATUS_LABELS[match.status]}
-            </span>
+            <StatusBadge
+              visual={MATCH_STATUS_VISUAL[match.status]}
+              className="px-1.5 text-[11px]"
+            />
           </>
         )}
         <button

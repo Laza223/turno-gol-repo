@@ -36,24 +36,25 @@ Una **Routine** (tarea programada de Claude) que a las 11:00 ART abre una sesió
 - **Qué corre**: el mismo protocolo que el slash command `/sentry-triage` ([`.claude/commands/sentry-triage.md`](../../.claude/commands/sentry-triage.md))
 - **Para verla, pausarla o cambiarle la hora**: panel de Routines de Claude, o pedírselo a Claude en una sesión
 
-### Dónde aparece el reporte
+### Dónde aparece el reporte: en un pull request
 
-**En los issues de este repo, no en la notificación.** La notificación push y el mail se siguen mandando, pero no son el canal: llegan o no llegan según la configuración del dispositivo y no dejan rastro. El issue queda, se puede cerrar cuando se arregla, y lo puede leer una sesión futura.
+**No en una notificación, no en un mail, no en un issue.** El dueño trabaja mirando pull requests, así que todo lo que produce el triage llega por ahí. Las notificaciones push y por mail se siguen mandando, pero no son el canal: llegan o no llegan según el dispositivo y no dejan rastro.
 
-| Resultado del día | Qué escribe |
+| Qué encontró | Qué hace |
 |---|---|
-| Sin errores reales | Un comentario de UNA línea en el issue [#291](https://github.com/Laza223/turno-gol-repo/issues/291), la bitácora |
-| Con errores reales | Un issue nuevo por cada error distinto, con el diagnóstico completo |
-| El mismo error ya tiene un issue abierto | Un comentario ahí diciendo que volvió, con fecha y conteo — no abre un duplicado |
+| Un error **grave** (plata, aislamiento de tenant, auth, o algo que le impide a alguien reservar o entrar) | Lo arregla, corre los checks, y pushea `sentry-fix/AAAA-MM-DD-<slug>`. El PR se abre solo |
+| Algo **leve** (performance, ruido, cosmético) | Agrega una línea a [`sentry-pendientes.md`](./sentry-pendientes.md) y la pushea a `sentry-fix/pendientes`, que es un PR abierto de forma permanente que va creciendo |
+| Un error grave que **no sabe arreglar bien** | No inventa un fix: va a pendientes con el diagnóstico y lo dice |
+| Nada | No pushea nada. Sin PR, sin ruido |
 
-La bitácora existe para que el silencio no sea ambiguo. Sin ella no hay forma de distinguir "hoy no pasó nada" de "el triage dejó de correr", que es justo la duda que disparó este cambio (2026-09-08).
+**Quién abre el PR: un workflow, no la sesión.** Las sesiones automáticas no tienen acceso a la API de GitHub — ni connector, ni `gh`, ni permiso para llamar a `api.github.com` (verificado el 2026-09-08). Lo único que pueden hacer es `git push`. Así que la sesión deja la rama y [`.github/workflows/sentry-triage-pr.yml`](../../.github/workflows/sentry-triage-pr.yml) abre el PR con el `GITHUB_TOKEN` del repo.
 
-El límite de datos personales es **más estricto** en el issue que en el reporte: un issue de GitHub es más durable y más visible que una notificación. Si un `extra` de Sentry trae un mail o un teléfono, el triage describe dónde está sin copiarlo, y eso mismo es un hallazgo 🔴 de privacidad.
+El contrato entre los dos es el **mensaje del commit**: su primera línea es el título del PR y su cuerpo es la descripción. El workflow usa `gh pr create --fill`, así que el contexto lo pone la sesión que leyó el error, no el runner.
 
-> [!WARNING]
-> **El prefijo de las herramientas del connector cambia según el tipo de sesión.** En una sesión interactiva son `mcp__Sentry__*`; en la sesión que levanta la Routine, el mismo connector aparece bajo el ID del servidor MCP (`mcp__472c6277-…__`). La primera versión del prompt tenía el prefijo hardcodeado y la corrida abortó en 17 segundos sin leer nada, reportando "no tengo el connector" — un falso negativo perfecto, porque el connector estaba y respondía. Se verificó pidiéndole a una sesión disparada que escribiera el resultado en una rama del repo. Cualquier prompt automatizado que hable con un connector busca sus herramientas con ToolSearch por palabra clave, nunca por nombre exacto.
+Nada se mergea solo. Abrir el PR es todo lo que hace la automatización; revisar y mergear es siempre de una persona. Ese es el punto de que el arreglo llegue como PR y no como un commit en main.
 
-**El triage no arregla nada solo.** Diagnostica y te lo cuenta; el fix lo autorizás vos. Es deliberado: un agente que pushea fixes a producción sin que nadie lea el diagnóstico es una forma cara de romper cosas de madrugada.
+> [!IMPORTANT]
+> El workflow necesita que esté activo **Allow GitHub Actions to create and approve pull requests** en Settings → Actions → General. Si no lo está, el job falla con un mensaje que lo dice, y la rama igual queda pusheada: el PR se puede abrir a mano desde GitHub mientras tanto.
 
 ## A pedido, en cualquier momento
 
@@ -76,4 +77,5 @@ Por eso el triage empieza filtrando: sin ese filtro, el 90% del reporte es ruido
 - **`CRIT-03` de verdad** (metric alert rule sobre tasa de errores): no configurada. Es de consola, no de código.
 - **Canal WhatsApp** para críticas (doc17 §5.2): sigue siendo diseño objetivo. Hoy todo va por mail y por la notificación de Claude.
 - **Aviso instantáneo a Claude.** El mínimo de una Routine es horario, así que el piso de latencia del diagnóstico automático es una hora si se sube la frecuencia, y un día con la config actual. El aviso **a vos** sí es instantáneo: lo manda Sentry por mail.
-- **La notificación push de la Routine.** Nunca se confirmó que llegue. Por eso el canal real pasó a ser el issue de GitHub y no la notificación.
+- **La notificación push de la Routine.** Nunca se confirmó que llegue. Por eso el canal real es el pull request y no la notificación.
+- **Que la sesión automática abra el PR por su cuenta.** No se puede y no vale la pena insistir: no tiene GitHub, y la vía por `curl` depende de un clasificador de permisos que ya la bloqueó una vez. El workflow no depende de nada de eso.

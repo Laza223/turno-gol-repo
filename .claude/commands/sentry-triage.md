@@ -57,9 +57,11 @@ Después, un bloque por error real:
 
 Cerrá con una línea de ruido: `Ruido filtrado: N issues (web-vitals, health-ping)`. Si no hubo ningún error real, esas dos líneas son todo el reporte — un reporte largo para decir "no pasó nada" es exactamente la fatiga de alertas que doc17 §5.1 quiere evitar.
 
-## Publicar, solo si te lo piden
+## Este comando NO arregla ni publica
 
-Este comando corre con alguien mirando, así que el reporte en pantalla alcanza. **No abras issues por tu cuenta.** La Routine diaria sí publica, porque ahí no hay nadie leyendo: issue nuevo por cada error real, comentario de una línea en el issue [#291](https://github.com/Laza223/turno-gol-repo/issues/291) cuando no hay ninguno. Si te piden publicar desde acá, seguí esa misma convención y no abras un duplicado de un error que ya tiene issue abierto.
+Corre con alguien mirando, así que el reporte en pantalla alcanza. No pushees ramas ni abras pull requests por tu cuenta: si el fix es obvio, decilo en una línea y esperá el visto bueno.
+
+La Routine diaria sí arregla y publica, porque ahí no hay nadie leyendo. Su circuito está en [`docs/operations/sentry-alertas.md`](../../docs/operations/sentry-alertas.md): pushea `sentry-fix/…` y un workflow abre el PR.
 
 ## Límites
 

@@ -106,28 +106,53 @@ export default async function FacturacionPage(
       <section className="card-premium rounded-xl p-6">
         <h2 className="text-base font-semibold text-foreground">Suscripción</h2>
         {sub ? (
-          <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-muted-foreground">Plan</dt>
-              <dd className="font-medium text-foreground">
-                {sub.status === 'trialing' ? 'Sin plan elegido' : sub.planName}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Estado</dt>
-              <dd className="font-medium text-foreground">
-                {STATUS_LABELS[sub.status] ?? sub.status}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">
-                {sub.status === 'trialing' ? 'Fin de la prueba' : 'Próximo cobro'}
-              </dt>
-              <dd className="font-medium text-foreground tabular-nums">
-                {formatDate(sub.currentPeriodEnd)}
-              </dd>
-            </div>
-          </dl>
+          <>
+            <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-muted-foreground">Plan</dt>
+                <dd className="font-medium text-foreground">
+                  {/* Todo tenant en trial ya tiene un plan_id real desde el alta (el
+                      super admin lo asigna) — "Sin plan elegido" era un ternario
+                      hardcodeado que ignoraba sub.planName y le hacía creer al
+                      dueño que todavía no había plan, cuando en realidad lo que
+                      falta es el primer cobro. Calificamos en vez de esconder. */}
+                  {sub.status === 'trialing'
+                    ? `${sub.planName} · todavía no se cobra`
+                    : sub.planName}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Estado</dt>
+                <dd className="font-medium text-foreground">
+                  {STATUS_LABELS[sub.status] ?? sub.status}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">
+                  {sub.status === 'trialing' ? 'Fin de la prueba' : 'Próximo cobro'}
+                </dt>
+                <dd className="font-medium text-foreground tabular-nums">
+                  {/* En trial la fecha real vive en tenants.trial_ends_at: es la que
+                      mueve extendTrial, la que lee el worker que expira trials y la
+                      que ve super admin. tenant_subscriptions.current_period_end
+                      quedó clavado en el valor sembrado al crear el tenant y
+                      extendTrial no lo toca (a propósito: tocarlo perpetuaría dos
+                      copias de la misma fecha) — por eso esta pantalla tiene que
+                      leer la misma columna que todos los demás lectores en vez de
+                      mostrar una segunda fecha que se desincroniza sola. */}
+                  {formatDate(
+                    sub.status === 'trialing' ? tenant.trialEndsAt : sub.currentPeriodEnd,
+                  )}
+                </dd>
+              </div>
+            </dl>
+            {sub.mpSubscriptionId && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                💳 Ya hay una suscripción de MercadoPago creada para este plan. Revisá el método de
+                pago conectado en tu cuenta de MercadoPago.
+              </p>
+            )}
+          </>
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">
             Todavía no tenés una suscripción activa. Conectá MercadoPago para empezar a cobrar señas

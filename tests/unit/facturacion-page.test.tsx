@@ -3,8 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 // ENS-25: la sección de baja voluntaria (CancelSubscriptionSection) se cablea
-// en /settings/facturacion, visible solo en estados cancelables — sin romper
-// el "Sin plan elegido" de trialing (restaurado, no tocar).
+// en /settings/facturacion, visible solo en estados cancelables.
+//
+// 2026-09-07: el "Sin plan elegido" de trialing que ENS-25 pedía no tocar se
+// CAMBIÓ (autorizado por el dueño del producto) porque era un bug, no una
+// decisión — todo tenant en trial ya tiene un plan_id real desde el alta, y
+// ese copy le escondía al dueño que le iban a cobrar. Ahora se muestra el
+// nombre real del plan calificado con "todavía no se cobra". Se deja este
+// comentario en vez de borrar el rastro de ENS-25.
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((url: string) => {
@@ -87,8 +93,15 @@ const STAFF_USER = {
   email: 'a@b.com',
 }
 
+// trialEndsAt (2026-10-07) se elige DISTINTA de currentPeriodEnd (2026-09-13,
+// ver sub() abajo) a propósito: si un test llegara a leer la columna
+// equivocada (tenant_subscriptions.current_period_end en vez de
+// tenants.trial_ends_at) para "Fin de la prueba", la fecha mostrada no
+// coincidiría y el assert lo detectaría.
+const TRIAL_ENDS_AT = new Date('2026-10-07T12:00:00.000Z')
+
 function tenant() {
-  return { id: 't-1', mpConnectedAt: null }
+  return { id: 't-1', mpConnectedAt: null, trialEndsAt: TRIAL_ENDS_AT }
 }
 
 function sub(status: string) {
@@ -122,12 +135,13 @@ beforeEach(() => {
 })
 
 describe('/settings/facturacion — CancelSubscriptionSection por estado', () => {
-  it('trialing: mantiene "Sin plan elegido" y NO muestra el botón de cancelar', async () => {
+  it('trialing: muestra el plan real calificado (no "Sin plan elegido") y NO muestra el botón de cancelar', async () => {
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
 
     render(await FacturacionPage())
 
-    expect(screen.getByText('Sin plan elegido')).toBeTruthy()
+    expect(screen.getByText('Predio · todavía no se cobra')).toBeTruthy()
+    expect(screen.queryByText('Sin plan elegido')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
   })
 
@@ -186,5 +200,53 @@ describe('/settings/facturacion — historial de pagos (doc15 §5.8)', () => {
 
     expect(screen.getByText('Historial de pagos')).toBeTruthy()
     expect(screen.getByText('Todavía no hay cobros registrados.')).toBeTruthy()
+  })
+})
+
+describe('/settings/facturacion — fecha de fin de prueba (dos fechas distintas en la misma pantalla)', () => {
+  it('trialing: "Fin de la prueba" sale de tenants.trial_ends_at, no de current_period_end', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
+
+    render(await FacturacionPage())
+
+    // TRIAL_ENDS_AT (7 de octubre) es la fecha correcta: la misma que
+    // extendTrial mueve y la que ve el worker de expiración / super admin.
+    expect(screen.getByText('7 de octubre de 2026')).toBeTruthy()
+    // currentPeriodEnd del fixture sub() (13 de septiembre) es la fecha
+    // vieja/incorrecta que mostraba el bug reportado — no debe aparecer acá.
+    expect(screen.queryByText('13 de septiembre de 2026')).toBeNull()
+  })
+
+  it('active: "Próximo cobro" sigue saliendo de current_period_end (acá sí es la fecha correcta)', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('active') as never)
+
+    render(await FacturacionPage())
+
+    expect(screen.getByText('13 de septiembre de 2026')).toBeTruthy()
+  })
+})
+
+describe('/settings/facturacion — aviso de suscripción de MercadoPago ya creada', () => {
+  it('con mpSubscriptionId, avisa que ya hay una suscripción de MercadoPago creada', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
+
+    render(await FacturacionPage())
+
+    expect(
+      screen.getByText(/Ya hay una suscripción de MercadoPago creada para este plan/),
+    ).toBeTruthy()
+  })
+
+  it('sin mpSubscriptionId, no muestra el aviso', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue({
+      ...sub('trialing'),
+      mpSubscriptionId: null,
+    } as never)
+
+    render(await FacturacionPage())
+
+    expect(
+      screen.queryByText(/Ya hay una suscripción de MercadoPago creada para este plan/),
+    ).toBeNull()
   })
 })

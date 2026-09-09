@@ -35,7 +35,10 @@ function depositText(
  * cierto, esto agrega el dato que faltaba al lado.
  */
 export function moneyLine(
-  b: Pick<ReservaListRow, 'pending' | 'totalPaid' | 'status' | 'priceSnapshot'>,
+  b: Pick<
+    ReservaListRow,
+    'pending' | 'totalPaid' | 'status' | 'priceSnapshot' | 'type' | 'depositStatus'
+  >,
 ): { text: string; tone: 'pending' | 'paid' } | null {
   // Reservas que no se van a jugar: la seña se resuelve aparte (devuelta o
   // retenida como penalidad) y el resto del precio nunca se cobra.
@@ -59,7 +62,14 @@ export function moneyLine(
     // cobró NADA, `pending` es ese mismo número: repetirlo apila "$ 40.000" y
     // "Falta $ 40.000" uno debajo del otro y hay que leer los dos para entender
     // que son lo mismo. El monto solo aporta cuando hubo un cobro parcial.
-    if (b.pending >= b.priceSnapshot) return { text: 'Sin cobrar', tone: 'pending' }
+    if (b.pending >= b.priceSnapshot) {
+      // ...y cuando el turno ya se jugó, la píldora de alarma al lado del badge
+      // dice EXACTAMENTE estas dos palabras (`RESERVA_UNPAID_VISUAL`, label
+      // 'Sin cobrar'). Escribirlas otra vez acá abajo deja la fila diciendo
+      // "Sin cobrar" dos veces —y el aria-label del Link, también—, que es el
+      // mismo ruido que este renglón vino a sacar.
+      return reservaStatusVisual(b).unpaid ? null : { text: 'Sin cobrar', tone: 'pending' }
+    }
     return { text: `Falta ${formatArs(b.pending)}`, tone: 'pending' }
   }
   if ((b.totalPaid ?? 0) > 0) return { text: 'Cobrado', tone: 'paid' }

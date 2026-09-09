@@ -24,6 +24,20 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+/**
+ * El botón que confirma el cobro del fiado, distinguido del atajo de un tap.
+ *
+ * Desde que `SplitPaymentFields` muestra "Cobrar todo en efectivo — $X"
+ * (2026-09-09), el diálogo tiene DOS botones cuyo nombre arranca con "Cobrar" y
+ * `/^Cobrar/` matchea los dos. Se filtra por lo que los separa —el atajo nombra
+ * el método— en vez de por el monto: `formatArs` usa espacio duro y el matcher
+ * de testing-library no lo normaliza.
+ */
+const CONFIRMAR_COBRO = {
+  name: (accessibleName: string) =>
+    accessibleName.startsWith('Cobrar') && !accessibleName.includes('todo en efectivo'),
+}
+
 export const ConFiados: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -57,7 +71,7 @@ export const CobrarFiado: Story = {
 
     // SplitPaymentFields (Fase 1, D2): el método es un <select>, no un chip.
     await userEvent.selectOptions(dialog.getByRole('combobox'), 'Transferencia')
-    await userEvent.click(dialog.getByRole('button', { name: /^Cobrar/ }))
+    await userEvent.click(dialog.getByRole('button', CONFIRMAR_COBRO))
 
     await waitFor(() =>
       expect(args.settleTabAction).toHaveBeenCalledWith(
@@ -86,7 +100,7 @@ export const CobroDeshabilitadoPorCajaCerrada: Story = {
     const dialog = within(await body.findByRole('dialog'))
     // waitFor: mismo fade-in-0 que en CobrarFiado.
     await waitFor(() => expect(dialog.getByText(/caja cerrada/i)).toBeVisible())
-    await expect(dialog.getByRole('button', { name: /^Cobrar/ })).toBeDisabled()
+    await expect(dialog.getByRole('button', CONFIRMAR_COBRO)).toBeDisabled()
 
     // Esta story no cobra ni cancela — el diálogo queda abierto por defecto y
     // contamina la story siguiente del archivo (Anular Fiado) si no se cierra acá.

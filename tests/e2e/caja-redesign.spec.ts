@@ -192,7 +192,10 @@ test.describe('Caja redesign', () => {
     await fiadoRow.getByRole('button', { name: 'Cobrar' }).click()
     const settleDialog = page.getByRole('dialog')
     await expect(settleDialog).toBeVisible()
-    await settleDialog.getByRole('button', { name: /^Cobrar/ }).click()
+    // `/^Cobrar/` matchearia tambien el atajo "Cobrar todo en efectivo" que
+    // SplitPaymentFields muestra desde 2026-09-09: dos matches = strict mode
+    // violation. El atajo nombra el metodo; el submit, no.
+    await settleDialog.getByRole('button', { name: /^Cobrar(?! todo en efectivo)/ }).click()
 
     await expect(page.getByText(`Fiado cobrado — ${debtorName}`).first()).toBeVisible()
     // Desaparece de "Fiados pendientes": ya está 'paid', listOpenTabs no lo trae más.

@@ -31,18 +31,18 @@ TurnoGol tiene dos usuarios que no se parecen en nada, y un solo sistema que deb
 sin duplicar componentes. La misma paleta, la misma tipografía, los mismos primitives — pero dos
 **presupuestos de expresión** distintos.
 
-| | 🖥️ **Admin — "El Mostrador"** | ⚽ **Jugador — "La Previa"** |
-|---|---|---|
-| Quién | Marcelo (35–60, dueño) y Rodrigo (encargado). Tech literacy 2–3/5. La usan 8 h/día. | Tomás (18–35). Nativo PedidosYa/Rappi/ML. La usa 2 min/semana. |
-| Es | Herramienta de trabajo. Caja registradora + agenda. | App de consumo. Vidriera + checkout. |
-| Métrica de éxito | Segundos hasta completar la tarea. Cero ambigüedad. | Ganas de volver. Confianza para pagar. |
-| Densidad | Alta. Datos primero, decoración después. | Media/baja. Una idea por pantalla. |
-| Motion budget | ≤ 200 ms, solo funcional (feedback, transición). | Hasta 500 ms en momentos pico (confirmación). |
-| Display type | `font-display` solo en KPIs y títulos de página. | `font-display` (itálica) protagonista en heros. |
-| Tono | Directo, operativo: "Cobrar", "Cerrar caja". | Cercano, de vestuario: "Tenés 2 turnos por jugar". |
-| Referencia mental | PedidosYa lado restaurante, Toast POS. | PedidosYa/Rappi lado cliente, Airbnb. |
+|                   | 🖥️ **Admin — "El Mostrador"**                                                       | ⚽ **Jugador — "La Previa"**                                   |
+| ----------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Quién             | Marcelo (35–60, dueño) y Rodrigo (encargado). Tech literacy 2–3/5. La usan 8 h/día. | Tomás (18–35). Nativo PedidosYa/Rappi/ML. La usa 2 min/semana. |
+| Es                | Herramienta de trabajo. Caja registradora + agenda.                                 | App de consumo. Vidriera + checkout.                           |
+| Métrica de éxito  | Segundos hasta completar la tarea. Cero ambigüedad.                                 | Ganas de volver. Confianza para pagar.                         |
+| Densidad          | Alta. Datos primero, decoración después.                                            | Media/baja. Una idea por pantalla.                             |
+| Motion budget     | ≤ 200 ms, solo funcional (feedback, transición).                                    | Hasta 500 ms en momentos pico (confirmación).                  |
+| Display type      | `font-display` solo en KPIs y títulos de página.                                    | `font-display` (itálica) protagonista en heros.                |
+| Tono              | Directo, operativo: "Cobrar", "Cerrar caja".                                        | Cercano, de vestuario: "Tenés 2 turnos por jugar".             |
+| Referencia mental | PedidosYa lado restaurante, Toast POS.                                              | PedidosYa/Rappi lado cliente, Airbnb.                          |
 
-**Regla de oro:** ante una decisión de diseño, preguntá primero *"¿de qué lado estoy?"*. Un
+**Regla de oro:** ante una decisión de diseño, preguntá primero _"¿de qué lado estoy?"_. Un
 degradé animado en la Caja es ruido; una tabla densa en el checkout del jugador es frío.
 La belleza del admin ES su eficiencia; la eficiencia del jugador ES su belleza.
 
@@ -75,22 +75,22 @@ Recetas de componente (.card-premium, .page-header-band, StatCard…)
 
 ### 2.2 Tokens semánticos — duales (fuente: `globals.css`, verificado 2026-07-02)
 
-| Token | Light | Dark | Rol |
-|---|---|---|---|
-| `--background` | `214 25% 91%` (#DDE3EC, slate frío) | `224 71% 4%` (#020617, slate-950) | Fondo de página. Las cards flotan sobre él. |
-| `--foreground` | `224 71% 4%` | `210 40% 98%` | Texto principal |
-| `--card` | `0 0% 100%` (blanco) | `222 33% 9%` (~#0D1424) | Superficie elevada |
-| `--primary` | `161 94% 30%` (emerald-600) | `161 94% 30%` | Marca / acción. Ver §2.4 para TEXTO. |
-| `--secondary` / `--muted` | `214 32% 85%` | `217 33% 14%` | Superficies anidadas |
-| `--muted-foreground` | `215 20% 40%` | `215 20% 65%` | Texto secundario |
-| `--accent` | `214 32% 85%` | `217 33% 17%` | Hover bg de menús |
-| `--border` / `--input` | `214 32% 83%` | `217 33% 17%` | Bordes |
-| `--ring` | `160 84% 39%` (emerald-500) | igual | Focus ring |
-| `--destructive` | `0 72% 51%` (red-600) | igual | Peligro / borrar |
-| `--success` | `142 72% 29%` (green-700) | `142 70% 45%` | Confirmado / cobrado |
-| `--warning` | `32 95% 44%` (amber-600) | `38 92% 50%` | Pendiente / atención |
-| `--info` | `221 83% 53%` (blue-600) | `217 91% 60%` (blue-500) | Informativo neutro / procesos de terceros |
-| `--shell-bg` | — | `221 32% 14%` | Shell del layout admin |
+| Token                     | Light                               | Dark                              | Rol                                         |
+| ------------------------- | ----------------------------------- | --------------------------------- | ------------------------------------------- |
+| `--background`            | `214 25% 91%` (#DDE3EC, slate frío) | `224 71% 4%` (#020617, slate-950) | Fondo de página. Las cards flotan sobre él. |
+| `--foreground`            | `224 71% 4%`                        | `210 40% 98%`                     | Texto principal                             |
+| `--card`                  | `0 0% 100%` (blanco)                | `222 33% 9%` (~#0D1424)           | Superficie elevada                          |
+| `--primary`               | `161 94% 30%` (emerald-600)         | `161 94% 30%`                     | Marca / acción. Ver §2.4 para TEXTO.        |
+| `--secondary` / `--muted` | `214 32% 85%`                       | `217 33% 14%`                     | Superficies anidadas                        |
+| `--muted-foreground`      | `215 20% 40%`                       | `215 20% 65%`                     | Texto secundario                            |
+| `--accent`                | `214 32% 85%`                       | `217 33% 17%`                     | Hover bg de menús                           |
+| `--border` / `--input`    | `214 32% 83%`                       | `217 33% 17%`                     | Bordes                                      |
+| `--ring`                  | `160 84% 39%` (emerald-500)         | igual                             | Focus ring                                  |
+| `--destructive`           | `0 72% 51%` (red-600)               | igual                             | Peligro / borrar                            |
+| `--success`               | `142 72% 29%` (green-700)           | `142 70% 45%`                     | Confirmado / cobrado                        |
+| `--warning`               | `32 95% 44%` (amber-600)            | `38 92% 50%`                      | Pendiente / atención                        |
+| `--info`                  | `221 83% 53%` (blue-600)            | `217 91% 60%` (blue-500)          | Informativo neutro / procesos de terceros   |
+| `--shell-bg`              | —                                   | `221 32% 14%`                     | Shell del layout admin                      |
 
 **`--info` vive en `globals.css` + `tailwind.config.ts`** (mismo patrón que `--success`; agregado
 2026-07-02 junto con la grilla). Es el color "esto es información/proceso, ni bien ni mal" —
@@ -119,19 +119,19 @@ no el CTA. Ver §2.6.
 da 3,77:1.** Cumple AA solo para texto grande/componentes UI (≥3:1), no para texto normal.
 Toda regla derivada se corrige así:
 
-| Combinación | Ratio | Veredicto AA texto normal |
-|---|---|---|
-| emerald-500 `#10B981` sobre blanco | **2,5:1** | ❌ PROHIBIDO como texto |
-| emerald-600 `#059669` sobre blanco | **3,8:1** | ❌ Solo texto grande (≥24px / ≥18,7px bold) o componente UI |
-| emerald-700 `#047857` sobre blanco/card | **5,5:1** | ✅ Texto emerald estándar en cards |
-| emerald-700 sobre `--background` light (#DDE3EC) | **4,2:1** | ❌ Sobre el fondo de página usar 800 |
-| emerald-800 `#065F46` sobre background light | **6,0:1** | ✅ Texto emerald sobre fondo de página |
-| Blanco sobre emerald-600 | **3,8:1** | ❌ Como label de botón 14px NO alcanza |
-| Blanco sobre emerald-700 | **5,5:1** | ✅ CTA sólido light-mode |
-| slate-950 sobre emerald-500 (dark CTA) | **7,9:1** | ✅ CTA sólido dark-mode |
-| emerald-400 `#34D399` sobre slate-950 / card dark | **10,5 / 9,6:1** | ✅ Texto emerald estándar en dark |
-| Blanco sobre red-600 | **4,6:1** | ✅ |
-| Blanco sobre amber-600 | **3,2:1** | ❌ Warning sólido lleva texto oscuro (amber-950) o fill amber-700+ |
+| Combinación                                       | Ratio            | Veredicto AA texto normal                                          |
+| ------------------------------------------------- | ---------------- | ------------------------------------------------------------------ |
+| emerald-500 `#10B981` sobre blanco                | **2,5:1**        | ❌ PROHIBIDO como texto                                            |
+| emerald-600 `#059669` sobre blanco                | **3,8:1**        | ❌ Solo texto grande (≥24px / ≥18,7px bold) o componente UI        |
+| emerald-700 `#047857` sobre blanco/card           | **5,5:1**        | ✅ Texto emerald estándar en cards                                 |
+| emerald-700 sobre `--background` light (#DDE3EC)  | **4,2:1**        | ❌ Sobre el fondo de página usar 800                               |
+| emerald-800 `#065F46` sobre background light      | **6,0:1**        | ✅ Texto emerald sobre fondo de página                             |
+| Blanco sobre emerald-600                          | **3,8:1**        | ❌ Como label de botón 14px NO alcanza                             |
+| Blanco sobre emerald-700                          | **5,5:1**        | ✅ CTA sólido light-mode                                           |
+| slate-950 sobre emerald-500 (dark CTA)            | **7,9:1**        | ✅ CTA sólido dark-mode                                            |
+| emerald-400 `#34D399` sobre slate-950 / card dark | **10,5 / 9,6:1** | ✅ Texto emerald estándar en dark                                  |
+| Blanco sobre red-600                              | **4,6:1**        | ✅                                                                 |
+| Blanco sobre amber-600                            | **3,2:1**        | ❌ Warning sólido lleva texto oscuro (amber-950) o fill amber-700+ |
 
 **Reglas duras resultantes:**
 
@@ -155,17 +155,17 @@ Tomás coincida con lo que ve Rodrigo cuando hablan por teléfono ("figura confi
 
 Mapa 1:1 con `booking_status` + estado de pago. Siempre color + ícono + texto.
 
-| Estado | Light | Dark | Ícono Lucide |
-|---|---|---|---|
-| Libre (slot) | superficie `--card`, borde `--border`; hover: borde emerald + ícono `+` | ídem con glass | `Plus` (solo hover/focus) |
-| Pendiente de seña (`pending_payment`) | borde-l 3px + tinte `warning` | ídem, tinte al 15 % | `Clock` |
-| Confirmada sin seña (efectivo) | borde-l 3px `info` + texto normal | ídem | `HandCoins` |
-| Confirmada con seña (`confirmed`) | borde-l 3px + tinte `success` suave | ídem | `CheckCircle2` |
-| Completada + cobrada | fill `success` 10–15 % + check sólido | ídem | `CheckCheck` |
-| No-show / softban | borde-l 3px + tinte `destructive` | ídem | `UserX` |
-| Cancelada | neutro `muted`, texto tachado opcional | ídem | `XCircle` |
-| Pasado (sin acción) | desaturado, opacidad 60 % | ídem | — |
-| Bloqueado / cancha offline | patrón rayado diagonal `muted` | ídem | `Ban` |
+| Estado                                | Light                                                                   | Dark                | Ícono Lucide              |
+| ------------------------------------- | ----------------------------------------------------------------------- | ------------------- | ------------------------- |
+| Libre (slot)                          | superficie `--card`, borde `--border`; hover: borde emerald + ícono `+` | ídem con glass      | `Plus` (solo hover/focus) |
+| Pendiente de seña (`pending_payment`) | borde-l 3px + tinte `warning`                                           | ídem, tinte al 15 % | `Clock`                   |
+| Confirmada sin seña (efectivo)        | borde-l 3px `info` + texto normal                                       | ídem                | `HandCoins`               |
+| Confirmada con seña (`confirmed`)     | borde-l 3px + tinte `success` suave                                     | ídem                | `CheckCircle2`            |
+| Completada + cobrada                  | fill `success` 10–15 % + check sólido                                   | ídem                | `CheckCheck`              |
+| No-show / softban                     | borde-l 3px + tinte `destructive`                                       | ídem                | `UserX`                   |
+| Cancelada                             | neutro `muted`, texto tachado opcional                                  | ídem                | `XCircle`                 |
+| Pasado (sin acción)                   | desaturado, opacidad 60 %                                               | ídem                | —                         |
+| Bloqueado / cancha offline            | patrón rayado diagonal `muted`                                          | ídem                | `Ban`                     |
 
 Los tintes se logran con `color-mix`/alpha del token semántico — nunca hex nuevos. El **borde
 izquierdo de 3px** es el identificador primario (legible en densidad alta y para daltónicos por
@@ -177,29 +177,30 @@ posición constante); el tinte de fondo es refuerzo.
 
 Tres caras, tres trabajos. No hay cuarta.
 
-| Familia | Token | Rol | Dónde |
-|---|---|---|---|
-| **Inter** (variable) | `font-sans` | Cuerpo, UI, datos. La que trabaja. | Todo por defecto |
+| Familia                | Token          | Rol                                                                                                             | Dónde                                                          |
+| ---------------------- | -------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Inter** (variable)   | `font-sans`    | Cuerpo, UI, datos. La que trabaja.                                                                              | Todo por defecto                                               |
 | **Archivo** (variable) | `font-display` | Display: heros, h1/h2, **numerales clave** (precios, KPIs, montos). En itálica bold = voz "cancha" del jugador. | Heros player (itálica), títulos de página y KPIs admin (recta) |
-| **Sora** | `font-logo` | SOLO el logotipo TURNOGOL. | Logo. Nada más. |
+| **Sora**               | `font-logo`    | SOLO el logotipo TURNOGOL.                                                                                      | Logo. Nada más.                                                |
 
 ### Escala
 
-| Rol | Tamaño/peso | Tailwind | Notas |
-|---|---|---|---|
-| Display XL (hero player) | 48–60px / 800 itálica | `font-display text-5xl md:text-6xl font-extrabold italic` | Solo lado jugador, 1 por página |
-| Display L (hero sección) | 36px / 700 | `font-display text-4xl font-bold` | |
-| KPI / numeral clave | 28–36px / 700 | `font-display text-3xl font-bold tabular-nums` | StatCard, precio card, totales caja |
-| Título de página (h1) | 24px / 600 | `text-2xl font-semibold` (admin en `font-display`) | |
-| Título de sección (h2) | 20px / 600 | `text-xl font-semibold` | |
-| Título de card (h3) | 16px / 600 | `text-base font-semibold` | |
-| Body | 14px / 400 | `text-sm` | Mínimo admin. **No aplica a campos de entrada** — ver §3.1 |
-| Label | 14px / 500 | `text-sm font-medium` | |
-| Caption / helper | 12px / 400 | `text-xs text-muted-foreground` | |
-| Badge | 12px / 500 | `text-xs font-medium` | |
-| **Campo de entrada** | **16px mobile / 14px ≥768px** | **`text-base md:text-sm`** | **Regla dura, ver §3.1** |
+| Rol                      | Tamaño/peso                   | Tailwind                                                  | Notas                                                      |
+| ------------------------ | ----------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- |
+| Display XL (hero player) | 48–60px / 800 itálica         | `font-display text-5xl md:text-6xl font-extrabold italic` | Solo lado jugador, 1 por página                            |
+| Display L (hero sección) | 36px / 700                    | `font-display text-4xl font-bold`                         |                                                            |
+| KPI / numeral clave      | 28–36px / 700                 | `font-display text-3xl font-bold tabular-nums`            | StatCard, precio card, totales caja                        |
+| Título de página (h1)    | 24px / 600                    | `text-2xl font-semibold` (admin en `font-display`)        |                                                            |
+| Título de sección (h2)   | 20px / 600                    | `text-xl font-semibold`                                   |                                                            |
+| Título de card (h3)      | 16px / 600                    | `text-base font-semibold`                                 |                                                            |
+| Body                     | 14px / 400                    | `text-sm`                                                 | Mínimo admin. **No aplica a campos de entrada** — ver §3.1 |
+| Label                    | 14px / 500                    | `text-sm font-medium`                                     |                                                            |
+| Caption / helper         | 12px / 400                    | `text-xs text-muted-foreground`                           |                                                            |
+| Badge                    | 12px / 500                    | `text-xs font-medium`                                     |                                                            |
+| **Campo de entrada**     | **16px mobile / 14px ≥768px** | **`text-base md:text-sm`**                                | **Regla dura, ver §3.1**                                   |
 
 **Reglas:**
+
 - `tabular-nums` en **todo** dato numérico (precios, horas, contadores, columnas). Sin excepción: los números que "bailan" al actualizar rompen el escaneo de la grilla.
 - Disciplina display: `font-display` no aparece en párrafos, tablas ni forms. Si todo es display, nada es display.
 - Body mínimo 14px; en al lado del jugador el body puede ser 16px (`text-base`) en flujos de lectura (detalle de complejo, confirmación).
@@ -211,7 +212,7 @@ La escala de arriba —incluido "Body mínimo 14px"— describe **texto de lectu
 
 Todo `input`, `textarea`, `select`, `[contenteditable]`, y el input interno de `Combobox` / `PhoneInput`, renderiza **≥16px hasta el breakpoint `md` (768px)**. Receta canónica: **`text-base md:text-sm`**. Prohibido `text-sm`, `text-xs`, `text-[15px]` o menor en un campo sin cascada `md:` que lo suba.
 
-**Motivo:** iOS WebKit —el motor de *todos* los navegadores del iPhone, Chrome iOS incluido— hace zoom automático al enfocar un campo con font-size computado < 16px. Ese zoom achica el visual viewport y arrastra scroll horizontal y vertical. **`maximumScale` en el viewport no lo previene** (y bajarlo a 1 rompería WCAG 1.4.4).
+**Motivo:** iOS WebKit —el motor de _todos_ los navegadores del iPhone, Chrome iOS incluido— hace zoom automático al enfocar un campo con font-size computado < 16px. Ese zoom achica el visual viewport y arrastra scroll horizontal y vertical. **`maximumScale` en el viewport no lo previene** (y bajarlo a 1 rompería WCAG 1.4.4).
 
 **Escape hatch:** `.field-lg` (18px, declarada en `globals.css`) para campos deliberadamente más grandes en mobile. **No existe escape hatch hacia abajo.**
 
@@ -230,13 +231,13 @@ Todo `input`, `textarea`, `select`, `[contenteditable]`, y el input interno de `
 
 ### 4.2 Radio (mapeo shadcn real: `--radius: 0.5rem`)
 
-| Token | Valor | Uso |
-|---|---|---|
-| `rounded-sm` | 4px | Badges, tags |
-| `rounded-md` | 6px | Inputs, ítems de menú |
-| `rounded-lg` | 8px | Botones, cards estándar |
-| `rounded-xl` | 12px | `card-premium`, paneles, modales |
-| `rounded-full` | — | Avatares, pills, chips |
+| Token          | Valor | Uso                              |
+| -------------- | ----- | -------------------------------- |
+| `rounded-sm`   | 4px   | Badges, tags                     |
+| `rounded-md`   | 6px   | Inputs, ítems de menú            |
+| `rounded-lg`   | 8px   | Botones, cards estándar          |
+| `rounded-xl`   | 12px  | `card-premium`, paneles, modales |
+| `rounded-full` | —     | Avatares, pills, chips           |
 
 ### 4.3 Elevación — el lenguaje premium adaptativo
 
@@ -244,24 +245,24 @@ Todo `input`, `textarea`, `select`, `[contenteditable]`, y el input interno de `
 sobre claro — lee barrosa). **Dark = glass** (relleno white-alpha 3–8 % + `backdrop-blur` + sombra
 profunda + glow emerald). Recetas canónicas ya en `globals.css`:
 
-| Receta | Qué es | Cuándo |
-|---|---|---|
-| `.card-premium` | Card elevada/glass según tema | Superficie destacada por defecto en admin y player |
-| `.card-premium-interactive` | + lift −4px y glow al hover | SOLO si la card ES clickeable (agregar `cursor-pointer`) |
-| `.page-header-band` | Banda de cabecera de página | Toda página admin (via `PageHeader`) |
-| `.icon-halo` | Chip de ícono con halo emerald | StatCard, acciones destacadas |
-| `.player-hero-band` + `.player-hero-grid` | Banda hero jugador + retícula | Heros del lado jugador |
-| `.hero-accent-text` | Degradé emerald en titulares | 1 vez por hero |
-| `.reserva-*` | Shell/badge/receipt del flujo de reserva | Flujo `reserva/[bookingId]` |
-| `.shell-bg` / `.content-area-gradient` | Fondo del shell admin | Layout admin |
-| `.skeleton` | Shimmer de carga | Todo loading que reemplaza contenido |
-| `.landing-hero` | Fondo de página de la landing (light crema emerald / dark slab) | Solo `/` |
-| `.overlay-nav` | Pill de nav flotante glass/elevada | Header overlay de la landing + toasts flotantes decorativos |
-| `.live-pill` | Pill de estado "en vivo" AA en ambos temas | Landing + banda de /explorar |
-| `.search-card` | Tarjeta del buscador (light elevada / dark glass slab) | HeroSearch landing + SearchBar explorar |
-| `.mockup-card` / `.mockup-cover` | Card "producto en acción" y su cover emerald | Mockup del hero; `mockup-cover` también como cover fallback de cards de complejo |
-| `.stats-band` / `.cta-band` | Bandas de prueba social y CTA B2B | Secciones stats/owner de la landing |
-| `.hero-particle` | Partícula flotante con glow (decorativa, dark-only) | Hero landing |
+| Receta                                    | Qué es                                                          | Cuándo                                                                           |
+| ----------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `.card-premium`                           | Card elevada/glass según tema                                   | Superficie destacada por defecto en admin y player                               |
+| `.card-premium-interactive`               | + lift −4px y glow al hover                                     | SOLO si la card ES clickeable (agregar `cursor-pointer`)                         |
+| `.page-header-band`                       | Banda de cabecera de página                                     | Toda página admin (via `PageHeader`)                                             |
+| `.icon-halo`                              | Chip de ícono con halo emerald                                  | StatCard, acciones destacadas                                                    |
+| `.player-hero-band` + `.player-hero-grid` | Banda hero jugador + retícula                                   | Heros del lado jugador                                                           |
+| `.hero-accent-text`                       | Degradé emerald en titulares                                    | 1 vez por hero                                                                   |
+| `.reserva-*`                              | Shell/badge/receipt del flujo de reserva                        | Flujo `reserva/[bookingId]`                                                      |
+| `.shell-bg` / `.content-area-gradient`    | Fondo del shell admin                                           | Layout admin                                                                     |
+| `.skeleton`                               | Shimmer de carga                                                | Todo loading que reemplaza contenido                                             |
+| `.landing-hero`                           | Fondo de página de la landing (light crema emerald / dark slab) | Solo `/`                                                                         |
+| `.overlay-nav`                            | Pill de nav flotante glass/elevada                              | Header overlay de la landing + toasts flotantes decorativos                      |
+| `.live-pill`                              | Pill de estado "en vivo" AA en ambos temas                      | Landing + banda de /explorar                                                     |
+| `.search-card`                            | Tarjeta del buscador (light elevada / dark glass slab)          | HeroSearch landing + SearchBar explorar                                          |
+| `.mockup-card` / `.mockup-cover`          | Card "producto en acción" y su cover emerald                    | Mockup del hero; `mockup-cover` también como cover fallback de cards de complejo |
+| `.stats-band` / `.cta-band`               | Bandas de prueba social y CTA B2B                               | Secciones stats/owner de la landing                                              |
+| `.hero-particle`                          | Partícula flotante con glow (decorativa, dark-only)             | Hero landing                                                                     |
 
 Sombras utilitarias shadcn (`shadow-sm/md/lg/2xl`) siguen válidas para dropdowns/modales.
 **Regla:** una vista no inventa su propia sombra/glass inline; si la receta no existe, se agrega a
@@ -280,20 +281,20 @@ esto) y estado (esto cambió). Si no comunica nada, no va.
 
 ### 5.1 Tokens
 
-| Token | Duración | Easing | Uso |
-|---|---|---|---|
-| `motion-instant` | 100ms | ease-in | Press feedback (`active:scale-[0.98]`) |
-| `motion-fast` | 150ms | ease | Hover, color, focos |
-| `motion-base` | 200ms | ease-out | Dropdowns, tabs, `card-premium` |
-| `motion-slow` | 300ms | ease-out | Modales, sheets, drawers |
-| `motion-peak` | 400–600ms | ease-out / spring suave | SOLO momentos pico del jugador (§5.3) |
+| Token            | Duración  | Easing                  | Uso                                    |
+| ---------------- | --------- | ----------------------- | -------------------------------------- |
+| `motion-instant` | 100ms     | ease-in                 | Press feedback (`active:scale-[0.98]`) |
+| `motion-fast`    | 150ms     | ease                    | Hover, color, focos                    |
+| `motion-base`    | 200ms     | ease-out                | Dropdowns, tabs, `card-premium`        |
+| `motion-slow`    | 300ms     | ease-out                | Modales, sheets, drawers               |
+| `motion-peak`    | 400–600ms | ease-out / spring suave | SOLO momentos pico del jugador (§5.3)  |
 
 Implementación: clases Tailwind (`duration-150`, `ease-out`, `tw-animate-css`). No agregar
 librerías de animación al stack.
 
 **Excepción única: `/onboarding`** (enmienda 2026-08-15). El wizard usa `motion` con `LazyMotion` +
 `domAnimation` (~15 KB, y solo en esa ruta — vive fuera de `(admin)`, así que no toca el bundle del
-panel diario). Se concede porque la regla protege las superficies de *tarea repetida*, y el
+panel diario). Se concede porque la regla protege las superficies de _tarea repetida_, y el
 onboarding se recorre **una vez en la vida del complejo**: ahí la transición entre pasos y la
 animación de salida —lo único que CSS no resuelve bien— sí pagan su peso. Por el mismo motivo el
 techo de §5.2 no aplica al onboarding: rige el presupuesto del jugador (300 ms, hasta 600 ms una vez
@@ -308,14 +309,14 @@ a discutirse acá: esta excepción no sienta precedente.
 
 ### 5.3 Catálogo semántico
 
-| Patrón | Receta | Ejemplo TurnoGol |
-|---|---|---|
-| **Feedback** (presioné algo) | `active:scale-[0.98]` 100ms + spinner en async (`isLoading` del Button) | Todo botón |
-| **Transición** (cambié de contexto) | fade+zoom 95→100 200ms | Dropdown, popover, tabs |
-| **Atención** (algo cambió sin que lo toques) | 1 pulso de tinte emerald 600ms + badge persistente | Reserva online entra por Realtime a la grilla → el slot pulsa una vez. Von Restorff aplicado: el cambio es EL elemento distinto |
-| **Celebración** (peak del jugador) | check dibujado + glow 600ms, una sola vez, sin loop | Pantalla "¡Reserva confirmada!" |
-| **Espera** (estoy trabajando) | `.skeleton` shimmer con la MISMA silueta del contenido final | Grilla/caja/dashboard loading |
-| **Ambiente** (solo marketing) | `tg-float` / `tg-drift` (existentes) | Heros de landing/para-complejos. PROHIBIDO en vistas de tarea |
+| Patrón                                       | Receta                                                                  | Ejemplo TurnoGol                                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Feedback** (presioné algo)                 | `active:scale-[0.98]` 100ms + spinner en async (`isLoading` del Button) | Todo botón                                                                                                                      |
+| **Transición** (cambié de contexto)          | fade+zoom 95→100 200ms                                                  | Dropdown, popover, tabs                                                                                                         |
+| **Atención** (algo cambió sin que lo toques) | 1 pulso de tinte emerald 600ms + badge persistente                      | Reserva online entra por Realtime a la grilla → el slot pulsa una vez. Von Restorff aplicado: el cambio es EL elemento distinto |
+| **Celebración** (peak del jugador)           | check dibujado + glow 600ms, una sola vez, sin loop                     | Pantalla "¡Reserva confirmada!"                                                                                                 |
+| **Espera** (estoy trabajando)                | `.skeleton` shimmer con la MISMA silueta del contenido final            | Grilla/caja/dashboard loading                                                                                                   |
+| **Ambiente** (solo marketing)                | `tg-float` / `tg-drift` (existentes)                                    | Heros de landing/para-complejos. PROHIBIDO en vistas de tarea                                                                   |
 
 **Reglas:** sin loops infinitos fuera de skeleton/ambiente marketing · nada que desplace layout
 (transform/opacity only) · `prefers-reduced-motion` ya se respeta global en `globals.css` (motion
@@ -332,23 +333,23 @@ auditado 2026-07-02: 14 de 16 primitives hardcodean clases light (`bg-white`, `b
 `text-slate-700`) sin par dark — por eso el theme flip requirió parches por vista. **Migración
 progresiva obligatoria:** cada vez que se toque un primitive, se tokeniza:
 
-| Hardcodeado (mal) | Token (bien) |
-|---|---|
-| `bg-white` | `bg-card` |
-| `text-slate-900` | `text-foreground` / `text-card-foreground` |
-| `text-slate-500/600` | `text-muted-foreground` |
-| `border-slate-200` | `border-border` (o solo `border`, el reset ya aplica) |
-| `hover:bg-slate-100` | `hover:bg-accent` |
-| `bg-slate-100` | `bg-secondary` / `bg-muted` |
-| `bg-emerald-600` (CTA) | `bg-primary` (con §2.4 aplicado al token) |
-| `focus:ring-emerald-500` | `focus-visible:ring-ring` |
+| Hardcodeado (mal)        | Token (bien)                                          |
+| ------------------------ | ----------------------------------------------------- |
+| `bg-white`               | `bg-card`                                             |
+| `text-slate-900`         | `text-foreground` / `text-card-foreground`            |
+| `text-slate-500/600`     | `text-muted-foreground`                               |
+| `border-slate-200`       | `border-border` (o solo `border`, el reset ya aplica) |
+| `hover:bg-slate-100`     | `hover:bg-accent`                                     |
+| `bg-slate-100`           | `bg-secondary` / `bg-muted`                           |
+| `bg-emerald-600` (CTA)   | `bg-primary` (con §2.4 aplicado al token)             |
+| `focus:ring-emerald-500` | `focus-visible:ring-ring`                             |
 
 ### 6.2 Button
 
 ```tsx
 // Primario — uno por vista. AA en ambos temas (§2.4):
 // light: bg-emerald-700 + blanco (5,5:1) · dark: bg-emerald-500 + slate-950 (7,9:1)
-<Button>Guardar</Button>              // variant default → tokens
+<Button>Guardar</Button> // variant default → tokens
 
 // Jerarquía completa: default (primario) · outline (secundario) · ghost (terciario)
 // · destructive (peligro) · link (inline)
@@ -370,12 +371,12 @@ progresiva obligatoria:** cada vez que se toque un primitive, se tokeniza:
 
 ### 6.4 Cards — cuál usar
 
-| Componente | Cuándo |
-|---|---|
-| `Card` shadcn plana (`bg-card border shadow-sm`) | Contenido de trabajo: forms, tablas, listados admin |
-| `.card-premium` | Superficies destacadas: paneles de dashboard, cards de complejo/cancha del jugador |
-| `StatCard` | KPIs. **Único** formato de KPI permitido (número `font-display` + label + ícono halo + comparativa opcional). Reportes hoy viola esto con su propio formato — migrar |
-| `PageHeader` | Cabecera de TODA página admin: ícono halo + h1 + subtítulo (fecha/contexto) + acciones a la derecha |
+| Componente                                       | Cuándo                                                                                                                                                               |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Card` shadcn plana (`bg-card border shadow-sm`) | Contenido de trabajo: forms, tablas, listados admin                                                                                                                  |
+| `.card-premium`                                  | Superficies destacadas: paneles de dashboard, cards de complejo/cancha del jugador                                                                                   |
+| `StatCard`                                       | KPIs. **Único** formato de KPI permitido (número `font-display` + label + ícono halo + comparativa opcional). Reportes hoy viola esto con su propio formato — migrar |
+| `PageHeader`                                     | Cabecera de TODA página admin: ícono halo + h1 + subtítulo (fecha/contexto) + acciones a la derecha                                                                  |
 
 Interactiva ⇒ `card-premium-interactive` + `cursor-pointer` + `focus-visible:ring-2`. Display-only ⇒ sin cursor pointer (no mentir affordance).
 
@@ -385,9 +386,11 @@ Receta dual-theme con tokens (reemplaza los hex fijos de v1):
 
 ```tsx
 // success | warning | destructive | info | muted — SIEMPRE ícono + texto
-<span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium
+<span
+  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium
   bg-success/10 text-success ring-1 ring-inset ring-success/25
-  dark:bg-success/15 dark:ring-success/40">
+  dark:bg-success/15 dark:ring-success/40"
+>
   <CheckCircle2 className="h-3 w-3" aria-hidden /> Confirmada
 </span>
 ```
@@ -434,14 +437,14 @@ Marcelo no va a leer un manual y nadie se lo va a dar. El sistema enseña como u
 
 ### 7.2 Inventario de patrones
 
-| Patrón | Qué es | Cuándo | Ejemplo TurnoGol |
-|---|---|---|---|
-| **Empty state didáctico** | Vacío = primera lección: ícono + 1 línea + CTA | Toda colección vacía | Grilla sin reservas: "Tocá cualquier horario libre y cargá tu primera reserva" + pulso único en el slot más próximo |
-| **Checklist de setup** | Progreso con % arrancado (goal gradient §9) | Dashboard hasta completar | Ya existe ("Progreso de configuración", 57 %) — patrón canónico, mantener |
-| **Coachmark** | Globo anclado a UN elemento, 1 línea + "Entendido" | Primera visita a una vista con acción no obvia | Primera vez en Caja: ancla en "Cerrar caja" → "Al final del día cerrá la caja acá; te queda el resumen guardado" |
-| **Tooltip** | Hover/focus/long-press, instantáneo | SIEMPRE en icon-only y candados de rol | Toggle densidad de grilla (hoy: ícono ↓↑ mudo — bug) |
-| **Hint inline de dato** | `HelpCircle` 16px junto a un término | Términos de dominio con lógica detrás | "Seña" en settings: "Porcentaje que el jugador paga online para confirmar" |
-| **Primera-vez espectral** | Ejemplo fantasma no interactivo (opacity 50 % + label "ejemplo") | Vistas de datos incomprensibles vacías | Reportes sin datos: KPIs de ejemplo grisados + "Así se verá tu mes cuando cargues reservas" |
+| Patrón                    | Qué es                                                           | Cuándo                                         | Ejemplo TurnoGol                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Empty state didáctico** | Vacío = primera lección: ícono + 1 línea + CTA                   | Toda colección vacía                           | Grilla sin reservas: "Tocá cualquier horario libre y cargá tu primera reserva" + pulso único en el slot más próximo |
+| **Checklist de setup**    | Progreso con % arrancado (goal gradient §9)                      | Dashboard hasta completar                      | Ya existe ("Progreso de configuración", 57 %) — patrón canónico, mantener                                           |
+| **Coachmark**             | Globo anclado a UN elemento, 1 línea + "Entendido"               | Primera visita a una vista con acción no obvia | Primera vez en Caja: ancla en "Cerrar caja" → "Al final del día cerrá la caja acá; te queda el resumen guardado"    |
+| **Tooltip**               | Hover/focus/long-press, instantáneo                              | SIEMPRE en icon-only y candados de rol         | Toggle densidad de grilla (hoy: ícono ↓↑ mudo — bug)                                                                |
+| **Hint inline de dato**   | `HelpCircle` 16px junto a un término                             | Términos de dominio con lógica detrás          | "Seña" en settings: "Porcentaje que el jugador paga online para confirmar"                                          |
+| **Primera-vez espectral** | Ejemplo fantasma no interactivo (opacity 50 % + label "ejemplo") | Vistas de datos incomprensibles vacías         | Reportes sin datos: KPIs de ejemplo grisados + "Así se verá tu mes cuando cargues reservas"                         |
 
 ### 7.3 Anatomía del coachmark
 
@@ -472,26 +475,28 @@ flujo (`$ 100` → `$50,00` → `$ 100,00`), fechas ISO cara al usuario (`Caja �
 
 ### 8.2 Plata (ARS, centavos internos → presentación única)
 
-Helper único `formatMoney` (Intl es-AR). Formatos permitidos:
+Helper único `formatArs` (Intl es-AR). Formatos permitidos:
 
-| Contexto | Formato | Ejemplo |
-|---|---|---|
-| Player + grilla + listados (montos enteros) | `$ 12.500` sin decimales | Precio turno, seña |
-| Caja / cierres / reportes (contable) | `$ 12.500,00` | Movimientos, totales del día |
-| Compacto SOLO en charts | `$ 12,5 mil` | Ejes |
+| Contexto                                                        | Formato                  | Ejemplo                                          |
+| --------------------------------------------------------------- | ------------------------ | ------------------------------------------------ |
+| Toda la app (player, grilla, listados, caja, cierres, reportes) | `$ 12.500` sin decimales | Precio turno, seña, movimientos, totales del día |
+| Compacto SOLO en charts                                         | `$ 12,5 mil`             | Ejes                                             |
 
-Miles con punto, coma decimal, espacio fino tras `$`. Negativos: `−$ 1.500` con `text-destructive`
-y signo (no color solo). Nunca "ARS", nunca "$100" pegado, nunca decimales en player.
+Sin decimales en ningún lado: son pesos argentinos, y en el mostrador se cuentan billetes, no
+centavos. El único caso real donde el monto interno tiene centavos es la seña calculada por
+porcentaje (`calcDepositCents`); se redondea al formatear, igual que cualquier otro monto.
+Miles con punto, espacio fino tras `$`. Negativos: `−$ 1.500` con `text-destructive` y signo (no
+color solo). Nunca "ARS", nunca "$100" pegado, nunca decimales.
 
 ### 8.3 Fecha y hora (UTC interno → ART presentación)
 
-| Contexto | Formato | Ejemplo |
-|---|---|---|
-| Relativo (≤ 2 días) | prefijo relativo + hora | "Hoy 18:00", "Mañana 21:00" |
-| Corto (chips, celdas) | `eee d MMM` | "vie 3 jul" |
-| Medio (cards, headers) | `eee d 'de' MMMM` | "mié 1 de julio" |
-| Largo (confirmaciones) | `eeee d 'de' MMMM` | "viernes 3 de julio" |
-| Rango horario | en-dash sin espacios | "17:00–18:00" |
+| Contexto               | Formato                 | Ejemplo                     |
+| ---------------------- | ----------------------- | --------------------------- |
+| Relativo (≤ 2 días)    | prefijo relativo + hora | "Hoy 18:00", "Mañana 21:00" |
+| Corto (chips, celdas)  | `eee d MMM`             | "vie 3 jul"                 |
+| Medio (cards, headers) | `eee d 'de' MMMM`       | "mié 1 de julio"            |
+| Largo (confirmaciones) | `eeee d 'de' MMMM`      | "viernes 3 de julio"        |
+| Rango horario          | en-dash sin espacios    | "17:00–18:00"               |
 
 Hora SIEMPRE 24h `HH:mm`. **ISO (`2026-07-03`) prohibido cara al usuario** — solo en URLs/APIs/e2e.
 Día operativo: los slots post-medianoche muestran la fecha de la NOCHE a la que pertenecen, con
@@ -516,22 +521,22 @@ por teléfono).
 
 No decoración intelectual: cada ley acá tiene una regla dura y su aplicación concreta.
 
-| Ley | Regla TurnoGol | Aplicación concreta |
-|---|---|---|
-| **Hick** (más opciones = más lento) | Máx 5–7 opciones simultáneas de igual jerarquía; el resto se pliega | Day-picker muestra 7 días, no un mes. Caja: 1 botón "Agregar movimiento" que abre tipo/categoría, no 6 botones sueltos. Filtros de explorar: 4 chips rápidos + drawer "Todos" |
-| **Fitts** (blanco grande y cerca = rápido) | Acción primaria mobile: full-width, zona del pulgar. En listas, la fila entera es el blanco | CTA "Pagar seña y reservar" full-width bottom. Slot de grilla completo clickeable, no un botoncito interno |
-| **Von Restorff** (lo distinto se ve) | UNO distinto por vista; el estado que exige acción es el distinto | En la grilla del día, "Esperando seña" (warning) es lo que salta — es lo único que Rodrigo debe perseguir. La reserva nueva por Realtime pulsa una vez (§5.3) |
-| **Miller / chunking** (memoria de trabajo ≈ 4±) | Información en grupos de 3–4 | Detalle de reserva: QUIÉN / CUÁNDO / PLATA en 3 bloques. Onboarding: 4 pasos, no 12 campos |
-| **Jakob** (la gente vive en otras apps) | Patrones de ecommerce conocidos en el player; patrones de agenda/caja conocidos en admin | Checkout = resumen + método + CTA único (como PedidosYa). Grilla = agenda semanal (como el cuaderno que ya usaba) |
-| **Goal gradient** (progreso visible acelera) | Todo proceso multi-paso muestra progreso con arranque regalado | Checklist de setup arranca en 57 % ("Cuenta creada" ya tildada). Onboarding "Paso 1 de 4 · 25 %" |
-| **Zeigarnik** (lo inconcluso tira) | Lo pendiente deja marca visible y clickeable | Badge numérico en "Reservas" (pendientes de seña) en el sidebar. Checklist visible hasta 7/7 |
-| **Peak-End** (se recuerda el pico y el final) | Invertir diseño/motion en el pico y el cierre de cada viaje | Pico jugador: "¡Reserva confirmada!" con celebración (§5.3) + QR. Cierre admin: "Cerrar caja" termina en resumen verde del día, no en un form mudo |
-| **Aversión a la pérdida** | Mostrar lo que se pierde con máxima crudeza; el dato sale de la DB | "Quedan 2 horarios esta noche" calculado en vivo y destacado. Cancelación: "Perdés la seña de $ 5.000" antes de confirmar |
-| **Prueba social** | Protagonista y repetida; todo número aguanta verificación | Perfil de complejo: rating + "+120 reservas este mes" (calculado). "Se llena rápido" / badge "Popular" (ícono `Flame`) en horarios con >60 % de ocupación real. "12 personas reservaron acá esta semana" calculado |
-| **FOMO / Escasez** | El inventario limitado se muestra a fondo — la competencia por el turno es real y se hace sentir | "3 personas están mirando esta cancha" solo vía Realtime/contador real. Últimos slots: tinte `warning` + "Últimos 2". Timer del hold visible en el checkout ("Tu turno queda reservado 15:00" — el TTL real). "Agotado" visible en horarios llenos, nunca esconderlos: el lleno vende |
-| **Anclaje de precio** | Referencia mayor real para que el precio actual se sienta oportunidad | "Desde $ 8.000" en cards (el precio real más bajo). Franja pico vs. valle: "$ 10.000 · a las 15:00 sale $ 8.000". Seña como fracción visible: "Señá solo $ 3.000 (de $ 12.000)" |
-| **Compromiso progresivo** | Cada paso invertido sube el costo de abandonar | Flujo: cancha → horario → resumen → login → pago: el login llega DESPUÉS de elegir turno (LoginGate del checkout, ya implementado). El precio se muestra desde la grilla (§12: cero sorpresas) — el compromiso se construye con pasos, no ocultando el costo |
-| **Serial position** (primero y último se recuerdan) | Nav ordenada por frecuencia; lo crítico primero o último, nunca en el medio | Sidebar: Grilla arriba (uso diario), Configuración al final. En modales: CTA primario abajo-derecha SIEMPRE |
+| Ley                                                 | Regla TurnoGol                                                                                   | Aplicación concreta                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Hick** (más opciones = más lento)                 | Máx 5–7 opciones simultáneas de igual jerarquía; el resto se pliega                              | Day-picker muestra 7 días, no un mes. Caja: 1 botón "Agregar movimiento" que abre tipo/categoría, no 6 botones sueltos. Filtros de explorar: 4 chips rápidos + drawer "Todos"                                                                                                         |
+| **Fitts** (blanco grande y cerca = rápido)          | Acción primaria mobile: full-width, zona del pulgar. En listas, la fila entera es el blanco      | CTA "Pagar seña y reservar" full-width bottom. Slot de grilla completo clickeable, no un botoncito interno                                                                                                                                                                            |
+| **Von Restorff** (lo distinto se ve)                | UNO distinto por vista; el estado que exige acción es el distinto                                | En la grilla del día, "Esperando seña" (warning) es lo que salta — es lo único que Rodrigo debe perseguir. La reserva nueva por Realtime pulsa una vez (§5.3)                                                                                                                         |
+| **Miller / chunking** (memoria de trabajo ≈ 4±)     | Información en grupos de 3–4                                                                     | Detalle de reserva: QUIÉN / CUÁNDO / PLATA en 3 bloques. Onboarding: 4 pasos, no 12 campos                                                                                                                                                                                            |
+| **Jakob** (la gente vive en otras apps)             | Patrones de ecommerce conocidos en el player; patrones de agenda/caja conocidos en admin         | Checkout = resumen + método + CTA único (como PedidosYa). Grilla = agenda semanal (como el cuaderno que ya usaba)                                                                                                                                                                     |
+| **Goal gradient** (progreso visible acelera)        | Todo proceso multi-paso muestra progreso con arranque regalado                                   | Checklist de setup arranca en 57 % ("Cuenta creada" ya tildada). Onboarding "Paso 1 de 4 · 25 %"                                                                                                                                                                                      |
+| **Zeigarnik** (lo inconcluso tira)                  | Lo pendiente deja marca visible y clickeable                                                     | Badge numérico en "Reservas" (pendientes de seña) en el sidebar. Checklist visible hasta 7/7                                                                                                                                                                                          |
+| **Peak-End** (se recuerda el pico y el final)       | Invertir diseño/motion en el pico y el cierre de cada viaje                                      | Pico jugador: "¡Reserva confirmada!" con celebración (§5.3) + QR. Cierre admin: "Cerrar caja" termina en resumen verde del día, no en un form mudo                                                                                                                                    |
+| **Aversión a la pérdida**                           | Mostrar lo que se pierde con máxima crudeza; el dato sale de la DB                               | "Quedan 2 horarios esta noche" calculado en vivo y destacado. Cancelación: "Perdés la seña de $ 5.000" antes de confirmar                                                                                                                                                             |
+| **Prueba social**                                   | Protagonista y repetida; todo número aguanta verificación                                        | Perfil de complejo: rating + "+120 reservas este mes" (calculado). "Se llena rápido" / badge "Popular" (ícono `Flame`) en horarios con >60 % de ocupación real. "12 personas reservaron acá esta semana" calculado                                                                    |
+| **FOMO / Escasez**                                  | El inventario limitado se muestra a fondo — la competencia por el turno es real y se hace sentir | "3 personas están mirando esta cancha" solo vía Realtime/contador real. Últimos slots: tinte `warning` + "Últimos 2". Timer del hold visible en el checkout ("Tu turno queda reservado 15:00" — el TTL real). "Agotado" visible en horarios llenos, nunca esconderlos: el lleno vende |
+| **Anclaje de precio**                               | Referencia mayor real para que el precio actual se sienta oportunidad                            | "Desde $ 8.000" en cards (el precio real más bajo). Franja pico vs. valle: "$ 10.000 · a las 15:00 sale $ 8.000". Seña como fracción visible: "Señá solo $ 3.000 (de $ 12.000)"                                                                                                       |
+| **Compromiso progresivo**                           | Cada paso invertido sube el costo de abandonar                                                   | Flujo: cancha → horario → resumen → login → pago: el login llega DESPUÉS de elegir turno (LoginGate del checkout, ya implementado). El precio se muestra desde la grilla (§12: cero sorpresas) — el compromiso se construye con pasos, no ocultando el costo                          |
+| **Serial position** (primero y último se recuerdan) | Nav ordenada por frecuencia; lo crítico primero o último, nunca en el medio                      | Sidebar: Grilla arriba (uso diario), Configuración al final. En modales: CTA primario abajo-derecha SIEMPRE                                                                                                                                                                           |
 
 **Cláusula de agresividad comercial** (v2.1, reemplaza a la cláusula ética v2.0): en el lado
 jugador el sistema juega a fondo — urgencia y escasez protagonistas, FOMO, aversión a la pérdida
@@ -564,32 +569,33 @@ screenshots, reviews y segundas visitas.
 
 ## 11. Anti-patterns
 
-| ❌ No | ✅ Sí |
-|---|---|
-| Emoji como ícono estructural | Lucide |
-| Hex/clases de color crudas en primitives (`bg-white`, `border-slate-200`) | Tokens semánticos (§6.1) |
-| `text-emerald-600` para texto normal sobre claro (3,8:1) | `text-emerald-700` en cards / `-800` en fondo de página (§2.4) |
-| CTA `bg-emerald-600` + blanco 14px | Light `bg-emerald-700`+blanco · dark `bg-emerald-500`+slate-950 |
-| `emerald-500` como texto (2,5:1) | Solo acentos no-textuales (glows, bordes) |
-| Placeholder como label / placeholder que trunca | Label visible + ejemplo que cabe |
-| Icon-only sin tooltip ni aria-label | §7.4 |
-| ISO dates / "Revenue" / 3 formatos de plata | §8 completo |
-| Glass/translucidez en light | Light = elevación; glass solo dark (§4.3) |
-| Neutralizar color semántico en dark (finanzas, estados) | Preservar hue con par `dark:` o token dual |
-| Hex inline en charts (no flipan con `.dark`) | `useChartTheme` / CSS vars |
-| Tour modal de bienvenida multi-paso | Guided UX en contexto (§7) |
-| Toast "1 error" / errores mudos | Qué falló + qué hacer (§6.7) |
-| Claims verificables falsos (contadores truchos, urgencia que se resetea) | Agresividad total sí, mentira comprobable no (cláusula §9) |
-| Animación decorativa en vistas de tarea | Presupuesto §5.2 |
-| `bg-white` como fondo de página | `bg-background` (el fondo NO es blanco en ningún tema) |
-| `text-black` / `bg-black` | Tokens (`foreground`, `slate-950` vía token) |
-| KPIs con formato propio por vista | `StatCard` único (§6.4) |
+| ❌ No                                                                     | ✅ Sí                                                           |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Emoji como ícono estructural                                              | Lucide                                                          |
+| Hex/clases de color crudas en primitives (`bg-white`, `border-slate-200`) | Tokens semánticos (§6.1)                                        |
+| `text-emerald-600` para texto normal sobre claro (3,8:1)                  | `text-emerald-700` en cards / `-800` en fondo de página (§2.4)  |
+| CTA `bg-emerald-600` + blanco 14px                                        | Light `bg-emerald-700`+blanco · dark `bg-emerald-500`+slate-950 |
+| `emerald-500` como texto (2,5:1)                                          | Solo acentos no-textuales (glows, bordes)                       |
+| Placeholder como label / placeholder que trunca                           | Label visible + ejemplo que cabe                                |
+| Icon-only sin tooltip ni aria-label                                       | §7.4                                                            |
+| ISO dates / "Revenue" / 3 formatos de plata                               | §8 completo                                                     |
+| Glass/translucidez en light                                               | Light = elevación; glass solo dark (§4.3)                       |
+| Neutralizar color semántico en dark (finanzas, estados)                   | Preservar hue con par `dark:` o token dual                      |
+| Hex inline en charts (no flipan con `.dark`)                              | `useChartTheme` / CSS vars                                      |
+| Tour modal de bienvenida multi-paso                                       | Guided UX en contexto (§7)                                      |
+| Toast "1 error" / errores mudos                                           | Qué falló + qué hacer (§6.7)                                    |
+| Claims verificables falsos (contadores truchos, urgencia que se resetea)  | Agresividad total sí, mentira comprobable no (cláusula §9)      |
+| Animación decorativa en vistas de tarea                                   | Presupuesto §5.2                                                |
+| `bg-white` como fondo de página                                           | `bg-background` (el fondo NO es blanco en ningún tema)          |
+| `text-black` / `bg-black`                                                 | Tokens (`foreground`, `slate-950` vía token)                    |
+| KPIs con formato propio por vista                                         | `StatCard` único (§6.4)                                         |
 
 ---
 
 ## 12. Checklist pre-delivery
 
 **Ambos lados**
+
 - [ ] Colores solo vía tokens; cero hex en JSX; primitives sin clases light hardcodeadas
 - [ ] Probado en light **y** dark (toggle real, no solo el tema en que desarrollaste)
 - [ ] Contraste verificado contra §2.4 (no "me parece que se lee")
@@ -601,6 +607,7 @@ screenshots, reviews y segundas visitas.
 - [ ] Copy en voseo, vocabulario §8.5, cero anglicismos §8.1
 
 **Admin**
+
 - [ ] Tarea principal de la vista completable en ≤ 3 interacciones desde el load
 - [ ] Densidad respetada (sin aire decorativo en tablas/grilla)
 - [ ] Ítems bloqueados por rol: candado + tooltip, no desaparición
@@ -608,6 +615,7 @@ screenshots, reviews y segundas visitas.
 - [ ] Motion ≤ 200ms
 
 **Jugador**
+
 - [ ] Una idea por pantalla; CTA primario único full-width en mobile
 - [ ] Precio y estado de seña visibles ANTES del CTA de pago (cero sorpresas)
 - [ ] Microcopy de confianza en pasos de plata ("Te llevamos a MercadoPago…")
@@ -622,13 +630,16 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 **dónde el código viola este MASTER hoy**. Al cerrar un ítem, borrarlo de acá.
 
 ### P0 — sistema (bloquean la coherencia)
+
 2. **Formato de contenido inconsistente**: `$ 100` / `$50,00` / `$ 100,00` en el mismo flujo; `Caja — 2026-07-01` y `2026-07-03` (éxito jugador) en ISO → §8. Fix: helpers `formatMoney`/`formatDate` únicos + barrida (el dashboard ya migró a `formatArs` de `lib/format` — 2026-07-02; "Revenue hoy" murió con el rediseño de Inicio).
 
 ### P1 — vistas
+
 3. **Reportes**: KPIs con formato propio (no `StatCard`), vacío gigante sin empty state didáctico ni ejemplo espectral → §6.4, §7.2.
-6. **Coherencia de journey de tema**: RESUELTA (opción (a) aplicada: público + landing + checkout theme-adaptive, rediseño 2026-07-03). `tests/e2e/theme-toggle.spec.ts` #2 ya no espera el wrapper `div.dark` always-dark — verificado contra el archivo: el test actual chequea que `/explorar` sigue la clase `dark` del `<html>` en ambas direcciones (líneas 36-47). Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
+4. **Coherencia de journey de tema**: RESUELTA (opción (a) aplicada: público + landing + checkout theme-adaptive, rediseño 2026-07-03). `tests/e2e/theme-toggle.spec.ts` #2 ya no espera el wrapper `div.dark` always-dark — verificado contra el archivo: el test actual chequea que `/explorar` sigue la clase `dark` del `<html>` en ambas direcciones (líneas 36-47). Siempre-dark queda confirmado SOLO para marketing B2B (`para-complejos`).
 
 ### P2 — polish
+
 7. **Landing**: los números de prueba social ("+10.000 reservas", "+1.200 turnos libres hoy", "50+
    complejos") son claims verificables sin respaldo → bajo la cláusula §9 v2.1 se calculan de datos
    reales o se reformulan como puffery no cuantificado. No blanqueados por el cambio de cláusula.
@@ -709,6 +720,6 @@ mudo), `Tooltip` en el trigger icon-only del menú de acciones, `loading.tsx` co
 
 ---
 
-*Mantenimiento: este archivo se versiona con cada cambio de reglas (no de deuda). Cambios de
+_Mantenimiento: este archivo se versiona con cada cambio de reglas (no de deuda). Cambios de
 paleta/tokens exigen actualizar `globals.css` (Tailwind v4 no usa `tailwind.config.ts` — la config
-vive en CSS vía `@theme`) en el mismo PR y re-verificar §2.4 con medición real, no de memoria.*
+vive en CSS vía `@theme`) en el mismo PR y re-verificar §2.4 con medición real, no de memoria._

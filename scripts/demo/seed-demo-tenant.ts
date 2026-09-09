@@ -50,6 +50,12 @@ function todayArt(): string {
 async function cleanup(sql: SqlClient): Promise<void> {
   // Mismo orden reverse-FK que scripts/seed-e2e.ts (ver comentarios ahí).
   const t = DEMO.tenantId
+  // Tablas con FK a tenants sin ON DELETE CASCADE que se llenan con el uso normal de la demo
+  // (la página pública emite analytics_events en cada visita): sin estos DELETE el seed muere en
+  // `DELETE FROM tenants` después de la primera grabación.
+  await sql`DELETE FROM analytics_events WHERE tenant_id = ${t}`
+  await sql`DELETE FROM reviews WHERE tenant_id = ${t}`
+  await sql`DELETE FROM player_favorites WHERE tenant_id = ${t}`
   await sql`DELETE FROM audit_logs WHERE tenant_id = ${t}`
   await sql`DELETE FROM notifications WHERE tenant_id = ${t}`
   await sql`DELETE FROM stock_movements WHERE tenant_id = ${t}`
@@ -154,16 +160,20 @@ async function seedTenant(sql: SqlClient): Promise<void> {
       ${sql.json(openingHours)}, ${sql.json(settings)}, ${'mock-mp-token'}
     )
   `
+  // `format` va explícito: la app lo deriva a `capacity = format × 2` (cambio
+  // #17, court.service.ts), pero acá entramos por SQL crudo, así que sin este
+  // campo la columna cae al default 5 y la cancha de F7 sale etiquetada
+  // "Fútbol 5" en el portal público — o sea, en los videos de producto.
   const courts = [
-    { id: DEMO.courtIds[0], name: 'Cancha 1 — F5', capacity: 10, pricing: pricingF5 },
-    { id: DEMO.courtIds[1], name: 'Cancha 2 — F5', capacity: 10, pricing: pricingF5 },
-    { id: DEMO.courtIds[2], name: 'Cancha 3 — F5 techada', capacity: 10, pricing: pricingF5 },
-    { id: DEMO.courtIds[3], name: 'Cancha 4 — F7', capacity: 14, pricing: pricingF7 },
+    { id: DEMO.courtIds[0], name: 'Cancha 1 — F5', format: 5, pricing: pricingF5 },
+    { id: DEMO.courtIds[1], name: 'Cancha 2 — F5', format: 5, pricing: pricingF5 },
+    { id: DEMO.courtIds[2], name: 'Cancha 3 — F5 techada', format: 5, pricing: pricingF5 },
+    { id: DEMO.courtIds[3], name: 'Cancha 4 — F7', format: 7, pricing: pricingF7 },
   ]
   for (const c of courts) {
     await sql`
-      INSERT INTO courts (id, tenant_id, name, capacity, status, pricing)
-      VALUES (${c.id}, ${DEMO.tenantId}, ${c.name}, ${c.capacity}, 'online', ${sql.json(c.pricing)})
+      INSERT INTO courts (id, tenant_id, name, format, capacity, status, pricing)
+      VALUES (${c.id}, ${DEMO.tenantId}, ${c.name}, ${c.format}, ${c.format * 2}, 'online', ${sql.json(c.pricing)})
     `
   }
   await sql`

@@ -5,6 +5,7 @@ import {
   GRID_LEGEND_ITEMS,
   bookingBadgeVisual,
   gridSlotVisual,
+  slotPendingCents,
   slotStateKey,
   type SlotFacts,
 } from '@/lib/booking/slot-visual'
@@ -74,12 +75,12 @@ describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
     ).toBe('no_show')
   })
 
-  it('ausente sin un peso cobrado SÍ alarma', () => {
+  it('ausente sin un peso cobrado NO alarma: un no-show nunca es cobrable (veto "No-show NO es deuda")', () => {
     expect(
       slotStateKey(
         facts({ status: 'no_show', depositStatus: 'not_required', pending: 24000, totalPaid: 0 }),
       ),
-    ).toBe('unpaid_alarm')
+    ).toBe('no_show')
   })
 
   it('sin datos de plata NO alarma — una alarma falsa entrena a ignorarlas', () => {
@@ -175,11 +176,11 @@ describe('bookingBadgeVisual — el listado', () => {
     expect(v.accent).toBe(TONE_ACCENT.destructive)
   })
 
-  it('ausente sin un peso cobrado: el badge sigue diciendo Ausente y marca unpaid', () => {
+  it('ausente sin un peso cobrado: el badge dice Ausente SIN marcar unpaid — un no-show nunca alarma', () => {
     const v = bookingBadgeVisual(facts({ status: 'no_show', totalPaid: 0 }))
     expect(v.label).toBe('Ausente')
     expect(v.key).toBe('no_show')
-    expect(v.unpaid).toBe(true)
+    expect(v.unpaid).toBe(false)
   })
 
   it('ausente con la seña capturada NO alarma: ya se cobró lo único cobrable', () => {
@@ -221,6 +222,37 @@ describe('bookingBadgeVisual — el listado', () => {
     const f = facts({ status: 'pending_payment' })
     expect(gridSlotVisual(f).label).toBe('Pagando ahora')
     expect(bookingBadgeVisual(f).label).toBe('Pagando ahora')
+  })
+})
+
+describe('slotPendingCents — indicador secundario de saldo en la celda', () => {
+  it('un turno confirmado con saldo muestra el monto', () => {
+    expect(slotPendingCents(facts({ pending: 4000000, totalPaid: 0 }))).toBe(4000000)
+  })
+
+  it('saldo cero (cobrado) no muestra nada', () => {
+    expect(slotPendingCents(facts({ pending: 0, totalPaid: 4000000 }))).toBeNull()
+  })
+
+  it('sin dato de plata no inventa nada', () => {
+    expect(slotPendingCents(facts({}))).toBeNull()
+    expect(slotPendingCents(facts({ pending: null }))).toBeNull()
+  })
+
+  it('pending_payment no muestra el saldo: esa línea ya la ocupa el contador del hold', () => {
+    expect(slotPendingCents(facts({ status: 'pending_payment', pending: 4000000 }))).toBeNull()
+  })
+
+  it('un turno jugado sin cobrar también muestra el monto (alarma + número, no compiten)', () => {
+    expect(slotPendingCents(facts({ status: 'completed', pending: 4000000, totalPaid: 0 }))).toBe(
+      4000000,
+    )
+  })
+
+  it('un no_show no muestra el saldo aunque quede plata sin cobrar: un no-show nunca es cobrable', () => {
+    expect(
+      slotPendingCents(facts({ status: 'no_show', pending: 4000000, totalPaid: 0 })),
+    ).toBeNull()
   })
 })
 

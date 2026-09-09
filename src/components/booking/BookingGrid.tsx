@@ -20,7 +20,7 @@ import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './gr
 import { QuickFormCell } from './grid/QuickFormCell'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
 import type { RenderCanteenDialog, SlotPanelActions } from './BookingSlotPanel'
-import type { GridBooking } from '@/lib/booking/grid-cells'
+import { sumPendingCents, type GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type {
@@ -110,6 +110,12 @@ export function BookingGrid({
   const { dismissed: hintDismissed, dismiss: dismissHint } = useDismissibleHint(HINT_STORAGE_KEY)
 
   const { bookings, status, refetch } = useBookingRealtime({ tenantId, date, initialBookings })
+
+  // Del lado del cliente, sobre `bookings` (no `initialBookings`): calcularlo en
+  // el server dejaría el número congelado y contradiciendo la grilla apenas
+  // entra un cobro por Realtime. Cero queries nuevas — `pending` ya viaja en
+  // cada `GridBooking` (ver grilla/page.tsx y /api/bookings).
+  const pendingSummary = useMemo(() => sumPendingCents(bookings), [bookings])
 
   // El socket de Realtime tiene blips normales y auto-recuperables (carga en
   // frío, laptop que despierta, handoff de wifi) que resuelven en <1s sin que
@@ -259,6 +265,7 @@ export function BookingGrid({
         onToggleDensity={toggleDensity}
         onNavigate={navigateToDate}
         actions={actions}
+        pendingSummary={pendingSummary}
       />
 
       {courts.length === 0 && <NoCourtsEmptyState />}

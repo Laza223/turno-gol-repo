@@ -21,21 +21,29 @@ const LEGEND: readonly LegendItem[] = [FREE, ...GRID_LEGEND_ITEMS]
 /** Leyenda de estados: enseña el mapeo ícono↔estado (pages/grilla.md §11). */
 export function GridLegend() {
   return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground shrink-0">
-      {LEGEND.map((item) => {
-        const LegendIcon = item.icon
-        return (
-          <li key={item.key} className="flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className={cn('flex h-4 w-4 items-center justify-center rounded-sm', item.swatch)}
-            >
-              <LegendIcon className={cn('h-2.5 w-2.5', item.iconClass)} />
-            </span>
-            {item.label}
-          </li>
-        )
-      })}
-    </ul>
+    <>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground shrink-0">
+        {LEGEND.map((item) => {
+          const LegendIcon = item.icon
+          return (
+            <li key={item.key} className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className={cn('flex h-4 w-4 items-center justify-center rounded-sm', item.swatch)}
+              >
+                <LegendIcon className={cn('h-2.5 w-2.5', item.iconClass)} />
+              </span>
+              {item.label}
+            </li>
+          )
+        })}
+      </ul>
+      {/* El monto en la celda no es un color, así que la leyenda (que responde
+          "¿qué significa cada color?") no lo explica por sí sola. Sin esta
+          línea el dueño ve un $ sin saber si es el precio o el saldo. */}
+      <p className="mt-2 text-xs text-muted-foreground">
+        El monto en la celda es lo que falta cobrar de ese turno.
+      </p>
+    </>
   )
 }

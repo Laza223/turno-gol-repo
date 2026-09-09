@@ -4,8 +4,9 @@ import React from 'react'
 import { Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { gridSlotVisual } from '@/lib/booking/slot-visual'
+import { gridSlotVisual, slotPendingCents } from '@/lib/booking/slot-visual'
 import { holdExpiresAtIso, holdRemainingLabel } from '@/lib/booking/hold'
+import { formatArs } from '@/lib/format'
 import type { GridBooking } from './BookingGrid'
 
 type BookingCardProps = {
@@ -74,7 +75,16 @@ function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
   const remaining = holdRemainingLabel(heldUntil, nowMs)
   // Vencido por reloj: la fila sigue reteniendo la cancha hasta que la barre el
   // worker, así que no se dice "libre".
-  return <span className="tabular-nums">{remaining.expired ? 'liberando…' : remaining.label}</span>
+  //
+  // `whitespace-nowrap`: "liberando…" es mucho más largo que el "4:32" que
+  // reemplaza, y sin esto se va a una segunda línea. La celda entonces se leía
+  // "Pagando ahora / liberando…", como si fueran dos estados a la vez y con el
+  // segundo en minúscula. Prefiere recortar el contador antes que partirlo.
+  return (
+    <span className="tabular-nums whitespace-nowrap">
+      {remaining.expired ? 'liberando…' : remaining.label}
+    </span>
+  )
 }
 
 export function bookingDisplayName(booking: GridBooking): string | null {
@@ -172,6 +182,7 @@ function BookingCardComponent({
   }
 
   const visual = gridSlotVisual(booking)
+  const pendingCents = slotPendingCents(booking)
   const displayName = bookingDisplayName(booking)
   const StateIcon = visual.icon
 
@@ -192,7 +203,7 @@ function BookingCardComponent({
       onClick={() => onDetailChange?.(booking.id)}
       aria-haspopup="dialog"
       aria-expanded={detailOpen}
-      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label}` : visual.label}`}
+      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label}` : visual.label}${!compact && pendingCents !== null ? `, falta cobrar ${formatArs(pendingCents)}` : ''}`}
       className={cn(
         'm-0.5 flex cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
         visual.cell,
@@ -231,6 +242,11 @@ function BookingCardComponent({
               <HoldCountdown createdAt={booking.createdAt} />
             )}
           </span>
+          {pendingCents !== null && (
+            <span className="truncate text-[11px] font-medium tabular-nums text-muted-foreground">
+              {formatArs(pendingCents)}
+            </span>
+          )}
         </span>
       )}
     </button>

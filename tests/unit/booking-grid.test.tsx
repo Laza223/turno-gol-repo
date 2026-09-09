@@ -127,6 +127,7 @@ const panelActions = () => ({
     maxDate: '2026-06-16',
   })),
   rescheduleBookingAction: vi.fn(async () => ({ success: true as const })),
+  releaseBlockAction: vi.fn(async () => ({ success: true as const })),
 })
 
 function renderGrid(opts?: {
@@ -138,6 +139,8 @@ function renderGrid(opts?: {
   action?: ReturnType<typeof vi.fn>
   checkAvailabilityAction?: ReturnType<typeof vi.fn>
   searchPlayersAction?: ReturnType<typeof vi.fn>
+  /** Para asertar sobre una acción puntual (ej. addBookingChargeAction) hay que pasar el MISMO objeto que ve el test. */
+  slotPanelActions?: ReturnType<typeof panelActions>
 }) {
   return render(
     <BookingGrid
@@ -154,7 +157,7 @@ function renderGrid(opts?: {
       checkAvailabilityAction={opts?.checkAvailabilityAction}
       searchPlayersAction={opts?.searchPlayersAction}
       depositPercentage={opts?.depositPercentage}
-      slotPanelActions={panelActions()}
+      slotPanelActions={opts?.slotPanelActions ?? panelActions()}
       // El diálogo de cantina llega inyectado (vive bajo la ruta porque reusa
       // el TicketPanel de /caja). Acá alcanza con un stub: lo que se testea es
       // si el panel OFRECE la acción, no lo que hay adentro del diálogo.
@@ -321,6 +324,45 @@ describe('BookingGrid — panel de acciones del turno', () => {
   })
 
   /**
+   * F-0XX (QA prod 2026-08-17): "Pagar todo en efectivo" iluminaba el atajo
+   * pero NO cobraba, sólo rellenaba el formulario de abajo — con el agravante
+   * de que el estado inicial ya venía con esa misma línea cargada, así que el
+   * botón no cambiaba nada. Ahora tiene que cobrar de una, con la MISMA
+   * Server Action que usaría "Registrar cobro".
+   */
+  it('el atajo "Cobrar todo en efectivo" cobra directo, sin pasar por el formulario', async () => {
+    // Mock propio con el parámetro tipado (el de `panelActions()` no lo
+    // declara — nadie había necesitado antes leer con qué se lo llamó).
+    const addBookingChargeAction = vi.fn(
+      async (_input: {
+        bookingId: string
+        amount: number
+        method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+        clientIdempotencyKey?: string
+      }) => ({ success: true as const }),
+    )
+    const actions = { ...panelActions(), addBookingChargeAction }
+    renderGrid({
+      slotPanelActions: actions,
+      bookings: [booking({ pending: 1500000, totalPaid: 500000, priceSnapshot: 2000000 })],
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
+    const panel = await screen.findByRole('dialog')
+
+    fireEvent.click(within(panel).getByRole('button', { name: /Cobrar todo en efectivo/ }))
+
+    await waitFor(() => expect(addBookingChargeAction).toHaveBeenCalledTimes(1))
+    expect(addBookingChargeAction.mock.calls[0]![0]).toMatchObject({
+      bookingId: 'b1',
+      amount: 1500000,
+      method: 'cash',
+    })
+    // El resto de las acciones de cobro NO se disparan por este atajo.
+    expect(actions.chargeDebtAction).not.toHaveBeenCalled()
+    expect(actions.completeAndChargeBookingAction).not.toHaveBeenCalled()
+  })
+
+  /**
    * artNow del mock = 2026-06-10 12:00, así que un turno de 08:00 de ESE día ya
    * terminó. Es la única forma de que el panel ofrezca "Marcar ausente" — sin
    * este control positivo, los dos tests de abajo (que verifican que NO se
@@ -359,6 +401,23 @@ describe('BookingGrid — panel de acciones del turno', () => {
     expect(within(panel).queryByRole('button', { name: /Cobrar/ })).toBeNull()
   })
 
+  it('un bloqueo confirmado ofrece liberar el bloqueo (RI G2.1)', async () => {
+    renderGrid({
+      bookings: [
+        booking({
+          type: 'block',
+          playerFirstName: null,
+          guestName: null,
+          pending: 0,
+          totalPaid: 0,
+        }),
+      ],
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
+    const panel = await screen.findByRole('dialog')
+    expect(within(panel).getByRole('button', { name: /Liberar el bloqueo/ })).toBeTruthy()
+  })
+
   it('una hora de torneo que ya terminó tampoco: no hay a quién dar por ausente', async () => {
     renderGrid({
       date: YA_TERMINO.date,
@@ -380,6 +439,48 @@ describe('BookingGrid — panel de acciones del turno', () => {
     expect(within(panel).queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Cargar cantina/ })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
+  })
+
+  it('una hora de torneo con tournamentId ofrece el link directo al torneo (RI G2.3)', async () => {
+    renderGrid({
+      date: YA_TERMINO.date,
+      bookings: [
+        booking({
+          ...YA_TERMINO,
+          type: 'tournament',
+          playerFirstName: null,
+          guestName: 'Torneo Apertura',
+          priceSnapshot: 0,
+          pending: 0,
+          totalPaid: 0,
+          tournamentId: 'tournament-1',
+        }),
+      ],
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Cancha 1 08:00–09:00/ }))
+    const panel = await screen.findByRole('dialog')
+    const link = within(panel).getByRole('link', { name: /Ir al torneo/ })
+    expect(link.getAttribute('href')).toBe('/torneos/tournament-1')
+  })
+
+  it('una hora de torneo sin tournamentId (payload de Realtime incompleto) no ofrece ningún link roto', async () => {
+    renderGrid({
+      date: YA_TERMINO.date,
+      bookings: [
+        booking({
+          ...YA_TERMINO,
+          type: 'tournament',
+          playerFirstName: null,
+          guestName: 'Torneo Apertura',
+          priceSnapshot: 0,
+          pending: 0,
+          totalPaid: 0,
+        }),
+      ],
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Cancha 1 08:00–09:00/ }))
+    const panel = await screen.findByRole('dialog')
+    expect(within(panel).queryByRole('link', { name: /Ir al torneo/ })).toBeNull()
   })
 
   it('un turno confirmado ofrece cargar cantina y reprogramar', async () => {
@@ -475,10 +576,12 @@ describe('BookingGrid — popover de alta rápida', () => {
     expect(await screen.findByLabelText('¿A nombre de quién?')).toBeTruthy()
     // El precio sale de court.pricing en el cliente: $24.000, sin round-trip.
     expect(screen.getByText(/24\.000/)).toBeTruthy()
-    // Lo cobrado se pregunta sin preseleccionar nada: el porcentaje online del
-    // complejo no tiene voz en el mostrador.
+    // "No cobré" viene preseleccionado (pedido del dueño, revierte PR #185):
+    // el porcentaje online del complejo sigue sin tener voz en el mostrador,
+    // pero la carga más repetida del día ya no exige tocar este control.
     for (const opcion of screen.getAllByRole('radio')) {
-      expect(opcion.getAttribute('aria-checked')).toBe('false')
+      const esperado = opcion.textContent === 'No cobré' ? 'true' : 'false'
+      expect(opcion.getAttribute('aria-checked')).toBe(esperado)
     }
     // El modal completo NO se abrió.
     expect(screen.queryByTestId('booking-form-modal')).toBeNull()
@@ -551,11 +654,12 @@ describe('BookingGrid — popover de alta rápida', () => {
   })
 
   /**
-   * Un turno cargado a mano no tiene ningún hecho de cobro detrás salvo lo que
-   * afirme el mostrador, así que la pregunta es obligatoria. Antes se podía
-   * confirmar sin tocar el control y el turno nacía sin cobro por inercia.
+   * Decisión del dueño (revierte PR #185, a sabiendas): "No cobré" viene
+   * preseleccionado para que la acción más repetida del día — cargar un
+   * turno — se confirme con un solo campo, el nombre. La preselección NO
+   * inventa un cobro: los tres campos de seña siguen sin viajar.
    */
-  it('sin contestar qué se cobró no llama al server', async () => {
+  it('sin contestar qué se cobró SÍ llama al server: "No cobré" viene preseleccionado', async () => {
     const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'x' } }))
     renderGrid({ depositPercentage: 30, action })
 
@@ -564,8 +668,11 @@ describe('BookingGrid — popover de alta rápida', () => {
     fireEvent.change(input, { target: { value: 'Sin contestar' } })
     fireEvent.submit(input.closest('form')!)
 
-    expect(await screen.findByRole('alert')).toBeTruthy()
-    expect(action).not.toHaveBeenCalled()
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    expect(action.mock.calls[0]![0]).not.toHaveProperty('depositMethod')
+    expect(action.mock.calls[0]![0]).not.toHaveProperty('depositAmount')
+    expect(action.mock.calls[0]![0]).not.toHaveProperty('depositStatus')
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('"Más opciones" abre el modal completo con el MISMO slot', async () => {

@@ -116,6 +116,13 @@ export const SinCobrar: Story = {
     booking: { ...toGridBooking(bookingCompleted()), totalPaid: 0, pending: 800000 },
     isPast: true,
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Control positivo del fix de compact: sin compact, el saldo SÍ va en el
+    // aria-label — si esto dejara de matchear, el control negativo de abajo
+    // (`CompactoConSaldoPendiente`) no probaría nada.
+    await expect(canvas.getByLabelText(/, falta cobrar/)).toBeInTheDocument()
+  },
 }
 
 /**
@@ -129,8 +136,9 @@ export const AusenteConSenaCapturada: Story = {
 }
 
 /**
- * Ausente que nunca tuvo seña: sí alarma, quedó en cero. `not_required` +
- * `depositAmount: 0` es lo que hace consistente el `totalPaid: 0` — un turno
+ * Ausente que nunca tuvo seña: tampoco alarma. Un no-show nunca es cobrable
+ * (veto "No-show NO es deuda", decisión del dueño 2026-09-09). `not_required`
+ * + `depositAmount: 0` es lo que hace consistente el `totalPaid: 0` — un turno
  * `captured` con cero cobrado no puede existir.
  */
 export const AusenteSinCobrar: Story = {
@@ -142,6 +150,13 @@ export const AusenteSinCobrar: Story = {
       totalPaid: 0,
       pending: 800000,
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Control negativo: un no-show nunca es cobrable (veto "No-show NO es
+    // deuda"), así que el aria-label no puede decir "falta cobrar" aunque
+    // `pending` venga > 0.
+    await expect(canvas.queryByLabelText(/falta cobrar/)).toBeNull()
   },
 }
 
@@ -178,6 +193,23 @@ export const Nueva: Story = {
 export const CompactoUnaLinea: Story = {
   name: 'compact=true (una línea: ícono + nombre)',
   args: { booking: toGridBooking(booking(), player()), compact: true },
+}
+
+/**
+ * Compacta con saldo pendiente: el monto visual queda afuera a propósito (una
+ * sola línea, ver `CompactoUnaLinea`) — el aria-label tiene que ser coherente
+ * con eso y no llevar "falta cobrar" que nadie ve en pantalla.
+ */
+export const CompactoConSaldoPendiente: Story = {
+  name: 'compact=true con saldo pendiente: el aria-label no lo menciona',
+  args: {
+    booking: { ...toGridBooking(bookingCompleted()), totalPaid: 0, pending: 800000 },
+    compact: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByLabelText(/falta cobrar/)).toBeNull()
+  },
 }
 
 export const DetalleAbierto: Story = {

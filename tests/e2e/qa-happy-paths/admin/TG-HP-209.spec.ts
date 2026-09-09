@@ -76,9 +76,10 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
       // fallaba con "element is not visible" — roto en main desde antes de Fase 3.
       await pageA.getByRole('button', { name: 'Opciones avanzadas' }).click()
       await pageA.fill('#guestPhone', '+5491100000209')
-      // Qué se cobró es respuesta obligatoria en el alta manual.
+      // "No cobré" viene preseleccionado (revierte PR #185); se deja
+      // explícito igual para que el spec no dependa del default.
       await pageA.selectOption('#depositMethod', 'none')
-      await pageA.getByRole('button', { name: 'Confirmar' }).click()
+      await pageA.getByRole('button', { name: 'Confirmar reserva' }).click()
       await expect(pageA.getByText('Reserva creada', { exact: true })).toBeVisible({
         timeout: 10_000,
       })

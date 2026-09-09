@@ -47,10 +47,12 @@ export type ReservaListRow = {
   /**
    * Saldo pendiente y total cobrado, en centavos. NO son columnas del SELECT:
    * los DERIVA la page con `summarizeBookingCharges` a partir de
-   * `sumBookingChargesByBooking`, y solo para los turnos que pueden alarmar
-   * (`completed`/`no_show`). Opcionales por el mismo motivo que
-   * `startsAt`/`endsAt`: sin ellos el badge degrada al comportamiento previo en
-   * vez de inventar una alarma que no puede justificar.
+   * `sumBookingChargesByBooking`. Ya no son insumo exclusivo de la alarma de
+   * plata (`isUnpaidAlarm` en slot-visual.ts hoy solo dispara para
+   * `completed` — un `no_show` nunca alarma, veto "No-show NO es deuda").
+   * Opcionales por el mismo motivo que `startsAt`/`endsAt`: sin ellos el badge
+   * degrada al comportamiento previo en vez de inventar una alarma que no
+   * puede justificar.
    */
   pending?: number | null
   totalPaid?: number | null

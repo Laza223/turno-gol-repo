@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import type { ReservaListRow } from '@/app/(admin)/reservas/queries'
+import { formatArs } from '@/lib/format'
 
 // B10 — la page pasó a `requireOperatorStaff()`, que además del tenant lee el rol
 // contra `tenant_staff_members`. Se mockea el guard, no las dos funciones que
@@ -115,9 +116,12 @@ describe('ReservasPage — render', () => {
     listMock.mockResolvedValue([row({})])
     render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
+    // GRUPO 3 (3.2): con `sumBookingChargesByBooking` devolviendo un Map vacío,
+    // `pending` sale de price_snapshot (2.000.000) − seña paga (500.000) =
+    // 1.500.000, así que la fila ahora agrega "Falta $X" al aria-label.
     expect(
       screen.getByRole('article', {
-        name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada',
+        name: `Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada, Falta ${formatArs(1500000)}`,
       }),
     ).toBeTruthy()
   })
@@ -154,10 +158,12 @@ describe('ReservasPage — render', () => {
     )
   })
 
-  it('?vista=compacta renderiza filas de una línea preservando el aria-label', async () => {
+  it('?vista=compacta renderiza filas de una línea preservando el aria-label sin el dato de plata', async () => {
     listMock.mockResolvedValue([row({})])
     render(await ReservasPage({ searchParams: Promise.resolve({ vista: 'compacta' }) }))
 
+    // Compacta queda SIN el dato de plata (visual y aria-label): es una línea
+    // por reserva por diseño, ver ALCANCE g3 pregunta 5.
     const article = screen.getByRole('article', {
       name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada',
     })

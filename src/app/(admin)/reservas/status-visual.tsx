@@ -35,11 +35,12 @@ export const RESERVA_UNPAID_VISUAL: ReservaStatusVisual = {
  * el detalle de la seña ya vive en la línea secundaria de cada ítem. Esa
  * divergencia la resuelve `bookingBadgeVisual`, no este archivo.
  *
- * `pending`/`totalPaid` son opcionales. Pasándolos, un turno terminado sin
- * cobrar devuelve `unpaid: true` — el badge SIGUE diciendo "Jugada"/"Ausente" y
- * el llamador pinta `RESERVA_UNPAID_VISUAL` al lado. Sin ellos, `unpaid` es
- * false y el comportamiento es el de siempre (fixtures y payloads viejos no
- * inventan una alarma que no pueden justificar).
+ * `pending`/`totalPaid` son opcionales. Pasándolos, una `completed` que quedó
+ * sin cobrar devuelve `unpaid: true` — el badge SIGUE diciendo "Jugada" y el
+ * llamador pinta `RESERVA_UNPAID_VISUAL` al lado. Un `no_show` NUNCA devuelve
+ * `unpaid: true` (un no-show no es cobrable, veto "No-show NO es deuda"). Sin
+ * datos de plata, `unpaid` es false y el comportamiento es el de siempre
+ * (fixtures y payloads viejos no inventan una alarma que no pueden justificar).
  */
 export function reservaStatusVisual(booking: {
   status: string

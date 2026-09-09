@@ -89,7 +89,11 @@ export const JugadaSinCobrar: Story = {
   },
 }
 
-/** Ausente sin un peso cobrado. Con la seña capturada NO habría píldora. */
+/**
+ * Ausente sin un peso cobrado: tampoco alarma. Un no-show nunca es cobrable
+ * (la seña es lo único cobrable y ya se cobró, o no hubo seña) — veto
+ * "No-show NO es deuda". Decisión del dueño, 2026-09-09.
+ */
 export const AusenteSinCobrar: Story = {
   render: () => {
     const visual = reservaStatusVisual({
@@ -107,7 +111,7 @@ export const AusenteSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
   },
 }
 

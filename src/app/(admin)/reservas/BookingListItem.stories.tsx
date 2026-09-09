@@ -4,7 +4,7 @@ import { formatArs } from '@/lib/format'
 import { artDateString } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
 import type { ReservaListRow } from './queries'
-import { BookingListItem } from './BookingListItem'
+import { BookingListItem, moneyLine } from './BookingListItem'
 import { reservaStatusVisual } from './status-visual'
 
 const SUCCESS = { success: true as const, booking: {} as never }
@@ -51,6 +51,7 @@ function ariaLabelFor(b: ReservaListRow): string {
     b.courtName,
     name,
     visual.label,
+    moneyLine(b)?.text ?? null,
     visual.unpaid ? 'sin cobrar' : null,
     isAbonado ? 'abonado' : null,
   ]
@@ -124,8 +125,8 @@ const ROW_JUGADA_SIN_COBRAR = row({
   pending: 1_500_000,
   totalPaid: 0,
 })
-// Ausente sin un peso cobrado (sin seña que capturar) → alarma. Con la seña
-// capturada NO alarmaría: en un no-show la seña es lo único cobrable.
+// Ausente sin un peso cobrado (sin seña que capturar) → tampoco alarma: un
+// no-show nunca es cobrable (veto "No-show NO es deuda"), cobrado o no.
 const ROW_AUSENTE_SIN_COBRAR = row({
   id: uid(1016),
   status: 'no_show',
@@ -142,6 +143,10 @@ const ROW_AUSENTE_SIN_COBRAR = row({
  * 'approved'. Es lo único que autoriza a decir "devuelta" — sin esa evidencia,
  * `deposit_status='refunded'` solo significa que corresponde devolver.
  */
+// `pending`/`totalPaid` a mano, como los calcularía `summarizeBookingCharges`
+// en el server: la seña 'refunded' no cuenta como cobrada, así que sin el
+// corte por status en `moneyLine` esta fila mostraría "Falta $X" al lado de
+// "Seña devuelta" — deuda que no existe porque la reserva no se va a jugar.
 const ROW_CANCELADA_REEMBOLSADA = row({
   id: uid(1007),
   status: 'canceled_refunded',
@@ -149,13 +154,19 @@ const ROW_CANCELADA_REEMBOLSADA = row({
   refundState: 'settled',
   timeStart: '18:00',
   timeEnd: '19:00',
+  pending: 1_500_000,
+  totalPaid: 0,
 })
+// Misma lógica: la seña quedó 'captured' (penalidad), pero el resto del
+// precio nunca se va a cobrar — la reserva está cancelada.
 const ROW_CANCELADA_SIN_REEMBOLSO = row({
   id: uid(1008),
   status: 'canceled_no_refund',
   depositStatus: 'captured',
   timeStart: '17:00',
   timeEnd: '18:00',
+  pending: 1_050_000,
+  totalPaid: 450_000,
 })
 const ROW_EXPIRADA = row({
   id: uid(1004),
@@ -164,6 +175,8 @@ const ROW_EXPIRADA = row({
   paymentMethod: null,
   timeStart: '21:00',
   timeEnd: '22:00',
+  pending: 1_500_000,
+  totalPaid: 0,
 })
 const ROW_BLOQUEO = row({
   id: uid(1011),
@@ -352,7 +365,11 @@ export const AusenteSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+    // Control negativo: un no-show nunca es cobrable (veto "No-show NO es
+    // deuda"), así que tampoco puede aparecer "Falta $X" aunque `pending`
+    // venga > 0.
+    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
   },
 }
 
@@ -364,6 +381,9 @@ export const CanceladaConReembolso: Story = {
     await expect(canvas.getByText('Cancelada')).toBeVisible()
     await expect(canvas.getByText('Seña devuelta', { exact: false })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
+    // Control negativo: una reserva cancelada no juega, no debe plata aunque
+    // `pending` (derivado de `priceSnapshot - totalPaid`) siga siendo > 0.
+    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
   },
 }
 
@@ -373,6 +393,8 @@ export const CanceladaSinReembolso: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Cancelada')).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
+    // Idem: la seña quedó como penalidad, el resto del precio nunca se cobra.
+    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
   },
 }
 
@@ -382,6 +404,8 @@ export const Expirada: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Expirada')).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Confirmar pago' })).toBeNull()
+    // Idem: el hold expiró, la reserva no se juega.
+    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
   },
 }
 

@@ -115,9 +115,9 @@ export const ConFondoInicial: Story = {
     // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
     // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
     await waitFor(() => expect(dialog.getByText('Fondo inicial')).toBeVisible())
-    await expect(dialog.getByText('$ 5.000,00')).toBeVisible()
+    await expect(dialog.getByText('$ 5.000')).toBeVisible()
     await expect(dialog.getByText('Efectivo esperado')).toBeVisible()
-    await expect(dialog.getByText('$ 25.000,00')).toBeVisible()
+    await expect(dialog.getByText('$ 25.000')).toBeVisible()
   },
 }
 

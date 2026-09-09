@@ -13,12 +13,11 @@ import { requireCajaContext } from '../queries'
 import { StreetMoneyList } from './StreetMoneyList'
 
 /**
- * "Plata en la calle" (Fase 1, criterio de salida #2 del contrato): turnos
- * jugados sin cobrar + fiados de cantina abiertos + cuotas de torneo
- * impagas, en una sola lista con "Cobrar" por fila. Tenant-wide, no depende
- * de la fecha seleccionada en /caja (a diferencia de los movimientos del
- * día) — es la MISMA función (getStreetMoney) que alimenta el número del
- * encabezado perpetuo de /caja.
+ * "Deudas" (Fase 1, criterio de salida #2 del contrato): turnos jugados sin
+ * cobrar + fiados de cantina abiertos + cuotas de torneo impagas, en una sola
+ * lista con "Cobrar" por fila. Tenant-wide, no depende de la fecha seleccionada
+ * en /caja (a diferencia de los movimientos del día) — es la MISMA función
+ * (getStreetMoney) que alimenta el número del encabezado perpetuo de /caja.
  */
 export default async function CajaDeudasPage(props: { searchParams: Promise<{ todas?: string }> }) {
   const { tenant } = await requireCajaContext()
@@ -38,7 +37,7 @@ export default async function CajaDeudasPage(props: { searchParams: Promise<{ to
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Plata en la calle"
+        title="Deudas"
         subtitle="Turnos jugados sin cobrar, fiados abiertos y cuotas de torneo impagas — todo en un solo lugar."
         icon={<Wallet className="h-6 w-6" aria-hidden="true" />}
       />

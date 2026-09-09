@@ -150,7 +150,7 @@ export default async function DashboardPage() {
         </div>
         <div className="card-entrance" style={{ animationDelay: '160ms' }}>
           <MetricCard
-            label="Plata en la calle"
+            label="Deudas"
             value={formatArs(numbers.streetMoneyCents)}
             sub={numbers.streetMoneyCents > 0 ? 'Pendiente de cobro' : 'Nada pendiente'}
             icon={<Banknote className="h-4 w-4" aria-hidden="true" />}

@@ -16,6 +16,7 @@ import {
   formatTimeArt,
   mediumDateLabel,
   methodBreakdown,
+  movementTitle,
   signedArs,
 } from '@/app/(admin)/caja/caja-lib'
 import { formatArs } from '@/lib/format'
@@ -109,6 +110,18 @@ describe('categoryLabel', () => {
     expect(categoryLabel('expense', 'utilities')).toBe('Servicios')
     expect(categoryLabel('expense', 'maintenance')).toBe('Mantenimiento')
     expect(categoryLabel('expense', 'other_expense')).toBe('Otro gasto')
+  })
+})
+
+describe('movementTitle', () => {
+  it('reemplaza el UUID crudo de la seña por un título legible', () => {
+    expect(movementTitle('Seña — turno 8f5b1c1e-1111-4a2b-9c3d-000000000000')).toBe(
+      'Seña del turno',
+    )
+  })
+
+  it('deja cualquier otra descripción tal cual', () => {
+    expect(movementTitle('Sueldo cadete')).toBe('Sueldo cadete')
   })
 })
 

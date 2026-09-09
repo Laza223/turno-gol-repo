@@ -1,5 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
-import { formatArsContable } from '@/lib/format'
+import { formatArs } from '@/lib/format'
 // B14 — el snapshot del cierre usa la MISMA cuenta que el resumen vivo del día:
 // si divergen, el complejo ve un número al cerrar y otro en la pantalla.
 import { collectedFrom } from '@/modules/cashflow/totals'
@@ -53,21 +53,19 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
                   (~#d7e1e6), por debajo del piso AA de 4.5. emerald-800 sube a
                   ~5.79:1 sobre ese mismo fondo (medido). */}
               <dd className="font-medium tabular-nums text-emerald-800 dark:text-emerald-400">
-                +{formatArsContable(collectedFrom(close))}
+                +{formatArs(collectedFrom(close))}
               </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Egresos</dt>
               <dd className="font-medium tabular-nums text-red-700 dark:text-red-400">
-                −{formatArsContable(close.totalExpense)}
+                −{formatArs(close.totalExpense)}
               </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Saldo neto</dt>
               <dd className="font-display font-bold tabular-nums text-foreground">
-                {close.balance < 0
-                  ? `−${formatArsContable(-close.balance)}`
-                  : formatArsContable(close.balance)}
+                {close.balance < 0 ? `−${formatArs(-close.balance)}` : formatArs(close.balance)}
               </dd>
             </div>
             {view.variant === 'v2' && (
@@ -75,13 +73,13 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
                 <div>
                   <dt className="text-muted-foreground">Fondo inicial</dt>
                   <dd className="font-medium tabular-nums text-foreground">
-                    {formatArsContable(close.openingCash ?? 0)}
+                    {formatArs(close.openingCash ?? 0)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Efectivo esperado</dt>
                   <dd className="font-display font-bold tabular-nums text-foreground">
-                    {formatArsContable(close.expectedCash ?? 0)}
+                    {formatArs(close.expectedCash ?? 0)}
                   </dd>
                 </div>
               </>
@@ -90,7 +88,7 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
               <div>
                 <dt className="text-muted-foreground">Efectivo contado</dt>
                 <dd className="font-medium tabular-nums text-foreground">
-                  {formatArsContable(close.declaredCash)}
+                  {formatArs(close.declaredCash)}
                 </dd>
               </div>
             )}
@@ -105,8 +103,8 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
                   }`}
                 >
                   {close.diffAmount < 0
-                    ? `−${formatArsContable(-close.diffAmount)}`
-                    : `+${formatArsContable(close.diffAmount)}`}
+                    ? `−${formatArs(-close.diffAmount)}`
+                    : `+${formatArs(close.diffAmount)}`}
                 </dd>
               </div>
             )}
@@ -115,8 +113,8 @@ export function CierreCard({ close }: { close: DailyCashCloseRow }) {
             <p className="mt-2 inline-flex rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">
               Diferencia de{' '}
               {close.diffAmount < 0
-                ? `−${formatArsContable(-close.diffAmount)}`
-                : formatArsContable(close.diffAmount)}{' '}
+                ? `−${formatArs(-close.diffAmount)}`
+                : formatArs(close.diffAmount)}{' '}
               respecto del saldo.
             </p>
           )}

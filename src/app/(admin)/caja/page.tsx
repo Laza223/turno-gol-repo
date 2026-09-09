@@ -69,7 +69,7 @@ export default async function CajaPage(props: {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Caja"
+        title="Caja del día"
         subtitle={cajaDateLabel(date, today)}
         icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
         actions={

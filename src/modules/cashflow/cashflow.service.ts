@@ -14,6 +14,7 @@ import type {
   CashFlowType,
   CashFlowCategory,
   CashFlowRow,
+  CashFlowListRow,
   DaySummary,
   CreateCashFlowInput,
 } from './cashflow.types'
@@ -101,6 +102,13 @@ function rawRowToCashFlowRow(r: CashFlowRawRow): CashFlowRow {
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),
   }
+}
+
+/** getCashFlows agrega el nombre de la contraparte (jugador/invitado) vía JOIN. */
+type CashFlowListRawRow = CashFlowRawRow & { counterpartName: string | null }
+
+function rawRowToCashFlowListRow(r: CashFlowListRawRow): CashFlowListRow {
+  return { ...rawRowToCashFlowRow(r), counterpartName: r.counterpartName }
 }
 
 /**
@@ -278,18 +286,24 @@ export async function getCashFlows(
   date: string,
   cutoffMins: number,
   tx: DbTx,
-): Promise<CashFlowRow[]> {
+): Promise<CashFlowListRow[]> {
   // Rango UTC sargable en vez de expresión AT TIME ZONE: ver operatingDayRangeUtc
   // (bajo RLS la expresión no entra al índice — hallazgo D3).
   const day = operatingDayRangeUtc(date, cutoffMins)
-  const rows = await tx.execute<CashFlowRawRow>(
-    sql`SELECT * FROM cash_flows
-        WHERE tenant_id = ${tenantId}
-          AND occurred_at >= ${day.fromUtc.toISOString()}
-          AND occurred_at < ${day.toUtc.toISOString()}
-        ORDER BY occurred_at DESC`,
+  // `cf.*` explícito: con el JOIN, un `SELECT *` pelado pisaría `id` con el de
+  // bookings/players. Mismo patrón que getDebts (booking.debts.ts).
+  const rows = await tx.execute<CashFlowListRawRow>(
+    sql`SELECT cf.*,
+          COALESCE(NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''), b.guest_name) AS "counterpartName"
+        FROM cash_flows cf
+        LEFT JOIN bookings b ON b.id = cf.booking_id AND b.tenant_id = cf.tenant_id
+        LEFT JOIN players p ON p.id = b.player_id
+        WHERE cf.tenant_id = ${tenantId}
+          AND cf.occurred_at >= ${day.fromUtc.toISOString()}
+          AND cf.occurred_at < ${day.toUtc.toISOString()}
+        ORDER BY cf.occurred_at DESC`,
   )
-  return [...rows].map(rawRowToCashFlowRow)
+  return [...rows].map(rawRowToCashFlowListRow)
 }
 
 /**

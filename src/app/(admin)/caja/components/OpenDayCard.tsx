@@ -6,7 +6,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Wallet } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyInput } from '@/components/ui/money-input'
-import { formatArsContable } from '@/lib/format'
+import { formatArs } from '@/lib/format'
 import { mediumDateLabel } from '../caja-lib'
 import { toast } from '@/hooks/use-toast'
 import type { DailyCashOpenRow } from '@/modules/cashflow/cashflow.types'
@@ -73,9 +73,7 @@ export function OpenDayCard({
         const res = await openDayAction({ date, openingCash, note: note.trim() || undefined })
         if (res.success) {
           toast({
-            title: open
-              ? 'Fondo actualizado'
-              : `Caja abierta — fondo ${formatArsContable(openingCash)}`,
+            title: open ? 'Fondo actualizado' : `Caja abierta — fondo ${formatArs(openingCash)}`,
             variant: 'success',
           })
           router.refresh()
@@ -100,9 +98,7 @@ export function OpenDayCard({
           <div className="min-w-0 flex-1">
             <p className="text-sm text-foreground">
               Fondo inicial:{' '}
-              <span className="font-semibold tabular-nums">
-                {formatArsContable(open.openingCash)}
-              </span>
+              <span className="font-semibold tabular-nums">{formatArs(open.openingCash)}</span>
             </p>
             {open.note && (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">{open.note}</p>

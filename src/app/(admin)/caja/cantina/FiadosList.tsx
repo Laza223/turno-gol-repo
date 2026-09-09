@@ -14,6 +14,7 @@ import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
+import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import type { CanteenTabRow } from '@/modules/canteen/canteen.types'
 import type { CancelTabActionResult, SettleTabActionResult } from './actions'
 
@@ -63,6 +64,7 @@ export function FiadosList({
   function handleSettled() {
     setSettlingTab(null)
     router.refresh()
+    notifyMoneyMoved()
   }
 
   function handleCanceled() {
@@ -170,6 +172,35 @@ function SettleTabDialog({
     }
   }
 
+  /**
+   * Corre la mutación real a partir de un array de cargos ya validado — la
+   * sacamos de `submit` para que el atajo "Cobrar todo en efectivo" la pueda
+   * invocar con un cargo armado en el momento, sin depender de `lines` (que
+   * todavía no se actualizó por el `setLines` de ese mismo click).
+   */
+  function runCharge(charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[]) {
+    if (!tab) return
+    startTransition(async () => {
+      try {
+        const res = await settleTabAction({
+          tabId: tab.id,
+          charges,
+          clientIdempotencyKey: idempotencyKey,
+        })
+        if (res.success) {
+          toast({ title: `Fiado cobrado — ${tab.debtorName}`, variant: 'success' })
+          setLastTabId(null)
+          onSettled()
+        } else {
+          setError(res.error)
+        }
+      } catch (err) {
+        Sentry.captureException(err)
+        setError('No pudimos cobrar el fiado. Revisá tu conexión e intentá de nuevo.')
+      }
+    })
+  }
+
   function submit() {
     if (!tab) return
     setError(null)
@@ -194,26 +225,15 @@ function SettleTabDialog({
       )
       return
     }
+    runCharge(charges)
+  }
 
-    startTransition(async () => {
-      try {
-        const res = await settleTabAction({
-          tabId: tab.id,
-          charges,
-          clientIdempotencyKey: idempotencyKey,
-        })
-        if (res.success) {
-          toast({ title: `Fiado cobrado — ${tab.debtorName}`, variant: 'success' })
-          setLastTabId(null)
-          onSettled()
-        } else {
-          setError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setError('No pudimos cobrar el fiado. Revisá tu conexión e intentá de nuevo.')
-      }
-    })
+  /** Atajo "Cobrar todo en efectivo": cobra el total del fiado en un solo toque. */
+  function submitQuickAllCash() {
+    if (!tab || tab.totalAmount <= 0) return
+    setError(null)
+    setLines([newChargeLine(tab.totalAmount, 'cash')])
+    runCharge([{ amount: tab.totalAmount, method: 'cash' }])
   }
 
   return (
@@ -227,6 +247,7 @@ function SettleTabDialog({
             lines={lines}
             onChange={setLines}
             quickAllCashCents={tab?.totalAmount}
+            onQuickAllCash={submitQuickAllCash}
             disabled={isPending || settleDisabled}
             methodOptions={CANTEEN_METHOD_OPTIONS}
           />

@@ -80,7 +80,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
               `PendingRefundsList`, que tiene una story donde axe lo mide; acá
               no hay story, así que nadie lo iba a ver solo. */}
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-            Plata en la calle
+            Deudas
           </p>
           <p className="mt-0.5 text-2xl font-bold tabular-nums text-amber-800 dark:text-amber-300">
             {formatArs(total)}
@@ -108,7 +108,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
       {filtered.length === 0 ? (
         <EmptyState
           icon={AlertCircle}
-          title={rows.length === 0 ? 'Sin plata en la calle' : 'Nada en este filtro'}
+          title={rows.length === 0 ? 'Sin deudas' : 'Nada en este filtro'}
           description={
             rows.length === 0
               ? 'No hay turnos sin cobrar, fiados abiertos ni cuotas de torneo pendientes.'

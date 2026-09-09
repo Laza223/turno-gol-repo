@@ -1,5 +1,5 @@
 import { ArrowRightLeft, Banknote, Coins, CreditCard, type LucideIcon } from 'lucide-react'
-import { formatArsContable } from '@/lib/format'
+import { formatArs } from '@/lib/format'
 import type { MethodKey, MethodTotal } from '../caja-lib'
 
 const METHOD_ICON: Record<MethodKey, LucideIcon> = {
@@ -29,7 +29,7 @@ export function MethodBreakdown({ methods }: { methods: MethodTotal[] }) {
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">{label}</p>
                 <p className="truncate text-sm font-semibold tabular-nums text-foreground">
-                  {total < 0 ? `−${formatArsContable(-total)}` : formatArsContable(total)}
+                  {total < 0 ? `−${formatArs(-total)}` : formatArs(total)}
                 </p>
               </div>
             </div>

@@ -154,7 +154,7 @@ function SlotCell({
       <a
         href={telHref(phone) ?? undefined}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex w-full items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
+        className="inline-flex w-full items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-[color,background-color] duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
       >
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" aria-hidden />
@@ -168,7 +168,7 @@ function SlotCell({
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
       aria-label={`Reservar ${slot.time}`}
-      className="inline-flex w-full items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
+      className="inline-flex w-full items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-[color,background-color,scale] duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
     >
       Reservar
     </Link>

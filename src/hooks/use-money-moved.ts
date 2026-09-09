@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * Señal de "entró/salió plata", sin estado ni contexto de React.
@@ -23,10 +23,30 @@ export function notifyMoneyMoved(): void {
   window.dispatchEvent(new Event(MONEY_MOVED_EVENT))
 }
 
-/** Se suscribe a la señal de {@link notifyMoneyMoved} mientras el componente está montado. */
+/**
+ * Se suscribe a la señal de {@link notifyMoneyMoved} mientras el componente está
+ * montado.
+ *
+ * El handler viaja por una ref y la suscripción NO depende de él: los llamadores
+ * pasan una flecha declarada en el cuerpo del componente, o sea una función nueva
+ * en cada render, y con `onMoved` en las dependencias el efecto desconectaba y
+ * reconectaba el listener en cada uno. La ventana entre `removeEventListener` y
+ * el `addEventListener` siguiente es corta pero real: un cobro que despacha el
+ * evento justo ahí no lo escucha nadie y el badge se queda con el número viejo.
+ * Con la ref, la suscripción se hace una vez y siempre corre el handler último.
+ */
 export function useMoneyMoved(onMoved: () => void): void {
+  const handlerRef = useRef(onMoved)
+
+  // La ref se escribe en un efecto y no durante el render: `react-hooks/refs`
+  // prohíbe lo segundo (con React Compiler, un render puede descartarse).
   useEffect(() => {
-    window.addEventListener(MONEY_MOVED_EVENT, onMoved)
-    return () => window.removeEventListener(MONEY_MOVED_EVENT, onMoved)
+    handlerRef.current = onMoved
   }, [onMoved])
+
+  useEffect(() => {
+    const listener = () => handlerRef.current()
+    window.addEventListener(MONEY_MOVED_EVENT, listener)
+    return () => window.removeEventListener(MONEY_MOVED_EVENT, listener)
+  }, [])
 }

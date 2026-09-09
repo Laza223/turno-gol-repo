@@ -11,41 +11,46 @@ import { StatCard } from '@/components/admin/StatCard'
  * `text-muted-foreground` (ya AA) y atenuar solo el glifo del ícono
  * (decorativo, sin texto). Mismo criterio que GhostTopSlots en /metricas.
  */
-export function GhostKpis() {
-  const ghosts = [
-    {
-      label: 'Ingresos',
-      value: '$ 85.000',
-      icon: <TrendingUp className="h-4 w-4 opacity-40" aria-hidden="true" />,
-      accent: 'emerald' as const,
-    },
-    {
-      label: 'Ajustes',
-      value: '$ 0',
-      icon: <SlidersHorizontal className="h-4 w-4 opacity-40" aria-hidden="true" />,
-      accent: 'slate' as const,
-    },
-    {
-      label: 'Saldo',
-      value: '$ 85.000',
-      icon: <Wallet className="h-4 w-4 opacity-40" aria-hidden="true" />,
-      accent: 'emerald' as const,
-    },
-    {
-      label: 'Reservas',
-      value: '32',
-      icon: <CalendarCheck className="h-4 w-4 opacity-40" aria-hidden="true" />,
-      accent: 'slate' as const,
-    },
-  ]
+/**
+ * Valores de muestra del estado espectral. Fuera del componente porque no
+ * dependen de props ni de estado: rearmarlos en cada render crea objetos y
+ * elementos nuevos que los hijos memoizados leen como cambiados.
+ */
+const GHOSTS = [
+  {
+    label: 'Ingresos',
+    value: '$ 85.000',
+    icon: <TrendingUp className="h-4 w-4 opacity-40" aria-hidden="true" />,
+    accent: 'emerald' as const,
+  },
+  {
+    label: 'Ajustes',
+    value: '$ 0',
+    icon: <SlidersHorizontal className="h-4 w-4 opacity-40" aria-hidden="true" />,
+    accent: 'slate' as const,
+  },
+  {
+    label: 'Saldo',
+    value: '$ 85.000',
+    icon: <Wallet className="h-4 w-4 opacity-40" aria-hidden="true" />,
+    accent: 'emerald' as const,
+  },
+  {
+    label: 'Reservas',
+    value: '32',
+    icon: <CalendarCheck className="h-4 w-4 opacity-40" aria-hidden="true" />,
+    accent: 'slate' as const,
+  },
+]
 
+export function GhostKpis() {
   return (
     <div className="card-premium rounded-lg p-5">
       <p className="text-sm font-medium text-muted-foreground">
         <span aria-hidden="true">✦ </span>Así se verá tu mes cuando cargues reservas
       </p>
       <div className="mt-4 grid grid-cols-2 gap-4 select-none sm:grid-cols-4" aria-hidden="true">
-        {ghosts.map((g) => (
+        {GHOSTS.map((g) => (
           <StatCard
             key={g.label}
             label={g.label}

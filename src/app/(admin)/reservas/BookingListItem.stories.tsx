@@ -4,7 +4,8 @@ import { formatArs } from '@/lib/format'
 import { artDateString } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
 import type { ReservaListRow } from './queries'
-import { BookingListItem, moneyLine } from './BookingListItem'
+import { BookingListItem } from './BookingListItem'
+import { moneyLine } from './money-line'
 import { reservaStatusVisual } from './status-visual'
 
 const SUCCESS = { success: true as const, booking: {} as never }

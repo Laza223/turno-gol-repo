@@ -175,7 +175,9 @@ export const publicCourtCards = (): PublicCourtCardFixture[] => [
 
 // ─── Slots / disponibilidad (public.service.ts#Slot/AvailabilityResponse) ─────
 
-export type SlotStatusFixture = 'free' | 'occupied' | 'held' | 'fixed' | 'blocked' | 'past'
+// 'fixed'/'blocked' se aplanan server-side a 'occupied' (grupo 1.2, parcial).
+// 'held' queda excepción: decisión de negocio pendiente del dueño.
+export type SlotStatusFixture = 'free' | 'occupied' | 'held' | 'past'
 
 export type SlotFixture = {
   time: string
@@ -208,14 +210,14 @@ type PublicCourtSlotsFixture = {
 
 export type AvailabilityResponseFixture = { date: string; courts: PublicCourtSlotsFixture[] }
 
-/** Una fila de horas con las 5 variantes de status + un hueco sin precio configurado. */
+/** Una fila de horas con las variantes de status que expone el servidor + un hueco sin precio configurado. */
 function sampleSlots(): SlotFixture[] {
   return [
     slot({ time: '09:00', status: 'past', price: 900000 }),
     slot({ time: '10:00', status: 'free', price: 900000 }),
     slot({ time: '11:00', status: 'occupied', price: 900000 }),
-    slot({ time: '18:00', status: 'fixed', price: 1300000 }),
-    slot({ time: '19:00', status: 'blocked', price: 1300000 }),
+    slot({ time: '18:00', status: 'occupied', price: 1300000 }),
+    slot({ time: '19:00', status: 'occupied', price: 1300000 }),
     slot({ time: '20:00', status: 'free', price: 1300000 }),
     slot({ time: '21:00', status: 'free', price: null }),
   ]

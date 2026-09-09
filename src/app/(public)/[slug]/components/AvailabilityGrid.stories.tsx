@@ -30,7 +30,10 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Grilla con las 5 variantes de slot (libre/ocupado/fijo/bloqueado/pasado) + leyenda. */
+/**
+ * Grilla con libre/ocupado/pasado + leyenda (turno fijo y bloqueo se aplanan
+ * server-side a "Ocupado", grupo 1.2 parcial de la auditoría de coherencia).
+ */
 export const Default: Story = {
   args: { tenant: publicTenant() },
   parameters: {
@@ -41,9 +44,14 @@ export const Default: Story = {
     await expect(
       (await canvas.findAllByRole('link', { name: /^Reservar/ })).length,
     ).toBeGreaterThan(0)
-    // "Turno fijo"/"Bloqueado" aparecen 2 veces c/u: en la celda del slot y en la leyenda.
-    await expect(canvas.getAllByText('Turno fijo').length).toBeGreaterThan(1)
-    await expect(canvas.getAllByText('Bloqueado').length).toBeGreaterThan(1)
+    // Control negativo de la fuga (1.2): el motivo interno no se ve en ningún lado.
+    await expect(canvas.queryByText('Turno fijo')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('Bloqueado')).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/^Señando/)).not.toBeInTheDocument()
+    // "Ocupado" aparece en la celda Y en la leyenda.
+    await expect(canvas.getAllByText('Ocupado').length).toBeGreaterThan(0)
+    // 1.1/1.3: ningún importe en la grilla.
+    await expect(canvas.queryByText(/\$/)).not.toBeInTheDocument()
   },
 }
 

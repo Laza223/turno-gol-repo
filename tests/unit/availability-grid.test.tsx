@@ -4,8 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import AvailabilityGrid from '@/app/(public)/[slug]/components/AvailabilityGrid'
 import type {
   AvailabilityResponse,
+  PublicSlotStatus,
   PublicTenant,
-  SlotStatus,
 } from '@/modules/tenants/public.service'
 
 // La grilla es 100% client-side (la página del perfil es ISR): lee ?date= con
@@ -53,7 +53,7 @@ const tenant = {
 function availabilityFor(
   date: string,
   time: string,
-  status: SlotStatus = 'occupied',
+  status: PublicSlotStatus = 'occupied',
 ): AvailabilityResponse {
   return {
     date,
@@ -259,7 +259,7 @@ describe('AvailabilityGrid (#39)', () => {
     expect(screen.getByText('18:00')).toBeTruthy()
   })
 
-  it('muestra el precio en cada slot futuro, incluso ocupado o turno fijo', async () => {
+  it('no muestra ningún precio en la grilla (el precio se explica en el checkout)', async () => {
     const today = artToday()
     const availability: AvailabilityResponse = {
       date: today,
@@ -273,7 +273,7 @@ describe('AvailabilityGrid (#39)', () => {
           slots: [
             { time: '18:00', duration: 60, status: 'free', price: 1500000 },
             { time: '19:00', duration: 60, status: 'occupied', price: 1500000 },
-            { time: '20:00', duration: 60, status: 'fixed', price: 1800000 },
+            { time: '20:00', duration: 60, status: 'occupied', price: 1800000 },
           ],
         },
       ],
@@ -283,12 +283,14 @@ describe('AvailabilityGrid (#39)', () => {
     render(<AvailabilityGrid tenant={tenant} />)
 
     await waitFor(() => {
-      expect(screen.getAllByText(/15\.000/)).toHaveLength(2) // libre + ocupado
+      expect(screen.getByText('18:00')).toBeTruthy()
     })
-    expect(screen.getAllByText(/18\.000/)).toHaveLength(1) // turno fijo
+    expect(screen.queryByText(/15\.000/)).toBeNull()
+    expect(screen.queryByText(/18\.000/)).toBeNull()
+    expect(screen.queryByText(/\$/)).toBeNull()
   })
 
-  it('sin reserva online el slot libre ofrece Contactar con precio visible', async () => {
+  it('sin reserva online el slot libre ofrece Contactar', async () => {
     const today = artToday()
     const offlineTenant = { ...tenant, allowOnlineBooking: false } as PublicTenant
     const availability: AvailabilityResponse = {
@@ -311,11 +313,11 @@ describe('AvailabilityGrid (#39)', () => {
     await waitFor(() => {
       expect(screen.getByText('Contactar')).toBeTruthy()
     })
-    expect(screen.getByText(/12\.000/)).toBeTruthy()
+    expect(screen.queryByText(/12\.000/)).toBeNull()
     expect(screen.queryByText('Reservar')).toBeNull()
   })
 
-  it('renderiza etiquetas semánticas por estado: ocupado, turno fijo y bloqueado', async () => {
+  it('renderiza "Ocupado" sin filtrar el motivo (turno fijo y bloqueado ya no se distinguen)', async () => {
     const today = artToday()
     const availability: AvailabilityResponse = {
       date: today,
@@ -328,8 +330,6 @@ describe('AvailabilityGrid (#39)', () => {
           hasLighting: true,
           slots: [
             { time: '18:00', duration: 60, status: 'occupied', price: null },
-            { time: '19:00', duration: 60, status: 'fixed', price: null },
-            { time: '20:00', duration: 60, status: 'blocked', price: null },
             { time: '21:00', duration: 60, status: 'free', price: 1500000 },
           ],
         },
@@ -339,14 +339,69 @@ describe('AvailabilityGrid (#39)', () => {
 
     render(<AvailabilityGrid tenant={tenant} />)
 
-    // Scope a la tabla: la leyenda repite los mismos textos fuera de ella.
+    // Scope a la tabla: la leyenda repite "Ocupado" fuera de ella.
     await waitFor(() => {
       expect(screen.getByRole('table')).toBeTruthy()
     })
     const table = within(screen.getByRole('table'))
     expect(table.getByText('Ocupado')).toBeTruthy()
-    expect(table.getByText('Turno fijo')).toBeTruthy()
-    expect(table.getByText('Bloqueado')).toBeTruthy()
     expect(table.getByText('Reservar')).toBeTruthy()
+    expect(screen.queryByText('Turno fijo')).toBeNull()
+    expect(screen.queryByText('Bloqueado')).toBeNull()
+  })
+
+  it('1.4: filtra las horas pasadas de la grilla', async () => {
+    const today = artToday()
+    const availability: AvailabilityResponse = {
+      date: today,
+      courts: [
+        {
+          id: 'c1',
+          name: 'Cancha 1',
+          surfaceType: 'futbol5',
+          isCovered: false,
+          hasLighting: true,
+          slots: [
+            { time: '09:00', duration: 60, status: 'past', price: null },
+            { time: '20:00', duration: 60, status: 'free', price: null },
+          ],
+        },
+      ],
+    }
+    mockFetchSequence([{ body: availability, ok: true }])
+
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('20:00')).toBeTruthy()
+    })
+    expect(screen.queryByText('09:00')).toBeNull()
+  })
+
+  it('1.4: si todas las horas de hoy ya pasaron, avisa y no muestra la tabla', async () => {
+    const today = artToday()
+    const availability: AvailabilityResponse = {
+      date: today,
+      courts: [
+        {
+          id: 'c1',
+          name: 'Cancha 1',
+          surfaceType: 'futbol5',
+          isCovered: false,
+          hasLighting: true,
+          slots: [{ time: '09:00', duration: 60, status: 'past', price: null }],
+        },
+      ],
+    }
+    mockFetchSequence([{ body: availability, ok: true }])
+
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Los turnos de hoy ya pasaron. Probá con el día siguiente.'),
+      ).toBeTruthy()
+    })
+    expect(screen.queryByRole('table')).toBeNull()
   })
 })

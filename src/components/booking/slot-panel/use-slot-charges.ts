@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
-import { type ChargeLine } from '@/components/admin/SplitPaymentFields'
+import { newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -42,28 +42,17 @@ export function useSlotCharges({
   const mode = booking ? chargeMode(booking, hasEnded) : null
   const pending = booking?.pending ?? 0
 
-  function submitCharge() {
+  /**
+   * Corre la mutación real (misma Server Action, mismo guard, mismo toast y
+   * manejo de error que "Registrar cobro") a partir de un array de cargos ya
+   * validado. La sacamos de `submitCharge` para que el atajo "Cobrar todo en
+   * efectivo" pueda ejecutarla con un cargo armado en el momento, sin
+   * depender de `lines` (que todavía no se actualizó por el `setLines` de
+   * este mismo click — `setState` es async).
+   */
+  function runCharge(charges: ChargeInput[]) {
     if (!booking || !actions || !mode) return
-    setError(null)
-
-    const charges: ChargeInput[] = []
-    for (const l of lines) {
-      if (l.amountCents == null || l.amountCents <= 0) {
-        setError('Todos los cobros deben tener un monto mayor a $0.')
-        return
-      }
-      charges.push({ amount: l.amountCents, method: l.method })
-    }
-    if (charges.length === 0) {
-      setError('Ingresá al menos una línea de cobro.')
-      return
-    }
     const total = charges.reduce((s, c) => s + c.amount, 0)
-    if (total > pending) {
-      setError(`El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
-      return
-    }
-
     const bookingId = booking.id
     startTransition(async () => {
       try {
@@ -98,6 +87,38 @@ export function useSlotCharges({
         setError('No se pudo registrar el cobro. Revisá tu conexión e intentá de nuevo.')
       }
     })
+  }
+
+  function submitCharge() {
+    if (!booking || !actions || !mode) return
+    setError(null)
+
+    const charges: ChargeInput[] = []
+    for (const l of lines) {
+      if (l.amountCents == null || l.amountCents <= 0) {
+        setError('Todos los cobros deben tener un monto mayor a $0.')
+        return
+      }
+      charges.push({ amount: l.amountCents, method: l.method })
+    }
+    if (charges.length === 0) {
+      setError('Ingresá al menos una línea de cobro.')
+      return
+    }
+    const total = charges.reduce((s, c) => s + c.amount, 0)
+    if (total > pending) {
+      setError(`El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
+      return
+    }
+    runCharge(charges)
+  }
+
+  /** Atajo "Cobrar todo en efectivo": cobra el total pendiente en un solo toque. */
+  function submitQuickAllCash() {
+    if (!booking || !actions || !mode || pending <= 0) return
+    setError(null)
+    setLines([newChargeLine(pending, 'cash')])
+    runCharge([{ amount: pending, method: 'cash' }])
   }
 
   async function confirmNoShow(): Promise<ActionResult> {
@@ -157,6 +178,7 @@ export function useSlotCharges({
     mode,
     pending,
     submitCharge,
+    submitQuickAllCash,
     confirmNoShow,
     revertNoShow,
   }

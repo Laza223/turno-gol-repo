@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { QuickBookingForm } from './QuickBookingForm'
 
 /**
@@ -44,8 +44,9 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * El caso del 90%: alguien llama, se tipea el nombre, se dice qué se cobró.
- * Ninguna opción de cobro viene marcada: es una pregunta, no un default.
+ * El caso del 90%: alguien llama, se tipea el nombre, y listo. "No cobré"
+ * viene preseleccionado (pedido del dueño, revierte PR #185) para que la
+ * carga más repetida del día se confirme con un solo campo.
  */
 export const Base: Story = {
   play: async ({ canvasElement }) => {
@@ -54,7 +55,8 @@ export const Base: Story = {
     // El precio se muestra ya resuelto — no es un campo.
     await expect(await c.findByText(/24\.000/)).toBeTruthy()
     for (const opcion of await c.findAllByRole('radio')) {
-      await expect(opcion.getAttribute('aria-checked')).toBe('false')
+      const esperado = opcion.textContent === 'No cobré' ? 'true' : 'false'
+      await expect(opcion.getAttribute('aria-checked')).toBe(esperado)
     }
     // Sin método elegido no hay monto que tipear.
     await expect(c.queryByLabelText('Cuánto cobraste')).toBeNull()
@@ -62,18 +64,21 @@ export const Base: Story = {
 }
 
 /**
- * El turno no se crea sin decir qué pasó con la plata. Antes se podía confirmar
- * sin tocar el control y el turno nacía sin cobro registrado por inercia, no
- * por decisión.
+ * Confirmar sin tocar el control de cobro (solo el nombre) crea el turno: la
+ * preselección en "No cobré" no manda ningún campo de seña al server.
  */
-export const SinDecirQueCobro: Story = {
+export const ConfirmaSoloConElNombre: Story = {
   play: async ({ canvasElement, args }) => {
     const c = within(canvasElement)
     await userEvent.type(await c.findByLabelText('¿A nombre de quién?'), 'Marce')
     await userEvent.click(await c.findByRole('button', { name: /Confirmar reserva/ }))
 
-    await expect(await c.findByText(/Decí si cobraste algo/)).toBeTruthy()
-    await expect(args.action).not.toHaveBeenCalled()
+    await waitFor(() => expect(args.action).toHaveBeenCalledTimes(1))
+    const payload = (args.action as ReturnType<typeof fn>).mock.calls[0]![0] as Record<
+      string,
+      unknown
+    >
+    await expect(payload).not.toHaveProperty('depositMethod')
   },
 }
 

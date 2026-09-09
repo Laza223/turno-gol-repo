@@ -13,6 +13,7 @@ import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../../torneos-lib'
 import { formatArs } from '@/lib/format'
 import { EmptyState } from '@/components/ui/empty-state'
 import { toast } from '@/hooks/use-toast'
+import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import type { TournamentActionResult } from '../../actions'
 
 export type RegisterPaymentAction = (input: unknown) => Promise<TournamentActionResult>
@@ -59,6 +60,40 @@ export function InscripcionesPanel({
     setIdempotencyKey(crypto.randomUUID())
   }
 
+  /**
+   * Corre la mutación real a partir de un array de cargos ya validado — la
+   * sacamos de `handleSubmit` para que el atajo "Cobrar todo en efectivo" la
+   * pueda invocar con un cargo armado en el momento, sin depender de `lines`
+   * (que todavía no se actualizó por el `setLines` de ese mismo click).
+   */
+  function runCharge(
+    teamId: string,
+    teamName: string,
+    charges: { amount: number; method: ChargeLine['method'] }[],
+  ) {
+    const totalCents = charges.reduce((s, c) => s + c.amount, 0)
+    startTransition(async () => {
+      const result = await registerAction({
+        teamId,
+        charges,
+        clientIdempotencyKey: idempotencyKey,
+      })
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      toast({
+        title: 'Cobro registrado',
+        description: `${teamName} · ${formatArs(totalCents)}`,
+        variant: 'success',
+      })
+      setOpenTeamId(null)
+      setLines([])
+      router.refresh()
+      notifyMoneyMoved()
+    })
+  }
+
   function handleSubmit(
     e: React.FormEvent,
     teamId: string,
@@ -83,26 +118,15 @@ export function InscripcionesPanel({
       )
       return
     }
+    runCharge(teamId, teamName, charges)
+  }
 
-    startTransition(async () => {
-      const result = await registerAction({
-        teamId,
-        charges,
-        clientIdempotencyKey: idempotencyKey,
-      })
-      if (!result.success) {
-        setError(result.error)
-        return
-      }
-      toast({
-        title: 'Cobro registrado',
-        description: `${teamName} · ${formatArs(totalCents)}`,
-        variant: 'success',
-      })
-      setOpenTeamId(null)
-      setLines([])
-      router.refresh()
-    })
+  /** Atajo "Cobrar todo en efectivo": cobra el saldo pendiente del equipo en un solo toque. */
+  function submitQuickAllCash(teamId: string, teamName: string, pendingAmount: number) {
+    if (pendingAmount <= 0) return
+    setError(null)
+    setLines([newChargeLine(pendingAmount, 'cash')])
+    runCharge(teamId, teamName, [{ amount: pendingAmount, method: 'cash' }])
   }
 
   return (
@@ -189,6 +213,9 @@ export function InscripcionesPanel({
                         lines={lines}
                         onChange={setLines}
                         quickAllCashCents={row.pending}
+                        onQuickAllCash={() =>
+                          submitQuickAllCash(row.teamId, row.teamName, row.pending)
+                        }
                         disabled={pending}
                       />
                       <button

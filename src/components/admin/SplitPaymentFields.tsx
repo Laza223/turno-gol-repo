@@ -25,8 +25,15 @@ export function SplitPaymentFields({
   lines,
   onChange,
   maxLines = 5,
-  /** Si se pasa, muestra el atajo de un tap "Pagar todo en efectivo — $X". */
+  /** Si se pasa, muestra el atajo de un tap "Cobrar todo en efectivo — $X". */
   quickAllCashCents,
+  /**
+   * Si se pasa, el atajo COBRA de una (llama a la misma Server Action que
+   * "Registrar cobro"), en vez de sólo rellenar las líneas. Recibe el
+   * callback en lugar de armar las líneas acá adentro: el caller es quien
+   * sabe qué acción disparar y ya tiene su propio manejo de error/toast.
+   */
+  onQuickAllCash,
   disabled = false,
   /** Default: las 4 (incluye 'other'). Cantina no admite 'other' (canteen.types.ts). */
   methodOptions = PAYMENT_METHOD_OPTIONS,
@@ -35,6 +42,7 @@ export function SplitPaymentFields({
   onChange: (lines: ChargeLine[]) => void
   maxLines?: number
   quickAllCashCents?: number
+  onQuickAllCash?: () => void
   disabled?: boolean
   methodOptions?: { value: MethodKey; label: string }[]
 }) {
@@ -52,6 +60,10 @@ export function SplitPaymentFields({
 
   function quickAllCash() {
     if (quickAllCashCents == null) return
+    if (onQuickAllCash) {
+      onQuickAllCash()
+      return
+    }
     onChange([newChargeLine(quickAllCashCents, 'cash')])
   }
 
@@ -68,7 +80,7 @@ export function SplitPaymentFields({
           // fondo tintado es lo que lo tira abajo del umbral.
           className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-60"
         >
-          Pagar todo en efectivo — {formatArs(quickAllCashCents)}
+          Cobrar todo en efectivo — {formatArs(quickAllCashCents)}
         </button>
       )}
 

@@ -33,11 +33,12 @@ import type {
  * usa el server (`@/lib/booking/pricing`), así que no hay round-trip antes de
  * mostrarlo ni forma de que lo mostrado difiera de lo que se graba.
  *
- * Lo cobrado es de respuesta OBLIGATORIA (y sin preselección): el turno cargado
- * a mano no tiene ningún hecho de plata detrás salvo lo que afirme quien está en
- * el mostrador. "No cobré" es una respuesta válida y el caso normal del complejo
- * que cobra al terminar de jugar; lo que ya no existe es crear el turno sin
- * decirlo.
+ * Lo cobrado viene con "No cobré" PRESELECCIONADO (revierte PR #185, a pedido
+ * del dueño): la acción más repetida del día — cargar un turno — se confirma
+ * con un solo campo, el nombre. El turno cargado a mano no tiene ningún hecho
+ * de plata detrás salvo lo que afirme quien está en el mostrador; la
+ * preselección no inventa un cobro — el monto sigue vacío y sin sugerir, y
+ * "No cobré" no manda ningún campo de seña al server.
  *
  * Las Server Actions llegan por prop (ver BookingFormModal). Piezas propias en
  * `quick-form/`: constantes, búsqueda de jugador, chequeo optimista de
@@ -74,8 +75,10 @@ export function QuickBookingForm({
     searchPlayersAction,
   })
   const taken = useSlotAvailability({ checkAvailabilityAction, slot })
-  // `null` = todavía no contestó. El submit lo exige: ver DepositFieldset.
-  const [depositChoice, setDepositChoice] = useState<DepositChoice | null>(null)
+  // Arranca en 'none' preseleccionado (pedido del dueño): confirmar con solo
+  // el nombre ya alcanza. `null` (todavía no contestó) queda como estado
+  // defensivo — el guard del submit lo sigue cubriendo por las dudas.
+  const [depositChoice, setDepositChoice] = useState<DepositChoice | null>('none')
   const [depositCents, setDepositCents] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()

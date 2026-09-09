@@ -1,6 +1,6 @@
 # Auditoría de coherencia UX con agentes — diseño
 
-**Fecha:** 2026-09-09 · **Estado:** propuesta, esperando validación del dueño · **Sin código todavía.**
+**Fecha:** 2026-09-09 · **Estado:** scope decidido por el dueño (§6) · arranca con el brief (§5.2).
 
 ## 0. Qué se pide
 
@@ -138,17 +138,23 @@ va después de B, sobre la versión ya arreglada**, y es la validación final.
 
 ### 4.2 Las cuatro lentes
 
-| Lente                                | Método                                         | Entrada                                      | Agentes (piloto Caja → completa)                                                        | Tipo de hallazgo                     |
-| ------------------------------------ | ---------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ |
-| **L1 Contra sus propias reglas**     | inspección de consistencia + spec vs. realidad | código + corpus + MASTER/gramática/pages     | 2 → 4                                                                                   | COHERENCIA (objetivo, cita la regla) |
-| **L2 Recorrido cognitivo por tarea** | cognitive walkthrough                          | app corriendo (Playwright MCP) + tareas      | 3 → 8                                                                                   | CALLEJÓN, FEEDBACK, PASOS DE MÁS     |
-| **L3 Heurística por pantalla**       | evaluación heurística                          | corpus de screenshots (2 viewports, 2 roles) | 2 evaluadores × 1 grupo → 2 × 5 grupos del admin (+2 grupos si entran portal y jugador) | HEURÍSTICA (Nielsen #1–#10)          |
-| **L4 Inventario y resta**            | feature inventory                              | código + corpus                              | 1 → 2                                                                                   | RESTA (mantener / plegar / sacar)    |
+**Decidido 2026-09-09: corrida completa del admin + encargado de una sola vez, sin piloto previo
+en Caja** (el dueño prefirió no calibrar en una zona chica primero). Consecuencia asumida: la
+primera tanda de hallazgos va a salir mas ruidosa que si hubieramos calibrado los prompts contra
+un caso chico antes, asi que el voto de la primera vuelta va a llevar mas tiempo — se compensa con
+la verificacion adversarial de W2, que filtra antes de llegar al voto.
 
-L1, L3 y L4 son **estáticas**: leen archivos y fotos, nunca tocan la app. Eso elimina la causa
-dominante de los gaps de 2026-07-28 (tabs compartidas, cookies pisadas, resets concurrentes). Solo
-L2 navega, y lo hace con Playwright MCP — nunca con el pane in-app, que no hidrata los forms
-(memoria `pane-oculto-no-hidrata-form-post-nativo`).
+| Lente                                | Metodo                                         | Entrada                                           | Agentes (admin + encargado completo)              | Tipo de hallazgo                     |
+| ------------------------------------ | ---------------------------------------------- | ------------------------------------------------- | ------------------------------------------------- | ------------------------------------ |
+| **L1 Contra sus propias reglas**     | inspeccion de consistencia + spec vs. realidad | codigo + corpus + MASTER/gramatica/pages          | 4                                                 | COHERENCIA (objetivo, cita la regla) |
+| **L2 Recorrido cognitivo por tarea** | cognitive walkthrough                          | app corriendo (Playwright MCP) + tareas           | 8                                                 | CALLEJON, FEEDBACK, PASOS DE MAS     |
+| **L3 Heuristica por pantalla**       | evaluacion heuristica                          | corpus de fotos (desktop + mobile, 2 roles)       | 2 evaluadores independientes x 5 grupos del admin | HEURISTICA (Nielsen #1-#10)          |
+| **L4 Inventario y resta**            | feature inventory                              | codigo + corpus + hipotesis del dueno (ver abajo) | 2                                                 | RESTA (mantener / plegar / sacar)    |
+
+**Item ya cargado en L4, a pedido del dueno:** revisar `/dashboard` ("Hoy") — hipotesis del dueno
+es que no aporta valor real. L4 lo evalua como cualquier otro: quien lo usa, cada cuanto, que se
+rompe si se saca o se pliega dentro de Grilla. El veredicto de sacarlo o no queda para el voto del
+dueno (RESTA), no lo decide el agente.
 
 ### 4.3 Esquema de hallazgo y barra de evidencia
 
@@ -211,14 +217,15 @@ mensaje).
 
 ### 4.6 Costo estimado
 
-| Corrida            | Buscadores | Jueces + verificadores | Fixes (W3)              | Tiempo del dueño  | Tokens (orden de magnitud) |
-| ------------------ | ---------- | ---------------------- | ----------------------- | ----------------- | -------------------------- |
-| Piloto Caja        | ~8         | ~30 (esfuerzo bajo)    | ~10                     | 15 min de voto    | similar a un lote de ayer  |
-| Completa (admin)   | ~24        | ~100                   | por lotes, 2–3 sesiones | 30–40 min de voto | 3–4× el piloto             |
-| + portal y jugador | +8         | +30                    | +1 sesión               | +10 min           | +1×                        |
+| Fase                               | Buscadores | Jueces + verificadores | Fixes (W3)              | Tiempo del dueno  |
+| ---------------------------------- | ---------- | ---------------------- | ----------------------- | ----------------- |
+| Corrida completa (admin+encargado) | ~24        | ~100                   | por lotes, 2-3 sesiones | 40-50 min de voto |
+
+Portal publico y app del jugador quedan para una tercera corrida, con su propia rubrica (otra
+personalidad, doc3 Tomas) — no entran en esta.
 
 Referencia real: ayer fueron 31 subagentes en 3 workflows para 17 hallazgos con fixes y
-verificación, en una sesión.
+verificacion, en una sesion.
 
 ### 4.7 Freeze (D4, hasta 2026-11-01)
 
@@ -231,28 +238,34 @@ La auditoría en sí es observación e instrumentación: permitida. Los fixes se
 
 ## 5. Cómo se arranca (orden, y quién hace cada cosa)
 
-1. **Commitear el trabajo de ayer** (114 entradas en `fix/coherencia-recorrida-dueno`). Requiere
-   el pedido explícito del dueño. Sin esto, la auditoría corre sobre el código viejo y re-encuentra
-   los 17 hallazgos ya arreglados.
+1. ~~Commitear el trabajo de ayer~~ — **hecho 2026-09-09**: 9 commits temáticos en
+   `fix/coherencia-recorrida-dueno` (ver sección 8 más abajo). Falta decidir PR.
 2. **Brief** (Opus, esta sesión o la siguiente): `docs/qa/BRIEF_AUDITORIA_COHERENCIA.md`,
-   ~2 páginas — personas, 23 tareas con frecuencia, rúbrica, esquema, lista de conocidos, reglas del
-   dueño ya decididas (sin precios en "Reservar", jugador ve solo Libre/Ocupado, KPIs son
-   ocasionales). Es el archivo que la sesión nueva lee primero.
-3. **Corpus** (Opus + 1 implementador Sonnet): extender `capture-screenshots.spec.ts`, seed sucio,
-   generar `docs/audit/screenshots/2026-09/`.
-4. **Sesión nueva**: `/donde-estoy` → leer el brief → W1 piloto Caja → W2 → artifact.
-5. **Dueño vota** (15 min).
-6. **W3** fixes por lote + re-recorrida + re-captura. Después, pasos 4–6 sobre el resto del admin,
-   con prompts corregidos.
+   ~2 páginas — personas, 23 tareas con frecuencia, rúbrica, esquema, lista de hallazgos ya
+   cerrados (para marcar REGRESIÓN si algo reaparece), reglas del dueño ya decididas (sin precios
+   en "Reservar", jugador ve solo Libre/Ocupado, KPIs son ocasionales), más el item "Hoy" cargado
+   en L4. Es el archivo que la sesión nueva lee primero.
+3. **Corpus** (Opus + 1 implementador Sonnet): extender `capture-screenshots.spec.ts` para las 29
+   pantallas del admin+encargado, seed sucio, generar `docs/audit/screenshots/2026-09/` (solo tema
+   claro — ver sección 6).
+4. **Sesión nueva**: `/donde-estoy` → leer el brief → W1 sobre las 4 lentes, admin+encargado
+   completo → W2 → artifact votable.
+5. **Dueño vota** (40–50 min, una sola tanda porque no hay piloto previo).
+6. **W3** fixes por lote + re-recorrida + re-captura del corpus (antes/después).
 7. **Después de todo**: 3–5 dueños reales, 5 tareas, sin ayudarlos. Es el test que ningún agente
-   reemplaza.
+   reemplaza. Portal público y app del jugador: tercera corrida, con su propia rúbrica.
 
-## 6. Decisiones que necesito del dueño
+## 6. Decisiones del dueño (2026-09-09)
 
-1. ¿Commiteo los 114 archivos de ayer antes de arrancar? (Recomendado: sí; sin eso el resto no tiene sentido.)
-2. ¿Piloto en Caja primero, o corrida completa de una? (Recomendado: piloto.)
-3. Alcance de la corrida completa: ¿solo admin + encargado, o también portal público y app del jugador? (Recomendado: admin + encargado primero; portal y jugador en una tercera corrida — son otra personalidad y otra rúbrica.)
-4. ¿Corpus también en dark? (Recomendado: no en el piloto; duplica fotos y el dueño reportó problemas de coherencia, no de tema.)
+1. **Commit del trabajo de ayer** → sí, hecho (9 commits, ver sección 8). PR: pendiente de la
+   respuesta de esta sesión (ver mensaje de cierre).
+2. **Piloto vs. corrida completa** → corrida completa del admin+encargado de una, sin piloto en
+   Caja. Ver la nota de riesgo en §4.2 (primera tanda más ruidosa, sin prompts calibrados).
+3. **Alcance** → admin + encargado. Portal público y app del jugador quedan para una tercera
+   corrida aparte.
+4. **Corpus en dark** → no. Ver definición de "corpus" en §4.5: es la carpeta de fotos de cada
+   pantalla (no un concepto propio de este documento) que alimenta L3 y sirve de base para el
+   antes/después. Se genera solo en tema claro por ahora.
 
 ## 7. Riesgos y límites
 
@@ -267,3 +280,28 @@ La auditoría en sí es observación e instrumentación: permitida. Los fixes se
   con "Plata en la calle"). El hallazgo se resuelve corrigiendo la spec; el brief lo dice explícito.
 - **Los 60 hallazgos de 2026-08-14 ya cerrados**: el brief los lista como cerrados-conocidos para que
   un buscador marque REGRESIÓN si algo reaparece, en vez de reportarlo como nuevo.
+
+## 8. Commit del 2026-09-09
+
+El trabajo del día anterior (17 hallazgos de la recorrida del dueño + 4 de la segunda pasada) se
+dividió en 9 commits temáticos sobre `fix/coherencia-recorrida-dueno`, cada uno con su propio
+mensaje explicando el "antes" (citando DEMO-3) y el "después":
+
+1. `fix(dinero)` — formato de plata único + sidebar "HOY" que se actualiza solo
+2. `fix(portal)` — el jugador ya no ve bloqueos ni el precio total
+3. `fix(grilla)` — plata pendiente por celda + header "Por cobrar"
+4. `feat(booking)` — liberar un bloqueo manual (el hallazgo más grave)
+5. `fix(booking)` — "cobrar todo en efectivo" cobra de verdad + separar reservar de bloquear
+6. `fix(reservas)` — lista y detalle muestran cuánto falta cobrar
+7. `fix(caja)` — "Deudas" en vez de "Plata en la calle" + sin categoría fantasma en cantina
+8. `docs(gtm)` — DEMO-3 en aprendizajes + seed de demo con formato real
+9. `docs` — este diseño
+
+DoD verificado antes de commitear: `format:check`, `typecheck`, `lint`, `knip` verdes (único
+resto: el warning preexistente de `scripts/ig-follow/accounts.json`, ajeno a este esfuerzo). El
+juez completo con los 4108 tests ya había corrido en verde más temprano en la misma sesión, sin
+cambios de código de aplicación desde entonces.
+
+**Quedaron afuera del commit, sin tocar** (preexistentes, de otros esfuerzos): `docs/BITACORA.md`,
+`scripts/demo/record.ts`, `scripts/ig-follow/accounts.json`, `AGENTS.md`, `.agents/skills/*`,
+`docs/audits/2026-09-06-auditoria-integral-fase-diagnostico.md`, `scripts/demo/flows/*-dark.json`.

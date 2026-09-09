@@ -14,6 +14,7 @@ import {
   createManualBooking,
   completeBooking,
   getAvailableSlots,
+  releaseBlockBooking,
 } from '@/modules/bookings/booking.service'
 import {
   cancelByAdmin,
@@ -65,6 +66,7 @@ import {
   BookingDateOutOfRangeError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
+import type { ActionResult } from '@/shared/types/action-result'
 
 export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
@@ -519,6 +521,40 @@ export async function cancelBookingAction(
   }
 
   return { success: true, booking: outcome.booking }
+}
+
+/**
+ * Libera un bloqueo de mantenimiento (RI G2.1): DELETE físico, no una
+ * cancelación — un bloqueo no es una reserva que alguien hizo. Mismo guard que
+ * `createBookingAction`: que el Encargado pueda bloquear y no desbloquear era
+ * el bug.
+ */
+export async function releaseBlockAction(bookingId: string): Promise<ActionResult> {
+  const parsed = uuid.safeParse(bookingId)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  // El catch va FUERA del contexto transaccional (mismo motivo que
+  // revertNoShowAction, 436-439): atraparlo adentro commitearía el DELETE.
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      releaseBlockBooking(tenant.id, bookingId, user.staffUserId, tx),
+    )
+  } catch (err) {
+    if (err instanceof BookingValidationError) {
+      return { success: false, error: err.message }
+    }
+    throw err
+  }
+
+  revalidateBooking(bookingId)
+  return { success: true }
 }
 
 const listRescheduleSlotsSchema = z.object({

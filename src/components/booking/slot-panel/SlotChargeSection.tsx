@@ -12,6 +12,8 @@ type Props = {
   error: string | null
   isPending: boolean
   onSubmit: () => void
+  /** Atajo "Cobrar todo en efectivo": cobra directo, sin pasar por el formulario. */
+  onQuickAllCash: () => void
 }
 
 /** Sección de cobro: método mixto + CTA, según el `ChargeMode` vigente. */
@@ -23,6 +25,7 @@ export function SlotChargeSection({
   error,
   isPending,
   onSubmit,
+  onQuickAllCash,
 }: Props) {
   return (
     <section className="rounded-lg border border-border p-3">
@@ -38,6 +41,7 @@ export function SlotChargeSection({
         // sería cobrar de menos sin avisar.
         maxLines={mode === 'advance' ? 1 : 5}
         quickAllCashCents={pending}
+        onQuickAllCash={onQuickAllCash}
         disabled={isPending}
       />
       {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el

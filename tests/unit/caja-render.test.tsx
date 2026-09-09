@@ -153,8 +153,8 @@ describe('CierreCard — variantes del peak-end', () => {
     expect(screen.getByText('Caja cerrada — el efectivo cuadró')).toBeTruthy()
     expect(screen.getByText(/23:40/)).toBeTruthy()
     expect(screen.getByText('Efectivo contado')).toBeTruthy()
-    // Formato contable §8.2 (con decimales).
-    expect(screen.getByText(/50\.000,00/)).toBeTruthy() // ingresos
+    // Formato §8.2 (sin decimales, unificado 4.5).
+    expect(screen.getByText(/50\.000/)).toBeTruthy() // ingresos
     expect(screen.queryByText(/Diferencia/)).toBeNull()
   })
 
@@ -173,7 +173,7 @@ describe('CierreCard — variantes del peak-end', () => {
     )
     expect(screen.getByText('Caja cerrada — con diferencia anotada')).toBeTruthy()
     expect(screen.getByText(/Diferencia de/)).toBeTruthy()
-    expect(screen.getByText(/1\.000,00/)).toBeTruthy()
+    expect(screen.getByText(/1\.000/)).toBeTruthy()
     expect(screen.getByText(/Faltó un vuelto/)).toBeTruthy()
   })
 
@@ -191,10 +191,10 @@ describe('CierreCard — variantes del peak-end', () => {
     )
     expect(screen.getByText('Caja cerrada — el efectivo cuadró')).toBeTruthy()
     expect(screen.getByText('Fondo inicial')).toBeTruthy()
-    // "43.000,00" (Efectivo esperado/contado) contiene "3.000,00" como substring
-    // — DOM-traversal en vez de regex para no pescar la fila equivocada.
+    // "43.000" (Efectivo esperado/contado) contiene "3.000" como substring —
+    // DOM-traversal en vez de regex para no pescar la fila equivocada.
     const fondoDd = screen.getByText('Fondo inicial').closest('div')!.querySelector('dd')!
-    expect(fondoDd.textContent).toContain('3.000,00')
+    expect(fondoDd.textContent).toContain('3.000')
     expect(screen.getByText('Efectivo esperado')).toBeTruthy()
     expect(screen.getByText('Efectivo contado')).toBeTruthy()
     expect(screen.getByText('Diferencia')).toBeTruthy()
@@ -235,7 +235,7 @@ describe('CierreCard — variantes del peak-end', () => {
     // DOM-traversal en vez de regex sobre "$"/espacio (NBSP del Intl formatter).
     const dd = screen.getByText('Diferencia').closest('div')!.querySelector('dd')!
     expect(dd.textContent).toContain('+')
-    expect(dd.textContent).toContain('1.000,00')
+    expect(dd.textContent).toContain('1.000')
   })
 
   it('v2 — faltaron plata: título "faltaron $X" y Diferencia con signo −', () => {
@@ -252,6 +252,6 @@ describe('CierreCard — variantes del peak-end', () => {
     expect(screen.getByText(/Caja cerrada — faltaron/)).toBeTruthy()
     const dd = screen.getByText('Diferencia').closest('div')!.querySelector('dd')!
     expect(dd.textContent).toContain('−')
-    expect(dd.textContent).toContain('1.000,00')
+    expect(dd.textContent).toContain('1.000')
   })
 })

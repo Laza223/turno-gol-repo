@@ -11,6 +11,7 @@ type BookingEvent =
   | 'booking.transition.expired'
   | 'booking.cancel.by_player'
   | 'booking.cancel.by_admin'
+  | 'booking.block.released'
 
 type PaymentEvent =
   | 'payment.deposit.create'

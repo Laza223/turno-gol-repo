@@ -61,7 +61,7 @@ export const BalanceNegativo: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('−$ 3.000,00')).toBeVisible()
+    await expect(canvas.getByText('−$ 3.000')).toBeVisible()
   },
 }
 

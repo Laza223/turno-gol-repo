@@ -4,6 +4,7 @@ import {
   computeCells,
   countCollapsibleLeading,
   generateTimeSlots,
+  sumPendingCents,
 } from '@/lib/booking/grid-cells'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
@@ -216,5 +217,64 @@ describe('countCollapsibleLeading', () => {
     const slots = generateTimeSlots('08:00', '23:00')
     const cells = cellsFor(slots, [])
     expect(countCollapsibleLeading(slots, courts, cells, () => true)).toBe(slots.length - 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// sumPendingCents — "¿qué falta cobrar hoy?" (encabezado de la grilla)
+// ---------------------------------------------------------------------------
+
+describe('sumPendingCents', () => {
+  it('suma confirmed y completed con saldo pendiente', () => {
+    const bookings = [
+      makeBooking({
+        courtId: 'court1',
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        pending: 200000,
+      }),
+      makeBooking({
+        courtId: 'court1',
+        timeStart: '11:00:00',
+        timeEnd: '12:00:00',
+        status: 'completed',
+        pending: 300000,
+      }),
+    ]
+    expect(sumPendingCents(bookings)).toEqual({ totalCents: 500000, count: 2 })
+  })
+
+  it('no_show con saldo NO suma: un no-show no es deuda', () => {
+    const bookings = [
+      makeBooking({
+        courtId: 'court1',
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        status: 'no_show',
+        pending: 200000,
+      }),
+    ]
+    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
+  })
+
+  it('pending_payment (hold de 6 min) NO suma', () => {
+    const bookings = [
+      makeBooking({
+        courtId: 'court1',
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        status: 'pending_payment',
+        pending: 200000,
+      }),
+    ]
+    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
+  })
+
+  it('pending null o cero se ignora, no se cuenta como cero', () => {
+    const bookings = [
+      makeBooking({ courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00', pending: null }),
+      makeBooking({ courtId: 'court1', timeStart: '11:00:00', timeEnd: '12:00:00', pending: 0 }),
+    ]
+    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
   })
 })

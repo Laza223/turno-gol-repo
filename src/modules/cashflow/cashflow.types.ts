@@ -33,6 +33,19 @@ export type CashFlowRow = {
   createdAt: Date
 }
 
+/**
+ * `CashFlowRow` + el nombre de quién es la contraparte del movimiento (jugador
+ * o invitado del turno asociado). Es un tipo de LECTURA para la lista del día
+ * (getCashFlows) — NO se agrega a `CashFlowRow` porque `cashFlowResponseSchema`
+ * es un `z.strictObject` y `validateApiOutput` (createCashFlowAction) tiraría
+ * en runtime con un campo extra que no espera.
+ */
+export type CashFlowListRow = CashFlowRow & {
+  /** Nombre del jugador o invitado del turno asociado; null si el movimiento
+   * no tiene bookingId o el jugador no es visible bajo RLS. */
+  counterpartName: string | null
+}
+
 export type DailyCashCloseRow = {
   id: string
   tenantId: string

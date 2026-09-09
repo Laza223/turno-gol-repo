@@ -23,6 +23,7 @@ type ApiResponse = {
     time_end: string
     status: string
     type: string
+    tournament_id: string | null
     guest_name: string | null
     player: { first_name: string; last_name: string } | null
     price_snapshot: number
@@ -46,6 +47,7 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
     timeEnd: (row['time_end'] as string).slice(0, 5),
     status: row['status'] as BookingStatus,
     type: row['type'] as BookingType,
+    tournamentId: (row['tournament_id'] as string | null) ?? null,
     guestName: (row['guest_name'] as string | null) ?? null,
     playerFirstName: null,
     playerLastName: null,
@@ -110,6 +112,7 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
     timeEnd: row.time_end.slice(0, 5),
     status: row.status as BookingStatus,
     type: row.type as BookingType,
+    tournamentId: row.tournament_id ?? null,
     guestName: row.guest_name,
     playerFirstName: row.player?.first_name ?? null,
     playerLastName: row.player?.last_name ?? null,

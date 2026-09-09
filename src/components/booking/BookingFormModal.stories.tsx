@@ -152,13 +152,12 @@ export const BloqueoInterno: Story = {
 }
 
 /**
- * Lo cobrado es respuesta obligatoria en el alta manual: un turno cargado a mano
- * no tiene ningún hecho de cobro detrás salvo lo que afirme el mostrador. Las
- * stories que llegan al submit tienen que contestar, y "No cobré" es la
- * respuesta del complejo que cobra al terminar de jugar.
+ * El dueño revirtió PR #185: "No cobré" viene preseleccionado, así que las
+ * stories que llegan al submit ya no necesitan tocar el control. Se deja
+ * como chequeo de que arrancó ahí, no como interacción.
  */
 async function contestarSinCobro(body: ReturnType<typeof within>) {
-  await userEvent.selectOptions(body.getByLabelText('¿Cobraste algo ahora?'), 'none')
+  await expect(body.getByLabelText('¿Cobraste algo ahora?')).toHaveValue('none')
 }
 
 const guardando = pendingAction<BookingActionResult>({
@@ -177,7 +176,7 @@ export const Guardando: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await contestarSinCobro(body)
-    await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
+    await userEvent.click(body.getByRole('button', { name: 'Confirmar reserva' }))
     const guardandoBtn = await body.findByRole('button', { name: 'Guardando…' })
     await expect(guardandoBtn).toBeDisabled()
     // Sin release la transición queda viva y contamina las 4 stories siguientes
@@ -194,7 +193,7 @@ export const ErrorDelServidor: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await contestarSinCobro(body)
-    await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
+    await userEvent.click(body.getByRole('button', { name: 'Confirmar reserva' }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
       'Este turno acaba de ser tomado.',
     )
@@ -238,7 +237,7 @@ export const AvisoDeColisionOptimista: Story = {
       'Este turno acaba de ser tomado.',
     )
     // Es solo un aviso: el submit sigue habilitado, la fuente de verdad es el server.
-    await expect(body.getByRole('button', { name: 'Confirmar' })).toBeEnabled()
+    await expect(body.getByRole('button', { name: 'Confirmar reserva' })).toBeEnabled()
   },
 }
 
@@ -262,7 +261,7 @@ export const ExitoLlamaOnSuccess: Story = {
   play: async ({ canvasElement, args }) => {
     const body = within(canvasElement.ownerDocument.body)
     await contestarSinCobro(body)
-    await userEvent.click(body.getByRole('button', { name: 'Confirmar' }))
+    await userEvent.click(body.getByRole('button', { name: 'Confirmar reserva' }))
     await waitFor(() => expect(args.onSuccess).toHaveBeenCalledOnce())
     await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },

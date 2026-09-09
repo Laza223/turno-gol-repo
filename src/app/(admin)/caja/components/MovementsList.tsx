@@ -1,11 +1,11 @@
 import { Receipt } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
-import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
+import type { CashFlowListRow } from '@/modules/cashflow/cashflow.types'
 import { EmptyMovementAction } from './EmptyMovementAction'
 import { SignedAmount } from './SignedAmount'
 import { CategoryBadge } from './CategoryBadge'
-import { formatTimeArt, METHOD_LABELS } from '../caja-lib'
+import { formatTimeArt, movementTitle, METHOD_LABELS } from '../caja-lib'
 import type { CreateCashFlowAction } from './RegisterMovementModal'
 
 export function MovementsList({
@@ -15,7 +15,7 @@ export function MovementsList({
   cutoffMins,
   createCashFlowAction,
 }: {
-  cashFlows: CashFlowRow[]
+  cashFlows: CashFlowListRow[]
   isClosed: boolean
   date: string
   cutoffMins: number
@@ -33,7 +33,7 @@ export function MovementsList({
           <EmptyState
             icon={Receipt}
             title="Sin movimientos por ahora"
-            description="Los cobros de reservas se registran solos. Las ventas de cantina y los gastos se cargan desde los botones de arriba."
+            description="Los cobros de reservas se registran solos. Las ventas de cantina se cargan en la tab Cantina; los gastos, desde 'Agregar movimiento'."
             action={
               <EmptyMovementAction
                 date={date}
@@ -61,7 +61,12 @@ export function MovementsList({
             <li key={cf.id} className="flex items-start justify-between gap-3 px-4 py-3">
               <div className="min-w-0">
                 <CategoryBadge type={cf.type} category={cf.category} />
-                <p className="mt-1 truncate text-sm text-foreground">{cf.description}</p>
+                <p className="mt-1 truncate text-sm text-foreground">
+                  {movementTitle(cf.description)}
+                  {cf.counterpartName != null && (
+                    <span className="text-muted-foreground"> · {cf.counterpartName}</span>
+                  )}
+                </p>
                 <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
                   {formatTimeArt(cf.occurredAt)} · {METHOD_LABELS[cf.method] ?? cf.method}
                 </p>
@@ -100,7 +105,12 @@ export function MovementsList({
                 <td className="p-2.5 pl-4 tabular-nums text-muted-foreground">
                   {formatTimeArt(cf.occurredAt)}
                 </td>
-                <td className="max-w-xs truncate p-2.5 text-foreground">{cf.description}</td>
+                <td className="max-w-xs truncate p-2.5 text-foreground">
+                  {movementTitle(cf.description)}
+                  {cf.counterpartName != null && (
+                    <span className="text-muted-foreground"> · {cf.counterpartName}</span>
+                  )}
+                </td>
                 <td className="p-2.5">
                   <CategoryBadge type={cf.type} category={cf.category} />
                 </td>

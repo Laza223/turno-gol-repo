@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { bookings, courts, tenants } from '@/shared/db/schema'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import type { DbTx } from '@/shared/db/client'
+import { insertAuditLog } from '@/shared/db/audit'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { ensurePTR, playerBelongsToTenant } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
@@ -958,6 +959,48 @@ export async function revertNoShow(
 // ─── expirePendingBooking ───────────────────────────────────────────
 export async function expirePendingBooking(bookingId: string, tx: DbTx): Promise<TransitionResult> {
   return transitionFromPendingPayment(bookingId, 'expired', tx)
+}
+
+// ─── releaseBlockBooking ────────────────────────────────────────────
+/**
+ * Libera un bloqueo de mantenimiento: DELETE físico, no `canceled_no_refund`.
+ * Mismo criterio que `releaseTournamentSlots` (tournament-slots.service.ts):
+ * un bloqueo no es una reserva que alguien hizo y canceló — UPDATE dejaría la
+ * grilla y el historial llenos de "canceladas" que nadie generó. El rastro
+ * queda en `audit_logs`.
+ */
+export async function releaseBlockBooking(
+  tenantId: string,
+  bookingId: string,
+  staffUserId: string,
+  tx: DbTx,
+): Promise<{ date: string }> {
+  const rows = (await tx.execute(sql`
+    DELETE FROM bookings
+    WHERE id = ${bookingId}
+      AND tenant_id = ${tenantId}
+      AND type = 'block'
+      AND status IN ('confirmed', 'pending_payment')
+    RETURNING id, date::text AS "date"
+  `)) as unknown as Array<{ id: string; date: string }>
+
+  if (rows.length === 0) {
+    throw new BookingValidationError('El bloqueo ya no existe o no se puede liberar.')
+  }
+
+  await insertAuditLog(tx, {
+    tenantId,
+    actorId: staffUserId,
+    actorType: 'staff',
+    action: 'booking.block_released',
+    resourceType: 'booking',
+    resourceId: bookingId,
+    metadata: { date: rows[0]!.date },
+  })
+
+  await invalidateAvailSearch(rows[0]!.date)
+  track.booking('booking.block.released', { bookingId, tenantId })
+  return { date: rows[0]!.date }
 }
 
 // ─── getAvailableSlots ──────────────────────────────────────────────

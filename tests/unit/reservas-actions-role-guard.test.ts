@@ -20,6 +20,7 @@ vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() 
 vi.mock('@/modules/bookings/booking.service', () => ({
   createManualBooking: vi.fn(),
   completeBooking: vi.fn(),
+  releaseBlockBooking: vi.fn(),
 }))
 vi.mock('@/modules/bookings/booking.cancellation', () => ({
   cancelByAdmin: vi.fn(),
@@ -38,6 +39,7 @@ import {
   confirmDepositPaymentAction,
   createBookingAction,
   markNoShowAction,
+  releaseBlockAction,
   revertNoShowAction,
 } from '@/app/(admin)/reservas/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -45,7 +47,11 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext, getDb } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import { createManualBooking, completeBooking } from '@/modules/bookings/booking.service'
+import {
+  createManualBooking,
+  completeBooking,
+  releaseBlockBooking,
+} from '@/modules/bookings/booking.service'
 import {
   cancelByAdmin,
   handleNoShow,
@@ -112,6 +118,12 @@ describe('reservas actions — staff sin membresía activa (rol null) es rechaza
     expect(vi.mocked(resolveTenantGateway)).not.toHaveBeenCalled()
     expect(vi.mocked(cancelByAdmin)).not.toHaveBeenCalled()
   })
+
+  it('releaseBlockAction no libera bloqueos sin rol (RI G2.1)', async () => {
+    const res = await releaseBlockAction('00000000-0000-0000-0000-000000000001')
+    expect(res.success).toBe(false)
+    expect(vi.mocked(releaseBlockBooking)).not.toHaveBeenCalled()
+  })
 })
 
 describe('reservas actions — manager (Encargado) opera con normalidad (cruce #1)', () => {
@@ -148,6 +160,18 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
       'staff-1',
       'lluvia torrencial',
       'jugador',
+      FAKE_TX,
+    )
+  })
+
+  it('releaseBlockAction (RI G2.1) funciona para manager — bloquear y no poder desbloquear era el bug', async () => {
+    vi.mocked(releaseBlockBooking).mockResolvedValue({ date: '2026-06-10' })
+    const res = await releaseBlockAction('00000000-0000-0000-0000-000000000001')
+    expect(res.success).toBe(true)
+    expect(vi.mocked(releaseBlockBooking)).toHaveBeenCalledWith(
+      'tenant-1',
+      '00000000-0000-0000-0000-000000000001',
+      'staff-1',
       FAKE_TX,
     )
   })

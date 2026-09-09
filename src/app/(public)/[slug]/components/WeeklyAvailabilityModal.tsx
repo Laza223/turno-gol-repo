@@ -6,7 +6,7 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { PublicTenant, WeeklyAvailabilityResponse } from '@/modules/tenants/public.service'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { capitalizeFirst, formatArs } from '@/lib/format'
+import { capitalizeFirst } from '@/lib/format'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
 
 const WEEK_LOAD_ERROR = 'Ocurrió un error al cargar la disponibilidad de la semana.'
@@ -243,14 +243,9 @@ export default function WeeklyAvailabilityModal({
                                   key={s.time}
                                   href={`/${tenant.slug}/reservar?court=${court.id}&date=${activeDay.date}&time=${s.time}&dur=${s.duration}`}
                                   onClick={onClose}
-                                  className="flex min-h-10 flex-col items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/30 hover:bg-primary hover:text-primary-foreground transition-all active:scale-[0.98]"
+                                  className="flex min-h-10 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-emerald-600/30 hover:bg-primary hover:text-primary-foreground transition-all active:scale-[0.98]"
                                 >
                                   <span className="tabular-nums">{s.time}</span>
-                                  {s.price && (
-                                    <span className="text-[10px] tabular-nums opacity-90">
-                                      {formatArs(s.price)}
-                                    </span>
-                                  )}
                                 </Link>
                               ))}
                             </div>

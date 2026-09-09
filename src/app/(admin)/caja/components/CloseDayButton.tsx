@@ -7,7 +7,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Lock } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { MoneyInput } from '@/components/ui/money-input'
-import { formatArsContable } from '@/lib/format'
+import { formatArs } from '@/lib/format'
 import { mediumDateLabel } from '../caja-lib'
 import type { CloseDayActionResult } from '../actions'
 import { toast } from '@/hooks/use-toast'
@@ -134,41 +134,39 @@ export function CloseDayButton({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ingresos</span>
               <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
-                +{formatArsContable(totalIncome)}
+                +{formatArs(totalIncome)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Egresos</span>
               <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
-                −{formatArsContable(totalExpense)}
+                −{formatArs(totalExpense)}
               </span>
             </div>
             <div className="flex justify-between border-t border-border pt-1">
               <span className="text-muted-foreground">Saldo neto del día</span>
               <span className="font-semibold tabular-nums text-foreground">
-                {formatArsContable(balance)}
+                {formatArs(balance)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">En efectivo según los movimientos</span>
               <span className="font-medium tabular-nums text-foreground">
-                {cashTotal < 0 ? `−${formatArsContable(-cashTotal)}` : formatArsContable(cashTotal)}
+                {cashTotal < 0 ? `−${formatArs(-cashTotal)}` : formatArs(cashTotal)}
               </span>
             </div>
             {openingCash != null && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Fondo inicial</span>
                 <span className="font-medium tabular-nums text-foreground">
-                  {formatArsContable(openingCash)}
+                  {formatArs(openingCash)}
                 </span>
               </div>
             )}
             <div className="flex justify-between border-t border-border pt-1">
               <span className="text-muted-foreground">Efectivo esperado</span>
               <span className="font-semibold tabular-nums text-foreground">
-                {expectedCash < 0
-                  ? `−${formatArsContable(-expectedCash)}`
-                  : formatArsContable(expectedCash)}
+                {expectedCash < 0 ? `−${formatArs(-expectedCash)}` : formatArs(expectedCash)}
               </span>
             </div>
           </div>
@@ -193,7 +191,7 @@ export function CloseDayButton({
                   recibo ("sobraron"/"faltaron" de closeView). La diferencia se
                   ve al instante (misma tanda de digitación), no al día
                   siguiente — criterio de salida #4 del contrato. */}
-              Diferencia de {formatArsContable(Math.abs(diff))} con el efectivo esperado:{' '}
+              Diferencia de {formatArs(Math.abs(diff))} con el efectivo esperado:{' '}
               {diff < 0 ? 'falta' : 'sobra'} plata. La nota es obligatoria.
             </div>
           )}

@@ -160,7 +160,7 @@ test.describe('caja — happy: register movement', () => {
       const page = await context.newPage()
 
       await page.goto(`/caja?date=${TEST_DATE_MOVE}`)
-      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Caja del día', exact: true })).toBeVisible({
         timeout: 15_000,
       })
 
@@ -226,7 +226,7 @@ test.describe('caja — edge: close day (type-to-confirm)', () => {
       const page = await context.newPage()
 
       await page.goto(`/caja?date=${TEST_DATE_CLOSE}`)
-      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Caja del día', exact: true })).toBeVisible({
         timeout: 15_000,
       })
 
@@ -289,7 +289,7 @@ test.describe('caja — edge: closed-day guard (no writes on a closed day)', () 
       const page = await context.newPage()
 
       await page.goto(`/caja?date=${TEST_DATE_CLOSED}`)
-      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Caja del día', exact: true })).toBeVisible({
         timeout: 15_000,
       })
 
@@ -325,7 +325,7 @@ test.describe('caja — edge: close with difference requires note', () => {
       const page = await context.newPage()
 
       await page.goto(`/caja?date=${TEST_DATE_DIFF}`)
-      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Caja del día', exact: true })).toBeVisible({
         timeout: 15_000,
       })
 
@@ -384,7 +384,7 @@ test.describe('caja — happy: apertura + cierre v2 (efectivo esperado)', () => 
       const page = await context.newPage()
 
       await page.goto(`/caja?date=${TEST_DATE_OPEN}`)
-      await expect(page.getByRole('heading', { name: 'Caja', exact: true })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Caja del día', exact: true })).toBeVisible({
         timeout: 15_000,
       })
 

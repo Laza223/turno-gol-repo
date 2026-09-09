@@ -10,6 +10,7 @@ import {
   type ChargeLine,
 } from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
+import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
@@ -68,6 +69,58 @@ export function StreetMoneyChargeDialog({
     }
   }
 
+  /**
+   * Corre la mutación real a partir de un array de cargos ya validado —
+   * la sacamos de `submit` para que el atajo "Cobrar todo en efectivo" la
+   * pueda invocar con un cargo armado en el momento, sin depender de `lines`
+   * (que todavía no se actualizó por el `setLines` de ese mismo click).
+   */
+  function runCharge(parsedCharges: { amount: number; method: ChargeLine['method'] }[]) {
+    if (!row) return
+    const totalCents = parsedCharges.reduce((s, c) => s + c.amount, 0)
+    startTransition(async () => {
+      try {
+        const res =
+          row.origin === 'booking'
+            ? await chargeDebtAction({
+                bookingId: row.refId,
+                charges: parsedCharges,
+                clientIdempotencyKey: idempotencyKey,
+              })
+            : row.origin === 'canteen_tab'
+              ? await settleTabAction({
+                  tabId: row.refId,
+                  charges: parsedCharges as {
+                    amount: number
+                    method: 'cash' | 'transfer' | 'mercadopago'
+                  }[],
+                  clientIdempotencyKey: idempotencyKey,
+                })
+              : await registerInscriptionPaymentAction({
+                  teamId: row.refId,
+                  charges: parsedCharges,
+                  clientIdempotencyKey: idempotencyKey,
+                })
+        if (res.success) {
+          toast({
+            title: `Cobro registrado — ${row.debtorName}`,
+            description: `${formatArs(totalCents)} · ${totalCents >= row.pendingCents ? 'saldado' : 'pago parcial'}.`,
+            variant: 'success',
+          })
+          setLastRefId(null)
+          onClose()
+          router.refresh()
+          notifyMoneyMoved()
+        } else {
+          setError(res.error)
+        }
+      } catch (err) {
+        Sentry.captureException(err)
+        setError('No pudimos registrar el cobro. Revisá tu conexión e intentá de nuevo.')
+      }
+    })
+  }
+
   function submit() {
     if (!row) return
     setError(null)
@@ -104,46 +157,15 @@ export function StreetMoneyChargeDialog({
       return
     }
 
-    startTransition(async () => {
-      try {
-        const res =
-          row.origin === 'booking'
-            ? await chargeDebtAction({
-                bookingId: row.refId,
-                charges: parsedCharges,
-                clientIdempotencyKey: idempotencyKey,
-              })
-            : row.origin === 'canteen_tab'
-              ? await settleTabAction({
-                  tabId: row.refId,
-                  charges: parsedCharges as {
-                    amount: number
-                    method: 'cash' | 'transfer' | 'mercadopago'
-                  }[],
-                  clientIdempotencyKey: idempotencyKey,
-                })
-              : await registerInscriptionPaymentAction({
-                  teamId: row.refId,
-                  charges: parsedCharges,
-                  clientIdempotencyKey: idempotencyKey,
-                })
-        if (res.success) {
-          toast({
-            title: `Cobro registrado — ${row.debtorName}`,
-            description: `${formatArs(totalCents)} · ${totalCents >= row.pendingCents ? 'saldado' : 'pago parcial'}.`,
-            variant: 'success',
-          })
-          setLastRefId(null)
-          onClose()
-          router.refresh()
-        } else {
-          setError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setError('No pudimos registrar el cobro. Revisá tu conexión e intentá de nuevo.')
-      }
-    })
+    runCharge(parsedCharges)
+  }
+
+  /** Atajo "Cobrar todo en efectivo": cobra el total pendiente en un solo toque. */
+  function submitQuickAllCash() {
+    if (!row || row.pendingCents <= 0) return
+    setError(null)
+    setLines([newChargeLine(row.pendingCents, 'cash')])
+    runCharge([{ amount: row.pendingCents, method: 'cash' }])
   }
 
   return (
@@ -162,6 +184,7 @@ export function StreetMoneyChargeDialog({
             lines={lines}
             onChange={setLines}
             quickAllCashCents={row.pendingCents}
+            onQuickAllCash={submitQuickAllCash}
             disabled={isPending}
             methodOptions={row.origin === 'canteen_tab' ? CANTEEN_METHOD_OPTIONS : undefined}
           />

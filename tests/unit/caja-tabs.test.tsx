@@ -20,6 +20,11 @@ describe('CajaTabs', () => {
     )
   })
 
+  it('renombre 4.2: la tab de deuda dice "Deudas", no "Plata en la calle"', () => {
+    render(<CajaTabs active="/caja" />)
+    expect(screen.getByRole('link', { name: 'Deudas' })).toHaveAttribute('href', '/caja/deudas')
+  })
+
   it('marca aria-current="page" solo en el tab activo', () => {
     render(<CajaTabs active="/caja/cantina" />)
     expect(screen.getByRole('link', { name: 'Cantina' })).toHaveAttribute('aria-current', 'page')

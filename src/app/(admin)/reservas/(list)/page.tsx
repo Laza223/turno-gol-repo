@@ -158,30 +158,26 @@ export default async function ReservasPage(props: Props) {
       { scope, today, ...(q ? { q } : {}) },
       tx,
     )
-    // Solo los turnos TERMINADOS pueden disparar la alarma de plata
-    // (`isUnpaidAlarm` en slot-visual.ts mira únicamente completed/no_show), así
-    // que pedir los cobros del resto sería trabajo tirado. Con la lista vacía
-    // `sumBookingChargesByBooking` corta antes de tocar la DB: en el scope
-    // 'proximas' la página sigue costando 2 queries, no 3.
-    const alarmable = list.filter((r) => r.status === 'completed' || r.status === 'no_show')
+    // El saldo pendiente dejó de ser insumo exclusivo de la alarma
+    // (`isUnpaidAlarm` en slot-visual.ts, que solo mira completed): 3.2
+    // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
+    // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
+    // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (100) ids —
+    // el mismo costo que ya paga la grilla con todos los turnos del día.
     const charges = await sumBookingChargesByBooking(
       tenant.id,
-      alarmable.map((r) => r.id),
+      list.map((r) => r.id),
       tx,
     )
-    const withMoney = list.map((r) =>
-      charges.has(r.id) || r.status === 'completed' || r.status === 'no_show'
-        ? {
-            ...r,
-            ...summarizeBookingCharges({
-              priceSnapshot: r.priceSnapshot,
-              depositAmount: r.depositAmount,
-              depositStatus: r.depositStatus,
-              chargesTotal: charges.get(r.id) ?? 0,
-            }),
-          }
-        : r,
-    )
+    const withMoney = list.map((r) => ({
+      ...r,
+      ...summarizeBookingCharges({
+        priceSnapshot: r.priceSnapshot,
+        depositAmount: r.depositAmount,
+        depositStatus: r.depositStatus,
+        chargesTotal: charges.get(r.id) ?? 0,
+      }),
+    }))
     return { rows: withMoney, counts: byStatus, hasMore: more }
   })
 

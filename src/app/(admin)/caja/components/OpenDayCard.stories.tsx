@@ -95,7 +95,7 @@ export const ConApertura: Story = {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
     await expect(canvas.getByText(/Fondo inicial:/)).toBeVisible()
-    await expect(canvas.getByText('$ 5.000,00')).toBeVisible()
+    await expect(canvas.getByText('$ 5.000')).toBeVisible()
     await expect(canvas.getByText('Vuelto del día anterior')).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Corregir' }))

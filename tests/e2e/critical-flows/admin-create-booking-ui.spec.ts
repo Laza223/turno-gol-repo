@@ -72,11 +72,12 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       await page.getByRole('button', { name: 'Opciones avanzadas' }).click()
       await page.fill('#guestPhone', '+5491100000099')
 
-      // Qué se cobró es respuesta obligatoria en el alta manual.
+      // "No cobré" viene preseleccionado (revierte PR #185); se deja explícito
+      // igual para que el spec no dependa del default.
       await page.selectOption('#depositMethod', 'none')
 
       // Submit the form.
-      await page.getByRole('button', { name: 'Confirmar' }).click()
+      await page.getByRole('button', { name: 'Confirmar reserva' }).click()
 
       // Toast success.
       // exact:true — the aria-live announcement renders

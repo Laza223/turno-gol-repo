@@ -110,6 +110,12 @@ const REASONS: Reason[] = [
   { value: 'other', label: 'Otro', kind: 'contact', icon: MoreHorizontal },
 ]
 
+// Separa visualmente reservar de bloquear (mismo criterio que `type='block'`
+// en handleSubmit): 'other' queda del lado de reservar aunque más de 1 hora
+// lo mande como bloqueo — esa rama se avisa aparte, en la nota ámbar.
+const RESERVE_REASONS = REASONS.filter((r) => r.kind === 'contact')
+const BLOCK_REASONS = REASONS.filter((r) => r.kind === 'internal')
+
 const DEFAULT_REASON: ReasonValue = 'phone'
 
 function reasonFor(value: ReasonValue): Reason {
@@ -169,13 +175,23 @@ export function BookingFormModal({
   const [playerSearchOpen, setPlayerSearchOpen] = useState(false)
   const playerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Lo cobrado al crear el turno a mano. `''` = todavía no contestó y el submit
-  // lo rechaza; `'none'` = dijo explícitamente que no cobró nada. Con un método
-  // elegido, los tres campos (depositMethod/depositAmount/depositStatus:'paid')
-  // viajan juntos o no viaja ninguno.
+  // Lo cobrado al crear el turno a mano. Arranca en 'none' preseleccionado
+  // (pedido del dueño, revierte PR #185): confirmar con solo el nombre ya
+  // alcanza, y "No cobré" no manda ningún campo de seña. `''` (todavía no
+  // contestó) queda como estado defensivo — el guard de abajo lo sigue
+  // cubriendo. Con un método elegido, los tres campos
+  // (depositMethod/depositAmount/depositStatus:'paid') viajan juntos o no
+  // viaja ninguno.
   const [depositMethod, setDepositMethod] = useState<
     '' | 'none' | 'cash' | 'transfer' | 'mercadopago' | 'other'
-  >('')
+  >('none')
+
+  // "Opciones avanzadas" arranca cerrado (progressive disclosure), pero el
+  // select "¿Cobraste algo ahora?" vive ahí adentro y es obligatorio: sin
+  // esto, el submit lo rechaza y el usuario nunca ve el campo que se lo está
+  // pidiendo (callejón sin salida real, no fricción). El guard de más abajo
+  // lo abre en ese caso.
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
   const isCourtOffline = slot.courtStatus === 'offline'
 
@@ -229,6 +245,34 @@ export function BookingFormModal({
     }
   }
 
+  // Un solo chip para las dos grillas de abajo (reservar / bloquear): evita
+  // duplicar el mismo botón dos veces.
+  function renderReasonChip(r: Reason) {
+    const Icon = r.icon
+    const isSelected = reason === r.value
+    return (
+      <button
+        key={r.value}
+        type="button"
+        onClick={() => handleReasonSelect(r.value)}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all duration-150 text-left cursor-pointer',
+          isSelected
+            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-semibold shadow-2xs'
+            : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <Icon
+          className={cn(
+            'h-3.5 w-3.5 shrink-0',
+            isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground',
+          )}
+        />
+        <span className="truncate">{r.label}</span>
+      </button>
+    )
+  }
+
   // Al cambiar de slot, los campos vuelven a los valores de ESE turno. Ajuste
   // durante el render (patrón de React para adaptar estado a un cambio de prop)
   // en vez de un efecto: con el efecto, abrir otro turno mostraba por un frame
@@ -275,6 +319,10 @@ export function BookingFormModal({
   const allDurations = Array.from({ length: maxHours }, (_, i) => (i + 1) * 60)
   const effectiveDuration = allowsCustomDuration ? duration : 60
   const timeEnd = endLabelFromMins(startMins + effectiveDuration)
+  // 'other' es la única rama que cambia de tipo según OTRO campo (la
+  // duración, no el motivo): con más de 1 hora pasa a bloqueo de cancha sin
+  // decirlo en ningún lado — de ahí la nota ámbar y el título dinámico.
+  const isBlockType = isInternalBlock || (isOtherReason && effectiveDuration > 60)
 
   const startTimes = BASE_HOURLY_START_TIMES.includes(slot.timeStart)
     ? BASE_HOURLY_START_TIMES
@@ -341,7 +389,6 @@ export function BookingFormModal({
         : {}),
     }
 
-    const isBlockType = isInternalBlock || (isOtherReason && effectiveDuration > 60)
     const data = isBlockType
       ? {
           ...common,
@@ -357,10 +404,12 @@ export function BookingFormModal({
           ...(guestPhone ? { guestPhone } : {}),
         }
 
-    // Respuesta obligatoria sobre la plata (pedido del dueño): un turno cargado
-    // a mano no tiene ningún hecho de cobro detrás salvo lo que afirme el
-    // mostrador. Los bloqueos internos no cobran nada, así que quedan afuera.
+    // Red de contención: con 'none' preseleccionado este caso no debería darse
+    // en un flujo normal, pero si algo dejó el estado en '' (todavía sin
+    // contestar) no se manda el turno sin que el mostrador diga qué pasó con
+    // la plata. Los bloqueos internos no cobran nada, así que quedan afuera.
     if (!isInternalBlock && depositMethod === '') {
+      setIsAdvancedOpen(true)
       setError('Decí si cobraste algo por este turno.')
       return
     }
@@ -374,7 +423,8 @@ export function BookingFormModal({
           setDuration(slot.durationMins)
           setReason(DEFAULT_REASON)
           clearPlayer()
-          setDepositMethod('')
+          setDepositMethod('none')
+          setIsAdvancedOpen(false)
           toast({
             title: isInternalBlock ? 'Turno bloqueado' : 'Reserva creada',
             // Con la caja del día ya cerrada la seña entra como AJUSTE, no como
@@ -405,7 +455,8 @@ export function BookingFormModal({
       setDuration(slot.durationMins)
       setReason(DEFAULT_REASON)
       clearPlayer()
-      setDepositMethod('')
+      setDepositMethod('none')
+      setIsAdvancedOpen(false)
       onClose()
     }
   }
@@ -422,7 +473,7 @@ export function BookingFormModal({
 
           <div className="mb-5 space-y-2">
             <Dialog.Title className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              Nueva reserva
+              {isBlockType ? 'Bloquear la cancha' : 'Nueva reserva'}
             </Dialog.Title>
 
             <Dialog.Description asChild>
@@ -768,34 +819,25 @@ export function BookingFormModal({
                     Motivo / Tipo de Bloqueo
                   </Label>
 
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {REASONS.map((r) => {
-                      const Icon = r.icon
-                      const isSelected = reason === r.value
-                      return (
-                        <button
-                          key={r.value}
-                          type="button"
-                          onClick={() => handleReasonSelect(r.value)}
-                          className={cn(
-                            'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all duration-150 text-left cursor-pointer',
-                            isSelected
-                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-semibold shadow-2xs'
-                              : 'bg-muted/40 hover:bg-muted/80 border-border/60 text-muted-foreground hover:text-foreground',
-                          )}
-                        >
-                          <Icon
-                            className={cn(
-                              'h-3.5 w-3.5 shrink-0',
-                              isSelected
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-muted-foreground',
-                            )}
-                          />
-                          <span className="truncate">{r.label}</span>
-                        </button>
-                      )
-                    })}
+                  {/* Los subtítulos son decorativos (<p>), no <label>: el nombre
+                      accesible del <select id="reason"> de abajo sigue siendo
+                      "Motivo / Tipo de Bloqueo" — no lo duplican ni lo pisan. */}
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Es una reserva de alguien
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {RESERVE_REASONS.map(renderReasonChip)}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Bloquea la cancha (no se cobra)
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {BLOCK_REASONS.map(renderReasonChip)}
+                    </div>
                   </div>
 
                   <select
@@ -812,12 +854,20 @@ export function BookingFormModal({
                     ))}
                   </select>
 
-                  {isInternalBlock && (
+                  {isBlockType && (
                     <p className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl font-medium mt-1.5">
                       <Info className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                       <span>
-                        Bloqueo interno sin costo. Se agenda como{' '}
-                        <strong>“{selectedReason.autoName}”</strong>.
+                        {isInternalBlock ? (
+                          <>
+                            Bloqueo interno sin costo. Se agenda como{' '}
+                            <strong>“{selectedReason.autoName}”</strong>.
+                          </>
+                        ) : (
+                          // 'other' es la rama oculta: la misma opción es reserva o
+                          // bloqueo según la duración, sin decirlo en ningún lado.
+                          'Más de 1 hora: se agenda como bloqueo de cancha, no como reserva.'
+                        )}
                       </span>
                     </p>
                   )}
@@ -825,7 +875,7 @@ export function BookingFormModal({
               </div>
             </div>
 
-            <Collapsible>
+            <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
@@ -978,7 +1028,7 @@ export function BookingFormModal({
                 disabled={isCourtOffline}
                 className="rounded-xl font-semibold"
               >
-                {isPending ? 'Guardando…' : 'Confirmar'}
+                {isPending ? 'Guardando…' : isBlockType ? 'Bloquear cancha' : 'Confirmar reserva'}
               </Button>
             </div>
           </form>

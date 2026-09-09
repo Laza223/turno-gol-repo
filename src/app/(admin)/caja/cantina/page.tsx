@@ -34,8 +34,8 @@ export default async function CajaCantinaPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Caja"
-        subtitle="Venta rápida de cantina"
+        title="Cantina"
+        subtitle="Venta rápida con descuento de stock y fiados."
         icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
       />
 

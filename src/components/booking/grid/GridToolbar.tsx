@@ -2,6 +2,7 @@
 
 import { Rows3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatArs } from '@/lib/format'
 import { WeekStrip } from '../WeekStrip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { computeArtNow } from '@/hooks/use-art-now'
@@ -18,6 +19,8 @@ type Props = {
   onToggleDensity: () => void
   onNavigate: (date: string) => void
   actions?: React.ReactNode
+  /** Lo que falta cobrar de los turnos visibles (BookingGrid, sumPendingCents). Opcional: stories/tests siguen montando sin él. */
+  pendingSummary?: { totalCents: number; count: number }
 }
 
 /**
@@ -34,6 +37,7 @@ export function GridToolbar({
   onToggleDensity,
   onNavigate,
   actions,
+  pendingSummary,
 }: Props) {
   return (
     <div className="relative -mx-4 space-y-3 bg-background/95 px-4 py-2 backdrop-blur-sm shrink-0">
@@ -43,6 +47,17 @@ export function GridToolbar({
           <p className="text-sm text-muted-foreground mt-0.5">
             {dayLabel} {dateLabel}
           </p>
+          {/* Sin "hoy": la grilla navega a cualquier fecha y el subtítulo de
+              arriba ya dice cuál. Sin link ni ícono: el cambio mínimo que hace
+              visible lo pendiente, no una vista nueva (RI G3.3). */}
+          {pendingSummary && pendingSummary.count > 0 && (
+            <p className="mt-0.5 text-sm font-medium tabular-nums text-foreground">
+              Por cobrar: {formatArs(pendingSummary.totalCents)}{' '}
+              <span className="font-normal text-muted-foreground">
+                ({pendingSummary.count} {pendingSummary.count === 1 ? 'turno' : 'turnos'})
+              </span>
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {actions}

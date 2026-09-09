@@ -52,4 +52,10 @@ export type SlotPanelActions = {
     reason: string,
     cancellationType: 'complejo' | 'jugador',
   ) => Promise<ActionResult>
+  /**
+   * Liberar un bloqueo de mantenimiento (RI G2.1). Opcional a propósito: sin
+   * ella el panel no ofrece 'Liberar' y se comporta como hoy, así stories y
+   * tests viejos siguen compilando.
+   */
+  releaseBlockAction?: (bookingId: string) => Promise<ActionResult>
 }

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Banknote } from 'lucide-react'
 import { formatArs } from '@/lib/format'
 import { fetchWithTimeout } from '@/shared/utils/async'
+import { useMoneyMoved } from '@/hooks/use-money-moved'
 
 /** Cada cuánto se vuelve a preguntar mientras la pestaña está a la vista. */
 const REFRESH_MS = 60_000
@@ -96,11 +97,14 @@ async function fetchDayTotal(): Promise<FetchOutcome> {
  * minuto entero. Y si el pedido no fallaba sino que se colgaba, se quedaba ahí
  * para siempre; por eso además va con {@link FETCH_TIMEOUT_MS}.
  *
- * Límite conocido y aceptado: si el admin cobra desde `/caja` y se queda ahí, el
- * encabezado de esa pantalla se actualiza al instante (`router.refresh()`) y
- * este número puede tardar hasta {@link REFRESH_MS}. Los dos salen de la misma
- * cuenta (`cashflow/totals.ts`), así que difieren en el momento, nunca en el
- * criterio.
+ * TRES disparadores en total: cada {@link REFRESH_MS} mientras la pestaña está
+ * a la vista, al volver a la pestaña, y la señal de {@link useMoneyMoved} —
+ * quien cobra avisa apenas la Server Action confirmó el ingreso, así que el
+ * número acompaña al cobro en el mismo instante en vez de esperar el próximo
+ * ciclo. El polling sigue siendo el ÚNICO canal para la plata que entra desde
+ * AFUERA de esta pestaña: el webhook de MercadoPago que confirma una seña, u
+ * otro empleado cobrando desde su teléfono. Los dos salen de la misma cuenta
+ * (`cashflow/totals.ts`), así que difieren en el momento, nunca en el criterio.
  */
 export function DayTotalBadge() {
   const [cents, setCents] = useState<number | null>(null)
@@ -112,9 +116,9 @@ export function DayTotalBadge() {
   // backoff pisándose.
   const runningRef = useRef(false)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = false) => {
     if (runningRef.current) return
-    if (Date.now() - lastFetchRef.current < MIN_GAP_MS) return
+    if (!force && Date.now() - lastFetchRef.current < MIN_GAP_MS) return
     runningRef.current = true
     try {
       for (let attempt = 0; aliveRef.current; attempt++) {
@@ -176,6 +180,13 @@ export function DayTotalBadge() {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [refresh])
+
+  // `force`: quien cobra ya sabe que la plata entró, así que no tiene sentido
+  // esperar el piso de MIN_GAP_MS pensado para ráfagas de navegación. Envuelto
+  // en una arrow a propósito: pasar `refresh` directo dejaría `force` con el
+  // `Event` del listener como primer argumento (siempre truthy).
+  const onMoneyMoved = useCallback(() => void refresh(true), [refresh])
+  useMoneyMoved(onMoneyMoved)
 
   return (
     <Link

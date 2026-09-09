@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { gridSlotVisual } from '@/lib/booking/slot-visual'
+import { gridSlotVisual, slotPendingCents } from '@/lib/booking/slot-visual'
+import { formatArs } from '@/lib/format'
 import { timeToMins } from '@/lib/booking/pricing'
 import { endLabelFromMins } from '@/shared/time/operating-day'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
@@ -402,6 +403,7 @@ function CourtPage({
         if (cell.kind === 'booking') {
           const booking = cell.booking
           const visual = gridSlotVisual(booking)
+          const pendingCents = slotPendingCents(booking)
           const Icon = visual.icon
           const name = bookingDisplayName(booking)
           return (
@@ -409,7 +411,7 @@ function CourtPage({
               <button
                 type="button"
                 onClick={() => onDetailChange(booking.id)}
-                aria-label={`Turno de ${booking.timeStart} a ${booking.timeEnd} en ${court.name}${name ? `, ${name}` : ''}`}
+                aria-label={`Turno de ${booking.timeStart} a ${booking.timeEnd} en ${court.name}${name ? `, ${name}` : ''}${pendingCents !== null ? `, falta cobrar ${formatArs(pendingCents)}` : ''}`}
                 className={cn(
                   'flex min-h-14 w-full items-center gap-3 border-l-[3px] px-3 py-2 text-left',
                   'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
@@ -426,6 +428,11 @@ function CourtPage({
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                   {name ?? visual.label}
                 </span>
+                {pendingCents !== null && (
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+                    {formatArs(pendingCents)}
+                  </span>
+                )}
                 <span
                   className={cn(
                     'flex shrink-0 items-center gap-1 text-xs font-medium',

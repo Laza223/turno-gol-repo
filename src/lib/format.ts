@@ -26,19 +26,6 @@ export function formatArs(cents: number): string {
   return arsFormatter.format(Math.round(cents) / 100)
 }
 
-const arsContableFormatter = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-/** Formato contable §8.2 (caja / cierres / reportes): 1250000 → "$ 12.500,00".
- * Recibe montos positivos por convención: el signo (−/+) y su color los pone el caller. */
-export function formatArsContable(cents: number): string {
-  return arsContableFormatter.format(Math.round(cents) / 100)
-}
-
 const pctFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 })
 
 /**

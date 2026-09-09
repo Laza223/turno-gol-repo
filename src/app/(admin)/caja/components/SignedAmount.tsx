@@ -1,4 +1,4 @@
-import { formatArsContable } from '@/lib/format'
+import { formatArs } from '@/lib/format'
 
 export function SignedAmount({ type, amount }: { type: string; amount: number }) {
   const isExpense = type === 'expense'
@@ -9,7 +9,7 @@ export function SignedAmount({ type, amount }: { type: string; amount: number })
       }`}
     >
       {isExpense ? '−' : '+'}
-      {formatArsContable(amount)}
+      {formatArs(amount)}
     </span>
   )
 }

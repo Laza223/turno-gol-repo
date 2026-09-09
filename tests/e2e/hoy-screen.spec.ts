@@ -43,7 +43,7 @@ test.describe('Hoy (Fase 2) — home solo-admin', () => {
       await expect(page.getByRole('heading', { name: 'Hoy', level: 1 })).toBeVisible()
       await expect(page.getByText('Cobrado hoy')).toBeVisible()
       await expect(page.getByText('Turnos de hoy')).toBeVisible()
-      await expect(page.getByText('Plata en la calle')).toBeVisible()
+      await expect(page.getByText('Deudas')).toBeVisible()
       await expect(page.getByText('Necesita tu atención')).toBeVisible()
       await expect(page.getByText('Mientras no estabas')).toBeVisible()
     } finally {

@@ -1,6 +1,6 @@
 import { Banknote, Lock, Unlock, Wallet } from 'lucide-react'
 import { MetricCard } from '@/components/dashboard/metric-card'
-import { formatArsContable } from '@/lib/format'
+import { formatArs } from '@/lib/format'
 import { formatTimeArt } from '../caja-lib'
 
 /**
@@ -9,9 +9,9 @@ import { formatTimeArt } from '../caja-lib'
  * a diferencia de OpenDayCard/CierreCard (que se alternan según isClosed),
  * estas 3 cards se renderizan siempre, sea cual sea el estado del día.
  *
- * "Plata en la calle" viene de street-money.service.ts — la MISMA función
- * que alimenta la tab /caja/deudas, así que el número nunca puede divergir
- * entre las dos pantallas (criterio de salida #5, fuente única).
+ * "Deudas" viene de street-money.service.ts — la MISMA función que alimenta
+ * la tab /caja/deudas, así que el número nunca puede divergir entre las dos
+ * pantallas (criterio de salida #5, fuente única).
  */
 export function CajaHeaderStats({
   collectedTodayCents,
@@ -38,17 +38,18 @@ export function CajaHeaderStats({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <MetricCard
         label="Cobrado hoy"
-        value={formatArsContable(collectedTodayCents)}
+        value={formatArs(collectedTodayCents)}
         icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
         accent="emerald"
       />
       <MetricCard
-        label="Plata en la calle"
-        value={formatArsContable(streetMoneyCents)}
+        label="Deudas"
+        sub="Pendiente de cobro"
+        value={formatArs(streetMoneyCents)}
         icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
         accent={streetMoneyCents > 0 ? 'amber' : 'emerald'}
         href="/caja/deudas"
-        ariaLabel={`Plata en la calle: ${formatArsContable(streetMoneyCents)} — ver deudas pendientes`}
+        ariaLabel={`Deudas: ${formatArs(streetMoneyCents)} — ver deudas pendientes`}
       />
       <MetricCard
         label="Estado de caja"

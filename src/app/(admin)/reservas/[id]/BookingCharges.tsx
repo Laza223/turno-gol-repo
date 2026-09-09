@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRightLeft, Banknote, Check, ChevronDown, Coins, CreditCard } from 'lucide-react'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { toast } from '@/hooks/use-toast'
+import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
 import { MoneyInput } from '@/components/ui/money-input'
@@ -181,6 +182,8 @@ export default function BookingCharges({
             `Cobro 1 (${formatArs(amount1)}) registrado. Error en cobro 2 (${METHOD_LABELS[splitMethod2]}): ${res2.error}`,
           )
           router.refresh()
+          // La plata del cobro 1 YA entró aunque el 2 haya fallado.
+          notifyMoneyMoved()
           return
         }
 
@@ -192,6 +195,7 @@ export default function BookingCharges({
         setOpen(false)
         setAmountCents(null)
         router.refresh()
+        notifyMoneyMoved()
       })
       return
     }
@@ -216,6 +220,7 @@ export default function BookingCharges({
         setOpen(false)
         setAmountCents(null)
         router.refresh()
+        notifyMoneyMoved()
       } else {
         setError(res.error)
       }

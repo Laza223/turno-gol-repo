@@ -119,8 +119,8 @@ test.describe('Caja redesign', () => {
     const description = `Cantina: ${nameA}, ${nameB}`
     const rows = page.getByRole('row').filter({ hasText: description })
     await expect(rows).toHaveCount(1)
-    // $300 + $200 = $500, formato contable de la tabla ("500,00").
-    await expect(rows.getByText(/500,00/)).toBeVisible()
+    // $300 + $200 = $500, formato unificado sin decimales (4.5).
+    await expect(rows.getByText(/500/)).toBeVisible()
   })
 
   test('agregar movimiento con tipo "Gasto" auto-selecciona "Mercadería" y registra el egreso', async ({
@@ -192,7 +192,10 @@ test.describe('Caja redesign', () => {
     await fiadoRow.getByRole('button', { name: 'Cobrar' }).click()
     const settleDialog = page.getByRole('dialog')
     await expect(settleDialog).toBeVisible()
-    await settleDialog.getByRole('button', { name: /^Cobrar/ }).click()
+    // `/^Cobrar/` matchearia tambien el atajo "Cobrar todo en efectivo" que
+    // SplitPaymentFields muestra desde 2026-09-09: dos matches = strict mode
+    // violation. El atajo nombra el metodo; el submit, no.
+    await settleDialog.getByRole('button', { name: /^Cobrar(?! todo en efectivo)/ }).click()
 
     await expect(page.getByText(`Fiado cobrado — ${debtorName}`).first()).toBeVisible()
     // Desaparece de "Fiados pendientes": ya está 'paid', listOpenTabs no lo trae más.

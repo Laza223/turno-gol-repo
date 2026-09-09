@@ -83,7 +83,7 @@ export type PublicCourtCard = {
  *
  * Un slot `held` **no es pisable**: sigue ocupando el exclusion constraint.
  */
-export type SlotStatus = 'free' | 'occupied' | 'held' | 'fixed' | 'blocked' | 'past'
+type SlotStatus = 'free' | 'occupied' | 'held' | 'fixed' | 'blocked' | 'past'
 
 type PublicBookingType = 'spontaneous' | 'fixed' | 'block' | 'tournament'
 
@@ -105,13 +105,44 @@ export type Slot = {
   heldUntil?: string
 }
 
+/**
+ * Lo único que el jugador puede saber de un turno: si lo puede comprar o no.
+ * El MOTIVO (bloqueo, turno fijo, torneo) es información interna del complejo:
+ * no viaja al browser, ni siquiera en el JSON.
+ *
+ * EXCEPCIÓN pendiente de decisión del dueño (fix parcial de coherencia,
+ * grupo 1.2): `'held'` (otro jugador señando AHORA) todavía viaja tal cual,
+ * con su `heldUntil`. Sacarlo revertiría el fix de inventario de B15
+ * (ver comentario de `SlotStatus` arriba) y esa decisión de negocio no está
+ * tomada — así que por ahora la fuga que sí se cierra es solo `fixed`/`blocked`.
+ */
+export type PublicSlotStatus = 'free' | 'occupied' | 'held' | 'past'
+export type PublicSlot = {
+  time: string
+  duration: number
+  status: PublicSlotStatus
+  price: number | null
+  /** Solo en `held`: ver comentario de `Slot.heldUntil`. */
+  heldUntil?: string
+}
+function toPublicSlots(slots: Slot[]): PublicSlot[] {
+  return slots.map((s) => ({
+    time: s.time,
+    duration: s.duration,
+    status:
+      s.status === 'free' || s.status === 'past' || s.status === 'held' ? s.status : 'occupied',
+    price: s.price,
+    ...(s.status === 'held' && s.heldUntil ? { heldUntil: s.heldUntil } : {}),
+  }))
+}
+
 type PublicCourt = {
   id: string
   name: string
   surfaceType: string
   isCovered: boolean
   hasLighting: boolean
-  slots: Slot[]
+  slots: PublicSlot[]
 }
 
 export type AvailabilityResponse = {
@@ -507,20 +538,22 @@ async function getPublicAvailabilityImpl(
     surfaceType: court.surfaceType,
     isCovered: court.isCovered,
     hasLighting: court.hasLighting,
-    slots: generateSlots({
-      courtId: court.id,
-      pricing: court.pricing as CourtPricingData,
-      dayKey,
-      openHhmm: dayHours?.open ?? '08:00',
-      closeHhmm: dayHours?.close ?? '23:00',
-      closedDay,
-      closesNextDay: tenant.closesNextDay,
-      courtBookings: bookingRanges,
-      durationMins,
-      date: dateStr,
-      nowDateStr,
-      nowMins,
-    }),
+    slots: toPublicSlots(
+      generateSlots({
+        courtId: court.id,
+        pricing: court.pricing as CourtPricingData,
+        dayKey,
+        openHhmm: dayHours?.open ?? '08:00',
+        closeHhmm: dayHours?.close ?? '23:00',
+        closedDay,
+        closesNextDay: tenant.closesNextDay,
+        courtBookings: bookingRanges,
+        durationMins,
+        date: dateStr,
+        nowDateStr,
+        nowMins,
+      }),
+    ),
   }))
 
   return { date: dateStr, courts: result }
@@ -619,20 +652,22 @@ export async function getPublicWeeklyAvailability(
       surfaceType: court.surfaceType,
       isCovered: court.isCovered,
       hasLighting: court.hasLighting,
-      slots: generateSlots({
-        courtId: court.id,
-        pricing: court.pricing as CourtPricingData,
-        dayKey,
-        openHhmm: dayHours?.open ?? '08:00',
-        closeHhmm: dayHours?.close ?? '23:00',
-        closedDay,
-        closesNextDay: tenant.closesNextDay,
-        courtBookings,
-        durationMins,
-        date: dateStr,
-        nowDateStr,
-        nowMins,
-      }),
+      slots: toPublicSlots(
+        generateSlots({
+          courtId: court.id,
+          pricing: court.pricing as CourtPricingData,
+          dayKey,
+          openHhmm: dayHours?.open ?? '08:00',
+          closeHhmm: dayHours?.close ?? '23:00',
+          closedDay,
+          closesNextDay: tenant.closesNextDay,
+          courtBookings,
+          durationMins,
+          date: dateStr,
+          nowDateStr,
+          nowMins,
+        }),
+      ),
     }))
     return { date: dateStr, courts: dayCourts }
   })

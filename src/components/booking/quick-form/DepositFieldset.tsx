@@ -41,12 +41,15 @@ type Props = {
  * `DEPOSIT_METHODS`, más el monto cuando hay método elegido. El estado vive en
  * el padre (lo necesita `submit`); acá solo la UI.
  *
- * Sin preselección y sin monto sugerido, las dos a pedido del dueño. El
- * mostrador y el portal online son mundos distintos: `settings.deposit_percentage`
- * es la política de lo que se le cobra por adelantado al que reserva por la web,
- * y precargar ese número acá hacía que un complejo con la seña en 100% creara
- * turnos "pagados completos" con un solo click, sin que nadie tipeara el monto.
- * Acá la plata la afirma quien está en el mostrador, o dice que no cobró nada.
+ * "No cobré" viene preseleccionado (pedido del dueño, revierte PR #185): la
+ * carga más repetida del día se confirma con el nombre y nada más. El monto
+ * sigue SIN sugerir: el mostrador y el portal online son mundos distintos,
+ * `settings.deposit_percentage` es la política de lo que se le cobra por
+ * adelantado al que reserva por la web, y precargar ese número acá hacía que
+ * un complejo con la seña en 100% creara turnos "pagados completos" con un
+ * solo click, sin que nadie tipeara el monto. Acá la plata la afirma quien
+ * está en el mostrador, o queda en "No cobré" — que no manda ningún campo de
+ * seña al server.
  */
 export function DepositFieldset({
   depositChoice,

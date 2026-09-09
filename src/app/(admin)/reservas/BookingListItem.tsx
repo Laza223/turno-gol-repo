@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { Ban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs, formatTime } from '@/lib/format'
+import { TONE_TEXT } from '@/lib/status-tone'
 import { QuickActions, type BookingQuickActions } from './QuickActions'
 import { hasQuickActions } from './quick-actions-helpers'
 import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from './status-visual'
+import { moneyLine } from './money-line'
 import { resolveDepositDisplayStatus } from './deposit-display'
 import type { ReservaListRow } from './queries'
 
@@ -62,6 +64,7 @@ export function BookingListItem({
   const isBlock = booking.type === 'block'
   const isAbonado = !isBlock && booking.type === 'fixed'
   const timeRange = `${formatTime(booking.timeStart)}–${formatTime(booking.timeEnd)}`
+  const money = moneyLine(booking)
 
   const ariaLabel = [
     `Reserva ${timeRange}`,
@@ -71,6 +74,9 @@ export function BookingListItem({
     // La fila entera es un Link estirado con ESTE aria-label: quien navega por
     // links con lector de pantalla escucha solo este string. Dejar la plata
     // afuera se la escondería justo a quien no puede ver la píldora roja.
+    // Vista compacta: sin el dato de plata, igual que el render visual (una
+    // línea por reserva por diseño, ver ALCANCE g3 pregunta 5).
+    compact ? null : (money?.text ?? null),
     visual.unpaid ? 'sin cobrar' : null,
     isAbonado ? 'abonado' : null,
   ]
@@ -196,9 +202,21 @@ export function BookingListItem({
           </div>
 
           {!isBlock && (
-            <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground sm:w-20 sm:text-right">
-              {formatArs(booking.priceSnapshot)}
-            </p>
+            <div className="shrink-0 sm:w-24 sm:text-right">
+              <p className="text-sm font-semibold tabular-nums text-foreground">
+                {formatArs(booking.priceSnapshot)}
+              </p>
+              {money && (
+                <p
+                  className={cn(
+                    'text-xs tabular-nums',
+                    money.tone === 'paid' ? TONE_TEXT.success : 'text-muted-foreground',
+                  )}
+                >
+                  {money.text}
+                </p>
+              )}
+            </div>
           )}
 
           {quickActions}

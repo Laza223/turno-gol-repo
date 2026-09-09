@@ -25,10 +25,19 @@ type CancelBookingFn = (
   reason: string,
   cancellationType: CancellationType,
 ) => Promise<BookingActionResult>
+/** `releaseBlockAction` no devuelve `booking`: la fila ya no existe tras el DELETE. */
+type ReleaseBlockFn = (bookingId: string) => Promise<ActionResult>
 
 type Props = {
   bookingId: string
   status: string
+  /**
+   * 'block' cambia todo el árbol de acciones (RI G2.1): ver el early-return de
+   * abajo. Opcional a propósito (mismo criterio que `releaseBlockAction`):
+   * sin ella se comporta como hoy y los tests/stories viejos siguen
+   * compilando sin tocarlos.
+   */
+  type?: string
   depositStatus: string
   depositAmount: number
   paymentMethod: string | null
@@ -75,6 +84,11 @@ type Props = {
   markNoShowAction: SimpleBookingFn
   revertNoShowAction: SimpleBookingFn
   cancelBookingAction: CancelBookingFn
+  /**
+   * Opcional a propósito (mismo criterio que `SlotPanelActions.releaseBlockAction`):
+   * sin ella el botón de bloqueo no se ofrece y stories/callers viejos siguen compilando.
+   */
+  releaseBlockAction?: ReleaseBlockFn
 }
 
 /** Ventana de corrección de asistencia (doc6 §3, trigger de la migración 060). */
@@ -100,6 +114,7 @@ function bookingStartMs(dateStr: string, hhmmss: string): number {
 export default function BookingActions({
   bookingId,
   status,
+  type,
   depositStatus,
   depositAmount,
   paymentMethod,
@@ -119,12 +134,14 @@ export default function BookingActions({
   markNoShowAction,
   revertNoShowAction,
   cancelBookingAction,
+  releaseBlockAction,
 }: Props) {
   const router = useRouter()
   const [cancelOpen, setCancelOpen] = useState(false)
   const [noShowOpen, setNoShowOpen] = useState(false)
   const [revertNoShowOpen, setRevertNoShowOpen] = useState(false)
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
+  const [releaseBlockOpen, setReleaseBlockOpen] = useState(false)
   const [cancelType, setCancelType] = useState<CancellationType | null>(null)
   const [reason, setReason] = useState('')
   // Reloj reactivo (ver use-now.ts). Las tres lecturas de abajo deciden UI:
@@ -132,6 +149,53 @@ export default function BookingActions({
   // política, y si el turno ya terminó. Con `Date.now()` en el render, una
   // pestaña abierta cruzaba cualquiera de esos límites sin enterarse.
   const nowMs = useNowMs()
+
+  async function onConfirmReleaseBlock(): Promise<ActionResult> {
+    if (!releaseBlockAction) return { success: false, error: 'Acción no disponible.' }
+    const res = await releaseBlockAction(bookingId)
+    if (res.success) {
+      toast({ title: 'Bloqueo liberado', variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
+  // RI G2.1: un bloqueo de mantenimiento no es una reserva de un jugador —
+  // "Marcar completada"/"Marcar ausente" no significan nada, y "Cancelar" lo
+  // dejaría como `canceled_*` PARA SIEMPRE (exactamente el bug que motiva este
+  // fix: g2.md línea 10d). La única acción es liberarlo (DELETE físico, mismo
+  // botón/copy que SlotActionButtons.tsx en el panel de la grilla).
+  if (type === 'block') {
+    if (status !== 'confirmed' && status !== 'pending_payment') return null
+    if (!releaseBlockAction) return null
+
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setReleaseBlockOpen(true)}
+          className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
+        >
+          Liberar el bloqueo
+        </button>
+
+        <ConfirmDialog
+          open={releaseBlockOpen}
+          onOpenChange={setReleaseBlockOpen}
+          title="Liberar el bloqueo"
+          description="La cancha queda libre para reservar."
+          variant="destructive"
+          confirmLabel="Liberar"
+          cancelLabel="Volver"
+          onConfirm={onConfirmReleaseBlock}
+          consequences={[
+            'El bloqueo se elimina: no queda como reserva cancelada.',
+            'Si te equivocaste de horario, volvé a bloquear con el horario correcto.',
+          ]}
+        />
+      </div>
+    )
+  }
 
   async function onConfirmRevertNoShow(): Promise<ActionResult> {
     const res = await revertNoShowAction(bookingId)

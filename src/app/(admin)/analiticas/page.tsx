@@ -18,22 +18,22 @@ import {
   formatMonthLabel,
   isReportEmpty,
 } from '@/modules/reports/report.utils'
-import { formatArsContable, formatPct } from '@/lib/format'
+import { formatArs, formatPct } from '@/lib/format'
 import { ExportCsvButton } from './ExportCsvButton'
 import { GhostKpis } from './GhostKpis'
 import { OccupancyChart, TrendChart } from './ReportCharts'
 
-/** Formato contable con signo (§2.5/§8.2): negativos en `−$ X,00` + rojo destructive. */
-function signedArsContable(cents: number): ReactNode {
+/** Formato con signo (§2.5/§8.2): negativos en `−$ X` + rojo destructive. */
+function signedArs(cents: number): ReactNode {
   if (cents < 0) {
     return (
       <span className="text-red-700 dark:text-red-300">
         {'−'}
-        {formatArsContable(-cents)}
+        {formatArs(-cents)}
       </span>
     )
   }
-  return formatArsContable(cents)
+  return formatArs(cents)
 }
 
 /**
@@ -170,20 +170,20 @@ export default async function AnaliticasPage(props: {
             >
               <StatCard
                 label="Ingresos"
-                value={formatArsContable(report.income)}
+                value={formatArs(report.income)}
                 icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
                 accent="emerald"
                 delta={incomeDelta ?? undefined}
               />
               <StatCard
                 label="Ajustes"
-                value={signedArsContable(report.adjustment)}
+                value={signedArs(report.adjustment)}
                 icon={<SlidersHorizontal className="h-4 w-4" aria-hidden="true" />}
                 accent="slate"
               />
               <StatCard
                 label="Saldo"
-                value={signedArsContable(report.balance)}
+                value={signedArs(report.balance)}
                 icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
                 accent={report.balance >= 0 ? 'emerald' : 'red'}
                 delta={balanceDelta ?? undefined}
@@ -233,7 +233,7 @@ export default async function AnaliticasPage(props: {
                           </p>
                         </div>
                         <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                          {formatArsContable(c.income)}
+                          {formatArs(c.income)}
                         </p>
                       </li>
                     ))}
@@ -254,7 +254,7 @@ export default async function AnaliticasPage(props: {
                         <tr key={c.courtId} className="transition-colors hover:bg-accent/40">
                           <td className="px-6 py-3 text-foreground">{c.courtName}</td>
                           <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                            {formatArsContable(c.income)}
+                            {formatArs(c.income)}
                           </td>
                           <td className="px-6 py-3 text-right tabular-nums text-foreground">
                             {c.bookingCount}
@@ -294,7 +294,7 @@ export default async function AnaliticasPage(props: {
                             {formatMethodLabel(m.method)}
                           </td>
                           <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                            {formatArsContable(m.total)}
+                            {formatArs(m.total)}
                           </td>
                         </tr>
                       ))}

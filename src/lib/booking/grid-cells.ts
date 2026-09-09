@@ -42,6 +42,10 @@ export type GridBooking = {
   // se inventa una.
   totalPaid?: number | null
   pending?: number | null
+  // Sólo lo necesita el panel para linkear a `/torneos/{id}`. Opcional porque
+  // los payloads viejos (fixtures, Realtime crudo) pueden no traerlo, y ahí el
+  // link simplemente no se ofrece.
+  tournamentId?: string | null
 }
 
 export type CellState =
@@ -198,4 +202,34 @@ export function computeCells(
   }
 
   return cells
+}
+
+// ---------------------------------------------------------------------------
+// sumPendingCents — "¿qué falta cobrar hoy?" (encabezado de la grilla)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lo que falta cobrar de los turnos visibles del día. Suma `pending` de los
+ * turnos de cliente que YA son un compromiso: `confirmed` (todavía por jugar) y
+ * `completed` (jugado y con saldo). Deja afuera `no_show` — el veto del repo es
+ * que un no-show NO es deuda — y `pending_payment`, que es un hold de 6 min que
+ * se libera solo. Bloqueos y torneos tienen price_snapshot 0, así que no suman.
+ * Ignora los turnos sin dato de plata (Realtime crudo antes del reconcile) en
+ * vez de contarlos como cero: el número baja un instante, nunca miente hacia
+ * arriba.
+ */
+export function sumPendingCents(bookings: GridBooking[]): { totalCents: number; count: number } {
+  let totalCents = 0
+  let count = 0
+  for (const b of bookings) {
+    if (
+      typeof b.pending === 'number' &&
+      b.pending > 0 &&
+      (b.status === 'confirmed' || b.status === 'completed')
+    ) {
+      totalCents += b.pending
+      count++
+    }
+  }
+  return { totalCents, count }
 }

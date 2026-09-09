@@ -4,9 +4,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Calendar, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
-import type { AvailabilityResponse, PublicTenant, Slot } from '@/modules/tenants/public.service'
+import type {
+  AvailabilityResponse,
+  PublicSlot,
+  PublicTenant,
+} from '@/modules/tenants/public.service'
 import { Skeleton } from '@/components/ui/skeleton'
-import { capitalizeFirst, formatArs } from '@/lib/format'
+import { capitalizeFirst } from '@/lib/format'
 import { holdRemainingLabel } from '@/lib/booking/hold'
 import { telHref } from '@/lib/contact'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
@@ -45,7 +49,7 @@ function getArtToday(): string {
 
 type TimeRow = {
   time: string
-  cells: { courtId: string; slot: Slot | null }[]
+  cells: { courtId: string; slot: PublicSlot | null }[]
 }
 
 function buildTimeRows(courts: AvailabilityResponse['courts']): TimeRow[] {
@@ -93,7 +97,7 @@ function SlotCell({
   phone,
   nowMs,
 }: {
-  slot: Slot
+  slot: PublicSlot
   slug: string
   courtId: string
   date: string
@@ -109,29 +113,13 @@ function SlotCell({
     )
   }
 
-  const priceFormatted = slot.price ? formatArs(slot.price) : null
-
-  // Precio visible en todo slot futuro: el jugador ve la estructura de
-  // precios del día aunque el turno esté tomado.
-  const priceLine = priceFormatted && (
-    <span className="tabular-nums text-[10px]">{priceFormatted}</span>
-  )
-
-  // Colores semánticos con contraste AA: texto 700 sobre fondo 50/100 (≥4.5:1),
-  // ring 500/600 sólido como indicador no-textual (≥3:1 vs blanco).
-  if (slot.status === 'occupied') {
-    return (
-      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground ring-1 ring-inset ring-border">
-        <span>Ocupado</span>
-        {priceLine}
-      </span>
-    )
-  }
-
   // Otro jugador está señando esta cancha AHORA (decisión v2 D1). Antes esto
   // salía "Ocupado", igual que una cancha vendida, y el jugador se iba a otro
   // complejo sin saber que en unos minutos podía quedar libre. No es
   // clickeable: el hold retiene la cancha de verdad.
+  //
+  // Sin tocar por el fix de coherencia (grupo 1.2, parcial): sacar este estado
+  // revierte B15 y esa decisión de negocio está pendiente del dueño.
   if (slot.status === 'held' && slot.heldUntil) {
     const remaining = holdRemainingLabel(slot.heldUntil, nowMs)
     const label = remaining.expired ? 'Liberando…' : `Señando ${remaining.label}`
@@ -145,25 +133,18 @@ function SlotCell({
         className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/30"
       >
         <span className="tabular-nums">{label}</span>
-        {priceLine}
       </span>
     )
   }
 
-  if (slot.status === 'fixed') {
+  // FAIL-CLOSED: todo lo que no sea 'free' (vendido, turno fijo, bloqueo o
+  // torneo — el servidor ya los aplanó a 'occupied' — o un status inesperado
+  // en el JSON) se pinta "Ocupado" y no es clickeable. El motivo real es
+  // información interna del complejo y no se muestra (1.2).
+  if (slot.status !== 'free') {
     return (
-      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-400/20">
-        <span>Turno fijo</span>
-        {priceLine}
-      </span>
-    )
-  }
-
-  if (slot.status === 'blocked') {
-    return (
-      <span className="inline-flex w-full flex-col items-center rounded px-2 py-1 text-xs font-medium bg-red-50 text-red-700 ring-1 ring-inset ring-red-600 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20">
-        <span>Bloqueado</span>
-        {priceLine}
+      <span className="inline-flex w-full items-center justify-center rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground ring-1 ring-inset ring-border">
+        Ocupado
       </span>
     )
   }
@@ -173,13 +154,12 @@ function SlotCell({
       <a
         href={telHref(phone) ?? undefined}
         aria-label="Contactar al complejo para reservar"
-        className="inline-flex w-full flex-col items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
+        className="inline-flex w-full items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-[color,background-color] duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
       >
         <span className="flex items-center gap-1">
           <Phone className="h-3 w-3" aria-hidden />
           Contactar
         </span>
-        {priceLine}
       </a>
     )
   }
@@ -187,10 +167,10 @@ function SlotCell({
   return (
     <Link
       href={`/${slug}/reservar?court=${courtId}&date=${date}&time=${slot.time}&dur=${slot.duration}`}
-      className="inline-flex w-full flex-col items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-all duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
+      aria-label={`Reservar ${slot.time}`}
+      className="inline-flex w-full items-center justify-center min-h-11 md:min-h-9 rounded-md px-2 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/60 transition-[color,background-color,scale] duration-150 hover:bg-primary hover:text-white hover:ring-emerald-600 active:scale-[0.98] motion-reduce:active:scale-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20 dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:ring-primary"
     >
-      <span>Reservar</span>
-      {priceLine}
+      Reservar
     </Link>
   )
 }
@@ -301,7 +281,14 @@ export default function AvailabilityGrid({ tenant }: Props) {
       ? availability.courts
       : availability.courts.filter((c) => c.id === effectiveFilter)
 
-  const timeRows = buildTimeRows(visibleCourts)
+  const allRows = buildTimeRows(visibleCourts)
+  // 1.4: una fila se muestra solo si sobrevive alguna celda no-pasada. nowMins/
+  // date son iguales para todas las canchas, así que dentro de una fila que
+  // sobrevive ninguna celda es 'past' — la rama 'past' de SlotCell se deja
+  // igual como defensa (filas de solo-null).
+  const timeRows = allRows.filter((r) => r.cells.some((c) => c.slot && c.slot.status !== 'past'))
+  // Hoy con todas las horas ya pasadas: la tabla quedaría vacía sin explicación.
+  const dayFullyPast = allRows.length > 0 && timeRows.length === 0
   const noCourts = availability !== null && availability.courts.length === 0
   // El reloj de los holds solo corre si hay alguno a la vista.
   const hasHeld = visibleCourts.some((c) => c.slots.some((s) => s.status === 'held'))
@@ -414,10 +401,13 @@ export default function AvailabilityGrid({ tenant }: Props) {
         </div>
       )}
 
-      {/* Día sin turnos (cerrado o sin slots para la selección) */}
+      {/* Día sin turnos: cerrado/sin slots para la selección, o todas las
+          horas de hoy ya pasaron (1.4) */}
       {!loading && availability && !noCourts && timeRows.length === 0 && (
         <p className="text-sm text-muted-foreground py-10 text-center">
-          Sin turnos para esta fecha.
+          {dayFullyPast
+            ? 'Los turnos de hoy ya pasaron. Probá con el día siguiente.'
+            : 'Sin turnos para esta fecha.'}
         </p>
       )}
 
@@ -431,7 +421,10 @@ export default function AvailabilityGrid({ tenant }: Props) {
               <tr>
                 <th
                   scope="col"
-                  className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-left py-2 pr-4 w-16"
+                  // sticky: a 390px con 3+ canchas la tabla scrollea horizontal
+                  // y esta columna se iba de pantalla (1.5). bg-card opaco:
+                  // sin él las celdas de abajo se ven a través.
+                  className="sticky left-0 z-20 bg-card text-xs font-medium text-muted-foreground uppercase tracking-wide text-left py-2 pr-4 w-16"
                 >
                   Hora
                 </th>
@@ -441,7 +434,10 @@ export default function AvailabilityGrid({ tenant }: Props) {
                     scope="col"
                     // 88px en mobile para que entren 3 canchas a 360px sin
                     // scroll; 110px de sm para arriba mantiene el aire original.
-                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-center py-2 px-2 min-w-[88px] snap-start sm:min-w-[110px]"
+                    // scroll-ml-16: el snap-start no puede parquear la columna
+                    // justo debajo de la columna sticky de Hora (mismo idiom
+                    // que GridScroller de la grilla admin).
+                    className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-center py-2 px-2 min-w-[88px] snap-start scroll-ml-16 sm:min-w-[110px]"
                   >
                     {court.name}
                   </th>
@@ -451,7 +447,7 @@ export default function AvailabilityGrid({ tenant }: Props) {
             <tbody className="divide-y divide-border">
               {timeRows.map((row) => (
                 <tr key={row.time}>
-                  <td className="py-1.5 pr-4 text-xs text-muted-foreground tabular-nums align-middle">
+                  <td className="sticky left-0 z-10 bg-card py-1.5 pr-4 text-xs text-muted-foreground tabular-nums align-middle">
                     {row.time}
                   </td>
                   {row.cells.map(({ courtId, slot }) => (
@@ -488,18 +484,6 @@ export default function AvailabilityGrid({ tenant }: Props) {
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="inline-block w-3 h-3 rounded-sm bg-muted ring-1 ring-inset ring-border" />
             Ocupado
-          </span>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-blue-50 ring-1 ring-inset ring-blue-600 dark:bg-blue-500/10 dark:ring-blue-400/20" />
-            Turno fijo
-          </span>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-red-50 ring-1 ring-inset ring-red-600 dark:bg-red-500/10 dark:ring-red-400/20" />
-            Bloqueado
-          </span>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-block w-3 h-3 rounded-sm bg-muted" />
-            Pasado
           </span>
         </div>
       )}

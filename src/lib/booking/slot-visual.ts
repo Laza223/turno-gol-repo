@@ -155,24 +155,20 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
 /**
  * ¿Este turno terminado se quedó sin cobrar?
  *
- * Decisión de producto (2026-08-04): la alarma significa **plata en cero o
- * incompleta**, no "algo salió mal".
+ * Decisión de producto (2026-08-04, corregida 2026-09-09): la alarma significa
+ * **plata en cero o incompleta Y cobrable**, no "algo salió mal".
  * - `completed` con saldo pendiente → alarma: el servicio se prestó y falta plata.
- * - `no_show` que capturó la seña → SIN alarma: en un no-show la seña es lo único
- *   cobrable, y ya se cobró. No hay nada que el staff pueda hacer.
- * - `no_show` sin un peso cobrado → alarma: quedó en cero.
+ * - `no_show` → NUNCA alarma, cobrado o no. En un no-show la seña es lo único
+ *   cobrable (regla de producto) y ya se cobró; lo que queda sin cobrar no es
+ *   deuda (veto "No-show NO es deuda", CLAUDE.md) y no hay ningún botón para
+ *   accionarlo. Alarmar algo que no se puede cobrar solo entrena al staff a
+ *   ignorar la alarma.
  *
  * Sin datos de plata (`pending`/`totalPaid` ausentes) NO se dispara: una alarma
  * falsa entrena al staff a ignorarlas.
  */
 function isUnpaidAlarm(facts: SlotFacts): boolean {
-  if (facts.status === 'completed') {
-    return typeof facts.pending === 'number' && facts.pending > 0
-  }
-  if (facts.status === 'no_show') {
-    return typeof facts.totalPaid === 'number' && facts.totalPaid <= 0
-  }
-  return false
+  return facts.status === 'completed' && typeof facts.pending === 'number' && facts.pending > 0
 }
 
 /**
@@ -183,10 +179,13 @@ function isUnpaidAlarm(facts: SlotFacts): boolean {
  * torneo → bloqueo → **alarma** → ausente → jugada → esperando seña → señada →
  * abonado → cancelada/expirada → confirmada.
  *
- * La alarma va antes que `no_show`/`completed` porque justamente refina a esos
- * dos; abajo de ellos no se dispararía nunca. Torneo y bloqueo van primero
- * porque no son la reserva de un jugador y ninguna rama de plata los describe
- * bien (ambos tienen `price_snapshot = 0`, así que tampoco pueden alarmar).
+ * La alarma va antes que `completed` porque justamente lo refina: abajo de
+ * `completed` no se dispararía nunca. Ya NO refina a `no_show` (ver
+ * `isUnpaidAlarm`, 2026-09-09): un no-show nunca alarma, cobrado o no, así que
+ * el orden entre alarma y `no_show` dejó de importar en la práctica — se deja
+ * igual para no reordenar sin necesidad. Torneo y bloqueo van primero porque no
+ * son la reserva de un jugador y ninguna rama de plata los describe bien (ambos
+ * tienen `price_snapshot = 0`, así que tampoco pueden alarmar).
  */
 export function slotStateKey(facts: SlotFacts): SlotStateKey {
   if (facts.type === 'tournament') return 'tournament'
@@ -239,6 +238,24 @@ export function gridSlotVisual(facts: SlotFacts): GridSlotVisual {
     labelText: TONE_TEXT[meta.tone],
     alarm: meta.alarm === true,
   }
+}
+
+/**
+ * Saldo pendiente a mostrar como indicador SECUNDARIO en la celda, en centavos.
+ * Devuelve null cuando no hay nada que decir: sin dato de plata (Realtime crudo,
+ * fixtures viejas), saldo cero (cobrado, o bloqueo/torneo con price_snapshot 0),
+ * `pending_payment` (esa línea ya la ocupa el contador del hold) o `no_show`
+ * (veto "No-show NO es deuda": en un no-show lo que queda sin cobrar no es
+ * cobrable, así que no hay "falta $X" que mostrar — mismo motivo que apaga la
+ * alarma en `isUnpaidAlarm`).
+ *
+ * Es un NÚMERO, no un estado: la grilla sigue teniendo 9 estados y 9 colores.
+ */
+export function slotPendingCents(facts: SlotFacts): number | null {
+  if (typeof facts.pending !== 'number' || facts.pending <= 0) return null
+  const key = slotStateKey(facts)
+  if (key === 'pending_payment' || key === 'no_show') return null
+  return facts.pending
 }
 
 // ---------------------------------------------------------------------------

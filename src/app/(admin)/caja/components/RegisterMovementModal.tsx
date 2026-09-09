@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -10,6 +11,7 @@ import type { CashFlowActionResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { isValidMovement } from './is-valid-movement'
 import { toast } from '@/hooks/use-toast'
+import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { MoneyInput } from '@/components/ui/money-input'
 import type { CashFlowCategory, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
@@ -31,9 +33,14 @@ const TYPES: { value: CfType; label: string }[] = [
 ]
 
 const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
+  // 'product_sale' (Cantina/Bar) NO se ofrece acá a propósito: el único camino
+  // que descuenta stock y alimenta el ranking del ledger es /caja/cantina.
+  // Cargarla desde acá infla `getCanteenTotalsByMethod`/`getCanteenDailyTotals`
+  // sin que el ranking por stock_movements lo vea, y los dos paneles de
+  // /caja/productos terminan contradiciéndose. El ENUM sigue existiendo
+  // (categoryLabel sigue traduciendo el histórico) — esto es solo UI.
   income: [
     { value: 'booking', label: 'Reserva' },
-    { value: 'product_sale', label: 'Cantina/Bar' },
     { value: 'other', label: 'Otro ingreso' },
   ],
   // La UI nunca ofrece 'operating_expense' (legacy, solo display en historial —
@@ -125,6 +132,9 @@ export function RegisterMovementModal({
           toast({ title: 'Movimiento registrado', variant: 'success' })
           reset()
           router.refresh()
+          // El mismo modal registra `expense`, que no cambia "Hoy" (income +
+          // adjustments): el fetch extra devuelve el mismo valor.
+          notifyMoneyMoved()
           onClose()
         } else setError(res.error)
       } catch (err) {
@@ -194,6 +204,19 @@ export function RegisterMovementModal({
                   ))}
                 </div>
               </fieldset>
+
+              {type === 'income' && (
+                <p className="text-xs text-muted-foreground">
+                  ¿Vendiste algo de la cantina?{' '}
+                  <Link
+                    href="/caja/cantina"
+                    className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                  >
+                    Cargalo en Cantina
+                  </Link>{' '}
+                  para que descuente el stock.
+                </p>
+              )}
             </div>
 
             {/* Columna Derecha: Método, Monto y Descripción */}
@@ -202,7 +225,7 @@ export function RegisterMovementModal({
                 <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Método de pago
                 </legend>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2">
                   {PAYMENT_METHOD_OPTIONS.map((m) => (
                     <button
                       key={m.value}
@@ -238,7 +261,7 @@ export function RegisterMovementModal({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
-                  placeholder="ej: Pago de luz, hielo para cantina..."
+                  placeholder="ej: Pago de luz, alquiler, sueldo del cadete..."
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>

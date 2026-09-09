@@ -19,6 +19,7 @@ import {
   listRescheduleSlotsAction,
   rescheduleBookingAction,
   cancelBookingAction,
+  releaseBlockAction,
 } from '@/app/(admin)/reservas/actions'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
@@ -57,6 +58,7 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
             timeEnd: bookings.timeEnd,
             status: bookings.status,
             type: bookings.type,
+            tournamentId: bookings.tournamentId,
             guestName: bookings.guestName,
             priceSnapshot: bookings.priceSnapshot,
             paymentMethod: bookings.paymentMethod,
@@ -109,6 +111,7 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
       timeEnd: r.timeEnd.slice(0, 5),
       status: r.status as BookingStatus,
       type: r.type as BookingType,
+      tournamentId: r.tournamentId ?? null,
       guestName: r.guestName ?? null,
       playerFirstName: r.playerFirstName ?? null,
       playerLastName: r.playerLastName ?? null,
@@ -149,6 +152,7 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
           listRescheduleSlotsAction,
           rescheduleBookingAction,
           cancelBookingAction,
+          releaseBlockAction,
         }}
         canteen={{
           listCatalogAction: listCanteenForBookingAction,

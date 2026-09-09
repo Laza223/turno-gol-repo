@@ -118,6 +118,7 @@ export const GET = withTenant(
         time_start: r.booking.timeStart,
         time_end: r.booking.timeEnd,
         type: r.booking.type,
+        tournament_id: r.booking.tournamentId,
         status: r.booking.status,
         price_snapshot: r.booking.priceSnapshot,
         deposit_amount: r.booking.depositAmount,

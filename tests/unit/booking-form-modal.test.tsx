@@ -45,18 +45,47 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof BookingFormM
 }
 
 /**
- * Lo cobrado es respuesta obligatoria en el alta manual (pedido del dueño): un
- * turno cargado a mano no tiene ningún hecho de cobro detrás salvo lo que
- * afirme el mostrador. Los bloqueos internos no cobran nada y no muestran el
- * control, así que el helper no hace nada ahí.
+ * El dueño revirtió PR #185: "No cobré" viene preseleccionado, así que cargar
+ * el turno más repetido del día se confirma con el nombre y nada más. El
+ * helper ya no necesita tocar el control — sólo confirma que arrancó ahí
+ * antes de que cada test dispare el submit. Los bloqueos internos no
+ * muestran el control, así que sigue sin hacer nada ahí.
  */
 function contestarSinCobro() {
-  const select = screen.queryByLabelText('¿Cobraste algo ahora?')
-  if (select) fireEvent.change(select, { target: { value: 'none' } })
+  const select = screen.queryByLabelText('¿Cobraste algo ahora?') as HTMLSelectElement | null
+  if (select) expect(select.value).toBe('none')
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+})
+
+/**
+ * Decisión del dueño (revierte PR #185, a sabiendas): "No cobré" preseleccionado
+ * no debe crear ningún hecho de plata. La preselección solo evita la pregunta
+ * obligatoria — los tres campos de seña (method/amount/status) siguen sin viajar
+ * si nadie tocó el control.
+ */
+describe('BookingFormModal — "No cobré" preseleccionado', () => {
+  it('el select arranca en "No cobré"', () => {
+    renderModal()
+    const select = screen.getByLabelText('¿Cobraste algo ahora?') as HTMLSelectElement
+    expect(select.value).toBe('none')
+  })
+
+  it('confirmar sin tocar el control llama al server y no manda campos de seña', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    const payload = createBookingAction.mock.calls[0]![0] as Record<string, unknown>
+    expect(payload).not.toHaveProperty('depositMethod')
+    expect(payload).not.toHaveProperty('depositAmount')
+    expect(payload).not.toHaveProperty('depositStatus')
+  })
 })
 
 describe('BookingFormModal — loading recovery', () => {
@@ -65,16 +94,16 @@ describe('BookingFormModal — loading recovery', () => {
     const { onSuccess } = renderModal()
 
     contestarSinCobro()
-    const submit = screen.getByRole('button', { name: 'Confirmar' })
+    const submit = screen.getByRole('button', { name: 'Confirmar reserva' })
     fireEvent.click(submit)
 
     // Button recovers to its idle label instead of hanging on "Guardando…".
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
     })
-    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(
-      false,
-    )
+    expect(
+      (screen.getByRole('button', { name: 'Confirmar reserva' }) as HTMLButtonElement).disabled,
+    ).toBe(false)
 
     // A recoverable error is shown to the user.
     const alert = screen.getByRole('alert')
@@ -87,7 +116,7 @@ describe('BookingFormModal — loading recovery', () => {
     renderModal()
 
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
 
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('Horario ocupado')
@@ -97,7 +126,7 @@ describe('BookingFormModal — loading recovery', () => {
     // el botón nunca se recupera, el waitFor expira y el test falla igual.
     await waitFor(() => {
       expect(
-        (screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled,
+        (screen.getByRole('button', { name: 'Confirmar reserva' }) as HTMLButtonElement).disabled,
       ).toBe(false)
     })
   })
@@ -108,7 +137,7 @@ describe('BookingFormModal — loading recovery', () => {
     const { onSuccess } = renderModal()
 
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
 
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith(booking)
@@ -140,7 +169,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
     fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), { target: { value: '11-1234-5678' } })
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     expect(lastPayload()).toMatchObject({
@@ -164,7 +193,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     // atrapado por verificación adversarial, Fase 3).
     fireEvent.click(advancedTrigger)
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     expect(lastPayload()).toMatchObject({
@@ -185,7 +214,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeNull()
 
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bloquear cancha' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     const payload = lastPayload()
@@ -199,7 +228,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
 
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'school' } })
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bloquear cancha' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     expect(lastPayload()).toMatchObject({ type: 'block', guestName: 'Escuelita de Fútbol' })
@@ -212,7 +241,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'other' } })
     fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Pepe' } })
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     const payload = lastPayload()
@@ -231,7 +260,7 @@ describe('BookingFormModal — reason / block-type dropdown', () => {
     const durationSelect = document.querySelector<HTMLSelectElement>('select#duration')!
     fireEvent.change(durationSelect, { target: { value: '120' } })
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bloquear cancha' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     expect(lastPayload()).toMatchObject({ type: 'block', timeStart: '18:00', timeEnd: '20:00' })
@@ -246,7 +275,7 @@ describe('BookingFormModal — slot de medianoche (día operativo)', () => {
     renderModal({ slot: midnightSlot })
 
     contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     expect(createBookingAction).toHaveBeenCalledWith(
@@ -290,9 +319,9 @@ describe('BookingFormModal — checkAvailabilityAction (Fase 4 UX)', () => {
       expect(screen.getByRole('alert').textContent).toContain('Este turno acaba de ser tomado.')
     })
     // Es solo un aviso: el submit sigue habilitado, el server decide.
-    expect((screen.getByRole('button', { name: 'Confirmar' }) as HTMLButtonElement).disabled).toBe(
-      false,
-    )
+    expect(
+      (screen.getByRole('button', { name: 'Confirmar reserva' }) as HTMLButtonElement).disabled,
+    ).toBe(false)
   })
 
   it('available:true al abrir no muestra ningún aviso', async () => {
@@ -306,7 +335,7 @@ describe('BookingFormModal — checkAvailabilityAction (Fase 4 UX)', () => {
   it('sin la prop, el comportamiento queda intacto (no rompe nada existente)', async () => {
     renderModal()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
     })
     expect(screen.queryByRole('alert')).toBeNull()
   })

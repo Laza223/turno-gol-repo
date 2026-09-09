@@ -91,6 +91,18 @@ export function categoryLabel(type: string, category: string): string {
   return category
 }
 
+/**
+ * Título legible de un movimiento en la lista del día. Los tres emisores de la
+ * seña escriben `Seña — turno <uuid>` (depositCashFlowDescription,
+ * booking.charges.ts) — sin esto, la lista mostraba el UUID crudo. El string
+ * persistido NO se toca: `getDebts` lo compara tal cual en SQL para calcular
+ * la deuda de turnos con seña.
+ */
+export function movementTitle(description: string): string {
+  if (description.startsWith('Seña — turno ')) return 'Seña del turno'
+  return description
+}
+
 export const CATEGORY_BADGE: Record<CashFlowCategory | 'fallback', string> = {
   booking:
     'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20 dark:ring-emerald-500/30',

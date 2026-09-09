@@ -10,6 +10,7 @@ import {
   cancelBookingAction,
   completeAndChargeBookingAction,
   markNoShowAction,
+  releaseBlockAction,
   revertNoShowAction,
 } from '../actions'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
@@ -86,6 +87,7 @@ export default async function ReservaDetailPage(props: Props) {
       <BookingActions
         bookingId={booking.id}
         status={booking.status}
+        type={booking.type}
         depositStatus={booking.depositStatus}
         depositAmount={booking.depositAmount}
         paymentMethod={booking.paymentMethod ?? null}
@@ -105,6 +107,7 @@ export default async function ReservaDetailPage(props: Props) {
         markNoShowAction={markNoShowAction}
         revertNoShowAction={revertNoShowAction}
         cancelBookingAction={cancelBookingAction}
+        releaseBlockAction={releaseBlockAction}
       />
     </div>
   )

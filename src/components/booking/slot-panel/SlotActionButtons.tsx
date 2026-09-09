@@ -1,6 +1,7 @@
 'use client'
 
-import { Ban, CupSoda, MoveRight, UserX } from 'lucide-react'
+import Link from 'next/link'
+import { Ban, CupSoda, MoveRight, Trash2, Trophy, UserX } from 'lucide-react'
 import type { SlotPanelActions } from './actions'
 
 type Props = {
@@ -17,6 +18,10 @@ type Props = {
   onRevertNoShow: () => void
   canCancel: boolean
   onOpenCancel: () => void
+  canReleaseBlock: boolean
+  onOpenReleaseBlock: () => void
+  /** RI G2.3: si viene, se ofrece el link directo a la pantalla del torneo. */
+  tournamentId?: string | null
 }
 
 /** Botones de cantina, reprogramar, cancelar, marcar ausente y deshacerla. */
@@ -34,6 +39,9 @@ export function SlotActionButtons({
   onRevertNoShow,
   canCancel,
   onOpenCancel,
+  canReleaseBlock,
+  onOpenReleaseBlock,
+  tournamentId,
 }: Props) {
   return (
     <>
@@ -96,11 +104,36 @@ export function SlotActionButtons({
         </button>
       )}
 
+      {canReleaseBlock && (
+        <button
+          type="button"
+          onClick={onOpenReleaseBlock}
+          disabled={isPending}
+          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-card text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10 md:h-10"
+        >
+          <Trash2 aria-hidden className="h-4 w-4" />
+          Liberar el bloqueo
+        </button>
+      )}
+
       {isTournament && (
         <p className="text-xs leading-relaxed text-muted-foreground">
           Esta hora la ocupa un torneo. La plata del torneo entra por la inscripción, no por turno —
           se gestiona desde la pantalla del torneo.
         </p>
+      )}
+
+      {/* La ruta está detrás del flag `tournaments`, pero un booking type='tournament'
+          sólo existe si el flag estuvo prendido para este complejo: el caso "link a
+          404" es teórico. */}
+      {isTournament && tournamentId && (
+        <Link
+          href={`/torneos/${tournamentId}`}
+          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent md:h-10"
+        >
+          <Trophy aria-hidden className="h-4 w-4" />
+          Ir al torneo
+        </Link>
       )}
     </>
   )

@@ -4,6 +4,7 @@ import { expectGone } from '@/test/expect-gone'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { artDateString, daysFromNow, hoursFromNow } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
+import type { ActionResult } from '@/shared/types/action-result'
 import type { BookingActionResult, CompleteAndChargeResult } from '../actions'
 import BookingActions from './BookingActions'
 
@@ -25,6 +26,7 @@ const meta = {
   args: {
     bookingId: BOOKING_ID,
     status: 'confirmed',
+    type: 'player',
     depositStatus: 'paid',
     depositAmount: 450_000,
     paymentMethod: 'mercadopago',
@@ -39,6 +41,7 @@ const meta = {
     markNoShowAction: fn(async (): Promise<BookingActionResult> => okResult),
     revertNoShowAction: fn(async (): Promise<BookingActionResult> => okResult),
     cancelBookingAction: fn(async (): Promise<BookingActionResult> => okResult),
+    releaseBlockAction: fn(async (): Promise<ActionResult> => ({ success: true })),
   },
   decorators: [
     // Mismo contenedor que `[id]/page.tsx`: BookingActions vive debajo de
@@ -370,5 +373,42 @@ export const ErrorDelServidorAlCancelar: Story = {
     // diálogo está montado Y renderizado, y no depende de en qué frame de la animación
     // caiga el assert.
     await expect(dialog.getByRole('button', { name: 'Cancelar reserva' })).toBeInTheDocument()
+  },
+}
+
+/**
+ * RI G2.1 — mismo bug reportado por el verificador: `/reservas/[id]` (esta
+ * pantalla, a la que se llega desde la fila de un bloqueo en `/reservas`) es
+ * la ÚNICA superficie que le quedaba a `type='block'` sin forma de liberar el
+ * turno; el único camino que ofrecía era "Cancelar", que lo deja como
+ * `canceled_*` para siempre (g2.md línea 10d). Mismo botón/copy que
+ * SlotActionButtons.tsx en el panel de la grilla.
+ */
+export const Bloqueo: Story = {
+  args: { type: 'block' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: 'Liberar el bloqueo' })).toBeVisible()
+    await expect(canvas.queryByRole('button', { name: 'Marcar completada' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Marcar ausente' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
+  },
+}
+
+/** Confirmar liberación llama a la Server Action y muestra el toast de éxito. */
+export const BloqueoLiberadoConfirmado: Story = {
+  args: { type: 'block' },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Liberar el bloqueo' }))
+
+    const dialog = within(await body.findByRole('dialog'))
+    await waitFor(() => expect(dialog.getByText(/cancha queda libre/i)).toBeVisible())
+    await userEvent.click(dialog.getByRole('button', { name: 'Liberar' }))
+
+    await waitFor(() => expect(args.releaseBlockAction).toHaveBeenCalledWith(BOOKING_ID))
+    await expect(await body.findByText('Bloqueo liberado')).toBeVisible()
+    await expect(getRouter().refresh).toHaveBeenCalled()
   },
 }

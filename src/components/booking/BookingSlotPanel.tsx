@@ -107,6 +107,7 @@ export function BookingSlotPanel({
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
   const [cancelReason, setCancelReason] = useState('')
+  const [releaseBlockOpen, setReleaseBlockOpen] = useState(false)
 
   // Cambio de turno → estado limpio. Patrón "derived state on prop change"
   // (sin useEffect), igual que StreetMoneyChargeDialog.
@@ -122,6 +123,7 @@ export function BookingSlotPanel({
     mode,
     pending,
     submitCharge,
+    submitQuickAllCash,
     confirmNoShow,
     revertNoShow,
   } = useSlotCharges({
@@ -144,6 +146,7 @@ export function BookingSlotPanel({
     setCanteenOpen(false)
     setRescheduleOpen(false)
     setCancelOpen(false)
+    setReleaseBlockOpen(false)
   }
 
   if (!booking) return null
@@ -170,6 +173,15 @@ export function BookingSlotPanel({
   // (stories/tests viejas) el botón no se ofrece, como el resto del panel.
   const canCancel =
     isClientBooking && booking.status === 'confirmed' && Boolean(actions?.cancelBookingAction)
+
+  // Liberar un bloqueo de mantenimiento (RI G2.1): sólo para type='block' en un
+  // estado que todavía se puede tocar (un `block` siempre nace 'confirmed';
+  // 'pending_payment' es defensivo). Sin `releaseBlockAction` (stories/tests
+  // viejas) el botón no se ofrece, como el resto del panel.
+  const canReleaseBlock =
+    booking.type === 'block' &&
+    (booking.status === 'confirmed' || booking.status === 'pending_payment') &&
+    Boolean(actions?.releaseBlockAction)
 
   // La cantina sigue disponible con el turno ya jugado: lo normal es que la
   // gente consuma durante el partido y pague todo junto al final.
@@ -206,6 +218,16 @@ export function BookingSlotPanel({
       return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
     }
     const res = await actions.cancelBookingAction(booking!.id, cancelReason.trim(), cancelType)
+    if (res.success) {
+      setLastId(null)
+      notifyMutated()
+    }
+    return res
+  }
+
+  async function onConfirmReleaseBlock(): Promise<ActionResult> {
+    if (!actions?.releaseBlockAction) return { success: false, error: 'Sin acciones disponibles.' }
+    const res = await actions.releaseBlockAction(booking!.id)
     if (res.success) {
       setLastId(null)
       notifyMutated()
@@ -275,6 +297,7 @@ export function BookingSlotPanel({
                 error={error}
                 isPending={isPending}
                 onSubmit={submitCharge}
+                onQuickAllCash={submitQuickAllCash}
               />
             )}
 
@@ -292,6 +315,9 @@ export function BookingSlotPanel({
               onRevertNoShow={revertNoShow}
               canCancel={canCancel}
               onOpenCancel={openCancel}
+              canReleaseBlock={canReleaseBlock}
+              onOpenReleaseBlock={() => setReleaseBlockOpen(true)}
+              tournamentId={booking.tournamentId ?? null}
             />
           </div>
         </SheetContent>
@@ -397,6 +423,23 @@ export function BookingSlotPanel({
             </div>
           </div>
         </ConfirmDialog>
+      )}
+
+      {actions?.releaseBlockAction && (
+        <ConfirmDialog
+          open={releaseBlockOpen}
+          onOpenChange={setReleaseBlockOpen}
+          title="Liberar el bloqueo"
+          description={`${displayName ?? 'Bloqueo'}, ${booking.timeStart}–${booking.timeEnd}. La cancha queda libre para reservar.`}
+          variant="destructive"
+          confirmLabel="Liberar"
+          cancelLabel="Volver"
+          consequences={[
+            'El bloqueo se elimina: no queda como reserva cancelada.',
+            'Si te equivocaste de horario, volvé a bloquear con el horario correcto.',
+          ]}
+          onConfirm={onConfirmReleaseBlock}
+        />
       )}
     </>
   )

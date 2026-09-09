@@ -41,6 +41,7 @@ const okActions = (): SlotPanelActions => ({
     maxDate: '2026-08-10',
   })),
   rescheduleBookingAction: fn(async () => ({ success: true, priceChanged: true })),
+  releaseBlockAction: fn(async () => ({ success: true as const })),
 })
 
 const COURTS = [
@@ -201,6 +202,8 @@ export const Bloqueo: Story = {
     // No es el turno de nadie: no hay a quién venderle ni a quién mover.
     await expect(panel.queryByRole('button', { name: /Cargar cantina/ })).toBeNull()
     await expect(panel.queryByRole('button', { name: /Reprogramar/ })).toBeNull()
+    // RI G2.1: sí ofrece liberar el bloqueo (DELETE físico, no una cancelación).
+    await expect(await panel.findByRole('button', { name: /Liberar el bloqueo/ })).toBeTruthy()
   },
 }
 

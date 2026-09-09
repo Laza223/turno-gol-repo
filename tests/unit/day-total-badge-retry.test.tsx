@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { formatArs } from '@/lib/format'
+import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 
 /**
  * El "Hoy: $X" de la barra lateral cuando el pedido NO sale bien.
@@ -160,5 +161,43 @@ describe('DayTotalBadge — el pedido va con corte por tiempo', () => {
 
     await tick(0)
     expect(spy).toHaveBeenCalledWith('/api/admin/day-total', { cache: 'no-store' }, 8_000)
+  })
+})
+
+describe('DayTotalBadge — la señal de plata movida', () => {
+  it('refresca el número al toque, sin esperar el ciclo de 60s', async () => {
+    mount((n) => (n === 1 ? total(0) : total(4_000_000)))
+
+    await tick(0)
+    expect(label()).toBe(`Cobrado hoy: ${formatArs(0)}. Ir a Caja`)
+
+    // Sin avanzar 60s: hoy este número tardaría hasta REFRESH_MS en corregirse.
+    await act(async () => {
+      notifyMoneyMoved()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(label()).toBe(`Cobrado hoy: ${formatArs(4_000_000)}. Ir a Caja`)
+  })
+
+  it('se saltea el piso de MIN_GAP_MS: dos señales seguidas piden dos veces', async () => {
+    mount(() => total(0))
+
+    await tick(0)
+    expect(calls).toBe(1)
+
+    // MIN_GAP_MS es 5s: sin el `force` de la señal, esta segunda consulta a
+    // los 500ms se descartaría por el piso.
+    await act(async () => {
+      notifyMoneyMoved()
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    expect(calls).toBe(2)
+
+    await act(async () => {
+      notifyMoneyMoved()
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    expect(calls).toBe(3)
   })
 })

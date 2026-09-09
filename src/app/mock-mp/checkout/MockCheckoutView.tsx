@@ -1,4 +1,4 @@
-import { formatArsContable, formatDateLong } from '@/lib/format'
+import { formatArs, formatDateLong } from '@/lib/format'
 
 export type MockBookingSummary = {
   deposit_amount: number
@@ -78,9 +78,7 @@ export function MockCheckoutView({
           </div>
           <div className="flex justify-between gap-2 border-t border-slate-200 pt-2">
             <dt className="font-semibold text-slate-700">Seña</dt>
-            <dd className="font-bold text-slate-900">
-              {formatArsContable(booking.deposit_amount)}
-            </dd>
+            <dd className="font-bold text-slate-900">{formatArs(booking.deposit_amount)}</dd>
           </div>
         </dl>
 

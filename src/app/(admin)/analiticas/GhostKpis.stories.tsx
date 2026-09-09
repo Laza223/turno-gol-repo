@@ -27,6 +27,6 @@ export const Default: Story = {
       canvas.getByRole('link', { name: 'Cargá tu primera reserva desde la grilla' }),
     ).toBeVisible()
     // Ingresos y Saldo comparten el valor fantasma.
-    await expect(canvas.getAllByText('$ 85.000,00')).toHaveLength(2)
+    await expect(canvas.getAllByText('$ 85.000')).toHaveLength(2)
   },
 }

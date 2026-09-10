@@ -27,6 +27,12 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
   // vacío igual que la implementación real cuando no hay ids.
   sumBookingChargesByBooking: vi.fn(async () => new Map<string, number>()),
 }))
+// H110 — la page pide las canchas del tenant (filtro por cancha) dentro del
+// mismo `withTenantContext`; sin este mock, `listCourts` real corre contra el
+// `tx` de mentira de arriba y explota.
+vi.mock('@/modules/courts/court.service', () => ({
+  listCourts: vi.fn(async () => [] as Array<{ id: string; name: string }>),
+}))
 vi.mock('@/shared/dates/art', () => ({
   artTodayStr: vi.fn(() => '2026-06-12'),
   addDays: vi.fn((d: string) => d),

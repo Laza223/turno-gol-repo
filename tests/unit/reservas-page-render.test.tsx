@@ -18,6 +18,13 @@ vi.mock('@/modules/staff/guards', () => ({
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
 }))
+// H110 — la page ahora pide las canchas del tenant (filtro por cancha) dentro
+// del mismo `withTenantContext`; sin este mock, `listCourts` real corre contra
+// el `tx` de mentira de arriba y explota.
+const courtsMock = vi.fn(async (): Promise<Array<{ id: string; name: string }>> => [])
+vi.mock('@/modules/courts/court.service', () => ({
+  listCourts: (...args: unknown[]) => courtsMock(...(args as [])),
+}))
 vi.mock('@/shared/dates/art', () => ({
   artTodayStr: vi.fn(() => '2026-06-12'),
   addDays: vi.fn((d: string) => d),
@@ -79,6 +86,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   listMock.mockResolvedValue([])
   countsMock.mockResolvedValue({})
+  courtsMock.mockResolvedValue([])
   hasMore.value = false
 })
 
@@ -137,7 +145,7 @@ describe('ReservasPage — render', () => {
 
     const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
     expect(within(filtros).getByRole('link', { name: 'Confirmadas 12' })).toBeTruthy()
-    expect(within(filtros).getByRole('link', { name: 'Pendientes 3' })).toBeTruthy()
+    expect(within(filtros).getByRole('link', { name: 'Esperando seña 3' })).toBeTruthy()
     // 'canceladas' agrupa ambos enums; 'Todas' suma todo.
     expect(within(filtros).getByRole('link', { name: 'Canceladas 2' })).toBeTruthy()
     expect(within(filtros).getByRole('link', { name: 'Todas 17' })).toBeTruthy()
@@ -149,7 +157,7 @@ describe('ReservasPage — render', () => {
     const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
     expect(
       within(filtros)
-        .getByRole('link', { name: /Pendientes/ })
+        .getByRole('link', { name: /Esperando seña/ })
         .getAttribute('href'),
     ).toBe('/reservas?dia=historial&status=pending_payment&q=juan')
     const tabs = screen.getByRole('navigation', { name: 'Rango de fechas' })

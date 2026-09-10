@@ -169,9 +169,9 @@ test.describe('canchas — happy: create court', () => {
       // Inline badge next to the court name should say "Online".
       // Anchor on the card's own outer class — using a bare `locator('div')`
       // matches every ancestor (incl. the page container that has every card),
-      // so getByText('Online') would match all status badges.
+      // so getByText('Activa') would match all status badges.
       const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
-      await expect(courtCard.getByText('Online')).toBeVisible()
+      await expect(courtCard.getByText('Activa')).toBeVisible()
 
       // Capture the created court id for cleanup by finding it via the DB.
       const { data: rows } = await supabase
@@ -244,7 +244,7 @@ test.describe('canchas — edge: deactivate with future bookings', () => {
 
       // Dialog closes and the badge updates to Offline.
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-      await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Pausada')).toBeVisible({ timeout: 10_000 })
     } finally {
       await context.close()
       // Cleanup: delete booking first (FK), then court.
@@ -351,7 +351,7 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
       // page container which holds every other card too.
       const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
       await expect(courtCard).toBeVisible({ timeout: 10_000 })
-      await expect(courtCard.getByText('Offline')).toBeVisible()
+      await expect(courtCard.getByText('Pausada')).toBeVisible()
 
       // Delete the row out from under the UI so the next toggle fails gracefully.
       await deleteCourt(supabase, courtId)
@@ -364,7 +364,7 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
       // exact:true — the aria-live announcement renders
       // "Notification No se pudo activarCancha no encontrada" which
       // substring-matches and trips strict mode.
-      await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Pausada')).toBeVisible({ timeout: 10_000 })
       await expect(page.getByText('No se pudo activar', { exact: true })).toBeVisible({
         timeout: 10_000,
       })

@@ -381,6 +381,37 @@ describe('releaseTournamentSlots', () => {
     expect(rows[0]!.date).toBe('2027-03-06')
   })
 
+  it('con bookingId libera un solo horario puntual, sin tocar el resto (H108)', async () => {
+    const { tenant, staff, courtId, tournamentId } = await setupTournament()
+
+    await withTenantContext(tenant.id, (tx) =>
+      reserveTournamentSlots(
+        tenant.id,
+        tournamentId,
+        staff.id,
+        {
+          courtIds: [courtId],
+          dates: ['2027-04-03', '2027-04-10', '2027-04-17'],
+          timeStart: '18:00',
+          timeEnd: '19:00',
+        },
+        tx,
+      ),
+    )
+    const before = await bookingsOf(tournamentId)
+    expect(before).toHaveLength(3)
+    const targetId = before.find((r) => r.date === '2027-04-10')!.id
+
+    const released = await withTenantContext(tenant.id, (tx) =>
+      // fromDate va vacío a propósito: con bookingId, el service lo ignora.
+      releaseTournamentSlots(tenant.id, tournamentId, staff.id, '', tx, targetId),
+    )
+
+    expect(released.released).toBe(1)
+    const after = await bookingsOf(tournamentId)
+    expect(after.map((r) => r.date).sort()).toEqual(['2027-04-03', '2027-04-17'])
+  })
+
   it('la hora liberada vuelve a estar disponible para una reserva común', async () => {
     const sql = getSql()
     const { tenant, staff, courtId, tournamentId } = await setupTournament()

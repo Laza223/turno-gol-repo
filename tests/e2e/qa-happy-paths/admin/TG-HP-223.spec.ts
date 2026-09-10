@@ -10,8 +10,9 @@ import { suppressPushPrompt } from '../_qa/session'
  * Prereq: ninguno especial. Mock data (manual): horario general 18:00–23:00 +
  * Sábado personalizado 20:00–02:00 + "Cierra después de medianoche" ON.
  * El seed (`scripts/seed-e2e.ts`) deja Sáb/Dom en modo 'custom' (09:00–23:00,
- * distinto del general lun-vie 08:00–23:00) — sus inputs de horario propio ya
- * están renderizados sin necesitar click en "Personalizar".
+ * distinto del general lun-vie 08:00–23:00). H165: la fila arranca colapsada
+ * igual que cualquier otra — hay que abrir su editor con "Personalizar" antes
+ * de tocar los inputs de horario propio.
  * NO-PLATA: tenant Demo es fixture compartida — se captura `opening_hours` +
  * `closes_next_day` original y se restaura en `finally`.
  * Evidence anchors: src/app/(admin)/settings/horarios/actions.ts:1-44,
@@ -60,9 +61,17 @@ test.describe('TG-HP-223 — Settings horarios: general + Sábado madrugada + d�
         await page.locator('#general-open').fill('18:00')
         await page.locator('#general-close').fill('23:00')
 
-        // Sábado ya está en modo 'custom' (09:00–23:00 en el seed, distinto del general) —
-        // sus inputs "Horario propio" ya están visibles, sin pasar por "Personalizar".
-        // aria-label exacto por día (ScheduleFields.tsx:193,201) — no ambiguo con "Días
+        // Sábado ya está en modo 'custom' (09:00–23:00 en el seed, distinto del general),
+        // pero la fila arranca colapsada igual que cualquier otra (H165) — "Personalizar"
+        // abre el editor. Acotado al <li> de Sábado: "Personalizar" se repite por cada día
+        // sin editor abierto. Click condicional: si un retry de este bloque (HMR) ya lo
+        // había abierto, el botón ya cambió a "Restablecer" y no hay nada que clickear.
+        const saturdayItem = page.locator('li').filter({ hasText: 'Sábado' })
+        const personalizarSabado = saturdayItem.getByRole('button', { name: 'Personalizar' })
+        if (await personalizarSabado.isVisible().catch(() => false)) {
+          await personalizarSabado.click()
+        }
+        // aria-label exacto por día (ScheduleFields.tsx:269,277) — no ambiguo con "Días
         // cerrados" (esa lista no tiene inputs, solo texto con el nombre del día en minúscula).
         await page.getByLabel('Sábado: abre').fill('20:00')
         await page.getByLabel('Sábado: cierra').fill('02:00')

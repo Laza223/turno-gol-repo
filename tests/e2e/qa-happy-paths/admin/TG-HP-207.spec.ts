@@ -62,7 +62,7 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       await expect(page.getByText(`Desactivar ${editedName}`)).toBeVisible()
       await page.getByRole('button', { name: 'Desactivar' }).last().click()
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-      await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Pausada')).toBeVisible({ timeout: 10_000 })
 
       const afterOfflineRows = await runSql<{ status: string }>(
         'SELECT status FROM courts WHERE id = $1',
@@ -74,11 +74,11 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       // "Activar" (a diferencia de "Desactivar") no pasa por ConfirmDialog: el
       // click dispara un optimistic update SÍNCRONO (setCurrentStatus('online')
       // antes del await a toggleStatusAction, CourtList.tsx:237-247) — el texto
-      // "Online" puede quedar visible ANTES de que el UPDATE server-side termine.
+      // "Activa" puede quedar visible ANTES de que el UPDATE server-side termine.
       // expect.poll evita la carrera leyendo la DB hasta que el write real
       // aterrice (mismo patrón que TG-HP-225 con logo_url/cover_url).
       await courtCard.getByRole('button', { name: 'Activar' }).click()
-      await expect(courtCard.getByText('Online')).toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Activa')).toBeVisible({ timeout: 10_000 })
 
       let afterOnlineRows: Array<{ status: string }> = []
       await expect

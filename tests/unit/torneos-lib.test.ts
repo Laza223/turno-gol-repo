@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  formatArs,
   formatDate,
   formatDateRange,
   statusBadgeClass,
@@ -31,12 +30,8 @@ describe('formatDateRange', () => {
   })
 })
 
-describe('formatArs', () => {
-  it('pasa centavos a pesos con separador de miles', () => {
-    expect(formatArs(8500000)).toBe('$85.000')
-    expect(formatArs(0)).toBe('$0')
-  })
-})
+// H027: el `formatArs` local se borró y ahora este módulo re-exporta el
+// canónico de `@/lib/format`, que tiene su propia batería de tests.
 
 describe('summarizeSlots', () => {
   it('resume horas, canchas y fechas distintas', () => {

@@ -12,9 +12,14 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   manager: 'Encargado',
 }
 
+// H070: la descripción del manager listaba solo grilla/reservas/caja y omitía
+// que también entra a Clientes, Torneos (tras su feature flag) y Métricas
+// (reducidas) — settings/layout.tsx bloquea TODO /settings/* (incluida
+// Equipo) con requireAdminStaff, así que "sin acceso a configuración" ya
+// cubre Equipo, no hace falta nombrarla aparte.
 export const STAFF_ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
   admin: 'Acceso total, incluida la configuración del complejo.',
-  manager: 'Grilla, reservas y caja. Sin acceso a configuración.',
+  manager: 'Grilla, reservas, caja, clientes, torneos y métricas. Sin acceso a configuración.',
 }
 
 // Al invitar, el rol arranca en Encargado: sumar un admin con acceso total

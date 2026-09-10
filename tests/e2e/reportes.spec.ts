@@ -89,8 +89,11 @@ test.describe('Reportes', () => {
 
       // KPIs render with non-zero values.
       // Use the KPI <p> specifically: "Ingresos"/"Reservas" also appear as <th>
-      // column headers in the "Por cancha" table below (strict mode).
-      await expect(page.getByRole('paragraph').filter({ hasText: 'Ingresos' })).toBeVisible()
+      // column headers in the "Por cancha" table below (strict mode). `.last()`
+      // on "Ingresos" (H032): the 30-day RevenueChart card above ALSO renders an
+      // "Ingresos" StatCard now — the monthly report's own KPI is the one lower
+      // in DOM order.
+      await expect(page.getByRole('paragraph').filter({ hasText: 'Ingresos' }).last()).toBeVisible()
       await expect(page.getByRole('paragraph').filter({ hasText: 'Reservas' })).toBeVisible()
       // "Por cancha" table appears when there's at least one booking
       await expect(page.getByRole('heading', { name: /Por cancha/i })).toBeVisible()

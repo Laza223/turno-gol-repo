@@ -201,15 +201,39 @@ describe('GridDayList — la grilla en mobile', () => {
   it('una cancha pausada no ofrece reservar', () => {
     renderGrid({ courts: [court('c1', 'Cancha 1', 'offline')] })
     const page = screen.getByRole('region', { name: 'Cancha 1' })
-    const row = within(page).getByRole('button', { name: 'Reservar 16:00 en Cancha 1' })
+    const row = within(page).getByRole('button', {
+      name: 'Reservar 16:00 en Cancha 1, cancha pausada',
+    })
     expect(row.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('una cancha pausada se anuncia en la píldora del selector', () => {
+    renderGrid({ courts: [court('c1', 'Cancha 1', 'offline')] })
+    const selector = screen.getByRole('group', { name: 'Elegir cancha' })
+    expect(within(selector).getByRole('button', { name: 'Cancha 1 (pausada)' })).toBeTruthy()
   })
 
   it('tocar un slot libre abre el alta rápida cuando hay porcentaje de seña', () => {
     renderGrid({ depositPercentage: 30 })
+    // Ir a la página de Cancha 1 primero: "Todas" (activa por defecto) repite
+    // el mismo turno, y sin navegar el popover de esa página también
+    // matchearía por accidente (ver el comentario en GridDayList.tsx).
+    const selector = screen.getByRole('group', { name: 'Elegir cancha' })
+    fireEvent.click(within(selector).getByRole('button', { name: 'Cancha 1' }))
     const page = screen.getByRole('region', { name: 'Cancha 1' })
     fireEvent.click(within(page).getByRole('button', { name: 'Reservar 16:00 en Cancha 1' }))
     expect(screen.getByLabelText('¿A nombre de quién?')).toBeTruthy()
+  })
+
+  it('H099: tocar un slot libre en "Todas" también abre el alta rápida', () => {
+    renderGrid({ depositPercentage: 30 })
+    // "Todas" arranca activa: no hace falta navegar.
+    const todas = screen.getByRole('region', { name: 'Todas las canchas' })
+    fireEvent.click(within(todas).getByRole('button', { name: 'Reservar 16:00 en Cancha 1' }))
+    expect(screen.getByLabelText('¿A nombre de quién?')).toBeTruthy()
+    // Y la página de Cancha 1 (montada pero inactiva) NO abre un segundo
+    // formulario para el mismo turno.
+    expect(screen.getAllByLabelText('¿A nombre de quién?')).toHaveLength(1)
   })
 
   it('el carrusel navega con las flechas del teclado', () => {

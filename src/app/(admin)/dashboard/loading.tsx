@@ -1,11 +1,13 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
 /**
- * Silueta real de "Hoy" (dashboard/page.tsx): PageHeader, la grilla de tarjetas
- * de métrica —con la primera a ancho completo en mobile, igual que
- * `order-first col-span-2 lg:col-span-1`— y los dos bloques de abajo.
+ * Silueta real de "Hoy" (dashboard/page.tsx): PageHeader y los tres bloques
+ * —próximos turnos, lo que necesita atención, lo que pasó sin el dueño—. Las
+ * tarjetas de métrica salieron en el rediseño del 2026-09-10 (H010) y esta
+ * silueta las siguió: un esqueleto que dibuja algo que ya no llega es peor que
+ * ninguno, porque promete una pantalla distinta de la que aparece.
  *
- * Es de las que más se abre en frío: `getHoyData` dispara 12 servicios en una
+ * Es de las que más se abre en frío: `getHoyData` dispara 11 servicios en una
  * sola transacción.
  */
 export default function Loading() {
@@ -21,12 +23,7 @@ export default function Loading() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <Skeleton className="order-first col-span-2 h-32 w-full lg:order-0 lg:col-span-1" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-
+      <Skeleton className="h-64 w-full" />
       <Skeleton className="h-56 w-full" />
       <Skeleton className="h-40 w-full" />
     </div>

@@ -13,17 +13,6 @@ const ATTENTION_PRIORITY: Record<AttentionItem['kind'], number> = {
   yesterday_cash_unclosed: 4,
 }
 
-export function compareToLastWeek(
-  todayCents: number,
-  sameWeekdayLastWeekCents: number,
-): { deltaCents: number; deltaPct: number | null; direction: 'up' | 'down' | 'flat' } {
-  const deltaCents = todayCents - sameWeekdayLastWeekCents
-  const direction = deltaCents > 0 ? 'up' : deltaCents < 0 ? 'down' : 'flat'
-  const deltaPct =
-    sameWeekdayLastWeekCents === 0 ? null : (deltaCents / sameWeekdayLastWeekCents) * 100
-  return { deltaCents, deltaPct, direction }
-}
-
 /** Prioridad P1→P3, luego antigüedad ascendente (mismo criterio que getStreetMoney.sort). */
 export function sortAttentionItems(items: AttentionItem[]): AttentionItem[] {
   return [...items].sort((a, b) => {

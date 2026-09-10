@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreHorizontal, Package, Plus } from 'lucide-react'
+import { Lock, MoreHorizontal, Package, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArs } from '@/lib/format'
@@ -112,7 +113,7 @@ export function ProductsTable({
     <div className="rounded-lg border border-border bg-card shadow-xs">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="font-medium text-foreground">Catálogo</h2>
-        {canEditCatalog && (
+        {canEditCatalog ? (
           <button
             type="button"
             onClick={openCreate}
@@ -121,6 +122,17 @@ export function ProductsTable({
             <Plus className="h-4 w-4" aria-hidden="true" />
             Agregar producto
           </button>
+        ) : (
+          // Bloqueado por rol: candado, no desaparición (mismo criterio que
+          // torneos/page.tsx y CorteZonasCard.tsx — MASTER CHK-admin §12).
+          <span
+            className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground"
+            title="Solo el dueño puede agregar productos"
+          >
+            <Lock className="h-4 w-4" aria-hidden="true" />
+            Agregar producto
+            <span className="sr-only">— solo el dueño puede hacerlo</span>
+          </span>
         )}
       </div>
 
@@ -138,7 +150,18 @@ export function ProductsTable({
               >
                 Cargar el primero
               </button>
-            ) : undefined
+            ) : (
+              // Bloqueado por rol: candado, no desaparición (mismo criterio
+              // que el header de arriba).
+              <span
+                className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium text-muted-foreground"
+                title="Solo el dueño puede agregar productos"
+              >
+                <Lock className="h-4 w-4" aria-hidden="true" />
+                Cargar el primero
+                <span className="sr-only">— solo el dueño puede hacerlo</span>
+              </span>
+            )
           }
         />
       ) : (
@@ -219,14 +242,26 @@ export function ProductsTable({
                         <StatusBadge isActive={p.isActive} />
                       </td>
                       <td className="p-2.5 pr-4 text-right">
-                        <ProductRowMenu
-                          product={p}
-                          canEditCatalog={canEditCatalog}
-                          onEdit={openEdit}
-                          onEntry={setEntryProduct}
-                          onExit={setExitProduct}
-                          onTogglePause={togglePause}
-                        />
+                        <div className="flex items-center justify-end gap-1">
+                          {/* "Reponer" a la vista, no solo adentro del menú "...": ya
+                              existe así en la card mobile (Nielsen #6, reconocimiento
+                              antes que recordar). */}
+                          <button
+                            type="button"
+                            onClick={() => setEntryProduct(p)}
+                            className="inline-flex h-9 items-center rounded-md px-2.5 text-xs font-medium text-emerald-700 hover:bg-accent dark:text-emerald-400"
+                          >
+                            Reponer
+                          </button>
+                          <ProductRowMenu
+                            product={p}
+                            canEditCatalog={canEditCatalog}
+                            onEdit={openEdit}
+                            onEntry={setEntryProduct}
+                            onExit={setExitProduct}
+                            onTogglePause={togglePause}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )
@@ -280,11 +315,16 @@ function ProductRowMenu({
     // modal={false}: menú de acciones sobre la fila, no un diálogo que deba
     // bloquear la página (mismo criterio que StaffActions.tsx).
     <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Opciones para ${product.name}`}>
-          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={`Opciones para ${product.name}`}>
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Opciones</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuItem className="cursor-pointer" onSelect={() => onEntry(product)}>
           Reponer

@@ -58,7 +58,9 @@ export const ConDevoluciones: Story = {
     // resolverla solo: la de efectivo depende enteramente del complejo.
     await expect(canvas.getByText('MercadoPago')).toBeInTheDocument()
     await expect(canvas.getByText('Efectivo')).toBeInTheDocument()
-    await expect(canvas.getAllByRole('button', { name: 'Ya devolví' })).toHaveLength(2)
+    // H105: el nombre accesible ahora lleva monto y jugador (no solo "Ya
+    // devolví"), así que el match es por substring.
+    await expect(canvas.getAllByRole('button', { name: /Ya devolví/ })).toHaveLength(2)
   },
 }
 
@@ -97,6 +99,6 @@ export const SinDevoluciones: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('No debés ninguna devolución')).toBeInTheDocument()
-    await expect(canvas.queryByRole('button', { name: 'Ya devolví' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: /Ya devolví/ })).toBeNull()
   },
 }

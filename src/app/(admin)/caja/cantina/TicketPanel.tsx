@@ -194,8 +194,11 @@ export function TicketPanel({
           />
         </div>
 
-        {/* Sección "Recientes / Accesos rápidos" */}
-        {recentProducts.length > 0 && (
+        {/* Sección "Recientes / Accesos rápidos" — se oculta cuando coincide
+            1:1 con "Catálogo completo" (catálogo de ≤6 productos): mostrar el
+            mismo producto dos veces seguidas no pliega nada (LEY-hick,
+            MASTER §9) y en mobile empuja "Cobrar" fuera de la pantalla. */}
+        {recentProducts.length > 0 && recentProducts.length < products.length && (
           <div className="space-y-2 pt-1 border-t border-border">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -235,7 +238,12 @@ export function TicketPanel({
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Catálogo completo
           </div>
-          <div className="grid content-start grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {/* max-h + scroll propio solo debajo de md (grid apilado a una
+              columna, MASTER §11 AP-fitts): sin esto, "Cobrar" queda a una
+              distancia de scroll que crece con el tamaño del catálogo — a
+              partir de md el layout ya es 2 columnas con el Ticket al
+              costado y no hace falta acotarlo. */}
+          <div className="grid max-h-[45vh] content-start grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 md:max-h-none md:overflow-visible lg:grid-cols-4">
             {(() => {
               const renderProductButton = (p: CanteenProductRow) => {
                 const badge = canteenStockBadge(p.stock, p.minStock)

@@ -2,13 +2,16 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, ExternalLink, MessageCircle, Wallet } from 'lucide-react'
+import { AlertCircle, ExternalLink, MessageCircle, Search, Wallet } from 'lucide-react'
+import { StatCard } from '@/components/admin/StatCard'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
 import { formatArs } from '@/lib/format'
 import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
 import { CATEGORY_BADGE, chipClass } from '../caja-lib'
 import type { StreetMoneyOrigin, StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 import { StreetMoneyChargeDialog } from './StreetMoneyChargeDialog'
+import { StreetMoneyCancelTabDialog } from './StreetMoneyCancelTabDialog'
 
 const ORIGIN_FILTERS: { value: StreetMoneyOrigin | 'all'; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -62,32 +65,57 @@ function whatsappUrl(row: StreetMoneyRow): string | null {
  */
 export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
   const [filter, setFilter] = useState<StreetMoneyOrigin | 'all'>('all')
+  // H092: buscar a una persona puntual sin leer fila por fila una lista que
+  // solo ordena por antigüedad — mismo criterio que el buscador de Cantina,
+  // acá sobre el nombre ya cargado en cada fila (sin combobox: no hay nada
+  // que "seleccionar", es un filtro de lista).
+  const [query, setQuery] = useState('')
   const [charging, setCharging] = useState<StreetMoneyRow | null>(null)
+  // H117: la fila 'Fiado' no tenía forma de anularse desde acá, solo desde
+  // /caja/cantina — mismo registro, dos pantallas hermanas.
+  const [canceling, setCanceling] = useState<StreetMoneyRow | null>(null)
   // Instante fijo por render (mismo criterio que FiadosList): "hace X" no
   // cambia sin refresh.
   const [nowMs] = useState(() => Date.now())
 
-  const filtered = filter === 'all' ? rows : rows.filter((r) => r.origin === filter)
+  const normalizedQuery = query.trim().toLowerCase()
+  const filtered = rows.filter((r) => {
+    if (filter !== 'all' && r.origin !== filter) return false
+    if (normalizedQuery && !r.debtorName.toLowerCase().includes(normalizedQuery)) return false
+    return true
+  })
   const total = rows.reduce((s, r) => s + r.pendingCents, 0)
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-        <div>
-          {/* amber-800, no 700: el fondo es `bg-amber-500/5`, o sea ámbar con
-              opacidad sobre lo que haya atrás, y el par 700/ese compuesto mide
-              3.91 — por debajo de AA. Es el mismo par que ya se corrigió en
-              `PendingRefundsList`, que tiene una story donde axe lo mide; acá
-              no hay story, así que nadie lo iba a ver solo. */}
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-            Deudas
-          </p>
-          <p className="mt-0.5 text-2xl font-bold tabular-nums text-amber-800 dark:text-amber-300">
-            {formatArs(total)}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
-          <Wallet className="h-5 w-5" aria-hidden="true" />
+      {/* StatCard compartido, no un card ambar armado a mano (H085): la
+          misma "plata pendiente" no puede tener dos maquetas de código
+          distintas — la otra vive en PendingRefundsList (accent="red", plata
+          que sale en vez de plata que falta cobrar). */}
+      <StatCard
+        label="Deudas"
+        value={formatArs(total)}
+        icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
+        accent="amber"
+      />
+
+      <div className="space-y-1.5">
+        <label htmlFor="street-money-search" className="text-xs font-semibold text-foreground">
+          Buscar por nombre
+        </label>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id="street-money-search"
+            type="search"
+            placeholder="Nombre del deudor o grupo…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
+          />
         </div>
       </div>
 
@@ -112,7 +140,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
           description={
             rows.length === 0
               ? 'No hay turnos sin cobrar, fiados abiertos ni cuotas de torneo pendientes.'
-              : 'Probá con otro filtro de origen.'
+              : 'Probá con otro filtro o con otro nombre.'
           }
         />
       ) : (
@@ -146,8 +174,12 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
                     </span>
                   )}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {originDetail(row)} · {relativeTimeEs(row.since.toISOString(), nowMs)}
+                {/* Dos renglones, no uno truncado: "hace X días" no puede quedar
+                    cortado por el ancho de pantalla (H087) — el detalle del
+                    turno puede truncarse, la antigüedad nunca. */}
+                <p className="truncate text-xs text-muted-foreground">{originDetail(row)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {relativeTimeEs(row.since.toISOString(), nowMs)}
                 </p>
                 {row.origin === 'booking' && (
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -176,9 +208,23 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
                 <span className="text-base font-bold tabular-nums text-red-600 dark:text-red-400">
                   {formatArs(row.pendingCents)}
                 </span>
+                {row.origin === 'canteen_tab' && (
+                  <button
+                    type="button"
+                    onClick={() => setCanceling(row)}
+                    aria-label={`Anular fiado — ${row.debtorName}`}
+                    className="inline-flex h-11 items-center rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-red-600 md:h-9 dark:hover:text-red-400"
+                  >
+                    Anular
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setCharging(row)}
+                  // H105: 21 filas repiten el mismo "Cobrar" — el nombre
+                  // accesible tiene que decir a quién y cuánto (gramática de
+                  // interacción §48-53), no solo el efecto genérico.
+                  aria-label={`Cobrar ${formatArs(row.pendingCents)} — ${row.debtorName}`}
                   className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 md:h-9"
                 >
                   Cobrar
@@ -190,6 +236,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
       )}
 
       <StreetMoneyChargeDialog row={charging} onClose={() => setCharging(null)} />
+      <StreetMoneyCancelTabDialog row={canceling} onClose={() => setCanceling(null)} />
     </div>
   )
 }

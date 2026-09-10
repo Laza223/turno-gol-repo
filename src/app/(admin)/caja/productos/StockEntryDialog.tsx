@@ -128,8 +128,14 @@ export function StockEntryDialog({
           clientIdempotencyKey: idempotencyKey,
         })
         if (res.success) {
+          // Sin control de stock (stock === null), el service no toca el número
+          // de stock (Nielsen #1: el toast no puede sonar a éxito genérico
+          // cuando el dato que el usuario vino a mover no se movió).
           toast({
-            title: `Reposición registrada — ${totalUnits} unidad${totalUnits === 1 ? '' : 'es'}`,
+            title:
+              product.stock == null
+                ? 'Reposición registrada — no mueve stock (producto sin control)'
+                : `Reposición registrada — ${totalUnits} unidad${totalUnits === 1 ? '' : 'es'}`,
             variant: 'success',
           })
           setLastProductId(null)
@@ -193,6 +199,13 @@ export function StockEntryDialog({
               <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 Total a ingresar: {totalUnits} unidad{totalUnits === 1 ? '' : 'es'}
               </div>
+
+              {product?.stock == null && (
+                <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
+                  Este producto no tiene control de stock (Servicio / Alquiler): la reposición queda
+                  registrada en el historial, pero el número de stock no cambia.
+                </div>
+              )}
 
               <div className="space-y-1">
                 <Label htmlFor="se-note">Nota (opcional)</Label>

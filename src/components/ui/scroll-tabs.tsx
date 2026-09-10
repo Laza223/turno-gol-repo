@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export type ScrollTab = { href: string; label: string }
@@ -34,6 +34,34 @@ type Props = {
  */
 export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
   const navRef = useRef<HTMLElement>(null)
+  // H057: `scrollbar-none` (abajo) apaga la única señal nativa de que hay más
+  // tabs fuera de vista — en mobile la tira se corta en mitad de una palabra
+  // ("Ca…" de "Cantina" en Caja) sin flecha ni fade que lo avise. Estos dos
+  // fades reemplazan esa señal: solo se muestran cuando de verdad hay contenido
+  // oculto de ese lado, así que desaparecen apenas la tira entra completa.
+  const [fade, setFade] = useState({ left: false, right: false })
+
+  const updateFade = useCallback(() => {
+    const el = navRef.current
+    if (!el) return
+    setFade({
+      left: el.scrollLeft > 1,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    })
+  }, [])
+
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    updateFade()
+    el.addEventListener('scroll', updateFade, { passive: true })
+    const observer = new ResizeObserver(updateFade)
+    observer.observe(el)
+    return () => {
+      el.removeEventListener('scroll', updateFade)
+      observer.disconnect()
+    }
+  }, [updateFade, tabs])
 
   // MEJORA-UX QA (mobile 375px): con 7+ tabs la tira desborda y el navegador
   // la monta siempre con scrollLeft=0 — si el tab activo es de los últimos
@@ -44,40 +72,55 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
     navRef.current
       ?.querySelector('[aria-current="page"]')
       ?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
-  }, [activeHref])
+    updateFade()
+  }, [activeHref, updateFade])
 
   return (
-    <nav
-      ref={navRef}
-      aria-label={ariaLabel}
-      className={cn(
-        'flex gap-1 overflow-x-auto border-b border-border scrollbar-none [&::-webkit-scrollbar]:hidden',
-        className,
+    <div className="relative">
+      <nav
+        ref={navRef}
+        aria-label={ariaLabel}
+        className={cn(
+          'flex gap-1 overflow-x-auto border-b border-border scrollbar-none [&::-webkit-scrollbar]:hidden',
+          className,
+        )}
+      >
+        {tabs.map(({ href, label }) => {
+          const active = href === activeHref
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-2 px-4 text-sm font-medium transition-colors duration-150 md:min-h-9',
+                // `text-emerald-700` (el idiom "correcto" en el resto del repo)
+                // mide 4.41:1 sobre `bg-background` — donde vive este tab bar
+                // de verdad (SettingsPage lo renderiza fuera de cualquier
+                // `.card-premium`, ver reservas/page.tsx), no sobre una card
+                // blanca. `emerald-800` da 6.18:1 ahí y sigue leyéndose "marca".
+                active
+                  ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+            </Link>
+          )
+        })}
+      </nav>
+      {fade.left && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent"
+        />
       )}
-    >
-      {tabs.map(({ href, label }) => {
-        const active = href === activeHref
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              'flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-2 px-4 text-sm font-medium transition-colors duration-150 md:min-h-9',
-              // `text-emerald-700` (el idiom "correcto" en el resto del repo)
-              // mide 4.41:1 sobre `bg-background` — donde vive este tab bar
-              // de verdad (SettingsPage lo renderiza fuera de cualquier
-              // `.card-premium`, ver reservas/page.tsx), no sobre una card
-              // blanca. `emerald-800` da 6.18:1 ahí y sigue leyéndose "marca".
-              active
-                ? 'border-emerald-600 text-emerald-800 dark:text-emerald-400'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {label}
-          </Link>
-        )
-      })}
-    </nav>
+      {fade.right && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background to-transparent"
+        />
+      )}
+    </div>
   )
 }

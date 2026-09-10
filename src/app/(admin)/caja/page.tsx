@@ -4,6 +4,7 @@ import { Banknote } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
 import { getDaySummary, getCashFlows } from '@/modules/cashflow/cashflow.service'
+import { countPendingRefunds } from '@/modules/payments/refund.service'
 import { getDayOpen } from '@/modules/cashflow/cash-open.service'
 import { getStreetMoneyTotal } from '@/modules/cashflow/street-money.service'
 import { track } from '@/shared/observability/breadcrumbs'
@@ -36,16 +37,19 @@ export default async function CajaPage(props: {
   // reventaba el cast SQL ::date y addDays(); degradar a hoy (día operativo) en su lugar.
   const date = safeDateParam(searchParams.date, today)
 
-  const { summary, cashFlows, open, streetMoney } = await withTenantContext(
+  const { summary, cashFlows, open, streetMoney, pendingRefunds } = await withTenantContext(
     tenant.id,
     async (tx) => {
-      const [s, cf, o, sm] = await Promise.all([
+      const [s, cf, o, sm, pr] = await Promise.all([
         getDaySummary(tenant.id, date, cutoffMins, tx),
         getCashFlows(tenant.id, date, cutoffMins, tx),
         getDayOpen(tenant.id, date, tx),
         getStreetMoneyTotal(tenant.id, tx),
+        // Mismo total que /caja/devoluciones: la plata que el complejo DEBE.
+        // Solo el número, igual que streetMoney (B10) — las filas viven allá.
+        countPendingRefunds(tenant.id, tx),
       ])
-      return { summary: s, cashFlows: cf, open: o, streetMoney: sm }
+      return { summary: s, cashFlows: cf, open: o, streetMoney: sm, pendingRefunds: pr }
     },
   )
 
@@ -129,6 +133,7 @@ export default async function CajaPage(props: {
         <CajaHeaderStats
           collectedTodayCents={ingresos}
           streetMoneyCents={streetMoneyCents}
+          pendingRefundsCents={pendingRefunds.totalCents}
           isClosed={summary.isClosed}
           openedAt={open?.openedAt ?? null}
           closedAt={summary.close?.closedAt ?? null}

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import AbonadoForm from './AbonadoForm'
 import type { NewAbonadoState, PreviewAbonadoSlotsResult } from './actions'
+import type { SearchAbonadoPlayersActionResult } from '../actions'
 
 const COURTS = [
   { id: '00000000-0000-4000-8000-000000000101', name: 'Cancha 1' },
@@ -79,6 +80,10 @@ const meta = {
       success: true,
       dates: ['2026-03-16', '2026-03-23', '2026-03-30'],
       conflicts: [],
+    })),
+    searchPlayersAction: fn(async (): Promise<SearchAbonadoPlayersActionResult> => ({
+      success: true,
+      players: [],
     })),
   },
 } satisfies Meta<typeof AbonadoForm>

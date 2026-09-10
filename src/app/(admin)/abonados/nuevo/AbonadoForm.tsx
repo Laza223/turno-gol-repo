@@ -1,11 +1,13 @@
 'use client'
 
-import { useTransition, useState, useMemo } from 'react'
+import { useTransition, useState, useMemo, useRef, useEffect } from 'react'
 import type {
   NewAbonadoState,
   PreviewAbonadoSlotsInput,
   PreviewAbonadoSlotsResult,
 } from './actions'
+import type { SearchAbonadoPlayersActionResult } from '../actions'
+import type { PlayerSearchResult } from '@/modules/players/player-search.service'
 import { Badge } from '@/components/ui/badge'
 import { PhoneInput } from '@/components/ui/phone-input'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
@@ -25,6 +27,7 @@ import {
   CalendarCheck2,
   ArrowRight,
   Sparkles,
+  Check,
 } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 
@@ -36,6 +39,10 @@ export type SubmitNewAbonadoAction = (
 export type PreviewAbonadoSlotsAction = (
   input: PreviewAbonadoSlotsInput,
 ) => Promise<PreviewAbonadoSlotsResult>
+
+export type SearchAbonadoPlayersAction = (
+  input: unknown,
+) => Promise<SearchAbonadoPlayersActionResult>
 
 const DAYS: ComboboxOption[] = [
   { value: '1', label: 'Lunes' },
@@ -117,6 +124,7 @@ type PreviewData = {
 
 type FormValues = {
   courtId: string
+  playerId: string | null
   dayOfWeek: string
   timeStart: string
   timeEnd: string
@@ -247,10 +255,12 @@ export default function AbonadoForm({
   courts,
   submitAction,
   previewAction,
+  searchPlayersAction,
 }: {
   courts: { id: string; name: string }[]
   submitAction: SubmitNewAbonadoAction
   previewAction: PreviewAbonadoSlotsAction
+  searchPlayersAction: SearchAbonadoPlayersAction
 }) {
   const [phase, setPhase] = useState<'form' | 'preview'>('form')
   const [previewData, setPreviewData] = useState<PreviewData | null>(null)
@@ -272,6 +282,53 @@ export default function AbonadoForm({
   // segundo error no relacionado ('Teléfono requerido') — 🟡 QA 2026-08-13.
   const [contactPhone, setContactPhone] = useState('')
   const [pricePerSessionCents, setPricePerSessionCents] = useState<number | null>(null)
+
+  // H124: autocomplete de jugador registrado sobre el campo Cliente — mismo
+  // patrón que BookingFormModal (searchPlayersAction debounced). Elegir un
+  // resultado vincula playerId Y pisa contactName con el nombre real; seguir
+  // tipeando después de elegir desvincula (mismo comportamiento que Booking).
+  const [playerId, setPlayerId] = useState<string | null>(null)
+  const [playerResults, setPlayerResults] = useState<PlayerSearchResult[]>([])
+  const [playerSearchOpen, setPlayerSearchOpen] = useState(false)
+  const playerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (playerDebounceRef.current) clearTimeout(playerDebounceRef.current)
+    }
+  }, [])
+
+  function handleContactNameChange(next: string) {
+    setContactName(next)
+    setPlayerId(null)
+    if (playerDebounceRef.current) clearTimeout(playerDebounceRef.current)
+    const q = next.trim()
+    if (q.length < 2) {
+      setPlayerResults([])
+      setPlayerSearchOpen(false)
+      return
+    }
+    playerDebounceRef.current = setTimeout(() => {
+      void (async () => {
+        const result = await searchPlayersAction({ query: q })
+        if (result.success) {
+          setPlayerResults(result.players)
+          setPlayerSearchOpen(result.players.length > 0)
+        }
+      })()
+    }, 300)
+  }
+
+  function selectPlayer(player: PlayerSearchResult) {
+    setPlayerId(player.id)
+    setContactName(player.name)
+    setPlayerResults([])
+    setPlayerSearchOpen(false)
+  }
+
+  function clearPlayer() {
+    setPlayerId(null)
+  }
 
   const courtOptions: ComboboxOption[] = useMemo(
     () => courts.map((c) => ({ value: c.id, label: c.name })),
@@ -312,6 +369,7 @@ export default function AbonadoForm({
 
     const values: FormValues = {
       courtId,
+      playerId,
       dayOfWeek,
       timeStart: (fd.get('timeStart') as string) || timeStart,
       timeEnd: normalizeMidnightEnd((fd.get('timeEnd') as string) || timeEnd),
@@ -363,7 +421,10 @@ export default function AbonadoForm({
     if (!formValues) return
     const fd = new FormData()
     for (const [key, val] of Object.entries(formValues)) {
-      fd.set(key, val == null ? '' : String(val))
+      // playerId es el único campo nullable: si no hay jugador vinculado no
+      // se manda la clave (un '' no pasa z.guid().optional() del lado server).
+      if (val == null) continue
+      fd.set(key, String(val))
     }
     startConfirmTransition(async () => {
       const result = await submitAction(initial, fd)
@@ -534,7 +595,7 @@ export default function AbonadoForm({
                 <User className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-foreground">Cliente y Facturación</h2>
+                <h2 className="text-base font-semibold text-foreground">Cliente y tarifa</h2>
                 <p className="text-xs text-muted-foreground">
                   Datos de contacto y tarifa por sesión.
                 </p>
@@ -543,7 +604,7 @@ export default function AbonadoForm({
 
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
+                <div className="relative space-y-1.5">
                   {/* F-021: era el único campo del form sin label asociada — un
                       lector de pantalla anunciaba "Nombre y apellido, requerido"
                       sin decir de quién. `htmlFor`/`id` como los otros seis. */}
@@ -559,12 +620,68 @@ export default function AbonadoForm({
                       id="contactName"
                       name="contactName"
                       required
+                      autoComplete="off"
                       value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
+                      onChange={(e) => handleContactNameChange(e.target.value)}
+                      onFocus={() => {
+                        if (playerResults.length > 0) setPlayerSearchOpen(true)
+                      }}
+                      onBlur={() => {
+                        // Delay para que el mousedown de la opción llegue a disparar antes.
+                        setTimeout(() => setPlayerSearchOpen(false), 150)
+                      }}
                       placeholder="Nombre y apellido"
+                      // H124: mismo tratamiento a11y que el autocomplete de BookingFormModal
+                      // (role=combobox — aria-expanded/aria-autocomplete no valen en un
+                      // textbox pelado, axe: aria-allowed-attr).
+                      role="combobox"
+                      aria-expanded={playerSearchOpen}
+                      aria-autocomplete="list"
+                      aria-controls={
+                        playerSearchOpen && playerResults.length > 0
+                          ? 'abonadoPlayerSearchResults'
+                          : undefined
+                      }
                       className={`${fieldBase} pl-10 pr-3`}
                     />
                   </div>
+                  {playerId && (
+                    <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+                      <Check className="h-3 w-3 shrink-0" />
+                      <span>Vinculado a un jugador registrado.</span>
+                      <button
+                        type="button"
+                        onClick={clearPlayer}
+                        className="underline underline-offset-2 hover:text-emerald-800 dark:hover:text-emerald-300 cursor-pointer"
+                      >
+                        Quitar
+                      </button>
+                    </p>
+                  )}
+                  {playerSearchOpen && playerResults.length > 0 && (
+                    <ul
+                      id="abonadoPlayerSearchResults"
+                      role="listbox"
+                      aria-label="Jugadores encontrados"
+                      className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border/90 bg-popover text-popover-foreground shadow-xl backdrop-blur-xl p-1 space-y-0.5"
+                    >
+                      {playerResults.map((p) => (
+                        <li key={p.id} role="none">
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={false}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => selectPlayer(p)}
+                            className="flex w-full flex-col items-start rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer hover:bg-accent"
+                          >
+                            <span className="truncate font-medium text-foreground">{p.name}</span>
+                            <span className="truncate text-muted-foreground">{p.email}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 <PhoneInput

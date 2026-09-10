@@ -6,6 +6,7 @@ import { uuid, dateStr } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
+import { enforce } from '@/shared/rate-limit/apply'
 import {
   createAbonado,
   pauseAbonado,
@@ -22,6 +23,10 @@ import {
   PlayerNotClientError,
 } from '@/modules/abonados/abonado.errors'
 import type { AbonadoRow, CreateAbonadoInput } from '@/modules/abonados/abonado.types'
+import {
+  searchTenantPlayers,
+  type PlayerSearchResult,
+} from '@/modules/players/player-search.service'
 
 export type AbonadoActionResult =
   | { success: true; abonado: AbonadoRow; slotsGenerated?: number; conflictDates?: string[] }
@@ -157,4 +162,43 @@ export async function cancelAbonadoAction(
 
   revalidatePath('/abonados')
   return { success: true, abonado }
+}
+
+const searchAbonadoPlayersSchema = z.object({
+  query: z.string().trim().max(120),
+})
+
+export type SearchAbonadoPlayersActionResult =
+  { success: true; players: PlayerSearchResult[] } | { success: false; error: string }
+
+/**
+ * H124: mismo autocomplete de jugador registrado que ya tiene BookingFormModal
+ * (searchTenantPlayers, `player-search.service.ts`) — acá para /abonados/nuevo,
+ * que hasta ahora era un textbox pelado sin vínculo con la cuenta del jugador.
+ * Balde propio (`adminAvailabilityCheck`, no `adminRateLimited`): dispara en
+ * cada tecleo debounced, compartir el límite de mutaciones dejaría sin cupo a
+ * crear/pausar/cancelar. Mismo razonamiento que `searchBookingPlayersAction`
+ * en reservas/actions.ts.
+ */
+export async function searchAbonadoPlayersAction(
+  input: unknown,
+): Promise<SearchAbonadoPlayersActionResult> {
+  const parsed = searchAbonadoPlayersSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const outcome = await enforce('adminAvailabilityCheck', tenant.id)
+  if (!outcome.ok) {
+    return { success: false, error: 'Demasiadas búsquedas. Esperá un momento.' }
+  }
+
+  const players = await withTenantContext(tenant.id, (tx) =>
+    searchTenantPlayers(tenant.id, parsed.data.query, tx),
+  )
+  return { success: true, players }
 }

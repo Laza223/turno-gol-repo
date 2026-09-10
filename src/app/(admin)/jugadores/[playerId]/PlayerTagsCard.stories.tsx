@@ -79,6 +79,24 @@ export const MarcarYGuardar: Story = {
 }
 
 /**
+ * H134 (auditoría de coherencia 2026-09): tildar "Se le fía" con "No fiar" ya
+ * marcado destilda automáticamente el opuesto en el cliente — el estado
+ * contradictorio no se puede armar, no se rechaza recién al guardar.
+ */
+export const TildarUnoDestildaElOpuesto: Story = {
+  args: { tags: ['no_credit'] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('checkbox', { name: /no fiar/i })).toBeChecked()
+
+    await userEvent.click(canvas.getByRole('checkbox', { name: /se le fía/i }))
+
+    await expect(canvas.getByRole('checkbox', { name: /se le fía/i })).toBeChecked()
+    await expect(canvas.getByRole('checkbox', { name: /no fiar/i })).not.toBeChecked()
+  },
+}
+
+/**
  * Si el servidor rechaza, los checkboxes vuelven a lo último confirmado: dejarlos
  * marcados haría creer que la etiqueta quedó puesta cuando no se guardó nada.
  */

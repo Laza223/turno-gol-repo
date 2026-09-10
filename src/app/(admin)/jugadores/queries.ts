@@ -6,6 +6,10 @@ import {
   significantPhoneSql,
   suggestionPhoneSql,
 } from '@/modules/relationships/contact-identity'
+import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
+import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import type { RefundState } from '@/app/(admin)/reservas/deposit-display'
+import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 
 /**
  * Una persona vista por este complejo (B13). Dos orígenes, una sola lista:
@@ -123,7 +127,15 @@ export async function listTenantClients(
              p.id::text AS "playerId",
              (p.first_name || ' ' || p.last_name) AS name,
              p.email, p.phone,
-             r.bookings_count::int AS "bookingsCount",
+             -- H131 (auditoría de coherencia 2026-09): antes usaba el contador
+             -- denormalizado r.bookings_count (solo lo suma ensurePTR, y una
+             -- reserva creada por un camino que no lo llama —el propio seed
+             -- de esta auditoría incluido— lo desincroniza para siempre). La
+             -- ficha (getPlayerStats) ya hacía COUNT(*) en vivo; ahora esta
+             -- lista cuenta igual, mismo patrón que "fixedCount" acá abajo y
+             -- que "group_bookings" en la rama de personas sin cuenta.
+             (SELECT COUNT(*)::int FROM bookings bb
+               WHERE bb.tenant_id = r.tenant_id AND bb.player_id = r.player_id) AS "bookingsCount",
              r.noshow_count::int AS "noshowCount",
              r.last_booking_at::date::text AS "lastBookingAt",
              r.tags,
@@ -297,8 +309,14 @@ export type PlayerFixedSlotRow = {
   dayOfWeek: number
   timeStart: string
   timeEnd: string
-  status: string
+  status: AbonadoStatus
   contactName: string
+  /**
+   * H135 (auditoría de coherencia 2026-09): la ficha lo usa como respaldo
+   * cuando `players.phone` está vacío — mismo dato que ya carga el turno
+   * fijo, así el staff no tiene que ir a buscarlo a otra pestaña.
+   */
+  contactPhone: string | null
 }
 
 /**
@@ -318,7 +336,8 @@ export async function getPlayerFixedSlots(
            a.time_start::text AS "timeStart",
            a.time_end::text AS "timeEnd",
            a.status,
-           a.contact_name AS "contactName"
+           a.contact_name AS "contactName",
+           a.contact_phone AS "contactPhone"
     FROM abonados a
     JOIN courts c ON c.id = a.court_id
     WHERE a.tenant_id = ${tenantId} AND a.player_id = ${playerId}
@@ -376,8 +395,25 @@ export type PlayerBookingRow = {
   type: string
   priceSnapshot: number
   courtName: string
+  depositAmount: number
+  depositStatus: string
+  /** Qué dice `payments` sobre la devolución — ver deposit-display.ts. */
+  refundState: RefundState
+  /** Saldo pendiente y total cobrado en centavos — derivados abajo con `summarizeBookingCharges`. */
+  pending: number
+  totalPaid: number
 }
 
+/**
+ * H128 (auditoría de coherencia 2026-09): el historial mostraba precio +
+ * estado del sistema, sin decir si esa plata está cobrada, pendiente o
+ * devuelta (regla del dueño #4, brief §8: "la app muestra el estado de la
+ * PLATA, no el del sistema"). `depositAmount`/`depositStatus`/`refundState`
+ * salen del mismo patrón que `getBookingDetail`/`listTenantBookings`
+ * (reservas/queries.ts); `pending`/`totalPaid` se derivan igual que ahí, con
+ * `sumBookingChargesByBooking` + `summarizeBookingCharges`, para no
+ * reimplementar el cálculo de cobros de mostrador.
+ */
 export async function getPlayerBookingHistory(
   tenantId: string,
   playerId: string,
@@ -388,6 +424,17 @@ export async function getPlayerBookingHistory(
     SELECT b.id, b.date::text AS date,
            b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
            b.status, b.type, b.price_snapshot AS "priceSnapshot",
+           b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
+           (
+             SELECT CASE
+                      WHEN COUNT(*) = 0 THEN 'none'
+                      WHEN bool_or(pr.status = 'pending') THEN 'pending'
+                      ELSE 'settled'
+                    END
+             FROM payments pr
+             WHERE pr.booking_id = b.id AND pr.type = 'refund'
+               AND pr.status IN ('approved', 'pending')
+           ) AS "refundState",
            c.name AS "courtName"
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
@@ -395,5 +442,19 @@ export async function getPlayerBookingHistory(
     ORDER BY b.date DESC, b.time_start DESC
     LIMIT ${limit}
   `)
-  return rows as unknown as PlayerBookingRow[]
+  const list = rows as unknown as Array<Omit<PlayerBookingRow, 'pending' | 'totalPaid'>>
+  const charges = await sumBookingChargesByBooking(
+    tenantId,
+    list.map((r) => r.id),
+    tx,
+  )
+  return list.map((r) => {
+    const money = summarizeBookingCharges({
+      priceSnapshot: r.priceSnapshot,
+      depositAmount: r.depositAmount,
+      depositStatus: r.depositStatus,
+      chargesTotal: charges.get(r.id) ?? 0,
+    })
+    return { ...r, pending: money.pending, totalPaid: money.totalPaid }
+  })
 }

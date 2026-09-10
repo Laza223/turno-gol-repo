@@ -51,8 +51,14 @@ export const PLAYER_TAG_HINTS: Record<PlayerTag, string> = {
  * `gets_credit` y `no_credit` son opuestos: tenerlas juntas no significa nada y
  * deja al mostrador sin saber qué hacer. Se rechaza en el borde, no se resuelve
  * en silencio eligiendo una.
+ *
+ * Exportado (H134, auditoría de coherencia 2026-09): `PlayerTagsCard.toggle()`
+ * la reusa para destildar el opuesto en el cliente, en vez de dejar que el
+ * usuario arme un estado contradictorio y se entere recién al guardar
+ * (Nielsen #5, prevención de errores). Única fuente: si mañana se agrega un
+ * par nuevo, alcanza con sumarlo acá.
  */
-const EXCLUSIVE_PAIRS: ReadonlyArray<readonly [PlayerTag, PlayerTag]> = [
+export const EXCLUSIVE_PAIRS: ReadonlyArray<readonly [PlayerTag, PlayerTag]> = [
   ['gets_credit', 'no_credit'],
 ]
 

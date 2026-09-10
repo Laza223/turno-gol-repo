@@ -23,6 +23,8 @@ Título: Torneo Relámpago — Auditoría
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -87,6 +89,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración

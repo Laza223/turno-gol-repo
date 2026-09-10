@@ -29,16 +29,16 @@ Título: Personas
     - listitem:
       - paragraph: Diego Fernández Sin cuenta
       - paragraph: +5491155501234 · 0 reservas · 1 fijo
-      - button "Vincular"
+      - button "Vincular a Diego Fernández": Vincular
     - listitem:
       - paragraph: Grupo de los viernes (dado de baja) Sin cuenta
       - paragraph: +5491155509876 · 0 reservas
-      - button "Vincular"
+      - button "Vincular a Grupo de los viernes (dado de baja)": Vincular
     - listitem:
-      - link "Tomás Rivero demo-player@turnogol.test · 0 reservas · 1 fijo Organiza el grupo Tiene precio acordado 1 ausencia":
+      - link "Tomás Rivero demo-player@turnogol.test · 3 reservas · 1 fijo Organiza el grupo Tiene precio acordado 1 ausencia":
         - /url: /jugadores/d0000000-0000-4000-8000-000000000020
         - paragraph: Tomás Rivero
-        - paragraph: demo-player@turnogol.test · 0 reservas · 1 fijo
+        - paragraph: demo-player@turnogol.test · 3 reservas · 1 fijo
         - list:
           - listitem: Organiza el grupo
           - listitem: Tiene precio acordado
@@ -75,7 +75,7 @@ Vincular
 
 Tomás Rivero
 
-demo-player@turnogol.test · 0 reservas · 1 fijo
+demo-player@turnogol.test · 3 reservas · 1 fijo
 
 Organiza el grupo
 Tiene precio acordado

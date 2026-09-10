@@ -28,8 +28,8 @@ Título: Atlético Demo vs Los Fierros FC
   - text: Los Fierros FC
   - spinbutton "Los Fierros FC": "1"
   - button "Guardar resultado"
-  - button "Ganó Atlético Demo por no presentación"
-  - button "Ganó Los Fierros FC por no presentación"
+  - button "Ganó Atlético Demo por no presentación" [disabled]
+  - button "Ganó Los Fierros FC por no presentación" [disabled]
   - button "Borrar resultado"
   - paragraph: "Cargado: 2 - 1"
   - heading "Acta del partido" [level=2]

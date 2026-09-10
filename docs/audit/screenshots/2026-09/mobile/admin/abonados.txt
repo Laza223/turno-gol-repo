@@ -50,9 +50,9 @@ Título: Turnos fijos
       - paragraph: "+5491155501234"
       - text: Activo
       - paragraph: Turno $ 40.000
-      - button "Cancelar fecha..."
+      - button "Cómo cancelar una fecha"
       - button "Pausar"
-      - button "Cancelar"
+      - button "Cancelar turno fijo"
     - listitem:
       - paragraph: Mié 19:00–20:00
       - paragraph: Tomás Rivero
@@ -60,7 +60,7 @@ Título: Turnos fijos
       - text: Pausado
       - paragraph: Turno $ 40.000
       - button "Reactivar"
-      - button "Cancelar"
+      - button "Cancelar turno fijo"
     - listitem:
       - paragraph: Vie 18:00–19:00
       - paragraph: Grupo de los viernes (dado de baja)
@@ -103,9 +103,9 @@ Activo
 
 Turno $ 40.000
 
-Cancelar fecha...
+Cómo cancelar una fecha
 Pausar
-Cancelar
+Cancelar turno fijo
 
 Mié 19:00–20:00
 
@@ -118,7 +118,7 @@ Pausado
 Turno $ 40.000
 
 Reactivar
-Cancelar
+Cancelar turno fijo
 
 Vie 18:00–19:00
 

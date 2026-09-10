@@ -38,11 +38,10 @@ Título: Nuevo turno fijo
   - text: Hora fin
   - combobox "Hora fin": 20:00
   - status
-  - heading "Cliente y Facturación" [level=2]
+  - heading "Cliente y tarifa" [level=2]
   - paragraph: Datos de contacto y tarifa por sesión.
   - text: Cliente
-  - textbox "Cliente":
-    - /placeholder: Nombre y apellido
+  - combobox "Cliente"
   - text: Teléfono *
   - 'button "Seleccionar código de país. Actual: Argentina (+54)"':
     - img "Argentina": 🇦🇷
@@ -83,7 +82,7 @@ EMPIEZA EL
 Seleccionar fecha
 HORA INICIO
 HORA FIN
-Cliente y Facturación
+Cliente y tarifa
 
 Datos de contacto y tarifa por sesión.
 

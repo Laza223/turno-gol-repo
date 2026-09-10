@@ -3,7 +3,7 @@
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { LayoutGrid, Lock, Trophy } from 'lucide-react'
+import { LandPlot, LayoutGrid, Lock } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
@@ -137,7 +137,7 @@ export function CourtList({
     <PageHeader
       title="Canchas"
       subtitle={`${totalWord} · ${tenantName}`}
-      icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
+      icon={<LandPlot className="h-6 w-6" aria-hidden="true" />}
       actions={
         // El CTA se oculta del todo con el form abierto (mismo comportamiento
         // previo: no se podía disparar "+ Nueva cancha" mientras ya se estaba

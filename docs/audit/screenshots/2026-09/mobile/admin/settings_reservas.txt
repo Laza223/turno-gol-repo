@@ -1,5 +1,5 @@
 URL: http://localhost:3000/settings/reservas
-Título: Configuración
+Título: Reservas
 
 --- Árbol de accesibilidad ---
 - link "Saltar al contenido":
@@ -18,7 +18,8 @@ Título: Configuración
     - /url: /caja
   - button "Más"
 - main:
-  - heading "Configuración" [level=1]
+  - heading "Reservas" [level=1]
+  - paragraph: Seña, anticipación y política de cancelación de las reservas online.
   - navigation "Secciones de configuración":
     - link "Perfil":
       - /url: /settings/perfil
@@ -26,14 +27,10 @@ Título: Configuración
       - /url: /settings/reservas
     - link "Horarios":
       - /url: /settings/horarios
-    - link "Canchas":
-      - /url: /settings/canchas
     - link "Equipo":
       - /url: /settings/equipo
     - link "Facturación":
       - /url: /settings/facturacion
-    - link "Avisos":
-      - /url: /settings/avisos
   - heading "Políticas de Reserva" [level=2]
   - group "Seña":
     - text: Seña
@@ -80,14 +77,15 @@ Hoy
 Grilla
 Caja
 Más
-Configuración
+Reservas
+
+Seña, anticipación y política de cancelación de las reservas online.
+
 Perfil
 Reservas
 Horarios
-Canchas
 Equipo
 Facturación
-Avisos
 Políticas de Reserva
 SEÑA
 Requerir seña

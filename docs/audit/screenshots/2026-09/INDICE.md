@@ -1,6 +1,6 @@
 # Índice de capturas — corpus de auditoría de coherencia
 
-Generado: 2026-09-09T18:48:27.212Z
+Generado: 2026-09-10T18:31:17.411Z
 
 ## admin / desktop
 
@@ -18,13 +18,13 @@ Generado: 2026-09-09T18:48:27.212Z
 | `/caja/devoluciones` | Devoluciones pendientes | OK |
 | `/caja/productos` | Productos y stock | OK |
 | `/analiticas` | Métricas | OK |
-| `/settings/avisos` | Configuración | OK |
-| `/settings/canchas` | Canchas | OK |
+| `/settings/avisos` | Perfil | Redirigido a `/settings/perfil` |
+| `/canchas` | Canchas | OK |
 | `/settings/equipo` | Equipo | OK |
-| `/settings/facturacion` | Configuración | OK |
-| `/settings/horarios` | Configuración | OK |
-| `/settings/perfil` | Configuración | OK |
-| `/settings/reservas` | Configuración | OK |
+| `/settings/facturacion` | Facturación | OK |
+| `/settings/horarios` | Horarios | OK |
+| `/settings/perfil` | Perfil | OK |
+| `/settings/reservas` | Reservas | OK |
 | `/torneos` | Torneos | OK |
 | `/torneos/nuevo` | Nuevo torneo | OK |
 | `/reservas/{conSaldoPendiente}` | Detalle de la reserva | OK |
@@ -51,13 +51,13 @@ Generado: 2026-09-09T18:48:27.212Z
 | `/caja/devoluciones` | Devoluciones pendientes | OK |
 | `/caja/productos` | Productos y stock | OK |
 | `/analiticas` | Métricas | OK |
-| `/settings/avisos` | Configuración | OK |
-| `/settings/canchas` | Canchas | OK |
+| `/settings/avisos` | Perfil | Redirigido a `/settings/perfil` |
+| `/canchas` | Canchas | OK |
 | `/settings/equipo` | Equipo | OK |
-| `/settings/facturacion` | Configuración | OK |
-| `/settings/horarios` | Configuración | OK |
-| `/settings/perfil` | Configuración | OK |
-| `/settings/reservas` | Configuración | OK |
+| `/settings/facturacion` | Facturación | OK |
+| `/settings/horarios` | Horarios | OK |
+| `/settings/perfil` | Perfil | OK |
+| `/settings/reservas` | Reservas | OK |
 | `/torneos` | Torneos | OK |
 | `/torneos/nuevo` | Nuevo torneo | OK |
 | `/reservas/{conSaldoPendiente}` | Detalle de la reserva | OK |
@@ -85,7 +85,7 @@ Generado: 2026-09-09T18:48:27.212Z
 | `/caja/productos` | Productos y stock | OK |
 | `/analiticas` | Métricas | OK |
 | `/settings/avisos` | Grilla | Redirigido a `/grilla` |
-| `/settings/canchas` | Grilla | Redirigido a `/grilla` |
+| `/canchas` | Grilla | Redirigido a `/grilla` |
 | `/settings/equipo` | Grilla | Redirigido a `/grilla` |
 | `/settings/facturacion` | Grilla | Redirigido a `/grilla` |
 | `/settings/horarios` | Grilla | Redirigido a `/grilla` |
@@ -118,7 +118,7 @@ Generado: 2026-09-09T18:48:27.212Z
 | `/caja/productos` | Productos y stock | OK |
 | `/analiticas` | Métricas | OK |
 | `/settings/avisos` | Grilla | Redirigido a `/grilla` |
-| `/settings/canchas` | Grilla | Redirigido a `/grilla` |
+| `/canchas` | Grilla | Redirigido a `/grilla` |
 | `/settings/equipo` | Grilla | Redirigido a `/grilla` |
 | `/settings/facturacion` | Grilla | Redirigido a `/grilla` |
 | `/settings/horarios` | Grilla | Redirigido a `/grilla` |

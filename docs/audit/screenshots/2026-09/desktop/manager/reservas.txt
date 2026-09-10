@@ -34,10 +34,10 @@ Título: Reservas
   - navigation "Vistas de la grilla":
     - link "Calendario":
       - /url: /grilla
-    - link "Lista":
+    - link "Reservas":
       - /url: /reservas
   - heading "Reservas" [level=1]
-  - paragraph: Miércoles, 9 de septiembre · 13 reservas
+  - paragraph: Jueves, 10 de septiembre · 1 reserva
   - navigation "Rango de fechas":
     - link "Hoy":
       - /url: /reservas
@@ -51,11 +51,11 @@ Título: Reservas
     - button "Vista detallada" [pressed]
     - button "Vista compacta"
   - navigation "Filtro por estado":
-    - link "Todas 13":
+    - link "Todas 1":
       - /url: /reservas
-    - link "Confirmadas 11":
+    - link "Confirmadas 1":
       - /url: /reservas?status=confirmed
-    - link "Pendientes 2":
+    - link "Esperando seña 0":
       - /url: /reservas?status=pending_payment
     - link "Completadas 0":
       - /url: /reservas?status=completed
@@ -63,175 +63,29 @@ Título: Reservas
       - /url: /reservas?status=no_show
     - link "Canceladas 0":
       - /url: /reservas?status=canceladas
+  - navigation "Filtro por cancha":
+    - link "Todas las canchas":
+      - /url: /reservas
+    - link "Cancha 1 — F5":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000010
+    - link "Cancha 2 — F5":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000011
+    - link "Cancha 3 — F5 techada":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000012
+    - link "Cancha 4 — F7":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000013
   - region "Cancha 1 — F5":
     - heading "Cancha 1 — F5" [level=2]
     - list:
       - listitem:
-        - article "Reserva 18:00–19:00, Cancha 1 — F5, Los Pibes del Fondo, Confirmada, Sin cobrar":
-          - link "Reserva 18:00–19:00, Cancha 1 — F5, Los Pibes del Fondo, Confirmada, Sin cobrar":
-            - /url: /reservas/e63f8972-1592-479f-87f6-523dfe89e091
-          - text: 18:00–19:00
-          - paragraph: Los Pibes del Fondo
-          - paragraph: Cancha 1 — F5 · Sin seña
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-      - listitem:
-        - article "Reserva 20:00–21:00, Cancha 1 — F5, Cristian Ledesma, Confirmada, Sin cobrar":
-          - link "Reserva 20:00–21:00, Cancha 1 — F5, Cristian Ledesma, Confirmada, Sin cobrar":
-            - /url: /reservas/de6da744-1aa1-4051-a866-9bf852bf6a2a
-          - text: 20:00–21:00
-          - paragraph: Cristian Ledesma
-          - paragraph: Cancha 1 — F5 · Sin seña
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-      - listitem:
-        - article "Reserva 21:00–22:00, Cancha 1 — F5, Ferretería San Martín FC, Confirmada, Sin cobrar":
-          - link "Reserva 21:00–22:00, Cancha 1 — F5, Ferretería San Martín FC, Confirmada, Sin cobrar":
-            - /url: /reservas/aeeaf157-6cba-4d82-bc7d-7d0122d03bd9
-          - text: 21:00–22:00
-          - paragraph: Ferretería San Martín FC
-          - paragraph: Cancha 1 — F5 · Sin seña
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-  - region "Cancha 2 — F5":
-    - heading "Cancha 2 — F5" [level=2]
-    - list:
-      - listitem:
-        - article "Reserva 10:00–11:00, Cancha 2 — F5, Tomás Rivero, Confirmada, Falta $ 28.000":
-          - link "Reserva 10:00–11:00, Cancha 2 — F5, Tomás Rivero, Confirmada, Falta $ 28.000":
-            - /url: /reservas/a1000000-0000-4000-8000-000000000012
+        - article "Reserva 10:00–11:00, Cancha 1 — F5, Sin nombre, Torneo":
+          - link "Reserva 10:00–11:00, Cancha 1 — F5, Sin nombre, Torneo":
+            - /url: /reservas/94a7c9a0-6669-4b92-b4ad-de526fb71e52
           - text: 10:00–11:00
-          - paragraph: Tomás Rivero
-          - paragraph: Cancha 2 — F5 · Seña pagada ($ 12.000)
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Falta $ 28.000
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-      - listitem:
-        - article "Reserva 19:00–20:00, Cancha 2 — F5, Equipo de Nico, Confirmada, Sin cobrar":
-          - link "Reserva 19:00–20:00, Cancha 2 — F5, Equipo de Nico, Confirmada, Sin cobrar":
-            - /url: /reservas/520a0b85-b7be-476f-9a27-91bd11d306d9
-          - text: 19:00–20:00
-          - paragraph: Equipo de Nico
-          - paragraph: Cancha 2 — F5 · Sin seña
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-      - listitem:
-        - article "Reserva 21:00–22:00, Cancha 2 — F5, Martina y amigas, Confirmada, Sin cobrar":
-          - link "Reserva 21:00–22:00, Cancha 2 — F5, Martina y amigas, Confirmada, Sin cobrar":
-            - /url: /reservas/1220a031-950e-41d1-9c32-878710e2748b
-          - text: 21:00–22:00
-          - paragraph: Martina y amigas
-          - paragraph: Cancha 2 — F5 · Sin seña
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-  - region "Cancha 3 — F5 techada":
-    - heading "Cancha 3 — F5 techada" [level=2]
-    - list:
-      - listitem:
-        - article "Reserva 10:00–11:00, Cancha 3 — F5 techada, Reserva sin confirmar (hold), Pagando ahora, Sin cobrar":
-          - link "Reserva 10:00–11:00, Cancha 3 — F5 techada, Reserva sin confirmar (hold), Pagando ahora, Sin cobrar":
-            - /url: /reservas/a1000000-0000-4000-8000-000000000014
-          - text: 10:00–11:00
-          - paragraph: Reserva sin confirmar (hold)
-          - paragraph: Cancha 3 — F5 techada · Seña pendiente ($ 12.000)
-          - text: Pagando ahora
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Confirmar pago"
-      - listitem:
-        - article "Reserva 18:00–19:00, Cancha 3 — F5 techada, Colegio Don Bosco, Confirmada, Sin cobrar":
-          - link "Reserva 18:00–19:00, Cancha 3 — F5 techada, Colegio Don Bosco, Confirmada, Sin cobrar":
-            - /url: /reservas/1ffe2dbb-484a-4980-bfc1-26a7f2dccbd3
-          - text: 18:00–19:00
-          - paragraph: Colegio Don Bosco
-          - paragraph: Cancha 3 — F5 techada · Sin seña
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-      - listitem:
-        - article "Reserva 20:00–21:00, Cancha 3 — F5 techada, Los Lunes Nunca Más, Pagando ahora, Sin cobrar":
-          - link "Reserva 20:00–21:00, Cancha 3 — F5 techada, Los Lunes Nunca Más, Pagando ahora, Sin cobrar":
-            - /url: /reservas/4ac32b56-4181-46d0-8d20-458bc20ba01d
-          - text: 20:00–21:00
-          - paragraph: Los Lunes Nunca Más
-          - paragraph: Cancha 3 — F5 techada · Sin seña
-          - text: Pagando ahora
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Confirmar pago"
-      - listitem:
-        - article "Reserva 22:00–23:00, Cancha 3 — F5 techada, Banco Provincia, Confirmada, Sin cobrar":
-          - link "Reserva 22:00–23:00, Cancha 3 — F5 techada, Banco Provincia, Confirmada, Sin cobrar":
-            - /url: /reservas/10d43428-ec79-47e7-9974-939980379d29
-          - text: 22:00–23:00
-          - paragraph: Banco Provincia
-          - paragraph: Cancha 3 — F5 techada · Sin seña
-          - text: Confirmada
-          - paragraph: $ 40.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-  - region "Cancha 4 — F7":
-    - heading "Cancha 4 — F7" [level=2]
-    - list:
-      - listitem:
-        - article "Reserva 10:00–12:00, Cancha 4 — F7, Bloqueo, Bloqueado":
-          - link "Reserva 10:00–12:00, Cancha 4 — F7, Bloqueo, Bloqueado":
-            - /url: /reservas/a1000000-0000-4000-8000-000000000011
-          - text: 10:00–12:00
-          - paragraph: Bloqueo
-          - paragraph: Cancha 4 — F7
-          - text: Bloqueado
-      - listitem:
-        - article "Reserva 19:00–20:00, Cancha 4 — F7, La Redonda Veteranos, Confirmada, Sin cobrar":
-          - link "Reserva 19:00–20:00, Cancha 4 — F7, La Redonda Veteranos, Confirmada, Sin cobrar":
-            - /url: /reservas/6aef5e9a-0137-4966-b741-6e11da5e2ad0
-          - text: 19:00–20:00
-          - paragraph: La Redonda Veteranos
-          - paragraph: Cancha 4 — F7 · Sin seña
-          - text: Confirmada
-          - paragraph: $ 55.000
-          - paragraph: Sin cobrar
-          - button "Completada"
-          - button "Ausente"
-          - button "Cancelar"
-      - listitem:
-        - article "Reserva 21:00–22:00, Cancha 4 — F7, Panadería El Trigal, Confirmada, Sin cobrar":
-          - link "Reserva 21:00–22:00, Cancha 4 — F7, Panadería El Trigal, Confirmada, Sin cobrar":
-            - /url: /reservas/bd2ec085-c0a4-45b0-8167-821e5d8c6e5d
-          - text: 21:00–22:00
-          - paragraph: Panadería El Trigal
-          - paragraph: Cancha 4 — F7 · Sin seña
-          - text: Confirmada
-          - paragraph: $ 55.000
-          - paragraph: Sin cobrar
+          - paragraph: Sin nombre
+          - paragraph: Cancha 1 — F5 · Sin seña
+          - text: Torneo
+          - paragraph: $ 0
           - button "Completada"
           - button "Ausente"
           - button "Cancelar"
@@ -261,210 +115,42 @@ Configuración
 demo-manager@turnogol.test
 Salir
 Calendario
-Lista
+Reservas
 Reservas
 
-Miércoles, 9 de septiembre · 13 reservas
+Jueves, 10 de septiembre · 1 reserva
 
 Hoy
 Próximas
 Historial
 Buscar por nombre o número de reserva
 Todas
-13
+1
 Confirmadas
-11
-Pendientes
-2
+1
+Esperando seña
+0
 Completadas
 0
 Ausentes
 0
 Canceladas
 0
-CANCHA 1 — F5
-18:00–19:00
-
-Los Pibes del Fondo
-
-Cancha 1 — F5 · Sin seña
-
-Confirmada
-
-$ 40.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-20:00–21:00
-
-Cristian Ledesma
-
-Cancha 1 — F5 · Sin seña
-
-Confirmada
-
-$ 40.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-21:00–22:00
-
-Ferretería San Martín FC
-
-Cancha 1 — F5 · Sin seña
-
-Confirmada
-
-$ 40.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-CANCHA 2 — F5
-10:00–11:00
-
-Tomás Rivero
-
-Cancha 2 — F5 · Seña pagada ($ 12.000)
-
-Confirmada
-
-$ 40.000
-
-Falta $ 28.000
-
-Completada
-Ausente
-Cancelar
-19:00–20:00
-
-Equipo de Nico
-
-Cancha 2 — F5 · Sin seña
-
-Confirmada
-
-$ 40.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-21:00–22:00
-
-Martina y amigas
-
-Cancha 2 — F5 · Sin seña
-
-Confirmada
-
-$ 40.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-CANCHA 3 — F5 TECHADA
-10:00–11:00
-
-Reserva sin confirmar (hold)
-
-Cancha 3 — F5 techada · Seña pendiente ($ 12.000)
-
-Pagando ahora
-
-$ 40.000
-
-Sin cobrar
-
-Confirmar pago
-18:00–19:00
-
-Colegio Don Bosco
-
-Cancha 3 — F5 techada · Sin seña
-
-Confirmada
-
-$ 40.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-20:00–21:00
-
-Los Lunes Nunca Más
-
-Cancha 3 — F5 techada · Sin seña
-
-Pagando ahora
-
-$ 40.000
-
-Sin cobrar
-
-Confirmar pago
-22:00–23:00
-
-Banco Provincia
-
-Cancha 3 — F5 techada · Sin seña
-
-Confirmada
-
-$ 40.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-CANCHA 4 — F7
-10:00–12:00
-
-Bloqueo
-
+Todas las canchas
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
 Cancha 4 — F7
+CANCHA 1 — F5
+10:00–11:00
 
-Bloqueado
-19:00–20:00
+Sin nombre
 
-La Redonda Veteranos
+Cancha 1 — F5 · Sin seña
 
-Cancha 4 — F7 · Sin seña
+Torneo
 
-Confirmada
-
-$ 55.000
-
-Sin cobrar
-
-Completada
-Ausente
-Cancelar
-21:00–22:00
-
-Panadería El Trigal
-
-Cancha 4 — F7 · Sin seña
-
-Confirmada
-
-$ 55.000
-
-Sin cobrar
+$ 0
 
 Completada
 Ausente

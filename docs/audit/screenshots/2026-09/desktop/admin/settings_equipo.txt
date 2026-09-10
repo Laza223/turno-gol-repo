@@ -23,6 +23,8 @@ Título: Equipo
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -41,16 +43,12 @@ Título: Equipo
       - /url: /settings/reservas
     - link "Horarios":
       - /url: /settings/horarios
-    - link "Canchas":
-      - /url: /settings/canchas
     - link "Equipo":
       - /url: /settings/equipo
     - link "Facturación":
       - /url: /settings/facturacion
-    - link "Avisos":
-      - /url: /settings/avisos
   - heading "Equipo" [level=1]
-  - paragraph: 2 miembros del equipo activos
+  - paragraph: 0 miembros del equipo activos
   - button "Agregar miembro del equipo"
   - table:
     - rowgroup:
@@ -95,6 +93,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -103,13 +102,11 @@ Salir
 Perfil
 Reservas
 Horarios
-Canchas
 Equipo
 Facturación
-Avisos
 Equipo
 
-2 miembros del equipo activos
+0 miembros del equipo activos
 
 Agregar miembro del equipo
 NOMBRE	EMAIL	ROL	ESTADO	ACCIONES

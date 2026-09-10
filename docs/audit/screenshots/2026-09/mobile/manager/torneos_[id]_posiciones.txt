@@ -33,8 +33,8 @@ Título: Torneo Relámpago — Auditoría
       - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/inscripciones
   - heading "Posiciones" [level=3]
   - list:
-    - listitem: 1 Atlético Demo 3
-    - listitem: 2 Los Fierros FC 0
+    - listitem: 1 Atlético Demo DG +1 3
+    - listitem: 2 Los Fierros FC DG -1 0
   - heading "Goleadores" [level=3]
   - table:
     - rowgroup:
@@ -79,9 +79,11 @@ Inscripciones
 Posiciones
 1
 Atlético Demo
+DG +1
 3
 2
 Los Fierros FC
+DG -1
 0
 Goleadores
 #	JUGADOR	EQUIPO	GOLES

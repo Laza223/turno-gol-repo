@@ -6,7 +6,7 @@
 // (track.courts de @/shared/observability/breadcrumbs) realmente se emite.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { CourtForm } from '@/app/(admin)/settings/canchas/components/CourtForm'
+import { CourtForm } from '@/app/(admin)/canchas/components/CourtForm'
 import { openingHours } from '@/test/fixtures/tenant'
 import { track } from '@/shared/observability/breadcrumbs'
 

@@ -47,13 +47,6 @@ Título: Cantina
   - text: Buscar o seleccionar producto / servicio
   - combobox "Buscar o seleccionar producto / servicio"
   - status
-  - text: Recientes / Accesos rápidos
-  - button "Cerveza Quilmes 1L $ 3.500"
-  - button "Coca-Cola 500ml $ 2.500"
-  - button "Agua sin gas 500ml $ 2.000"
-  - button "Gatorade $ 3.000"
-  - button "Alfajor Guaymallén $ 800"
-  - button "Papas fritas $ 1.800"
   - text: Catálogo completo
   - button "Cerveza Quilmes 1L $ 3.500 Stock 46"
   - button "Coca-Cola 500ml $ 2.500 Stock 60"
@@ -73,7 +66,7 @@ Título: Cantina
   - list:
     - listitem:
       - paragraph: Grupo del sábado (fiado — seed auditoría)
-      - paragraph: $ 7.000 · hace 3 min
+      - paragraph: $ 7.000 · hace 23 h
       - paragraph: Sembrado por scripts/audit/seed-audit-extras.ts
       - button "Cobrar"
       - button "Anular"
@@ -112,19 +105,6 @@ Devoluciones
 Cantina
 Productos y stock
 Buscar o seleccionar producto / servicio
-Recientes / Accesos rápidos
-Cerveza Quilmes 1L
-$ 3.500
-Coca-Cola 500ml
-$ 2.500
-Agua sin gas 500ml
-$ 2.000
-Gatorade
-$ 3.000
-Alfajor Guaymallén
-$ 800
-Papas fritas
-$ 1.800
 CATÁLOGO COMPLETO
 Cerveza Quilmes 1L
 $ 3.500
@@ -157,7 +137,7 @@ Fiados pendientes
 
 Grupo del sábado (fiado — seed auditoría)
 
-$ 7.000 · hace 3 min
+$ 7.000 · hace 23 h
 
 Sembrado por scripts/audit/seed-audit-extras.ts
 

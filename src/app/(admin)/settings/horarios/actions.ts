@@ -103,7 +103,7 @@ export async function updateHorariosAction(
   })
 
   revalidatePath('/settings/horarios')
-  revalidatePath('/settings/canchas')
+  revalidatePath('/canchas')
   return {
     success: true,
     ...(pricing.filled ? { pricingFilled: pricing.filled } : {}),

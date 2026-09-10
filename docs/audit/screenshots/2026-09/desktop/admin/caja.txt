@@ -23,6 +23,8 @@ Título: Caja del día
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -35,14 +37,14 @@ Título: Caja del día
   - button "Cerrar sesión": Salir
 - main:
   - heading "Caja del día" [level=1]
-  - paragraph: Hoy — mié 9 de septiembre
+  - paragraph: Hoy — jue 10 de septiembre
   - navigation "Cambiar de día":
     - link "← Anterior":
-      - /url: /caja?date=2026-09-08
+      - /url: /caja?date=2026-09-09
     - link "Hoy":
       - /url: /caja
     - link "Siguiente →":
-      - /url: /caja?date=2026-09-10
+      - /url: /caja?date=2026-09-11
   - button "+ Agregar movimiento"
   - button "Cerrar caja"
   - navigation "Secciones de caja y cantina":
@@ -63,10 +65,15 @@ Título: Caja del día
     - paragraph: Deudas
     - paragraph: $ 847.000
     - paragraph: Pendiente de cobro
+  - 'link "Devolvés: $ 12.000 — ver devoluciones pendientes"':
+    - /url: /caja/devoluciones
+    - paragraph: Devolvés
+    - paragraph: $ 12.000
+    - paragraph: Señas sin devolver
   - paragraph: Estado de caja
-  - paragraph: Abierta — desde las 15:41 hs
-  - paragraph: "Fondo inicial: $ 20.000"
-  - button "Corregir"
+  - paragraph: Sin abrir
+  - paragraph: ¿Con cuánto efectivo arranca el día?
+  - button "Abrir caja"
   - note:
     - paragraph: "Al final del día, cerrá la caja: guarda el resumen y bloquea los movimientos."
     - button "Entendido"
@@ -95,6 +102,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -102,7 +110,7 @@ demo-admin@turnogol.test
 Salir
 Caja del día
 
-Hoy — mié 9 de septiembre
+Hoy — jue 10 de septiembre
 
 ← Anterior
 Hoy
@@ -125,13 +133,19 @@ $ 847.000
 
 Pendiente de cobro
 
+Devolvés
+
+$ 12.000
+
+Señas sin devolver
+
 Estado de caja
 
-Abierta — desde las 15:41 hs
+Sin abrir
 
-Fondo inicial: $ 20.000
+¿Con cuánto efectivo arranca el día?
 
-Corregir
+Abrir caja
 
 Al final del día, cerrá la caja: guarda el resumen y bloquea los movimientos.
 

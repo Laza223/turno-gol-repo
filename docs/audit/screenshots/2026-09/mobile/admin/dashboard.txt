@@ -19,14 +19,14 @@ Título: Hoy
   - button "Más"
 - main:
   - heading "Hoy" [level=1]
-  - paragraph: mié 9 de septiembre
+  - paragraph: jue 10 de septiembre
   - heading "Configuración del complejo" [level=2]
   - paragraph: 4 de 7 completados
   - text: 57%
   - button "Descartar"
   - list:
     - listitem:
-      - text: MercadoPago conectado
+      - text: Conectar MercadoPago
       - link "Configurar":
         - /url: /settings/facturacion
     - listitem:
@@ -38,12 +38,12 @@ Título: Hoy
     - /url: /caja
     - paragraph: Cobrado hoy
     - paragraph: $ 0
-    - paragraph: Sin dato de la semana pasada
+    - paragraph: ↓ 100% vs. semana pasada
   - link "Turnos de hoy":
     - /url: /grilla
     - paragraph: Turnos de hoy
-    - paragraph: 12 de 40
-    - paragraph: 30% de ocupación · 2 bloqueados
+    - paragraph: 1 de 42
+    - paragraph: 2% de ocupación
   - link "Deudas":
     - /url: /caja/deudas
     - paragraph: Deudas
@@ -55,11 +55,12 @@ Título: Hoy
       - text: 1 devolución pendiente — $ 12.000 a devolver
       - link "Gestionar":
         - /url: /caja/devoluciones
-  - heading "Mientras no estabas" [level=2]
-  - list:
     - listitem:
-      - link "Cancelación — Cancha 2 — F5 20:00-21:00 03:41 p. m. Tomás Rivero":
-        - /url: /reservas/a1000000-0000-4000-8000-000000000015
+      - text: La caja de ayer sigue sin cerrar
+      - link "Cerrar caja de ayer":
+        - /url: /caja
+  - heading "Mientras no estabas" [level=2]
+  - heading "Nada nuevo desde la última vez." [level=2]
 - region "Notifications (F8)":
   - list
 - alert
@@ -74,7 +75,7 @@ Caja
 Más
 Hoy
 
-mié 9 de septiembre
+jue 10 de septiembre
 
 Configuración del complejo
 
@@ -82,7 +83,7 @@ Configuración del complejo
 
 57%
 Descartar
-MercadoPago conectado
+Conectar MercadoPago
 Configurar
 Link público compartido
 Copiar link
@@ -93,13 +94,13 @@ Cobrado hoy
 
 $ 0
 
-Sin dato de la semana pasada
+↓ 100% vs. semana pasada
 
 Turnos de hoy
 
-12 de 40
+1 de 42
 
-30% de ocupación · 2 bloqueados
+2% de ocupación
 
 Deudas
 
@@ -110,7 +111,7 @@ Pendiente de cobro
 Necesita tu atención
 1 devolución pendiente — $ 12.000 a devolver
 Gestionar
+La caja de ayer sigue sin cerrar
+Cerrar caja de ayer
 Mientras no estabas
-Cancelación — Cancha 2 — F5 20:00-21:00
-03:41 p. m.
-Tomás Rivero
+Nada nuevo desde la última vez.

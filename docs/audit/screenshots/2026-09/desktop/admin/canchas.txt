@@ -1,5 +1,5 @@
-URL: http://localhost:3000/torneos
-Título: Torneos
+URL: http://localhost:3000/canchas
+Título: Canchas
 
 --- Árbol de accesibilidad ---
 - link "Saltar al contenido":
@@ -36,17 +36,25 @@ Título: Torneos
   - button "Cambiar tema"
   - button "Cerrar sesión": Salir
 - main:
-  - heading "Torneos" [level=1]
-  - paragraph: 1 torneo
-  - link "Nuevo torneo":
-    - /url: /torneos/nuevo
-  - list:
-    - listitem:
-      - link "Torneo Relámpago — Auditoría Liga · Desde el 10/09/2026 Borrador":
-        - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a
-        - paragraph: Torneo Relámpago — Auditoría
-        - paragraph: Liga · Desde el 10/09/2026
-        - text: Borrador
+  - heading "Canchas" [level=1]
+  - paragraph: 4 canchas · Complejo La Redonda
+  - button "+ Nueva cancha"
+  - text: Cancha 1 — F5 Activa
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 2 — F5 Activa
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 3 — F5 techada Activa
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 4 — F7 Pausada
+  - paragraph: Césped sintético · 14 jugadores
+  - button "Editar"
+  - button "Activar"
 - region "Notifications (F8)":
   - list
 - alert
@@ -74,14 +82,36 @@ Métricas
 Configuración
 demo-admin@turnogol.test
 Salir
-Torneos
+Canchas
 
-1 torneo
+4 canchas · Complejo La Redonda
 
-Nuevo torneo
++ Nueva cancha
+Cancha 1 — F5
+Activa
 
-Torneo Relámpago — Auditoría
+Césped sintético · 10 jugadores
 
-Liga · Desde el 10/09/2026
+Editar
+Desactivar
+Cancha 2 — F5
+Activa
 
-Borrador
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 3 — F5 techada
+Activa
+
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 4 — F7
+Pausada
+
+Césped sintético · 14 jugadores
+
+Editar
+Activar

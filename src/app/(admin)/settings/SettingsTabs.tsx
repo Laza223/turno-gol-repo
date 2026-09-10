@@ -9,7 +9,6 @@ const SETTINGS_TABS = [
   { href: '/settings/perfil', label: 'Perfil' },
   { href: '/settings/reservas', label: 'Reservas' },
   { href: '/settings/horarios', label: 'Horarios' },
-  { href: '/settings/canchas', label: 'Canchas' },
   { href: '/settings/equipo', label: 'Equipo' },
   { href: '/settings/facturacion', label: 'Facturación' },
 ]

@@ -23,6 +23,8 @@ Título: Personas
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -51,23 +53,23 @@ Título: Personas
         - columnheader "Ausencias"
         - columnheader "Acciones"
     - rowgroup:
-      - row "Diego Fernández Sin cuenta +5491155501234 0 1 — Vincular":
+      - row "Diego Fernández Sin cuenta +5491155501234 0 1 — Vincular a Diego Fernández":
         - cell "Diego Fernández Sin cuenta"
         - cell "+5491155501234"
         - cell "0"
         - cell "1"
         - cell "—"
-        - cell "Vincular":
-          - button "Vincular"
-      - row "Grupo de los viernes (dado de baja) Sin cuenta +5491155509876 0 — — Vincular":
+        - cell "Vincular a Diego Fernández":
+          - button "Vincular a Diego Fernández": Vincular
+      - row "Grupo de los viernes (dado de baja) Sin cuenta +5491155509876 0 — — Vincular a Grupo de los viernes (dado de baja)":
         - cell "Grupo de los viernes (dado de baja) Sin cuenta"
         - cell "+5491155509876"
         - cell "0"
         - cell "—"
         - cell "—"
-        - cell "Vincular":
-          - button "Vincular"
-      - row "Tomás Rivero Organiza el grupo Tiene precio acordado demo-player@turnogol.test 0 1 1":
+        - cell "Vincular a Grupo de los viernes (dado de baja)":
+          - button "Vincular a Grupo de los viernes (dado de baja)": Vincular
+      - row "Tomás Rivero Organiza el grupo Tiene precio acordado demo-player@turnogol.test 3 1 1":
         - cell "Tomás Rivero Organiza el grupo Tiene precio acordado":
           - link "Tomás Rivero":
             - /url: /jugadores/d0000000-0000-4000-8000-000000000020
@@ -75,7 +77,7 @@ Título: Personas
             - listitem: Organiza el grupo
             - listitem: Tiene precio acordado
         - cell "demo-player@turnogol.test"
-        - cell "0"
+        - cell "3"
         - cell "1"
         - cell "1"
         - cell
@@ -100,6 +102,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -124,4 +127,4 @@ Vincular
 Tomás Rivero
 Organiza el grupo
 Tiene precio acordado
-	demo-player@turnogol.test	0	1	1	
+	demo-player@turnogol.test	3	1	1	

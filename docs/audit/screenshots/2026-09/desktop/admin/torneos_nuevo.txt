@@ -23,6 +23,8 @@ Título: Nuevo torneo
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -45,7 +47,7 @@ Título: Nuevo torneo
   - combobox "Formato": Liga (todos contra todos)
   - status
   - text: Arranca el
-  - button "Arranca el": 09/09/2026
+  - button "Arranca el": 10/09/2026
   - button "Limpiar fecha"
   - text: Termina el (opcional)
   - button "Termina el (opcional)": Sin fecha de cierre
@@ -82,6 +84,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -95,7 +98,7 @@ Los horarios y los equipos se cargan después
 Nombre del torneo
 Formato
 Arranca el
-09/09/2026
+10/09/2026
 Termina el (opcional)
 Sin fecha de cierre
 Duración de cada partido

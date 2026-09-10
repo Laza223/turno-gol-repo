@@ -31,10 +31,6 @@ Título: Detalle de la reserva
   - definition: —
   - term: Estado
   - definition: Confirmada
-  - term: Precio
-  - definition: $ 40.000
-  - term: Seña
-  - definition: $ 12.000 (pagada)
   - term: Método de pago
   - definition: Efectivo
   - heading "Cobros de turno" [level=2]
@@ -74,10 +70,6 @@ TELÉFONO
 —
 ESTADO
 Confirmada
-PRECIO
-$ 40.000
-SEÑA
-$ 12.000 (pagada)
 MÉTODO DE PAGO
 Efectivo
 Cobros de turno

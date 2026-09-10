@@ -29,7 +29,7 @@ Título: Nuevo torneo
   - combobox "Formato": Liga (todos contra todos)
   - status
   - text: Arranca el
-  - button "Arranca el": 09/09/2026
+  - button "Arranca el": 10/09/2026
   - button "Limpiar fecha"
   - text: Termina el (opcional)
   - button "Termina el (opcional)": Sin fecha de cierre
@@ -65,7 +65,7 @@ Los horarios y los equipos se cargan después
 Nombre del torneo
 Formato
 Arranca el
-09/09/2026
+10/09/2026
 Termina el (opcional)
 Sin fecha de cierre
 Duración de cada partido

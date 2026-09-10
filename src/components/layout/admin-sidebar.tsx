@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Contact,
   Banknote,
+  LandPlot,
   ChartLine,
   Lock,
   Settings,
@@ -75,6 +76,10 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Clientes',
     match: (p) => p.startsWith('/jugadores') || p.startsWith('/abonados'),
   },
+  // Canchas salió de Configuración el 2026-09-10, a pedido del dueño: define el
+  // inventario y los precios, que es de lo que vive el complejo, y estaba
+  // enterrada a dos niveles. Sigue siendo solo del dueño.
+  { href: '/canchas', icon: LandPlot, label: 'Canchas', requiresAdmin: true },
   { href: '/torneos', icon: Trophy, label: 'Torneos', requiresTournaments: true },
   { href: '/analiticas', icon: ChartLine, label: 'Métricas' },
 ]

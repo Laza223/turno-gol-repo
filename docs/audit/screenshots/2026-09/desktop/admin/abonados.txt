@@ -23,6 +23,8 @@ Título: Turnos fijos
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -68,23 +70,23 @@ Título: Turnos fijos
         - columnheader "Estado"
         - columnheader "Acciones"
     - rowgroup:
-      - row "Lun 20:00–21:00 Diego Fernández +5491155501234 $ 40.000 Activo Cancelar fecha... Pausar Cancelar":
+      - row "Lun 20:00–21:00 Diego Fernández +5491155501234 $ 40.000 Activo Cómo cancelar una fecha Pausar Cancelar turno fijo":
         - cell "Lun 20:00–21:00"
         - cell "Diego Fernández +5491155501234"
         - cell "$ 40.000"
         - cell "Activo"
-        - cell "Cancelar fecha... Pausar Cancelar":
-          - button "Cancelar fecha..."
+        - cell "Cómo cancelar una fecha Pausar Cancelar turno fijo":
+          - button "Cómo cancelar una fecha"
           - button "Pausar"
-          - button "Cancelar"
-      - row "Mié 19:00–20:00 Tomás Rivero +5491155505678 $ 40.000 Pausado Reactivar Cancelar":
+          - button "Cancelar turno fijo"
+      - row "Mié 19:00–20:00 Tomás Rivero +5491155505678 $ 40.000 Pausado Reactivar Cancelar turno fijo":
         - cell "Mié 19:00–20:00"
         - cell "Tomás Rivero +5491155505678"
         - cell "$ 40.000"
         - cell "Pausado"
-        - cell "Reactivar Cancelar":
+        - cell "Reactivar Cancelar turno fijo":
           - button "Reactivar"
-          - button "Cancelar"
+          - button "Cancelar turno fijo"
       - row "Vie 18:00–19:00 Grupo de los viernes (dado de baja) +5491155509876 $ 40.000 Cancelado":
         - cell "Vie 18:00–19:00"
         - cell "Grupo de los viernes (dado de baja) +5491155509876"
@@ -112,6 +114,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -135,12 +138,12 @@ Lun 20:00–21:00
 Diego Fernández
 +5491155501234
 	$ 40.000	
-Activo	Cancelar fecha...PausarCancelar
+Activo	Cómo cancelar una fechaPausarCancelar turno fijo
 Mié 19:00–20:00	
 Tomás Rivero
 +5491155505678
 	$ 40.000	
-Pausado	ReactivarCancelar
+Pausado	ReactivarCancelar turno fijo
 Vie 18:00–19:00	
 Grupo de los viernes (dado de baja)
 +5491155509876

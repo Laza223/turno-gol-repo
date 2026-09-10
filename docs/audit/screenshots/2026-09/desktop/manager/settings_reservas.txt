@@ -34,12 +34,11 @@ Título: Grilla
   - navigation "Vistas de la grilla":
     - link "Calendario":
       - /url: /grilla
-    - link "Lista":
+    - link "Reservas":
       - /url: /reservas
   - status
   - heading "Grilla" [level=1]
-  - paragraph: Mié 9 de septiembre
-  - paragraph: "Por cobrar: $ 418.000 (10 turnos)"
+  - paragraph: Jue 10 de septiembre
   - button "Cambiar densidad de la grilla": Cómodo
   - button "Hoy"
   - button "Semana anterior"
@@ -49,9 +48,9 @@ Título: Grilla
     - listitem:
       - button "Mar 8"
     - listitem:
-      - button "Mié 9 (hoy)": Mié 9
+      - button "Mié 9"
     - listitem:
-      - button "Jue 10"
+      - button "Jue 10 (hoy)": Jue 10
     - listitem:
       - button "Vie 11"
     - listitem:
@@ -59,41 +58,45 @@ Título: Grilla
     - listitem:
       - button "Dom 13"
   - button "Semana siguiente"
-  - region "Grilla de turnos del Mié 9 de septiembre":
+  - region "Grilla de turnos del Jue 10 de septiembre":
     - text: Cancha 1 — F5 Cancha 2 — F5 Cancha 3 — F5 techada Cancha 4 — F7 (pausada) 10:00 11:00 12:00 13:00 14:00 15:00 16:00 17:00 18:00 19:00 20:00 21:00 22:00 23:00
+    - 'button "Cancha 1 — F5 10:00–11:00: Torneo"': Torneo
     - button "Reservar turno 16:00 en Cancha 1 — F5"
     - button "Reservar turno 17:00 en Cancha 1 — F5"
-    - 'button "Cancha 1 — F5 18:00–19:00: Los Pibes del Fondo, Confirmada, falta cobrar $ 40.000"': Los Pibes del Fondo Confirmada $ 40.000
+    - button "Reservar turno 18:00 en Cancha 1 — F5"
     - button "Reservar turno 19:00 en Cancha 1 — F5"
-    - 'button "Cancha 1 — F5 20:00–21:00: Cristian Ledesma, Confirmada, falta cobrar $ 40.000"': Cristian Ledesma Confirmada $ 40.000
-    - 'button "Cancha 1 — F5 21:00–22:00: Ferretería San Martín FC, Confirmada, falta cobrar $ 40.000"': Ferretería San Martín FC Confirmada $ 40.000
+    - button "Reservar turno 20:00 en Cancha 1 — F5"
+    - button "Reservar turno 21:00 en Cancha 1 — F5"
     - button "Reservar turno 22:00 en Cancha 1 — F5"
     - button "Reservar turno 23:00 en Cancha 1 — F5"
-    - 'button "Cancha 2 — F5 10:00–11:00: Tomás Rivero, Señada, falta cobrar $ 28.000"': Tomás Rivero Señada $ 28.000
     - button "Reservar turno 16:00 en Cancha 2 — F5"
     - button "Reservar turno 17:00 en Cancha 2 — F5"
     - button "Reservar turno 18:00 en Cancha 2 — F5"
-    - 'button "Cancha 2 — F5 19:00–20:00: Equipo de Nico, Confirmada, falta cobrar $ 40.000"': Equipo de Nico Confirmada $ 40.000
+    - button "Reservar turno 19:00 en Cancha 2 — F5"
     - button "Reservar turno 20:00 en Cancha 2 — F5"
-    - 'button "Cancha 2 — F5 21:00–22:00: Martina y amigas, Confirmada, falta cobrar $ 40.000"': Martina y amigas Confirmada $ 40.000
+    - button "Reservar turno 21:00 en Cancha 2 — F5"
     - button "Reservar turno 22:00 en Cancha 2 — F5"
     - button "Reservar turno 23:00 en Cancha 2 — F5"
-    - 'button "Cancha 3 — F5 techada 10:00–11:00: Reserva sin confirmar (h, Pagando ahora"': Reserva sin confirmar (h Pagando ahora 1:26
     - button "Reservar turno 16:00 en Cancha 3 — F5 techada"
     - button "Reservar turno 17:00 en Cancha 3 — F5 techada"
-    - 'button "Cancha 3 — F5 techada 18:00–19:00: Colegio Don Bosco, Confirmada, falta cobrar $ 40.000"': Colegio Don Bosco Confirmada $ 40.000
+    - button "Reservar turno 18:00 en Cancha 3 — F5 techada"
     - button "Reservar turno 19:00 en Cancha 3 — F5 techada"
-    - 'button "Cancha 3 — F5 techada 20:00–21:00: Los Lunes Nunca Más, Pagando ahora"': Los Lunes Nunca Más Pagando ahora 1:15
+    - button "Reservar turno 20:00 en Cancha 3 — F5 techada"
     - button "Reservar turno 21:00 en Cancha 3 — F5 techada"
-    - 'button "Cancha 3 — F5 techada 22:00–23:00: Banco Provincia, Confirmada, falta cobrar $ 40.000"': Banco Provincia Confirmada $ 40.000
+    - button "Reservar turno 22:00 en Cancha 3 — F5 techada"
     - button "Reservar turno 23:00 en Cancha 3 — F5 techada"
-    - 'button "Cancha 4 — F7 10:00–12:00: Cancha en mantenimiento , Bloqueado"': Cancha en mantenimiento Bloqueado
-    - 'button "Cancha 4 — F7 19:00–20:00: La Redonda Veteranos, Confirmada, falta cobrar $ 55.000"': La Redonda Veteranos Confirmada $ 55.000
-    - 'button "Cancha 4 — F7 21:00–22:00: Panadería El Trigal, Confirmada, falta cobrar $ 55.000"': Panadería El Trigal Confirmada $ 55.000
   - button "¿Qué significa cada color?"
 - region "Notifications (F8)":
-  - list
-- alert
+  - list:
+    - listitem:
+      - text: No tenés acceso a Configuración Es solo del dueño del complejo.
+      - button "Cerrar"
+    - listitem:
+      - text: No tenés acceso a Configuración Es solo del dueño del complejo.
+      - button "Cerrar"
+- alert: Grilla
+- status: Notification No tenés acceso a ConfiguraciónEs solo del dueño del complejo.
+- status: Notification No tenés acceso a ConfiguraciónEs solo del dueño del complejo.
 
 --- Texto visible ---
 Saltar al contenido
@@ -117,13 +120,11 @@ Configuración
 demo-manager@turnogol.test
 Salir
 Calendario
-Lista
+Reservas
 
 Grilla
 
-Mié 9 de septiembre
-
-Por cobrar: $ 418.000 (10 turnos)
+Jue 10 de septiembre
 
 Cómodo
 Hoy
@@ -160,42 +161,11 @@ Cancha 4 — F7
 21:00
 22:00
 23:00
-Los Pibes del Fondo
-Confirmada
-$ 40.000
-Cristian Ledesma
-Confirmada
-$ 40.000
-Ferretería San Martín FC
-Confirmada
-$ 40.000
-Tomás Rivero
-Señada
-$ 28.000
-Equipo de Nico
-Confirmada
-$ 40.000
-Martina y amigas
-Confirmada
-$ 40.000
-Reserva sin confirmar (h
-Pagando ahora
-1:26
-Colegio Don Bosco
-Confirmada
-$ 40.000
-Los Lunes Nunca Más
-Pagando ahora
-1:15
-Banco Provincia
-Confirmada
-$ 40.000
-Cancha en mantenimiento
-Bloqueado
-La Redonda Veteranos
-Confirmada
-$ 55.000
-Panadería El Trigal
-Confirmada
-$ 55.000
+Torneo
 ¿Qué significa cada color?
+No tenés acceso a Configuración
+Es solo del dueño del complejo.
+No tenés acceso a Configuración
+Es solo del dueño del complejo.
+Notification No tenés acceso a ConfiguraciónEs solo del dueño del complejo.
+Notification No tenés acceso a ConfiguraciónEs solo del dueño del complejo.

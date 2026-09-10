@@ -98,7 +98,7 @@ export const Expandido: Story = {
 
 /**
  * La tarjeta ya no pide foto: el uploader que vivía acá subía a R2 y el submit
- * del paso descartaba el resultado. Se cargan desde `/settings/canchas`, contra
+ * del paso descartaba el resultado. Se cargan desde `/canchas`, contra
  * la cancha real.
  */
 export const SinUploaderDeFoto: Story = {

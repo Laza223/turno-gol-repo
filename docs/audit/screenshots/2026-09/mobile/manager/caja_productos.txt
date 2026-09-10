@@ -32,6 +32,7 @@ Título: Productos y stock
     - link "Productos y stock":
       - /url: /caja/productos
   - heading "Catálogo" [level=2]
+  - text: Agregar producto — solo el dueño puede hacerlo
   - list:
     - listitem:
       - paragraph: Cerveza Quilmes 1L
@@ -63,36 +64,8 @@ Título: Productos y stock
       - paragraph: $ 1.800 · Stock 30
       - button "Reponer"
       - button "Opciones para Papas fritas"
-  - region "Ventas de cantina — últimos 7 días":
-    - heading "Ventas de cantina — últimos 7 días" [level=2]
-    - group "Rango del reporte":
-      - link "7 días":
-        - /url: /caja/productos?range=7
-      - link "30 días":
-        - /url: /caja/productos?range=30
-    - heading "Ranking de productos" [level=3]
-    - table:
-      - rowgroup:
-        - row "Producto Unidades Plata":
-          - columnheader "Producto"
-          - columnheader "Unidades"
-          - columnheader "Plata"
-      - rowgroup:
-        - row "Cerveza Quilmes 1L 2 $ 7.000":
-          - cell "Cerveza Quilmes 1L"
-          - cell "2"
-          - cell "$ 7.000"
-    - heading "Cobrado por método" [level=3]
-    - paragraph: Sin cobros en el período.
-    - heading "Por día" [level=3]
-    - paragraph: Sin cobros en el período.
-    - paragraph: El ranking cuenta lo entregado (incluye fiados sin cobrar). Los montos cobrados entran cuando se pagan.
-  - heading "Movimientos de stock" [level=2]
-  - list:
-    - listitem:
-      - paragraph: Cerveza Quilmes 1L
-      - paragraph: Fiado · 9/9, 15:41
-      - text: "-2"
+  - heading "Informes de ventas y stock Ranking de productos, cobrado por método, por día y movimientos de stock." [level=2]:
+    - button "Informes de ventas y stock Ranking de productos, cobrado por método, por día y movimientos de stock."
 - region "Notifications (F8)":
   - list
 - alert
@@ -115,6 +88,8 @@ Devoluciones
 Cantina
 Productos y stock
 Catálogo
+Agregar producto
+— solo el dueño puede hacerlo
 
 Cerveza Quilmes 1L
 
@@ -151,26 +126,5 @@ Papas fritas
 $ 1.800 · Stock 30
 
 Reponer
-Ventas de cantina — últimos 7 días
-7 días
-30 días
-RANKING DE PRODUCTOS
-PRODUCTO	UNIDADES	PLATA
-Cerveza Quilmes 1L	2	$ 7.000
-COBRADO POR MÉTODO
-
-Sin cobros en el período.
-
-POR DÍA
-
-Sin cobros en el período.
-
-El ranking cuenta lo entregado (incluye fiados sin cobrar). Los montos cobrados entran cuando se pagan.
-
-Movimientos de stock
-
-Cerveza Quilmes 1L
-
-Fiado · 9/9, 15:41
-
--2
+Informes de ventas y stock
+Ranking de productos, cobrado por método, por día y movimientos de stock.

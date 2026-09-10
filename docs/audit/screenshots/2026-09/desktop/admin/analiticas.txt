@@ -23,6 +23,8 @@ Título: Métricas
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -38,22 +40,23 @@ Título: Métricas
   - paragraph: Actividad del complejo en tiempo real y reporte mensual de ingresos.
   - heading "Reservas por día" [level=2]
   - paragraph: Últimos 30 días
-  - application: 11/08 13/08 15/08 17/08 19/08 21/08 23/08 25/08 27/08 29/08 31/08 02/09 04/09 06/09 09/09 0 3 6 9 12
+  - application: 12/08 14/08 16/08 18/08 20/08 22/08 24/08 26/08 28/08 30/08 01/09 03/09 05/09 07/09 10/09 0 3 6 9 12
   - heading "Tasa de ausencias" [level=2]
   - paragraph: 16,7%
   - paragraph: 4 ausencias sobre 24 turnos terminados
-  - text: +16,7 pts vs período anterior
-  - heading "Ingresos" [level=2]
+  - text: Todavía no hay datos suficientes para comparar.
+  - paragraph: Ingresos
+  - paragraph: $ 830.000
+  - paragraph: Ventana de 30 días
   - group "Agrupar ingresos por":
     - button "Día" [pressed]
     - button "Semana"
     - button "Mes"
-  - paragraph: "Total del período: $ 830.000"
-  - application: 11/08 12/08 14/08 16/08 18/08 20/08 22/08 24/08 26/08 28/08 30/08 01/09 03/09 05/09 07/09 09/09 $ 0 $ 20.000 $ 40.000 $ 60.000 $ 80.000
+  - application: 12/08 14/08 16/08 18/08 20/08 22/08 24/08 26/08 28/08 30/08 01/09 03/09 05/09 07/09 10/09 $ 0 $ 20.000 $ 40.000 $ 60.000 $ 80.000
   - heading "Top 5 horarios más reservados" [level=2]
   - list:
     - listitem: 19:00 8
-    - listitem: 21:00 8
+    - listitem: 21:00 7
     - listitem: 11:00 5
     - listitem: 15:00 5
     - listitem: 17:00 5
@@ -64,6 +67,7 @@ Título: Métricas
   - paragraph: Ingresos
   - paragraph: $ 270.000
   - text: ↓ 52% vs mes ant.
+  - paragraph: Septiembre de 2026
   - paragraph: Ajustes
   - paragraph: $ 0
   - paragraph: Saldo
@@ -112,6 +116,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -125,41 +130,6 @@ Reservas por día
 
 Últimos 30 días
 
-11/08
-13/08
-15/08
-17/08
-19/08
-21/08
-23/08
-25/08
-27/08
-29/08
-31/08
-02/09
-04/09
-06/09
-09/09
-0
-3
-6
-9
-12
-Tasa de ausencias
-
-16,7%
-
-4 ausencias sobre 24 turnos terminados
-
-+16,7 pts vs período anterior
-Ingresos
-Día
-Semana
-Mes
-
-Total del período: $ 830.000
-
-11/08
 12/08
 14/08
 16/08
@@ -174,7 +144,44 @@ Total del período: $ 830.000
 03/09
 05/09
 07/09
-09/09
+10/09
+0
+3
+6
+9
+12
+Tasa de ausencias
+
+16,7%
+
+4 ausencias sobre 24 turnos terminados
+
+Todavía no hay datos suficientes para comparar.
+
+Ingresos
+
+$ 830.000
+
+Ventana de 30 días
+
+Día
+Semana
+Mes
+12/08
+14/08
+16/08
+18/08
+20/08
+22/08
+24/08
+26/08
+28/08
+30/08
+01/09
+03/09
+05/09
+07/09
+10/09
 $ 0
 $ 20.000
 $ 40.000
@@ -184,7 +191,7 @@ Top 5 horarios más reservados
 19:00
 8
 21:00
-8
+7
 11:00
 5
 15:00
@@ -201,6 +208,8 @@ Ingresos
 $ 270.000
 
 ↓ 52% vs mes ant.
+
+Septiembre de 2026
 
 Ajustes
 

@@ -23,6 +23,8 @@ Título: Torneo Relámpago — Auditoría
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -72,6 +74,13 @@ Título: Torneo Relámpago — Auditoría
         - paragraph: 2 en el plantel
       - text: Inscripto
       - button "Borrar Los Fierros FC"
+  - heading "Horarios tomados" [level=2]
+  - paragraph: 1 hora · 1 cancha · 1 fecha
+  - button "Liberar de hoy en adelante"
+  - list:
+    - listitem:
+      - text: 10/09/2026 · 10:00–11:00 Cancha 1 — F5
+      - button "Liberar"
   - heading "Tomar horarios" [level=2]
   - paragraph: Las horas que elijas quedan reservadas en la grilla a nombre del torneo. Si alguna ya está ocupada, se saltea y te la mostramos.
   - group "Canchas":
@@ -81,7 +90,7 @@ Título: Torneo Relámpago — Auditoría
     - button "Cancha 3 — F5 techada"
     - button "Cancha 4 — F7"
   - text: Primera fecha
-  - button "Primera fecha": 09/09/2026
+  - button "Primera fecha": 10/09/2026
   - button "Limpiar fecha"
   - text: Repetir por
   - spinbutton "Repetir por": "1"
@@ -91,18 +100,13 @@ Título: Torneo Relámpago — Auditoría
   - text: Hasta las
   - combobox "Hasta las": 18:00
   - status
-  - paragraph: Se van a tomar horarios el 09/09/2026.
+  - paragraph: Se van a tomar horarios el 10/09/2026.
   - button "Tomar estos horarios" [disabled]
-  - heading "Horarios tomados" [level=2]
-  - paragraph: 1 hora · 1 cancha · 1 fecha
-  - button "Liberar de hoy en adelante"
-  - list:
-    - listitem: 10/09/2026 · 10:00–11:00 Cancha 1 — F5
   - heading "Portal público" [level=2]
   - paragraph: El torneo no se ve desde afuera.
   - button "Abrir inscripción"
   - button "Publicar"
-  - paragraph: Para borrar este torneo, liberá primero las 1 hora tomada en la grilla.
+  - paragraph: Para borrar este torneo, liberá primero la 1 hora tomada en la grilla.
 - region "Notifications (F8)":
   - list
 - alert
@@ -124,6 +128,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -159,6 +164,14 @@ Los Fierros FC
 2 en el plantel
 
 Inscripto
+Horarios tomados
+
+1 hora · 1 cancha · 1 fecha
+
+Liberar de hoy en adelante
+10/09/2026 · 10:00–11:00
+Cancha 1 — F5
+Liberar
 Tomar horarios
 
 Las horas que elijas quedan reservadas en la grilla a nombre del torneo. Si alguna ya está ocupada, se saltea y te la mostramos.
@@ -169,22 +182,15 @@ Cancha 2 — F5
 Cancha 3 — F5 techada
 Cancha 4 — F7
 Primera fecha
-09/09/2026
+10/09/2026
 Repetir por
 semana
 Desde las
 Hasta las
 
-Se van a tomar horarios el 09/09/2026.
+Se van a tomar horarios el 10/09/2026.
 
 Tomar estos horarios
-Horarios tomados
-
-1 hora · 1 cancha · 1 fecha
-
-Liberar de hoy en adelante
-10/09/2026 · 10:00–11:00
-Cancha 1 — F5
 Portal público
 
 El torneo no se ve desde afuera.
@@ -192,6 +198,6 @@ El torneo no se ve desde afuera.
 Abrir inscripción
 Publicar
 
-Para borrar este torneo, liberá primero las
+Para borrar este torneo, liberá primero la
 1
 hora tomada en la grilla.

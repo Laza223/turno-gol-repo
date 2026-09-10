@@ -49,13 +49,14 @@ Título: Devoluciones pendientes
   - list:
     - listitem:
       - text: Efectivo Tomás Rivero
-      - paragraph: Cancha 2 — F5 · 06/09 20:00 · hace 3 min
+      - paragraph: Cancha 2 — F5 · 06/09 20:00
+      - paragraph: hace 23 h
       - link "Avisarle por email":
         - /url: mailto:demo-player@turnogol.test?subject=Devoluci%C3%B3n%20de%20tu%20se%C3%B1a%20(A1000000)&body=Hola%20Tom%C3%A1s%20Rivero%2C%20te%20escribimos%20por%20la%20devoluci%C3%B3n%20de%20la%20se%C3%B1a%20de%20%24%C2%A012.000%20del%20turno%20del%2006%2F09%20a%20las%2020%3A00%20(A1000000).
       - link "Ver el turno":
         - /url: /reservas/a1000000-0000-4000-8000-000000000015
       - text: $ 12.000
-      - button "Ya devolví"
+      - button "Ya devolví $ 12.000 — Tomás Rivero": Ya devolví
   - paragraph: Devolvés por donde quieras — MercadoPago, transferencia o efectivo. Acá solo queda registrado que ya lo hiciste. Si devolvés desde el panel de MercadoPago, la fila desaparece sola cuando ellos nos avisan.
 - region "Notifications (F8)":
   - list
@@ -92,14 +93,16 @@ Devoluciones
 Cantina
 Productos y stock
 
-TENÉS QUE DEVOLVER
+Tenés que devolver
 
 $ 12.000
 
 Efectivo
 Tomás Rivero
 
-Cancha 2 — F5 · 06/09 20:00 · hace 3 min
+Cancha 2 — F5 · 06/09 20:00
+
+hace 23 h
 
 Avisarle por email
 Ver el turno

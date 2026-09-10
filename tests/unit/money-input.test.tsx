@@ -122,7 +122,7 @@ describe('MoneyInput — entrada inválida normalizada a la vista', () => {
 // se reformatea en CADA tecla, así que la coma se borraba en el acto y los
 // dígitos de los centavos se pegaban al entero en la tecla siguiente.
 // "1500,50" tipeado de a una tecla terminaba valiendo $150.050 — cien veces el
-// monto, y en /settings/canchas eso se publicaba en el portal del complejo.
+// monto, y en /canchas eso se publicaba en el portal del complejo.
 describe('MoneyInput — centavos tipeados (regresión F-01)', () => {
   function typeSequence(input: HTMLInputElement, text: string) {
     for (const char of text) {

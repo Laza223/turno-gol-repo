@@ -23,6 +23,8 @@ Título: Productos y stock
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -59,92 +61,62 @@ Título: Productos y stock
         - columnheader "Estado"
         - columnheader "Acciones"
     - rowgroup:
-      - row "Cerveza Quilmes 1L $ 3.500 $ 1.800 · 49% Stock 46 Activo Opciones para Cerveza Quilmes 1L":
+      - row "Cerveza Quilmes 1L $ 3.500 $ 1.800 · 49% Stock 46 Activo Reponer Opciones para Cerveza Quilmes 1L":
         - cell "Cerveza Quilmes 1L"
         - cell "$ 3.500"
         - cell "$ 1.800 · 49%"
         - cell "Stock 46"
         - cell "Activo"
-        - cell "Opciones para Cerveza Quilmes 1L":
+        - cell "Reponer Opciones para Cerveza Quilmes 1L":
+          - button "Reponer"
           - button "Opciones para Cerveza Quilmes 1L"
-      - row "Coca-Cola 500ml $ 2.500 $ 1.200 · 52% Stock 60 Activo Opciones para Coca-Cola 500ml":
+      - row "Coca-Cola 500ml $ 2.500 $ 1.200 · 52% Stock 60 Activo Reponer Opciones para Coca-Cola 500ml":
         - cell "Coca-Cola 500ml"
         - cell "$ 2.500"
         - cell "$ 1.200 · 52%"
         - cell "Stock 60"
         - cell "Activo"
-        - cell "Opciones para Coca-Cola 500ml":
+        - cell "Reponer Opciones para Coca-Cola 500ml":
+          - button "Reponer"
           - button "Opciones para Coca-Cola 500ml"
-      - row "Agua sin gas 500ml $ 2.000 $ 900 · 55% Stock 40 Activo Opciones para Agua sin gas 500ml":
+      - row "Agua sin gas 500ml $ 2.000 $ 900 · 55% Stock 40 Activo Reponer Opciones para Agua sin gas 500ml":
         - cell "Agua sin gas 500ml"
         - cell "$ 2.000"
         - cell "$ 900 · 55%"
         - cell "Stock 40"
         - cell "Activo"
-        - cell "Opciones para Agua sin gas 500ml":
+        - cell "Reponer Opciones para Agua sin gas 500ml":
+          - button "Reponer"
           - button "Opciones para Agua sin gas 500ml"
-      - row "Gatorade $ 3.000 $ 1.500 · 50% Stock 24 Activo Opciones para Gatorade":
+      - row "Gatorade $ 3.000 $ 1.500 · 50% Stock 24 Activo Reponer Opciones para Gatorade":
         - cell "Gatorade"
         - cell "$ 3.000"
         - cell "$ 1.500 · 50%"
         - cell "Stock 24"
         - cell "Activo"
-        - cell "Opciones para Gatorade":
+        - cell "Reponer Opciones para Gatorade":
+          - button "Reponer"
           - button "Opciones para Gatorade"
-      - row "Alfajor Guaymallén $ 800 $ 400 · 50% Stock 50 Activo Opciones para Alfajor Guaymallén":
+      - row "Alfajor Guaymallén $ 800 $ 400 · 50% Stock 50 Activo Reponer Opciones para Alfajor Guaymallén":
         - cell "Alfajor Guaymallén"
         - cell "$ 800"
         - cell "$ 400 · 50%"
         - cell "Stock 50"
         - cell "Activo"
-        - cell "Opciones para Alfajor Guaymallén":
+        - cell "Reponer Opciones para Alfajor Guaymallén":
+          - button "Reponer"
           - button "Opciones para Alfajor Guaymallén"
-      - row "Papas fritas $ 1.800 $ 900 · 50% Stock 30 Activo Opciones para Papas fritas":
+      - row "Papas fritas $ 1.800 $ 900 · 50% Stock 30 Activo Reponer Opciones para Papas fritas":
         - cell "Papas fritas"
         - cell "$ 1.800"
         - cell "$ 900 · 50%"
         - cell "Stock 30"
         - cell "Activo"
-        - cell "Opciones para Papas fritas":
+        - cell "Reponer Opciones para Papas fritas":
+          - button "Reponer"
           - button "Opciones para Papas fritas"
-  - region "Ventas de cantina — últimos 7 días":
-    - heading "Ventas de cantina — últimos 7 días" [level=2]
-    - group "Rango del reporte":
-      - link "7 días":
-        - /url: /caja/productos?range=7
-      - link "30 días":
-        - /url: /caja/productos?range=30
-    - heading "Ranking de productos" [level=3]
-    - table:
-      - rowgroup:
-        - row "Producto Unidades Plata":
-          - columnheader "Producto"
-          - columnheader "Unidades"
-          - columnheader "Plata"
-      - rowgroup:
-        - row "Cerveza Quilmes 1L 2 $ 7.000":
-          - cell "Cerveza Quilmes 1L"
-          - cell "2"
-          - cell "$ 7.000"
-    - heading "Cobrado por método" [level=3]
-    - paragraph: Sin cobros en el período.
-    - heading "Por día" [level=3]
-    - paragraph: Sin cobros en el período.
-    - paragraph: El ranking cuenta lo entregado (incluye fiados sin cobrar). Los montos cobrados entran cuando se pagan.
-  - heading "Movimientos de stock" [level=2]
-  - table:
-    - rowgroup:
-      - row "Fecha Producto Tipo Cantidad":
-        - columnheader "Fecha"
-        - columnheader "Producto"
-        - columnheader "Tipo"
-        - columnheader "Cantidad"
-    - rowgroup:
-      - row "9/9, 15:41 Cerveza Quilmes 1L Fiado -2":
-        - cell "9/9, 15:41"
-        - cell "Cerveza Quilmes 1L"
-        - cell "Fiado"
-        - cell "-2"
+  - heading "Informes de ventas y stock Ranking de productos, cobrado por método, por día y movimientos de stock." [level=2]:
+    - button "Informes de ventas y stock Ranking de productos, cobrado por método, por día y movimientos de stock."
 - region "Notifications (F8)":
   - list
 - alert
@@ -166,6 +138,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -184,32 +157,21 @@ Catálogo
 Agregar producto
 NOMBRE	PRECIO	COSTO · MARGEN	STOCK	ESTADO	ACCIONES
 Cerveza Quilmes 1L	$ 3.500	$ 1.800 · 49%	Stock 46	Activo	
+Reponer
 
 Coca-Cola 500ml	$ 2.500	$ 1.200 · 52%	Stock 60	Activo	
+Reponer
 
 Agua sin gas 500ml	$ 2.000	$ 900 · 55%	Stock 40	Activo	
+Reponer
 
 Gatorade	$ 3.000	$ 1.500 · 50%	Stock 24	Activo	
+Reponer
 
 Alfajor Guaymallén	$ 800	$ 400 · 50%	Stock 50	Activo	
+Reponer
 
 Papas fritas	$ 1.800	$ 900 · 50%	Stock 30	Activo	
-Ventas de cantina — últimos 7 días
-7 días
-30 días
-RANKING DE PRODUCTOS
-PRODUCTO	UNIDADES	PLATA
-Cerveza Quilmes 1L	2	$ 7.000
-COBRADO POR MÉTODO
-
-Sin cobros en el período.
-
-POR DÍA
-
-Sin cobros en el período.
-
-El ranking cuenta lo entregado (incluye fiados sin cobrar). Los montos cobrados entran cuando se pagan.
-
-Movimientos de stock
-FECHA	PRODUCTO	TIPO	CANTIDAD
-9/9, 15:41	Cerveza Quilmes 1L	Fiado	-2
+Reponer
+Informes de ventas y stock
+Ranking de productos, cobrado por método, por día y movimientos de stock.

@@ -36,7 +36,7 @@ const ITEMS: ChecklistItem[] = [
   {
     key: 'hasCourts',
     label: 'Al menos una cancha configurada',
-    href: '/settings/canchas',
+    href: '/canchas',
     adminOnly: true,
   },
   { key: 'hasSchedule', label: 'Horarios definidos', href: '/settings/horarios', adminOnly: true },

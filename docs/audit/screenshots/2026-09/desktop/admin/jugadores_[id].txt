@@ -23,6 +23,8 @@ Título: Tomás Rivero
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -40,20 +42,37 @@ Título: Tomás Rivero
   - term: Email
   - definition: demo-player@turnogol.test
   - term: Teléfono
-  - definition: —
+  - definition: "+5491155505678"
   - term: Cliente desde
   - definition: 9 de sept de 2026
-  - paragraph: Reservas totales
-  - paragraph: "3"
-  - paragraph: Completadas
-  - paragraph: "0"
-  - paragraph: Ausencias
-  - paragraph: "1"
-  - paragraph: Tasa de ausencia
-  - paragraph: 100%
   - paragraph: Bloqueado para reservar online
   - paragraph: Discusión con otro grupo en cancha — bloqueo preventivo (demo auditoría). Hasta el 9 de oct de 2026.
   - button "Levantar bloqueo"
+  - heading "Historial de reservas" [level=2]
+  - list:
+    - listitem:
+      - link "9 de sept de 2026 · 10:00–11:00 Cancha 2 — F5 · Online $ 40.000 Confirmada Pendiente":
+        - /url: /reservas/a1000000-0000-4000-8000-000000000012
+        - paragraph: 9 de sept de 2026 · 10:00–11:00
+        - paragraph: Cancha 2 — F5 · Online
+        - paragraph: $ 40.000
+        - text: Confirmada
+        - paragraph: Pendiente
+    - listitem:
+      - link "8 de sept de 2026 · 19:00–20:00 Cancha 1 — F5 · Online $ 40.000 Ausente":
+        - /url: /reservas/a1000000-0000-4000-8000-000000000013
+        - paragraph: 8 de sept de 2026 · 19:00–20:00
+        - paragraph: Cancha 1 — F5 · Online
+        - paragraph: $ 40.000
+        - text: Ausente
+    - listitem:
+      - link "6 de sept de 2026 · 20:00–21:00 Cancha 2 — F5 · Online $ 40.000 Cancelada A devolver":
+        - /url: /reservas/a1000000-0000-4000-8000-000000000015
+        - paragraph: 6 de sept de 2026 · 20:00–21:00
+        - paragraph: Cancha 2 — F5 · Online
+        - paragraph: $ 40.000
+        - text: Cancelada
+        - paragraph: A devolver
   - heading "Etiquetas" [level=2]
   - paragraph: Solo estas cinco. Son las que cambian cómo lo atendés en el mostrador.
   - list:
@@ -80,23 +99,15 @@ Título: Tomás Rivero
       - paragraph: Miércoles 19:00–20:00
       - paragraph: Cancha 2 — F5 · a nombre de Tomás Rivero
       - text: Pausado
-  - heading "Historial de reservas" [level=2]
-  - list:
-    - listitem:
-      - paragraph: 9 de sept de 2026 · 10:00–11:00
-      - paragraph: Cancha 2 — F5 · Online
-      - paragraph: $ 40.000
-      - paragraph: Confirmada
-    - listitem:
-      - paragraph: 8 de sept de 2026 · 19:00–20:00
-      - paragraph: Cancha 1 — F5 · Online
-      - paragraph: $ 40.000
-      - paragraph: Ausente
-    - listitem:
-      - paragraph: 6 de sept de 2026 · 20:00–21:00
-      - paragraph: Cancha 2 — F5 · Online
-      - paragraph: $ 40.000
-      - paragraph: Cancelada (con reembolso)
+  - paragraph: Reservas totales
+  - paragraph: "3"
+  - paragraph: Completadas
+  - paragraph: "0"
+  - paragraph: Ausencias
+  - paragraph: "1"
+  - paragraph: Tasa de ausencia
+  - paragraph: 100%
+  - paragraph: 1 de 1 turnos jugados o ausentes
 - region "Notifications (F8)":
   - list
 - alert
@@ -118,6 +129,7 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
@@ -128,31 +140,45 @@ Tomás Rivero
 EMAIL
 demo-player@turnogol.test
 TELÉFONO
-—
++5491155505678
 CLIENTE DESDE
 9 de sept de 2026
-
-RESERVAS TOTALES
-
-3
-
-COMPLETADAS
-
-0
-
-AUSENCIAS
-
-1
-
-TASA DE AUSENCIA
-
-100%
 
 Bloqueado para reservar online
 
 Discusión con otro grupo en cancha — bloqueo preventivo (demo auditoría). Hasta el 9 de oct de 2026.
 
 Levantar bloqueo
+Historial de reservas
+
+9 de sept de 2026 · 10:00–11:00
+
+Cancha 2 — F5 · Online
+
+$ 40.000
+
+Confirmada
+
+Pendiente
+
+8 de sept de 2026 · 19:00–20:00
+
+Cancha 1 — F5 · Online
+
+$ 40.000
+
+Ausente
+
+6 de sept de 2026 · 20:00–21:00
+
+Cancha 2 — F5 · Online
+
+$ 40.000
+
+Cancelada
+
+A devolver
+
 Etiquetas
 
 Solo estas cinco. Son las que cambian cómo lo atendés en el mostrador.
@@ -176,28 +202,21 @@ Miércoles 19:00–20:00
 Cancha 2 — F5 · a nombre de Tomás Rivero
 
 Pausado
-Historial de reservas
 
-9 de sept de 2026 · 10:00–11:00
+RESERVAS TOTALES
 
-Cancha 2 — F5 · Online
+3
 
-$ 40.000
+COMPLETADAS
 
-Confirmada
+0
 
-8 de sept de 2026 · 19:00–20:00
+AUSENCIAS
 
-Cancha 1 — F5 · Online
+1
 
-$ 40.000
+TASA DE AUSENCIA
 
-Ausente
+100%
 
-6 de sept de 2026 · 20:00–21:00
-
-Cancha 2 — F5 · Online
-
-$ 40.000
-
-Cancelada (con reembolso)
+1 de 1 turnos jugados o ausentes

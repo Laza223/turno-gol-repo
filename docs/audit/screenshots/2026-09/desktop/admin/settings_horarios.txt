@@ -1,5 +1,5 @@
 URL: http://localhost:3000/settings/horarios
-Título: Configuración
+Título: Horarios
 
 --- Árbol de accesibilidad ---
 - link "Saltar al contenido":
@@ -23,6 +23,8 @@ Título: Configuración
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -34,7 +36,8 @@ Título: Configuración
   - button "Cambiar tema"
   - button "Cerrar sesión": Salir
 - main:
-  - heading "Configuración" [level=1]
+  - heading "Horarios" [level=1]
+  - paragraph: Horario de apertura y días cerrados del complejo.
   - navigation "Secciones de configuración":
     - link "Perfil":
       - /url: /settings/perfil
@@ -42,14 +45,10 @@ Título: Configuración
       - /url: /settings/reservas
     - link "Horarios":
       - /url: /settings/horarios
-    - link "Canchas":
-      - /url: /settings/canchas
     - link "Equipo":
       - /url: /settings/equipo
     - link "Facturación":
       - /url: /settings/facturacion
-    - link "Avisos":
-      - /url: /settings/avisos
   - heading "Horarios de apertura" [level=2]
   - paragraph: Horario general
   - paragraph: Vale para todos los días, salvo los que personalices abajo.
@@ -81,25 +80,18 @@ Título: Configuración
       - button "Personalizar"
     - listitem:
       - checkbox "Sábado abierto" [checked]
-      - text: Sábado
-      - button "Restablecer"
-      - text: "Horario propio:"
-      - 'textbox "Sábado: abre"': 09:00
-      - text: a
-      - 'textbox "Sábado: cierra"': 00:00
+      - text: Sábado 09:00 a 00:00
+      - button "Personalizar"
     - listitem:
       - checkbox "Domingo abierto" [checked]
-      - text: Domingo
-      - button "Restablecer"
-      - text: "Horario propio:"
-      - 'textbox "Domingo: abre"': 09:00
-      - text: a
-      - 'textbox "Domingo: cierra"': 00:00
+      - text: Domingo 09:00 a 00:00
+      - button "Personalizar"
   - checkbox "Cierra después de medianoche Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás 02:00). Esos turnos cuentan como parte de la misma jornada (el día anterior)."
   - text: Cierra después de medianoche Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás 02:00). Esos turnos cuentan como parte de la misma jornada (el día anterior).
   - button "Guardar horarios"
   - heading "Días cerrados" [level=2]
-  - paragraph: No hay días cerrados configurados.
+  - heading "No hay días cerrados" [level=2]
+  - paragraph: Agregá una fecha abajo para bloquear un día completo (feriados, mantenimiento).
   - text: Agregar día cerrado
   - textbox "Agregar día cerrado"
   - button "Agregar"
@@ -124,19 +116,21 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
 demo-admin@turnogol.test
 Salir
-Configuración
+Horarios
+
+Horario de apertura y días cerrados del complejo.
+
 Perfil
 Reservas
 Horarios
-Canchas
 Equipo
 Facturación
-Avisos
 Horarios de apertura
 
 Horario general
@@ -162,19 +156,18 @@ Viernes
 10:00 a 00:00
 Personalizar
 Sábado
-Restablecer
-Horario propio:
-a
+09:00 a 00:00
+Personalizar
 Domingo
-Restablecer
-Horario propio:
-a
+09:00 a 00:00
+Personalizar
 Cierra después de medianoche
 Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás 02:00). Esos turnos cuentan como parte de la misma jornada (el día anterior).
 Guardar horarios
 Días cerrados
+No hay días cerrados
 
-No hay días cerrados configurados.
+Agregá una fecha abajo para bloquear un día completo (feriados, mantenimiento).
 
 Agregar día cerrado
 Agregar

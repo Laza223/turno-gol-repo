@@ -178,7 +178,7 @@ function buildRoutes(fixture: CorpusFixture | null): RouteDef[] {
     est('/caja/productos'),
     est('/analiticas'),
     est('/settings/avisos'),
-    est('/settings/canchas'),
+    est('/canchas'),
     est('/settings/equipo'),
     est('/settings/facturacion'),
     est('/settings/horarios'),

@@ -1,7 +1,7 @@
 import { test } from '../fixtures'
 import { expectNoAxeViolations } from './_helpers'
 
-const ROUTES = ['/dashboard', '/grilla', '/reservas', '/caja', '/settings/canchas', '/analiticas']
+const ROUTES = ['/dashboard', '/grilla', '/reservas', '/caja', '/canchas', '/analiticas']
 
 test.describe('Admin routes a11y', () => {
   for (const route of ROUTES) {

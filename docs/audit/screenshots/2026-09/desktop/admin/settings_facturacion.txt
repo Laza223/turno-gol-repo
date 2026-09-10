@@ -1,5 +1,5 @@
 URL: http://localhost:3000/settings/facturacion
-Título: Configuración
+Título: Facturación
 
 --- Árbol de accesibilidad ---
 - link "Saltar al contenido":
@@ -23,6 +23,8 @@ Título: Configuración
       - /url: /caja
     - link "Clientes":
       - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
     - link "Torneos":
       - /url: /torneos
     - link "Métricas":
@@ -34,7 +36,8 @@ Título: Configuración
   - button "Cambiar tema"
   - button "Cerrar sesión": Salir
 - main:
-  - heading "Configuración" [level=1]
+  - heading "Facturación" [level=1]
+  - paragraph: Tu plan, la suscripción y la cuenta de MercadoPago conectada.
   - navigation "Secciones de configuración":
     - link "Perfil":
       - /url: /settings/perfil
@@ -42,14 +45,10 @@ Título: Configuración
       - /url: /settings/reservas
     - link "Horarios":
       - /url: /settings/horarios
-    - link "Canchas":
-      - /url: /settings/canchas
     - link "Equipo":
       - /url: /settings/equipo
     - link "Facturación":
       - /url: /settings/facturacion
-    - link "Avisos":
-      - /url: /settings/avisos
   - heading "Suscripción" [level=2]
   - term: Plan
   - definition: Complejo · todavía no se cobra
@@ -59,7 +58,7 @@ Título: Configuración
   - definition: —
   - heading "Historial de pagos" [level=2]
   - paragraph: Cobros mensuales o anuales del plan. Los cambios de plan con pago adicional se ven en el movimiento de esa fecha, no acá.
-  - paragraph: Todavía no hay cobros registrados.
+  - heading "Todavía no hay cobros registrados." [level=2]
   - heading "Activar plan" [level=2]
   - paragraph: Elegí tu plan para seguir facturando cuando termine el período de prueba.
   - text: ¿Cuántas canchas tenés?
@@ -70,8 +69,7 @@ Título: Configuración
     - radio "4" [checked]
     - radio "5"
     - radio "6"
-    - radio "7"
-    - radio "8+"
+    - radio "7+"
   - radiogroup "Ciclo de facturación":
     - radio "Mensual" [checked]
     - radio "Anual −20%"
@@ -98,8 +96,8 @@ Título: Configuración
     - /placeholder: demo-admin@turnogol.test
   - paragraph: Dejalo vacío para volver a usar el email de tu cuenta de TurnoGol.
   - button "Guardar"
-  - heading "MercadoPago" [level=2]
-  - paragraph: Conectá tu cuenta para cobrar las señas de las reservas online directamente.
+  - heading "Cobrar señas a tus jugadores" [level=2]
+  - paragraph: Conectá tu cuenta de MercadoPago para cobrar las señas de las reservas online directamente.
   - link "Conectar MercadoPago":
     - /url: /api/mp/oauth-start
 - region "Notifications (F8)":
@@ -123,19 +121,21 @@ Hoy
 Grilla
 Caja
 Clientes
+Canchas
 Torneos
 Métricas
 Configuración
 demo-admin@turnogol.test
 Salir
-Configuración
+Facturación
+
+Tu plan, la suscripción y la cuenta de MercadoPago conectada.
+
 Perfil
 Reservas
 Horarios
-Canchas
 Equipo
 Facturación
-Avisos
 Suscripción
 Plan
 Complejo · todavía no se cobra
@@ -148,7 +148,6 @@ Historial de pagos
 Cobros mensuales o anuales del plan. Los cambios de plan con pago adicional se ven en el movimiento de esa fecha, no acá.
 
 Todavía no hay cobros registrados.
-
 Activar plan
 
 Elegí tu plan para seguir facturando cuando termine el período de prueba.
@@ -160,8 +159,7 @@ Elegí tu plan para seguir facturando cuando termine el período de prueba.
 4
 5
 6
-7
-8+
+7+
 Mensual
 Anual
 −20%
@@ -210,8 +208,8 @@ Email de tu cuenta de MercadoPago
 Dejalo vacío para volver a usar el email de tu cuenta de TurnoGol.
 
 Guardar
-MercadoPago
+Cobrar señas a tus jugadores
 
-Conectá tu cuenta para cobrar las señas de las reservas online directamente.
+Conectá tu cuenta de MercadoPago para cobrar las señas de las reservas online directamente.
 
 Conectar MercadoPago

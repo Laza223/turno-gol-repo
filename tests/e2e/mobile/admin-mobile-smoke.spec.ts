@@ -18,7 +18,7 @@ const ROUTES = [
   '/grilla',
   '/caja',
   '/reservas',
-  '/settings/canchas',
+  '/canchas',
   // /settings/equipo siempre tiene datos (el admin seedeado); /abonados con datos se
   // cubre en su test propio (seed service-role). /jugadores renderizan
   // igual con o sin datos.

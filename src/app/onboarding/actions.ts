@@ -361,7 +361,7 @@ export async function finishOnboardingAction(): Promise<void> {
 // El uploader del paso 3 subía a `${tenantId}/courts/draft/…` y el submit armaba
 // el payload SIN el campo `photos`: la cancha se creaba sin foto y el objeto
 // quedaba huérfano en R2 para siempre. La foto no bloquea recibir reservas, y
-// `/settings/canchas` ya tiene el mismo uploader contra la cancha real — así que
+// `/canchas` ya tiene el mismo uploader contra la cancha real — así que
 // el paso 3 la deja de pedir en vez de arrastrar dos actions para perder el
 // archivo. Los objetos ya subidos bajo ese prefijo quedan en el bucket: R2 no
 // tiene barrido y el prefijo es inerte (nadie lo lee ni lo vuelve a escribir).

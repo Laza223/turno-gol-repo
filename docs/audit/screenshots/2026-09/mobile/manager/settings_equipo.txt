@@ -21,12 +21,11 @@ Título: Grilla
   - navigation "Vistas de la grilla":
     - link "Calendario":
       - /url: /grilla
-    - link "Lista":
+    - link "Reservas":
       - /url: /reservas
   - status
   - heading "Grilla" [level=1]
-  - paragraph: Mié 9 de septiembre
-  - paragraph: "Por cobrar: $ 418.000 (10 turnos)"
+  - paragraph: Jue 10 de septiembre
   - button "Cambiar densidad de la grilla"
   - button "Hoy"
   - button "Semana anterior"
@@ -36,9 +35,9 @@ Título: Grilla
     - listitem:
       - button "Mar 8"
     - listitem:
-      - button "Mié 9 (hoy)": Mié 9
+      - button "Mié 9"
     - listitem:
-      - button "Jue 10"
+      - button "Jue 10 (hoy)": Jue 10
     - listitem:
       - button "Vie 11"
     - listitem:
@@ -51,98 +50,98 @@ Título: Grilla
     - button "Cancha 1 — F5"
     - button "Cancha 2 — F5"
     - button "Cancha 3 — F5 techada"
-    - button "Cancha 4 — F7"
+    - button "Cancha 4 — F7 (pausada)"
   - group "Canchas del día":
     - region "Todas las canchas":
       - list:
         - listitem:
           - paragraph: 10:00–11:00
-          - button "Reservar 10:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
-          - 'button "Cancha 2 — F5 a las 10:00: Señada"': Cancha 2 — F5
-          - 'button "Cancha 3 — F5 techada a las 10:00: Pagando ahora"': Cancha 3 — F5 techada
-          - 'button "Cancha 4 — F7 a las 10:00: Bloqueado"': Cancha 4 — F7
+          - 'button "Cancha 1 — F5 a las 10:00: Torneo"': Cancha 1 — F5 Torneo
+          - button "Reservar 10:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
+          - button "Reservar 10:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
+          - button "Reservar 10:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 11:00–12:00
           - button "Reservar 11:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
           - button "Reservar 11:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
           - button "Reservar 11:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
-          - 'button "Cancha 4 — F7 a las 11:00: Bloqueado"': Cancha 4 — F7
+          - button "Reservar 11:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 12:00–13:00
           - button "Reservar 12:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
           - button "Reservar 12:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
           - button "Reservar 12:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
-          - button "Reservar 12:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 12:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 13:00–14:00
           - button "Reservar 13:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
           - button "Reservar 13:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
           - button "Reservar 13:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
-          - button "Reservar 13:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 13:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 14:00–15:00
           - button "Reservar 14:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
           - button "Reservar 14:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
           - button "Reservar 14:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
-          - button "Reservar 14:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 14:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 15:00–16:00
           - button "Reservar 15:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
           - button "Reservar 15:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
           - button "Reservar 15:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
-          - button "Reservar 15:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 15:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 16:00–17:00
           - button "Reservar 16:00 en Cancha 1 — F5": Cancha 1 — F5
           - button "Reservar 16:00 en Cancha 2 — F5": Cancha 2 — F5
           - button "Reservar 16:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
-          - button "Reservar 16:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 16:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 17:00–18:00
           - button "Reservar 17:00 en Cancha 1 — F5": Cancha 1 — F5
           - button "Reservar 17:00 en Cancha 2 — F5": Cancha 2 — F5
           - button "Reservar 17:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
-          - button "Reservar 17:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 17:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 18:00–19:00
-          - 'button "Cancha 1 — F5 a las 18:00: Confirmada"': Cancha 1 — F5
+          - button "Reservar 18:00 en Cancha 1 — F5": Cancha 1 — F5
           - button "Reservar 18:00 en Cancha 2 — F5": Cancha 2 — F5
-          - 'button "Cancha 3 — F5 techada a las 18:00: Confirmada"': Cancha 3 — F5 techada
-          - button "Reservar 18:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 18:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 18:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 19:00–20:00
           - button "Reservar 19:00 en Cancha 1 — F5": Cancha 1 — F5
-          - 'button "Cancha 2 — F5 a las 19:00: Confirmada"': Cancha 2 — F5
+          - button "Reservar 19:00 en Cancha 2 — F5": Cancha 2 — F5
           - button "Reservar 19:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
-          - 'button "Cancha 4 — F7 a las 19:00: Confirmada"': Cancha 4 — F7
+          - button "Reservar 19:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 20:00–21:00
-          - 'button "Cancha 1 — F5 a las 20:00: Confirmada"': Cancha 1 — F5
+          - button "Reservar 20:00 en Cancha 1 — F5": Cancha 1 — F5
           - button "Reservar 20:00 en Cancha 2 — F5": Cancha 2 — F5
-          - 'button "Cancha 3 — F5 techada a las 20:00: Pagando ahora"': Cancha 3 — F5 techada
-          - button "Reservar 20:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 20:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 20:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 21:00–22:00
-          - 'button "Cancha 1 — F5 a las 21:00: Confirmada"': Cancha 1 — F5
-          - 'button "Cancha 2 — F5 a las 21:00: Confirmada"': Cancha 2 — F5
+          - button "Reservar 21:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 21:00 en Cancha 2 — F5": Cancha 2 — F5
           - button "Reservar 21:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
-          - 'button "Cancha 4 — F7 a las 21:00: Confirmada"': Cancha 4 — F7
+          - button "Reservar 21:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 22:00–23:00
           - button "Reservar 22:00 en Cancha 1 — F5": Cancha 1 — F5
           - button "Reservar 22:00 en Cancha 2 — F5": Cancha 2 — F5
-          - 'button "Cancha 3 — F5 techada a las 22:00: Confirmada"': Cancha 3 — F5 techada
-          - button "Reservar 22:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 22:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 22:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
         - listitem:
           - paragraph: 23:00–24:00
           - button "Reservar 23:00 en Cancha 1 — F5": Cancha 1 — F5
           - button "Reservar 23:00 en Cancha 2 — F5": Cancha 2 — F5
           - button "Reservar 23:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
-          - button "Reservar 23:00 en Cancha 4 — F7" [disabled]: Cancha 4 — F7
+          - button "Reservar 23:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
     - region "Cancha 1 — F5":
       - list:
         - listitem:
-          - button "Reservar 10:00 en Cancha 1 — F5" [disabled]: 10:00–11:00 Libre
+          - button "Turno de 10:00 a 11:00 en Cancha 1 — F5": 10:00–11:00 Torneo Torneo
         - listitem:
           - button "Reservar 11:00 en Cancha 1 — F5" [disabled]: 11:00–12:00 Libre
         - listitem:
@@ -158,13 +157,13 @@ Título: Grilla
         - listitem:
           - button "Reservar 17:00 en Cancha 1 — F5": 17:00–18:00 Libre
         - listitem:
-          - button "Turno de 18:00 a 19:00 en Cancha 1 — F5, Los Pibes del Fondo, falta cobrar $ 40.000": 18:00–19:00 Los Pibes del Fondo $ 40.000 Confirmada
+          - button "Reservar 18:00 en Cancha 1 — F5": 18:00–19:00 Libre
         - listitem:
           - button "Reservar 19:00 en Cancha 1 — F5": 19:00–20:00 Libre
         - listitem:
-          - button "Turno de 20:00 a 21:00 en Cancha 1 — F5, Cristian Ledesma, falta cobrar $ 40.000": 20:00–21:00 Cristian Ledesma $ 40.000 Confirmada
+          - button "Reservar 20:00 en Cancha 1 — F5": 20:00–21:00 Libre
         - listitem:
-          - button "Turno de 21:00 a 22:00 en Cancha 1 — F5, Ferretería San Martín FC, falta cobrar $ 40.000": 21:00–22:00 Ferretería San Martín FC $ 40.000 Confirmada
+          - button "Reservar 21:00 en Cancha 1 — F5": 21:00–22:00 Libre
         - listitem:
           - button "Reservar 22:00 en Cancha 1 — F5": 22:00–23:00 Libre
         - listitem:
@@ -172,7 +171,7 @@ Título: Grilla
     - region "Cancha 2 — F5":
       - list:
         - listitem:
-          - button "Turno de 10:00 a 11:00 en Cancha 2 — F5, Tomás Rivero, falta cobrar $ 28.000": 10:00–11:00 Tomás Rivero $ 28.000 Señada
+          - button "Reservar 10:00 en Cancha 2 — F5" [disabled]: 10:00–11:00 Libre
         - listitem:
           - button "Reservar 11:00 en Cancha 2 — F5" [disabled]: 11:00–12:00 Libre
         - listitem:
@@ -190,11 +189,11 @@ Título: Grilla
         - listitem:
           - button "Reservar 18:00 en Cancha 2 — F5": 18:00–19:00 Libre
         - listitem:
-          - button "Turno de 19:00 a 20:00 en Cancha 2 — F5, Equipo de Nico, falta cobrar $ 40.000": 19:00–20:00 Equipo de Nico $ 40.000 Confirmada
+          - button "Reservar 19:00 en Cancha 2 — F5": 19:00–20:00 Libre
         - listitem:
           - button "Reservar 20:00 en Cancha 2 — F5": 20:00–21:00 Libre
         - listitem:
-          - button "Turno de 21:00 a 22:00 en Cancha 2 — F5, Martina y amigas, falta cobrar $ 40.000": 21:00–22:00 Martina y amigas $ 40.000 Confirmada
+          - button "Reservar 21:00 en Cancha 2 — F5": 21:00–22:00 Libre
         - listitem:
           - button "Reservar 22:00 en Cancha 2 — F5": 22:00–23:00 Libre
         - listitem:
@@ -202,7 +201,7 @@ Título: Grilla
     - region "Cancha 3 — F5 techada":
       - list:
         - listitem:
-          - button "Turno de 10:00 a 11:00 en Cancha 3 — F5 techada, Reserva sin confirmar (h": 10:00–11:00 Reserva sin confirmar (h Pagando ahora
+          - button "Reservar 10:00 en Cancha 3 — F5 techada" [disabled]: 10:00–11:00 Libre
         - listitem:
           - button "Reservar 11:00 en Cancha 3 — F5 techada" [disabled]: 11:00–12:00 Libre
         - listitem:
@@ -218,49 +217,59 @@ Título: Grilla
         - listitem:
           - button "Reservar 17:00 en Cancha 3 — F5 techada": 17:00–18:00 Libre
         - listitem:
-          - button "Turno de 18:00 a 19:00 en Cancha 3 — F5 techada, Colegio Don Bosco, falta cobrar $ 40.000": 18:00–19:00 Colegio Don Bosco $ 40.000 Confirmada
+          - button "Reservar 18:00 en Cancha 3 — F5 techada": 18:00–19:00 Libre
         - listitem:
           - button "Reservar 19:00 en Cancha 3 — F5 techada": 19:00–20:00 Libre
         - listitem:
-          - button "Turno de 20:00 a 21:00 en Cancha 3 — F5 techada, Los Lunes Nunca Más": 20:00–21:00 Los Lunes Nunca Más Pagando ahora
+          - button "Reservar 20:00 en Cancha 3 — F5 techada": 20:00–21:00 Libre
         - listitem:
           - button "Reservar 21:00 en Cancha 3 — F5 techada": 21:00–22:00 Libre
         - listitem:
-          - button "Turno de 22:00 a 23:00 en Cancha 3 — F5 techada, Banco Provincia, falta cobrar $ 40.000": 22:00–23:00 Banco Provincia $ 40.000 Confirmada
+          - button "Reservar 22:00 en Cancha 3 — F5 techada": 22:00–23:00 Libre
         - listitem:
           - button "Reservar 23:00 en Cancha 3 — F5 techada": 23:00–24:00 Libre
     - region "Cancha 4 — F7":
       - list:
         - listitem:
-          - button "Turno de 10:00 a 12:00 en Cancha 4 — F7, Cancha en mantenimiento": 10:00–12:00 Cancha en mantenimiento Bloqueado
+          - button "Reservar 10:00 en Cancha 4 — F7, cancha pausada" [disabled]: 10:00–11:00 Libre
         - listitem:
-          - button "Reservar 12:00 en Cancha 4 — F7" [disabled]: 12:00–13:00 Libre
+          - button "Reservar 11:00 en Cancha 4 — F7, cancha pausada" [disabled]: 11:00–12:00 Libre
         - listitem:
-          - button "Reservar 13:00 en Cancha 4 — F7" [disabled]: 13:00–14:00 Libre
+          - button "Reservar 12:00 en Cancha 4 — F7, cancha pausada" [disabled]: 12:00–13:00 Libre
         - listitem:
-          - button "Reservar 14:00 en Cancha 4 — F7" [disabled]: 14:00–15:00 Libre
+          - button "Reservar 13:00 en Cancha 4 — F7, cancha pausada" [disabled]: 13:00–14:00 Libre
         - listitem:
-          - button "Reservar 15:00 en Cancha 4 — F7" [disabled]: 15:00–16:00 Libre
+          - button "Reservar 14:00 en Cancha 4 — F7, cancha pausada" [disabled]: 14:00–15:00 Libre
         - listitem:
-          - button "Reservar 16:00 en Cancha 4 — F7" [disabled]: 16:00–17:00 Libre
+          - button "Reservar 15:00 en Cancha 4 — F7, cancha pausada" [disabled]: 15:00–16:00 Libre
         - listitem:
-          - button "Reservar 17:00 en Cancha 4 — F7" [disabled]: 17:00–18:00 Libre
+          - button "Reservar 16:00 en Cancha 4 — F7, cancha pausada" [disabled]: 16:00–17:00 Libre
         - listitem:
-          - button "Reservar 18:00 en Cancha 4 — F7" [disabled]: 18:00–19:00 Libre
+          - button "Reservar 17:00 en Cancha 4 — F7, cancha pausada" [disabled]: 17:00–18:00 Libre
         - listitem:
-          - button "Turno de 19:00 a 20:00 en Cancha 4 — F7, La Redonda Veteranos, falta cobrar $ 55.000": 19:00–20:00 La Redonda Veteranos $ 55.000 Confirmada
+          - button "Reservar 18:00 en Cancha 4 — F7, cancha pausada" [disabled]: 18:00–19:00 Libre
         - listitem:
-          - button "Reservar 20:00 en Cancha 4 — F7" [disabled]: 20:00–21:00 Libre
+          - button "Reservar 19:00 en Cancha 4 — F7, cancha pausada" [disabled]: 19:00–20:00 Libre
         - listitem:
-          - button "Turno de 21:00 a 22:00 en Cancha 4 — F7, Panadería El Trigal, falta cobrar $ 55.000": 21:00–22:00 Panadería El Trigal $ 55.000 Confirmada
+          - button "Reservar 20:00 en Cancha 4 — F7, cancha pausada" [disabled]: 20:00–21:00 Libre
         - listitem:
-          - button "Reservar 22:00 en Cancha 4 — F7" [disabled]: 22:00–23:00 Libre
+          - button "Reservar 21:00 en Cancha 4 — F7, cancha pausada" [disabled]: 21:00–22:00 Libre
         - listitem:
-          - button "Reservar 23:00 en Cancha 4 — F7" [disabled]: 23:00–24:00 Libre
+          - button "Reservar 22:00 en Cancha 4 — F7, cancha pausada" [disabled]: 22:00–23:00 Libre
+        - listitem:
+          - button "Reservar 23:00 en Cancha 4 — F7, cancha pausada" [disabled]: 23:00–24:00 Libre
   - paragraph: Todas las canchas
 - region "Notifications (F8)":
-  - list
-- alert
+  - list:
+    - listitem:
+      - text: No tenés acceso a Configuración Es solo del dueño del complejo.
+      - button "Cerrar"
+    - listitem:
+      - text: No tenés acceso a Configuración Es solo del dueño del complejo.
+      - button "Cerrar"
+- alert: Grilla
+- status: Notification No tenés acceso a ConfiguraciónEs solo del dueño del complejo.
+- status: Notification No tenés acceso a ConfiguraciónEs solo del dueño del complejo.
 
 --- Texto visible ---
 Saltar al contenido
@@ -271,13 +280,11 @@ Caja
 Clientes
 Más
 Calendario
-Lista
+Reservas
 
 Grilla
 
-Mié 9 de septiembre
-
-Por cobrar: $ 418.000 (10 turnos)
+Jue 10 de septiembre
 
 Hoy
 LUN
@@ -299,10 +306,12 @@ Cancha 1 — F5
 Cancha 2 — F5
 Cancha 3 — F5 techada
 Cancha 4 — F7
+(pausada)
 
 10:00–11:00
 
 Cancha 1 — F5
+Torneo
 Cancha 2 — F5
 Cancha 3 — F5 techada
 Cancha 4 — F7
@@ -398,7 +407,8 @@ Cancha 2 — F5
 Cancha 3 — F5 techada
 Cancha 4 — F7
 10:00–11:00
-Libre
+Torneo
+Torneo
 11:00–12:00
 Libre
 12:00–13:00
@@ -414,27 +424,19 @@ Libre
 17:00–18:00
 Libre
 18:00–19:00
-Los Pibes del Fondo
-$ 40.000
-Confirmada
+Libre
 19:00–20:00
 Libre
 20:00–21:00
-Cristian Ledesma
-$ 40.000
-Confirmada
+Libre
 21:00–22:00
-Ferretería San Martín FC
-$ 40.000
-Confirmada
+Libre
 22:00–23:00
 Libre
 23:00–24:00
 Libre
 10:00–11:00
-Tomás Rivero
-$ 28.000
-Señada
+Libre
 11:00–12:00
 Libre
 12:00–13:00
@@ -452,22 +454,17 @@ Libre
 18:00–19:00
 Libre
 19:00–20:00
-Equipo de Nico
-$ 40.000
-Confirmada
+Libre
 20:00–21:00
 Libre
 21:00–22:00
-Martina y amigas
-$ 40.000
-Confirmada
+Libre
 22:00–23:00
 Libre
 23:00–24:00
 Libre
 10:00–11:00
-Reserva sin confirmar (h
-Pagando ahora
+Libre
 11:00–12:00
 Libre
 12:00–13:00
@@ -483,25 +480,21 @@ Libre
 17:00–18:00
 Libre
 18:00–19:00
-Colegio Don Bosco
-$ 40.000
-Confirmada
+Libre
 19:00–20:00
 Libre
 20:00–21:00
-Los Lunes Nunca Más
-Pagando ahora
+Libre
 21:00–22:00
 Libre
 22:00–23:00
-Banco Provincia
-$ 40.000
-Confirmada
+Libre
 23:00–24:00
 Libre
-10:00–12:00
-Cancha en mantenimiento
-Bloqueado
+10:00–11:00
+Libre
+11:00–12:00
+Libre
 12:00–13:00
 Libre
 13:00–14:00
@@ -517,18 +510,19 @@ Libre
 18:00–19:00
 Libre
 19:00–20:00
-La Redonda Veteranos
-$ 55.000
-Confirmada
+Libre
 20:00–21:00
 Libre
 21:00–22:00
-Panadería El Trigal
-$ 55.000
-Confirmada
+Libre
 22:00–23:00
 Libre
 23:00–24:00
 Libre
 
 Todas las canchas
+
+No tenés acceso a Configuración
+Es solo del dueño del complejo.
+No tenés acceso a Configuración
+Es solo del dueño del complejo.

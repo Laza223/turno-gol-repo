@@ -12,7 +12,7 @@ export default function Loading() {
     <div className="space-y-6" aria-busy="true">
       <Skeleton className="h-8 w-52" />
 
-      {/* SettingsTabs: 6 tabs (H161 plegó Avisos dentro de Perfil) */}
+      {/* SettingsTabs: 5 tabs (H161 plegó Avisos en Perfil; Canchas salió del menú de Configuración) */}
       <div className="flex gap-1 border-b border-border">
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-11 w-24 shrink-0 rounded-none" />

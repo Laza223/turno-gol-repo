@@ -28,7 +28,7 @@ export function GridOfflineBanner() {
  *
  * `BookingGrid` no recibe el rol del staff logueado (`grilla/page.tsx` sólo
  * valida `user.type === 'staff'`), y agregar esa prop sería scope creep. El CTA
- * se muestra igual para cualquier staff: `/settings/canchas` es de solo-lectura
+ * se muestra igual para cualquier staff: `/canchas` es de solo-lectura
  * para el manager (`CourtList` ya oculta "+ Nueva cancha" si `!isAdmin`), así
  * que navegar ahí nunca habilita una escritura no autorizada.
  */
@@ -40,7 +40,7 @@ export function NoCourtsEmptyState() {
       description="Todavía no agregaste ninguna cancha. Configurá al menos una para empezar a tomar turnos."
       action={
         <Link
-          href="/settings/canchas"
+          href="/canchas"
           className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
         >
           Configurar la primera cancha

@@ -2,10 +2,10 @@
  * E2E — Canchas CRUD (audit T5, fase F04)
  *
  * Happy path + 3 edge cases for the admin canchas UI:
- *   #1  Happy — create court: /settings/canchas → "+ Nueva cancha" → fill name/surface/capacity →
+ *   #1  Happy — create court: /canchas → "+ Nueva cancha" → fill name/surface/capacity →
  *              quick template "Un precio" → Aplicar → submit → new court appears with Online badge.
  *   #2  Edge — deactivate with future bookings (staged): service-role INSERT court + future booking →
- *              /settings/canchas → "Desactivar" → dialog shows "Hay 1 reserva(s) futura(s)" → confirm →
+ *              /canchas → "Desactivar" → dialog shows "Hay 1 reserva(s) futura(s)" → confirm →
  *              badge becomes Offline.
  *   #3  Edge — pricing coverage gap: apply template → fine-tune grid → empty one cell →
  *              submit → client-side gate "No se puede guardar: falta 1 horario sin precio".
@@ -124,7 +124,7 @@ async function deleteBooking(
 // TEST 1 — Happy: create a new court via UI
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — happy: create court', () => {
-  test('/settings/canchas → "+ Nueva cancha" → fill form → submit → new court appears with Online badge', async ({
+  test('/canchas → "+ Nueva cancha" → fill form → submit → new court appears with Online badge', async ({
     browser,
     adminStorageState,
   }) => {
@@ -137,7 +137,7 @@ test.describe('canchas — happy: create court', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/settings/canchas')
+      await page.goto('/canchas')
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
         timeout: 15_000,
       })
@@ -218,7 +218,7 @@ test.describe('canchas — edge: deactivate with future bookings', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/settings/canchas')
+      await page.goto('/canchas')
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
         timeout: 15_000,
       })
@@ -267,7 +267,7 @@ test.describe('canchas — edge: pricing coverage gap', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/settings/canchas')
+      await page.goto('/canchas')
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
         timeout: 15_000,
       })
@@ -320,7 +320,7 @@ test.describe('canchas — edge: pricing coverage gap', () => {
 //   (Online) and calls toggleCourtStatusAction, which can't find the row → returns
 //   { success:false, error:'Cancha no encontrada' } → activate() rolls back to Offline + toast.
 //   The card stays rendered because its state is independent of the DB row, and the failed
-//   action does not revalidatePath('/settings/canchas').
+//   action does not revalidatePath('/canchas').
 // (Plan-limit edge — the other option — is unreliable here: the seeded tenant has no
 //   tenant_subscriptions row → maxCourts = null → the limit check never fires.)
 // ════════════════════════════════════════════════════════════════════════════
@@ -341,7 +341,7 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/settings/canchas')
+      await page.goto('/canchas')
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
         timeout: 15_000,
       })
@@ -396,7 +396,7 @@ test.describe('canchas — smoke: edit court photos section', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/settings/canchas')
+      await page.goto('/canchas')
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({
         timeout: 15_000,
       })

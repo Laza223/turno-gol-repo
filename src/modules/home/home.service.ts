@@ -7,9 +7,23 @@ import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.
 import { countPendingRefunds } from '@/modules/payments/refund.service'
 import { addDays } from '@/shared/dates/art'
 import { operatingDayRangeUtc } from '@/shared/time/operating-day'
-import { daySlotsFor, occupancyForDay, type DayBookingRow } from '@/lib/dashboard/day-bookings'
+import {
+  daySlotsFor,
+  occupancyForDay,
+  relativeStartLabel,
+  rowDisplayName,
+  upcomingForDay,
+  type DayBookingRow,
+} from '@/lib/dashboard/day-bookings'
+import { DAY_KEYS } from '@/lib/booking/grid-cells'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import type { HoyData, WhileAwayItem, AttentionItem } from './home.types'
+import type {
+  HoyData,
+  WhileAwayItem,
+  AttentionItem,
+  UpcomingCourt,
+  UpcomingTurn,
+} from './home.types'
 import { sortAttentionItems, sortWhileAwayItems } from './home.lib'
 
 export type GetHoyDataOpts = {
@@ -36,37 +50,78 @@ function contactNameOf(
   return full || 'Sin nombre'
 }
 
-async function getOccupancy(
+const ART_TZ = 'America/Argentina/Buenos_Aires'
+
+/** Hora de pared ART como 'HH:MM' — el reloj contra el que se decide qué turno
+ *  ya pasó. Es el instante real, no el día operativo: a la 01:00 de la
+ *  madrugada de un viernes que cierra a las 02:00, "ahora" es la 01:00. */
+function nowHhmmArt(instant: Date): string {
+  return instant.toLocaleTimeString('es-AR', {
+    timeZone: ART_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+/** Hora de apertura del día operativo `date`; '00:00' si ese día está cerrado
+ *  (sin horarios no hay turnos, así que el origen del eje da igual). */
+function openHhmmFor(date: string, openingHours: OpeningHours): string {
+  const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!
+  const day = openingHours[dayKey]
+  return day && !day.closed ? day.open.slice(0, 5) : '00:00'
+}
+
+/**
+ * Las dos lecturas que salen de la MISMA foto del día: cuánto se ocupó y qué
+ * falta jugar. Una sola query de bookings para las dos — hasta 2026-09-10 esta
+ * función pedía las mismas filas y tiraba todo menos los horarios.
+ */
+async function getDayBoard(
   tenantId: string,
   date: string,
   opts: GetHoyDataOpts,
   tx: DbTx,
-): Promise<{ occupied: number; available: number; blocked: number; pct: number }> {
+): Promise<{ occupancy: HoyData['numbers']['occupancy']; upcoming: UpcomingCourt[] }> {
   const [bookingRows, courtRows] = await Promise.all([
     tx.execute(sql`
-      SELECT time_start::text AS "timeStart", time_end::text AS "timeEnd",
-             status, type, deposit_status AS "depositStatus", deposit_amount AS "depositAmount",
-             guest_name AS "guestName"
-      FROM bookings
-      WHERE tenant_id = ${tenantId} AND date = ${date}::date
-        AND status IN ('confirmed', 'pending_payment', 'completed', 'no_show')
+      SELECT b.id, b.court_id AS "courtId", c.name AS "courtName",
+             b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
+             b.status, b.type, b.deposit_status AS "depositStatus",
+             b.deposit_amount AS "depositAmount", b.guest_name AS "guestName",
+             pl.first_name AS "firstName", pl.last_name AS "lastName"
+      FROM bookings b
+      JOIN courts c ON c.id = b.court_id AND c.tenant_id = ${tenantId}
+      LEFT JOIN players pl ON pl.id = b.player_id
+      WHERE b.tenant_id = ${tenantId} AND b.date = ${date}::date
+        AND b.status IN ('confirmed', 'pending_payment', 'completed', 'no_show')
     `),
-    tx.execute(sql`SELECT status FROM courts WHERE tenant_id = ${tenantId}`),
+    // `created_at` es el MISMO orden con el que la grilla dibuja las columnas
+    // (listCourts, court.service.ts:45): las dos pantallas nombran las canchas
+    // en la misma secuencia, o el dueño tiene que volver a buscar cuál es cuál.
+    tx.execute(
+      sql`SELECT id, name, status FROM courts WHERE tenant_id = ${tenantId} ORDER BY created_at`,
+    ),
   ])
 
-  const rows: DayBookingRow[] = (
-    bookingRows as unknown as Array<{
-      timeStart: string
-      timeEnd: string
-      status: string
-      type: string
-      depositStatus: string
-      depositAmount: number
-      guestName: string | null
-    }>
-  ).map((r) => ({
-    id: '',
-    courtName: '',
+  const raw = bookingRows as unknown as Array<{
+    id: string
+    courtId: string
+    courtName: string
+    timeStart: string
+    timeEnd: string
+    status: string
+    type: string
+    depositStatus: string
+    depositAmount: number
+    guestName: string | null
+    firstName: string | null
+    lastName: string | null
+  }>
+
+  const rows: DayBookingRow[] = raw.map((r) => ({
+    id: r.id,
+    courtName: r.courtName,
     timeStart: r.timeStart,
     timeEnd: r.timeEnd,
     status: r.status as DayBookingRow['status'],
@@ -74,16 +129,47 @@ async function getOccupancy(
     depositStatus: r.depositStatus as DayBookingRow['depositStatus'],
     depositAmount: r.depositAmount,
     guestName: r.guestName,
-    playerFirstName: null,
-    playerLastName: null,
+    playerFirstName: r.firstName,
+    playerLastName: r.lastName,
     priceSnapshot: 0,
   }))
 
-  const courtsOnline = (courtRows as unknown as Array<{ status: string }>).filter(
-    (c) => c.status === 'online',
-  ).length
+  const courts = courtRows as unknown as Array<{ id: string; name: string; status: string }>
+  const online = courts.filter((c) => c.status === 'online')
   const slots = daySlotsFor(date, opts.openingHours, opts.closedDates ?? [], opts.closesNextDay)
-  return occupancyForDay(rows, slots.length, courtsOnline)
+  const occupancy = occupancyForDay(rows, slots.length, online.length)
+
+  const courtIdByBooking = new Map(raw.map((r) => [r.id, r.courtId]))
+  const nowHhmm = nowHhmmArt(new Date())
+  const openHhmm = openHhmmFor(date, opts.openingHours)
+
+  const byCourt = new Map<string, UpcomingTurn[]>()
+  for (const row of upcomingForDay(rows, nowHhmm, openHhmm, opts.closesNextDay)) {
+    const courtId = courtIdByBooking.get(row.id)
+    if (!courtId) continue
+    const turn: UpcomingTurn = {
+      bookingId: row.id,
+      timeLabel: timeLabel(row.timeStart, row.timeEnd),
+      relativeLabel: relativeStartLabel(row, nowHhmm, openHhmm, opts.closesNextDay),
+      contactName: rowDisplayName(row),
+      status: row.status,
+      type: row.type,
+      depositStatus: row.depositStatus,
+    }
+    const list = byCourt.get(courtId)
+    if (list) list.push(turn)
+    else byCourt.set(courtId, [turn])
+  }
+
+  // Las canchas pausadas quedan afuera aunque tengan turnos viejos encima: esta
+  // pantalla dice qué se juega hoy, y en una cancha pausada no se juega.
+  const upcoming: UpcomingCourt[] = online.map((c) => ({
+    courtId: c.id,
+    courtName: c.name,
+    turns: byCourt.get(c.id) ?? [],
+  }))
+
+  return { occupancy, upcoming }
 }
 
 async function hasCashFlowsOnDate(
@@ -295,14 +381,12 @@ export async function getHoyData(
   opts: GetHoyDataOpts,
 ): Promise<HoyData> {
   const { date, cutoffMins } = opts
-  const lastWeekDate = addDays(date, -7)
   const yesterday = addDays(date, -1)
 
   const [
     todaySummary,
-    lastWeekSummary,
     streetMoneyRows,
-    occupancy,
+    board,
     todayClose,
     yesterdayClose,
     yesterdayOpen,
@@ -314,9 +398,8 @@ export async function getHoyData(
     pendingRefunds,
   ] = await Promise.all([
     getDaySummary(tenantId, date, cutoffMins, tx),
-    getDaySummary(tenantId, lastWeekDate, cutoffMins, tx),
     getStreetMoney(tenantId, tx),
-    getOccupancy(tenantId, date, opts, tx),
+    getDayBoard(tenantId, date, opts, tx),
     getDailyClose(tenantId, date, tx),
     getDailyClose(tenantId, yesterday, tx),
     getDayOpen(tenantId, yesterday, tx),
@@ -384,16 +467,15 @@ export async function getHoyData(
   return {
     date,
     numbers: {
-      // B14: `collected` es la cuenta única (cashflow/totals.ts). La comparación
-      // contra la semana pasada solo tiene sentido si los dos lados se calculan
-      // igual — sumarlo a mano de este lado es cómo una comparación miente.
+      // B14: `collected` es la cuenta única (cashflow/totals.ts). Nadie lo suma
+      // a mano de este lado: el resumen diario y la pantalla leen el mismo valor.
       collectedTodayCents: todaySummary.collected,
-      collectedSameWeekdayLastWeekCents: lastWeekSummary.collected,
-      occupancy,
+      occupancy: board.occupancy,
       streetMoneyCents: sumStreetMoney(streetMoneyRows),
       cashClosed: todayClose !== null,
     },
     whileYouWereAway,
     needsAttention,
+    upcoming: board.upcoming,
   }
 }

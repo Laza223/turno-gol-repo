@@ -151,7 +151,6 @@ describe('home.service — números de Hoy', () => {
     )
 
     expect(data.numbers.collectedTodayCents).toBe(100000)
-    expect(data.numbers.collectedSameWeekdayLastWeekCents).toBe(70000)
   })
 
   it('plata en la calle es EXACTAMENTE la de getStreetMoney — nunca se recalcula', async () => {

@@ -1,47 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import {
-  compareToLastWeek,
-  sortAttentionItems,
-  sortWhileAwayItems,
-  ATTENTION_EMPTY_COPY,
-} from './home.lib'
+import { sortAttentionItems, sortWhileAwayItems, ATTENTION_EMPTY_COPY } from './home.lib'
 import type { AttentionItem, WhileAwayItem } from './home.types'
-
-describe('compareToLastWeek', () => {
-  it('detecta suba', () => {
-    const r = compareToLastWeek(150_00, 100_00)
-    expect(r.direction).toBe('up')
-    expect(r.deltaCents).toBe(50_00)
-    expect(r.deltaPct).toBe(50)
-  })
-
-  it('detecta baja', () => {
-    const r = compareToLastWeek(80_00, 100_00)
-    expect(r.direction).toBe('down')
-    expect(r.deltaCents).toBe(-20_00)
-    expect(r.deltaPct).toBe(-20)
-  })
-
-  it('detecta igual', () => {
-    const r = compareToLastWeek(100_00, 100_00)
-    expect(r.direction).toBe('flat')
-    expect(r.deltaCents).toBe(0)
-    expect(r.deltaPct).toBe(0)
-  })
-
-  it('sin datos la semana pasada no calcula porcentaje (evita división por cero)', () => {
-    const r = compareToLastWeek(100_00, 0)
-    expect(r.deltaPct).toBeNull()
-    expect(r.deltaCents).toBe(100_00)
-    expect(r.direction).toBe('up')
-  })
-
-  it('cero contra cero es flat sin porcentaje', () => {
-    const r = compareToLastWeek(0, 0)
-    expect(r.direction).toBe('flat')
-    expect(r.deltaPct).toBeNull()
-  })
-})
 
 describe('sortAttentionItems', () => {
   const booking: AttentionItem = {

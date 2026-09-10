@@ -5,12 +5,13 @@
  * única implementación, no se agregan alertas nuevas sin pasar por ese doc.
  */
 
+import type { BookingStatus, BookingType, DepositStatus } from '@/modules/bookings/booking.types'
+
 export type HoyData = {
   /** Día operativo (YYYY-MM-DD) sobre el que se arma esta respuesta. */
   date: string
   numbers: {
     collectedTodayCents: number
-    collectedSameWeekdayLastWeekCents: number
     occupancy: { occupied: number; available: number; blocked: number; pct: number }
     /** === sumStreetMoney(streetMoneyRows) — misma fuente que /caja y /caja/deudas. */
     streetMoneyCents: number
@@ -21,6 +22,29 @@ export type HoyData = {
   }
   whileYouWereAway: WhileAwayItem[]
   needsAttention: AttentionItem[]
+  /** Lo que falta jugar hoy, una entrada por cancha online. Vacío para el
+   *  worker del resumen diario, que pide AYER: a un día terminado no le queda
+   *  nada por delante. */
+  upcoming: UpcomingCourt[]
+}
+
+/** Una cancha online y los turnos que le quedan por jugar hoy. */
+export type UpcomingCourt = {
+  courtId: string
+  courtName: string
+  turns: UpcomingTurn[]
+}
+
+export type UpcomingTurn = {
+  bookingId: string
+  /** "20:00-21:00" */
+  timeLabel: string
+  /** "ahora" o "en 25 min" cuando arranca dentro de la hora; null si falta mas. */
+  relativeLabel: string | null
+  contactName: string
+  status: BookingStatus
+  type: BookingType
+  depositStatus: DepositStatus
 }
 
 export type WhileAwayItem =

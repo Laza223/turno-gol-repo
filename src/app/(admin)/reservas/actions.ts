@@ -761,7 +761,7 @@ export async function rescheduleBookingAction(
   return { success: true, booking: outcome.booking, priceChanged: outcome.priceChanged }
 }
 
-const CHARGEABLE_STATUSES = ['confirmed', 'completed', 'no_show'] as const
+const CHARGEABLE_STATUSES = ['confirmed', 'completed'] as const
 
 const addBookingChargeSchema = z.object({
   bookingId: uuid,

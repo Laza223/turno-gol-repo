@@ -86,6 +86,8 @@ export function GridDayList({
   )
   const trackRef = useRef<HTMLDivElement>(null)
   const pillsRef = useRef<HTMLDivElement>(null)
+  /** Una `<section>` por página (todas montadas a la vez, ver el carrusel más abajo). */
+  const sectionsRef = useRef<Map<string, HTMLElement>>(new Map())
   const [index, setIndex] = useState(0)
 
   /**
@@ -118,6 +120,28 @@ export function GridDayList({
     setIndex(Math.max(0, Math.min(i, pages.length - 1)))
   }, [pages.length])
 
+  /**
+   * H100: sin esto cada página abre en la primera hora del día — con la
+   * apertura a las 10:00 y "ahora" a las 16:00, son seis franjas muertas
+   * (deshabilitadas, sin ninguna marca de "ahora" como en la matriz de
+   * escritorio) que hay que deslizar a ciegas antes de llegar a algo
+   * accionable. Se adelanta el scroll VERTICAL de cada página (todas montadas
+   * a la vez para el swipe) hasta la primera franja no pasada, una sola vez —
+   * el componente se remonta con `key={date}` (GrillaView), así que no hace
+   * falta reaccionar a cambios de fecha acá.
+   */
+  useEffect(() => {
+    const target = visibleSlots.find((s) => !isSlotPast(s))
+    if (!target) return
+    for (const section of sectionsRef.current.values()) {
+      const anchor = section.querySelector<HTMLElement>(`[data-slot-time="${target}"]`)
+      if (!anchor) continue
+      const offset = anchor.getBoundingClientRect().top - section.getBoundingClientRect().top
+      section.scrollTop = Math.max(0, section.scrollTop + offset - section.clientHeight * 0.15)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez por montaje (por fecha, ver comentario arriba).
+  }, [])
+
   return (
     <div
       data-testid="booking-day-list"
@@ -137,6 +161,7 @@ export function GridDayList({
       >
         {pages.map((page, i) => {
           const label = page.kind === 'all' ? 'Todas' : page.court.name
+          const paused = page.kind === 'court' && page.court.status === 'offline'
           const active = i === index
           return (
             <button
@@ -145,7 +170,7 @@ export function GridDayList({
               onClick={() => scrollToIndex(i)}
               aria-pressed={active}
               className={cn(
-                'inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors md:min-h-9',
+                'inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors md:min-h-9',
                 'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                 active
                   ? 'bg-primary text-primary-foreground shadow-xs'
@@ -153,6 +178,7 @@ export function GridDayList({
               )}
             >
               {label}
+              {paused && <span className="font-normal opacity-70">(pausada)</span>}
             </button>
           )
         })}
@@ -176,47 +202,65 @@ export function GridDayList({
         }}
         className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none [&::-webkit-scrollbar]:hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        {pages.map((page) => (
-          <section
-            key={page.kind === 'all' ? 'all' : page.court.id}
-            aria-label={page.kind === 'all' ? 'Todas las canchas' : page.court.name}
-            className="w-full shrink-0 snap-center overflow-y-auto rounded-xl border border-border bg-card"
-          >
-            {hasBand && (
-              <div className="grid">
-                <MorningCollapseBand
-                  firstSlot={slots[0]!}
-                  boundarySlot={slots[collapsedCount]!}
-                  onExpand={onExpandMorning}
-                />
-              </div>
-            )}
+        {pages.map((page, i) => {
+          const pageKey = page.kind === 'all' ? 'all' : page.court.id
+          // Todas las páginas están montadas a la vez (el swipe las necesita
+          // listas), y "Todas" repite cada cancha que su propia página ya
+          // tiene. Sin este freno, tocar un turno libre en una activa el
+          // quick-form popover en LAS DOS páginas a la vez (mismo
+          // courtId:slotTime) — invisible con el mouse porque la que no se ve
+          // queda fuera de pantalla, pero alcanzable por teclado (nada la
+          // saca del orden de tabulación), y ahí sí duplica el formulario.
+          const isActive = i === index
+          return (
+            <section
+              key={pageKey}
+              ref={(el) => {
+                if (el) sectionsRef.current.set(pageKey, el)
+                else sectionsRef.current.delete(pageKey)
+              }}
+              aria-label={page.kind === 'all' ? 'Todas las canchas' : page.court.name}
+              className="w-full shrink-0 snap-center overflow-y-auto rounded-xl border border-border bg-card"
+            >
+              {hasBand && (
+                <div className="grid">
+                  <MorningCollapseBand
+                    firstSlot={slots[0]!}
+                    boundarySlot={slots[collapsedCount]!}
+                    onExpand={onExpandMorning}
+                  />
+                </div>
+              )}
 
-            {page.kind === 'all' ? (
-              <AllCourtsPage
-                courts={courts}
-                visibleSlots={visibleSlots}
-                cells={cells}
-                isSlotPast={isSlotPast}
-                onSlotClick={onSlotClick}
-                onDetailChange={onDetailChange}
-              />
-            ) : (
-              <CourtPage
-                court={page.court}
-                visibleSlots={visibleSlots}
-                cells={cells}
-                isSlotPast={isSlotPast}
-                pulseIds={pulseIds}
-                onSlotClick={onSlotClick}
-                onDetailChange={onDetailChange}
-                quickSlotKey={quickSlotKey}
-                onQuickClose={onQuickClose}
-                renderQuickForm={renderQuickForm}
-              />
-            )}
-          </section>
-        ))}
+              {page.kind === 'all' ? (
+                <AllCourtsPage
+                  courts={courts}
+                  visibleSlots={visibleSlots}
+                  cells={cells}
+                  isSlotPast={isSlotPast}
+                  onSlotClick={onSlotClick}
+                  onDetailChange={onDetailChange}
+                  quickSlotKey={isActive ? quickSlotKey : null}
+                  onQuickClose={onQuickClose}
+                  renderQuickForm={renderQuickForm}
+                />
+              ) : (
+                <CourtPage
+                  court={page.court}
+                  visibleSlots={visibleSlots}
+                  cells={cells}
+                  isSlotPast={isSlotPast}
+                  pulseIds={pulseIds}
+                  onSlotClick={onSlotClick}
+                  onDetailChange={onDetailChange}
+                  quickSlotKey={isActive ? quickSlotKey : null}
+                  onQuickClose={onQuickClose}
+                  renderQuickForm={renderQuickForm}
+                />
+              )}
+            </section>
+          )
+        })}
       </div>
 
       {/* Sin chevrons ni rótulo al pie, a propósito: duplicaban lo que las
@@ -246,6 +290,9 @@ function AllCourtsPage({
   isSlotPast,
   onSlotClick,
   onDetailChange,
+  quickSlotKey,
+  onQuickClose,
+  renderQuickForm,
 }: {
   courts: CourtRow[]
   visibleSlots: string[]
@@ -253,13 +300,20 @@ function AllCourtsPage({
   isSlotPast: (slotTime: string) => boolean
   onSlotClick: (courtId: string, slotTime: string) => void
   onDetailChange: (bookingId: string | null) => void
+  quickSlotKey?: string | null
+  onQuickClose?: () => void
+  renderQuickForm?: (courtId: string, courtName: string, slotTime: string) => React.ReactNode
 }) {
   return (
     <ul role="list" className="divide-y divide-border">
       {visibleSlots.map((slotTime) => {
         const past = isSlotPast(slotTime)
         return (
-          <li key={slotTime} className={cn('px-3 py-2.5', past && 'opacity-55')}>
+          <li
+            key={slotTime}
+            data-slot-time={slotTime}
+            className={cn('px-3 py-2.5', past && 'opacity-55')}
+          >
             <p className="mb-1.5 text-xs font-semibold tabular-nums text-muted-foreground">
               {rangeLabel(slotTime)}
             </p>
@@ -290,13 +344,14 @@ function AllCourtsPage({
                 }
 
                 const clickable = court.status === 'online' && !past
-                return (
+                const cellKey = `${court.id}:${slotTime}`
+                const freeChip = (
                   <button
                     key={court.id}
                     type="button"
                     disabled={!clickable}
                     onClick={() => onSlotClick(court.id, slotTime)}
-                    aria-label={`Reservar ${slotTime} en ${court.name}`}
+                    aria-label={`Reservar ${slotTime} en ${court.name}${court.status === 'offline' ? ', cancha pausada' : ''}`}
                     className={cn(
                       'inline-flex min-h-11 items-center gap-1 rounded-lg border border-dashed border-border px-2.5 text-xs font-medium',
                       'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
@@ -309,6 +364,25 @@ function AllCourtsPage({
                     <span className="max-w-24 truncate">{court.name}</span>
                   </button>
                 )
+
+                if (clickable && renderQuickForm && quickSlotKey === cellKey) {
+                  return (
+                    <Popover key={court.id} open onOpenChange={(v) => !v && onQuickClose?.()}>
+                      <PopoverTrigger asChild>{freeChip}</PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        side="bottom"
+                        sideOffset={4}
+                        collisionPadding={12}
+                        className="w-auto p-3"
+                      >
+                        {renderQuickForm(court.id, court.name, slotTime)}
+                      </PopoverContent>
+                    </Popover>
+                  )
+                }
+
+                return freeChip
               })}
             </div>
           </li>
@@ -346,6 +420,8 @@ function BookingChip({
   onOpen: () => void
 }) {
   const visual = gridSlotVisual(booking)
+  const pendingCents = slotPendingCents(booking)
+  const name = bookingDisplayName(booking)
   const Icon = visual.icon
   return (
     <button
@@ -353,15 +429,33 @@ function BookingChip({
       onClick={onOpen}
       aria-label={`${courtName} a las ${slotTime}: ${visual.label}`}
       className={cn(
-        'inline-flex min-h-11 items-center gap-1.5 rounded-lg border-l-[3px] px-2.5 text-xs font-medium',
+        'flex min-h-11 w-32 flex-col items-start gap-0.5 rounded-lg border-l-[3px] px-2 py-1.5 text-left',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
         visual.cell,
         visual.borderL,
         visual.alarm && 'slot-alarm-ring',
       )}
     >
-      <Icon className={cn('h-3.5 w-3.5 shrink-0', visual.labelText)} aria-hidden />
-      <span className="max-w-24 truncate">{courtName}</span>
+      <span className="max-w-full truncate text-[10px] font-semibold text-muted-foreground">
+        {courtName}
+      </span>
+      {name && (
+        <span className="max-w-full truncate text-xs font-semibold text-foreground">{name}</span>
+      )}
+      <span
+        className={cn(
+          'inline-flex max-w-full items-center gap-1 truncate text-[10px] font-medium',
+          visual.labelText,
+        )}
+      >
+        <Icon className="h-3 w-3 shrink-0" aria-hidden />
+        {visual.label}
+      </span>
+      {pendingCents !== null && (
+        <span className="max-w-full truncate text-[10px] font-medium tabular-nums text-muted-foreground">
+          Falta {formatArs(pendingCents)}
+        </span>
+      )}
     </button>
   )
 }
@@ -407,7 +501,7 @@ function CourtPage({
           const Icon = visual.icon
           const name = bookingDisplayName(booking)
           return (
-            <li key={slotTime}>
+            <li key={slotTime} data-slot-time={slotTime}>
               <button
                 type="button"
                 onClick={() => onDetailChange(booking.id)}
@@ -430,7 +524,7 @@ function CourtPage({
                 </span>
                 {pendingCents !== null && (
                   <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
-                    {formatArs(pendingCents)}
+                    Falta {formatArs(pendingCents)}
                   </span>
                 )}
                 <span
@@ -453,7 +547,7 @@ function CourtPage({
             type="button"
             disabled={!clickable}
             onClick={() => onSlotClick(court.id, slotTime)}
-            aria-label={`Reservar ${slotTime} en ${court.name}`}
+            aria-label={`Reservar ${slotTime} en ${court.name}${court.status === 'offline' ? ', cancha pausada' : ''}`}
             className={cn(
               'flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
@@ -472,7 +566,7 @@ function CourtPage({
         )
 
         return (
-          <li key={slotTime}>
+          <li key={slotTime} data-slot-time={slotTime}>
             {clickable && renderQuickForm && quickSlotKey === cellKey ? (
               <Popover open onOpenChange={(v) => !v && onQuickClose?.()}>
                 <PopoverTrigger asChild>{freeRow}</PopoverTrigger>

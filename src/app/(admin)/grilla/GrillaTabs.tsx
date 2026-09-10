@@ -2,7 +2,7 @@ import { ScrollTabs } from '@/components/ui/scroll-tabs'
 
 const GRILLA_TABS = [
   { href: '/grilla', label: 'Calendario' },
-  { href: '/reservas', label: 'Lista' },
+  { href: '/reservas', label: 'Reservas' },
 ]
 
 /**

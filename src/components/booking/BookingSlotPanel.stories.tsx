@@ -82,7 +82,11 @@ type Story = StoryObj<typeof meta>
 export const CobrarYCerrar: Story = {
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    await expect(await panel.findByText('Cobrar y dar por jugado')).toBeTruthy()
+    // H017: título y CTA ahora comparten texto a propósito (mismo verbo) — se
+    // escopea al heading para no chocar con el botón que dice lo mismo.
+    await expect(
+      await panel.findByRole('heading', { name: 'Cobrar y dar por jugado', level: 3 }),
+    ).toBeTruthy()
     // Confirmado ⇒ todavía se puede mover (RESCHEDULABLE_STATUSES).
     await expect(await panel.findByRole('button', { name: /Reprogramar/ })).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
@@ -111,13 +115,17 @@ export const CobroRechazado: Story = {
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
     // La línea de cobro viene precargada con lo pendiente: alcanza con el CTA.
-    await userEvent.click(await panel.findByRole('button', { name: 'Cobrar y cerrar turno' }))
+    await userEvent.click(await panel.findByRole('button', { name: 'Cobrar y dar por jugado' }))
 
     await expect(await panel.findByRole('alert')).toHaveTextContent(
       'La caja de ese día ya está cerrada.',
     )
     // El panel no se cierra ni da el turno por jugado.
-    await expect(await panel.findByText('Cobrar y dar por jugado')).toBeTruthy()
+    // H017: título y CTA ahora comparten texto a propósito (mismo verbo) — se
+    // escopea al heading para no chocar con el botón que dice lo mismo.
+    await expect(
+      await panel.findByRole('heading', { name: 'Cobrar y dar por jugado', level: 3 }),
+    ).toBeTruthy()
   },
 }
 
@@ -155,7 +163,11 @@ export const CobrarPorAdelantado: Story = {
   },
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    await expect(await panel.findByText('Cobrar por adelantado')).toBeTruthy()
+    // H017: mismo motivo que arriba — título y CTA comparten texto, se
+    // escopea al heading.
+    await expect(
+      await panel.findByRole('heading', { name: 'Cobrar por adelantado', level: 3 }),
+    ).toBeTruthy()
     // Un turno futuro no puede estar "ausente": todavía no pasó nada.
     await expect(panel.queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
   },

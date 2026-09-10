@@ -13,10 +13,12 @@ export function SlotPriceSummary({ booking, displayName }: Props) {
   return (
     <section className="rounded-lg border border-border p-3">
       <dl className="space-y-1.5 text-sm">
-        <div className="flex justify-between">
-          <dt className="text-muted-foreground">Precio del turno</dt>
-          <dd className="font-semibold tabular-nums">{formatArs(booking.priceSnapshot)}</dd>
-        </div>
+        {booking.type !== 'tournament' && (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">Precio del turno</dt>
+            <dd className="font-semibold tabular-nums">{formatArs(booking.priceSnapshot)}</dd>
+          </div>
+        )}
         {typeof booking.totalPaid === 'number' && (
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Cobrado</dt>

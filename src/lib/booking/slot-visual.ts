@@ -82,10 +82,14 @@ type SlotStateMeta = {
 
 const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
   pending_payment: {
-    // Decisión v2 D1: la grilla del staff marca "pagando ahora". "Esperando
-    // seña" se leía como una espera indefinida; esto es una ventana de 6 min
-    // que se libera sola, y el encargado necesita saber cuál de las dos es.
-    label: 'Pagando ahora',
+    // Decisión del dueño 2026-09-10 (auditoría de coherencia, H018/H101): manda
+    // MASTER §8.5 y el término es "Esperando seña" en TODO el panel. Deja sin
+    // efecto la "Decisión v2 D1", que había desviado solo la grilla a "Pagando
+    // ahora" sin anotar la excepción en ningún lado — y que dejó el mismo estado
+    // con tres nombres distintos (grilla, filtro de Reservas, ficha del jugador).
+    // La urgencia de la ventana de 6 minutos la comunica el contador de la celda,
+    // no el rótulo. El jugador ve la misma palabra: por eso se entienden por teléfono.
+    label: 'Esperando seña',
     icon: Clock,
     tone: 'warning',
     inLegend: true,

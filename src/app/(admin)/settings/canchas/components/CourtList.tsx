@@ -3,7 +3,7 @@
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { LayoutGrid, Trophy } from 'lucide-react'
+import { LayoutGrid, Lock, Trophy } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
@@ -101,6 +101,7 @@ export function CourtList({
   const [editingCourt, setEditingCourt] = useState<CourtRow | null>(null)
 
   function handleCourtSaved(updatedCourt: CourtRow) {
+    const wasEdit = editingCourt !== null
     setCourts((prev) => {
       const idx = prev.findIndex((c) => c.id === updatedCourt.id)
       if (idx >= 0) {
@@ -112,6 +113,7 @@ export function CourtList({
     })
     setShowForm(false)
     setEditingCourt(null)
+    toast({ title: wasEdit ? 'Cancha actualizada' : 'Cancha creada', variant: 'success' })
   }
 
   function openCreate() {
@@ -137,11 +139,14 @@ export function CourtList({
       subtitle={`${totalWord} · ${tenantName}`}
       icon={<Trophy className="h-6 w-6" aria-hidden="true" />}
       actions={
-        // El CTA se oculta con el form abierto (mismo comportamiento previo: no
-        // se podía disparar "+ Nueva cancha" mientras ya se estaba creando/
-        // editando una cancha). Texto con el "+" literal sin cambios: fijado
-        // por e2e canchas-crud (`getByRole('button', { name: '+ Nueva cancha' })`).
-        isAdmin && !showForm ? (
+        // El CTA se oculta del todo con el form abierto (mismo comportamiento
+        // previo: no se podía disparar "+ Nueva cancha" mientras ya se estaba
+        // creando/editando una cancha). Texto con el "+" literal sin cambios:
+        // fijado por e2e canchas-crud (`getByRole('button', { name: '+ Nueva
+        // cancha' })`). Para el manager NO se oculta (MASTER §12 CHK-admin:
+        // "ítems bloqueados por rol muestran candado+tooltip, nunca
+        // desaparecen") — mismo patrón que `torneos/page.tsx`.
+        showForm ? undefined : isAdmin ? (
           <button
             type="button"
             onClick={openCreate}
@@ -149,7 +154,15 @@ export function CourtList({
           >
             + Nueva cancha
           </button>
-        ) : undefined
+        ) : (
+          <span
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground"
+            title="Solo el dueño puede crear canchas"
+          >
+            <Lock className="h-4 w-4" aria-hidden="true" />+ Nueva cancha
+            <span className="sr-only">— solo el dueño puede hacerlo</span>
+          </span>
+        )
       }
     />
   )
@@ -200,7 +213,16 @@ export function CourtList({
               >
                 + Nueva cancha
               </button>
-            ) : undefined
+            ) : (
+              // MASTER §12 CHK-admin: candado+tooltip, nunca desaparición.
+              <span
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground"
+                title="Solo el dueño puede crear canchas"
+              >
+                <Lock className="h-4 w-4" aria-hidden="true" />+ Nueva cancha
+                <span className="sr-only">— solo el dueño puede hacerlo</span>
+              </span>
+            )
           }
         />
       ) : (
@@ -252,7 +274,32 @@ function CourtCard({
         toast({ title: 'No se pudo activar', description: res.error, variant: 'destructive' })
         return
       }
-      toast({ title: 'Cancha activada', variant: 'success' })
+      toast({
+        title: 'Cancha activada',
+        variant: 'success',
+        // Clase A (gramática §3: "Activar/Desactivar cancha, toggle del mismo
+        // endpoint, simétrico"): Deshacer re-invoca el toggle inverso directo,
+        // sin pasar de nuevo por el ConfirmDialog de impacto.
+        action: { label: 'Deshacer', onClick: () => deactivateDirect() },
+      })
+    })
+  }
+
+  function deactivateDirect() {
+    const prev = currentStatus
+    setCurrentStatus('offline')
+    startTransition(async () => {
+      const res = await toggleStatusAction(court.id, 'offline')
+      if (!res.success) {
+        setCurrentStatus(prev)
+        toast({ title: 'No se pudo desactivar', description: res.error, variant: 'destructive' })
+        return
+      }
+      toast({
+        title: 'Cancha desactivada',
+        variant: 'success',
+        action: { label: 'Deshacer', onClick: () => activate() },
+      })
     })
   }
 
@@ -282,7 +329,11 @@ function CourtCard({
       setCurrentStatus(prev)
       return res
     }
-    toast({ title: 'Cancha desactivada', variant: 'success' })
+    toast({
+      title: 'Cancha desactivada',
+      variant: 'success',
+      action: { label: 'Deshacer', onClick: () => activate() },
+    })
     return res
   }
 
@@ -314,7 +365,7 @@ function CourtCard({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        {isAdmin && (
+        {isAdmin ? (
           <button
             type="button"
             onClick={() => onEdit(court)}
@@ -322,6 +373,16 @@ function CourtCard({
           >
             Editar
           </button>
+        ) : (
+          // MASTER §12 CHK-admin: candado+tooltip, nunca desaparición.
+          <span
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground min-h-11 md:min-h-9 px-2 py-1"
+            title="Solo el dueño puede editar la cancha"
+          >
+            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+            Editar
+            <span className="sr-only">— solo el dueño puede hacerlo</span>
+          </span>
         )}
         <button
           type="button"

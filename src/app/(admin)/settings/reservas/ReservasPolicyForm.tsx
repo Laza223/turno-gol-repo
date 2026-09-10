@@ -100,7 +100,7 @@ export function ReservasPolicyForm({
           Seña
         </legend>
         <SegmentedControl
-          className={`flex gap-2 ${mpConnected ? '' : 'cursor-not-allowed'}`}
+          className={`flex gap-2 ${mpConnected ? '' : 'opacity-50 cursor-not-allowed'}`}
           aria-label="Seña"
           value={requiresDeposit ? 'yes' : 'no'}
           onValueChange={(v) => setRequiresDeposit(v === 'yes')}

@@ -1,5 +1,6 @@
 import { Receipt } from 'lucide-react'
 import { formatArs } from '@/lib/format'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { InvoiceEntry } from '@/modules/billing/billing.types'
 
 type Props = {
@@ -58,7 +59,7 @@ export function InvoiceHistorySection({ invoices }: Props) {
       </p>
 
       {invoices.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">Todavía no hay cobros registrados.</p>
+        <EmptyState className="mt-4" icon={Receipt} title="Todavía no hay cobros registrados." />
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">

@@ -48,8 +48,8 @@ export const ConCanchas: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(courtFutbol5().name)).toBeVisible()
     // 3 canchas online (fútbol 5/7/11) + 1 offline (mantenimiento).
-    await expect(canvas.getAllByText('Online')).toHaveLength(3)
-    await expect(canvas.getByText('Offline')).toBeVisible()
+    await expect(canvas.getAllByText('Activa')).toHaveLength(3)
+    await expect(canvas.getByText('Pausada')).toBeVisible()
   },
 }
 
@@ -65,13 +65,31 @@ export const SinCanchas: Story = {
   },
 }
 
-/** Manager: puede activar/desactivar, pero no ve "Editar" ni "+ Nueva cancha" (solo admin, Configuración). */
+/**
+ * Manager: puede activar/desactivar. "Editar" y "+ Nueva cancha" los VE, con candado
+ * y tooltip, en vez de desaparecer — MASTER §12 CHK-admin: un ítem bloqueado por rol
+ * se muestra bloqueado, nunca se esconde, para que el encargado sepa que existe y no
+ * crea que la app está rota.
+ *
+ * El assert no puede ser `queryByRole('button')` a secas: el bloqueado es un <span>, así
+ * que esa consulta devolvía null tanto ANTES (cuando no se renderizaba nada) como AHORA
+ * — pasaba por el motivo equivocado. Se verifica el texto presente y que NO sea un botón.
+ */
 export const VistaManager: Story = {
   args: { isAdmin: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('button', { name: '+ Nueva cancha' })).not.toBeInTheDocument()
+
+    const nuevaCancha = canvas.getAllByText(/Nueva cancha/)
+    await expect(nuevaCancha.length).toBeGreaterThan(0)
+    await expect(canvas.queryByRole('button', { name: /Nueva cancha/ })).not.toBeInTheDocument()
+
+    const editar = canvas.getAllByText('Editar')
+    await expect(editar.length).toBeGreaterThan(0)
     await expect(canvas.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+
+    await expect(canvas.getAllByText(/solo el dueño puede/i).length).toBeGreaterThan(0)
+
     await expect(
       canvas.getAllByRole('button', { name: /desactivar|activar/i }).length,
     ).toBeGreaterThan(0)

@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { CalendarOff } from 'lucide-react'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { artDateString } from '@/test/fixtures/clock'
+import { EmptyState } from '@/components/ui/empty-state'
 import { AddClosedDateForm } from './AddClosedDateForm'
 
 const MIN_DATE = artDateString()
@@ -17,7 +19,12 @@ const meta = {
     (Story) => (
       <div className="card-premium max-w-lg rounded-lg p-6">
         <h2 className="mb-4 text-base font-semibold text-foreground">Días cerrados</h2>
-        <p className="mb-4 text-sm text-muted-foreground">No hay días cerrados configurados.</p>
+        <EmptyState
+          icon={CalendarOff}
+          title="No hay días cerrados"
+          description="Agregá una fecha abajo para bloquear un día completo (feriados, mantenimiento)."
+          className="mb-4"
+        />
         <Story />
       </div>
     ),

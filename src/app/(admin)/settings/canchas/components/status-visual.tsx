@@ -6,19 +6,20 @@ type CourtStatus = CourtRow['status']
 
 export type CourtStatusVisual = StatusBadgeVisual
 
-/** Vocabulario §8.5: "Online"/"Offline" son el vocabulario ya establecido del
- * producto (court_status enum + fixture de e2e canchas-crud), no una etiqueta
- * es-AR alternativa. */
+/** Vocabulario §8.5: court `offline` se dice "Pausada" (MASTER.md:513-514) —
+ * el mismo término que ya usa la Grilla para la misma cancha
+ * (`GridScroller.tsx`, "(pausada)"). "Activa" es la contraparte natural: es
+ * el resultado del botón "Activar" de esta misma pantalla. */
 const STATUS_VISUALS: Record<CourtStatus, CourtStatusVisual> = {
   online: {
     icon: CheckCircle2,
-    label: 'Online',
+    label: 'Activa',
     tone: 'success',
   },
   offline: {
     // Ban: mismo ícono que MASTER §2.6 asigna a "Bloqueado / cancha offline".
     icon: Ban,
-    label: 'Offline',
+    label: 'Pausada',
     tone: 'neutral',
   },
 }

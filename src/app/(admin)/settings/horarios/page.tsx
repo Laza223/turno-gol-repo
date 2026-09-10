@@ -1,4 +1,6 @@
+import { CalendarOff, Clock } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { AddClosedDateForm } from './AddClosedDateForm'
 import { HorariosForm } from './HorariosForm'
 import { RemoveClosedDateForm } from './RemoveClosedDateForm'
@@ -6,6 +8,7 @@ import type { LooseOpeningHours } from '@/lib/schedule/schedule-view'
 import { addClosedDateAction, removeClosedDateAction, updateHorariosAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 import { artTodayStr } from '@/shared/dates/art'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function HorariosPage() {
   const { tenant } = await requireAdminStaff()
@@ -16,7 +19,13 @@ export default async function HorariosPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
+      {/* H022: unificada al mismo PageHeader que ya usan perfil/avisos/canchas/equipo —
+          el resto de Configuración resolvía la cabecera con un <h1> genérico "Configuración". */}
+      <PageHeader
+        title="Horarios"
+        subtitle="Horario de apertura y días cerrados del complejo."
+        icon={<Clock className="h-6 w-6" aria-hidden="true" />}
+      />
 
       <SettingsTabs active="/settings/horarios" />
 
@@ -59,7 +68,12 @@ export default async function HorariosPage() {
               ))}
           </ul>
         ) : (
-          <p className="mb-4 text-sm text-muted-foreground">No hay días cerrados configurados.</p>
+          <EmptyState
+            icon={CalendarOff}
+            title="No hay días cerrados"
+            description="Agregá una fecha abajo para bloquear un día completo (feriados, mantenimiento)."
+            className="mb-4"
+          />
         )}
 
         <AddClosedDateForm minDate={minDate} action={addClosedDateAction} />

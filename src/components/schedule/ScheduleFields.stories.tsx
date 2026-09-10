@@ -120,7 +120,11 @@ export const ConfigAvanzadaArrancaAbierta: Story = {
   },
 }
 
-/** Personalizando un día: "Restablecer" vuelve a heredar el general. */
+/**
+ * Personalizando un día: la fila arranca colapsada aunque ya sea 'custom'
+ * (H165 — mismo tratamiento que cualquier otro día); "Personalizar" abre el
+ * editor y ahí aparece "Restablecer", que vuelve a heredar el general.
+ */
 export const DiaPersonalizado: Story = {
   render: () => {
     const view = deriveScheduleView(openingHours())
@@ -131,9 +135,13 @@ export const DiaPersonalizado: Story = {
     const canvas = within(canvasElement)
     await openAdvanced(canvas)
     // viernes y domingo YA son 'custom' en el fixture (09-24 y 09-22 difieren
-    // del general 09-23) — hay 3 "Restablecer" en pantalla. Acotar al <li> de
-    // Sábado, que es el día que esta story personaliza.
+    // del general 09-23) — hay varios "Personalizar" en pantalla. Acotar al
+    // <li> de Sábado, que es el día que esta story personaliza.
     const saturdayItem = (await canvas.findByText('Sábado')).closest('li') as HTMLElement
+    // Colapsada por default: muestra sus propias horas + "Personalizar", no el
+    // editor todavía.
+    await expect(within(saturdayItem).getByText('10:00 a 23:00')).toBeInTheDocument()
+    await userEvent.click(within(saturdayItem).getByRole('button', { name: 'Personalizar' }))
     await expect(
       within(saturdayItem).getByRole('button', { name: 'Restablecer' }),
     ).toBeInTheDocument()

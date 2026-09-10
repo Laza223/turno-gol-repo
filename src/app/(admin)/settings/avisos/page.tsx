@@ -1,4 +1,6 @@
+import { Bell } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { AvisosForm } from './AvisosForm'
 import { updateAvisosSettingsAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
@@ -8,7 +10,11 @@ export default async function AvisosPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
+      <PageHeader
+        title="Avisos"
+        subtitle="Cómo te avisamos de las reservas y los pagos nuevos."
+        icon={<Bell className="h-6 w-6" aria-hidden="true" />}
+      />
 
       <SettingsTabs active="/settings/avisos" />
 

@@ -1,5 +1,6 @@
-import { AlertTriangle, CreditCard, CheckCircle2, ExternalLink } from 'lucide-react'
+import { AlertTriangle, CreditCard, CheckCircle2, ExternalLink, Info, Receipt } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
 import {
   getBillingPayerEmail,
@@ -99,7 +100,13 @@ export default async function FacturacionPage(
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
+      {/* H022: unificada al mismo PageHeader que ya usan perfil/avisos/canchas/equipo —
+          el resto de Configuración resolvía la cabecera con un <h1> genérico "Configuración". */}
+      <PageHeader
+        title="Facturación"
+        subtitle="Tu plan, la suscripción y la cuenta de MercadoPago conectada."
+        icon={<Receipt className="h-6 w-6" aria-hidden="true" />}
+      />
 
       <SettingsTabs active="/settings/facturacion" />
 
@@ -147,9 +154,12 @@ export default async function FacturacionPage(
               </div>
             </dl>
             {sub.mpSubscriptionId && (
-              <p className="mt-4 text-sm text-muted-foreground">
-                💳 Ya hay una suscripción de MercadoPago creada para este plan. Revisá el método de
-                pago conectado en tu cuenta de MercadoPago.
+              <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+                <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>
+                  Ya hay una suscripción de MercadoPago creada para este plan. Revisá el método de
+                  pago conectado en tu cuenta de MercadoPago.
+                </span>
               </p>
             )}
           </>
@@ -195,10 +205,11 @@ export default async function FacturacionPage(
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
               <CreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />{' '}
-              MercadoPago
+              Cobrar señas a tus jugadores
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Conectá tu cuenta para cobrar las señas de las reservas online directamente.
+              Conectá tu cuenta de MercadoPago para cobrar las señas de las reservas online
+              directamente.
             </p>
             {/* Decir CUÁL cuenta está conectada, no solo que hay una: MercadoPago
                   no vuelve a pedir permiso si la app ya está autorizada, así que
@@ -218,17 +229,20 @@ export default async function FacturacionPage(
                       no algo que TurnoGol pueda cambiar por el complejo — por eso el aviso
                       recién aparece acá, una vez conectado, y no en el botón de Conectar:
                       antes de eso el complejo no tiene panel de Costos y cuotas que tocar. */}
-                <p className="mt-2 text-sm text-muted-foreground">
-                  💡 Por defecto, Mercado Pago tarda 18 días en acreditarte la seña.{' '}
-                  <a
-                    href="https://youtu.be/pwUFOdZMxYs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
-                  >
-                    Mirá cómo cambiarlo a al instante (2 min)
-                  </a>
-                  .
+                <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                  <span>
+                    Por defecto, Mercado Pago tarda 18 días en acreditarte la seña.{' '}
+                    <a
+                      href="https://youtu.be/pwUFOdZMxYs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
+                    >
+                      Mirá cómo cambiarlo a al instante (2 min)
+                    </a>
+                    .
+                  </span>
                 </p>
               </>
             )}
@@ -257,7 +271,7 @@ export default async function FacturacionPage(
         ) : (
           <a
             href="/api/mp/oauth-start"
-            className="mt-4 inline-flex h-11 md:h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-emerald-700 transition-colors"
+            className="mt-4 inline-flex h-11 md:h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Conectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
           </a>

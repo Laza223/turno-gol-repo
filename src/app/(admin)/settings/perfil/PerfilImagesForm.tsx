@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Info } from 'lucide-react'
 import { ImageUploader } from '@/components/ui/image-uploader'
-import { toast } from '@/hooks/use-toast'
 import type { TenantImageActionResult } from './actions'
 
 /** Firmas de setTenantImageAction/removeTenantImageAction — DI, ver ReservasPolicyForm.tsx. */
@@ -31,51 +30,42 @@ export function PerfilImagesForm({
 }: Props) {
   const [logoUrl, setLogoUrl] = useState(initialLogo)
   const [coverUrl, setCoverUrl] = useState(initialCover)
-  const [error, setError] = useState<string | null>(null)
+  // Feedback inline (role="status"/"alert"): mismo patrón que
+  // TenantContactForm/TenantLocationForm, en vez del toast que tenía antes
+  // esta sección — era el único bloque de /settings/perfil que confirmaba el
+  // guardado con un mecanismo distinto al resto de la pantalla (H051).
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   async function upload(kind: 'logo' | 'cover', blob: Blob) {
-    setError(null)
+    setFeedback(null)
     const fd = new FormData()
     fd.set('file', blob, `${kind}.webp`)
     const previous = kind === 'logo' ? logoUrl : coverUrl
     if (previous) fd.set('previousUrl', previous)
     const result = await setImageAction(kind, fd)
     if (!result.success) {
-      setError(result.error)
-      toast({
-        title: kind === 'logo' ? 'Error al actualizar el logo' : 'Error al actualizar la portada',
-        description: result.error,
-        variant: 'destructive',
-      })
+      setFeedback({ type: 'error', text: result.error })
       return
     }
     if (kind === 'logo') setLogoUrl(result.url)
     else setCoverUrl(result.url)
-    toast({
-      title:
+    setFeedback({
+      type: 'success',
+      text:
         kind === 'logo' ? 'Logo actualizado correctamente' : 'Portada actualizada correctamente',
-      variant: 'success',
     })
   }
 
   async function remove(kind: 'logo' | 'cover', url: string) {
-    setError(null)
+    setFeedback(null)
     const result = await removeImageAction(kind, url)
     if (!result.success) {
-      setError(result.error)
-      toast({
-        title: kind === 'logo' ? 'Error al eliminar el logo' : 'Error al eliminar la portada',
-        description: result.error,
-        variant: 'destructive',
-      })
+      setFeedback({ type: 'error', text: result.error })
       return
     }
     if (kind === 'logo') setLogoUrl(null)
     else setCoverUrl(null)
-    toast({
-      title: kind === 'logo' ? 'Logo eliminado' : 'Portada eliminada',
-      variant: 'success',
-    })
+    setFeedback({ type: 'success', text: kind === 'logo' ? 'Logo eliminado' : 'Portada eliminada' })
   }
 
   return (
@@ -182,9 +172,16 @@ export function PerfilImagesForm({
         />
       </div>
 
-      {error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {error}
+      {feedback && (
+        <p
+          role={feedback.type === 'error' ? 'alert' : 'status'}
+          className={
+            feedback.type === 'error'
+              ? 'text-sm text-red-600 dark:text-red-400'
+              : 'text-sm text-emerald-700 dark:text-emerald-400'
+          }
+        >
+          {feedback.text}
         </p>
       )}
     </div>

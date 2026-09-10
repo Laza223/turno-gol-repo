@@ -1,4 +1,6 @@
+import { ClipboardList } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
+import { PageHeader } from '@/components/admin/PageHeader'
 import { ReservasPolicyForm } from './ReservasPolicyForm'
 import { updateReservasPolicyAction } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
@@ -10,7 +12,13 @@ export default async function ReservasPolicyPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-foreground">Configuración</h1>
+      {/* H022: unificada al mismo PageHeader que ya usan perfil/avisos/canchas/equipo —
+          el resto de Configuración resolvía la cabecera con un <h1> genérico "Configuración". */}
+      <PageHeader
+        title="Reservas"
+        subtitle="Seña, anticipación y política de cancelación de las reservas online."
+        icon={<ClipboardList className="h-6 w-6" aria-hidden="true" />}
+      />
 
       <SettingsTabs active="/settings/reservas" />
 

@@ -28,8 +28,13 @@ type ActivatePlanSectionProps = {
   ctaLoadingLabel?: string
 }
 
-/** 8 representa "8 o más" (Estadio, ilimitado). */
-const COURT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8] as const
+/**
+ * 7 representa "7 o más" (Estadio, ilimitado) — coincide con el corte real
+ * del catálogo (`PLANS`, plans-data.ts: Estadio = "7 canchas o más") y de
+ * paso deja el radiogroup en 7 opciones, el techo de LEY-hick (MASTER §9:
+ * máx. 5-7 opciones de igual jerarquía). Antes llegaba a 8 con "8+".
+ */
+const COURT_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const
 
 export function ActivatePlanSection({
   plans,
@@ -139,7 +144,7 @@ export function ActivatePlanSection({
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground dark:hover:bg-white/[.07] dark:hover:text-white'
                   }`}
                 >
-                  {n === 8 ? '8+' : n}
+                  {n === 7 ? '7+' : n}
                 </button>
               )
             })}
@@ -190,7 +195,7 @@ export function ActivatePlanSection({
 
         {/* Anuncio del plan resultante (refuerzo + screen readers) */}
         <p aria-live="polite" className="text-center text-sm text-muted-foreground">
-          Para {courts === 8 ? '8 o más' : courts} {courts === 1 ? 'cancha' : 'canchas'}, tu plan
+          Para {courts === 7 ? '7 o más' : courts} {courts === 1 ? 'cancha' : 'canchas'}, tu plan
           sugerido es{' '}
           <span className="font-semibold text-emerald-700 dark:text-emerald-300">
             {plans.find((p) => p.slug === activeStaticPlan.slug)?.name ?? activeStaticPlan.name}

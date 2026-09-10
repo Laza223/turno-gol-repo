@@ -8,6 +8,7 @@ import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { track } from '@/shared/observability/breadcrumbs'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { DepositFieldset, type DepositChoice } from './quick-form/DepositFieldset'
 import { usePlayerSearch } from './quick-form/use-player-search'
 import { depositAfterCloseNote } from './deposit-after-close'
@@ -25,13 +26,16 @@ import type {
  * visibles, precio pre-calculado, Enter confirma**.
  *
  * El modal completo sigue existiendo intacto detrás de "Más opciones": bloqueos,
- * precio a mano, teléfono, notas, duración. Acá vive el caso del 90% (alguien
- * llama y pide la cancha), y el criterio #4 lo mide en segundos.
+ * precio a mano, notas, duración. Acá vive el caso del 90% (alguien llama y
+ * pide la cancha), y el criterio #4 lo mide en segundos.
  *
- * Dos campos a la vista: **quién** y **qué se cobró**. El precio NO es un campo
- * — se muestra ya resuelto. Se calcula en el cliente con la MISMA función que
- * usa el server (`@/lib/booking/pricing`), así que no hay round-trip antes de
- * mostrarlo ni forma de que lo mostrado difiera de lo que se graba.
+ * Tres campos a la vista: **quién**, **teléfono** (H102: opcional y sin
+ * frenar — el camino rápido existe para ser rápido, así que si el complejo no
+ * lo carga la reserva se confirma igual) y **qué se cobró**. El precio NO es
+ * un campo — se muestra ya resuelto. Se calcula en el cliente con la MISMA
+ * función que usa el server (`@/lib/booking/pricing`), así que no hay
+ * round-trip antes de mostrarlo ni forma de que lo mostrado difiera de lo que
+ * se graba.
  *
  * Lo cobrado viene con "No cobré" PRESELECCIONADO (revierte PR #185, a pedido
  * del dueño): la acción más repetida del día — cargar un turno — se confirma
@@ -80,6 +84,11 @@ export function QuickBookingForm({
   // defensivo — el guard del submit lo sigue cubriendo por las dudas.
   const [depositChoice, setDepositChoice] = useState<DepositChoice | null>('none')
   const [depositCents, setDepositCents] = useState<number | null>(null)
+  // H102: opcional y sin frenar — no hay validación de formato, no corta el
+  // submit, sin asterisco de obligatorio. Se pierde si se elige un jugador
+  // registrado (mismo criterio que guestName: createManualBookingSchema no
+  // permite combinar playerId con datos de invitado).
+  const [phone, setPhone] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   // Cronómetro del criterio de salida #4 ("alta ≤10 s"). Se arranca en el
@@ -140,15 +149,19 @@ export function QuickBookingForm({
       return
     }
 
+    const trimmedPhone = phone.trim()
     const data = {
       courtId: slot.courtId,
       date: slot.date,
       timeStart: slot.timeStart,
       timeEnd: slot.timeEnd,
       type: 'spontaneous' as const,
-      // playerId y guestName son mutuamente excluyentes en
-      // createManualBookingSchema: con jugador elegido, el nombre libre no viaja.
-      ...(playerId ? { playerId } : { guestName: trimmed }),
+      // playerId y guestName/guestPhone son mutuamente excluyentes en
+      // createManualBookingSchema: con jugador elegido, los datos de invitado
+      // no viajan. guestPhone además es opcional dentro de esa rama (H102).
+      ...(playerId
+        ? { playerId }
+        : { guestName: trimmed, ...(trimmedPhone ? { guestPhone: trimmedPhone } : {}) }),
       ...(depositMethod && depositCents
         ? { depositMethod, depositAmount: depositCents, depositStatus: 'paid' as const }
         : {}),
@@ -253,6 +266,29 @@ export function QuickBookingForm({
           </p>
         )}
       </div>
+
+      {/* H102: visible, opcional, sin validación que frene el envío ni
+          asterisco de obligatorio. Se oculta con jugador registrado — mismo
+          criterio que guestName (createManualBookingSchema no admite
+          combinar playerId con datos de invitado). */}
+      {!playerId && (
+        <div className="space-y-1.5">
+          <label
+            htmlFor="quick-phone"
+            className="flex items-center justify-between text-xs font-medium"
+          >
+            <span>Teléfono</span>
+            <span className="font-normal text-muted-foreground">(opcional)</span>
+          </label>
+          <PhoneInput
+            id="quick-phone"
+            name="guestPhone"
+            value={phone}
+            onChange={setPhone}
+            disabled={isPending || taken}
+          />
+        </div>
+      )}
 
       <DepositFieldset
         depositChoice={depositChoice}

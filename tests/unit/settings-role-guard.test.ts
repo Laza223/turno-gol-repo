@@ -11,7 +11,10 @@ describe('settings — acceso solo admin (roles 026)', () => {
   it('settings/layout.tsx existe y aplica requireAdminStaff', () => {
     const src = readFileSync(join(process.cwd(), 'src/app/(admin)/settings/layout.tsx'), 'utf8')
     expect(src).toContain('requireAdminStaff')
-    expect(src).toMatch(/await requireAdminStaff\(\)/)
+    // H163: el layout le pasa `{ onRoleRejected: ... }` para que el rebote de
+    // un manager lleve el aviso — ya no es un llamado sin argumentos, pero
+    // sigue siendo `await requireAdminStaff(...)` y no un import sin uso.
+    expect(src).toMatch(/await requireAdminStaff\(/)
   })
 
   it('settings/equipo/page.tsx (Vista Equipo) aplica requireAdminStaff', () => {

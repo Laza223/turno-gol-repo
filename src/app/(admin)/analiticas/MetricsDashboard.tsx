@@ -64,7 +64,11 @@ function GhostBars() {
   )
 }
 
-/** Card "Tasa de ausencias": tasa actual + tendencia vs los 30 días previos. */
+/**
+ * Card "Tasa de ausencias": tasa actual + tendencia vs los 30 días previos.
+ * Debajo de MIN_FINISHED_FOR_TREND turnos terminados (cualquiera de las dos
+ * ventanas) la comparación se oculta — ver noShowTrend (H174).
+ */
 function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
   // H033: sin turnos terminados todavía, "0,0% — 0 sobre 0" no dice nada —
   // mismo espíritu "primera vez espectral" que TopSlots/GhostKpis (MASTER §1).
@@ -96,6 +100,14 @@ function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
       <div className="mt-2 text-xs">
         {trend.kind === 'no_prev' && (
           <span className="text-muted-foreground">sin datos previos</span>
+        )}
+        {/* H174: muestra chica en cualquiera de las dos ventanas — el valor de
+         * arriba sigue siendo real, pero comparar sobre pocas decenas de
+         * turnos es ruido. Sin flecha ni color, línea sobria. */}
+        {trend.kind === 'low_sample' && (
+          <span className="text-muted-foreground">
+            Todavía no hay datos suficientes para comparar.
+          </span>
         )}
         {trend.kind === 'flat' && (
           <span className="text-muted-foreground">sin cambios vs período anterior</span>

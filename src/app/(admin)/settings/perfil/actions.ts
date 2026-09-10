@@ -2,16 +2,19 @@
 
 import { revalidatePath } from 'next/cache'
 import { revalidatePublicListings } from '@/shared/cache/public-listings'
+import { sql, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { captureException } from '@/lib/sentry'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
+import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
 import { tenantContactSchema, tenantLocationSchema } from '@/modules/tenants/tenant.schema'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
+import { tenants } from '@/shared/db/schema'
 import {
   isR2Configured,
   putImage,
@@ -309,4 +312,52 @@ export async function updateUserEmailAction(newEmail: string): Promise<UpdateEma
     success: true,
     message: `Te enviamos un correo de confirmación a ${parsed.data}. Hacé click en el enlace para completar la actualización.`,
   }
+}
+
+// H161: "Avisos" era su propia pestaña top-level (`/settings/avisos`) para
+// una sola preferencia — se plegó como una sección más de Perfil junto con
+// esta action, movida tal cual desde `settings/avisos/actions.ts`.
+export type AvisosActionResult = { success: true } | { success: false; error: string }
+
+const avisosSchema = z.object({
+  dailySummaryEmailOptIn: z.boolean(),
+})
+
+export async function updateAvisosSettingsAction(
+  _prevState: AvisosActionResult,
+  formData: FormData,
+): Promise<AvisosActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsed = avisosSchema.safeParse({
+    dailySummaryEmailOptIn: formData.get('dailySummaryEmailOptIn') === 'true',
+  })
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  const patch = {
+    daily_summary_email_opt_in: parsed.data.dailySummaryEmailOptIn,
+  }
+
+  // Sin JSON.stringify: ver nota en settings/reservas/actions.ts (el objeto
+  // pre-serializado llega como escalar jsonb y `objeto || escalar` concatena
+  // como array, destruyendo los settings).
+  await withTenantContext(tenant.id, async (tx) => {
+    await tx
+      .update(tenants)
+      .set({
+        settings: sql`settings || ${patch}::jsonb`,
+        updatedAt: new Date(),
+      })
+      .where(eq(tenants.id, tenant.id))
+  })
+
+  revalidatePath('/settings/perfil')
+  return { success: true }
 }

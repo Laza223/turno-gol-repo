@@ -52,7 +52,7 @@ export function GridToolbar({
               visible lo pendiente, no una vista nueva (RI G3.3). */}
           {pendingSummary && pendingSummary.count > 0 && (
             <p className="mt-0.5 text-sm font-medium tabular-nums text-foreground">
-              Por cobrar: {formatArs(pendingSummary.totalCents)}{' '}
+              Por cobrar hoy: {formatArs(pendingSummary.totalCents)}{' '}
               <span className="font-normal text-muted-foreground">
                 ({pendingSummary.count} {pendingSummary.count === 1 ? 'turno' : 'turnos'})
               </span>

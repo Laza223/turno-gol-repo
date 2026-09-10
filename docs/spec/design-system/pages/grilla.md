@@ -16,6 +16,7 @@
 ```
 ┌─ Header sticky (bg-background/95 + blur, bajo el topbar de 4rem) ──────────┐
 │  h1 "Grilla" + fecha (§8.3)        [densidad] [Hoy]                        │
+│  "Por cobrar hoy: $ X (N turnos)"  ← solo si N > 0 (GridToolbar.tsx)       │
 │  WeekStrip: ‹  Lun Mar Mié Jue Vie Sáb Dom  ›                              │
 ├─ Hint primera vez (solo si el día no tiene reservas, descartable) ─────────┤
 ├─ Grid card (overflow-auto, max-h 70dvh) ───────────────────────────────────┤
@@ -29,6 +30,7 @@
 
 - La tarea principal (cargar una reserva) se completa en 2 interacciones: tap en slot → guardar en el modal. Nunca agregar pasos intermedios.
 - El slot **completo** es el blanco de click/tap (Fitts). Prohibido reducir la acción a un botoncito interno.
+- **"Por cobrar hoy"** (`GridToolbar.tsx`, prop `pendingSummary`, sumado en `BookingGrid.tsx` con `sumPendingCents` de `src/lib/booking/grid-cells.ts`): suma de lo pendiente entre las reservas **del día visible**, no de todo el complejo. Se pinta debajo de la fecha y solo cuando hay algo pendiente (`count > 0`); sin link ni ícono, es texto plano — el cambio mínimo que hace visible lo pendiente sin abrir una vista nueva. El "hoy" del rótulo lo distingue explícitamente de "Deudas" en Caja, que sí suma toda la deuda del complejo (H040): misma palabra, alcance distinto, y ahora cada uno dice el suyo.
 
 ## 2. Estados de slot — mapa canónico
 
@@ -44,20 +46,20 @@ el tinte de fondo es refuerzo. Siempre color + ícono + texto (§1.4). Tintes v�
 (`bg-warning/10`), nunca hex nuevos. El texto del label usa escala AA verificada (§2.4):
 `*-800` en light, `*-300` en dark; el nombre va en `text-foreground` (es el dato primario).
 
-| Estado (derivación) | Borde-l | Tinte | Label (color light/dark) | Ícono |
-|---|---|---|---|---|
-| Libre (`kind=free`, futuro, cancha online) | — | `bg-card`, borde `border-border/60` | — (aria: "Reservar turno HH:MM en X") | `Plus` centrado, 40 % → 100 % hover/focus |
-| Pagando ahora (`pending_payment`) | `border-l-warning` | `bg-warning/10` (dark `/15`) | "Pagando ahora" `text-amber-800`/`text-amber-300` | `Clock` |
-| Confirmada (`confirmed`, sin seña paga) | `border-l-info` | `bg-info/10` (dark `/15`) | "Confirmada" `text-blue-800`/`text-blue-300` | `HandCoins` |
-| Señada (`confirmed` + deposit `paid`/`captured`) | `border-l-success` | `bg-success/10` (dark `/15`) | "Señada" `text-emerald-800`/`text-emerald-300` | `CheckCircle2` |
-| Jugada (`completed`) | `border-l-success` | `bg-success/15` (dark `/20`) — fill más fuerte | "Jugada" `text-emerald-800`/`text-emerald-300` | `CheckCheck` |
-| **Sin cobrar (`unpaid_alarm`)** | `border-l-destructive` | `bg-destructive/10` (dark `/15`) + `.slot-alarm-ring` (anillo pulsante) | "Sin cobrar" `text-red-700`/`text-red-300` | `CheckCheck` |
-| Ausente (`no_show`) | `border-l-destructive` | `bg-destructive/10` (dark `/15`) | "Ausente" `text-red-700`/`text-red-300` | `UserX` |
-| Abonado (`type=fixed`, confirmada) | `border-l-info` | `bg-info/10` (dark `/15`) | "Abonado" `text-blue-800`/`text-blue-300` | `Repeat` |
-| **Torneo (`type=tournament`)** | `border-l-warning` | `.slot-blocked-stripes` + `bg-warning/10` (dark `/15`) | "Torneo" `text-amber-800`/`text-amber-300` | `Trophy` |
-| Bloqueado (`type=block`) | `border-l-slate-400` | `.slot-blocked-stripes` (rayado diagonal `--muted`) | "Bloqueado" `text-muted-foreground` | `Ban` |
-| Pasado (modificador) | — | `opacity-60 saturate-50` sobre el estado base | — | — |
-| Libre pasado / cancha pausada | — | transparente / `bg-muted/40`, no interactivo | — | — |
+| Estado (derivación)                              | Borde-l                | Tinte                                                                   | Label (color light/dark)                          | Ícono                                     |
+| ------------------------------------------------ | ---------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------- |
+| Libre (`kind=free`, futuro, cancha online)       | —                      | `bg-card`, borde `border-border/60`                                     | — (aria: "Reservar turno HH:MM en X")             | `Plus` centrado, 40 % → 100 % hover/focus |
+| Esperando seña (`pending_payment`)                | `border-l-warning`     | `bg-warning/10` (dark `/15`)                                            | "Esperando seña" `text-amber-800`/`text-amber-300` | `Clock`                                   |
+| Confirmada (`confirmed`, sin seña paga)          | `border-l-info`        | `bg-info/10` (dark `/15`)                                               | "Confirmada" `text-blue-800`/`text-blue-300`      | `HandCoins`                               |
+| Señada (`confirmed` + deposit `paid`/`captured`) | `border-l-success`     | `bg-success/10` (dark `/15`)                                            | "Señada" `text-emerald-800`/`text-emerald-300`    | `CheckCircle2`                            |
+| Jugada (`completed`)                             | `border-l-success`     | `bg-success/15` (dark `/20`) — fill más fuerte                          | "Jugada" `text-emerald-800`/`text-emerald-300`    | `CheckCheck`                              |
+| **Sin cobrar (`unpaid_alarm`)**                  | `border-l-destructive` | `bg-destructive/10` (dark `/15`) + `.slot-alarm-ring` (anillo pulsante) | "Sin cobrar" `text-red-700`/`text-red-300`        | `CheckCheck`                              |
+| Ausente (`no_show`)                              | `border-l-destructive` | `bg-destructive/10` (dark `/15`)                                        | "Ausente" `text-red-700`/`text-red-300`           | `UserX`                                   |
+| Abonado (`type=fixed`, confirmada)               | `border-l-info`        | `bg-info/10` (dark `/15`)                                               | "Abonado" `text-blue-800`/`text-blue-300`         | `Repeat`                                  |
+| **Torneo (`type=tournament`)**                   | `border-l-warning`     | `.slot-blocked-stripes` + `bg-warning/10` (dark `/15`)                  | "Torneo" `text-amber-800`/`text-amber-300`        | `Trophy`                                  |
+| Bloqueado (`type=block`)                         | `border-l-slate-400`   | `.slot-blocked-stripes` (rayado diagonal `--muted`)                     | "Bloqueado" `text-muted-foreground`               | `Ban`                                     |
+| Pasado (modificador)                             | —                      | `opacity-60 saturate-50` sobre el estado base                           | —                                                 | —                                         |
+| Libre pasado / cancha pausada                    | —                      | transparente / `bg-muted/40`, no interactivo                            | —                                                 | —                                         |
 
 Prioridad cuando compiten (Fase 3, `src/lib/booking/slot-visual.ts` — fuente única, reemplazó 3
 copias que ya habían divergido): torneo > bloqueo > **alarma (sin cobrar)** > ausente > jugada >
@@ -172,18 +174,18 @@ horarios vacíos de la mañana obligan a scrollear"):
 
 Vocabulario canónico §8.5 + extensiones de grilla:
 
-| Código | UI |
-|---|---|
-| `pending_payment` | **Pagando ahora** (Decisión v2 D1 — reemplaza "Esperando seña", que se leía como espera indefinida) |
-| `confirmed` sin seña | **Confirmada** |
-| `confirmed` + seña paga | **Señada** |
-| `completed` | **Jugada** |
-| `unpaid_alarm` (Fase 3) | **Sin cobrar** |
-| `no_show` | **Ausente** |
-| `type=fixed` | **Abonado** |
-| `type=tournament` (Fase 3) | **Torneo** |
-| `type=block` | **Bloqueado** |
-| court `offline` | **(pausada)** — nunca "(offline)" |
+| Código                     | UI                                                                                                  |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `pending_payment`          | **Esperando seña** (MASTER §8.5; decisión del dueño 2026-09-10, deja sin efecto la "Decisión v2 D1" que había desviado solo la grilla — la urgencia la comunica el contador, no el rótulo) |
+| `confirmed` sin seña       | **Confirmada**                                                                                      |
+| `confirmed` + seña paga    | **Señada**                                                                                          |
+| `completed`                | **Jugada**                                                                                          |
+| `unpaid_alarm` (Fase 3)    | **Sin cobrar**                                                                                      |
+| `no_show`                  | **Ausente**                                                                                         |
+| `type=fixed`               | **Abonado**                                                                                         |
+| `type=tournament` (Fase 3) | **Torneo**                                                                                          |
+| `type=block`               | **Bloqueado**                                                                                       |
+| court `offline`            | **(pausada)** — nunca "(offline)"                                                                   |
 
 Fechas: subtítulo del header en formato medio §8.3 ("mié 1 de julio"). Horas 24 h `HH:MM`,
 rango con en-dash sin espacios ("16:00–17:00"). Plata solo en popover, formato §8.2 sin decimales.
@@ -202,13 +204,13 @@ Lista al pie con swatch + **ícono** + label por cada estado de §2 (la leyenda 
 
 ## 12. Motion budget de la vista
 
-| Interacción | Techo |
-|---|---|
-| Hover/focus de celdas, botones | 150 ms color-only |
-| Navegación de día (transición atenuada) | 150 ms opacity |
-| Panel lateral del turno (Sheet) | 300 ms slide al abrir, 200 ms al cerrar |
-| Modal de reserva | 300 ms |
-| Pulso Realtime | 600 ms, una vez (excepción §5.3) |
+| Interacción                             | Techo                                   |
+| --------------------------------------- | --------------------------------------- |
+| Hover/focus de celdas, botones          | 150 ms color-only                       |
+| Navegación de día (transición atenuada) | 150 ms opacity                          |
+| Panel lateral del turno (Sheet)         | 300 ms slide al abrir, 200 ms al cerrar |
+| Modal de reserva                        | 300 ms                                  |
+| Pulso Realtime                          | 600 ms, una vez (excepción §5.3)        |
 
 Nada flota, nada respira, cero loops fuera del skeleton.
 

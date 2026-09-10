@@ -168,6 +168,35 @@ export const TendenciaAusenciasEnAlza: Story = {
   },
 }
 
+/**
+ * H174: muestra chica (< MIN_FINISHED_FOR_TREND turnos terminados en la
+ * ventana actual) — la tasa real se sigue mostrando, pero sin flecha ni
+ * color: una alarma calculada sobre 24 turnos no significa nada.
+ */
+export const TendenciaMuestraChica: Story = {
+  parameters: {
+    fetchMock: [
+      {
+        match: '/api/admin/metrics',
+        json: {
+          data: tenantMetrics({
+            noShow: { noShow: 4, completed: 20, finished: 24, rate: 4 / 24 },
+            noShowPrev: { noShow: 1, completed: 49, finished: 50, rate: 1 / 50 },
+          }),
+        },
+      },
+      { match: '/api/admin/system-status', json: { data: systemStatusOk() } },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByText('Todavía no hay datos suficientes para comparar.'),
+    ).toBeVisible()
+    await expect(canvas.queryByText(/pts vs período anterior/)).not.toBeInTheDocument()
+  },
+}
+
 /** Sin período anterior comparable (complejo nuevo): sin flecha, "sin datos previos". */
 export const TendenciaSinDatosPrevios: Story = {
   parameters: {

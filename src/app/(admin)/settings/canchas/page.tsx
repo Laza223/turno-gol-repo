@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { requireOperatorStaff } from '@/modules/staff/guards'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { CourtList } from '@/app/(admin)/settings/canchas/components/CourtList'
@@ -15,9 +14,11 @@ import {
 import { SettingsTabs } from '../SettingsTabs'
 
 export default async function SettingsCanchasPage() {
-  const auth = await requireOperatorStaff()
-  if (!auth.ok) redirect('/dashboard')
-  const { tenant, role } = auth
+  // Configuración entera es solo del dueño y el gate real vive en el layout
+  // (settings/layout.tsx). Acá decía requireOperatorStaff, que nunca llegaba a
+  // correr: leerlo hacía concluir que el encargado entraba a Canchas, y la
+  // auditoría de coherencia se comió esa premisa falsa dos veces (H163).
+  const { tenant } = await requireAdminStaff()
 
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
 
@@ -32,7 +33,7 @@ export default async function SettingsCanchasPage() {
           tenantId={tenant.id}
           openingHours={tenant.openingHours}
           closesNextDay={tenant.closesNextDay}
-          isAdmin={role === 'admin'}
+          isAdmin
           tenantName={tenant.name}
           toggleStatusAction={toggleCourtStatusAction}
           getDeactivationImpactAction={getCourtDeactivationImpactAction}

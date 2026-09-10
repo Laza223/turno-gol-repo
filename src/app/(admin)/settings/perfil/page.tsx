@@ -1,16 +1,18 @@
-import { Building2, ExternalLink } from 'lucide-react'
+import { Bell, Building2, ExternalLink } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { PerfilImagesForm } from './PerfilImagesForm'
 import { AccountEmailForm } from './AccountEmailForm'
 import { TenantContactForm } from './TenantContactForm'
 import { TenantLocationForm } from './TenantLocationForm'
+import { AvisosForm } from './AvisosForm'
 import {
   setTenantImageAction,
   removeTenantImageAction,
   updateUserEmailAction,
   updateTenantContactAction,
   updateTenantLocationAction,
+  updateAvisosSettingsAction,
 } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
@@ -70,6 +72,17 @@ export default async function PerfilPage() {
         currentLongitude={tenant.longitude}
         action={updateTenantLocationAction}
       />
+
+      {/* H161: Avisos era su propia pestaña top-level para esta única
+          preferencia, con toda la pantalla vacía alrededor — se plegó acá
+          como una sección más. */}
+      <div className="card-premium rounded-lg p-6">
+        <div className="mb-6 flex items-center gap-2">
+          <Bell className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-base font-semibold text-foreground">Avisos</h2>
+        </div>
+        <AvisosForm s={tenant.settings} action={updateAvisosSettingsAction} />
+      </div>
     </div>
   )
 }

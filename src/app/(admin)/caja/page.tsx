@@ -170,7 +170,7 @@ export default async function CajaPage(props: {
         />
       </div>
 
-      {/* Desglose por método: referencia del arqueo, al final para no abrumar. */}
+      {/* Desglose por método: referencia del arqueo, plegado por defecto (H002). */}
       <div className="card-entrance" style={{ animationDelay: '240ms' }}>
         <MethodBreakdown methods={methods} />
       </div>

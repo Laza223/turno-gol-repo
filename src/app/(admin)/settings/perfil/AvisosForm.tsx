@@ -19,6 +19,10 @@ export type UpdateAvisosSettings = (
  * Form de "Avisos" (D8, Fase 2): opt-in de email del resumen diario. La
  * action llega por PROP, no por import — mismo motivo que ReservasPolicyForm
  * ('use server' arrastra drizzle/postgres al bundle de Storybook).
+ *
+ * H161: vivía en su propia pestaña top-level (`/settings/avisos`) con toda la
+ * pantalla vacía alrededor de esta única preferencia — se plegó como una
+ * sección más de Perfil (`/settings/avisos` ahora es solo redirect).
  */
 export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvisosSettings }) {
   const [state, formAction] = useActionState(action, INITIAL_STATE)

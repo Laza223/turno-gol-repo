@@ -31,7 +31,7 @@ vi.mock('react-dom', async (importOriginal) => {
   }
 })
 
-import { AvisosForm } from '@/app/(admin)/settings/avisos/AvisosForm'
+import { AvisosForm } from '@/app/(admin)/settings/perfil/AvisosForm'
 
 const SIN_EMAIL = { daily_summary_email_opt_in: false } as unknown as TenantSettings
 const noopAction = vi.fn(async () => ({ success: true as const }))

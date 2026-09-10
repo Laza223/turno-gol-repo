@@ -8,7 +8,7 @@ import { AvisosForm } from './AvisosForm'
  * './actions' es `'use server'` y arrastra node:async_hooks al bundle.
  */
 const meta = {
-  title: 'Admin/Settings/AvisosForm',
+  title: 'Settings/Perfil/AvisosForm',
   component: AvisosForm,
   parameters: { layout: 'padded' },
   args: {

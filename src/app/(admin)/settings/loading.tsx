@@ -2,18 +2,19 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 /**
  * Silueta real de `/settings/*` (ver settings/reservas/page.tsx): título, tira
- * de tabs y una card con el formulario de la sección. Cubre las 5 pantallas de
+ * de tabs y una card con el formulario de la sección. Cubre las 4 pantallas de
  * configuración que no declaran loading propio (perfil, reservas, horarios,
- * facturación, avisos); canchas y equipo tienen el suyo.
+ * facturación); canchas y equipo tienen el suyo. `/settings/avisos` (H161) es
+ * puro redirect a `/settings/perfil` — no llega a mostrar este skeleton.
  */
 export default function Loading() {
   return (
     <div className="space-y-6" aria-busy="true">
       <Skeleton className="h-8 w-52" />
 
-      {/* SettingsTabs: 7 tabs */}
+      {/* SettingsTabs: 6 tabs (H161 plegó Avisos dentro de Perfil) */}
       <div className="flex gap-1 border-b border-border">
-        {Array.from({ length: 7 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-11 w-24 shrink-0 rounded-none" />
         ))}
       </div>

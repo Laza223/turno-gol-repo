@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidatePublicListings } from '@/shared/cache/public-listings'
 import { and, eq, inArray, sql as dsql } from 'drizzle-orm'
-import { requireAdminStaffAction, requireOperatorStaff } from '@/modules/staff/guards'
+import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
@@ -180,7 +180,7 @@ export async function toggleCourtStatusAction(
   courtId: string,
   status: 'online' | 'offline',
 ): Promise<CourtActionResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -218,7 +218,7 @@ export type CourtDeactivationImpactResult =
 export async function getCourtDeactivationImpactAction(
   courtId: string,
 ): Promise<CourtDeactivationImpactResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

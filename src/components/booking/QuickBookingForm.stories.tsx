@@ -52,6 +52,9 @@ export const Base: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement)
     await expect(await c.findByLabelText('¿A nombre de quién?')).toBeTruthy()
+    // H102: tercer campo visible, sin asterisco de obligatorio.
+    await expect(await c.findByLabelText(/^Teléfono/)).toBeTruthy()
+    await expect(await c.findByText('(opcional)')).toBeTruthy()
     // El precio se muestra ya resuelto — no es un campo.
     await expect(await c.findByText(/24\.000/)).toBeTruthy()
     for (const opcion of await c.findAllByRole('radio')) {
@@ -65,7 +68,8 @@ export const Base: Story = {
 
 /**
  * Confirmar sin tocar el control de cobro (solo el nombre) crea el turno: la
- * preselección en "No cobré" no manda ningún campo de seña al server.
+ * preselección en "No cobré" no manda ningún campo de seña al server. El
+ * teléfono (H102) tampoco frena nada sin tocarlo: no viaja al server.
  */
 export const ConfirmaSoloConElNombre: Story = {
   play: async ({ canvasElement, args }) => {
@@ -79,6 +83,7 @@ export const ConfirmaSoloConElNombre: Story = {
       unknown
     >
     await expect(payload).not.toHaveProperty('depositMethod')
+    await expect(payload).not.toHaveProperty('guestPhone')
   },
 }
 

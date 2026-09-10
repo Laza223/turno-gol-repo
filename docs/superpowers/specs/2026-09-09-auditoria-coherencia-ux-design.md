@@ -393,3 +393,25 @@ Un botón de venta rápida que venda por su cuenta reabre exactamente ese agujer
 significa duplicar ticket, descuento de stock y fiado. Puesto así, el dueño prefirió no ponerlo y ver
 primero si de verdad lo extraña en el mostrador. Si algún día entra, entra como **atajo que abre el
 flujo real de cantina**, nunca como una segunda caja registradora.
+
+## 11. Los nueve que pedían criterio del dueño — resueltos (2026-09-10)
+
+Con esto no queda ningún hallazgo esperando decisión. Los 121 con evidencia ya están aplicados
+(sección 9); estos nueve son los que el método marcó como `requiresInput` o `RESTA`.
+
+| # | Qué se decidió | Por qué |
+| --- | --- | --- |
+| H166 | **Agregar "Cancelar torneo"**, con confirmación por nombre, visible mientras el torneo está en inscripción o en curso | Es un callejón sin salida y el estado `canceled` ya existe en la base: falta solo el botón. Es además el módulo que rompió la demo |
+| H040 | El rótulo de la grilla pasa a **"Por cobrar hoy"** | Las dos cuentas están bien; lo que faltaba era decir cuál es cuál. La grilla habla del día visible, Caja de toda la deuda |
+| H104 | **Se mantiene la confirmación** al marcar ausente, y se corrige la gramática de interacción | Marcar ausente le hace perder la seña al jugador y, en la segunda vez, lo bloquea. Eso no es una acción Clase A: el ejemplo del documento estaba en la categoría equivocada |
+| H163 | **Aviso visible al rebotar** ("No tenés acceso a Configuración") y se corrige la documentación | El encargado veía que "no pasó nada" y parecía un bug. No cambia ningún permiso: las 7 pestañas de Configuración siguen siendo solo del dueño, porque el guard vive en el layout |
+| H002 | **Plegar "Desglose por método"** en Caja del día, cerrado por defecto | El comentario del propio archivo ya lo llama "referencia del arqueo", pero se dibujaba abierto en cada una de las veinte visitas del día |
+| H003 | **Plegar los cuatro informes** de Productos y stock | Medido por el dueño: un bloque operativo contra cuatro informativos, con el ranking mostrando una sola fila. Su regla, exactamente al revés |
+| H174 | **Sin comparación ni alarma** por debajo de un mínimo de turnos terminados | Una alarma roja calculada sobre 24 turnos no significa nada, y entrena a ignorar la que sí |
+| H161 | **Plegar Avisos dentro de Perfil** | Una pestaña top-level para una sola preferencia. Configuración baja a seis, que es donde una barra sigue leyéndose de un vistazo |
+| H102 | El alta rápida **suma el teléfono, opcional y sin frenar** | Quedarse sin forma de contactar a alguien es un agujero real, pero el camino rápido existe para ser rápido: el campo está a la vista y se puede saltear |
+
+Las dos que ya estaban resueltas antes y quedan registradas acá para no re-abrirlas: `pending_payment`
+se dice **"Esperando seña"** en todo el panel (H018/H101, ya aplicado), y **"Hoy" se achica** y queda
+como pantalla operativa con próximos turnos por cancha, **sin venta rápida** y después de estos
+arreglos (H010).

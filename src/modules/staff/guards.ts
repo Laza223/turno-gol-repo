@@ -126,11 +126,15 @@ export async function requireBillingAdminStaffAction(): Promise<StaffActionAuth>
 
 /**
  * Guard server-side para zonas solo-admin (Configuración, Vista Equipo).
- * El Encargado (manager) rebota a /dashboard. El rol se lee de la DB en
- * cada request — un cambio de rol aplica de inmediato, sin esperar a que el
- * JWT se refresque.
+ * El Encargado (manager) rebota a /dashboard por default — esa página lo
+ * manda a su vez a /grilla (es solo-admin también, B10). `opts.onRoleRejected`
+ * lo pisa: lo usa settings/layout.tsx (H163) para ir directo a /grilla con un
+ * `?notice=` que esa página traduce a un aviso, evitando el salto extra por
+ * /dashboard (que perdería el query param: no reenvía searchParams al
+ * redirigir). El rol se lee de la DB en cada request — un cambio de rol
+ * aplica de inmediato, sin esperar a que el JWT se refresque.
  */
-export async function requireAdminStaff(): Promise<AdminStaff> {
+export async function requireAdminStaff(opts?: { onRoleRejected?: string }): Promise<AdminStaff> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -138,7 +142,7 @@ export async function requireAdminStaff(): Promise<AdminStaff> {
   if (!tenant) redirect('/login')
 
   const role = await getStaffRole(tenant.id, user.staffUserId)
-  if (role !== 'admin') redirect('/dashboard')
+  if (role !== 'admin') redirect(opts?.onRoleRejected ?? '/dashboard')
 
   // Mismo bloqueo de tenant lifecycle que requireStaffWithRole (hallazgo R2):
   // requireAdminStaff también se usa como guard de Server Actions fuera de

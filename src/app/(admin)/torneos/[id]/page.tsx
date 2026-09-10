@@ -26,6 +26,7 @@ import {
 } from '../actions'
 import { FORMAT_SHORT, STATUS_LABELS, formatDateRange, statusBadgeClass } from '../torneos-lib'
 import { BorrarTorneo } from './BorrarTorneo'
+import { CancelarTorneo } from './CancelarTorneo'
 import { PortalPanel } from './PortalPanel'
 import { SlotsPanel } from './SlotsPanel'
 import { TeamsPanel } from './TeamsPanel'
@@ -162,6 +163,24 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
               <span className="sr-only">— solo el dueño puede hacerlo</span>
             </span>
           )}
+        </div>
+      )}
+
+      {/* H166: fuera de 'draft' no había ninguna baja — el torneo quedaba
+          para siempre sin forma de sacarlo de circulación. `registration` e
+          `in_progress` son justo los dos estados que `deleteTournament`
+          excluye (`TournamentNotDeletableError`): acá se cierra ese hueco.
+          'finished'/'canceled' no ofrecen nada, ya terminaron su ciclo. El
+          candado por rol vive DENTRO de CancelarTorneo (patrón
+          CorteZonasCard), a diferencia de BorrarTorneo arriba. */}
+      {(tournament.status === 'registration' || tournament.status === 'in_progress') && (
+        <div className="pt-2">
+          <CancelarTorneo
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            canCancel={role === 'admin'}
+            cancelAction={updateTournamentAction}
+          />
         </div>
       )}
     </div>

@@ -151,14 +151,18 @@ export const TurnoSinCobrar: Story = {
   },
 }
 
-/** Cancha pausada: se ve, pero no se puede reservar. */
+/**
+ * Cancha pausada: se ve, pero no se puede reservar — y el aria-label lo DICE.
+ * Un botón deshabilitado sin motivo, para quien navega con lector de pantalla,
+ * es indistinguible de uno roto (auditoría de coherencia, 2026-09).
+ */
 export const CanchaPausada: Story = {
   args: { courts: [court('c1', 'Cancha 1', 'offline')] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const todas = canvas.getByRole('region', { name: 'Todas las canchas' })
     await expect(
-      within(todas).getByRole('button', { name: 'Reservar 18:00 en Cancha 1' }),
+      within(todas).getByRole('button', { name: 'Reservar 18:00 en Cancha 1, cancha pausada' }),
     ).toBeDisabled()
   },
 }

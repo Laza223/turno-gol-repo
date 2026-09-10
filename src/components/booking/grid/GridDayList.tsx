@@ -178,7 +178,10 @@ export function GridDayList({
               )}
             >
               {label}
-              {paused && <span className="font-normal opacity-70">(pausada)</span>}
+              {/* Sin `opacity`: el token de texto ya viene calibrado contra su fondo y
+                  bajarle la opacidad lo tira por debajo de AA (medido: 2.8:1). El
+                  peso tipográfico alcanza para marcar que es un aparte. */}
+              {paused && <span className="font-normal">(pausada)</span>}
             </button>
           )
         })}

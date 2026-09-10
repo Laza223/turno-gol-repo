@@ -116,7 +116,11 @@ export const ComplejoBloqueado: Story = {
   },
 }
 
-/** Complejo recién arrancado: series en cero, sin top-5 horarios → ghost + CTA a la grilla. */
+/**
+ * Complejo recién arrancado: series en cero → ghost + CTA en Top 5 horarios, y
+ * (H033) el mismo patrón "primera vez espectral" en Ingresos, Reservas por día
+ * y Tasa de ausencias — antes se quedaban en blanco o en "0,0% — 0 sobre 0".
+ */
 export const SinDatos: Story = {
   parameters: {
     fetchMock: [
@@ -132,6 +136,11 @@ export const SinDatos: Story = {
     await expect(
       canvas.getByRole('link', { name: 'Cargá tu primera reserva desde la grilla' }),
     ).toHaveAttribute('href', '/grilla')
+    await expect(canvas.getByText('Así se van a ver tus ingresos por período.')).toBeVisible()
+    await expect(canvas.getByText('Así se van a ver tus reservas por día.')).toBeVisible()
+    await expect(
+      canvas.getByText('Así se va a ver cuando termines tus primeros turnos.'),
+    ).toBeVisible()
   },
 }
 

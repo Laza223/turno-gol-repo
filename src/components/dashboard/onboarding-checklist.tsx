@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { CheckCircle2, ChevronDown, Circle, Copy, ExternalLink, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useMediaQuery } from '@/hooks/use-client-value'
 import { usePersistedString } from '@/hooks/use-persisted-flag'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import type { ChecklistState } from '@/app/(admin)/dashboard/queries'
@@ -18,6 +19,10 @@ const MINIMIZED_STORAGE_KEY = 'tg-hint-checklist-minimized'
 interface ChecklistItem {
   key: keyof ChecklistState
   label: string
+  /** Texto mientras el paso está PENDIENTE, si difiere del completado (H061-QA:
+   *  "MercadoPago conectado" al lado de un círculo vacío se lee como un estado
+   *  ya logrado — el participio se reserva para cuando el ítem está tildado). */
+  pendingLabel?: string
   href?: string
   action?: 'copy-link'
   /** Solo lo puede completar el admin (pantallas de Configuración). Se excluye
@@ -38,6 +43,9 @@ const ITEMS: ChecklistItem[] = [
   {
     key: 'mpConnected',
     label: 'MercadoPago conectado',
+    // Mismo texto que el CTA de Configuración → Facturación (page.tsx:262):
+    // un solo término para la misma acción, no uno nuevo acá.
+    pendingLabel: 'Conectar MercadoPago',
     href: '/settings/facturacion',
     adminOnly: true,
   },
@@ -85,13 +93,24 @@ export function OnboardingChecklist({
   const completed = doneItems.length
   const total = visibleItems.length
   const pct = Math.round((completed / total) * 100)
-  // `null` = el admin nunca eligió, y ahí manda el default (`completed ===
-  // total`): con la checklist al 100% arranca plegada para no enterrar los KPIs.
-  // El `serverValue: null` deja el HTML del servidor y el primer render del
+  const allDone = completed === total
+  // H061: en mobile el checklist completo se come el primer viewport (las 3
+  // stat cards de plata quedan bajo el pliegue) TODOS los días, no solo
+  // durante el setup — muchos complejos nunca llegan al 100% (no conectan
+  // MercadoPago) y quedan con esto arriba para siempre. `firstBookingReceived`
+  // (no `pct`) es la señal de "ya viene usando la app": un tenant recién
+  // onboardeado también arranca en ~57% (canchas y horarios los deja el wizard)
+  // y ahí el tour de primera visita todavía necesita el checklist expandido
+  // (apunta a `tour-checklist`/`tour-share-link`, que no existen colapsado).
+  // Desktop no tiene el problema de espacio: sigue expandido salvo 100%.
+  const isMobile = !useMediaQuery('(min-width: 768px)', true)
+  const canAutoMinimize = allDone || (isMobile && state.firstBookingReceived)
+  // `null` = el admin nunca eligió, y ahí manda el default de arriba. El
+  // `serverValue: null` deja el HTML del servidor y el primer render del
   // cliente idénticos — la preferencia guardada entra recién en el render
   // siguiente, sin parpadeo y sin setState encadenado en un efecto.
   const [storedMinimized, setStoredMinimized] = usePersistedString(MINIMIZED_STORAGE_KEY, null)
-  const minimized = storedMinimized === null ? completed === total : storedMinimized === '1'
+  const minimized = storedMinimized === null ? canAutoMinimize : storedMinimized === '1'
   const [showDone, setShowDone] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
@@ -184,12 +203,18 @@ export function OnboardingChecklist({
     return (
       <div className="card-entrance flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-xs shadow-emerald-100 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:shadow-none">
         <div className="flex min-w-0 items-center gap-3">
-          <CheckCircle2
-            className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
-            aria-hidden="true"
-          />
+          {allDone ? (
+            <CheckCircle2
+              className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+              aria-hidden="true"
+            />
+          ) : (
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+              {pct}%
+            </span>
+          )}
           <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
-            ¡Tu complejo está 100% listo!
+            {allDone ? '¡Tu complejo está 100% listo!' : 'Configuración del complejo'}
           </p>
         </div>
         <Button
@@ -198,13 +223,13 @@ export function OnboardingChecklist({
           onClick={() => toggleMinimized(false)}
           className="text-xs text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
         >
-          Ver checklist
+          {allDone ? 'Ver checklist' : 'Ver pasos'}
         </Button>
       </div>
     )
   }
 
-  function renderItem({ key, label, href, action }: ChecklistItem) {
+  function renderItem({ key, label, pendingLabel, href, action }: ChecklistItem) {
     const done = state[key]
     return (
       <li key={key} className="flex items-center gap-3 py-2.5">
@@ -222,7 +247,7 @@ export function OnboardingChecklist({
             done ? 'text-muted-foreground line-through' : 'text-foreground',
           )}
         >
-          {label}
+          {done ? label : (pendingLabel ?? label)}
         </span>
 
         {!done && action === 'copy-link' && (
@@ -319,7 +344,7 @@ export function OnboardingChecklist({
               )}
             </div>
           )}
-          {completed === total && (
+          {canAutoMinimize && (
             <Button
               variant="ghost"
               size="sm"

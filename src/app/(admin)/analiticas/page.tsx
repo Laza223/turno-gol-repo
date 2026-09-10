@@ -171,6 +171,11 @@ export default async function AnaliticasPage(props: {
               <StatCard
                 label="Ingresos"
                 value={formatArs(report.income)}
+                // H032: esta tarjeta y la de arriba (MetricsDashboard →
+                // RevenueChart, últimos 30 días corridos) se llaman igual —
+                // cada una rotula su propia ventana en vez de depender de la
+                // vecina (el selector de mes de acá arriba).
+                sub={formatMonthLabel(month)}
                 icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
                 accent="emerald"
                 delta={incomeDelta ?? undefined}

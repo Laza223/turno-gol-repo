@@ -1,0 +1,90 @@
+URL: http://localhost:3000/torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/posiciones
+Título: Torneo Relámpago — Auditoría
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /grilla
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - link "Clientes":
+    - /url: /jugadores
+  - button "Más"
+- main:
+  - link "Volver a Torneos":
+    - /url: /torneos
+  - heading "Torneo Relámpago — Auditoría" [level=1]
+  - paragraph: Liga · Desde el 10/09/2026
+  - navigation "Secciones del torneo":
+    - link "Equipos y horarios":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a
+    - link "Fixture":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/fixture
+    - link "Posiciones":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/posiciones
+    - link "Inscripciones":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/inscripciones
+  - heading "Posiciones" [level=3]
+  - list:
+    - listitem: 1 Atlético Demo 3
+    - listitem: 2 Los Fierros FC 0
+  - heading "Goleadores" [level=3]
+  - table:
+    - rowgroup:
+      - row "# Jugador Equipo Goles":
+        - columnheader "#"
+        - columnheader "Jugador"
+        - columnheader "Equipo"
+        - columnheader "Goles"
+    - rowgroup:
+      - row "1 Ezequiel Paz#9 Atlético Demo 2":
+        - cell "1"
+        - cell "Ezequiel Paz#9"
+        - cell "Atlético Demo"
+        - cell "2"
+      - row "2 Bruno Sosa#7 Los Fierros FC 1":
+        - cell "2"
+        - cell "Bruno Sosa#7"
+        - cell "Los Fierros FC"
+        - cell "1"
+  - heading "No hay jugadores suspendidos." [level=2]
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Grilla
+Caja
+Clientes
+Más
+Volver a Torneos
+Torneo Relámpago — Auditoría
+
+Liga · Desde el 10/09/2026
+
+Equipos y horarios
+Fixture
+Posiciones
+Inscripciones
+Posiciones
+1
+Atlético Demo
+3
+2
+Los Fierros FC
+0
+Goleadores
+#	JUGADOR	EQUIPO	GOLES
+1	Ezequiel Paz#9	Atlético Demo	2
+2	Bruno Sosa#7	Los Fierros FC	1
+No hay jugadores suspendidos.

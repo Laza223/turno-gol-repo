@@ -1,0 +1,84 @@
+URL: http://localhost:3000/torneos
+Título: Torneos
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Torneos" [level=1]
+  - paragraph: 1 torneo
+  - link "Nuevo torneo":
+    - /url: /torneos/nuevo
+  - list:
+    - listitem:
+      - link "Torneo Relámpago — Auditoría Liga · Desde el 10/09/2026 Borrador":
+        - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a
+        - paragraph: Torneo Relámpago — Auditoría
+        - paragraph: Liga · Desde el 10/09/2026
+        - text: Borrador
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Torneos
+
+1 torneo
+
+Nuevo torneo
+
+Torneo Relámpago — Auditoría
+
+Liga · Desde el 10/09/2026
+
+Borrador

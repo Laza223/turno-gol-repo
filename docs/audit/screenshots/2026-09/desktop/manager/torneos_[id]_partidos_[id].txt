@@ -1,0 +1,135 @@
+URL: http://localhost:3000/torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/partidos/d50df9fd-ff92-42f6-9acb-3bf1ab141cae
+Título: Atlético Demo vs Los Fierros FC
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /grilla
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - button "Configuración" [disabled]
+- banner:
+  - text: demo-manager@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - link "Volver al fixture":
+    - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/fixture
+  - heading "Atlético Demo vs Los Fierros FC" [level=1]
+  - paragraph: Torneo Relámpago — Auditoría · 10/09 · 10:00
+  - heading "Resultado" [level=2]
+  - text: Atlético Demo
+  - spinbutton "Atlético Demo": "2"
+  - text: Los Fierros FC
+  - spinbutton "Los Fierros FC": "1"
+  - button "Guardar resultado"
+  - button "Ganó Atlético Demo por no presentación"
+  - button "Ganó Los Fierros FC por no presentación"
+  - button "Borrar resultado"
+  - paragraph: "Cargado: 2 - 1"
+  - heading "Acta del partido" [level=2]
+  - paragraph: Goles y tarjetas. Un evento cargado por error se borra; queda registro en la auditoría.
+  - list:
+    - listitem:
+      - text: Gol Ezequiel PazAtlético Demo 12'
+      - button "Borrar gol de Ezequiel Paz"
+    - listitem:
+      - text: Gol Ezequiel PazAtlético Demo 34'
+      - button "Borrar gol de Ezequiel Paz"
+    - listitem:
+      - text: Amarilla Ezequiel PazAtlético Demo 40'
+      - button "Borrar amarilla de Ezequiel Paz"
+    - listitem:
+      - text: Gol Bruno SosaLos Fierros FC 50'
+      - button "Borrar gol de Bruno Sosa"
+  - text: Equipo
+  - combobox "Equipo": Atlético Demo
+  - status
+  - text: Jugador
+  - combobox "Jugador"
+  - status
+  - text: Tipo
+  - combobox "Tipo": Gol
+  - status
+  - text: Minuto
+  - spinbutton "Minuto"
+  - button "Agregar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-manager@turnogol.test
+Salir
+Volver al fixture
+Atlético Demo vs Los Fierros FC
+
+Torneo Relámpago — Auditoría · 10/09 · 10:00
+
+Resultado
+Atlético Demo
+Los Fierros FC
+Guardar resultado
+Ganó Atlético Demo por no presentación
+Ganó Los Fierros FC por no presentación
+Borrar resultado
+
+Cargado: 2 - 1
+
+Acta del partido
+
+Goles y tarjetas. Un evento cargado por error se borra; queda registro en la auditoría.
+
+Gol
+Ezequiel PazAtlético Demo
+12'
+Gol
+Ezequiel PazAtlético Demo
+34'
+Amarilla
+Ezequiel PazAtlético Demo
+40'
+Gol
+Bruno SosaLos Fierros FC
+50'
+Equipo
+Jugador
+Tipo
+Minuto
+Agregar

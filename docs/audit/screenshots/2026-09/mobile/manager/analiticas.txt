@@ -1,0 +1,188 @@
+URL: http://localhost:3000/analiticas
+Título: Métricas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /grilla
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - link "Clientes":
+    - /url: /jugadores
+  - button "Más"
+- main:
+  - heading "Métricas" [level=1]
+  - paragraph: Actividad del complejo en tiempo real y reporte mensual de ingresos.
+  - heading "Reservas por día" [level=2]
+  - paragraph: Últimos 30 días
+  - application: 11/08 15/08 19/08 23/08 27/08 31/08 04/09 09/09 0 3 6 9 12
+  - heading "Tasa de ausencias" [level=2]
+  - paragraph: 16,7%
+  - paragraph: 4 ausencias sobre 24 turnos terminados
+  - text: +16,7 pts vs período anterior
+  - heading "Ingresos" [level=2]
+  - group "Agrupar ingresos por":
+    - button "Día" [pressed]
+    - button "Semana"
+    - button "Mes"
+  - paragraph: "Total del período: $ 830.000"
+  - application: 11/08 16/08 21/08 26/08 31/08 09/09 $ 0 $ 20.000 $ 40.000 $ 60.000 $ 80.000
+  - heading "Top 5 horarios más reservados" [level=2]
+  - list:
+    - listitem: 19:00 8
+    - listitem: 21:00 8
+    - listitem: 11:00 5
+    - listitem: 15:00 5
+    - listitem: 17:00 5
+  - heading "Reporte mensual" [level=2]
+  - button "Mes anterior": ←
+  - text: Septiembre de 2026
+  - button "Mes siguiente" [disabled]: →
+  - paragraph: Ingresos
+  - paragraph: $ 270.000
+  - text: ↓ 52% vs mes ant.
+  - paragraph: Ajustes
+  - paragraph: $ 0
+  - paragraph: Saldo
+  - paragraph: $ 270.000
+  - text: ↓ 52% vs mes ant.
+  - paragraph: Reservas
+  - paragraph: "20"
+  - heading "Tendencia mensual" [level=2]
+  - text: Este mes Mes anterior
+  - application: Ingresos Saldo $ 0 $ 150.000 $ 300.000 $ 450.000 $ 600.000
+  - heading "Por método de pago" [level=2]
+  - table:
+    - rowgroup:
+      - row "Método Total":
+        - columnheader "Método"
+        - columnheader "Total"
+    - rowgroup:
+      - row "Efectivo $ 110.000":
+        - cell "Efectivo"
+        - cell "$ 110.000"
+      - row "Transferencia $ 40.000":
+        - cell "Transferencia"
+        - cell "$ 40.000"
+      - row "MercadoPago $ 120.000":
+        - cell "MercadoPago"
+        - cell "$ 120.000"
+  - button "Exportar CSV"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Grilla
+Caja
+Clientes
+Más
+Métricas
+
+Actividad del complejo en tiempo real y reporte mensual de ingresos.
+
+Reservas por día
+
+Últimos 30 días
+
+11/08
+15/08
+19/08
+23/08
+27/08
+31/08
+04/09
+09/09
+0
+3
+6
+9
+12
+Tasa de ausencias
+
+16,7%
+
+4 ausencias sobre 24 turnos terminados
+
++16,7 pts vs período anterior
+Ingresos
+Día
+Semana
+Mes
+
+Total del período: $ 830.000
+
+11/08
+16/08
+21/08
+26/08
+31/08
+09/09
+$ 0
+$ 20.000
+$ 40.000
+$ 60.000
+$ 80.000
+Top 5 horarios más reservados
+19:00
+8
+21:00
+8
+11:00
+5
+15:00
+5
+17:00
+5
+Reporte mensual
+←
+Septiembre de 2026
+→
+
+Ingresos
+
+$ 270.000
+
+↓ 52% vs mes ant.
+
+Ajustes
+
+$ 0
+
+Saldo
+
+$ 270.000
+
+↓ 52% vs mes ant.
+
+Reservas
+
+20
+
+Tendencia mensual
+Este mes
+Mes anterior
+Ingresos
+Saldo
+$ 0
+$ 150.000
+$ 300.000
+$ 450.000
+$ 600.000
+Por método de pago
+MÉTODO	TOTAL
+Efectivo	$ 110.000
+Transferencia	$ 40.000
+MercadoPago	$ 120.000
+Exportar CSV
+$ 20.000

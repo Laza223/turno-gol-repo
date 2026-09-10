@@ -1,0 +1,217 @@
+URL: http://localhost:3000/settings/facturacion
+Título: Configuración
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Configuración" [level=1]
+  - navigation "Secciones de configuración":
+    - link "Perfil":
+      - /url: /settings/perfil
+    - link "Reservas":
+      - /url: /settings/reservas
+    - link "Horarios":
+      - /url: /settings/horarios
+    - link "Canchas":
+      - /url: /settings/canchas
+    - link "Equipo":
+      - /url: /settings/equipo
+    - link "Facturación":
+      - /url: /settings/facturacion
+    - link "Avisos":
+      - /url: /settings/avisos
+  - heading "Suscripción" [level=2]
+  - term: Plan
+  - definition: Complejo · todavía no se cobra
+  - term: Estado
+  - definition: Período de prueba
+  - term: Fin de la prueba
+  - definition: —
+  - heading "Historial de pagos" [level=2]
+  - paragraph: Cobros mensuales o anuales del plan. Los cambios de plan con pago adicional se ven en el movimiento de esa fecha, no acá.
+  - paragraph: Todavía no hay cobros registrados.
+  - heading "Activar plan" [level=2]
+  - paragraph: Elegí tu plan para seguir facturando cuando termine el período de prueba.
+  - text: ¿Cuántas canchas tenés?
+  - radiogroup "¿Cuántas canchas tenés?":
+    - radio "1"
+    - radio "2"
+    - radio "3"
+    - radio "4" [checked]
+    - radio "5"
+    - radio "6"
+    - radio "7"
+    - radio "8+"
+  - radiogroup "Ciclo de facturación":
+    - radio "Mensual" [checked]
+    - radio "Anual −20%"
+  - paragraph: Para 4 canchas, tu plan sugerido es Complejo.
+  - heading "Predio" [level=3]
+  - text: 1 a 3 canchas $ 63.000 /mes Facturación mensual
+  - paragraph: Todo TurnoGol, hasta 3 canchas.
+  - button "Activar plan"
+  - text: Sugerido para tus canchas
+  - heading "Complejo" [level=3]
+  - text: 4 a 6 canchas $ 99.000 /mes Facturación mensual
+  - paragraph: Todo TurnoGol, hasta 6 canchas.
+  - button "Activar plan"
+  - heading "Estadio" [level=3]
+  - text: 7 canchas o más $ 129.000 /mes Facturación mensual
+  - paragraph: Todo TurnoGol, canchas ilimitadas.
+  - button "Activar plan"
+  - paragraph: Todos los planes tienen todo. Pagás por cantidad de canchas, no por funcionalidades.
+  - heading "Cuenta de MercadoPago para pagar" [level=2]
+  - paragraph: El email con el que entrás a MercadoPago. Puede ser distinto al que usás para entrar a TurnoGol.
+  - paragraph: Hoy te cobramos la suscripción a demo-admin@turnogol.test (el email de tu cuenta de TurnoGol).
+  - text: Email de tu cuenta de MercadoPago
+  - textbox "Email de tu cuenta de MercadoPago":
+    - /placeholder: demo-admin@turnogol.test
+  - paragraph: Dejalo vacío para volver a usar el email de tu cuenta de TurnoGol.
+  - button "Guardar"
+  - heading "MercadoPago" [level=2]
+  - paragraph: Conectá tu cuenta para cobrar las señas de las reservas online directamente.
+  - link "Conectar MercadoPago":
+    - /url: /api/mp/oauth-start
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Configuración
+Perfil
+Reservas
+Horarios
+Canchas
+Equipo
+Facturación
+Avisos
+Suscripción
+Plan
+Complejo · todavía no se cobra
+Estado
+Período de prueba
+Fin de la prueba
+—
+Historial de pagos
+
+Cobros mensuales o anuales del plan. Los cambios de plan con pago adicional se ven en el movimiento de esa fecha, no acá.
+
+Todavía no hay cobros registrados.
+
+Activar plan
+
+Elegí tu plan para seguir facturando cuando termine el período de prueba.
+
+¿CUÁNTAS CANCHAS TENÉS?
+1
+2
+3
+4
+5
+6
+7
+8+
+Mensual
+Anual
+−20%
+
+Para 4 canchas, tu plan sugerido es Complejo.
+
+Predio
+1 a 3 canchas
+$ 63.000
+/mes
+Facturación mensual
+
+Todo TurnoGol, hasta 3 canchas.
+
+Activar plan
+SUGERIDO PARA TUS CANCHAS
+Complejo
+4 a 6 canchas
+$ 99.000
+/mes
+Facturación mensual
+
+Todo TurnoGol, hasta 6 canchas.
+
+Activar plan
+Estadio
+7 canchas o más
+$ 129.000
+/mes
+Facturación mensual
+
+Todo TurnoGol, canchas ilimitadas.
+
+Activar plan
+
+Todos los planes tienen todo. Pagás por cantidad de canchas, no por funcionalidades.
+
+Cuenta de MercadoPago para pagar
+
+El email con el que entrás a MercadoPago. Puede ser distinto al que usás para entrar a TurnoGol.
+
+Hoy te cobramos la suscripción a demo-admin@turnogol.test (el email de tu cuenta de TurnoGol).
+
+Email de tu cuenta de MercadoPago
+
+Dejalo vacío para volver a usar el email de tu cuenta de TurnoGol.
+
+Guardar
+MercadoPago
+
+Conectá tu cuenta para cobrar las señas de las reservas online directamente.
+
+Conectar MercadoPago

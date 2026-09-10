@@ -1,0 +1,136 @@
+URL: http://localhost:3000/settings/canchas
+Título: Canchas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - navigation "Secciones de configuración":
+    - link "Perfil":
+      - /url: /settings/perfil
+    - link "Reservas":
+      - /url: /settings/reservas
+    - link "Horarios":
+      - /url: /settings/horarios
+    - link "Canchas":
+      - /url: /settings/canchas
+    - link "Equipo":
+      - /url: /settings/equipo
+    - link "Facturación":
+      - /url: /settings/facturacion
+    - link "Avisos":
+      - /url: /settings/avisos
+  - heading "Canchas" [level=1]
+  - paragraph: 4 canchas · Complejo La Redonda
+  - button "+ Nueva cancha"
+  - text: Cancha 1 — F5 Online
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 2 — F5 Online
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 3 — F5 techada Online
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 4 — F7 Offline
+  - paragraph: Césped sintético · 14 jugadores
+  - button "Editar"
+  - button "Activar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Perfil
+Reservas
+Horarios
+Canchas
+Equipo
+Facturación
+Avisos
+Canchas
+
+4 canchas · Complejo La Redonda
+
++ Nueva cancha
+Cancha 1 — F5
+Online
+
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 2 — F5
+Online
+
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 3 — F5 techada
+Online
+
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 4 — F7
+Offline
+
+Césped sintético · 14 jugadores
+
+Editar
+Activar

@@ -65,3 +65,12 @@ docs/gtm/data/
 # en texto plano, igual que `.env.local`. Nunca se commiteó, y esta línea es lo
 # que evita que un `git add -A` lo suba.
 .codex/
+
+# Contrato runtime entre scripts/audit/seed-audit-extras.ts y el capturador de
+# fotos: estado generado en cada corrida, no fuente.
+scripts/audit/.corpus-fixture.json
+
+# Corpus de la auditoría de coherencia (2026-09): los .txt SÍ se versionan — son
+# el árbol de accesibilidad que los agentes citan y diffean bien. Las fotos se
+# regeneran con `pnpm audit:corpus` y son 33 MB por corrida.
+docs/audit/screenshots/2026-09/**/*.png

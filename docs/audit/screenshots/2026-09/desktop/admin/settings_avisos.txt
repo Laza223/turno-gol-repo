@@ -1,0 +1,102 @@
+URL: http://localhost:3000/settings/avisos
+Título: Configuración
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Configuración" [level=1]
+  - navigation "Secciones de configuración":
+    - link "Perfil":
+      - /url: /settings/perfil
+    - link "Reservas":
+      - /url: /settings/reservas
+    - link "Horarios":
+      - /url: /settings/horarios
+    - link "Canchas":
+      - /url: /settings/canchas
+    - link "Equipo":
+      - /url: /settings/equipo
+    - link "Facturación":
+      - /url: /settings/facturacion
+    - link "Avisos":
+      - /url: /settings/avisos
+  - heading "Avisos" [level=2]
+  - group "Resumen diario":
+    - text: Resumen diario
+    - paragraph: Push al admin con PWA instalada, siempre activo. El email es opcional (opt-in).
+    - radiogroup:
+      - radio "Recibir por email"
+      - radio "Solo push" [checked]
+  - button "Guardar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Configuración
+Perfil
+Reservas
+Horarios
+Canchas
+Equipo
+Facturación
+Avisos
+Avisos
+RESUMEN DIARIO
+
+Push al admin con PWA instalada, siempre activo. El email es opcional (opt-in).
+
+Recibir por email
+Solo push
+Guardar

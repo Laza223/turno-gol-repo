@@ -1,0 +1,180 @@
+URL: http://localhost:3000/settings/horarios
+Título: Configuración
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Configuración" [level=1]
+  - navigation "Secciones de configuración":
+    - link "Perfil":
+      - /url: /settings/perfil
+    - link "Reservas":
+      - /url: /settings/reservas
+    - link "Horarios":
+      - /url: /settings/horarios
+    - link "Canchas":
+      - /url: /settings/canchas
+    - link "Equipo":
+      - /url: /settings/equipo
+    - link "Facturación":
+      - /url: /settings/facturacion
+    - link "Avisos":
+      - /url: /settings/avisos
+  - heading "Horarios de apertura" [level=2]
+  - paragraph: Horario general
+  - paragraph: Vale para todos los días, salvo los que personalices abajo.
+  - text: Abre
+  - textbox "Abre": 10:00
+  - text: Cierra
+  - textbox "Cierra": 00:00
+  - button "Excepciones y detalles avanzados" [expanded]
+  - list:
+    - listitem:
+      - checkbox "Lunes abierto" [checked]
+      - text: Lunes 10:00 a 00:00
+      - button "Personalizar"
+    - listitem:
+      - checkbox "Martes abierto" [checked]
+      - text: Martes 10:00 a 00:00
+      - button "Personalizar"
+    - listitem:
+      - checkbox "Miércoles abierto" [checked]
+      - text: Miércoles 10:00 a 00:00
+      - button "Personalizar"
+    - listitem:
+      - checkbox "Jueves abierto" [checked]
+      - text: Jueves 10:00 a 00:00
+      - button "Personalizar"
+    - listitem:
+      - checkbox "Viernes abierto" [checked]
+      - text: Viernes 10:00 a 00:00
+      - button "Personalizar"
+    - listitem:
+      - checkbox "Sábado abierto" [checked]
+      - text: Sábado
+      - button "Restablecer"
+      - text: "Horario propio:"
+      - 'textbox "Sábado: abre"': 09:00
+      - text: a
+      - 'textbox "Sábado: cierra"': 00:00
+    - listitem:
+      - checkbox "Domingo abierto" [checked]
+      - text: Domingo
+      - button "Restablecer"
+      - text: "Horario propio:"
+      - 'textbox "Domingo: abre"': 09:00
+      - text: a
+      - 'textbox "Domingo: cierra"': 00:00
+  - checkbox "Cierra después de medianoche Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás 02:00). Esos turnos cuentan como parte de la misma jornada (el día anterior)."
+  - text: Cierra después de medianoche Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás 02:00). Esos turnos cuentan como parte de la misma jornada (el día anterior).
+  - button "Guardar horarios"
+  - heading "Días cerrados" [level=2]
+  - paragraph: No hay días cerrados configurados.
+  - text: Agregar día cerrado
+  - textbox "Agregar día cerrado"
+  - button "Agregar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Configuración
+Perfil
+Reservas
+Horarios
+Canchas
+Equipo
+Facturación
+Avisos
+Horarios de apertura
+
+Horario general
+
+Vale para todos los días, salvo los que personalices abajo.
+
+Abre
+Cierra
+Excepciones y detalles avanzados
+Lunes
+10:00 a 00:00
+Personalizar
+Martes
+10:00 a 00:00
+Personalizar
+Miércoles
+10:00 a 00:00
+Personalizar
+Jueves
+10:00 a 00:00
+Personalizar
+Viernes
+10:00 a 00:00
+Personalizar
+Sábado
+Restablecer
+Horario propio:
+a
+Domingo
+Restablecer
+Horario propio:
+a
+Cierra después de medianoche
+Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás 02:00). Esos turnos cuentan como parte de la misma jornada (el día anterior).
+Guardar horarios
+Días cerrados
+
+No hay días cerrados configurados.
+
+Agregar día cerrado
+Agregar

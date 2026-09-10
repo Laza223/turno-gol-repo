@@ -1,0 +1,82 @@
+URL: http://localhost:3000/jugadores
+Título: Personas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Hoy":
+    - /url: /dashboard
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - button "Más"
+- main:
+  - heading "Personas" [level=1]
+  - navigation "Secciones de clientes":
+    - link "Personas":
+      - /url: /jugadores
+    - link "Turnos fijos":
+      - /url: /abonados
+  - searchbox "Buscar personas"
+  - list:
+    - listitem:
+      - paragraph: Diego Fernández Sin cuenta
+      - paragraph: +5491155501234 · 0 reservas · 1 fijo
+      - button "Vincular"
+    - listitem:
+      - paragraph: Grupo de los viernes (dado de baja) Sin cuenta
+      - paragraph: +5491155509876 · 0 reservas
+      - button "Vincular"
+    - listitem:
+      - link "Tomás Rivero demo-player@turnogol.test · 0 reservas · 1 fijo Organiza el grupo Tiene precio acordado 1 ausencia":
+        - /url: /jugadores/d0000000-0000-4000-8000-000000000020
+        - paragraph: Tomás Rivero
+        - paragraph: demo-player@turnogol.test · 0 reservas · 1 fijo
+        - list:
+          - listitem: Organiza el grupo
+          - listitem: Tiene precio acordado
+        - text: 1 ausencia
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Hoy
+Grilla
+Caja
+Más
+Personas
+Personas
+Turnos fijos
+
+Diego Fernández
+Sin cuenta
+
++5491155501234 · 0 reservas · 1 fijo
+
+Vincular
+
+Grupo de los viernes (dado de baja)
+Sin cuenta
+
++5491155509876 · 0 reservas
+
+Vincular
+
+Tomás Rivero
+
+demo-player@turnogol.test · 0 reservas · 1 fijo
+
+Organiza el grupo
+Tiene precio acordado
+1 ausencia

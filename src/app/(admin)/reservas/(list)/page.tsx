@@ -17,6 +17,7 @@ import {
   type ReservaScope,
 } from '../queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { listCourts } from '@/modules/courts/court.service'
 import { BookingListItem } from '../BookingListItem'
 import { ReservasToolbar } from '../ReservasToolbar'
 import { GrillaTabs } from '@/app/(admin)/grilla/GrillaTabs'
@@ -49,7 +50,7 @@ const ALLOWED_SCOPES = new Set<string>(SCOPES.map((s) => s.value))
 const FILTERS = [
   { value: '', label: 'Todas' },
   { value: 'confirmed', label: 'Confirmadas' },
-  { value: 'pending_payment', label: 'Pendientes' },
+  { value: 'pending_payment', label: 'Esperando seña' },
   { value: 'completed', label: 'Completadas' },
   { value: 'no_show', label: 'Ausentes' },
   { value: 'canceladas', label: 'Canceladas' },
@@ -66,6 +67,8 @@ function buildHref(params: {
   status: string
   q: string
   compact: boolean
+  /** H110 — courts.id, o '' para "Todas las canchas". */
+  cancha: string
   /** Página 0-based; se omite en la 1 (`?pagina=` es 1-based, como se lee). */
   page?: number
 }): string {
@@ -74,6 +77,7 @@ function buildHref(params: {
   if (params.status) search.set('status', params.status)
   if (params.q) search.set('q', params.q)
   if (params.compact) search.set('vista', 'compacta')
+  if (params.cancha) search.set('cancha', params.cancha)
   if (params.page && params.page > 0) search.set('pagina', String(params.page + 1))
   const qs = search.toString()
   return qs ? `/reservas?${qs}` : '/reservas'
@@ -114,6 +118,8 @@ type Props = {
     q?: string
     vista?: string
     pagina?: string
+    /** H110 — courts.id; se valida contra las canchas reales del tenant. */
+    cancha?: string
   }>
 }
 
@@ -144,42 +150,66 @@ export default async function ReservasPage(props: Props) {
   const q = (searchParams.q ?? '').trim().slice(0, 80)
   const compact = searchParams.vista === 'compacta'
   const page = parsePage(searchParams.pagina)
+  const requestedCourt = searchParams.cancha ?? ''
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
-  const { rows, counts, hasMore } = await withTenantContext(tenant.id, async (tx) => {
-    const { rows: list, hasMore: more } = await listTenantBookings(
-      tenant.id,
-      { scope, today, ...(status ? { status } : {}), ...(q ? { q } : {}) },
-      tx,
-      page,
-    )
-    const byStatus = await countTenantBookingsByStatus(
-      tenant.id,
-      { scope, today, ...(q ? { q } : {}) },
-      tx,
-    )
-    // El saldo pendiente dejó de ser insumo exclusivo de la alarma
-    // (`isUnpaidAlarm` en slot-visual.ts, que solo mira completed): 3.2
-    // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
-    // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
-    // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (100) ids —
-    // el mismo costo que ya paga la grilla con todos los turnos del día.
-    const charges = await sumBookingChargesByBooking(
-      tenant.id,
-      list.map((r) => r.id),
-      tx,
-    )
-    const withMoney = list.map((r) => ({
-      ...r,
-      ...summarizeBookingCharges({
-        priceSnapshot: r.priceSnapshot,
-        depositAmount: r.depositAmount,
-        depositStatus: r.depositStatus,
-        chargesTotal: charges.get(r.id) ?? 0,
-      }),
-    }))
-    return { rows: withMoney, counts: byStatus, hasMore: more }
-  })
+  const { rows, counts, hasMore, courts, courtId } = await withTenantContext(
+    tenant.id,
+    async (tx) => {
+      // H110 — allowlist contra las canchas reales del tenant, mismo criterio
+      // que #30 con `status`: un `?cancha` que no es una cancha del tenant
+      // (basura, o de otro tenant) se degrada a "sin filtro", nunca revienta
+      // la query ni filtra por una cancha ajena.
+      const courtRows = await listCourts(tenant.id, tx)
+      const courtIds = new Set(courtRows.map((c) => c.id))
+      const courtId = courtIds.has(requestedCourt) ? requestedCourt : undefined
+
+      const { rows: list, hasMore: more } = await listTenantBookings(
+        tenant.id,
+        {
+          scope,
+          today,
+          ...(status ? { status } : {}),
+          ...(q ? { q } : {}),
+          ...(courtId ? { courtId } : {}),
+        },
+        tx,
+        page,
+      )
+      const byStatus = await countTenantBookingsByStatus(
+        tenant.id,
+        { scope, today, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
+        tx,
+      )
+      // El saldo pendiente dejó de ser insumo exclusivo de la alarma
+      // (`isUnpaidAlarm` en slot-visual.ts, que solo mira completed): 3.2
+      // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
+      // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
+      // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (100) ids —
+      // el mismo costo que ya paga la grilla con todos los turnos del día.
+      const charges = await sumBookingChargesByBooking(
+        tenant.id,
+        list.map((r) => r.id),
+        tx,
+      )
+      const withMoney = list.map((r) => ({
+        ...r,
+        ...summarizeBookingCharges({
+          priceSnapshot: r.priceSnapshot,
+          depositAmount: r.depositAmount,
+          depositStatus: r.depositStatus,
+          chargesTotal: charges.get(r.id) ?? 0,
+        }),
+      }))
+      return {
+        rows: withMoney,
+        counts: byStatus,
+        hasMore: more,
+        courts: courtRows.map((c) => ({ id: c.id, name: c.name })),
+        courtId,
+      }
+    },
+  )
 
   // Hoy: secciones por cancha (la query ordena cancha, hora). Próximas e
   // historial: secciones por fecha para que el día sea escaneable.
@@ -221,7 +251,7 @@ export default async function ReservasPage(props: Props) {
             return (
               <Link
                 key={s.value}
-                href={buildHref({ dia: s.value, status, q, compact })}
+                href={buildHref({ dia: s.value, status, q, compact, cancha: courtId ?? '' })}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'inline-flex min-h-11 items-center rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-8',
@@ -253,7 +283,7 @@ export default async function ReservasPage(props: Props) {
           return (
             <Link
               key={f.label}
-              href={buildHref({ dia: scope, status: f.value, q, compact })}
+              href={buildHref({ dia: scope, status: f.value, q, compact, cancha: courtId ?? '' })}
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0',
@@ -277,6 +307,49 @@ export default async function ReservasPage(props: Props) {
           )
         })}
       </nav>
+
+      {/* H110 — filtro por cancha: sin esto no había forma de ver de un saque
+          qué tiene una cancha puntual hacia adelante (scope 'proximas', que
+          agrupa por fecha, no por cancha). Mismo patrón de chips que
+          "Filtro por estado", una sola cancha a la vez. */}
+      {courts.length > 1 && (
+        <nav
+          aria-label="Filtro por cancha"
+          className="card-entrance flex flex-wrap gap-2"
+          style={{ animationDelay: '140ms' }}
+        >
+          <Link
+            href={buildHref({ dia: scope, status, q, compact, cancha: '' })}
+            aria-current={!courtId ? 'page' : undefined}
+            className={cn(
+              'inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0',
+              !courtId
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',
+            )}
+          >
+            Todas las canchas
+          </Link>
+          {courts.map((c) => {
+            const active = courtId === c.id
+            return (
+              <Link
+                key={c.id}
+                href={buildHref({ dia: scope, status, q, compact, cancha: c.id })}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0',
+                  active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',
+                )}
+              >
+                {c.name}
+              </Link>
+            )
+          })}
+        </nav>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState
@@ -339,7 +412,14 @@ export default async function ReservasPage(props: Props) {
             >
               {page > 0 ? (
                 <Link
-                  href={buildHref({ dia: scope, status, q, compact, page: page - 1 })}
+                  href={buildHref({
+                    dia: scope,
+                    status,
+                    q,
+                    compact,
+                    cancha: courtId ?? '',
+                    page: page - 1,
+                  })}
                   rel="prev"
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
@@ -352,7 +432,14 @@ export default async function ReservasPage(props: Props) {
               <span className="text-xs text-muted-foreground tabular-nums">Página {page + 1}</span>
               {hasMore ? (
                 <Link
-                  href={buildHref({ dia: scope, status, q, compact, page: page + 1 })}
+                  href={buildHref({
+                    dia: scope,
+                    status,
+                    q,
+                    compact,
+                    cancha: courtId ?? '',
+                    page: page + 1,
+                  })}
                   rel="next"
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, MessageCircle } from 'lucide-react'
+import { Plus, Trash2, MessageCircle, Phone, Check, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyInput } from '@/components/ui/money-input'
@@ -233,7 +233,11 @@ export default function CompleteBookingDialog({
                 {summary.depositCounted > 0 && (
                   <div className="flex items-center justify-between">
                     <dt className="text-muted-foreground">
-                      Seña pagada <span className="text-emerald-800 dark:text-emerald-400">✓</span>
+                      Seña pagada{' '}
+                      <Check
+                        aria-hidden
+                        className="inline h-3.5 w-3.5 text-emerald-800 dark:text-emerald-400"
+                      />
                     </dt>
                     <dd className="text-foreground">−{formatArs(summary.depositCounted)}</dd>
                   </div>
@@ -347,7 +351,14 @@ export default function CompleteBookingDialog({
                     <span
                       className={`font-semibold ${hasDebt ? 'text-amber-800 dark:text-amber-400' : 'text-emerald-800 dark:text-emerald-400'}`}
                     >
-                      {hasDebt ? formatArs(remainingAfterCharge) : '✓ Pagado completo'}
+                      {hasDebt ? (
+                        formatArs(remainingAfterCharge)
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <Check className="h-3.5 w-3.5" aria-hidden />
+                          Pagado completo
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -358,8 +369,9 @@ export default function CompleteBookingDialog({
           {/* Debt section */}
           {hasDebt && (
             <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5 p-3">
-              <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                ⚠ Queda una deuda de {formatArs(remainingAfterCharge)}
+              <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                Queda una deuda de {formatArs(remainingAfterCharge)}
               </p>
               <textarea
                 value={debtNote}
@@ -370,8 +382,9 @@ export default function CompleteBookingDialog({
               />
               {contactName && contactPhone && (
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    📞 {contactName} — {contactPhone}
+                  <span className="inline-flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5" aria-hidden />
+                    {contactName} — {contactPhone}
                   </span>
                   {whatsappUrl && (
                     <a

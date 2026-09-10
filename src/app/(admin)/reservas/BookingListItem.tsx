@@ -100,6 +100,7 @@ export function BookingListItem({
         guestName: booking.guestName ?? null,
         guestPhone: null,
         playerName: booking.playerName,
+        pending: booking.pending,
         startsAt: booking.startsAt,
         endsAt: booking.endsAt,
       }}

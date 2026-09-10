@@ -62,6 +62,19 @@ export const BloqueadoPorHorasTomadas: Story = {
   },
 }
 
+/**
+ * Candado de regresión (H152): con una sola hora, el artículo tiene que
+ * concordar en singular ("liberá primero la 1 hora tomada"), no "las 1 hora".
+ */
+export const BloqueadoPorUnaSolaHora: Story = {
+  args: { slotCount: 1 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/liberá primero la\s/i)).toBeVisible()
+    await expect(canvas.getByText('hora tomada')).toBeVisible()
+  },
+}
+
 /** Sin equipos anotados, la consecuencia sobre planteles no se inventa. */
 export const SinEquipos: Story = {
   args: { teamCount: 0 },

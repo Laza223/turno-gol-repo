@@ -72,6 +72,7 @@ export function SlotsPanel({
   const [timeStart, setTimeStart] = useState('14:00')
   const [timeEnd, setTimeEnd] = useState('18:00')
   const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false)
+  const [releaseTarget, setReleaseTarget] = useState<TournamentSlotRow | null>(null)
 
   const releasingCount = useMemo(() => slots.filter((s) => s.date >= todayIso()).length, [slots])
 
@@ -125,8 +126,77 @@ export function SlotsPanel({
     return result
   }
 
+  async function confirmReleaseRow(): Promise<ActionResult> {
+    if (!releaseTarget) return { success: false, error: 'No hay ningún horario seleccionado.' }
+    setConflicts(null)
+    setReserved(null)
+    const result = await releaseAction({ tournamentId, bookingId: releaseTarget.bookingId })
+    if (result.success) {
+      toast({
+        title: 'Horario liberado',
+        description: `${formatDate(releaseTarget.date)} · ${releaseTarget.timeStart}–${releaseTarget.timeEnd} queda libre para reservar online.`,
+        variant: 'success',
+      })
+      router.refresh()
+    }
+    return result
+  }
+
   return (
     <section className="space-y-4">
+      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-foreground">Horarios tomados</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
+              {summarizeSlots(slots)}
+            </p>
+          </div>
+          {slots.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setReleaseConfirmOpen(true)}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Liberar de hoy en adelante
+            </button>
+          )}
+        </div>
+
+        {slots.length === 0 ? (
+          <EmptyState
+            title="Todavía no reservaste ningún horario para este torneo."
+            className="py-6"
+          />
+        ) : (
+          <ul className="divide-y divide-border text-sm">
+            {slots.slice(0, 40).map((s) => (
+              <li key={s.bookingId} className="flex items-center justify-between gap-3 py-2">
+                <span className="text-foreground tabular-nums">
+                  {formatDate(s.date)} · {s.timeStart}–{s.timeEnd}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-muted-foreground">{courtNames[s.courtId] ?? 'Cancha'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setReleaseTarget(s)}
+                    disabled={pending}
+                    className="rounded-md px-1.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    Liberar
+                  </button>
+                </span>
+              </li>
+            ))}
+            {slots.length > 40 && (
+              <li className="py-2 text-muted-foreground">y {slots.length - 40} horas más…</li>
+            )}
+          </ul>
+        )}
+      </div>
+
       <div className="rounded-xl border border-border bg-card p-5 space-y-5">
         <div>
           <h2 className="font-display text-lg font-semibold text-foreground">Tomar horarios</h2>
@@ -271,49 +341,6 @@ export function SlotsPanel({
         </button>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg font-semibold text-foreground">Horarios tomados</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
-              {summarizeSlots(slots)}
-            </p>
-          </div>
-          {slots.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setReleaseConfirmOpen(true)}
-              disabled={pending}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Liberar de hoy en adelante
-            </button>
-          )}
-        </div>
-
-        {slots.length === 0 ? (
-          <EmptyState
-            title="Todavía no reservaste ningún horario para este torneo."
-            className="py-6"
-          />
-        ) : (
-          <ul className="divide-y divide-border text-sm">
-            {slots.slice(0, 40).map((s) => (
-              <li key={s.bookingId} className="flex items-center justify-between py-2">
-                <span className="text-foreground tabular-nums">
-                  {formatDate(s.date)} · {s.timeStart}–{s.timeEnd}
-                </span>
-                <span className="text-muted-foreground">{courtNames[s.courtId] ?? 'Cancha'}</span>
-              </li>
-            ))}
-            {slots.length > 40 && (
-              <li className="py-2 text-muted-foreground">y {slots.length - 40} horas más…</li>
-            )}
-          </ul>
-        )}
-      </div>
-
       <ConfirmDialog
         open={releaseConfirmOpen}
         onOpenChange={setReleaseConfirmOpen}
@@ -326,6 +353,26 @@ export function SlotsPanel({
         confirmLabel="Liberar horarios"
         cancelLabel="Volver"
         onConfirm={confirmRelease}
+      />
+
+      <ConfirmDialog
+        open={releaseTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setReleaseTarget(null)
+        }}
+        title="Liberar este horario"
+        consequences={
+          releaseTarget
+            ? [
+                `${formatDate(releaseTarget.date)} · ${releaseTarget.timeStart}–${releaseTarget.timeEnd} en ${courtNames[releaseTarget.courtId] ?? 'Cancha'} queda libre para que cualquiera la reserve online.`,
+                'No se puede deshacer: para recuperarla hay que volver a tomarla (y podría estar ocupada).',
+              ]
+            : []
+        }
+        variant="destructive"
+        confirmLabel="Liberar horario"
+        cancelLabel="Volver"
+        onConfirm={confirmReleaseRow}
       />
     </section>
   )

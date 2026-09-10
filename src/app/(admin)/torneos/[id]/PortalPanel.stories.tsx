@@ -69,3 +69,17 @@ export const SinPermiso: Story = {
     await expect(canvas.getByText(/lo hace el dueño del complejo/)).toBeVisible()
   },
 }
+
+/**
+ * Candado de regresión (H148): en borrador, "Abrir inscripción" tiene que
+ * mostrarse deshabilitado con explicación — nunca desaparecer, como ya hacía
+ * "Publicar" (MASTER §12 CHK-admin: candado + tooltip, no desaparición).
+ */
+export const SinPermisoEnBorrador: Story = {
+  args: { canPublish: false, status: 'draft' as const },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: 'Abrir inscripción' })).toBeDisabled()
+    await expect(canvas.getByText(/lo hace el dueño del complejo/)).toBeVisible()
+  },
+}

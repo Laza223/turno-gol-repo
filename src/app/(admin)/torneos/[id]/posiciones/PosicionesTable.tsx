@@ -48,6 +48,15 @@ export function PosicionesTable({
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                     {row.teamName}
                   </span>
+                  {/* H169: la card mobile mostraba solo posición/equipo/puntos
+                      — sin DG no alcanza para desempatar a ojo un empate en
+                      puntos, que es justo el caso en que más se necesita. */}
+                  <span
+                    title="Diferencia de gol"
+                    className="shrink-0 text-xs tabular-nums text-muted-foreground"
+                  >
+                    DG {formatGoalDiff(row.goalDiff)}
+                  </span>
                   <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
                     {row.points}
                   </span>

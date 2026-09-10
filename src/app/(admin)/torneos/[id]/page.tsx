@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, Trophy } from 'lucide-react'
+import { ArrowLeft, Lock, Trophy } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
+import { formatArs } from '@/lib/format'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
@@ -23,13 +24,7 @@ import {
   updateTeamAction,
   updateTournamentAction,
 } from '../actions'
-import {
-  FORMAT_SHORT,
-  STATUS_LABELS,
-  formatArs,
-  formatDateRange,
-  statusBadgeClass,
-} from '../torneos-lib'
+import { FORMAT_SHORT, STATUS_LABELS, formatDateRange, statusBadgeClass } from '../torneos-lib'
 import { BorrarTorneo } from './BorrarTorneo'
 import { PortalPanel } from './PortalPanel'
 import { SlotsPanel } from './SlotsPanel'
@@ -143,16 +138,30 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
 
       {/* Borrar solo aplica en borrador: después el torneo se cancela, no se
           borra (`deleteTournament`, tournament.service.ts). Fuera de ese estado
-          no se ofrece nada, para no enseñar un camino que no existe. */}
-      {role === 'admin' && tournament.status === 'draft' && (
+          no se ofrece nada, para no enseñar un camino que no existe. Para el
+          manager, en cambio, el botón se BLOQUEA en vez de desaparecer —
+          mismo patrón candado+tooltip que "Crear el primero" en
+          torneos/page.tsx (MASTER §12 CHK-admin: nunca desaparición). */}
+      {tournament.status === 'draft' && (
         <div className="pt-2">
-          <BorrarTorneo
-            tournamentId={tournament.id}
-            tournamentName={tournament.name}
-            teamCount={teams.length}
-            slotCount={slots.length}
-            deleteAction={deleteTournamentAction}
-          />
+          {role === 'admin' ? (
+            <BorrarTorneo
+              tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              teamCount={teams.length}
+              slotCount={slots.length}
+              deleteAction={deleteTournamentAction}
+            />
+          ) : (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground"
+              title="Solo el dueño puede borrar torneos"
+            >
+              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+              Borrar este torneo
+              <span className="sr-only">— solo el dueño puede hacerlo</span>
+            </span>
+          )}
         </div>
       )}
     </div>

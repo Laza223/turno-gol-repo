@@ -81,6 +81,13 @@ export function ActaPanel({
   const isKnockout = stageKind === 'knockout'
   const isDraw = homeScore === awayScore
   const undefinedTeams = match.homeTeamId === null || match.awayTeamId === null
+  // El acta y un walkover no conviven (tournament-result.service.ts:219-221):
+  // si ya hay resultado y/o eventos cargados, cargar un walkover encima es una
+  // acción que el servidor va a rechazar — se desactiva antes en vez de dejar
+  // que el staff pase por un diálogo de confirmación que termina en error.
+  const walkoverBlocked = match.status !== 'scheduled' || events.length > 0
+  const walkoverBlockedReason =
+    'Este partido ya tiene resultado y/o eventos cargados. Borrá el resultado y las jugadas del acta antes de cargar un walkover.'
 
   const run = (fn: () => Promise<TournamentActionResult>, successTitle?: string) => {
     setError(null)
@@ -269,7 +276,8 @@ export function ActaPanel({
             <button
               key={r.teamId}
               type="button"
-              disabled={pending || undefinedTeams}
+              disabled={pending || undefinedTeams || walkoverBlocked}
+              title={walkoverBlocked ? walkoverBlockedReason : undefined}
               onClick={() => setWalkoverConfirm({ teamId: r.teamId, teamName: r.teamName })}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >

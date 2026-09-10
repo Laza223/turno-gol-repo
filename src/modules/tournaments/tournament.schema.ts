@@ -258,11 +258,17 @@ export const reserveSlotsSchema = z.object({
   timeEnd: hhmmEnd,
 })
 
-export const releaseSlotsSchema = z.object({
-  tournamentId: uuid,
-  /** Libera desde esta fecha en adelante; lo anterior queda como histórico. */
-  fromDate: dateStr,
-})
+export const releaseSlotsSchema = z
+  .object({
+    tournamentId: uuid,
+    /** Libera desde esta fecha en adelante; lo anterior queda como histórico. */
+    fromDate: dateStr.optional(),
+    /** Libera un solo horario puntual (una fila de "Horarios tomados"), sin tocar el resto. */
+    bookingId: uuid.optional(),
+  })
+  .refine((v) => v.fromDate !== undefined || v.bookingId !== undefined, {
+    message: 'Falta la fecha o el horario a liberar.',
+  })
 
 // ─── Fixture (migr. 064) ────────────────────────────────────────────
 

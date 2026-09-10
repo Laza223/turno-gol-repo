@@ -3,7 +3,7 @@ import { uuid, dateStr, hhmm, hhmmEnd } from '@/shared/validation/primitives'
 
 /**
  * Drafts de canchas del paso 3. El precio es UNO por cancha (modo uniforme,
- * `pages/onboarding.md` §5); el ajuste por franja horaria vive en `/settings/canchas`.
+ * `pages/onboarding.md` §5); el ajuste por franja horaria vive en `/canchas`.
  *
  * Estaba declarado inline dentro de la Server Action.
  *

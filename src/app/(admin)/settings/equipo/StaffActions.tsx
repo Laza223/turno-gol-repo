@@ -111,7 +111,15 @@ export function StaffActions({
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Opciones">
+              {/* H146: variant="ghost" no pinta fondo en reposo (solo en :hover,
+                  estado que no existe en touch) — el área de 44px ya cumple, lo
+                  que faltaba era el contenedor visible alrededor del ícono. */}
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Opciones"
+                className="border border-border"
+              >
                 <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>

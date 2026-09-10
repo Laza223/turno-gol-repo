@@ -7,6 +7,13 @@ import type {
   TournamentTeamStatus,
 } from '@/modules/tournaments/tournament.types'
 
+// H027: existía un `formatArs` local (`$85.000`, sin espacio) que divergía del
+// único formateador de plata del repo (`@/lib/format`, con NBSP: `$ 85.000`) —
+// el mismo monto de inscripción se veía distinto en dos pestañas del mismo
+// torneo. Se re-exporta el canónico en vez de duplicar la lógica, para no
+// tocar los import-sites de este módulo.
+export { formatArs } from '@/lib/format'
+
 // Helpers puros de presentación: sin DB, sin React. Se testean solos
 // (mismo criterio que caja-lib.ts).
 
@@ -67,11 +74,6 @@ export function teamStatusBadgeClass(status: TournamentTeamStatus): string {
     case 'disqualified':
       return 'bg-destructive/10 text-red-700 dark:text-red-300'
   }
-}
-
-/** Centavos ARS → '$85.000'. Sin decimales: los montos del rubro son enteros. */
-export function formatArs(cents: number): string {
-  return `$${Math.round(cents / 100).toLocaleString('es-AR')}`
 }
 
 /** 'YYYY-MM-DD' → '12/07/2026'. Sin `new Date()`: evita el corrimiento de zona. */

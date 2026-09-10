@@ -10,7 +10,7 @@ import { suppressPushPrompt } from '../_qa/session'
  * cancha nueva: se opera sobre ella y se restaura su estado original en
  * `finally` porque otras bandas/casos de la corrida QA dependen de que siga
  * llamándose "Cancha E2E 1" y esté online.
- * Evidence anchors: src/app/(admin)/settings/canchas/actions.ts:93-217,
+ * Evidence anchors: src/app/(admin)/canchas/actions.ts:93-217,
  *   CourtList.tsx:216-349, status-visual.tsx:16-29.
  */
 test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
@@ -35,7 +35,7 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       const page = await context.newPage()
 
       // ── Editar ──────────────────────────────────────────────────────
-      await page.goto('/settings/canchas')
+      await page.goto('/canchas')
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({ timeout: 15_000 })
 
       let courtCard = page.locator('div.rounded-lg').filter({ hasText: originalName })
@@ -62,7 +62,7 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       await expect(page.getByText(`Desactivar ${editedName}`)).toBeVisible()
       await page.getByRole('button', { name: 'Desactivar' }).last().click()
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
-      await expect(courtCard.getByText('Offline')).toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Pausada')).toBeVisible({ timeout: 10_000 })
 
       const afterOfflineRows = await runSql<{ status: string }>(
         'SELECT status FROM courts WHERE id = $1',
@@ -74,11 +74,11 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       // "Activar" (a diferencia de "Desactivar") no pasa por ConfirmDialog: el
       // click dispara un optimistic update SÍNCRONO (setCurrentStatus('online')
       // antes del await a toggleStatusAction, CourtList.tsx:237-247) — el texto
-      // "Online" puede quedar visible ANTES de que el UPDATE server-side termine.
+      // "Activa" puede quedar visible ANTES de que el UPDATE server-side termine.
       // expect.poll evita la carrera leyendo la DB hasta que el write real
       // aterrice (mismo patrón que TG-HP-225 con logo_url/cover_url).
       await courtCard.getByRole('button', { name: 'Activar' }).click()
-      await expect(courtCard.getByText('Online')).toBeVisible({ timeout: 10_000 })
+      await expect(courtCard.getByText('Activa')).toBeVisible({ timeout: 10_000 })
 
       let afterOnlineRows: Array<{ status: string }> = []
       await expect

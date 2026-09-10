@@ -23,6 +23,12 @@ vi.mock('@/modules/abonados/abonado.service', () => ({
   checkAbonadoSlotConflict: vi.fn(async () => false),
   getAbonadoSlotConflicts: vi.fn(async () => []),
 }))
+// H055: previewAbonadoSlotsAction ahora aplica el mismo corte que createAbonado
+// (paidPeriodCutoff) — `null` = tenant no `canceled`, sin tope (comportamiento
+// de estos tests, que no ejercitan ese caso).
+vi.mock('@/modules/bookings/paid-period.guard', () => ({
+  paidPeriodCutoff: vi.fn(async () => null),
+}))
 vi.mock('@/app/(admin)/abonados/actions', () => ({ createAbonadoAction: vi.fn() }))
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => {

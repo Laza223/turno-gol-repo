@@ -69,6 +69,8 @@ export type ReservaListFilters = {
   status?: string
   /** Búsqueda por nombre del cliente o prefijo del número de reserva (UUID). */
   q?: string
+  /** H110 — filtra por cancha (courts.id). La page valida contra las canchas reales del tenant antes de llegar acá. */
+  courtId?: string
 }
 
 function scopeCond(scope: ReservaScope, today: string): SQL {
@@ -82,7 +84,18 @@ function statusCond(status: string | undefined): SQL {
   if (status === 'canceladas') {
     return sql`AND b.status IN ('canceled_refunded', 'canceled_no_refund')`
   }
+  if (status === 'confirmed') {
+    // H075 — un bloqueo manual (type='block') queda en status='confirmed' sin
+    // ser una reserva de cliente; no cuenta como "Confirmada" para el filtro.
+    return sql`AND b.status = 'confirmed'::booking_status AND b.type <> 'block'`
+  }
   return sql`AND b.status = ${status}::booking_status`
+}
+
+/** H110 — el valor ya viene validado contra las canchas reales del tenant (page.tsx), no confiamos en el UUID crudo de la URL más que en eso. */
+function courtCond(courtId: string | undefined): SQL {
+  if (!courtId) return sql``
+  return sql`AND b.court_id = ${courtId}::uuid`
 }
 
 function searchCond(q: string | undefined): SQL {
@@ -172,6 +185,7 @@ export async function listTenantBookings(
       ${scopeCond(filters.scope, filters.today)}
       ${statusCond(filters.status)}
       ${searchCond(filters.q)}
+      ${courtCond(filters.courtId)}
     ${orderBy}
     LIMIT ${RESERVAS_PAGE_SIZE + 1} OFFSET ${safePage * RESERVAS_PAGE_SIZE}
   `)
@@ -191,13 +205,19 @@ export async function countTenantBookingsByStatus(
   tx: DbTx,
 ): Promise<Record<string, number>> {
   const rows = await tx.execute(sql`
-    SELECT b.status, count(*)::int AS count
+    SELECT
+      -- H075: un bloqueo manual (type='block') va a su propio balde 'block' en
+      -- vez de mezclarse con el status real ('confirmed' casi siempre) — si no,
+      -- la píldora "Confirmadas" contaba mantenimiento como si fuera un cliente.
+      CASE WHEN b.type = 'block' THEN 'block' ELSE b.status::text END AS status,
+      count(*)::int AS count
     FROM bookings b
     LEFT JOIN players p ON p.id = b.player_id
     WHERE b.tenant_id = ${tenantId}
       ${scopeCond(filters.scope, filters.today)}
       ${searchCond(filters.q)}
-    GROUP BY b.status
+      ${courtCond(filters.courtId)}
+    GROUP BY 1
   `)
   const counts: Record<string, number> = {}
   for (const r of rows as unknown as Array<{ status: string; count: number }>) {

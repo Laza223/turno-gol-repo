@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, ExternalLink, Mail, MessageCircle, Undo2 } from 'lucide-react'
+import { StatCard } from '@/components/admin/StatCard'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatArs } from '@/lib/format'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
@@ -72,26 +73,18 @@ export function PendingRefundsList({
 
   return (
     <div className="space-y-4">
-      {/* Ámbar y con el texto explícito de que el complejo DEBE esta plata: es
-          el opuesto de "Plata en la calle", que está a un tab de distancia y se
-          ve casi igual. Confundir los dos totales sería caro. */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-        <div>
-          {/* amber-800, no 700: el fondo es `bg-amber-500/5`, o sea ámbar con
-              opacidad sobre lo que haya atrás, y el par 700/ese compuesto mide
-              3.91 — por debajo de AA. Lo detectó axe en la story; el mismo
-              par existe en StreetMoneyList, que no tiene story que lo mida. */}
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-            Tenés que devolver
-          </p>
-          <p className="mt-0.5 text-2xl font-bold tabular-nums text-amber-800 dark:text-amber-300">
-            {formatArs(total)}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
-          <Undo2 className="h-5 w-5" aria-hidden="true" />
-        </div>
-      </div>
+      {/* StatCard compartido, no un card armado a mano (H085/H086): rojo
+          (destructive) porque es plata que SALE del complejo, lo opuesto de
+          "Deudas" en StreetMoneyList (accent="amber", plata pendiente de
+          ENTRAR) — antes las dos maquetas eran distintas Y del mismo hue.
+          MASTER §2.5: ingresos/pendiente de cobro en verde/ámbar, egresos en
+          rojo SIEMPRE. */}
+      <StatCard
+        label="Tenés que devolver"
+        value={formatArs(total)}
+        icon={<Undo2 className="h-4 w-4" aria-hidden="true" />}
+        accent="red"
+      />
 
       {rows.length === 0 ? (
         <EmptyState
@@ -115,10 +108,15 @@ export function PendingRefundsList({
                     {row.debtorName}
                   </span>
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {row.courtName && row.date
-                    ? `${row.courtName} · ${shortDate(row.date)} ${row.timeStart?.slice(0, 5) ?? ''} · `
-                    : ''}
+                {/* Dos renglones, no uno truncado: "hace X" no puede quedar
+                    cortado por el ancho de pantalla (H088), mismo criterio
+                    que StreetMoneyList. */}
+                {row.courtName && row.date && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {row.courtName} · {shortDate(row.date)} {row.timeStart?.slice(0, 5) ?? ''}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
                   {relativeTimeEs(new Date(row.since).toISOString(), nowMs)}
                 </p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -161,12 +159,15 @@ export function PendingRefundsList({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <span className="text-base font-bold tabular-nums text-amber-700 dark:text-amber-400">
+                <span className="text-base font-bold tabular-nums text-red-700 dark:text-red-400">
                   {formatArs(row.amountCents)}
                 </span>
                 <button
                   type="button"
                   onClick={() => setSettling(row)}
+                  // H105: mismo criterio que StreetMoneyList — el nombre
+                  // accesible dice a quién y cuánto, no solo el label genérico.
+                  aria-label={`Ya devolví ${formatArs(row.amountCents)} — ${row.debtorName}`}
                   className="inline-flex h-11 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 md:h-9"
                 >
                   Ya devolví

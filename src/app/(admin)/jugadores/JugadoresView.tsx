@@ -49,7 +49,10 @@ function metaLine(c: ClientListRow): string {
 
 function SinCuentaBadge() {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+    <span
+      className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
+      title="Sin ficha ni etiquetas hasta vincular a una cuenta"
+    >
       Sin cuenta
     </span>
   )
@@ -99,7 +102,7 @@ export function JugadoresView({
           name="q"
           aria-label="Buscar personas"
           defaultValue={q ?? ''}
-          placeholder="Buscar por nombre, teléfono o email"
+          placeholder="Nombre, teléfono o email"
           className="w-full min-h-11 rounded-md border border-border py-2 pl-9 pr-3 text-base md:min-h-0 md:text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
         />
       </form>
@@ -155,8 +158,10 @@ export function JugadoresView({
                       className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-accent"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-sm font-medium text-foreground" title={c.name}>
+                          {c.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
                           {c.phone ?? c.email} · {metaLine(c)}
                         </p>
                         <PlayerTagChips tags={c.tags} className="mt-1.5" />
@@ -181,7 +186,7 @@ export function JugadoresView({
                         </span>
                         <SinCuentaBadge />
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {c.phone} · {metaLine(c)}
                       </p>
                       {c.suggestedPlayerName && (

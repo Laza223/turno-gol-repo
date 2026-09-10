@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { Tag } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import {
+  EXCLUSIVE_PAIRS,
   PLAYER_TAGS,
   PLAYER_TAG_HINTS,
   PLAYER_TAG_LABELS,
@@ -37,8 +38,18 @@ export function PlayerTagsCard({ playerId, tags, setPlayerTagsAction }: Props) {
 
   const dirty = selected.length !== saved.length || selected.some((t) => !saved.includes(t))
 
+  // H134 (auditoría de coherencia 2026-09): destilda el opuesto del par
+  // exclusivo al tildar uno — el estado contradictorio ("Se le fía" + "No
+  // fiar") no se puede armar en la UI, en vez de rechazarse recién al
+  // guardar y hacer perder el resto de los tildes válidos (Nielsen #5).
   function toggle(tag: PlayerTag) {
-    setSelected((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+    setSelected((prev) => {
+      if (prev.includes(tag)) return prev.filter((t) => t !== tag)
+      const opposites = EXCLUSIVE_PAIRS.flatMap(([a, b]) =>
+        a === tag ? [b] : b === tag ? [a] : [],
+      )
+      return [...prev.filter((t) => !opposites.includes(t)), tag]
+    })
   }
 
   function onSave() {

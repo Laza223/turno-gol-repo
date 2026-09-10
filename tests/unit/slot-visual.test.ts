@@ -218,10 +218,10 @@ describe('bookingBadgeVisual — el listado', () => {
   // renombró (decisión v2 D1: "Esperando seña" se leía como una espera
   // indefinida; el hold es una ventana de 6 min que se libera sola). El listado
   // NO agrega el contador — ese vive solo en la celda de la grilla.
-  it('el turno con hold dice "Pagando ahora" en las dos superficies', () => {
+  it('el turno con hold dice "Esperando seña" en las dos superficies', () => {
     const f = facts({ status: 'pending_payment' })
-    expect(gridSlotVisual(f).label).toBe('Pagando ahora')
-    expect(bookingBadgeVisual(f).label).toBe('Pagando ahora')
+    expect(gridSlotVisual(f).label).toBe('Esperando seña')
+    expect(bookingBadgeVisual(f).label).toBe('Esperando seña')
   })
 })
 
@@ -287,10 +287,14 @@ describe('leyenda derivada', () => {
  * Por qué existe este bloque.
  *
  * Los specs de Playwright no importan de `@/`: afirman el texto del badge como
- * string pelado (`getByText('Pagando ahora')`). Cuando B15 renombró el label de
+ * string pelado (`getByText('Esperando seña')`). Cuando B15 renombró el label de
  * `pending_payment`, nada en el job bloqueante se enteró — el spec siguió
- * buscando "Esperando seña" y el job de e2e quedó rojo cinco merges seguidos,
+ * buscando el texto viejo y el job de e2e quedó rojo cinco merges seguidos,
  * tapado por los otros workflows que sí estaban verdes.
+ *
+ * Volvió a pasar al revés el 2026-09-10: la auditoría de coherencia devolvió el
+ * label de `pending_payment` a "Esperando seña" (MASTER §8.5, decisión del dueño)
+ * y este candado fue lo que avisó que había specs y stories con el texto viejo.
  *
  * Este test cierra el lazo desde el lado barato: si el label vigente de un
  * estado que los e2e afirman no aparece literal en ningún spec, es que el mapa
@@ -336,7 +340,9 @@ describe('candado — el texto que los e2e buscan sigue siendo el que el código
   })
 
   it('control negativo: un label que nadie pinta no se encuentra', () => {
-    expect(corpus.some((source) => source.includes('Esperando seña'))).toBe(false)
+    // Frase deliberadamente inventada: si algún día alguien la escribe en un
+    // spec, este control deja de controlar nada y hay que cambiarla de nuevo.
+    expect(corpus.some((source) => source.includes('Aguardando el anticipo'))).toBe(false)
   })
 })
 

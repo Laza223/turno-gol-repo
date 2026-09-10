@@ -1,0 +1,147 @@
+URL: http://localhost:3000/abonados/nuevo
+Título: Nuevo turno fijo
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - link "Volver a Turnos fijos":
+    - /url: /abonados
+  - heading "Nuevo turno fijo" [level=1]
+  - paragraph: Configurá la reserva fija semanal y los datos del cliente regular.
+  - heading "Turno Fijo Recurrente" [level=2]
+  - paragraph: Definí el día, horario y cancha de la reserva fija.
+  - text: Cancha
+  - combobox "Cancha"
+  - status
+  - text: Día semanal
+  - combobox "Día semanal": Lunes
+  - status
+  - text: Empieza el
+  - button "Seleccionar fecha"
+  - text: Hora inicio
+  - combobox "Hora inicio": 19:00
+  - status
+  - text: Hora fin
+  - combobox "Hora fin": 20:00
+  - status
+  - heading "Cliente y tarifa" [level=2]
+  - paragraph: Datos de contacto y tarifa por sesión.
+  - text: Cliente
+  - combobox "Cliente"
+  - text: Teléfono *
+  - 'button "Seleccionar código de país. Actual: Argentina (+54)"':
+    - img "Argentina": 🇦🇷
+    - text: "+54"
+  - textbox "Teléfono *":
+    - /placeholder: 11 1234-5678
+  - text: Precio por turno (pesos)
+  - textbox "Precio por turno (pesos)":
+    - /placeholder: "Ej: 25.000"
+  - heading "Resumen de Suscripción" [level=3]
+  - text: "Recurrente Cancha Sin seleccionar Frecuencia Lunes Horario 19:00 a 20:00 hs Inicia Sin seleccionar Cliente Sin especificar Tarifa / turno $ 0 Estimación mensual (~4 turnos): $ 0"
+  - paragraph: Al continuar, se verificará la disponibilidad para generar los turnos.
+  - button "Continuar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Canchas
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Volver a Turnos fijos
+Nuevo turno fijo
+
+Configurá la reserva fija semanal y los datos del cliente regular.
+
+Turno Fijo Recurrente
+
+Definí el día, horario y cancha de la reserva fija.
+
+CANCHA
+DÍA SEMANAL
+EMPIEZA EL
+Seleccionar fecha
+HORA INICIO
+HORA FIN
+Cliente y tarifa
+
+Datos de contacto y tarifa por sesión.
+
+CLIENTE
+Teléfono *
+🇦🇷
++54
+PRECIO POR TURNO (PESOS)
+$
+Resumen de Suscripción
+RECURRENTE
+Cancha
+Sin seleccionar
+Frecuencia
+Lunes
+Horario
+19:00 a 20:00 hs
+Inicia
+Sin seleccionar
+Cliente
+Sin especificar
+Tarifa / turno
+$ 0
+Estimación mensual (~4 turnos):
+$ 0
+
+Al continuar, se verificará la disponibilidad para generar los turnos.
+
+Continuar

@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -51,6 +51,31 @@ export function ScheduleFields({
     const d = view.days[day]
     const matchesGeneral = d.open === view.general.open && d.close === view.general.close
     setDay(day, { mode: matchesGeneral ? 'general' : 'custom' })
+  }
+
+  // H165: el editor por día (inputs "Horario propio") es un disclosure propio,
+  // desacoplado del `mode` — antes un día que YA traía horario custom (ej. el
+  // fin de semana en el seed) nacía con la fila expandida mientras el resto
+  // arrancaba colapsado con "Personalizar": misma lista, dos estructuras
+  // visuales distintas para el mismo tipo de fila (Nielsen #4). Todas arrancan
+  // colapsadas por igual; "Personalizar" es lo único que abre el editor.
+  const [expandedDays, setExpandedDays] = useState<ReadonlySet<DayKey>>(() => new Set())
+
+  function personalizeDay(day: DayKey) {
+    const d = view.days[day]
+    if (d.mode === 'general') {
+      setDay(day, { mode: 'custom', open: view.general.open, close: view.general.close })
+    }
+    setExpandedDays((prev) => new Set(prev).add(day))
+  }
+
+  function resetDay(day: DayKey) {
+    setDay(day, { mode: 'general' })
+    setExpandedDays((prev) => {
+      const next = new Set(prev)
+      next.delete(day)
+      return next
+    })
   }
 
   const showNextDayHint = needsNextDayHint(view, closesNextDay)
@@ -134,6 +159,7 @@ export function ScheduleFields({
               const d = view.days[day]
               const label = DAY_LABELS_LONG[day]
               const closed = d.mode === 'closed'
+              const expanded = expandedDays.has(day)
               // Mismo criterio que effectiveCloseMins (operating-day.ts): con
               // "Cierra después de medianoche" activo, un cierre <= apertura
               // (excepto '00:00', que YA es fin de día) cruza a la madrugada
@@ -187,10 +213,22 @@ export function ScheduleFields({
                         <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground border border-border/50">
                           Cerrado
                         </span>
-                      ) : d.mode === 'general' ? (
+                      ) : expanded ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-11 md:h-7 px-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                          onClick={() => resetDay(day)}
+                        >
+                          Restablecer
+                        </Button>
+                      ) : (
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-medium text-muted-foreground bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-600/10">
-                            {view.general.open} a {view.general.close}
+                            {d.mode === 'custom'
+                              ? `${d.open} a ${d.close}`
+                              : `${view.general.open} a ${view.general.close}`}
                           </span>
                           {crossesMidnight && (
                             <Badge
@@ -206,33 +244,19 @@ export function ScheduleFields({
                             variant="ghost"
                             size="sm"
                             className="h-11 md:h-7 px-2 text-xs font-semibold text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-                            onClick={() =>
-                              setDay(day, {
-                                mode: 'custom',
-                                open: view.general.open,
-                                close: view.general.close,
-                              })
-                            }
+                            onClick={() => personalizeDay(day)}
                           >
                             Personalizar
                           </Button>
                         </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-11 md:h-7 px-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-                          onClick={() => setDay(day, { mode: 'general' })}
-                        >
-                          Restablecer
-                        </Button>
                       )}
                     </div>
                   </div>
 
-                  {/* Fila Secundaria (Solo si se personaliza y no está cerrado) */}
-                  {!closed && d.mode === 'custom' && (
+                  {/* Fila Secundaria: solo con el editor de este día abierto
+                      (H165 — el disclosure ya no lo decide el `mode`, sino
+                      `expanded`; "Personalizar" siempre lleva a mode 'custom'). */}
+                  {!closed && expanded && (
                     <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
                       <span className="text-xs font-medium text-muted-foreground">
                         Horario propio:

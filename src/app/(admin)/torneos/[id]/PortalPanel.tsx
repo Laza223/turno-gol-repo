@@ -87,11 +87,12 @@ export function PortalPanel({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {status === 'draft' && canPublish && (
+          {status === 'draft' && (
             <button
               type="button"
               onClick={openRegistration}
-              disabled={pending}
+              disabled={pending || !canPublish}
+              title={canPublish ? undefined : 'Solo el dueño puede abrir la inscripción'}
               className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
             >
               Abrir inscripción
@@ -130,7 +131,7 @@ export function PortalPanel({
 
       {!canPublish && (
         <p className="text-xs text-muted-foreground">
-          Publicar un torneo lo hace el dueño del complejo.
+          Publicar un torneo y abrir la inscripción lo hace el dueño del complejo.
         </p>
       )}
 

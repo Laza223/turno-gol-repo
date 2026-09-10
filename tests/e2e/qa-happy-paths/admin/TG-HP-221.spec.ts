@@ -105,16 +105,20 @@ test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
       await expect(page.getByRole('heading', { name: 'Tasa de ausencias' })).toBeVisible()
       await expect(page.getByText(/ausencias sobre \d+ turnos terminados/)).toBeVisible()
 
-      // Ingresos: heading + toggle Día/Semana/Mes + total no-cero (nuestra siembra).
-      await expect(page.getByRole('heading', { name: 'Ingresos' })).toBeVisible()
+      // Ingresos (StatCard, H032): label + toggle Día/Semana/Mes + monto no-cero
+      // (nuestra siembra). Scopeado a la card del gráfico (via el toggle, único
+      // en la página): el reporte mensual de abajo tiene su PROPIA card "Ingresos".
       const granularityGroup = page.getByRole('group', { name: 'Agrupar ingresos por' })
+      const revenueCard = page.locator('.card-premium', { has: granularityGroup })
+      await expect(revenueCard.getByText('Ingresos', { exact: true })).toBeVisible()
       await expect(granularityGroup.getByRole('button', { name: 'Día' })).toHaveAttribute(
         'aria-pressed',
         'true',
       )
       await expect(granularityGroup.getByRole('button', { name: 'Semana' })).toBeVisible()
       await expect(granularityGroup.getByRole('button', { name: 'Mes' })).toBeVisible()
-      await expect(page.getByText(/Total del período: \$/)).toBeVisible()
+      await expect(revenueCard.getByText(/Ventana de \d+ días/)).toBeVisible()
+      await expect(revenueCard.getByText(/\$\s?[\d.,]+/)).toBeVisible()
 
       // Top 5 horarios.
       await expect(

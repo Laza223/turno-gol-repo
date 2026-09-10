@@ -17,15 +17,15 @@ distinto solo el domingo a la noche) sigue siendo posible — pero plegado detr�
 
 ## 1. Problemas del diseño anterior (screenshots `docs/audit/screenshots/desktop/admin/`)
 
-| # | Problema | Evidencia |
-|---|---|---|
-| 1 | 7×2 inputs de hora idénticos | `settings_horarios.png`: todas las filas dicen 08:00–23:00 |
-| 2 | **No se puede cerrar un día** desde settings | `OpeningHoursDay.closed` existe y TODA la cadena downstream lo respeta (booking.service, availability-search, public.service, coverage de precios, grilla, dashboard, SEO), pero el form no lo expone |
-| 3 | **Bug de pérdida de datos**: `horariosSchema` despojaba `closed` al guardar | Domingo cerrado en el wizard de onboarding (que SÍ tiene el toggle) se perdía silenciosamente al tocar "Guardar horarios" en settings |
-| 4 | Precios: matriz hora×día como ÚNICA entrada | `canchas_formulario_modal.png`: para "mismo precio siempre" hay que entender drag/shift+click |
-| 5 | `DEFAULT_RULES` precargaba precios inventados ($8.000/$12.000/$15.000) | Una cancha creada sin tocar precios salía a producción con precios truchos reservables online |
-| 6 | Sin "copiar de otra cancha" | El caso normal es N canchas idénticas: cada una obligaba a recargar toda la matriz |
-| 7 | `formatArs` local en `pricing-grid.ts` ("$8.000" sin espacio) | Viola §8.2 (formato único "$ 8.000" vía Intl es-AR) |
+| #   | Problema                                                                    | Evidencia                                                                                                                                                                                             |
+| --- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 7×2 inputs de hora idénticos                                                | `settings_horarios.png`: todas las filas dicen 08:00–23:00                                                                                                                                            |
+| 2   | **No se puede cerrar un día** desde settings                                | `OpeningHoursDay.closed` existe y TODA la cadena downstream lo respeta (booking.service, availability-search, public.service, coverage de precios, grilla, dashboard, SEO), pero el form no lo expone |
+| 3   | **Bug de pérdida de datos**: `horariosSchema` despojaba `closed` al guardar | Domingo cerrado en el wizard de onboarding (que SÍ tiene el toggle) se perdía silenciosamente al tocar "Guardar horarios" en settings                                                                 |
+| 4   | Precios: matriz hora×día como ÚNICA entrada                                 | `canchas_formulario_modal.png`: para "mismo precio siempre" hay que entender drag/shift+click                                                                                                         |
+| 5   | `DEFAULT_RULES` precargaba precios inventados ($8.000/$12.000/$15.000)      | Una cancha creada sin tocar precios salía a producción con precios truchos reservables online                                                                                                         |
+| 6   | Sin "copiar de otra cancha"                                                 | El caso normal es N canchas idénticas: cada una obligaba a recargar toda la matriz                                                                                                                    |
+| 7   | `formatArs` local en `pricing-grid.ts` ("$8.000" sin espacio)               | Viola §8.2 (formato único "$ 8.000" vía Intl es-AR)                                                                                                                                                   |
 
 ## 2. Horarios (`/settings/horarios`) — general + excepciones
 
@@ -73,7 +73,10 @@ Caso común = 2 campos; caso "finde distinto" = 2+4; caso anterior completo sigu
 - Hint inline (info, §7.1) bajo el horario general cuando `close <= open` y el flag de madrugada
   está apagado: "¿Cerrás pasada la medianoche? Activá «Cierra después de medianoche»." — previene
   el error más común antes del submit.
-- Días cerrados: fila con `opacity` reducida + texto "Cerrado" (color + texto, nunca color solo).
+- Días cerrados: fila con `bg-muted/30` + texto "Cerrado" (color + texto, nunca color solo) —
+  **no** `opacity` reducida: diluía `--muted-foreground` (ya al límite, 4.24:1 sobre `--muted`
+  sólido) por debajo de AA (3.21:1/2.67:1 medidos). `bg-muted/30` es lo que alcanza para
+  transmitir "cerrado" sin romper contraste (`ScheduleFields.tsx`, comentario in-line).
 - Feedback de guardado: mismo contrato `aria-live` + `role="alert"`/`role="status"` que hoy
   (contrato de `tests/unit/horarios-forms.test.tsx`, pasa sin cambios).
 
@@ -96,11 +99,11 @@ Resumen: "Lun a Jue · 08:00–18:00 · $ 8.000" (una fila por regla)
 
 ### 3.2 Los 3 modos de plantilla (y por qué solo 3)
 
-| Modo | Campos | Cubre |
-|---|---|---|
-| **Un precio** (default) | 1 | El complejo chico típico |
-| **Lun a Jue / Vie a Dom** | 2 | El split argentino real (el viernes se cobra como finde) |
-| **Día y noche** | 2 + hora de corte (default 18:00) | Tarifa nocturna con luz |
+| Modo                      | Campos                            | Cubre                                                    |
+| ------------------------- | --------------------------------- | -------------------------------------------------------- |
+| **Un precio** (default)   | 1                                 | El complejo chico típico                                 |
+| **Lun a Jue / Vie a Dom** | 2                                 | El split argentino real (el viernes se cobra como finde) |
+| **Día y noche**           | 2 + hora de corte (default 18:00) | Tarifa nocturna con luz                                  |
 
 Más de 3 opciones de igual jerarquía viola Hick (§9). El combo (finde × noche = 4 precios) y
 cualquier otro caso se arma aplicando una plantilla y retocando en "Ajustar por hora". La

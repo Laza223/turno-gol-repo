@@ -47,7 +47,8 @@ type Story = StoryObj<typeof meta>
 export const ConSugerencia: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Vincular' }))
+    // aria-label por fila (H138): el trigger dice a quién vincula.
+    await userEvent.click(canvas.getByRole('button', { name: 'Vincular a Diego del lunes' }))
 
     // El diálogo va a un portal fuera del canvas.
     const body = within(document.body)
@@ -75,7 +76,8 @@ export const SinSugerencia: Story = {
   },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Vincular' }))
+    // aria-label por fila (H138): el trigger dice a quién vincula.
+    await userEvent.click(canvas.getByRole('button', { name: 'Vincular a Diego del lunes' }))
 
     const body = within(document.body)
     const dialog = await body.findByRole('dialog')
@@ -116,7 +118,8 @@ export const BusquedaConError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Vincular' }))
+    // aria-label por fila (H138): el trigger dice a quién vincula.
+    await userEvent.click(canvas.getByRole('button', { name: 'Vincular a Diego del lunes' }))
 
     const dialog = await within(document.body).findByRole('dialog')
     const inDialog = within(dialog)

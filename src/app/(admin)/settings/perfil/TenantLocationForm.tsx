@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useMemo, useState } from 'react'
-import { MapPin } from 'lucide-react'
+import { MapPin, AlertTriangle } from 'lucide-react'
 import { SubmitButton } from '@/components/ui/submit-button'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import LocationPickerField from '@/components/maps/LocationPickerField'
@@ -60,6 +60,7 @@ export function TenantLocationForm({
   // react-doctor-disable-next-line react-doctor/no-derived-useState
   const [province, setProvince] = useState(currentProvince)
   const fallback = useMemo(() => resolveMapCenter(province, null, null), [province])
+  const hasLocation = currentLatitude !== null && currentLongitude !== null
 
   return (
     <div className="card-premium rounded-xl p-6">
@@ -141,10 +142,24 @@ export function TenantLocationForm({
 
         <div>
           <p className="text-sm font-medium text-foreground">Punto en el mapa</p>
-          <p className="mb-2 text-xs text-muted-foreground">
-            Opcional, pero sin esto tu complejo no aparece en el mapa del buscador ni podemos
-            mostrarle al jugador a cuántos kilómetros está.
-          </p>
+          {hasLocation ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              Es lo que te hace aparecer en el buscador con la distancia hasta el jugador.
+            </p>
+          ) : (
+            // H145: la dirección de texto de arriba ya está completa y "se
+            // ve terminada" — este aviso compite con esos campos. Se
+            // destaca con el mismo tratamiento de warning que el resto del
+            // panel (ver settings/canchas, settings/facturacion) en vez de
+            // un párrafo gris más.
+            <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Sin esto tu complejo no aparece en el mapa del buscador ni podemos mostrarle al
+                jugador a cuántos kilómetros está.
+              </span>
+            </div>
+          )}
           <LocationPickerField
             initialLatitude={currentLatitude}
             initialLongitude={currentLongitude}

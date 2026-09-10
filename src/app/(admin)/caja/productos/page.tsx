@@ -9,6 +9,7 @@ import {
   getSalesRanking,
 } from '@/modules/canteen/canteen-report.service'
 import { CajaTabs } from '../components/CajaTabs'
+import { Disclosure } from '../components/Disclosure'
 import { addDays } from '../caja-lib'
 import { requireCajaContext } from '../queries'
 import { CanteenReport } from './CanteenReport'
@@ -71,9 +72,19 @@ export default async function CajaProductosPage(props: {
         registerStockExitAction={registerStockExitAction}
       />
 
-      <CanteenReport range={range} ranking={ranking} byMethod={byMethod} daily={daily} />
-
-      <StockLedgerList entries={ledger} />
+      {/* El catálogo de arriba es lo operativo; estos cuatro informes (ranking,
+          cobrado por método, por día, movimientos de stock) son ocasionales —
+          plegados por defecto para que el catálogo sea lo único visible sin
+          scrollear (H003, auditoría de coherencia 2026-09-09 §11). */}
+      <Disclosure
+        heading="Informes de ventas y stock"
+        hint="Ranking de productos, cobrado por método, por día y movimientos de stock."
+      >
+        <div className="space-y-6">
+          <CanteenReport range={range} ranking={ranking} byMethod={byMethod} daily={daily} />
+          <StockLedgerList entries={ledger} />
+        </div>
+      </Disclosure>
     </div>
   )
 }

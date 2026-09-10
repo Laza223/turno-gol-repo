@@ -57,8 +57,28 @@ export const BloqueadoPorHorasTomadas: Story = {
   args: { slotCount: 4 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/liberá primero las/i)).toBeVisible()
+    await expect(canvas.getByText(/liberá primero/i)).toHaveTextContent(
+      'liberá primero las 4 horas tomadas en la grilla.',
+    )
     await expect(canvas.queryByRole('button', { name: /borrar este torneo/i })).toBeNull()
+  },
+}
+
+/**
+ * Candado de regresión (H152): con una sola hora, el artículo tiene que
+ * concordar en singular ("liberá primero la 1 hora tomada"), no "las 1 hora".
+ */
+export const BloqueadoPorUnaSolaHora: Story = {
+  args: { slotCount: 1 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // El número vive en su propio <span>, y el matcher de getByText solo mira
+    // los nodos de texto DIRECTOS de cada elemento: la frase con el número
+    // adentro no existe para él. Por eso se busca el párrafo por un pedazo y la
+    // concordancia se mide sobre su textContent, que sí incluye al span.
+    const aviso = canvas.getByText(/liberá primero/i)
+    await expect(aviso).toHaveTextContent('liberá primero la 1 hora tomada en la grilla.')
+    await expect(aviso).not.toHaveTextContent('las 1 hora')
   },
 }
 

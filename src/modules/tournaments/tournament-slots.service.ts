@@ -202,14 +202,15 @@ export async function reserveTournamentSlots(
 }
 
 /**
- * Libera las horas del torneo desde una fecha en adelante.
+ * Libera las horas del torneo desde una fecha en adelante, o una sola hora
+ * puntual si se pasa `bookingId` (fila individual de "Horarios tomados").
  *
  * DELETE físico, igual que `cancelAbonado`. Cancelar con UPDATE a `canceled_*`
  * sí liberaría el exclusion constraint (su WHERE solo mira pending_payment y
  * confirmed), pero pasaría por el trigger de estados terminales y dejaría la
  * grilla y el historial del complejo llenos de reservas canceladas que nadie
  * hizo — una hora que el torneo nunca llegó a usar no es una cancelación.
- * El filtro por `date >= fromDate` conserva lo ya jugado.
+ * El filtro por `date >= fromDate` (o por `bookingId`) conserva lo ya jugado.
  */
 export async function releaseTournamentSlots(
   tenantId: string,
@@ -217,12 +218,13 @@ export async function releaseTournamentSlots(
   staffUserId: string,
   fromDate: string,
   tx: DbTx,
+  bookingId?: string,
 ): Promise<{ released: number }> {
   const deleted = (await tx.execute(sql`
     DELETE FROM bookings
     WHERE tenant_id = ${tenantId}
       AND tournament_id = ${tournamentId}
-      AND date >= ${fromDate}::date
+      ${bookingId ? sql`AND id = ${bookingId}` : sql`AND date >= ${fromDate}::date`}
       AND status IN ('confirmed', 'pending_payment')
     RETURNING id
   `)) as unknown as unknown[]
@@ -234,7 +236,9 @@ export async function releaseTournamentSlots(
     action: 'tournament.slots_released',
     resourceType: 'tournament',
     resourceId: tournamentId,
-    metadata: { released: deleted.length, fromDate },
+    metadata: bookingId
+      ? { released: deleted.length, bookingId }
+      : { released: deleted.length, fromDate },
   })
 
   return { released: deleted.length }

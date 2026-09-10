@@ -23,6 +23,21 @@ interface StatCardProps {
   className?: string
 }
 
+/**
+ * Color del `value` cuando el accent es un estado de plata que exige acción
+ * (H084 — MASTER §2.5 semáforo financiero + §9 von Restorff: "el estado que
+ * exige acción es el distinto"). Antes el accent solo teñía el ícono de 36px;
+ * la cifra —lo que el dueño realmente lee— quedaba en el mismo negro que
+ * cualquier otro dato neutro. emerald/violet/sky/slate no llevan tono propio:
+ * no son alertas de plata, así que el `value` sigue en `text-foreground`.
+ */
+const VALUE_TONE: Partial<Record<Accent, string>> = {
+  // amber-800, no 700 (mismo criterio que PendingRefundsList/StreetMoneyList):
+  // sobre un fondo casi blanco, amber-700 mide por debajo de AA.
+  amber: 'text-amber-800 dark:text-amber-300',
+  red: 'text-red-700 dark:text-red-400',
+}
+
 const ACCENT: Record<Accent, string> = {
   emerald:
     'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400 dark:ring-emerald-500/25',
@@ -83,7 +98,12 @@ export function StatCard({
           </span>
         )}
       </div>
-      <p className="mt-3 font-display text-3xl font-bold tabular-nums tracking-tight text-foreground">
+      <p
+        className={cn(
+          'mt-3 font-display text-3xl font-bold tabular-nums tracking-tight',
+          VALUE_TONE[accent] ?? 'text-foreground',
+        )}
+      >
         {value}
       </p>
       <div className="mt-1.5 flex items-center gap-2">

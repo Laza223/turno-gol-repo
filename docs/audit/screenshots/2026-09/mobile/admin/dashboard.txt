@@ -1,0 +1,117 @@
+URL: http://localhost:3000/dashboard
+Título: Hoy
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Hoy":
+    - /url: /dashboard
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - button "Más"
+- main:
+  - heading "Hoy" [level=1]
+  - paragraph: jue 10 de septiembre
+  - heading "Configuración del complejo" [level=2]
+  - paragraph: 4 de 7 completados
+  - text: 57%
+  - button "Descartar"
+  - list:
+    - listitem:
+      - text: Conectar MercadoPago
+      - link "Configurar":
+        - /url: /settings/facturacion
+    - listitem:
+      - text: Link público compartido
+      - button "Copiar link"
+    - listitem: Primera reserva online recibida
+  - button "4 pasos completados"
+  - link "Cobrado hoy":
+    - /url: /caja
+    - paragraph: Cobrado hoy
+    - paragraph: $ 0
+    - paragraph: ↓ 100% vs. semana pasada
+  - link "Turnos de hoy":
+    - /url: /grilla
+    - paragraph: Turnos de hoy
+    - paragraph: 1 de 42
+    - paragraph: 2% de ocupación
+  - link "Deudas":
+    - /url: /caja/deudas
+    - paragraph: Deudas
+    - paragraph: $ 847.000
+    - paragraph: Pendiente de cobro
+  - heading "Necesita tu atención" [level=2]
+  - list:
+    - listitem:
+      - text: 1 devolución pendiente — $ 12.000 a devolver
+      - link "Gestionar":
+        - /url: /caja/devoluciones
+    - listitem:
+      - text: La caja de ayer sigue sin cerrar
+      - link "Cerrar caja de ayer":
+        - /url: /caja
+  - heading "Mientras no estabas" [level=2]
+  - heading "Nada nuevo desde la última vez." [level=2]
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Hoy
+Grilla
+Caja
+Más
+Hoy
+
+jue 10 de septiembre
+
+Configuración del complejo
+
+4 de 7 completados
+
+57%
+Descartar
+Conectar MercadoPago
+Configurar
+Link público compartido
+Copiar link
+Primera reserva online recibida
+4 pasos completados
+
+Cobrado hoy
+
+$ 0
+
+↓ 100% vs. semana pasada
+
+Turnos de hoy
+
+1 de 42
+
+2% de ocupación
+
+Deudas
+
+$ 847.000
+
+Pendiente de cobro
+
+Necesita tu atención
+1 devolución pendiente — $ 12.000 a devolver
+Gestionar
+La caja de ayer sigue sin cerrar
+Cerrar caja de ayer
+Mientras no estabas
+Nada nuevo desde la última vez.

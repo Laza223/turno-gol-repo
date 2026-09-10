@@ -41,6 +41,14 @@ type QuickActionsBooking = {
   playerName?: string | null
   playerPhone?: string | null
   /**
+   * Saldo pendiente en centavos (`summarizeBookingCharges`, ya calculado por
+   * la page). H079 — con esto el botón/ítem que abre CompleteBookingDialog se
+   * llama "Cobrar" en vez de "Completada" cuando hay plata que cobrar, sin
+   * forzar el paso por el detalle para enterarse. Opcional: sin este dato
+   * (stories/tests viejas) el label cae al de siempre ("Completada").
+   */
+  pending?: number | null
+  /**
    * Instante físico absoluto del FIN del turno (TIMESTAMPTZ ISO, migraciones
    * 040/041) — fuente de verdad del guard "turno ya jugado" (clase de B3):
    * ver comentario homólogo en BookingActions.tsx.
@@ -302,6 +310,12 @@ export function QuickActions({
   }
 
   const isPendingPayment = booking.status === 'pending_payment'
+  // H079 — Nielsen #7: la fila mostraba "Falta $X" sin ningún botón que dijera
+  // "Cobrar"; había que abrir el detalle. Mismo botón/acción de siempre (abre
+  // CompleteBookingDialog), solo cambia el label cuando hay saldo pendiente.
+  const hasPendingBalance = (booking.pending ?? 0) > 0
+  const completeLabel = hasPendingBalance ? 'Cobrar' : 'Completada'
+  const completeMenuLabel = hasPendingBalance ? 'Cobrar' : 'Marcar completada'
 
   const inlineBtn =
     'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
@@ -330,7 +344,7 @@ export function QuickActions({
                 'border border-border bg-card text-foreground hover:bg-accent',
               )}
             >
-              Completada
+              {completeLabel}
             </button>
             <button
               type="button"
@@ -383,7 +397,9 @@ export function QuickActions({
               <DropdownMenuItem onSelect={openConfirmDeposit}>Confirmar pago</DropdownMenuItem>
             ) : (
               <>
-                <DropdownMenuItem onSelect={openCompleteDialog}>Marcar completada</DropdownMenuItem>
+                <DropdownMenuItem onSelect={openCompleteDialog}>
+                  {completeMenuLabel}
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setNoShowOpen(true)}>
                   Marcar ausente
                 </DropdownMenuItem>

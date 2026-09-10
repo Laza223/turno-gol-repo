@@ -1,0 +1,157 @@
+URL: http://localhost:3000/settings/reservas
+Título: Reservas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Reservas" [level=1]
+  - paragraph: Seña, anticipación y política de cancelación de las reservas online.
+  - navigation "Secciones de configuración":
+    - link "Perfil":
+      - /url: /settings/perfil
+    - link "Reservas":
+      - /url: /settings/reservas
+    - link "Horarios":
+      - /url: /settings/horarios
+    - link "Equipo":
+      - /url: /settings/equipo
+    - link "Facturación":
+      - /url: /settings/facturacion
+  - heading "Políticas de Reserva" [level=2]
+  - group "Seña":
+    - text: Seña
+    - radiogroup "Seña":
+      - radio "Requerir seña" [disabled]
+      - radio "Sin seña" [checked] [disabled]
+    - paragraph:
+      - text: Para cobrar seña necesitás conectar MercadoPago.
+      - link "Conectar MercadoPago":
+        - /url: /settings/facturacion
+      - text: .
+  - text: Reservas online
+  - paragraph: Permite que los jugadores reserven solos desde la página pública de tu complejo. Si las deshabilitás, solo vos podés cargar reservas desde el panel.
+  - radiogroup "Reservas online":
+    - radio "Habilitadas" [checked]
+    - radio "Deshabilitadas"
+  - text: Anticipación para reservar
+  - paragraph: Cuántos días a futuro pueden ver y reservar los jugadores desde la página pública.
+  - spinbutton "Anticipación para reservar": "6"
+  - text: días
+  - paragraph: Entre 1 y 60 días
+  - text: Anticipación mínima para cancelar
+  - radiogroup "Anticipación para cancelar (presets)":
+    - radio "Sin límite"
+    - radio "2 hs"
+    - radio "6 hs"
+    - radio "12 hs" [checked]
+    - radio "24 hs"
+    - radio "Otro"
+  - paragraph: Horas previas al turno permitidas para cancelar
+  - group "Ausencias (no-show)":
+    - text: Ausencias (no-show)
+    - paragraph: Cuando marcás a un jugador como ausente, si había pagado seña la perdés a favor del complejo. La primera ausencia solo queda registrada. Si vuelve a faltar dentro de los 90 días, queda bloqueado para reservar online en tu complejo por 14 días. No requiere configuración.
+  - button "Guardar cambios"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Canchas
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Reservas
+
+Seña, anticipación y política de cancelación de las reservas online.
+
+Perfil
+Reservas
+Horarios
+Equipo
+Facturación
+Políticas de Reserva
+SEÑA
+Requerir seña
+Sin seña
+
+Para cobrar seña necesitás conectar MercadoPago. Conectar MercadoPago.
+
+RESERVAS ONLINE
+
+Permite que los jugadores reserven solos desde la página pública de tu complejo. Si las deshabilitás, solo vos podés cargar reservas desde el panel.
+
+Habilitadas
+Deshabilitadas
+ANTICIPACIÓN PARA RESERVAR
+
+Cuántos días a futuro pueden ver y reservar los jugadores desde la página pública.
+
+días
+
+Entre 1 y 60 días
+
+ANTICIPACIÓN MÍNIMA PARA CANCELAR
+Sin límite
+2 hs
+6 hs
+12 hs
+24 hs
+Otro
+
+Horas previas al turno permitidas para cancelar
+
+AUSENCIAS (NO-SHOW)
+
+Cuando marcás a un jugador como ausente, si había pagado seña la perdés a favor del complejo. La primera ausencia solo queda registrada. Si vuelve a faltar dentro de los 90 días, queda bloqueado para reservar online en tu complejo por 14 días. No requiere configuración.
+
+Guardar cambios

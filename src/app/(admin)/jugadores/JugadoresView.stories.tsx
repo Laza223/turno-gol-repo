@@ -143,7 +143,9 @@ export const ConPersonasSinCuenta: Story = {
     await expect(
       table.getByText('Mismo teléfono que Juan Ignacio Rodríguez Etchegoyen'),
     ).toBeVisible()
-    await expect(table.getAllByRole('button', { name: 'Vincular' })).toHaveLength(2)
+    // aria-label por fila (H138): cada botón "Vincular" dice a quién vincula.
+    await expect(table.getByRole('button', { name: 'Vincular a Diego Sosa' })).toBeVisible()
+    await expect(table.getByRole('button', { name: 'Vincular a Marcos Peralta' })).toBeVisible()
   },
 }
 

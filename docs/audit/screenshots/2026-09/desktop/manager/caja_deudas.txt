@@ -1,0 +1,503 @@
+URL: http://localhost:3000/caja/deudas
+Título: Deudas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /grilla
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - button "Configuración" [disabled]
+- banner:
+  - text: demo-manager@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Deudas" [level=1]
+  - paragraph: Turnos jugados sin cobrar, fiados abiertos y cuotas de torneo impagas — todo en un solo lugar.
+  - navigation "Secciones de caja y cantina":
+    - link "Caja del día":
+      - /url: /caja
+    - link "Deudas":
+      - /url: /caja/deudas
+    - link "Devoluciones":
+      - /url: /caja/devoluciones
+    - link "Cantina":
+      - /url: /caja/cantina
+    - link "Productos y stock":
+      - /url: /caja/productos
+  - paragraph: Deudas
+  - paragraph: $ 847.000
+  - text: Buscar por nombre
+  - searchbox "Buscar por nombre"
+  - group "Filtrar por origen":
+    - button "Todos" [pressed]
+    - button "Turnos"
+    - button "Cantina"
+    - button "Torneos"
+  - list:
+    - listitem:
+      - text: Turno Grupo de los martes (deuda vieja)
+      - paragraph: Cancha 1 — F5 · 2026-08-10 19:00-20:00
+      - paragraph: hace 30 días
+      - link "Ver el turno":
+        - /url: /reservas/a1000000-0000-4000-8000-000000000010
+      - text: $ 40.000
+      - button "Cobrar $ 40.000 — Grupo de los martes (deuda vieja)": Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #28"
+      - paragraph: Cancha 1 — F5 · 2026-08-12 19:00-20:00
+      - paragraph: hace 28 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000028
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #28"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #26"
+      - paragraph: Cancha 3 — F5 techada · 2026-08-14 15:00-16:00
+      - paragraph: hace 27 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000026
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #26"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #25"
+      - paragraph: Cancha 2 — F5 · 2026-08-15 11:00-12:00
+      - paragraph: hace 26 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000025
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #25"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #23"
+      - paragraph: Cancha 4 — F7 · 2026-08-17 21:00-22:00
+      - paragraph: hace 23 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000023
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #23"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #22"
+      - paragraph: Cancha 3 — F5 techada · 2026-08-18 19:00-20:00
+      - paragraph: hace 22 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000022
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #22"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #21"
+      - paragraph: Cancha 2 — F5 · 2026-08-19 17:00-18:00
+      - paragraph: hace 21 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000021
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #21"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #20"
+      - paragraph: Cancha 1 — F5 · 2026-08-20 15:00-16:00
+      - paragraph: hace 21 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000020
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #20"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #18"
+      - paragraph: Cancha 3 — F5 techada · 2026-08-22 09:00-10:00
+      - paragraph: hace 19 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000018
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #18"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #16"
+      - paragraph: Cancha 1 — F5 · 2026-08-24 19:00-20:00
+      - paragraph: hace 16 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000016
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #16"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #15"
+      - paragraph: Cancha 4 — F7 · 2026-08-25 17:00-18:00
+      - paragraph: hace 15 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000015
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #15"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #13"
+      - paragraph: Cancha 2 — F5 · 2026-08-27 11:00-12:00
+      - paragraph: hace 14 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000013
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #13"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #12"
+      - paragraph: Cancha 1 — F5 · 2026-08-28 09:00-10:00
+      - paragraph: hace 13 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000012
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #12"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #11"
+      - paragraph: Cancha 4 — F7 · 2026-08-29 21:00-22:00
+      - paragraph: hace 11 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000011
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #11"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #10"
+      - paragraph: Cancha 3 — F5 techada · 2026-08-30 19:00-20:00
+      - paragraph: hace 10 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000010
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #10"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #8"
+      - paragraph: Cancha 1 — F5 · 2026-09-01 15:00-16:00
+      - paragraph: hace 9 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000008
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #8"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #6"
+      - paragraph: Cancha 3 — F5 techada · 2026-09-03 09:00-10:00
+      - paragraph: hace 7 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000006
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #6"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #5"
+      - paragraph: Cancha 2 — F5 · 2026-09-04 21:00-22:00
+      - paragraph: hace 5 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000005
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #5"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #3"
+      - paragraph: Cancha 4 — F7 · 2026-09-06 17:00-18:00
+      - paragraph: hace 3 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000003
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #3"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #2"
+      - paragraph: Cancha 3 — F5 techada · 2026-09-07 15:00-16:00
+      - paragraph: hace 3 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000002
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #2"': Cobrar
+    - listitem:
+      - text: "Turno Historial auditoría #1"
+      - paragraph: Cancha 2 — F5 · 2026-09-08 11:00-12:00
+      - paragraph: hace 2 días
+      - link "Ver el turno":
+        - /url: /reservas/a2000000-0000-4000-8000-000000000001
+      - text: $ 40.000
+      - 'button "Cobrar $ 40.000 — Historial auditoría #1"': Cobrar
+    - listitem:
+      - text: Fiado Grupo del sábado (fiado — seed auditoría)
+      - paragraph: Sembrado por scripts/audit/seed-audit-extras.ts
+      - paragraph: hace 23 h
+      - text: $ 7.000
+      - button "Anular fiado — Grupo del sábado (fiado — seed auditoría)": Anular
+      - button "Cobrar $ 7.000 — Grupo del sábado (fiado — seed auditoría)": Cobrar
+  - paragraph:
+    - text: Mostrando los últimos
+    - strong: 12 meses
+    - text: .
+    - link "Ver deuda anterior":
+      - /url: /caja/deudas?todas=1
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-manager@turnogol.test
+Salir
+Deudas
+
+Turnos jugados sin cobrar, fiados abiertos y cuotas de torneo impagas — todo en un solo lugar.
+
+Caja del día
+Deudas
+Devoluciones
+Cantina
+Productos y stock
+
+Deudas
+
+$ 847.000
+
+Buscar por nombre
+Todos
+Turnos
+Cantina
+Torneos
+Turno
+Grupo de los martes (deuda vieja)
+
+Cancha 1 — F5 · 2026-08-10 19:00-20:00
+
+hace 30 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #28
+
+Cancha 1 — F5 · 2026-08-12 19:00-20:00
+
+hace 28 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #26
+
+Cancha 3 — F5 techada · 2026-08-14 15:00-16:00
+
+hace 27 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #25
+
+Cancha 2 — F5 · 2026-08-15 11:00-12:00
+
+hace 26 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #23
+
+Cancha 4 — F7 · 2026-08-17 21:00-22:00
+
+hace 23 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #22
+
+Cancha 3 — F5 techada · 2026-08-18 19:00-20:00
+
+hace 22 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #21
+
+Cancha 2 — F5 · 2026-08-19 17:00-18:00
+
+hace 21 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #20
+
+Cancha 1 — F5 · 2026-08-20 15:00-16:00
+
+hace 21 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #18
+
+Cancha 3 — F5 techada · 2026-08-22 09:00-10:00
+
+hace 19 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #16
+
+Cancha 1 — F5 · 2026-08-24 19:00-20:00
+
+hace 16 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #15
+
+Cancha 4 — F7 · 2026-08-25 17:00-18:00
+
+hace 15 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #13
+
+Cancha 2 — F5 · 2026-08-27 11:00-12:00
+
+hace 14 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #12
+
+Cancha 1 — F5 · 2026-08-28 09:00-10:00
+
+hace 13 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #11
+
+Cancha 4 — F7 · 2026-08-29 21:00-22:00
+
+hace 11 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #10
+
+Cancha 3 — F5 techada · 2026-08-30 19:00-20:00
+
+hace 10 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #8
+
+Cancha 1 — F5 · 2026-09-01 15:00-16:00
+
+hace 9 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #6
+
+Cancha 3 — F5 techada · 2026-09-03 09:00-10:00
+
+hace 7 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #5
+
+Cancha 2 — F5 · 2026-09-04 21:00-22:00
+
+hace 5 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #3
+
+Cancha 4 — F7 · 2026-09-06 17:00-18:00
+
+hace 3 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #2
+
+Cancha 3 — F5 techada · 2026-09-07 15:00-16:00
+
+hace 3 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Turno
+Historial auditoría #1
+
+Cancha 2 — F5 · 2026-09-08 11:00-12:00
+
+hace 2 días
+
+Ver el turno
+$ 40.000
+Cobrar
+Fiado
+Grupo del sábado (fiado — seed auditoría)
+
+Sembrado por scripts/audit/seed-audit-extras.ts
+
+hace 23 h
+
+$ 7.000
+Anular
+Cobrar
+
+Mostrando los últimos 12 meses. Ver deuda anterior

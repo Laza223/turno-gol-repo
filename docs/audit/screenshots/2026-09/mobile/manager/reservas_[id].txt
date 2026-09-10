@@ -1,0 +1,87 @@
+URL: http://localhost:3000/reservas/a1000000-0000-4000-8000-000000000012
+Título: Detalle de la reserva
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /grilla
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - link "Clientes":
+    - /url: /jugadores
+  - button "Más"
+- main:
+  - link "Reservas":
+    - /url: /reservas
+  - heading "Detalle de la reserva" [level=1]
+  - term: Fecha
+  - definition: Miércoles, 9 de septiembre · 10:00–11:00
+  - term: Cancha
+  - definition: Cancha 2 — F5
+  - term: Cliente
+  - definition: Tomás Rivero
+  - term: Teléfono
+  - definition: —
+  - term: Estado
+  - definition: Confirmada
+  - term: Método de pago
+  - definition: Efectivo
+  - heading "Cobros de turno" [level=2]
+  - term: Precio del turno
+  - definition: $ 40.000
+  - term: Seña ✓ pagada
+  - definition: $ 12.000
+  - term: Pagado
+  - definition: $ 12.000
+  - term: Saldo pendiente
+  - definition: $ 28.000
+  - button "+ Agregar cobro"
+  - button "Marcar completada"
+  - button "Marcar ausente"
+  - button "Cancelar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Grilla
+Caja
+Clientes
+Más
+Reservas
+Detalle de la reserva
+FECHA
+Miércoles, 9 de septiembre · 10:00–11:00
+CANCHA
+Cancha 2 — F5
+CLIENTE
+Tomás Rivero
+TELÉFONO
+—
+ESTADO
+Confirmada
+MÉTODO DE PAGO
+Efectivo
+Cobros de turno
+Precio del turno
+$ 40.000
+Seña ✓ pagada
+$ 12.000
+Pagado
+$ 12.000
+Saldo pendiente
+$ 28.000
++ Agregar cobro
+Marcar completada
+Marcar ausente
+Cancelar

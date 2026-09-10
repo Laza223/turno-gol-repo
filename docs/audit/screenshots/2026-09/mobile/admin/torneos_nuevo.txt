@@ -1,0 +1,80 @@
+URL: http://localhost:3000/torneos/nuevo
+Título: Nuevo torneo
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Hoy":
+    - /url: /dashboard
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - button "Más"
+- main:
+  - link "Volver a Torneos":
+    - /url: /torneos
+  - heading "Nuevo torneo" [level=1]
+  - paragraph: Los horarios y los equipos se cargan después
+  - text: Nombre del torneo
+  - textbox "Nombre del torneo":
+    - /placeholder: "Ej: Clausura 2026"
+  - text: Formato
+  - combobox "Formato": Liga (todos contra todos)
+  - status
+  - text: Arranca el
+  - button "Arranca el": 10/09/2026
+  - button "Limpiar fecha"
+  - text: Termina el (opcional)
+  - button "Termina el (opcional)": Sin fecha de cierre
+  - text: Duración de cada partido
+  - combobox "Duración de cada partido": 60 minutos
+  - status
+  - paragraph: El torneo reserva horas enteras en la grilla. Con partidos de 30 minutos o menos entran dos por hora.
+  - text: Cupo de equipos (opcional)
+  - spinbutton "Cupo de equipos (opcional)"
+  - text: Inscripción por equipo
+  - textbox "Inscripción por equipo":
+    - /placeholder: "0"
+    - text: "0"
+  - button "Crear torneo" [disabled]
+  - paragraph: Después vas a poder tomarle los horarios en la grilla y anotar los equipos.
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Hoy
+Grilla
+Caja
+Más
+Volver a Torneos
+Nuevo torneo
+
+Los horarios y los equipos se cargan después
+
+Nombre del torneo
+Formato
+Arranca el
+10/09/2026
+Termina el (opcional)
+Sin fecha de cierre
+Duración de cada partido
+
+El torneo reserva horas enteras en la grilla. Con partidos de 30 minutos o menos entran dos por hora.
+
+Cupo de equipos (opcional)
+Inscripción por equipo
+$
+Crear torneo
+
+Después vas a poder tomarle los horarios en la grilla y anotar los equipos.

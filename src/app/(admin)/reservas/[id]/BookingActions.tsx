@@ -376,7 +376,10 @@ export default function BookingActions({
           disabled={!turnoEnded}
           title={turnoEnded ? undefined : 'El turno todavía no terminó'}
           onClick={() => setCompleteDialogOpen(true)}
-          className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          // H078: "Marcar completada" es un estado del SISTEMA, no de la
+          // plata — el primario (sólido) de la vista es "+ Agregar cobro"
+          // (BookingCharges.tsx). Regla del dueño §8.4 + BONUS-62.
+          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           Marcar completada
         </button>

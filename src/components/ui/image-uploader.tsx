@@ -90,13 +90,18 @@ export function ImageUploader({
 
   return (
     <div className="space-y-2">
-      {/* File input accesible */}
+      {/* Input real, disparado por el botón visible (inputRef.current?.click()).
+          aria-hidden + tabIndex=-1: sin esto, el input tenía el MISMO nombre
+          accesible que el botón visible (mismo `emptyLabel`/"Cambiar X") y un
+          lector de pantalla anunciaba dos controles idénticos (H068). */}
       {showInput && (
         <input
           ref={inputRef}
           type="file"
           accept="image/png,image/jpeg,image/webp"
           aria-label={inputAriaLabel}
+          aria-hidden="true"
+          tabIndex={-1}
           disabled={disabled || busy}
           className="sr-only"
           onChange={(e) => {

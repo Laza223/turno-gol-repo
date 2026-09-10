@@ -128,7 +128,7 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
     expect(urls.length).toBeGreaterThan(20)
   })
 
-  it('el menú declara exactamente los 6 espacios más Configuración', () => {
+  it('el menú declara exactamente los 7 espacios más Configuración', () => {
     const sidebar = readFileSync(
       path.join(projectRoot, 'src/components/layout/admin-sidebar.tsx'),
       'utf8',
@@ -139,6 +139,8 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
       '/grilla',
       '/caja',
       '/jugadores',
+      // Canchas salió de Configuración el 2026-09-10: espacio propio del menú.
+      '/canchas',
       '/torneos',
       '/analiticas',
       // Configuración apunta a la sub-ruta y no al stub `/settings`, que solo
@@ -172,7 +174,7 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
     expect(stubs.has('/jugadores')).toBe(false)
     expect(stubs.has('/grilla')).toBe(false)
     // Y los stubs de verdad sí se detectan.
-    expect(stubs.has('/canchas')).toBe(true)
+    expect(stubs.has('/settings/canchas')).toBe(true)
     expect(stubs.has('/jugadores/deudas')).toBe(true)
   })
 

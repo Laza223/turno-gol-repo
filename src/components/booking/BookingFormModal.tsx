@@ -995,7 +995,7 @@ export function BookingFormModal({
                 className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 text-xs font-medium"
               >
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>Esta cancha está offline, no recibe reservas nuevas.</span>
+                <span>Esta cancha está pausada, no recibe reservas nuevas.</span>
               </div>
             )}
 

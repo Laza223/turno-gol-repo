@@ -44,7 +44,7 @@ export function BorrarTorneo({
     return (
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        Para borrar este torneo, liberá primero las{' '}
+        Para borrar este torneo, liberá primero {slotCount === 1 ? 'la' : 'las'}{' '}
         <span className="tabular-nums">{slotCount}</span>{' '}
         {slotCount === 1 ? 'hora tomada' : 'horas tomadas'} en la grilla.
       </p>

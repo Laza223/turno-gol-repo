@@ -77,11 +77,15 @@ test.describe('Caja redesign', () => {
     await expect(saleRow.getByText('Cantina/Bar', { exact: true })).toBeVisible()
 
     // Reporte de cantina (Fase 7): la venta recién hecha aparece en el ranking
-    // de /caja/productos. El `<section>` con aria-labelledby expone role
-    // "region" con el h2 como nombre accesible — lo usamos de ancla porque
-    // ProductsTable, más arriba en la misma página, también lista "Agua" y un
-    // getByText sin scope resolvería ambigüedad.
+    // de /caja/productos. Los cuatro informes viven plegados detrás de un
+    // disclosure cerrado por defecto (H003, auditoría de coherencia 2026-09-09
+    // §11) — hay que abrirlo antes de que el `<section>` se monte en el DOM.
+    // El `<section>` con aria-labelledby expone role "region" con el h2 como
+    // nombre accesible — lo usamos de ancla porque ProductsTable, más arriba
+    // en la misma página, también lista "Agua" y un getByText sin scope
+    // resolvería ambigüedad.
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: /Informes de ventas y stock/ }).click()
     const reportCard = page.getByRole('region', { name: /Ventas de cantina/ })
     await expect(
       reportCard.getByRole('heading', { name: /Ventas de cantina — últimos 7 días/ }),

@@ -11,12 +11,13 @@ import type {
 } from '@/modules/tournaments/tournament.types'
 import type { PlayerSearchResult } from '@/modules/players/player-search.service'
 import type { SearchPlayersActionResult, TournamentActionResult } from '../actions'
-import { TEAM_STATUS_LABELS, formatArs, teamStatusBadgeClass } from '../torneos-lib'
+import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../torneos-lib'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { MoneyInput } from '@/components/ui/money-input'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
+import { formatArs } from '@/lib/format'
 
 export type AddTeamAction = (input: unknown) => Promise<TournamentActionResult>
 export type RemoveTeamAction = (input: unknown) => Promise<TournamentActionResult>

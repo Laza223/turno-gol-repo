@@ -4,10 +4,11 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 
 import AbonadoForm, { PreviewSlotsView } from '@/app/(admin)/abonados/nuevo/AbonadoForm'
 
-// submitAction/previewAction ya no se importan del módulo — AbonadoForm las
-// recibe por prop (ver el comentario en AbonadoForm.tsx). Mocks locales.
+// submitAction/previewAction/searchPlayersAction ya no se importan del módulo —
+// AbonadoForm las recibe por prop (ver el comentario en AbonadoForm.tsx). Mocks locales.
 const submitNewAbonado = vi.fn()
 const previewAbonadoSlotsAction = vi.fn()
+const searchAbonadoPlayersAction = vi.fn(async () => ({ success: true as const, players: [] }))
 
 function renderForm() {
   return render(
@@ -15,6 +16,7 @@ function renderForm() {
       courts={mockCourts}
       submitAction={submitNewAbonado}
       previewAction={previewAbonadoSlotsAction}
+      searchPlayersAction={searchAbonadoPlayersAction}
     />,
   )
 }

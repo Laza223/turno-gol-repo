@@ -78,7 +78,7 @@ function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
   //
   // `whitespace-nowrap`: "liberando…" es mucho más largo que el "4:32" que
   // reemplaza, y sin esto se va a una segunda línea. La celda entonces se leía
-  // "Pagando ahora / liberando…", como si fueran dos estados a la vez y con el
+  // "Esperando seña / liberando…", como si fueran dos estados a la vez y con el
   // segundo en minúscula. Prefiere recortar el contador antes que partirlo.
   return (
     <span className="tabular-nums whitespace-nowrap">
@@ -87,10 +87,24 @@ function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
   )
 }
 
+const DISPLAY_NAME_MAX_LENGTH = 24
+
+/**
+ * Corta en el límite de palabra y marca el corte con "…" (H058): antes cortaba
+ * a lo bruto en 24 chars y un nombre largo terminaba en un fragmento roto tipo
+ * "Reserva sin confirmar (h" — sin nada que avise que se cortó.
+ */
+function truncateDisplayName(name: string): string {
+  if (name.length <= DISPLAY_NAME_MAX_LENGTH) return name
+  const cut = name.slice(0, DISPLAY_NAME_MAX_LENGTH)
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`
+}
+
 export function bookingDisplayName(booking: GridBooking): string | null {
-  if (booking.guestName) return booking.guestName.slice(0, 24)
+  if (booking.guestName) return truncateDisplayName(booking.guestName)
   if (booking.playerFirstName) {
-    return `${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim().slice(0, 24)
+    return truncateDisplayName(`${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim())
   }
   return null
 }
@@ -244,7 +258,7 @@ function BookingCardComponent({
           </span>
           {pendingCents !== null && (
             <span className="truncate text-[11px] font-medium tabular-nums text-muted-foreground">
-              {formatArs(pendingCents)}
+              Falta {formatArs(pendingCents)}
             </span>
           )}
         </span>

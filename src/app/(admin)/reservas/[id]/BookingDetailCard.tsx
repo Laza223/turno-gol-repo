@@ -21,7 +21,20 @@ const DEPOSIT_LABEL: Record<string, string> = {
  * era el único bloque presentacional sustancial de esa page, antes de
  * delegar a BookingCharges/BookingActions.
  */
-export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
+export function BookingDetailCard({
+  booking,
+  /**
+   * H063: cuando "Cobros de turno" (BookingCharges) SÍ se va a renderizar
+   * para este booking, Precio y Seña quedan solo ahí — repetirlos acá era el
+   * mismo monto con dos redacciones distintas en dos tarjetas separadas.
+   * Default `false` a propósito: para un booking no cobrable (pending_payment,
+   * canceled_*) esta card sigue siendo el ÚNICO lugar que muestra esa plata.
+   */
+  hideMoneyRows = false,
+}: {
+  booking: ReservaDetail
+  hideMoneyRows?: boolean
+}) {
   const visual = reservaStatusVisual(booking)
   const depositDisplayStatus = resolveDepositDisplayStatus(
     booking.depositStatus,
@@ -45,13 +58,17 @@ export function BookingDetailCard({ booking }: { booking: ReservaDetail }) {
         {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
       </span>,
     ],
-    ['Precio', formatArs(booking.priceSnapshot)],
-    [
-      'Seña',
-      booking.depositAmount > 0
-        ? `${formatArs(booking.depositAmount)} (${DEPOSIT_LABEL[depositDisplayStatus] ?? depositDisplayStatus})`
-        : 'Sin seña',
-    ],
+    ...(hideMoneyRows
+      ? []
+      : ([
+          ['Precio', formatArs(booking.priceSnapshot)],
+          [
+            'Seña',
+            booking.depositAmount > 0
+              ? `${formatArs(booking.depositAmount)} (${DEPOSIT_LABEL[depositDisplayStatus] ?? depositDisplayStatus})`
+              : 'Sin seña',
+          ],
+        ] satisfies Array<[string, ReactNode]>)),
     [
       'Método de pago',
       booking.paymentMethod

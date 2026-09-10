@@ -8,6 +8,8 @@ import { withTenantContext } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { listTournaments } from '@/modules/tournaments/tournament.service'
+import { listTournamentPendingTotals } from '@/modules/tournaments/tournament-payment.service'
+import { formatArs } from '@/lib/format'
 import { FORMAT_SHORT, STATUS_LABELS, formatDateRange, statusBadgeClass } from './torneos-lib'
 
 export default async function TorneosPage() {
@@ -23,7 +25,10 @@ export default async function TorneosPage() {
   // alguien puede entrar por URL.
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()
 
-  const tournaments = await withTenantContext(tenant.id, (tx) => listTournaments(tenant.id, tx))
+  const { tournaments, pendingTotals } = await withTenantContext(tenant.id, async (tx) => ({
+    tournaments: await listTournaments(tenant.id, tx),
+    pendingTotals: await listTournamentPendingTotals(tenant.id, tx),
+  }))
 
   const total = tournaments.length
 
@@ -98,10 +103,17 @@ export default async function TorneosPage() {
                     {FORMAT_SHORT[t.format]} · {formatDateRange(t.startsOn, t.endsOn)}
                   </p>
                 </div>
-                <span
-                  className={`inline-flex w-fit shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(t.status)}`}
-                >
-                  {STATUS_LABELS[t.status]}
+                <span className="flex w-fit shrink-0 items-center gap-2">
+                  {(pendingTotals[t.id] ?? 0) > 0 && (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium tabular-nums text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+                      Pendiente: {formatArs(pendingTotals[t.id]!)}
+                    </span>
+                  )}
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(t.status)}`}
+                  >
+                    {STATUS_LABELS[t.status]}
+                  </span>
                 </span>
               </Link>
             </li>

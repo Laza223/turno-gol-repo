@@ -21,8 +21,11 @@ export function chargeMode(booking: GridBooking, hasEnded: boolean): ChargeMode 
   return null
 }
 
+// H017: título y CTA del MISMO panel describían el efecto con verbos
+// distintos ("cerrar"/"registrar" vs "cobrar"), agravado porque "cerrar" es
+// el verbo reservado para el cierre de caja — acá no tiene nada que ver.
 export const CHARGE_COPY: Record<Exclude<ChargeMode, null>, { title: string; cta: string }> = {
   settle: { title: 'Cobrar lo que falta', cta: 'Cobrar' },
-  finish: { title: 'Cobrar y dar por jugado', cta: 'Cobrar y cerrar turno' },
-  advance: { title: 'Cobrar por adelantado', cta: 'Registrar cobro' },
+  finish: { title: 'Cobrar y dar por jugado', cta: 'Cobrar y dar por jugado' },
+  advance: { title: 'Cobrar por adelantado', cta: 'Cobrar por adelantado' },
 }

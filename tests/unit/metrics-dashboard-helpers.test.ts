@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   dayLabel,
   groupRevenue,
+  MIN_FINISHED_FOR_TREND,
   mondayOf,
   noShowTrend,
   relativeTimeEs,
@@ -78,17 +79,44 @@ describe('noShowTrend', () => {
     expect(noShowTrend(metric(2, 8), metric(0, 0))).toEqual({ kind: 'no_prev' })
   })
 
+  // H174: por debajo de MIN_FINISHED_FOR_TREND en cualquiera de las dos
+  // ventanas, la comparación se oculta — sin importar cuán parejas o dispares
+  // sean las tasas.
+  const below = MIN_FINISHED_FOR_TREND - 1
+  const above = MIN_FINISHED_FOR_TREND + 20
+
+  it('reports low_sample when the current window is below the trend floor', () => {
+    expect(noShowTrend(metric(4, below - 4), metric(5, above - 5))).toEqual({
+      kind: 'low_sample',
+    })
+  })
+
+  it('reports low_sample when the previous window is below the trend floor', () => {
+    expect(noShowTrend(metric(5, above - 5), metric(4, below - 4))).toEqual({
+      kind: 'low_sample',
+    })
+  })
+
+  it('reports low_sample right at the floor minus one, and a real trend right at the floor', () => {
+    expect(noShowTrend(metric(2, below - 2), metric(2, below - 2))).toEqual({
+      kind: 'low_sample',
+    })
+    expect(
+      noShowTrend(metric(2, MIN_FINISHED_FOR_TREND - 2), metric(2, MIN_FINISHED_FOR_TREND - 2)),
+    ).toEqual({ kind: 'flat', deltaPts: 0 })
+  })
+
   it('reports up with positive delta in percentage points', () => {
-    // 20% actual vs 10% previo → +10 pts.
-    expect(noShowTrend(metric(2, 8), metric(1, 9))).toEqual({ kind: 'up', deltaPts: 10 })
+    // 20% actual vs 10% previo, ambas ventanas por encima del piso → +10 pts.
+    expect(noShowTrend(metric(20, 80), metric(10, 90))).toEqual({ kind: 'up', deltaPts: 10 })
   })
 
   it('reports down with negative delta', () => {
-    expect(noShowTrend(metric(1, 9), metric(2, 8))).toEqual({ kind: 'down', deltaPts: -10 })
+    expect(noShowTrend(metric(10, 90), metric(20, 80))).toEqual({ kind: 'down', deltaPts: -10 })
   })
 
   it('reports flat when rates match', () => {
-    expect(noShowTrend(metric(1, 9), metric(2, 18))).toEqual({ kind: 'flat', deltaPts: 0 })
+    expect(noShowTrend(metric(10, 90), metric(20, 180))).toEqual({ kind: 'flat', deltaPts: 0 })
   })
 })
 

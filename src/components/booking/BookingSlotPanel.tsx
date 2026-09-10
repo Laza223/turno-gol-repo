@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { StatusBadge } from '@/components/ui/status-badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
+import { toast } from '@/hooks/use-toast'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
 import { formatArs } from '@/lib/format'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
@@ -219,6 +220,9 @@ export function BookingSlotPanel({
     }
     const res = await actions.cancelBookingAction(booking!.id, cancelReason.trim(), cancelType)
     if (res.success) {
+      // H093: mismo toast que BookingActions.tsx/QuickActions.tsx tras la
+      // MISMA acción — acá se cerraba en silencio.
+      toast({ title: 'Reserva cancelada', variant: 'success' })
       setLastId(null)
       notifyMutated()
     }
@@ -229,6 +233,8 @@ export function BookingSlotPanel({
     if (!actions?.releaseBlockAction) return { success: false, error: 'Sin acciones disponibles.' }
     const res = await actions.releaseBlockAction(booking!.id)
     if (res.success) {
+      // H094: mismo toast que BookingActions.tsx tras la MISMA acción.
+      toast({ title: 'Bloqueo liberado', variant: 'success' })
       setLastId(null)
       notifyMutated()
     }
@@ -240,20 +246,22 @@ export function BookingSlotPanel({
   // QuickActions.tsx cuando esos datos faltan (`inPolicy === null`), no un
   // mensaje inventado nuevo.
   const hasPaidDeposit = booking.depositStatus === 'paid' && (booking.depositAmount ?? 0) > 0
+  // H095: visible DESDE que se abre el diálogo, no recién tras elegir "quién
+  // cancela" — mismo criterio que `refundPreview` en BookingActions.tsx (ENS-2).
   let cancelRefundWarning: string | null = null
-  if (cancelType) {
-    if (!hasPaidDeposit) {
-      cancelRefundWarning = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
-    } else if (hasEnded) {
-      cancelRefundWarning = 'El turno ya se jugó: la seña queda para el complejo (sin reembolso).'
-    } else if (cancelType === 'complejo') {
-      cancelRefundWarning =
-        booking.paymentMethod === 'mercadopago'
-          ? `Se reembolsará la seña de ${formatArs(booking.depositAmount ?? 0)} vía MercadoPago.`
-          : `Coordiná el reembolso de ${formatArs(booking.depositAmount ?? 0)} en efectivo/transferencia con el jugador (no es automático).`
-    } else {
-      cancelRefundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount ?? 0)} si está dentro del plazo, retención si no.`
-    }
+  if (!hasPaidDeposit) {
+    cancelRefundWarning = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
+  } else if (hasEnded) {
+    cancelRefundWarning = 'El turno ya se jugó: la seña queda para el complejo (sin reembolso).'
+  } else if (!cancelType) {
+    cancelRefundWarning = `Hay una seña de ${formatArs(booking.depositAmount ?? 0)} pagada: el reembolso depende de quién cancela (elegí una opción abajo).`
+  } else if (cancelType === 'complejo') {
+    cancelRefundWarning =
+      booking.paymentMethod === 'mercadopago'
+        ? `Se reembolsará la seña de ${formatArs(booking.depositAmount ?? 0)} vía MercadoPago.`
+        : `Coordiná el reembolso de ${formatArs(booking.depositAmount ?? 0)} en efectivo/transferencia con el jugador (no es automático).`
+  } else {
+    cancelRefundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount ?? 0)} si está dentro del plazo, retención si no.`
   }
 
   function handleOpenChange(next: boolean) {

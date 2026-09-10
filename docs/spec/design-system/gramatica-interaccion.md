@@ -46,6 +46,7 @@ usá una familia distinta de la escala (`emerald-50`, `border-emerald-500/40`) �
 mira el string exacto `bg-emerald-600`.
 
 **Checklist para un botón de plata nuevo:**
+
 1. ¿Es `<Button>` o `bg-primary text-primary-foreground`? Si no, es un bug.
 2. ¿Tiene `isLoading`/estado pendiente visible? Un botón de plata sin feedback de "está
    procesando" invita al doble click.
@@ -65,13 +66,12 @@ Se ejecuta al click, sin diálogo previo. El toast queda 10 s (no los 4 s de un 
 ofrece "Deshacer", que re-invoca la acción inversa. **Solo aplica si existe una inversa de dominio
 real** — no se inventa una acción de reversión que el negocio no tiene.
 
-| Acción | Inversa usada |
-|---|---|
-| Marcar ausente (no-show) | `revertNoShowAction` (ventana 24 h) |
-| Quitar día cerrado | re-invoca `addClosedDateAction` con la misma fecha |
-| Sacar jugador del plantel de un equipo (torneos) | re-invoca `addTeamPlayerAction` |
-| Borrar evento de acta (gol/tarjeta) | re-invoca `addEventAction` |
-| Activar/Desactivar cancha | toggle del mismo endpoint (simétrico) |
+| Acción                                           | Inversa usada                                      |
+| ------------------------------------------------ | -------------------------------------------------- |
+| Quitar día cerrado                               | re-invoca `addClosedDateAction` con la misma fecha |
+| Sacar jugador del plantel de un equipo (torneos) | re-invoca `addTeamPlayerAction`                    |
+| Borrar evento de acta (gol/tarjeta)              | re-invoca `addEventAction`                         |
+| Activar/Desactivar cancha                        | toggle del mismo endpoint (simétrico)              |
 
 ### Clase B — costoso pero explicable → `ConfirmDialog` con consecuencias, SIN type-to-confirm
 
@@ -79,27 +79,28 @@ real** — no se inventa una acción de reversión que el negocio no tiene.
 reales (verificadas contra el código del service, nunca inventadas). `variant="destructive"` si
 además de costoso es difícil de deshacer del todo.
 
-| Acción | Consecuencia mostrada |
-|---|---|
-| Ban manual de jugador | Motivo + días de bloqueo (default 7, "Permanente" disponible sin ser el default) |
-| Pausar abonado (turno fijo) | Borra las reservas futuras generadas por ese abonado |
-| Liberar horas de torneo | Conteo real de horas que vuelven a estar libres para reserva online |
-| Borrar fixture de torneo | Se pierden los resultados ya cargados |
-| Borrar equipo de torneo | — |
-| Walkover / borrar resultado de partido | La tabla de posiciones se recalcula |
-| Impersonar un tenant (super-admin) | Qué puede ver/hacer mientras dura la impersonación |
-| Cambiar plan / extender trial / resetear contraseña (super-admin) | Plan destino + precio, días de extensión, email del staff afectado |
+| Acción                                                            | Consecuencia mostrada                                                                                                                                                                                                                                 |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Marcar ausente (no-show)                                          | `NO_SHOW_CONSEQUENCES` (`src/lib/booking/no-show-consequences.ts`): la seña queda para el complejo, y a la segunda ausencia en 90 días el jugador se bloquea 14 días para reservar online — H104: eso es plata y reputación en juego, no algo Clase A |
+| Ban manual de jugador                                             | Motivo + días de bloqueo (default 7, "Permanente" disponible sin ser el default)                                                                                                                                                                      |
+| Pausar abonado (turno fijo)                                       | Borra las reservas futuras generadas por ese abonado                                                                                                                                                                                                  |
+| Liberar horas de torneo                                           | Conteo real de horas que vuelven a estar libres para reserva online                                                                                                                                                                                   |
+| Borrar fixture de torneo                                          | Se pierden los resultados ya cargados                                                                                                                                                                                                                 |
+| Borrar equipo de torneo                                           | —                                                                                                                                                                                                                                                     |
+| Walkover / borrar resultado de partido                            | La tabla de posiciones se recalcula                                                                                                                                                                                                                   |
+| Impersonar un tenant (super-admin)                                | Qué puede ver/hacer mientras dura la impersonación                                                                                                                                                                                                    |
+| Cambiar plan / extender trial / resetear contraseña (super-admin) | Plan destino + precio, días de extensión, email del staff afectado                                                                                                                                                                                    |
 
 ### Clase C — irreversible con plata real → type-to-confirm
 
 `ConfirmDialog` con `confirmationPhrase` (el usuario tipea una palabra exacta antes de poder
 confirmar). Reservado para lo que de verdad no tiene vuelta atrás.
 
-| Acción | Frase a tipear |
-|---|---|
-| Cancelar abonado | `CANCELAR` |
-| Cerrar caja del día (inmutable) | `CERRAR` |
-| Quitar staff | el email del staff |
+| Acción                                       | Frase a tipear       |
+| -------------------------------------------- | -------------------- |
+| Cancelar abonado                             | `CANCELAR`           |
+| Cerrar caja del día (inmutable)              | `CERRAR`             |
+| Quitar staff                                 | el email del staff   |
 | Super-admin: forzar estado / cancelar tenant | el nombre del tenant |
 
 ### Regla de decisión rápida
@@ -139,7 +140,7 @@ parseo manual (`Number(x)`, `parseFloat(x)`) para plata.
   punto de la cadena de datos hasta el server action.
 - **Modo controlado** (el resto del componente necesita leer el valor en vivo — previews,
   validación antes de submit, hooks compartidos): `<MoneyInput valueCents={cents}
-  onValueChange={setCents} />`. El estado de React pasa a ser `number | null` en centavos, nunca
+onValueChange={setCents} />`. El estado de React pasa a ser `number | null` en centavos, nunca
   un `string` en pesos.
 - **Modo no controlado** (form nativo leído por `FormData` en el submit, sin `onChange` de
   React): `<MoneyInput name="campo" defaultValueCents={...} />`. Renderiza un
@@ -169,7 +170,7 @@ stock/unidades, días, porcentajes, minutos. `MoneyInput` es específicamente pa
   no romper a sus consumidores existentes.
 - **Formato de moneda de solo lectura**: `formatArs`/`formatArsContable` de `src/lib/format.ts`
   son los únicos formatters ARS del repo. Un `new Intl.NumberFormat('es-AR', {style:'currency',
-  currency:'ARS', ...})` armado localmente en un componente es una señal de que hay que importar
+currency:'ARS', ...})` armado localmente en un componente es una señal de que hay que importar
   el de `lib/format.ts` en vez de escribir uno nuevo.
 
 ---
@@ -179,8 +180,8 @@ stock/unidades, días, porcentajes, minutos. `MoneyInput` es específicamente pa
 **Regla:** cero "Algo salió mal" a secas. Todo estado de error sigue la fórmula:
 **[qué pasó] + [qué podés hacer] + [qué hace el sistema mientras tanto, si aplica]**.
 
-Ejemplo real (`BookingErrorCard.tsx`): *"El pago no se procesó. El pago fue rechazado o
-cancelado. Podés intentar de nuevo con otro medio."* — no *"Hubo un error"*.
+Ejemplo real (`BookingErrorCard.tsx`): _"El pago no se procesó. El pago fue rechazado o
+cancelado. Podés intentar de nuevo con otro medio."_ — no _"Hubo un error"_.
 
 **Regla:** todo estado vacío (una lista/tabla sin datos) usa `EmptyState`
 (`src/components/ui/empty-state.tsx` o el que corresponda a la superficie) en vez de un `<p>`

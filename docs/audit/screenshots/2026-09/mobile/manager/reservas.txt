@@ -1,0 +1,125 @@
+URL: http://localhost:3000/reservas
+Título: Reservas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /grilla
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - link "Clientes":
+    - /url: /jugadores
+  - button "Más"
+- main:
+  - navigation "Vistas de la grilla":
+    - link "Calendario":
+      - /url: /grilla
+    - link "Reservas":
+      - /url: /reservas
+  - heading "Reservas" [level=1]
+  - paragraph: Jueves, 10 de septiembre · 1 reserva
+  - navigation "Rango de fechas":
+    - link "Hoy":
+      - /url: /reservas
+    - link "Próximas":
+      - /url: /reservas?dia=proximas
+    - link "Historial":
+      - /url: /reservas?dia=historial
+  - text: Buscar por nombre o número de reserva
+  - searchbox "Buscar por nombre o número de reserva"
+  - group "Densidad de la lista":
+    - button "Vista detallada" [pressed]
+    - button "Vista compacta"
+  - navigation "Filtro por estado":
+    - link "Todas 1":
+      - /url: /reservas
+    - link "Confirmadas 1":
+      - /url: /reservas?status=confirmed
+    - link "Esperando seña 0":
+      - /url: /reservas?status=pending_payment
+    - link "Completadas 0":
+      - /url: /reservas?status=completed
+    - link "Ausentes 0":
+      - /url: /reservas?status=no_show
+    - link "Canceladas 0":
+      - /url: /reservas?status=canceladas
+  - navigation "Filtro por cancha":
+    - link "Todas las canchas":
+      - /url: /reservas
+    - link "Cancha 1 — F5":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000010
+    - link "Cancha 2 — F5":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000011
+    - link "Cancha 3 — F5 techada":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000012
+    - link "Cancha 4 — F7":
+      - /url: /reservas?cancha=d0000000-0000-4000-8000-000000000013
+  - region "Cancha 1 — F5":
+    - heading "Cancha 1 — F5" [level=2]
+    - list:
+      - listitem:
+        - article "Reserva 10:00–11:00, Cancha 1 — F5, Sin nombre, Torneo":
+          - link "Reserva 10:00–11:00, Cancha 1 — F5, Sin nombre, Torneo":
+            - /url: /reservas/94a7c9a0-6669-4b92-b4ad-de526fb71e52
+          - text: 10:00–11:00
+          - paragraph: Sin nombre
+          - paragraph: Cancha 1 — F5 · Sin seña
+          - text: Torneo
+          - paragraph: $ 0
+          - button "Acciones para Sin nombre · 10:00–11:00"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Grilla
+Caja
+Clientes
+Más
+Calendario
+Reservas
+Reservas
+
+Jueves, 10 de septiembre · 1 reserva
+
+Hoy
+Próximas
+Historial
+Buscar por nombre o número de reserva
+Todas
+1
+Confirmadas
+1
+Esperando seña
+0
+Completadas
+0
+Ausentes
+0
+Canceladas
+0
+Todas las canchas
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+CANCHA 1 — F5
+10:00–11:00
+
+Sin nombre
+
+Cancha 1 — F5 · Sin seña
+
+Torneo
+
+$ 0

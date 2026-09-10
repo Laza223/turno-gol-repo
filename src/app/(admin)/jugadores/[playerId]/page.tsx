@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
+import { isUuid } from '@/shared/validation/primitives'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import {
   getPlayerProfile,
@@ -23,6 +24,11 @@ export default async function JugadorProfilePage(props: Props) {
   const auth = await requireOperatorStaff()
   if (!auth.ok) redirect('/dashboard')
   const { tenant } = auth
+
+  // getPlayerProfile bindea playerId a SQL crudo (uuid): sin este guard,
+  // /jugadores/abc revienta el cast en Postgres y cae al error boundary de
+  // (admin) en vez de un 404 limpio. Mismo patrón que reservas/[id]/page.tsx.
+  if (!isUuid(params.playerId)) notFound()
 
   const data = await withTenantContext(tenant.id, async (tx) => {
     const profile = await getPlayerProfile(tenant.id, params.playerId, tx)

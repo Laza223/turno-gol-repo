@@ -759,8 +759,9 @@ export async function releaseSlotsAction(input: unknown): Promise<TournamentActi
         tenant.id,
         parsed.data.tournamentId,
         user.staffUserId,
-        parsed.data.fromDate,
+        parsed.data.fromDate ?? '',
         tx,
+        parsed.data.bookingId,
       ),
     )
   } catch (err) {

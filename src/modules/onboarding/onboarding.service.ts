@@ -97,7 +97,7 @@ function buildCourtInputsFromDrafts(
       return { ok: false, error: courtParsed.error.issues[0]?.message ?? 'Datos inválidos' }
     }
 
-    // Backstop de cobertura (mismo gate que /settings/canchas): un hueco entre
+    // Backstop de cobertura (mismo gate que /canchas): un hueco entre
     // reglas es una hora operativa que nadie puede reservar online.
     const coverage = validatePricingRulesCoverage(rules, tenant.openingHours, tenant.closesNextDay)
     if (!coverage.valid) {

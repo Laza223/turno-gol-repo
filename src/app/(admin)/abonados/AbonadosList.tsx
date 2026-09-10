@@ -1,9 +1,10 @@
 'use client'
 
 import type { ActionResult } from '@/shared/types/action-result'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
+import { usePathname, useRouter } from 'next/navigation'
 import { UserPlus, Users, Info } from 'lucide-react'
 import Link from 'next/link'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
@@ -78,6 +79,8 @@ type Props = {
   abonados: AbonadoRow[]
   /** Etiqueta del filtro activo (ej. "activos"), para un empty state que explique el vacío. */
   filterLabel?: string
+  /** H054: viene de `?created=1` — page.tsx lo levanta del redirect de /abonados/nuevo. */
+  justCreated?: boolean
   pauseAction: PauseAbonadoAction
   reactivateAction: ReactivateAbonadoAction
   cancelAction: CancelAbonadoAction
@@ -87,11 +90,27 @@ type Props = {
 export function AbonadosList({
   abonados,
   filterLabel,
+  justCreated,
   pauseAction,
   reactivateAction,
   cancelAction,
   previewSlotsAction,
 }: Props) {
+  const router = useRouter()
+  const pathname = usePathname()
+
+  // H054: crear un abonado no mostraba ningún aviso al volver a /abonados,
+  // la única de las 4 acciones del módulo sin confirmación visible. El toast
+  // vive acá (no en la Server Action: redirect() corta la ejecución antes de
+  // que el cliente pueda leer un estado de éxito). Limpia el query param para
+  // que un refresh no vuelva a disparar el toast.
+  useEffect(() => {
+    if (!justCreated) return
+    toast({ title: 'Turno fijo creado.', variant: 'success' })
+    router.replace(pathname, { scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [justCreated])
+
   if (abonados.length === 0) {
     return (
       <EmptyState
@@ -355,7 +374,7 @@ function AbonadoTableRow({
                 onClick={() => actions.openDialog('cancel-single')}
                 className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancelar fecha...
+                Cómo cancelar una fecha
               </button>
               <button
                 type="button"
@@ -371,7 +390,7 @@ function AbonadoTableRow({
                 onClick={() => actions.openDialog('cancel')}
                 className="text-xs font-medium text-red-700 dark:text-red-300 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancelar
+                Cancelar turno fijo
               </button>
             </>
           )}
@@ -391,7 +410,7 @@ function AbonadoTableRow({
                 onClick={() => actions.openDialog('cancel')}
                 className="text-xs font-medium text-red-700 dark:text-red-300 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancelar
+                Cancelar turno fijo
               </button>
             </>
           )}
@@ -438,7 +457,7 @@ function AbonadoCard({
                 onClick={() => actions.openDialog('cancel-single')}
                 className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
               >
-                Cancelar fecha...
+                Cómo cancelar una fecha
               </button>
               <button
                 type="button"
@@ -466,7 +485,7 @@ function AbonadoCard({
             onClick={() => actions.openDialog('cancel')}
             className={`${actionButtonClass} text-red-700 dark:text-red-300`}
           >
-            Cancelar
+            Cancelar turno fijo
           </button>
         </div>
       )}

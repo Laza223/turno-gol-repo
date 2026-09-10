@@ -1,0 +1,130 @@
+URL: http://localhost:3000/jugadores
+Título: Personas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Personas" [level=1]
+  - navigation "Secciones de clientes":
+    - link "Personas":
+      - /url: /jugadores
+    - link "Turnos fijos":
+      - /url: /abonados
+  - searchbox "Buscar personas"
+  - table:
+    - rowgroup:
+      - row "Persona Contacto Reservas Fijos Ausencias Acciones":
+        - columnheader "Persona"
+        - columnheader "Contacto"
+        - columnheader "Reservas"
+        - columnheader "Fijos"
+        - columnheader "Ausencias"
+        - columnheader "Acciones"
+    - rowgroup:
+      - row "Diego Fernández Sin cuenta +5491155501234 0 1 — Vincular a Diego Fernández":
+        - cell "Diego Fernández Sin cuenta"
+        - cell "+5491155501234"
+        - cell "0"
+        - cell "1"
+        - cell "—"
+        - cell "Vincular a Diego Fernández":
+          - button "Vincular a Diego Fernández": Vincular
+      - row "Grupo de los viernes (dado de baja) Sin cuenta +5491155509876 0 — — Vincular a Grupo de los viernes (dado de baja)":
+        - cell "Grupo de los viernes (dado de baja) Sin cuenta"
+        - cell "+5491155509876"
+        - cell "0"
+        - cell "—"
+        - cell "—"
+        - cell "Vincular a Grupo de los viernes (dado de baja)":
+          - button "Vincular a Grupo de los viernes (dado de baja)": Vincular
+      - row "Tomás Rivero Organiza el grupo Tiene precio acordado demo-player@turnogol.test 3 1 1":
+        - cell "Tomás Rivero Organiza el grupo Tiene precio acordado":
+          - link "Tomás Rivero":
+            - /url: /jugadores/d0000000-0000-4000-8000-000000000020
+          - list:
+            - listitem: Organiza el grupo
+            - listitem: Tiene precio acordado
+        - cell "demo-player@turnogol.test"
+        - cell "3"
+        - cell "1"
+        - cell "1"
+        - cell
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Canchas
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Personas
+Personas
+Turnos fijos
+PERSONA	CONTACTO	RESERVAS	FIJOS	AUSENCIAS	
+ACCIONES
+
+
+Diego Fernández
+Sin cuenta
+	+5491155501234	0	1	—	
+Vincular
+
+Grupo de los viernes (dado de baja)
+Sin cuenta
+	+5491155509876	0	—	—	
+Vincular
+Tomás Rivero
+Organiza el grupo
+Tiene precio acordado
+	demo-player@turnogol.test	3	1	1	

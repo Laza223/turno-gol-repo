@@ -19,7 +19,9 @@ const STATUS_LABELS: Record<AbonadoStatus, string> = {
   canceled: 'Cancelados',
 }
 
-export default async function AbonadosPage(props: { searchParams: Promise<{ status?: string }> }) {
+export default async function AbonadosPage(props: {
+  searchParams: Promise<{ status?: string; created?: string }>
+}) {
   const searchParams = await props.searchParams
   const auth = await requireOperatorStaff()
   if (!auth.ok) redirect('/login')
@@ -28,6 +30,10 @@ export default async function AbonadosPage(props: { searchParams: Promise<{ stat
   const statusFilter = VALID_STATUSES.includes(searchParams.status as AbonadoStatus)
     ? (searchParams.status as AbonadoStatus)
     : undefined
+  // H054: `/abonados/nuevo` redirige acá con `?created=1` tras crear (no hay
+  // forma de devolver estado al cliente a través de un redirect() server-side)
+  // — AbonadosList levanta el flag al montar, muestra el toast y limpia la URL.
+  const justCreated = searchParams.created === '1'
 
   const abonados = await withTenantContext(tenant.id, (tx) =>
     getAbonados(tenant.id, { status: statusFilter }, tx),
@@ -88,6 +94,7 @@ export default async function AbonadosPage(props: { searchParams: Promise<{ stat
         <AbonadosList
           abonados={abonados}
           filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
+          justCreated={justCreated}
           pauseAction={pauseAbonadoAction}
           reactivateAction={reactivateAbonadoAction}
           cancelAction={cancelAbonadoAction}

@@ -105,8 +105,8 @@ describe('ActivatePlanSection', () => {
       ),
     ).toBeTruthy()
 
-    // Elegir "8+" canchas cambia el sugerido a Estadio.
-    fireEvent.click(screen.getByRole('radio', { name: '8+' }))
+    // Elegir "7+" canchas cambia el sugerido a Estadio.
+    fireEvent.click(screen.getByRole('radio', { name: '7+' }))
     expect(
       within(screen.getByText('Sugerido para tus canchas').parentElement as HTMLElement).getByRole(
         'heading',

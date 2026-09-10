@@ -51,7 +51,11 @@ export function StaffRosterView({
   resendInviteAction,
   updateRoleAction,
 }: Props) {
-  const activeCount = members.filter((m) => m.isActive).length
+  // Mismo criterio tri-state que StaffStatusBadge (status-visual.tsx): "activo"
+  // requiere haber aceptado la invitación (lastLoginAt), no solo isActive — si
+  // no, el subtítulo cuenta como activos a invitados con "Invitación pendiente"
+  // en la misma pantalla (H158).
+  const activeCount = members.filter((m) => m.isActive && m.lastLoginAt).length
   const activeAdminCount = members.filter((m) => m.isActive && m.role === 'admin').length
 
   return (

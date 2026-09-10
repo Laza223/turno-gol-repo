@@ -130,7 +130,7 @@ export const CancelarRequierePhrase: Story = {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Cancelar turno fijo' }))
     const confirmBtn = await body.findByRole('button', { name: 'Cancelar turno fijo' })
     await expect(confirmBtn).toBeDisabled()
 

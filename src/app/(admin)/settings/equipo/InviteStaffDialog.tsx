@@ -82,16 +82,24 @@ export function InviteStaffDialog({
         <form action={formAction} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="firstName">Nombre</Label>
+              {/* H050: mismo criterio que TenantContactForm — asterisco visible
+                  en los campos required, no solo la validación nativa del form. */}
+              <Label htmlFor="firstName">
+                Nombre <span className="text-red-500 dark:text-red-400">*</span>
+              </Label>
               <Input id="firstName" name="firstName" required className="h-11 md:h-10" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lastName">Apellido</Label>
+              <Label htmlFor="lastName">
+                Apellido <span className="text-red-500 dark:text-red-400">*</span>
+              </Label>
               <Input id="lastName" name="lastName" required className="h-11 md:h-10" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">
+              Email <span className="text-red-500 dark:text-red-400">*</span>
+            </Label>
             <Input
               id="email"
               name="email"

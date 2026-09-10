@@ -116,7 +116,11 @@ export const ComplejoBloqueado: Story = {
   },
 }
 
-/** Complejo recién arrancado: series en cero, sin top-5 horarios → ghost + CTA a la grilla. */
+/**
+ * Complejo recién arrancado: series en cero → ghost + CTA en Top 5 horarios, y
+ * (H033) el mismo patrón "primera vez espectral" en Ingresos, Reservas por día
+ * y Tasa de ausencias — antes se quedaban en blanco o en "0,0% — 0 sobre 0".
+ */
 export const SinDatos: Story = {
   parameters: {
     fetchMock: [
@@ -132,6 +136,11 @@ export const SinDatos: Story = {
     await expect(
       canvas.getByRole('link', { name: 'Cargá tu primera reserva desde la grilla' }),
     ).toHaveAttribute('href', '/grilla')
+    await expect(canvas.getByText('Así se van a ver tus ingresos por período.')).toBeVisible()
+    await expect(canvas.getByText('Así se van a ver tus reservas por día.')).toBeVisible()
+    await expect(
+      canvas.getByText('Así se va a ver cuando termines tus primeros turnos.'),
+    ).toBeVisible()
   },
 }
 
@@ -156,6 +165,35 @@ export const TendenciaAusenciasEnAlza: Story = {
     await expect(await canvas.findByText(/pts vs período anterior/)).toHaveTextContent(
       '+8 pts vs período anterior',
     )
+  },
+}
+
+/**
+ * H174: muestra chica (< MIN_FINISHED_FOR_TREND turnos terminados en la
+ * ventana actual) — la tasa real se sigue mostrando, pero sin flecha ni
+ * color: una alarma calculada sobre 24 turnos no significa nada.
+ */
+export const TendenciaMuestraChica: Story = {
+  parameters: {
+    fetchMock: [
+      {
+        match: '/api/admin/metrics',
+        json: {
+          data: tenantMetrics({
+            noShow: { noShow: 4, completed: 20, finished: 24, rate: 4 / 24 },
+            noShowPrev: { noShow: 1, completed: 49, finished: 50, rate: 1 / 50 },
+          }),
+        },
+      },
+      { match: '/api/admin/system-status', json: { data: systemStatusOk() } },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByText('Todavía no hay datos suficientes para comparar.'),
+    ).toBeVisible()
+    await expect(canvas.queryByText(/pts vs período anterior/)).not.toBeInTheDocument()
   },
 }
 

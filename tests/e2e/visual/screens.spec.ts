@@ -102,14 +102,14 @@ test.describe('visual — admin', () => {
 
   test('canchas @visual', async ({ page }) => {
     await suppressPushBanner(page)
-    // '/canchas' es un redirect permanente a '/settings/canchas' (ver su
+    // '/canchas' es un redirect permanente a '/canchas' (ver su
     // page.tsx) — navegar directo a la URL canónica, igual que
     // canchas-crud.spec.ts. Ir por el redirect hace que este sea el PRIMER
     // hit a cualquier ruta de /settings/* en el proceso de `pnpm dev` de CI,
     // y el hop server-side a una ruta que Turbopack todavía no compiló 404ea
     // de forma determinística (y deja /settings/* roto para el resto de la
     // corrida — ver 'settings de reservas @visual' más abajo, mismo síntoma).
-    await page.goto('/settings/canchas')
+    await page.goto('/canchas')
     await expect(page.getByText('Cancha E2E 1')).toBeVisible()
     await waitForDayTotal(page)
     // Shell de lista del admin: si se rompe, se rompen también /staff,

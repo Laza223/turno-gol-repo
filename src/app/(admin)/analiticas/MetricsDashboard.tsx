@@ -13,8 +13,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, TrendingUp } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
+import { StatCard } from '@/components/admin/StatCard'
 import type { TenantMetrics } from '@/modules/metrics/metrics.service'
 import type { SystemStatus } from '@/app/api/admin/system-status/route'
 import { useChartTheme } from '@/components/admin/useChartTheme'
@@ -47,8 +48,46 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   )
 }
 
-/** Card "Tasa de ausencias": tasa actual + tendencia vs los 30 días previos. */
+/** Barras fantasma genéricas para series temporales sin datos (H033: Ingresos, Reservas por día). */
+function GhostBars() {
+  const heights = [35, 62, 48, 80, 58, 70, 42, 55, 38, 66]
+  return (
+    <div className="flex h-64 items-end gap-1.5 px-1" aria-hidden="true">
+      {heights.map((h, i) => (
+        <span
+          key={i}
+          className="flex-1 rounded-t-sm bg-emerald-500 opacity-30"
+          style={{ height: `${h}%` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Card "Tasa de ausencias": tasa actual + tendencia vs los 30 días previos.
+ * Debajo de MIN_FINISHED_FOR_TREND turnos terminados (cualquiera de las dos
+ * ventanas) la comparación se oculta — ver noShowTrend (H174).
+ */
 function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
+  // H033: sin turnos terminados todavía, "0,0% — 0 sobre 0" no dice nada —
+  // mismo espíritu "primera vez espectral" que TopSlots/GhostKpis (MASTER §1).
+  if (metrics.noShow.finished === 0) {
+    return (
+      <Card title="Tasa de ausencias">
+        <p className="text-3xl font-semibold tabular-nums text-muted-foreground" aria-hidden="true">
+          3,2%
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground" aria-hidden="true">
+          2 ausencias sobre 62 turnos terminados
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Así se va a ver cuando termines tus primeros turnos.
+        </p>
+      </Card>
+    )
+  }
+
   const trend = noShowTrend(metrics.noShow, metrics.noShowPrev)
   const ratePct = (metrics.noShow.rate * 100).toFixed(1).replace('.', ',')
 
@@ -61,6 +100,14 @@ function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
       <div className="mt-2 text-xs">
         {trend.kind === 'no_prev' && (
           <span className="text-muted-foreground">sin datos previos</span>
+        )}
+        {/* H174: muestra chica en cualquiera de las dos ventanas — el valor de
+         * arriba sigue siendo real, pero comparar sobre pocas decenas de
+         * turnos es ruido. Sin flecha ni color, línea sobria. */}
+        {trend.kind === 'low_sample' && (
+          <span className="text-muted-foreground">
+            Todavía no hay datos suficientes para comparar.
+          </span>
         )}
         {trend.kind === 'flat' && (
           <span className="text-muted-foreground">sin cambios vs período anterior</span>
@@ -96,8 +143,20 @@ function RevenueChart({
 
   return (
     <div className="card-premium rounded-lg p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-foreground">Ingresos</h2>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* H032: mismo StatCard que el reporte mensual (AP-18), con SU PROPIA
+         * ventana rotulada en el sub — acá son 30 días corridos, no el mes
+         * calendario del reporte de abajo. Card anidada a propósito: `.card-premium`
+         * (globals.css) es CSS sin capa, gana cualquier utility `shadow-none`/
+         * `border-0` que se le agregue acá — no vale la pena pelear la cascada
+         * por un detalle visual. */}
+        <StatCard
+          label="Ingresos"
+          value={formatARS(metrics.revenue.totalCents)}
+          sub={`Ventana de ${metrics.windowDays} días`}
+          icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
+          className="min-w-40 flex-1"
+        />
         <div className="flex gap-1" role="group" aria-label="Agrupar ingresos por">
           {(Object.keys(GRANULARITY_LABELS) as RevenueGranularity[]).map((g) => (
             <button
@@ -117,38 +176,44 @@ function RevenueChart({
           ))}
         </div>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Total del período: {formatARS(metrics.revenue.totalCents)}
-      </p>
-      <div className="mt-3 h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: chart.axis }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: chart.axis }}
-              tickFormatter={(v: number) => formatARS(v)}
-              width={90}
-            />
-            <Tooltip
-              formatter={(value) => [formatARS(Number(value)), 'Ingresos']}
-              labelStyle={chart.tooltip.labelStyle}
-              contentStyle={chart.tooltip.contentStyle}
-              itemStyle={chart.tooltip.itemStyle}
-            />
-            <Bar
-              dataKey="amountCents"
-              fill={chart.primary}
-              radius={[3, 3, 0, 0]}
-              isAnimationActive={isAnimationActive}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {metrics.revenue.totalCents === 0 ? (
+        <div className="mt-3">
+          <GhostBars />
+          <p className="mt-3 text-sm text-muted-foreground">
+            Así se van a ver tus ingresos por período.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-3 h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: chart.axis }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: chart.axis }}
+                tickFormatter={(v: number) => formatARS(v)}
+                width={90}
+              />
+              <Tooltip
+                formatter={(value) => [formatARS(Number(value)), 'Ingresos']}
+                labelStyle={chart.tooltip.labelStyle}
+                contentStyle={chart.tooltip.contentStyle}
+                itemStyle={chart.tooltip.itemStyle}
+              />
+              <Bar
+                dataKey="amountCents"
+                fill={chart.primary}
+                radius={[3, 3, 0, 0]}
+                isAnimationActive={isAnimationActive}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   )
 }
@@ -376,6 +441,9 @@ export default function MetricsDashboard({
     label: dayLabel(d.date),
     count: d.count,
   }))
+  // H033: sin una sola reserva en la ventana, el LineChart quedaba en blanco
+  // sin avisar — mismo patrón "primera vez espectral" que TopSlots/Ingresos.
+  const bookingsEmpty = metrics.bookingsPerDay.every((d) => d.count === 0)
 
   return (
     <div className="space-y-4">
@@ -390,38 +458,47 @@ export default function MetricsDashboard({
           <div className="card-premium rounded-lg p-4">
             <h2 className="text-sm font-semibold text-foreground">Reservas por día</h2>
             <p className="mt-1 text-xs text-muted-foreground">Últimos {metrics.windowDays} días</p>
-            <div className="mt-3 h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={bookingsData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: chart.axis }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tick={{ fontSize: 11, fill: chart.axis }}
-                    width={32}
-                  />
-                  <Tooltip
-                    formatter={(value) => [String(value), 'Reservas']}
-                    labelStyle={chart.tooltip.labelStyle}
-                    contentStyle={chart.tooltip.contentStyle}
-                    itemStyle={chart.tooltip.itemStyle}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="count"
-                    stroke={chart.primary}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                    isAnimationActive={isAnimationActive}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {bookingsEmpty ? (
+              <div className="mt-3">
+                <GhostBars />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Así se van a ver tus reservas por día.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3 h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={bookingsData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: chart.axis }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11, fill: chart.axis }}
+                      width={32}
+                    />
+                    <Tooltip
+                      formatter={(value) => [String(value), 'Reservas']}
+                      labelStyle={chart.tooltip.labelStyle}
+                      contentStyle={chart.tooltip.contentStyle}
+                      itemStyle={chart.tooltip.itemStyle}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke={chart.primary}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      isAnimationActive={isAnimationActive}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </div>
         <NoShowCard metrics={metrics} />

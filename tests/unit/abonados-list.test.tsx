@@ -6,7 +6,16 @@ vi.mock('@/hooks/use-toast', () => ({
   toast: vi.fn(),
 }))
 
+// H054: AbonadosList usa useRouter/usePathname (limpia `?created=1` tras el
+// toast de éxito) — mismo patrón de mock que reservas-toolbar.test.tsx.
+const routerReplaceMock = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: routerReplaceMock }),
+  usePathname: () => '/abonados',
+}))
+
 import { AbonadosList } from '@/app/(admin)/abonados/AbonadosList'
+import { toast } from '@/hooks/use-toast'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
 
 function makeAbonado(overrides: Partial<AbonadoRow>): AbonadoRow {
@@ -86,19 +95,19 @@ describe('AbonadosList — rendering', () => {
   it('active row shows Pausar + Cancelar buttons', () => {
     renderList([ACTIVE_ABONADO])
     expect(screen.getAllByRole('button', { name: 'Pausar' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: 'Cancelar' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Cancelar turno fijo' }).length).toBeGreaterThan(0)
   })
 
   it('paused row shows Reactivar + Cancelar buttons', () => {
     renderList([PAUSED_ABONADO])
     expect(screen.getAllByRole('button', { name: 'Reactivar' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: 'Cancelar' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Cancelar turno fijo' }).length).toBeGreaterThan(0)
   })
 
   it('canceled row shows no action buttons', () => {
     renderList([CANCELED_ABONADO])
     expect(screen.queryByRole('button', { name: 'Pausar' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancelar turno fijo' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Reactivar' })).toBeNull()
   })
 
@@ -108,11 +117,37 @@ describe('AbonadosList — rendering', () => {
   })
 })
 
+// H054: crear un abonado redirige a /abonados?created=1 — AbonadosList levanta
+// el flag al montar, avisa con un toast (única de las 4 acciones que no tenía
+// confirmación visible) y limpia el query param para que un refresh no repita.
+describe('AbonadosList — H054 toast on create', () => {
+  it('shows a success toast and clears the query param when justCreated is true', () => {
+    render(
+      <AbonadosList
+        abonados={[ACTIVE_ABONADO]}
+        justCreated
+        pauseAction={pauseAbonadoAction}
+        reactivateAction={reactivateAbonadoAction}
+        cancelAction={cancelAbonadoAction}
+        previewSlotsAction={previewAbonadoSlotsAction}
+      />,
+    )
+    expect(toast).toHaveBeenCalledWith({ title: 'Turno fijo creado.', variant: 'success' })
+    expect(routerReplaceMock).toHaveBeenCalledWith('/abonados', { scroll: false })
+  })
+
+  it('does not toast when justCreated is absent', () => {
+    renderList([ACTIVE_ABONADO])
+    expect(toast).not.toHaveBeenCalled()
+    expect(routerReplaceMock).not.toHaveBeenCalled()
+  })
+})
+
 describe('AbonadosList — Cancel action', () => {
   it('clicking Cancelar opens the ConfirmDialog with phrase input', async () => {
     renderList([ACTIVE_ABONADO])
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar turno fijo' })[0]!)
 
     // timeout explícito: este es el PRIMER test del archivo que dispara el
     // next/dynamic de AbonadoDialogs, así que paga el cold-start del chunk. Bajo
@@ -134,7 +169,7 @@ describe('AbonadosList — Cancel action', () => {
   it('type-to-confirm gates the destructive confirm button', async () => {
     renderList([ACTIVE_ABONADO])
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar turno fijo' })[0]!)
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy()
@@ -163,7 +198,7 @@ describe('AbonadosList — Cancel action', () => {
 
     renderList([ACTIVE_ABONADO])
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar turno fijo' })[0]!)
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy(),
     )
@@ -199,7 +234,7 @@ describe('AbonadosList — Cancel action', () => {
 
     renderList([ACTIVE_ABONADO])
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar turno fijo' })[0]!)
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Cancelar turno fijo' })).toBeTruthy(),
     )

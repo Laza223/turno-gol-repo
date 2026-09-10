@@ -5,15 +5,10 @@ import { useState } from 'react'
 import { Unlink } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
+import { AbonadoStatusBadge } from '@/app/(admin)/abonados/status-visual'
 import type { PlayerFixedSlotRow } from '../queries'
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Activo',
-  paused: 'Pausado',
-  canceled: 'Cancelado',
-}
 
 export type UnlinkContactFn = (playerId: string) => Promise<ActionResult>
 
@@ -66,9 +61,7 @@ export function PlayerFixedSlotsCard({
                 {s.courtName} · a nombre de {s.contactName}
               </p>
             </div>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {STATUS_LABELS[s.status] ?? s.status}
-            </span>
+            <AbonadoStatusBadge status={s.status} className="shrink-0" />
           </li>
         ))}
       </ul>

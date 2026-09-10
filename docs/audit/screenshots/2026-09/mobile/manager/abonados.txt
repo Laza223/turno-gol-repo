@@ -1,0 +1,131 @@
+URL: http://localhost:3000/abonados
+Título: Turnos fijos
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /grilla
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - link "Clientes":
+    - /url: /jugadores
+  - button "Más"
+- main:
+  - navigation "Secciones de clientes":
+    - link "Personas":
+      - /url: /jugadores
+    - link "Turnos fijos":
+      - /url: /abonados
+  - heading "Turnos fijos" [level=1]
+  - paragraph: 3 turnos fijos
+  - link "Nuevo turno fijo":
+    - /url: /abonados/nuevo
+  - link "Todos":
+    - /url: /abonados
+  - link "Fijos activos":
+    - /url: /abonados?status=active
+  - link "Pausados":
+    - /url: /abonados?status=paused
+  - link "Cancelados":
+    - /url: /abonados?status=canceled
+  - strong: ¿El cliente avisa que no viene un día puntual?
+  - text: Cancelá únicamente el turno de ese día desde la
+  - strong: Grilla
+  - text: o
+  - strong: Reservas
+  - text: sin dar de baja el turno fijo permanente.
+  - link "Ir a Grilla →":
+    - /url: /grilla
+  - list:
+    - listitem:
+      - paragraph: Lun 20:00–21:00
+      - paragraph: Diego Fernández
+      - paragraph: "+5491155501234"
+      - text: Activo
+      - paragraph: Turno $ 40.000
+      - button "Cómo cancelar una fecha"
+      - button "Pausar"
+      - button "Cancelar turno fijo"
+    - listitem:
+      - paragraph: Mié 19:00–20:00
+      - paragraph: Tomás Rivero
+      - paragraph: "+5491155505678"
+      - text: Pausado
+      - paragraph: Turno $ 40.000
+      - button "Reactivar"
+      - button "Cancelar turno fijo"
+    - listitem:
+      - paragraph: Vie 18:00–19:00
+      - paragraph: Grupo de los viernes (dado de baja)
+      - paragraph: "+5491155509876"
+      - text: Cancelado
+      - paragraph: Turno $ 40.000
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Grilla
+Caja
+Clientes
+Más
+Personas
+Turnos fijos
+Turnos fijos
+
+3 turnos fijos
+
+Nuevo turno fijo
+Todos
+Fijos activos
+Pausados
+Cancelados
+¿El cliente avisa que no viene un día puntual? Cancelá únicamente el turno de ese día desde la Grilla o Reservas sin dar de baja el turno fijo permanente.
+Ir a Grilla →
+
+Lun 20:00–21:00
+
+Diego Fernández
+
++5491155501234
+
+Activo
+
+Turno $ 40.000
+
+Cómo cancelar una fecha
+Pausar
+Cancelar turno fijo
+
+Mié 19:00–20:00
+
+Tomás Rivero
+
++5491155505678
+
+Pausado
+
+Turno $ 40.000
+
+Reactivar
+Cancelar turno fijo
+
+Vie 18:00–19:00
+
+Grupo de los viernes (dado de baja)
+
++5491155509876
+
+Cancelado
+
+Turno $ 40.000

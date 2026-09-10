@@ -18,7 +18,13 @@ import { BookingDetailCard } from './BookingDetailCard'
 import BookingActions from './BookingActions'
 import BookingCharges from './BookingCharges'
 
-const CHARGEABLE_STATUSES = new Set(['confirmed', 'completed', 'no_show'])
+// H103: 'no_show' AFUERA a propósito — veto de producto "No-show NO es
+// deuda" (CLAUDE.md). La Grilla ya no ofrece cobro sobre un ausente
+// (slot-visual.ts); este set duplicado dejaba entrar por acá a la única
+// puerta que sí lo permitía. El guard homólogo de `addBookingChargeAction`
+// (src/app/(admin)/reservas/actions.ts) queda pendiente de alinear — ese
+// archivo no es de este paquete.
+const CHARGEABLE_STATUSES = new Set(['confirmed', 'completed'])
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -55,60 +61,79 @@ export default async function ReservaDetailPage(props: Props) {
       <h1 className="text-2xl font-semibold text-foreground">Detalle de la reserva</h1>
 
       {/*
-        Cero queries nuevas: `charges` ya vino del withTenantContext de arriba.
-        Sin esto el detalle se contradecía a sí mismo — badge "Jugada" verde
-        arriba y "Saldo pendiente: $X" en Cobros, veinte centímetros más abajo.
+        H080: en mobile, "Cobros de turno" (con el saldo pendiente y el CTA de
+        cobro) va ANTES que la ficha estática — Marcelo entra desde el celu a
+        cobrar, no a leer el teléfono. `order-*`/`md:order-*` reordena sin
+        tocar el layout de desktop (mismo patrón que ExplorarSplitView.tsx).
       */}
-      <BookingDetailCard
-        booking={{
-          ...booking,
-          ...summarizeBookingCharges({
-            priceSnapshot: booking.priceSnapshot,
-            depositAmount: booking.depositAmount,
-            depositStatus: booking.depositStatus,
-            chargesTotal: charges?.chargesTotal ?? 0,
-          }),
-        }}
-      />
+      <div className="flex flex-col gap-6">
+        {/*
+          Cero queries nuevas: `charges` ya vino del withTenantContext de
+          arriba. Sin esto el detalle se contradecía a sí mismo — badge
+          "Jugada" verde arriba y "Saldo pendiente: $X" en Cobros, veinte
+          centímetros más abajo.
+        */}
+        <div className="order-2 md:order-1">
+          <BookingDetailCard
+            booking={{
+              ...booking,
+              ...summarizeBookingCharges({
+                priceSnapshot: booking.priceSnapshot,
+                depositAmount: booking.depositAmount,
+                depositStatus: booking.depositStatus,
+                chargesTotal: charges?.chargesTotal ?? 0,
+              }),
+            }}
+            // H063: Precio/Seña ya se muestran en "Cobros de turno" (más
+            // abajo/arriba según viewport) cuando ese bloque existe — no
+            // repetir el mismo monto con dos redacciones en dos tarjetas.
+            hideMoneyRows={Boolean(charges)}
+          />
+        </div>
 
-      {charges && (
-        <BookingCharges
-          bookingId={booking.id}
-          priceSnapshot={booking.priceSnapshot}
-          depositAmount={booking.depositAmount}
-          depositStatus={booking.depositStatus}
-          refundState={booking.refundState}
-          charges={charges.charges}
-          chargesTotal={charges.chargesTotal}
-          addBookingChargeAction={addBookingChargeAction}
-        />
-      )}
+        {charges && (
+          <div className="order-1 md:order-2">
+            <BookingCharges
+              bookingId={booking.id}
+              priceSnapshot={booking.priceSnapshot}
+              depositAmount={booking.depositAmount}
+              depositStatus={booking.depositStatus}
+              refundState={booking.refundState}
+              charges={charges.charges}
+              chargesTotal={charges.chargesTotal}
+              addBookingChargeAction={addBookingChargeAction}
+            />
+          </div>
+        )}
 
-      <BookingActions
-        bookingId={booking.id}
-        status={booking.status}
-        type={booking.type}
-        depositStatus={booking.depositStatus}
-        depositAmount={booking.depositAmount}
-        paymentMethod={booking.paymentMethod ?? null}
-        bookingDate={booking.date}
-        timeStart={booking.timeStart}
-        startsAt={booking.startsAt}
-        endsAt={booking.endsAt}
-        updatedAt={booking.updatedAt}
-        cancellationPolicyHours={booking.cancellationPolicyHours}
-        guestName={booking.guestName}
-        guestPhone={booking.guestPhone}
-        playerName={booking.playerName}
-        playerPhone={booking.playerPhone}
-        priceSnapshot={booking.priceSnapshot}
-        chargesTotal={charges?.chargesTotal ?? 0}
-        completeAndChargeBookingAction={completeAndChargeBookingAction}
-        markNoShowAction={markNoShowAction}
-        revertNoShowAction={revertNoShowAction}
-        cancelBookingAction={cancelBookingAction}
-        releaseBlockAction={releaseBlockAction}
-      />
+        <div className="order-3">
+          <BookingActions
+            bookingId={booking.id}
+            status={booking.status}
+            type={booking.type}
+            depositStatus={booking.depositStatus}
+            depositAmount={booking.depositAmount}
+            paymentMethod={booking.paymentMethod ?? null}
+            bookingDate={booking.date}
+            timeStart={booking.timeStart}
+            startsAt={booking.startsAt}
+            endsAt={booking.endsAt}
+            updatedAt={booking.updatedAt}
+            cancellationPolicyHours={booking.cancellationPolicyHours}
+            guestName={booking.guestName}
+            guestPhone={booking.guestPhone}
+            playerName={booking.playerName}
+            playerPhone={booking.playerPhone}
+            priceSnapshot={booking.priceSnapshot}
+            chargesTotal={charges?.chargesTotal ?? 0}
+            completeAndChargeBookingAction={completeAndChargeBookingAction}
+            markNoShowAction={markNoShowAction}
+            revertNoShowAction={revertNoShowAction}
+            cancelBookingAction={cancelBookingAction}
+            releaseBlockAction={releaseBlockAction}
+          />
+        </div>
+      </div>
     </div>
   )
 }

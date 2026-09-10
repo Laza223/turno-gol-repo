@@ -1,0 +1,130 @@
+URL: http://localhost:3000/caja/productos
+Título: Productos y stock
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /grilla
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - link "Clientes":
+    - /url: /jugadores
+  - button "Más"
+- main:
+  - heading "Productos y stock" [level=1]
+  - paragraph: Catálogo, stock y reporte de la cantina.
+  - navigation "Secciones de caja y cantina":
+    - link "Caja del día":
+      - /url: /caja
+    - link "Deudas":
+      - /url: /caja/deudas
+    - link "Devoluciones":
+      - /url: /caja/devoluciones
+    - link "Cantina":
+      - /url: /caja/cantina
+    - link "Productos y stock":
+      - /url: /caja/productos
+  - heading "Catálogo" [level=2]
+  - text: Agregar producto — solo el dueño puede hacerlo
+  - list:
+    - listitem:
+      - paragraph: Cerveza Quilmes 1L
+      - paragraph: $ 3.500 · Stock 46
+      - button "Reponer"
+      - button "Opciones para Cerveza Quilmes 1L"
+    - listitem:
+      - paragraph: Coca-Cola 500ml
+      - paragraph: $ 2.500 · Stock 60
+      - button "Reponer"
+      - button "Opciones para Coca-Cola 500ml"
+    - listitem:
+      - paragraph: Agua sin gas 500ml
+      - paragraph: $ 2.000 · Stock 40
+      - button "Reponer"
+      - button "Opciones para Agua sin gas 500ml"
+    - listitem:
+      - paragraph: Gatorade
+      - paragraph: $ 3.000 · Stock 24
+      - button "Reponer"
+      - button "Opciones para Gatorade"
+    - listitem:
+      - paragraph: Alfajor Guaymallén
+      - paragraph: $ 800 · Stock 50
+      - button "Reponer"
+      - button "Opciones para Alfajor Guaymallén"
+    - listitem:
+      - paragraph: Papas fritas
+      - paragraph: $ 1.800 · Stock 30
+      - button "Reponer"
+      - button "Opciones para Papas fritas"
+  - heading "Informes de ventas y stock Ranking de productos, cobrado por método, por día y movimientos de stock." [level=2]:
+    - button "Informes de ventas y stock Ranking de productos, cobrado por método, por día y movimientos de stock."
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Grilla
+Caja
+Clientes
+Más
+Productos y stock
+
+Catálogo, stock y reporte de la cantina.
+
+Caja del día
+Deudas
+Devoluciones
+Cantina
+Productos y stock
+Catálogo
+Agregar producto
+— solo el dueño puede hacerlo
+
+Cerveza Quilmes 1L
+
+$ 3.500 · Stock 46
+
+Reponer
+
+Coca-Cola 500ml
+
+$ 2.500 · Stock 60
+
+Reponer
+
+Agua sin gas 500ml
+
+$ 2.000 · Stock 40
+
+Reponer
+
+Gatorade
+
+$ 3.000 · Stock 24
+
+Reponer
+
+Alfajor Guaymallén
+
+$ 800 · Stock 50
+
+Reponer
+
+Papas fritas
+
+$ 1.800 · Stock 30
+
+Reponer
+Informes de ventas y stock
+Ranking de productos, cobrado por método, por día y movimientos de stock.

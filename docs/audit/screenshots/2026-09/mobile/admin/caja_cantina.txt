@@ -1,0 +1,119 @@
+URL: http://localhost:3000/caja/cantina
+Título: Cantina
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Hoy":
+    - /url: /dashboard
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - button "Más"
+- main:
+  - heading "Cantina" [level=1]
+  - paragraph: Venta rápida con descuento de stock y fiados.
+  - navigation "Secciones de caja y cantina":
+    - link "Caja del día":
+      - /url: /caja
+    - link "Deudas":
+      - /url: /caja/deudas
+    - link "Devoluciones":
+      - /url: /caja/devoluciones
+    - link "Cantina":
+      - /url: /caja/cantina
+    - link "Productos y stock":
+      - /url: /caja/productos
+  - text: Buscar o seleccionar producto / servicio
+  - combobox "Buscar o seleccionar producto / servicio"
+  - status
+  - text: Catálogo completo
+  - button "Cerveza Quilmes 1L $ 3.500 Stock 46"
+  - button "Coca-Cola 500ml $ 2.500 Stock 60"
+  - button "Agua sin gas 500ml $ 2.000 Stock 40"
+  - button "Gatorade $ 3.000 Stock 24"
+  - button "Alfajor Guaymallén $ 800 Stock 50"
+  - button "Papas fritas $ 1.800 Stock 30"
+  - heading "Ticket" [level=2]
+  - paragraph: Tocá un producto o servicio para empezar
+  - group "Método de pago":
+    - text: Método de pago
+    - button "Efectivo" [pressed]
+    - button "Transferencia"
+    - button "MercadoPago"
+  - button "Cobrar $ 0" [disabled]
+  - heading "Fiados pendientes" [level=2]
+  - list:
+    - listitem:
+      - paragraph: Grupo del sábado (fiado — seed auditoría)
+      - paragraph: $ 7.000 · hace 23 h
+      - paragraph: Sembrado por scripts/audit/seed-audit-extras.ts
+      - button "Cobrar"
+      - button "Anular"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Hoy
+Grilla
+Caja
+Más
+Cantina
+
+Venta rápida con descuento de stock y fiados.
+
+Caja del día
+Deudas
+Devoluciones
+Cantina
+Productos y stock
+Buscar o seleccionar producto / servicio
+CATÁLOGO COMPLETO
+Cerveza Quilmes 1L
+$ 3.500
+Stock 46
+Coca-Cola 500ml
+$ 2.500
+Stock 60
+Agua sin gas 500ml
+$ 2.000
+Stock 40
+Gatorade
+$ 3.000
+Stock 24
+Alfajor Guaymallén
+$ 800
+Stock 50
+Papas fritas
+$ 1.800
+Stock 30
+Ticket
+
+Tocá un producto o servicio para empezar
+
+Método de pago
+Efectivo
+Transferencia
+MercadoPago
+Cobrar $ 0
+Fiados pendientes
+
+Grupo del sábado (fiado — seed auditoría)
+
+$ 7.000 · hace 23 h
+
+Sembrado por scripts/audit/seed-audit-extras.ts
+
+Cobrar
+Anular

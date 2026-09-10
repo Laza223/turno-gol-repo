@@ -85,7 +85,9 @@ const REDIRECT_STUBS = [
   join('(admin)', 'metricas', 'page.tsx'),
   join('(admin)', 'reportes', 'page.tsx'),
   join('(admin)', 'deudas', 'page.tsx'),
-  join('(admin)', 'canchas', 'page.tsx'),
+  // Se dio vuelta el 2026-09-10: la pantalla real es /canchas y el stub quedó
+  // en settings, para los links viejos.
+  join('(admin)', 'settings', 'canchas', 'page.tsx'),
   join('(admin)', 'staff', 'page.tsx'),
   join('(admin)', 'settings', 'page.tsx'),
   join('(admin)', 'jugadores', 'deudas', 'page.tsx'),

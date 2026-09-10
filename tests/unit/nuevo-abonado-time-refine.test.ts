@@ -28,6 +28,11 @@ vi.mock('@/modules/abonados/abonado.service', () => ({
   checkAbonadoSlotConflict: vi.fn(async () => false),
   getAbonadoSlotConflicts: vi.fn(async () => []),
 }))
+// H055: previewAbonadoSlotsAction ahora llama paidPeriodCutoff — `null` = sin
+// tope (tenant no `canceled`), que es el caso feliz que ejercitan estos tests.
+vi.mock('@/modules/bookings/paid-period.guard', () => ({
+  paidPeriodCutoff: vi.fn(async () => null),
+}))
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => {
     throw new Error('redirect llamado')

@@ -6,6 +6,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import AbonadoForm from './AbonadoForm'
 import { submitNewAbonado, previewAbonadoSlotsAction } from './actions'
+import { searchAbonadoPlayersAction } from '../actions'
 
 export default async function NuevoAbonadoPage() {
   const auth = await requireOperatorStaff()
@@ -33,6 +34,7 @@ export default async function NuevoAbonadoPage() {
         courts={courtOptions}
         submitAction={submitNewAbonado}
         previewAction={previewAbonadoSlotsAction}
+        searchPlayersAction={searchAbonadoPlayersAction}
       />
     </div>
   )

@@ -49,9 +49,9 @@ export const Enviando: Story = {
   args: { inviteAction: fn(enviando.action) },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.type(await body.findByLabelText('Nombre'), 'Rodrigo')
-    await userEvent.type(body.getByLabelText('Apellido'), 'Fernández')
-    await userEvent.type(body.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
+    await userEvent.type(await body.findByLabelText(/^Nombre/), 'Rodrigo')
+    await userEvent.type(body.getByLabelText(/^Apellido/), 'Fernández')
+    await userEvent.type(body.getByLabelText(/^Email/), 'rodrigo@complejofenix.com.ar')
     await userEvent.click(body.getByRole('button', { name: 'Enviar invitación' }))
     const pending = await body.findByRole('button', { name: 'Enviando…' })
     await expect(pending).toBeDisabled()
@@ -68,9 +68,9 @@ export const ErrorDelServidor: Story = {
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.type(await body.findByLabelText('Nombre'), 'Rodrigo')
-    await userEvent.type(body.getByLabelText('Apellido'), 'Fernández')
-    await userEvent.type(body.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
+    await userEvent.type(await body.findByLabelText(/^Nombre/), 'Rodrigo')
+    await userEvent.type(body.getByLabelText(/^Apellido/), 'Fernández')
+    await userEvent.type(body.getByLabelText(/^Email/), 'rodrigo@complejofenix.com.ar')
     await userEvent.click(body.getByRole('button', { name: 'Enviar invitación' }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
       'Este email ya es miembro activo del complejo.',
@@ -83,9 +83,9 @@ export const Exito: Story = {
   args: { inviteAction: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement, args }) => {
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.type(await body.findByLabelText('Nombre'), 'Rodrigo')
-    await userEvent.type(body.getByLabelText('Apellido'), 'Fernández')
-    await userEvent.type(body.getByLabelText('Email'), 'rodrigo@complejofenix.com.ar')
+    await userEvent.type(await body.findByLabelText(/^Nombre/), 'Rodrigo')
+    await userEvent.type(body.getByLabelText(/^Apellido/), 'Fernández')
+    await userEvent.type(body.getByLabelText(/^Email/), 'rodrigo@complejofenix.com.ar')
     await userEvent.click(body.getByRole('button', { name: 'Enviar invitación' }))
     await expect(await body.findByText('Invitación enviada')).toBeInTheDocument()
     await expect(args.onClose).toHaveBeenCalled()

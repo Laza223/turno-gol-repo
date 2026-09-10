@@ -85,6 +85,35 @@ export async function listInscriptionStatus(
 }
 
 /**
+ * Total pendiente de cobro por torneo, para la card de `/torneos` — regla del
+ * dueño: la lista tiene que mostrar el estado de la PLATA, no el del sistema.
+ * Mismo `pendingFor` que `listInscriptionStatus`, agregado por torneo (todos
+ * los equipos de todos los torneos del tenant) en vez de por equipo de uno solo.
+ */
+export async function listTournamentPendingTotals(
+  tenantId: string,
+  tx: DbTx,
+): Promise<Record<string, number>> {
+  const rows = (await tx.execute(sql`
+    SELECT t.tournament_id                  AS "tournamentId",
+           t.inscription_fee                AS fee,
+           COALESCE(SUM(cf.amount), 0)::int AS paid
+    FROM tournament_teams t
+    LEFT JOIN cash_flows cf
+      ON cf.tournament_team_id = t.id
+     AND cf.tenant_id = t.tenant_id
+    WHERE t.tenant_id = ${tenantId}
+    GROUP BY t.id, t.tournament_id, t.inscription_fee
+  `)) as unknown as Array<{ tournamentId: string; fee: number; paid: number }>
+
+  const totals: Record<string, number> = {}
+  for (const r of rows) {
+    totals[r.tournamentId] = (totals[r.tournamentId] ?? 0) + pendingFor(r.fee, r.paid)
+  }
+  return totals
+}
+
+/**
  * Equipos con cuota de inscripción impaga, de TODOS los torneos del tenant —
  * a diferencia de `listInscriptionStatus` (por torneo), esta es la fuente del
  * origen "torneos" de street-money.service.ts (Fase 1, "Plata en la calle").

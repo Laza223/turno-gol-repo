@@ -1,0 +1,243 @@
+URL: http://localhost:3000/settings/perfil
+Título: Perfil
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Hoy":
+      - /url: /dashboard
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Canchas":
+      - /url: /canchas
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - link "Configuración":
+    - /url: /settings/reservas
+- banner:
+  - text: demo-admin@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - heading "Perfil" [level=1]
+  - paragraph: Datos de tu cuenta y del complejo que ven los jugadores.
+  - navigation "Secciones de configuración":
+    - link "Perfil":
+      - /url: /settings/perfil
+    - link "Reservas":
+      - /url: /settings/reservas
+    - link "Horarios":
+      - /url: /settings/horarios
+    - link "Equipo":
+      - /url: /settings/equipo
+    - link "Facturación":
+      - /url: /settings/facturacion
+  - heading "Correo de la cuenta" [level=2]
+  - paragraph: Dirección de correo electrónico asociada a tu usuario y facturación.
+  - text: Email actual
+  - paragraph: demo-admin@turnogol.test
+  - text: Nuevo email
+  - textbox "Nuevo email":
+    - /placeholder: nuevo@email.com
+  - button "Actualizar email" [disabled]
+  - heading "Perfil público" [level=2]
+  - link "Ver mi perfil público":
+    - /url: /la-redonda
+  - heading "Logo del complejo" [level=3]
+  - paragraph: Se muestra en las tarjetas del explorador y en la cabecera de tu perfil público.
+  - text: "Tamaño recomendado: 512 × 512 px (Mínimo 200 × 200 px)"
+  - paragraph: Proporción cuadrada (1:1) · PNG o WebP con fondo transparente o sólido.
+  - button "Subí el logo de tu complejo"
+  - heading "Foto de Portada (Banner)" [level=3]
+  - paragraph: Banner panorámico horizontal principal en la parte superior de tu perfil público.
+  - text: "Tamaño recomendado: 1600 × 900 px (Mín. 1200 px de ancho)"
+  - paragraph: Proporción panorámica horizontal (16:9 o 21:9) · Formatos JPG, PNG o WebP.
+  - strong: "Consejo:"
+  - text: Usá fotos panorámicas de tus canchas o instalaciones iluminadas. Evitá capturas de pantalla con textos pequeños para que luzca perfecto en celulares y computadoras.
+  - button "Subí una portada"
+  - heading "Contacto del complejo" [level=2]
+  - paragraph: Teléfono, WhatsApp y email que ven los jugadores en tu página pública.
+  - text: Teléfono *
+  - 'button "Seleccionar código de país. Actual: Argentina (+54)"':
+    - img "Argentina": 🇦🇷
+    - text: "+54"
+  - textbox "Teléfono *":
+    - /placeholder: 11 1234-5678
+    - text: "1155550123"
+  - text: WhatsApp (opcional)
+  - 'button "Seleccionar código de país. Actual: Argentina (+54)"':
+    - img "Argentina": 🇦🇷
+    - text: "+54"
+  - textbox "WhatsApp (opcional)":
+    - /placeholder: 11 1234-5678
+  - paragraph: Si lo dejás vacío, los jugadores te escriben al teléfono de arriba.
+  - text: Email *
+  - textbox "Email *": demo-tenant@turnogol.test
+  - button "Guardar contacto"
+  - heading "Ubicación" [level=2]
+  - paragraph: Dónde queda tu complejo. El punto en el mapa es lo que te hace aparecer en el buscador con la distancia hasta el jugador.
+  - text: Dirección *
+  - textbox "Dirección *":
+    - /placeholder: "Ej: Av. Corrientes 1234"
+    - text: Av. Directorio 2450
+  - text: Localidad *
+  - textbox "Localidad *":
+    - /placeholder: "Ej: Rosario"
+    - text: Buenos Aires
+  - text: Provincia *
+  - combobox "Provincia *": Buenos Aires
+  - status
+  - paragraph: Punto en el mapa
+  - text: Sin esto tu complejo no aparece en el mapa del buscador ni podemos mostrarle al jugador a cuántos kilómetros está.
+  - button "Zoom in"
+  - button "Zoom out"
+  - link "Leaflet":
+    - /url: https://leafletjs.com
+  - text: ©
+  - link "OpenStreetMap":
+    - /url: https://www.openstreetmap.org/copyright
+  - paragraph: Sin ubicación marcada. Tocá el mapa donde está tu complejo.
+  - button "Usar mi ubicación actual"
+  - button "Poner el punto en el centro"
+  - button "Guardar ubicación"
+  - heading "Avisos" [level=2]
+  - group "Resumen diario":
+    - text: Resumen diario
+    - paragraph: Push al admin con PWA instalada, siempre activo. El email es opcional (opt-in).
+    - radiogroup:
+      - radio "Recibir por email"
+      - radio "Solo push" [checked]
+  - button "Guardar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Hoy
+Grilla
+Caja
+Clientes
+Canchas
+Torneos
+Métricas
+Configuración
+demo-admin@turnogol.test
+Salir
+Perfil
+
+Datos de tu cuenta y del complejo que ven los jugadores.
+
+Perfil
+Reservas
+Horarios
+Equipo
+Facturación
+Correo de la cuenta
+
+Dirección de correo electrónico asociada a tu usuario y facturación.
+
+EMAIL ACTUAL
+
+demo-admin@turnogol.test
+
+NUEVO EMAIL
+Actualizar email
+Perfil público
+Ver mi perfil público
+Logo del complejo
+
+Se muestra en las tarjetas del explorador y en la cabecera de tu perfil público.
+
+1:1
+Tamaño recomendado:
+512 × 512 px
+(Mínimo 200 × 200 px)
+
+Proporción cuadrada (1:1) · PNG o WebP con fondo transparente o sólido.
+
+Subí el logo de tu complejo
+Foto de Portada (Banner)
+
+Banner panorámico horizontal principal en la parte superior de tu perfil público.
+
+16:9
+Tamaño recomendado:
+1600 × 900 px
+(Mín. 1200 px de ancho)
+
+Proporción panorámica horizontal (16:9 o 21:9) · Formatos JPG, PNG o WebP.
+
+Consejo: Usá fotos panorámicas de tus canchas o instalaciones iluminadas. Evitá capturas de pantalla con textos pequeños para que luzca perfecto en celulares y computadoras.
+Subí una portada
+Contacto del complejo
+
+Teléfono, WhatsApp y email que ven los jugadores en tu página pública.
+
+Teléfono *
+🇦🇷
++54
+WhatsApp (opcional)
+🇦🇷
++54
+
+Si lo dejás vacío, los jugadores te escriben al teléfono de arriba.
+
+Email *
+Guardar contacto
+Ubicación
+
+Dónde queda tu complejo. El punto en el mapa es lo que te hace aparecer en el buscador con la distancia hasta el jugador.
+
+Dirección *
+Localidad *
+Provincia *
+
+Punto en el mapa
+
+Sin esto tu complejo no aparece en el mapa del buscador ni podemos mostrarle al jugador a cuántos kilómetros está.
++
+−
+ Leaflet | © OpenStreetMap
+
+Sin ubicación marcada. Tocá el mapa donde está tu complejo.
+
+Usar mi ubicación actual
+Poner el punto en el centro
+Guardar ubicación
+Avisos
+RESUMEN DIARIO
+
+Push al admin con PWA instalada, siempre activo. El email es opcional (opt-in).
+
+Recibir por email
+Solo push
+Guardar

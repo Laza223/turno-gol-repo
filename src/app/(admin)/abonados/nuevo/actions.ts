@@ -8,6 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
 import { todayART } from '@/shared/time/art-date'
+import { paidPeriodCutoff } from '@/modules/bookings/paid-period.guard'
 import {
   checkAbonadoSlotConflict,
   getAbonadoSlotConflicts,
@@ -38,6 +39,10 @@ const endAfterStart = (d: { timeStart: string; timeEnd: string }): boolean =>
 const schema = z
   .object({
     courtId: z.guid('Elegí una cancha'),
+    // H124: opcional — vínculo con un jugador ya registrado en este complejo,
+    // elegido desde el autocomplete de AbonadoForm. playerBelongsToTenant lo
+    // valida server-side dentro de createAbonado.
+    playerId: z.guid().optional(),
     contactName: z.string().trim().min(1, 'Nombre requerido'),
     contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
     dayOfWeek: z.coerce.number().int().min(0).max(6),
@@ -125,15 +130,22 @@ export async function previewAbonadoSlotsAction(
       tx,
     )
     if (abonadoConflict) return { abonadoConflict: true as const }
+
+    // H055: mismo corte que createAbonado (`paidPeriodCutoff`) — sin esto la
+    // vista previa prometía N turnos y la creación real generaba menos sin
+    // avisar, porque createAbonado recorta por esto y acá no se aplicaba.
+    const cutoff = await paidPeriodCutoff(tenant.id, tx)
+    const bookableDates = cutoff === null ? dates : dates.filter((d) => d <= cutoff)
+
     const conflicts = await getAbonadoSlotConflicts(
       tenant.id,
       courtId,
       timeStart,
       timeEnd,
-      dates,
+      bookableDates,
       tx,
     )
-    return { abonadoConflict: false as const, conflicts }
+    return { abonadoConflict: false as const, dates: bookableDates, conflicts }
   })
 
   if (result.abonadoConflict) {
@@ -141,7 +153,7 @@ export async function previewAbonadoSlotsAction(
     return { success: false, error: 'Ya existe un turno fijo activo en ese horario.' }
   }
 
-  return { success: true, dates, conflicts: result.conflicts }
+  return { success: true, dates: result.dates, conflicts: result.conflicts }
 }
 
 export type NewAbonadoState = { status: 'idle' } | { status: 'error'; message: string }
@@ -157,6 +169,7 @@ export async function submitNewAbonado(
   const d = parsed.data
   const input: CreateAbonadoInput = {
     courtId: d.courtId,
+    playerId: d.playerId,
     contactName: d.contactName,
     contactPhone: d.contactPhone,
     dayOfWeek: d.dayOfWeek,
@@ -171,5 +184,8 @@ export async function submitNewAbonado(
 
   const result = await createAbonadoAction(input)
   if (!result.success) return { status: 'error', message: result.error }
-  redirect('/abonados')
+  // H054: redirect() corta la ejecución acá (throw NEXT_REDIRECT) — no hay
+  // forma de devolver estado al cliente para mostrar el toast ahí. El query
+  // param lo levanta AbonadosList al montar y limpia la URL después.
+  redirect('/abonados?created=1')
 }

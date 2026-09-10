@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { AlertTriangle, CalendarDays, Trophy, Users } from 'lucide-react'
+import { AlertTriangle, Clock, Trophy, Users } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import { MoneyInput } from '@/components/ui/money-input'
@@ -153,7 +153,7 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
             value={matchDuration}
             onChange={setMatchDuration}
             listboxLabel="Duración de cada partido"
-            leadingIcon={<CalendarDays className="h-4 w-4" aria-hidden="true" />}
+            leadingIcon={<Clock className="h-4 w-4" aria-hidden="true" />}
           />
           <p className="text-xs text-muted-foreground">
             El torneo reserva horas enteras en la grilla. Con partidos de 30 minutos o menos entran

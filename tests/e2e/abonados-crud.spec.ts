@@ -346,10 +346,10 @@ test.describe('Abonados CRUD', () => {
       const cancelFrom = dates[2]!
 
       await page.goto('/abonados')
-      // exact:true: desde 777ee57 la fila también tiene "Cancelar fecha..."
-      // (cancelación puntual de un día) — sin exact, el match por substring
-      // agarra ese botón primero en vez de "Cancelar" (turno fijo completo).
-      const cancelBtn = page.getByRole('button', { name: 'Cancelar', exact: true }).first()
+      // La fila también tiene "Cómo cancelar una fecha" (cancelación puntual de
+      // un día, texto completamente distinto) — el nombre completo de este botón
+      // ya no colisiona por substring.
+      const cancelBtn = page.getByRole('button', { name: 'Cancelar turno fijo' }).first()
       await cancelBtn.click()
 
       // Dialog opens; pick date + type CANCELAR.

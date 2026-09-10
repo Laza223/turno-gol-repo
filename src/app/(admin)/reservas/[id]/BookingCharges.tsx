@@ -280,7 +280,10 @@ export default function BookingCharges({
           onClick={openForm}
           disabled={isPaidInFull}
           title={isPaidInFull ? 'Este turno ya está pagado por completo.' : undefined}
-          className="mt-4 h-11 md:h-9 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-card px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-card"
+          // H078: este es el CTA que cobra la plata que se debe — es el
+          // primario (sólido) de la vista, no "Marcar completada" (estado del
+          // sistema). BONUS-62 / regla del dueño §8.4.
+          className="mt-4 h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           + Agregar cobro
         </button>
@@ -310,13 +313,13 @@ export default function BookingCharges({
                 setError(null)
               }}
               className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1',
+                'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
                 chargeMode === 'split'
                   ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               )}
             >
-              <span>⚡ Pago dividido (2 medios)</span>
+              Pago dividido (2 medios)
             </button>
           </div>
 
@@ -441,7 +444,7 @@ export default function BookingCharges({
               </div>
               <p className="text-[11px] text-muted-foreground/90 italic">
                 💡 Si pagaron con 2 medios (ej. parte Efectivo y parte Transferencia), podés usar la
-                pestaña arriba <strong>&quot;⚡ Pago dividido&quot;</strong>.
+                pestaña arriba <strong>&quot;Pago dividido&quot;</strong>.
               </p>
             </div>
           ) : (

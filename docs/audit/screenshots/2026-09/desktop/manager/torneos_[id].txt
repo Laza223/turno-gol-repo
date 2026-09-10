@@ -1,0 +1,198 @@
+URL: http://localhost:3000/torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a
+Título: Torneo Relámpago — Auditoría
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /grilla
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - button "Configuración" [disabled]
+- banner:
+  - text: demo-manager@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - link "Volver a Torneos":
+    - /url: /torneos
+  - heading "Torneo Relámpago — Auditoría" [level=1]
+  - paragraph: Liga · Desde el 10/09/2026
+  - text: Borrador
+  - navigation "Secciones del torneo":
+    - link "Equipos y horarios":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a
+    - link "Fixture":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/fixture
+    - link "Posiciones":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/posiciones
+    - link "Inscripciones":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/inscripciones
+  - heading "Equipos" [level=2]
+  - paragraph: 2 equipos anotados
+  - text: Nombre del equipo
+  - textbox "Nombre del equipo":
+    - /placeholder: "Ej: Los Pibes"
+  - text: Capitán
+  - combobox "Capitán"
+  - text: Teléfono
+  - textbox "Teléfono":
+    - /placeholder: Opcional
+  - button "Anotar" [disabled]
+  - list:
+    - listitem:
+      - button "Atlético Demo 2 en el plantel":
+        - paragraph: Atlético Demo
+        - paragraph: 2 en el plantel
+      - text: Inscripto
+      - button "Borrar Atlético Demo"
+    - listitem:
+      - button "Los Fierros FC 2 en el plantel":
+        - paragraph: Los Fierros FC
+        - paragraph: 2 en el plantel
+      - text: Inscripto
+      - button "Borrar Los Fierros FC"
+  - heading "Horarios tomados" [level=2]
+  - paragraph: 1 hora · 1 cancha · 1 fecha
+  - button "Liberar de hoy en adelante"
+  - list:
+    - listitem:
+      - text: 10/09/2026 · 10:00–11:00 Cancha 1 — F5
+      - button "Liberar"
+  - heading "Tomar horarios" [level=2]
+  - paragraph: Las horas que elijas quedan reservadas en la grilla a nombre del torneo. Si alguna ya está ocupada, se saltea y te la mostramos.
+  - group "Canchas":
+    - text: Canchas
+    - button "Cancha 1 — F5"
+    - button "Cancha 2 — F5"
+    - button "Cancha 3 — F5 techada"
+    - button "Cancha 4 — F7"
+  - text: Primera fecha
+  - button "Primera fecha": 10/09/2026
+  - button "Limpiar fecha"
+  - text: Repetir por
+  - spinbutton "Repetir por": "1"
+  - text: semana Desde las
+  - combobox "Desde las": 14:00
+  - status
+  - text: Hasta las
+  - combobox "Hasta las": 18:00
+  - status
+  - paragraph: Se van a tomar horarios el 10/09/2026.
+  - button "Tomar estos horarios" [disabled]
+  - heading "Portal público" [level=2]
+  - paragraph: El torneo no se ve desde afuera.
+  - button "Abrir inscripción" [disabled]
+  - button "Publicar" [disabled]
+  - paragraph: Publicar un torneo y abrir la inscripción lo hace el dueño del complejo.
+  - text: Borrar este torneo — solo el dueño puede hacerlo
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-manager@turnogol.test
+Salir
+Volver a Torneos
+Torneo Relámpago — Auditoría
+
+Liga · Desde el 10/09/2026
+
+Borrador
+Equipos y horarios
+Fixture
+Posiciones
+Inscripciones
+Equipos
+
+2 equipos anotados
+
+Nombre del equipo
+Capitán
+Teléfono
+Anotar
+
+Atlético Demo
+
+2 en el plantel
+
+Inscripto
+
+Los Fierros FC
+
+2 en el plantel
+
+Inscripto
+Horarios tomados
+
+1 hora · 1 cancha · 1 fecha
+
+Liberar de hoy en adelante
+10/09/2026 · 10:00–11:00
+Cancha 1 — F5
+Liberar
+Tomar horarios
+
+Las horas que elijas quedan reservadas en la grilla a nombre del torneo. Si alguna ya está ocupada, se saltea y te la mostramos.
+
+Canchas
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+Primera fecha
+10/09/2026
+Repetir por
+semana
+Desde las
+Hasta las
+
+Se van a tomar horarios el 10/09/2026.
+
+Tomar estos horarios
+Portal público
+
+El torneo no se ve desde afuera.
+
+Abrir inscripción
+Publicar
+
+Publicar un torneo y abrir la inscripción lo hace el dueño del complejo.
+
+Borrar este torneo
+— solo el dueño puede hacerlo

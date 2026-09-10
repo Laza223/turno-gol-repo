@@ -68,7 +68,7 @@ export function HorariosForm({
                 {state.pricingFilled.courts} cancha
                 {state.pricingFilled.courts === 1 ? '' : 's'} con el de la hora de al lado.
                 Revisalos en{' '}
-                <a href="/settings/canchas" className="font-medium underline underline-offset-2">
+                <a href="/canchas" className="font-medium underline underline-offset-2">
                   Canchas
                 </a>
                 .
@@ -87,7 +87,7 @@ export function HorariosForm({
             {state.pricingPending.courts} cancha
             {state.pricingPending.courts === 1 ? '' : 's'}. Hasta que les pongas precio, esos turnos
             no se pueden reservar:{' '}
-            <a href="/settings/canchas" className="font-semibold underline underline-offset-2">
+            <a href="/canchas" className="font-semibold underline underline-offset-2">
               cargalos en Canchas
             </a>
             .

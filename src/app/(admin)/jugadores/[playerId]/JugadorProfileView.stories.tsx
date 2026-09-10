@@ -33,6 +33,12 @@ const stats = (overrides: Partial<PlayerStats> = {}): PlayerStats => ({
   ...overrides,
 })
 
+/**
+ * H128 (auditoría de coherencia 2026-09): por defecto, un turno "Jugada"
+ * totalmente cobrado — depositAmount/depositStatus/refundState/pending/
+ * totalPaid salen del mismo cálculo que `getPlayerBookingHistory`
+ * (`summarizeBookingCharges`), no se inventan acá.
+ */
 const bookingRow = (overrides: Partial<PlayerBookingRow> = {}): PlayerBookingRow => ({
   id: uid(1901),
   date: '2026-03-10',
@@ -42,6 +48,11 @@ const bookingRow = (overrides: Partial<PlayerBookingRow> = {}): PlayerBookingRow
   type: 'spontaneous',
   priceSnapshot: 1_500_000, // $15.000
   courtName: 'Cancha 1',
+  depositAmount: 450_000,
+  depositStatus: 'paid',
+  refundState: 'none',
+  pending: 0,
+  totalPaid: 1_500_000,
   ...overrides,
 })
 
@@ -53,6 +64,9 @@ const HISTORY: PlayerBookingRow[] = [
     status: 'no_show',
     courtName: 'Cancha 2',
     priceSnapshot: 1_600_000,
+    depositAmount: 480_000,
+    totalPaid: 480_000,
+    pending: 1_120_000,
   }),
   bookingRow({
     id: uid(1903),
@@ -60,6 +74,11 @@ const HISTORY: PlayerBookingRow[] = [
     status: 'canceled_refunded',
     type: 'fixed',
     priceSnapshot: 450_000,
+    depositAmount: 135_000,
+    depositStatus: 'refunded',
+    refundState: 'settled',
+    pending: 0,
+    totalPaid: 0,
   }),
 ]
 
@@ -158,6 +177,7 @@ const FIXED_SLOTS: PlayerFixedSlotRow[] = [
     timeEnd: '21:00:00',
     status: 'active',
     contactName: 'Diego Sosa',
+    contactPhone: '+54 9 11 2233-4455',
   },
   {
     id: uid(261),
@@ -167,6 +187,7 @@ const FIXED_SLOTS: PlayerFixedSlotRow[] = [
     timeEnd: '23:00:00',
     status: 'paused',
     contactName: 'Diego Sosa',
+    contactPhone: '+54 9 11 2233-4455',
   },
 ]
 
@@ -183,6 +204,18 @@ export const ConTurnosFijos: Story = {
     await expect(canvas.getByText('Lunes 20:00–21:00')).toBeInTheDocument()
     await expect(canvas.getByText('Pausado')).toBeInTheDocument()
     await expect(canvas.getByRole('button', { name: 'Desvincular' })).toBeInTheDocument()
+  },
+}
+
+/**
+ * H135 (auditoría de coherencia 2026-09): sin teléfono en la cuenta, la ficha
+ * lo deriva del turno fijo vinculado en vez de mostrar "—" pudiendo saberlo.
+ */
+export const SinTelefonoConTurnoFijo: Story = {
+  args: { profile: profile({ phone: null }), fixedSlots: FIXED_SLOTS },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('+54 9 11 2233-4455')).toBeInTheDocument()
   },
 }
 

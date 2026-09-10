@@ -1,6 +1,11 @@
 import { redirect } from 'next/navigation'
 import { and, eq, sql } from 'drizzle-orm'
 import { requireOperatorStaff } from '@/modules/staff/guards'
+import {
+  SETTINGS_ADMIN_ONLY_NOTICE,
+  SETTINGS_ADMIN_ONLY_NOTICE_TITLE,
+  SETTINGS_ADMIN_ONLY_NOTICE_DESCRIPTION,
+} from '@/modules/staff/roles'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
@@ -8,6 +13,7 @@ import { bookings, players } from '@/shared/db/schema'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import { GrillaView } from './GrillaView'
 import { GrillaTabs } from './GrillaTabs'
+import { SettingsAccessNotice } from '@/app/(admin)/settings/SettingsAccessNotice'
 import {
   createBookingAction,
   checkSlotAvailabilityAction,
@@ -33,7 +39,9 @@ import type {
   PaymentMethodValue,
 } from '@/modules/bookings/booking.types'
 
-export default async function GrillaPage(props: { searchParams: Promise<{ date?: string }> }) {
+export default async function GrillaPage(props: {
+  searchParams: Promise<{ date?: string; notice?: string }>
+}) {
   const searchParams = await props.searchParams
   // `/onboarding` y no `/login` en el rechazo: es el destino que esta página ya
   // tenía para "sin complejo resuelto" y se preserva tal cual.
@@ -43,6 +51,11 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
 
   const todayArt = artTodayStr()
   const dateStr = safeDateParam(searchParams.date, todayArt)
+
+  // H163: `?notice=` viene del rebote de settings/layout.tsx cuando un
+  // manager entra a Configuración. Único código soportado por ahora — si
+  // aparece otro motivo de rebote con aviso, se suma acá.
+  const showAdminOnlyNotice = searchParams.notice === SETTINGS_ADMIN_ONLY_NOTICE
 
   const { courts, rawBookings, chargesByBooking } = await withTenantContext(
     tenant.id,
@@ -127,6 +140,10 @@ export default async function GrillaPage(props: { searchParams: Promise<{ date?:
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4 h-full">
+      <SettingsAccessNotice
+        title={showAdminOnlyNotice ? SETTINGS_ADMIN_ONLY_NOTICE_TITLE : undefined}
+        description={showAdminOnlyNotice ? SETTINGS_ADMIN_ONLY_NOTICE_DESCRIPTION : undefined}
+      />
       <GrillaTabs active="/grilla" />
       <GrillaView
         key={dateStr}

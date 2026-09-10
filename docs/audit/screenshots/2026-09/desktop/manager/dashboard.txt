@@ -1,0 +1,157 @@
+URL: http://localhost:3000/grilla
+Título: Grilla
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /grilla
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - button "Configuración" [disabled]
+- banner:
+  - text: demo-manager@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - navigation "Vistas de la grilla":
+    - link "Calendario":
+      - /url: /grilla
+    - link "Reservas":
+      - /url: /reservas
+  - status
+  - heading "Grilla" [level=1]
+  - paragraph: Jue 10 de septiembre
+  - button "Cambiar densidad de la grilla": Cómodo
+  - button "Hoy"
+  - button "Semana anterior"
+  - list:
+    - listitem:
+      - button "Lun 7"
+    - listitem:
+      - button "Mar 8"
+    - listitem:
+      - button "Mié 9"
+    - listitem:
+      - button "Jue 10 (hoy)": Jue 10
+    - listitem:
+      - button "Vie 11"
+    - listitem:
+      - button "Sáb 12"
+    - listitem:
+      - button "Dom 13"
+  - button "Semana siguiente"
+  - region "Grilla de turnos del Jue 10 de septiembre":
+    - text: Cancha 1 — F5 Cancha 2 — F5 Cancha 3 — F5 techada Cancha 4 — F7 (pausada) 10:00 11:00 12:00 13:00 14:00 15:00 16:00 17:00 18:00 19:00 20:00 21:00 22:00 23:00
+    - 'button "Cancha 1 — F5 10:00–11:00: Torneo"': Torneo
+    - button "Reservar turno 16:00 en Cancha 1 — F5"
+    - button "Reservar turno 17:00 en Cancha 1 — F5"
+    - button "Reservar turno 18:00 en Cancha 1 — F5"
+    - button "Reservar turno 19:00 en Cancha 1 — F5"
+    - button "Reservar turno 20:00 en Cancha 1 — F5"
+    - button "Reservar turno 21:00 en Cancha 1 — F5"
+    - button "Reservar turno 22:00 en Cancha 1 — F5"
+    - button "Reservar turno 23:00 en Cancha 1 — F5"
+    - button "Reservar turno 16:00 en Cancha 2 — F5"
+    - button "Reservar turno 17:00 en Cancha 2 — F5"
+    - button "Reservar turno 18:00 en Cancha 2 — F5"
+    - button "Reservar turno 19:00 en Cancha 2 — F5"
+    - button "Reservar turno 20:00 en Cancha 2 — F5"
+    - button "Reservar turno 21:00 en Cancha 2 — F5"
+    - button "Reservar turno 22:00 en Cancha 2 — F5"
+    - button "Reservar turno 23:00 en Cancha 2 — F5"
+    - button "Reservar turno 16:00 en Cancha 3 — F5 techada"
+    - button "Reservar turno 17:00 en Cancha 3 — F5 techada"
+    - button "Reservar turno 18:00 en Cancha 3 — F5 techada"
+    - button "Reservar turno 19:00 en Cancha 3 — F5 techada"
+    - button "Reservar turno 20:00 en Cancha 3 — F5 techada"
+    - button "Reservar turno 21:00 en Cancha 3 — F5 techada"
+    - button "Reservar turno 22:00 en Cancha 3 — F5 techada"
+    - button "Reservar turno 23:00 en Cancha 3 — F5 techada"
+  - button "¿Qué significa cada color?"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-manager@turnogol.test
+Salir
+Calendario
+Reservas
+
+Grilla
+
+Jue 10 de septiembre
+
+Cómodo
+Hoy
+LUN
+7
+MAR
+8
+MIÉ
+9
+JUE
+10
+VIE
+11
+SÁB
+12
+DOM
+13
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+(pausada)
+10:00
+11:00
+12:00
+13:00
+14:00
+15:00
+16:00
+17:00
+18:00
+19:00
+20:00
+21:00
+22:00
+23:00
+Torneo
+¿Qué significa cada color?

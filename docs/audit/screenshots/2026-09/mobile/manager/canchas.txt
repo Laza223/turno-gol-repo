@@ -1,0 +1,515 @@
+URL: http://localhost:3000/grilla
+Título: Grilla
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /grilla
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - link "Clientes":
+    - /url: /jugadores
+  - button "Más"
+- main:
+  - navigation "Vistas de la grilla":
+    - link "Calendario":
+      - /url: /grilla
+    - link "Reservas":
+      - /url: /reservas
+  - status
+  - heading "Grilla" [level=1]
+  - paragraph: Jue 10 de septiembre
+  - button "Cambiar densidad de la grilla"
+  - button "Hoy"
+  - button "Semana anterior"
+  - list:
+    - listitem:
+      - button "Lun 7"
+    - listitem:
+      - button "Mar 8"
+    - listitem:
+      - button "Mié 9"
+    - listitem:
+      - button "Jue 10 (hoy)": Jue 10
+    - listitem:
+      - button "Vie 11"
+    - listitem:
+      - button "Sáb 12"
+    - listitem:
+      - button "Dom 13"
+  - button "Semana siguiente"
+  - group "Elegir cancha":
+    - button "Todas" [pressed]
+    - button "Cancha 1 — F5"
+    - button "Cancha 2 — F5"
+    - button "Cancha 3 — F5 techada"
+    - button "Cancha 4 — F7 (pausada)"
+  - group "Canchas del día":
+    - region "Todas las canchas":
+      - list:
+        - listitem:
+          - paragraph: 10:00–11:00
+          - 'button "Cancha 1 — F5 a las 10:00: Torneo"': Cancha 1 — F5 Torneo
+          - button "Reservar 10:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
+          - button "Reservar 10:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
+          - button "Reservar 10:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 11:00–12:00
+          - button "Reservar 11:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
+          - button "Reservar 11:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
+          - button "Reservar 11:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
+          - button "Reservar 11:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 12:00–13:00
+          - button "Reservar 12:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
+          - button "Reservar 12:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
+          - button "Reservar 12:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
+          - button "Reservar 12:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 13:00–14:00
+          - button "Reservar 13:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
+          - button "Reservar 13:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
+          - button "Reservar 13:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
+          - button "Reservar 13:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 14:00–15:00
+          - button "Reservar 14:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
+          - button "Reservar 14:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
+          - button "Reservar 14:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
+          - button "Reservar 14:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 15:00–16:00
+          - button "Reservar 15:00 en Cancha 1 — F5" [disabled]: Cancha 1 — F5
+          - button "Reservar 15:00 en Cancha 2 — F5" [disabled]: Cancha 2 — F5
+          - button "Reservar 15:00 en Cancha 3 — F5 techada" [disabled]: Cancha 3 — F5 techada
+          - button "Reservar 15:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 16:00–17:00
+          - button "Reservar 16:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 16:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 16:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 16:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 17:00–18:00
+          - button "Reservar 17:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 17:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 17:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 17:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 18:00–19:00
+          - button "Reservar 18:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 18:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 18:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 18:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 19:00–20:00
+          - button "Reservar 19:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 19:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 19:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 19:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 20:00–21:00
+          - button "Reservar 20:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 20:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 20:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 20:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 21:00–22:00
+          - button "Reservar 21:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 21:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 21:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 21:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 22:00–23:00
+          - button "Reservar 22:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 22:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 22:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 22:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+        - listitem:
+          - paragraph: 23:00–24:00
+          - button "Reservar 23:00 en Cancha 1 — F5": Cancha 1 — F5
+          - button "Reservar 23:00 en Cancha 2 — F5": Cancha 2 — F5
+          - button "Reservar 23:00 en Cancha 3 — F5 techada": Cancha 3 — F5 techada
+          - button "Reservar 23:00 en Cancha 4 — F7, cancha pausada" [disabled]: Cancha 4 — F7
+    - region "Cancha 1 — F5":
+      - list:
+        - listitem:
+          - button "Turno de 10:00 a 11:00 en Cancha 1 — F5": 10:00–11:00 Torneo Torneo
+        - listitem:
+          - button "Reservar 11:00 en Cancha 1 — F5" [disabled]: 11:00–12:00 Libre
+        - listitem:
+          - button "Reservar 12:00 en Cancha 1 — F5" [disabled]: 12:00–13:00 Libre
+        - listitem:
+          - button "Reservar 13:00 en Cancha 1 — F5" [disabled]: 13:00–14:00 Libre
+        - listitem:
+          - button "Reservar 14:00 en Cancha 1 — F5" [disabled]: 14:00–15:00 Libre
+        - listitem:
+          - button "Reservar 15:00 en Cancha 1 — F5" [disabled]: 15:00–16:00 Libre
+        - listitem:
+          - button "Reservar 16:00 en Cancha 1 — F5": 16:00–17:00 Libre
+        - listitem:
+          - button "Reservar 17:00 en Cancha 1 — F5": 17:00–18:00 Libre
+        - listitem:
+          - button "Reservar 18:00 en Cancha 1 — F5": 18:00–19:00 Libre
+        - listitem:
+          - button "Reservar 19:00 en Cancha 1 — F5": 19:00–20:00 Libre
+        - listitem:
+          - button "Reservar 20:00 en Cancha 1 — F5": 20:00–21:00 Libre
+        - listitem:
+          - button "Reservar 21:00 en Cancha 1 — F5": 21:00–22:00 Libre
+        - listitem:
+          - button "Reservar 22:00 en Cancha 1 — F5": 22:00–23:00 Libre
+        - listitem:
+          - button "Reservar 23:00 en Cancha 1 — F5": 23:00–24:00 Libre
+    - region "Cancha 2 — F5":
+      - list:
+        - listitem:
+          - button "Reservar 10:00 en Cancha 2 — F5" [disabled]: 10:00–11:00 Libre
+        - listitem:
+          - button "Reservar 11:00 en Cancha 2 — F5" [disabled]: 11:00–12:00 Libre
+        - listitem:
+          - button "Reservar 12:00 en Cancha 2 — F5" [disabled]: 12:00–13:00 Libre
+        - listitem:
+          - button "Reservar 13:00 en Cancha 2 — F5" [disabled]: 13:00–14:00 Libre
+        - listitem:
+          - button "Reservar 14:00 en Cancha 2 — F5" [disabled]: 14:00–15:00 Libre
+        - listitem:
+          - button "Reservar 15:00 en Cancha 2 — F5" [disabled]: 15:00–16:00 Libre
+        - listitem:
+          - button "Reservar 16:00 en Cancha 2 — F5": 16:00–17:00 Libre
+        - listitem:
+          - button "Reservar 17:00 en Cancha 2 — F5": 17:00–18:00 Libre
+        - listitem:
+          - button "Reservar 18:00 en Cancha 2 — F5": 18:00–19:00 Libre
+        - listitem:
+          - button "Reservar 19:00 en Cancha 2 — F5": 19:00–20:00 Libre
+        - listitem:
+          - button "Reservar 20:00 en Cancha 2 — F5": 20:00–21:00 Libre
+        - listitem:
+          - button "Reservar 21:00 en Cancha 2 — F5": 21:00–22:00 Libre
+        - listitem:
+          - button "Reservar 22:00 en Cancha 2 — F5": 22:00–23:00 Libre
+        - listitem:
+          - button "Reservar 23:00 en Cancha 2 — F5": 23:00–24:00 Libre
+    - region "Cancha 3 — F5 techada":
+      - list:
+        - listitem:
+          - button "Reservar 10:00 en Cancha 3 — F5 techada" [disabled]: 10:00–11:00 Libre
+        - listitem:
+          - button "Reservar 11:00 en Cancha 3 — F5 techada" [disabled]: 11:00–12:00 Libre
+        - listitem:
+          - button "Reservar 12:00 en Cancha 3 — F5 techada" [disabled]: 12:00–13:00 Libre
+        - listitem:
+          - button "Reservar 13:00 en Cancha 3 — F5 techada" [disabled]: 13:00–14:00 Libre
+        - listitem:
+          - button "Reservar 14:00 en Cancha 3 — F5 techada" [disabled]: 14:00–15:00 Libre
+        - listitem:
+          - button "Reservar 15:00 en Cancha 3 — F5 techada" [disabled]: 15:00–16:00 Libre
+        - listitem:
+          - button "Reservar 16:00 en Cancha 3 — F5 techada": 16:00–17:00 Libre
+        - listitem:
+          - button "Reservar 17:00 en Cancha 3 — F5 techada": 17:00–18:00 Libre
+        - listitem:
+          - button "Reservar 18:00 en Cancha 3 — F5 techada": 18:00–19:00 Libre
+        - listitem:
+          - button "Reservar 19:00 en Cancha 3 — F5 techada": 19:00–20:00 Libre
+        - listitem:
+          - button "Reservar 20:00 en Cancha 3 — F5 techada": 20:00–21:00 Libre
+        - listitem:
+          - button "Reservar 21:00 en Cancha 3 — F5 techada": 21:00–22:00 Libre
+        - listitem:
+          - button "Reservar 22:00 en Cancha 3 — F5 techada": 22:00–23:00 Libre
+        - listitem:
+          - button "Reservar 23:00 en Cancha 3 — F5 techada": 23:00–24:00 Libre
+    - region "Cancha 4 — F7":
+      - list:
+        - listitem:
+          - button "Reservar 10:00 en Cancha 4 — F7, cancha pausada" [disabled]: 10:00–11:00 Libre
+        - listitem:
+          - button "Reservar 11:00 en Cancha 4 — F7, cancha pausada" [disabled]: 11:00–12:00 Libre
+        - listitem:
+          - button "Reservar 12:00 en Cancha 4 — F7, cancha pausada" [disabled]: 12:00–13:00 Libre
+        - listitem:
+          - button "Reservar 13:00 en Cancha 4 — F7, cancha pausada" [disabled]: 13:00–14:00 Libre
+        - listitem:
+          - button "Reservar 14:00 en Cancha 4 — F7, cancha pausada" [disabled]: 14:00–15:00 Libre
+        - listitem:
+          - button "Reservar 15:00 en Cancha 4 — F7, cancha pausada" [disabled]: 15:00–16:00 Libre
+        - listitem:
+          - button "Reservar 16:00 en Cancha 4 — F7, cancha pausada" [disabled]: 16:00–17:00 Libre
+        - listitem:
+          - button "Reservar 17:00 en Cancha 4 — F7, cancha pausada" [disabled]: 17:00–18:00 Libre
+        - listitem:
+          - button "Reservar 18:00 en Cancha 4 — F7, cancha pausada" [disabled]: 18:00–19:00 Libre
+        - listitem:
+          - button "Reservar 19:00 en Cancha 4 — F7, cancha pausada" [disabled]: 19:00–20:00 Libre
+        - listitem:
+          - button "Reservar 20:00 en Cancha 4 — F7, cancha pausada" [disabled]: 20:00–21:00 Libre
+        - listitem:
+          - button "Reservar 21:00 en Cancha 4 — F7, cancha pausada" [disabled]: 21:00–22:00 Libre
+        - listitem:
+          - button "Reservar 22:00 en Cancha 4 — F7, cancha pausada" [disabled]: 22:00–23:00 Libre
+        - listitem:
+          - button "Reservar 23:00 en Cancha 4 — F7, cancha pausada" [disabled]: 23:00–24:00 Libre
+  - paragraph: Todas las canchas
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Grilla
+Caja
+Clientes
+Más
+Calendario
+Reservas
+
+Grilla
+
+Jue 10 de septiembre
+
+Hoy
+LUN
+7
+MAR
+8
+MIÉ
+9
+JUE
+10
+VIE
+11
+SÁB
+12
+DOM
+13
+Todas
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+(pausada)
+
+10:00–11:00
+
+Cancha 1 — F5
+Torneo
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+11:00–12:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+12:00–13:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+13:00–14:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+14:00–15:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+15:00–16:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+16:00–17:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+17:00–18:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+18:00–19:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+19:00–20:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+20:00–21:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+21:00–22:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+22:00–23:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+
+23:00–24:00
+
+Cancha 1 — F5
+Cancha 2 — F5
+Cancha 3 — F5 techada
+Cancha 4 — F7
+10:00–11:00
+Torneo
+Torneo
+11:00–12:00
+Libre
+12:00–13:00
+Libre
+13:00–14:00
+Libre
+14:00–15:00
+Libre
+15:00–16:00
+Libre
+16:00–17:00
+Libre
+17:00–18:00
+Libre
+18:00–19:00
+Libre
+19:00–20:00
+Libre
+20:00–21:00
+Libre
+21:00–22:00
+Libre
+22:00–23:00
+Libre
+23:00–24:00
+Libre
+10:00–11:00
+Libre
+11:00–12:00
+Libre
+12:00–13:00
+Libre
+13:00–14:00
+Libre
+14:00–15:00
+Libre
+15:00–16:00
+Libre
+16:00–17:00
+Libre
+17:00–18:00
+Libre
+18:00–19:00
+Libre
+19:00–20:00
+Libre
+20:00–21:00
+Libre
+21:00–22:00
+Libre
+22:00–23:00
+Libre
+23:00–24:00
+Libre
+10:00–11:00
+Libre
+11:00–12:00
+Libre
+12:00–13:00
+Libre
+13:00–14:00
+Libre
+14:00–15:00
+Libre
+15:00–16:00
+Libre
+16:00–17:00
+Libre
+17:00–18:00
+Libre
+18:00–19:00
+Libre
+19:00–20:00
+Libre
+20:00–21:00
+Libre
+21:00–22:00
+Libre
+22:00–23:00
+Libre
+23:00–24:00
+Libre
+10:00–11:00
+Libre
+11:00–12:00
+Libre
+12:00–13:00
+Libre
+13:00–14:00
+Libre
+14:00–15:00
+Libre
+15:00–16:00
+Libre
+16:00–17:00
+Libre
+17:00–18:00
+Libre
+18:00–19:00
+Libre
+19:00–20:00
+Libre
+20:00–21:00
+Libre
+21:00–22:00
+Libre
+22:00–23:00
+Libre
+23:00–24:00
+Libre
+
+Todas las canchas

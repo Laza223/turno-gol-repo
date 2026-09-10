@@ -33,7 +33,7 @@ vi.mock('@/modules/courts/court.service', async (importOriginal) => {
   }
 })
 
-import { createCourtAction, updateCourtAction } from '@/app/(admin)/settings/canchas/actions'
+import { createCourtAction, updateCourtAction } from '@/app/(admin)/canchas/actions'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'

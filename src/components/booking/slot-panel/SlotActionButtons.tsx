@@ -97,7 +97,14 @@ export function SlotActionButtons({
           type="button"
           onClick={onOpenCancel}
           disabled={isPending}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-card text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10 md:h-10"
+          // H007 (LEY-von-restorff): con "Marcar ausente" visible a la vez, ese
+          // es el rojo destructivo — este botón baja a outline/neutral para no
+          // competir por la misma atención.
+          className={`flex h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-60 md:h-10 ${
+            canMarkNoShow
+              ? 'border-border bg-card text-foreground hover:bg-accent'
+              : 'border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10'
+          }`}
         >
           <Ban aria-hidden className="h-4 w-4" />
           Cancelar reserva

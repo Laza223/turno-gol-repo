@@ -305,3 +305,113 @@ cambios de código de aplicación desde entonces.
 **Quedaron afuera del commit, sin tocar** (preexistentes, de otros esfuerzos): `docs/BITACORA.md`,
 `scripts/demo/record.ts`, `scripts/ig-follow/accounts.json`, `AGENTS.md`, `.agents/skills/*`,
 `docs/audits/2026-09-06-auditoria-integral-fase-diagnostico.md`, `scripts/demo/flows/*-dark.json`.
+
+## 9. Lo que efectivamente pasó (2026-09-09, corrida completa)
+
+Los pasos 2 a 5 de §5 están hechos. El brief es
+[`docs/qa/BRIEF_AUDITORIA_COHERENCIA.md`](../../qa/BRIEF_AUDITORIA_COHERENCIA.md) (§14 tiene las 11
+correcciones medidas contra el código); el corpus,
+`docs/audit/screenshots/2026-09/`; la lista votable, el artifact **"Triage de coherencia"**.
+
+### Números reales contra los estimados
+
+| | Plan (§4.6) | Real |
+| --- | --- | --- |
+| Pantallas | 29 | **28** (`/settings` también es redirect) |
+| Tareas de la recorrida | 23 | **24** (21 en alcance; 3 son del jugador) |
+| Buscadores | ~24 | **28** (4 L1 + 2 L4 + 4 de una 2ª vuelta por huecos + 8 L2 + 10 L3) |
+| Jueces y verificadores | ~100 | **129** (7 dedup + 14 severidad + 108 verificación) |
+| Hallazgos | 100-150 | **174 crudos → 133 tras dedup → 129 al voto** |
+| Capturas | — | **112** (28 × 2 roles × 2 viewports), cada una con su volcado de texto |
+
+### Desvíos de método, y por qué
+
+- **L2 no manejó la app.** Los servidores MCP de Playwright y chrome-devtools no conectaron. El
+  recorrido cognitivo se hizo sobre el corpus (preguntas 2 y 3 del método) más la cadena de código
+  componente → Server Action → service (preguntas 1 y 4). Los agentes tienen prohibido afirmar
+  timing, avisos o feedback post-acción: eso queda para una pasada en vivo.
+- **No se extendió `capture-screenshots.spec.ts`.** Ese spec renombra la tabla `bookings` en caliente
+  y muta fixtures compartidas. El corpus salió de dos scripts nuevos y aislados:
+  `scripts/audit/seed-audit-extras.ts` (capa sucia sobre el tenant demo, con el flag `tournaments`
+  prendido solo para él) y `scripts/audit/capture-corpus.ts` (`pnpm audit:corpus`).
+- **Se agregó una segunda vuelta de buscadores.** La primera declaró en sus notas de cobertura que no
+  había mirado torneos, analíticas, la ficha del jugador ni cuatro specs de página. Cuatro agentes
+  más cubrieron eso y aportaron 26 de los 174.
+- **El dedup exacto no sirve.** Cada evaluador redacta la evidencia distinto: agrupar por texto dio
+  cero coincidencias sobre 174. El dedup lo hicieron 7 agentes por familia de ruta y fusionaron 41.
+
+### Bloqueo de entorno que costó una hora
+
+Supabase local no levantaba: Windows tenía reservado el rango TCP **54266–54365**, que se come los
+cuatro puertos del stack (54322 base, 54323 studio, 54324 Inbucket, 54331 API). No es Docker ni el
+repo. Se destraba con una consola de administrador:
+
+```
+net stop winnat
+```
+
+…levantar Supabase mientras está caído, y después `net start winnat`. Los binds ya tomados sobreviven.
+
+### Lo que sigue
+
+Pasos 5, 6 y 7 de §5: el voto del dueño sobre los 129, después W3 por lotes, y al final los 3-5
+dueños reales. El portal público y la app del jugador siguen fuera: son la tercera corrida.
+
+## 10. Decisiones del dueño sobre los hallazgos que pedían su input (2026-09-09)
+
+Cuatro de los nueve marcados `requiresInput` ya tienen respuesta. Los otros cinco siguen abiertos
+(cancelar un torneo activo, el alcance de "Por cobrar" en la grilla, el rebote mudo del encargado en
+Configuración, la comparación de métricas con muestra chica, y plegar la pestaña Avisos).
+
+1. **"Hoy" (`/dashboard`) se achica y cambia de propósito.** Salen los bloques que ya están en
+   Caja del día y en Deudas. Queda como pantalla operativa con **próximos turnos por cancha**. La
+   venta rápida quedó **descartada por ahora** (ver la nota de abajo). Se hace **después de que el
+   dueño vote los 129 hallazgos**: hay hallazgos que tocan Hoy y Cantina, y saber cuáles se arreglan
+   cambia el diseño de la pantalla.
+
+2. **`pending_payment` se dice "Esperando seña" en todo el panel.** Manda MASTER §8.5. Se propaga a
+   la grilla (`slot-visual.ts:85-87`, que se había desviado a "Pagando ahora" sin documentarlo), al
+   filtro de `/reservas` ("Pendientes") y a la ficha del jugador ("Pago pendiente"). Cierra H101 y
+   H018 de una.
+
+3. **El alta rápida suma el teléfono, pero nunca frena.** Campo visible, opcional, sin validación que
+   corte el flujo. Se mantiene el criterio de ≤3 campos visibles de Fase 3.
+
+4. **El corpus de fotos no se versiona; los volcados de texto sí.** `.gitignore` excluye
+   `docs/audit/screenshots/2026-09/**/*.png` (33 MB, 226 archivos, regenerables con
+   `pnpm audit:corpus`) y deja entrar los 112 `.txt`, el manifiesto y el índice — que son lo que los
+   agentes citan y lo único que diffea.
+
+### Por qué se descartó la venta rápida en "Hoy"
+
+La recorrida del dueño ya había encontrado, y clasificado como lo más grave del bloque de Caja, que
+"Agregar movimiento" permitía registrar una venta de cantina con monto libre **sin descontar stock**,
+en paralelo al camino real de `/caja/cantina`. Ese segundo camino se cerró a propósito
+(`RegisterMovementModal.tsx:36-41` excluye la categoría `product_sale` y linkea a Cantina).
+
+Un botón de venta rápida que venda por su cuenta reabre exactamente ese agujero, y hacerlo bien
+significa duplicar ticket, descuento de stock y fiado. Puesto así, el dueño prefirió no ponerlo y ver
+primero si de verdad lo extraña en el mostrador. Si algún día entra, entra como **atajo que abre el
+flujo real de cantina**, nunca como una segunda caja registradora.
+
+## 11. Los nueve que pedían criterio del dueño — resueltos (2026-09-10)
+
+Con esto no queda ningún hallazgo esperando decisión. Los 121 con evidencia ya están aplicados
+(sección 9); estos nueve son los que el método marcó como `requiresInput` o `RESTA`.
+
+| # | Qué se decidió | Por qué |
+| --- | --- | --- |
+| H166 | **Agregar "Cancelar torneo"**, con confirmación por nombre, visible mientras el torneo está en inscripción o en curso | Es un callejón sin salida y el estado `canceled` ya existe en la base: falta solo el botón. Es además el módulo que rompió la demo |
+| H040 | El rótulo de la grilla pasa a **"Por cobrar hoy"** | Las dos cuentas están bien; lo que faltaba era decir cuál es cuál. La grilla habla del día visible, Caja de toda la deuda |
+| H104 | **Se mantiene la confirmación** al marcar ausente, y se corrige la gramática de interacción | Marcar ausente le hace perder la seña al jugador y, en la segunda vez, lo bloquea. Eso no es una acción Clase A: el ejemplo del documento estaba en la categoría equivocada |
+| H163 | **Aviso visible al rebotar** ("No tenés acceso a Configuración") y se corrige la documentación | El encargado veía que "no pasó nada" y parecía un bug. No cambia ningún permiso: las 7 pestañas de Configuración siguen siendo solo del dueño, porque el guard vive en el layout |
+| H002 | **Plegar "Desglose por método"** en Caja del día, cerrado por defecto | El comentario del propio archivo ya lo llama "referencia del arqueo", pero se dibujaba abierto en cada una de las veinte visitas del día |
+| H003 | **Plegar los cuatro informes** de Productos y stock | Medido por el dueño: un bloque operativo contra cuatro informativos, con el ranking mostrando una sola fila. Su regla, exactamente al revés |
+| H174 | **Sin comparación ni alarma** por debajo de un mínimo de turnos terminados | Una alarma roja calculada sobre 24 turnos no significa nada, y entrena a ignorar la que sí |
+| H161 | **Plegar Avisos dentro de Perfil** | Una pestaña top-level para una sola preferencia. Configuración baja a seis, que es donde una barra sigue leyéndose de un vistazo |
+| H102 | El alta rápida **suma el teléfono, opcional y sin frenar** | Quedarse sin forma de contactar a alguien es un agujero real, pero el camino rápido existe para ser rápido: el campo está a la vista y se puede saltear |
+
+Las dos que ya estaban resueltas antes y quedan registradas acá para no re-abrirlas: `pending_payment`
+se dice **"Esperando seña"** en todo el panel (H018/H101, ya aplicado), y **"Hoy" se achica** y queda
+como pantalla operativa con próximos turnos por cancha, **sin venta rápida** y después de estos
+arreglos (H010).

@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import * as Sentry from '@sentry/nextjs'
+import type { ActionResult } from '@/shared/types/action-result'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
@@ -24,7 +26,10 @@ export type MarkRefundSettledAction = (
  * generan además el egreso en la caja del día.
  *
  * No se puede deshacer (decisión del dueño): queda registrado quién tildó,
- * cuándo y por qué medio, y eso alcanza como prueba frente al jugador.
+ * cuándo y por qué medio, y eso alcanza como prueba frente al jugador. Por eso
+ * usa el ConfirmDialog compartido con `confirmationPhrase` — Clase C de la
+ * gramática de interacción (gramatica-interaccion.md:93-113), el mismo trato
+ * que "Cerrar caja del día".
  */
 export function MarkRefundSettledDialog({
   row,
@@ -42,28 +47,21 @@ export function MarkRefundSettledDialog({
   action: MarkRefundSettledAction
 }) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
   const [method, setMethod] = useState<MethodKey>('mercadopago')
 
-  // Al abrir con otra fila: limpiar el error y proponer el mismo medio por el
-  // que entró la seña, que es el camino más probable.
+  // Al abrir con otra fila: proponer el mismo medio por el que entró la seña,
+  // que es el camino más probable.
   const [lastId, setLastId] = useState<string | null>(null)
   if (row && row.refundPaymentId !== lastId) {
     setLastId(row.refundPaymentId)
-    setError(null)
     setMethod((row.method as MethodKey) ?? 'mercadopago')
   }
 
-  function handleConfirm() {
-    if (!row) return
-    setError(null)
-    startTransition(async () => {
+  async function onConfirm(): Promise<ActionResult> {
+    if (!row) return { success: false, error: 'No hay ninguna devolución seleccionada.' }
+    try {
       const result = await action(row.refundPaymentId, method)
-      if (!result.success) {
-        setError(result.error)
-        return
-      }
+      if (!result.success) return result
       if (result.alreadySettled) {
         toast({ title: 'Esta devolución ya estaba marcada.' })
       } else if (result.cashFlowSkipped) {
@@ -75,83 +73,68 @@ export function MarkRefundSettledDialog({
       } else {
         toast({ title: 'Devolución registrada' })
       }
-      onClose()
       router.refresh()
-    })
+      return result
+    } catch (err) {
+      // Mismo criterio que CloseDayButton: si onConfirm lanza, sin este catch
+      // el diálogo queda colgado en "Procesando…".
+      Sentry.captureException(err)
+      return {
+        success: false,
+        error: 'No pudimos registrar la devolución. Revisá tu conexión e intentá de nuevo.',
+      }
+    }
   }
 
   return (
-    <Dialog open={row !== null} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>¿Ya devolviste esta seña?</DialogTitle>
-        </DialogHeader>
+    <ConfirmDialog
+      open={row !== null}
+      onOpenChange={(v) => !v && onClose()}
+      title="¿Ya devolviste esta seña?"
+      confirmLabel="Sí, ya devolví"
+      cancelLabel="Volver"
+      confirmationPhrase="DEVOLVER"
+      onConfirm={onConfirm}
+    >
+      {row && (
+        <div className="space-y-4">
+          <ul className="space-y-1 text-sm text-muted-foreground">
+            <li>
+              Monto: <strong className="text-foreground">{formatArs(row.amountCents)}</strong>
+            </li>
+            <li>
+              Jugador: <strong className="text-foreground">{row.debtorName}</strong>
+            </li>
+          </ul>
 
-        {row && (
-          <div className="space-y-4">
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>
-                Monto: <strong className="text-foreground">{formatArs(row.amountCents)}</strong>
-              </li>
-              <li>
-                Jugador: <strong className="text-foreground">{row.debtorName}</strong>
-              </li>
-            </ul>
-
-            <div className="space-y-1">
-              <label htmlFor="refund-method" className="block text-sm font-medium text-foreground">
-                ¿Por dónde se la devolviste?
-              </label>
-              <select
-                id="refund-method"
-                value={method}
-                onChange={(e) => setMethod(e.target.value as MethodKey)}
-                className="flex h-11 w-full rounded-lg border border-border bg-card px-3.5 text-base md:h-10 md:text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {PAYMENT_METHOD_OPTIONS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-              Esto <strong className="text-foreground">no mueve plata en MercadoPago</strong>: solo
-              registra que ya la devolviste.
-              {(method === 'cash' || method === 'transfer') && (
-                <> Se va a anotar como gasto en la caja del día.</>
-              )}{' '}
-              No se puede deshacer.
-            </p>
-
-            {error && (
-              <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isPending}
-                className="inline-flex h-11 items-center rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50 md:h-10"
-              >
-                Volver
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={isPending}
-                className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 disabled:opacity-50 md:h-10"
-              >
-                {isPending ? 'Registrando…' : 'Sí, ya devolví'}
-              </button>
-            </div>
+          <div className="space-y-1">
+            <label htmlFor="refund-method" className="block text-sm font-medium text-foreground">
+              ¿Por dónde se la devolviste?
+            </label>
+            <select
+              id="refund-method"
+              value={method}
+              onChange={(e) => setMethod(e.target.value as MethodKey)}
+              className="flex h-11 w-full rounded-lg border border-border bg-card px-3.5 text-base md:h-10 md:text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {PAYMENT_METHOD_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+
+          <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+            Esto <strong className="text-foreground">no mueve plata en MercadoPago</strong>: solo
+            registra que ya la devolviste.
+            {(method === 'cash' || method === 'transfer') && (
+              <> Se va a anotar como gasto en la caja del día.</>
+            )}{' '}
+            No se puede deshacer.
+          </p>
+        </div>
+      )}
+    </ConfirmDialog>
   )
 }

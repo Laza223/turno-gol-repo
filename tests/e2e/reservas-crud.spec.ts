@@ -416,7 +416,7 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
       // rojo cinco merges. El candado que lo caza ahora vive en
       // `tests/unit/slot-visual.test.ts` — no pegues acá el texto anterior, el
       // control negativo de ese candado verifica que no sobreviva en ningún spec.
-      await expect(article.getByText('Pagando ahora')).toBeVisible()
+      await expect(article.getByText('Esperando seña')).toBeVisible()
 
       // Marker that survives RSC refreshes but dies on a full page load.
       await page.evaluate(() => {
@@ -434,7 +434,7 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
       // After the server action + router.refresh() the same article re-renders
       // with the new status — no navigation, no reload.
       await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })
-      await expect(article.getByText('Pagando ahora')).not.toBeVisible()
+      await expect(article.getByText('Esperando seña')).not.toBeVisible()
       const marker = await page.evaluate(
         () => (window as unknown as Record<string, unknown>).__e2eNoReload,
       )

@@ -1,0 +1,189 @@
+URL: http://localhost:3000/jugadores/d0000000-0000-4000-8000-000000000020
+Título: Tomás Rivero
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Hoy":
+    - /url: /dashboard
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - button "Más"
+- main:
+  - link "Personas":
+    - /url: /jugadores
+  - heading "Tomás Rivero" [level=1]
+  - term: Email
+  - definition: demo-player@turnogol.test
+  - term: Teléfono
+  - definition: "+5491155505678"
+  - term: Cliente desde
+  - definition: 9 de sept de 2026
+  - paragraph: Bloqueado para reservar online
+  - paragraph: Discusión con otro grupo en cancha — bloqueo preventivo (demo auditoría). Hasta el 9 de oct de 2026.
+  - button "Levantar bloqueo"
+  - heading "Historial de reservas" [level=2]
+  - list:
+    - listitem:
+      - link "9 de sept de 2026 · 10:00–11:00 Cancha 2 — F5 · Online $ 40.000 Confirmada Pendiente":
+        - /url: /reservas/a1000000-0000-4000-8000-000000000012
+        - paragraph: 9 de sept de 2026 · 10:00–11:00
+        - paragraph: Cancha 2 — F5 · Online
+        - paragraph: $ 40.000
+        - text: Confirmada
+        - paragraph: Pendiente
+    - listitem:
+      - link "8 de sept de 2026 · 19:00–20:00 Cancha 1 — F5 · Online $ 40.000 Ausente":
+        - /url: /reservas/a1000000-0000-4000-8000-000000000013
+        - paragraph: 8 de sept de 2026 · 19:00–20:00
+        - paragraph: Cancha 1 — F5 · Online
+        - paragraph: $ 40.000
+        - text: Ausente
+    - listitem:
+      - link "6 de sept de 2026 · 20:00–21:00 Cancha 2 — F5 · Online $ 40.000 Cancelada A devolver":
+        - /url: /reservas/a1000000-0000-4000-8000-000000000015
+        - paragraph: 6 de sept de 2026 · 20:00–21:00
+        - paragraph: Cancha 2 — F5 · Online
+        - paragraph: $ 40.000
+        - text: Cancelada
+        - paragraph: A devolver
+  - heading "Etiquetas" [level=2]
+  - paragraph: Solo estas cinco. Son las que cambian cómo lo atendés en el mostrador.
+  - list:
+    - listitem:
+      - checkbox "Se le fía Se le puede dejar la cancha a cuenta."
+      - text: Se le fía Se le puede dejar la cancha a cuenta.
+    - listitem:
+      - checkbox "No fiar Cobrar siempre por adelantado."
+      - text: No fiar Cobrar siempre por adelantado.
+    - listitem:
+      - checkbox "Organiza el grupo Es quien junta al grupo y decide dónde juegan." [checked]
+      - text: Organiza el grupo Es quien junta al grupo y decide dónde juegan.
+    - listitem:
+      - checkbox "Tiene precio acordado Tiene un precio hablado distinto al de la lista." [checked]
+      - text: Tiene precio acordado Tiene un precio hablado distinto al de la lista.
+    - listitem:
+      - checkbox "Trato conflictivo Hubo problemas de trato. Atender con cuidado."
+      - text: Trato conflictivo Hubo problemas de trato. Atender con cuidado.
+  - button "Guardar etiquetas" [disabled]
+  - heading "Turnos fijos" [level=2]
+  - button "Desvincular"
+  - list:
+    - listitem:
+      - paragraph: Miércoles 19:00–20:00
+      - paragraph: Cancha 2 — F5 · a nombre de Tomás Rivero
+      - text: Pausado
+  - paragraph: Reservas totales
+  - paragraph: "3"
+  - paragraph: Completadas
+  - paragraph: "0"
+  - paragraph: Ausencias
+  - paragraph: "1"
+  - paragraph: Tasa de ausencia
+  - paragraph: 100%
+  - paragraph: 1 de 1 turnos jugados o ausentes
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Hoy
+Grilla
+Caja
+Más
+Personas
+Tomás Rivero
+EMAIL
+demo-player@turnogol.test
+TELÉFONO
++5491155505678
+CLIENTE DESDE
+9 de sept de 2026
+
+Bloqueado para reservar online
+
+Discusión con otro grupo en cancha — bloqueo preventivo (demo auditoría). Hasta el 9 de oct de 2026.
+
+Levantar bloqueo
+Historial de reservas
+
+9 de sept de 2026 · 10:00–11:00
+
+Cancha 2 — F5 · Online
+
+$ 40.000
+
+Confirmada
+
+Pendiente
+
+8 de sept de 2026 · 19:00–20:00
+
+Cancha 1 — F5 · Online
+
+$ 40.000
+
+Ausente
+
+6 de sept de 2026 · 20:00–21:00
+
+Cancha 2 — F5 · Online
+
+$ 40.000
+
+Cancelada
+
+A devolver
+
+Etiquetas
+
+Solo estas cinco. Son las que cambian cómo lo atendés en el mostrador.
+
+Se le fía
+Se le puede dejar la cancha a cuenta.
+No fiar
+Cobrar siempre por adelantado.
+Organiza el grupo
+Es quien junta al grupo y decide dónde juegan.
+Tiene precio acordado
+Tiene un precio hablado distinto al de la lista.
+Trato conflictivo
+Hubo problemas de trato. Atender con cuidado.
+Guardar etiquetas
+Turnos fijos
+Desvincular
+
+Miércoles 19:00–20:00
+
+Cancha 2 — F5 · a nombre de Tomás Rivero
+
+Pausado
+
+RESERVAS TOTALES
+
+3
+
+COMPLETADAS
+
+0
+
+AUSENCIAS
+
+1
+
+TASA DE AUSENCIA
+
+100%
+
+1 de 1 turnos jugados o ausentes

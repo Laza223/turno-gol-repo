@@ -388,7 +388,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await freshAdminPage.goto('/caja')
     await takeShot(freshAdminPage, 'special_states', 'caja_vacio')
 
-    await freshAdminPage.goto('/settings/canchas')
+    await freshAdminPage.goto('/canchas')
     await takeShot(freshAdminPage, 'special_states', 'canchas_vacio')
 
     await freshAdminPage.goto('/abonados')
@@ -445,7 +445,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await adminPage.keyboard.press('Escape')
 
     // Canchas list
-    await adminPage.goto('/settings/canchas')
+    await adminPage.goto('/canchas')
     await takeShot(adminPage, 'admin', 'canchas_listado')
 
     // Canchas Nueva Cancha form/modal

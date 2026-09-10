@@ -1,0 +1,118 @@
+URL: http://localhost:3000/torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/fixture
+Título: Torneo Relámpago — Auditoría
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- complementary:
+  - link "TurnoGol":
+    - /url: /grilla
+  - text: CO
+  - paragraph: Complejo
+  - paragraph: Complejo La Redonda
+  - 'link "Cobrado hoy: $ 0. Ir a Caja"':
+    - /url: /caja
+    - paragraph: Hoy
+    - paragraph: $ 0
+  - navigation "Navegación del panel":
+    - link "Grilla":
+      - /url: /grilla
+    - link "Caja":
+      - /url: /caja
+    - link "Clientes":
+      - /url: /jugadores
+    - link "Torneos":
+      - /url: /torneos
+    - link "Métricas":
+      - /url: /analiticas
+  - button "Configuración" [disabled]
+- banner:
+  - text: demo-manager@turnogol.test
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- main:
+  - link "Volver a Torneos":
+    - /url: /torneos
+  - heading "Torneo Relámpago — Auditoría" [level=1]
+  - paragraph: Liga · Desde el 10/09/2026
+  - navigation "Secciones del torneo":
+    - link "Equipos y horarios":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a
+    - link "Fixture":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/fixture
+    - link "Posiciones":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/posiciones
+    - link "Inscripciones":
+      - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/inscripciones
+  - paragraph: 1 partido
+  - group "Vista del fixture":
+    - button "Planilla" [pressed]
+    - button "Listado"
+  - button "Borrar fixture"
+  - heading "Jueves, 10 de septiembre" [level=3]
+  - paragraph: 1 lugar · 1 cancha
+  - table "Horas del torneo el Jueves, 10 de septiembre, por cancha":
+    - caption: Horas del torneo el Jueves, 10 de septiembre, por cancha
+    - rowgroup:
+      - row "Hora Cancha 1 — F5":
+        - columnheader "Hora"
+        - columnheader "Cancha 1 — F5"
+    - rowgroup:
+      - row "10:00 Atlético Demo vs Los Fierros FC 2 - 1 Jugado Mover Atlético Demo vs Los Fierros FC":
+        - rowheader "10:00"
+        - cell "Atlético Demo vs Los Fierros FC 2 - 1 Jugado Mover Atlético Demo vs Los Fierros FC":
+          - link "Atlético Demo vs Los Fierros FC":
+            - /url: /torneos/f9a0d2b1-709a-4f85-bed2-0012d12cb83a/partidos/d50df9fd-ff92-42f6-9acb-3bf1ab141cae
+          - text: 2 - 1 Jugado
+          - button "Mover Atlético Demo vs Los Fierros FC": Mover
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+CO
+
+COMPLEJO
+
+Complejo La Redonda
+
+HOY
+
+$ 0
+
+Grilla
+Caja
+Clientes
+Torneos
+Métricas
+Configuración
+demo-manager@turnogol.test
+Salir
+Volver a Torneos
+Torneo Relámpago — Auditoría
+
+Liga · Desde el 10/09/2026
+
+Equipos y horarios
+Fixture
+Posiciones
+Inscripciones
+
+1 partido
+
+Planilla
+Listado
+Borrar fixture
+Jueves, 10 de septiembre
+
+1 lugar · 1 cancha
+
+Horas del torneo el Jueves, 10 de septiembre, por cancha
+HORA	CANCHA 1 — F5
+10:00	
+Atlético Demo vs Los Fierros FC
+2 - 1
+Jugado
+Mover

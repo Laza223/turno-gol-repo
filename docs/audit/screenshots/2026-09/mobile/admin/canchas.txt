@@ -1,0 +1,84 @@
+URL: http://localhost:3000/canchas
+Título: Canchas
+
+--- Árbol de accesibilidad ---
+- link "Saltar al contenido":
+  - /url: "#main-content"
+- banner:
+  - link "TurnoGol":
+    - /url: /dashboard
+  - button "Cambiar tema"
+  - button "Cerrar sesión": Salir
+- navigation "Navegación del panel":
+  - link "Hoy":
+    - /url: /dashboard
+  - link "Grilla":
+    - /url: /grilla
+  - link "Caja":
+    - /url: /caja
+  - button "Más"
+- main:
+  - heading "Canchas" [level=1]
+  - paragraph: 4 canchas · Complejo La Redonda
+  - button "+ Nueva cancha"
+  - text: Cancha 1 — F5 Activa
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 2 — F5 Activa
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 3 — F5 techada Activa
+  - paragraph: Césped sintético · 10 jugadores
+  - button "Editar"
+  - button "Desactivar"
+  - text: Cancha 4 — F7 Pausada
+  - paragraph: Césped sintético · 14 jugadores
+  - button "Editar"
+  - button "Activar"
+- region "Notifications (F8)":
+  - list
+- alert
+
+--- Texto visible ---
+Saltar al contenido
+TURNOGOL
+Salir
+Hoy
+Grilla
+Caja
+Más
+Canchas
+
+4 canchas · Complejo La Redonda
+
++ Nueva cancha
+Cancha 1 — F5
+Activa
+
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 2 — F5
+Activa
+
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 3 — F5 techada
+Activa
+
+Césped sintético · 10 jugadores
+
+Editar
+Desactivar
+Cancha 4 — F7
+Pausada
+
+Césped sintético · 14 jugadores
+
+Editar
+Activar

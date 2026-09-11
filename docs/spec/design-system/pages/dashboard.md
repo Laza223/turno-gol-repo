@@ -2,27 +2,36 @@
 
 > Complementa a `MASTER.md` v2 (ley general) y a `gramatica-interaccion.md` (Fase 0). Acá viven
 > las decisiones específicas de `/dashboard` (label de nav: **Hoy**, renombrado en Fase 2 desde
-> "Inicio"). Reemplaza la versión anterior de este documento (pre-Fase 2, 4 KPIs + "Próximos
-> turnos") — contrato de ejecución: `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3 Fase 2,
-> taxonomía de alertas: `docs/decisions/2026-08-02-taxonomia-alertas-hoy.md`.
+> "Inicio"). Contrato de ejecución original: `docs/planning/2026-08-01-decisiones-de-fase-v2.md`
+> §3 Fase 2; taxonomía de alertas: `docs/decisions/2026-08-02-taxonomia-alertas-hoy.md`.
+>
+> **Versión 3 — 2026-09-10 (H010, auditoría de coherencia).** Las tarjetas "Cobrado hoy" y
+> "Deudas" salieron: eran el mismo componente con el mismo dato que Caja muestra un click más
+> allá. Entró "Próximos turnos" por cancha, y la ocupación pasó a ser su subtítulo. La decisión
+> del dueño está en `docs/superpowers/specs/2026-09-09-auditoria-coherencia-ux-design.md` §10.
 
 ## §0 Objetivo y principio de lectura
 
-**El admin responde "¿está todo bien?" en 5 segundos.** Es la primera pantalla al entrar cada
-día — se diseña para que Marcelo la abra a las 23:40 desde el sillón, la lea en 8 segundos y baje
-la ansiedad en vez de subirla (visión v2 §4.1). Tres bloques, ni uno más:
+**El admin responde "¿qué falta jugar y qué tengo que resolver?" en 5 segundos.** Es la
+primera pantalla al entrar cada día — se diseña para que Marcelo la abra a las 17:00 al volver al
+mostrador, la lea en 8 segundos y sepa qué viene, sin repetirle la plata que Caja ya le muestra
+(visión v2 §4.1; H010). Tres bloques, ni uno más:
 
-1. **Los 3 números** → cobrado hoy (con comparación honesta vs. mismo día de la semana pasada,
-   nunca "ayer"), turnos de hoy, plata en la calle.
-2. **"Necesita tu atención"** → SOLO las 3 anomalías v1 de la taxonomía cerrada, cada una con su
+1. **"Próximos turnos"** → cancha por cancha, lo que falta jugar hoy: hora, quién, estado, y
+   "ahora" / "en N min" cuando arranca dentro de la hora. La ocupación del día es el subtítulo
+   del bloque, no una tarjeta aparte.
+2. **"Necesita tu atención"** → SOLO las 4 anomalías de la taxonomía cerrada, cada una con su
    acción al lado. Vacío = el premio: "Nada pendiente. Todo cobrado y cerrado."
 3. **"Mientras no estabas"** → el feed de lo que pasó sin él (reservas online, cancelaciones,
    señas acreditadas).
 
-Anti-objetivo explícito (contrato): **cero gráficos**. Un gráfico es una herramienta de análisis;
-Hoy es un parte de situación. El análisis vive en `/analiticas`. Tampoco es una pantalla de
-hacer — no hay accesos rápidos de reservar/vender cantina acá (esos viven en Grilla/Caja); la
-única acción visible es la que cada alerta de "Necesita tu atención" pide.
+Anti-objetivo explícito (contrato): **cero gráficos** y **cero plata repetida**. Un gráfico es una
+herramienta de análisis; Hoy es un parte de situación. El análisis vive en `/analiticas`; lo
+cobrado y lo que te deben viven en Caja, que es donde se cobra. Tampoco es una pantalla de
+hacer — no hay accesos rápidos de reservar/vender cantina acá (esos viven en Grilla/Caja; la
+venta rápida se descartó a propósito, ver §10 de la spec de la auditoría); la única acción
+visible es la que cada alerta de "Necesita tu atención" pide, más el link de cada turno a su
+detalle.
 
 ## §1 Anatomía
 
@@ -32,14 +41,18 @@ hacer — no hay accesos rápidos de reservar/vender cantina acá (esos viven en
 │        mié 2 de julio                                        │  fecha §8.3 formato medio, sin acciones
 ├──────────────────────────────────────────────────────────────┤
 │ ⚙ Configuración · 5 de 7  ▓▓▓▓▓░░  · pendientes accionables  │  solo si falta setup (§4)
-├──────────────┬──────────────┬─────────────────────────────────┤
-│ Cobrado hoy  │ Turnos hoy   │ Plata en la calle              │  3 números (§2)
-│ $ 184.500    │ 9 de 12      │ $ 42.000                       │  2 col mobile / 3 cols lg
-│ ↑ 12% vs sem.│ 75% ocupación│ Pendiente de cobro              │
-├──────────────┴──────────────┴─────────────────────────────────┤
+├──────────────────────────────────────────────────────────────┤
+│ Próximos turnos            9 de 12 · 75% de ocupación         │  (§2) una fila por cancha
+│ Cancha 1                                          3 turnos    │
+│ ▌20:00-21:00  Tomás García        en 25 min       Señada      │
+│ ▌21:00-22:00  Los Pibes                    Esperando seña     │
+│ Cancha 2                                                      │
+│ Libre el resto del día.                                       │
+├──────────────────────────────────────────────────────────────┤
 │ Necesita tu atención                                          │  (§3) — o el vacío-premio
 │ ⚠ Tomás García · Cancha 1 20:00-21:00 · $16.000    [Cobrar]   │
-│ ⚠ Seña rechazada · Ana López · Cancha 2            [Ver res.] │
+│ ↩ 2 devoluciones pendientes · $ 24.000 a devolver [Gestionar] │
+│ ✕ Seña rechazada · Ana López · Cancha 2            [Ver res.] │
 │ ⚠ La caja de ayer sigue sin cerrar          [Cerrar caja]     │
 ├────────────────────────────────────────────────────────────────┤
 │ Mientras no estabas                                            │  (§4)
@@ -59,42 +72,55 @@ propio (el shell ya lo es).
   Hoy "no es una pantalla de hacer" (contrato §4.1) — reservar y vender cantina se sacaron de acá,
   siguen existiendo en Grilla/Caja tal cual.
 
-## §2 Los 3 números — mapa canónico
+## §2 "Próximos turnos" — una fila por cancha
 
-Tres cards, ni una más (el contrato es explícito: "tres cifras, tipografía enorme, cero
-decoración"). Primitiva: `StatCard` vía `MetricCard`. Cada card entera es un link (Fitts).
+Componente: `src/components/dashboard/ProximosTurnos.tsx`. Datos: `HoyData.upcoming`
+(`getDayBoard` en `home.service.ts`, la misma query de bookings que calcula la ocupación).
 
-| # | Card | Valor | Sub | Accent/Ícono | Link |
-|---|---|---|---|---|---|
-| 1 | **Cobrado hoy** | `formatArs(numbers.collectedTodayCents)` | comparación honesta: `↑/↓ N% vs. semana pasada` o "Igual que la semana pasada" o "Sin dato de la semana pasada" (primera semana del tenant) | `emerald` / `Banknote` | `/caja` |
-| 2 | **Turnos de hoy** | `9 de 12` (ocupadas de disponibles). Día cerrado: `Cerrado`. 0 disponibles con oferta real: solo el numerador (evita "N de 0" / "0%" engañoso) | `75% de ocupación` (+ ` · N bloqueados` si hay) | `slate` (neutro) / `Clock` | `/grilla` |
-| 3 | **Plata en la calle** | `formatArs(numbers.streetMoneyCents)` — MISMA fuente que `/caja` y `/caja/deudas` (`getStreetMoney`, Fase 1); nunca se recalcula acá | "Pendiente de cobro" o "Nada pendiente" | `amber` si > 0, si no `emerald` / `Banknote` | `/caja/deudas` |
+- **Una fila por cancha `online`**, en el orden en que la grilla dibuja sus columnas
+  (`courts.created_at`): las dos pantallas nombran las canchas en la misma secuencia. Las
+  canchas pausadas no aparecen aunque tengan turnos encima — en una cancha pausada no se juega.
+- **Qué entra**: lo que falta jugar o está en curso hoy — `confirmed` y `pending_payment`, sin
+  bloqueos, con fin posterior a ahora (`upcomingForDay`, `day-bookings.ts`). Orden cronológico
+  operativo: la madrugada de la noche va al final, como en la grilla.
+- **Cada turno** es un link a `/reservas/[id]`: tira de acento del estado (3 px, `TONE_ACCENT`),
+  rango horario `HH:MM-HH:MM` en `tabular-nums`, nombre (`rowDisplayName`: invitado > jugador >
+  "Sin nombre"), etiqueta relativa (`relativeStartLabel`: "ahora" en curso, "en N min" si arranca
+  dentro de la hora, nada si falta más) y **el badge de `bookingBadgeVisual`** — la misma tabla
+  que pinta la grilla y el listado, así acá no puede aparecer un nombre nuevo para un estado.
+- **Cancha sin turnos**: "Libre el resto del día." — se dice, no se deja en blanco: una fila
+  vacía se lee como "no cargó", y acá lo vacío es justamente el dato que el dueño usa para
+  ofrecerle el horario a alguien.
+- **Subtítulo del bloque = la ocupación**: `9 de 12 · 75% de ocupación` (+ ` · N bloqueados`).
+  Día cerrado: "Sin horarios para hoy". Cero disponibles con turnos reales: solo el numerador
+  (`N turnos · sin horarios disponibles`), para no escribir "N de 0" ni un "0%" que engaña.
+- **Vacíos**, en este orden de precedencia: día cerrado ("Hoy el complejo está cerrado.") →
+  ninguna cancha online ("No hay ninguna cancha en servicio.", con link a `/canchas`) → nada
+  por jugar ("No queda nada por jugar hoy.").
 
-Reglas:
-
-- **Comparación semanal, no diaria**: el negocio es semanal (mismo día de la semana pasada, nunca
-  "ayer" — comparar un miércoles contra un martes es ruido). `compareToLastWeek`
-  (`src/modules/home/home.lib.ts`) es la función pura que decide dirección/porcentaje; sin dato de
-  la semana pasada (`sameWeekdayLastWeekCents === 0`) no se inventa un porcentaje.
-- **Fuente única**: "Plata en la calle" viene de `getStreetMoney`/`sumStreetMoney` (Fase 1) — el
-  mismo número en Hoy, en el encabezado de Caja y en `/caja/deudas`, garantizado por diseño
-  (`getHoyData` la llama una sola vez y deriva todo lo demás de ese mismo array).
-- Sin delta "vs ayer" en ninguna de las 3 — el negocio es semanal, no diario (ver arriba).
+Lo que **no** está acá, a propósito (H010): "Cobrado hoy" y "Deudas" viven en el encabezado de
+Caja con la misma fuente única de siempre (`summary.collected`, `getStreetMoney`); la comparación
+"vs. semana pasada" se eliminó con la tarjeta (el negocio es semanal, pero ese número es de
+Métricas, no de un parte de situación — mismo criterio que H174).
 
 ## §3 "Necesita tu atención" — taxonomía cerrada
 
-Fuente de verdad: `docs/decisions/2026-08-02-taxonomia-alertas-hoy.md`. Exactamente 3 eventos v1,
-en este orden de prioridad (P1→P3), y dentro de cada prioridad por antigüedad ascendente:
+Fuente de verdad: `docs/decisions/2026-08-02-taxonomia-alertas-hoy.md` (3 eventos v1) más la
+enmienda que sumó las devoluciones. Exactamente 4 eventos, en este orden de prioridad (P1→P4,
+`ATTENTION_PRIORITY` en `home.lib.ts`), y dentro de cada prioridad por antigüedad ascendente:
 
 1. **Turno terminado sin cobrar** — inmediato (sin ventana de gracia). "Cobrar $X" → `/reservas/[id]`.
-2. **Seña que falló** — inmediato. "Ver reserva" → `/reservas/[id]`.
-3. **Caja de ayer sin cerrar** — solo T-1, binario. "Cerrar caja de ayer" → `/caja`.
+2. **Devoluciones pendientes** — UN ítem agregado ("N devoluciones pendientes — $X a devolver"),
+   tenant-wide y sin filtro de fecha: una devolución que se debe hace una semana se sigue
+   debiendo hoy. "Gestionar" → `/caja/devoluciones`.
+3. **Seña que falló** — inmediato. "Ver reserva" → `/reservas/[id]`.
+4. **Caja de ayer sin cerrar** — solo T-1, binario. "Cerrar caja de ayer" → `/caja`.
 
 Componente: `src/components/dashboard/NeedsAttention.tsx`. Cada fila: ícono ámbar + descripción +
 botón de acción (`buttonVariants` default — jerarquía única de Fase 0, nunca un botón custom).
 
-**Vacío = el premio** (contrato, verbatim, nunca parafraseado): *"Nada pendiente. Todo cobrado y
-cerrado."* — vía `EmptyState` con ícono `CheckCircle2`. Una cuarta alerta NO se agrega sin pasar
+**Vacío = el premio** (contrato, verbatim, nunca parafraseado): _"Nada pendiente. Todo cobrado y
+cerrado."_ — vía `EmptyState` con ícono `CheckCircle2`. Una quinta alerta NO se agrega sin pasar
 primero por el documento de taxonomía (evita degenerar en bandeja de notificaciones, el objetivo
 explícito de la Fase 2).
 
@@ -127,9 +153,11 @@ pre-Fase 2 de este documento en git. Fase 2 no lo tocó.
 
 ## §7 Layout y responsive
 
-- Los 3 números: `grid grid-cols-2 gap-3 lg:grid-cols-3`. En 375px, "Cobrado hoy" ocupa las 2
-  columnas (es el número que domina — serial position, la plata primero); los otros dos van 1 y 1
-  debajo.
+- Los tres bloques apilan a ancho completo (`space-y-6`), en este orden: Próximos turnos,
+  Necesita tu atención, Mientras no estabas.
+- "Próximos turnos" en 375px: hora y nombre bajan a dos renglones dentro de la misma fila
+  (`flex-col sm:flex-row`), el rango horario en `whitespace-nowrap` para que "18:00-19:00" no se
+  parta al medio; la etiqueta relativa y el badge se quedan a la derecha.
 - "Necesita tu atención"/"Mientras no estabas": filas de una línea con `min-h-11` táctil; en
   mobile el botón de acción baja a una segunda línea (`flex-col sm:flex-row`).
 - Sin scroll horizontal en ningún viewport.
@@ -142,7 +170,8 @@ pre-Fase 2 de este documento en git. Fase 2 no lo tocó.
 
 ## §9 Accesibilidad
 
-- Cards-link con `aria-label` (heredado de `MetricCard`).
+- Cada turno de "Próximos turnos" es un link con el texto completo (hora, nombre, estado)
+  como nombre accesible; la tira de acento es `aria-hidden`.
 - `tabular-nums` en todo número.
 - Color nunca solo: las alertas llevan ícono + texto, no solo un tinte ámbar.
 - Focus visible en todas las filas/links (ring token, heredado).
@@ -151,10 +180,14 @@ pre-Fase 2 de este documento en git. Fase 2 no lo tocó.
 
 - **Fuente única de agregación**: `getHoyData(tenantId, tx, opts)`
   (`src/modules/home/home.service.ts`) — un solo `withTenantContext`, agrega en paralelo:
-  `getDaySummary` ×2 (hoy y hace 7 días, para la comparación semanal), `getStreetMoney` (Fase 1,
-  una sola vez), ocupación (reusa `daySlotsFor`/`occupancyForDay` de `day-bookings.ts`),
-  `getDailyClose`/`getDayOpen` de ayer (alerta #3), y 2 queries nuevas (seña fallida hoy,
-  reservas/cancelaciones/señas del feed).
+  `getDaySummary` (hoy; lo consume el resumen diario D8, la pantalla ya no lo pinta),
+  `getStreetMoney` (Fase 1, una sola vez — alimenta la alerta P1), `getDayBoard` (una query de
+  bookings + una de courts que dan la ocupación **y** "Próximos turnos"; reusa `daySlotsFor`,
+  `occupancyForDay`, `upcomingForDay`, `relativeStartLabel` y `rowDisplayName` de
+  `day-bookings.ts`), `getDailyClose`/`getDayOpen` de ayer (alerta P4), `countPendingRefunds`
+  (alerta P2), y las queries del feed (seña fallida hoy, reservas/cancelaciones/señas).
+- `upcoming` viene vacío para el worker D8 (pide AYER): a un día terminado no le queda nada por
+  delante.
 - `date` = día operativo (`operatingDateOf`/`nightCutoffMins`, mismo criterio que el resto del
   admin — nunca UTC calendario puro).
 - `getChecklistState` se mantiene tal cual (sin cambios de Fase 2).
@@ -168,5 +201,7 @@ pre-Fase 2 de este documento en git. Fase 2 no lo tocó.
 2. Sin auto-refresh (sin Realtime en Hoy v1).
 3. **Resumen diario (D8)**: push/email fuera de esta pantalla — ver worker
    `src/shared/jobs/workers/daily-summary.worker.ts` y `/settings/avisos` (opt-in de email).
-4. `StatCard` sigue con clases raw de paleta (no tokens semánticos) — deuda heredada de F1,
-   sin cambios acá.
+4. `StatCard` ya no se usa en esta pantalla (se fue con las tarjetas de H010); su deuda de
+   tokens sigue viva en Caja.
+5. **La hora de "ahora" se calcula por request** (`nowHhmmArt`), así que "en 25 min" envejece
+   hasta que el dueño vuelve a entrar — consistente con "sin Realtime en Hoy" (punto 2).

@@ -3,8 +3,8 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { QuickBookingForm } from './QuickBookingForm'
 
 /**
- * Alta rápida desde la grilla — Fase 3, criterio de salida #3: ≤3 campos
- * visibles, precio pre-calculado, Enter confirma.
+ * Alta rápida desde la grilla: UN campo a la vista, precio ya resuelto, Enter
+ * confirma.
  *
  * Las stories son una por rama de lo que decide el formulario: hay precio o no,
  * contestó lo que cobró o no, y el turno se ocupó mientras el popover estaba
@@ -43,19 +43,44 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * El caso del 90%: alguien llama, se tipea el nombre, y listo. "No cobré"
- * viene preseleccionado (pedido del dueño, revierte PR #185) para que la
- * carga más repetida del día se confirme con un solo campo.
+ * El caso del 90%: alguien llama, se tipea el nombre, y listo. El teléfono y el
+ * cobro arrancan plegados — ninguno hace falta para cargar el turno.
  */
 export const Base: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement)
     await expect(await c.findByLabelText('¿A nombre de quién?')).toBeTruthy()
-    // H102: tercer campo visible, sin asterisco de obligatorio.
-    await expect(await c.findByLabelText(/^Teléfono/)).toBeTruthy()
-    await expect(await c.findByText('(opcional)')).toBeTruthy()
     // El precio se muestra ya resuelto — no es un campo.
     await expect(await c.findByText(/24\.000/)).toBeTruthy()
+    // Un solo campo a la vista: lo demás está detrás de su enlace.
+    await expect(c.queryByLabelText(/^Teléfono/)).toBeNull()
+    await expect(c.queryByRole('radio')).toBeNull()
+    await expect(await c.findByRole('button', { name: /Agregar teléfono/ })).toBeTruthy()
+    await expect(await c.findByRole('button', { name: /Cobrar algo ahora/ })).toBeTruthy()
+  },
+}
+
+/**
+ * H102: el teléfono existe, es opcional y no frena nada. Se despliega solo
+ * cuando el complejo lo quiere cargar.
+ */
+export const TelefonoDesplegado: Story = {
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement)
+    await userEvent.click(await c.findByRole('button', { name: /Agregar teléfono/ }))
+    await expect(await c.findByLabelText(/^Teléfono/)).toBeTruthy()
+    await expect(await c.findByText('(opcional)')).toBeTruthy()
+  },
+}
+
+/**
+ * "No cobré" viene preseleccionado al desplegar el cobro (pedido del dueño,
+ * revierte PR #185): desplegarlo no obliga a contestar nada.
+ */
+export const CobroDesplegado: Story = {
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement)
+    await userEvent.click(await c.findByRole('button', { name: /Cobrar algo ahora/ }))
     for (const opcion of await c.findAllByRole('radio')) {
       const esperado = opcion.textContent === 'No cobré' ? 'true' : 'false'
       await expect(opcion.getAttribute('aria-checked')).toBe(esperado)
@@ -74,7 +99,7 @@ export const ConfirmaSoloConElNombre: Story = {
   play: async ({ canvasElement, args }) => {
     const c = within(canvasElement)
     await userEvent.type(await c.findByLabelText('¿A nombre de quién?'), 'Marce')
-    await userEvent.click(await c.findByRole('button', { name: /Confirmar reserva/ }))
+    await userEvent.click(await c.findByRole('button', { name: 'Reservar' }))
 
     await waitFor(() => expect(args.action).toHaveBeenCalledTimes(1))
     const payload = (args.action as ReturnType<typeof fn>).mock.calls[0]![0] as Record<
@@ -94,6 +119,7 @@ export const ConfirmaSoloConElNombre: Story = {
 export const MontoArrancaVacio: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement)
+    await userEvent.click(await c.findByRole('button', { name: /Cobrar algo ahora/ }))
     await userEvent.click(await c.findByRole('radio', { name: 'Efectivo' }))
 
     const monto = await c.findByLabelText('Cuánto cobraste')
@@ -121,7 +147,7 @@ export const TurnoYaTomado: Story = {
   play: async ({ canvasElement }) => {
     const c = within(canvasElement)
     await expect(await c.findByText(/acaba de ser tomado/)).toBeTruthy()
-    const confirmar = await c.findByRole('button', { name: /Confirmar reserva/ })
+    const confirmar = await c.findByRole('button', { name: 'Reservar' })
     await expect((confirmar as HTMLButtonElement).disabled).toBe(true)
   },
 }

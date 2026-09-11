@@ -17,7 +17,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useNowMs } from '@/hooks/use-now'
 import { toast } from '@/hooks/use-toast'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { hasQuickActions } from './quick-actions-helpers'
 import CompleteBookingDialog from './CompleteBookingDialog'
@@ -226,7 +225,6 @@ export function QuickActions({
     if (res.success) {
       toast({ title: 'Pago confirmado', description: label, variant: 'success' })
       router.refresh()
-      notifyMoneyMoved()
     }
     return res
   }

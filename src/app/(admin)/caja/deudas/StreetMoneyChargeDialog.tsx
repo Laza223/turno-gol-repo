@@ -10,7 +10,6 @@ import {
   type ChargeLine,
 } from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
@@ -110,7 +109,6 @@ export function StreetMoneyChargeDialog({
           setLastRefId(null)
           onClose()
           router.refresh()
-          notifyMoneyMoved()
         } else {
           setError(res.error)
         }

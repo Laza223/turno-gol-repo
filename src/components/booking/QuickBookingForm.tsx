@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
-import { AlertCircle, SlidersHorizontal } from 'lucide-react'
+import { AlertCircle, Coins, Phone, SlidersHorizontal } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -28,13 +28,16 @@ import type {
  * precio a mano, notas, duración. Acá vive el caso del 90% (alguien llama y
  * pide la cancha), y el criterio #4 lo mide en segundos.
  *
- * Tres campos a la vista: **quién**, **teléfono** (H102: opcional y sin
- * frenar — el camino rápido existe para ser rápido, así que si el complejo no
- * lo carga la reserva se confirma igual) y **qué se cobró**. El precio NO es
- * un campo — se muestra ya resuelto. Se calcula en el cliente con la MISMA
- * función que usa el server (`@/lib/booking/pricing`), así que no hay
- * round-trip antes de mostrarlo ni forma de que lo mostrado difiera de lo que
- * se graba.
+ * UN campo a la vista: **quién**, enfocado al abrir. Tocar el lugar libre,
+ * escribir el nombre y tocar Reservar — dos toques y una escritura. El precio NO
+ * es un campo: se muestra ya resuelto, calculado en el cliente con la MISMA
+ * función que usa el server (`@/lib/booking/pricing`), así que no hay round-trip
+ * antes de mostrarlo ni forma de que lo mostrado difiera de lo que se graba.
+ *
+ * El **teléfono** (H102: opcional y sin frenar) y **qué se cobró** se pliegan
+ * detrás de su propio enlace. Los dos existen para cuando hacen falta, y ninguno
+ * hace falta para cargar el turno: el teléfono muchas veces no se pide, y cobrar
+ * al reservar es la excepción — lo normal es cobrar después, desde el panel.
  *
  * Lo cobrado viene con "No cobré" PRESELECCIONADO (revierte PR #185, a pedido
  * del dueño): la acción más repetida del día — cargar un turno — se confirma
@@ -88,6 +91,10 @@ export function QuickBookingForm({
   // registrado (mismo criterio que guestName: createManualBookingSchema no
   // permite combinar playerId con datos de invitado).
   const [phone, setPhone] = useState('')
+  // Plegados: el alta normal no los toca. Una vez abiertos no se vuelven a
+  // cerrar — cerrarlos solo escondería algo que la persona acaba de cargar.
+  const [phoneOpen, setPhoneOpen] = useState(false)
+  const [chargeOpen, setChargeOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   // Cronómetro del criterio de salida #4 ("alta ≤10 s"). Se arranca en el
@@ -261,11 +268,11 @@ export function QuickBookingForm({
         )}
       </div>
 
-      {/* H102: visible, opcional, sin validación que frene el envío ni
-          asterisco de obligatorio. Se oculta con jugador registrado — mismo
-          criterio que guestName (createManualBookingSchema no admite
-          combinar playerId con datos de invitado). */}
-      {!playerId && (
+      {/* H102: opcional, sin validación que frene el envío ni asterisco de
+          obligatorio. Se oculta con jugador registrado — mismo criterio que
+          guestName (createManualBookingSchema no admite combinar playerId con
+          datos de invitado). */}
+      {!playerId && phoneOpen && (
         <div className="space-y-1.5">
           <label
             htmlFor="quick-phone"
@@ -284,14 +291,41 @@ export function QuickBookingForm({
         </div>
       )}
 
-      <DepositFieldset
-        depositChoice={depositChoice}
-        depositCents={depositCents}
-        onDepositChoiceChange={setDepositChoice}
-        onDepositCentsChange={setDepositCents}
-        isPending={isPending}
-        taken={taken}
-      />
+      {chargeOpen && (
+        <DepositFieldset
+          depositChoice={depositChoice}
+          depositCents={depositCents}
+          onDepositChoiceChange={setDepositChoice}
+          onDepositCentsChange={setDepositCents}
+          isPending={isPending}
+          taken={taken}
+        />
+      )}
+
+      {(!phoneOpen || !chargeOpen) && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {!playerId && !phoneOpen && (
+            <button
+              type="button"
+              onClick={() => setPhoneOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Phone aria-hidden className="h-3.5 w-3.5" />
+              Agregar teléfono
+            </button>
+          )}
+          {!chargeOpen && (
+            <button
+              type="button"
+              onClick={() => setChargeOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Coins aria-hidden className="h-3.5 w-3.5" />
+              Cobrar algo ahora
+            </button>
+          )}
+        </div>
+      )}
 
       {/* `TONE_TEXT.destructive` (red-700/red-300), no `text-destructive`: el
           red-600 del token da 3.86:1 sobre la superficie del popover y no
@@ -309,7 +343,7 @@ export function QuickBookingForm({
         disabled={isPending || taken}
         className="h-11 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60 md:h-10"
       >
-        {isPending ? 'Creando…' : 'Confirmar reserva'}
+        {isPending ? 'Creando…' : 'Reservar'}
       </button>
 
       <div className="flex items-center justify-between">

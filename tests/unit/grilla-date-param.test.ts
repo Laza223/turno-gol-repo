@@ -46,9 +46,9 @@ type RenderedChild = { props?: { date?: string } }
 type RenderedGrilla = { props: { children: RenderedChild | RenderedChild[] } }
 
 /**
- * Desde Fase 4 el page devuelve DOS hijos (la barra de pestañas Calendario|Lista
- * y la vista), así que `children` puede ser un array: se busca al que lleva la
- * fecha en vez de asumir que hay uno solo.
+ * Desde Fase 4 el page devuelve DOS hijos (el segmento Grilla|Reservas y la
+ * vista), así que `children` puede ser un array: se busca al que lleva la fecha
+ * en vez de asumir que hay uno solo.
  */
 async function gridDateFor(date: string | undefined): Promise<string> {
   const el = (await GrillaPage({

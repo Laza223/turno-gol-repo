@@ -64,7 +64,7 @@ Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → 
 - **Día operativo** (`tenants.closes_next_day`): para complejos que cierran pasada la medianoche, `bookings.date` es el día OPERATIVO, no el calendario; el slot 23:00→00:00 se guarda con `time_end='24:00'`. Helpers en `src/shared/time/operating-day.ts`, consumidos por TODOS los generadores de slots — nunca reimplementar esa aritmética.
 - **Día operativo en caja/cantina/métricas**: criterio DISTINTO al de bookings — cutoff ÚNICO por tenant (`nightCutoffMins`), no por día de semana, usado por las lecturas (`getCashFlows`/`getDaySummary`). `src/modules/reports/` sigue en UTC calendario puro (fuera de alcance, documentado). Decisión original: `docs/decisions/2026-07-24-caja-cantina-dia-operativo.md`. **"Caja del día" (apertura/cierre/arqueo) se eliminó** — `daily_cash_opens`/`daily_cash_closes` quedan con datos históricos sin UI ni escritura desde código de aplicación, nunca reinterpretar esas filas. `/caja` (raíz) es ahora la Cantina; ningún movimiento de plata se bloquea por "caja cerrada". Decisión: `docs/decisions/2026-09-11-eliminar-caja-del-dia.md`
 - **Instantes físicos**: `bookings.starts_at`/`ends_at` (TIMESTAMPTZ) = fuente única para lógica fuerte ("ya pasó / falta X"); `date` + `time_start`/`time_end` son día operativo y display.
-- **`staff_role` tiene 2 roles** (migr. 029 quitó `read_only`): `admin` (dueño, acceso total) y `manager` (Encargado: grilla, reservas, caja, jugadores). **El manager NO accede a Configuración ni a gestión de Equipo**; ve `/metricas` pero sin las métricas de sistema. Sin sistema de PIN.
+- **`staff_role` tiene 2 roles** (migr. 029 quitó `read_only`): `admin` (dueño, acceso total) y `manager` (Encargado: grilla, reservas, caja, jugadores). **El manager NO accede a Configuración ni a gestión de Equipo**; ve `/metricas` pero sin las métricas de sistema. Sin sistema de PIN. El bloqueo de Configuración es de `settings/layout.tsx` (`requireAdminStaff()`) y cubre las 6 pestañas por igual, **sin excepción en Canchas**: `settings/canchas/page.tsx` usa `requireOperatorStaff()` a nivel de página, pero ese guard nunca llega a correr — el del layout redirige antes de que la página se renderice (H163, auditoría de coherencia 2026-09).
 - Auth staff: email+password. Jugador: passwordless (Magic Link). SuperAdmin: `seed:system-admin` + allowlist `SYSTEM_ADMIN_EMAILS` (MFA TOTP: columnas en schema, **aún NO enforced** en los guards). La identidad sale del JWT (`app_metadata`), no del método de login.
 - Seña: configurable por complejo (`settings.requires_deposit` + `settings.deposit_percentage`, default 30). Sin modo garantía. Anticipación de reserva: `settings.booking_advance_days`, default 6.
 - Planes SaaS: Predio (1-3 canchas) · Complejo (4-6) · Estadio (7+); anual = 20% off. Los umbrales salen de `plans.max_courts`; los precios, del `price_version` vigente. Página pública `/precios` (`plans-data.ts` a mantener en sync con la tabla `plans`).
@@ -183,3 +183,13 @@ Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no 
 
 Al resumir la conversación, preservar: cambios de API pública y su razón · errores encontrados y sus soluciones · archivos modificados en la sesión · decisiones arquitectónicas · estado de la auditoría o tarea en progreso.
 Resumir brevemente: intentos de exploración fallidos · discusiones ya concluidas.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

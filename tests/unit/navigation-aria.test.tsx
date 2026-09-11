@@ -34,7 +34,15 @@ describe('PlayerBottomNav a11y', () => {
 describe('AdminSidebar a11y', () => {
   it('nav has aria-label="Navegación del panel"', () => {
     vi.mocked(usePathname).mockReturnValue('/grilla')
-    render(<AdminSidebar tenantName="Test Club" mobileOpen={false} onClose={() => {}} />)
+    render(
+      <AdminSidebar
+        tenantName="Test Club"
+        mobileOpen={false}
+        onClose={() => {}}
+        userEmail="marcelo@test.com"
+        onSignOut={() => {}}
+      />,
+    )
     // Two navs render (desktop + mobile) — both should have same aria-label
     const navs = screen.getAllByRole('navigation', { name: /navegación del panel/i })
     expect(navs.length).toBeGreaterThanOrEqual(1)
@@ -42,7 +50,15 @@ describe('AdminSidebar a11y', () => {
 
   it('active link has aria-current="page"', () => {
     vi.mocked(usePathname).mockReturnValue('/grilla')
-    render(<AdminSidebar tenantName="Test Club" mobileOpen={false} onClose={() => {}} />)
+    render(
+      <AdminSidebar
+        tenantName="Test Club"
+        mobileOpen={false}
+        onClose={() => {}}
+        userEmail="marcelo@test.com"
+        onSignOut={() => {}}
+      />,
+    )
     const activeLinks = screen.getAllByRole('link', { name: /grilla/i })
     // At least one of them (desktop or mobile) is active
     const hasCurrent = activeLinks.some((l) => l.getAttribute('aria-current') === 'page')
@@ -63,6 +79,8 @@ describe('AdminSidebar — los 6 espacios', () => {
         tenantName="Test Club"
         mobileOpen={false}
         onClose={() => {}}
+        userEmail="marcelo@test.com"
+        onSignOut={() => {}}
         staffRole={staffRole}
       />,
     )
@@ -88,8 +106,12 @@ describe('AdminSidebar — los 6 espacios', () => {
   it('al manager Configuración se le bloquea con candado, no se le esconde', () => {
     renderSidebar('/grilla', 'manager')
     expect(screen.queryByRole('link', { name: 'Configuración' })).toBeNull()
+    // En el riel el rótulo visible dice "Ajustes" por ancho; el nombre accesible
+    // lo da el aria-label completo, que además lleva el motivo.
     expect(
-      screen.getByRole('button', { name: 'Configuración' }).getAttribute('aria-disabled'),
+      screen
+        .getByRole('button', { name: 'Configuración: solo el dueño' })
+        .getAttribute('aria-disabled'),
     ).toBe('true')
   })
 

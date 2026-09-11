@@ -23,7 +23,6 @@ type Params = {
   bookings: GridBooking[]
   closedDates: string[]
   closesNextDay: boolean
-  isCompact: boolean
   artNow: ArtNow
 }
 
@@ -55,7 +54,6 @@ export function useGridLayout({
   bookings,
   closedDates,
   closesNextDay,
-  isCompact,
   artNow,
 }: Params): GridLayout {
   // Banda de madrugada colapsada expandida manualmente (por visita al día; el
@@ -110,7 +108,11 @@ export function useGridLayout({
   )
   const hasBand = collapsedCount > 0
   const rowOffset = hasBand ? 3 : 2
-  const rowHeightRem = isCompact ? 2.75 : 3.25
+  // Fila fija de 4rem (64 px). El selector Cómodo/Compacto se sacó: nadie en el
+  // mostrador lo tocaba más de una vez, y la densidad real la decide la cantidad
+  // de canchas, no una preferencia. 64 px es además lo que necesita la celda para
+  // sus dos líneas — con 52 la tercera línea del saldo se recortaba.
+  const rowHeightRem = 4
 
   return {
     dayKey,

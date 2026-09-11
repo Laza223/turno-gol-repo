@@ -251,20 +251,21 @@ test.describe('grilla — mobile usable (375px)', () => {
 
       await page.goto(`/grilla?date=${TARGET_DATE}`)
 
-      // Heading must be visible (basic render check).
-      await expect(page.getByRole('heading', { name: /Grilla/i })).toBeVisible({
+      // La pantalla ya no tiene título propio: el riel dice en qué espacio
+      // estás y el encabezado se fusionó con la barra superior del panel. El
+      // chequeo básico de render pasa a ser la navegación del día.
+      await expect(page.getByRole('navigation', { name: 'Vistas de la grilla' })).toBeVisible({
         timeout: 15_000,
       })
 
-      // Fase 4: a 375px la matriz NO se renderiza — la reemplaza la lista por
-      // hora con swipe entre canchas (`booking-day-list`). Sus slots libres
-      // se llaman `Reservar ${hora} en ${cancha}`, SIN la palabra "turno":
-      // ese es el desambiguador contra los labels de la matriz.
-      await expect(page.getByTestId('booking-day-list')).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByTestId('booking-grid')).toHaveCount(0)
+      // A 375px se renderiza la MISMA matriz que en escritorio, con columnas de
+      // 44px: la lista por hora con carrusel de canchas se eliminó porque
+      // obligaba a recorrer fichas de a una para leer una sola hora.
+      await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByTestId('booking-day-list')).toHaveCount(0)
 
-      // Touch target: los slots libres de la lista miden ≥44px (min-h-14).
-      const cell = page.getByRole('button', { name: /^Reservar \d{2}:\d{2} en /i }).first()
+      // Touch target: la fila mide 4rem, o sea 64px.
+      const cell = page.getByRole('button', { name: /^Reservar turno \d{2}:\d{2} en /i }).first()
       await expect(cell).toBeVisible({ timeout: 10_000 })
       const box = await cell.boundingBox()
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)

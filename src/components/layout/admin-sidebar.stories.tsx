@@ -4,9 +4,9 @@ import { AdminSidebar } from './admin-sidebar'
 
 /**
  * `usePathname` viene del mock estándar de next/navigation del framework
- * (parameters.nextjs.navigation). El rail desktop es `fixed` — se reproduce
- * en una caja alta para que los 6 espacios más Configuración entren en el canvas.
- * El drawer mobile (`Sheet` de Radix) se controla con `mobileOpen`, sin
+ * (parameters.nextjs.navigation). El riel de 72 px es `fixed` — se reproduce en
+ * una caja alta para que los 6 espacios más Ajustes entren en el canvas.
+ * El cajón mobile (`Sheet` de Radix) se controla con `mobileOpen`, sin
  * necesidad de click: `open` es un prop controlado.
  */
 const meta = {
@@ -14,15 +14,6 @@ const meta = {
   component: AdminSidebar,
   parameters: {
     layout: 'fullscreen',
-    // El "Hoy: $X" del header (B14) pide su propio dato. Declararlo acá evita
-    // que estas stories salgan a la red de verdad y midan el placeholder sin
-    // querer; el badge tiene sus propias stories en DayTotalBadge.
-    fetchMock: [
-      {
-        match: '/api/admin/day-total',
-        json: { data: { date: '2026-08-12', collectedCents: 1250000 } },
-      },
-    ],
   },
   decorators: [
     (Story) => (
@@ -38,6 +29,8 @@ const meta = {
     tenantName: 'Complejo Fénix',
     mobileOpen: false,
     onClose: fn(),
+    userEmail: 'marcelo@complejofenix.com.ar',
+    onSignOut: fn(),
   },
 } satisfies Meta<typeof AdminSidebar>
 
@@ -80,9 +73,10 @@ export const RolManager: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('link', { name: 'Hoy' })).not.toBeInTheDocument()
     await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toBeInTheDocument()
-    // Configuración: visible, no navegable.
+    // Configuración: visible, no navegable. En el riel el rótulo dice "Ajustes"
+    // por ancho, así que el nombre accesible lo da el aria-label completo.
     await expect(canvas.queryByRole('link', { name: 'Configuración' })).not.toBeInTheDocument()
-    const locked = canvas.getByRole('button', { name: 'Configuración' })
+    const locked = canvas.getByRole('button', { name: 'Configuración: solo el dueño' })
     await expect(locked).toHaveAttribute('aria-disabled', 'true')
   },
 }
@@ -111,7 +105,7 @@ export const AbonadosEnciendeClientes: Story = {
   },
 }
 
-/** Drawer mobile abierto (`mobileOpen` controlado, sin click). */
+/** Cajón mobile abierto (`mobileOpen` controlado, sin click). */
 export const DrawerMobileAbierto: Story = {
   parameters: {
     nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } },

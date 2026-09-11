@@ -15,6 +15,7 @@ import { formatArs } from '@/lib/format'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import type { GridBooking } from '@/lib/booking/grid-cells'
+import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useSlotCharges } from './slot-panel/use-slot-charges'
 import { SlotPriceSummary } from './slot-panel/SlotPriceSummary'
 import { SlotChargeSection } from './slot-panel/SlotChargeSection'
@@ -102,6 +103,7 @@ export function BookingSlotPanel({
     router.refresh()
   }
 
+  const isDesktop = useIsDesktop()
   const [noShowOpen, setNoShowOpen] = useState(false)
   const [canteenOpen, setCanteenOpen] = useState(false)
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
@@ -124,7 +126,7 @@ export function BookingSlotPanel({
     mode,
     pending,
     submitCharge,
-    submitQuickAllCash,
+    submitFullCharge,
     confirmNoShow,
     revertNoShow,
   } = useSlotCharges({
@@ -275,7 +277,14 @@ export function BookingSlotPanel({
   return (
     <>
       <Sheet open onOpenChange={handleOpenChange}>
-        <SheetContent side="right" aria-label="Acciones del turno" className="gap-0">
+        {/* Desde abajo en el teléfono: el panel es la misma superficie que abre
+            una celda de la matriz, y en 375 px una hoja lateral de 24 rem tapa
+            la pantalla entera entrando desde el costado equivocado. */}
+        <SheetContent
+          side={isDesktop ? 'right' : 'bottom'}
+          aria-label="Acciones del turno"
+          className="gap-0"
+        >
           <SheetHeader className="border-b border-border p-5 pr-12">
             <SheetTitle className="font-display text-lg">{displayName ?? visual.label}</SheetTitle>
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
@@ -305,7 +314,7 @@ export function BookingSlotPanel({
                 error={error}
                 isPending={isPending}
                 onSubmit={submitCharge}
-                onQuickAllCash={submitQuickAllCash}
+                onFullCharge={submitFullCharge}
               />
             )}
 

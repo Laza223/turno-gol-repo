@@ -21,6 +21,10 @@ type Props = {
  * del día seleccionado) + chevrons que saltan de a 7 días. El día actual
  * queda marcado aunque no esté seleccionado. Chevrons icon-only → tooltip
  * obligatorio (MASTER §7.4).
+ *
+ * Vive en la barra superior del panel, que mide 60 px: por eso las píldoras
+ * miden 44 (el mínimo táctil) y no 48, y el bloque no se estira — se centra
+ * junto al resto de los controles de la vista.
  */
 export function WeekStrip({ date, todayArt, onNavigate }: Props) {
   const days = useMemo(() => {
@@ -32,10 +36,10 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
   }, [date])
 
   const chevronClass =
-    'flex h-11 w-11 md:h-9 md:w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors duration-150 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+    'flex h-11 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -50,9 +54,9 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
         <TooltipContent>Semana anterior</TooltipContent>
       </Tooltip>
 
-      {/* En mobile los 7 días no entran con touch targets de 44px: la tira
-          scrollea internamente (nunca la página). */}
-      <ul className="flex min-w-0 flex-1 snap-x gap-1 overflow-x-auto sm:justify-center">
+      {/* En pantallas angostas los 7 días no entran con touch targets de 44px:
+          la tira scrollea internamente (nunca la página). */}
+      <ul className="flex min-w-0 snap-x gap-0.5 overflow-x-auto">
         {days.map((day) => {
           const selected = day.date === date
           const isToday = day.date === todayArt
@@ -64,7 +68,7 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                 aria-label={`${day.label} ${day.dayNum}${isToday ? ' (hoy)' : ''}`}
                 aria-current={selected ? 'date' : undefined}
                 className={cn(
-                  'flex h-12 min-w-11 flex-col items-center justify-center rounded-lg px-2 transition-colors duration-150',
+                  'flex h-11 min-w-[52px] flex-col items-center justify-center rounded-lg px-2 transition-colors duration-150',
                   'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   selected
                     ? // Token primary: emerald-700+blanco en light, emerald-500+slate-950 en dark (§2.4).
@@ -74,8 +78,10 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
-                <span className="text-[10px] font-medium uppercase leading-none">{day.label}</span>
-                <span className="mt-1 text-sm font-semibold leading-none tabular-nums">
+                <span className="text-[10px] font-semibold uppercase leading-none tracking-[0.04em]">
+                  {day.label}
+                </span>
+                <span className="mt-[3px] text-[15px] font-semibold leading-none tabular-nums">
                   {day.dayNum}
                 </span>
               </button>

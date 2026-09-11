@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
+import type { MethodKey } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -113,12 +114,17 @@ export function useSlotCharges({
     runCharge(charges)
   }
 
-  /** Atajo "Cobrar todo en efectivo": cobra el total pendiente en un solo toque. */
-  function submitQuickAllCash() {
+  /**
+   * Cobra TODO lo pendiente con un método, en un solo toque. Es el camino normal
+   * del mostrador: el monto no se escribe porque ya se sabe —es lo que falta— y
+   * el método se elige arriba del botón. Escribir un monto distinto es la
+   * excepción y vive detrás de "Cobrar otro monto".
+   */
+  function submitFullCharge(method: MethodKey) {
     if (!booking || !actions || !mode || pending <= 0) return
     setError(null)
-    setLines([newChargeLine(pending, 'cash')])
-    runCharge([{ amount: pending, method: 'cash' }])
+    setLines([newChargeLine(pending, method)])
+    runCharge([{ amount: pending, method }])
   }
 
   async function confirmNoShow(): Promise<ActionResult> {
@@ -178,7 +184,7 @@ export function useSlotCharges({
     mode,
     pending,
     submitCharge,
-    submitQuickAllCash,
+    submitFullCharge,
     confirmNoShow,
     revertNoShow,
   }

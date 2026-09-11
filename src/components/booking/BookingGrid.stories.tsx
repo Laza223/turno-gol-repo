@@ -5,6 +5,7 @@ import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { courts } from '@/test/fixtures/court'
 import { openingHours, tenant } from '@/test/fixtures/tenant'
 import { booking, saturdayAfternoonGridBookings } from '@/test/fixtures/booking'
+import { ADMIN_HEADER_SLOT_ID } from '@/components/layout/admin-header-slot'
 import { BookingGrid } from './BookingGrid'
 
 /**
@@ -56,16 +57,22 @@ const meta = {
   },
   decorators: [
     (Story) => (
+      // El div con el id del slot hace de barra superior del panel: los
+      // controles de la grilla (semana, "Hoy", el chip y el menú) se portalizan
+      // ahí, igual que en la app. Sin él la story se vería sin ellos.
       <div className="flex h-168 flex-col p-4">
+        <div
+          id={ADMIN_HEADER_SLOT_ID}
+          className="mb-2 flex h-15 shrink-0 items-center gap-3 rounded-lg border border-border bg-card px-3"
+        />
         <Story />
       </div>
     ),
   ],
   beforeEach: () => {
-    // Los hints/densidad viven en localStorage con una key fija: sin limpiarla
-    // el resultado de una story anterior (ej. "descartar el hint") se filtra acá.
+    // El hint vive en localStorage con una key fija: sin limpiarla el resultado
+    // de una story anterior ("descartar el hint") se filtra acá.
     localStorage.removeItem('tg-hint-grilla-primera-reserva')
-    localStorage.removeItem('tg-grilla-density')
     mocked(useBookingRealtime).mockReturnValue({
       bookings: saturdayAfternoonGridBookings(),
       status: 'SUBSCRIBED',

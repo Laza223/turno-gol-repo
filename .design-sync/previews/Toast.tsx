@@ -13,7 +13,7 @@ export function Variantes() {
       <Toast open variant="success">
         <div className="grid gap-1">
           <ToastTitle>Pago acreditado</ToastTitle>
-          <ToastDescription>Recibimos tu seña de $8.000.</ToastDescription>
+          <ToastDescription>Recibimos tu seña de $ 8.000.</ToastDescription>
         </div>
         <ToastClose />
       </Toast>

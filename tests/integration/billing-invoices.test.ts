@@ -15,8 +15,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthUser } from '@/modules/auth/types'
 
-// Frontera de auth mockeada — tiene que estar hoisteada antes de importar la ruta
-// (mismo patrón que admin-day-total-endpoint.test.ts).
+// Frontera de auth mockeada — tiene que estar hoisteada antes de importar la ruta.
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 
 import { extractAuthUser } from '@/modules/auth/auth.middleware'

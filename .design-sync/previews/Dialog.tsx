@@ -8,7 +8,7 @@ export function Abierto() {
           <DialogTitle>Confirmar reserva</DialogTitle>
         </DialogHeader>
         <p className="text-sm leading-relaxed text-slate-600">
-          Cancha 3 — Fútbol 5, sábado 20:00 a 21:00. Seña a pagar ahora: <strong>$8.000</strong>.
+          Cancha 3 — Fútbol 5, sábado 20:00 a 21:00. Seña a pagar ahora: <strong>$ 8.000</strong>.
         </p>
         <div className="flex justify-end gap-2 pt-2">
           <DialogClose asChild>

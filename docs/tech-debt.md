@@ -191,3 +191,17 @@ Lo de arriba es real y quedó arreglado, pero **no era lo que ponía rojo el che
 **Fix**: la story suelta el hover de las DOS filas (`unhover`) antes de mirar el reposo y otra vez después del `unhover` propio, en vez de asumir que arranca limpia. Con `unhover` y no moviendo el puntero, justamente porque los eventos son sintéticos.
 
 **Evidencia**: `1fb481fc` pasó los 6 jobs de Stories, incluidos los dos shards 1/3 que venían fallando 2 de 2.
+
+---
+
+## El motivo de cancelación es texto libre y el jugador lo recibe
+
+**Qué es**: al cancelar una reserva, el panel de la grilla pide el motivo en un `<textarea>` libre de mínimo 3 caracteres ([BookingSlotPanel.tsx:424](src/components/booking/BookingSlotPanel.tsx:424)), y lo guarda en `bookings.canceled_reason` con una etiqueta antepuesta ("Cancelado por el complejo" / "Cancelado a pedido del jugador", [booking.cancellation.ts:357](src/modules/bookings/booking.cancellation.ts:357)). Hay ocho emisores del mismo campo, incluido el panel de soporte del super-admin. Ese texto **sale del complejo**: viaja en el payload que el servidor le devuelve al jugador en "Mis reservas" ([actions.ts:60](<src/app/(player)/mis-reservas/actions.ts:60>)) — no se dibuja en pantalla, pero está en la respuesta que su navegador recibe — y se incluye explícitamente en el export de datos personales del jugador ([route.ts:55](src/app/api/player/data-export/route.ts:55)), que es el camino ARCO de la Ley 25.326.
+
+**Por qué existe**: el veto de producto de `CLAUDE.md` es "nunca texto libre sobre personas", y por esa razón las etiquetas de jugador son un enum cerrado de 5 y la columna `abonados.notes` se eliminó. El motivo de cancelación quedó afuera de ese barrido porque describe el turno, no a la persona. En la práctica describe las dos: lo escribe un empleado a las apuradas, sobre la cancelación de una persona con nombre, y la persona lo recibe.
+
+**Costo de no resolverla ahora**: no rompe nada y puede no pasar nunca. Lo que expone es lo que un empleado escriba de mal modo: "no vino nunca, es un colgado" queda guardado y se le entrega al jugador si lo pide. Es riesgo reputacional y legal, no un bug. Detectado el 2026-09-11 al preparar el rediseño de la grilla, cuando Claude Design preguntó cómo tratar ese campo contra la regla de texto libre.
+
+**Costo estimado de resolverla**: depende de la decisión, y **la decisión es de Lazar, no técnica**. Tres caminos, de menor a mayor: (a) dejarlo y agregar un aviso en el propio campo de que el jugador puede leerlo — minutos, ocho emisores a revisar; (b) sacarlo del payload del jugador y del export, dejándolo interno — chico, pero discutible contra el derecho de acceso, porque el dato existe igual; (c) reemplazarlo por una lista cerrada de motivos con un campo opcional que no salga del complejo — migración, los ocho emisores, y los tests que hoy escriben motivos libres.
+
+**Disparador de resolución**: la primera vez que un jugador pida su export de datos, o cuando entre un empleado nuevo que no sea el dueño. Hasta entonces el único que escribe motivos es él.

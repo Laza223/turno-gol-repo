@@ -82,14 +82,18 @@ type Story = StoryObj<typeof meta>
 export const CobrarYCerrar: Story = {
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    // H017: título y CTA ahora comparten texto a propósito (mismo verbo) — se
-    // escopea al heading para no chocar con el botón que dice lo mismo.
+    // El monto va EN el botón: es lo que falta, y verlo antes de tocar evita
+    // tener que leer una tabla para saber qué se está por cobrar.
     await expect(
-      await panel.findByRole('heading', { name: 'Cobrar y dar por jugado', level: 3 }),
+      await panel.findByRole('button', { name: /^Cobrar \$.?16\.800 y dar por jugado$/ }),
     ).toBeTruthy()
-    // Confirmado ⇒ todavía se puede mover (RESCHEDULABLE_STATUSES).
-    await expect(await panel.findByRole('button', { name: /Reprogramar/ })).toBeTruthy()
+    await expect(await panel.findByText('Falta cobrar')).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
+    // Confirmado ⇒ todavía se puede mover (RESCHEDULABLE_STATUSES), pero es
+    // tarea semanal: vive detrás de "Más".
+    await expect(panel.queryByRole('button', { name: /Reprogramar/ })).toBeNull()
+    await userEvent.click(await panel.findByRole('button', { name: 'Más' }))
+    await expect(await panel.findByRole('button', { name: /Reprogramar/ })).toBeTruthy()
   },
 }
 
@@ -114,17 +118,18 @@ export const CobroRechazado: Story = {
   },
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    // La línea de cobro viene precargada con lo pendiente: alcanza con el CTA.
-    await userEvent.click(await panel.findByRole('button', { name: 'Cobrar y dar por jugado' }))
+    // El botón cobra TODO lo pendiente con el método elegido arriba: no hay
+    // formulario de por medio.
+    await userEvent.click(
+      await panel.findByRole('button', { name: /^Cobrar \$.?16\.800 y dar por jugado$/ }),
+    )
 
     await expect(await panel.findByRole('alert')).toHaveTextContent(
       'La caja de ese día ya está cerrada.',
     )
     // El panel no se cierra ni da el turno por jugado.
-    // H017: título y CTA ahora comparten texto a propósito (mismo verbo) — se
-    // escopea al heading para no chocar con el botón que dice lo mismo.
     await expect(
-      await panel.findByRole('heading', { name: 'Cobrar y dar por jugado', level: 3 }),
+      await panel.findByRole('button', { name: /^Cobrar \$.?16\.800 y dar por jugado$/ }),
     ).toBeTruthy()
   },
 }
@@ -142,8 +147,10 @@ export const JugadaSinCobrar: Story = {
   },
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    await expect(await panel.findByText('Cobrar lo que falta')).toBeTruthy()
-    // Estado terminal: `rescheduleBooking` lo rechaza, así que no se ofrece.
+    await expect(await panel.findByRole('button', { name: /^Cobrar \$.?24\.000$/ })).toBeTruthy()
+    // Estado terminal: no hay nada que plegar —ni reprogramar, ni marcar
+    // ausente, ni cancelar—, así que tampoco aparece el botón "Más".
+    await expect(panel.queryByRole('button', { name: 'Más' })).toBeNull()
     await expect(panel.queryByRole('button', { name: /Reprogramar/ })).toBeNull()
     // Pero la cantina sí: se consume durante el partido y se paga al final.
     await expect(await panel.findByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
@@ -163,12 +170,12 @@ export const CobrarPorAdelantado: Story = {
   },
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    // H017: mismo motivo que arriba — título y CTA comparten texto, se
-    // escopea al heading.
     await expect(
-      await panel.findByRole('heading', { name: 'Cobrar por adelantado', level: 3 }),
+      await panel.findByRole('button', { name: /^Cobrar \$.?24\.000 por adelantado$/ }),
     ).toBeTruthy()
-    // Un turno futuro no puede estar "ausente": todavía no pasó nada.
+    // Un turno futuro no puede estar "ausente": todavía no pasó nada, ni
+    // siquiera detrás de "Más".
+    await userEvent.click(await panel.findByRole('button', { name: 'Más' }))
     await expect(panel.queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
   },
 }

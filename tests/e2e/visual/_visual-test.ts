@@ -57,22 +57,26 @@ export async function assertDevOverlayHookExists(page: Page): Promise<void> {
 }
 
 /**
- * `DayTotalBadge` (barra lateral del admin, B14) pide `/api/admin/day-total` al
- * montar y pinta un esqueleto gris hasta que llega la respuesta. O sea que las
- * tres fotos de escritorio del admin tienen una carrera adentro: la regeneración
- * del 19/08 sacó `admin-canchas` y `admin-settings-reservas` con el número ya
- * resuelto ("$ 0") y `admin-grilla` con el esqueleto, en la MISMA corrida.
- * Congelar cualquiera de los dos estados deja la baseline decidida a cara o
- * ceca.
+ * La barra superior del panel no se renderiza en el servidor: cada vista cuelga
+ * sus controles ahí con un portal (`AdminHeaderSlot`), y el portal necesita que
+ * el nodo destino exista, o sea que necesita la hidratación.
  *
- * Se espera al estado resuelto en vez de enmascarar el badge: el valor es
- * determinístico (el seed visual no mueve plata HOY, siempre "$ 0") y así el
- * componente sigue adentro del canario en lugar de quedar tapado por una caja.
+ * Sin esta espera la foto de la Grilla sale con la barra vacía —sin el segmento
+ * Grilla|Reservas, sin la semana y sin el chip de lo pendiente— porque el
+ * contenido del servidor (los turnos) ya está visible y el test dispara la
+ * captura antes de que el cliente monte. Pasó en la primera regeneración después
+ * del rediseño: el escritorio salió pelado y el teléfono completo, que es
+ * justamente el que NO portaliza nada.
  *
- * Ancla el `aria-label` que el componente ya distingue por estado
- * ("Cobrado hoy, cargando" vs "Cobrado hoy: $ 0. Ir a Caja"), no un
- * data-testid nuevo.
+ * Es la misma clase de carrera que cubría `waitForDayTotal` antes de que el
+ * total del día se eliminara: algo que llega después del render del servidor y
+ * que hay que esperar explícitamente en vez de confiar en el orden.
  */
-export async function waitForDayTotal(page: Page): Promise<void> {
-  await expect(page.getByLabel(/^Cobrado hoy: /)).toBeVisible({ timeout: 15_000 })
+export async function waitForHeaderSlot(page: Page): Promise<void> {
+  await expect(page.getByRole('navigation', { name: 'Vistas de la grilla' })).toBeVisible({
+    timeout: 15_000,
+  })
+  await expect(page.getByRole('button', { name: 'Semana anterior' })).toBeVisible({
+    timeout: 15_000,
+  })
 }

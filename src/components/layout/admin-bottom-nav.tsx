@@ -56,7 +56,7 @@ export function AdminBottomNav({
             className={cn(
               itemClass,
               active
-                ? 'text-emerald-700 dark:text-emerald-400'
+                ? 'text-emerald-800 dark:text-emerald-300'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

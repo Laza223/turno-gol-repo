@@ -3,7 +3,6 @@
 import { useCallback, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CourtRow } from '@/modules/courts/court.types'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 
 export type SelectedSlot = {
   courtId: string
@@ -72,7 +71,6 @@ export function useGridActions(params: {
     // Cubre addBookingChargeAction / completeAndChargeBookingAction /
     // chargeDebtAction (también corre para marcar ausencia, que no mueve
     // plata: cuesta un fetch de más que devuelve el mismo número).
-    notifyMoneyMoved()
   }, [router, refetch])
 
   const navigateToDate = useCallback(
@@ -137,7 +135,6 @@ export function useGridActions(params: {
     router.refresh()
     void refetch()
     // Cubre el alta con seña cobrada en mostrador (recordManualBookingDepositCashFlow).
-    notifyMoneyMoved()
   }, [router, refetch])
 
   return {

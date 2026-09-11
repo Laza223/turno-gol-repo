@@ -74,3 +74,6 @@ scripts/audit/.corpus-fixture.json
 # el árbol de accesibilidad que los agentes citan y diffean bien. Las fotos se
 # regeneran con `pnpm audit:corpus` y son 33 MB por corrida.
 docs/audit/screenshots/2026-09/**/*.png
+
+# Paquetes de entrega a claude.ai/design: capturas y copias de specs, regenerables
+.design-sync/handoff/

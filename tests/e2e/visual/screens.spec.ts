@@ -15,8 +15,8 @@ import {
   test,
   expect,
   assertDevOverlayHookExists,
+  waitForHeaderSlot,
   suppressPushBanner,
-  waitForDayTotal,
   ADMIN_STORAGE_STATE,
 } from './_visual-test'
 import { FROZEN_NOW, VISUAL_DATE, VISUAL_TENANT_SLUG, seedVisualData } from './_seed'
@@ -95,7 +95,9 @@ test.describe('visual — admin', () => {
     await page.goto(`/grilla?date=${VISUAL_DATE}`)
     await expect(page.getByText('Martina Sosa')).toBeVisible()
     await expect(page.getByText('Equipo Los Pinos')).toBeVisible()
-    await waitForDayTotal(page)
+    // Los controles de la vista viven en la barra superior por portal, así que
+    // llegan recién con la hidratación: ver waitForHeaderSlot.
+    await waitForHeaderSlot(page)
 
     await expect(page).toHaveScreenshot('admin-grilla.png')
   })
@@ -111,7 +113,6 @@ test.describe('visual — admin', () => {
     // corrida — ver 'settings de reservas @visual' más abajo, mismo síntoma).
     await page.goto('/canchas')
     await expect(page.getByText('Cancha E2E 1')).toBeVisible()
-    await waitForDayTotal(page)
     // Shell de lista del admin: si se rompe, se rompen también /staff,
     // /jugadores y /abonados.
     await expect(page).toHaveScreenshot('admin-canchas.png')
@@ -121,7 +122,6 @@ test.describe('visual — admin', () => {
     await suppressPushBanner(page)
     await page.goto('/settings/reservas')
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
-    await waitForDayTotal(page)
     // Formulario denso (switches, inputs numéricos, help text, botón sticky):
     // representa a todos los formularios del producto.
     await expect(page).toHaveScreenshot('admin-settings-reservas.png')

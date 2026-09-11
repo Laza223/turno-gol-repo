@@ -4,9 +4,8 @@
  * B14 — el criterio de salida de Fase 1 pide "fuente única de agregados: el
  * mismo número en toda superficie que lo muestre… verificado con test de
  * consistencia, no a ojo". Antes de este archivo las dos cuentas estaban
- * copiadas a mano en seis lugares, y el "Hoy: $X" del sidebar iba a ser la
- * séptima. Una diferencia de un signo entre dos de esas copias es invisible
- * en code review y el complejo la lee como plata que falta.
+ * copiadas a mano en seis lugares. Una diferencia de un signo entre dos de esas
+ * copias es invisible en code review y el complejo la lee como plata que falta.
  *
  * El módulo es puro a propósito: no importa nada, así lo pueden usar tanto los
  * services (que hablan con la base) como los Server Components que muestran
@@ -25,7 +24,7 @@ export type BalanceParts = CollectedParts & {
 
 /**
  * Lo COBRADO: ingresos + ajustes, sin restar egresos. Es lo que el complejo
- * llama "lo de hoy" y lo que muestran `/caja`, la pantalla "Hoy" y el sidebar.
+ * llama "lo de hoy" y lo que muestran `/caja` y la pantalla "Hoy".
  */
 export function collectedFrom(parts: CollectedParts): number {
   return parts.totalIncome + parts.totalAdjustments
@@ -33,7 +32,7 @@ export function collectedFrom(parts: CollectedParts): number {
 
 /**
  * El SALDO: lo cobrado menos los egresos. Contesta otra pregunta —"cuánto
- * queda", no "cuánto entró"— y por eso nunca es el número de "Hoy: $X".
+ * queda", no "cuánto entró"— y por eso nunca es el número de lo cobrado.
  */
 export function balanceFrom(parts: BalanceParts): number {
   return collectedFrom(parts) - parts.totalExpense

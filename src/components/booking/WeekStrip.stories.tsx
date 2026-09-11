@@ -3,9 +3,9 @@ import { expect, fn, userEvent, within } from 'storybook/test'
 import { WeekStrip } from './WeekStrip'
 
 /**
- * Tira semanal de navegación de la grilla. Vive dentro de GridToolbar (que le
- * da el `space-y-3` alrededor); acá se reproduce sola porque no depende de
- * ningún estilo del padre para verse completa.
+ * Tira semanal de navegación de la grilla. Vive en la barra superior del panel,
+ * dentro de `GridHeaderBar`; acá se reproduce sola porque no depende de ningún
+ * estilo del padre para verse completa.
  */
 const meta = {
   title: 'Booking/Grid/WeekStrip',

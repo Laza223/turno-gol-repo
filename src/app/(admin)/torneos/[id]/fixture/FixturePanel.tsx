@@ -39,8 +39,8 @@ const ADVANCE_OPTIONS: ComboboxOption[] = [1, 2, 4].map((n) => ({
 
 /**
  * La vista se recuerda entre visitas. El flag guarda la elección NO por
- * defecto — "este admin prefiere el listado" — igual que `usePersistedDensity`:
- * sin nada en localStorage el hook devuelve `false`, así que el default tiene
+ * defecto — "este admin prefiere el listado": sin nada en localStorage
+ * `usePersistedFlag` devuelve `false`, así que el default tiene
  * que ser el lado falso o la Planilla no sería la vista por defecto. Con
  * `serverValue: false` el HTML del servidor coincide además con el primer
  * render del cliente para quien nunca eligió, que es casi todo el mundo.

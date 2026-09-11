@@ -8,7 +8,6 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { formatArs } from '@/lib/format'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
@@ -42,101 +41,80 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
 
   const { bookingId, charges, clientIdempotencyKey } = parsed.data
 
-  // Regla de la clase (rediseño Caja/Cantina): el catch va FUERA del contexto
-  // transaccional — atrapar adentro y devolver un objeto commitea lo escrito
-  // antes del throw (acá, las líneas de cobro ya insertadas por el loop). Los
-  // returns {success:false} que quedan adentro son validaciones de solo
-  // lectura, previas a todo write.
-  let result: ChargeDebtResult
-  try {
-    result = await withTenantContext(tenant.id, async (tx) => {
-      // 1. Fetch booking & current charges
-      const bookingRes = await tx.execute(
-        sql`SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount", deposit_status AS "depositStatus", status FROM bookings WHERE id = ${bookingId} AND tenant_id = ${tenant.id}`,
-      )
-      const booking = (
-        bookingRes as unknown as Array<{
-          priceSnapshot: number
-          depositAmount: number
-          depositStatus: string
-          status: string
-        }>
-      )[0]
+  const result: ChargeDebtResult = await withTenantContext(tenant.id, async (tx) => {
+    // 1. Fetch booking & current charges
+    const bookingRes = await tx.execute(
+      sql`SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount", deposit_status AS "depositStatus", status FROM bookings WHERE id = ${bookingId} AND tenant_id = ${tenant.id}`,
+    )
+    const booking = (
+      bookingRes as unknown as Array<{
+        priceSnapshot: number
+        depositAmount: number
+        depositStatus: string
+        status: string
+      }>
+    )[0]
 
-      if (!booking) {
-        return { success: false as const, error: 'No se encontró la reserva.' }
-      }
-      if (booking.status !== 'completed') {
-        return {
-          success: false as const,
-          error: 'Solo se pueden saldar deudas de reservas completadas.',
-        }
-      }
-
-      // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
-      // en reservas/actions.ts): dos cobros concurrentes del mismo booking leían
-      // el mismo `pending` sin lock y ambos pasaban la validación. Lockear la
-      // fila del booking ANTES de leer los charges serializa los cobros: el
-      // segundo espera a que el primero commitee su cash_flow y relee el
-      // pendiente ya actualizado.
-      //
-      // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
-      // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
-      // createCashFlow → assertDayOpen) — mismo orden que addBookingChargeAction,
-      // evita deadlock.
-      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
-
-      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
-      const { pending } = summarizeBookingCharges({
-        priceSnapshot: booking.priceSnapshot,
-        depositAmount: booking.depositAmount,
-        depositStatus: booking.depositStatus,
-        chargesTotal,
-      })
-
-      if (pending <= 0) {
-        return { success: false as const, error: 'Esta reserva ya no tiene saldo pendiente.' }
-      }
-
-      const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
-      if (totalCharging > pending) {
-        return {
-          success: false as const,
-          error: `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`,
-        }
-      }
-
-      // 2. Register each charge line — chargeSplitPayment (D2, Fase 1) es la
-      // misma fuente única que usan settleTab/registerInscriptionPayment: una
-      // línea por cash_flow, idempotente por separado (`${key}-${i}`).
-      await chargeSplitPayment(
-        tenant.id,
-        user.staffUserId,
-        charges,
-        (_charge, i) => ({
-          type: 'income',
-          category: 'booking',
-          description:
-            charges.length === 1
-              ? 'Cobro de deuda atrasada'
-              : `Cobro de deuda atrasada (${i + 1}/${charges.length})`,
-          bookingId,
-        }),
-        clientIdempotencyKey,
-        tx,
-      )
-
-      return { success: true as const }
-    })
-  } catch (err) {
-    if (err instanceof DayAlreadyClosedError) {
+    if (!booking) {
+      return { success: false as const, error: 'No se encontró la reserva.' }
+    }
+    if (booking.status !== 'completed') {
       return {
-        success: false,
-        error: 'La caja de hoy ya está cerrada. No se pueden registrar cobros.',
+        success: false as const,
+        error: 'Solo se pueden saldar deudas de reservas completadas.',
       }
     }
-    throw err
-  }
+
+    // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
+    // en reservas/actions.ts): dos cobros concurrentes del mismo booking leían
+    // el mismo `pending` sin lock y ambos pasaban la validación. Lockear la
+    // fila del booking ANTES de leer los charges serializa los cobros: el
+    // segundo espera a que el primero commitee su cash_flow y relee el
+    // pendiente ya actualizado.
+    await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
+    const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+    const { pending } = summarizeBookingCharges({
+      priceSnapshot: booking.priceSnapshot,
+      depositAmount: booking.depositAmount,
+      depositStatus: booking.depositStatus,
+      chargesTotal,
+    })
+
+    if (pending <= 0) {
+      return { success: false as const, error: 'Esta reserva ya no tiene saldo pendiente.' }
+    }
+
+    const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
+    if (totalCharging > pending) {
+      return {
+        success: false as const,
+        error: `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`,
+      }
+    }
+
+    // 2. Register each charge line — chargeSplitPayment (D2, Fase 1) es la
+    // misma fuente única que usan settleTab/registerInscriptionPayment: una
+    // línea por cash_flow, idempotente por separado (`${key}-${i}`).
+    await chargeSplitPayment(
+      tenant.id,
+      user.staffUserId,
+      charges,
+      (_charge, i) => ({
+        type: 'income',
+        category: 'booking',
+        description:
+          charges.length === 1
+            ? 'Cobro de deuda atrasada'
+            : `Cobro de deuda atrasada (${i + 1}/${charges.length})`,
+        bookingId,
+      }),
+      clientIdempotencyKey,
+      tx,
+    )
+
+    return { success: true as const }
+  })
 
   if (result.success) {
     // `/deudas` era un stub de redirect: revalidarlo no refrescaba ninguna

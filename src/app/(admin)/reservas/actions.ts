@@ -27,8 +27,7 @@ import {
   searchTenantPlayers,
   type PlayerSearchResult,
 } from '@/modules/players/player-search.service'
-import { createCashFlow, depositEnteredAsAdjustment } from '@/modules/cashflow/cashflow.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
+import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import {
   confirmManualDepositPayment,
@@ -71,17 +70,7 @@ import type { ActionResult } from '@/shared/types/action-result'
 export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
 
-/**
- * Igual que `BookingActionResult` más la única señal que el alta manual puede
- * dar y las otras acciones no: la seña se cobró con la caja del día ya cerrada,
- * así que la plata entró como AJUSTE en vez de como ingreso del día.
- *
- * Es un tipo aparte y no un campo en `BookingActionResult` porque ese lo
- * comparten seis acciones a las que la bandera no les significa nada.
- */
-export type CreateBookingActionResult =
-  | { success: true; booking: BookingRow; depositAfterClose: boolean }
-  | { success: false; error: string }
+export type CreateBookingActionResult = BookingActionResult
 
 export type BookingChargeActionResult =
   { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
@@ -115,21 +104,10 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   // antes del throw. Acá los services tiran antes de escribir, pero el patrón
   // uniforme evita que un refactor futuro herede la mina.
   let booking: BookingRow
-  // La seña puede haber entrado como ajuste porque la caja del día ya estaba
-  // cerrada (🔴 QA 2026-08-28 F-02). Se LEE la fila escrita, en la misma tx: si
-  // se predijera antes de crear, un cierre concurrente dejaría el aviso al
-  // revés. Solo se pregunta cuando hubo plata; sin seña la respuesta es no.
-  let depositAfterClose = false
   try {
-    ;({ booking, depositAfterClose } = await withTenantContext(tenant.id, async (tx) => {
-      const created = await createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx)
-      return {
-        booking: created,
-        depositAfterClose:
-          created.depositAmount > 0 &&
-          (await depositEnteredAsAdjustment(tenant.id, created.id, tx)),
-      }
-    }))
+    booking = await withTenantContext(tenant.id, (tx) =>
+      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx),
+    )
   } catch (err) {
     if (err instanceof SlotTakenError) {
       return { success: false, error: 'Este turno acaba de ser tomado.' }
@@ -166,7 +144,7 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   // would otherwise still show the slot as free even after success.
   revalidatePath('/reservas')
   revalidatePath('/grilla')
-  return { success: true, booking, depositAfterClose }
+  return { success: true, booking }
 }
 
 const checkSlotAvailabilitySchema = z.object({
@@ -321,9 +299,8 @@ export async function confirmDepositPaymentAction(
   revalidateBooking(bookingId)
 
   // Mismo patrón que otros dispatches post-commit en este archivo (ej.
-  // dispatchEmail en cancelBookingAction): si la caja del día ya estaba
-  // cerrada, confirmManualDepositPayment encoló la notificación
-  // admin_deposit_after_close DENTRO de la tx — se despacha recién ahora que
+  // dispatchEmail en cancelBookingAction): confirmManualDepositPayment puede
+  // encolar notificaciones DENTRO de la tx — se despachan recién ahora que
   // commiteó. La confirmación del booking ya es válida sin importar si esto falla.
   if (outcome.notificationIds.length > 0) {
     try {
@@ -796,120 +773,105 @@ export async function addBookingChargeAction(
 
   const { bookingId, amount, method, clientIdempotencyKey, note } = parsed.data
 
-  // Los returns {success:false} de adentro son validaciones de solo lectura
-  // (nada escrito antes) — el único throw con potencial de write previo
-  // (DayAlreadyClosedError de createCashFlow) se mapea AFUERA para que la tx
-  // rollbackee en vez de commitear.
-  let result: BookingChargeActionResult
-  try {
-    result = await withTenantContext(tenant.id, async (tx) => {
-      // El booking tiene que existir en este tenant (RLS) y estar en un estado
-      // cobrable: no tiene sentido cobrar un turno cancelado/expirado o pendiente
-      // de pago (todavía no hay turno confirmado).
-      const bookingRows = await tx.execute(sql`
+  const result: BookingChargeActionResult = await withTenantContext(tenant.id, async (tx) => {
+    // El booking tiene que existir en este tenant (RLS) y estar en un estado
+    // cobrable: no tiene sentido cobrar un turno cancelado/expirado o pendiente
+    // de pago (todavía no hay turno confirmado).
+    const bookingRows = await tx.execute(sql`
       SELECT status, price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
              deposit_status AS "depositStatus"
       FROM bookings WHERE id = ${bookingId} LIMIT 1
     `)
-      const booking = (
-        bookingRows as unknown as Array<{
-          status: string
-          priceSnapshot: number
-          depositAmount: number
-          depositStatus: string
-        }>
-      )[0]
-      if (!booking) {
-        return { success: false as const, error: 'La reserva no existe.' }
-      }
-      if (!CHARGEABLE_STATUSES.includes(booking.status as (typeof CHARGEABLE_STATUSES)[number])) {
-        return { success: false as const, error: 'No se puede cobrar una reserva en este estado.' }
-      }
+    const booking = (
+      bookingRows as unknown as Array<{
+        status: string
+        priceSnapshot: number
+        depositAmount: number
+        depositStatus: string
+      }>
+    )[0]
+    if (!booking) {
+      return { success: false as const, error: 'La reserva no existe.' }
+    }
+    if (!CHARGEABLE_STATUSES.includes(booking.status as (typeof CHARGEABLE_STATUSES)[number])) {
+      return { success: false as const, error: 'No se puede cobrar una reserva en este estado.' }
+    }
 
-      // ENS-3 (ensayo real): el endpoint aceptaba cobros sin límite contra el
-      // saldo pendiente (turno de $100 aceptó $570 y la UI decía "Pagado
-      // completo"). La fuente de verdad es la DB, recalculada acá server-side,
-      // nunca lo que mande el cliente.
-      //
-      // Excepción: un reintento con la MISMA clientIdempotencyKey ya insertada
-      // (Fix #55, doble-submit/reintento de red) es el MISMO cobro ya aceptado
-      // — no hay que re-validar contra un pendiente que ya bajó por ese cobro,
-      // o un reintento legítimo se rechazaría por error.
-      let alreadyRegistered = false
-      if (clientIdempotencyKey) {
-        // El índice único de client_idempotency_key en cash_flows es GLOBAL
-        // (migr. 023), sin tenant_id — filtro explícito además de RLS
-        // (mismo patrón que cashflow.service.ts / canteen-tab.service.ts /
-        // canteen-sale.service.ts, hallazgo #8 de la campaña de mutación).
-        const dup = await tx.execute(sql`
+    // ENS-3 (ensayo real): el endpoint aceptaba cobros sin límite contra el
+    // saldo pendiente (turno de $100 aceptó $570 y la UI decía "Pagado
+    // completo"). La fuente de verdad es la DB, recalculada acá server-side,
+    // nunca lo que mande el cliente.
+    //
+    // Excepción: un reintento con la MISMA clientIdempotencyKey ya insertada
+    // (Fix #55, doble-submit/reintento de red) es el MISMO cobro ya aceptado
+    // — no hay que re-validar contra un pendiente que ya bajó por ese cobro,
+    // o un reintento legítimo se rechazaría por error.
+    let alreadyRegistered = false
+    if (clientIdempotencyKey) {
+      // El índice único de client_idempotency_key en cash_flows es GLOBAL
+      // (migr. 023), sin tenant_id — filtro explícito además de RLS
+      // (mismo patrón que cashflow.service.ts / canteen-tab.service.ts /
+      // canteen-sale.service.ts, hallazgo #8 de la campaña de mutación).
+      const dup = await tx.execute(sql`
         SELECT 1 FROM cash_flows
         WHERE client_idempotency_key = ${clientIdempotencyKey} AND tenant_id = ${tenant.id}
         LIMIT 1
       `)
-        alreadyRegistered = (dup as unknown[]).length > 0
+      alreadyRegistered = (dup as unknown[]).length > 0
+    }
+
+    if (!alreadyRegistered) {
+      // Hallazgo C (TOCTOU, ENS-3 real): dos cobros concurrentes del mismo
+      // booking leían el mismo `pending` sin lock y ambos pasaban la
+      // validación (turno de $10.000 aceptaba 2×$8.000). Lockear la fila del
+      // booking ANTES de leer los charges serializa los cobros: el segundo
+      // espera a que el primero commitee su cash_flow y relee el pendiente ya
+      // actualizado. Mismo patrón que createDepositPayment
+      // (payment.service.ts). Solo en este camino (valida+inserta) — el
+      // reintento idempotente (alreadyRegistered) no re-valida el pendiente,
+      // así que no necesita el lock.
+      //
+      // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
+      // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
+      // createCashFlow → assertDayOpen). Ningún otro caller de createCashFlow
+      // invierte ese orden (grep de pg_advisory_xact_lock + FOR UPDATE en
+      // cashflow/bookings/payments) — evita deadlock.
+      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
+      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+      const { pending } = summarizeBookingCharges({
+        priceSnapshot: booking.priceSnapshot,
+        depositAmount: booking.depositAmount,
+        depositStatus: booking.depositStatus,
+        chargesTotal,
+      })
+      if (pending <= 0) {
+        return { success: false as const, error: 'Este turno ya está pagado por completo.' }
       }
-
-      if (!alreadyRegistered) {
-        // Hallazgo C (TOCTOU, ENS-3 real): dos cobros concurrentes del mismo
-        // booking leían el mismo `pending` sin lock y ambos pasaban la
-        // validación (turno de $10.000 aceptaba 2×$8.000). Lockear la fila del
-        // booking ANTES de leer los charges serializa los cobros: el segundo
-        // espera a que el primero commitee su cash_flow y relee el pendiente ya
-        // actualizado. Mismo patrón que createDepositPayment
-        // (payment.service.ts). Solo en este camino (valida+inserta) — el
-        // reintento idempotente (alreadyRegistered) no re-valida el pendiente,
-        // así que no necesita el lock.
-        //
-        // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
-        // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
-        // createCashFlow → assertDayOpen). Ningún otro caller de createCashFlow
-        // invierte ese orden (grep de pg_advisory_xact_lock + FOR UPDATE en
-        // cashflow/bookings/payments) — evita deadlock.
-        await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
-
-        const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
-        const { pending } = summarizeBookingCharges({
-          priceSnapshot: booking.priceSnapshot,
-          depositAmount: booking.depositAmount,
-          depositStatus: booking.depositStatus,
-          chargesTotal,
-        })
-        if (pending <= 0) {
-          return { success: false as const, error: 'Este turno ya está pagado por completo.' }
+      if (amount > pending) {
+        return {
+          success: false as const,
+          error: `El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pending)}).`,
         }
-        if (amount > pending) {
-          return {
-            success: false as const,
-            error: `El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pending)}).`,
-          }
-        }
-      }
-
-      const cashFlow = await createCashFlow(
-        tenant.id,
-        user.staffUserId,
-        {
-          type: 'income',
-          category: 'booking',
-          amount,
-          method,
-          description: note?.trim() ? note.trim() : 'Cobro de turno',
-          bookingId,
-          clientIdempotencyKey,
-        },
-        tx,
-      )
-      return { success: true as const, cashFlow }
-    })
-  } catch (err) {
-    if (err instanceof DayAlreadyClosedError) {
-      return {
-        success: false,
-        error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
       }
     }
-    throw err
-  }
+
+    const cashFlow = await createCashFlow(
+      tenant.id,
+      user.staffUserId,
+      {
+        type: 'income',
+        category: 'booking',
+        amount,
+        method,
+        description: note?.trim() ? note.trim() : 'Cobro de turno',
+        bookingId,
+        clientIdempotencyKey,
+      },
+      tx,
+    )
+    return { success: true as const, cashFlow }
+  })
 
   if (result.success) {
     revalidateBooking(bookingId)
@@ -1044,12 +1006,6 @@ export async function completeAndChargeBookingAction(
     }
     if (err instanceof BookingValidationError) {
       return { success: false, error: err.message }
-    }
-    if (err instanceof DayAlreadyClosedError) {
-      return {
-        success: false,
-        error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
-      }
     }
     throw err
   }

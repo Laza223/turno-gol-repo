@@ -10,17 +10,19 @@ const RegisterMovementModal = dynamic(
 )
 
 /**
- * CTA del EmptyState "Sin movimientos por ahora" (caja/page.tsx). Abre el
- * mismo RegisterMovementModal que ya monta CajaActions, sin duplicar su
- * wiring: el modal solo necesita `date` + `createCashFlowAction` (no depende
- * de los totales/closeDayAction de CloseDayButton), así que este componente
- * es un botón + el modal, nada más.
+ * Botón + RegisterMovementModal, reusado en dos contextos: el header de
+ * /caja ("+ Agregar movimiento") y el CTA del EmptyState de MovementsList
+ * ("Registrar el primer movimiento"). Antes eran dos componentes casi
+ * idénticos (CajaActions/EmptyMovementAction) — con el cierre de caja
+ * eliminado, CajaActions quedó reducido a exactamente esto.
  */
-export function EmptyMovementAction({
+export function AddMovementButton({
+  label,
   date,
   cutoffMins,
   createCashFlowAction,
 }: {
+  label: string
   date: string
   /** Día operativo (ver operating-day.ts): lo reenvía a RegisterMovementModal. */
   cutoffMins: number
@@ -34,7 +36,7 @@ export function EmptyMovementAction({
         onClick={() => setOpen(true)}
         className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
       >
-        Registrar el primer movimiento
+        {label}
       </button>
       <RegisterMovementModal
         open={open}

@@ -7,7 +7,6 @@ export type DailySummaryData = {
   collectedArs: string
   /** "11/12". */
   occupiedLabel: string
-  cashClosed: boolean
 }
 
 /**
@@ -18,8 +17,7 @@ export type DailySummaryData = {
  * numéricos/booleanos, evitando la superficie de HTML injection de raíz.
  */
 export function renderDailySummary(data: DailySummaryData): EmailContent {
-  const cajaLabel = data.cashClosed ? 'caja cerrada' : 'caja sin cerrar todavía'
-  const summaryLine = `${data.dateLabel}: $${data.collectedArs} · ${data.occupiedLabel} · ${cajaLabel}`
+  const summaryLine = `${data.dateLabel}: $${data.collectedArs} · ${data.occupiedLabel}`
   const subject = `Resumen de ayer — $${data.collectedArs}`
   const html = `
 <!DOCTYPE html>

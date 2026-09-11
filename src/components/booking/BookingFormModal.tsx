@@ -35,7 +35,6 @@ import type { PlayerSearchResult } from '@/modules/players/player-search.service
 import { formatDateLong } from '@/lib/format'
 import { END_OF_DAY_MINS, endLabelFromMins } from '@/shared/time/operating-day'
 import { cn } from '@/lib/utils'
-import { depositAfterCloseNote } from './deposit-after-close'
 
 type Slot = {
   courtId: string
@@ -427,15 +426,7 @@ export function BookingFormModal({
           setIsAdvancedOpen(false)
           toast({
             title: isInternalBlock ? 'Turno bloqueado' : 'Reserva creada',
-            // Con la caja del día ya cerrada la seña entra como AJUSTE, no como
-            // ingreso del día (🔴 QA 2026-08-28 F-02). El encargado tiene que
-            // enterarse en el momento: si no, la busca en el resumen del día y
-            // no está. Sigue siendo variant 'success' porque no falló nada —
-            // la reserva se creó y la plata quedó registrada.
-            description: depositAfterCloseNote(
-              `${slot.courtName} · ${timeStart}–${timeEnd}`,
-              result.depositAfterClose,
-            ),
+            description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
             variant: 'success',
           })
           onSuccess(result.booking)

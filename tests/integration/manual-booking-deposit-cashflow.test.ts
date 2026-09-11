@@ -4,10 +4,6 @@ import { createManualBooking } from '@/modules/bookings/booking.service'
 import { confirmManualDepositPayment } from '@/modules/payments/payment.service'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { depositEnteredAsAdjustment } from '@/modules/cashflow/cashflow.service'
-import { openDay } from '@/modules/cashflow/cash-open.service'
-import { todayART } from '@/shared/time/art-date'
 import {
   cleanupAll,
   createTestStaffUser,
@@ -45,7 +41,6 @@ const PRICING = {
 // Futura a propósito: la reserva es para el 2027, pero el cash_flow se imputa a
 // HOY (occurredAt = ahora), que es cuando el staff cobró la plata de verdad.
 const FUTURE_DATE = '2027-08-20'
-const TODAY = todayART()
 
 async function seed() {
   const sql = getSql()
@@ -152,12 +147,6 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     // El literal EXACTO importa: es el marcador por el que getBookingCharges
     // excluye esta fila para no contar la seña dos veces.
     expect(flows[0]!.description).toBe(`Seña — turno ${booking.id}`)
-
-    // Control del aviso al encargado: con la caja ABIERTA no hay nada que
-    // avisar. Sin este caso, un lector que devolviera true siempre pasaría.
-    await expect(
-      withTenantContext(tenantId, (tx) => depositEnteredAsAdjustment(tenantId, booking.id, tx)),
-    ).resolves.toBe(false)
   })
 
   it('mercadopago: bookings.payment_method sigue NULL (contrato INV4) pero el cash_flow guarda el medio real', async () => {
@@ -193,7 +182,7 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     expect(flows[0]!.method).toBe('mercadopago')
   })
 
-  it('transferencia: entra a Caja pero NO mueve el efectivo esperado del cierre', async () => {
+  it('transferencia: entra a Caja con el método correcto', async () => {
     const { tenantId, staffId, courtId } = await seed()
 
     const booking = await withTenantContext(tenantId, (tx) =>
@@ -215,15 +204,6 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     const flows = await cashFlowsFor(booking.id)
     expect(flows).toHaveLength(1)
     expect(flows[0]!.method).toBe('transfer')
-
-    const close = await withTenantContext(tenantId, (tx) =>
-      closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 0 }, 0, tx),
-    )
-    // cashNet solo suma method='cash': la transferencia entra al balance pero
-    // no al cajón.
-    expect(close.expectedCash).toBe(0)
-    expect(close.diffAmount).toBe(0)
-    expect(close.totalIncome).toBe(DEPOSIT)
   })
 
   it('no infla el cobrado del turno: getBookingCharges excluye la fila de la seña', async () => {
@@ -332,113 +312,6 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     const row = await bookingRow(booking.id)
     expect(row.deposit_status).toBe('not_required')
     expect(await cashFlowsFor(booking.id)).toHaveLength(0)
-  })
-
-  it('caja ya cerrada: la seña entra como AJUSTE y se le avisa al dueño por mail', async () => {
-    const sql = getSql()
-    const { tenantId, staffId, courtId } = await seed()
-
-    await withTenantContext(tenantId, (tx) =>
-      closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: 0 }, 0, tx),
-    )
-
-    const booking = await withTenantContext(tenantId, (tx) =>
-      createManualBooking(
-        tenantId,
-        manualInput({
-          courtId,
-          staffId,
-          timeStart: '15:00',
-          timeEnd: '16:00',
-          depositAmount: DEPOSIT,
-          depositMethod: 'cash',
-          depositStatus: 'paid',
-        }),
-        tx,
-      ),
-    )
-
-    // La plata YA la cobró el staff en la realidad: jamás vale la pena perder
-    // la reserva por un problema de atribución contable secundaria.
-    const row = await bookingRow(booking.id)
-    expect(row.status).toBe('confirmed')
-    expect(row.deposit_status).toBe('paid')
-
-    // 🔴 QA 2026-08-28 F-02: antes acá no se escribía NADA en Caja. La reserva
-    // decía "pagada" y esos pesos no figuraban en ninguna vista, así que la
-    // conciliación del día quedaba corta sin que nadie lo notara. Ahora entran
-    // como ajuste del mismo día operativo — 'other' porque el CHECK de DB no
-    // admite 'booking' con type 'adjustment'.
-    const flows = await cashFlowsFor(booking.id)
-    expect(flows).toHaveLength(1)
-    expect(flows[0]).toMatchObject({
-      type: 'adjustment',
-      category: 'other',
-      amount: DEPOSIT,
-      method: 'cash',
-    })
-    // Mismo literal que el camino feliz: getBookingCharges lo excluye por
-    // string, así que la seña no se cuenta dos veces en el cobrado del turno.
-    expect(flows[0]!.description).toBe(`Seña — turno ${booking.id}`)
-
-    // El snapshot del cierre NO se toca: sigue siendo la foto de lo contado esa
-    // noche. El ajuste se ve aparte, no reescribe el cierre.
-    const closes = await sql<Array<{ declared_cash: number; diff_amount: number }>>`
-      SELECT declared_cash, diff_amount FROM daily_cash_closes
-      WHERE tenant_id = ${tenantId} AND date = ${TODAY}
-    `
-    expect(closes).toHaveLength(1)
-    expect(closes[0]!.declared_cash).toBe(0)
-    expect(closes[0]!.diff_amount).toBe(0)
-
-    const notifs = await sql<Array<{ template_name: string; status: string }>>`
-      SELECT template_name, status FROM notifications
-      WHERE tenant_id = ${tenantId} AND template_name = 'admin_deposit_after_close'
-    `
-    expect(notifs).toHaveLength(1)
-    expect(notifs[0]!.status).toBe('queued')
-
-    // La señal que `createBookingAction` le muestra al encargado en el toast.
-    // Se lee la fila escrita, no se predice: por eso el aviso no puede mentir
-    // aunque alguien cierre la caja en el medio.
-    await expect(
-      withTenantContext(tenantId, (tx) => depositEnteredAsAdjustment(tenantId, booking.id, tx)),
-    ).resolves.toBe(true)
-  })
-
-  it('el cierre del día cuadra: expected = fondo + seña, diferencia 0', async () => {
-    const { tenantId, staffId, courtId } = await seed()
-    const OPENING = 500_000
-
-    await withTenantContext(tenantId, (tx) =>
-      openDay(tenantId, staffId, { date: TODAY, openingCash: OPENING }, 0, tx),
-    )
-
-    await withTenantContext(tenantId, (tx) =>
-      createManualBooking(
-        tenantId,
-        manualInput({
-          courtId,
-          staffId,
-          timeStart: '16:00',
-          timeEnd: '17:00',
-          depositAmount: DEPOSIT,
-          depositMethod: 'cash',
-          depositStatus: 'paid',
-        }),
-        tx,
-      ),
-    )
-
-    // El encargado cuenta el cajón: fondo + la seña que cobró. Antes del fix,
-    // expectedCash era solo el fondo y el cierre archivaba +DEPOSIT de sobrante
-    // fantasma.
-    const close = await withTenantContext(tenantId, (tx) =>
-      closeDailyRegister(tenantId, TODAY, staffId, { declaredCash: OPENING + DEPOSIT }, 0, tx),
-    )
-    expect(close.openingCash).toBe(OPENING)
-    expect(close.expectedCash).toBe(OPENING + DEPOSIT)
-    expect(close.diffAmount).toBe(0)
   })
 
   it('no se puede cobrar dos veces: confirmar la seña después no agrega un segundo cash_flow', async () => {

@@ -107,30 +107,4 @@ describe('home.service — día operativo (closes_next_day)', () => {
       ),
     ).toBe(false)
   })
-
-  it('"caja de ayer sin cerrar" (hasCashFlowsOnDate) respeta el mismo cutoff — un movimiento de madrugada no se le escapa al día operativo correcto', async () => {
-    const sql = getSql()
-    const { tenant, staffId } = await seedNightTenant(sql)
-    const cutoffMins = nightCutoffMins(NIGHT_OPENING_HOURS, true)
-
-    // "Hoy" = sábado operativo (2026-01-17); "ayer" = viernes operativo (2026-01-16).
-    // Actividad de madrugada del viernes operativo, 01:00 ART sábado calendario.
-    await sql`
-      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
-      VALUES (${tenant.id}, 'income', 'booking', ${500000}, 'cash', 'Venta de madrugada', ${staffId}, '2026-01-17T04:00:00Z')
-    `
-
-    const saturdayView = await withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, hoyOpts('2026-01-17', cutoffMins)),
-    )
-    expect(saturdayView.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(true)
-
-    // Control: visto desde el domingo operativo, "ayer" es el sábado (sin
-    // actividad) — la alerta no debe aparecer (probaría que el bucketing NO
-    // está usando UTC calendario puro, que hubiera dejado la venta en 'sábado').
-    const sundayView = await withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, hoyOpts('2026-01-18', cutoffMins)),
-    )
-    expect(sundayView.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(false)
-  })
 })

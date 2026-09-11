@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { getBoss, stopBoss } from '@/shared/jobs/boss'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
 import { runDailySummarySweep } from '@/shared/jobs/workers/daily-summary.worker'
 import { artDateOf } from '@/shared/time/art-date'
 import { addDays } from '@/shared/dates/art'
@@ -57,7 +56,7 @@ async function seedTenantWithYesterdayActivity(
     RETURNING id
   `
 
-  // Actividad de ayer: un cash_flow + cierre de caja (para exigir "caja cerrada").
+  // Actividad de ayer: un cash_flow.
   // Tenant de test → closesNextDay=false → cutoffMins=0 → operatingDateOf === artDateOf.
   const today = artDateOf(new Date())
   const yesterdayDate = addDays(today, -1)
@@ -77,9 +76,6 @@ async function seedTenantWithYesterdayActivity(
       },
       tx,
     ),
-  )
-  await withTenantContext(tenant.id, (tx) =>
-    closeDailyRegister(tenant.id, yesterdayDate, staff.id, {}, 0, tx),
   )
 
   return { tenant, staffId: staff.id, subId: subRows[0]!.id }
@@ -103,12 +99,6 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
     }
     expect(jobData.payload.type).toBe('daily_summary')
     expect(jobData.payload.summaryLabel).toContain('9.000')
-    // "caja cerrada" a secas, igual que el mail: `cashClosed` prueba que hubo
-    // cierre, no que la caja haya cuadrado (hallazgo #3, campaña de mutación —
-    // ver tests/unit/daily-summary-caja-label.test.ts). Este assert codificaba
-    // el texto viejo, que afirmaba de más.
-    expect(jobData.payload.summaryLabel).toContain('caja cerrada')
-    expect(jobData.payload.summaryLabel).not.toContain('sin diferencia')
     // Hallazgo de revisión adversarial: sin dedupeKey, un retry de pg-boss
     // (retryLimit=3 real en push-send) duplicaría el push visible al admin —
     // push.worker.ts solo reclama push_send_log si dedupeKey viene seteada.
@@ -139,9 +129,8 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
       WHERE tenant_id = ${tenant.id} AND template_name = 'daily_summary'
     `
     expect(notifs).toHaveLength(1)
-    const content = notifs[0]!.content as { collectedArs: string; cashClosed: boolean }
+    const content = notifs[0]!.content as { collectedArs: string }
     expect(content.collectedArs).toContain('9.000')
-    expect(content.cashClosed).toBe(true)
   }, 30_000)
 
   it('no procesa tenants bloqueados', async () => {

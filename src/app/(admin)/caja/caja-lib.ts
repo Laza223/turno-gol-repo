@@ -6,7 +6,7 @@
 
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
-import type { CashFlowCategory, DailyCashCloseRow } from '@/modules/cashflow/cashflow.types'
+import type { CashFlowCategory } from '@/modules/cashflow/cashflow.types'
 
 // ── Métodos de pago ──────────────────────────────────────────────────────────
 // Fuente canónica: @/lib/payment-method (la necesitan componentes fuera de
@@ -165,14 +165,6 @@ export function formatTimeArt(date: Date): string {
   })
 }
 
-/** Subtítulo del header: prefijo relativo §8.3 (Hoy/Ayer) + fecha media. */
-export function cajaDateLabel(dateStr: string, todayArt: string): string {
-  const medium = mediumDateLabel(dateStr)
-  if (dateStr === todayArt) return `Hoy — ${medium}`
-  if (dateStr === addDays(todayArt, -1)) return `Ayer — ${medium}`
-  return medium
-}
-
 // ── Deltas de KPI ────────────────────────────────────────────────────────────
 
 export type KpiDelta = {
@@ -217,77 +209,4 @@ export function chipClass(active: boolean): string {
       ? 'border-emerald-600 bg-primary/10 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300'
       : 'border-border bg-card text-muted-foreground hover:bg-accent'
   }`
-}
-
-// ── Cierre ───────────────────────────────────────────────────────────────────
-
-export type CloseView =
-  | {
-      variant: 'legacy'
-      /** false = el server guardó declaredCash=0 con diff=balance: no hubo arqueo
-       * declarado (indistinguible de "declaró $0"); ocultar Efectivo/Diferencia
-       * para no mostrar una alarma falsa. */
-      hasCashCount: boolean
-      hasDiff: boolean
-    }
-  | {
-      variant: 'v2'
-      hasCashCount: boolean
-      hasDiff: boolean
-      tone: 'success' | 'neutral' | 'surplus' | 'shortfall'
-      /** Fragmento de título en minúsculas (ej. "el efectivo cuadró"); el
-       * caller antepone "Caja cerrada — ". */
-      message: string
-    }
-
-/**
- * Migr. 049: bifurca por `expectedCash`. NULL = cierre LEGACY (pre-049) —
- * comportamiento EXACTO al histórico (balance − declared): nunca reinterpretar
- * closes viejos con la fórmula nueva. No-NULL = cierre NUEVO — diffAmount ya
- * viene con la semántica declared − expected (closeDailyRegister); acá solo
- * se deriva el tono/mensaje del título para CierreCard.
- */
-export function closeView(
-  close: Pick<DailyCashCloseRow, 'declaredCash' | 'diffAmount' | 'balance' | 'expectedCash'>,
-): CloseView {
-  if (close.expectedCash == null) {
-    const hasCashCount = !(close.declaredCash === 0 && close.diffAmount === close.balance)
-    return { variant: 'legacy', hasCashCount, hasDiff: hasCashCount && close.diffAmount !== 0 }
-  }
-
-  const diff = close.diffAmount
-  if (diff === 0 && close.declaredCash > 0) {
-    return {
-      variant: 'v2',
-      hasCashCount: true,
-      hasDiff: false,
-      tone: 'success',
-      message: 'el efectivo cuadró',
-    }
-  }
-  if (close.declaredCash === 0) {
-    return {
-      variant: 'v2',
-      hasCashCount: false,
-      hasDiff: false,
-      tone: 'neutral',
-      message: 'sin arqueo declarado',
-    }
-  }
-  if (diff > 0) {
-    return {
-      variant: 'v2',
-      hasCashCount: true,
-      hasDiff: true,
-      tone: 'surplus',
-      message: `sobraron ${formatArs(diff)}`,
-    }
-  }
-  return {
-    variant: 'v2',
-    hasCashCount: true,
-    hasDiff: true,
-    tone: 'shortfall',
-    message: `faltaron ${formatArs(-diff)}`,
-  }
 }

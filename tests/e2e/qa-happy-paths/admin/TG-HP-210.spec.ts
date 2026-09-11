@@ -1,7 +1,7 @@
 /**
  * TG-HP-210 — Detalle de reserva: agregar cobro parcial.
  * Rol: Admin/manager (requireOperatorStaff). Prereq: reserva confirmed con saldo
- * pendiente > 0 + caja del día abierta (sin fila en daily_cash_closes).
+ * pendiente > 0.
  * CASO DE PLATA — no se limpia la fila al final (queda viva para verificadores).
  * Evidencia: src/app/(admin)/reservas/actions.ts:363-486 (addBookingChargeAction),
  * src/app/(admin)/reservas/[id]/BookingCharges.tsx:39-236.
@@ -16,8 +16,7 @@ import {
   E2E_COURT_ID,
   E2E_STAFF_USER_ID,
 } from '../../_helpers/booking-seed'
-import { todayART } from '../../../../src/shared/time/art-date'
-import { runSql, writeEvidence } from '../_qa/evidence'
+import { writeEvidence } from '../_qa/evidence'
 import { suppressPushPrompt } from '../_qa/session'
 
 /**
@@ -40,15 +39,6 @@ test.describe('TG-HP-210 — agregar cobro parcial', () => {
   }) => {
     const supabase = makeServiceClient()
     const tomorrow = tomorrowDateIsoArt()
-    const today = todayART()
-
-    // Defensive: garantiza caja del día ABIERTA — un run anterior de este mismo
-    // QA suite pudo haber cerrado la caja de "hoy" (TG-HP-216). El superuser DSN
-    // de runSql bypassea el REVOKE UPDATE/DELETE de turnogol_app.
-    await runSql(`DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`, [
-      E2E_TENANT_ID,
-      today,
-    ])
 
     const priceSnapshot = 200_000 // $2000
     const partialCharge = 50_000 // $500 (parcial, < pendiente)

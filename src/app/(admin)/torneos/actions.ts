@@ -20,7 +20,6 @@ import {
   updateTeam,
 } from '@/modules/tournaments/tournament-team.service'
 import { registerInscriptionPayment } from '@/modules/tournaments/tournament-payment.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { formatArs } from '@/lib/format'
 import {
   searchTenantPlayers,
@@ -1009,14 +1008,6 @@ export async function registerInscriptionPaymentAction(
   } catch (err) {
     const mapped = mapTournamentError(err)
     if (mapped) return { success: false, error: mapped }
-    // DayAlreadyClosedError viene de createCashFlow y se mapea ACÁ afuera para
-    // que la transacción rollbackee en vez de commitear lo escrito antes.
-    if (err instanceof DayAlreadyClosedError) {
-      return {
-        success: false,
-        error: 'La caja de hoy ya fue cerrada. Registrá el cobro mañana o como ajuste en Caja.',
-      }
-    }
     throw err
   }
 

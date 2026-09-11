@@ -52,7 +52,6 @@ const meta = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
-      depositAfterClose: false,
     })),
   },
   decorators: [

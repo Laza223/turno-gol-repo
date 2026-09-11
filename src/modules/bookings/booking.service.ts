@@ -41,8 +41,6 @@ import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rawRowToBookingRow, rowToBookingRow, type BookingRawRow } from './booking.mappers'
 import { depositCashFlowDescription } from './booking.charges'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
-import { formatArs } from '@/modules/payments/payment.service'
 import { captureMessage } from '@/lib/sentry'
 import { calcDepositCents } from './deposit'
 import { assertTransition } from './booking.state-machine'
@@ -336,12 +334,11 @@ export async function createManualBooking(
  * reserva a mano. Unificar obligaría a ensanchar ese tipo y desarmaría el guard
  * que impide que `confirmDepositPaymentAction` acepte 'mercadopago'.
  *
- * OJO — el catch de acá abajo es PARCIAL, no un cinturón de seguridad. Solo
- * `DayAlreadyClosedError` es realmente atrapable porque lo tira `assertDayOpen`
- * en JS, ANTES de mandar SQL. Cualquier violación de constraint (amount > 0,
- * method NOT NULL) aborta la transacción entera en Postgres: el captureMessage
- * corre igual, pero el COMMIT falla después y la reserva se pierde. Los guards
- * del caller (`depositAmount > 0`, `input.depositMethod` presente) NO son
+ * OJO — el catch de acá abajo es defensivo, no un cinturón de seguridad
+ * contra cualquier error. Una violación de constraint (amount > 0, method NOT
+ * NULL) aborta la transacción entera en Postgres: el captureMessage corre
+ * igual, pero el COMMIT falla después y la reserva se pierde. Los guards del
+ * caller (`depositAmount > 0`, `input.depositMethod` presente) NO son
  * redundancia defensiva: son la única razón por la que "una seña mal formada
  * nunca te hace perder la reserva" es cierto.
  *
@@ -377,62 +374,6 @@ async function recordManualBookingDepositCashFlow(
       tx,
     )
   } catch (err) {
-    if (err instanceof DayAlreadyClosedError) {
-      // La plata está FÍSICAMENTE en la caja: el staff la cobró de mostrador.
-      // Antes acá solo se avisaba al dueño y el movimiento no existía en ningún
-      // lado, así que la reserva decía "pagada" y Caja no la mostraba nunca
-      // (🔴 QA 2026-08-28 F-02). Ahora entra como AJUSTE del mismo día
-      // operativo: es lo que el propio diálogo de cierre promete ("las
-      // correcciones posteriores van como ajustes"), y deja intacto el snapshot
-      // del cierre, que sigue siendo la foto de lo que se contó esa noche.
-      //
-      // category 'other' y no 'booking' porque el CHECK de DB
-      // (chk_cashflow_type_category) solo admite 'other'/'no_show_correction'
-      // con type 'adjustment'. La descripción es el MISMO literal exacto que el
-      // camino feliz: getBookingCharges la excluye por string, así que la seña
-      // no se cuenta dos veces en el "cobrado" del turno.
-      await createCashFlow(
-        tenantId,
-        staffUserId,
-        {
-          type: 'adjustment',
-          category: 'other',
-          amount: booking.depositAmount,
-          method,
-          description: depositCashFlowDescription(booking.id),
-          bookingId: booking.id,
-          allowClosedDay: true,
-        },
-        tx,
-      )
-      captureMessage(
-        'manual booking deposit recorded as adjustment: cash register already closed',
-        {
-          level: 'warning',
-          extra: { bookingId: booking.id, tenantId, method },
-        },
-      )
-      // Los ids se descartan a propósito: el sweep por cron de send-email
-      // levanta las notificaciones en `queued`, igual que hace
-      // `createOnlineBooking` acá abajo. Despacharlas post-commit sería
-      // latencia, no corrección, y obligaría a cambiar el tipo de retorno de
-      // `createManualBooking` (que 6+ tests y `bookingResponseSchema`
-      // —z.strictObject— dan por fijo).
-      await enqueueTenantOwnerNotification(
-        {
-          tenantId,
-          templateName: 'admin_deposit_after_close',
-          content: {
-            bookingId: booking.id,
-            amountArs: formatArs(booking.depositAmount),
-            method,
-          },
-          triggerEvent: 'payment.deposit_after_close',
-        },
-        tx,
-      )
-      return
-    }
     captureMessage('manual booking deposit cash_flow skipped: unexpected error recording it', {
       level: 'warning',
       extra: {

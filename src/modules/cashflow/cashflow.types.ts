@@ -46,41 +46,6 @@ export type CashFlowListRow = CashFlowRow & {
   counterpartName: string | null
 }
 
-export type DailyCashCloseRow = {
-  id: string
-  tenantId: string
-  date: Date
-  totalIncome: number
-  totalAdjustments: number
-  totalExpense: number
-  balance: number
-  declaredCash: number
-  /**
-   * Cierres nuevos (migr. 049): declared − expected. Cierres legacy
-   * (expectedCash null): balance − declared. NUNCA mezclar las fórmulas.
-   */
-  diffAmount: number
-  /** Fondo inicial snapshoteado al cerrar; null = cierre legacy pre-049. */
-  openingCash: number | null
-  /** opening + neto cash del día; null = cierre legacy pre-049. */
-  expectedCash: number | null
-  note: string | null
-  closedBy: string
-  closedAt: Date
-}
-
-export type DailyCashOpenRow = {
-  id: string
-  tenantId: string
-  date: Date
-  /** Centavos ARS. Fondo inicial en efectivo del día. */
-  openingCash: number
-  note: string | null
-  openedBy: string
-  openedAt: Date
-  updatedAt: Date
-}
-
 export type DaySummary = {
   date: string
   totalIncome: number
@@ -105,8 +70,6 @@ export type DaySummary = {
   balance: number
   byCategory: Partial<Record<CashFlowCategory, number>>
   byMethod: Partial<Record<CashPaymentMethod, number>>
-  isClosed: boolean
-  close: DailyCashCloseRow | null
 }
 
 export type CreateCashFlowInput = {
@@ -125,23 +88,4 @@ export type CreateCashFlowInput = {
   occurredAt?: Date
   /** UUID v4 generado por el cliente al abrir el formulario. Previene duplicados por doble-submit. */
   clientIdempotencyKey?: string
-  /**
-   * Escribe aunque la caja de ese día operativo ya esté cerrada. Es el camino
-   * que el propio diálogo de cierre promete ("las correcciones posteriores van
-   * como ajustes"), así que SOLO vale con `type: 'adjustment'` — con cualquier
-   * otro tipo `createCashFlow` tira `AdjustmentRequiredForClosedDayError`.
-   *
-   * Únicos callers: los TRES emisores del cash_flow de una seña —
-   * `recordManualBookingDepositCashFlow` (booking.service.ts, alta manual con
-   * la seña ya cobrada), `recordManualDepositCashFlow` y
-   * `recordDepositCashFlow` (payment.service.ts: confirmación a mano y webhook
-   * de MP). Antes esa plata quedaba fuera de Caja para siempre: la reserva
-   * decía "pagada" y no figuraba en ningún lado (🔴 QA 2026-08-28 F-02). No lo
-   * expone ninguna Server Action: abrirlo a la UI genérica convertiría el
-   * cierre en una sugerencia.
-   *
-   * El snapshot del cierre (`expected_cash`, `diff_amount`) NO se toca: queda
-   * como la foto de lo que se contó, y el ajuste se ve aparte.
-   */
-  allowClosedDay?: boolean
 }

@@ -47,12 +47,10 @@ export function FiadosList({
   tabs,
   settleTabAction,
   cancelTabAction,
-  settleDisabled,
 }: {
   tabs: CanteenTabRow[]
   settleTabAction: SettleTabAction
   cancelTabAction: CancelTabAction
-  settleDisabled: boolean
 }) {
   const router = useRouter()
   // Instante fijo por render (mismo criterio que SystemPanel en
@@ -119,7 +117,6 @@ export function FiadosList({
 
       <SettleTabDialog
         tab={settlingTab}
-        settleDisabled={settleDisabled}
         onClose={() => setSettlingTab(null)}
         onSettled={handleSettled}
         settleTabAction={settleTabAction}
@@ -136,13 +133,11 @@ export function FiadosList({
 
 function SettleTabDialog({
   tab,
-  settleDisabled,
   onClose,
   onSettled,
   settleTabAction,
 }: {
   tab: CanteenTabRow | null
-  settleDisabled: boolean
   onClose: () => void
   onSettled: () => void
   settleTabAction: SettleTabAction
@@ -248,14 +243,9 @@ function SettleTabDialog({
             onChange={setLines}
             quickAllCashCents={tab?.totalAmount}
             onQuickAllCash={submitQuickAllCash}
-            disabled={isPending || settleDisabled}
+            disabled={isPending}
             methodOptions={CANTEEN_METHOD_OPTIONS}
           />
-          {settleDisabled && (
-            <p className="text-xs text-muted-foreground">
-              Caja cerrada — el cobro se habilita cuando la caja esté abierta.
-            </p>
-          )}
           {error && (
             <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
@@ -264,7 +254,7 @@ function SettleTabDialog({
           <button
             type="button"
             onClick={submit}
-            disabled={isPending || settleDisabled}
+            disabled={isPending}
             className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {isPending ? 'Cobrando…' : `Cobrar ${tab ? formatArs(tab.totalAmount) : ''}`}

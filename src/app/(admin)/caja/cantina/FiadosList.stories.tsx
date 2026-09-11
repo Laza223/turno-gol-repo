@@ -12,7 +12,6 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     tabs: TABS,
-    settleDisabled: false,
     settleTabAction: fn(async (): Promise<SettleTabActionResult> => ({
       success: true,
       total: 450000,
@@ -85,26 +84,6 @@ export const CobrarFiado: Story = {
     // salida (duration-200) antes de sacarlo del DOM. Sin esperar acá, el
     // portal queda a medio cerrar y contamina las stories siguientes del
     // archivo (rule del contrato: cerrar portales al final del play).
-    await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
-  },
-}
-
-/** Caja cerrada: el cobro queda deshabilitado con hint, el diálogo se puede abrir igual. */
-export const CobroDeshabilitadoPorCajaCerrada: Story = {
-  args: { settleDisabled: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const body = within(canvasElement.ownerDocument.body)
-
-    await userEvent.click(canvas.getAllByRole('button', { name: 'Cobrar' })[0]!)
-    const dialog = within(await body.findByRole('dialog'))
-    // waitFor: mismo fade-in-0 que en CobrarFiado.
-    await waitFor(() => expect(dialog.getByText(/caja cerrada/i)).toBeVisible())
-    await expect(dialog.getByRole('button', CONFIRMAR_COBRO)).toBeDisabled()
-
-    // Esta story no cobra ni cancela — el diálogo queda abierto por defecto y
-    // contamina la story siguiente del archivo (Anular Fiado) si no se cierra acá.
-    await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }

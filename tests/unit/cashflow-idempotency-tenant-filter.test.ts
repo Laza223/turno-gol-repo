@@ -34,15 +34,9 @@ function makeTx(onFallbackSelect: (arg: unknown) => void): DbTx {
   const execute = vi.fn((_arg: unknown) => {
     call += 1
     switch (call) {
-      case 1: // assertDayOpen: pg_advisory_xact_lock
+      case 1: // INSERT ... ON CONFLICT (client_idempotency_key) DO NOTHING RETURNING * → conflicto, sin filas
         return Promise.resolve([])
-      case 2: // assertDayOpen: SELECT opening_hours FROM tenants
-        return Promise.resolve([])
-      case 3: // assertDayOpen: SELECT id FROM daily_cash_closes
-        return Promise.resolve([])
-      case 4: // INSERT ... ON CONFLICT (client_idempotency_key) DO NOTHING RETURNING * → conflicto, sin filas
-        return Promise.resolve([])
-      case 5: // el fallback bajo la lupa
+      case 2: // el fallback bajo la lupa
         onFallbackSelect(_arg)
         // Fila que "ya existía" — de OTRO tenant. Si el fallback no filtra por
         // tenant_id, esta es la fila que se devuelve (leak cross-tenant).

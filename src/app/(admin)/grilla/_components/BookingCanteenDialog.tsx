@@ -29,8 +29,7 @@ import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
  */
 
 export type ListCanteenCatalog = () => Promise<
-  | { success: true; products: CanteenProductRow[]; saleDisabled: boolean }
-  | { success: false; error: string }
+  { success: true; products: CanteenProductRow[] } | { success: false; error: string }
 >
 
 /** Igual que `SellTicketAction` de TicketPanel, más el turno al que se carga. */
@@ -64,10 +63,7 @@ export function BookingCanteenDialog({
   listCatalogAction,
   sellTicketAction,
 }: Props) {
-  const [catalog, setCatalog] = useState<{
-    products: CanteenProductRow[]
-    saleDisabled: boolean
-  } | null>(null)
+  const [catalog, setCatalog] = useState<{ products: CanteenProductRow[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -80,7 +76,7 @@ export function BookingCanteenDialog({
           setError(res.error)
           return
         }
-        setCatalog({ products: res.products, saleDisabled: res.saleDisabled })
+        setCatalog({ products: res.products })
       } catch (err) {
         Sentry.captureException(err)
         if (alive) setError('No pudimos cargar la cantina. Revisá tu conexión.')
@@ -111,7 +107,6 @@ export function BookingCanteenDialog({
         {catalog && (
           <TicketPanel
             products={catalog.products}
-            saleDisabled={catalog.saleDisabled}
             isInDialog
             sellTicketAction={(input) => sellTicketAction({ ...input, bookingId })}
           />

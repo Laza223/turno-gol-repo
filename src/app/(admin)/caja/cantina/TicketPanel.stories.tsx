@@ -212,22 +212,3 @@ export const AnotarFiadoSinNombre: Story = {
     await expect(args.createTabAction).not.toHaveBeenCalled()
   },
 }
-
-/**
- * Caja de hoy cerrada: cobrar queda deshabilitado con hint visible; anotar
- * como fiado sigue activo (createTab no toca caja).
- */
-export const CajaCerrada: Story = {
-  args: { saleDisabled: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const product = PRODUCTS[0]!
-
-    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
-    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
-
-    await expect(canvas.getByRole('button', { name: /^Cobrar/ })).toBeDisabled()
-    await expect(canvas.getByText(/caja cerrada/i)).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Anotar como fiado' })).toBeEnabled()
-  },
-}

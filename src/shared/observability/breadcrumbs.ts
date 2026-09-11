@@ -291,9 +291,9 @@ type ActivationCtx = {
 /**
  * Segundo destino de los eventos, registrado desde el servidor.
  *
- * Este archivo es ISOMÓRFICO: lo importan dos componentes cliente
- * (`CloseDayButton`, `QuickBookingForm`), así que no puede importar nada que
- * toque la DB — el driver de Postgres no entra en el bundle del navegador. Por
+ * Este archivo es ISOMÓRFICO: lo importan componentes cliente (ej.
+ * `QuickBookingForm`), así que no puede importar nada que toque la DB — el
+ * driver de Postgres no entra en el bundle del navegador. Por
  * eso la dependencia se invierte: `@/shared/observability/analytics` (solo
  * servidor) se registra acá vía `setAnalyticsSink`, desde `instrumentation.ts`
  * y desde `run-workers.ts`.

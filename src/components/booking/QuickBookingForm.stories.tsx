@@ -31,7 +31,6 @@ const meta = {
     action: fn(async () => ({
       success: true as const,
       booking: { id: 'nueva' } as never,
-      depositAfterClose: false,
     })),
     searchPlayersAction: fn(async () => ({ success: true as const, players: [] })),
     onSuccess: fn(),

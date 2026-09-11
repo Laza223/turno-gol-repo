@@ -7,19 +7,16 @@ import { describe, expect, it } from 'vitest'
 import {
   addDays,
   buildDelta,
-  cajaDateLabel,
   canteenStockBadge,
   CATEGORY_BADGE,
   categoryLabel,
   chipClass,
-  closeView,
   formatTimeArt,
   mediumDateLabel,
   methodBreakdown,
   movementTitle,
   signedArs,
 } from '@/app/(admin)/caja/caja-lib'
-import { formatArs } from '@/lib/format'
 
 // Intl es-AR usa espacio no separable tras "$"; normalizar para comparar.
 const flat = (s: string) => s.replace(/ /g, ' ')
@@ -53,17 +50,11 @@ describe('canteenStockBadge', () => {
   })
 })
 
-describe('mediumDateLabel / cajaDateLabel', () => {
+describe('mediumDateLabel', () => {
   it('formatea "YYYY-MM-DD" al formato medio §8.3 sin ISO ni coma', () => {
     // 2026-07-02 cae jueves (verificado — no copiar el ejemplo ilustrativo del spec).
     expect(mediumDateLabel('2026-07-02')).toBe('jue 2 de julio')
     expect(mediumDateLabel('2026-01-01')).toBe('jue 1 de enero')
-  })
-
-  it('prefija Hoy/Ayer cuando corresponde (relativo §8.3)', () => {
-    expect(cajaDateLabel('2026-07-02', '2026-07-02')).toBe('Hoy — jue 2 de julio')
-    expect(cajaDateLabel('2026-07-01', '2026-07-02')).toBe('Ayer — mié 1 de julio')
-    expect(cajaDateLabel('2026-06-25', '2026-07-02')).toBe('jue 25 de junio')
   })
 
   it('addDays cruza meses y años sin depender de la TZ del host', () => {
@@ -146,104 +137,6 @@ describe('signedArs / buildDelta', () => {
     expect(buildDelta(5000, 5000, 'vs ayer')).toMatchObject({
       direction: 'neutral',
       tone: 'neutral',
-    })
-  })
-})
-
-describe('closeView', () => {
-  describe('LEGACY (expectedCash null) — comportamiento histórico intacto', () => {
-    it('declaredCash=0 con diff=balance → sin arqueo declarado (no alarmar con dif falsa)', () => {
-      expect(
-        closeView({ declaredCash: 0, diffAmount: 400000, balance: 400000, expectedCash: null }),
-      ).toEqual({
-        variant: 'legacy',
-        hasCashCount: false,
-        hasDiff: false,
-      })
-    })
-
-    it('arqueo que cuadra y arqueo con diferencia', () => {
-      expect(
-        closeView({ declaredCash: 400000, diffAmount: 0, balance: 400000, expectedCash: null }),
-      ).toEqual({
-        variant: 'legacy',
-        hasCashCount: true,
-        hasDiff: false,
-      })
-      expect(
-        closeView({
-          declaredCash: 300000,
-          diffAmount: 100000,
-          balance: 400000,
-          expectedCash: null,
-        }),
-      ).toEqual({
-        variant: 'legacy',
-        hasCashCount: true,
-        hasDiff: true,
-      })
-    })
-  })
-
-  describe('v2 (expectedCash != null) — semántica declared − expected (migr. 049)', () => {
-    it('diff=0 y declaredCash>0 → éxito "el efectivo cuadró"', () => {
-      expect(
-        closeView({ declaredCash: 500000, diffAmount: 0, balance: 500000, expectedCash: 500000 }),
-      ).toEqual({
-        variant: 'v2',
-        hasCashCount: true,
-        hasDiff: false,
-        tone: 'success',
-        message: 'el efectivo cuadró',
-      })
-    })
-
-    it('declaredCash=0 → neutro "sin arqueo declarado" (aunque diff resultante no sea 0)', () => {
-      expect(
-        closeView({ declaredCash: 0, diffAmount: -500000, balance: 500000, expectedCash: 500000 }),
-      ).toEqual({
-        variant: 'v2',
-        hasCashCount: false,
-        hasDiff: false,
-        tone: 'neutral',
-        message: 'sin arqueo declarado',
-      })
-    })
-
-    it('diff > 0 → "sobraron $X"', () => {
-      const result = closeView({
-        declaredCash: 600000,
-        diffAmount: 100000,
-        balance: 500000,
-        expectedCash: 500000,
-      })
-      expect(result).toMatchObject({
-        variant: 'v2',
-        hasCashCount: true,
-        hasDiff: true,
-        tone: 'surplus',
-      })
-      expect(flat((result as { message: string }).message)).toBe(
-        `sobraron ${flat(formatArs(100000))}`,
-      )
-    })
-
-    it('diff < 0 → "faltaron $X"', () => {
-      const result = closeView({
-        declaredCash: 400000,
-        diffAmount: -100000,
-        balance: 500000,
-        expectedCash: 500000,
-      })
-      expect(result).toMatchObject({
-        variant: 'v2',
-        hasCashCount: true,
-        hasDiff: true,
-        tone: 'shortfall',
-      })
-      expect(flat((result as { message: string }).message)).toBe(
-        `faltaron ${flat(formatArs(100000))}`,
-      )
     })
   })
 })

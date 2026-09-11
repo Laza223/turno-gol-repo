@@ -1,7 +1,7 @@
 import { ArrowRightLeft, Banknote, Coins, CreditCard, type LucideIcon } from 'lucide-react'
 import { formatArs } from '@/lib/format'
 import type { MethodKey, MethodTotal } from '../caja-lib'
-import { Disclosure } from './Disclosure'
+import { Disclosure } from '../components/Disclosure'
 
 const METHOD_ICON: Record<MethodKey, LucideIcon> = {
   cash: Banknote,

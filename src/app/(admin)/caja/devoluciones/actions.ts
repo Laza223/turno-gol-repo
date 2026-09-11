@@ -8,9 +8,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { markRefundSettled } from '@/modules/payments/refund.service'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { bookingCode } from '@/lib/booking-code'
-import { captureMessage } from '@/lib/sentry'
 
 const settleSchema = z.object({
   refundPaymentId: uuid,
@@ -18,8 +16,7 @@ const settleSchema = z.object({
 })
 
 export type MarkRefundSettledResult =
-  | { success: true; alreadySettled?: boolean; cashFlowSkipped?: boolean }
-  | { success: false; error: string }
+  { success: true; alreadySettled?: boolean } | { success: false; error: string }
 
 /**
  * El complejo marca que ya devolvió la seña.
@@ -45,82 +42,44 @@ export async function markRefundSettledAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  // El try/catch va FUERA del contexto transaccional: atraparlo adentro y
-  // devolver un objeto commitea lo escrito antes del throw (regla de la clase,
-  // ver caja/actions.ts).
-  let outcome: { settled: boolean; cashFlowSkipped: boolean }
-  try {
-    outcome = await withTenantContext(tenant.id, async (tx) => {
-      const settled = await markRefundSettled(
-        {
-          refundPaymentId: parsed.data.refundPaymentId,
-          tenantId: tenant.id,
-          method: parsed.data.method,
-          staffUserId: user.staffUserId!,
-        },
-        tx,
-      )
-      // Ya estaba saldada: alguien más tildó primero, o MercadoPago avisó por
-      // webhook. Sin audit log y sin movimiento de caja duplicado.
-      if (!settled) return { settled: false, cashFlowSkipped: false }
+  const outcome = await withTenantContext(tenant.id, async (tx) => {
+    const settled = await markRefundSettled(
+      {
+        refundPaymentId: parsed.data.refundPaymentId,
+        tenantId: tenant.id,
+        method: parsed.data.method,
+        staffUserId: user.staffUserId!,
+      },
+      tx,
+    )
+    // Ya estaba saldada: alguien más tildó primero, o MercadoPago avisó por
+    // webhook. Sin audit log y sin movimiento de caja duplicado.
+    if (!settled) return { settled: false }
 
-      // La plata que salió del cajón tiene que verse en la caja: la seña había
-      // entrado como ingreso, y sin el egreso el efectivo esperado del cierre
-      // queda inflado y el arqueo da corto. Las devoluciones por MercadoPago no
-      // tocan la caja física, así que no generan movimiento.
-      if (parsed.data.method !== 'cash' && parsed.data.method !== 'transfer') {
-        return { settled: true, cashFlowSkipped: false }
-      }
-
-      const label = settled.bookingId ? ` — turno ${bookingCode(settled.bookingId)}` : ''
-      await createCashFlow(
-        tenant.id,
-        user.staffUserId!,
-        {
-          type: 'expense',
-          category: 'other_expense',
-          method: parsed.data.method,
-          amount: settled.amountCents,
-          description: `Devolución de seña${label}`,
-          ...(settled.bookingId ? { bookingId: settled.bookingId } : {}),
-        },
-        tx,
-      )
-      return { settled: true, cashFlowSkipped: false }
-    })
-  } catch (err) {
-    // La caja del día ya cerró. La plata se devolvió en la vida real: perder el
-    // registro por un problema contable secundario sería el peor de los dos
-    // males. Se marca la devolución igual, sin el movimiento, y se avisa.
-    if (err instanceof DayAlreadyClosedError) {
-      const settledLate = await withTenantContext(tenant.id, (tx) =>
-        markRefundSettled(
-          {
-            refundPaymentId: parsed.data.refundPaymentId,
-            tenantId: tenant.id,
-            method: parsed.data.method,
-            staffUserId: user.staffUserId!,
-          },
-          tx,
-        ),
-      )
-      captureMessage('refund settled after the cash day was closed', {
-        level: 'warning',
-        extra: {
-          tenantId: tenant.id,
-          refundPaymentId: parsed.data.refundPaymentId,
-          method: parsed.data.method,
-        },
-      })
-      revalidateRefunds()
-      return {
-        success: true,
-        cashFlowSkipped: true,
-        ...(settledLate ? {} : { alreadySettled: true }),
-      }
+    // La plata que salió del cajón tiene que verse en la caja: la seña había
+    // entrado como ingreso, y sin el egreso el neto por método queda inflado.
+    // Las devoluciones por MercadoPago no tocan la caja física, así que no
+    // generan movimiento.
+    if (parsed.data.method !== 'cash' && parsed.data.method !== 'transfer') {
+      return { settled: true }
     }
-    throw err
-  }
+
+    const label = settled.bookingId ? ` — turno ${bookingCode(settled.bookingId)}` : ''
+    await createCashFlow(
+      tenant.id,
+      user.staffUserId!,
+      {
+        type: 'expense',
+        category: 'other_expense',
+        method: parsed.data.method,
+        amount: settled.amountCents,
+        description: `Devolución de seña${label}`,
+        ...(settled.bookingId ? { bookingId: settled.bookingId } : {}),
+      },
+      tx,
+    )
+    return { settled: true }
+  })
 
   revalidateRefunds()
   return outcome.settled ? { success: true } : { success: true, alreadySettled: true }

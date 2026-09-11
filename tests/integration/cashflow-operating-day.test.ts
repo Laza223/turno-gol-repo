@@ -8,9 +8,7 @@ import {
   ensureRoles,
   linkStaffToTenant,
 } from '../helpers/tenant'
-import { createCashFlow, getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
+import { getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 
 beforeAll(async () => {
@@ -110,65 +108,6 @@ describe('cashflow bucketing — día operativo (closes_next_day)', () => {
     expect(saturdaySummary.totalIncome).toBe(0)
   })
 
-  it('un alta en la ventana de madrugada de un día operativo YA CERRADO es rechazada (atomicidad escritura/lectura)', async () => {
-    const sql = getSql()
-    const { tenant, staff } = await seedNightTenant(sql)
-    const cutoffMins = nightCutoffMins(nightOpeningHours(), true)
-
-    await insertCashFlow(
-      sql,
-      tenant.id,
-      staff.id,
-      '2026-01-17T04:00:00Z',
-      500000,
-      'Venta de madrugada',
-    )
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, '2026-01-16', staff.id, {}, cutoffMins, tx),
-    )
-
-    // Sin el fix, assertDayOpen comparaba contra artDateOf (calendario ART puro:
-    // '2026-01-17', sábado) y este alta pasaba igual — quedando fuera del cierre
-    // ya hecho para siempre (decisión B del ADR: sin re-bucketing histórico).
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        createCashFlow(
-          tenant.id,
-          staff.id,
-          {
-            type: 'income',
-            category: 'booking',
-            amount: 100000,
-            method: 'cash',
-            description: 'Segunda venta, misma madrugada ya cerrada',
-            occurredAt: new Date('2026-01-17T04:30:00Z'),
-          },
-          tx,
-        ),
-      ),
-    ).rejects.toBeInstanceOf(DayAlreadyClosedError)
-
-    // Control: un movimiento de un día operativo DISTINTO (sábado, sin cerrar)
-    // sí se acepta — el guard no bloquea de más.
-    const accepted = await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(
-        tenant.id,
-        staff.id,
-        {
-          type: 'income',
-          category: 'booking',
-          amount: 70000,
-          method: 'cash',
-          description: 'Venta sábado diurno',
-          occurredAt: new Date('2026-01-17T20:00:00Z'),
-        },
-        tx,
-      ),
-    )
-    expect(accepted.id).toBeDefined()
-  })
-
   it('cutoffMins=0 (closes_next_day=false) mantiene el comportamiento actual sin cambios (regresión cero)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
@@ -193,10 +132,5 @@ describe('cashflow bucketing — día operativo (closes_next_day)', () => {
       getDaySummary(tenant.id, '2026-01-14', 0, tx),
     )
     expect(summary.totalIncome).toBe(300000)
-
-    const close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, '2026-01-14', staff.id, {}, 0, tx),
-    )
-    expect(close.totalIncome).toBe(300000)
   })
 })

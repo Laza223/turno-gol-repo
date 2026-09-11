@@ -51,7 +51,7 @@ function dateLabelMedium(date: string): string {
  *
  * Reusa getHoyData (mismo agregador que la pantalla en vivo) pasando `date` =
  * AYER — así el resumen y la pantalla "Hoy" nunca pueden divergir en cómo
- * calculan "cobrado"/"ocupación"/"caja cerrada".
+ * calculan "cobrado"/"ocupación".
  */
 export async function runDailySummarySweep(): Promise<void> {
   const sql = getWorkerSql()
@@ -109,15 +109,7 @@ async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {
 
   const collectedArs = formatArsNumber(data.numbers.collectedTodayCents)
   const occupiedLabel = `${data.numbers.occupancy.occupied}/${data.numbers.occupancy.available}`
-  // "caja cerrada" a secas, MISMO texto que el mail
-  // (templates/daily-summary.ts): `cashClosed` sale de `todayClose !== null`,
-  // o sea prueba que hubo cierre, NO que la caja haya cuadrado. Decía "caja
-  // cerrada sin diferencia" y un cierre con faltante o sobrante disparaba el
-  // "sin diferencia" igual (hallazgo #3, campaña de mutación). Si algún día se
-  // quiere informar el faltante/sobrante real, el dato es `diff_amount` del
-  // cierre — no este booleano.
-  const cajaLabel = data.numbers.cashClosed ? 'caja cerrada' : 'caja sin cerrar todavía'
-  const summaryLabel = `${dateLabelMedium(yesterday)}: $${collectedArs} · ${occupiedLabel} · ${cajaLabel}`
+  const summaryLabel = `${dateLabelMedium(yesterday)}: $${collectedArs} · ${occupiedLabel}`
 
   await notifyAdminPush(tenant.id, {
     type: 'daily_summary',
@@ -143,7 +135,6 @@ async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {
             dateLabel: dateLabelMedium(yesterday),
             collectedArs,
             occupiedLabel,
-            cashClosed: data.numbers.cashClosed,
           },
         },
         tx,

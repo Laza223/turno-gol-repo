@@ -1,5 +1,5 @@
 /**
- * E2E — Rediseño de Caja
+ * E2E — Cantina (raíz de /caja tras eliminar "Caja del día")
  *
  * 1. Ticket de Cantina/Bar (Fase 3, multi-ítem): cargar un producto en el
  *    catálogo (/caja/productos), venderlo con dos taps (tap producto x2 +
@@ -13,10 +13,6 @@
  * 4. Fiado (Fase 4): anotar un ticket como fiado (en vez de cobrarlo), verlo
  *    en "Fiados pendientes", cobrarlo en efectivo y verlo desaparecer de la
  *    lista + aparecer como movimiento "Fiado cobrado — …" en /caja.
- *
- * Ningún test cierra la caja del día: el cierre es inmutable (REVOKE DELETE)
- * y dejaría el tenant demo bloqueado para los demás specs; ese cálculo se
- * cubre en tests/integration/cashflow.test.ts.
  */
 
 import { test, expect } from './fixtures'
@@ -52,10 +48,10 @@ test.describe('Caja redesign', () => {
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
     await createCanteenProduct(page, productName, '500')
 
-    // Vender x2 en efectivo desde la tab Cantina: tap producto, tap producto
-    // de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo intermedio
-    // (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
-    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
+    // Vender x2 en efectivo desde /caja (Cantina, raíz): tap producto, tap
+    // producto de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo
+    // intermedio (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
+    await page.goto('/caja', { waitUntil: 'networkidle' })
     const aguaButton = page.getByRole('button', { name: new RegExp(`^${productName}`) }).first()
     await aguaButton.click()
     await aguaButton.click()
@@ -64,8 +60,8 @@ test.describe('Caja redesign', () => {
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
 
-    // La venta aparece en "Movimientos del día", que sigue viviendo en /caja
-    // (Caja del día) — la cash_flow es la misma fuente de plata de siempre.
+    // La venta aparece en "Movimientos del día", en la misma página — recarga
+    // completa para confirmar que persistió en DB, no solo en el estado local.
     await page.goto('/caja', { waitUntil: 'networkidle' })
     // Anclar a la fila de la tabla desktop: getByText pelado puede resolver la
     // card mobile (oculta en viewport desktop) o el toast efímero.
@@ -110,7 +106,7 @@ test.describe('Caja redesign', () => {
     await createCanteenProduct(page, nameB, '200')
 
     // Un ticket con las dos líneas (1 tap cada una) y un solo Cobrar.
-    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
+    await page.goto('/caja', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: new RegExp(nameA) }).click()
     await page.getByRole('button', { name: new RegExp(nameB) }).click()
     await page.getByRole('button', { name: /^Cobrar/ }).click()
@@ -177,7 +173,7 @@ test.describe('Caja redesign', () => {
     await createCanteenProduct(page, productName, '400')
 
     // Cargar el ticket y anotarlo como fiado en vez de cobrarlo.
-    await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
+    await page.goto('/caja', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: new RegExp(productName) }).click()
     await page.getByRole('button', { name: 'Anotar como fiado' }).click()
 

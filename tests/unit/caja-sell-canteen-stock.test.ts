@@ -31,7 +31,6 @@ import {
   ProductInactiveError,
   ProductNotFoundError,
 } from '@/modules/canteen/canteen.errors'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
 const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 const PRODUCT_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
@@ -96,15 +95,6 @@ describe('sellTicketAction — mapeo de errores es-AR', () => {
     vi.mocked(sellTicket).mockRejectedValue(new EmptyTicketError())
     const res = await sellTicketAction(input())
     expect(res).toEqual({ success: false, error: 'El ticket está vacío.' })
-  })
-
-  it('DayAlreadyClosedError → copy de caja cerrada (mismo texto que el action viejo)', async () => {
-    vi.mocked(sellTicket).mockRejectedValue(new DayAlreadyClosedError('2026-06-11'))
-    const res = await sellTicketAction(input())
-    expect(res).toEqual({
-      success: false,
-      error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
-    })
   })
 
   it('un error no mapeado se re-lanza (no se traga silenciosamente)', async () => {

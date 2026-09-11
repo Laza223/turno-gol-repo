@@ -78,12 +78,6 @@ export async function lockProducts(
  *     concurrentes con la misma key pasan ambas el check 1 (la primera
  *     todavía no commiteó); la segunda espera el lock y acá descubre el
  *     duplicado — sin esto descontaría stock dos veces.
- *
- * El createCashFlow interno hereda assertDayOpen + advisory lock del cierre:
- * con la caja del día cerrada la venta se rechaza (DayAlreadyClosedError).
- * Orden de locks global: productos (ORDER BY id) → advisory daily_close.
- * closeDailyRegister toma solo el advisory y nunca toca canteen_products,
- * así que no hay ciclo posible.
  */
 export async function sellTicket(
   tenantId: string,

@@ -1,12 +1,9 @@
-import type { CashFlowRow, DailyCashCloseRow, DaySummary } from '@/modules/cashflow/cashflow.types'
+import type { CashFlowRow, DaySummary } from '@/modules/cashflow/cashflow.types'
 import { balanceFrom, collectedFrom } from '@/modules/cashflow/totals'
-import { artDateString, daysFromNow, FROZEN_NOW, hoursFromNow } from './clock'
+import { hoursFromNow, artDateString, FROZEN_NOW } from './clock'
 import { uid } from './ids'
 import { staffManager, staffMember } from './staff'
 import { tenant } from './tenant'
-
-const dateAt = (offsetDays: number): Date =>
-  new Date(`${artDateString(daysFromNow(offsetDays))}T00:00:00.000Z`)
 
 /** Default: ingreso de una seña de reserva, cobrada por MercadoPago. */
 export const cashFlow = (overrides: Partial<CashFlowRow> = {}): CashFlowRow => ({
@@ -76,28 +73,8 @@ export const cashFlows = (): CashFlowRow[] => [
   cashFlowAdjustment(),
 ]
 
-/** Cierre de caja del día de hoy: sobró un poco de efectivo declarado. */
-export const dailyCashClose = (overrides: Partial<DailyCashCloseRow> = {}): DailyCashCloseRow => ({
-  id: uid(651),
-  tenantId: tenant().id,
-  date: dateAt(0),
-  totalIncome: 4500000,
-  totalAdjustments: 0,
-  totalExpense: 800000,
-  balance: 3700000,
-  declaredCash: 3650000,
-  diffAmount: -50000,
-  // Fixture legacy (pre-049) a propósito: cubre el branch de cierre viejo.
-  openingCash: null,
-  expectedCash: null,
-  note: 'Faltaron $500, seguramente vuelto de más.',
-  closedBy: staffMember().id,
-  closedAt: hoursFromNow(-2),
-  ...overrides,
-})
-
 /**
- * Resumen del día ya cerrado — cifras consistentes con `dailyCashClose()`.
+ * Resumen del día.
  *
  * B14: `collected` y `balance` se DERIVAN de las partes con los mismos helpers
  * que usa producción, en vez de escribirse a mano. Un fixture con los totales
@@ -114,14 +91,12 @@ export const daySummary = (overrides: Partial<DaySummary> = {}): DaySummary => {
     totalExpense: 800000,
     byCategory: { booking: 3600000, product_sale: 900000, operating_expense: 800000 },
     byMethod: { cash: 2000000, mercadopago: 2000000, transfer: 500000 },
-    isClosed: true,
-    close: dailyCashClose(),
     ...overrides,
   }
   return { ...base, collected: collectedFrom(base), balance: balanceFrom(base) }
 }
 
-/** Día en curso, todavía sin cerrar — solo movimientos de la mañana/mediodía. */
+/** Día en curso — solo movimientos de la mañana/mediodía. */
 export const daySummaryOpen = (): DaySummary =>
   daySummary({
     totalIncome: 1800000,
@@ -129,6 +104,4 @@ export const daySummaryOpen = (): DaySummary =>
     totalExpense: 0,
     byCategory: { booking: 1500000, product_sale: 300000 },
     byMethod: { mercadopago: 900000, cash: 600000, transfer: 300000 },
-    isClosed: false,
-    close: null,
   })

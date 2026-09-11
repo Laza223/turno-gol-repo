@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isValidMovement } from '@/app/(admin)/caja/components/is-valid-movement'
+import { isValidMovement } from '@/app/(admin)/caja/cantina/is-valid-movement'
 
 // Fase 4 UX: mismas reglas que el setError de RegisterMovementModal.handleSubmit
 // (monto en centavos > 0, descripción no vacía), pero derivadas ANTES del submit

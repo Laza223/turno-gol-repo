@@ -1,6 +1,6 @@
 import { operatingDateOf } from '@/shared/time/operating-day'
 
-// El movimiento se registra en el día que se está viendo (consistente con closeDayAction).
+// El movimiento se registra en el día que se está viendo.
 // Hoy operativo → hora real; otro día → mediodía ART, cuyo día operativo es exactamente `date`.
 export function occurredAtForDate(date: string, cutoffMins: number): Date {
   const todayOperating = operatingDateOf(new Date(), cutoffMins)

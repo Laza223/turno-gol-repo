@@ -91,6 +91,9 @@ const REDIRECT_STUBS = [
   join('(admin)', 'staff', 'page.tsx'),
   join('(admin)', 'settings', 'page.tsx'),
   join('(admin)', 'jugadores', 'deudas', 'page.tsx'),
+  // Eliminación de "Caja del día": Cantina pasó a vivir en /caja (raíz) y
+  // /caja/cantina quedó como redirect de compat para bookmarks del staff.
+  join('(admin)', 'caja', 'cantina', 'page.tsx'),
 ] as const
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -187,7 +190,7 @@ describe('cadena de guards de las páginas', () => {
     REDIRECT_STUBS.includes(p.rel as (typeof REDIRECT_STUBS)[number]),
   )
 
-  it('los 7 redirects de compat existen (si alguien borra uno, la lista miente)', () => {
+  it('los 8 redirects de compat existen (si alguien borra uno, la lista miente)', () => {
     expect(stubs.map((s) => s.rel).sort()).toEqual([...REDIRECT_STUBS].sort())
   })
 

@@ -1,7 +1,7 @@
 /**
  * TG-HP-215 — Caja: vender producto (Cantina/Bar).
  * Rol: Admin/manager (requireOperatorStaff vía sellTicketAction).
- * Prereq: caja del día abierta; ≥1 producto en la tabla `canteen_products`
+ * Prereq: ≥1 producto en la tabla `canteen_products`
  * (Fase 2 del rediseño Caja/Cantina — migración 048, ya no vive en el JSONB
  * tenants.settings.canteen_products) — se siembra directo por SQL.
  *
@@ -22,7 +22,6 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '../../fixtures'
 import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
-import { todayART } from '../../../../src/shared/time/art-date'
 import { runSql, writeEvidence } from '../_qa/evidence'
 import { suppressPushPrompt } from '../_qa/session'
 
@@ -31,15 +30,9 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
     browser,
     adminStorageState,
   }) => {
-    const today = todayART()
     const productId = randomUUID()
     const productName = `Agua QA ${productId.slice(0, 8)}`
     const pricePerUnit = 150_000 // $1500 en centavos
-
-    await runSql(`DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`, [
-      E2E_TENANT_ID,
-      today,
-    ])
 
     // Reemplaza el catálogo de canteen_products por un único producto
     // determinístico (tabla real desde la migración 048, ya no JSONB).
@@ -60,8 +53,8 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      // Rediseño: la venta rápida de cantina vive en /caja/cantina.
-      await page.goto('/caja/cantina')
+      // Cantina es la vista raíz de /caja (eliminación de "Caja del día").
+      await page.goto('/caja')
       await expect(page.getByRole('heading', { name: 'Cantina' })).toBeVisible({ timeout: 15_000 })
       // Ticket vacío: hint de arranque de TicketPanel (Fase 3).
       await expect(page.getByText('Tocá un producto para empezar')).toBeVisible()

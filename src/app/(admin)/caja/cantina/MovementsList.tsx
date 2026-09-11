@@ -2,7 +2,7 @@ import { Receipt } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import type { CashFlowListRow } from '@/modules/cashflow/cashflow.types'
-import { EmptyMovementAction } from './EmptyMovementAction'
+import { AddMovementButton } from './AddMovementButton'
 import { SignedAmount } from './SignedAmount'
 import { CategoryBadge } from './CategoryBadge'
 import { formatTimeArt, movementTitle, METHOD_LABELS } from '../caja-lib'
@@ -10,13 +10,11 @@ import type { CreateCashFlowAction } from './RegisterMovementModal'
 
 export function MovementsList({
   cashFlows,
-  isClosed,
   date,
   cutoffMins,
   createCashFlowAction,
 }: {
   cashFlows: CashFlowListRow[]
-  isClosed: boolean
   date: string
   cutoffMins: number
   createCashFlowAction: CreateCashFlowAction
@@ -27,22 +25,19 @@ export function MovementsList({
         <div className="border-b border-border px-4 py-3">
           <h2 className="font-medium text-foreground">Movimientos del día</h2>
         </div>
-        {isClosed ? (
-          <EmptyState icon={Receipt} title="Este día no tuvo movimientos." />
-        ) : (
-          <EmptyState
-            icon={Receipt}
-            title="Sin movimientos por ahora"
-            description="Los cobros de reservas se registran solos. Las ventas de cantina se cargan en la tab Cantina; los gastos, desde 'Agregar movimiento'."
-            action={
-              <EmptyMovementAction
-                date={date}
-                cutoffMins={cutoffMins}
-                createCashFlowAction={createCashFlowAction}
-              />
-            }
-          />
-        )}
+        <EmptyState
+          icon={Receipt}
+          title="Sin movimientos por ahora"
+          description="Los cobros de reservas se registran solos. Las ventas de cantina se cargan más arriba; los gastos, desde 'Agregar movimiento'."
+          action={
+            <AddMovementButton
+              label="Registrar el primer movimiento"
+              date={date}
+              cutoffMins={cutoffMins}
+              createCashFlowAction={createCashFlowAction}
+            />
+          }
+        />
       </div>
     )
   }

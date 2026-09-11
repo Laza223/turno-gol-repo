@@ -139,23 +139,6 @@ export function relativeStartLabel(
   return null
 }
 
-/** Cuántas se jugaron hoy (para el vacío "no quedan turnos por jugar"). */
-export function playedCount(rows: DayBookingRow[]): number {
-  return rows.filter((r) => r.type !== 'block' && r.status === 'completed').length
-}
-
-/** Señas esperando pago hoy: cantidad + monto de señas por acreditar. */
-export function pendingDeposits(rows: DayBookingRow[]): { count: number; amountCents: number } {
-  let count = 0
-  let amountCents = 0
-  for (const row of rows) {
-    if (row.type === 'block' || row.status !== 'pending_payment') continue
-    count++
-    amountCents += row.depositAmount
-  }
-  return { count, amountCents }
-}
-
 /** Nombre a mostrar: guest > jugador > fallback. (Duplicado consciente de
  * BookingCard.bookingDisplayName: aquel vive en un módulo 'use client' y un
  * Server Component no puede importarlo sin romper en runtime.) */
@@ -165,16 +148,4 @@ export function rowDisplayName(
   if (row.guestName) return row.guestName
   const full = [row.playerFirstName, row.playerLastName].filter(Boolean).join(' ')
   return full || 'Sin nombre'
-}
-
-export type BookingBadgeKind = 'esperando' | 'senada' | 'abonado' | 'confirmada'
-
-/** Mismo orden de prioridad que la grilla (pages/grilla.md §2). */
-export function badgeKindForRow(
-  row: Pick<DayBookingRow, 'status' | 'type' | 'depositStatus'>,
-): BookingBadgeKind {
-  if (row.status === 'pending_payment') return 'esperando'
-  if (row.depositStatus === 'paid' || row.depositStatus === 'captured') return 'senada'
-  if (row.type === 'fixed') return 'abonado'
-  return 'confirmada'
 }

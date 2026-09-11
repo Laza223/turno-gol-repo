@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  badgeKindForRow,
   daySlotsFor,
   occupancyForDay,
-  pendingDeposits,
-  playedCount,
   relativeStartLabel,
   rowDisplayName,
   slotHours,
@@ -182,31 +179,8 @@ describe('relativeStartLabel', () => {
 })
 
 // ---------------------------------------------------------------------------
-// pendingDeposits / playedCount / rowDisplayName / badgeKindForRow
+// rowDisplayName
 // ---------------------------------------------------------------------------
-
-describe('pendingDeposits', () => {
-  it('suma solo pending_payment (sin bloqueos)', () => {
-    const rows = [
-      makeRow({ id: 'a', status: 'pending_payment', depositAmount: 500000 }),
-      makeRow({ id: 'b', status: 'pending_payment', depositAmount: 750000 }),
-      makeRow({ id: 'c', status: 'confirmed', depositAmount: 500000 }),
-      makeRow({ id: 'd', type: 'block', status: 'pending_payment', depositAmount: 100 }),
-    ]
-    expect(pendingDeposits(rows)).toEqual({ count: 2, amountCents: 1250000 })
-  })
-})
-
-describe('playedCount', () => {
-  it('cuenta solo completed no-block', () => {
-    const rows = [
-      makeRow({ id: 'a', status: 'completed' }),
-      makeRow({ id: 'b', status: 'no_show' }),
-      makeRow({ id: 'c', type: 'block', status: 'completed' }),
-    ]
-    expect(playedCount(rows)).toBe(1)
-  })
-})
 
 describe('rowDisplayName', () => {
   it('guest primero, después jugador, después fallback', () => {
@@ -215,17 +189,5 @@ describe('rowDisplayName', () => {
     expect(rowDisplayName(makeRow({ playerFirstName: null, playerLastName: null }))).toBe(
       'Sin nombre',
     )
-  })
-})
-
-describe('badgeKindForRow', () => {
-  it('prioridad: esperando > señada > abonado > confirmada (pages/grilla.md §2)', () => {
-    expect(badgeKindForRow(makeRow({ status: 'pending_payment', depositStatus: 'pending' }))).toBe(
-      'esperando',
-    )
-    expect(badgeKindForRow(makeRow({ depositStatus: 'paid', type: 'fixed' }))).toBe('senada')
-    expect(badgeKindForRow(makeRow({ depositStatus: 'captured' }))).toBe('senada')
-    expect(badgeKindForRow(makeRow({ type: 'fixed' }))).toBe('abonado')
-    expect(badgeKindForRow(makeRow({}))).toBe('confirmada')
   })
 })

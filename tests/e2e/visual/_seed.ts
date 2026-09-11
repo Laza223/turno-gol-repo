@@ -110,6 +110,23 @@ const VISUAL_BOOKINGS: VisualBooking[] = [
 ]
 
 /**
+ * Cuándo se creó el turno con la seña pendiente, en absoluto.
+ *
+ * La celda de un `pending_payment` pinta un contador de cuánto le queda al hold,
+ * y ese contador se calcula EN EL CLIENTE contra `Date.now()` — que las fotos
+ * congelan en {@link FROZEN_NOW}. Sin fijar el `created_at`, la fila la escribe
+ * la base con su propio `now()`, o sea la fecha real del día en que corre CI: la
+ * resta contra un reloj congelado en 2026-03-14 da minutos absurdos y, peor,
+ * distintos en cada corrida.
+ *
+ * Un minuto antes del reloj congelado deja el contador en 5:00 sobre un hold de
+ * 6 minutos, siempre igual. El defecto estuvo tapado hasta el rediseño porque la
+ * foto se sacaba antes de hidratar y capturaba el número que había calculado el
+ * servidor.
+ */
+const VISUAL_HOLD_CREATED_AT = new Date(FROZEN_NOW.getTime() - 60_000).toISOString()
+
+/**
  * Idempotente: borra por ID y vuelve a insertar. Se puede correr N veces y deja
  * siempre el mismo estado, que es justo lo que una baseline necesita.
  */
@@ -138,6 +155,7 @@ export async function seedVisualData(): Promise<void> {
     player_id: b.playerId,
     guest_name: b.guestName,
     guest_phone: b.guestName ? '1155550001' : null,
+    created_at: VISUAL_HOLD_CREATED_AT,
     created_by_staff: STAFF_USER_ID,
   }))
 

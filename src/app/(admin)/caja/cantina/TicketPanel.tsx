@@ -16,7 +16,6 @@ import {
 import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import type { CreateTabActionResult, SellTicketActionResult } from './actions'
 import {
@@ -115,7 +114,6 @@ export function TicketPanel({
           setMethod('cash')
           setIdempotencyKey(null)
           router.refresh()
-          notifyMoneyMoved()
         } else {
           setError(res.error)
         }

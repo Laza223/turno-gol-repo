@@ -14,7 +14,6 @@ import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import type { CanteenTabRow } from '@/modules/canteen/canteen.types'
 import type { CancelTabActionResult, SettleTabActionResult } from './actions'
 
@@ -62,7 +61,6 @@ export function FiadosList({
   function handleSettled() {
     setSettlingTab(null)
     router.refresh()
-    notifyMoneyMoved()
   }
 
   function handleCanceled() {

@@ -178,8 +178,9 @@ test.describe('Admin mobile smoke', () => {
     await ctx.close()
   })
 
-  // Criterio de salida #2 de Fase 4: la matriz no se renderiza en mobile.
-  test('grilla mobile: lista por hora con swipe entre canchas, sin matriz', async ({
+  // La misma matriz que en escritorio, con columnas angostas: una hora se lee de
+  // izquierda a derecha en vez de recorrer fichas de a una.
+  test('grilla mobile: la matriz, con columnas angostas y sin scroll del body', async ({
     browser,
     adminStorageState,
   }) => {
@@ -187,24 +188,18 @@ test.describe('Admin mobile smoke', () => {
     const page = await ctx.newPage()
     await page.goto('/grilla', { waitUntil: 'networkidle' })
 
-    await expect(page.getByTestId('booking-day-list')).toBeVisible()
-    await expect(page.getByTestId('booking-grid')).toHaveCount(0)
+    await expect(page.getByTestId('booking-grid')).toBeVisible()
+    await expect(page.getByTestId('booking-day-list')).toHaveCount(0)
 
-    // La primera página responde "¿qué cancha tengo libre a tal hora?".
-    const selector = page.getByRole('group', { name: 'Elegir cancha' })
-    await expect(selector.getByRole('button', { name: 'Todas' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    // La navegación del día vive arriba de la matriz, donde llega el pulgar.
+    await expect(page.getByRole('button', { name: 'Día anterior' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Día siguiente' })).toBeVisible()
 
-    // Saltar a una cancha: las píldoras son selector e indicador a la vez.
-    const primeraCancha = selector.getByRole('button').nth(1)
-    await primeraCancha.click()
-    await expect(primeraCancha).toHaveAttribute('aria-pressed', 'true')
-    await expect(selector.getByRole('button', { name: 'Todas' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
+    // La matriz scrollea adentro suyo: el body nunca desborda a lo ancho.
+    const noBodyOverflow = await page.evaluate(
+      () => document.body.scrollWidth <= window.innerWidth + 1,
     )
+    expect(noBodyOverflow).toBe(true)
 
     await ctx.close()
   })

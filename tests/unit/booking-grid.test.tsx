@@ -316,7 +316,9 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(panel.textContent).toContain('Pendiente')
+    // Lo que falta va adelante y en grande; el precio y lo cobrado quedan como
+    // pie de pagina.
+    expect(panel.textContent).toContain('Falta cobrar')
     expect(panel.textContent).toContain('15.000')
 
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -324,13 +326,13 @@ describe('BookingGrid — panel de acciones del turno', () => {
   })
 
   /**
-   * F-0XX (QA prod 2026-08-17): "Pagar todo en efectivo" iluminaba el atajo
-   * pero NO cobraba, sólo rellenaba el formulario de abajo — con el agravante
-   * de que el estado inicial ya venía con esa misma línea cargada, así que el
-   * botón no cambiaba nada. Ahora tiene que cobrar de una, con la MISMA
-   * Server Action que usaría "Registrar cobro".
+   * F-0XX (QA prod 2026-08-17): "Pagar todo en efectivo" iluminaba el atajo pero
+   * NO cobraba, sólo rellenaba el formulario de abajo. Desde el rediseño ese
+   * atajo ES el camino: el botón principal cobra todo lo pendiente con el método
+   * elegido arriba, sin formulario de por medio. Escribir un monto distinto vive
+   * detrás de "Cobrar otro monto".
    */
-  it('el atajo "Cobrar todo en efectivo" cobra directo, sin pasar por el formulario', async () => {
+  it('el botón principal cobra todo lo pendiente de una, con el monto en el rótulo', async () => {
     // Mock propio con el parámetro tipado (el de `panelActions()` no lo
     // declara — nadie había necesitado antes leer con qué se lo llamó).
     const addBookingChargeAction = vi.fn(
@@ -349,7 +351,13 @@ describe('BookingGrid — panel de acciones del turno', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
 
-    fireEvent.click(within(panel).getByRole('button', { name: /Cobrar todo en efectivo/ }))
+    // El monto va EN el botón: es lo que falta, y verlo antes de tocar es el
+    // punto del rediseño.
+    // `formatArs` separa con NBSP y testing-library no lo normaliza en el
+    // matcher de nombre accesible: por eso la expresión y no el string exacto.
+    fireEvent.click(
+      within(panel).getByRole('button', { name: /^Cobrar \$.?15\.000 por adelantado$/ }),
+    )
 
     await waitFor(() => expect(addBookingChargeAction).toHaveBeenCalledTimes(1))
     expect(addBookingChargeAction.mock.calls[0]![0]).toMatchObject({
@@ -377,6 +385,9 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 08:00–09:00/ }))
     const panel = await screen.findByRole('dialog')
+    // Semanal: vive detrás de "Más", para no competir con Cobrar.
+    expect(within(panel).queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Más' }))
     expect(within(panel).getByRole('button', { name: /Marcar ausente/ })).toBeTruthy()
   })
 
@@ -483,11 +494,13 @@ describe('BookingGrid — panel de acciones del turno', () => {
     expect(within(panel).queryByRole('link', { name: /Ir al torneo/ })).toBeNull()
   })
 
-  it('un turno confirmado ofrece cargar cantina y reprogramar', async () => {
+  it('un turno confirmado ofrece cargar cantina, y reprogramar detrás de "Más"', async () => {
     renderGrid({ bookings: [booking({ pending: 2000000, totalPaid: 0 })] })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
     expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
+    expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Más' }))
     expect(within(panel).getByRole('button', { name: /Reprogramar/ })).toBeTruthy()
   })
 
@@ -521,6 +534,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
     expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Más' }))
     expect(within(panel).getByRole('button', { name: /Reprogramar/ })).toBeTruthy()
   })
 
@@ -576,9 +590,11 @@ describe('BookingGrid — popover de alta rápida', () => {
     expect(await screen.findByLabelText('¿A nombre de quién?')).toBeTruthy()
     // El precio sale de court.pricing en el cliente: $24.000, sin round-trip.
     expect(screen.getByText(/24\.000/)).toBeTruthy()
-    // "No cobré" viene preseleccionado (pedido del dueño, revierte PR #185):
-    // el porcentaje online del complejo sigue sin tener voz en el mostrador,
-    // pero la carga más repetida del día ya no exige tocar este control.
+    // UN campo a la vista: el cobro y el teléfono arrancan plegados.
+    expect(screen.queryByRole('radio')).toBeNull()
+    // "No cobré" sigue preseleccionado al desplegar (pedido del dueño, revierte
+    // PR #185): el porcentaje online del complejo no tiene voz en el mostrador.
+    fireEvent.click(screen.getByRole('button', { name: /Cobrar algo ahora/ }))
     for (const opcion of screen.getAllByRole('radio')) {
       const esperado = opcion.textContent === 'No cobré' ? 'true' : 'false'
       expect(opcion.getAttribute('aria-checked')).toBe(esperado)
@@ -594,9 +610,7 @@ describe('BookingGrid — popover de alta rápida', () => {
     fireEvent.click(screen.getByRole('button', { name: FREE }))
     const input = await screen.findByLabelText('¿A nombre de quién?')
     fireEvent.change(input, { target: { value: 'Juan Telefónico' } })
-    // Lo cobrado es respuesta obligatoria; "No cobré" es la del complejo que
-    // cobra al terminar de jugar.
-    fireEvent.click(screen.getByRole('radio', { name: 'No cobré' }))
+    // Sin tocar nada más: el cobro ni se despliega, y "No cobré" ya viene puesto.
     // Enter dentro del campo dispara el submit del form — es el criterio.
     fireEvent.submit(input.closest('form')!)
 
@@ -632,6 +646,7 @@ describe('BookingGrid — popover de alta rápida', () => {
     fireEvent.click(screen.getByRole('button', { name: FREE }))
     const input = await screen.findByLabelText('¿A nombre de quién?')
     fireEvent.change(input, { target: { value: 'Con seña' } })
+    fireEvent.click(screen.getByRole('button', { name: /Cobrar algo ahora/ }))
     // F-007: DepositFieldset ahora usa SegmentedControl (Radix RadioGroup) —
     // role="radio", no "button" (ese es justo el punto del fix).
     fireEvent.click(screen.getByRole('radio', { name: 'Efectivo' }))
@@ -702,7 +717,7 @@ describe('BookingGrid — popover de alta rápida', () => {
 
     fireEvent.click(screen.getByRole('button', { name: FREE }))
     expect(await screen.findByText(/acaba de ser tomado/)).toBeTruthy()
-    const confirmar = screen.getByRole('button', { name: /Confirmar reserva/ })
+    const confirmar = screen.getByRole('button', { name: 'Reservar' })
     expect((confirmar as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -714,7 +729,7 @@ describe('BookingGrid — popover de alta rápida', () => {
       }),
     })
     fireEvent.click(screen.getByRole('button', { name: FREE }))
-    const confirmar = await screen.findByRole('button', { name: /Confirmar reserva/ })
+    const confirmar = await screen.findByRole('button', { name: 'Reservar' })
     await waitFor(() => expect((confirmar as HTMLButtonElement).disabled).toBe(false))
     expect(screen.queryByText(/acaba de ser tomado/)).toBeNull()
   })

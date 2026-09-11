@@ -1,33 +1,33 @@
 'use client'
 
 import Link from 'next/link'
-import { LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
 import { AdminThemeMenu } from '@/components/admin/AdminThemeMenu'
+import { ADMIN_HEADER_SLOT_ID } from './admin-header-slot'
 
 interface AdminHeaderProps {
-  userEmail: string
-  onSignOut: () => void
+  /** Nombre del complejo: era la tarjeta de la barra lateral vieja. */
+  tenantName: string
   /**
-   * Destino del logo en mobile (donde el sidebar no se ve): el espacio "casa"
+   * Destino del logo en mobile (donde el riel no se ve): el espacio "casa"
    * del rol — `/dashboard` para el dueño, `/grilla` para el encargado.
    */
   homeHref?: string
 }
 
-export function AdminHeader({ userEmail, onSignOut, homeHref = '/grilla' }: AdminHeaderProps) {
+/**
+ * Barra superior de 60 px. Antes medía 64 y sólo repetía marca, email y "Salir";
+ * la cuenta se mudó al pie del riel, así que lo único fijo que queda es el
+ * nombre del complejo. Todo el resto del ancho es el hueco de
+ * {@link AdminHeaderSlot}: ahí cada vista cuelga lo suyo (fecha, pestañas,
+ * semana), que es lo que saca cuatro filas de encabezado de la Grilla.
+ */
+export function AdminHeader({ tenantName, homeHref = '/grilla' }: AdminHeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] items-center border-b border-border/50 bg-card/80 backdrop-blur-xl shadow-xs shadow-black/3 dark:shadow-black/20 px-4 sm:px-6 pt-[env(safe-area-inset-top)] lg:left-60">
-      {/* Gradient accent line — borde inferior emerald sutil */}
-      <span
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"
-        aria-hidden
-      />
-
-      {/* Marca en mobile: acá ya no hay hamburguesa (Fase 4 — la navegación
-          primaria es la barra inferior), y sin el sidebar a la vista el panel
-          se quedaba sin ninguna marca arriba. */}
+    <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(3.75rem+env(safe-area-inset-top))] items-center gap-4 border-b border-border bg-card px-4 pt-[env(safe-area-inset-top)] sm:px-6 lg:left-[72px]">
+      {/* Marca en mobile: acá no hay hamburguesa (Fase 4 — la navegación
+          primaria es la barra inferior) ni riel, así que sin esto el panel se
+          queda sin ninguna marca arriba. */}
       <Link
         href={homeHref}
         className="lg:hidden rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
@@ -35,28 +35,19 @@ export function AdminHeader({ userEmail, onSignOut, homeHref = '/grilla' }: Admi
         <Logo variant="horizontal" textClassName="text-foreground" />
       </Link>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Sin modificador de opacidad sobre `--muted-foreground`: está calibrado
+          a 4.93:1 (globals.css) y cualquier `/N` lo deja bajo AA. */}
+      <span className="hidden shrink-0 truncate text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:block lg:max-w-48">
+        {tenantName}
+      </span>
 
-      {/* Right side */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
-          <span
-            className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"
-            aria-hidden
-          />
-          {userEmail}
-        </span>
+      {/* Lo que cuelga cada vista (AdminHeaderSlot): la Grilla pone acá su
+          segmento, la semana y el chip de lo pendiente. Vacío no ocupa nada
+          visible, pero el `flex-1` mantiene el resto del header a la derecha. */}
+      <div id={ADMIN_HEADER_SLOT_ID} className="flex min-w-0 flex-1 items-center gap-3" />
+
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <AdminThemeMenu />
-        <Button
-          variant="ghost"
-          className="gap-2 text-muted-foreground hover:text-foreground"
-          onClick={onSignOut}
-          aria-label="Cerrar sesión"
-        >
-          <LogOut className="h-4 w-4" />
-          <span>Salir</span>
-        </Button>
       </div>
     </header>
   )

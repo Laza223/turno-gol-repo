@@ -218,16 +218,21 @@ export function computeCells(
  * vez de contarlos como cero: el número baja un instante, nunca miente hacia
  * arriba.
  */
+/** Un turno cuenta para "Por cobrar hoy": mismo criterio que {@link sumPendingCents}. */
+export function isPendingCollection(b: GridBooking): boolean {
+  return (
+    typeof b.pending === 'number' &&
+    b.pending > 0 &&
+    (b.status === 'confirmed' || b.status === 'completed')
+  )
+}
+
 export function sumPendingCents(bookings: GridBooking[]): { totalCents: number; count: number } {
   let totalCents = 0
   let count = 0
   for (const b of bookings) {
-    if (
-      typeof b.pending === 'number' &&
-      b.pending > 0 &&
-      (b.status === 'confirmed' || b.status === 'completed')
-    ) {
-      totalCents += b.pending
+    if (isPendingCollection(b)) {
+      totalCents += b.pending!
       count++
     }
   }

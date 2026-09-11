@@ -8,42 +8,44 @@ type Props = {
   displayName: string | null
 }
 
-/** Precio, cobrado, pendiente y método del turno — más quién lo reservó. */
+/**
+ * La plata del turno, con lo que falta adelante.
+ *
+ * Antes era una tabla de tres filas —precio, cobrado, pendiente— leída siempre
+ * para lo mismo: saber cuánto falta. Ahora esa respuesta está en grande y el
+ * resto queda como pie de página, que es el peso que tiene.
+ */
 export function SlotPriceSummary({ booking, displayName }: Props) {
+  const pending = typeof booking.pending === 'number' ? booking.pending : null
+  const paid = typeof booking.totalPaid === 'number' ? booking.totalPaid : null
+
+  const detail: string[] = []
+  if (booking.type !== 'tournament') detail.push(`Precio ${formatArs(booking.priceSnapshot)}`)
+  if (paid !== null) detail.push(`Cobrado ${formatArs(paid)}`)
+  if (booking.paymentMethod) detail.push(METHOD_LABELS[booking.paymentMethod])
+
   return (
     <section className="rounded-lg border border-border p-3">
-      <dl className="space-y-1.5 text-sm">
-        {booking.type !== 'tournament' && (
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Precio del turno</dt>
-            <dd className="font-semibold tabular-nums">{formatArs(booking.priceSnapshot)}</dd>
-          </div>
-        )}
-        {typeof booking.totalPaid === 'number' && (
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Cobrado</dt>
-            <dd className="font-semibold tabular-nums">{formatArs(booking.totalPaid)}</dd>
-          </div>
-        )}
-        {typeof booking.pending === 'number' && (
-          <div className="flex justify-between border-t border-border pt-1.5">
-            <dt className="font-medium">Pendiente</dt>
-            <dd
-              className={`font-semibold tabular-nums ${
-                booking.pending > 0 ? 'text-red-700 dark:text-red-300' : ''
-              }`}
-            >
-              {formatArs(booking.pending)}
-            </dd>
-          </div>
-        )}
-        {booking.paymentMethod && (
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Pago</dt>
-            <dd>{METHOD_LABELS[booking.paymentMethod]}</dd>
-          </div>
-        )}
-      </dl>
+      {pending !== null && pending > 0 ? (
+        <p>
+          <span className="block text-xs font-medium text-muted-foreground">Falta cobrar</span>
+          <span className="block text-2xl font-bold tabular-nums text-red-700 dark:text-red-300">
+            {formatArs(pending)}
+          </span>
+        </p>
+      ) : (
+        <p>
+          <span className="block text-xs font-medium text-muted-foreground">Cobrado</span>
+          <span className="block text-2xl font-bold tabular-nums text-foreground">
+            {formatArs(paid ?? booking.priceSnapshot)}
+          </span>
+        </p>
+      )}
+
+      {detail.length > 0 && (
+        <p className="mt-1 text-xs tabular-nums text-muted-foreground">{detail.join(' · ')}</p>
+      )}
+
       {displayName && (
         <p className="mt-2 flex items-center gap-1.5 border-t border-border pt-2 text-xs text-muted-foreground">
           <User aria-hidden className="h-3.5 w-3.5" />

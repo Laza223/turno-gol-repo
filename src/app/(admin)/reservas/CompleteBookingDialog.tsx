@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { MoneyInput } from '@/components/ui/money-input'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { toast } from '@/hooks/use-toast'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
@@ -192,7 +191,6 @@ export default function CompleteBookingDialog({
         setLastBookingId(null)
         onClose()
         router.refresh()
-        notifyMoneyMoved()
       } else {
         setError(res.error)
       }

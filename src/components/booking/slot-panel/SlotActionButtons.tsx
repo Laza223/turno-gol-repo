@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { Ban, CupSoda, MoveRight, Trash2, Trophy, UserX } from 'lucide-react'
+import { Ban, ChevronDown, CupSoda, MoveRight, Trash2, Trophy, UserX } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { SlotPanelActions } from './actions'
 
 type Props = {
@@ -24,7 +26,23 @@ type Props = {
   tournamentId?: string | null
 }
 
-/** Botones de cantina, reprogramar, cancelar, marcar ausente y deshacerla. */
+const ROW =
+  'flex h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-60 md:h-10'
+const ROW_NEUTRAL = `${ROW} border-border bg-card text-foreground hover:bg-accent`
+
+/**
+ * Lo que se puede hacer con el turno además de cobrarlo.
+ *
+ * Cobrar es de todos los días y tiene su propio botón arriba; cargar cantina es
+ * de algunos días y queda a la vista. Reprogramar, marcar ausente y cancelar son
+ * de una vez por semana y estaban al mismo nivel que el resto: cinco botones
+ * compitiendo por la misma atención, tres de ellos rojos. Ahora viven detrás de
+ * "Más" — un toque de más en una tarea semanal a cambio de que la diaria no
+ * tenga que elegir entre cinco.
+ *
+ * Liberar el bloqueo y deshacer la ausencia NO se pliegan: en esos dos estados
+ * son la única acción que existe, y esconder la única acción no es resta.
+ */
 export function SlotActionButtons({
   isPending,
   isTournament,
@@ -43,41 +61,18 @@ export function SlotActionButtons({
   onOpenReleaseBlock,
   tournamentId,
 }: Props) {
+  const [moreOpen, setMoreOpen] = useState(false)
+
+  const canCancelHere = canCancel && !!actions?.cancelBookingAction
+  const canNoShowHere = canMarkNoShow && !!actions
+  const hasFolded = canReschedule || canNoShowHere || canCancelHere
+
   return (
     <>
       {canSellCanteen && (
-        <button
-          type="button"
-          onClick={onOpenCanteen}
-          disabled={isPending}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
-        >
+        <button type="button" onClick={onOpenCanteen} disabled={isPending} className={ROW_NEUTRAL}>
           <CupSoda aria-hidden className="h-4 w-4" />
           Cargar cantina
-        </button>
-      )}
-
-      {canReschedule && (
-        <button
-          type="button"
-          onClick={onOpenReschedule}
-          disabled={isPending}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
-        >
-          <MoveRight aria-hidden className="h-4 w-4" />
-          Reprogramar
-        </button>
-      )}
-
-      {canMarkNoShow && actions && (
-        <button
-          type="button"
-          onClick={onOpenNoShow}
-          disabled={isPending}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/5 text-sm font-semibold text-red-700 transition-colors hover:bg-destructive/10 disabled:opacity-60 dark:text-red-300 md:h-10"
-        >
-          <UserX aria-hidden className="h-4 w-4" />
-          Marcar ausente
         </button>
       )}
 
@@ -86,28 +81,9 @@ export function SlotActionButtons({
           type="button"
           onClick={onRevertNoShow}
           disabled={isPending}
-          className="h-11 rounded-lg border border-border text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
+          className={cn(ROW_NEUTRAL, 'font-medium')}
         >
           Deshacer la ausencia
-        </button>
-      )}
-
-      {canCancel && actions?.cancelBookingAction && (
-        <button
-          type="button"
-          onClick={onOpenCancel}
-          disabled={isPending}
-          // H007 (LEY-von-restorff): con "Marcar ausente" visible a la vez, ese
-          // es el rojo destructivo — este botón baja a outline/neutral para no
-          // competir por la misma atención.
-          className={`flex h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-60 md:h-10 ${
-            canMarkNoShow
-              ? 'border-border bg-card text-foreground hover:bg-accent'
-              : 'border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10'
-          }`}
-        >
-          <Ban aria-hidden className="h-4 w-4" />
-          Cancelar reserva
         </button>
       )}
 
@@ -116,11 +92,71 @@ export function SlotActionButtons({
           type="button"
           onClick={onOpenReleaseBlock}
           disabled={isPending}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-card text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10 md:h-10"
+          className={`${ROW} border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10`}
         >
           <Trash2 aria-hidden className="h-4 w-4" />
           Liberar el bloqueo
         </button>
+      )}
+
+      {hasFolded && !moreOpen && (
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          disabled={isPending}
+          aria-expanded={false}
+          className="flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60 md:h-10"
+        >
+          <ChevronDown aria-hidden className="h-4 w-4" />
+          Más
+        </button>
+      )}
+
+      {hasFolded && moreOpen && (
+        <>
+          {canReschedule && (
+            <button
+              type="button"
+              onClick={onOpenReschedule}
+              disabled={isPending}
+              className={ROW_NEUTRAL}
+            >
+              <MoveRight aria-hidden className="h-4 w-4" />
+              Reprogramar
+            </button>
+          )}
+
+          {canNoShowHere && (
+            <button
+              type="button"
+              onClick={onOpenNoShow}
+              disabled={isPending}
+              className={`${ROW} border-destructive/40 bg-destructive/5 text-red-700 hover:bg-destructive/10 dark:text-red-300`}
+            >
+              <UserX aria-hidden className="h-4 w-4" />
+              Marcar ausente
+            </button>
+          )}
+
+          {canCancelHere && (
+            <button
+              type="button"
+              onClick={onOpenCancel}
+              disabled={isPending}
+              // H007 (LEY-von-restorff): con "Marcar ausente" visible a la vez, ese
+              // es el rojo destructivo — este botón baja a outline/neutral para no
+              // competir por la misma atención.
+              className={
+                canNoShowHere
+                  ? ROW_NEUTRAL
+                  : `${ROW} border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10`
+              }
+            >
+              <Ban aria-hidden className="h-4 w-4" />
+              Cancelar reserva
+            </button>
+          )}
+        </>
       )}
 
       {isTournament && (
@@ -134,10 +170,7 @@ export function SlotActionButtons({
           sólo existe si el flag estuvo prendido para este complejo: el caso "link a
           404" es teórico. */}
       {isTournament && tournamentId && (
-        <Link
-          href={`/torneos/${tournamentId}`}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent md:h-10"
-        >
+        <Link href={`/torneos/${tournamentId}`} className={ROW_NEUTRAL}>
           <Trophy aria-hidden className="h-4 w-4" />
           Ir al torneo
         </Link>

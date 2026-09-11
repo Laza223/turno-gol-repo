@@ -19,8 +19,16 @@ type BookingCardProps = {
   span?: number
   /** Fila de arranque de los slots en el CSS Grid: 2 sin banda de colapso, 3 con ella. */
   rowOffset?: number
-  /** Densidad compacta: una sola línea (ícono + nombre), fila de 2.75rem. */
-  compact?: boolean
+  /**
+   * El chip "Por cobrar hoy" está encendido y este turno es de los que deben
+   * plata: se le pone un anillo para encontrarlo en una matriz llena. No es un
+   * estado del turno — es el foco de la pantalla.
+   *
+   * Resalta lo que importa en vez de apagar el resto: bajarle la opacidad a las
+   * demás celdas hunde el contraste del texto por debajo de AA (los tokens de
+   * color están calibrados justo arriba del mínimo y cualquier `/N` los diluye).
+   */
+  spotlighted?: boolean
   /** Pulso de atención (MASTER §5.3): la reserva acaba de entrar por Realtime. */
   isNew?: boolean
   courtId?: string
@@ -101,7 +109,7 @@ function truncateDisplayName(name: string): string {
   return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`
 }
 
-export function bookingDisplayName(booking: GridBooking): string | null {
+function bookingDisplayName(booking: GridBooking): string | null {
   if (booking.guestName) return truncateDisplayName(booking.guestName)
   if (booking.playerFirstName) {
     return truncateDisplayName(`${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim())
@@ -117,7 +125,7 @@ function BookingCardComponent({
   row,
   span = 1,
   rowOffset = 2,
-  compact = false,
+  spotlighted = false,
   isNew = false,
   courtId,
   courtName,
@@ -166,7 +174,7 @@ function BookingCardComponent({
         <Plus
           aria-hidden
           className={cn(
-            'h-4 w-4 text-muted-foreground/40 transition-colors duration-150',
+            'h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors duration-150 lg:h-4 lg:w-4',
             'group-hover:text-emerald-600 group-focus-visible:text-emerald-600',
             'dark:group-hover:text-emerald-400 dark:group-focus-visible:text-emerald-400',
           )}
@@ -217,7 +225,7 @@ function BookingCardComponent({
       onClick={() => onDetailChange?.(booking.id)}
       aria-haspopup="dialog"
       aria-expanded={detailOpen}
-      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label}` : visual.label}${!compact && pendingCents !== null ? `, falta cobrar ${formatArs(pendingCents)}` : ''}`}
+      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label}` : visual.label}${pendingCents !== null ? `, falta cobrar ${formatArs(pendingCents)}` : ''}`}
       className={cn(
         'm-0.5 flex cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
         visual.cell,
@@ -227,42 +235,55 @@ function BookingCardComponent({
         isPast && !visual.alarm && 'opacity-90 saturate-50',
         visual.alarm && 'slot-alarm-ring',
         isNew && 'animate-slot-pulse',
+        spotlighted && 'ring-2 ring-inset ring-destructive/70',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
       )}
     >
-      {compact ? (
-        <span className="flex min-w-0 flex-1 items-center gap-1 px-1.5">
-          <StateIcon aria-hidden className={cn('h-3 w-3 shrink-0', visual.labelText)} />
-          <span className="truncate text-xs font-semibold leading-tight text-foreground">
-            {displayName ?? visual.label}
-          </span>
-        </span>
-      ) : (
-        <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-1.5">
-          {displayName && (
-            <span className="truncate text-xs font-semibold leading-tight text-foreground">
-              {displayName}
-            </span>
-          )}
-          <span
-            className={cn(
-              'inline-flex items-center gap-1 text-[11px] font-medium leading-tight',
-              visual.labelText,
-            )}
-          >
-            <StateIcon aria-hidden className="h-3 w-3 shrink-0" />
-            {visual.label}
-            {booking.status === 'pending_payment' && booking.createdAt && (
-              <HoldCountdown createdAt={booking.createdAt} />
-            )}
+      {/* DOS líneas, nunca tres. El saldo era una tercera línea que en una fila
+          de 52 px se recortaba; ahora va al costado del nombre, en el color del
+          estado y en negrita — que es lo que se busca de lejos en una matriz de
+          7 canchas. */}
+      {/* Dos renglones, nunca tres, en los dos tamaños. Lo que cambia con el
+          ancho es QUÉ va en el segundo: en escritorio el monto entra al lado del
+          nombre y abajo queda el rótulo del estado; en la columna de 44 px del
+          teléfono el monto no entra arriba, así que baja y desplaza al rótulo —
+          que el color y el ícono ya comunican. El ancho se resuelve por CSS y no
+          por un hook de viewport: así no hay un cuadro con la tipografía del
+          tamaño equivocado antes de que el hook responda. */}
+      <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-1 py-1 lg:px-2 lg:py-1.5">
+        <span className="flex min-w-0 flex-col gap-1.5 lg:flex-row lg:items-baseline lg:justify-between">
+          <span className="truncate text-[11px] font-semibold leading-tight text-foreground lg:text-[13px]">
+            {displayName ?? ' '}
           </span>
           {pendingCents !== null && (
-            <span className="truncate text-[11px] font-medium tabular-nums text-muted-foreground">
-              Falta {formatArs(pendingCents)}
+            <span
+              className={cn(
+                'hidden shrink-0 whitespace-nowrap text-[13px] font-bold leading-tight tabular-nums lg:inline',
+                visual.labelText,
+              )}
+            >
+              {formatArs(pendingCents)}
             </span>
           )}
         </span>
-      )}
+        <span
+          className={cn(
+            'flex min-w-0 items-center gap-1 text-[10px] font-semibold leading-tight lg:text-[11px]',
+            visual.labelText,
+          )}
+        >
+          <StateIcon aria-hidden className="h-3 w-3 shrink-0" />
+          {pendingCents !== null && (
+            <span className="truncate tabular-nums lg:hidden">{formatArs(pendingCents)}</span>
+          )}
+          <span className={cn('truncate', pendingCents !== null && 'hidden lg:inline')}>
+            {visual.label}
+          </span>
+          {booking.status === 'pending_payment' && booking.createdAt && (
+            <HoldCountdown createdAt={booking.createdAt} />
+          )}
+        </span>
+      </span>
     </button>
   )
 }

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, within } from 'storybook/test'
 import { AdminHeader } from './admin-header'
 
 /**
@@ -10,7 +10,9 @@ import { AdminHeader } from './admin-header'
 const meta = {
   title: 'Admin/Layout/AdminHeader',
   component: AdminHeader,
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+  },
   decorators: [
     (Story) => (
       <div
@@ -22,8 +24,7 @@ const meta = {
     ),
   ],
   args: {
-    userEmail: 'marcelo@complejofenix.com.ar',
-    onSignOut: fn(),
+    tenantName: 'Complejo Fénix',
   },
 } satisfies Meta<typeof AdminHeader>
 
@@ -32,8 +33,8 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 
-export const UserEmailLargo: Story = {
-  args: { userEmail: 'julieta.dominguez.belgrano@complejofenix.com.ar' },
+export const TenantNameLargo: Story = {
+  args: { tenantName: 'Polideportivo y Complejo Deportivo Municipal Belgrano Sur' },
 }
 
 /**
@@ -50,14 +51,9 @@ export const MarcaEnMobile: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('button', { name: 'Abrir menú' })).not.toBeInTheDocument()
-    await expect(canvas.getByRole('link')).toHaveAttribute('href', '/dashboard')
-  },
-}
-
-export const CierraSesion: Story = {
-  play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Cerrar sesión' }))
-    await expect(args.onSignOut).toHaveBeenCalledOnce()
+    await expect(canvas.getByRole('link', { name: /TurnoGol/i })).toHaveAttribute(
+      'href',
+      '/dashboard',
+    )
   },
 }

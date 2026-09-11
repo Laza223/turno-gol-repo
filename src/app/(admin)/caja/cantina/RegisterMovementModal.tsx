@@ -11,7 +11,6 @@ import type { CashFlowActionResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { isValidMovement } from './is-valid-movement'
 import { toast } from '@/hooks/use-toast'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { MoneyInput } from '@/components/ui/money-input'
 import type { CashFlowCategory, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
@@ -134,7 +133,6 @@ export function RegisterMovementModal({
           router.refresh()
           // El mismo modal registra `expense`, que no cambia "Hoy" (income +
           // adjustments): el fetch extra devuelve el mismo valor.
-          notifyMoneyMoved()
           onClose()
         } else setError(res.error)
       } catch (err) {

@@ -24,7 +24,6 @@ function buildLayout(opts: {
   bookings: GridBooking[]
   openHhmm?: string
   closeHhmm?: string
-  isCompact?: boolean
   /** 'HH:MM' — null = ningún slot es pasado y no se dibuja línea de "ahora". */
   nowTime?: string | null
 }) {
@@ -37,8 +36,8 @@ function buildLayout(opts: {
   const visibleSlots = collapsedCount > 0 ? slots.slice(collapsedCount) : slots
   const hasBand = collapsedCount > 0
   const rowOffset = hasBand ? 3 : 2
-  const isCompact = opts.isCompact ?? false
-  const rowHeightRem = isCompact ? 2.75 : 3.25
+  // Fila fija: la grilla dejó de tener densidad configurable (useGridLayout).
+  const rowHeightRem = 4
 
   let nowTopRem: number | null = null
   const first = visibleSlots[0]
@@ -62,7 +61,6 @@ function buildLayout(opts: {
     visibleSlots,
     hasBand,
     rowOffset,
-    isCompact,
     rowHeightRem,
     isSlotPast,
     nowTopRem,
@@ -89,7 +87,6 @@ const meta = {
     rowOffset: saturday.rowOffset,
     rowHeightRem: saturday.rowHeightRem,
     nowTopRem: saturday.nowTopRem,
-    isCompact: false,
     isNavPending: false,
     gridScrollRef: { current: null },
     ariaLabel: 'Grilla de turnos del Sáb 14 de marzo',
@@ -116,23 +113,23 @@ type Story = StoryObj<typeof meta>
 /** Tarde de sábado llena, 4 canchas (una offline), línea de "ahora" a las 15:30. */
 export const Default: Story = {}
 
-export const Compacto: Story = {
-  name: 'isCompact=true (filas de 2.75rem)',
-  args: (() => {
-    const compact = buildLayout({
-      courts: courts(),
-      bookings: saturdayAfternoonGridBookings(),
-      nowTime: '15:30',
-      isCompact: true,
-    })
-    return {
-      visibleSlots: compact.visibleSlots,
-      cells: compact.cells,
-      rowHeightRem: compact.rowHeightRem,
-      nowTopRem: compact.nowTopRem,
-      isCompact: true,
-    }
-  })(),
+/**
+ * Teléfono: la MISMA matriz, con columnas de 44 px y el eje de horas en dos
+ * dígitos. Reemplazó a la lista por hora con carrusel de canchas, donde leer una
+ * sola hora obligaba a recorrer fichas de a una.
+ */
+export const EnTelefono: Story = {
+  name: 'Teléfono (columnas de 44px)',
+  parameters: { viewport: { defaultViewport: 'mobile-primary' } },
+}
+
+/**
+ * Chip "Por cobrar hoy" encendido: los turnos con saldo llevan anillo, así se
+ * encuentran de un vistazo en una matriz llena.
+ */
+export const ResaltandoLoPendiente: Story = {
+  name: 'highlightPending=true (los turnos con saldo llevan anillo)',
+  args: { highlightPending: true },
 }
 
 export const ConBandaDeMadrugada: Story = {

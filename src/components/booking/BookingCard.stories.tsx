@@ -36,14 +36,14 @@ const meta = {
     onDetailChange: fn(),
   },
   decorators: [
-    (Story, context) => {
-      const compact = context.args.compact ?? false
+    (Story) => {
       return (
         <div
           className="grid rounded-xl border border-border bg-card shadow-xs"
           style={{
             gridTemplateColumns: '3.5rem 9rem',
-            gridTemplateRows: `2.75rem repeat(3, ${compact ? '2.75rem' : '3.25rem'})`,
+            // Fila fija de 4rem: la grilla dejó de tener densidad configurable.
+            gridTemplateRows: '2.75rem repeat(3, 4rem)',
             minWidth: '12.5rem',
           }}
         >
@@ -118,10 +118,13 @@ export const SinCobrar: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Control positivo del fix de compact: sin compact, el saldo SÍ va en el
-    // aria-label — si esto dejara de matchear, el control negativo de abajo
-    // (`CompactoConSaldoPendiente`) no probaría nada.
+    // El saldo va en el aria-label y, desde el rediseño, también a la vista: al
+    // costado del nombre y en el color del estado, no como tercera línea.
     await expect(canvas.getByLabelText(/, falta cobrar/)).toBeInTheDocument()
+    // DOS nodos y uno solo visible: el monto vive arriba en escritorio y abajo en
+    // el teléfono, y cuál se muestra lo decide el CSS. Se afirma la cuenta exacta
+    // para que borrar uno de los dos rompa acá en vez de dejar un ancho sin saldo.
+    await expect(canvas.getAllByText('$ 8.000')).toHaveLength(2)
   },
 }
 
@@ -190,26 +193,14 @@ export const Nueva: Story = {
   args: { booking: toGridBooking(booking(), player()), isNew: true },
 }
 
-export const CompactoUnaLinea: Story = {
-  name: 'compact=true (una línea: ícono + nombre)',
-  args: { booking: toGridBooking(booking(), player()), compact: true },
-}
-
 /**
- * Compacta con saldo pendiente: el monto visual queda afuera a propósito (una
- * sola línea, ver `CompactoUnaLinea`) — el aria-label tiene que ser coherente
- * con eso y no llevar "falta cobrar" que nadie ve en pantalla.
+ * Chip "Por cobrar hoy" encendido: el turno que debe plata lleva anillo para
+ * encontrarlo en una matriz llena. Es foco de pantalla, no estado del turno —
+ * por eso no cambia ni el color ni el rótulo ni el aria-label.
  */
-export const CompactoConSaldoPendiente: Story = {
-  name: 'compact=true con saldo pendiente: el aria-label no lo menciona',
-  args: {
-    booking: { ...toGridBooking(bookingCompleted()), totalPaid: 0, pending: 800000 },
-    compact: true,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.queryByLabelText(/falta cobrar/)).toBeNull()
-  },
+export const ResaltadaPorFoco: Story = {
+  name: 'spotlighted=true (el chip "Por cobrar hoy" está encendido)',
+  args: { booking: toGridBooking(booking(), player()), spotlighted: true },
 }
 
 export const DetalleAbierto: Story = {

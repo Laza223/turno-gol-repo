@@ -144,9 +144,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       await expect(page.getByText(/^\$/).first()).toBeVisible()
 
       await nombre.fill('E2E Quick Popover')
-      // Qué se cobró es respuesta obligatoria: "No cobré" es la del complejo que
-      // cobra al terminar de jugar, y deja el turno sin deposit.
-      await page.getByRole('radio', { name: 'No cobré' }).click()
+      // Un solo campo a la vista: el cobro arranca plegado en "No cobré", que es
+      // lo del complejo que cobra al terminar de jugar.
+      await expect(page.getByRole('radio', { name: 'No cobré' })).toHaveCount(0)
       // Enter confirma — sin tocar el botón.
       await nombre.press('Enter')
 

@@ -4,6 +4,7 @@ import { type KeyboardEvent, type MutableRefObject } from 'react'
 import { cn } from '@/lib/utils'
 import { BookingCard } from '../BookingCard'
 import { MorningCollapseBand } from './MorningCollapseBand'
+import { isPendingCollection } from '@/lib/booking/grid-cells'
 import type { GridCells } from '@/hooks/use-grid-layout'
 import type { CourtRow } from '@/modules/courts/court.types'
 
@@ -17,8 +18,9 @@ type Props = {
   rowOffset: number
   rowHeightRem: number
   nowTopRem: number | null
-  isCompact: boolean
   isNavPending: boolean
+  /** Chip "Por cobrar hoy" encendido: los turnos que deben plata llevan anillo. */
+  highlightPending?: boolean
   gridScrollRef: MutableRefObject<HTMLDivElement | null>
   ariaLabel: string
   isSlotPast: (slotTime: string) => boolean
@@ -40,6 +42,18 @@ type Props = {
  * horas sticky, headers de cancha, banda de madrugada, línea de "ahora" y las
  * celdas/BookingCard con span de 120 min). Presentacional puro: toda la
  * matemática de layout llega ya resuelta desde useGridLayout/useNowLine.
+ *
+ * Es la MISMA matriz en el teléfono, con columnas de 44 px: con 7 canchas entran
+ * todas en 375 px. Antes ahí vivía otra vista —una lista por hora con carrusel de
+ * canchas— y responder "¿tenés cancha a las 22?" obligaba a recorrer fichas de a
+ * una en vez de leer la fila de las 22 de izquierda a derecha. Dos vistas para el
+ * mismo hecho además se desincronizaban solas: cada arreglo había que hacerlo dos
+ * veces.
+ *
+ * Los dos anchos se eligen por CSS (variables + `lg:`), no por un hook de
+ * viewport: un hook resuelve después del primer pintado, así que el teléfono
+ * mostraba un cuadro con las columnas de escritorio —y su scroll horizontal—
+ * antes de encogerlas.
  */
 export function GridScroller({
   courts,
@@ -51,8 +65,8 @@ export function GridScroller({
   rowOffset,
   rowHeightRem,
   nowTopRem,
-  isCompact,
   isNavPending,
+  highlightPending = false,
   gridScrollRef,
   ariaLabel,
   isSlotPast,
@@ -85,20 +99,28 @@ export function GridScroller({
       )}
     >
       <div
-        className="grid relative"
+        // Las variables son el único lugar donde vive el ancho de la matriz: el
+        // teléfono usa 48 px por cancha y el escritorio 136.
+        //
+        // 48 y no 44: la celda lleva 2 px de margen por lado, así que 44 de
+        // columna dejaban 40 de superficie tocable — por debajo del mínimo de
+        // MASTER §10. Con 48 lo tocable son 44 exactos. Se nota sólo en complejos
+        // de 7 canchas o más, donde la matriz pasa a scrollear a lo ancho: con
+        // menos canchas el `1fr` las estira igual.
+        className="grid relative [--tg-col:3rem] [--tg-hours:2.75rem] lg:[--tg-col:8.5rem] lg:[--tg-hours:3.5rem]"
         style={{
-          gridTemplateColumns: `3.5rem repeat(${courts.length}, minmax(8.5rem, 1fr))`,
+          gridTemplateColumns: `var(--tg-hours) repeat(${courts.length}, minmax(var(--tg-col), 1fr))`,
           // Banda de madrugada 2.75rem (44px): touch mínimo MASTER §10 — el
           // botón "Mostrar" ocupa toda la fila (pages/grilla.md §5 decía 2rem;
           // quedó corto para touch y lo marcaba touch-targets.spec).
           gridTemplateRows: `2.75rem ${hasBand ? '2.75rem ' : ''}repeat(${visibleSlots.length}, ${rowHeightRem}rem)`,
-          minWidth: `${56 + courts.length * 136}px`,
+          minWidth: `calc(var(--tg-hours) + ${courts.length} * var(--tg-col))`,
         }}
         onKeyDown={onGridKeyDown}
       >
         {nowTopRem !== null && (
           <div
-            className="absolute left-14 right-0 z-20 pointer-events-none flex items-center"
+            className="absolute left-11 right-0 z-20 pointer-events-none flex items-center lg:left-14"
             style={{ top: `calc(${nowTopRem}rem - 0.5px)` }}
           >
             <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
@@ -117,11 +139,20 @@ export function GridScroller({
           <div
             key={court.id}
             style={{ gridColumn: ci + 2, gridRow: 1 }}
-            className="sticky top-0 z-20 snap-start scroll-ml-14 flex items-center justify-center gap-1 truncate border-b border-border bg-card/95 px-2 text-xs font-semibold text-foreground backdrop-blur-sm"
+            className="sticky top-0 z-20 flex min-w-0 snap-start scroll-ml-11 flex-col items-center justify-center border-b border-border bg-card/95 px-1 leading-tight backdrop-blur-sm lg:scroll-ml-14 lg:flex-row lg:gap-1 lg:px-2"
           >
-            <span className="truncate">{court.name}</span>
+            <span className="max-w-full truncate text-[12px] font-bold text-foreground lg:text-xs lg:font-semibold">
+              {court.name}
+            </span>
+            {/* En 44 px no entra "(pausada)" al lado del nombre: abajo va el dato
+                corto —el formato, o el aviso de pausa si la cancha lo está—. */}
+            <span className="max-w-full truncate text-[9px] font-semibold uppercase tracking-[0.03em] text-muted-foreground lg:hidden">
+              {court.status === 'offline' ? 'pausada' : `F${court.format}`}
+            </span>
             {court.status === 'offline' && (
-              <span className="shrink-0 font-normal text-muted-foreground">(pausada)</span>
+              <span className="hidden shrink-0 text-xs font-normal text-muted-foreground lg:inline">
+                (pausada)
+              </span>
             )}
           </div>
         ))}
@@ -141,9 +172,11 @@ export function GridScroller({
           <div
             key={slotTime}
             style={{ gridColumn: 1, gridRow: ri + rowOffset }}
-            className="sticky left-0 z-10 flex items-start justify-end bg-card pr-2 pt-1.5 text-[11px] font-medium tabular-nums text-muted-foreground"
+            className="sticky left-0 z-10 flex items-start justify-end bg-card pr-1 pt-1.5 text-[10px] font-medium tabular-nums text-muted-foreground lg:pr-2 lg:text-[11px]"
           >
-            {slotTime}
+            {/* Sólo la hora en el teléfono: ":00" es ruido en una columna de 44 px. */}
+            <span className="lg:hidden">{slotTime.slice(0, 2)}</span>
+            <span className="hidden lg:inline">{slotTime}</span>
           </div>
         ))}
 
@@ -165,8 +198,8 @@ export function GridScroller({
                   row={ri}
                   span={cell.rowSpan}
                   rowOffset={rowOffset}
-                  compact={isCompact}
                   isNew={pulseIds.has(cell.booking.id)}
+                  spotlighted={highlightPending && isPendingCollection(cell.booking)}
                   courtName={court.name}
                   detailOpen={detailBookingId === cell.booking.id}
                   onDetailChange={onDetailChange}
@@ -185,7 +218,6 @@ export function GridScroller({
                 col={ci}
                 row={ri}
                 rowOffset={rowOffset}
-                compact={isCompact}
                 courtId={clickable ? court.id : undefined}
                 courtName={court.name}
                 onSlotClick={clickable ? onSlotClick : undefined}

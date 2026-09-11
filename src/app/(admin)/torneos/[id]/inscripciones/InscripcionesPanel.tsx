@@ -13,7 +13,6 @@ import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../../torneos-lib'
 import { formatArs } from '@/lib/format'
 import { EmptyState } from '@/components/ui/empty-state'
 import { toast } from '@/hooks/use-toast'
-import { notifyMoneyMoved } from '@/hooks/use-money-moved'
 import type { TournamentActionResult } from '../../actions'
 
 export type RegisterPaymentAction = (input: unknown) => Promise<TournamentActionResult>
@@ -90,7 +89,6 @@ export function InscripcionesPanel({
       setOpenTeamId(null)
       setLines([])
       router.refresh()
-      notifyMoneyMoved()
     })
   }
 

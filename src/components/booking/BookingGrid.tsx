@@ -3,21 +3,19 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { useArtNow } from '@/hooks/use-art-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
-import { usePersistedDensity } from '@/hooks/use-persisted-density'
 import { useDismissibleHint } from '@/hooks/use-dismissible-hint'
 import { useRealtimePulse } from '@/hooks/use-realtime-pulse'
 import { useGridLayout } from '@/hooks/use-grid-layout'
 import { useNowLine } from '@/hooks/use-now-line'
 import { useGridActions } from '@/hooks/use-grid-actions'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
-import { GridToolbar } from './grid/GridToolbar'
+import { GridHeaderBar } from './grid/GridHeaderBar'
 import { FirstBookingHint } from './grid/FirstBookingHint'
 import { GridScroller } from './grid/GridScroller'
-import { GridDayList } from './grid/GridDayList'
-import { GridLegendPopover } from './grid/GridLegendPopover'
 import { GridOverlays } from './grid/GridOverlays'
 import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
 import { QuickFormCell } from './grid/QuickFormCell'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
 import type { RenderCanteenDialog, SlotPanelActions } from './BookingSlotPanel'
 import { sumPendingCents, type GridBooking } from '@/lib/booking/grid-cells'
@@ -99,14 +97,14 @@ export function BookingGrid({
   const artNow = useArtNow()
 
   /**
-   * Matriz (escritorio) o lista con swipe entre canchas (mobile). Se monta UNA
-   * sola: no son dos layouts del mismo árbol sino dos vistas, y las celdas
-   * libres portalizan un Popover al body — con las dos montadas, un tap en la
-   * lista abriría también el popover de la matriz "oculta". Ver `useIsDesktop`.
+   * La matriz es la misma en los dos tamaños; lo que cambia es por dónde se abre
+   * el alta rápida. En escritorio es un Popover anclado a la celda tocada, que
+   * es lo que deja ver la grilla alrededor. En el teléfono un popover de 280 px
+   * sobre una columna de 44 no tiene dónde anclarse: va como hoja desde abajo,
+   * que además es donde llega el pulgar.
    */
   const isDesktop = useIsDesktop()
 
-  const { isCompact, toggleDensity } = usePersistedDensity()
   const { dismissed: hintDismissed, dismiss: dismissHint } = useDismissibleHint(HINT_STORAGE_KEY)
 
   const { bookings, status, refetch } = useBookingRealtime({ tenantId, date, initialBookings })
@@ -116,6 +114,11 @@ export function BookingGrid({
   // entra un cobro por Realtime. Cero queries nuevas — `pending` ya viaja en
   // cada `GridBooking` (ver grilla/page.tsx y /api/bookings).
   const pendingSummary = useMemo(() => sumPendingCents(bookings), [bookings])
+
+  // El chip "Por cobrar hoy" dejó de ser texto muerto: encenderlo le pone anillo
+  // a los turnos que deben plata, que en una matriz de 7 canchas por 14 horas ya
+  // no se encuentran solo por el color.
+  const [highlightPending, setHighlightPending] = useState(false)
 
   // El socket de Realtime tiene blips normales y auto-recuperables (carga en
   // frío, laptop que despierta, handoff de wifi) que resuelven en <1s sin que
@@ -156,7 +159,6 @@ export function BookingGrid({
     bookings,
     closedDates,
     closesNextDay,
-    isCompact,
     artNow,
   })
 
@@ -226,6 +228,20 @@ export function BookingGrid({
     ],
   )
 
+  /**
+   * La celda con el alta rápida abierta, ya resuelta. La clave es
+   * `courtId:HH:MM` y el id es un UUID (sin dos puntos), así que el primer `:`
+   * es el separador.
+   */
+  const quickSlot = useMemo(() => {
+    if (!quickSlotKey) return null
+    const sep = quickSlotKey.indexOf(':')
+    const courtId = quickSlotKey.slice(0, sep)
+    const courtName = courtNameById.get(courtId)
+    if (!courtName) return null
+    return { courtId, courtName, slotTime: quickSlotKey.slice(sep + 1) }
+  }, [quickSlotKey, courtNameById])
+
   const handleGridKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) =>
       moveGridFocus(e, { cols: courts.length, rows: visibleSlots.length }),
@@ -256,17 +272,17 @@ export function BookingGrid({
 
       {showOfflineBanner && <GridOfflineBanner />}
 
-      <GridToolbar
+      <GridHeaderBar
         date={date}
-        dayLabel={dayLabel}
-        dateLabel={dateLabel}
+        dateLabel={`${dayLabel} ${dateLabel}`}
         todayArt={artNow.date}
-        isCompact={isCompact}
-        onToggleDensity={toggleDensity}
         onNavigate={navigateToDate}
-        actions={actions}
         pendingSummary={pendingSummary}
+        highlightPending={highlightPending}
+        onToggleHighlight={() => setHighlightPending((v) => !v)}
       />
+
+      {actions}
 
       {courts.length === 0 && <NoCourtsEmptyState />}
 
@@ -276,70 +292,46 @@ export function BookingGrid({
         <div className="flex-1 flex flex-col min-h-0 space-y-4">
           {showFirstHint && <FirstBookingHint onDismiss={dismissHint} />}
 
-          {/* El envoltorio con clases responsive NO es redundante con el
-              ternario. El ternario decide QUÉ se monta (una sola vista, para
-              que no haya dos popovers portalizados al body); las clases
-              deciden qué se VE en el primer paint. React resincroniza
-              `useSyncExternalStore` en un efecto PASIVO, o sea después de
-              pintar: sin esto, un teléfono que carga /grilla en frío pinta un
-              frame de la matriz de 600px — justo el layout que esta fase
-              existe para eliminar — y recién después la reemplaza por la
-              lista. Con `hidden lg:flex` ese frame no se ve. */}
-          {isDesktop ? (
-            <div className="hidden min-h-0 flex-1 flex-col gap-4 lg:flex">
-              <GridScroller
-                courts={courts}
-                slots={slots}
-                visibleSlots={visibleSlots}
-                cells={cells}
-                collapsedCount={collapsedCount}
-                hasBand={hasBand}
-                rowOffset={rowOffset}
-                rowHeightRem={rowHeightRem}
-                nowTopRem={nowTopRem}
-                isCompact={isCompact}
-                isNavPending={isNavPending}
-                gridScrollRef={gridScrollRef}
-                ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
-                isSlotPast={isSlotPast}
-                pulseIds={pulseIds}
-                detailBookingId={detailBookingId}
-                onDetailChange={setDetailBookingId}
-                onSlotClick={handleSlotClick}
-                onGridKeyDown={handleGridKeyDown}
-                onExpandMorning={() => setShowMorning(true)}
-                quickSlotKey={quickSlotKey}
-                onQuickClose={handleQuickClose}
-                renderQuickForm={quickEnabled ? renderQuickForm : undefined}
-              />
-              {/* La leyenda explica el color de la matriz. En la lista cada
-                  fila ya trae el label escrito al lado del ícono: ahí sobra.
-                  F-005 (punto 3): popover a demanda, no fila fija (ver
-                  GridLegendPopover.tsx). */}
-              <GridLegendPopover />
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col lg:hidden">
-              <GridDayList
-                courts={courts}
-                slots={slots}
-                visibleSlots={visibleSlots}
-                cells={cells}
-                collapsedCount={collapsedCount}
-                hasBand={hasBand}
-                isSlotPast={isSlotPast}
-                pulseIds={pulseIds}
-                onDetailChange={setDetailBookingId}
-                onSlotClick={handleSlotClick}
-                onExpandMorning={() => setShowMorning(true)}
-                isNavPending={isNavPending}
-                quickSlotKey={quickSlotKey}
-                onQuickClose={handleQuickClose}
-                renderQuickForm={quickEnabled ? renderQuickForm : undefined}
-              />
-            </div>
-          )}
+          <GridScroller
+            courts={courts}
+            slots={slots}
+            visibleSlots={visibleSlots}
+            cells={cells}
+            collapsedCount={collapsedCount}
+            hasBand={hasBand}
+            rowOffset={rowOffset}
+            rowHeightRem={rowHeightRem}
+            nowTopRem={nowTopRem}
+            isNavPending={isNavPending}
+            highlightPending={highlightPending}
+            gridScrollRef={gridScrollRef}
+            ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
+            isSlotPast={isSlotPast}
+            pulseIds={pulseIds}
+            detailBookingId={detailBookingId}
+            onDetailChange={setDetailBookingId}
+            onSlotClick={handleSlotClick}
+            onGridKeyDown={handleGridKeyDown}
+            onExpandMorning={() => setShowMorning(true)}
+            quickSlotKey={quickSlotKey}
+            onQuickClose={handleQuickClose}
+            renderQuickForm={quickEnabled && isDesktop ? renderQuickForm : undefined}
+          />
         </div>
+      )}
+
+      {/* Teléfono: el alta rápida entra por una hoja desde abajo. Una sola para
+          toda la grilla, montada sólo cuando hay una celda abierta. */}
+      {!isDesktop && quickEnabled && (
+        <Sheet open={!!quickSlot} onOpenChange={(v) => !v && handleQuickClose()}>
+          <SheetContent side="bottom" aria-label="Nueva reserva" className="gap-0 p-4">
+            <SheetTitle className="mb-3 font-display text-base">
+              {quickSlot ? `${quickSlot.courtName} · ${quickSlot.slotTime}` : 'Nueva reserva'}
+            </SheetTitle>
+            {quickSlot &&
+              renderQuickForm(quickSlot.courtId, quickSlot.courtName, quickSlot.slotTime)}
+          </SheetContent>
+        </Sheet>
       )}
 
       <GridOverlays

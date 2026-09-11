@@ -56,19 +56,20 @@ export function AdminLayoutShell({
     // queda más alto que el área visible — y con `overflow-hidden` el excedente
     // es INALCANZABLE (los últimos turnos de la grilla no se podían tocar).
     <div className={cn('min-h-dvh shell-bg', isGrilla && 'h-dvh overflow-hidden flex flex-col')}>
-      {/* Sidebar (el overlay mobile lo trae el Sheet de AdminSidebar) */}
+      {/* Riel de 72 px (el cajón mobile lo trae el Sheet de AdminSidebar) */}
       <AdminSidebar
         tenantName={tenantName}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        userEmail={userEmail}
+        onSignOut={handleSignOut}
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
       />
 
       {/* Header */}
       <AdminHeader
-        userEmail={userEmail}
-        onSignOut={handleSignOut}
+        tenantName={tenantName}
         homeHref={staffRole === 'admin' ? '/dashboard' : '/grilla'}
       />
 
@@ -81,10 +82,12 @@ export function AdminLayoutShell({
       />
 
       {/* Main content */}
-      <div className={cn('lg:pl-60', isGrilla && 'h-dvh flex flex-col min-h-0 overflow-hidden')}>
+      <div
+        className={cn('lg:pl-[72px]', isGrilla && 'h-dvh flex flex-col min-h-0 overflow-hidden')}
+      >
         <div
           className={cn(
-            'pt-[calc(4rem+env(safe-area-inset-top))]',
+            'pt-[calc(3.75rem+env(safe-area-inset-top))]',
             isGrilla && 'flex-1 flex flex-col min-h-0 overflow-hidden',
           )}
         >
@@ -108,7 +111,7 @@ export function AdminLayoutShell({
               'content-area-gradient mx-auto w-full px-4 sm:px-6 lg:px-8',
               isGrilla
                 ? 'max-w-full flex-1 flex flex-col min-h-0 overflow-hidden pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-4'
-                : 'max-w-7xl pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-4rem)]',
+                : 'max-w-7xl pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-3.75rem)]',
             )}
           >
             {/* Va acá, en flujo y dentro del contenedor de la página, y no como

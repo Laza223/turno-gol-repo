@@ -1,3 +1,4 @@
+import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 
 /**
@@ -21,11 +22,20 @@ export function chargeMode(booking: GridBooking, hasEnded: boolean): ChargeMode 
   return null
 }
 
-// H017: título y CTA del MISMO panel describían el efecto con verbos
-// distintos ("cerrar"/"registrar" vs "cobrar"), agravado porque "cerrar" es
-// el verbo reservado para el cierre de caja — acá no tiene nada que ver.
-export const CHARGE_COPY: Record<Exclude<ChargeMode, null>, { title: string; cta: string }> = {
-  settle: { title: 'Cobrar lo que falta', cta: 'Cobrar' },
-  finish: { title: 'Cobrar y dar por jugado', cta: 'Cobrar y dar por jugado' },
-  advance: { title: 'Cobrar por adelantado', cta: 'Cobrar por adelantado' },
+/**
+ * El rótulo del botón que cobra, con el monto adentro.
+ *
+ * El monto va EN el botón y no en un campo aparte: es lo que falta, el panel ya
+ * lo sabe, y verlo antes de tocar es lo que evita tener que leer una tabla para
+ * saber qué se está por cobrar.
+ *
+ * H017: el verbo es siempre "cobrar". Antes el título y el botón del MISMO panel
+ * decían cosas distintas ("cerrar"/"registrar"), y "cerrar" además es el verbo
+ * reservado para el cierre de caja.
+ */
+export function chargeCta(mode: Exclude<ChargeMode, null>, pendingCents: number): string {
+  const monto = formatArs(pendingCents)
+  if (mode === 'finish') return `Cobrar ${monto} y dar por jugado`
+  if (mode === 'advance') return `Cobrar ${monto} por adelantado`
+  return `Cobrar ${monto}`
 }

@@ -22,7 +22,7 @@ export function ImpersonationBanner({
   return (
     <div
       role="alert"
-      className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-30 flex items-center gap-3 border-b border-red-800 bg-red-600 px-4 py-2 text-sm text-white shadow-md"
+      className="sticky top-[calc(3.75rem+env(safe-area-inset-top))] z-30 flex items-center gap-3 border-b border-red-800 bg-red-600 px-4 py-2 text-sm text-white shadow-md"
     >
       <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="flex-1 font-semibold">

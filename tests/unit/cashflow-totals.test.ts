@@ -6,9 +6,7 @@ import { balanceFrom, collectedFrom } from '@/modules/cashflow/totals'
 /**
  * B14 — las dos cuentas del día. Existen como funciones porque el criterio de
  * salida de Fase 1 pide fuente única de agregados: el mismo número en toda
- * superficie que lo muestre. Estos tests fijan QUÉ es cada una; el test de
- * consistencia de que el endpoint y `getDaySummary` devuelven lo mismo vive en
- * `tests/integration/admin-day-total-endpoint.test.ts`.
+ * superficie que lo muestre. Estos tests fijan QUÉ es cada una.
  */
 describe('collectedFrom — lo cobrado', () => {
   it('suma ingresos y ajustes', () => {

@@ -60,3 +60,52 @@ export {
 export type { ToastProps } from '@/components/ui/toast'
 
 export { Toaster } from '@/components/ui/toaster'
+
+// --- Ampliación 2026-09-11 -------------------------------------------------
+// Las primitivas que las tres pantallas del rediseño (Hoy, Grilla y
+// Configuración) usan de verdad, medidas con un grep de sus imports, más las
+// dos compuestas que llevan TODAS las pantallas del panel (PageHeader y
+// StatCard). Sin esto el agente de diseño no tiene el panel lateral del turno,
+// las pestañas de Configuración ni la píldora de estado, y los dibuja a su
+// gusto — que es exactamente la incoherencia que la auditoría acaba de cerrar.
+
+export { StatusBadge } from '@/components/ui/status-badge'
+export type { StatusBadgeVisual } from '@/components/ui/status-badge'
+
+export { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+
+export { ScrollTabs } from '@/components/ui/scroll-tabs'
+export type { ScrollTab } from '@/components/ui/scroll-tabs'
+
+export { SegmentedControl } from '@/components/ui/segmented-control'
+export type { SegmentedControlOption } from '@/components/ui/segmented-control'
+
+export { RadioChipGroup, RadioChip } from '@/components/ui/radio-chip'
+
+export { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
+
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverAnchor,
+  PopoverClose,
+  PopoverContent,
+} from '@/components/ui/popover'
+
+export { MoneyInput } from '@/components/ui/money-input'
+
+export { PhoneInput } from '@/components/ui/phone-input'
+
+export { ImageUploader } from '@/components/ui/image-uploader'
+
+export { Coachmark } from '@/components/ui/coachmark'
+
+export { ResponsiveList } from '@/components/ui/responsive-list'
+
+export { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
+
+export { PageHeader } from '@/components/admin/PageHeader'
+
+export { StatCard } from '@/components/admin/StatCard'

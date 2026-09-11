@@ -8,7 +8,14 @@
   "cssEntry": ".design-sync/.cache/ds-tailwind.css",
   "extraFonts": ".design-sync/fonts/fonts.css",
   "docsDir": ".design-sync/groups",
-  "guidelinesGlob": "docs/spec/design-system/MASTER.md",
+  "guidelinesGlob": [
+    "docs/spec/design-system/MASTER.md",
+    "docs/spec/design-system/gramatica-interaccion.md",
+    "docs/spec/design-system/pages/dashboard.md",
+    "docs/spec/design-system/pages/grilla.md",
+    "docs/spec/design-system/pages/horarios-precios.md",
+    "docs/spec/design-system/pages/staff.md"
+  ],
   "readmeHeader": ".design-sync/conventions.md",
   "componentSrcMap": {
     "Button": "src/components/ui/button.tsx",
@@ -24,7 +31,23 @@
     "Combobox": "src/components/ui/combobox.tsx",
     "Dialog": "src/components/ui/dialog.tsx",
     "DropdownMenu": "src/components/ui/dropdown-menu.tsx",
-    "Toast": "src/components/ui/toast.tsx"
+    "Toast": "src/components/ui/toast.tsx",
+    "StatusBadge": "src/components/ui/status-badge.tsx",
+    "Sheet": "src/components/ui/sheet.tsx",
+    "ScrollTabs": "src/components/ui/scroll-tabs.tsx",
+    "SegmentedControl": "src/components/ui/segmented-control.tsx",
+    "RadioChip": "src/components/ui/radio-chip.tsx",
+    "Collapsible": "src/components/ui/collapsible.tsx",
+    "Tooltip": "src/components/ui/tooltip.tsx",
+    "Popover": "src/components/ui/popover.tsx",
+    "MoneyInput": "src/components/ui/money-input.tsx",
+    "PhoneInput": "src/components/ui/phone-input.tsx",
+    "ImageUploader": "src/components/ui/image-uploader.tsx",
+    "Coachmark": "src/components/ui/coachmark.tsx",
+    "ResponsiveList": "src/components/ui/responsive-list.tsx",
+    "TgBallSpinner": "src/components/ui/tg-ball-spinner.tsx",
+    "PageHeader": "src/components/admin/PageHeader.tsx",
+    "StatCard": "src/components/admin/StatCard.tsx"
   },
   "dtsPropsFor": {
     "Button": "  /** Visual style variant. */\n  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';\n  /** Size preset. `icon` is a square icon-only button. */\n  size?: 'default' | 'sm' | 'lg' | 'icon';\n  className?: string;\n  disabled?: boolean;\n  type?: 'button' | 'submit' | 'reset';\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;\n  children?: React.ReactNode;",
@@ -40,14 +63,84 @@
     "Combobox": "  id: string;\n  options: { value: string; label: string; hint?: string }[];\n  value: string;\n  onChange: (value: string) => void;\n  placeholder?: string;\n  inputClassName?: string;\n  /** Empty-results message. Defaults to \"Sin resultados\". */\n  emptyMessage?: string;\n  leadingIcon?: React.ReactNode;\n  /** Accessible name for the listbox. */\n  listboxLabel?: string;\n  /** Adds a first option (value \"\") that clears the selection, like a \"Todas\". */\n  clearOptionLabel?: string;",
     "Dialog": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  modal?: boolean;\n  /** Compose with DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose. */\n  children?: React.ReactNode;",
     "DropdownMenu": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  modal?: boolean;\n  dir?: 'ltr' | 'rtl';\n  /** Compose with DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem. */\n  children?: React.ReactNode;",
-    "Toast": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  /** Visual style. */\n  variant?: 'default' | 'success' | 'destructive';\n  /** Auto-dismiss delay in ms. */\n  duration?: number;\n  className?: string;\n  /** Compose with ToastTitle, ToastDescription, ToastClose inside a ToastProvider + ToastViewport. */\n  children?: React.ReactNode;"
+    "Toast": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  /** Visual style. */\n  variant?: 'default' | 'success' | 'destructive';\n  /** Auto-dismiss delay in ms. */\n  duration?: number;\n  className?: string;\n  /** Compose with ToastTitle, ToastDescription, ToastClose inside a ToastProvider + ToastViewport. */\n  children?: React.ReactNode;",
+    "StatusBadge": "  /** Ícono + label + tono, juntos. Salen de `slot-visual.ts`, la tabla única de estados. */\n  visual: { icon: React.ComponentType<{ className?: string }>; label: string; tone: 'success' | 'warning' | 'info' | 'destructive' | 'neutral' | 'brand' };\n  className?: string;",
+    "Sheet": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  /** Componé con SheetTrigger, SheetContent (side: 'right' | 'bottom'), SheetHeader, SheetTitle. */\n  children?: React.ReactNode;",
+    "ScrollTabs": "  tabs: { href: string; label: string }[];\n  /** El href de la pestaña activa; se compara exacto. */\n  activeHref: string;\n  /** Nombre accesible de la barra de pestañas. */\n  ariaLabel: string;\n  className?: string;",
+    "SegmentedControl": "  value: T;\n  onValueChange: (value: T) => void;\n  options: readonly { value: T; label: React.ReactNode }[];\n  /** Clases por ítem según esté activo o no. */\n  itemClassName: (active: boolean) => string;\n  className?: string;\n  disabled?: boolean;",
+    "RadioChip": "  /** Chips de alto h-11 en vez de un radio nativo de 20px. Van dentro de RadioChipGroup\n   *  (que toma value / defaultValue / onValueChange / name como el RadioGroup de Radix). */\n  value: string;\n  description?: string;\n  disabled?: boolean;\n  className?: string;\n  children?: React.ReactNode;",
+    "Collapsible": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  /** Componé con CollapsibleTrigger y CollapsibleContent. */\n  children?: React.ReactNode;",
+    "Tooltip": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  delayDuration?: number;\n  /** Componé con TooltipTrigger y TooltipContent, dentro de un TooltipProvider. */\n  children?: React.ReactNode;",
+    "Popover": "  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  modal?: boolean;\n  /** Componé con PopoverTrigger, PopoverContent, PopoverAnchor y PopoverClose. */\n  children?: React.ReactNode;",
+    "MoneyInput": "  id?: string;\n  name?: string;\n  /** Monto en CENTAVOS de ARS (invariante del dominio: nunca decimal). */\n  valueCents?: number | null;\n  defaultValueCents?: number | null;\n  onValueChange?: (cents: number | null) => void;\n  placeholder?: string;\n  minCents?: number;\n  maxCents?: number;\n  disabled?: boolean;\n  required?: boolean;\n  autoFocus?: boolean;\n  className?: string;\n  /** Escribe el monto en palabras debajo del campo, para montos grandes. */\n  showWords?: boolean;",
+    "PhoneInput": "  id?: string;\n  name?: string;\n  label?: string;\n  /** Número completo con código de país, ej. \"+54 9 11 5555-5555\". */\n  value?: string;\n  defaultValue?: string;\n  onChange?: (fullValue: string) => void;\n  error?: string;\n  helper?: string;\n  required?: boolean;",
+    "ImageUploader": "  /** Relación de aspecto del recorte. */\n  preset: 'logo' | 'cover' | 'court';\n  value: string | string[];\n  onUpload: (blob: Blob) => Promise<void>;\n  onRemove: (url: string) => Promise<void>;\n  onReorder?: (urls: string[]) => Promise<void>;\n  max?: number;\n  disabled?: boolean;\n  /** Texto del recuadro vacío. */\n  emptyLabel: string;",
+    "Coachmark": "  /** NO es el `id` del elemento: el componente busca `[data-tour-id=\"…\"]`.\n   *  Un target marcado con `id` no se encuentra y el globo no se dibuja, sin error. */\n  targetId: string;\n  text: string;\n  onDismiss: () => void;\n  dismissLabel?: string;\n  stepLabel?: string;\n  onSkip?: () => void;\n  skipLabel?: string;\n  placement?: 'bottom' | 'top';",
+    "ResponsiveList": "  /** Encabezado común a las dos formas (buscador, filtros). */\n  header?: React.ReactNode;\n  /** Lo que se ve abajo de lg: tarjetas apiladas. */\n  cards: React.ReactNode;\n  /** Lo que se ve de lg para arriba: la tabla. */\n  table: React.ReactNode;\n  className?: string;",
+    "TgBallSpinner": "  size?: 'xs' | 'sm' | 'md' | 'lg';\n  /** Texto para lectores de pantalla. */\n  label?: string;\n  /** Texto visible debajo de la pelota. */\n  text?: string;",
+    "PageHeader": "  title: string;\n  subtitle?: string;\n  /** Ícono de 24px dentro del cuadrado de la banda. */\n  icon?: React.ReactNode;\n  /** Acciones a la derecha del título. */\n  actions?: React.ReactNode;\n  className?: string;",
+    "StatCard": "  label: string;\n  value: React.ReactNode;\n  icon?: React.ReactNode;\n  sub?: string;\n  /** Variación vs. período previo, con color semántico propio. */\n  delta?: { label: string; direction: 'up' | 'down' | 'neutral'; tone?: 'positive' | 'negative' | 'neutral' };\n  /** Acento del halo del ícono y, en amber/red, también de la cifra. */\n  accent?: 'emerald' | 'violet' | 'amber' | 'sky' | 'red' | 'slate';\n  className?: string;"
   },
   "overrides": {
-    "Dialog": { "cardMode": "single", "viewport": "520x380" },
-    "ConfirmDialog": { "cardMode": "single", "viewport": "520x440" },
-    "Toast": { "cardMode": "single", "viewport": "440x320" },
-    "DropdownMenu": { "cardMode": "single", "viewport": "380x320" },
-    "Combobox": { "cardMode": "single", "viewport": "440x200" },
-    "ErrorState": { "cardMode": "column", "viewport": "600x460" }
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "520x380"
+    },
+    "ConfirmDialog": {
+      "cardMode": "single",
+      "viewport": "520x440"
+    },
+    "Toast": {
+      "cardMode": "single",
+      "viewport": "440x320"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "viewport": "380x320"
+    },
+    "Combobox": {
+      "cardMode": "single",
+      "viewport": "440x200"
+    },
+    "ErrorState": {
+      "cardMode": "column",
+      "viewport": "600x460"
+    },
+    "Sheet": {
+      "cardMode": "single",
+      "viewport": "520x460"
+    },
+    "Popover": {
+      "cardMode": "single",
+      "viewport": "420x360"
+    },
+    "Tooltip": {
+      "cardMode": "single",
+      "viewport": "380x220"
+    },
+    "Coachmark": {
+      "cardMode": "single",
+      "viewport": "460x340"
+    },
+    "ImageUploader": {
+      "cardMode": "single",
+      "viewport": "460x320"
+    },
+    "PhoneInput": {
+      "cardMode": "single",
+      "viewport": "440x220"
+    },
+    "ResponsiveList": {
+      "cardMode": "single",
+      "viewport": "720x400"
+    },
+    "PageHeader": {
+      "cardMode": "single",
+      "viewport": "720x200"
+    },
+    "SegmentedControl": {
+      "cardMode": "column",
+      "viewport": "420x220"
+    }
   }
 }

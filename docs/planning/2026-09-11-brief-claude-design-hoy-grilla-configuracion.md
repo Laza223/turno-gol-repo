@@ -12,37 +12,51 @@ pegar en claude.ai/design, tal cual está.
 
 ## A. Procedimiento (Lazar)
 
-**Por qué así.** Claude Design trabaja mejor dentro de un proyecto de _design system_: construye con
-los componentes reales y lee las guías que le subimos. Ese proyecto ya existe (`turnogol`, id en
-`.design-sync/config.json`) pero está detenido en junio: tiene 14 primitivas de las 31 que hoy hay
-en `src/components/ui/`, el MASTER v2.0 sin la gramática de interacción, y ninguna spec de
-pantalla. Si le pedís la Grilla con eso, se inventa el badge, el sheet, las tabs y el tooltip —
-y volvemos a la incoherencia que acabamos de cerrar.
+**Por qué así.** Claude Design trabaja mejor dentro de un proyecto de _design system_: construye
+con los componentes reales y lee las guías que le subimos. Ese proyecto ya existe (`turnogol`, id
+en `.design-sync/config.json`) y hasta el 2026-09-11 estaba detenido en junio: 14 primitivas de las
+31 que hay en `src/components/ui/`, MASTER como única guía y ninguna spec de pantalla. Pedirle la
+Grilla con eso era pedirle que inventara el panel lateral, las pestañas y la píldora de estado —
+justo la incoherencia que la auditoría acaba de cerrar.
 
-1. **Una vez, vos:** en una sesión interactiva de Claude Code, correr `/design-login`. Sin eso
-   Claude Code no puede tocar el proyecto de diseño (la sesión no interactiva no puede
-   autorizar).
-2. **Después, Claude Code:** re-sincronizar el design system. Qué entra: las 17 primitivas
-   nuevas (badge de estado, sheet, tooltip, popover, segmented control, scroll tabs, date
-   picker, money input, phone input, stepper, progress, collapsible, radio chip, responsive
-   list, image uploader, coachmark, spinner), las dos compuestas del panel (`PageHeader`,
-   `StatCard`), y ampliar `guidelinesGlob` para que las guías del proyecto sean MASTER +
-   gramática + las specs de estas tres pantallas. Flujo en `.design-sync/NOTES.md`.
-3. **Capturas.** Están en `.design-sync/handoff/2026-09-11/capturas/` (28 archivos,
-   `{viewport}_{rol}_{pantalla}.png`). **Las de `dashboard` son de antes del rediseño de #300**:
-   para regenerarlas hace falta Docker Desktop arriba, `pnpm supabase:start`, el dev server y
+**Lo que ya está hecho** (commit de este mismo esfuerzo, verificado con el render check del
+pipeline: 30/30 tarjetas renderizan limpio):
+
+- **El design system pasó de 14 a 30 componentes.** Entraron las 14 primitivas que estas tres
+  pantallas usan de verdad, medidas con un grep de sus imports: `StatusBadge`, `Sheet`,
+  `ScrollTabs`, `SegmentedControl`, `RadioChip`, `Collapsible`, `Tooltip`, `Popover`,
+  `MoneyInput`, `PhoneInput`, `ImageUploader`, `Coachmark`, `ResponsiveList` y `TgBallSpinner`;
+  más `PageHeader` y `StatCard`, que llevan todas las pantallas del panel. Quedaron afuera a
+  propósito `DatePicker`, `Stepper` y `Progress`: ninguna de las tres pantallas los usa.
+- **Las guías del proyecto ya no son solo MASTER**: ahora van también la gramática de interacción
+  y las specs de Hoy, Grilla, horarios-precios y Equipo.
+- **Cada componente nuevo tiene su preview con el vocabulario real**, y se corrigió el de `Badge`,
+  que enseñaba "Pendiente", "Cancelada" y "Nueva" — tres términos que la auditoría eliminó.
+
+**Lo que falta para poder subirlo:**
+
+1. **Autorización de diseño.** La herramienta que escribe en el proyecto sigue sin permiso en esta
+   sesión. Hay que correr `/design-login` una vez desde una sesión **interactiva** de Claude Code
+   en esta máquina (la pestaña Code de la app de escritorio no alcanza: el comando necesita el
+   diálogo de la terminal). Después de eso, la subida es un paso.
+2. **Regenerar las capturas de Hoy.** Las de `.design-sync/handoff/2026-09-11/capturas/` son de
+   antes del rediseño de #300, así que muestran las tarjetas de plata que ya no existen. Hace
+   falta Docker Desktop arriba, `pnpm supabase:start`, el dev server, y
    `MSYS_NO_PATHCONV=1 pnpm audit:corpus --solo=/dashboard`.
-4. **En claude.ai/design**, proyecto `turnogol`: **una conversación por pantalla**, en este orden:
-   Hoy → Grilla → Configuración. La primera vez pegás §B entera y después el bloque de la
-   pantalla (§C, §D o §E). Adjuntás las cuatro capturas de esa pantalla (desktop/mobile ×
-   dueño/encargado). Cerrás cada pantalla antes de abrir la siguiente: la Grilla hereda lo
-   que decidas en Hoy, y Configuración hereda las dos.
-5. **Evaluar lo que vuelve** con §F. Si un elemento no se puede nombrar con el vocabulario de
-   §B.3, o aparece un color que no está en §B.4, se rechaza, por lindo que sea.
-6. **Volver al repo.** Claude Design puede mandar el diseño a Claude Code ("Send to Claude
-   Code"), que lo deja en el workspace. De ahí se implementa contra la spec de la pantalla
-   (`docs/spec/design-system/pages/*.md`), que se actualiza en el mismo PR, y contra los
-   tests que ya custodian el vocabulario (`tests/unit/slot-visual.test.ts`).
+
+**Después, el trabajo de diseño:**
+
+3. **En claude.ai/design**, proyecto `turnogol`: **una conversación por pantalla**, en este orden:
+   Hoy → Grilla → Configuración. La primera vez pegás §B entera y después el bloque de la pantalla
+   (§C, §D o §E). Adjuntás las cuatro capturas de esa pantalla (desktop/mobile × dueño/encargado).
+   Cerrás cada pantalla antes de abrir la siguiente: la Grilla hereda lo que decidas en Hoy, y
+   Configuración hereda las dos.
+4. **Evaluar lo que vuelve** con §F. Si un elemento no se puede nombrar con el vocabulario de §B.3,
+   o aparece un color que no está en §B.4, se rechaza, por lindo que sea.
+5. **Volver al repo.** Claude Design puede mandar el diseño a Claude Code ("Send to Claude Code"),
+   que lo deja en el workspace. De ahí se implementa contra la spec de la pantalla
+   (`docs/spec/design-system/pages/*.md`), que se actualiza en el mismo PR, y contra los tests que
+   ya custodian el vocabulario (`tests/unit/slot-visual.test.ts`).
 
 **Plan B** si claude.ai/design no rinde: Claude Code tiene `/design`, un lienzo de artboards que se
 edita a mano. Sirve para bocetar, pero no construye con los componentes reales.
@@ -284,7 +298,7 @@ Un diseño se acepta si pasa todo esto. Si falla uno, se pide corrección, no se
 `.design-sync/handoff/2026-09-11/` (no se versiona, es regenerable):
 
 - `capturas/` — 28 PNG, `{desktop|mobile}_{admin|manager}_{dashboard|grilla|settings_*}.png`.
-  Las de `dashboard` son previas a #300; regenerar antes de usarlas (ver §A.3).
+  Las de `dashboard` son previas a #300; regenerar antes de usarlas (ver §A, punto 2).
 - `specs/` — copias de `MASTER.md`, `gramatica-interaccion.md`, `pages/dashboard.md` (v3, ya
-  refleja #300), `pages/grilla.md`, `pages/horarios-precios.md`, `pages/staff.md`. Son las
-  mismas que se suben al proyecto como guías en §A.2; se copian acá por si se adjuntan a mano.
+  refleja #300), `pages/grilla.md`, `pages/horarios-precios.md`, `pages/staff.md`. Son las mismas
+  seis que el proyecto ya lleva como guías; se copian acá por si hace falta adjuntarlas a mano.

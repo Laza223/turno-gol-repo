@@ -3,7 +3,9 @@
 **Fecha:** 2026-09-11 · **Dueño:** Lazar · **Estado:** listo para usar
 **Antecedente:** auditoría de coherencia 2026-09-09/10 (130 hallazgos cerrados en #298, #299 y #300).
 Ahora que el panel es coherente, el dueño quiere que Claude Design lo devuelva **mejor, más lindo y
-más moderno** sin volver a desordenarlo.
+más moderno** sin volver a desordenarlo. "Mejor" no es adorno: el dueño describió la app como
+_"incoherente, incómoda"_ y con _"TANTO"_ (DEMO-3). La auditoría cerró lo primero. Este pedido va
+por lo segundo y lo tercero: **flujos más cortos y resta**, además de la cara nueva.
 
 Este documento tiene dos partes. La §A es el procedimiento para Lazar. Las §B a §F son texto para
 pegar en claude.ai/design, tal cual está.
@@ -47,12 +49,16 @@ pipeline: 30/30 tarjetas renderizan limpio):
 **Después, el trabajo de diseño:**
 
 3. **En claude.ai/design**, proyecto `turnogol`: **una conversación por pantalla**, en este orden:
-   Hoy → Grilla → Configuración. La primera vez pegás §B entera y después el bloque de la pantalla
-   (§C, §D o §E). Adjuntás las cuatro capturas de esa pantalla (desktop/mobile × dueño/encargado).
-   Cerrás cada pantalla antes de abrir la siguiente: la Grilla hereda lo que decidas en Hoy, y
-   Configuración hereda las dos.
+   Grilla → Configuración → Hoy. Los prompts listos para pegar, uno por pantalla y autocontenidos,
+   están en `docs/planning/prompts-claude-design/`; este documento es la fuente de la que salen.
+   Adjuntás las capturas de esa pantalla (desktop/mobile × dueño/encargado). Cerrás cada pantalla
+   antes de abrir la siguiente: Configuración hereda lo que decidas en la Grilla, y Hoy hereda las
+   dos. Hoy va última porque sus capturas hay que regenerarlas (punto 2).
 4. **Evaluar lo que vuelve** con §F. Si un elemento no se puede nombrar con el vocabulario de §B.3,
-   o aparece un color que no está en §B.4, se rechaza, por lindo que sea.
+   o aparece un color que no está en §B.4, se rechaza, por lindo que sea. Los **cambios de flujo**
+   vuelven como lista aparte (§B.7): cada uno se acepta, se rechaza o se marca REQUIERE INPUT si
+   toca una regla de negocio. Un cambio de flujo aceptado se implementa contra la spec de la
+   pantalla igual que un cambio visual.
 5. **Volver al repo.** Claude Design puede mandar el diseño a Claude Code ("Send to Claude Code"),
    que lo deja en el workspace. De ahí se implementa contra la spec de la pantalla
    (`docs/spec/design-system/pages/*.md`), que se actualiza en el mismo PR, y contra los tests que
@@ -90,15 +96,30 @@ Toast POS. **La belleza del panel es su eficiencia.** Un degradé animado en la 
 
 ### B.2 Qué te pido
 
-Rediseñá tres pantallas —Hoy, Grilla y Configuración— para que se vean **más modernas, más
-lindas y más claras**, construyendo con los componentes del design system de este proyecto y
-respetando las guías que tiene cargadas (MASTER, gramática de interacción y las specs de cada
-pantalla). Tenés libertad total en **layout, jerarquía, agrupación, espaciado, composición,
-estados vacíos, iconografía (Lucide) y microinteracciones dentro del presupuesto de motion**.
-Podés proponer cambios al shell (barra lateral, topbar) si mejoran las tres.
+Dos cosas, y el orden es la importancia:
 
-No tenés libertad en lo de abajo. La app acaba de pasar una auditoría de coherencia de 130
-hallazgos y el objetivo es que **cada cosa se llame igual en todas las pantallas**.
+1. **Que el flujo sea más corto y que sobre menos.** El dueño describió la app con tres palabras:
+   _"incoherente, incómoda"_ y con _"TANTO"_. Lo primero ya se arregló: la app pasó una auditoría
+   de 130 hallazgos y ahora cada cosa se llama igual en todas las pantallas. Lo segundo y lo
+   tercero son tu trabajo. Para cada tarea que la pantalla tiene que resolver (§B.7), caminala paso
+   a paso como si fueras la persona: en cada paso, ¿sabe qué tocar?, ¿ve que el control existe?,
+   ¿ve que avanzó? Contá las interacciones que hay hoy y proponé el camino más corto. Y para cada
+   elemento visible contestá tres preguntas: ¿quién lo usa?, ¿cada cuánto?, ¿qué se rompe si lo
+   sacamos? Lo que no sobreviva, sacalo o plegalo.
+2. **Que se vea más moderna, más linda y más clara**, construyendo con los componentes del design
+   system de este proyecto y respetando las guías que tiene cargadas (MASTER, gramática de
+   interacción y las specs de cada pantalla). Tenés libertad total en **layout, jerarquía,
+   agrupación, espaciado, composición, estados vacíos, iconografía (Lucide) y microinteracciones
+   dentro del presupuesto de motion**. Podés proponer cambios al shell (barra lateral, topbar) si
+   mejoran las tres.
+
+**Cambiar el flujo sí; inventar funcionalidad no.** Cambiar el flujo es reordenar, fusionar o
+sacar pasos, mover una acción de lugar, cambiar qué se pregunta primero y qué se pliega.
+Funcionalidad nueva es un dato que la app no tiene, un circuito de plata nuevo, una pantalla nueva
+o una acción que hoy no existe. Lo primero se pide; lo segundo se marca aparte como "requiere
+decisión del dueño" en vez de dibujarse como si existiera.
+
+No tenés libertad en lo de abajo (§B.3 a §B.5).
 
 ### B.3 Vocabulario cerrado (un término por estado, en toda la app)
 
@@ -154,9 +175,46 @@ vidrio en light. Contraste AA en los dos.
 
 ### B.6 Entregables por pantalla
 
-Desktop a 1280 y mobile a 375, cada uno en light y en dark. Para cada pantalla, el estado
-**lleno** (un viernes con 4 canchas y turnos en todos los estados) y el **vacío** que se indica
-en su bloque. Donde el encargado ve algo distinto del dueño, las dos versiones.
+Cuatro cosas, en este orden:
+
+1. **Cambios de flujo propuestos.** Una entrada por tarea de §B.7: cuántas interacciones tiene
+   hoy, cuántas quedan, qué se saca, qué se mueve, y qué necesitaría del código que hoy no existe.
+2. **Lista de resta.** Cada elemento sacado o plegado, con las tres respuestas.
+3. **Decisiones que no son del diseñador.** Lo que cambia una regla de negocio o necesita un dato
+   nuevo, listado aparte y sin dibujar.
+4. **Las pantallas.** Desktop a 1280 y mobile a 375, cada uno en light y en dark. Para cada
+   pantalla, el estado **lleno** (un viernes con 4 canchas y turnos en todos los estados) y el
+   **vacío** que se indica en su bloque. Donde el encargado ve algo distinto del dueño, las dos
+   versiones.
+
+### B.7 Las tareas, con su frecuencia — de dónde salen y cómo se miden
+
+Las tareas por pantalla salen de la **recorrida del dueño** por su propio complejo (2026-09-08,
+24 ítems), tal como quedaron en `docs/qa/BRIEF_AUDITORIA_COHERENCIA.md` §3, con su frecuencia:
+bloque A muchas veces por día, B semanal, C mensual o al arrancar, E ocasional. **Un problema
+chico en el bloque A vale más que uno grande en el bloque C.** Cada prompt lleva su tabla con
+cuatro columnas: la tarea, cada cuánto, **cómo es hoy medido sobre el código** (campos, pasos,
+botones contados, no estimados) y qué tiene que pasar.
+
+Dos métodos, con nombre para que se sepa qué se está pidiendo:
+
+- **Recorrido cognitivo**: caminar una tarea paso a paso preguntando en cada paso si la persona
+  sabe qué tocar, ve que el control existe, lo asocia con el efecto y ve que avanzó. Es lo único
+  que necesita escenarios de tarea, y por eso la tabla.
+- **Inventario y resta**: cada elemento visible clasificado por quién lo usa, cada cuánto y qué se
+  rompe si se saca. Ninguna de las tres auditorías anteriores lo hizo: todas sumaron. Es lo que
+  responde al "TANTO".
+
+Las reglas que ya estaban escritas y que esto aplica hacia atrás: como máximo 5 a 7 opciones a la
+vez de la misma jerarquía (Hick), información en grupos de 3 o 4 (Miller), UNO distinto por vista y
+es el que exige acción (Von Restorff), y la tarea principal completable en 3 interacciones o menos
+desde el load (MASTER §9 y §12). Y la regla del dueño que pesa más que todas: **la app muestra el
+estado de la PLATA, no el estado del sistema**; un turno cobrado y uno impago no pueden verse
+iguales.
+
+Lo que NO se pide, porque ya está decidido y un diseñador tendería a proponerlo de buena fe: venta
+rápida en Hoy, gráficos fuera de Métricas, editor de permisos por casilla, texto libre sobre
+personas, precio en el botón público "Reservar", y cualquier veto de producto de `CLAUDE.md`.
 
 ---
 
@@ -286,10 +344,16 @@ Un diseño se acepta si pasa todo esto. Si falla uno, se pide corrección, no se
 3. **Reservar sigue siendo 2 interacciones** y cobrar es 1 desde el panel del turno.
 4. **Hoy no muestra plata** y no tiene botones de hacer.
 5. **Light y dark entregados los dos**, con contraste AA. Mobile a 375 se usa con el pulgar.
-6. **Nada nuevo funcionalmente.** Si el diseño necesita un dato que la app no tiene, se marca
-   como "REQUIERE INPUT" y se decide aparte; no se dibuja como si existiera.
+6. **Cambio de flujo sí, funcionalidad nueva no.** Si el diseño necesita un dato que la app no
+   tiene, se marca como "REQUIERE INPUT" y se decide aparte; no se dibuja como si existiera.
 7. **Se ve como la misma app** en las tres pantallas y en las que no se tocaron (Caja,
    Clientes, Reservas).
+8. **Cada cambio de flujo viene contado**: interacciones antes y después, por tarea de §B.7. Un
+   cambio sin conteo no se evalúa. Uno que suma interacciones a una tarea del bloque A se rechaza
+   aunque mejore otra cosa.
+9. **La lista de resta trae las tres respuestas** por elemento. "Lo saqué porque quedaba más
+   limpio" no es una respuesta; "lo usa el dueño una vez por mes y si se pliega no se rompe nada"
+   sí.
 
 ---
 
@@ -302,3 +366,35 @@ Un diseño se acepta si pasa todo esto. Si falla uno, se pide corrección, no se
 - `specs/` — copias de `MASTER.md`, `gramatica-interaccion.md`, `pages/dashboard.md` (v3, ya
   refleja #300), `pages/grilla.md`, `pages/horarios-precios.md`, `pages/staff.md`. Son las mismas
   seis que el proyecto ya lleva como guías; se copian acá por si hace falta adjuntarlas a mano.
+
+---
+
+## G. Decisiones del dueño sobre la propuesta de Grilla (2026-09-12)
+
+Claude Design devolvió la Grilla con seis puntos marcados como "no son mías". Tres pedían una regla
+de negocio y las decidió Lazar; los otros tres no bloquean nada y se resuelven solos.
+
+**Las tres decididas, todas a favor de no cambiar la regla vigente.** La consecuencia práctica es
+grande: **la implementación de la Grilla no toca ninguna regla de negocio**, no necesita migración y
+no cambia ningún circuito de plata. Es rediseño de flujo y de presentación, nada más.
+
+1. **Un ausente solo pierde la seña, como hoy.** No debe el resto del turno. Lo que cambia es que la
+   celda deja de esconder el número: pasa a decir "Perdió la seña de $ 8.400" en vez de nada. Eso
+   cierra el callejón sin salida de la tarea B4 —un estado que alarma sin dejar actuar— sin inventar
+   una deuda que el complejo nunca cobró. `slotPendingCents` mantiene su excepción para `no_show`
+   ([slot-visual.ts:261](src/lib/booking/slot-visual.ts:261)); lo que se agrega es el monto de la
+   seña capturada, que ya está en `depositAmount`.
+2. **"Por cobrar hoy" sigue sumando todo lo pendiente del día**, turnos confirmados incluidos. La
+   alternativa —contar solo lo ya jugado— es justo la queja de DEMO-3: "Plata en la calle mostraba
+   $ 0 con once turnos del día sin cobrar porque sólo cuenta turnos ya jugados". Cambiarlo ahora
+   reabriría un problema ya reportado. Lo que sí cambia es que el chip se vuelve accionable: tocarlo
+   resalta esos turnos.
+3. **Al cancelar con seña paga, el aviso dice el monto y nada más**: "Tiene seña de $ 8.400." No
+   promete devolución ni retención, porque esa política no existe en el código y TurnoGol no
+   reembolsa por API —la devolución la hace el complejo y el sistema solo la registra. Escribir la
+   política sería una regla nueva; el aviso del monto no lo es.
+
+**Los otros tres, sin decisión pendiente.** Sacar "Notas internas" del alta es resta pura y no
+necesita nada a cambio; reemplazarla por motivos cerrados es un dato nuevo que queda fuera de
+alcance. "Cobrar algo ahora" mantiene el monto libre que ya permite el popover. Reprogramar
+arrastrando no se dibujó y no se implementa: depende del mouse y el mostrador usa tablet.

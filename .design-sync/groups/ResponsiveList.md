@@ -1,3 +1,3 @@
 ---
-category: Estructura
+category: Layout
 ---

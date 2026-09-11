@@ -92,6 +92,29 @@ imports) más `PageHeader` y `StatCard`, que llevan TODAS las pantallas del pane
 - Un preview cuyo componente recibe las clases por prop (`SegmentedControl.itemClassName`) se ve
   como texto pelado si no se las pasás: copiá las reales del uso en la app.
 
+### El `projectId` del config apuntaba a un proyecto muerto
+
+El 2026-09-11, al subir por primera vez desde junio: `get_project` sobre el id que pineaba
+`config.json` (`56adfd6f…`) devolvió **404**, y `list_projects` mostró un único proyecto escribible
+(`55246162…`, TurnoGol, design system) que estaba **vacío**. O sea que la subida de junio nunca
+llegó a destino: lo que NOTES.md describía como "el primero se desvaneció y se repinó al vivo"
+terminó con el id equivocado igual.
+
+Moraleja para el próximo re-sync: **antes de armar el plan, `list_projects` y `get_project` contra
+el id del config**. Si da 404, no recrear a ciegas — puede haber un proyecto vivo con el mismo
+nombre, y crear otro deja dos con la misma cara.
+
+### Las categorías de los grupos se escriben en INGLÉS
+
+El panel de Design System agrupa por la carpeta que sale de `category:` en los stubs de
+`.design-sync/groups/`. Junio dejó cinco en inglés (Actions, Brand, Feedback, Forms, Overlays); la
+primera tanda del 2026-09-11 agregó otras en español y quedaron **`forms/` y `formularios/` como
+dos secciones distintas**, más `navegaci-n/` (la `ó` se transformó en guión al hacer el slug).
+
+Las nueve vigentes: **Actions, Admin, Brand, Data, Feedback, Forms, Guided UX, Layout, Navigation.**
+`PageHeader` y `StatCard` caen en `admin/` por su ruta de origen (`src/components/admin/`), no por
+su `category:` — el builder gana ahí, y está bien: describe qué son.
+
 ### Gotcha: `Coachmark.targetId` no es un `id`
 
 `coachmark.tsx` busca `[data-tour-id="…"]`, no `#id`. Con un target marcado con `id`, `position`

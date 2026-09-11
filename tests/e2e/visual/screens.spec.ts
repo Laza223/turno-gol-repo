@@ -15,6 +15,7 @@ import {
   test,
   expect,
   assertDevOverlayHookExists,
+  waitForHeaderSlot,
   suppressPushBanner,
   ADMIN_STORAGE_STATE,
 } from './_visual-test'
@@ -94,6 +95,9 @@ test.describe('visual — admin', () => {
     await page.goto(`/grilla?date=${VISUAL_DATE}`)
     await expect(page.getByText('Martina Sosa')).toBeVisible()
     await expect(page.getByText('Equipo Los Pinos')).toBeVisible()
+    // Los controles de la vista viven en la barra superior por portal, así que
+    // llegan recién con la hidratación: ver waitForHeaderSlot.
+    await waitForHeaderSlot(page)
 
     await expect(page).toHaveScreenshot('admin-grilla.png')
   })

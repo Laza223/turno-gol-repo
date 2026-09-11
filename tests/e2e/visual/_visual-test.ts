@@ -55,3 +55,28 @@ export async function assertDevOverlayHookExists(page: Page): Promise<void> {
     'El hook del overlay de dev de Next cambió de nombre: revisá los selectores de tests/e2e/visual/screenshot.css',
   ).toBeAttached()
 }
+
+/**
+ * La barra superior del panel no se renderiza en el servidor: cada vista cuelga
+ * sus controles ahí con un portal (`AdminHeaderSlot`), y el portal necesita que
+ * el nodo destino exista, o sea que necesita la hidratación.
+ *
+ * Sin esta espera la foto de la Grilla sale con la barra vacía —sin el segmento
+ * Grilla|Reservas, sin la semana y sin el chip de lo pendiente— porque el
+ * contenido del servidor (los turnos) ya está visible y el test dispara la
+ * captura antes de que el cliente monte. Pasó en la primera regeneración después
+ * del rediseño: el escritorio salió pelado y el teléfono completo, que es
+ * justamente el que NO portaliza nada.
+ *
+ * Es la misma clase de carrera que cubría `waitForDayTotal` antes de que el
+ * total del día se eliminara: algo que llega después del render del servidor y
+ * que hay que esperar explícitamente en vez de confiar en el orden.
+ */
+export async function waitForHeaderSlot(page: Page): Promise<void> {
+  await expect(page.getByRole('navigation', { name: 'Vistas de la grilla' })).toBeVisible({
+    timeout: 15_000,
+  })
+  await expect(page.getByRole('button', { name: 'Semana anterior' })).toBeVisible({
+    timeout: 15_000,
+  })
+}

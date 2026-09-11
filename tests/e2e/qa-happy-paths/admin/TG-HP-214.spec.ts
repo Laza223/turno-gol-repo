@@ -1,14 +1,12 @@
 /**
  * TG-HP-214 — Caja: agregar movimiento (ingreso).
  * Rol: Admin/manager (requireOperatorStaff vía createCashFlowAction).
- * Prereq: caja del tenant Demo del día de HOY sin fila en daily_cash_closes.
  * CASO DE PLATA — no se limpia la fila al final.
- * Evidencia: src/app/(admin)/caja/actions.ts:81-114 (createCashFlowAction),
- * src/app/(admin)/caja/components/RegisterMovementModal.tsx:49-209.
+ * Evidencia: src/app/(admin)/caja/actions.ts (createCashFlowAction),
+ * src/app/(admin)/caja/cantina/RegisterMovementModal.tsx.
  */
 import { test, expect } from '../../fixtures'
 import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
-import { todayART } from '../../../../src/shared/time/art-date'
 import { runSql, writeEvidence } from '../_qa/evidence'
 import { suppressPushPrompt } from '../_qa/session'
 
@@ -17,14 +15,6 @@ test.describe('TG-HP-214 — caja: agregar movimiento', () => {
     browser,
     adminStorageState,
   }) => {
-    const today = todayART()
-
-    // Defensive: garantiza caja de HOY abierta.
-    await runSql(`DELETE FROM daily_cash_closes WHERE tenant_id = $1 AND date = $2::date`, [
-      E2E_TENANT_ID,
-      today,
-    ])
-
     const context = await browser.newContext()
     await suppressPushPrompt(context)
     try {
@@ -32,7 +22,7 @@ test.describe('TG-HP-214 — caja: agregar movimiento', () => {
       const page = await context.newPage()
 
       await page.goto('/caja')
-      await expect(page.getByRole('heading', { name: 'Caja' })).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Cantina' })).toBeVisible({ timeout: 15_000 })
 
       await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })

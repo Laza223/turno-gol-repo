@@ -4,17 +4,16 @@
  * B14 — el criterio de salida de Fase 1 pide "fuente única de agregados: el
  * mismo número en toda superficie que lo muestre… verificado con test de
  * consistencia, no a ojo". Antes de este archivo las dos cuentas estaban
- * copiadas a mano en seis lugares, sobre dos tipos distintos (el resumen vivo
- * del día y el snapshot que se guarda al cerrar), y el "Hoy: $X" del sidebar
- * iba a ser la séptima. Una diferencia de un signo entre dos de esas copias es
- * invisible en code review y el complejo la lee como plata que falta.
+ * copiadas a mano en seis lugares, y el "Hoy: $X" del sidebar iba a ser la
+ * séptima. Una diferencia de un signo entre dos de esas copias es invisible
+ * en code review y el complejo la lee como plata que falta.
  *
  * El módulo es puro a propósito: no importa nada, así lo pueden usar tanto los
- * services (que hablan con la base) como los Server Components que muestran el
- * cierre ya guardado.
+ * services (que hablan con la base) como los Server Components que muestran
+ * el resumen del día.
  */
 
-/** Lo mínimo que hace falta para saber cuánto entró: lo cumplen `DaySummary` y `DailyCashCloseRow`. */
+/** Lo mínimo que hace falta para saber cuánto entró: lo cumple `DaySummary`. */
 export type CollectedParts = {
   totalIncome: number
   totalAdjustments: number

@@ -20,10 +20,6 @@ import {
   type PlayerLatePaymentRefundedData,
 } from './player-late-payment-refunded'
 import {
-  renderAdminDepositAfterClose,
-  type AdminDepositAfterCloseData,
-} from './admin-deposit-after-close'
-import {
   renderAdminRefundPendingReminder,
   type AdminRefundPendingReminderData,
 } from './admin-refund-pending-reminder'
@@ -65,12 +61,12 @@ export {
   renderPlayerLatePaymentRefunded,
   renderAdminRefundPendingReminder,
   renderOnboardingAbandoned,
-  // `renderAdminDepositAfterClose` y `renderAdminExternalRefundDetected` NO se
-  // re-exportan (B5): nadie los importaba por nombre. Siguen vivos vía el mapa
-  // RENDERERS de más abajo, que es como los despacha `renderTemplate`. Este
-  // bloque existe para que los tests puedan probar cada plantilla suelta, así
-  // que su ausencia acá es la marca de las dos únicas plantillas sin test —
-  // agregales el test y volvés a poner el nombre.
+  // `renderAdminExternalRefundDetected` NO se re-exporta (B5): nadie lo
+  // importaba por nombre. Sigue vivo vía el mapa RENDERERS de más abajo, que
+  // es como lo despacha `renderTemplate`. Este bloque existe para que los
+  // tests puedan probar cada plantilla suelta, así que su ausencia acá es la
+  // marca de la única plantilla sin test — agregale el test y volvés a poner
+  // el nombre.
 }
 
 type TemplateDataMap = {
@@ -87,7 +83,6 @@ type TemplateDataMap = {
   admin_transfer_expired: AdminTransferExpiredData
   admin_late_payment: AdminLatePaymentData
   player_late_payment_refunded: PlayerLatePaymentRefundedData
-  admin_deposit_after_close: AdminDepositAfterCloseData
   admin_refund_pending_reminder: AdminRefundPendingReminderData
   admin_external_refund_detected: AdminExternalRefundDetectedData
   subscription_activated: SubscriptionActivatedData
@@ -116,7 +111,6 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   admin_transfer_expired: renderAdminTransferExpired,
   admin_late_payment: renderAdminLatePayment,
   player_late_payment_refunded: renderPlayerLatePaymentRefunded,
-  admin_deposit_after_close: renderAdminDepositAfterClose,
   admin_refund_pending_reminder: renderAdminRefundPendingReminder,
   admin_external_refund_detected: renderAdminExternalRefundDetected,
   subscription_activated: renderSubscriptionActivated,

@@ -22,8 +22,6 @@ vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn() }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
-vi.mock('@/modules/cashflow/daily-close.service', () => ({ closeDailyRegister: vi.fn() }))
-vi.mock('@/modules/cashflow/cash-open.service', () => ({ openDay: vi.fn() }))
 vi.mock('@/modules/canteen/canteen-sale.service', () => ({ sellTicket: vi.fn() }))
 vi.mock('@/modules/canteen/canteen-tab.service', () => ({
   createTab: vi.fn(),
@@ -42,7 +40,7 @@ vi.mock('@/modules/canteen/stock.service', () => ({
   adjustStock: vi.fn(),
 }))
 
-import { closeDayAction, openDayAction, createCashFlowAction } from '@/app/(admin)/caja/actions'
+import { createCashFlowAction } from '@/app/(admin)/caja/actions'
 import {
   sellTicketAction,
   createTabAction,
@@ -60,8 +58,6 @@ import { getStaffRole } from '@/modules/staff/staff.service'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { openDay } from '@/modules/cashflow/cash-open.service'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
 import { createTab, settleTab, cancelTab } from '@/modules/canteen/canteen-tab.service'
 import { createProduct, updateProduct } from '@/modules/canteen/canteen.service'
@@ -139,12 +135,6 @@ describe('caja/cantina/productos — staff sin membresía activa (rol null) es r
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 
-  it('closeDayAction no cierra la caja sin rol', async () => {
-    const res = await closeDayAction('2026-06-11', 100000)
-    expect(res.success).toBe(false)
-    expect(vi.mocked(closeDailyRegister)).not.toHaveBeenCalled()
-  })
-
   it('sellTicketAction no vende cantina sin rol', async () => {
     const res = await sellTicketAction(TICKET)
     expect(res.success).toBe(false)
@@ -197,13 +187,6 @@ describe('caja/cantina — manager (Encargado) opera la caja y la cantina (cruce
       expect.objectContaining({ category: 'product_sale', amount: 250000 }),
       FAKE_TX,
     )
-  })
-
-  it('closeDayAction funciona para manager', async () => {
-    vi.mocked(closeDailyRegister).mockResolvedValue({ id: 'close-1' } as never)
-    const res = await closeDayAction('2026-06-11', 100000)
-    expect(res.success).toBe(true)
-    expect(vi.mocked(closeDailyRegister)).toHaveBeenCalled()
   })
 
   it('sellTicketAction funciona para manager (vender cantina es operativo)', async () => {
@@ -284,59 +267,5 @@ describe('caja/productos — catálogo es solo admin (cruce #3, ex saveCanteenPr
     const res = await updateProductAction({ productId: PRODUCT_ID, patch: { price: 200000 } })
     expect(res.success).toBe(true)
     expect(vi.mocked(updateProduct)).toHaveBeenCalled()
-  })
-})
-
-// Hallazgo 🔴 del verificador adversarial (día operativo): cutoffMins NO debe
-// viajar del cliente — closeDayAction/openDayAction lo recalculan server-side
-// desde el tenant ya autenticado, para que un valor manipulado no pueda
-// excluir plata real de un cierre que después queda congelado (sin
-// re-bucketing histórico, ver ADR día operativo).
-describe('closeDayAction/openDayAction — cutoffMins se recalcula server-side (no viaja del cliente)', () => {
-  const NIGHT_TENANT = {
-    id: 'tenant-night',
-    settings: {},
-    closesNextDay: true,
-    openingHours: {
-      mon: { open: '20:00', close: '02:00' },
-      tue: { open: '20:00', close: '02:00' },
-      wed: { open: '20:00', close: '02:00' },
-      thu: { open: '20:00', close: '02:00' },
-      fri: { open: '20:00', close: '02:00' },
-      sat: { open: '20:00', close: '02:00' },
-      sun: { open: '20:00', close: '02:00' },
-    },
-  }
-
-  beforeEach(() => {
-    vi.mocked(getStaffRole).mockResolvedValue('admin')
-    vi.mocked(getStaffTenant).mockResolvedValue(NIGHT_TENANT as never)
-  })
-
-  it('closeDayAction pasa el cutoffMins real del tenant (120), no un valor arbitrario del caller', async () => {
-    vi.mocked(closeDailyRegister).mockResolvedValue({ id: 'close-1' } as never)
-    // closeDayAction ya NO acepta cutoffMins en su firma — no hay forma de
-    // que el caller lo inyecte. Firma actual: (date, declaredCash?, note?).
-    await closeDayAction('2026-06-11', 100000)
-    expect(vi.mocked(closeDailyRegister)).toHaveBeenCalledWith(
-      NIGHT_TENANT.id,
-      '2026-06-11',
-      'staff-1',
-      { declaredCash: 100000, note: undefined },
-      120,
-      FAKE_TX,
-    )
-  })
-
-  it('openDayAction pasa el cutoffMins real del tenant (120)', async () => {
-    vi.mocked(openDay).mockResolvedValue({ openingCash: 50000 } as never)
-    await openDayAction({ date: '2026-06-11', openingCash: 50000 })
-    expect(vi.mocked(openDay)).toHaveBeenCalledWith(
-      NIGHT_TENANT.id,
-      'staff-1',
-      { date: '2026-06-11', openingCash: 50000, note: undefined },
-      120,
-      FAKE_TX,
-    )
   })
 })

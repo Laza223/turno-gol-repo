@@ -15,7 +15,6 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { markRefundSettled } from '@/modules/payments/refund.service'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
 const STAFF_ID = '00000000-0000-4000-8000-0000000000aa'
@@ -89,21 +88,6 @@ describe('markRefundSettledAction — carreras y errores', () => {
 
     expect(result).toEqual({ success: true, alreadySettled: true })
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
-  })
-
-  /**
-   * La plata ya se devolvió en la vida real. Perder ese registro porque la caja
-   * de ese día está cerrada sería el peor de los dos males: se marca igual y se
-   * avisa que el egreso quedó sin anotar.
-   */
-  it('con la caja cerrada registra la devolución igual, sin el egreso', async () => {
-    vi.mocked(createCashFlow).mockRejectedValueOnce(new DayAlreadyClosedError('2026-08-20'))
-
-    const result = await markRefundSettledAction(REFUND_ID, 'cash')
-
-    expect(result).toMatchObject({ success: true, cashFlowSkipped: true })
-    // Se reintenta el marcado fuera de la transacción que abortó.
-    expect(vi.mocked(markRefundSettled)).toHaveBeenCalledTimes(2)
   })
 
   it('rechaza un id que no es UUID sin tocar la base', async () => {

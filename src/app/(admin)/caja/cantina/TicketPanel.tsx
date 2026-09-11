@@ -48,14 +48,11 @@ export function TicketPanel({
   sellTicketAction,
   createTabAction,
   isInDialog,
-  saleDisabled = false,
 }: {
   products: CanteenProductRow[]
   sellTicketAction: SellTicketAction
   createTabAction?: CreateTabAction
   isInDialog?: boolean
-  /** true = caja de hoy cerrada: cobrar queda deshabilitado, anotar fiado sigue activo. */
-  saleDisabled?: boolean
 }) {
   const router = useRouter()
   const [lines, setLines] = useState<TicketLine[]>([])
@@ -380,7 +377,7 @@ export function TicketPanel({
                   key={m.value}
                   type="button"
                   onClick={() => setMethod(m.value)}
-                  disabled={isPending || saleDisabled}
+                  disabled={isPending}
                   aria-pressed={method === m.value}
                   className={chipClass(method === m.value)}
                 >
@@ -397,17 +394,11 @@ export function TicketPanel({
           <button
             type="button"
             onClick={submit}
-            disabled={isPending || lines.length === 0 || saleDisabled}
-            aria-describedby={saleDisabled ? 'ticket-sale-disabled-hint' : undefined}
+            disabled={isPending || lines.length === 0}
             className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {isPending ? 'Cobrando…' : `Cobrar ${formatArs(total)}`}
           </button>
-          {saleDisabled && (
-            <p id="ticket-sale-disabled-hint" className="text-xs text-muted-foreground">
-              Caja cerrada — el cobro se habilita cuando la caja esté abierta.
-            </p>
-          )}
           {createTabAction && lines.length > 0 && (
             <button
               type="button"

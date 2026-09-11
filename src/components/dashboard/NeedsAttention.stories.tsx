@@ -39,8 +39,9 @@ const items: AttentionItem[] = [
     contactName: 'Ana López',
   },
   {
-    kind: 'yesterday_cash_unclosed',
-    date: '2026-08-01',
+    kind: 'pending_refunds',
+    count: 2,
+    totalCents: 600000,
     since: new Date('2026-08-01T00:00:00Z'),
   },
 ]
@@ -58,7 +59,7 @@ export const ConAlertas: Story = {
     // en JS).
     await expect(canvas.getByRole('link', { name: /^Cobrar \$\s16\.000$/ })).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Ver reserva' })).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'Cerrar caja de ayer' })).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Gestionar' })).toBeVisible()
   },
 }
 

@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 const captureException = vi.fn()
 vi.mock('@sentry/nextjs', () => ({ captureException: (...a: unknown[]) => captureException(...a) }))
 
-import { RegisterMovementModal } from '@/app/(admin)/caja/components/RegisterMovementModal'
+import { RegisterMovementModal } from '@/app/(admin)/caja/cantina/RegisterMovementModal'
 
 function renderModal() {
   const onClose = vi.fn()

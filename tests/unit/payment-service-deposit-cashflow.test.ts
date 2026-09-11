@@ -35,10 +35,8 @@ vi.mock('@/shared/observability', () => ({
 import { dispatchPaymentInfo } from '@/modules/payments/payment.service'
 import { transitionFromPendingPayment } from '@/modules/bookings/booking.concurrency'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
 import { captureMessage } from '@/lib/sentry'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
 import type { GatewayPaymentInfo } from '@/modules/payments/payment.types'
 import type { BookingRow } from '@/modules/bookings/booking.types'
@@ -148,56 +146,6 @@ describe('dispatchPaymentInfo — ENS-21: cash_flow automático de la seña MP',
     await dispatchPaymentInfo(info, TENANT_ID, tx)
 
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
-  })
-
-  it('si la caja del día ya está cerrada, la seña entra como AJUSTE y se le avisa al dueño', async () => {
-    vi.mocked(transitionFromPendingPayment).mockResolvedValue({
-      won: true,
-      row: wonBookingRow(),
-    } as never)
-    // El mock imita la regla real de `assertDayOpen`: rechaza solo mientras no
-    // venga `allowClosedDay`. Un `mockRejectedValue` pelado haría fallar
-    // también al ajuste, que es justamente el camino que este caso prueba.
-    vi.mocked(createCashFlow).mockImplementation(async (_tenantId, _staffId, input) => {
-      if (!input.allowClosedDay) throw new DayAlreadyClosedError('2027-01-01')
-      // La fila devuelta no la usa nadie en este camino.
-      return undefined as never
-    })
-
-    const tx = mockTx()
-    const outcome = await dispatchPaymentInfo(info, TENANT_ID, tx)
-
-    expect(outcome.alreadyProcessed).toBe(false)
-    if (!outcome.alreadyProcessed) expect(outcome.result).toBe('confirmed')
-    // 🔴 QA 2026-08-28 F-02: antes acá no quedaba NINGUNA fila y la plata sólo
-    // vivía en el warning de Sentry. Ahora entra como ajuste del mismo día.
-    expect(vi.mocked(createCashFlow)).toHaveBeenLastCalledWith(
-      TENANT_ID,
-      ADMIN_STAFF_ID,
-      expect.objectContaining({
-        type: 'adjustment',
-        category: 'other',
-        amount: info.amount,
-        method: 'mercadopago',
-        description: depositCashFlowDescription(BOOKING_ID),
-        bookingId: BOOKING_ID,
-        allowClosedDay: true,
-      }),
-      tx,
-    )
-    expect(vi.mocked(captureMessage)).toHaveBeenCalled()
-    // La plata cobrada fuera de caja no puede quedar invisible: además del
-    // warning se encola el aviso al dueño y sus ids viajan en el outcome
-    // (el caller los despacha después del commit).
-    expect(vi.mocked(enqueueTenantOwnerNotification)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tenantId: TENANT_ID,
-        templateName: 'admin_deposit_after_close',
-        triggerEvent: 'payment.deposit_after_close',
-      }),
-      tx,
-    )
-    if (!outcome.alreadyProcessed) expect(outcome.notificationIds).toContain('notif-owner-1')
   })
 
   it('sin admin activo en el tenant, el cash_flow se salta sin romper la confirmación', async () => {

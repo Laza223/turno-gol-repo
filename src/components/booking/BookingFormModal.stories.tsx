@@ -85,7 +85,6 @@ export const Default: Story = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
-      depositAfterClose: false,
     })),
   },
 }
@@ -101,7 +100,6 @@ export const OpcionesAvanzadasExpandidas: Story = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
-      depositAfterClose: false,
     })),
   },
   play: async ({ canvasElement }) => {
@@ -130,7 +128,6 @@ export const BloqueoInterno: Story = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
-      depositAfterClose: false,
     })),
   },
   play: async ({ canvasElement }) => {
@@ -163,7 +160,6 @@ async function contestarSinCobro(body: ReturnType<typeof within>) {
 const guardando = pendingAction<BookingActionResult>({
   success: true as const,
   booking: booking(),
-  depositAfterClose: false,
 })
 
 export const Guardando: Story = {
@@ -207,7 +203,6 @@ export const Cerrado: Story = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
-      depositAfterClose: false,
     })),
   },
   play: async ({ canvasElement }) => {
@@ -227,7 +222,6 @@ export const AvisoDeColisionOptimista: Story = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
-      depositAfterClose: false,
     })),
     checkAvailabilityAction: fn(async () => ({ available: false })),
   },
@@ -247,7 +241,6 @@ export const ExitoLlamaOnSuccess: Story = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
-      depositAfterClose: false,
     })),
   },
   // Sin BookingFormModalCloseOnSuccessDemo el overlay `bg-black/50` queda

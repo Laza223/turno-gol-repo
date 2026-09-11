@@ -209,10 +209,10 @@ export function RegisterMovementModal({
                 <p className="text-xs text-muted-foreground">
                   ¿Vendiste algo de la cantina?{' '}
                   <Link
-                    href="/caja/cantina"
+                    href="/caja"
                     className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
                   >
-                    Cargalo en Cantina
+                    Cargalo arriba
                   </Link>{' '}
                   para que descuente el stock.
                 </p>

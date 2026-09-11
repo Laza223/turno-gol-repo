@@ -15,10 +15,6 @@ export type HoyData = {
     occupancy: { occupied: number; available: number; blocked: number; pct: number }
     /** === sumStreetMoney(streetMoneyRows) — misma fuente que /caja y /caja/deudas. */
     streetMoneyCents: number
-    /** Caja de `date` cerrada. Reusado por el resumen diario (D8, worker):
-     *  cuando `date` = ayer, esto responde "¿cerraste la caja de ayer?" para el
-     *  copy del digest, sin que la pantalla en vivo tenga que mostrarlo. */
-    cashClosed: boolean
   }
   whileYouWereAway: WhileAwayItem[]
   needsAttention: AttentionItem[]
@@ -91,11 +87,6 @@ export type AttentionItem =
       since: Date
       courtName: string
       contactName: string
-    }
-  | {
-      kind: 'yesterday_cash_unclosed'
-      date: string
-      since: Date
     }
   /**
    * Devoluciones de seña que el complejo debe. Es UN ítem agregado, no una fila

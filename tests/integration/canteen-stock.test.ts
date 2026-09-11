@@ -8,16 +8,6 @@ import {
   ProductNotFoundError,
   StockNotTrackedError,
 } from '@/modules/canteen/canteen.errors'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
-
-// Mismo cálculo que tests/integration/cashflow.test.ts: assertDayOpen compara
-// contra el día ART (UTC-3), no el UTC del host que corre el test.
-function artDateOf(ts: Date): string {
-  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
-}
-
-const TODAY = artDateOf(new Date())
 
 beforeAll(async () => {
   const sql = getSql()
@@ -71,14 +61,6 @@ async function getCashFlowsByKey(
     SELECT type, category, amount, method, description FROM cash_flows
     WHERE tenant_id = ${tenantId} AND client_idempotency_key = ${key}
   `
-}
-
-async function countCashFlows(tenantId: string): Promise<number> {
-  const sql = getSql()
-  const rows = await sql<{ n: number }[]>`
-    SELECT COUNT(*)::int AS n FROM cash_flows WHERE tenant_id = ${tenantId}
-  `
-  return rows[0]!.n
 }
 
 describe('stock service — registerPurchase', () => {
@@ -270,70 +252,6 @@ describe('stock service — registerPurchase con expense (migr. 050)', () => {
 
     const cashFlowRows = await getCashFlowsByKey(tenant.id, key)
     expect(cashFlowRows).toHaveLength(1)
-  })
-
-  it('con la caja de HOY cerrada y expense, rechaza TODO: ni movimiento, ni cash_flow, ni stock', async () => {
-    const { tenant, staff } = await setup()
-    const product = await withTenantContext(tenant.id, (tx) =>
-      createProduct(tenant.id, { name: 'Caja cerrada', price: 300000, stock: 5 }, tx),
-    )
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
-    )
-    const key = crypto.randomUUID()
-
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        registerPurchase(
-          tenant.id,
-          staff.id,
-          {
-            productId: product.id,
-            units: 4,
-            unitCost: 70000,
-            expense: { method: 'cash' },
-            clientIdempotencyKey: key,
-          },
-          tx,
-        ),
-      ),
-    ).rejects.toBeInstanceOf(DayAlreadyClosedError)
-
-    // Atómico: la tx entera rollbackea — ni el movimiento ni el cash_flow ni
-    // el update de stock sobreviven al throw dentro de withTenantContext.
-    expect(await countMovements(product.id, 'purchase')).toBe(0)
-    const productRow = await getProductRow(product.id)
-    expect(productRow.stock).toBe(5) // no tocado
-    expect(await countCashFlows(tenant.id)).toBe(0)
-  })
-
-  it('sin expense y con la caja de HOY cerrada, la reposición sigue OK (no toca la caja)', async () => {
-    const { tenant, staff } = await setup()
-    const product = await withTenantContext(tenant.id, (tx) =>
-      createProduct(tenant.id, { name: 'Reposición sin gasto', price: 300000, stock: 5 }, tx),
-    )
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
-    )
-
-    const result = await withTenantContext(tenant.id, (tx) =>
-      registerPurchase(
-        tenant.id,
-        staff.id,
-        {
-          productId: product.id,
-          units: 4,
-          unitCost: 70000,
-          clientIdempotencyKey: crypto.randomUUID(),
-        },
-        tx,
-      ),
-    )
-
-    expect(result.duplicate).toBe(false)
-    const productRow = await getProductRow(product.id)
-    expect(productRow.stock).toBe(9) // 5 + 4, la reposición no depende de la caja
-    expect(await countCashFlows(tenant.id)).toBe(0)
   })
 })
 

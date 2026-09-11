@@ -11,7 +11,6 @@ import { track } from '@/shared/observability/breadcrumbs'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DepositFieldset, type DepositChoice } from './quick-form/DepositFieldset'
 import { usePlayerSearch } from './quick-form/use-player-search'
-import { depositAfterCloseNote } from './deposit-after-close'
 import { useSlotAvailability } from './quick-form/use-slot-availability'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { Slot } from './quick-form/constants'
@@ -182,12 +181,7 @@ export function QuickBookingForm({
         })
         toast({
           title: 'Reserva creada',
-          // Ver `depositAfterCloseNote`: con la caja del día ya cerrada la seña
-          // entra como ajuste y el encargado no lo ve en ningún otro lado.
-          description: depositAfterCloseNote(
-            `${slot.courtName} · ${slot.timeStart}–${slot.timeEnd}`,
-            result.depositAfterClose,
-          ),
+          description: `${slot.courtName} · ${slot.timeStart}–${slot.timeEnd}`,
           variant: 'success',
         })
         onSuccess(result.booking)

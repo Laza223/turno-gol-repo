@@ -19,9 +19,6 @@ import {
   TabNotFoundError,
   TabNotOpenError,
 } from '@/modules/canteen/canteen.errors'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
-import { todayART } from '@/shared/time/art-date'
 
 beforeAll(async () => {
   const sql = getSql()
@@ -252,39 +249,6 @@ describe('canteen tabs — createTab idempotencia', () => {
   })
 })
 
-describe('canteen tabs — crear con caja cerrada (asimetría deliberada del modelo)', () => {
-  it('createTab con la caja de HOY ya cerrada está PERMITIDO (el fiado no toca la caja)', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const product = await withTenantContext(tenant.id, (tx) =>
-      createProduct(tenant.id, { name: 'Alfajor', price: 80000, stock: 5 }, tx),
-    )
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, todayART(), staff.id, {}, 0, tx),
-    )
-
-    const { tab, duplicate } = await withTenantContext(tenant.id, (tx) =>
-      createTab(
-        tenant.id,
-        staff.id,
-        {
-          debtorName: 'Con la caja cerrada',
-          lines: [{ productId: product.id, qty: 1 }],
-          clientIdempotencyKey: crypto.randomUUID(),
-        },
-        tx,
-      ),
-    )
-
-    expect(duplicate).toBe(false)
-    expect(tab.status).toBe('open')
-    expect(await getProductStock(product.id)).toBe(4)
-  })
-})
-
 describe('canteen tabs — createTab atomicidad (stock insuficiente)', () => {
   it('si UNA línea no tiene stock, el fiado entero falla y NADA persiste (ni tab, ni movements, ni stock tocado)', async () => {
     const sql = getSql()
@@ -485,54 +449,6 @@ describe('canteen tabs — settleTab idempotencia', () => {
 
     const finalRow = await getTabRow(tab.id)
     expect(finalRow!.status).toBe('paid')
-  })
-})
-
-describe('canteen tabs — settleTab con caja cerrada (asimetría: crear no toca caja, saldar sí)', () => {
-  it('con la caja de HOY ya cerrada, settleTab lanza DayAlreadyClosedError y el tab sigue open', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const product = await withTenantContext(tenant.id, (tx) =>
-      createProduct(tenant.id, { name: 'Turrón', price: 80000, stock: 5 }, tx),
-    )
-    const { tab } = await withTenantContext(tenant.id, (tx) =>
-      createTab(
-        tenant.id,
-        staff.id,
-        {
-          debtorName: 'Antes del cierre',
-          lines: [{ productId: product.id, qty: 1 }],
-          clientIdempotencyKey: crypto.randomUUID(),
-        },
-        tx,
-      ),
-    )
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, todayART(), staff.id, {}, 0, tx),
-    )
-
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        settleTab(
-          tenant.id,
-          staff.id,
-          {
-            tabId: tab.id,
-            charges: [{ amount: tab.totalAmount, method: 'cash' }],
-            clientIdempotencyKey: crypto.randomUUID(),
-          },
-          tx,
-        ),
-      ),
-    ).rejects.toBeInstanceOf(DayAlreadyClosedError)
-
-    const row = await getTabRow(tab.id)
-    expect(row!.status).toBe('open')
-    expect(row!.settled_cash_flow_id).toBeNull()
-    expect(await countCashFlows(tenant.id)).toBe(0)
   })
 })
 

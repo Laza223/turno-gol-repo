@@ -21,18 +21,19 @@ describe('sortAttentionItems', () => {
     courtName: 'Cancha 2',
     contactName: 'Ana',
   }
-  const cashUnclosed: AttentionItem = {
-    kind: 'yesterday_cash_unclosed',
-    date: '2026-08-01',
+  const refund: AttentionItem = {
+    kind: 'pending_refunds',
+    count: 2,
+    totalCents: 300000,
     since: new Date('2026-08-01T00:00:00Z'),
   }
 
-  it('ordena por prioridad P1 (turno sin cobrar) antes que P2 (seña fallida) antes que P3 (caja sin cerrar), sin importar el orden de entrada', () => {
-    const sorted = sortAttentionItems([cashUnclosed, deposit, booking])
+  it('ordena por prioridad P1 (turno sin cobrar) antes que P2 (devolución pendiente) antes que P3 (seña fallida), sin importar el orden de entrada', () => {
+    const sorted = sortAttentionItems([deposit, refund, booking])
     expect(sorted.map((i) => i.kind)).toEqual([
       'unpaid_completed_booking',
+      'pending_refunds',
       'failed_deposit',
-      'yesterday_cash_unclosed',
     ])
   })
 

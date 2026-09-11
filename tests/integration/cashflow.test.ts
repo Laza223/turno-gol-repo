@@ -25,13 +25,7 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
 })
 
 import { createCashFlow, getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import {
-  DayAlreadyClosedError,
-  DayAlreadyCloseExistsError,
-  CloseDateInFutureError,
-  InvalidCashFlowCategoryError,
-} from '@/modules/cashflow/cashflow.errors'
+import { InvalidCashFlowCategoryError } from '@/modules/cashflow/cashflow.errors'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 
 function artDateOf(ts: Date): string {
@@ -60,24 +54,6 @@ async function countCashFlows(tenantId: string): Promise<number> {
     SELECT COUNT(*)::int AS n FROM cash_flows WHERE tenant_id = ${tenantId}
   `
   return rows[0]!.n
-}
-
-async function getDailyCashClose(tenantId: string, date: string) {
-  const sql = getSql()
-  const rows = await sql<
-    {
-      id: string
-      total_income: number
-      total_adjustments: number
-      balance: number
-    }[]
-  >`
-    SELECT id, total_income, total_adjustments, balance
-    FROM daily_cash_closes
-    WHERE tenant_id = ${tenantId} AND date = ${date}::date
-    LIMIT 1
-  `
-  return rows[0] ?? null
 }
 
 beforeAll(async () => {
@@ -264,7 +240,7 @@ describe('cashflow service', () => {
     })
   })
 
-  it('day summary and close compute ingresos - egresos = saldo', async () => {
+  it('day summary computes ingresos - egresos = saldo', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
@@ -286,13 +262,6 @@ describe('cashflow service', () => {
     expect(summary.balance).toBe(450000)
     // byMethod es neto por método (arqueo): 650000 entran - 200000 salen, todo en cash.
     expect(summary.byMethod.cash).toBe(450000)
-
-    const close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
-    )
-    expect(close.totalIncome).toBe(650000)
-    expect(close.totalExpense).toBe(200000)
-    expect(close.balance).toBe(450000)
   })
 
   // Antes: "a canteen quick sale appears in the day list". El nombre mentía —
@@ -329,89 +298,6 @@ describe('cashflow service', () => {
     expect(sale!.amount).toBe(500000)
     expect(sale!.description).toBe('Gatorade x2')
     expect(sale!.method).toBe('cash')
-  })
-
-  it('closes the day and aggregates totals correctly', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-
-    // Insert 2 income + 1 adjustment cashflows for today
-    await sql`
-      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
-      VALUES
-        (${tenant.id}, 'income', 'booking', ${500000}, 'cash', ${'Turno 1'}, ${staff.id}, NOW()),
-        (${tenant.id}, 'income', 'booking', ${800000}, 'transfer', ${'Turno 2'}, ${staff.id}, NOW()),
-        (${tenant.id}, 'adjustment', 'no_show_correction', ${100000}, 'other', ${'Ajuste'}, ${staff.id}, NOW())
-    `
-
-    const close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 500000 }, 0, tx),
-    )
-
-    expect(close.totalIncome).toBe(1300000)
-    expect(close.totalAdjustments).toBe(100000)
-    expect(close.balance).toBe(1400000)
-    expect(close.declaredCash).toBe(500000)
-    // Semántica migr. 049: el arqueo es SOLO efectivo. Sin apertura, expected =
-    // 0 + neto cash (500000, el turno transfer y el ajuste 'other' no cuentan);
-    // declared 500000 → diff 0 (el efectivo cuadra aunque balance sea 1400000).
-    expect(close.openingCash).toBe(0)
-    expect(close.expectedCash).toBe(500000)
-    expect(close.diffAmount).toBe(0)
-
-    const dbRow = await getDailyCashClose(tenant.id, TODAY)
-    expect(dbRow).not.toBeNull()
-    expect(dbRow!.total_income).toBe(1300000)
-    expect(dbRow!.balance).toBe(1400000)
-  })
-
-  it('rejects double close for same day', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
-    )
-
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
-      ),
-    ).rejects.toBeInstanceOf(DayAlreadyCloseExistsError)
-  })
-
-  it('rejects cashflow insert for already-closed date', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-
-    // Close today first
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, {}, 0, tx),
-    )
-
-    // Try insert cashflow for the same day
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        createCashFlow(
-          tenant.id,
-          staff.id,
-          {
-            type: 'income',
-            category: 'other',
-            amount: 100000,
-            method: 'cash',
-            description: 'Late entry',
-          },
-          tx,
-        ),
-      ),
-    ).rejects.toBeInstanceOf(DayAlreadyClosedError)
   })
 
   it('P10 regression: cancelByPlayer with paid deposit creates no cashflow rows', async () => {
@@ -582,20 +468,6 @@ describe('cashflow service', () => {
     expect(summary.totalIncome).toBe(300000)
   })
 
-  // GAP G4 — No se puede cerrar una fecha futura (CloseDateInFutureError).
-  it('rejects closing a future date', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        closeDailyRegister(tenant.id, '2099-01-01', staff.id, {}, 0, tx),
-      ),
-    ).rejects.toBeInstanceOf(CloseDateInFutureError)
-  })
-
   // GAP G5 — createCashFlow valida el combo type/category ANTES de insertar.
   // El unit cubre validateCashFlowCombo aislado; acá se verifica que el guard
   // corta dentro del flujo real y NO deja fila huérfana.
@@ -625,8 +497,8 @@ describe('cashflow service', () => {
     expect(await countCashFlows(tenant.id)).toBe(0)
   })
 
-  // GAP G6 — Boundary: día sin movimientos. Debe devolver ceros, abierto y close null.
-  it('returns a zeroed, open summary for a day with no movements', async () => {
+  // GAP G6 — Boundary: día sin movimientos. Debe devolver ceros.
+  it('returns a zeroed summary for a day with no movements', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
@@ -639,57 +511,8 @@ describe('cashflow service', () => {
     expect(summary.totalExpense).toBe(0)
     expect(summary.totalAdjustments).toBe(0)
     expect(summary.balance).toBe(0)
-    expect(summary.isClosed).toBe(false)
-    expect(summary.close).toBeNull()
     expect(summary.byCategory).toEqual({})
     expect(summary.byMethod).toEqual({})
-  })
-
-  // GAP G7 — Efecto secundario: cerrar el día escribe un audit_log
-  // (action cashflow.daily_close) con actor y metadata correctos.
-  it('writes an audit log entry when the day is closed', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-
-    await sql`
-      INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
-      VALUES (${tenant.id}, 'income', 'booking', ${400000}, 'cash', ${'Turno'}, ${staff.id}, NOW())
-    `
-
-    const close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 400000 }, 0, tx),
-    )
-
-    const audit = await sql<
-      {
-        action: string
-        resource_id: string
-        actor_id: string
-        actor_type: string
-        // BUG #2 fix: el metadata ahora se guarda single-encode → el driver
-        // postgres-js lo devuelve como OBJETO (antes era un string doble-codificado).
-        metadata: { balance: number; declaredCash: number }
-      }[]
-    >`
-      SELECT action, resource_id, actor_id, actor_type, metadata
-      FROM audit_logs
-      WHERE tenant_id = ${tenant.id} AND action = 'cashflow.daily_close'
-    `
-    expect(audit).toHaveLength(1)
-    expect(audit[0]!.resource_id).toBe(close.id)
-    expect(audit[0]!.actor_id).toBe(staff.id)
-    expect(audit[0]!.actor_type).toBe('staff')
-    expect(audit[0]!.metadata.balance).toBe(400000)
-    expect(audit[0]!.metadata.declaredCash).toBe(400000)
-    // El acceso por campo via operador jsonb funciona (lo que el doble-encode rompía).
-    const byField = await sql<{ balance: number }[]>`
-      SELECT (metadata->>'balance')::int AS balance
-      FROM audit_logs
-      WHERE tenant_id = ${tenant.id} AND action = 'cashflow.daily_close'
-    `
-    expect(byField[0]!.balance).toBe(400000)
   })
 })
 

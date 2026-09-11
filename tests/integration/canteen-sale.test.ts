@@ -14,9 +14,6 @@ import {
   ProductInactiveError,
   ProductNotFoundError,
 } from '@/modules/canteen/canteen.errors'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
-import { todayART } from '@/shared/time/art-date'
 
 beforeAll(async () => {
   const sql = getSql()
@@ -310,38 +307,6 @@ describe('canteen sale — sin deadlock entre tickets cruzados', () => {
 })
 
 describe('canteen sale — estados terminales y transiciones inválidas', () => {
-  it('con la caja del día ya cerrada, sellTicket lanza DayAlreadyClosedError y no toca stock', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const product = await withTenantContext(tenant.id, (tx) =>
-      createProduct(tenant.id, { name: 'Turrón', price: 80000, stock: 5 }, tx),
-    )
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, todayART(), staff.id, {}, 0, tx),
-    )
-
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        sellTicket(
-          tenant.id,
-          staff.id,
-          {
-            lines: [{ productId: product.id, qty: 1 }],
-            method: 'cash',
-            clientIdempotencyKey: crypto.randomUUID(),
-          },
-          tx,
-        ),
-      ),
-    ).rejects.toBeInstanceOf(DayAlreadyClosedError)
-
-    expect(await countCashFlows(tenant.id)).toBe(0)
-    expect(await getProductStock(product.id)).toBe(5)
-  })
-
   it('un producto INACTIVO en el ticket lanza ProductInactiveError', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)

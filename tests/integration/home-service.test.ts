@@ -12,8 +12,6 @@ import {
 } from '../helpers/tenant'
 import { insertBooking, insertCourt } from '../helpers/factories'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { openDay } from '@/modules/cashflow/cash-open.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import { getHoyData } from '@/modules/home/home.service'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -187,25 +185,6 @@ describe('home.service — números de Hoy', () => {
     expect(data.numbers.occupancy.occupied).toBeGreaterThanOrEqual(1)
     expect(data.numbers.occupancy.available).toBeGreaterThan(0)
   })
-
-  it('cashClosed refleja el cierre de HOY (no el de ayer) — false sin cerrar, true tras cerrar', async () => {
-    const { tenant, staffId } = await seedTenant()
-    const today = artDateOf(new Date())
-
-    const before = await withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
-    )
-    expect(before.numbers.cashClosed).toBe(false)
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, today, staffId, {}, 0, tx),
-    )
-
-    const after = await withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
-    )
-    expect(after.numbers.cashClosed).toBe(true)
-  })
 })
 
 describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2026-08-02-taxonomia-alertas-hoy.md)', () => {
@@ -285,80 +264,10 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
     expect(data.needsAttention.some((a) => a.kind === 'failed_deposit')).toBe(false)
   })
 
-  it('caja de ayer con actividad y sin cierre aparece como alerta; con cierre desaparece', async () => {
-    const { tenant, staffId } = await seedTenant()
+  it('ordena las alertas por prioridad P1 (turno)→P3 (seña), y por antigüedad DENTRO de la misma prioridad', async () => {
+    const { tenant, courtId } = await seedTenant()
     const today = artDateOf(new Date())
-    const yesterday = addDays(today, -1)
 
-    await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(
-        tenant.id,
-        staffId,
-        {
-          type: 'income',
-          category: 'other',
-          amount: 50000,
-          method: 'cash',
-          description: 'Ayer',
-          occurredAt: midday(yesterday),
-        },
-        tx,
-      ),
-    )
-
-    const before = await withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
-    )
-    expect(before.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(true)
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, yesterday, staffId, {}, 0, tx),
-    )
-
-    const after = await withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
-    )
-    expect(after.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(false)
-  })
-
-  it('caja de ayer ABIERTA pero SIN movimientos también aparece como alerta (operando yesterdayOpen del OR, aislado de yesterdayHadActivity)', async () => {
-    const { tenant, staffId } = await seedTenant()
-    const today = artDateOf(new Date())
-    const yesterday = addDays(today, -1)
-
-    // Apertura sin ningún cash_flow — createCashFlow/assertDayOpen nunca toca
-    // daily_cash_opens, así que esto ejercita el operando IZQUIERDO del OR
-    // (yesterdayOpen !== null) de forma aislada del derecho (yesterdayHadActivity).
-    await withTenantContext(tenant.id, (tx) =>
-      openDay(tenant.id, staffId, { date: yesterday, openingCash: 500000 }, 0, tx),
-    )
-
-    const data = await withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
-    )
-    expect(data.needsAttention.some((a) => a.kind === 'yesterday_cash_unclosed')).toBe(true)
-  })
-
-  it('ordena las alertas por prioridad P1 (turno)→P2 (seña)→P3 (caja de ayer), y por antigüedad DENTRO de la misma prioridad', async () => {
-    const { tenant, staffId, courtId } = await seedTenant()
-    const today = artDateOf(new Date())
-    const yesterday = addDays(today, -1)
-
-    await withTenantContext(tenant.id, (tx) =>
-      createCashFlow(
-        tenant.id,
-        staffId,
-        {
-          type: 'income',
-          category: 'other',
-          amount: 50000,
-          method: 'cash',
-          description: 'Ayer',
-          occurredAt: midday(yesterday),
-        },
-        tx,
-      ),
-    )
     const failedBookingId = await insertBooking(getSql(), {
       tenantId: tenant.id,
       courtId,
@@ -395,7 +304,6 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
       'unpaid_completed_booking',
       'unpaid_completed_booking',
       'failed_deposit',
-      'yesterday_cash_unclosed',
     ])
     const p1BookingIds = data.needsAttention
       .filter((a) => a.kind === 'unpaid_completed_booking')

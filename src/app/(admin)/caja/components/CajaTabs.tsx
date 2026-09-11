@@ -1,13 +1,12 @@
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
 
 const CAJA_TABS = [
-  { href: '/caja', label: 'Caja del día' },
+  { href: '/caja', label: 'Cantina' },
   { href: '/caja/deudas', label: 'Deudas' },
   // Lo que el complejo DEBE, al lado de lo que le deben. Son opuestos y por eso
   // están separados: el total de "Deudas" tiene una fuente única y mezclarlos
   // rompería el invariante que la compara por dos caminos.
   { href: '/caja/devoluciones', label: 'Devoluciones' },
-  { href: '/caja/cantina', label: 'Cantina' },
   { href: '/caja/productos', label: 'Productos y stock' },
 ]
 

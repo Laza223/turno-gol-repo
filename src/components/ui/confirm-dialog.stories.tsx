@@ -9,7 +9,7 @@ import { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
  * `open`/`onOpenChange` son props controladas (no hay estado interno de
  * apertura) — cada story arma un wrapper local con `useState` + un botón que
  * reabre el diálogo tras cerrarlo, igual que lo maneja cualquier padre real
- * (AbonadoDialogs, CloseDayButton, CourtList).
+ * (AbonadoDialogs, CourtList).
  */
 function ConfirmDialogDemo(props: Omit<ConfirmDialogProps, 'open' | 'onOpenChange'>) {
   const [open, setOpen] = useState(true)

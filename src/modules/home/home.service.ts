@@ -1,11 +1,8 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
-import { getDailyClose } from '@/modules/cashflow/daily-close.service'
-import { getDayOpen } from '@/modules/cashflow/cash-open.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import { countPendingRefunds } from '@/modules/payments/refund.service'
-import { addDays } from '@/shared/dates/art'
 import { operatingDayRangeUtc } from '@/shared/time/operating-day'
 import {
   daySlotsFor,
@@ -170,23 +167,6 @@ async function getDayBoard(
   }))
 
   return { occupancy, upcoming }
-}
-
-async function hasCashFlowsOnDate(
-  tenantId: string,
-  date: string,
-  cutoffMins: number,
-  tx: DbTx,
-): Promise<boolean> {
-  const range = operatingDayRangeUtc(date, cutoffMins)
-  const rows = await tx.execute(sql`
-    SELECT 1 FROM cash_flows
-    WHERE tenant_id = ${tenantId}
-      AND occurred_at >= ${range.fromUtc.toISOString()}
-      AND occurred_at < ${range.toUtc.toISOString()}
-    LIMIT 1
-  `)
-  return (rows as unknown[]).length > 0
 }
 
 async function getFailedDepositsToday(
@@ -381,16 +361,11 @@ export async function getHoyData(
   opts: GetHoyDataOpts,
 ): Promise<HoyData> {
   const { date, cutoffMins } = opts
-  const yesterday = addDays(date, -1)
 
   const [
     todaySummary,
     streetMoneyRows,
     board,
-    todayClose,
-    yesterdayClose,
-    yesterdayOpen,
-    yesterdayHadActivity,
     failedDeposits,
     onlineBookings,
     cancellations,
@@ -400,10 +375,6 @@ export async function getHoyData(
     getDaySummary(tenantId, date, cutoffMins, tx),
     getStreetMoney(tenantId, tx),
     getDayBoard(tenantId, date, opts, tx),
-    getDailyClose(tenantId, date, tx),
-    getDailyClose(tenantId, yesterday, tx),
-    getDayOpen(tenantId, yesterday, tx),
-    hasCashFlowsOnDate(tenantId, yesterday, cutoffMins, tx),
     getFailedDepositsToday(tenantId, date, cutoffMins, tx),
     getOnlineBookingsToday(tenantId, date, cutoffMins, tx),
     getCancellationsToday(tenantId, date, cutoffMins, tx),
@@ -426,17 +397,6 @@ export async function getHoyData(
       contactName: r.debtorName,
     }))
 
-  const yesterdayUnclosed: AttentionItem[] =
-    yesterdayClose === null && (yesterdayOpen !== null || yesterdayHadActivity)
-      ? [
-          {
-            kind: 'yesterday_cash_unclosed',
-            date: yesterday,
-            since: new Date(`${yesterday}T00:00:00Z`),
-          },
-        ]
-      : []
-
   // Tenant-wide y sin filtro por fecha, a diferencia de las otras tres: una
   // devolución que el complejo debe desde hace una semana sigue debiéndose hoy.
   // Por eso también es UN ítem agregado y no una fila por devolución.
@@ -455,7 +415,6 @@ export async function getHoyData(
   const needsAttention = sortAttentionItems([
     ...unpaidBookingAlerts,
     ...failedDeposits,
-    ...yesterdayUnclosed,
     ...refundAlerts,
   ])
   const whileYouWereAway = sortWhileAwayItems([
@@ -472,7 +431,6 @@ export async function getHoyData(
       collectedTodayCents: todaySummary.collected,
       occupancy: board.occupancy,
       streetMoneyCents: sumStreetMoney(streetMoneyRows),
-      cashClosed: todayClose !== null,
     },
     whileYouWereAway,
     needsAttention,

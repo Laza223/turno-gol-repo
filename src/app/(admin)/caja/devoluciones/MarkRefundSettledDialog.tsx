@@ -64,20 +64,13 @@ export function MarkRefundSettledDialog({
       if (!result.success) return result
       if (result.alreadySettled) {
         toast({ title: 'Esta devolución ya estaba marcada.' })
-      } else if (result.cashFlowSkipped) {
-        toast({
-          title: 'Devolución registrada',
-          description:
-            'La caja de ese día ya estaba cerrada, así que el egreso no se agregó. Registralo a mano si lo necesitás.',
-        })
       } else {
         toast({ title: 'Devolución registrada' })
       }
       router.refresh()
       return result
     } catch (err) {
-      // Mismo criterio que CloseDayButton: si onConfirm lanza, sin este catch
-      // el diálogo queda colgado en "Procesando…".
+      // Si onConfirm lanza, sin este catch el diálogo queda colgado en "Procesando…".
       Sentry.captureException(err)
       return {
         success: false,

@@ -21,13 +21,6 @@ import {
   TeamHasPaymentsError,
   TournamentTeamNotFoundError,
 } from '@/modules/tournaments/tournament.errors'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-
-// assertDayOpen compara contra el día ART (UTC-3), no el UTC del host.
-function artDateOf(ts: Date): string {
-  return new Date(ts.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
-}
 
 // El valor de la prueba de carrera de este archivo depende de que las 2 tx
 // corran en conexiones SEPARADAS y choquen en el `FOR UPDATE` a nivel DB. Con
@@ -51,7 +44,6 @@ function requirePoolMaxAtLeast2(testName: string): void {
   }
 }
 
-const TODAY = artDateOf(new Date())
 const FEE = 4_500_000 // $45.000
 
 beforeAll(async () => {
@@ -403,25 +395,6 @@ describe('registerInscriptionPayment', () => {
     // Nunca $1.700.000: el equipo quedó exactamente en lo que pagó la primera vez.
     expect(rows[0]!.paid).toBe(1_000_000)
     expect(rows[0]!.payments).toBe(1)
-  })
-
-  it('respeta el guard de caja cerrada', async () => {
-    const { tenant, staff, teamIds } = await setup({ teams: 1 })
-
-    await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(tenant.id, TODAY, staff.id, { declaredCash: 0 }, 0, tx),
-    )
-
-    await expect(
-      withTenantContext(tenant.id, (tx) =>
-        registerInscriptionPayment(
-          tenant.id,
-          staff.id,
-          { teamId: teamIds[0]!, charges: [{ amount: 1_000_000, method: 'cash' }] },
-          tx,
-        ),
-      ),
-    ).rejects.toThrow(DayAlreadyClosedError)
   })
 
   it('no deja cobrarle a un equipo de otro complejo', async () => {

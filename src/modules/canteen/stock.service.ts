@@ -120,9 +120,6 @@ export async function registerPurchase(
   // "Pagalo de la caja" (migr. 050): gasto expense/merchandise en la MISMA tx.
   // Reusa la key de idempotencia de la reposición (índices únicos separados:
   // stock_movements y cash_flows) — un reintento no duplica ninguno de los dos.
-  // Si la caja del día está cerrada, createCashFlow tira DayAlreadyClosedError
-  // y TODA la reposición rollbackea (atómico a propósito: el que repone
-  // destilda "pagalo de la caja" y reintenta).
   if (input.expense && input.unitCost != null) {
     await createCashFlow(
       tenantId,

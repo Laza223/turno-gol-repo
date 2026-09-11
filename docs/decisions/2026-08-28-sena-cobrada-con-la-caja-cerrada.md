@@ -1,5 +1,7 @@
 # La seña cobrada con la caja ya cerrada entra como ajuste
 
+> **REEMPLAZADO 2026-09-11** — "Caja del día" (apertura/cierre/arqueo) se eliminó por completo (`docs/decisions/2026-09-11-eliminar-caja-del-dia.md`). El problema que este doc resolvía no puede volver a ocurrir: la caja nunca está "cerrada". El mecanismo entero (`allowClosedDay`, el mail `admin_deposit_after_close`, el toast `depositAfterCloseNote`) se retiró. Este documento queda como registro histórico, no vigente.
+
 **Fecha:** 2026-08-28
 **Estado:** aplicada
 **Origen:** hallazgo F-02 del QA exhaustivo (`.gstack/qa-reports/qa-report-localhost-2026-08-28.md`)

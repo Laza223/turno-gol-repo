@@ -19,7 +19,6 @@ import {
   StockNotEditableFromCatalogError,
   StockNotTrackedError,
 } from '@/modules/canteen/canteen.errors'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 
 export type ProductActionResult = { success: true } | { success: false; error: string }
 
@@ -36,10 +35,9 @@ function revalidateCaja(): void {
  * Postgres real): el mapeo de errores de dominio va SIEMPRE FUERA de
  * withTenantContext. Atrapar la excepción DENTRO del callback transaccional y
  * devolver un objeto normal hace que drizzle COMMITEE la transacción — los
- * writes previos al throw (ej. la reposición de stock antes de que
- * createCashFlow rechace por caja cerrada) quedaban persistidos a medias.
- * La excepción tiene que escapar del callback para que Postgres ROLLBACKEE;
- * recién después se traduce al mensaje amigable.
+ * writes previos al throw quedaban persistidos a medias. La excepción tiene
+ * que escapar del callback para que Postgres ROLLBACKEE; recién después se
+ * traduce al mensaje amigable.
  */
 function mapStockError(err: unknown): string | null {
   if (err instanceof ProductNotFoundError) return 'Ese producto ya no existe.'
@@ -51,9 +49,6 @@ function mapStockError(err: unknown): string | null {
     return err.available <= 0
       ? `No queda stock de ${err.productName}.`
       : `Solo quedan ${err.available} de ${err.productName}.`
-  }
-  if (err instanceof DayAlreadyClosedError) {
-    return 'La caja de hoy ya está cerrada. Destildá "Pagalo de la caja" para reponer igual, o registrá el gasto mañana.'
   }
   return null
 }
@@ -142,9 +137,7 @@ export async function registerPurchaseAction(input: unknown): Promise<StockActio
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  // El catch va FUERA del contexto transaccional (ver mapStockError): con
-  // "Pagalo de la caja" y la caja cerrada, createCashFlow tira DESPUÉS de que
-  // la reposición ya escribió — la excepción debe rollbackear TODO.
+  // El catch va FUERA del contexto transaccional (ver mapStockError).
   try {
     await withTenantContext(tenant.id, (tx) =>
       registerPurchase(tenant.id, user.staffUserId, parsed.data, tx),

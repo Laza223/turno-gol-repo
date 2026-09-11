@@ -10,7 +10,6 @@ const ATTENTION_PRIORITY: Record<AttentionItem['kind'], number> = {
   // AHORA), pero el daño crece con los días.
   pending_refunds: 2,
   failed_deposit: 3,
-  yesterday_cash_unclosed: 4,
 }
 
 /** Prioridad P1→P3, luego antigüedad ascendente (mismo criterio que getStreetMoney.sort). */

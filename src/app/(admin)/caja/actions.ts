@@ -2,29 +2,18 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { uuid, dateStr, moneyCents, boundedText } from '@/shared/validation/primitives'
+import { uuid, moneyCents, boundedText } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { closeDailyRegister } from '@/modules/cashflow/daily-close.service'
-import { openDay } from '@/modules/cashflow/cash-open.service'
-import { nightCutoffMins } from '@/shared/time/operating-day'
 import { cashFlowResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import { validateApiOutput } from '@/shared/api-output'
 import {
-  CloseDateInFutureError,
-  DayAlreadyClosedError,
-  DayAlreadyCloseExistsError,
   InvalidCashFlowTypeError,
   InvalidCashFlowCategoryError,
-  OpenDateInFutureError,
 } from '@/modules/cashflow/cashflow.errors'
-import type {
-  CashFlowRow,
-  DailyCashCloseRow,
-  CreateCashFlowInput,
-} from '@/modules/cashflow/cashflow.types'
+import type { CashFlowRow, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
 /** Margen para el desfasaje de reloj del navegador contra el del servidor. */
 const OCCURRED_AT_CLOCK_SKEW_MS = 5 * 60_000
@@ -82,28 +71,8 @@ const createCashFlowSchema = z.object({
   clientIdempotencyKey: uuid.optional(),
 })
 
-const closeDaySchema = z.object({
-  date: dateStr,
-  declaredCash: moneyCents.optional(),
-  note: boundedText(500).optional(),
-})
-
-const openDaySchema = z.object({
-  date: dateStr,
-  openingCash: moneyCents,
-  note: boundedText(300).optional(),
-})
-
 export type CashFlowActionResult =
   { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
-
-export type CloseDayActionResult =
-  { success: true; close: DailyCashCloseRow } | { success: false; error: string }
-
-export type OpenDayInput = { date: string; openingCash: number; note?: string }
-
-export type OpenDayActionResult =
-  { success: true; openingCash: number } | { success: false; error: string }
 
 export async function createCashFlowAction(
   input: CreateCashFlowInput,
@@ -120,7 +89,7 @@ export async function createCashFlowAction(
 
   // Regla de la clase (panel Fase 6): el catch va FUERA del contexto
   // transaccional — atrapar adentro y devolver un objeto commitea lo escrito
-  // antes del throw. Acá los services tiran antes de escribir, pero el patrón
+  // antes del throw. Acá el service tira antes de escribir, pero el patrón
   // uniforme evita que un refactor futuro herede la mina.
   let cashFlow: CashFlowRow
   try {
@@ -131,98 +100,10 @@ export async function createCashFlowAction(
     if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
       return { success: false, error: (err as Error).message }
     }
-    if (err instanceof DayAlreadyClosedError) {
-      return {
-        success: false,
-        error: 'La caja de ese día ya fue cerrada. Registrá un ajuste compensatorio.',
-      }
-    }
     throw err
   }
 
   validateApiOutput(cashFlowResponseSchema, { data: cashFlow }, 'createCashFlowAction')
   revalidatePath('/caja')
   return { success: true, cashFlow }
-}
-
-export async function closeDayAction(
-  date: string,
-  declaredCash?: number,
-  note?: string,
-): Promise<CloseDayActionResult> {
-  const parsed = closeDaySchema.safeParse({ date, declaredCash, note })
-  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
-  // Cruce #2: el cierre de caja es inmutable — requiere admin/manager activo.
-  const auth = await requireOperatorStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { user, tenant } = auth
-
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { success: false, error: limited }
-
-  // cutoffMins se recalcula ACÁ, nunca se acepta del caller: determina qué
-  // cash_flows entran al totalIncome/cashNet de un cierre que después queda
-  // congelado (política de no-re-bucketing histórico, ver ADR día operativo)
-  // — un valor manipulado del lado cliente podría excluir plata real del
-  // arqueo sin que nada lo detecte.
-  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
-
-  let close: DailyCashCloseRow
-  try {
-    close = await withTenantContext(tenant.id, (tx) =>
-      closeDailyRegister(
-        tenant.id,
-        parsed.data.date,
-        user.staffUserId,
-        { declaredCash: parsed.data.declaredCash, note: parsed.data.note },
-        cutoffMins,
-        tx,
-      ),
-    )
-  } catch (err) {
-    if (err instanceof CloseDateInFutureError) {
-      return { success: false, error: 'No se puede cerrar una fecha futura.' }
-    }
-    if (err instanceof DayAlreadyCloseExistsError) {
-      return { success: false, error: `La caja del ${parsed.data.date} ya fue cerrada.` }
-    }
-    throw err
-  }
-
-  revalidatePath('/caja')
-  return { success: true, close }
-}
-
-export async function openDayAction(input: OpenDayInput): Promise<OpenDayActionResult> {
-  const parsed = openDaySchema.safeParse(input)
-  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
-  // Abrir/corregir el fondo es operación de caja: mismo gate que el resto (admin+manager).
-  const auth = await requireOperatorStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { user, tenant } = auth
-
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { success: false, error: limited }
-
-  // cutoffMins recalculado server-side, mismo motivo que closeDayAction.
-  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
-
-  let openingCash: number
-  try {
-    const open = await withTenantContext(tenant.id, (tx) =>
-      openDay(tenant.id, user.staffUserId, parsed.data, cutoffMins, tx),
-    )
-    openingCash = open.openingCash
-  } catch (err) {
-    if (err instanceof OpenDateInFutureError) {
-      return { success: false, error: 'No se puede abrir una fecha futura.' }
-    }
-    if (err instanceof DayAlreadyClosedError) {
-      return { success: false, error: 'Ese día ya está cerrado.' }
-    }
-    throw err
-  }
-
-  revalidatePath('/caja')
-  return { success: true, openingCash }
 }

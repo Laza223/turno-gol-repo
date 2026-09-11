@@ -7,7 +7,6 @@ import { rowToBookingRow } from '@/modules/bookings/booking.mappers'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { DayAlreadyClosedError } from '@/modules/cashflow/cashflow.errors'
 import { getFirstActiveAdminStaffUserId } from '@/modules/staff/staff.service'
 import { holdExpiresAtMs } from '@/lib/booking/hold'
 import type { PaymentGateway } from './mp-gateway'
@@ -813,16 +812,12 @@ export async function confirmManualDepositPayment(
  * (efectivo/transferencia/otro) — hermana de `recordDepositCashFlow` de acá
  * abajo (seña MP, actor proxy). Acá SÍ hay un staff autenticado real en
  * contexto, no hace falta el proxy `getFirstActiveAdminStaffUserId`. Mismo
- * patrón defensivo que `recordDepositCashFlow`: si la caja del día ya cerró,
- * no deja que `DayAlreadyClosedError` escape — la plata YA la cobró el staff
- * en la realidad, jamás vale la pena perder la confirmación del booking por
- * un problema de atribución contable secundaria. Se duplica el patrón en vez
- * de compartir código con `recordDepositCashFlow` para no arriesgar el
+ * patrón defensivo que `recordDepositCashFlow`: cualquier error al insertar
+ * el cash_flow se traga y solo avisa por Sentry — la plata YA la cobró el
+ * staff en la realidad, jamás vale la pena perder la confirmación del booking
+ * por un problema de contabilidad secundaria. Se duplica el patrón en vez de
+ * compartir código con `recordDepositCashFlow` para no arriesgar el
  * comportamiento observable del flujo automático de MP.
- *
- * Con la caja cerrada la seña NO se pierde: entra como ajuste del mismo día
- * operativo. Los tres emisores del movimiento (este, `recordDepositCashFlow` y
- * `recordManualBookingDepositCashFlow` en booking.service.ts) hacen lo mismo.
  */
 async function recordManualDepositCashFlow(
   booking: BookingRow,
@@ -846,50 +841,6 @@ async function recordManualDepositCashFlow(
       tx,
     )
   } catch (err) {
-    if (err instanceof DayAlreadyClosedError) {
-      // Entra como AJUSTE del mismo día operativo en vez de perderse: la plata
-      // YA está en el cajón, el staff la cobró en la realidad. Idéntico al
-      // camino de `recordManualBookingDepositCashFlow` (🔴 QA 2026-08-28 F-02);
-      // esta hermana quedó afuera del primer fix y tenía el mismo agujero.
-      // El porqué de `adjustment`/`other` y del literal exacto de la
-      // descripción: docs/decisions/2026-08-28-sena-cobrada-con-la-caja-cerrada.md
-      await createCashFlow(
-        tenantId,
-        staffUserId,
-        {
-          type: 'adjustment',
-          category: 'other',
-          amount: booking.depositAmount,
-          method,
-          description: depositCashFlowDescription(booking.id),
-          bookingId: booking.id,
-          allowClosedDay: true,
-        },
-        tx,
-      )
-      captureMessage('deposit recorded as adjustment: cash register already closed for the day', {
-        level: 'warning',
-        extra: { bookingId: booking.id, tenantId, method },
-      })
-      // Mismo contrato que el caso MP: el email se despacha DESPUÉS del commit
-      // de la tx (los ids viajan en el outcome, el caller los despacha).
-      return enqueueTenantOwnerNotification(
-        {
-          tenantId,
-          templateName: 'admin_deposit_after_close',
-          content: {
-            bookingId: booking.id,
-            amountArs: formatArs(booking.depositAmount),
-            // Sin esto el mail decía "por Mercado Pago" para una seña que el
-            // staff cobró en efectivo: el dueño la buscaba en el panel de MP en
-            // vez de en el cajón.
-            method,
-          },
-          triggerEvent: 'payment.deposit_after_close',
-        },
-        tx,
-      )
-    }
     // Mismo motivo que R1-A (más abajo, caso MP): una seña YA cobrada por el
     // staff nunca puede perderse por un problema de contabilidad secundaria.
     captureMessage('deposit cash_flow skipped: unexpected error recording it', {
@@ -923,9 +874,7 @@ async function recordManualDepositCashFlow(
  * las filas necesitan un staff_user_id que exista en ese tenant"). Si el
  * tenant no tiene admin activo esto se salta sin romper la confirmación del
  * booking — nunca vale la pena perder la confirmación (ya pagada en MP) por un
- * problema de atribución contable. Si lo que pasa es que la caja del día ya
- * cerró (`assertDayOpen` dentro de `createCashFlow`), el movimiento NO se
- * saltea: entra como ajuste del mismo día operativo.
+ * problema de atribución contable.
  *
  * `description` lleva el bookingId completo embebido (`depositCashFlowDescription`,
  * booking.charges.ts) — `getBookingCharges` (reservas/queries.ts) la excluye
@@ -962,51 +911,6 @@ async function recordDepositCashFlow(
       tx,
     )
   } catch (err) {
-    if (err instanceof DayAlreadyClosedError) {
-      // Entra como AJUSTE del mismo día operativo. La plata está en la cuenta
-      // de MP del complejo: no aparece en el conteo de efectivo del cierre,
-      // pero es ingreso del día igual y tiene que verse en Caja. Tercera
-      // hermana del mismo agujero (🔴 QA 2026-08-28 F-02); el porqué de
-      // `adjustment`/`other`, del literal exacto de la descripción y de por qué
-      // el snapshot del cierre no se toca:
-      // docs/decisions/2026-08-28-sena-cobrada-con-la-caja-cerrada.md
-      await createCashFlow(
-        tenantId,
-        proxyStaffUserId,
-        {
-          type: 'adjustment',
-          category: 'other',
-          amount: info.amount,
-          method: 'mercadopago',
-          description: depositCashFlowDescription(info.externalReference),
-          bookingId: info.externalReference,
-          allowClosedDay: true,
-        },
-        tx,
-      )
-      captureMessage('deposit recorded as adjustment: cash register already closed for the day', {
-        level: 'warning',
-        extra: { bookingId: info.externalReference, tenantId, mpPaymentId: info.mpPaymentId },
-      })
-      // Las otras dos ramas de "plata sorpresa" (booking not found / late
-      // payment terminal) ya alertan al dueño; esta además le dice dónde quedó
-      // la plata. Mismo contrato que admin_late_payment: el email se despacha
-      // DESPUÉS del commit de la tx (los ids viajan en
-      // WebhookOutcome.notificationIds).
-      return enqueueTenantOwnerNotification(
-        {
-          tenantId,
-          templateName: 'admin_deposit_after_close',
-          content: {
-            bookingId: info.externalReference,
-            amountArs: formatArs(info.amount),
-            method: 'mercadopago',
-          },
-          triggerEvent: 'payment.deposit_after_close',
-        },
-        tx,
-      )
-    }
     // R1-A (rechazo review): antes esto relanzaba CUALQUIER otro error, lo que
     // hacía ROLLBACK de la tx completa — incluida la transición
     // pending_payment→confirmed que YA había ganado unas líneas más arriba

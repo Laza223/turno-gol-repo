@@ -19,7 +19,6 @@ vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn() }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
-vi.mock('@/modules/cashflow/daily-close.service', () => ({ closeDailyRegister: vi.fn() }))
 vi.mock('@/modules/canteen/canteen-sale.service', () => ({ sellTicket: vi.fn() }))
 
 import { createCashFlowAction } from '@/app/(admin)/caja/actions'

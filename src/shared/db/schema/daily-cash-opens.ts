@@ -4,9 +4,9 @@ import { tenants } from './tenants'
 import { staffUsers } from './staff-users'
 
 // Apertura de caja (migración 049): fondo inicial en efectivo por día.
-// Editable mientras el día está abierto (guard a nivel service bajo el
-// advisory lock daily_close:{tenantId}); al cerrar, closeDailyRegister
-// snapshotea opening_cash/expected_cash en daily_cash_closes (inmutable).
+// El flujo de apertura/cierre se eliminó (ver docs/decisions/) — la tabla
+// queda con datos históricos, sin escritura ni lectura desde código de
+// aplicación. Nunca reinterpretar ni migrar estas filas.
 export const dailyCashOpens = pgTable(
   'daily_cash_opens',
   {

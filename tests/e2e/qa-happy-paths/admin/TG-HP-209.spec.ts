@@ -68,7 +68,8 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
       // Fase 3: el modal completo (guestName + guestPhone) vive detrás de
       // "Más opciones"; el popover de alta rápida es lo primero que abre.
       await openQuickBookingPopover(pageA, '21:00')
-      await pageA.getByRole('button', { name: /Más opciones/ }).click()
+      // `exact`: la barra de la grilla tiene "Más opciones de la grilla" (#303).
+      await pageA.getByRole('button', { name: 'Más opciones', exact: true }).click()
       await expect(pageA.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
       await pageA.fill('#guestName', 'E2E QA-209 Realtime')
       // El teléfono vive colapsado bajo "Opciones avanzadas" desde el rediseño

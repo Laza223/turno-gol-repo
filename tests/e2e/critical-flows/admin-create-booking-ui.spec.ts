@@ -57,7 +57,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       // Este spec cubre el camino del modal completo (nombre + teléfono bajo
       // "Opciones avanzadas"), que ahora vive detrás de "Más opciones".
       await openQuickBookingPopover(page, '16:00')
-      await page.getByRole('button', { name: /Más opciones/ }).click()
+      // `exact`: la barra de la grilla tiene "Más opciones de la grilla" (#303)
+      // y un regex matchea los dos botones.
+      await page.getByRole('button', { name: 'Más opciones', exact: true }).click()
 
       await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
 

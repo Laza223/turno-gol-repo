@@ -9,6 +9,7 @@ import { holdExpiresAtIso, holdRemainingLabel } from '@/lib/booking/hold'
 import { formatArs } from '@/lib/format'
 import { useNowMsAfterHydration } from '@/hooks/use-now'
 import type { GridBooking } from './BookingGrid'
+import { quickPopoverSide, type QuickPopoverSide } from './grid/quick-popover-side'
 
 /** Un tick por segundo: el contador muestra mm:ss. */
 const ONE_SECOND = 1000
@@ -149,6 +150,10 @@ function BookingCardComponent({
   renderQuickForm,
   onQuickClose,
 }: BookingCardProps) {
+  // Se decide al tocar la celda, que es cuando se conoce dónde quedó en
+  // pantalla. Ver quick-popover-side.ts.
+  const [quickSide, setQuickSide] = React.useState<QuickPopoverSide>('right')
+
   if (!booking) {
     const interactive = !isPast && !!onSlotClick && !!courtId
 
@@ -173,7 +178,14 @@ function BookingCardComponent({
         style={placement(col, row, span, rowOffset)}
         data-col={col}
         data-row={row}
-        onClick={() => onSlotClick?.(courtId!, timeStart)}
+        onClick={(e) => {
+          if (renderQuickForm) {
+            setQuickSide(
+              quickPopoverSide(e.currentTarget.getBoundingClientRect(), window.innerWidth),
+            )
+          }
+          onSlotClick?.(courtId!, timeStart)
+        }}
         aria-label={`Reservar turno ${timeStart} en ${courtName}`}
         className={cn(
           'group m-0.5 flex cursor-pointer items-center justify-center rounded-md',
@@ -205,7 +217,7 @@ function BookingCardComponent({
         <PopoverTrigger asChild>{freeButton}</PopoverTrigger>
         <PopoverContent
           align="start"
-          side="right"
+          side={quickSide}
           sideOffset={6}
           collisionPadding={12}
           className="w-auto p-3"

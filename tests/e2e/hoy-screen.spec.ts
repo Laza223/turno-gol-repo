@@ -30,7 +30,7 @@ function todayDateIsoArt(): string {
 }
 
 test.describe('Hoy (Fase 2) — home solo-admin', () => {
-  test('admin ve los 3 números + "Necesita tu atención" + "Mientras no estabas" @critical', async ({
+  test('admin ve el tablero del día + "Mientras no estabas" @critical', async ({
     browser,
     adminStorageState,
   }) => {
@@ -40,12 +40,26 @@ test.describe('Hoy (Fase 2) — home solo-admin', () => {
       const page = await context.newPage()
       await page.goto('/dashboard', { waitUntil: 'networkidle' })
 
-      await expect(page.getByRole('heading', { name: 'Hoy', level: 1 })).toBeVisible()
-      await expect(page.getByText('Cobrado hoy')).toBeVisible()
-      await expect(page.getByText('Turnos de hoy')).toBeVisible()
-      await expect(page.getByText('Deudas')).toBeVisible()
-      await expect(page.getByText('Necesita tu atención')).toBeVisible()
+      // Este assert decía "Cobrado hoy" / "Turnos de hoy" / "Deudas" y quedó
+      // desactualizado en H010 (2026-09-10), cuando esas tarjetas salieron por
+      // repetir lo que Caja muestra un click más allá: `e2e-tests` no corre en
+      // pull requests, así que nadie lo vio ponerse rojo.
+      // El `<h1>` es `sr-only` desde el rediseño del 2026-09-12 (el riel y la
+      // barra superior nombran la vista), así que se aserta por texto y no por
+      // visibilidad: `toBeVisible()` sobre un elemento de 1x1px no prueba nada.
+      // Sin este assert nada en CI se entera si alguien lo borra — axe marca
+      // `page-has-heading-one` como `moderate` y el helper de a11y sólo falla
+      // con `critical`/`serious`.
+      await expect(page.locator('h1')).toHaveText('Hoy')
+      await expect(page.getByText('Próximos turnos')).toBeVisible()
       await expect(page.getByText('Mientras no estabas')).toBeVisible()
+      // "Necesita tu atención" sólo existe con alertas: vacío es una línea con
+      // el copy del premio, que es el estado normal de un tenant de prueba.
+      await expect(
+        page
+          .getByText('Nada pendiente. Todo cobrado y cerrado.')
+          .or(page.getByText('Necesita tu atención')),
+      ).toBeVisible()
     } finally {
       await context.close()
     }

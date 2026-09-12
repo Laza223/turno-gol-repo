@@ -105,18 +105,3 @@ export function noShowTrend(current: NoShowMetric, prev: NoShowMetric): NoShowTr
   if (deltaPts < 0) return { kind: 'down', deltaPts }
   return { kind: 'flat', deltaPts: 0 }
 }
-
-/**
- * Tiempo relativo en español rioplatense: 'recién', 'hace 3 min', 'hace 2 h',
- * 'hace 5 días'. Para timestamps futuros (clock skew) devuelve 'recién'.
- */
-export function relativeTimeEs(iso: string, nowMs: number): string {
-  const diffMs = nowMs - new Date(iso).getTime()
-  if (!Number.isFinite(diffMs) || diffMs < 60_000) return 'recién'
-  const min = Math.floor(diffMs / 60_000)
-  if (min < 60) return `hace ${min} min`
-  const hours = Math.floor(min / 60)
-  if (hours < 24) return `hace ${hours} h`
-  const days = Math.floor(hours / 24)
-  return days === 1 ? 'hace 1 día' : `hace ${days} días`
-}

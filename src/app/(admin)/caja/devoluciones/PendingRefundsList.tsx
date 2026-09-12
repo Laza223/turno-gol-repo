@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { formatArs } from '@/lib/format'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
 import { bookingCode } from '@/lib/booking-code'
-import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
+import { relativeTimeEs } from '@/lib/format'
 import type { PendingRefundRow } from '@/modules/payments/refund.service'
 import { MarkRefundSettledDialog, type MarkRefundSettledAction } from './MarkRefundSettledDialog'
 

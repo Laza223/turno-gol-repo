@@ -82,6 +82,44 @@ export const ConTurnos: Story = {
   },
 }
 
+/**
+ * Un viernes real son 5 o 6 turnos por cancha y el tablero deja de entrar en
+ * una pantalla. Se muestran 4 y el resto se pliega: lo que importa a las 17:00
+ * es la próxima hora, no las 23:00.
+ */
+export const MasDeCuatroTurnos: Story = {
+  args: {
+    courts: [
+      {
+        courtId: 'c1',
+        courtName: 'Cancha 1',
+        turns: ['18:00-19:00', '19:00-20:00', '20:00-21:00', '21:00-22:00', '22:00-23:00'].map(
+          (timeLabel, i) => ({
+            bookingId: `b${i}`,
+            timeLabel,
+            relativeLabel: null,
+            contactName: `Equipo ${i + 1}`,
+            status: 'confirmed' as const,
+            type: 'spontaneous' as const,
+            depositStatus: 'paid' as const,
+          }),
+        ),
+      },
+    ],
+    occupancy: { occupied: 5, available: 12, blocked: 0, pct: 42 },
+    dayIsClosed: false,
+  },
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('5 turnos')).toBeVisible()
+    await expect(canvas.getAllByRole('link')).toHaveLength(4)
+    const toggle = canvas.getByRole('button', { name: /Ver 1 más/ })
+    await userEvent.click(toggle)
+    await expect(canvas.getAllByRole('link')).toHaveLength(5)
+    await expect(canvas.getByRole('button', { name: /Ver menos/ })).toBeVisible()
+  },
+}
+
 export const SinTurnosPorJugar: Story = {
   args: {
     courts: [{ courtId: 'c1', courtName: 'Cancha 1', turns: [] }],

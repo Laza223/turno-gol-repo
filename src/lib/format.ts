@@ -111,3 +111,24 @@ export function formatTime(value: string): string {
 export function initials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
 }
+
+/**
+ * Tiempo relativo en español rioplatense: 'recién', 'hace 3 min', 'hace 2 h',
+ * 'hace 5 días'. Para timestamps futuros (clock skew) devuelve 'recién'.
+ *
+ * Vivía en `analiticas/dashboard-helpers.ts` y ya la usaban tres vistas de
+ * Caja; se mudó acá cuando "Necesita tu atención" (en `src/components/`) pasó
+ * a pintar el `since` de cada alerta — un componente compartido no puede
+ * importar de `src/app/` (regla `no-restricted-imports`), y el helper no tiene
+ * nada de específico de Métricas.
+ */
+export function relativeTimeEs(iso: string, nowMs: number): string {
+  const diffMs = nowMs - new Date(iso).getTime()
+  if (!Number.isFinite(diffMs) || diffMs < 60_000) return 'recién'
+  const min = Math.floor(diffMs / 60_000)
+  if (min < 60) return `hace ${min} min`
+  const hours = Math.floor(min / 60)
+  if (hours < 24) return `hace ${hours} h`
+  const days = Math.floor(hours / 24)
+  return days === 1 ? 'hace 1 día' : `hace ${days} días`
+}

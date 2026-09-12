@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import LocationPickerField from './LocationPickerField'
 
 /**
@@ -83,6 +83,13 @@ export const PonerElPuntoConTeclado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const boton = await canvas.findByRole('button', { name: /Poner el punto en el centro/i })
+    // El botón nace `disabled` (`disabled={!map}`) hasta que Leaflet termina de
+    // montar, y `disabled` trae `pointer-events: none`. `findByRole` lo
+    // encuentra igual estando deshabilitado, así que sin esta espera el click
+    // sale contra un botón inerte y el error es "pointer-events: none", que se
+    // lee como un bug de CSS y no como lo que es: llegamos temprano. Sólo se
+    // notaba cuando el runner tenía más carga.
+    await waitFor(() => expect(boton).toBeEnabled())
     await userEvent.click(boton)
     await expect(canvas.getByText(/Punto marcado en/i)).toBeInTheDocument()
     await expect(hiddenValue(canvasElement, 'latitude')).not.toBe('')

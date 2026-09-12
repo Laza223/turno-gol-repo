@@ -44,7 +44,8 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       // colisión) → popover de alta rápida → el modal con el motivo vive detrás
       // de "Más opciones".
       await openQuickBookingPopover(page, '20:00')
-      await page.getByRole('button', { name: /Más opciones/ }).click()
+      // `exact`: la barra de la grilla tiene "Más opciones de la grilla" (#303).
+      await page.getByRole('button', { name: 'Más opciones', exact: true }).click()
 
       await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
       await expect(page.locator('#reason')).toHaveValue('phone')

@@ -7,7 +7,11 @@ import { cn } from '@/lib/utils'
 import { gridSlotVisual, slotPendingCents } from '@/lib/booking/slot-visual'
 import { holdExpiresAtIso, holdRemainingLabel } from '@/lib/booking/hold'
 import { formatArs } from '@/lib/format'
+import { useNowMsAfterHydration } from '@/hooks/use-now'
 import type { GridBooking } from './BookingGrid'
+
+/** Un tick por segundo: el contador muestra mm:ss. */
+const ONE_SECOND = 1000
 
 type BookingCardProps = {
   booking: GridBooking | null
@@ -65,21 +69,30 @@ function placement(col: number, row: number, span: number, rowOffset: number): R
  * Cuánto le queda al hold, en la celda de la grilla del staff (B15 / decisión
  * v2 D1: "marca «pagando ahora» en la grilla del staff").
  *
- * Es un componente propio, y no un valor calculado arriba, para que el
- * `setInterval` exista SOLO mientras hay un hold en pantalla: la grilla de un
- * sábado tiene decenas de celdas y ninguna otra necesita tickear.
+ * Es un componente propio, y no un valor calculado arriba, para que el reloj
+ * se suscriba SOLO mientras hay un hold en pantalla: la grilla de un sábado
+ * tiene decenas de celdas y ninguna otra necesita tickear.
  *
  * Sin esto el encargado leía "Esperando seña" sin saber si faltaban 10
  * segundos o si el jugador ya había abandonado — o sea, si atender el teléfono
  * del que llama por esa cancha o hacerlo esperar.
  */
 function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
+  // `0` hasta hidratar, igual que `ExpiryCountdown`. Antes arrancaba con
+  // `useState(() => Date.now())`: el servidor pintaba mm:ss con SU reloj y el
+  // cliente hidrataba con el suyo, así que el texto casi nunca coincidía y
+  // React tiraba "Hydration failed" y regeneraba la grilla ENTERA en el
+  // navegador cada vez que había una seña en curso a la vista.
+  const nowMs = useNowMsAfterHydration(ONE_SECOND)
+  if (nowMs === 0) {
+    return (
+      <span aria-hidden="true" className="tabular-nums whitespace-nowrap">
+        –:––
+      </span>
+    )
+  }
+
   const heldUntil = holdExpiresAtIso(createdAt)
-  const [nowMs, setNowMs] = React.useState(() => Date.now())
-  React.useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
   const remaining = holdRemainingLabel(heldUntil, nowMs)
   // Vencido por reloj: la fila sigue reteniendo la cancha hasta que la barre el
   // worker, así que no se dice "libre".

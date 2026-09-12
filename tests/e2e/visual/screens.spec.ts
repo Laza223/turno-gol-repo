@@ -121,7 +121,14 @@ test.describe('visual — admin', () => {
   test('settings de reservas @visual', async ({ page }) => {
     await suppressPushBanner(page)
     await page.goto('/settings/reservas')
-    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+    // Sin h1 desde el rediseño de Configuración (#306): por MASTER §6.8 la
+    // sección la nombran las pestañas de la barra superior. Se espera el título
+    // de la card, que llega del servidor, y las pestañas, que llegan por portal
+    // recién con la hidratación (ver waitForHeaderSlot, misma carrera).
+    await expect(page.getByRole('heading', { name: 'Políticas de Reserva' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Secciones de configuración' })).toBeVisible({
+      timeout: 15_000,
+    })
     // Formulario denso (switches, inputs numéricos, help text, botón sticky):
     // representa a todos los formularios del producto.
     await expect(page).toHaveScreenshot('admin-settings-reservas.png')

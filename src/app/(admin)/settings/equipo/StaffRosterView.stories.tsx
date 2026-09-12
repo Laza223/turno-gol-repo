@@ -28,6 +28,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   args: {
     staffUserId: ADMIN.staffUserId,
+    tournamentsEnabled: false,
     inviteAction: fn(async () => ({ success: true as const })),
     deactivateAction: fn(async () => ({ success: true as const })),
     resendInviteAction: fn(async () => ({ success: true as const })),
@@ -73,7 +74,9 @@ export const UnSoloMiembro: Story = {
   args: { members: [toRosterMember(ADMIN)] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('1 miembro del equipo activo')).toBeInTheDocument()
+    // Sin PageHeader propio (rediseño Equipo): el nombre de la vista lo dicen
+    // las pestañas portaladas, no un subtítulo con conteo acá.
+    await expect(canvas.getByRole('heading', { name: /qué ve cada persona/i })).toBeInTheDocument()
     await expect(canvas.queryAllByRole('button', { name: 'Opciones' })).toHaveLength(0)
   },
 }

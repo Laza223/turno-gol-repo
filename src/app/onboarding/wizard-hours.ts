@@ -3,8 +3,9 @@
 // estado inválido para horariosSchema y, peor, invisible para el motor de precios
 // (una madrugada sin flag = 0 celdas → día sin precio silencioso). Como es un
 // default que nadie eligió, se corrige a un default seguro: cierre 00:00
-// (medianoche, 100% cubrible). Quien cierra de madrugada lo elige explícitamente
-// con el toggle «Cierra después de medianoche».
+// (medianoche, 100% cubrible). Un complejo que sí cierra de madrugada lo carga
+// como tal en `ScheduleFields` y `closesNextDay` se DERIVA solo de ese horario
+// (rediseño de Configuración, 2026-09 — ya no hay un toggle que elegir).
 
 import { DAY_KEYS } from '@/shared/time/week-days'
 import type { LooseOpeningHours } from '@/lib/schedule/schedule-view'

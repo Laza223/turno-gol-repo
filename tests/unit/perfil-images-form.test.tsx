@@ -17,6 +17,9 @@ describe('PerfilImagesForm', () => {
   it('sin logo/portada muestra los dos dropzones vacíos', () => {
     render(
       <PerfilImagesForm
+        tenantName="Complejo La Redonda"
+        tenantAddress="Av. Pellegrini 1450"
+        tenantCity="Rosario"
         logoUrl={null}
         coverUrl={null}
         setImageAction={setImageAction}
@@ -30,6 +33,9 @@ describe('PerfilImagesForm', () => {
   it('con logo existente muestra la imagen y no el dropzone', () => {
     render(
       <PerfilImagesForm
+        tenantName="Complejo La Redonda"
+        tenantAddress="Av. Pellegrini 1450"
+        tenantCity="Rosario"
         logoUrl="https://media.turnogol.com/t1/logo-a.webp"
         coverUrl={null}
         setImageAction={setImageAction}

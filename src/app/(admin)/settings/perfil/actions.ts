@@ -129,20 +129,37 @@ export async function removeTenantImageAction(
   return { success: true }
 }
 
-export type UpdateTenantContactResult = { success: true } | { success: false; error: string }
-
 /**
  * Contacto público del complejo (B15): el wizard dejó de pedir teléfono/email
- * ahí (doc10 §2, se derivan de la cuenta staff al crear) — esta es la única
- * pantalla donde se pueden corregir después. Distinto de `updateUserEmailAction`
- * de acá abajo: ese es el email de LOGIN del staff (Supabase Auth, con
- * confirmación); este es un dato de contacto público del tenant, sin relación
- * con autenticación — un UPDATE directo alcanza.
+ * ahí (doc10 §2, se derivan de la cuenta staff al crear). Distinto de
+ * `updateUserEmailAction` de acá abajo: ese es el email de LOGIN del staff
+ * (Supabase Auth, con confirmación); este es un dato de contacto público del
+ * tenant, sin relación con autenticación.
+ *
+ * El submit real de producción es `updateTenantProfileAction` (abajo, fusiona
+ * contacto + ubicación). Este tipo sigue vivo porque `TenantContactForm.tsx`
+ * (componente standalone, sin consumidor de producción propio desde el
+ * rediseño de Configuración) y su story lo siguen usando para tipar su prop
+ * `action` — no hay una `updateTenantContactAction` real detrás.
  */
-export async function updateTenantContactAction(
-  _prevState: UpdateTenantContactResult,
+export type UpdateTenantContactResult = { success: true } | { success: false; error: string }
+
+export type UpdateTenantProfileResult = { success: true } | { success: false; error: string }
+
+/**
+ * Rediseño de Configuración → Perfil: fusiona `tenantContactSchema` +
+ * `tenantLocationSchema` en un solo submit ("Datos del complejo", un único
+ * botón "Guardar cambios") — antes eran dos forms con dos acciones y dos
+ * botones (`updateTenantContactAction`/`updateTenantLocationAction` abajo,
+ * que siguen existiendo tal cual: sus stories y `settings-perfil-actions.test.ts`
+ * los siguen ejercitando por separado). Valida cada mitad con su schema
+ * existente (sin duplicar reglas) y llama `updateTenant` una sola vez con el
+ * objeto combinado.
+ */
+export async function updateTenantProfileAction(
+  _prevState: UpdateTenantProfileResult,
   formData: FormData,
-): Promise<UpdateTenantContactResult> {
+): Promise<UpdateTenantProfileResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
@@ -150,16 +167,27 @@ export async function updateTenantContactAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const parsed = tenantContactSchema.safeParse({
+  const contactParsed = tenantContactSchema.safeParse({
     phone: formData.get('phone'),
     email: formData.get('email'),
     whatsapp: formData.get('whatsapp') ?? '',
   })
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  if (!contactParsed.success) {
+    return { success: false, error: contactParsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  await updateTenant(tenant.id, parsed.data)
+  const locationParsed = tenantLocationSchema.safeParse({
+    address: formData.get('address'),
+    city: formData.get('city'),
+    province: formData.get('province'),
+    latitude: formData.get('latitude') ?? '',
+    longitude: formData.get('longitude') ?? '',
+  })
+  if (!locationParsed.success) {
+    return { success: false, error: locationParsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  await updateTenant(tenant.id, { ...contactParsed.data, ...locationParsed.data })
   revalidatePath('/settings/perfil')
   revalidatePath(`/${tenant.slug}`)
   revalidatePublicListings()

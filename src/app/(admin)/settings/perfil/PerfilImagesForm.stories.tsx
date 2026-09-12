@@ -23,6 +23,9 @@ const meta = {
   component: PerfilImagesForm,
   parameters: { layout: 'padded' },
   args: {
+    tenantName: 'Complejo La Redonda',
+    tenantAddress: 'Av. Pellegrini 1450',
+    tenantCity: 'Rosario',
     removeImageAction: fn(async () => ({ success: true as const })),
   },
   decorators: [

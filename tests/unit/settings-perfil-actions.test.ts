@@ -31,6 +31,7 @@ import {
   removeTenantImageAction,
   updateUserEmailAction,
   updateTenantLocationAction,
+  updateTenantProfileAction,
 } from '@/app/(admin)/settings/perfil/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant, updateTenant } from '@/modules/tenants/tenant.service'
@@ -315,6 +316,69 @@ describe('updateTenantLocationAction', () => {
     it('respeta el rate limit', async () => {
       vi.mocked(adminRateLimited).mockResolvedValue('Demasiados intentos')
       const res = await updateTenantLocationAction(INITIAL, locationFormData())
+      expect(res.success).toBe(false)
+      expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+    })
+  })
+})
+
+/** Contacto + ubicación combinados: el submit único de "Datos del complejo". */
+function profileFormData(fields: Record<string, string> = {}) {
+  const fd = locationFormData(fields)
+  fd.set('phone', fields.phone ?? '+54 9 341 555-1234')
+  fd.set('email', fields.email ?? 'hola@laredonda.com.ar')
+  fd.set('whatsapp', fields.whatsapp ?? '')
+  return fd
+}
+
+describe('updateTenantProfileAction', () => {
+  it('manager no puede editar el perfil del complejo', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
+    const res = await updateTenantProfileAction(INITIAL, profileFormData())
+    expect(res.success).toBe(false)
+    expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+  })
+
+  describe('admin', () => {
+    beforeEach(() => {
+      vi.mocked(getStaffRole).mockResolvedValue('admin')
+    })
+
+    it('fusiona contacto + ubicación en un solo updateTenant (un solo submit, un solo Guardar)', async () => {
+      const res = await updateTenantProfileAction(INITIAL, profileFormData())
+      expect(res.success).toBe(true)
+      expect(vi.mocked(updateTenant)).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(updateTenant)).toHaveBeenCalledWith('tenant-1', {
+        phone: '+54 9 341 555-1234',
+        email: 'hola@laredonda.com.ar',
+        whatsapp: null,
+        address: 'Av. Corrientes 1234',
+        city: 'Rosario',
+        province: 'Santa Fe',
+        latitude: -32.9468,
+        longitude: -60.6393,
+      })
+      expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/perfil')
+      expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/demo')
+      expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-tenants')
+      expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-cities')
+    })
+
+    it('contacto inválido: no escribe nada, ni siquiera la mitad válida de ubicación (todo o nada)', async () => {
+      const res = await updateTenantProfileAction(INITIAL, profileFormData({ phone: '' }))
+      expect(res.success).toBe(false)
+      expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+    })
+
+    it('ubicación inválida: no escribe nada aunque el contacto sea válido (falla antes de aplicar cualquier mitad)', async () => {
+      const res = await updateTenantProfileAction(INITIAL, profileFormData({ latitude: '95' }))
+      expect(res.success).toBe(false)
+      expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
+    })
+
+    it('respeta el rate limit', async () => {
+      vi.mocked(adminRateLimited).mockResolvedValue('Demasiados intentos')
+      const res = await updateTenantProfileAction(INITIAL, profileFormData())
       expect(res.success).toBe(false)
       expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
     })

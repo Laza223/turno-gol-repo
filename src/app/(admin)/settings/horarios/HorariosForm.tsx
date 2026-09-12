@@ -27,26 +27,20 @@ export type UpdateHorariosAction = (
  */
 export function HorariosForm({
   hours,
-  closesNextDay,
   action,
 }: {
   hours: LooseOpeningHours
-  closesNextDay: boolean
   action: UpdateHorariosAction
 }) {
   const [state, formAction] = useActionState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
   const [view, setView] = useState<ScheduleView>(() => deriveScheduleView(hours))
-  const [nextDay, setNextDay] = useState(closesNextDay)
 
   return (
     <form action={formAction} onSubmit={() => setDidSubmit(true)} className="space-y-4">
-      <ScheduleFields
-        view={view}
-        onViewChange={setView}
-        closesNextDay={nextDay}
-        onClosesNextDayChange={setNextDay}
-      />
+      {/* Sin closesNextDay/onClosesNextDayChange: en /settings/horarios el flag
+          se deriva solo (Cambio 1, rediseño horarios) — no hay checkbox manual. */}
+      <ScheduleFields view={view} onViewChange={setView} />
 
       <div className="pt-2">
         <SubmitButton>Guardar horarios</SubmitButton>

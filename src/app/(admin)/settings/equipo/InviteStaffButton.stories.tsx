@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { PageHeader } from '@/components/admin/PageHeader'
-import { UserCog } from 'lucide-react'
 import { InviteStaffButton } from './InviteStaffButton'
 
 /**
- * En la página real (staff/page.tsx vía StaffRosterView) el botón vive en el
- * slot `actions` de PageHeader, sobre `.page-header-band` — se reproduce acá
- * porque es el único contexto en el que se usa (regla del contenedor real).
+ * En la página real (equipo/page.tsx) el botón cuelga del prop `actions` de
+ * `SettingsTabs`, que lo porta a `AdminHeaderSlot` — el hueco de la barra
+ * superior de 60px (`bg-card`, MASTER §6.8), no un `PageHeader`. Ese patrón
+ * de contenedor se cayó cuando la vista migró al armazón nuevo (rediseño de
+ * Configuración, 2026-09); se reproduce acá como una barra liviana en vez del
+ * portal real (Storybook no monta `#admin-header-slot`).
  */
 const meta = {
   title: 'Admin/Staff/InviteStaffButton',
@@ -18,12 +19,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PageHeader
-        title="Equipo"
-        subtitle="3 miembros del equipo activos"
-        icon={<UserCog className="h-6 w-6" aria-hidden="true" />}
-        actions={<Story />}
-      />
+      <div className="flex h-[60px] items-center gap-3 border-b border-border bg-card px-4">
+        <span className="min-w-0 flex-1" />
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof InviteStaffButton>

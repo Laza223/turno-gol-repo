@@ -8,7 +8,10 @@ import { suppressPushPrompt } from '../_qa/session'
  * `closes_next_day`).
  * Rol: solo Admin — `requireAdminStaffAction` (`actions.ts:19`).
  * Prereq: ninguno especial. Mock data (manual): horario general 18:00–23:00 +
- * Sábado personalizado 20:00–02:00 + "Cierra después de medianoche" ON.
+ * Sábado personalizado 20:00–02:00. `closes_next_day` ya no es un checkbox
+ * (rediseño de Configuración, 2026-09): se DERIVA solo — un cierre ≤ apertura
+ * en cualquier día abierto (Sábado 02:00 ≤ 20:00) alcanza para que el server
+ * persista `closes_next_day = true` sin que nadie lo tilde.
  * El seed (`scripts/seed-e2e.ts`) deja Sáb/Dom en modo 'custom' (09:00–23:00,
  * distinto del general lun-vie 08:00–23:00). H165: la fila arranca colapsada
  * igual que cualquier otra — hay que abrir su editor con "Personalizar" antes
@@ -76,8 +79,8 @@ test.describe('TG-HP-223 — Settings horarios: general + Sábado madrugada + d�
         await page.getByLabel('Sábado: abre').fill('20:00')
         await page.getByLabel('Sábado: cierra').fill('02:00')
 
-        // Día operativo: cierra después de medianoche (habilita el 20:00→02:00 de arriba).
-        await page.getByRole('checkbox', { name: /Cierra después de medianoche/ }).check()
+        // Día operativo: sin checkbox — el server deriva closes_next_day=true
+        // solo porque Sábado 02:00 ≤ 20:00 (ver comentario del describe, arriba).
 
         await page.getByRole('button', { name: 'Guardar horarios' }).click()
         await expect(page.getByText('Horarios guardados.')).toBeVisible({ timeout: 10_000 })

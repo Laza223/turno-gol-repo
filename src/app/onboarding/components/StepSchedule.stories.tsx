@@ -14,18 +14,6 @@ const guardando = pendingAction<Awaited<ReturnType<SaveWizardScheduleAction>>>({
 })
 
 /**
- * Abre "Excepciones y detalles avanzados" solo si está colapsado: el panel
- * arranca abierto cuando la vista ya trae config avanzada (días custom o
- * closesNextDay), y un click incondicional lo cerraría.
- */
-async function ensureAdvancedOpen(canvas: ReturnType<typeof within>) {
-  const trigger = canvas.getByRole('button', { name: 'Excepciones y detalles avanzados' })
-  if (trigger.getAttribute('aria-expanded') !== 'true') {
-    await userEvent.click(trigger)
-  }
-}
-
-/**
  * `useFormState` + Server Action por prop (mismo patrón que ReservasPolicyForm,
  * ver `src/app/(admin)/settings/reservas/ReservasPolicyForm.stories.tsx`).
  *
@@ -59,21 +47,16 @@ export const HorarioPorDefecto: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Fase 3 UX: el checkbox vive bajo "Excepciones y detalles avanzados"
-    // (ScheduleFields.tsx). El panel arranca abierto si la vista ya trae
-    // config avanzada (el fixture tiene días custom) — solo clickear si
-    // está colapsado.
-    await ensureAdvancedOpen(canvas)
-    await expect(
-      await canvas.findByRole('checkbox', { name: /cierra después de medianoche/i }),
-    ).not.toBeChecked()
     // El preview (WeekPreview, columna derecha en desktop / barra mobile) vive
     // dos veces en el DOM — mismo patrón que el indicador de progreso.
     await expect(canvas.getAllByText('Tu semana').length).toBeGreaterThan(0)
   },
 }
 
-/** Complejo que cierra la madrugada de viernes/sábado (día operativo). */
+/** Complejo que cierra la madrugada de viernes/sábado (día operativo) —
+ *  closesNextDay se DERIVA solo (sin checkbox, mismo cambio que
+ *  /settings/horarios): el aviso "Cerrás pasada la medianoche" aparece junto
+ *  a "Horario general" sin que nadie lo tilde. */
 export const CierraDespuesDeMedianoche: Story = {
   args: {
     hours: openingHoursClosesNextDay(),
@@ -82,10 +65,7 @@ export const CierraDespuesDeMedianoche: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await ensureAdvancedOpen(canvas)
-    await expect(
-      await canvas.findByRole('checkbox', { name: /cierra después de medianoche/i }),
-    ).toBeChecked()
+    await expect(await canvas.findByText(/Cerrás pasada la medianoche/i)).toBeInTheDocument()
   },
 }
 

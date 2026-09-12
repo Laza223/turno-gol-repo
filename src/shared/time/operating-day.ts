@@ -22,7 +22,7 @@ export const END_OF_DAY_MINS = 24 * 60
  * local so shared/time never imports from modules/. */
 type OpeningHoursLike = Record<string, { open: string; close: string; closed?: boolean }>
 
-function hhmmToMins(hhmm: string): number {
+export function hhmmToMins(hhmm: string): number {
   const [h, m] = hhmm.slice(0, 5).split(':').map(Number)
   return (h ?? 0) * 60 + (m ?? 0)
 }

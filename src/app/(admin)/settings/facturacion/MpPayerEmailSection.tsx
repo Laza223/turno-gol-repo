@@ -24,12 +24,20 @@ export function MpPayerEmailSection({
   currentEmail,
   ownerEmail,
   action,
+  anchorId = 'cuenta-mp',
 }: {
   /** Lo declarado explícitamente; null = todavía se cobra al email de la cuenta. */
   currentEmail: string | null
   /** El email de la cuenta del dueño, que es el default cuando no hay declarado. */
   ownerEmail: string | null
   action: UpdateMpPayerEmailAction
+  /**
+   * `undefined` = no poner id acá (evita un id duplicado cuando el ancla real
+   * ya vive en un contenedor externo, como el disclosure de
+   * /settings/facturacion). Default `'cuenta-mp'` para /reactivar, que monta
+   * esta sección sin envoltorio propio.
+   */
+  anchorId?: string
 }) {
   const [state, formAction] = useActionState(action, INITIAL)
 
@@ -47,7 +55,7 @@ export function MpPayerEmailSection({
   const effective = declared ?? ownerEmail
 
   return (
-    <section id="cuenta-mp" className="card-premium rounded-xl p-6 scroll-mt-24">
+    <section id={anchorId} className="card-premium rounded-xl p-6 scroll-mt-24">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
           <Wallet className="h-5 w-5" aria-hidden />

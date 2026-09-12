@@ -9,6 +9,7 @@ import { stepPath } from '@/modules/onboarding/onboarding.steps'
 import { useWizardNavigation } from './use-wizard-navigation'
 import {
   deriveScheduleView,
+  needsNextDayHint,
   type LooseOpeningHours,
   type ScheduleView,
 } from '@/lib/schedule/schedule-view'
@@ -37,19 +38,27 @@ type Props = {
  * excepciones" y mismos campos que /settings/horarios (ScheduleFields); los
  * defaults llegan saneados (sanitizeWizardHours) para que Continuar sin tocar
  * nada sea válido y 100% cubrible por el generador de precios del paso 3.
+ *
+ * `closesNextDay` (prop de entrada) solo alimenta el saneo inicial del
+ * horario — el checkbox manual que antes gobernaba el flag se sacó junto con
+ * el de /settings/horarios (mismo cambio, mismo motivo: el server siempre
+ * re-deriva en `horariosFormDataToInput`, así que un checkbox aparte podía
+ * quedar tildado distinto de lo que en verdad se iba a guardar). El preview
+ * (`WeekPreview`) y `ScheduleFields` corren en modo derivado, igual que
+ * /settings/horarios.
  */
 export function StepSchedule({ hours, closesNextDay, action }: Props) {
   const [state, formAction] = useActionState(action, INITIAL)
   const [view, setView] = useState<ScheduleView>(() =>
     deriveScheduleView(sanitizeWizardHours(hours, closesNextDay)),
   )
-  const [nextDay, setNextDay] = useState(closesNextDay)
+  const derivedClosesNextDay = needsNextDayHint(view, false)
   const navigate = useWizardNavigation()
 
   // F-019: el error del server quedaba en pantalla DESPUÉS de corregir el
-  // horario (o de activar "cierra después de medianoche"), así que el paso se
-  // leía como bloqueado cuando ya era válido. Misma clase que F-010. Cualquier
-  // cambio del formulario lo oculta; el próximo submit lo vuelve a decidir.
+  // horario, así que el paso se leía como bloqueado cuando ya era válido.
+  // Misma clase que F-010. Cualquier cambio del formulario lo oculta; el
+  // próximo submit lo vuelve a decidir.
   const [touchedSinceError, setTouchedSinceError] = useState(false)
   const showError = !state.success && !touchedSinceError
 
@@ -62,7 +71,7 @@ export function StepSchedule({ hours, closesNextDay, action }: Props) {
   return (
     <WizardShell
       previewTitle="Tu semana"
-      preview={<WeekPreview view={view} closesNextDay={nextDay} />}
+      preview={<WeekPreview view={view} closesNextDay={derivedClosesNextDay} />}
     >
       <div className="space-y-6">
         <div>
@@ -82,11 +91,6 @@ export function StepSchedule({ hours, closesNextDay, action }: Props) {
             onViewChange={(v) => {
               setTouchedSinceError(true)
               setView(v)
-            }}
-            closesNextDay={nextDay}
-            onClosesNextDayChange={(v) => {
-              setTouchedSinceError(true)
-              setNextDay(v)
             }}
           />
 

@@ -32,6 +32,43 @@ export type UpdateStaffRoleAction = (
   role: string,
 ) => Promise<StaffActionResult>
 
+/**
+ * "Reenviar invitación" visible en la fila `pending` (Cambio 2, rediseño
+ * Equipo) — antes solo vivía dentro del menú "..." de abajo. Se agrega ACÁ
+ * ADEMÁS del ítem del menú, no en su lugar: tests/e2e/staff-crud.spec.ts
+ * sigue buscando `getByRole('menuitem', { name: /Reenviar invitación/i })`.
+ */
+export function ResendInviteButton({
+  email,
+  resendInviteAction,
+}: {
+  email: string
+  resendInviteAction: ResendInviteAction
+}) {
+  async function handleResendInvite() {
+    const res = await resendInviteAction(email)
+    if (res.success) {
+      toast({ title: 'Invitación reenviada correctamente.', variant: 'success' })
+    } else {
+      toast({ title: res.error ?? 'No se pudo reenviar la invitación.', variant: 'destructive' })
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-11"
+      onClick={() => {
+        void handleResendInvite()
+      }}
+    >
+      Reenviar invitación
+    </Button>
+  )
+}
+
 interface StaffActionsProps {
   member: {
     memberId: string

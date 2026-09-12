@@ -379,7 +379,7 @@ test.describe('reservas — edge: no-show', () => {
 // TEST 5 — Quick action: confirm deposit payment inline from the list
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('reservas — quick action: confirmar pago inline', () => {
-  test('lista Hoy → "Confirmar pago" inline → badge Confirmada sin full reload @critical', async ({
+  test('lista Hoy → "Confirmar pago" inline → badge Señada sin full reload @critical', async ({
     browser,
     adminStorageState,
   }) => {
@@ -433,7 +433,10 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
 
       // After the server action + router.refresh() the same article re-renders
       // with the new status — no navigation, no reload.
-      await expect(article.getByText('Confirmada')).toBeVisible({ timeout: 10_000 })
+      // "Señada" y no "Confirmada": confirmar el pago deja el booking en
+      // `confirmed` + `deposit_status='paid'` (se verifica contra la DB unas
+      // líneas más abajo), y desde el 2026-09-12 el listado distingue las dos.
+      await expect(article.getByText('Señada')).toBeVisible({ timeout: 10_000 })
       await expect(article.getByText('Esperando seña')).not.toBeVisible()
       const marker = await page.evaluate(
         () => (window as unknown as Record<string, unknown>).__e2eNoReload,

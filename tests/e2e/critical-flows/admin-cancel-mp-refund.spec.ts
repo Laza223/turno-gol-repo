@@ -80,7 +80,10 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
       await expect(page.getByRole('heading', { name: 'Detalle de la reserva' })).toBeVisible({
         timeout: 15_000,
       })
-      await expect(page.getByText('Confirmada')).toBeVisible()
+      // "Señada" y no "Confirmada": el booking se sembró con
+      // `depositStatus: 'paid'` arriba, y desde el 2026-09-12 el listado y el
+      // detalle distinguen la seña paga de la reserva sin seña.
+      await expect(page.getByText('Señada')).toBeVisible()
 
       // Open the cancel dialog.
       await page.getByRole('button', { name: 'Cancelar' }).click()

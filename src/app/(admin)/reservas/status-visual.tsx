@@ -31,9 +31,10 @@ export const RESERVA_UNPAID_VISUAL: ReservaStatusVisual = {
  * archivo queda como el adaptador de la vista de listado — mantiene la firma
  * que ya consumían `BookingListItem` y `BookingDetailCard`.
  *
- * A diferencia de la grilla, el listado no distingue "Señada" de "Confirmada":
- * el detalle de la seña ya vive en la línea secundaria de cada ítem. Esa
- * divergencia la resuelve `bookingBadgeVisual`, no este archivo.
+ * El listado distingue "Señada" de "Confirmada" desde el 2026-09-12, igual que
+ * la grilla. Las colapsaba a propósito hasta entonces, con el argumento de que
+ * el detalle de la seña ya vivía en la línea secundaria de cada ítem. Quien
+ * resuelve eso es `bookingBadgeVisual`, no este archivo.
  *
  * `pending`/`totalPaid` son opcionales. Pasándolos, una `completed` que quedó
  * sin cobrar devuelve `unpaid: true` — el badge SIGUE diciendo "Jugada" y el

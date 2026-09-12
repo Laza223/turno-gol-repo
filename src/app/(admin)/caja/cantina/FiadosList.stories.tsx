@@ -37,13 +37,24 @@ const CONFIRMAR_COBRO = {
     accessibleName.startsWith('Cobrar') && !accessibleName.includes('todo en efectivo'),
 }
 
+/** Matchea el botón de la fila, que ahora lleva el monto adentro. */
+const COBRAR_FILA = { name: (accessibleName: string) => accessibleName.startsWith('Cobrar') }
+
 export const ConFiados: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(TABS[0]!.debtorName)).toBeVisible()
     await expect(canvas.getByText(TABS[1]!.debtorName)).toBeVisible()
-    // El segundo fiado tiene nota (canteenTabConNota).
-    await expect(canvas.getByText(TABS[1]!.note!)).toBeVisible()
+
+    // El monto viaja DENTRO del botón: cobrar es dos toques y el primero no
+    // debería obligar a leer la fila para saber cuánto se está por cobrar.
+    const cobrar = canvas.getAllByRole('button', COBRAR_FILA)
+    await expect(cobrar).toHaveLength(TABS.length)
+
+    // La nota del fiado NO se publica: es texto libre sobre una persona y cae
+    // bajo el derecho de acceso de la Ley 25.326. El segundo fiado del fixture
+    // (canteenTabConNota) tiene una cargada de antes, y aun así no se muestra.
+    await expect(canvas.queryByText(TABS[1]!.note!)).not.toBeInTheDocument()
   },
 }
 
@@ -51,7 +62,7 @@ export const SinFiados: Story = {
   args: { tabs: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Sin fiados pendientes.')).toBeVisible()
+    await expect(canvas.getByText('Nadie tiene fiado abierto.')).toBeVisible()
   },
 }
 
@@ -61,7 +72,7 @@ export const CobrarFiado: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const tab = TABS[0]!
 
-    await userEvent.click(canvas.getAllByRole('button', { name: 'Cobrar' })[0]!)
+    await userEvent.click(canvas.getAllByRole('button', COBRAR_FILA)[0]!)
     const dialog = within(await body.findByRole('dialog'))
     // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
     // el primer tick y toBeVisible() lo agarra en falso negativo (mismo idiom

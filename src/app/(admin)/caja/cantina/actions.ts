@@ -38,7 +38,10 @@ export type SettleTabActionResult =
 export type CancelTabActionResult = { success: true } | { success: false; error: string }
 
 function revalidateCaja(): void {
+  // Vender (catálogo y fiados abiertos), Cuentas (el cobro entra al diario y a
+  // los totales del día) y Productos (el stock bajó).
   revalidatePath('/caja')
+  revalidatePath('/caja/cuentas')
   revalidatePath('/caja/productos')
 }
 

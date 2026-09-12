@@ -6,20 +6,22 @@
  *
  * Fuente única de agregados (criterio de salida #5 del contrato): esta es la
  * ÚNICA función que arma el listado y el ÚNICO lugar donde se suma el total.
- * Todo lugar que muestre el número de "plata en la calle" (encabezado de
- * Caja, tab /caja/deudas) llama a getStreetMoney/sumStreetMoney — nunca
- * recalcula por su cuenta.
+ * Todo lugar que muestre el número de "plata en la calle" (la card de Deudas en
+ * /caja/cuentas, su lista, la pantalla "Hoy") llama a getStreetMoney/
+ * sumStreetMoney — nunca recalcula por su cuenta.
+ *
+ * Hubo una segunda ruta, `getStreetMoneyTotal`, que calculaba el mismo número
+ * en SQL sin traer las filas: existía para que la vieja raíz de /caja mostrara
+ * el total sin materializar la lista. Se eliminó con el rediseño de Caja
+ * (2026-09-12): la pantalla que muestra el total ahora muestra también la
+ * lista, así que ya no había nada que ahorrar y sí una duplicación de los
+ * predicados de los tres orígenes que había que mantener sincronizada a mano.
  */
-import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { getDebts } from '@/modules/bookings/booking.debts'
 import { listOpenTabs } from '@/modules/canteen/canteen-tab.service'
 import { listTenantInscriptionDebts } from '@/modules/tournaments/tournament-payment.service'
-import {
-  DEFAULT_STREET_MONEY_WINDOW,
-  streetMoneyCutoffDate,
-  type StreetMoneyWindow,
-} from './street-money-window'
+import { DEFAULT_STREET_MONEY_WINDOW, type StreetMoneyWindow } from './street-money-window'
 
 export type StreetMoneyOrigin = 'booking' | 'canteen_tab' | 'tournament'
 
@@ -139,107 +141,4 @@ export async function getStreetMoney(
 /** El número — pure, unit-testeable. Es EL total de "plata en la calle". */
 export function sumStreetMoney(rows: StreetMoneyRow[]): number {
   return rows.reduce((sum, r) => sum + r.pendingCents, 0)
-}
-
-export type StreetMoneyTotal = {
-  totalCents: number
-  /** Cuántas deudas lo componen. Para decir "12 deudas" sin traerlas. */
-  count: number
-}
-
-/**
- * El MISMO número que `sumStreetMoney(getStreetMoney(...))`, pero calculado en
- * Postgres sin traer una sola fila (B10).
- *
- * Por qué existe: `/caja` y la home solo muestran el TOTAL, y para eso estaban
- * materializando la lista entera de deuda impaga — tres queries sin `LIMIT`,
- * todas las filas a memoria, concatenadas y ordenadas en JS — en **cada carga**.
- * Y la deuda impaga no se estabiliza: crece con el uso del complejo, así que el
- * costo de la pantalla de plata crece con el negocio. `/caja/deudas` sigue
- * usando `getStreetMoney`, que es donde las filas de verdad se muestran.
- *
- * Los tres sumandos repiten los predicados de `getDebts`, `listOpenTabs` y
- * `listTenantInscriptionDebts`. Eso es duplicación real y el docstring de este
- * módulo advierte justamente contra tener dos lugares que calculen el total —
- * por eso no queda librada a la disciplina: `street-money-total.test.ts` siembra
- * los tres orígenes y falla si las dos rutas no dan exactamente lo mismo. La
- * duplicación pasa de riesgo silencioso a regresión que se ve.
- */
-export async function getStreetMoneyTotal(
-  tenantId: string,
-  tx: DbTx,
-  window: StreetMoneyWindow = DEFAULT_STREET_MONEY_WINDOW,
-): Promise<StreetMoneyTotal> {
-  // Los mismos tres cortes que aplica `getStreetMoney`, con la misma constante.
-  // Si esta ruta y la de la lista usaran ventanas distintas, el encabezado de
-  // /caja diría un número y /caja/deudas mostraría otro — que es exactamente lo
-  // que `street-money-total.test.ts` no deja pasar.
-  const cutoff = streetMoneyCutoffDate(window, new Date())
-  const bookingBound = cutoff ? sql`AND b.date >= ${cutoff}::date` : sql``
-  const tabBound = cutoff ? sql`AND created_at >= ${cutoff}::date` : sql``
-  const teamBound = cutoff ? sql`AND t.created_at >= ${cutoff}::date` : sql``
-
-  const rows = await tx.execute<{ total: string | number; count: string | number }>(sql`
-    WITH booking_debts AS (
-      SELECT (
-        b.price_snapshot
-        - (CASE WHEN b.deposit_status IN ('paid', 'captured') THEN b.deposit_amount ELSE 0 END)
-        - COALESCE(
-            SUM(cf.amount) FILTER (
-              WHERE cf.type = 'income'
-                AND cf.category = 'booking'
-                AND cf.description <> ('Seña — turno ' || b.id::text)
-            ), 0
-          )
-      ) AS pending
-      FROM bookings b
-      LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
-      WHERE b.tenant_id = ${tenantId}
-        AND b.status = 'completed'
-        ${bookingBound}
-      GROUP BY b.id
-      HAVING (
-        b.price_snapshot
-        - (CASE WHEN b.deposit_status IN ('paid', 'captured') THEN b.deposit_amount ELSE 0 END)
-        - COALESCE(
-            SUM(cf.amount) FILTER (
-              WHERE cf.type = 'income'
-                AND cf.category = 'booking'
-                AND cf.description <> ('Seña — turno ' || b.id::text)
-            ), 0
-          )
-      ) > 0
-    ),
-    tab_debts AS (
-      SELECT total_amount AS pending
-      FROM canteen_tabs
-      WHERE tenant_id = ${tenantId} AND status = 'open'
-        ${tabBound}
-    ),
-    team_debts AS (
-      SELECT (t.inscription_fee - COALESCE(SUM(cf.amount), 0)) AS pending
-      FROM tournament_teams t
-      LEFT JOIN cash_flows cf
-        ON cf.tournament_team_id = t.id AND cf.tenant_id = t.tenant_id
-      WHERE t.tenant_id = ${tenantId}
-        ${teamBound}
-      GROUP BY t.id
-      HAVING t.inscription_fee - COALESCE(SUM(cf.amount), 0) > 0
-    ),
-    todo AS (
-      SELECT pending FROM booking_debts
-      UNION ALL SELECT pending FROM tab_debts
-      UNION ALL SELECT pending FROM team_debts
-    )
-    SELECT COALESCE(SUM(pending), 0) AS total, COUNT(*) AS count FROM todo
-  `)
-
-  // SUM sobre integer devuelve bigint y COUNT(*) también: postgres-js los
-  // entrega como STRING (ver tests/unit/sql-number-type-honesty.test.ts). Sin
-  // este Number() el total se concatenaría al primer uso aritmético.
-  const row = [...rows][0]
-  return {
-    totalCents: Number(row?.total ?? 0),
-    count: Number(row?.count ?? 0),
-  }
 }

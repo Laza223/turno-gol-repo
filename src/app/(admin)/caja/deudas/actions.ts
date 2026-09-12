@@ -120,7 +120,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
     // `/deudas` era un stub de redirect: revalidarlo no refrescaba ninguna
     // lista real (🟢 de la auditoría 2026-08-01 §7). La lista viva es
     // `/caja/deudas`.
-    revalidatePath('/caja/deudas')
+    revalidatePath('/caja/cuentas')
     revalidatePath('/caja')
     revalidatePath('/reservas')
     revalidatePath(`/reservas/${bookingId}`)

@@ -41,6 +41,22 @@ function QtyChip({ qty }: { qty: number }) {
   )
 }
 
+/**
+ * Resumen del movimiento más reciente, para el encabezado del bloque plegado:
+ * "Gatorade −2 · Venta · 12/09 23:10".
+ *
+ * Un disclosure cuyo encabezado no dice qué hay adentro obliga a abrirlo para
+ * averiguar si valía la pena abrirlo. Con esto se sabe de un vistazo si pasó
+ * algo desde la última vez. Devuelve null sin movimientos: no hay nada que
+ * resumir y el encabezado no debe inventar una frase.
+ */
+export function lastMovementSummary(entries: StockLedgerEntry[]): string | null {
+  const last = entries[0]
+  if (!last) return null
+  const qty = last.qty > 0 ? `+${last.qty}` : `${last.qty}`
+  return `Último: ${last.productName} ${qty} · ${kindLabel(last)} · ${shortDate(last.occurredAt)}`
+}
+
 /** Últimos movimientos de stock (compras, ventas, mermas, ajustes) — tab Productos. */
 export function StockLedgerList({ entries }: { entries: StockLedgerEntry[] }) {
   if (entries.length === 0) {

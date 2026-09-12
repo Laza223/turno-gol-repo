@@ -1,7 +1,18 @@
 import { test } from '../fixtures'
 import { expectNoAxeViolations } from './_helpers'
 
-const ROUTES = ['/dashboard', '/grilla', '/reservas', '/caja', '/canchas', '/analiticas']
+const ROUTES = [
+  '/dashboard',
+  '/grilla',
+  '/reservas',
+  '/caja',
+  // Cuentas entra por derecho propio: es la pantalla donde el semáforo
+  // financiero se lee entero (verde, ámbar y rojo a la vez) y donde vive el
+  // grueso del texto sobre tinte de toda la sección.
+  '/caja/cuentas',
+  '/canchas',
+  '/analiticas',
+]
 
 test.describe('Admin routes a11y', () => {
   for (const route of ROUTES) {

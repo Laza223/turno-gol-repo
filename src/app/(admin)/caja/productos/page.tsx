@@ -1,5 +1,3 @@
-import { Banknote } from 'lucide-react'
-import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
 import { getLedger } from '@/modules/canteen/stock.service'
@@ -14,7 +12,7 @@ import { addDays } from '../caja-lib'
 import { requireCajaContext } from '../queries'
 import { CanteenReport } from './CanteenReport'
 import { ProductsTable } from './ProductsTable'
-import { StockLedgerList } from './StockLedgerList'
+import { StockLedgerList, lastMovementSummary } from './StockLedgerList'
 import {
   createProductAction,
   updateProductAction,
@@ -54,36 +52,40 @@ export default async function CajaProductosPage(props: {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Productos y stock"
-        subtitle="Catálogo, stock y reporte de la cantina."
-        icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
-      />
-
+      {/* MASTER §6.8: la vista no abre encabezado propio — ver settings/perfil. */}
       <CajaTabs active="/caja/productos" />
 
-      <ProductsTable
-        products={products}
-        canEditCatalog={role === 'admin'}
-        createProductAction={createProductAction}
-        updateProductAction={updateProductAction}
-        deactivateProductAction={deactivateProductAction}
-        registerPurchaseAction={registerPurchaseAction}
-        registerStockExitAction={registerStockExitAction}
-      />
+      {/* Catálogo y "qué se vende", lado a lado. El informe deja de estar
+          plegado: la pregunta que trae al dueño a esta pantalla una vez por
+          semana es justamente "¿qué sale y qué no?", y tenerla detrás de un
+          click la dejaba sin respuesta visible. El catálogo manda en ancho
+          porque es donde se actúa. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <ProductsTable
+          products={products}
+          canEditCatalog={role === 'admin'}
+          createProductAction={createProductAction}
+          updateProductAction={updateProductAction}
+          deactivateProductAction={deactivateProductAction}
+          registerPurchaseAction={registerPurchaseAction}
+          registerStockExitAction={registerStockExitAction}
+        />
 
-      {/* El catálogo de arriba es lo operativo; estos cuatro informes (ranking,
-          cobrado por método, por día, movimientos de stock) son ocasionales —
-          plegados por defecto para que el catálogo sea lo único visible sin
-          scrollear (H003, auditoría de coherencia 2026-09-09 §11). */}
+        <CanteenReport range={range} ranking={ranking} byMethod={byMethod} daily={daily} />
+      </div>
+
+      {/* El ledger sí se queda plegado: es trazabilidad, se consulta cuando un
+          número no cierra. El encabezado dice el último movimiento para saber,
+          sin abrirlo, si pasó algo desde la última vez. */}
       <Disclosure
-        heading="Informes de ventas y stock"
-        hint="Ranking de productos, cobrado por método, por día y movimientos de stock."
+        heading="Movimientos de stock"
+        hint={
+          lastMovementSummary(ledger) ??
+          'Compras, ventas, fiados y mermas de cada producto, con su fecha.'
+        }
+        hideHintOnMobile
       >
-        <div className="space-y-6">
-          <CanteenReport range={range} ranking={ranking} byMethod={byMethod} daily={daily} />
-          <StockLedgerList entries={ledger} />
-        </div>
+        <StockLedgerList entries={ledger} />
       </Disclosure>
     </div>
   )

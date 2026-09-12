@@ -1,41 +1,58 @@
 // @vitest-environment happy-dom
 /**
- * CajaTabs (clon de SettingsTabs, pattern /settings): 4 links con sus hrefs
- * y aria-current en el tab activo. Cantina pasó a ser la raíz (/caja) tras
- * eliminar "Caja del día".
+ * CajaTabs (clon de SettingsTabs, pattern /settings): 3 links con sus hrefs y
+ * aria-current en el tab activo.
+ *
+ * Tres destinos, no cuatro: el rediseño fusionó Deudas y Devoluciones en
+ * Cuentas, que es la única pantalla de Caja que muestra plata agregada.
  */
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import { ADMIN_HEADER_SLOT_ID } from '@/components/layout/admin-header-slot'
 import { CajaTabs } from '@/app/(admin)/caja/components/CajaTabs'
 
-afterEach(cleanup)
+// `CajaTabs` portea su contenido al hueco de la barra superior del panel
+// (MASTER §6.8). Sin ese nodo en el documento el componente renderiza null a
+// propósito, así que el test tiene que montarlo igual que hace el armazón.
+beforeEach(() => {
+  const host = document.createElement('div')
+  host.id = ADMIN_HEADER_SLOT_ID
+  document.body.appendChild(host)
+})
+
+afterEach(() => {
+  cleanup()
+  document.getElementById(ADMIN_HEADER_SLOT_ID)?.remove()
+})
 
 describe('CajaTabs', () => {
-  it('renderiza los 4 links con sus hrefs', () => {
+  it('renderiza los 3 links con sus hrefs', () => {
     render(<CajaTabs active="/caja" />)
-    expect(screen.getByRole('link', { name: 'Cantina' })).toHaveAttribute('href', '/caja')
-    expect(screen.getByRole('link', { name: 'Deudas' })).toHaveAttribute('href', '/caja/deudas')
-    expect(screen.getByRole('link', { name: 'Devoluciones' })).toHaveAttribute(
-      'href',
-      '/caja/devoluciones',
-    )
-    expect(screen.getByRole('link', { name: 'Productos y stock' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Vender' })).toHaveAttribute('href', '/caja')
+    expect(screen.getByRole('link', { name: 'Cuentas' })).toHaveAttribute('href', '/caja/cuentas')
+    expect(screen.getByRole('link', { name: 'Productos' })).toHaveAttribute(
       'href',
       '/caja/productos',
     )
   })
 
-  it('renombre 4.2: la tab de deuda dice "Deudas", no "Plata en la calle"', () => {
+  it('ya no ofrece Deudas ni Devoluciones como destinos propios', () => {
     render(<CajaTabs active="/caja" />)
-    expect(screen.getByRole('link', { name: 'Deudas' })).toHaveAttribute('href', '/caja/deudas')
+    expect(screen.queryByRole('link', { name: 'Deudas' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Devoluciones' })).toBeNull()
+    expect(screen.getAllByRole('link')).toHaveLength(3)
   })
 
   it('marca aria-current="page" solo en el tab activo', () => {
     render(<CajaTabs active="/caja" />)
-    expect(screen.getByRole('link', { name: 'Cantina' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Deudas' })).not.toHaveAttribute('aria-current')
-    expect(screen.getByRole('link', { name: 'Productos y stock' })).not.toHaveAttribute(
-      'aria-current',
-    )
+    expect(screen.getByRole('link', { name: 'Vender' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Cuentas' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Productos' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('marca Cuentas cuando es la pantalla activa', () => {
+    render(<CajaTabs active="/caja/cuentas" />)
+    expect(screen.getByRole('link', { name: 'Cuentas' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Vender' })).not.toHaveAttribute('aria-current')
   })
 })

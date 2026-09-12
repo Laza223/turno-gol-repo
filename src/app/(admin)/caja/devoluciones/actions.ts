@@ -86,7 +86,7 @@ export async function markRefundSettledAction(
 }
 
 function revalidateRefunds(): void {
-  revalidatePath('/caja/devoluciones')
+  revalidatePath('/caja/cuentas')
   revalidatePath('/caja')
   revalidatePath('/dashboard')
 }

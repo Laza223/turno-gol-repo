@@ -68,15 +68,22 @@ export function FiadosList({
     router.refresh()
   }
 
+  const pendingTotal = tabs.reduce((acc, t) => acc + t.totalAmount, 0)
+
   return (
     <div className="rounded-lg border border-border bg-card shadow-xs">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="font-medium text-foreground">Fiados pendientes</h2>
+      <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-3">
+        <h2 className="font-medium text-foreground">Fiados abiertos</h2>
+        {tabs.length > 0 && (
+          <span className="text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">
+            {tabs.length} · {formatArs(pendingTotal)}
+          </span>
+        )}
       </div>
 
       {tabs.length === 0 ? (
         <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-          Sin fiados pendientes.
+          Nadie tiene fiado abierto.
         </p>
       ) : (
         <ul className="divide-y divide-border">
@@ -84,21 +91,23 @@ export function FiadosList({
             <li key={tab.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{tab.debtorName}</p>
-                <p className="text-xs tabular-nums text-muted-foreground">
-                  {formatArs(tab.totalAmount)} ·{' '}
+                {/* Sin `tab.note`: era texto libre sobre una persona y dejó de
+                    pedirse al anotar el fiado (Ley 25.326). Las filas viejas la
+                    conservan en la base; esta pantalla ya no la publica. */}
+                <p className="text-xs text-muted-foreground">
                   {relativeTimeEs(tab.createdAt.toISOString(), nowMs)}
                 </p>
-                {tab.note && (
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{tab.note}</p>
-                )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                {/* El monto va DENTRO del botón: cobrar un fiado es dos toques y
+                    el primero no debería obligar a leer la fila para saber
+                    cuánto se está por cobrar. */}
                 <button
                   type="button"
                   onClick={() => setSettlingTab(tab)}
-                  className="h-11 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  className="h-11 whitespace-nowrap rounded-md bg-primary px-3 text-sm font-semibold tabular-nums text-primary-foreground transition-colors hover:bg-primary/90"
                 >
-                  Cobrar
+                  Cobrar {formatArs(tab.totalAmount)}
                 </button>
                 <button
                   type="button"

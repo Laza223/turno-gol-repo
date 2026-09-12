@@ -36,13 +36,18 @@ export const ComoAdmin: Story = {
   },
 }
 
-/** Como manager: sin botón de alta y sin "Editar"/"Pausar" en el menú de fila. */
+/**
+ * Como manager: sin botón de alta, sin "Editar" en la fila y sin "Pausar" en el
+ * menú. Repone stock, que es lo suyo.
+ */
 export const ComoManager: Story = {
   args: { canEditCatalog: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
     await expect(canvas.queryByRole('button', { name: /agregar producto/i })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Editar' })).toBeNull()
+    await expect(canvas.getAllByRole('button', { name: 'Reponer' }).length).toBeGreaterThan(0)
 
     const menuButtons = canvas.getAllByRole('button', { name: /Opciones para/i })
     await userEvent.click(menuButtons[0]!)
@@ -50,10 +55,29 @@ export const ComoManager: Story = {
     // visible (animación del portal) — findByRole solo espera existencia y
     // toBeVisible pelado flakea (gotcha dropdown Radix headless del repo).
     await waitFor(async () => {
-      await expect(await body.findByRole('menuitem', { name: 'Reponer' })).toBeVisible()
+      await expect(await body.findByRole('menuitem', { name: 'Salida de stock' })).toBeVisible()
     })
-    await expect(body.queryByRole('menuitem', { name: 'Editar' })).toBeNull()
     await expect(body.queryByRole('menuitem', { name: /pausar|reactivar/i })).toBeNull()
+  },
+}
+
+/**
+ * Las dos acciones de la visita semanal están en la fila, no escondidas en el
+ * menú "...". Ese menú queda solo con lo ocasional.
+ */
+export const AccionesALaVista: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(canvas.getAllByRole('button', { name: 'Reponer' }).length).toBe(PRODUCTS.length)
+    await expect(canvas.getAllByRole('button', { name: 'Editar' }).length).toBe(PRODUCTS.length)
+
+    await userEvent.click(canvas.getAllByRole('button', { name: /Opciones para/i })[0]!)
+    await waitFor(async () => {
+      await expect(await body.findByRole('menuitem', { name: 'Salida de stock' })).toBeVisible()
+    })
+    await expect(body.queryByRole('menuitem', { name: 'Reponer' })).toBeNull()
+    await expect(body.queryByRole('menuitem', { name: 'Editar' })).toBeNull()
   },
 }
 
@@ -66,14 +90,12 @@ export const SinProductos: Story = {
   },
 }
 
-/** El menú de fila abre "Reponer" (StockEntryDialog) para cualquier rol operativo. */
+/** "Reponer" abre el StockEntryDialog de esa fila, para cualquier rol operativo. */
 export const AbreReposicion: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    const menuButtons = canvas.getAllByRole('button', { name: /Opciones para/i })
-    await userEvent.click(menuButtons[0]!)
-    await userEvent.click(await body.findByRole('menuitem', { name: 'Reponer' }))
+    await userEvent.click(canvas.getAllByRole('button', { name: 'Reponer' })[0]!)
     // `findByRole` resuelve apenas el nodo EXISTE, no cuando está visible: el
     // diálogo entra con `data-[state=open]:animate-in fade-in-0` y aunque
     // `prefers-reduced-motion` la baje a 0.01ms (globals.css), la opacidad

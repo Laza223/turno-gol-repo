@@ -90,6 +90,7 @@ además de costoso es difícil de deshacer del todo.
 | Walkover / borrar resultado de partido                            | La tabla de posiciones se recalcula                                                                                                                                                                                                                   |
 | Impersonar un tenant (super-admin)                                | Qué puede ver/hacer mientras dura la impersonación                                                                                                                                                                                                    |
 | Cambiar plan / extender trial / resetear contraseña (super-admin) | Plan destino + precio, días de extensión, email del staff afectado                                                                                                                                                                                    |
+| Marcar una seña como devuelta                                     | Que no mueve plata en MercadoPago (la devolución la hace el complejo por fuera), que se anota como gasto del día si el medio fue efectivo o transferencia, y que no se puede deshacer                                                                   |
 
 ### Clase C — irreversible con plata real → type-to-confirm
 
@@ -99,7 +100,6 @@ confirmar). Reservado para lo que de verdad no tiene vuelta atrás.
 | Acción                                       | Frase a tipear       |
 | -------------------------------------------- | -------------------- |
 | Cancelar abonado                             | `CANCELAR`           |
-| Cerrar caja del día (inmutable)              | `CERRAR`             |
 | Quitar staff                                 | el email del staff   |
 | Super-admin: forzar estado / cancelar tenant | el nombre del tenant |
 
@@ -231,6 +231,12 @@ Antes de mergear un componente que toca plata o una acción destructiva:
 
 ## Historial
 
+- **1.1 (2026-09-12)** — Rediseño de Caja (`design-system/pages/caja.md` v2.0). Clase C pierde dos
+  filas: "Cerrar caja del día" murió con el subsistema entero el 2026-09-11
+  (`docs/decisions/2026-09-11-eliminar-caja-del-dia.md`), y **"marcar una seña devuelta" baja a
+  Clase B** por decisión del dueño — sigue siendo irreversible, así que las consecuencias se
+  muestran enteras, pero elegir el medio explícitamente y confirmar con un botón que dice el monto
+  ya son dos decisiones conscientes, y tipear en el mostrador es lo más caro que se puede pedir.
 - **1.0 (2026-08-01)** — Fase 0 de `docs/planning/2026-08-01-decisiones-de-fase-v2.md`. Cierra
   los 🔴 §4.1 (CTA de plata), §4.4 (input de monto), §4.5 (fricción inconsistente), §4.6 (copy
   muerto de `/verify`), §4.11 (ban manual, parcial), §4.12 (vacío contradictorio de torneos),

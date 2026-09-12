@@ -69,7 +69,15 @@ export type DaySummary = {
   /** Saldo neto del día: ingresos + ajustes - egresos. */
   balance: number
   byCategory: Partial<Record<CashFlowCategory, number>>
+  /** Neto por método (arqueo): un egreso resta del suyo. Sus partes suman `balance`. */
   byMethod: Partial<Record<CashPaymentMethod, number>>
+  /**
+   * Lo COBRADO por método: ingresos + ajustes, sin restar egresos. Sus partes
+   * suman exactamente `collected`, que es lo que permite mostrarlo como
+   * desglose dentro de la card "Cobrado hoy" de /caja/cuentas. `byMethod` no
+   * sirve ahí: contesta "cuánto quedó", no "cuánto entró y por dónde".
+   */
+  collectedByMethod: Partial<Record<CashPaymentMethod, number>>
 }
 
 export type CreateCashFlowInput = {

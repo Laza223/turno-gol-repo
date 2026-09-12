@@ -1,18 +1,22 @@
 /**
- * E2E — Cantina (raíz de /caja tras eliminar "Caja del día")
+ * E2E — Caja: Vender (raíz de /caja) y Cuentas (/caja/cuentas)
  *
- * 1. Ticket de Cantina/Bar (Fase 3, multi-ítem): cargar un producto en el
- *    catálogo (/caja/productos), venderlo con dos taps (tap producto x2 +
- *    Cobrar — sin diálogo intermedio, TicketPanel reemplazó a
- *    CanteenQuickSale) y verlo en la lista con la categoría "Cantina/Bar".
+ * Desde el rediseño de 2026-09-12, `/caja` es SOLO la pantalla de venta: el
+ * diario de movimientos, los totales y el alta manual de un movimiento viven
+ * en `/caja/cuentas`. Por eso cada test vende en `/caja` y verifica en
+ * `/caja/cuentas`.
+ *
+ * 1. Ticket de Cantina/Bar (multi-ítem): cargar un producto en el catálogo
+ *    (/caja/productos), venderlo con dos taps (tap producto x2 + Cobrar — sin
+ *    diálogo intermedio) y verlo en el diario con la categoría "Cantina/Bar".
  * 2. Ticket con 2 productos distintos: un solo "Cobrar" genera UN solo
- *    movimiento en /caja con la descripción de ambos y el monto sumado.
+ *    movimiento con la descripción de ambos y el monto sumado.
  * 3. "Agregar movimiento" con tipo "Gasto" (migr. 050: categorías específicas,
  *    auto-selecciona "Mercadería") registra el egreso y aparece en la lista
  *    con su badge y el monto en negativo.
- * 4. Fiado (Fase 4): anotar un ticket como fiado (en vez de cobrarlo), verlo
- *    en "Fiados pendientes", cobrarlo en efectivo y verlo desaparecer de la
- *    lista + aparecer como movimiento "Fiado cobrado — …" en /caja.
+ * 4. Fiado: anotarlo (en vez de cobrarlo), verlo en "Fiados abiertos",
+ *    cobrarlo en efectivo y verlo desaparecer de la lista + aparecer como
+ *    movimiento "Fiado cobrado — …" en Cuentas.
  */
 
 import { test, expect } from './fixtures'
@@ -60,9 +64,9 @@ test.describe('Caja redesign', () => {
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
 
-    // La venta aparece en "Movimientos del día", en la misma página — recarga
+    // La venta aparece en "Movimientos del día", que vive en Cuentas — recarga
     // completa para confirmar que persistió en DB, no solo en el estado local.
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
     // Anclar a la fila de la tabla desktop: getByText pelado puede resolver la
     // card mobile (oculta en viewport desktop) o el toast efímero.
     const saleRow = page
@@ -72,16 +76,14 @@ test.describe('Caja redesign', () => {
     await expect(saleRow).toBeVisible({ timeout: 10_000 })
     await expect(saleRow.getByText('Cantina/Bar', { exact: true })).toBeVisible()
 
-    // Reporte de cantina (Fase 7): la venta recién hecha aparece en el ranking
-    // de /caja/productos. Los cuatro informes viven plegados detrás de un
-    // disclosure cerrado por defecto (H003, auditoría de coherencia 2026-09-09
-    // §11) — hay que abrirlo antes de que el `<section>` se monte en el DOM.
-    // El `<section>` con aria-labelledby expone role "region" con el h2 como
-    // nombre accesible — lo usamos de ancla porque ProductsTable, más arriba
-    // en la misma página, también lista "Agua" y un getByText sin scope
+    // Reporte de cantina: la venta recién hecha aparece en el ranking de
+    // /caja/productos. Desde el rediseño el informe está DESPLEGADO —es la
+    // columna derecha de la pantalla, no un disclosure—, así que ya no hay que
+    // abrir nada. El `<section>` con aria-labelledby expone role "region" con
+    // su h2 como nombre accesible: lo usamos de ancla porque ProductsTable, al
+    // lado en la misma página, también lista "Agua" y un getByText sin scope
     // resolvería ambigüedad.
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: /Informes de ventas y stock/ }).click()
     const reportCard = page.getByRole('region', { name: /Ventas de cantina/ })
     await expect(
       reportCard.getByRole('heading', { name: /Ventas de cantina — últimos 7 días/ }),
@@ -115,7 +117,7 @@ test.describe('Caja redesign', () => {
 
     // ticketDescription() antepone "Cantina: " y junta las líneas con ", "
     // (canteen-sale.service.ts) — qty 1 no lleva sufijo "xN".
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
     const description = `Cantina: ${nameA}, ${nameB}`
     const rows = page.getByRole('row').filter({ hasText: description })
     await expect(rows).toHaveCount(1)
@@ -128,7 +130,9 @@ test.describe('Caja redesign', () => {
     adminStorageState,
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    // "Agregar movimiento" cuelga del encabezado de Cuentas: lo usan los dos
+    // roles pero pocas veces por semana, así que no compite con la venta.
+    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
 
     const description = `Gasto e2e ${Date.now()}`
     await page.getByRole('button', { name: /Agregar movimiento/ }).click()
@@ -179,17 +183,19 @@ test.describe('Caja redesign', () => {
 
     const tabDialog = page.getByRole('dialog')
     await expect(tabDialog).toBeVisible()
-    await tabDialog.getByLabel('Nombre').fill(debtorName)
+    // Una sola pregunta: el campo de nota libre se retiró (Ley 25.326).
+    await tabDialog.getByLabel('¿A nombre de quién?').fill(debtorName)
     await tabDialog.getByRole('button', { name: /^Anotar fiado/ }).click()
 
     await expect(page.getByText(`Fiado anotado — ${debtorName}`).first()).toBeVisible()
 
-    // Aparece en "Fiados pendientes" (mismo tab, tras el refresh del server component).
+    // Aparece en "Fiados abiertos" (mismo tab, tras el refresh del server component).
     const fiadoRow = page.locator('li').filter({ hasText: debtorName })
     await expect(fiadoRow).toBeVisible()
 
-    // Cobrarlo en efectivo (método default del diálogo).
-    await fiadoRow.getByRole('button', { name: 'Cobrar' }).click()
+    // Cobrarlo en efectivo (método default del diálogo). El botón de la fila
+    // lleva el monto adentro desde el rediseño: "Cobrar $ 400".
+    await fiadoRow.getByRole('button', { name: /^Cobrar/ }).click()
     const settleDialog = page.getByRole('dialog')
     await expect(settleDialog).toBeVisible()
     // `/^Cobrar/` matchearia tambien el atajo "Cobrar todo en efectivo" que
@@ -201,8 +207,8 @@ test.describe('Caja redesign', () => {
     // Desaparece de "Fiados pendientes": ya está 'paid', listOpenTabs no lo trae más.
     await expect(fiadoRow).toHaveCount(0)
 
-    // El cobro generó el movimiento en /caja (misma cash_flow de siempre).
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    // El cobro generó el movimiento, visible en Cuentas (misma cash_flow de siempre).
+    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
     const movementRow = page.getByRole('row').filter({ hasText: `Fiado cobrado — ${debtorName}` })
     await expect(movementRow).toBeVisible({ timeout: 10_000 })
   })

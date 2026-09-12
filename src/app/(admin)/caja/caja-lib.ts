@@ -6,6 +6,7 @@
 
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
+import { startLabelFromMins } from '@/shared/time/operating-day'
 import type { CashFlowCategory } from '@/modules/cashflow/cashflow.types'
 
 // ── Métodos de pago ──────────────────────────────────────────────────────────
@@ -152,6 +153,25 @@ export function mediumDateLabel(dateStr: string): string {
   const dayNum = d.toLocaleDateString('es-AR', { day: 'numeric', ...tz })
   const month = d.toLocaleDateString('es-AR', { month: 'long', ...tz })
   return `${weekday} ${dayNum} de ${month}`
+}
+
+/**
+ * Rótulo del día de trabajo: "vie 12 de septiembre" o, para un complejo que
+ * cierra pasada la medianoche, "vie 12 de septiembre · desde las 06:00".
+ *
+ * El día de Caja no es el del calendario: arranca en el corte nocturno del
+ * complejo (`nightCutoffMins`), así que una venta de la 01:00 cuenta para la
+ * noche anterior. Ese criterio no se veía en ningún lado y es lo que hace que
+ * los totales "no cierren" a ojo cuando el complejo trabaja de madrugada.
+ *
+ * Con `cutoffMins` 0 —la inmensa mayoría de los complejos— el día ES el
+ * calendario y la coletilla no aparece: ahí decir "desde las 00:00" no informa
+ * nada y agrega ruido a una pantalla que vive de leerse rápido.
+ */
+export function operatingDayLabel(dateStr: string, cutoffMins: number): string {
+  const base = mediumDateLabel(dateStr)
+  if (cutoffMins <= 0) return base
+  return `${base} · desde las ${startLabelFromMins(cutoffMins)}`
 }
 
 /** Hora ART en 24h §8.3 ("23:40"). Sin hourCycle explícito, algunos ICU

@@ -225,8 +225,8 @@ test.describe('Admin mobile smoke', () => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
     try {
-      // La venta rápida vive en /caja/cantina.
-      await page.goto('/caja/cantina', { waitUntil: 'networkidle' })
+      // La venta vive en la raíz de /caja ("Vender").
+      await page.goto('/caja', { waitUntil: 'networkidle' })
 
       // boundingBox con poll: el router.refresh() tras guardar puede detachar el
       // nodo entre el toBeVisible y la medición (boundingBox → null transitorio).
@@ -244,8 +244,6 @@ test.describe('Admin mobile smoke', () => {
       }
 
       // Botón de producto ≥44x44 (el admin vende parado en la barra, desde el celular).
-      // Apunta al catálogo completo, no a .first(): con ventas previas, "Recientes"
-      // aparece antes en el DOM y .first() mediría ese chip en vez del botón del catálogo.
       const product = page
         .getByTestId('canteen-catalog')
         .getByRole('button', { name: /^Agua/ })
@@ -253,21 +251,17 @@ test.describe('Admin mobile smoke', () => {
       await expect(product).toBeVisible()
       await measure(product, 'producto Agua')
 
-      // Rediseño Fase 3: sin diálogo — el tap agrega al ticket directo. Medir
-      // los controles reales del panel (+/−, chip de método, Cobrar).
+      // El tap agrega al ticket directo, sin diálogo. En el teléfono el panel
+      // del Ticket no se renderiza (`hidden md:flex`): lo reemplaza la barra de
+      // cobro pegada abajo, y ahí están los controles que hay que medir. La
+      // cantidad se sube tocando la tarjeta de nuevo, no con un +/−.
       await product.click()
       await expect(page.getByText('×1')).toBeVisible()
 
-      await measure(
-        page.getByRole('button', { name: 'Restar uno a Agua Mobile Smoke' }),
-        'Restar uno',
-      )
-      await measure(
-        page.getByRole('button', { name: 'Sumar uno a Agua Mobile Smoke' }),
-        'Sumar uno',
-      )
       await measure(page.getByRole('button', { name: 'Efectivo' }), 'Efectivo')
       await measure(page.getByRole('button', { name: /^Cobrar/ }), 'Cobrar')
+      await measure(page.getByRole('button', { name: 'Fiado' }), 'Fiado')
+      await measure(page.getByRole('button', { name: 'Vaciar' }), 'Vaciar')
     } finally {
       await ctx.close()
       await supabase.from('canteen_products').delete().eq('id', productId)
@@ -280,7 +274,8 @@ test.describe('Admin mobile smoke', () => {
   }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    // El alta manual de un movimiento cuelga del encabezado de Cuentas.
+    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
 
     // Click "Agregar movimiento" or similar trigger. UI text is "Agregar movimiento" per RegisterMovementModal title.
     // The trigger button (in caja page) might say "Registrar movimiento" or "Nuevo movimiento" — locate by accessible name fuzzy.

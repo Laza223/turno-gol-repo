@@ -40,11 +40,21 @@ type Props = {
   registerStockExitAction: RegisterStockExitAction
 }
 
-/** "$X · 45%" — margen = (precio − costo) / precio. null si no hay costo cargado. */
-function marginLabel(price: number, cost: number | null): string | null {
-  if (cost == null) return null
-  const margin = price > 0 ? Math.round(((price - cost) / price) * 100) : 0
-  return `${formatArs(cost)} · ${margin}%`
+/**
+ * Pausados al final y en gris: siguen existiendo (se reactivan desde el menú de
+ * la fila) pero no compiten con lo que se vende. Orden estable dentro de cada
+ * grupo — respeta el que trae `listProducts`.
+ */
+function activeFirst(products: CanteenProductRow[]): CanteenProductRow[] {
+  return [...products].sort((a, b) => Number(b.isActive) - Number(a.isActive))
+}
+
+/** Clases del botón "Reponer" — resaltado cuando el stock exige acción. */
+function reponerClass(tone: StockBadge['tone'] | null): string {
+  const base = 'inline-flex items-center rounded-md px-2.5 text-xs font-medium'
+  return tone === 'out' || tone === 'low'
+    ? `${base} border border-emerald-600 bg-primary/10 text-emerald-800 hover:bg-primary/15 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300`
+    : `${base} text-emerald-700 hover:bg-accent dark:text-emerald-400`
 }
 
 function StockCell({ badge }: { badge: StockBadge | null }) {
@@ -52,20 +62,6 @@ function StockCell({ badge }: { badge: StockBadge | null }) {
     return <span className="text-xs text-muted-foreground">Sin control (Servicio / Alquiler)</span>
   return (
     <span className={`text-xs font-medium ${stockBadgeToneClass(badge.tone)}`}>{badge.label}</span>
-  )
-}
-
-function StatusBadge({ isActive }: { isActive: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-        isActive
-          ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30'
-          : 'bg-muted text-muted-foreground ring-slate-500/20'
-      }`}
-    >
-      {isActive ? 'Activo' : 'Pausado'}
-    </span>
   )
 }
 
@@ -83,6 +79,8 @@ export function ProductsTable({
   const [editing, setEditing] = useState<CanteenProductRow | null>(null)
   const [entryProduct, setEntryProduct] = useState<CanteenProductRow | null>(null)
   const [exitProduct, setExitProduct] = useState<CanteenProductRow | null>(null)
+
+  const ordered = activeFirst(products)
 
   function openCreate() {
     setEditing(null)
@@ -168,15 +166,31 @@ export function ProductsTable({
         <ResponsiveList
           cards={
             <ul className="divide-y divide-border">
-              {products.map((p) => {
+              {ordered.map((p) => {
                 const badge = canteenStockBadge(p.stock, p.minStock)
                 return (
-                  <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <li
+                    key={p.id}
+                    className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                      badge?.tone === 'out' ? 'bg-red-50 dark:bg-red-500/10' : ''
+                    }`}
+                  >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
+                      <p
+                        className={`truncate text-sm font-medium ${
+                          p.isActive ? 'text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {p.name}
+                      </p>
                       <p className="text-xs tabular-nums text-muted-foreground">
                         {formatArs(p.price)}
-                        {badge ? ` · ${badge.label}` : ''}
+                        {badge ? ' · ' : ''}
+                        {badge && (
+                          <span className={`font-medium ${stockBadgeToneClass(badge.tone)}`}>
+                            {badge.label}
+                          </span>
+                        )}
                         {!p.isActive ? ' · Pausado' : ''}
                       </p>
                     </div>
@@ -184,15 +198,22 @@ export function ProductsTable({
                       <button
                         type="button"
                         onClick={() => setEntryProduct(p)}
-                        className="inline-flex h-11 items-center rounded-md px-2.5 text-xs font-medium text-emerald-700 hover:bg-accent dark:text-emerald-400"
+                        className={`h-11 ${reponerClass(badge?.tone ?? null)}`}
                       >
                         Reponer
                       </button>
+                      {canEditCatalog && (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(p)}
+                          className="inline-flex h-11 items-center rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                        >
+                          Editar
+                        </button>
+                      )}
                       <ProductRowMenu
                         product={p}
                         canEditCatalog={canEditCatalog}
-                        onEdit={openEdit}
-                        onEntry={setEntryProduct}
                         onExit={setExitProduct}
                         onTogglePause={togglePause}
                       />
@@ -203,23 +224,17 @@ export function ProductsTable({
             </ul>
           }
           table={
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[460px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
                   <th className="p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Nombre
+                    Producto
                   </th>
-                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="p-2.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Precio
                   </th>
                   <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Costo · margen
-                  </th>
-                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Stock
-                  </th>
-                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Estado
                   </th>
                   <th className="p-2.5 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Acciones
@@ -227,37 +242,58 @@ export function ProductsTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {products.map((p) => {
+                {ordered.map((p) => {
                   const badge = canteenStockBadge(p.stock, p.minStock)
-                  const margin = marginLabel(p.price, p.cost)
                   return (
-                    <tr key={p.id} className="transition-colors hover:bg-accent/50">
-                      <td className="p-2.5 pl-4 font-medium text-foreground">{p.name}</td>
-                      <td className="p-2.5 tabular-nums text-foreground">{formatArs(p.price)}</td>
-                      <td className="p-2.5 tabular-nums text-muted-foreground">{margin ?? '—'}</td>
+                    <tr
+                      key={p.id}
+                      className={`transition-colors hover:bg-accent/50 ${
+                        badge?.tone === 'out' ? 'bg-red-50 dark:bg-red-500/10' : ''
+                      }`}
+                    >
+                      <td
+                        className={`p-2.5 pl-4 font-medium ${
+                          p.isActive ? 'text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {p.name}
+                        {!p.isActive && (
+                          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                            (pausado)
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-2.5 text-right tabular-nums text-foreground">
+                        {formatArs(p.price)}
+                      </td>
                       <td className="p-2.5">
                         <StockCell badge={badge} />
                       </td>
-                      <td className="p-2.5">
-                        <StatusBadge isActive={p.isActive} />
-                      </td>
                       <td className="p-2.5 pr-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {/* "Reponer" a la vista, no solo adentro del menú "...": ya
-                              existe así en la card mobile (Nielsen #6, reconocimiento
-                              antes que recordar). */}
+                          {/* Reponer y Editar a la vista: son las dos acciones de la
+                              visita semanal, y esconderlas en un menú "..." obliga a
+                              recordar dónde estaban (Nielsen #6). Lo que exige acción
+                              —stock bajo o agotado— resalta el botón que la resuelve. */}
                           <button
                             type="button"
                             onClick={() => setEntryProduct(p)}
-                            className="inline-flex h-9 items-center rounded-md px-2.5 text-xs font-medium text-emerald-700 hover:bg-accent dark:text-emerald-400"
+                            className={`h-11 md:h-9 ${reponerClass(badge?.tone ?? null)}`}
                           >
                             Reponer
                           </button>
+                          {canEditCatalog && (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(p)}
+                              className="inline-flex h-11 items-center rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground md:h-9"
+                            >
+                              Editar
+                            </button>
+                          )}
                           <ProductRowMenu
                             product={p}
                             canEditCatalog={canEditCatalog}
-                            onEdit={openEdit}
-                            onEntry={setEntryProduct}
                             onExit={setExitProduct}
                             onTogglePause={togglePause}
                           />
@@ -296,18 +332,20 @@ export function ProductsTable({
   )
 }
 
+/**
+ * Lo ocasional y nada más: dar de baja stock (merma, cortesía, consumo) y
+ * pausar el producto. Reponer y Editar salieron de acá y viven en la fila —
+ * son las dos acciones de la visita semanal y esconderlas obligaba a recordar
+ * dónde estaban.
+ */
 function ProductRowMenu({
   product,
   canEditCatalog,
-  onEdit,
-  onEntry,
   onExit,
   onTogglePause,
 }: {
   product: CanteenProductRow
   canEditCatalog: boolean
-  onEdit: (p: CanteenProductRow) => void
-  onEntry: (p: CanteenProductRow) => void
   onExit: (p: CanteenProductRow) => void
   onTogglePause: (p: CanteenProductRow) => void
 }) {
@@ -326,21 +364,13 @@ function ProductRowMenu({
         <TooltipContent>Opciones</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem className="cursor-pointer" onSelect={() => onEntry(product)}>
-          Reponer
-        </DropdownMenuItem>
         <DropdownMenuItem className="cursor-pointer" onSelect={() => onExit(product)}>
-          Salida
+          Salida de stock
         </DropdownMenuItem>
         {canEditCatalog && (
-          <>
-            <DropdownMenuItem className="cursor-pointer" onSelect={() => onEdit(product)}>
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onSelect={() => onTogglePause(product)}>
-              {product.isActive ? 'Pausar' : 'Reactivar'}
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem className="cursor-pointer" onSelect={() => onTogglePause(product)}>
+            {product.isActive ? 'Pausar' : 'Reactivar'}
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

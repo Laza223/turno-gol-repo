@@ -104,6 +104,8 @@ export async function createCashFlowAction(
   }
 
   validateApiOutput(cashFlowResponseSchema, { data: cashFlow }, 'createCashFlowAction')
-  revalidatePath('/caja')
+  // El movimiento se ve en /caja/cuentas: ahí viven el diario del día y los
+  // totales. `/caja` (Vender) no muestra ninguno de los dos.
+  revalidatePath('/caja/cuentas')
   return { success: true, cashFlow }
 }

@@ -11,6 +11,17 @@ import { toast } from '@/hooks/use-toast'
 import type { CreateTabAction } from './TicketPanel'
 import type { TicketLine } from './ticket-lib'
 
+/**
+ * "Anotáselo al capitán": una sola pregunta, a nombre de quién.
+ *
+ * Ya no pide una nota libre. Era un campo de texto abierto sobre una persona,
+ * que es exactamente lo que la Ley 25.326 pone bajo el derecho de acceso del
+ * titular: lo que un cliente puede pedir y leer se controla en el origen, no
+ * después. Es la misma razón por la que se eliminó `abonados.notes`.
+ *
+ * La columna `canteen_tabs.note` sigue en la base con lo ya cargado; esta
+ * pantalla simplemente dejó de escribirla.
+ */
 export function TabDialog({
   open,
   onOpenChange,
@@ -28,7 +39,6 @@ export function TabDialog({
 }) {
   const router = useRouter()
   const [debtorName, setDebtorName] = useState('')
-  const [tabNote, setTabNote] = useState('')
   const [tabError, setTabError] = useState<string | null>(null)
   const [tabPending, startTabTransition] = useTransition()
   const [tabIdempotencyKey, setTabIdempotencyKey] = useState(() => crypto.randomUUID())
@@ -43,7 +53,6 @@ export function TabDialog({
   if (open && !lastOpen) {
     setLastOpen(true)
     setDebtorName('')
-    setTabNote('')
     setTabError(null)
     setTabIdempotencyKey(crypto.randomUUID())
   } else if (!open && lastOpen) {
@@ -68,7 +77,6 @@ export function TabDialog({
         const res = await createTabAction({
           debtorName: trimmedName,
           lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
-          note: tabNote.trim() || undefined,
           clientIdempotencyKey: tabIdempotencyKey,
         })
         if (res.success) {
@@ -94,7 +102,7 @@ export function TabDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="tab-debtor-name">Nombre</Label>
+            <Label htmlFor="tab-debtor-name">¿A nombre de quién?</Label>
             <Input
               id="tab-debtor-name"
               value={debtorName}
@@ -102,18 +110,7 @@ export function TabDialog({
               placeholder="ej: Capitán equipo 22hs"
               maxLength={80}
               disabled={tabPending}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="tab-note">Nota (opcional)</Label>
-            <textarea
-              id="tab-note"
-              value={tabNote}
-              onChange={(e) => setTabNote(e.target.value)}
-              rows={2}
-              disabled={tabPending}
-              placeholder="ej: paga el sábado que viene"
-              className="min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm"
+              autoFocus
             />
           </div>
           {tabError && (
@@ -129,6 +126,9 @@ export function TabDialog({
           >
             {tabPending ? 'Anotando…' : `Anotar fiado — ${formatArs(total)}`}
           </button>
+          <p className="text-xs text-muted-foreground">
+            El stock sale ahora. La plata entra cuando lo cobrás desde “Fiados abiertos”.
+          </p>
         </div>
       </DialogContent>
     </Dialog>

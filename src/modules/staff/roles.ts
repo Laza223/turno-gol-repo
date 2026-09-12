@@ -34,3 +34,38 @@ export const DEFAULT_INVITE_ROLE: StaffRole = 'manager'
 export const SETTINGS_ADMIN_ONLY_NOTICE = 'settings-admin-only'
 export const SETTINGS_ADMIN_ONLY_NOTICE_TITLE = 'No tenés acceso a Configuración'
 export const SETTINGS_ADMIN_ONLY_NOTICE_DESCRIPTION = 'Es solo del dueño del complejo.'
+
+/**
+ * "Espacios" del panel para la sección "Qué ve cada persona" de Equipo
+ * (`StaffRosterView.tsx`, rediseño Configuración → Equipo). Copia manual del
+ * mismo criterio `requiresAdmin` que ya aplica `NAV_ITEMS`/`CONFIG_ITEM` en
+ * `src/components/layout/admin-sidebar.tsx` — ese archivo es 'use client'
+ * (hooks de navegación) y no es importable desde un módulo de dominio, así
+ * que esta lista NO se deriva de ahí. Si se agrega, saca o resignifica un
+ * espacio del riel, actualizar esta lista a mano.
+ */
+export type StaffRoleSpace = {
+  label: string
+  /** Solo lo ve el rol admin (mismo criterio que `requiresAdmin` en admin-sidebar.tsx). */
+  adminOnly: boolean
+  /** Se omite del todo (ni check ni lock) si el feature flag 'tournaments' está apagado para el tenant. */
+  requiresTournaments?: boolean
+}
+
+export const STAFF_ROLE_SPACES: StaffRoleSpace[] = [
+  { label: 'Hoy', adminOnly: true },
+  { label: 'Grilla', adminOnly: false },
+  { label: 'Caja', adminOnly: false },
+  { label: 'Clientes', adminOnly: false },
+  { label: 'Canchas', adminOnly: true },
+  { label: 'Torneos', adminOnly: false, requiresTournaments: true },
+  { label: 'Métricas', adminOnly: false },
+  { label: 'Configuración', adminOnly: true },
+]
+
+/** Taglines cortas de la misma sección — presentación, no autorización (la
+ *  autorización real vive en requireAdminStaff/getStaffRole). */
+export const STAFF_ROLE_TAGLINES: Record<StaffRole, string> = {
+  admin: 'Todo el panel, incluida esta Configuración.',
+  manager: 'Opera el día a día. No toca precios ni configuración.',
+}

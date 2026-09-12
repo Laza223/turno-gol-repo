@@ -137,15 +137,24 @@ Cinco pestañas (`SettingsTabs.tsx`), todas bajo `src/app/(admin)/settings/`:
 | `/settings/equipo` | Equipo |
 | `/settings/facturacion` | Facturación |
 
-Dos cosas que el diseño puede no saber:
+**Bajo `settings/` hay más carpetas que pestañas, y las de más son redirects de compatibilidad.**
+No las conviertas en secciones: cada una se plegó a propósito.
 
 - **Canchas salió de Configuración** el 2026-09-10, a pedido del dueño: define el inventario y los
   precios, que es de lo que vive el complejo, y estaba enterrada a dos niveles. Hoy es un espacio de
-  primer nivel en el riel, `/canchas`. La carpeta `settings/canchas/` que todavía existe es un
-  redirect. No la traigas de vuelta adentro.
+  primer nivel en el riel, `/canchas`. `settings/canchas/` es un redirect. No la traigas de vuelta
+  adentro.
+- **Avisos se plegó dentro de Perfil** (H161): una sola preferencia no justificaba una pestaña
+  propia con la pantalla vacía alrededor. `settings/avisos/` es un redirect a `/settings/perfil`, y
+  a propósito no tiene tab, para no volver a duplicar la preferencia en dos lugares.
 - **El ítem del riel apunta a `/settings/reservas`, no a `/settings`.** Esa última es un stub cuyo
   único cuerpo es un `redirect`, y entrar por ahí costaba un render de servidor entero con su cadena
   de auth completa para después mandar al navegador a una segunda navegación.
+
+**El bloqueo al encargado es del layout, no de las páginas.** `settings/layout.tsx` llama a
+`requireAdminStaff()` y eso cubre todo `settings/*` por igual. `settings/canchas/page.tsx` usa
+`requireOperatorStaff()`, pero ese guard nunca llega a correr porque el del layout redirige antes
+(H163). Es una inconsistencia conocida y documentada: **no la "arregles"** desde esta tarea.
 
 Especificaciones de vista que aplican: `docs/spec/design-system/pages/horarios-precios.md` y
 `pages/staff.md`. No hay una `configuracion.md`: si el rediseño cambia la anatomía de la sección,

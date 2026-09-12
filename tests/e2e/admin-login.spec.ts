@@ -22,8 +22,11 @@ test.describe('admin login flow (email + password)', () => {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
     // "E2E Complejo Demo" vive en el nombre del sidebar, que en mobile queda
     // colapsado detrás del menú hamburguesa — no es contenido principal. El
-    // <h1> "Hoy" de PageHeader sí está en el contenido, en cualquier viewport.
-    await expect(page.getByRole('heading', { name: 'Hoy', level: 1 })).toBeVisible()
+    // encabezado del tablero sí está en el contenido, en cualquier viewport:
+    // el <h1> "Hoy" pasó a ser sr-only en el rediseño del 2026-09-12 (el riel
+    // y la barra superior nombran la vista), así que un assert de visibilidad
+    // sobre él mediría 1x1 px.
+    await expect(page.getByRole('heading', { name: 'Próximos turnos' })).toBeVisible()
   })
 
   test('with admin storageState, /dashboard renders', async ({ browser, adminStorageState }) => {
@@ -33,8 +36,11 @@ test.describe('admin login flow (email + password)', () => {
     await expect(page).toHaveURL(/\/dashboard/)
     // "E2E Complejo Demo" vive en el nombre del sidebar, que en mobile queda
     // colapsado detrás del menú hamburguesa — no es contenido principal. El
-    // <h1> "Hoy" de PageHeader sí está en el contenido, en cualquier viewport.
-    await expect(page.getByRole('heading', { name: 'Hoy', level: 1 })).toBeVisible()
+    // encabezado del tablero sí está en el contenido, en cualquier viewport:
+    // el <h1> "Hoy" pasó a ser sr-only en el rediseño del 2026-09-12 (el riel
+    // y la barra superior nombran la vista), así que un assert de visibilidad
+    // sobre él mediría 1x1 px.
+    await expect(page.getByRole('heading', { name: 'Próximos turnos' })).toBeVisible()
     await ctx.close()
   })
 

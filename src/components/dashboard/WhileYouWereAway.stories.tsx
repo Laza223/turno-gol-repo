@@ -48,10 +48,22 @@ const items: WhileAwayItem[] = [
 
 export const ConEventos: Story = {
   args: { items },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Mientras no estabas')).toBeVisible()
+    // El encabezado ya contesta sin desplegar nada: ése es el punto del
+    // rediseño del 2026-09-12.
+    await expect(
+      canvas.getByText('1 reserva online · 1 seña acreditada · 1 cancelación'),
+    ).toBeVisible()
+    // El default depende del viewport (abierto en escritorio, plegado en
+    // teléfono), así que la story no puede asumir uno: lleva el toggle al
+    // estado abierto y recién ahí cuenta.
+    const toggle = canvas.getByRole('button', { name: /Mientras no estabas/ })
+    if (toggle.getAttribute('aria-expanded') !== 'true') await userEvent.click(toggle)
     await expect(canvas.getAllByRole('link')).toHaveLength(3)
+    await userEvent.click(toggle)
+    await expect(canvas.queryAllByRole('link')).toHaveLength(0)
   },
 }
 
@@ -60,5 +72,8 @@ export const Vacio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Nada nuevo desde la última vez.')).toBeVisible()
+    // Sin eventos no hay nada que desplegar: el toggle queda inerte en vez de
+    // abrir una lista vacía.
+    await expect(canvas.getByRole('button', { name: /Mientras no estabas/ })).toBeDisabled()
   },
 }

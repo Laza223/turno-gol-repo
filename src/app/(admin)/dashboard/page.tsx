@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { LayoutDashboard } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
@@ -10,7 +9,7 @@ import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { WhileYouWereAway } from '@/components/dashboard/WhileYouWereAway'
 import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
 import { ProximosTurnos } from '@/components/dashboard/ProximosTurnos'
-import { PageHeader } from '@/components/admin/PageHeader'
+import { HoyHeaderSlot } from './HoyHeaderSlot'
 import { getChecklistState } from './queries'
 import {
   markPublicLinkSharedAction,
@@ -21,9 +20,8 @@ import {
 /** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
  * Armado por partes: el string completo del locale varía entre versiones de ICU
  * (coma, "de" incluido o no) y acá el formato es contrato de diseño. */
-function todayMediumArt(): string {
+function todayMediumArt(now: Date): string {
   const tz = { timeZone: 'America/Argentina/Buenos_Aires' } as const
-  const now = new Date()
   const weekday = now.toLocaleDateString('es-AR', { weekday: 'short', ...tz }).replace('.', '')
   const day = now.toLocaleDateString('es-AR', { day: 'numeric', ...tz })
   const month = now.toLocaleDateString('es-AR', { month: 'long', ...tz })
@@ -49,7 +47,11 @@ export default async function DashboardPage() {
   if (role !== 'admin') redirect('/grilla')
 
   const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
-  const date = operatingDateOf(new Date(), cutoffMins)
+  // Un solo reloj para todo el render: el día operativo y el "hace N min" de
+  // cada alerta tienen que salir del mismo instante, o una alerta creada entre
+  // las dos lecturas se dibuja con un relativo negativo.
+  const now = new Date()
+  const date = operatingDateOf(now, cutoffMins)
 
   const [data, checklistState] = await Promise.all([
     withTenantContext(tenant.id, (tx) =>
@@ -82,24 +84,40 @@ export default async function DashboardPage() {
       .length === 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {showTour && <DashboardTour action={markTourSeenAction} />}
 
-      <PageHeader
-        title="Hoy"
-        subtitle={todayMediumArt()}
-        icon={<LayoutDashboard className="h-6 w-6" aria-hidden="true" />}
-      />
+      {/* La banda `PageHeader` se fue (rediseño 2026-09-12): el riel ya dice
+          "Hoy" y la fecha cuelga del hueco de la barra superior, que es la
+          regla del armazón desde MASTER §6.8 y lo que ya hicieron la Grilla y
+          Configuración. En 375px eso devuelve ~110px a la primera pantalla.
+          El `<h1>` sigue existiendo para lectores de pantalla y para el
+          esquema de encabezados: lo que se eliminó es la FILA, no el título. */}
+      <HoyHeaderSlot dateLabel={todayMediumArt(now)} />
+      <h1 className="sr-only">Hoy</h1>
+
+      {/* ORDEN (rediseño 2026-09-12): lo que exige acción va primero y siempre
+          en el mismo lugar. Antes las alertas quedaban entre dos bloques de
+          lectura —lo crítico en el medio, justo lo que MASTER §9 (serial
+          position) dice que no—, así que a las 17:00, con el cliente parado en
+          el mostrador, el botón de cobrar aparecía después de scrollear el
+          tablero entero. Vacío, este bloque mide una línea de 44px y no
+          empuja nada. */}
+      <div className="card-entrance">
+        <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
+      </div>
 
       {showChecklist && (
-        <OnboardingChecklist
-          state={checklistState}
-          tenantSlug={tenant.slug}
-          appUrl={appUrl}
-          action={markPublicLinkSharedAction}
-          onDismiss={markChecklistDismissedAction}
-          staffRole={role}
-        />
+        <div className="card-entrance" style={{ animationDelay: '60ms' }}>
+          <OnboardingChecklist
+            state={checklistState}
+            tenantSlug={tenant.slug}
+            appUrl={appUrl}
+            action={markPublicLinkSharedAction}
+            onDismiss={markChecklistDismissedAction}
+            staffRole={role}
+          />
+        </div>
       )}
 
       {/* H010 (auditoría de coherencia, 2026-09-10): acá había tres tarjetas de
@@ -109,15 +127,11 @@ export default async function DashboardPage() {
           qué falta jugar, qué hay que resolver, y qué pasó sin el dueño. La
           ocupación sobrevive como subtítulo del bloque de turnos, que es el
           único lugar donde ese porcentaje significa algo. */}
-      <div className="card-entrance">
+      <div className="card-entrance" style={{ animationDelay: '120ms' }}>
         <ProximosTurnos courts={upcoming} occupancy={numbers.occupancy} dayIsClosed={dayIsClosed} />
       </div>
 
-      <div className="card-entrance" style={{ animationDelay: '80ms' }}>
-        <NeedsAttention items={needsAttention} />
-      </div>
-
-      <div className="card-entrance" style={{ animationDelay: '160ms' }}>
+      <div className="card-entrance" style={{ animationDelay: '180ms' }}>
         <WhileYouWereAway items={whileYouWereAway} />
       </div>
     </div>

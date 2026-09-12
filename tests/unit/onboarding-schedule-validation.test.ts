@@ -73,23 +73,22 @@ beforeEach(() => {
 })
 
 describe('saveWizardScheduleAction — horariosSchema canónico (pages/onboarding.md §4)', () => {
-  it('rechaza un día abierto con cierre <= apertura (sin flag de madrugada)', async () => {
+  it('acepta un día abierto con cierre <= apertura y deriva closes_next_day sin que nadie lo active', async () => {
+    // Rediseño de Configuración (2026-09): closes_next_day ya no es un
+    // checkbox que el usuario pueda olvidar activar — horariosFormDataToInput
+    // lo deriva siempre de los pares open/close (ver
+    // tests/unit/opening-hours-validation.test.ts). El caso que antes esta
+    // prueba rechazaba ("Lunes: el horario de cierre debe ser posterior...")
+    // ya no puede fallar: es justamente el error que el rediseño elimina.
     const res = await saveWizardScheduleAction(
       PREV,
       scheduleFormData({ mon: { open: '22:00', close: '08:00' } }),
     )
-    // F-019: el mensaje nombra la opción que resuelve el caso (el horario
-    // "abre 20:00 / cierra 02:00" es el más común del mercado objetivo, y sin
-    // esta pista el paso 2 se lee como "tu negocio no entra en el producto").
-    expect(res).toEqual({
-      success: false,
-      error:
-        'Lunes: el horario de cierre debe ser posterior al de apertura. Si cerrás después de medianoche, activá esa opción más abajo.',
-    })
-    expect(withTenantContext).not.toHaveBeenCalled()
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
+    expect(withTenantContext).toHaveBeenCalledTimes(1)
   })
 
-  it('la misma madrugada con «Cierra después de medianoche» es válida', async () => {
+  it('la misma madrugada mandando closes_next_day en el FormData también es válida (el server lo ignora e igual deriva true)', async () => {
     const res = await saveWizardScheduleAction(
       PREV,
       scheduleFormData({ mon: { open: '22:00', close: '02:00' } }, true),

@@ -1,254 +1,260 @@
 # Caja (admin) — spec de vista
 
-> **Nota de alcance (2026-08-27):** este doc cubre la pestaña `/caja` (raíz) en detalle — su
-> contenido seguía vigente contra el código real, no estaba "desactualizado" como tal. Lo que
-> faltaba era que `/caja` es hoy 1 de 5 pestañas (rediseño "Caja y Cantina", 2026-07-22); las otras
-> 4 (`/caja/deudas`, `/caja/devoluciones`, `/caja/cantina`, `/caja/productos`) se agregaron como
-> resumen en el §2.5 nuevo de abajo, sin el mismo nivel de detalle que el resto de este doc.
+> Complementa a `MASTER.md` (ley general). Acá viven las decisiones específicas de `/caja`.
+> Hermana de `pages/dashboard.md`, `pages/abonados.md` y `pages/staff.md`: misma convención `§N`,
+> mismos tokens, mismo semáforo financiero §2.5, mismo vocabulario §8.5.
+> Para INTERACCIÓN (cómo se confirma o se deshace algo) manda `gramatica-interaccion.md`.
 
-> Complementa a `MASTER.md` v2 (ley general). Acá viven las decisiones específicas de `/caja`.
-> Hermana de `pages/grilla.md`, `pages/dashboard.md` y `pages/horarios-precios.md` (2026-07-02):
-> mismos tokens, mismo semáforo financiero §2.5, mismo vocabulario §8.5, misma `PageHeader`/`StatCard`.
+**Versión:** 2.0 — 2026-09-12 (rediseño: tres destinos por audiencia — Vender · Cuentas · Productos;
+la pantalla de venta se queda solo con la venta, y todo lo agregado se muda a Cuentas)
+**Anterior:** 1.0 — 2026-07-02, con parche de alcance el 2026-08-27 (describía "Caja del día":
+navegación por fecha, arqueo y ritual de cierre, un subsistema que se eliminó entero el 2026-09-11)
+**Código:** `src/app/(admin)/caja/page.tsx` · `cuentas/page.tsx` · `productos/page.tsx` ·
+`components/{CajaTabs,CajaHeaderStats,Disclosure}.tsx` · `cantina/*` · `deudas/*` · `devoluciones/*` ·
+`caja-lib.ts` · `queries.ts`
+**Personalidad:** Admin ("El Mostrador") — densidad alta, motion ≤ 200 ms, cero decoración.
+
+---
 
 ## §0 Objetivo y anti-objetivo
 
-La Caja responde tres preguntas, en este orden de lectura (barrido en F):
+Caja es **dos cosas con dos dueños**, y ese es el eje de todo este documento:
 
-1. **¿Cuánto quedó?** — saldo neto del día, el número protagonista.
-2. **¿Cómo se compone?** — ingresos / egresos / por qué método entró.
-3. **¿Qué pasó?** — el diario de movimientos.
+- Una **caja registradora**. La usa Rodrigo (encargado), de pie, con una mano y con gente
+  esperando. Cada venta es un puñado de toques y se repite decenas de veces por noche.
+- Un **libro de cuentas**. Lo mira Marcelo (dueño), sentado, una o dos veces por día: cuánto entró,
+  quién le debe, qué tiene que devolver, qué pasó hoy.
 
-Y tiene un **ritual de cierre** (Peak-End §9): el último gesto del día del admin termina en un
-resumen verde e inmutable — "listo, todo bien" — no en un form mudo ni en un badge gris.
+Hasta la v1.0 convivían en la misma pantalla con el mismo peso, y el costo lo pagaba siempre el
+mismo: quien vende. La jerarquía ahora la fija la URL, no un modo ni un selector.
 
-Anti-objetivo: NO es Reportes (sin tendencias mensuales ni gráficos) y NO es contabilidad AFIP
-(ADR-011). Es la caja registradora del mostrador: plata del día, arqueo y cierre.
+**Anti-objetivo:** no es Reportes (sin tendencias mensuales) y no es contabilidad AFIP (ADR-011).
+Y **no vuelve a ser un ritual**: no hay apertura, cierre ni arqueo, y ningún movimiento de plata se
+bloquea nunca por el estado de la caja (ver `docs/decisions/2026-09-11-eliminar-caja-del-dia.md`).
 
-## §1 Problemas del diseño anterior
+## §1 Qué cambió en la v2.0, y por qué
 
-| # | Problema | Regla violada |
+| # | Qué se hizo | Por qué |
 |---|---|---|
-| 1 | Título `Caja — 2026-07-01` (ISO cara al usuario) | §8.3 (ISO prohibido) |
-| 2 | KPIs con formato propio (cards ad-hoc, no `StatCard`) | §6.4 (KPI = StatCard único) |
-| 3 | 3 `formatARS` locales duplicados (page, CloseDayButton, Canteen) | §8.2 / P0.2 (helper único) |
-| 4 | Dos CTAs sólidos compitiendo (verde "Agregar" + negro "Cerrar caja") | §6.2 (un primario por vista) |
-| 5 | Cierre con `variant="destructive"` (botón rojo) y resumen post-cierre gris `bg-muted` | §9 Peak-End (cierre = resumen verde) |
-| 6 | `divide-slate-100` / `border-slate-100` hardcodeados en la tabla (invisible en dark) | §6.1 (tokens) |
-| 7 | Hover de productos de cantina solo light (`hover:bg-emerald-50/50` sin par dark) | §2.2 |
-| 8 | `categoryLabel` no conocía `abonado_payment` → mostraba el enum crudo en la UI | §8.1 (cero anglicismos) |
-| 9 | Empty state mudo ("No hay movimientos registrados para este día.") | §7.2 (vacío didáctico) |
-| 10 | `p-6` propio sobre el `main` del shell (que ya da `px-4 py-8`) → doble padding | layout hermanos |
-| 11 | Modal de movimiento con 3 `<select>` (tipo/categoría/método): lento con guantes/celular | Hick + Fitts |
+| 1 | Cuatro pestañas → **tres destinos**: Vender (`/caja`), Cuentas (`/caja/cuentas`), Productos (`/caja/productos`) | Deudas y Devoluciones eran dos URLs para la misma pregunta —"¿qué plata está pendiente?"— mirada desde los dos lados |
+| 2 | `PageHeader` fuera de Vender | 120 px que no decían nada: el menú ya dice "Caja" y la pestaña activa dice "Vender" |
+| 3 | Los tres totales, el desglose por método y el diario del día se mudan de `/caja` a Cuentas | Quien vende no los mira, y ocupaban la mitad de la pantalla donde trabaja |
+| 4 | Barra de cobro pegada abajo en el teléfono, visible solo con ticket cargado | El botón de cobro quedaba debajo del catálogo, con scroll propio. Ahora no hay scroll para llegar a él |
+| 5 | Se elimina "Recientes / accesos rápidos" | Repetía el catálogo entero y, en mobile, empujaba la venta bajo el pliegue |
+| 6 | El buscador de productos aparece recién con 13 productos o más (`SEARCH_MIN_PRODUCTS`) | Con un catálogo chico buscar es más lento que tocar, y el campo solo empuja las tarjetas hacia abajo |
+| 7 | El desglose por método deja de estar plegado y entra dentro de la card "Cobrado hoy" | La pregunta y la respuesta juntas. Además pasó de **neto** a **cobrado**, ver §3 |
+| 8 | El monto viaja dentro del botón: "Cobrar $ 7.000" | El primer toque no debería obligar a leer la fila para saber cuánto se está por cobrar |
+| 9 | Se retira el campo de nota libre del fiado | Texto libre sobre una persona. Ley 25.326: lo que un cliente puede leer ejerciendo derecho de acceso se controla en origen, igual que con `abonados.notes` |
+| 10 | Marcar una seña devuelta deja de pedir la frase tipeada `DEVOLVER` | Pasa de Clase C a Clase B. Decisión del dueño: el método explícito y un botón que dice el monto ya son dos decisiones conscientes |
+| 11 | En Productos, el informe se despliega y Reponer/Editar salen del menú "…" | La pregunta semanal del dueño es "qué se vende"; esconderla detrás de un click la dejaba sin respuesta. Ver §2.3 |
 
-## §2 Anatomía
+### Lo que NO se repuso, y no se repone
+
+- **Apertura, cierre y arqueo.** Agregaban un paso diario que nadie hacía bien y, peor, bloqueaban
+  cobros con la caja "cerrada". `daily_cash_opens` / `daily_cash_closes` siguen en el schema con
+  datos históricos, **sin UI y sin escritura desde código de aplicación**. Los cierres viejos con
+  `expected_cash NULL` no se reinterpretan nunca.
+- **Navegación por fecha y diario de un día pasado.** Se perdieron con "Caja del día". El dato está
+  en la base; la pantalla, no. Reponerlo es una feature nueva, no una reactivación.
+- **Devolución automática por API.** TurnoGol no puede devolver plata: el permiso de reembolso de
+  MercadoPago solo funciona con la cuenta dueña de la aplicación. La devolución la hace el complejo
+  por fuera y el sistema solo registra que ya se hizo. Un botón que parezca ejecutarla es mentira.
+- **Catálogo de productos en `tenants.settings`.** Vive en tablas reales desde la migración 051.
+- **El efectivo esperado en el cajón.** Se calcula, no se muestra: es el arqueo con otro nombre.
+
+## §2 Anatomía — tres destinos
+
+La navegación interna es `CajaTabs` sobre `ScrollTabs` (MASTER §6.8: cada espacio resuelve su
+estructura con pestañas, nunca con submenús). Las tres comparten guard: `requireCajaContext()` en
+`../queries`, que envuelve `requireOperatorStaff` — **Caja también la usa el encargado**.
 
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│ [icon] Caja                    [← Anterior | Hoy | Siguiente →]    │ PageHeader
-│        Hoy — mié 2 de julio    [+ Agregar movimiento] [Cerrar caja]│ (primary + outline)
-├────────────────────────────────────────────────────────────────────┤
-│ ✦ Al final del día, cerrá la caja: guarda el resumen… [Entendido]  │ hint 1ª vez (§6)
-├────────────────────────────────────────────────────────────────────┤
-│ (si cerrada) ✔ Caja cerrada — el efectivo cuadró · 23:40           │ CierreCard verde (§5)
-├──────────────────────┬──────────────────────┬──────────────────────┤
-│ Saldo neto del día   │ Ingresos             │ Egresos              │ 3 StatCard (§3)
-│ $ 45.000,00          │ $ 52.000,00          │ $ 7.000,00           │
-│ ↑ +$ 5.000 vs ayer   │ ↑ +$ 4.000 vs ayer   │ ↑ +$ 1.000 vs ayer   │ (egresos: ↑ rojo)
-├──────────────────────┴──────────────────────┴──────────────────────┤
-│ Cantina/Bar (venta con un toque)                       [Configurar]│ solo día abierto
-├────────────────────────────────────────────────────────────────────┤
-│ Desglose por método   Efectivo $ X · Transf. $ Y · MP $ Z          │ strip (§4)
-├────────────────────────────────────────────────────────────────────┤
-│ Movimientos del día                                                │ tabla densa (§4)
-│ 21:30  Cancha 2 — Tomás   [Reserva]    Efectivo      +$ 25.000,00  │
-│ 20:15  Gatorade x2        [Cantina/Bar] MP           +$ 5.000,00   │
-│ 18:00  Hielo              [Gasto oper.] Efectivo     −$ 3.000,00   │
-└────────────────────────────────────────────────────────────────────┘
+┌─ AdminSidebar 240px ─┬─ AdminHeader 64px ──────────────────────┐
+│  Hoy                 │                          [total del día]│
+│  Grilla              ├─────────────────────────────────────────┤
+│ ▸Caja                │  [PageHeader]        ← solo en Cuentas y │
+│  Clientes            │                         Productos        │
+│  Canchas             │  Vender │ Cuentas │ Productos  ← CajaTabs│
+│  Métricas            │  ─────────────────────────────           │
+│                      │                                          │
+│  Configuración       │  (contenido del destino)                 │
+└──────────────────────┴──────────────────────────────────────────┘
 ```
 
-- Root: `<div className="space-y-6">` — el `main` del shell ya da `max-w-7xl px-4 py-8`
-  (mismo contrato que `dashboard`). Muere el `p-6` propio.
-- **PageHeader**: título "Caja", ícono `Banknote`, subtitle humano §8.3 con prefijo relativo:
-  `"Hoy — mié 2 de julio"` / `"Ayer — mar 1 de julio"` / `"mié 25 de junio"` (`cajaDateLabel`,
-  armado por partes como el dashboard — el string completo del locale varía entre ICUs).
-- **Nav de día**: segmented control de texto (`← Anterior · Hoy · Siguiente →`) — texto
-  auto-explicativo, cero deuda de tooltip (§7.4 aplica a icon-only). "Hoy" en emerald cuando
-  se está mirando hoy (`aria-current="date"`).
-- **Jerarquía de acciones** (fix #4): "+ Agregar movimiento" = **primario** (`bg-primary`, tokens
-  AA §2.4 — es la acción frecuente durante el día). "Cerrar caja" = **outline** (es una vez por
-  día; su peso lo pone el ritual, no el botón). Con caja cerrada ambos desaparecen (guard
-  existente intacto).
+### §2.1 Vender — `/caja`
 
-## §2.5 Tab bar y pantallas hermanas (agregado 2026-08-27 — el resto de este doc solo cubría la pestaña raíz `/caja`)
+Lo único que hay es vender y cobrar un fiado. Carga dos cosas: el catálogo (`listProducts`) y los
+fiados abiertos (`listOpenTabs`). No hay `PageHeader`, no hay totales, no hay diario.
 
-Desde el rediseño "Caja y Cantina" (2026-07-22, migrs. 048-051), `/caja` es una de **5 pestañas**
-(`CajaTabs`, `src/app/(admin)/caja/components/CajaTabs.tsx`, mismo patrón que `SettingsTabs`),
-todas bajo el mismo item de sidebar "Caja y Cantina". Este doc (§0-§9 de abajo) solo describe la
-primera; las otras 4 no tenían spec — resumen mínimo, no el detalle línea a línea de las demás
-secciones:
+- **Escritorio**: catálogo a la izquierda, **Ticket pegado a la derecha** (`lg:sticky`), fiados
+  abiertos debajo del catálogo.
+- **Teléfono**: el panel del Ticket **no se renderiza** (`hidden md:flex`). Lo reemplaza una barra
+  pegada abajo que aparece recién cuando hay algo en el ticket, con resumen, Vaciar, los tres
+  métodos, "Cobrar $ X" y "Fiado". Va a `bottom-[calc(3.5rem+env(safe-area-inset-bottom))]`, o sea
+  justo encima de `AdminBottomNav`.
+- **Nada se mueve de lugar** al tocar el primer producto: la barra entra en un espacio que antes no
+  ocupaba nadie.
+- El catálogo ya **no tiene scroll propio** (antes `max-h-[45vh]`). Competía con el scroll de la
+  página, y el botón de cobro se iba de pantalla al crecer el catálogo. Con la barra pegada abajo
+  ese recorte dejó de tener función.
+- Lo que ya está en el ticket se marca con **borde y fondo emerald además del contador ×N**: el
+  contador solo no se ve de reojo mientras se toca rápido (§1.4, nada comunica solo con color).
+- Agotado: la tarjeta queda deshabilitada **y lo dice con texto** ("Agotado"), no solo con opacidad.
 
-| Ruta | Label del tab | Qué muestra |
+### §2.2 Cuentas — `/caja/cuentas`
+
+El libro. `PageHeader` con el rótulo del día de trabajo como subtítulo y "+ Agregar movimiento"
+como acción. Debajo: los tres números, después Deudas y Devolvés lado a lado
+(`lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]` — Deudas manda en ancho: tiene más filas y más
+acción), y al final el diario del día a ancho completo.
+
+### §2.3 Productos — `/caja/productos`
+
+Catálogo a la izquierda y "qué se vende" a la derecha, con la misma proporción que Cuentas
+(`lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]`). El ledger de stock queda plegado abajo.
+
+- **El informe deja de estar plegado.** La pregunta que trae al dueño acá una vez por semana es
+  "¿qué sale y qué no?", y tenerla detrás de un click la dejaba sin respuesta visible. Es el único
+  lugar de toda la sección donde un gráfico se justifica.
+- **El ledger de stock sí sigue plegado**, porque es trazabilidad: se consulta cuando un número no
+  cierra. Su encabezado muestra el último movimiento (`lastMovementSummary`) para saber, sin
+  abrirlo, si pasó algo desde la última vez.
+- **Reponer y Editar están en la fila**, fuera del menú de tres puntos: son las dos acciones de la
+  visita semanal y esconderlas obliga a recordar dónde estaban. El menú queda con lo ocasional —
+  "Salida de stock" y "Pausar/Reactivar".
+- **Lo que exige acción es lo único que salta**: con stock bajo o agotado, "Reponer" pasa a botón
+  resaltado, y la fila agotada toma un fondo rojo tenue. El resto no se atenúa (atenuar para
+  destacar rompe AA, §9).
+- **Costo y margen salieron de la tabla** y viven en la hoja de edición, al lado de los dos números
+  que los forman: son un dato de decisión de precio, no de repaso de stock. La columna "Estado"
+  también se fue; los pausados se ordenan al final, en gris y con el rótulo "(pausado)".
+- El encargado entra a esta pantalla; lo que no puede es editar el catálogo
+  (`canEditCatalog={role === 'admin'}`, enforced de verdad en las tres actions con
+  `requireAdminStaffAction`). Reponer stock sí puede, y por eso "Editar" no le aparece en la fila.
+
+## §3 Los tres números — `CajaHeaderStats`
+
+Tres `MetricCard` en Cuentas, y **solo** en Cuentas. Perdieron su `href`: antes llevaban a la
+pestaña con el detalle, y ahora el detalle está en esa misma pantalla, más abajo.
+
+| Card | Fuente | Accent | Sub |
+|---|---|---|---|
+| Cobrado hoy | `summary.collected` | `emerald` siempre | desglose por método en el `footer` |
+| Deudas | `sumStreetMoney(rows)` | `amber` si > 0, `emerald` si 0 | "N pendientes de cobro" / "Nadie te debe nada" |
+| Devolvés | suma de `listPendingRefunds` | `red` si > 0, `emerald` si 0 | "N señas sin devolver" / "No debés ninguna seña" |
+
+**Decisión: el desglose muestra lo COBRADO por método, no el neto.** `summary.byMethod` resta los
+egresos de su propio método porque servía al arqueo; sus partes suman `balance`. Metido dentro de
+una card cuyo título dice "Cobrado hoy" eso sería una contradicción aritmética a la vista: los
+números de adentro no darían el número de arriba. Por eso `getDaySummary` devuelve además
+`collectedByMethod` (ingresos + ajustes, sin egresos), cuyas partes suman exactamente `collected`.
+`byMethod` se conserva: contesta otra pregunta y tiene su propio test de integración.
+
+**Decisión: cero en verde, con texto.** Cuando no hay deuda ni devoluciones pendientes las cards
+pasan a `emerald` y el sub lo dice en palabras. Es un premio, no un vacío — y el color nunca viaja
+solo (§1.4).
+
+**Decisión: el sub cuenta filas, no antigüedad.** "La más vieja hace 20 días" exigía un helper de
+humanización nuevo; la antigüedad ya está en cada fila de la lista, que está ordenada por eso
+mismo. El count es el dato accionable y sale de las filas que se listan abajo.
+
+## §4 Deudas y Devolvés — dos listas, nunca un neto
+
+Son las **dos direcciones opuestas** de la plata pendiente: lo que te deben y lo que debés. Se
+muestran juntas porque son la misma pregunta, y separadas porque restarlas rompería el invariante
+más protegido de esta sección.
+
+- El total de Deudas tiene **una sola fuente**: `src/modules/cashflow/street-money.service.ts`. Lo
+  leen esta pantalla, la lista de abajo y la pantalla "Hoy". Cuentas usa `sumStreetMoney` sobre las
+  MISMAS filas que lista, así que la card y la lista no pueden divergir: no hay dos cuentas, hay una.
+- Devolvés sale de `listPendingRefunds`, que deliberadamente **no** entra en `getStreetMoney`.
+- La ventana por defecto son los últimos 12 meses (`STREET_MONEY_DEFAULT_MONTHS`) y el rótulo lo
+  dice **siempre**, no solo cuando hay algo escondido: una pantalla de plata que muestra una
+  ventana sin decirlo se lee como "esto es todo lo que me deben". `?todas=1` trae la deuda entera.
+- Los links de WhatsApp y "ver el turno" de una deuda viven en su fila y en su diálogo de cobro. En
+  Devolvés, WhatsApp se queda en la fila: avisarle al jugador **es** la acción.
+
+## §5 El día de trabajo
+
+El día de Caja **no es el de las reservas**: usa un cutoff único por complejo (`nightCutoffMins`),
+no uno por día de la semana. Sale de `requireCajaContext()`, que ya calcula `cutoffMins` y `today`
+con `operatingDateOf`. Nunca se deriva con `new Date().toISOString().slice(0,10)` — entre las 21:00
+y la medianoche eso devuelve el día siguiente, y hay una regla de ESLint que lo bloquea.
+
+**Decisión: el rótulo del día se muestra, y solo cuando dice algo.** `operatingDayLabel` devuelve
+"jue 2 de julio" con cutoff 0 —la inmensa mayoría de los complejos— y "jue 2 de julio · desde las
+06:00" cuando el complejo cierra pasada la medianoche. Ese criterio no se veía en ningún lado y es
+lo que hace que los totales "no cierren" a ojo en un complejo que trabaja de madrugada. Con cutoff
+0, agregar "desde las 00:00" sería ruido en una pantalla que vive de leerse rápido.
+
+Ninguna pantalla de Caja navega por fecha: siempre es hoy.
+
+## §6 Diálogos y confirmaciones
+
+Clases según `gramatica-interaccion.md`. Ningún `window.confirm()`.
+
+| Acción | Clase | Cómo |
 |---|---|---|
-| `/caja` | Caja del día | Lo que describe el resto de este doc (KPIs, movimientos, cierre) |
-| `/caja/deudas` | Plata en la calle | Turnos jugados sin cobrar + fiados de cantina abiertos + cuotas de torneo impagas, en una lista con "Cobrar" por fila. Tenant-wide (no depende del día seleccionado en `/caja`) — misma fuente (`getStreetMoney`) que alimenta el número del encabezado perpetuo de `/caja`. Ventana por defecto: últimos 12 meses (`?todas=1` trae todo, B11). |
-| `/caja/devoluciones` | Devoluciones | Señas que el complejo TODAVÍA debe devolver — vive separada de "Plata en la calle" a propósito (son opuestos: lo que le deben al complejo vs. lo que el complejo debe; mezclarlos rompería el invariante que compara el total por dos caminos). El reembolso automático por API de MP se eliminó (403 siempre — ver CLAUDE.md), esta pantalla es donde el admin marca que ya devolvió una seña a mano. |
-| `/caja/cantina` | Cantina | Venta por ticket multi-ítem (un toque por producto) + fiados (`canteen_tabs`). |
-| `/caja/productos` | Productos y stock | Catálogo de productos, ledger de stock (`stock_movements`, reposición/mermas/consumo interno), y un reporte de ventas con rango 7/30 días. |
+| Anotar fiado | — | `Dialog` con **un** campo: a nombre de quién. Botón "Anotar fiado — $ X" |
+| Cobrar un fiado | B | `SplitPaymentFields`, con "Cobrar todo en efectivo" como atajo |
+| Anular un fiado | B | Motivo obligatorio. Devuelve el stock; la plata nunca se tocó |
+| Marcar seña devuelta | **B** | `ConfirmDialog` con `consequences`, chips de método (`RadioChipGroup`), botón "Marcar devuelta · $ X". **Sin frase tipeada** |
+| Registrar movimiento | — | `RegisterMovementModal`, chips de tipo y categoría |
 
-Las 5 comparten guard (`requireCajaContext`, en `../queries`) y renderizan `<CajaTabs active="...">`
-como segunda card bajo el `PageHeader` de cada una.
+**Decisión: "marcar devuelta" bajó de Clase C a Clase B.** Era el mismo trato que "Cerrar caja del
+día", un ancla que ya no existe. Sigue siendo irreversible, y por eso las consecuencias se muestran
+enteras —incluido que no mueve plata en MercadoPago y que se anota como gasto del día cuando el
+medio es efectivo o transferencia—, pero tipear una palabra en el mostrador es lo más caro que se
+le puede pedir a alguien. Las consecuencias salen del código de la action, no de memoria.
 
-## §3 KPIs — StatCard, semáforo §2.5
+**Decisión: el fiado pide una sola cosa.** El campo de nota se retiró y `note` salió del schema de
+la Server Action: no es que la UI lo esconda, es que ya no hay camino para escribirlo. La columna
+`canteen_tabs.note` sigue en la base con lo cargado antes y **la lista dejó de publicarlo**.
 
-Tres `StatCard` (formato único §6.4). Orden desktop: **Ingresos · Egresos · Saldo** (orden
-aritmético: A − B = C; el resultado cierra la fila — serial position §9). En mobile el saldo
-va primero y a lo ancho (`order-first col-span-2`): la pregunta №1 arriba del fold.
+## §7 Guided UX
 
-| Card | Accent/Ícono | Valor | Delta (coloreado) | Sub (muted) |
-|---|---|---|---|---|
-| Ingresos | `emerald` / `ArrowDownToLine` | income+adjustments, contable | vs ayer | vs prom. semanal |
-| Egresos | `red` / `ArrowUpFromLine` | expense, contable | vs ayer **invertido** | vs prom. semanal |
-| Saldo neto del día | `emerald` / `Wallet` + ring emerald sutil | balance; negativo = `−$…` rojo con signo | vs ayer | vs prom. semanal |
+El hint `tg-hint-caja-cierre` murió con el cierre de caja. No se reemplaza por otro: el vacío de
+Vender ("Cargá tus productos… y registrá cada venta con un toque") y el de Movimientos ya enseñan
+en el momento de la necesidad, que es la regla de MASTER §7.
 
-- **`StatCard.delta` gana `tone` opcional** (`positive|negative|neutral`): el glifo ↑/↓ dice qué
-  hizo el número, el color dice si es bueno o malo. Sin esto, "subieron los egresos" salía verde
-  (up=emerald hardcodeado). Backward-compatible: sin `tone`, deriva del direction como siempre.
-- El saldo es **el que grita** (§2.3): único con ring emerald (`ring-1 ring-emerald-600/20`) y
-  el único que puede ponerse rojo. Misma primitiva, énfasis por clase — el formato no se bifurca.
-- Delta se omite cuando `current === 0 && reference === 0` (tenant nuevo: "→ $ 0 vs ayer" ×3 es
-  ruido puro).
-- Deltas y subs **sin decimales** (`formatArs`): son comparativas, no asientos. Los valores sí
-  van contables (§7).
+## §8 Formato
 
-## §4 Desglose por método + movimientos
+`formatArs` de `@/lib/format` para todo monto (centavos enteros, sin decimales). El separador entre
+`$` y el número es un **espacio duro**: en tests hay que buscar por nodo, porque testing-library
+normaliza el texto del DOM pero no el matcher. Fechas en formato medio §8.3, nunca ISO. Horas en
+24h con `formatTimeArt`.
 
-**Strip de método** (card plana §6.4 — info de trabajo, no panel): grid de hasta 4 celdas en
-orden fijo Efectivo → Transferencia → MercadoPago → Otro (solo los presentes), cada una
-ícono + label + neto contable. Caption: "Neto del día: ingresos menos gastos por método."
-Es la referencia del arqueo — el número de "Efectivo" es el que se compara contra el cajón.
-Solo se renderiza si hubo movimientos.
+## §9 Accesibilidad y táctil
 
-**Movimientos** (tabla desktop / cards mobile):
+- **44 px de blanco táctil** en todo lo que se toca (`h-11 md:h-10`). Acá pesa más que en ninguna
+  otra pantalla: la venta se ejecuta de pie y con una mano.
+- Campos con `text-base md:text-sm` (§3.1): abajo de 16 px iOS hace zoom al enfocar.
+- Verde y rojo con los números de §2.4, no de memoria: `text-emerald-700` sobre cards y
+  `text-emerald-800` sobre el fondo de página en claro, `text-emerald-400` en oscuro; ámbar sobre
+  card `text-amber-800` / `dark:text-amber-300`. Nada de modificadores de opacidad sobre
+  `--muted-foreground`, que ya está calibrado al límite.
+- El estado de stock viaja con texto ("Agotado", "Quedan 3"), nunca solo con color.
 
-- Columnas: **Hora · Descripción · Categoría · Método · Monto** (diario cronológico; monto
-  right-align tabular). Densidad §6.6: `py-2.5`, `divide-border` (fix #6).
-- **Montos con signo y color SIEMPRE** (§2.5): egresos `−$ …` rojo; ingresos y ajustes `+$ …`
-  emerald (700 light / 400 dark). En una tabla mayormente verde, el gasto es el distinto que
-  salta (Von Restorff al servicio del control de costos).
-- Badges de categoría: Reserva (emerald) · Cantina/Bar (sky) · Gasto operativo (red) ·
-  Corrección por ausencia (amber) · Otro/Ajuste (muted).
-- Empty didáctico (fix #9), según estado del día:
-  - Día abierto: "Sin movimientos por ahora" + "Los cobros de reservas se registran solos.
-    Las ventas de cantina y los gastos se cargan desde los botones de arriba."
-  - Día cerrado: "Este día no tuvo movimientos."
+## §10 Contratos de test
 
-## §5 Cierre de caja — el peak-end
+- `tests/unit/caja-tabs.test.tsx` — tres destinos, sus hrefs y `aria-current`.
+- `tests/unit/caja-lib.test.ts` — `operatingDayLabel`, `methodBreakdown`, badges de stock, formato.
+- `tests/unit/admin-routes-reachable.test.ts` — lee `CajaTabs.tsx` como fuente de rutas.
+- `tests/unit/app-page-guard-chain.test.ts` — `deudas/` y `devoluciones/` están exentas por ser
+  redirects de compat, igual que `cantina/`.
+- Stories: `CajaHeaderStats` (el desglose y los tres estados de color), `TicketPanel`, `FiadosList`
+  (incluye que la nota del fiado **no** se publica), `ProductsTable`, `CanteenReport`.
+- Integración: `street-money-window.test.ts`, `street-money-consistency.test.ts`, `cashflow.test.ts`,
+  `canteen-*.test.ts`, `refund-lifecycle.test.ts`.
+- e2e: `tests/e2e/caja-redesign.spec.ts`.
 
-### Diálogo (ritual, no amenaza)
+## §11 Deuda declarada / fuera de scope
 
-- `ConfirmDialog` pasa de `variant="destructive"` a **`default`** (fix #5): cerrar el día no es
-  destruir — el guard de inmutabilidad ya lo pone el type-to-confirm `CERRAR` (que se mantiene,
-  contrato e2e `#confirm-phrase`).
-- **Actualizado (migr. 049, apertura de caja):** el diálogo pasó a 3 pasos numerados ("1. Esperado
-  — ya calculado" / "2. Contá e ingresá lo real" / "3. Confirmar"). El bloque "Esperado" suma, además
-  de Ingresos/Egresos/Saldo neto/"En efectivo según los movimientos" (`byMethod.cash`), **Fondo
-  inicial** (`daily_cash_opens.opening_cash`, si el día se abrió) y **Efectivo esperado**
-  (`openingCash + byMethod.cash`) — es contra ESTE número, no contra `byMethod.cash` a secas, que
-  compara `#declared`.
-- `#declared` opcional, diferencia ≠ 0 → warning amber **"Diferencia de $X con el efectivo
-  esperado: falta/sobra plata. La nota es obligatoria."** (texto actualizado; el test e2e ancla por
-  regex `/Diferencia/i`, no por el string exacto — contrato caja-crud #4 sigue intacto)
-  + `#close-note` obligatoria.
-
-### CierreCard (el artefacto)
-
-Al cerrar (`router.refresh()`), la vista abre con la **CierreCard**: card verde
-(`border-emerald-600/30 bg-emerald-600/5`, dark `bg-emerald-500/10`) primera bajo el header,
-`CheckCircle2` + título según resultado:
-
-**Actualizado (migr. 049):** `closeView()` (`caja-lib.ts`) bifurca por `expectedCash`. `NULL` (cierre
-legacy, pre-049) reproduce el comportamiento histórico exacto de la tabla original:
-
-| Caso (legacy, `expectedCash IS NULL`) | Título | Extra |
-|---|---|---|
-| Contó efectivo y cuadró (`diff === 0`, declaró) | "Caja cerrada — el efectivo cuadró" | — |
-| No declaró efectivo (`declaredCash === 0 && diff === balance`) | "Caja cerrada" | se ocultan las filas Efectivo/Diferencia (heurística: el server guarda 0 cuando no se declara — indistinguible de "declaró 0"; mostrar "dif. $ saldo" sería una alarma falsa) |
-| Diferencia anotada (`diff !== 0`) | "Caja cerrada — con diferencia anotada" | fila "Diferencia" amber + nota visible |
-
-Cierres NUEVOS (`expectedCash` no NULL — el día tuvo apertura de caja) usan mensajes distintos, y
-el `<dl>` suma las filas Fondo inicial/Efectivo esperado/Diferencia:
-
-| Caso (v2, `expectedCash` no NULL) | Título |
-|---|---|
-| `diff === 0 && declaredCash > 0` | "Caja cerrada — el efectivo cuadró" |
-| `declaredCash === 0` (sin arqueo) | "Caja cerrada — sin arqueo declarado" |
-| `diff > 0` (sobró plata) | "Caja cerrada — sobraron $X" |
-| `diff < 0` (faltó plata) | "Caja cerrada — faltaron $X" |
-
-Cuerpo: hora de cierre + `dl` Ingresos / Egresos / Saldo neto / Efectivo contado (+ diferencia)
-/ Nota. Subtítulo: "El día quedó bloqueado: los movimientos ya no se pueden tocar." La card ES
-la celebración del admin — resumen verde, sin confetti (presupuesto motion §5.2; la celebración
-animada es del jugador).
-
-Los KPIs siguen debajo (la card es el recibo inmutable; los KPIs traen la comparativa vs
-ayer/promedio). El pill "Caja cerrada" del header muere: lo dice la card, más grande y mejor.
-
-## §6 Guided UX
-
-- **Hint de primera visita** (cierra MASTER §13 P2.8): banda inline `role="note"` emerald suave
-  (mismo patrón/receta que la grilla), solo con la caja abierta:
-  _"Al final del día, cerrá la caja: guarda el resumen y bloquea los movimientos."_ + "Entendido".
-  `localStorage` key **`tg-hint-caja-cierre`**; arranca oculto y aparece post-mount (sin flash).
-- Un solo elemento de guía por pantalla (§7.1): el hint no convive con coachmarks nuevos.
-
-## §7 Modal "Agregar movimiento" — de selects a chips
-
-Tipo, categoría y método pasan de `<select>` a **chips botón** (`aria-pressed`, mismo patrón que
-el método de pago de la venta rápida de cantina): 1 tap por decisión, opciones visibles sin
-desplegar (Hick: son 3/≤3/4 opciones — caben todas), touch 44px (h-11).
-
-- **Tipo**: Ingreso · Gasto · Ajuste. Cambiar tipo re-selecciona la primera categoría válida
-  (contrato `VALID_COMBOS` del service).
-- **Categoría**: dinámica por tipo. Gasto tiene una sola ("Gasto operativo"): queda un único chip
-  auto-presionado — se lee como tag, no como decisión.
-- **Método**: Efectivo · Transferencia · MercadoPago · Otro (grid 2×2 en mobile).
-- Monto (`#cf-amount`, label "Monto (pesos)") y Descripción (`#cf-desc`) intactos, ids incluidos.
-- Receta chip (única en la app, compartida con cantina): activo
-  `border-emerald-600 bg-emerald-600/10 text-emerald-800 dark:border-emerald-500
-  dark:bg-emerald-500/15 dark:text-emerald-300`; inactivo `border-border bg-card
-  text-muted-foreground hover:bg-accent`. La venta rápida de cantina migra a esta misma receta.
-
-## §8 Formato (§8.2 normativa)
-
-- **Contable** (`formatArsContable`, nuevo en `lib/format` — fuente única): movimientos, totales
-  KPI, strip de método, diálogo y card de cierre → `$ 12.500,00`.
-- **Entero** (`formatArs`): precios de productos de cantina (son lista de precios, no asientos),
-  botón "Registrar venta", deltas/subs de KPI.
-- Mueren los 3 `formatARS` locales (P0.2 avanza).
-- Negativos SIEMPRE con signo `−` (U+2212) + color; los helpers reciben montos positivos y el
-  caller pone el signo (convención existente).
-
-## §9 Contratos de test
-
-- e2e `caja-crud`: #2/#3/#4 pasan sin cambios (nombres de botón, `#confirm-phrase`, `#declared`,
-  `#close-note`, textos "Diferencia"/"nota es obligatoria", "Caja cerrada" — ahora lo aporta la
-  CierreCard). #1 se actualiza a chips (click "Otro ingreso" en vez de `selectOption`).
-- e2e `caja-redesign`: cantina intacto; #2 usa chips ("Gasto" → chip "Gasto operativo"
-  `aria-pressed=true`).
-- mobile smoke: trigger `/movimiento/i` y touch targets de cantina intactos.
-- Unit nuevos: `caja-lib.test.ts` (fecha humana, breakdown, labels, deltas) y
-  `caja-render.test.tsx` (chips → payload correcto de la action; variantes de CierreCard).
-
-## §10 Deuda declarada / fuera de scope
-
-1. **RESUELTO (migr. 049, `daily_cash_opens` — apertura de caja):** este punto quedó saldado.
-   `diff_amount` de un cierre nuevo ya compara `declaredCash` contra `expectedCash` (=
-   `openingCash + byMethod.cash`, `daily-close.service.ts`), no contra el saldo total mezclando
-   métodos. Los cierres anteriores a la migración (`expected_cash IS NULL`) mantienen la semántica
-   vieja (`balance − declared`) — `closeView()` los bifurca, nunca se reinterpretan (ver §5).
-2. `EmptyState` y `ConfirmDialog` siguen con clases light hardcodeadas (P0.1 §13 — se tokenizan
-   en su propio barrido de primitives, no acá).
-3. El nombre de quién cerró (`closedBy`) no se muestra (solo hora): requiere join a
-   `staff_users`; con 2 roles y 1-2 personas por complejo, el valor es bajo. Post-v1 si duele.
-4. `occurredAtForDate` registra a mediodía ART en días pasados (existente, sin cambio).
-5. Realtime en caja: no (v1 — patrón dashboard: server-render por request).
+1. **Los fiados abiertos no muestran qué se llevó.** Las líneas existen en `stock_movements` con
+   `tab_id`, pero `listOpenTabs` no las trae y sumarlas es una query nueva por fila.
+2. **Cobrar dos fiados de la misma persona de una vez**, o sumar a un fiado abierto: hoy cada fiado
+   es un ticket separado. Unificarlos requiere una acción nueva.
+3. **MASTER §7.2 y §9 todavía usan "Cerrar caja"** como ejemplo canónico de coachmark y de
+   Peak-End. Son dos líneas que quedaron mintiendo desde el 2026-09-11; no se tocan acá porque
+   están fuera del alcance de este rediseño.
+4. **`/caja` no tiene foto de regresión visual.** Ningún canario de layout cubre esta sección.

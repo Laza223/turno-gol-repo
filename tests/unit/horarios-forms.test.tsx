@@ -66,7 +66,7 @@ const noopAction = vi.fn(async (): Promise<HorariosActionResult> => ({ success: 
 describe('HorariosForms — feedback (#19)', () => {
   it('HorariosForm muestra el error que devuelve la action', () => {
     formState.mockReturnValue({ success: false, error: 'Formato HH:MM' })
-    render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
+    render(<HorariosForm hours={{}} action={noopAction} />)
     expect(screen.getByRole('alert').textContent).toContain('Formato HH:MM')
   })
 
@@ -84,7 +84,7 @@ describe('HorariosForms — feedback (#19)', () => {
 
   it('sin error no renderiza ninguna alerta', () => {
     formState.mockReturnValue({ success: true })
-    render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
+    render(<HorariosForm hours={{}} action={noopAction} />)
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
@@ -96,7 +96,7 @@ describe('HorariosForms — feedback (#19)', () => {
       success: true,
       pricingFilled: { courts: 2, cells: 5 },
     })
-    render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
+    render(<HorariosForm hours={{}} action={noopAction} />)
     fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
     expect(screen.getByRole('status').textContent).toMatch(
       /Completamos 5 horarios sin precio en 2 canchas/,
@@ -105,7 +105,7 @@ describe('HorariosForms — feedback (#19)', () => {
 
   it('sin huecos que completar, el aviso de guardado no menciona precios', () => {
     formState.mockReturnValue({ success: true })
-    render(<HorariosForm hours={{}} closesNextDay={false} action={noopAction} />)
+    render(<HorariosForm hours={{}} action={noopAction} />)
     fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
     expect(screen.getByRole('status').textContent).toBe('Horarios guardados.')
   })
@@ -142,9 +142,10 @@ describe('HorariosPage — minDate en ART (regresión 05-horarios-mindate-utc)',
 
     // El cierre de HOY (ART 06-12) sigue en la lista — con el bug, minDate
     // caía en 06-13 y este filtro (`d >= minDate`) lo hacía desaparecer.
-    expect(screen.getByText(/12 de junio de 2026/)).toBeTruthy()
+    // Formato corto (chip compacto, Cambio 3 rediseño horarios): "12 de jun de 2026".
+    expect(screen.getByText(/12 de jun de 2026/)).toBeTruthy()
     // El cierre vencido (06-11, anterior a hoy ART) sigue filtrado de la lista.
-    expect(screen.queryByText(/11 de junio de 2026/)).toBeNull()
+    expect(screen.queryByText(/11 de jun de 2026/)).toBeNull()
 
     // El <input type="date"> de "Agregar día cerrado" acepta hoy en ART, no
     // un día adelantado por el reloj UTC del server.

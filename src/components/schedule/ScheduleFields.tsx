@@ -1,13 +1,14 @@
 'use client'
 
 import { Fragment, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Moon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
 import { DAY_KEYS, DAY_LABELS_LONG, type DayKey } from '@/shared/time/week-days'
 import { effectiveCloseMins, END_OF_DAY_MINS } from '@/shared/time/operating-day'
 import { effectiveDay, needsNextDayHint, type ScheduleView } from '@/lib/schedule/schedule-view'
@@ -15,23 +16,43 @@ import { effectiveDay, needsNextDayHint, type ScheduleView } from '@/lib/schedul
 type Props = {
   view: ScheduleView
   onViewChange: (view: ScheduleView) => void
-  closesNextDay: boolean
-  onClosesNextDayChange: (value: boolean) => void
+}
+
+/**
+ * Resumen legible de las excepciones por día respecto al horario general —
+ * summary del Collapsible en modo derivado (/settings/horarios):
+ * "Sábado 15:00–02:00 · Domingo cerrado". Sin excepciones, avisa que rige el
+ * horario general para los 7 días.
+ */
+function describeExceptions(view: ScheduleView): string {
+  const exceptions = DAY_KEYS.filter((day) => view.days[day].mode !== 'general')
+  if (exceptions.length === 0) return 'Todos los días con el horario general'
+  return exceptions
+    .map((day) => {
+      const d = view.days[day]
+      const label = DAY_LABELS_LONG[day]
+      return d.mode === 'closed' ? `${label} cerrado` : `${label} ${d.open}–${d.close}`
+    })
+    .join(' · ')
 }
 
 /**
  * Campos del form de horarios "general + excepciones" (pages/horarios-precios.md
  * §2), compartidos por /settings/horarios y el wizard de onboarding. Controlado:
  * el estado vive en el form contenedor. Expande los valores efectivos a los 7
- * días vía hidden inputs — los names `${day}_open/_close/_closed` +
- * `closes_next_day` son el contrato con horariosFormDataToInput().
+ * días vía hidden inputs — los names `${day}_open/_close/_closed` son el
+ * contrato con horariosFormDataToInput().
+ *
+ * `closesNextDay` (día operativo) ya NO es un campo editable acá: se DERIVA
+ * siempre de los pares open/close de los días (`deriveClosesNextDay` en
+ * opening-hours.schema.ts es quien realmente decide qué se persiste). El
+ * checkbox manual que existía existió hasta el rediseño de Configuración
+ * (2026-09) tanto acá como en el wizard de onboarding — se sacó de los dos
+ * lugares a la vez: un checkbox que el server podía terminar ignorando (si no
+ * coincidía con lo que los horarios cargados amerita) es peor que no tenerlo.
  */
-export function ScheduleFields({
-  view,
-  onViewChange,
-  closesNextDay,
-  onClosesNextDayChange,
-}: Props) {
+export function ScheduleFields({ view, onViewChange }: Props) {
+  const effectiveClosesNextDay = needsNextDayHint(view, false)
   function setGeneral(field: 'open' | 'close', value: string) {
     onViewChange({ ...view, general: { ...view.general, [field]: value } })
   }
@@ -78,13 +99,11 @@ export function ScheduleFields({
     })
   }
 
-  const showNextDayHint = needsNextDayHint(view, closesNextDay)
-
   // Disclosure progresivo solo para el caso virgen: si el complejo YA tiene
   // excepciones por día o cierre post-medianoche, esconder esa config detrás
   // de un click se leería como "¿dónde se fue mi horario?" — arranca abierto.
   const hasAdvancedConfig =
-    closesNextDay || DAY_KEYS.some((day) => view.days[day].mode !== 'general')
+    effectiveClosesNextDay || DAY_KEYS.some((day) => view.days[day].mode !== 'general')
 
   return (
     <>
@@ -130,26 +149,42 @@ export function ScheduleFields({
             />
           </div>
         </div>
-        {showNextDayHint && (
-          <p className="rounded-md bg-info/10 px-3 py-2 text-xs text-blue-800 dark:bg-info/15 dark:text-blue-300">
-            ¿Cerrás pasada la medianoche? Activá «Cierra después de medianoche» en «Excepciones y
-            detalles avanzados», más abajo.
+        {/* Sin checkbox que activar: esto es la explicación de lo que ya se
+            detectó en el horario cargado. */}
+        {effectiveClosesNextDay && (
+          <p
+            className={cn(
+              'flex items-start gap-2 rounded-md px-3 py-2 text-xs',
+              TONE_TINT.info,
+              TONE_TEXT.info,
+            )}
+          >
+            <Moon aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Cerrás pasada la medianoche: los turnos de la madrugada aparecen dentro del día
+              anterior, en la Grilla y en lo que ve el jugador.
+            </span>
           </p>
         )}
       </div>
 
       {/* Secundarios (Fase 3 UX, progressive disclosure): el caso común es el
-          horario general solo — las excepciones por día y el día operativo se
-          colapsan bajo un trigger. Los hidden inputs de arriba (valores
-          efectivos por día) quedan FUERA de este bloque a propósito: son el
-          contrato de persistencia con horariosFormDataToInput() y tienen que
-          serializar sin depender de que el usuario haya abierto el panel. */}
+          horario general solo — las excepciones por día (y, en modo manual, el
+          día operativo) se colapsan bajo un trigger. Los hidden inputs de arriba
+          (valores efectivos por día) quedan FUERA de este bloque a propósito:
+          son el contrato de persistencia con horariosFormDataToInput() y tienen
+          que serializar sin depender de que el usuario haya abierto el panel. */}
       <Collapsible defaultOpen={hasAdvancedConfig}>
         <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0">
-          Excepciones y detalles avanzados
+          <span className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+            <span>Excepciones por día</span>
+            <span className="truncate text-xs font-normal text-muted-foreground">
+              {describeExceptions(view)}
+            </span>
+          </span>
           <ChevronDown
             aria-hidden="true"
-            className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+            className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
           />
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-4 pt-4">
@@ -167,8 +202,8 @@ export function ScheduleFields({
               const eff = effectiveDay(view, day)
               const crossesMidnight =
                 !closed &&
-                closesNextDay &&
-                effectiveCloseMins(eff.open, eff.close, closesNextDay) > END_OF_DAY_MINS
+                effectiveClosesNextDay &&
+                effectiveCloseMins(eff.open, eff.close, effectiveClosesNextDay) > END_OF_DAY_MINS
               return (
                 <li
                   key={day}
@@ -293,24 +328,6 @@ export function ScheduleFields({
               )
             })}
           </ul>
-
-          {/* Día operativo: complejos que cierran después de medianoche. */}
-          <label className="flex items-start gap-3 rounded-md border border-border p-3">
-            <input
-              type="checkbox"
-              name="closes_next_day"
-              checked={closesNextDay}
-              onChange={(e) => onClosesNextDayChange(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-emerald-600"
-            />
-            <span className="text-sm">
-              <span className="font-medium text-foreground">Cierra después de medianoche</span>
-              <span className="block text-muted-foreground">
-                Activalo si algún día cerrás en la madrugada (ej. abrís 18:00 y cerrás 02:00). Esos
-                turnos cuentan como parte de la misma jornada (el día anterior).
-              </span>
-            </span>
-          </label>
         </CollapsibleContent>
       </Collapsible>
     </>

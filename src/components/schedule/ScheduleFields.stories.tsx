@@ -5,13 +5,13 @@ import { deriveScheduleView, type ScheduleView } from '@/lib/schedule/schedule-v
 import { openingHours, openingHoursClosesNextDay } from '@/test/fixtures/tenant'
 import { ScheduleFields } from './ScheduleFields'
 
-const ADVANCED_TRIGGER_NAME = 'Excepciones y detalles avanzados'
+const ADVANCED_TRIGGER_NAME = /Excepciones por día/i
 
 /**
- * Fase 3 UX (progressive disclosure): los días y el checkbox "Cierra después
- * de medianoche" viven colapsados bajo este trigger — pero el panel arranca
- * ABIERTO si la vista ya trae config avanzada (días custom/cerrados o
- * closesNextDay). Idempotente: solo clickea si está colapsado.
+ * Fase 3 UX (progressive disclosure): los días viven colapsados bajo este
+ * trigger — pero el panel arranca ABIERTO si la vista ya trae config
+ * avanzada (días custom/cerrados o `closesNextDay` derivado). Idempotente:
+ * solo clickea si está colapsado.
  */
 async function openAdvanced(canvas: ReturnType<typeof within>) {
   const trigger = canvas.getByRole('button', { name: ADVANCED_TRIGGER_NAME })
@@ -30,27 +30,17 @@ function virginView(): ScheduleView {
 }
 
 /**
- * Totalmente controlado (`view`/`onViewChange`, `closesNextDay`/`onClosesNextDayChange`):
- * se reproduce con un wrapper de estado local, igual que el form real de
- * /settings/horarios y el wizard de onboarding (StepSchedule).
+ * Totalmente controlado (`view`/`onViewChange`): se reproduce con un wrapper
+ * de estado local, igual que el form real de /settings/horarios y el wizard
+ * de onboarding (StepSchedule). `closesNextDay` ya no es prop del
+ * componente — se deriva siempre adentro de `ScheduleFields` a partir de
+ * `view` (rediseño de Configuración, 2026-09).
  */
-function Controlled({
-  initialView,
-  initialClosesNextDay = false,
-}: {
-  initialView: ScheduleView
-  initialClosesNextDay?: boolean
-}) {
+function Controlled({ initialView }: { initialView: ScheduleView }) {
   const [view, setView] = useState(initialView)
-  const [closesNextDay, setClosesNextDay] = useState(initialClosesNextDay)
   return (
     <div className="space-y-4">
-      <ScheduleFields
-        view={view}
-        onViewChange={setView}
-        closesNextDay={closesNextDay}
-        onClosesNextDayChange={setClosesNextDay}
-      />
+      <ScheduleFields view={view} onViewChange={setView} />
     </div>
   )
 }
@@ -59,14 +49,12 @@ const meta = {
   title: 'Admin/Settings/ScheduleFields',
   component: ScheduleFields,
   parameters: { layout: 'padded' },
-  // Los 4 props son requeridos y cada story usa `render` con su propio wrapper
+  // Los 2 props son requeridos y cada story usa `render` con su propio wrapper
   // controlado — este default solo satisface el tipo de `args` (CSF3 lo exige
   // cuando el componente no tiene props opcionales); el render real ignora estos valores.
   args: {
     view: deriveScheduleView(openingHours()),
     onViewChange: () => {},
-    closesNextDay: false,
-    onClosesNextDayChange: () => {},
   },
 } satisfies Meta<typeof ScheduleFields>
 
@@ -79,12 +67,11 @@ export const Default: Story = {
 }
 
 /**
- * Fase 3 UX (progressive disclosure): los días y "Cierra después de
- * medianoche" arrancan colapsados; "Horario general" queda siempre visible.
- * Click en el trigger los revela.
+ * Fase 3 UX (progressive disclosure): los días arrancan colapsados;
+ * "Horario general" queda siempre visible. Click en el trigger los revela.
  */
 export const ExcepcionesColapsadasPorDefecto: Story = {
-  name: 'Colapsado por defecto — click en "Excepciones y detalles avanzados" las revela',
+  name: 'Colapsado por defecto — click en "Excepciones por día" las revela',
   // Vista VIRGEN a propósito: el fixture openingHours() trae viernes/domingo
   // custom, y con config avanzada el panel arranca abierto (ver story siguiente).
   render: () => <Controlled initialView={virginView()} />,
@@ -94,12 +81,10 @@ export const ExcepcionesColapsadasPorDefecto: Story = {
     // forceMount: los campos quedan en el DOM (deben serializar en FormData
     // aun colapsados) pero no visibles hasta abrir el panel.
     await expect(canvas.getByLabelText(/Lunes abierto/)).not.toBeVisible()
-    await expect(canvas.getByLabelText(/^Cierra después de medianoche/)).not.toBeVisible()
 
     await openAdvanced(canvas)
 
     await expect(await canvas.findByLabelText(/Lunes abierto/)).toBeVisible()
-    await expect(canvas.getByLabelText(/^Cierra después de medianoche/)).toBeVisible()
   },
 }
 
@@ -164,36 +149,17 @@ export const DiaCerrado: Story = {
   },
 }
 
-/** Cierra pasada la medianoche sin el flag activado: banner de sugerencia. */
-export const HintMadrugada: Story = {
-  render: () => (
-    <Controlled
-      initialView={deriveScheduleView(openingHoursClosesNextDay())}
-      initialClosesNextDay={false}
-    />
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Cerrás pasada la medianoche/)).toBeInTheDocument()
-  },
-}
-
-/** Con el flag activado: el banner desaparece (el hint ya no aplica). */
+/**
+ * Cierra pasada la medianoche: `closesNextDay` se DERIVA solo de los pares
+ * open/close (sin checkbox, rediseño de Configuración 2026-09) — el aviso
+ * "Cerrás pasada la medianoche" aparece junto a "Horario general" sin que
+ * nadie active nada.
+ */
 export const CierraDespuesDeMedianoche: Story = {
-  render: () => (
-    <Controlled
-      initialView={deriveScheduleView(openingHoursClosesNextDay())}
-      initialClosesNextDay
-    />
-  ),
+  render: () => <Controlled initialView={deriveScheduleView(openingHoursClosesNextDay())} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openAdvanced(canvas)
-    // El <label> nativo envuelve el checkbox + el título + la descripción, así
-    // que el nombre accesible completo incluye todo ese texto — se matchea por
-    // el inicio.
-    await expect(await canvas.findByLabelText(/^Cierra después de medianoche/)).toBeChecked()
-    await expect(canvas.queryByText(/Cerrás pasada la medianoche/)).not.toBeInTheDocument()
+    await expect(await canvas.findByText(/Cerrás pasada la medianoche/)).toBeInTheDocument()
   },
 }
 

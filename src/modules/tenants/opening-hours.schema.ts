@@ -49,24 +49,46 @@ export function isValidDayRange(open: string, close: string, closesNextDay = fal
 
 const hhmmField = z.string().regex(TIME_HHMM_RE, 'Formato HH:MM')
 
+type RawDay = { open: string; close: string; closed: boolean }
+
+/**
+ * Deriva `closesNextDay` a partir de los pares (open, close) ya parseados: alcanza
+ * con que UN día ABIERTO tenga cierre <= apertura (ej. abre 18:00, cierra 02:00)
+ * para que el complejo opere pasada la medianoche — ya no es un checkbox manual.
+ *
+ * Reusa `isValidDayRange` (mismo archivo) llamado con `closesNextDay=false`: si el
+ * rango NO es válido asumiendo que el día no cruza medianoche, es justamente porque
+ * necesita cruzarla. Evita reimplementar la aritmética de horas (que ya vive en
+ * `effectiveCloseMins`, operating-day.ts, y NUNCA se reescribe a mano).
+ */
+function deriveClosesNextDay(days: Record<string, RawDay>): boolean {
+  return WEEK_DAYS.some(
+    ({ key }) => !days[key]!.closed && !isValidDayRange(days[key]!.open, days[key]!.close, false),
+  )
+}
+
 /**
  * Contrato FormData del form de horarios (settings y wizard de onboarding):
- * `${day}_open` / `${day}_close` + hidden `${day}_closed` ('on' solo si cerrado)
- * + checkbox `closes_next_day`. Devuelve el input crudo para `horariosSchema`.
+ * `${day}_open` / `${day}_close` + hidden `${day}_closed` ('on' solo si cerrado).
+ * `closesNextDay` ya NO llega del FormData (no hay checkbox manual): se deriva acá
+ * mismo a partir de los 7 pares open/close. Devuelve el input crudo para
+ * `horariosSchema`.
  */
 export function horariosFormDataToInput(formData: FormData): Record<string, unknown> {
+  const days: Record<string, RawDay> = Object.fromEntries(
+    WEEK_DAYS.map(({ key }) => [
+      key,
+      {
+        open: formData.get(`${key}_open`) as string,
+        close: formData.get(`${key}_close`) as string,
+        closed: formData.get(`${key}_closed`) === 'on',
+      },
+    ]),
+  )
+
   return {
-    ...Object.fromEntries(
-      WEEK_DAYS.map(({ key }) => [
-        key,
-        {
-          open: formData.get(`${key}_open`) as string,
-          close: formData.get(`${key}_close`) as string,
-          closed: formData.get(`${key}_closed`) === 'on',
-        },
-      ]),
-    ),
-    closesNextDay: formData.get('closes_next_day') === 'on',
+    ...days,
+    closesNextDay: deriveClosesNextDay(days),
   }
 }
 
@@ -107,20 +129,20 @@ export const horariosSchema = z
       if (day.closed) continue
       openDays++
       if (!isValidDayRange(day.open, day.close, data.closesNextDay)) {
-        // F-019 (QA de producción 2026-08-17): el mensaje describía el problema
-        // sin nombrar la salida, y el caso que lo dispara —abre 08:00, cierra
-        // 02:00— es el horario de media Argentina en fútbol 5. Leído solo, el
-        // dueño entendía "el sistema no soporta mi horario" en el paso 2 del
-        // onboarding, antes de haber visto ningún valor. La opción que lo
-        // resuelve está en la misma pantalla (ScheduleFields, en las dos
-        // superficies que usan este schema), así que el mensaje la nombra.
-        const hint = data.closesNextDay
-          ? ''
-          : ' Si cerrás después de medianoche, activá esa opción más abajo.'
+        // Rama defensiva: `horariosFormDataToInput` (única puerta de entrada
+        // real, en las dos superficies que usan este schema) ya deriva
+        // `closesNextDay=true` para cualquier día con `close <= open` antes de
+        // llegar acá, así que este `addIssue` no dispara en ningún camino de
+        // producción — solo si algo llama al schema directo con un
+        // `closesNextDay` que no refleja los días que le pasa (como hace
+        // `tests/unit/opening-hours-validation.test.ts` a propósito, para
+        // ejercitar el schema en aislamiento). El mensaje ya no nombra un
+        // checkbox: el rediseño de Configuración (2026-09) lo eliminó — el
+        // flag se deriva solo, no hay nada que "activar".
         ctx.addIssue({
           code: 'custom',
           path: [key, 'close'],
-          message: `${label}: el horario de cierre debe ser posterior al de apertura.${hint}`,
+          message: `${label}: el horario de cierre debe ser posterior al de apertura.`,
         })
       }
     }

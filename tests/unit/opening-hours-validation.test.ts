@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   closeMinutes,
+  horariosFormDataToInput,
   horariosSchema,
   isValidDayRange,
   openMinutes,
 } from '@/modules/tenants/opening-hours.schema'
+import { DAY_KEYS } from '@/shared/time/week-days'
 
 /**
  * BLOCKER (triage_fixes #4): sin validar close > open, el admin puede guardar
@@ -117,5 +119,56 @@ describe('horariosSchema', () => {
     if (!result.success) {
       expect(result.error.issues[0]?.message).toMatch(/al menos un día/i)
     }
+  })
+})
+
+// Cambio 1 (rediseño /settings/horarios): sin checkbox manual, `horariosFormDataToInput`
+// deriva closesNextDay de los pares open/close que llegan en el FormData.
+describe('horariosFormDataToInput — deriva closesNextDay (sin checkbox manual)', () => {
+  type DayOverride = { open: string; close: string; closed?: boolean }
+
+  function buildFormData(overrides: Partial<Record<string, DayOverride>> = {}): FormData {
+    const fd = new FormData()
+    for (const day of DAY_KEYS) {
+      const d: DayOverride = overrides[day] ?? OK
+      fd.set(`${day}_open`, d.open)
+      fd.set(`${day}_close`, d.close)
+      if (d.closed) fd.set(`${day}_closed`, 'on')
+    }
+    return fd
+  }
+
+  it('semana normal (todo close > open) → closesNextDay false', () => {
+    expect(horariosFormDataToInput(buildFormData()).closesNextDay).toBe(false)
+  })
+
+  it('un día abierto con cierre <= apertura → closesNextDay true', () => {
+    const input = horariosFormDataToInput(buildFormData({ fri: { open: '18:00', close: '02:00' } }))
+    expect(input.closesNextDay).toBe(true)
+  })
+
+  it('el mismo rango invertido en un día CERRADO no dispara la derivación', () => {
+    const input = horariosFormDataToInput(
+      buildFormData({ mon: { open: '18:00', close: '02:00', closed: true } }),
+    )
+    expect(input.closesNextDay).toBe(false)
+  })
+
+  it("cierre '00:00' (medianoche = fin del día) no dispara la derivación", () => {
+    const input = horariosFormDataToInput(buildFormData({ sat: { open: '18:00', close: '00:00' } }))
+    expect(input.closesNextDay).toBe(false)
+  })
+
+  it('el resultado derivado sigue siendo válido para horariosSchema (mismo caso del BLOCKER #4)', () => {
+    const parsed = horariosSchema.safeParse(
+      horariosFormDataToInput(buildFormData({ fri: { open: '18:00', close: '02:00' } })),
+    )
+    expect(parsed.success).toBe(true)
+  })
+
+  it('un `closes_next_day=on` suelto en el FormData (vestigio, ya sin UI en settings) no se lee: el flag sale solo de la derivación', () => {
+    const fd = buildFormData()
+    fd.set('closes_next_day', 'on')
+    expect(horariosFormDataToInput(fd).closesNextDay).toBe(false)
   })
 })

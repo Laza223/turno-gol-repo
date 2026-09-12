@@ -1,4 +1,8 @@
+'use client'
+
+import type { ReactNode } from 'react'
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
+import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
 
 const CAJA_TABS = [
   // Tres destinos por audiencia y frecuencia, no cuatro por tabla de la base.
@@ -12,7 +16,28 @@ const CAJA_TABS = [
   { href: '/caja/productos', label: 'Productos' },
 ]
 
-/** Tab bar única de /caja (mismo patrón que SettingsTabs). */
-export function CajaTabs({ active }: { active: string }) {
-  return <ScrollTabs tabs={CAJA_TABS} activeHref={active} ariaLabel="Secciones de caja y cantina" />
+/**
+ * Título de la vista Caja (MASTER §6.8): igual que `SettingsTabs` y
+ * `GrillaTabs`, cuelga sus pestañas en la barra superior del panel en vez de
+ * abrir un `PageHeader` propio sobre el contenido. El riel ya dice "Caja" y
+ * estos tres destinos son el único lugar donde la vista se nombra en detalle.
+ * `border-b-0` anula el borde inferior de `ScrollTabs`, pensado para vivir en
+ * el body y no en una barra de 60 px que ya tiene el suyo.
+ *
+ * `actions` cuelga a la derecha, en el mismo hueco: hoy lo usa Cuentas para el
+ * rótulo del día de trabajo y el botón "Agregar movimiento", que antes vivían
+ * en el `PageHeader` que esta vista ya no tiene.
+ */
+export function CajaTabs({ active, actions }: { active: string; actions?: ReactNode }) {
+  return (
+    <AdminHeaderSlot>
+      <ScrollTabs
+        tabs={CAJA_TABS}
+        activeHref={active}
+        ariaLabel="Secciones de caja y cantina"
+        className="min-w-0 flex-1 border-b-0"
+      />
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    </AdminHeaderSlot>
+  )
 }

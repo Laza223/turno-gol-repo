@@ -1,6 +1,4 @@
 import Link from 'next/link'
-import { Wallet } from 'lucide-react'
-import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
 import { getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
@@ -73,23 +71,26 @@ export default async function CajaCuentasPage(props: {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Cuentas"
-        subtitle={operatingDayLabel(today, cutoffMins)}
-        icon={<Wallet className="h-6 w-6" aria-hidden="true" />}
+      {/* MASTER §6.8: la vista no abre encabezado propio. El rótulo del día y
+          el alta de movimiento cuelgan del hueco de la barra superior, al lado
+          de los tres destinos. El rótulo se esconde abajo de `sm` porque ahí la
+          barra apenas entra con las pestañas. */}
+      <CajaTabs
+        active="/caja/cuentas"
         actions={
-          <AddMovementButton
-            label="+ Agregar movimiento"
-            date={today}
-            cutoffMins={cutoffMins}
-            createCashFlowAction={createCashFlowAction}
-          />
+          <>
+            <span className="hidden whitespace-nowrap text-sm text-muted-foreground sm:inline">
+              {operatingDayLabel(today, cutoffMins)}
+            </span>
+            <AddMovementButton
+              label="Movimiento"
+              date={today}
+              cutoffMins={cutoffMins}
+              createCashFlowAction={createCashFlowAction}
+            />
+          </>
         }
       />
-
-      <div className="card-entrance">
-        <CajaTabs active="/caja/cuentas" />
-      </div>
 
       <div className="card-entrance" style={{ animationDelay: '40ms' }}>
         <CajaHeaderStats

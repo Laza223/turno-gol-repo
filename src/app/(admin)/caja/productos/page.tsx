@@ -1,5 +1,3 @@
-import { Banknote } from 'lucide-react'
-import { PageHeader } from '@/components/admin/PageHeader'
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
 import { getLedger } from '@/modules/canteen/stock.service'
@@ -54,12 +52,7 @@ export default async function CajaProductosPage(props: {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Productos y stock"
-        subtitle="Catálogo, stock y reporte de la cantina."
-        icon={<Banknote className="h-6 w-6" aria-hidden="true" />}
-      />
-
+      {/* MASTER §6.8: la vista no abre encabezado propio — ver settings/perfil. */}
       <CajaTabs active="/caja/productos" />
 
       {/* Catálogo y "qué se vende", lado a lado. El informe deja de estar

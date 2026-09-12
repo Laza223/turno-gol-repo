@@ -42,15 +42,20 @@ abajo los productos. En el teléfono el botón de cobro quedaba debajo del catá
 
 ## Alternativas descartadas
 
-**El armazón que la propuesta asumía.** El diseño cuelga el selector de destinos de una "barra de
-60 px" con un hueco llamado `AdminHeaderSlot`, junto a un riel vertical de 72 px, y afirma que la
-Grilla ya funciona así. Nada de eso existe en este repo: el shell es `AdminSidebar` de 240 px más
-`AdminHeader` de 64 px sin slot de página, y `AdminHeaderSlot` no aparece ni en `src/` ni en
-`docs/`. MASTER §6.8 manda lo contrario de forma explícita ("cada espacio resuelve su estructura
-interna con pestañas, nunca con submenús"). Construir ese armazón era rediseñar el panel entero y
-mover las seis fotos de regresión visual. Se descartó: la ganancia real de la propuesta —recuperar
-el encabezado y sacar los totales de la pantalla de venta— no depende de él, y `ScrollTabs` ya
-resuelve la navegación con 44 px de target y contraste calibrado.
+**Medir el armazón contra un árbol viejo.** La primera versión de este trabajo concluyó que el
+armazón que la propuesta asumía —riel de 72 px, barra de 60 px, `AdminHeaderSlot`— no existía, y
+resolvió la navegación con `ScrollTabs` en el cuerpo de la página más un `PageHeader` por vista.
+Era cierto en el commit desde el que salió la rama, y dejó de serlo mientras el trabajo avanzaba:
+el armazón entró a `main` en los PR #303 y #304, y MASTER pasó a v2.2.
+
+La lección es del método, no del diseño: una rama larga mide el repo una sola vez, al principio, y
+después razona sobre esa foto. Antes de declarar que una pieza de armazón no existe conviene mirar
+`origin/main`, no el árbol local.
+
+Corregido: `CajaTabs` cuelga del `AdminHeaderSlot` igual que `SettingsTabs` y `GrillaTabs`, y
+ninguna de las tres pantallas abre `PageHeader`. El componente de las pestañas sigue siendo
+`ScrollTabs` —esa parte de la decisión original no cambió, porque es lo que usan las otras dos
+secciones dentro del hueco.
 
 **Reusar `byMethod` para el desglose de "Cobrado hoy".** Era lo barato y es una trampa: `byMethod`
 es NETO —un egreso resta de su propio método, porque servía al arqueo— así que sus partes suman

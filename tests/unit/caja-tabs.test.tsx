@@ -6,11 +6,24 @@
  * Tres destinos, no cuatro: el rediseño fusionó Deudas y Devoluciones en
  * Cuentas, que es la única pantalla de Caja que muestra plata agregada.
  */
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import { ADMIN_HEADER_SLOT_ID } from '@/components/layout/admin-header-slot'
 import { CajaTabs } from '@/app/(admin)/caja/components/CajaTabs'
 
-afterEach(cleanup)
+// `CajaTabs` portea su contenido al hueco de la barra superior del panel
+// (MASTER §6.8). Sin ese nodo en el documento el componente renderiza null a
+// propósito, así que el test tiene que montarlo igual que hace el armazón.
+beforeEach(() => {
+  const host = document.createElement('div')
+  host.id = ADMIN_HEADER_SLOT_ID
+  document.body.appendChild(host)
+})
+
+afterEach(() => {
+  cleanup()
+  document.getElementById(ADMIN_HEADER_SLOT_ID)?.remove()
+})
 
 describe('CajaTabs', () => {
   it('renderiza los 3 links con sus hrefs', () => {

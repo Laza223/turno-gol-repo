@@ -37,7 +37,7 @@ bloquea nunca por el estado de la caja (ver `docs/decisions/2026-09-11-eliminar-
 | # | Qué se hizo | Por qué |
 |---|---|---|
 | 1 | Cuatro pestañas → **tres destinos**: Vender (`/caja`), Cuentas (`/caja/cuentas`), Productos (`/caja/productos`) | Deudas y Devoluciones eran dos URLs para la misma pregunta —"¿qué plata está pendiente?"— mirada desde los dos lados |
-| 2 | `PageHeader` fuera de Vender | 120 px que no decían nada: el menú ya dice "Caja" y la pestaña activa dice "Vender" |
+| 2 | `PageHeader` fuera de las tres pantallas; los destinos cuelgan del `AdminHeaderSlot` | 120 px que no decían nada: el riel ya dice "Caja" y la pestaña activa dice cuál de los tres. Mismo movimiento que hicieron Grilla y Configuración (MASTER §6.8) |
 | 3 | Los tres totales, el desglose por método y el diario del día se mudan de `/caja` a Cuentas | Quien vende no los mira, y ocupaban la mitad de la pantalla donde trabaja |
 | 4 | Barra de cobro pegada abajo en el teléfono, visible solo con ticket cargado | El botón de cobro quedaba debajo del catálogo, con scroll propio. Ahora no hay scroll para llegar a él |
 | 5 | Se elimina "Recientes / accesos rápidos" | Repetía el catálogo entero y, en mobile, empujaba la venta bajo el pliegue |
@@ -64,27 +64,28 @@ bloquea nunca por el estado de la caja (ver `docs/decisions/2026-09-11-eliminar-
 
 ## §2 Anatomía — tres destinos
 
-La navegación interna es `CajaTabs` sobre `ScrollTabs` (MASTER §6.8: cada espacio resuelve su
-estructura con pestañas, nunca con submenús). Las tres comparten guard: `requireCajaContext()` en
-`../queries`, que envuelve `requireOperatorStaff` — **Caja también la usa el encargado**.
+La navegación interna es `CajaTabs`: `ScrollTabs` colgado del `AdminHeaderSlot`, igual que
+`SettingsTabs` y `GrillaTabs` (MASTER §6.8 — cada espacio resuelve su estructura con pestañas, y
+esas pestañas viven en la barra superior, no en el cuerpo). Su prop `actions` cuelga a la derecha
+del mismo hueco. Las tres comparten guard: `requireCajaContext()` en `../queries`, que envuelve
+`requireOperatorStaff` — **Caja también la usa el encargado**.
 
 ```
-┌─ AdminSidebar 240px ─┬─ AdminHeader 64px ──────────────────────┐
-│  Hoy                 │                          [total del día]│
-│  Grilla              ├─────────────────────────────────────────┤
-│ ▸Caja                │  [PageHeader]        ← solo en Cuentas y │
-│  Clientes            │                         Productos        │
-│  Canchas             │  Vender │ Cuentas │ Productos  ← CajaTabs│
-│  Métricas            │  ─────────────────────────────           │
-│                      │                                          │
-│  Configuración       │  (contenido del destino)                 │
-└──────────────────────┴──────────────────────────────────────────┘
+┌─riel 72─┬─ barra 60 px ─────────────────────────────────────────┐
+│   Hoy   │ Complejo   Vender│Cuentas│Productos   vie 12  [Movim.]│
+│  Grilla │            └──── CajaTabs ────┘       └── actions ───┘│
+│ ▸ Caja  ├───────────────────────────────────────────────────────┤
+│Clientes │                                                        │
+│ Canchas │  (contenido del destino, sin encabezado propio)         │
+│Métricas │                                                        │
+│  ⚙︎      │                                                        │
+└─────────┴────────────────────────────────────────────────────────┘
 ```
 
 ### §2.1 Vender — `/caja`
 
 Lo único que hay es vender y cobrar un fiado. Carga dos cosas: el catálogo (`listProducts`) y los
-fiados abiertos (`listOpenTabs`). No hay `PageHeader`, no hay totales, no hay diario.
+fiados abiertos (`listOpenTabs`). No hay encabezado propio, no hay totales, no hay diario.
 
 - **Escritorio**: catálogo a la izquierda, **Ticket pegado a la derecha** (`lg:sticky`), fiados
   abiertos debajo del catálogo.
@@ -103,8 +104,9 @@ fiados abiertos (`listOpenTabs`). No hay `PageHeader`, no hay totales, no hay di
 
 ### §2.2 Cuentas — `/caja/cuentas`
 
-El libro. `PageHeader` con el rótulo del día de trabajo como subtítulo y "+ Agregar movimiento"
-como acción. Debajo: los tres números, después Deudas y Devolvés lado a lado
+El libro. En el hueco de la barra superior, al lado de los tres destinos, cuelgan el rótulo del
+día de trabajo (oculto abajo de `sm`, donde la barra apenas entra con las pestañas) y el botón
+"Movimiento". Debajo: los tres números, después Deudas y Devolvés lado a lado
 (`lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]` — Deudas manda en ancho: tiene más filas y más
 acción), y al final el diario del día a ancho completo.
 

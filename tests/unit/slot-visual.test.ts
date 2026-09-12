@@ -150,10 +150,14 @@ describe('gridSlotVisual — la celda', () => {
 })
 
 describe('bookingBadgeVisual — el listado', () => {
-  it('colapsa Señada en Confirmada: el detalle de seña vive en la línea secundaria', () => {
-    expect(bookingBadgeVisual(facts({ depositStatus: 'paid' })).label).toBe('Confirmada')
+  it('distingue Señada de Confirmada, igual que la grilla', () => {
+    // El listado las colapsaba a propósito hasta el 2026-09-12. Se aplanó la
+    // divergencia por decisión del dueño: "ya tengo parte de la plata" y
+    // "cobro todo cuando llegue" son cosas distintas en el mostrador, y el
+    // tablero de Hoy es la pantalla que se abre justo para saber eso.
+    expect(bookingBadgeVisual(facts({ depositStatus: 'paid' })).label).toBe('Señada')
     expect(bookingBadgeVisual(facts({ depositStatus: 'not_required' })).label).toBe('Confirmada')
-    // ...pero la grilla SÍ las distingue. La divergencia es deliberada.
+    // Las dos superficies dicen ahora lo mismo de la misma situación.
     expect(gridSlotVisual(facts({ depositStatus: 'paid' })).label).toBe('Señada')
   })
 
@@ -197,10 +201,22 @@ describe('bookingBadgeVisual — el listado', () => {
     expect(v.accent).toBe(TONE_ACCENT.success)
   })
 
-  it('el colapso deposit_paid → confirmed sobrevive al camino nuevo', () => {
+  it('una confirmada con la seña paga llega al listado como deposit_paid', () => {
     const v = bookingBadgeVisual(facts({ status: 'confirmed', depositStatus: 'paid' }))
-    expect(v.key).toBe('confirmed')
+    expect(v.key).toBe('deposit_paid')
+    expect(v.label).toBe('Señada')
     expect(v.unpaid).toBe(false)
+  })
+
+  // La alarma tiene prioridad sobre la seña: un turno jugado y sin cobrar
+  // sigue diciendo "Jugada" con el flag, aunque la seña esté paga. Sacar el
+  // colapso no podía cambiar esto y este caso lo fija.
+  it('con alarma de plata, la seña paga no se come el estado del turno', () => {
+    const v = bookingBadgeVisual(
+      facts({ status: 'completed', depositStatus: 'paid', pending: 100, totalPaid: 50 }),
+    )
+    expect(v.label).toBe('Jugada')
+    expect(v.unpaid).toBe(true)
   })
 
   it('la GRILLA no se movió: ahí la alarma sigue REEMPLAZANDO al label', () => {

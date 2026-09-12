@@ -129,7 +129,7 @@ describe('ReservasPage — render', () => {
     // 1.500.000, así que la fila ahora agrega "Falta $X" al aria-label.
     expect(
       screen.getByRole('article', {
-        name: `Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada, Falta ${formatArs(1500000)}`,
+        name: `Reserva 14:00–15:00, Cancha 1, Juan Pérez, Señada, Falta ${formatArs(1500000)}`,
       }),
     ).toBeTruthy()
   })
@@ -173,10 +173,14 @@ describe('ReservasPage — render', () => {
     // Compacta queda SIN el dato de plata (visual y aria-label): es una línea
     // por reserva por diseño, ver ALCANCE g3 pregunta 5.
     const article = screen.getByRole('article', {
-      name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Confirmada',
+      name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Señada',
     })
-    // La variante compacta no muestra la línea de seña.
-    expect(article.textContent).not.toContain('Seña')
+    // La variante compacta no muestra la LÍNEA de seña, que es una de estas
+    // cuatro (`depositLine` en BookingListItem.tsx). El substring pelado
+    // 'Seña' dejó de servir el 2026-09-12: desde que el listado distingue
+    // "Señada" de "Confirmada", el badge de estado lo contiene y el assert
+    // fallaba por el badge, no por la línea que quiere vigilar.
+    expect(article.textContent).not.toMatch(/Seña (pagada|pendiente|a devolver|devuelta)/)
     // Y los filtros preservan la vista en la URL.
     const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
     expect(

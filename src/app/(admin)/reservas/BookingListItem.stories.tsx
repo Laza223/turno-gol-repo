@@ -60,7 +60,17 @@ function ariaLabelFor(b: ReservaListRow): string {
     .join(', ')
 }
 
-const ROW_CONFIRMADA = row()
+// El default de `row()` trae `depositStatus: 'paid'`, así que ésta es la fila
+// de la seña YA pagada. Se llamaba ROW_CONFIRMADA cuando el listado colapsaba
+// los dos estados; desde el 2026-09-12 su badge dice "Señada".
+const ROW_SENADA = row()
+/** El otro lado del par: confirmada que se cobra entera al llegar. */
+const ROW_CONFIRMADA = row({
+  id: uid(1013),
+  depositStatus: 'not_required',
+  depositAmount: 0,
+  paymentMethod: null,
+})
 const ROW_PENDIENTE = row({
   id: uid(1003),
   status: 'pending_payment',
@@ -265,6 +275,24 @@ type Story = StoryObj<typeof meta>
 
 // ─── Un status por story ────────────────────────────────────────────────────
 
+export const Senada: Story = {
+  args: { booking: ROW_SENADA },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('article', { name: ariaLabelFor(ROW_SENADA) }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByText('Señada')).toBeVisible()
+    await expect(canvas.getByText(money(ROW_SENADA.priceSnapshot))).toBeVisible()
+    await expect(
+      canvas.getByText(`Seña pagada (${money(ROW_SENADA.depositAmount)})`, { exact: false }),
+    ).toBeVisible()
+    // pending_payment/confirmed: la fila ofrece acciones rápidas.
+    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+  },
+}
+
+/** Sin seña: el badge dice "Confirmada" y la línea secundaria, "Sin seña". */
 export const Confirmada: Story = {
   args: { booking: ROW_CONFIRMADA },
   play: async ({ canvasElement }) => {
@@ -272,12 +300,9 @@ export const Confirmada: Story = {
     await expect(
       canvas.getByRole('article', { name: ariaLabelFor(ROW_CONFIRMADA) }),
     ).toBeInTheDocument()
-    await expect(canvas.getByText(money(ROW_CONFIRMADA.priceSnapshot))).toBeVisible()
-    await expect(
-      canvas.getByText(`Seña pagada (${money(ROW_CONFIRMADA.depositAmount)})`, { exact: false }),
-    ).toBeVisible()
-    // pending_payment/confirmed: la fila ofrece acciones rápidas.
-    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+    await expect(canvas.getByText('Confirmada')).toBeVisible()
+    await expect(canvas.queryByText('Señada')).toBeNull()
+    await expect(canvas.getByText('Sin seña', { exact: false })).toBeVisible()
   },
 }
 
@@ -481,10 +506,13 @@ export const NombreYCanchaLargos: Story = {
 
 /** `?vista=compacta`: una línea por reserva, sin la línea secundaria de seña. */
 export const VistaCompacta: Story = {
-  args: { booking: ROW_CONFIRMADA, compact: true },
+  // La fila SEÑADA y no la confirmada sin seña: el assert de abajo comprueba
+  // que la vista compacta ESCONDE la línea de seña, y sobre una fila que no
+  // tiene seña pasaría por vacuidad.
+  args: { booking: ROW_SENADA, compact: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(money(ROW_CONFIRMADA.priceSnapshot))).toBeVisible()
+    await expect(canvas.getByText(money(ROW_SENADA.priceSnapshot))).toBeVisible()
     await expect(canvas.queryByText('Seña pagada', { exact: false })).toBeNull()
   },
 }
@@ -499,7 +527,7 @@ export const VistaCompacta: Story = {
  * rediseño a "Completar + Cobrar", ver comentario en QuickActions.tsx).
  */
 export const AccionRapidaCompletarSePropaga: Story = {
-  args: { booking: ROW_CONFIRMADA },
+  args: { booking: ROW_SENADA },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Completada' }))

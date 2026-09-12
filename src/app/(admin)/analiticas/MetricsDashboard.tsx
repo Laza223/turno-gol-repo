@@ -20,12 +20,12 @@ import type { TenantMetrics } from '@/modules/metrics/metrics.service'
 import type { SystemStatus } from '@/app/api/admin/system-status/route'
 import { useChartTheme } from '@/components/admin/useChartTheme'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
+import { relativeTimeEs } from '@/lib/format'
 import {
   dayLabel,
   formatARS,
   groupRevenue,
   noShowTrend,
-  relativeTimeEs,
   type RevenueGranularity,
 } from './dashboard-helpers'
 

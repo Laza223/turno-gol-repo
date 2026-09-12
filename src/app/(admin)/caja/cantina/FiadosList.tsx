@@ -10,7 +10,7 @@ import {
   newChargeLine,
   type ChargeLine,
 } from '@/components/admin/SplitPaymentFields'
-import { relativeTimeEs } from '@/app/(admin)/analiticas/dashboard-helpers'
+import { relativeTimeEs } from '@/lib/format'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'

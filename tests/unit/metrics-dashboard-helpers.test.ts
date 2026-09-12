@@ -5,8 +5,10 @@ import {
   MIN_FINISHED_FOR_TREND,
   mondayOf,
   noShowTrend,
-  relativeTimeEs,
 } from '@/app/(admin)/analiticas/dashboard-helpers'
+// `relativeTimeEs` se mudó a `@/lib/format` cuando "Necesita tu atención"
+// (en `src/components/`) pasó a pintar el `since` de cada alerta.
+import { relativeTimeEs } from '@/lib/format'
 import type { NoShowMetric } from '@/modules/metrics/metrics.service'
 
 function metric(noShow: number, completed: number): NoShowMetric {

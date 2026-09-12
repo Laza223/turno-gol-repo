@@ -7,7 +7,9 @@ type Props = {
   invoices: InvoiceEntry[]
 }
 
-const STATUS_LABELS: Record<InvoiceEntry['status'], string> = {
+// Exportado: el resumen del disclosure "Pagos del plan" (page.tsx) reusa la
+// misma etiqueta para el último cobro en vez de duplicar el mapeo.
+export const STATUS_LABELS: Record<InvoiceEntry['status'], string> = {
   pending: 'Pendiente',
   in_process: 'En proceso',
   approved: 'Aprobado',

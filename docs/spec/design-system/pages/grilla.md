@@ -4,33 +4,59 @@
 > para todo lo demás rige el MASTER. La grilla es la vista donde el admin vive 8 h/día:
 > **cualquier decisión que enlentezca leer o cargar una reserva es un bug de diseño** (MASTER §1, principio 1).
 
-**Versión:** 1.0 — 2026-07-02
-**Código:** `src/app/(admin)/grilla/page.tsx` · `src/components/booking/BookingGrid.tsx` ·
-`BookingCard.tsx` · `WeekStrip.tsx` · `BookingSlotPanel.tsx` · `src/lib/booking/grid-cells.ts`
+**Versión:** 2.0 — 2026-09-11 (rediseño: los controles suben a la barra superior del panel, la misma
+matriz sirve para escritorio y teléfono, y el selector de densidad se elimina. La v1.0 — 2026-07-02 —
+describe una pantalla que ya no existe)
+**Código:** `src/app/(admin)/grilla/page.tsx` · `GrillaTabs.tsx` · `src/components/booking/BookingGrid.tsx` ·
+`grid/GridHeaderBar.tsx` · `grid/GridScroller.tsx` · `grid/GridLegend.tsx` · `BookingCard.tsx` ·
+`WeekStrip.tsx` · `BookingSlotPanel.tsx` · `QuickBookingForm.tsx` · `src/lib/booking/grid-cells.ts` ·
+`src/hooks/use-grid-layout.ts`
 **Personalidad:** Admin ("El Mostrador") — densidad alta, motion ≤ 200 ms, cero decoración.
 
 ---
 
-## 1. Anatomía
+## 1. Anatomía — la vista no tiene encabezado propio
+
+La regla que manda esta sección: **la Grilla no abre ni una fila sobre la matriz.** Todo lo que era
+encabezado vive en la barra superior del panel (MASTER §6.8, hueco `AdminHeaderSlot`). La v1 tenía
+cuatro filas propias —título "Grilla", la fecha, el segmento de pestañas y la tira semanal— que se
+llevaban unos 180 px de alto en la única pantalla donde lo que importa es ver más horas de una.
+
+**Escritorio (`lg`+)** — todo arriba, en la barra de 60 px:
 
 ```
-┌─ Header sticky (bg-background/95 + blur, bajo el topbar de 4rem) ──────────┐
-│  h1 "Grilla" + fecha (§8.3)        [densidad] [Hoy]                        │
-│  "Por cobrar hoy: $ X (N turnos)"  ← solo si N > 0 (GridToolbar.tsx)       │
-│  WeekStrip: ‹  Lun Mar Mié Jue Vie Sáb Dom  ›                              │
-├─ Hint primera vez (solo si el día no tiene reservas, descartable) ─────────┤
-├─ Grid card (overflow-auto, max-h 70dvh) ───────────────────────────────────┤
-│  esquina │ Cancha 1        │ Cancha 2 (pausada)   ← headers sticky top     │
-│  08:00–14:00 · Sin actividad · Mostrar            ← banda colapsada (§5)   │
+╔═ Barra superior del panel (60px, fija) ════════════════════════════════════╗
+║ COMPLEJO │ [Grilla|Reservas]  ‹ L M M J V S D ›  [Hoy]   [Por cobrar…] [···]║
+╚════════════════════════════════════════════════════════════════════════════╝
+┌─ Hint primera vez (solo si el día no tiene reservas, descartable) ─────────┐
+├─ Matriz (GridScroller, ocupa todo el alto restante) ───────────────────────┤
+│  esquina │ Cancha 1  F5    │ Cancha 2 (pausada)   ← headers sticky top     │
+│  08:00–15:00 · Sin actividad · Mostrar            ← banda colapsada (§5)   │
 │  15:00 │ [celda]           │ [celda]              ← eje horario sticky izq │
 │  ──●───────────────────────────────────           ← línea de "ahora"       │
 │  16:00 │ …                 │ …                                             │
-├─ Leyenda (swatch + ícono + label por estado) ──────────────────────────────┤
 ```
 
-- La tarea principal (cargar una reserva) se completa en 2 interacciones: tap en slot → guardar en el modal. Nunca agregar pasos intermedios.
+**Teléfono** — la barra superior ya la ocupan el logo y el segmento, así que la navegación del día
+baja a una fila sobre la matriz, que es donde llega el pulgar:
+
+```
+╔═ Barra superior ═══════════════════════════════════════════════════════════╗
+║ [logo]  [Grilla|Reservas]                                          [tema]  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+│  ‹        vie 12 de junio  [hoy]        ›          ← 44px cada chevron     │
+│              [Por cobrar hoy $ X · N]              ← solo si hay pendiente │
+├─ Matriz, misma que escritorio, columnas de 48px ───────────────────────────┤
+```
+
+- La tarea principal (cargar una reserva) se completa en **2 interacciones**: tap en slot → "Reservar" en el popover de alta rápida. Nunca agregar pasos intermedios.
 - El slot **completo** es el blanco de click/tap (Fitts). Prohibido reducir la acción a un botoncito interno.
-- **"Por cobrar hoy"** (`GridToolbar.tsx`, prop `pendingSummary`, sumado en `BookingGrid.tsx` con `sumPendingCents` de `src/lib/booking/grid-cells.ts`): suma de lo pendiente entre las reservas **del día visible**, no de todo el complejo. Se pinta debajo de la fecha y solo cuando hay algo pendiente (`count > 0`); sin link ni ícono, es texto plano — el cambio mínimo que hace visible lo pendiente sin abrir una vista nueva. El "hoy" del rótulo lo distingue explícitamente de "Deudas" en Caja, que sí suma toda la deuda del complejo (H040): misma palabra, alcance distinto, y ahora cada uno dice el suyo.
+- **El título de la vista es el segmento** `Grilla | Reservas` (`GrillaTabs.tsx`, portalizado). Por eso el rótulo de la matriz pasó de "Calendario" a "Grilla": el `<h1>` desapareció y este segmento quedó como el único lugar donde la pantalla se nombra. **No reponer un `<h1>`**: sería volver a poner la fila que se sacó.
+- **"Por cobrar hoy"** (`GridHeaderBar.tsx`, prop `pendingSummary`, sumado en `BookingGrid.tsx` con `sumPendingCents` de `src/lib/booking/grid-cells.ts`): suma de lo pendiente entre las reservas **del día visible**, no de todo el complejo. Sólo aparece con `count > 0`. El "hoy" del rótulo lo distingue explícitamente de "Deudas" en Caja, que sí suma toda la deuda del complejo (H040): misma palabra, alcance distinto, y ahora cada uno dice el suyo.
+  - Dejó de ser texto plano: **es un botón que resalta** (`aria-pressed`). Encendido, los turnos que deben plata reciben un anillo (`ring-2 ring-inset ring-destructive/70`, prop `spotlighted` de `BookingCard`) — el resto queda igual. **Resaltar lo que importa, nunca apagar lo demás**: bajarle la opacidad a las otras celdas hunde el contraste del texto por debajo de AA, porque los tokens de color están calibrados justo arriba del mínimo y cualquier `/N` los diluye (MASTER §2.4). Ese fue el primer intento y lo volteó axe.
+  - Alto 44 px en touch, 36 en `lg` para entrar en la barra de 60 (MASTER §10).
+- **"···"** (`Ellipsis`, 44×44): abre un `Popover` con la leyenda (§11). La leyenda dejó de ser una fila fija al pie — la lee alguien nuevo durante su primera semana y después nadie, y ahí abajo le sacaba una línea entera de alto a la matriz en 1366×768.
+- El total del día **no existe en esta vista**. Vivía arriba a la izquierda y se eliminó entero (componente, endpoint, bus de eventos): lo pendiente ya está en el chip y lo cobrado es de Caja. Decisión del dueño, 2026-09-11. No reponerlo.
 
 ## 2. Estados de slot — mapa canónico
 
@@ -78,56 +104,66 @@ El eje horario sticky de la izquierda es la **única** fuente de la hora (fix de
 duplicada" de MASTER §13.5). Las celdas no renderizan `HH:MM`; el rango completo vive en el
 `aria-label` (`"Cancha 1 16:00–17:00: Tomás García, Señada"`) y en el panel de detalle.
 
-- **Densidad cómoda** (fila 3.25rem): línea 1 = nombre (`text-xs font-semibold text-foreground`, truncado a 24 chars); línea 2 = ícono 12 px + label de estado (`text-[11px]`).
-- **Densidad compacta** (fila 2.75rem = 44 px, mínimo touch §10): una sola línea = ícono de estado + nombre. El label textual se omite (el ícono + borde siguen comunicando; aria completo).
-- Sin precio en la celda (vive en el popover). Sin `font-display` (esto es tabla, §3).
+**DOS renglones, nunca tres, en los dos tamaños.** Lo que cambia con el ancho es QUÉ va en el
+segundo. Tres renglones se recortaban en la fila, y un dato recortado es peor que ausente.
+
+| Ancho | Renglón 1 | Renglón 2 |
+| ----- | --------- | --------- |
+| `lg`+ | nombre (`text-[13px] font-semibold`) · **saldo** a la derecha, en el color del estado y en negrita | ícono 12 px + label de estado (`text-[11px]`) |
+| Teléfono | nombre (`text-[11px]`) | ícono + **saldo** (`text-[10px]`); el label textual se omite |
+
+- **El saldo entró a la celda** y ya no vive sólo en el panel: es lo que se busca de lejos en una matriz de 7 canchas. En el teléfono no entra al lado del nombre, así que baja al segundo renglón y desplaza al label — que el color y el ícono ya comunican (§2, regla de lectura).
+- La diferencia por ancho se resuelve **por CSS** (`hidden lg:inline` / `lg:hidden` sobre nodos duplicados), no por un hook de viewport: un hook responde recién después del primer pintado y se ve el salto. El `aria-label` lleva el dato una sola vez, así que el lector de pantalla no lo escucha duplicado.
+- El nombre se trunca a 24 chars **en el límite de palabra**, con "…" que marca el corte (H058).
+- Sin `font-display` (esto es tabla, §3 del MASTER).
 
 **Panel lateral del turno** (`BookingSlotPanel.tsx`, Sheet — click/tap, ya no hover): quién,
-horario, precio, pago, seña, y las acciones del turno (cobrar, cantina, marcar ausente,
-reprogramar) sin salir de la grilla. Reemplaza al popover de sólo-lectura que abría con hover
-intent 300 ms — el hover se sacó a propósito: es una affordance que no existe en touch (el admin
-del mostrador usa tablet), y un panel que solo mira obliga a irse a `/reservas` justo cuando hay
-alguien esperando para pagar (Fase 3, criterio de salida #2). Superficies con tokens (`bg-card`,
-`border-border`).
+horario, precio, pago, seña y las acciones, sin salir de la grilla. Reemplaza al popover de
+sólo-lectura que abría con hover intent 300 ms — el hover se sacó a propósito: es una affordance que
+no existe en touch (el admin del mostrador usa tablet), y un panel que solo mira obliga a irse a
+`/reservas` justo cuando hay alguien esperando para pagar (Fase 3, criterio de salida #2).
+Superficies con tokens (`bg-card`, `border-border`).
 
-## 4. Densidad
+- **Cobrar, en dos toques** (`SlotChargeSection.tsx`): chips de método (Efectivo · Transferencia · MercadoPago, con Efectivo ya elegido) y **un botón que dice el monto adentro** — "Cobrar $ 15.000 y dar por jugado" / "…por adelantado" / "Cobrar $ 15.000", según el estado (`chargeCta` en `charge-copy.ts`). El monto va EN el botón porque es lo que evita tener que leer una tabla para saber qué se está por cobrar. El verbo es **siempre "cobrar"** (H017): "cerrar" está reservado y el título y el botón del mismo panel no pueden decir cosas distintas.
+- El cobro a medida (partido entre métodos, monto distinto) vive detrás de **"Cobrar otro monto"**, prellenado con lo que falta.
+- **Acciones plegadas** (`SlotActionButtons.tsx`): cargar cantina queda a la vista; **reprogramar, marcar ausente y cancelar** se pliegan detrás de **"Más"**. Eran cinco botones compitiendo por la misma atención, tres de ellos rojos, para tareas de una vez por semana. Un toque de más en lo semanal a cambio de que lo diario no tenga que elegir entre cinco (Hick, MASTER §9).
+- **Liberar el bloqueo** y **deshacer la ausencia** NO se pliegan: en esos estados son la única acción que existe, y esconder la única acción no es resta.
 
-- Toggle en el header: `Rows3` + label del modo actual ("Cómodo"/"Compacto") + tooltip (§7.4) — deja de ser un ícono mudo (§13.5).
-- Preferencia persistida en `localStorage['tg-grilla-density']`; default cómodo.
-- Alturas: cómodo `3.25rem`, compacto `2.75rem`. Nunca menos de 44 px: el slot es un target táctil.
-- Columnas: eje `3.5rem` + `minmax(8.5rem, 1fr)` por cancha.
-- **Sólo escritorio (`lg`+).** Ver §4bis: en mobile la matriz no se renderiza.
+**Alta rápida** (`QuickBookingForm.tsx`; `Popover` anclado a la celda en `lg`+, `Sheet` desde abajo
+en el teléfono — ver §4bis): nombre + "Reservar". El
+precio se **muestra**, no se pide. Teléfono y seña se pliegan detrás de "Agregar teléfono" y "Cobrar
+algo ahora". El modal completo sigue a un click, en "Más opciones" — ahí viven los bloqueos, los 120
+minutos, el precio a mano y las notas, y **no se elimina**: sin él esos caminos se quedan sin puerta.
 
-## 4bis. Mobile: la grilla-lista (Fase 4)
+## 4. Medidas — una sola densidad, resuelta por CSS
 
-Debajo de `lg` (1024 px) la matriz **no existe**: la reemplaza `GridDayList`
-(`src/components/booking/grid/GridDayList.tsx`). Con 4 canchas la matriz mide 600 px de ancho
-mínimo dentro de un viewport de 375 px — entran 2,3 canchas y obliga a scroll bidimensional
-con zoom, los dos peores gestos con el teléfono en la oreja (visión v2 §4.2).
+**El selector Cómodo/Compacto se eliminó** (con su `localStorage['tg-grilla-density']` y su hook).
+Nadie en el mostrador lo tocaba más de una vez, y la densidad real la decide la cantidad de canchas,
+no una preferencia. Menos un control, menos un estado que persistir. No reponerlo.
 
-- **Carrusel horizontal de páginas**, con CSS scroll-snap (`snap-x snap-mandatory`) y cero
-  librerías de gestos — misma receta que `TenantCardCarousel` del portal público.
-- **La primera página es "Todas"**: una fila por hora con TODAS las canchas como chips. Es la
-  que responde "¿tenés cancha a las 21?", la lectura horizontal que el swipe por cancha pierde.
-  Las siguientes son una por cancha: la lista vertical de sus horas.
-- **Las píldoras de arriba son selector e indicador a la vez** (el rol de los dots del
-  carrusel), y la activa se trae a la vista al cambiar de página. **Sin chevrons ni rótulo
-  al pie**: duplicaban lo que las píldoras ya dicen y hacen, y en un teléfono de 851 px esas
-  44 px son cuatro horas menos de grilla a la vista. El track responde a las flechas del
-  teclado y anuncia la página con un `aria-live` sr-only.
-- **El color no cambia**: misma `gridSlotVisual` que la matriz, así que la lectura aprendida en
-  escritorio se transfiere. Las filas ocupadas además escriben el label al lado del ícono, y
-  por eso la leyenda (§2) no se renderiza en mobile: sería redundante.
-- **Sólo se monta una de las dos vistas** (`useIsDesktop`, `src/hooks/use-is-desktop.ts`). No
-  se resuelve con `hidden lg:flex` como el resto del repo (`ResponsiveList`) porque las celdas
-  libres abren un `Popover` de Radix que se portaliza al `body`: con las dos montadas, un tap
-  en la lista abriría también el popover de la matriz oculta, flotando en cualquier lado.
-- **Los nombres accesibles difieren a propósito** de los de la matriz —
-  `Reservar 16:00 en Cancha 1` (lista) vs. `Reservar turno 16:00 en Cancha 1` (matriz). No es
-  descuido de redacción: es lo que permite que los tests apunten sin ambigüedad a cada vista.
-- Lo que **no** viaja a mobile: el span vertical de 120 min (el chip repite el turno en la hora
-  cubierta), la línea de "ahora" en rem, la navegación 2D por flechas y el toggle de densidad.
-  Todo eso sigue vivo en la matriz de escritorio.
+| | Teléfono | `lg`+ |
+| --- | --- | --- |
+| Alto de fila | `4rem` (64 px) | `4rem` |
+| Ancho de columna (`--tg-col`) | `3rem` (48 px) | `8.5rem` |
+| Columna de horas (`--tg-hours`) | `2.75rem` | `3.5rem` |
+
+- **64 px de fila** es lo que necesitan los dos renglones de §3: con 52 el saldo se recortaba.
+- Las medidas son **variables CSS con override en `lg:`**, no un hook de media query — un hook resuelve después del primer pintado y se ve el salto de anchos. El ancho mínimo de la matriz es `calc(var(--tg-hours) + N × var(--tg-col))`.
+- **48 px de columna no es arbitrario**: la celda lleva `m-0.5` (2 px por lado), así que el blanco táctil queda en **44 px exactos** (MASTER §10). Bajar `--tg-col` por debajo de `3rem` rompe el mínimo.
+- El header de cancha apila nombre + formato (`F5`) en el teléfono y los pone en fila en `lg`. La columna de horas muestra dos dígitos en el teléfono.
+
+## 4bis. Teléfono: la misma matriz, angosta
+
+**Una sola vista para los dos tamaños.** La grilla-lista de la Fase 4 (`GridDayList`, carrusel de
+páginas por cancha) **se eliminó**: eran dos componentes con dos modelos mentales, dos juegos de
+nombres accesibles y dos lugares donde arreglar el mismo bug. Con columnas de 48 px la matriz entra
+en un viewport de 375 px —siete canchas y media— y el scroll horizontal con snap resuelve el resto,
+que es el gesto que el carrusel imitaba a mano.
+
+- Lo que se gana: la lectura aprendida en escritorio (posición, color, ícono, saldo) es **literalmente la misma**, no una traducción. Un solo nombre accesible por celda, así que los tests dejan de necesitar dos matchers para el mismo hecho.
+- Lo que se pierde y se asume: en 375 px hay que **scrollear en dos ejes**. Se compensa con headers de cancha sticky arriba, eje de horas sticky a la izquierda y `snap-start` por columna. El scroll 2D era el argumento de la v1 contra la matriz; con 48 px en vez de 150 el costo bajó lo suficiente.
+- **Regla de corte: medidas por CSS, superficies por hook.** La matriz entera (anchos, altos, qué renglón lleva qué) se resuelve con variables y `lg:`, porque un hook responde después del primer pintado y se ve el salto. `useIsDesktop` (`src/hooks/use-is-desktop.ts`) **sigue vivo** y se usa sólo para elegir la SUPERFICIE de las dos superposiciones de Radix, que no es algo que CSS pueda decidir: el alta rápida es `Popover` anclado a la celda en `lg`+ y `Sheet` desde abajo en el teléfono (un popover sobre una columna de 48 px no tiene dónde anclarse, y abajo es donde llega el pulgar), y el panel del turno entra por la derecha o por abajo con el mismo criterio.
+- Lo que no viaja al teléfono: la tira semanal (la reemplaza `‹ fecha ›`, §1) y la navegación 2D por flechas.
 
 ## 5. Madrugada muerta colapsada
 
@@ -137,7 +173,7 @@ horarios vacíos de la mañana obligan a scrollear"):
 - Regla (`countCollapsibleLeading` en `grid-cells.ts`, pura y testeada): se colapsa la corrida
   **inicial** de slots donde `isPast && todas las canchas libres`. El slot en curso (empezado
   pero no terminado) nunca se colapsa. Mínimo 2 filas para colapsar; nunca se colapsa el día entero.
-- UI: banda de 2rem a lo ancho de todas las columnas — `"08:00–15:00 · Sin actividad"` +
+- UI: banda de `2.75rem` (44 px, touch §10) a lo ancho de todas las columnas — `"08:00–15:00 · Sin actividad"` +
   botón "Mostrar" (`aria-expanded`). Expandir es por visita (se resetea al cambiar de día).
 - Un slot pasado con reserva (Jugada/Ausente) **corta** el colapso: lo pendiente de revisión
   queda siempre visible (Zeigarnik §9).
@@ -167,7 +203,8 @@ horarios vacíos de la mañana obligan a scrollear"):
   Emerald suave (nunca warning), ≤ 90 chars, voseo, verbo primero. Persistencia
   `localStorage['tg-hint-grilla-primera-reserva']`; no vuelve tras descartarse (§7.1).
 - **Tooltips** (Radix `ui/tooltip.tsx`, delay 300 ms hover / inmediato focus): obligatorios en
-  todo icon-only — toggle de densidad, chevrons de semana. El tooltip NO reemplaza `aria-label`.
+  todo icon-only — el "···" de la barra, los chevrons de semana y los del día en el teléfono.
+  El tooltip NO reemplaza `aria-label`.
 - Máximo un elemento de guía visible a la vez (§7.1): si hay hint, no hay coachmarks.
 
 ## 9. Copy (§8 extendido para esta vista)
@@ -187,20 +224,26 @@ Vocabulario canónico §8.5 + extensiones de grilla:
 | `type=block`               | **Bloqueado**                                                                                       |
 | court `offline`            | **(pausada)** — nunca "(offline)"                                                                   |
 
-Fechas: subtítulo del header en formato medio §8.3 ("mié 1 de julio"). Horas 24 h `HH:MM`,
-rango con en-dash sin espacios ("16:00–17:00"). Plata solo en popover, formato §8.2 sin decimales.
+Fechas: formato medio §8.3 ("mié 1 de julio") — en el teléfono es el rótulo entre los dos chevrons;
+en escritorio lo dice la tira semanal. Horas 24 h `HH:MM`, rango con en-dash sin espacios
+("16:00–17:00"). Plata en formato §8.2 sin decimales, y desde el rediseño **también en la celda**
+(el saldo pendiente, §3) — no sólo en el panel.
 
 ## 10. Teclado y accesibilidad
 
 - Flechas mueven el foco entre slots (roving por `data-col`/`data-row`, saltando filas cubiertas por spans y celdas no interactivas). Los índices son sobre las filas **visibles** (colapso incluido).
 - Escape cierra el popover sin perder el foco. Contenedor scrolleable con `tabIndex=0` + `role="region"` + label con la fecha.
 - Todo estado cumple §1.4 (color + ícono + texto/aria) y §2.4 (labels en escala AA verificada).
-- Touch ≥ 44 px (fila compacta = 2.75rem exactos).
+- Touch ≥ 44 px en todo: celda (columna de 48 px menos los 2 px de margen por lado), chevrons del día, "···", chip "Por cobrar hoy" y chips de método del panel — estos últimos bajan a 36 px recién en `md`/`lg`, donde el puntero es un mouse.
 
 ## 11. Leyenda
 
-Lista al pie con swatch + **ícono** + label por cada estado de §2 (la leyenda enseña el mapeo
-ícono↔estado — es parte del sistema que se explica solo, §7). Mismo orden que la tabla de §2.
+Swatch + **ícono** + label por cada estado de §2, en el mismo orden que esa tabla (la leyenda enseña
+el mapeo ícono↔estado — es parte del sistema que se explica solo, §7).
+
+**Vive dentro del "···" de la barra**, bajo el rótulo "¿Qué significa cada color?", y no como fila
+fija al pie de la matriz: se lee durante la primera semana y después nunca, y al pie le costaba una
+línea entera de alto a la grilla en 1366×768. Se mantiene idéntica en los dos tamaños.
 
 ## 12. Motion budget de la vista
 
@@ -216,12 +259,16 @@ Nada flota, nada respira, cero loops fuera del skeleton.
 
 ## 13. Skeleton de carga
 
-`loading.tsx` replica la silueta real (§5.3 "Espera"): banda de header + 7 píldoras de semana +
-grid con eje horario y 3 columnas de filas — no una tabla genérica.
+`loading.tsx` replica la silueta real (§5.3 "Espera"): **la matriz y nada más** — eje horario, 3
+columnas de canchas, filas de 4rem con las mismas variables de ancho de §4. Sin encabezado, porque la
+vista no tiene (§1): la barra superior ya está pintada cuando el skeleton aparece, y dibujar ahí un
+título, una fecha y siete píldoras hacía saltar la grilla hacia arriba al terminar de cargar.
+Abajo de `lg` sí lleva la fila `‹ fecha ›`, que en ese ancho es contenido de la página.
 
 ## 14. Deuda conocida de esta vista
 
 - Coachmark de primera visita a la grilla (patrón §7.2) — pendiente, coordinar con el hint para no violar §7.1 (uno a la vez).
-- `formatMoney` unificado (P0.3 del MASTER): el popover usa un `formatArs` local hasta la barrida global.
+- `formatMoney` unificado (P0.3 del MASTER): el panel usa un `formatArs` local hasta la barrida global.
 - Línea de "ahora" en madrugada operativa (`closes_next_day`): hoy no se dibuja.
 - Realtime también debería pulsar cambios de estado (UPDATE), no solo altas — evaluar si es señal o ruido tras uso real.
+- **Scroll en dos ejes en el teléfono** (§4bis): asumido a cambio de tener una sola vista. Medir con uso real antes de agregarle nada encima.

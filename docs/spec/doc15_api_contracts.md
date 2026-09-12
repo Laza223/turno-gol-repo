@@ -344,8 +344,8 @@ Errors:
 > `[id]`, ni `POST` de creación, ni `/cancel`, `/complete`, `/no-show`: todo eso es Server Action),
 > `/api/billing/*` (6 rutas, ver 5.8), `GET /api/reports/revenue` (única de 5.9 — occupancy/players/export
 > no existen, ver nota en 5.9), `/api/mp/oauth-start` y `/api/mp/callback` (5.12), más un grupo
-> `/api/admin/*` (`day-total`, `jobs`, `metrics`, `push/*`, `system-status`) **no documentado en
-> este archivo**.
+> `/api/admin/*` (`jobs`, `metrics`, `push/*`, `system-status`) **no documentado en
+> este archivo**. `day-total` se eliminó con el total del día de la Grilla (2026-09-11).
 
 
 ### 5.1 Reservas (Bookings)

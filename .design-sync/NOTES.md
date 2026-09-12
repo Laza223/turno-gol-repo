@@ -122,6 +122,33 @@ queda en `null` y el componente devuelve `null`: **el globo no se dibuja, sin er
 consola**. El render check igual dio la tarjeta por buena, porque el botón target sí renderizaba —
 lo agarró la revisión visual de la hoja de contacto, no la máquina. Anotado en su `dtsPropsFor`.
 
+## Re-sync de solo-guías (2026-09-11, después del rediseño de la Grilla)
+
+**No siempre hace falta el pipeline de 4 pasos.** El rediseño de la Grilla no tocó un solo archivo
+de `src/components/ui/` ni de `src/components/admin/`, ni `globals.css`, ni `tailwind.config.ts` —
+o sea que `_ds_bundle.js`, `_ds_bundle.css`, los `_preview/*.js` y las tarjetas seguían siendo
+correctos. Lo único desactualizado eran las guías.
+
+Camino corto, y el que conviene por defecto cuando el diff no toca las fuentes sincronizadas:
+
+1. `list_projects` + `list_files` — confirmar que el proyecto está vivo Y poblado. Ojo: el
+   `updatedAt` que devuelve `list_projects` quedó en 2026-06-25 aunque la subida de septiembre sí
+   entró. **No usar `updatedAt` para decidir si hay que re-subir**; usar `list_files`.
+2. `finalize_plan` con los 6 paths de `guidelines/**` (acepta `deletes: []`, pero el campo es
+   obligatorio: sin él tira `finalize_plan requires: deletes`).
+3. `write_files` con `localPath` relativo al `localDir` — el contenido no pasa por el contexto del
+   modelo.
+4. `get_file` de una de las guías para verificar que el contenido nuevo llegó. `written: N` es la
+   respuesta del servidor, no prueba de contenido.
+
+Regla para decidir: si `git diff` contra la última subida toca `src/components/ui/`,
+`src/components/admin/` (los del `componentSrcMap`), `.design-sync/previews/`, `ds-entry.tsx`,
+`globals.css` o `tailwind.config.ts` → pipeline completo. Si solo toca `guidelinesGlob` → camino corto.
+
+**El worktree no sirve para el pipeline completo**: `.ds-sync/` y `.design-sync/.cache/` son
+gitignored y viven solo en el checkout principal. El camino corto sí anda desde cualquier worktree,
+porque `write_files` lee los `.md` del disco y nada más.
+
 ## Re-sync risks (watch list)
 
 - **cfg.cssEntry + cfg.entry are generated, gitignored files** (`.design-sync/.cache/`). A fresh

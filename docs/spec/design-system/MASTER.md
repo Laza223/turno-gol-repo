@@ -16,7 +16,10 @@
 
 **Proyecto:** TurnoGol — SaaS B2B2C para complejos de fútbol (Argentina)
 **Stack:** Next.js 16 · TypeScript · shadcn/ui · Tailwind CSS v4 · Lucide · next-themes
-**Versión:** 2.1 — 2026-07-03 (§9: la cláusula ética se reemplaza por la cláusula de agresividad
+**Versión:** 2.2 — 2026-09-11 (§6.8 reescrita: la barra lateral de 240px pasa a un **riel de 72px**
+y aparece la **barra superior de 60px con hueco de vista** (`AdminHeaderSlot`), que es el mecanismo
+por el que una vista deja de abrir filas de encabezado propias. Nuevos ítems de deuda 11 y 12)
+**Anterior:** 2.1 — 2026-07-03 (§9: la cláusula ética se reemplaza por la cláusula de agresividad
 comercial — marketing a fondo, límite único en claims verificables falsos; incorpora las tácticas
 FOMO/Escasez, Anclaje de precio y Compromiso progresivo de `737091a` con ejemplos calculables)
 **Anterior:** 2.0 — 2026-07-02 (reescritura: tokens duales light/dark reales, contraste re-verificado,
@@ -415,10 +418,18 @@ Mapeo de estados → §2.6. El texto del badge usa el vocabulario canónico de �
 
 ### 6.8 Navegación
 
-- **Admin (desde Fase 4)**: sidebar 240px (`--sidebar-width`) con los **6 espacios** en orden de frecuencia real de uso (serial position) — **Hoy · Grilla · Caja · Clientes · Torneos · Métricas** — y **Configuración separada al pie**, fuera del flujo diario. Ítems con ícono+label, activo = pill emerald sutil + barra izquierda. Un espacio NO es una ruta sino un conjunto de ellas: `/reservas` enciende Grilla (es su pestaña Lista) y `/abonados` enciende Clientes (su pestaña Turnos fijos), vía el `match` de cada ítem. Cada espacio resuelve su estructura interna con pestañas (`ScrollTabs`), nunca con submenús desplegables.
-- Ítems bloqueados por rol (manager) muestran candado + tooltip "Solo el dueño" (§7.4) — no desaparecen (el encargado entiende el sistema completo). Excepción: **Hoy** sí se oculta para el manager, porque por D5 esa pantalla no existe para él; no es un permiso denegado sino una vista que no le corresponde.
+- **Admin — riel de 72px (desde 2026-09-11)**: `AdminSidebar`, fijo a la izquierda en `lg`+, con los espacios en orden de frecuencia real de uso (serial position) — **Hoy · Grilla · Caja · Clientes · Canchas · Torneos · Métricas** — y **Configuración separada al pie**, fuera del flujo diario. Reemplazó a la barra de 240px: de esa barra el nombre del complejo se mudó a la barra superior y el total del día se eliminó (ese número es de Caja), así que lo único que quedaba era la lista de espacios, y esa entra en 72.
+  - Fila del riel: **60×52, ícono arriba + rótulo abajo**. El rótulo se ve **siempre** y NO vive en un tooltip: el mostrador atiende desde una tablet, donde no hay hover y un ícono solo es una adivinanza. Activo = pill emerald sutil (`bg-primary/10` + texto `emerald-800`/`emerald-300`); la barra izquierda de la v1 se fue — a 72px de ancho no hay lugar para dos señales de lo mismo.
+  - En el riel el ítem de Configuración se rotula **"Ajustes"**: a 60px la palabra larga no entra en una línea y partirla en dos rompe la altura de fila del resto. El cajón mobile, que tiene ancho, sigue diciendo "Configuración" — es el mismo espacio y el vocabulario de la auditoría lo nombra así. El nombre accesible del ítem es siempre la palabra completa.
+  - Al pie, **avatar de la cuenta de 44px** (inicial del email) que abre un `Popover` con el email y "Salir". Antes eso vivía en la barra superior y le comía ancho al hueco de las vistas.
+  - Un espacio NO es una ruta sino un conjunto de ellas: `/reservas` enciende Grilla (es su pestaña Lista) y `/abonados` enciende Clientes (su pestaña Turnos fijos), vía el `match` de cada ítem. Cada espacio resuelve su estructura interna con pestañas (`ScrollTabs`), nunca con submenús desplegables.
+- **Admin — barra superior de 60px**: `AdminHeader`, `lg:left-[72px]`, alto `calc(3.75rem + env(safe-area-inset-top))`. Sólo tres cosas fijas: nombre del complejo a la izquierda (en mobile, el logo, porque ahí no hay riel), el **hueco de vista** en el medio y el menú de tema a la derecha.
+  - El hueco es `AdminHeaderSlot` (`useSyncExternalStore` + `createPortal` sobre `#admin-header-slot`): **cada vista cuelga ahí sus propios controles** en vez de abrir filas de encabezado propias sobre el contenido. Es lo que le saca a la Grilla sus cuatro filas (ver `pages/grilla.md` §1).
+  - Regla de uso: lo que va al hueco es **el control de la vista**, no su título. El riel ya dice en qué espacio estás, así que un `<h1>` repetido arriba es la fila que se está tratando de eliminar.
+  - **Lo portalizado existe recién tras la hidratación.** Cualquier test, foto de regresión o assert que dependa de esos controles tiene que esperarlos explícitamente; esperar al contenido del servidor no alcanza y la foto sale con la barra vacía.
+- Ítems bloqueados por rol (manager) muestran candado + tooltip "Solo el dueño" (§7.4) — no desaparecen (el encargado entiende el sistema completo). En el riel el trigger es un `button` con `aria-disabled`, no un `span`: el tooltip necesita foco y `disabled` lo mataría junto con el tooltip. Excepción: **Hoy** sí se oculta para el manager, porque por D5 esa pantalla no existe para él; no es un permiso denegado sino una vista que no le corresponde.
 - **Player**: `PortalHeader` sticky session-aware + `PlayerBottomNav` (Explorar/Reservas/Cuenta) fijo en mobile con `pb-[env(safe-area-inset-bottom)]`. Especificado en `pages/player-area.md` (vigente).
-- **Mobile admin (desde Fase 4)**: barra inferior fija de 4 accesos (`AdminBottomNav`), no hamburguesa — el pulgar llega a todo (Fitts). Los tres directos son los tres primeros espacios visibles del rol (dueño: Hoy·Grilla·Caja; encargado: Grilla·Caja·Clientes) y el cuarto es **Más**, que abre el mismo drawer (`Sheet`) con los 6 espacios completos. El contenido reserva su alto con `pb-[calc(3.5rem+env(safe-area-inset-bottom))]`. El título de página siempre visible al abrir una vista.
+- **Mobile admin (desde Fase 4)**: barra inferior fija de 4 accesos (`AdminBottomNav`), no hamburguesa — el pulgar llega a todo (Fitts). Los tres directos son los tres primeros espacios visibles del rol (dueño: Hoy·Grilla·Caja; encargado: Grilla·Caja·Clientes) y el cuarto es **Más**, que abre el drawer (`Sheet`) con todos los espacios. El contenido reserva su alto con `pb-[calc(3.5rem+env(safe-area-inset-bottom))]`. El título de página siempre visible al abrir una vista — **salvo donde la barra superior ya nombra la vista**: en la Grilla el segmento Grilla|Reservas del hueco es ese nombre, y agregarle un `<h1>` encima sería volver a poner la fila que el rediseño sacó.
 
 ---
 
@@ -646,6 +657,8 @@ El doc anterior divergió del código y perdió autoridad. Para que no se repita
 8. Teléfonos sin formato (`+541100000000` en página de complejo) → §8.4.
 9. Foto stock del login staff con marcas visibles (pelotas Nike) — reemplazar por foto propia/sin trademark.
 10. Docs `doc20`/`pages/*`: actualizar referencias cruzadas a esta v2 (player-area §0–1 superado, explorar hero adaptativo).
+11. **`--sidebar-width: 240px` quedó muerto** (`globals.css`): el riel de §6.8 usa `w-[72px]` literal y ningún otro archivo de `src/` lee el token. Sacarlo o repuntarlo a 72 — hoy miente sobre el ancho real del panel.
+12. **La nav del dueño roza el techo de Hick (§9, ≤5–7)**: con el flag `tournaments` prendido son 7 espacios más Configuración al pie. Sin el flag son 6 y está dentro. No se toca por ahora — Canchas entró a pedido del dueño el 2026-09-10 y Torneos sigue apagado en todos los complejos; se reabre si Torneos se prende de verdad.
 
 Cerrado 2026-08-15: **P0.1 primitives sin tokens**. Verificado sobre el código, no sobre el
 changelog: `grep -E "(bg|text|border)-(white|black|gray|slate|zinc|neutral|stone)-" src/components/ui/*.tsx`

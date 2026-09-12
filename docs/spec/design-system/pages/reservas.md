@@ -30,11 +30,15 @@ Anti-objetivo: NO reemplaza la grilla como herramienta de carga rápida por hora
 
 `status-visual.tsx` (nuevo) reemplaza los dos mapas duplicados. Expone:
 
-- `reservaStatusVisual(booking)`: color de acento + ícono + texto (§2.6), vocabulario §8.5 exacto
-  — a diferencia de la grilla (`BookingCard.slotVisual`), acá **no** se distingue "Señada" de
-  "Confirmada" (esa nuance ya vive en la línea secundaria "Seña pagada ($X)" de cada ítem); los 5
+- `reservaStatusVisual(booking)`: color de acento + ícono + texto (§2.6), vocabulario §8.5 exacto.
+  **Desde el 2026-09-12 distingue "Señada" de "Confirmada", igual que la grilla** (decisión del
+  dueño, al bajar el rediseño de Hoy): antes las colapsaba a propósito, con el argumento de que la
+  nuance ya vivía en la línea secundaria "Seña pagada ($X)" de cada ítem. Dejó de valer cuando el
+  tablero de Hoy pasó a usar el color para decir el estado de la plata, porque ahí el mismo badge
+  quedaba sobre "ya tengo parte de la plata" y sobre "cobro todo cuando llegue". Los 6
   estados de negocio son: `pending_payment` → **Pagando ahora** (`Clock`, warning) ·
-  `confirmed` → **Confirmada** (`HandCoins`, info) · `completed` → **Jugada** (`CheckCheck`,
+  `confirmed` sin seña paga → **Confirmada** (`HandCoins`, info) · `confirmed` con seña
+  paga o capturada → **Señada** (`CheckCircle2`, success) · `completed` → **Jugada** (`CheckCheck`,
   success) · `no_show` → **Ausente** (`UserX`, destructive) · `canceled_*` → **Cancelada**
   (`XCircle`, muted). `expired` → **Expirada** (muted) y `type==='block'` → **Bloqueado** (`Ban`,
   muted) se mantienen aparte del vocabulario de negocio. (`pending_payment` se renombró de

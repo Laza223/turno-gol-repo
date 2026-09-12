@@ -40,6 +40,21 @@ export const PendingPayment: Story = {
 export const Confirmed: Story = {
   args: { visual: reservaStatusVisual({ status: 'confirmed', type: 'spontaneous' }) },
 }
+/**
+ * El par que el listado colapsaba hasta el 2026-09-12: misma `status`, distinto
+ * `depositStatus`. Con la seña paga el badge dice "Señada" y cambia de tono, y
+ * eso es lo que separa "ya tengo parte de la plata" de "cobro todo cuando
+ * llegue" en el mostrador.
+ */
+export const Senada: Story = {
+  args: {
+    visual: reservaStatusVisual({
+      status: 'confirmed',
+      type: 'spontaneous',
+      depositStatus: 'paid',
+    }),
+  },
+}
 export const Completed: Story = {
   args: { visual: reservaStatusVisual({ status: 'completed', type: 'spontaneous' }) },
 }
@@ -145,6 +160,13 @@ export const Todos: Story = {
       />
       <ReservaStatusBadge
         visual={reservaStatusVisual({ status: 'confirmed', type: 'spontaneous' })}
+      />
+      <ReservaStatusBadge
+        visual={reservaStatusVisual({
+          status: 'confirmed',
+          type: 'spontaneous',
+          depositStatus: 'paid',
+        })}
       />
       <ReservaStatusBadge
         visual={reservaStatusVisual({ status: 'completed', type: 'spontaneous' })}

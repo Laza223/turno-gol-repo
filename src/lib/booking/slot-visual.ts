@@ -292,10 +292,14 @@ export const UNPAID_ALARM_BADGE = {
 } as const
 
 /**
- * El listado NO distingue "Señada" de "Confirmada": el detalle de la seña ya
- * vive en la línea secundaria de cada ítem, y repetirlo en el badge le sacaría
- * peso al dato que sí importa ahí. La grilla sí las distingue porque el color
- * es lo único que tiene. Esta divergencia es deliberada — no aplanarla.
+ * "Señada" y "Confirmada" se distinguen en TODAS las superficies desde el
+ * 2026-09-12. Antes el listado las colapsaba en "Confirmada" a propósito y la
+ * grilla no, y esa divergencia sobrevivió mientras el listado era el único
+ * lugar donde se leía el estado sin ver el color. El rediseño de Hoy la volvió
+ * insostenible: ahí el color dice el estado de la plata, y colapsar las dos
+ * pone el mismo badge sobre "ya tengo parte de la plata" y sobre "cobro todo
+ * cuando llegue" justo en la pantalla que se abre para saber a quién hay que
+ * cobrarle. Decisión del dueño: gana el criterio de la grilla, en las tres.
  *
  * La alarma de plata viaja al listado como **flag** (`unpaid`), NUNCA como
  * label. La diferencia es el contrato entero de esta función:
@@ -315,6 +319,10 @@ export const UNPAID_ALARM_BADGE = {
  * arriba y "Saldo pendiente: $X" en Cobros más abajo, contradiciéndose en la
  * misma pantalla). Decisión del dueño, 2026-08-05: indicador aparte, el badge
  * de estado no cambia.
+ *
+ * Lo único que sigue divergiendo entre grilla y listado es eso: la alarma. La
+ * grilla la pone en el label porque una celda tiene lugar para una palabra
+ * sola; el listado la pone al lado.
  */
 export function bookingBadgeVisual(facts: SlotFacts): BookingBadgeVisual {
   const raw = slotStateKey(facts)
@@ -324,8 +332,7 @@ export function bookingBadgeVisual(facts: SlotFacts): BookingBadgeVisual {
   // que esto devuelve el key que `slotStateKey` habría dado sin alarma. Evita
   // duplicar la tabla de prioridades y deja intacta la función que pinta la
   // grilla.
-  const base = unpaid ? slotStateKey({ ...facts, pending: null, totalPaid: null }) : raw
-  const key: SlotStateKey = base === 'deposit_paid' ? 'confirmed' : base
+  const key = unpaid ? slotStateKey({ ...facts, pending: null, totalPaid: null }) : raw
   const meta = SLOT_STATES[key]
   return {
     key,

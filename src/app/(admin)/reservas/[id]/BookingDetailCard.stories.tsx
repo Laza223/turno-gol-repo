@@ -100,12 +100,28 @@ export const JugadaCobrada: Story = {
   },
 }
 
-export const Confirmada: Story = {
+/**
+ * El default de `detail()` trae `depositStatus: 'paid'`, así que este es el
+ * caso de la seña YA pagada. Hasta el 2026-09-12 el badge decía "Confirmada"
+ * porque el listado colapsaba los dos estados; ahora dice "Señada", igual que
+ * la grilla.
+ */
+export const Senada: Story = {
   args: { booking: detail() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Julián Álvarez')).toBeVisible()
+    await expect(canvas.getByText('Señada')).toBeVisible()
+  },
+}
+
+/** El otro lado del par: reserva confirmada que se cobra entera al llegar. */
+export const Confirmada: Story = {
+  args: { booking: detail({ depositStatus: 'not_required', depositAmount: 0 }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
     await expect(canvas.getByText('Confirmada')).toBeVisible()
+    await expect(canvas.queryByText('Señada')).toBeNull()
   },
 }
 

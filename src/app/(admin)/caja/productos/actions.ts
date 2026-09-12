@@ -25,8 +25,11 @@ export type ProductActionResult = { success: true } | { success: false; error: s
 export type StockActionResult = { success: true } | { success: false; error: string }
 
 function revalidateCaja(): void {
+  // `/caja/cantina` ya no es una pantalla (redirige a `/caja`), así que
+  // revalidarla no refrescaba nada. Cuentas sí entra: una reposición pagada de
+  // la caja crea un gasto que aparece en el diario del día.
   revalidatePath('/caja')
-  revalidatePath('/caja/cantina')
+  revalidatePath('/caja/cuentas')
   revalidatePath('/caja/productos')
 }
 

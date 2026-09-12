@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
 import type { ActionResult } from '@/shared/types/action-result'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
@@ -26,10 +27,13 @@ export type MarkRefundSettledAction = (
  * generan además el egreso en la caja del día.
  *
  * No se puede deshacer (decisión del dueño): queda registrado quién tildó,
- * cuándo y por qué medio, y eso alcanza como prueba frente al jugador. Por eso
- * usa el ConfirmDialog compartido con `confirmationPhrase` — Clase C de la
- * gramática de interacción (gramatica-interaccion.md:93-113), el mismo trato
- * que "Cerrar caja del día".
+ * cuándo y por qué medio, y eso alcanza como prueba frente al jugador.
+ *
+ * Clase B de la gramática de interacción: `ConfirmDialog` con las consecuencias
+ * a la vista, sin frase tipeada. Era Clase C y la frase se retiró por decisión
+ * del dueño — elegir el medio explícitamente y confirmar con un botón que dice
+ * el monto ya son dos decisiones conscientes, y tipear es lo más caro de todo
+ * lo que se hace en el mostrador.
  */
 export function MarkRefundSettledDialog({
   row,
@@ -79,53 +83,51 @@ export function MarkRefundSettledDialog({
     }
   }
 
+  // Clase B de la gramática de interacción: las consecuencias se muestran, no
+  // se tipean. Salen del código de la action, no de memoria — el egreso en caja
+  // lo crea `markRefundSettledAction` solo para efectivo y transferencia.
+  const consequences = row
+    ? [
+        `Queda registrado que ya le devolviste ${formatArs(row.amountCents)} a ${row.debtorName}.`,
+        ...(method === 'cash' || method === 'transfer'
+          ? ['Se anota como gasto en los movimientos del día.']
+          : []),
+        'No se puede deshacer.',
+      ]
+    : undefined
+
   return (
     <ConfirmDialog
       open={row !== null}
       onOpenChange={(v) => !v && onClose()}
       title="¿Ya devolviste esta seña?"
-      confirmLabel="Sí, ya devolví"
+      description={
+        <>
+          Esto <strong className="text-foreground">no mueve plata en MercadoPago</strong>: la
+          devolución la hacés vos por fuera y acá solo queda el registro.
+        </>
+      }
+      consequences={consequences}
+      confirmLabel={row ? `Marcar devuelta · ${formatArs(row.amountCents)}` : 'Marcar devuelta'}
       cancelLabel="Volver"
-      confirmationPhrase="DEVOLVER"
       onConfirm={onConfirm}
     >
       {row && (
-        <div className="space-y-4">
-          <ul className="space-y-1 text-sm text-muted-foreground">
-            <li>
-              Monto: <strong className="text-foreground">{formatArs(row.amountCents)}</strong>
-            </li>
-            <li>
-              Jugador: <strong className="text-foreground">{row.debtorName}</strong>
-            </li>
-          </ul>
-
-          <div className="space-y-1">
-            <label htmlFor="refund-method" className="block text-sm font-medium text-foreground">
-              ¿Por dónde se la devolviste?
-            </label>
-            <select
-              id="refund-method"
-              value={method}
-              onChange={(e) => setMethod(e.target.value as MethodKey)}
-              className="flex h-11 w-full rounded-lg border border-border bg-card px-3.5 text-base md:h-10 md:text-sm text-foreground shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {PAYMENT_METHOD_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-            Esto <strong className="text-foreground">no mueve plata en MercadoPago</strong>: solo
-            registra que ya la devolviste.
-            {(method === 'cash' || method === 'transfer') && (
-              <> Se va a anotar como gasto en la caja del día.</>
-            )}{' '}
-            No se puede deshacer.
+        <div className="space-y-1.5">
+          <p id="refund-method-label" className="text-sm font-medium text-foreground">
+            ¿Por dónde se la devolviste?
           </p>
+          <RadioChipGroup
+            aria-labelledby="refund-method-label"
+            value={method}
+            onValueChange={(v) => setMethod(v as MethodKey)}
+          >
+            {PAYMENT_METHOD_OPTIONS.map((m) => (
+              <RadioChip key={m.value} value={m.value}>
+                {m.label}
+              </RadioChip>
+            ))}
+          </RadioChipGroup>
         </div>
       )}
     </ConfirmDialog>

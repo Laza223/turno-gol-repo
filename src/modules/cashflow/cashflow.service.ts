@@ -262,6 +262,8 @@ export async function getDaySummary(
   let totalExpense = 0
   const byCategory: Partial<Record<CashFlowCategory, number>> = {}
   const byMethod: Partial<Record<'cash' | 'transfer' | 'mercadopago' | 'other', number>> = {}
+  const collectedByMethod: Partial<Record<'cash' | 'transfer' | 'mercadopago' | 'other', number>> =
+    {}
 
   for (const row of aggRows as unknown as Array<{
     type: string
@@ -282,6 +284,15 @@ export async function getDaySummary(
     const signed = row.type === 'expense' ? -total : total
     const meth = row.method as 'cash' | 'transfer' | 'mercadopago' | 'other'
     byMethod[meth] = (byMethod[meth] ?? 0) + signed
+
+    // collectedByMethod contesta OTRA pregunta: "de lo que entró hoy, ¿cuánto
+    // por cada medio?". Excluye los egresos, así que sus partes suman
+    // exactamente `collected` — que es lo que permite mostrarlo DENTRO de la
+    // card "Cobrado hoy" sin que los números se contradigan con el total de
+    // arriba. El neto de `byMethod` no puede: ahí las partes suman `balance`.
+    if (row.type !== 'expense') {
+      collectedByMethod[meth] = (collectedByMethod[meth] ?? 0) + total
+    }
   }
 
   return {
@@ -295,5 +306,6 @@ export async function getDaySummary(
     balance: balanceFrom({ totalIncome, totalAdjustments, totalExpense }),
     byCategory,
     byMethod,
+    collectedByMethod,
   }
 }

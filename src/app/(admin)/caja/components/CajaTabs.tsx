@@ -1,13 +1,15 @@
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
 
 const CAJA_TABS = [
-  { href: '/caja', label: 'Cantina' },
-  { href: '/caja/deudas', label: 'Deudas' },
-  // Lo que el complejo DEBE, al lado de lo que le deben. Son opuestos y por eso
-  // están separados: el total de "Deudas" tiene una fuente única y mezclarlos
-  // rompería el invariante que la compara por dos caminos.
-  { href: '/caja/devoluciones', label: 'Devoluciones' },
-  { href: '/caja/productos', label: 'Productos y stock' },
+  // Tres destinos por audiencia y frecuencia, no cuatro por tabla de la base.
+  // "Vender" es la caja registradora del encargado y no muestra ningún total
+  // agregado; "Cuentas" es el libro del dueño. Deudas y Devolvés viven ahí
+  // juntas como DOS listas con DOS totales: son las dos direcciones de la plata
+  // pendiente y no se netean nunca (el total de Deudas tiene fuente única en
+  // street-money.service.ts, y restarle lo que el complejo debe lo rompería).
+  { href: '/caja', label: 'Vender' },
+  { href: '/caja/cuentas', label: 'Cuentas' },
+  { href: '/caja/productos', label: 'Productos' },
 ]
 
 /** Tab bar única de /caja (mismo patrón que SettingsTabs). */

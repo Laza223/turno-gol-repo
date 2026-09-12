@@ -81,7 +81,7 @@ function actionFor(item: AttentionItem): { label: string; href: string } {
     // "Gestionar" no decía a dónde llevaba y era el único botón de la pantalla
     // que no nombraba su destino.
     case 'pending_refunds':
-      return { label: 'Ver devoluciones', href: '/caja/devoluciones' }
+      return { label: 'Ver devoluciones', href: '/caja/cuentas' }
   }
 }
 

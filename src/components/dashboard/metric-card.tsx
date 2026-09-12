@@ -9,6 +9,8 @@ interface MetricCardProps {
   sub?: string
   /** Semáforo financiero §2.5: emerald=entra, amber=pendiente, red=deuda, slate=neutro. */
   accent?: 'emerald' | 'amber' | 'red' | 'slate'
+  /** Detalle que descompone el `value`, dentro de la misma card (ver StatCard). */
+  footer?: ReactNode
   /** La card entera es el blanco (Fitts) — navega a la vista con el detalle. */
   href?: string
   /** aria-label del link (ej. "Caja de hoy: $ 45.000 — ver caja"). */
@@ -26,6 +28,7 @@ export function MetricCard({
   icon,
   sub,
   accent = 'emerald',
+  footer,
   href,
   ariaLabel,
 }: MetricCardProps) {
@@ -36,6 +39,7 @@ export function MetricCard({
       icon={icon}
       sub={sub}
       accent={accent}
+      footer={footer}
       className="h-full"
     />
   )

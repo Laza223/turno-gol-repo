@@ -94,6 +94,11 @@ const REDIRECT_STUBS = [
   // Eliminación de "Caja del día": Cantina pasó a vivir en /caja (raíz) y
   // /caja/cantina quedó como redirect de compat para bookmarks del staff.
   join('(admin)', 'caja', 'cantina', 'page.tsx'),
+  // Rediseño de Caja: Deudas y Devoluciones se fusionaron en /caja/cuentas —
+  // son las dos direcciones de la misma pregunta. Sus componentes y Server
+  // Actions siguen en esas carpetas; lo que quedó como redirect es la página.
+  join('(admin)', 'caja', 'deudas', 'page.tsx'),
+  join('(admin)', 'caja', 'devoluciones', 'page.tsx'),
 ] as const
 
 function walk(dir: string, out: string[] = []): string[] {

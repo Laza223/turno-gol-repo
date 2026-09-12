@@ -32,8 +32,8 @@ export const ConProductos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     for (const p of PRODUCTS) {
-      // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo) —
-      // getAllByRole()[0] en vez de getByRole (ambiguo).
+      // getAllByRole()[0] en vez de getByRole: el nombre suelto también
+      // matchea los botones de +/- del ticket, así que el matcher es ambiguo.
       await expect(canvas.getAllByRole('button', { name: new RegExp(p.name) })[0]).toBeVisible()
     }
     await expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible()
@@ -61,10 +61,9 @@ export const VentaDeUnItem: Story = {
     const canvas = within(canvasElement)
     const product = PRODUCTS[0]!
 
-    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo) —
-    // getAllByRole()[0] en vez de getByRole (ambiguo).
+    // getAllByRole()[0] en vez de getByRole: el nombre suelto también
+    // matchea los botones de +/- del ticket, así que el matcher es ambiguo.
     await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
-    // Mismo motivo: la badge "×1" se pinta en las dos secciones a la vez.
     await expect(canvas.getAllByText('×1')[0]).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
@@ -93,7 +92,7 @@ export const VentaMultiItem: Story = {
     // Anclado a ^: con una línea ya en el ticket, "Restar/Sumar uno a {nombre}"
     // y "Quitar {nombre} del ticket" también matchean el nombre suelto y
     // getByRole se vuelve ambiguo. Además, con ≤6 productos cada uno aparece
-    // 2 veces (Recientes + Catálogo) — getAllByRole()[0] en vez de getByRole.
+    // una sola vez desde que se eliminó "Recientes".
     await userEvent.click(
       canvas.getAllByRole('button', { name: new RegExp(`^${productA!.name}`) })[0]!,
     )
@@ -130,7 +129,7 @@ export const QuitarLinea: Story = {
     const canvas = within(canvasElement)
     const product = PRODUCTS[0]!
 
-    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    // Un solo botón por producto desde que se eliminó "Recientes".
     await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await expect(canvas.getAllByText('×1')[0]).toBeVisible()
 
@@ -151,7 +150,7 @@ export const ErrorDeVenta: Story = {
     const canvas = within(canvasElement)
     const product = PRODUCTS[0]!
 
-    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    // Un solo botón por producto desde que se eliminó "Recientes".
     await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
 
@@ -171,12 +170,15 @@ export const AnotarComoFiado: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const product = PRODUCTS[0]!
 
-    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    // Un solo botón por producto desde que se eliminó "Recientes".
     await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await userEvent.click(canvas.getByRole('button', { name: 'Anotar como fiado' }))
 
     const dialog = within(await body.findByRole('dialog'))
-    await userEvent.type(dialog.getByLabelText('Nombre'), 'Capitán equipo 22hs')
+    await userEvent.type(dialog.getByLabelText('¿A nombre de quién?'), 'Capitán equipo 22hs')
+    // El diálogo pide UNA sola cosa: el campo de nota libre se retiró (Ley
+    // 25.326, misma razón que `abonados.notes`).
+    await expect(dialog.queryByLabelText(/nota/i)).not.toBeInTheDocument()
     await userEvent.click(dialog.getByRole('button', { name: /^Anotar fiado/ }))
 
     await waitFor(() =>
@@ -201,7 +203,7 @@ export const AnotarFiadoSinNombre: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const product = PRODUCTS[0]!
 
-    // Con ≤6 productos, cada uno aparece 2 veces (Recientes + Catálogo).
+    // Un solo botón por producto desde que se eliminó "Recientes".
     await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await userEvent.click(canvas.getByRole('button', { name: 'Anotar como fiado' }))
 

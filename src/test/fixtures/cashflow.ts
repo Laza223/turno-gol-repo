@@ -91,6 +91,8 @@ export const daySummary = (overrides: Partial<DaySummary> = {}): DaySummary => {
     totalExpense: 800000,
     byCategory: { booking: 3600000, product_sale: 900000, operating_expense: 800000 },
     byMethod: { cash: 2000000, mercadopago: 2000000, transfer: 500000 },
+    // Sus partes suman `collected` (4.5M), que es el contrato del campo.
+    collectedByMethod: { cash: 2000000, mercadopago: 2000000, transfer: 500000 },
     ...overrides,
   }
   return { ...base, collected: collectedFrom(base), balance: balanceFrom(base) }
@@ -104,4 +106,5 @@ export const daySummaryOpen = (): DaySummary =>
     totalExpense: 0,
     byCategory: { booking: 1500000, product_sale: 300000 },
     byMethod: { mercadopago: 900000, cash: 600000, transfer: 300000 },
+    collectedByMethod: { mercadopago: 900000, cash: 600000, transfer: 300000 },
   })

@@ -80,7 +80,10 @@ export const createTabSchema = z.object({
     .array(ticketLineSchema)
     .min(1, 'El fiado necesita al menos un producto.')
     .max(20, 'El fiado no puede tener más de 20 productos distintos.'),
-  note: boundedText(300).optional(),
+  // Sin `note`: era texto libre sobre una persona, que la Ley 25.326 deja
+  // expuesto al derecho de acceso del titular. Se controla en el origen, o sea
+  // acá, igual que con `abonados.notes`. La columna sigue en la base con lo ya
+  // cargado; lo que se cerró es la puerta de entrada.
   clientIdempotencyKey: uuid,
 })
 

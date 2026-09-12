@@ -875,7 +875,7 @@ export async function addBookingChargeAction(
 
   if (result.success) {
     revalidateBooking(bookingId)
-    revalidatePath('/caja')
+    revalidatePath('/caja/cuentas')
   }
   return result
 }
@@ -1012,6 +1012,6 @@ export async function completeAndChargeBookingAction(
 
   validateApiOutput(bookingResponseSchema, { data: booking }, 'completeAndChargeBookingAction')
   revalidateBooking(bookingId)
-  revalidatePath('/caja')
+  revalidatePath('/caja/cuentas')
   return { success: true, booking }
 }

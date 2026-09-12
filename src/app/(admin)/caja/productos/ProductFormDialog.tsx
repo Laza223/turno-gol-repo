@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
+import { formatArs } from '@/lib/format'
 import { chipClass } from '../caja-lib'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
@@ -30,6 +31,20 @@ export type UpdateProductAction = (input: {
   productId: string
   patch: Partial<ProductFormFields> & { isActive?: boolean }
 }) => Promise<ProductActionResult>
+
+/**
+ * "$ 1.200 · 45%" — margen = (precio − costo) / precio. `null` si falta alguno
+ * de los dos, o si el precio todavía es 0: un margen del 100% sobre precio cero
+ * no informa nada y aparecería mientras el dueño tipea.
+ *
+ * Vivía como columna del catálogo. Se movió acá con el rediseño: es un dato de
+ * decisión de precio, no de repaso de stock.
+ */
+function marginLabel(priceCents: number | null, costCents: number | null): string | null {
+  if (priceCents == null || costCents == null || priceCents <= 0) return null
+  const margin = Math.round(((priceCents - costCents) / priceCents) * 100)
+  return `${formatArs(costCents)} de costo · ${margin}%`
+}
 
 export function ProductFormDialog({
   open,
@@ -218,6 +233,15 @@ export function ProductFormDialog({
                   />
                 </div>
               </div>
+
+              {/* El margen vive acá, al lado de los dos números que lo forman, y
+                  ya no como columna del catálogo: es un dato que el dueño mira
+                  cuando decide un precio, no cada vez que repasa el stock. */}
+              {marginLabel(priceCents, costCents) && (
+                <p className="text-xs text-muted-foreground">
+                  Margen: {marginLabel(priceCents, costCents)}
+                </p>
+              )}
             </div>
 
             {/* Columna Derecha: Control de Stock */}

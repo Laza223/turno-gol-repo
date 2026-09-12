@@ -15,6 +15,7 @@ import {
   mediumDateLabel,
   methodBreakdown,
   movementTitle,
+  operatingDayLabel,
   signedArs,
 } from '@/app/(admin)/caja/caja-lib'
 
@@ -65,6 +66,25 @@ describe('mediumDateLabel', () => {
   it('formatTimeArt: 24h SIEMPRE §8.3, aun en ICUs que resuelven es-AR como 12h', () => {
     expect(formatTimeArt(new Date('2026-06-11T02:40:00Z'))).toBe('23:40') // 23:40 ART del día 10
     expect(formatTimeArt(new Date('2026-06-11T03:05:00Z'))).toBe('00:05') // medianoche → 00, no 24
+  })
+})
+
+describe('operatingDayLabel', () => {
+  it('sin corte nocturno el día ES el calendario: la coletilla no aparece', () => {
+    // cutoffMins 0 es la inmensa mayoría de los complejos (closesNextDay=false).
+    // Decir "desde las 00:00" ahí no informa nada y suma ruido.
+    expect(operatingDayLabel('2026-07-02', 0)).toBe('jue 2 de julio')
+  })
+
+  it('con corte nocturno dice desde qué hora arranca el día de trabajo', () => {
+    expect(operatingDayLabel('2026-07-02', 360)).toBe('jue 2 de julio · desde las 06:00')
+    expect(operatingDayLabel('2026-07-02', 90)).toBe('jue 2 de julio · desde las 01:30')
+  })
+
+  it('un cutoff negativo no puede escribir una hora inventada', () => {
+    // Defensivo: nightCutoffMins nunca devuelve negativo, pero un label es lo
+    // último que debería inventar un horario si alguna vez lo hiciera.
+    expect(operatingDayLabel('2026-07-02', -30)).toBe('jue 2 de julio')
   })
 })
 

@@ -1013,6 +1013,6 @@ export async function registerInscriptionPaymentAction(
 
   revalidateTorneos(tournamentId)
   // El cobro es un movimiento de Caja: el listado del día lo muestra.
-  revalidatePath('/caja')
+  revalidatePath('/caja/cuentas')
   return { success: true }
 }

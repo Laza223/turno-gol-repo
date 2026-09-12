@@ -34,7 +34,7 @@ const PUBLIC_ROUTES = [
 const ADMIN_ROUTES = [
   '/grilla',
   '/caja',
-  '/caja/cantina',
+  '/caja/cuentas',
   '/caja/productos',
   '/reservas',
   '/jugadores',
@@ -104,10 +104,10 @@ test.describe('campos ≥16px — con overlays abiertos', () => {
     await ctx.close()
   })
 
-  test('/caja — modal de registrar movimiento', async ({ browser, adminStorageState }) => {
+  test('/caja/cuentas — modal de registrar movimiento', async ({ browser, adminStorageState }) => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
 
     await page
       .getByRole('button', { name: /movimiento/i })
@@ -118,7 +118,7 @@ test.describe('campos ≥16px — con overlays abiertos', () => {
     const small = await collectSmallFields(page)
     expect(
       small,
-      small.length ? formatSmallFields('/caja + RegisterMovementModal', small) : undefined,
+      small.length ? formatSmallFields('/caja/cuentas + RegisterMovementModal', small) : undefined,
     ).toEqual([])
     await ctx.close()
   })

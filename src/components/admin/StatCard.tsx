@@ -20,6 +20,15 @@ interface StatCardProps {
   delta?: DeltaProps
   /** Acento del icon-halo. emerald=admin (default), violet=super-admin. */
   accent?: Accent
+  /**
+   * Detalle que descompone el `value`, dentro de la misma card. La pregunta y
+   * su respuesta juntas: el desglose por método de "Cobrado hoy" vive acá y no
+   * en una sección aparte, porque leer el total y tener que buscar de dónde
+   * salió en otro lado es la fricción que el plegado tenía.
+   *
+   * Lo que se ponga acá tiene que sumar el `value`, o la card se contradice.
+   */
+  footer?: ReactNode
   className?: string
 }
 
@@ -81,6 +90,7 @@ export function StatCard({
   sub,
   delta,
   accent = 'emerald',
+  footer,
   className,
 }: StatCardProps) {
   return (
@@ -119,6 +129,7 @@ export function StatCard({
         )}
         {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       </div>
+      {footer && <div className="mt-3">{footer}</div>}
     </div>
   )
 }

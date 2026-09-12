@@ -12,5 +12,5 @@ import { redirect } from 'next/navigation'
  * jugador, a la que ahora linkea cada fila de "Plata en la calle".
  */
 export default function JugadoresDeudasPage() {
-  redirect('/caja/deudas')
+  redirect('/caja/cuentas')
 }

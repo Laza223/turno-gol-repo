@@ -179,11 +179,10 @@ function BookingCardComponent({
         data-col={col}
         data-row={row}
         onClick={(e) => {
-          if (renderQuickForm) {
-            setQuickSide(
-              quickPopoverSide(e.currentTarget.getBoundingClientRect(), window.innerWidth),
-            )
-          }
+          // Sin chequear `renderQuickForm`: GridScroller se lo pasa a la celda
+          // recién cuando ya está abierta, así que en este click todavía no
+          // llegó. El cálculo es barato y solo lo usa la celda que se abre.
+          setQuickSide(quickPopoverSide(e.currentTarget.getBoundingClientRect(), window.innerWidth))
           onSlotClick?.(courtId!, timeStart)
         }}
         aria-label={`Reservar turno ${timeStart} en ${courtName}`}

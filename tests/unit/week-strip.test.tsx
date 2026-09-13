@@ -22,19 +22,21 @@ describe('WeekStrip', () => {
     return onNavigate
   }
 
-  it('renderiza los 7 días de la semana del día seleccionado', () => {
+  it('renderiza 2 días antes del seleccionado y el resto adelante (no la semana calendario)', () => {
     setup()
     for (const label of [
-      'Lun 8',
       'Mar 9',
       'Mié 10',
       'Jue 11 (hoy)',
       'Vie 12',
       'Sáb 13',
       'Dom 14',
+      'Lun 15',
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
+    // El lunes de esa semana calendario (8) ya no se dibuja: quedaría a 3 días.
+    expect(screen.queryByRole('button', { name: 'Lun 8' })).toBeNull()
   })
 
   it('marca el día seleccionado con aria-current y el día actual con "(hoy)"', () => {

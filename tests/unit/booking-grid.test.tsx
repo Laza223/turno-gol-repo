@@ -690,6 +690,32 @@ describe('BookingGrid — popover de alta rápida', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  /**
+   * El lado se decide con dónde quedó la celda al tocarla (quick-popover-side.ts).
+   * Este test mira que la decisión LLEGUE al popover: la primera versión del fix
+   * la calculaba solo si la celda ya tenía `renderQuickForm`, que GridScroller
+   * le pasa recién cuando está abierta, y el popover seguía abriendo a la derecha.
+   * happy-dom mide la ventana en 1024 px.
+   */
+  it.each([
+    {
+      cell: { left: 163, right: 1245 },
+      side: 'bottom',
+      caso: 'una sola cancha: no entra a ningún costado',
+    },
+    { cell: { left: 163, right: 400 }, side: 'right', caso: 'entra a la derecha' },
+  ])('abre el popover del lado que entra ($caso)', async ({ cell, side }) => {
+    renderGrid({ depositPercentage: 30 })
+    const button = screen.getByRole('button', { name: FREE })
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: cell.left, y: 0, width: cell.right - cell.left, height: 64 }),
+    )
+
+    fireEvent.click(button)
+    const input = await screen.findByLabelText('¿A nombre de quién?')
+    expect(input.closest('[data-side]')?.getAttribute('data-side')).toBe(side)
+  })
+
   it('"Más opciones" abre el modal completo con el MISMO slot', async () => {
     renderGrid({ depositPercentage: 30 })
     fireEvent.click(screen.getByRole('button', { name: FREE }))

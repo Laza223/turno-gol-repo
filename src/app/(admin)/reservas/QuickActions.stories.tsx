@@ -86,7 +86,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="relative max-w-xl rounded-xl border border-border bg-card p-3 shadow-xs">
+      // `@container`: QuickActions elige fila de botones vs menú por el ancho
+      // del contenedor (en la app, la tarjeta de BookingListItem). Sin
+      // contenedor la container query nunca matchea y todo quedaba angosto.
+      <div className="@container relative max-w-xl rounded-xl border border-border bg-card p-3 shadow-xs">
         <Story />
       </div>
     ),
@@ -406,6 +409,13 @@ export const CancelarSinSenaPagada: Story = {
 export const TarjetaAngostaConfirmada: Story = {
   args: { booking: CONFIRMADA_SENA_MP },
   parameters: { viewport: { defaultViewport: 'mobile-primary' } },
+  decorators: [
+    (Story) => (
+      <div className="@container w-80">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     const narrow = within(canvas.getByTestId('quick-actions-narrow'))
@@ -426,6 +436,13 @@ export const TarjetaAngostaConfirmada: Story = {
 export const TarjetaAngostaPendientePago: Story = {
   args: { booking: PENDIENTE_PAGO },
   parameters: { viewport: { defaultViewport: 'mobile-primary' } },
+  decorators: [
+    (Story) => (
+      <div className="@container w-80">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     const narrow = within(canvas.getByTestId('quick-actions-narrow'))

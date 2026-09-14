@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
 import { Ban, Clock, Repeat, Users, type LucideIcon } from 'lucide-react'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -40,6 +41,7 @@ export function TypePicker({
   value: BookingKind
   onChange: (v: BookingKind) => void
 }) {
+  const hintId = useId()
   return (
     <>
       <div className="lg:hidden">
@@ -79,6 +81,10 @@ export function TypePicker({
           <RadioGroupPrimitive.Item
             key={t.value}
             value={t.value}
+            // El nombre accesible es solo el título; la línea de ayuda va como
+            // descripción (si no, el radio se llama "Turno fijo Todas las…").
+            aria-label={t.title}
+            aria-describedby={`${hintId}-${t.value}`}
             className={cn(
               'group flex items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
@@ -91,7 +97,9 @@ export function TypePicker({
             />
             <span>
               <span className="block text-sm font-semibold text-foreground">{t.title}</span>
-              <span className="block text-xs text-muted-foreground">{t.hint}</span>
+              <span id={`${hintId}-${t.value}`} className="block text-xs text-muted-foreground">
+                {t.hint}
+              </span>
             </span>
           </RadioGroupPrimitive.Item>
         ))}

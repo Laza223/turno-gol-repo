@@ -90,7 +90,7 @@ export function Summary({
             </dd>
           </div>
         </dl>
-        <div className="space-y-1.5 border-t border-border pt-3 text-sm">
+        <dl className="space-y-1.5 border-t border-border pt-3 text-sm">
           <div className="flex justify-between gap-2">
             <dt className="text-muted-foreground">Total</dt>
             <dd className="font-semibold tabular-nums text-foreground">
@@ -118,7 +118,7 @@ export function Summary({
               </div>
             </>
           )}
-        </div>
+        </dl>
         <div className="mt-auto space-y-2">
           {notices}
           <Button type="submit" isLoading={isPending} disabled={disabled} className="w-full">

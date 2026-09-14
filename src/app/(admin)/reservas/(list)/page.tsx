@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CalendarX, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -189,15 +190,19 @@ export default async function ReservasPage(props: Props) {
           pantalla se nombra. El h1 queda solo para el árbol de accesibilidad. */}
       <h1 className="sr-only">Reservas</h1>
 
-      <ReservasHeaderBar
-        scope={scope}
-        status={status}
-        q={q}
-        cancha={courtId ?? ''}
-        courts={courts}
-        counts={counts}
-        total={total}
-      />
+      {/* useSearchParams adentro: sin Suspense, Next renderiza en el cliente
+          todo lo que está por encima del límite más cercano. */}
+      <Suspense fallback={null}>
+        <ReservasHeaderBar
+          scope={scope}
+          status={status}
+          q={q}
+          cancha={courtId ?? ''}
+          courts={courts}
+          counts={counts}
+          total={total}
+        />
+      </Suspense>
 
       {rows.length === 0 ? (
         <EmptyState

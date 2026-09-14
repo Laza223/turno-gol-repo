@@ -60,8 +60,11 @@ function body() {
   return within(document.body)
 }
 
+// jsdom no aplica `lg:hidden` / `hidden lg:flex`: los dos selectores de tipo
+// (chips del teléfono y tarjetas de escritorio) existen a la vez y comparten
+// estado, así que cualquiera de los dos sirve.
 function pickType(name: string) {
-  fireEvent.click(body().getByRole('radio', { name }))
+  fireEvent.click(body().getAllByRole('radio', { name })[0]!)
 }
 
 /**

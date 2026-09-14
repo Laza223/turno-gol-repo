@@ -46,6 +46,14 @@ export function ReservasHeaderBar({ scope, status, q, cancha, courts, counts, to
   const searchId = useId()
 
   const [value, setValue] = useState(q)
+  // Si `q` cambia desde afuera (atrás del navegador, un link), el input lo
+  // sigue. Se ignora el eco de lo que el propio input empujó con el debounce:
+  // sin esa guarda, "juan " volvía a "juan" en medio del tipeo.
+  const [syncedQ, setSyncedQ] = useState(q)
+  if (q !== syncedQ) {
+    setSyncedQ(q)
+    if (q !== value.trim()) setValue(q)
+  }
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {

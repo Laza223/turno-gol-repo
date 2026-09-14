@@ -6,7 +6,7 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { ensurePTR, playerBelongsToTenant } from '@/modules/relationships/ptr.service'
 import { calculatePrice } from '@/modules/courts/court.service'
-import { priceForSlot } from '@/lib/booking/pricing'
+import { priceForRange, priceForSlot } from '@/lib/booking/pricing'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 import type { OpeningHours, TenantSettings } from '@/modules/tenants/tenant.types'
 import {
@@ -100,6 +100,27 @@ export function slotDurationMins(timeStart: string, timeEnd: string): number {
 export function assertSlotDuration(timeStart: string, timeEnd: string): void {
   if (slotDurationMins(timeStart, timeEnd) !== SLOT_DURATION_MINUTES) {
     throw new BookingValidationError(`Los turnos son de ${SLOT_DURATION_MINUTES} minutos.`)
+  }
+}
+
+/**
+ * Rediseño 2026-09-14 (alta desde la grilla): la carga manual NO-`block` ya no
+ * exige exactamente 60 min — admite un evento de N horas ENTERAS (mínimo 60,
+ * múltiplo de 60). Reemplaza a `assertSlotDuration` SOLO en `createManualBooking`;
+ * ese helper sigue siendo el gate estricto de 60 min de la reserva online
+ * (`createOnlineBookingImpl`) y de la reprogramación (`booking.reschedule.ts`),
+ * que el contrato de este rediseño deja intactas a propósito.
+ *
+ * Sin `export`: a diferencia de `assertSlotDuration`, nadie más la necesita
+ * hoy (la duración del destino de una reprogramación sigue siendo estricta),
+ * y un export usado solo en su propio archivo tira `knip`.
+ */
+function assertWholeHours(timeStart: string, timeEnd: string): void {
+  const duration = slotDurationMins(timeStart, timeEnd)
+  if (duration < SLOT_DURATION_MINUTES || duration % SLOT_DURATION_MINUTES !== 0) {
+    throw new BookingValidationError(
+      `La duración tiene que ser un múltiplo de ${SLOT_DURATION_MINUTES} minutos.`,
+    )
   }
 }
 
@@ -202,10 +223,11 @@ export async function createManualBooking(
   input: CreateManualBookingInput,
   tx: DbTx,
 ): Promise<BookingRow> {
-  // Tarea #6: reservas son de 60 min. Los `block` (mantenimiento) pueden abarcar
-  // varias horas, así que no se validan.
+  // Tarea #6 → rediseño 2026-09-14: la carga manual no-`block` admite N horas
+  // ENTERAS (mínimo 60, múltiplo de 60), no sólo 60 fijo. Los `block`
+  // (mantenimiento) pueden abarcar varias horas sin esa restricción tampoco.
   if (input.type !== 'block') {
-    assertSlotDuration(input.timeStart, input.timeEnd)
+    assertWholeHours(input.timeStart, input.timeEnd)
   }
 
   // H-1 de la auditoría de aislamiento del 2026-09-05: el `player_id` llega del
@@ -233,8 +255,15 @@ export async function createManualBooking(
     priceSnapshot = input.priceOverride
   } else if (input.type === 'block') {
     priceSnapshot = 0
-  } else {
+  } else if (slotDurationMins(input.timeStart, input.timeEnd) === SLOT_DURATION_MINUTES) {
+    // Turno de 60 min: comportamiento EXACTO de siempre, sin tocar.
     const calc = calculatePrice(court.pricing, artDateAt(input.date, input.timeStart))
+    if (calc === null) throw new PriceUnavailableError()
+    priceSnapshot = calc
+  } else {
+    // Evento de N horas (rediseño 2026-09-14): precio = suma de la tarifa de
+    // cada hora del rango, misma franja horaria que usa la grilla.
+    const calc = priceForRange(court.pricing, input.date, input.timeStart, input.timeEnd)
     if (calc === null) throw new PriceUnavailableError()
     priceSnapshot = calc
   }
@@ -251,6 +280,21 @@ export async function createManualBooking(
 
   const depositAmount = input.depositAmount ?? 0
   const depositStatus = input.depositStatus ?? 'not_required'
+  // La seña que el staff ya cobró en el mostrador tiene que entrar a Caja.
+  // `depositIsCounted` es EL MISMO predicado que `summarizeBookingCharges`
+  // usa para `depositCounted` (booking.charges.ts): la invariante es
+  // "existe fila en cash_flows ⟺ el resumen del turno cuenta la seña".
+  // Con cualquier otro criterio, Caja y el detalle del turno divergen.
+  const depositIsCounted = depositStatus === 'paid' || depositStatus === 'captured'
+  // Hallazgo #1 (redesign booking modal, 2026-09-14): lo cobrado nunca puede
+  // superar el precio del turno. El cliente precarga "Todo" con el total DE
+  // ESE MOMENTO pero deja bajar el precio después con "Cambiar" — sin este
+  // guard, un `priceOverride` menor llegaba con `depositAmount` viejo y
+  // `depositStatus='paid'`, dejando "Queda por cobrar" negativo (Summary lo
+  // esconde con Math.max, pero la fila real queda mal).
+  if (depositIsCounted && depositAmount > priceSnapshot) {
+    throw new BookingValidationError('Lo cobrado no puede superar el precio del turno.')
+  }
   // chk_booking_payment_consistency:
   //   * mercadopago + payment_id NOT NULL  (P10 only — manual flow rejects this)
   //   * cash/transfer/other + payment_id NULL
@@ -286,12 +330,9 @@ export async function createManualBooking(
 
     const created = rowToBookingRow(inserted[0]!)
 
-    // La seña que el staff ya cobró en el mostrador tiene que entrar a Caja.
-    // `depositIsCounted` es EL MISMO predicado que `summarizeBookingCharges`
-    // usa para `depositCounted` (booking.charges.ts): la invariante es
-    // "existe fila en cash_flows ⟺ el resumen del turno cuenta la seña".
-    // Con cualquier otro criterio, Caja y el detalle del turno divergen.
-    const depositIsCounted = depositStatus === 'paid' || depositStatus === 'captured'
+    // `depositIsCounted` ya se calculó arriba, junto al guard "lo cobrado no
+    // puede superar el precio" — mismo predicado, reusado acá para la fila de
+    // Caja.
     if (depositIsCounted && depositAmount > 0 && input.depositMethod) {
       await recordManualBookingDepositCashFlow(
         created,

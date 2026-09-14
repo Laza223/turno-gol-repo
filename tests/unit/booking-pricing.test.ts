@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { dayKeyOf, priceForDateSlot, priceForSlot, timeToMins } from '@/lib/booking/pricing'
+import {
+  dayKeyOf,
+  priceForDateSlot,
+  priceForRange,
+  priceForSlot,
+  timeToMins,
+} from '@/lib/booking/pricing'
 import { calculatePrice } from '@/modules/courts/court.service'
 import { artDateAt } from '@/modules/bookings/booking.service'
 import type { CourtPricingData } from '@/modules/courts/court.types'
@@ -78,6 +84,31 @@ describe('priceForSlot', () => {
       ],
     }
     expect(priceForSlot(solapadas, 'tue', '11:00')).toBe(111)
+  })
+})
+
+// Rediseño 2026-09-14: alta desde la grilla, evento de N horas con precio total.
+describe('priceForRange', () => {
+  it('suma la tarifa de cada hora, aunque el rango cruce dos franjas distintas', () => {
+    // 2026-08-04 es martes: 17:00 cae en la franja de día (1.500), 18:00 ya es
+    // la de noche (2.400).
+    expect(priceForRange(PRICING, '2026-08-04', '17:00', '19:00')).toBe(1_500_00 + 2_400_00)
+  })
+
+  it('un hueco de tarifa en cualquier hora del rango devuelve null (fail-closed)', () => {
+    const conHueco: CourtPricingData = {
+      rules: [
+        { days: ['tue'], from: '08:00', to: '10:00', price: 100_00 },
+        // Hueco: nada cubre 10:00-11:00.
+        { days: ['tue'], from: '11:00', to: '13:00', price: 200_00 },
+      ],
+    }
+    expect(priceForRange(conHueco, '2026-08-04', '09:00', '12:00')).toBeNull()
+  })
+
+  it("timeEnd '24:00' incluye la última hora antes de medianoche", () => {
+    // 22:00 y 23:00, ambas de la franja nocturna del martes.
+    expect(priceForRange(PRICING, '2026-08-04', '22:00', '24:00')).toBe(2_400_00 * 2)
   })
 })
 

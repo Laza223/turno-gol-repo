@@ -4,6 +4,7 @@ import {
   computeCells,
   countCollapsibleLeading,
   generateTimeSlots,
+  isPendingCollection,
   sumPendingCents,
 } from '@/lib/booking/grid-cells'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -276,5 +277,21 @@ describe('sumPendingCents', () => {
       makeBooking({ courtId: 'court1', timeStart: '11:00:00', timeEnd: '12:00:00', pending: 0 }),
     ]
     expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
+  })
+
+  // Rediseño 2026-09-14: un `block` nunca carga plata — aunque un dato viejo
+  // o corrupto le pegara un `pending` positivo, no cuenta como "por cobrar".
+  it('un block con pending > 0 NO suma: un bloqueo no es el turno de nadie', () => {
+    const bookings = [
+      makeBooking({
+        courtId: 'court1',
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        type: 'block',
+        pending: 200000,
+      }),
+    ]
+    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
+    expect(isPendingCollection(bookings[0]!)).toBe(false)
   })
 })

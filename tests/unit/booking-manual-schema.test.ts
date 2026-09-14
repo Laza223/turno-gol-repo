@@ -95,3 +95,48 @@ describe('createManualBookingSchema — manual block flow', () => {
     expect(r.success).toBe(false)
   })
 })
+
+// Rediseño 2026-09-14: un `block` nunca carga plata.
+describe('createManualBookingSchema — un block nunca carga plata', () => {
+  it('rejects a block with a positive priceOverride', () => {
+    const r = createManualBookingSchema.safeParse({
+      ...base,
+      type: 'block',
+      guestName: 'Mantenimiento',
+      priceOverride: 500000,
+    })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects a block with depositAmount/depositMethod/depositStatus', () => {
+    const r = createManualBookingSchema.safeParse({
+      ...base,
+      type: 'block',
+      guestName: 'Mantenimiento',
+      depositAmount: 100000,
+      depositMethod: 'cash',
+      depositStatus: 'paid',
+    })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects a block with depositMethod alone, even with depositAmount 0', () => {
+    const r = createManualBookingSchema.safeParse({
+      ...base,
+      type: 'block',
+      guestName: 'Mantenimiento',
+      depositAmount: 0,
+      depositMethod: 'cash',
+    })
+    expect(r.success).toBe(false)
+  })
+
+  it('accepts a plain block: no price, no deposit', () => {
+    const r = createManualBookingSchema.safeParse({
+      ...base,
+      type: 'block',
+      guestName: 'Mantenimiento',
+    })
+    expect(r.success).toBe(true)
+  })
+})

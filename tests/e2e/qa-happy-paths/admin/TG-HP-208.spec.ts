@@ -8,19 +8,17 @@ import {
   E2E_COURT_ID,
 } from '../../_helpers/booking-seed'
 import { suppressPushPrompt } from '../_qa/session'
-import { openQuickBookingPopover } from '../../_helpers/grid'
+import { openCreateModal } from '../../_helpers/grid'
 
 /**
  * TG-HP-208 — Crear reserva MANUAL desde grilla (offline / "de palabra").
  * Rol: Admin o manager — requireOperatorStaff.
  * Prereq: Tenant Demo, Cancha E2E 1 online, fecha de mañana (ART), slot 20:00 libre.
- * Flujo: /grilla → click celda libre 20:00 → popover de alta rápida → "Más
- *   opciones" → modal "Nueva reserva" (motivo default
- *   "Reserva Telefónica") → nombre/teléfono opcionales → Confirmar → toast +
- *   booking visible en grilla.
+ * Flujo: /grilla → click celda libre 20:00 → modal "Nueva reserva" (Turno,
+ *   default) → nombre/teléfono → Confirmar → toast + booking visible en grilla.
  * Caso de plata: NO (reserva manual = status confirmed sin payments, spec §doc7).
- * Evidence anchors: src/app/(admin)/reservas/actions.ts:54-116,
- *   BookingFormModal.tsx:54-60,73-152,163-305, booking.service.ts:190-278.
+ * Evidence anchors: src/app/(admin)/reservas/actions.ts:78-148,
+ *   BookingFormModal.tsx, create-modal/TurnoForm.tsx, booking.service.ts.
  */
 test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
   test('admin creates a manual booking via the grilla modal — guest path → confirmed in DB, no payments row', async ({
@@ -41,30 +39,19 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       // pero si React no hidrató todavía el click es un no-op silencioso.
       await page.goto(`/grilla?date=${tomorrow}`, { waitUntil: 'networkidle' })
       // Step 2/3: celda libre 20:00 (208 usa 20:00; 209 usa 21:00 — evita
-      // colisión) → popover de alta rápida → el modal con el motivo vive detrás
-      // de "Más opciones".
-      await openQuickBookingPopover(page, '20:00')
-      // `exact`: la barra de la grilla tiene "Más opciones de la grilla" (#303).
-      await page.getByRole('button', { name: 'Más opciones', exact: true }).click()
+      // colisión) abre DIRECTO el modal, con "Turno" ya elegido (rediseño
+      // 2026-09-14: el alta rápida se eliminó).
+      await openCreateModal(page, '20:00')
 
-      await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
-      await expect(page.locator('#reason')).toHaveValue('phone')
+      // Step 4: nombre + teléfono.
+      await page.getByLabel('¿A nombre de quién?').fill('E2E QA-208 Manual')
+      await page.getByLabel('Teléfono').fill('11 0000-0208')
 
-      // Step 4: nombre + teléfono opcionales.
-      await page.fill('#guestName', 'E2E QA-208 Manual')
-      // El teléfono vive colapsado bajo "Opciones avanzadas" desde el rediseño
-      // del modal (progressive disclosure). Este spec lo llenaba directo y
-      // fallaba con "element is not visible" — roto en main desde antes de Fase 3.
-      await page.getByRole('button', { name: 'Opciones avanzadas' }).click()
-      await page.fill('#guestPhone', '+5491100000208')
-
-      // Step 5: "No cobré" viene preseleccionado (revierte PR #185). "De
-      // palabra" es justamente el turno que todavía no pagó nada; se deja
-      // explícito igual para que el spec no dependa del default.
-      await page.selectOption('#depositMethod', 'none')
+      // Step 5: "No cobré" viene preseleccionado — "De palabra" es justamente
+      // el turno que todavía no pagó nada, así que no hace falta tocar nada más.
 
       // Step 6: confirmar.
-      await page.getByRole('button', { name: 'Confirmar reserva' }).click()
+      await page.getByRole('button', { name: /Reservar/ }).click()
 
       // Toast + cierre del modal.
       await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({

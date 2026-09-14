@@ -86,7 +86,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="relative max-w-xl rounded-xl border border-border bg-card p-3 shadow-xs">
+      // `@container`: QuickActions elige fila de botones vs menú por el ancho
+      // del contenedor (en la app, la tarjeta de BookingListItem). Sin
+      // contenedor la container query nunca matchea y todo quedaba angosto.
+      <div className="@container relative max-w-xl rounded-xl border border-border bg-card p-3 shadow-xs">
         <Story />
       </div>
     ),
@@ -383,10 +386,11 @@ export const CancelarSinSenaPagada: Story = {
   },
 }
 
-// ─── Mobile: menú contextual (regla de oro: axe escanea el menú ABIERTO) ──
+// ─── Tarjeta angosta (mobile / columna del tablero): acción primaria visible
+// + menú chico para lo secundario (H079/rediseño board) ────────────────────
 
 /**
- * El menú mobile queda ABIERTO a propósito cuando termina el `play`: el scan de
+ * El menú queda ABIERTO a propósito cuando termina el `play`: el scan de
  * axe (que corre DESPUÉS del play) tiene que evaluar ese estado, que es donde
  * vivía la violación real.
  *
@@ -397,35 +401,52 @@ export const CancelarSinSenaPagada: Story = {
  * comentario en QuickActions.tsx). Si esta story vuelve a fallar por
  * `aria-hidden-focus`, es que alguien revirtió ese fix — no hay que cerrar el
  * menú con `{Escape}` al final del play para taparlo.
+ *
+ * Con la tarjeta angosta, "Completada"/"Cobrar" dejó de estar escondida en el
+ * menú (H079): es un botón propio, visible sin abrir nada. El menú ahora solo
+ * tiene lo secundario (Ausente/Cancelar).
  */
-export const MenuMobileAbiertoConfirmada: Story = {
+export const TarjetaAngostaConfirmada: Story = {
   args: { booking: CONFIRMADA_SENA_MP },
   parameters: { viewport: { defaultViewport: 'mobile-primary' } },
+  decorators: [
+    (Story) => (
+      <div className="@container w-80">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: `Acciones para ${args.label}` }))
+    const narrow = within(canvas.getByTestId('quick-actions-narrow'))
+    await expect(narrow.getByRole('button', { name: 'Completada' })).toBeVisible()
+
+    await userEvent.click(narrow.getByRole('button', { name: `Acciones para ${args.label}` }))
     const menu = within(document.body)
     await expect(
-      menu.findByRole('menuitem', { name: 'Marcar completada' }),
+      menu.findByRole('menuitem', { name: 'Marcar ausente' }),
     ).resolves.toBeInTheDocument()
-    await expect(menu.getByRole('menuitem', { name: 'Marcar ausente' })).toBeInTheDocument()
     await expect(menu.getByRole('menuitem', { name: 'Cancelar reserva' })).toBeInTheDocument()
+    await expect(menu.queryByRole('menuitem', { name: 'Marcar completada' })).toBeNull()
     await expect(menu.queryByRole('menuitem', { name: 'Confirmar pago' })).toBeNull()
   },
 }
 
-export const MenuMobileAbiertoPendientePago: Story = {
+/** `pending_payment` en tarjeta angosta: solo el botón "Confirmar pago" — sin secundarias, no hay menú. */
+export const TarjetaAngostaPendientePago: Story = {
   args: { booking: PENDIENTE_PAGO },
   parameters: { viewport: { defaultViewport: 'mobile-primary' } },
+  decorators: [
+    (Story) => (
+      <div className="@container w-80">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: `Acciones para ${args.label}` }))
-    const menu = within(document.body)
-    await expect(
-      menu.findByRole('menuitem', { name: 'Confirmar pago' }),
-    ).resolves.toBeInTheDocument()
-    await expect(menu.queryByRole('menuitem', { name: 'Marcar completada' })).toBeNull()
-    await expect(menu.queryByRole('menuitem', { name: 'Marcar ausente' })).toBeNull()
-    await expect(menu.queryByRole('menuitem', { name: 'Cancelar reserva' })).toBeNull()
+    const narrow = within(canvas.getByTestId('quick-actions-narrow'))
+    await expect(narrow.getByRole('button', { name: 'Confirmar pago' })).toBeVisible()
+    await expect(narrow.queryByRole('button', { name: `Acciones para ${args.label}` })).toBeNull()
   },
 }

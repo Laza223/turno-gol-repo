@@ -213,16 +213,19 @@ export function computeCells(
  * turnos de cliente que YA son un compromiso: `confirmed` (todavía por jugar) y
  * `completed` (jugado y con saldo). Deja afuera `no_show` — el veto del repo es
  * que un no-show NO es deuda — y `pending_payment`, que es un hold de 6 min que
- * se libera solo. Bloqueos y torneos tienen price_snapshot 0, así que no suman.
- * Ignora los turnos sin dato de plata (Realtime crudo antes del reconcile) en
- * vez de contarlos como cero: el número baja un instante, nunca miente hacia
- * arriba.
+ * se libera solo. Un torneo tiene price_snapshot 0, así que nunca suma solo con
+ * eso; un `block` se excluye por TIPO, explícitamente: el schema ya blinda que
+ * un bloqueo no cargue plata (rediseño 2026-09-14), pero esta suma no depende
+ * de esa garantía para no mentir si algún día deja de cumplirse. Ignora los
+ * turnos sin dato de plata (Realtime crudo antes del reconcile) en vez de
+ * contarlos como cero: el número baja un instante, nunca miente hacia arriba.
  */
 /** Un turno cuenta para "Por cobrar hoy": mismo criterio que {@link sumPendingCents}. */
 export function isPendingCollection(b: GridBooking): boolean {
   return (
     typeof b.pending === 'number' &&
     b.pending > 0 &&
+    b.type !== 'block' &&
     (b.status === 'confirmed' || b.status === 'completed')
   )
 }

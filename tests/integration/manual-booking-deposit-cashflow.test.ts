@@ -298,6 +298,38 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
     expect(await cashFlowsFor(booking.id)).toHaveLength(0)
   })
 
+  it('lo cobrado no puede superar el precio: se rechaza y no queda cash_flow', async () => {
+    const { tenantId, staffId, courtId } = await seed()
+
+    // Hallazgo #1 (redesign booking modal, 2026-09-14): "Todo" precarga el
+    // monto con el total de ESE momento, pero el precio se puede editar
+    // después con "Cambiar" — un `depositAmount` mayor al precio final
+    // (PRICE) nunca debe llegar a insertarse.
+    await expect(
+      withTenantContext(tenantId, (tx) =>
+        createManualBooking(
+          tenantId,
+          manualInput({
+            courtId,
+            staffId,
+            timeStart: '15:00',
+            timeEnd: '16:00',
+            depositAmount: PRICE + 1,
+            depositMethod: 'cash',
+            depositStatus: 'paid',
+          }),
+          tx,
+        ),
+      ),
+    ).rejects.toThrow('Lo cobrado no puede superar el precio del turno.')
+
+    const sql = getSql()
+    const rows = await sql<{ id: string }[]>`
+      SELECT id FROM bookings WHERE tenant_id = ${tenantId} AND time_start = '15:00'
+    `
+    expect(rows).toHaveLength(0)
+  })
+
   it('sin seña: no toca Caja', async () => {
     const { tenantId, staffId, courtId } = await seed()
 

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ReservaListRow } from '@/app/(admin)/reservas/queries'
 import { formatArs } from '@/lib/format'
 
@@ -18,9 +18,9 @@ vi.mock('@/modules/staff/guards', () => ({
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
 }))
-// H110 — la page ahora pide las canchas del tenant (filtro por cancha) dentro
-// del mismo `withTenantContext`; sin este mock, `listCourts` real corre contra
-// el `tx` de mentira de arriba y explota.
+// H110 — la page pide las canchas del tenant (filtro por cancha, columnas del
+// tablero) dentro del mismo `withTenantContext`; sin este mock, `listCourts`
+// real corre contra el `tx` de mentira de arriba y explota.
 const courtsMock = vi.fn(async (): Promise<Array<{ id: string; name: string }>> => [])
 vi.mock('@/modules/courts/court.service', () => ({
   listCourts: (...args: unknown[]) => courtsMock(...(args as [])),
@@ -29,13 +29,19 @@ vi.mock('@/shared/dates/art', () => ({
   artTodayStr: vi.fn(() => '2026-06-12'),
   addDays: vi.fn((d: string) => d),
 }))
+const replaceMock = vi.fn()
+// `ReservasHeaderBar` (client) lee `useSearchParams()` para preservar el
+// resto de los params al pegar `router.replace` — en producción es la MISMA
+// URL que ve el server. Acá hay que sincronizarlo a mano por test (mismo
+// patrón que tenía `reservas-toolbar.test.tsx`).
+let searchParamsInit = ''
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => {
     throw new Error('redirect llamado')
   }),
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: replaceMock }),
   usePathname: () => '/reservas',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(searchParamsInit),
 }))
 
 const listMock = vi.fn(async (): Promise<ReservaListRow[]> => [])
@@ -56,6 +62,11 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
     rows: await listMock(...(args as [])),
     hasMore: hasMore.value,
   }),
+  // Hoy/Próximas SIN filtro de cancha (boardMode) pasan por acá en vez de
+  // `listTenantBookings` — mismo `listMock`, sin el wrapper `{rows,hasMore}`
+  // (el board no pagina). Los casos que quieran `courtId`/`courtTotal` en la
+  // fila los agregan en su propio `row()`.
+  listTenantBookingsForBoard: (...args: unknown[]) => listMock(...(args as [])),
   RESERVAS_PAGE_SIZE: 100,
   countTenantBookingsByStatus: (...args: unknown[]) => countsMock(...(args as [])),
   sumBookingChargesByBooking: (...args: unknown[]) => chargesMock(...(args as [])),
@@ -88,10 +99,20 @@ beforeEach(() => {
   countsMock.mockResolvedValue({})
   courtsMock.mockResolvedValue([])
   hasMore.value = false
+  searchParamsInit = ''
 })
 
 describe('ReservasPage — render', () => {
-  it('hoy: agrupa por cancha y muestra el total del día en el subtítulo', async () => {
+  it('sr-only h1 "Reservas": sin PageHeader, el nombre de la pantalla lo da GrillaTabs', async () => {
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Reservas' })).toBeTruthy()
+  })
+
+  it('hoy: el tablero tiene una columna por cancha del tenant, incluida la que no tiene reservas', async () => {
+    courtsMock.mockResolvedValue([
+      { id: 'c1', name: 'Cancha 1' },
+      { id: 'c2', name: 'Cancha 2' },
+    ])
     listMock.mockResolvedValue([
       row({ id: 'b1', courtName: 'Cancha 1', timeStart: '14:00:00', timeEnd: '15:00:00' }),
       row({
@@ -101,26 +122,62 @@ describe('ReservasPage — render', () => {
         timeEnd: '17:00:00',
         guestName: 'Ana López',
       }),
-      row({
-        id: 'b3',
-        courtName: 'Cancha 2',
-        timeStart: '15:00:00',
-        timeEnd: '16:00:00',
-        guestName: 'Luis Sosa',
-      }),
     ])
-    countsMock.mockResolvedValue({ confirmed: 3 })
+    countsMock.mockResolvedValue({ confirmed: 2 })
 
     render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
     const cancha1 = screen.getByRole('region', { name: 'Cancha 1' })
     expect(within(cancha1).getAllByRole('article')).toHaveLength(2)
+    // Cancha 2 no tiene reservas: columna igual, con el mensaje — nunca se
+    // pierde silenciosamente.
     const cancha2 = screen.getByRole('region', { name: 'Cancha 2' })
-    expect(within(cancha2).getAllByRole('article')).toHaveLength(1)
-    expect(screen.getByText(/3 reservas/)).toBeTruthy()
+    expect(within(cancha2).getByText('Sin reservas')).toBeTruthy()
+    expect(within(cancha2).queryAllByRole('article')).toHaveLength(0)
+  })
+
+  /**
+   * Hallazgo #3 (revisión redesign booking modal, 2026-09-14): con el cupo
+   * por cancha, una columna puede mostrar MENOS filas que su total real — el
+   * header tiene que decir el total real y ofrecer un link para verlas todas.
+   */
+  it('cancha con más reservas que el cupo mostrado: header dice el total real y ofrece "Ver todas"', async () => {
+    courtsMock.mockResolvedValue([{ id: 'c1', name: 'Cancha 1' }])
+    listMock.mockResolvedValue([
+      { ...row({ id: 'b1', courtName: 'Cancha 1' }), courtId: 'c1', courtTotal: 60 } as never,
+    ])
+    countsMock.mockResolvedValue({ confirmed: 60 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
+
+    const cancha1 = screen.getByRole('region', { name: 'Cancha 1' })
+    // El badge del header es el TOTAL real (60), no las filas mostradas (1).
+    expect(within(cancha1).getByText('60')).toBeTruthy()
+    const link = within(cancha1).getByRole('link', { name: 'Ver las 60 reservas' })
+    expect(link.getAttribute('href')).toBe('/reservas?cancha=c1')
+  })
+
+  it('cancha vacía (total 0): "Sin reservas" y sin link "Ver todas"', async () => {
+    courtsMock.mockResolvedValue([
+      { id: 'c1', name: 'Cancha 1' },
+      { id: 'c2', name: 'Cancha 2' },
+    ])
+    // Cancha 2 no aparece en absoluto en `bookings` — total 0 real, no un
+    // recorte del cupo.
+    listMock.mockResolvedValue([
+      { ...row({ id: 'b1', courtName: 'Cancha 1' }), courtId: 'c1', courtTotal: 1 } as never,
+    ])
+    countsMock.mockResolvedValue({ confirmed: 1 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
+
+    const cancha2 = screen.getByRole('region', { name: 'Cancha 2' })
+    expect(within(cancha2).getByText('Sin reservas')).toBeTruthy()
+    expect(within(cancha2).queryByRole('link', { name: /Ver las/ })).toBeNull()
   })
 
   it('cada reserva es un article con aria-label descriptivo', async () => {
+    courtsMock.mockResolvedValue([{ id: 'c1', name: 'Cancha 1' }])
     listMock.mockResolvedValue([row({})])
     render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
@@ -134,7 +191,14 @@ describe('ReservasPage — render', () => {
     ).toBeTruthy()
   })
 
-  it('las píldoras muestran contadores por estado del scope actual', async () => {
+  it('sin las dos navs de chips viejas: el filtro vive en el popover "Filtros"', async () => {
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
+    expect(screen.queryByRole('navigation', { name: 'Filtro por estado' })).toBeNull()
+    expect(screen.queryByRole('navigation', { name: 'Filtro por cancha' })).toBeNull()
+    expect(screen.getAllByRole('button', { name: /Filtros/ }).length).toBeGreaterThan(0)
+  })
+
+  it('el popover de Filtros muestra Estado con contadores del scope actual', async () => {
     countsMock.mockResolvedValue({
       confirmed: 12,
       pending_payment: 3,
@@ -143,66 +207,87 @@ describe('ReservasPage — render', () => {
     })
     render(await ReservasPage({ searchParams: Promise.resolve({}) }))
 
-    const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
-    expect(within(filtros).getByRole('link', { name: 'Confirmadas 12' })).toBeTruthy()
-    expect(within(filtros).getByRole('link', { name: 'Esperando seña 3' })).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: /Filtros/ })[0]!)
+    const popover = within(document.body)
     // 'canceladas' agrupa ambos enums; 'Todas' suma todo.
-    expect(within(filtros).getByRole('link', { name: 'Canceladas 2' })).toBeTruthy()
-    expect(within(filtros).getByRole('link', { name: 'Todas 17' })).toBeTruthy()
+    expect(popover.getByRole('radio', { name: /Confirmadas/ })).toHaveTextContent('12')
+    expect(popover.getByRole('radio', { name: /Esperando seña/ })).toHaveTextContent('3')
+    expect(popover.getByRole('radio', { name: /Canceladas/ })).toHaveTextContent('2')
+    expect(popover.getByRole('radio', { name: /Todas/ })).toHaveTextContent('17')
   })
 
-  it('los filtros arman URLs compartibles preservando dia, status y q', async () => {
+  it('elegir un estado en el popover navega con router.replace preservando dia y q', async () => {
+    // Misma URL que ve el server (línea de arriba) y que `useSearchParams()`
+    // devuelve del lado del cliente — en producción son la misma.
+    searchParamsInit = 'dia=historial&q=juan'
     render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', q: 'juan' }) }))
 
-    const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
-    expect(
-      within(filtros)
-        .getByRole('link', { name: /Esperando seña/ })
-        .getAttribute('href'),
-    ).toBe('/reservas?dia=historial&status=pending_payment&q=juan')
-    const tabs = screen.getByRole('navigation', { name: 'Rango de fechas' })
-    expect(within(tabs).getByRole('link', { name: 'Hoy' }).getAttribute('href')).toBe(
-      '/reservas?q=juan',
+    fireEvent.click(screen.getAllByRole('button', { name: /Filtros/ })[0]!)
+    const popover = within(document.body)
+    fireEvent.click(popover.getByRole('radio', { name: /Esperando seña/ }))
+
+    expect(replaceMock).toHaveBeenCalledWith(
+      '/reservas?dia=historial&q=juan&status=pending_payment',
+      { scroll: false },
     )
   })
 
-  it('?vista=compacta renderiza filas de una línea preservando el aria-label sin el dato de plata', async () => {
-    listMock.mockResolvedValue([row({})])
-    render(await ReservasPage({ searchParams: Promise.resolve({ vista: 'compacta' }) }))
+  it('el segmento de rango (Rango de fechas) arma URLs compartibles preservando q', async () => {
+    render(await ReservasPage({ searchParams: Promise.resolve({ q: 'juan' }) }))
 
-    // Compacta queda SIN el dato de plata (visual y aria-label): es una línea
-    // por reserva por diseño, ver ALCANCE g3 pregunta 5.
-    const article = screen.getByRole('article', {
-      name: 'Reserva 14:00–15:00, Cancha 1, Juan Pérez, Señada',
-    })
-    // La variante compacta no muestra la LÍNEA de seña, que es una de estas
-    // cuatro (`depositLine` en BookingListItem.tsx). El substring pelado
-    // 'Seña' dejó de servir el 2026-09-12: desde que el listado distingue
-    // "Señada" de "Confirmada", el badge de estado lo contiene y el assert
-    // fallaba por el badge, no por la línea que quiere vigilar.
-    expect(article.textContent).not.toMatch(/Seña (pagada|pendiente|a devolver|devuelta)/)
-    // Y los filtros preservan la vista en la URL.
-    const filtros = screen.getByRole('navigation', { name: 'Filtro por estado' })
-    expect(
-      within(filtros)
-        .getByRole('link', { name: /Confirmadas/ })
-        .getAttribute('href'),
-    ).toBe('/reservas?status=confirmed&vista=compacta')
+    const tabs = screen.getAllByRole('navigation', { name: 'Rango de fechas' })[0]!
+    expect(within(tabs).getByRole('link', { name: 'Hoy' }).getAttribute('href')).toBe(
+      '/reservas?q=juan',
+    )
+    expect(within(tabs).getByRole('link', { name: 'Próximas' }).getAttribute('href')).toBe(
+      '/reservas?dia=proximas&q=juan',
+    )
+  })
+
+  it('un ?vista viejo (bookmark/compartido) se ignora en silencio', async () => {
+    courtsMock.mockResolvedValue([{ id: 'c1', name: 'Cancha 1' }])
+    listMock.mockResolvedValue([row({})])
+    render(await ReservasPage({ searchParams: Promise.resolve({ vista: 'compacta' } as never) }))
+    // No revienta y la fila se ve igual que sin el param.
+    expect(screen.getByText('Juan Pérez')).toBeTruthy()
   })
 
   it('la búsqueda se pasa a la query junto al scope', async () => {
     render(await ReservasPage({ searchParams: Promise.resolve({ q: '  maría  ' }) }))
+    // Hoy sin filtro de cancha es boardMode: pasa por `listTenantBookingsForBoard`
+    // (sin `page`, el board no pagina — ver hallazgo #3).
     expect(listMock).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', q: 'maría' },
       expect.anything(),
-      0,
     )
     expect(countsMock).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', q: 'maría' },
       expect.anything(),
     )
+  })
+})
+
+describe('ReservasPage — historial', () => {
+  it('agrupa por fecha (no por cancha) usando la misma tarjeta de reserva', async () => {
+    listMock.mockResolvedValue([
+      row({ id: 'b1', date: '2026-06-10', courtName: 'Cancha 1' }),
+      row({ id: 'b2', date: '2026-06-10', courtName: 'Cancha 2', guestName: 'Ana López' }),
+      row({ id: 'b3', date: '2026-06-09', courtName: 'Cancha 1', guestName: 'Luis Sosa' }),
+    ])
+    countsMock.mockResolvedValue({ confirmed: 3 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial' }) }))
+
+    // No hay tablero por cancha en historial: no aparece una región por
+    // "Cancha 1"/"Cancha 2" (esas quedarían como sección del tablero de
+    // Hoy/Próximas, no de Historial).
+    expect(screen.queryByRole('region', { name: 'Cancha 1' })).toBeNull()
+    const grupo10 = screen.getByRole('region', { name: /10 de junio/ })
+    expect(within(grupo10).getAllByRole('article')).toHaveLength(2)
+    const grupo9 = screen.getByRole('region', { name: /9 de junio/ })
+    expect(within(grupo9).getAllByRole('article')).toHaveLength(1)
   })
 })
 
@@ -276,7 +361,11 @@ describe('ReservasPage — paginación', () => {
     listMock.mockResolvedValue([row({})])
     countsMock.mockResolvedValue({ confirmed: 1 })
 
-    render(await ReservasPage({ searchParams: Promise.resolve({ pagina: 'seis' }) }))
+    // Historial (no boardMode): sigue paginado con `listTenantBookings`, que
+    // es lo que este caso ejercita — el board (Hoy/Próximas) ni recibe `page`.
+    render(
+      await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', pagina: 'seis' }) }),
+    )
 
     expect(listMock).toHaveBeenCalledWith('tenant-1', expect.anything(), expect.anything(), 0)
   })
@@ -285,7 +374,9 @@ describe('ReservasPage — paginación', () => {
     listMock.mockResolvedValue([row({})])
     countsMock.mockResolvedValue({ confirmed: 1 })
 
-    render(await ReservasPage({ searchParams: Promise.resolve({ pagina: '-4' }) }))
+    render(
+      await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', pagina: '-4' }) }),
+    )
 
     expect(listMock).toHaveBeenCalledWith('tenant-1', expect.anything(), expect.anything(), 0)
   })

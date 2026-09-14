@@ -685,11 +685,13 @@ export async function rescheduleBookingAction(
         error:
           err.reason === 'not_a_player_booking'
             ? 'Los bloqueos y las horas de torneo se gestionan desde su propia pantalla.'
-            : err.reason === 'deposit_pending'
-              ? 'Este turno tiene una seña esperando pago. Esperá a que se acredite o venza antes de moverlo.'
-              : err.reason === 'price_below_paid'
-                ? 'Ese horario vale menos de lo que el cliente ya pagó. Cancelá el turno y devolvé la diferencia en vez de moverlo.'
-                : 'Solo se pueden mover turnos que todavía no se jugaron ni se cancelaron.',
+            : err.reason === 'multi_hour_event'
+              ? 'Un evento de varias horas no se puede mover. Cancelalo y agendalo de nuevo.'
+              : err.reason === 'deposit_pending'
+                ? 'Este turno tiene una seña esperando pago. Esperá a que se acredite o venza antes de moverlo.'
+                : err.reason === 'price_below_paid'
+                  ? 'Ese horario vale menos de lo que el cliente ya pagó. Cancelá el turno y devolvé la diferencia en vez de moverlo.'
+                  : 'Solo se pueden mover turnos que todavía no se jugaron ni se cancelaron.',
       }
     }
     if (err instanceof BookingDateOutOfRangeError) {
@@ -778,13 +780,14 @@ export async function addBookingChargeAction(
     // cobrable: no tiene sentido cobrar un turno cancelado/expirado o pendiente
     // de pago (todavía no hay turno confirmado).
     const bookingRows = await tx.execute(sql`
-      SELECT status, price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
+      SELECT status, type, price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
              deposit_status AS "depositStatus"
       FROM bookings WHERE id = ${bookingId} LIMIT 1
     `)
     const booking = (
       bookingRows as unknown as Array<{
         status: string
+        type: string
         priceSnapshot: number
         depositAmount: number
         depositStatus: string
@@ -792,6 +795,14 @@ export async function addBookingChargeAction(
     )[0]
     if (!booking) {
       return { success: false as const, error: 'La reserva no existe.' }
+    }
+    // Un bloqueo o una hora de torneo no son el turno de nadie: no hay a quién
+    // cobrarle (rediseño 2026-09-14, `block` nunca carga plata).
+    if (booking.type === 'block' || booking.type === 'tournament') {
+      return {
+        success: false as const,
+        error: 'No se puede cobrar un bloqueo ni una hora de torneo.',
+      }
     }
     if (!CHARGEABLE_STATUSES.includes(booking.status as (typeof CHARGEABLE_STATUSES)[number])) {
       return { success: false as const, error: 'No se puede cobrar una reserva en este estado.' }
@@ -936,6 +947,16 @@ export async function completeAndChargeBookingAction(
       // toda la ruta /reservas (🔴 QA 2026-08-13).
       const noteLine = debtNote?.trim() ? `[Deuda] ${debtNote.trim()}` : undefined
       const completed = await completeBooking(bookingId, 'admin', tx, user.staffUserId, noteLine)
+
+      // Un bloqueo o una hora de torneo no son el turno de nadie: no hay a
+      // quién cobrarle (rediseño 2026-09-14, `block` nunca carga plata). Sin
+      // query nueva: `completed.type` ya viene del UPDATE ... RETURNING de
+      // `completeBooking`. Se chequea DESPUÉS a propósito — si dispara, el
+      // throw hace rollback de TODA la tx (incluida la completación de
+      // arriba), así que no queda nada persistido a medias.
+      if (completed.type === 'block' || completed.type === 'tournament') {
+        throw new BookingValidationError('No se puede cobrar un bloqueo ni una hora de torneo.')
+      }
 
       // 2. Validate total charges don't exceed pending amount
       if (charges.length > 0) {

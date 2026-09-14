@@ -72,6 +72,41 @@ export function priceForDateSlot(
 }
 
 /**
+ * Precio TOTAL de un rango de N horas enteras (rediseño 2026-09-14, alta
+ * desde la grilla): suma la tarifa de cada hora en `[timeStart, timeEnd)` con
+ * el mismo lookup día-consciente que una sola franja. `null` si CUALQUIER hora
+ * del rango no tiene precio — fail-closed, igual que `priceForSlot`: un evento
+ * de 3 horas con un hueco de tarifa en el medio no se cobra a medias.
+ *
+ * `timeEnd === '24:00'` (fin exacto de medianoche) y el legado `'00:00'` con
+ * el mismo significado se resuelven igual que en `slotDurationMins`
+ * (booking.service.ts): 1440 minutos, no 0.
+ *
+ * Client-safe por la misma razón que el resto del archivo: el modal de alta
+ * desde la grilla lo importa para mostrar el total sin esperar al server.
+ */
+export function priceForRange(
+  pricing: CourtPricingData,
+  date: string,
+  timeStart: string,
+  timeEnd: string,
+): number | null {
+  const dayKey = dayKeyOf(date)
+  const startMins = timeToMins(timeStart)
+  const endMinsRaw = timeToMins(timeEnd)
+  const endMins = endMinsRaw === 0 ? 24 * 60 : endMinsRaw
+  let total = 0
+  for (let mins = startMins; mins < endMins; mins += 60) {
+    const hh = String(Math.floor(mins / 60) % 24).padStart(2, '0')
+    const mm = String(mins % 60).padStart(2, '0')
+    const price = priceForSlot(pricing, dayKey, `${hh}:${mm}`)
+    if (price === null) return null
+    total += price
+  }
+  return total
+}
+
+/**
  * Seña en centavos enteros para un precio (centavos) y un porcentaje.
  * Redondeo half-up (`Math.round`): los empates van hacia +∞, no banker's.
  *

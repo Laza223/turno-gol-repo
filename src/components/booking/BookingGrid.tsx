@@ -8,14 +8,11 @@ import { useRealtimePulse } from '@/hooks/use-realtime-pulse'
 import { useGridLayout } from '@/hooks/use-grid-layout'
 import { useNowLine } from '@/hooks/use-now-line'
 import { useGridActions } from '@/hooks/use-grid-actions'
-import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { GridHeaderBar } from './grid/GridHeaderBar'
 import { FirstBookingHint } from './grid/FirstBookingHint'
 import { GridScroller } from './grid/GridScroller'
 import { GridOverlays } from './grid/GridOverlays'
 import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
-import { QuickFormCell } from './grid/QuickFormCell'
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
 import type { RenderCanteenDialog, SlotPanelActions } from './BookingSlotPanel'
 import { sumPendingCents, type GridBooking } from '@/lib/booking/grid-cells'
@@ -23,9 +20,10 @@ import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type {
   CheckSlotAvailabilityAction,
+  CreateAbonadoAction,
   CreateBookingAction,
   SearchBookingPlayersAction,
-} from './BookingFormModal'
+} from './create-modal/types'
 
 // Re-export GridBooking so BookingCard (and others) can import it from here.
 export type { GridBooking } from '@/lib/booking/grid-cells'
@@ -52,19 +50,12 @@ type Props = {
   closesNextDay: boolean
   /** Reenviada al BookingFormModal cargado por dynamic import (ver el comentario ahí). */
   action: CreateBookingAction
+  /** Reenviada al BookingFormModal (Turno fijo → `createAbonadoAction`). */
+  createAbonadoAction: CreateAbonadoAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   searchPlayersAction?: SearchBookingPlayersAction
-  /**
-   * `settings.deposit_percentage` del complejo. El formulario rápido ya NO lo
-   * usa para nada (precargar la seña online en el mostrador confundía los dos
-   * mundos: ver DepositFieldset), pero sigue siendo la señal de "esta grilla
-   * está montada con los settings reales del complejo". Sin esto (stories,
-   * tests) el popover no se ofrece y el click de una celda libre abre el modal
-   * completo, como antes.
-   */
-  depositPercentage?: number
   /**
    * Acciones del panel lateral del turno (Fase 3). Opcional: sin ellas el panel
    * abre igual y muestra el detalle, sólo que sin botones — es el modo en el
@@ -85,9 +76,9 @@ export function BookingGrid({
   closedDates,
   closesNextDay,
   action,
+  createAbonadoAction,
   checkAvailabilityAction,
   searchPlayersAction,
-  depositPercentage,
   slotPanelActions,
   renderCanteenDialog,
   actions,
@@ -95,15 +86,6 @@ export function BookingGrid({
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
   const artNow = useArtNow()
-
-  /**
-   * La matriz es la misma en los dos tamaños; lo que cambia es por dónde se abre
-   * el alta rápida. En escritorio es un Popover anclado a la celda tocada, que
-   * es lo que deja ver la grilla alrededor. En el teléfono un popover de 280 px
-   * sobre una columna de 44 no tiene dónde anclarse: va como hoja desde abajo,
-   * que además es donde llega el pulgar.
-   */
-  const isDesktop = useIsDesktop()
 
   const { dismissed: hintDismissed, dismiss: dismissHint } = useDismissibleHint(HINT_STORAGE_KEY)
 
@@ -163,21 +145,17 @@ export function BookingGrid({
   })
 
   const {
-    quickEnabled,
     selectedSlot,
     setSelectedSlot,
-    quickSlotKey,
     detailBookingId,
     setDetailBookingId,
     isNavPending,
     closeDetail: handleDetailClose,
-    closeQuick: handleQuickClose,
     handleSlotMutated,
     navigateToDate,
-    openFullModal,
     handleSlotClick,
     handleBookingSuccess,
-  } = useGridActions({ courts, date, depositPercentage, refetch })
+  } = useGridActions({ courts, date, refetch })
 
   const { pulseIds, lastArrival } = useRealtimePulse(bookings, courts)
   const { nowTopRem, gridScrollRef } = useNowLine({
@@ -197,50 +175,6 @@ export function BookingGrid({
   )
 
   const courtNameById = useMemo(() => new Map(courts.map((c) => [c.id, c.name])), [courts])
-
-  const renderQuickForm = useCallback(
-    (courtId: string, courtName: string, slotTime: string) =>
-      depositPercentage == null ? null : (
-        <QuickFormCell
-          courts={courts}
-          courtId={courtId}
-          courtName={courtName}
-          date={date}
-          slotTime={slotTime}
-          action={action}
-          checkAvailabilityAction={checkAvailabilityAction}
-          searchPlayersAction={searchPlayersAction}
-          onSuccess={handleBookingSuccess}
-          onMoreOptions={openFullModal}
-          onClose={handleQuickClose}
-        />
-      ),
-    [
-      courts,
-      date,
-      depositPercentage,
-      action,
-      checkAvailabilityAction,
-      searchPlayersAction,
-      openFullModal,
-      handleQuickClose,
-      handleBookingSuccess,
-    ],
-  )
-
-  /**
-   * La celda con el alta rápida abierta, ya resuelta. La clave es
-   * `courtId:HH:MM` y el id es un UUID (sin dos puntos), así que el primer `:`
-   * es el separador.
-   */
-  const quickSlot = useMemo(() => {
-    if (!quickSlotKey) return null
-    const sep = quickSlotKey.indexOf(':')
-    const courtId = quickSlotKey.slice(0, sep)
-    const courtName = courtNameById.get(courtId)
-    if (!courtName) return null
-    return { courtId, courtName, slotTime: quickSlotKey.slice(sep + 1) }
-  }, [quickSlotKey, courtNameById])
 
   const handleGridKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) =>
@@ -313,32 +247,19 @@ export function BookingGrid({
             onSlotClick={handleSlotClick}
             onGridKeyDown={handleGridKeyDown}
             onExpandMorning={() => setShowMorning(true)}
-            quickSlotKey={quickSlotKey}
-            onQuickClose={handleQuickClose}
-            renderQuickForm={quickEnabled && isDesktop ? renderQuickForm : undefined}
           />
         </div>
-      )}
-
-      {/* Teléfono: el alta rápida entra por una hoja desde abajo. Una sola para
-          toda la grilla, montada sólo cuando hay una celda abierta. */}
-      {!isDesktop && quickEnabled && (
-        <Sheet open={!!quickSlot} onOpenChange={(v) => !v && handleQuickClose()}>
-          <SheetContent side="bottom" aria-label="Nueva reserva" className="gap-0 p-4">
-            <SheetTitle className="mb-3 font-display text-base">
-              {quickSlot ? `${quickSlot.courtName} · ${quickSlot.slotTime}` : 'Nueva reserva'}
-            </SheetTitle>
-            {quickSlot &&
-              renderQuickForm(quickSlot.courtId, quickSlot.courtName, quickSlot.slotTime)}
-          </SheetContent>
-        </Sheet>
       )}
 
       <GridOverlays
         selectedSlot={selectedSlot}
         onCloseModal={() => setSelectedSlot(null)}
         onBookingSuccess={handleBookingSuccess}
-        action={action}
+        bookings={bookings}
+        daySlots={slots}
+        isSlotPast={isSlotPast}
+        createBookingAction={action}
+        createAbonadoAction={createAbonadoAction}
         checkAvailabilityAction={checkAvailabilityAction}
         searchPlayersAction={searchPlayersAction}
         detailBooking={detailBooking}

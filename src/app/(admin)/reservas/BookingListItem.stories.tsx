@@ -490,7 +490,7 @@ export const SinNombre: Story = {
   },
 }
 
-// ─── Overflow / vista compacta ──────────────────────────────────────────────
+// ─── Overflow ────────────────────────────────────────────────────────────
 
 /** Nombre de guest + cancha largos reales: el texto completo vive en el DOM (el truncate es solo visual, vía CSS) y en el aria-label. */
 export const NombreYCanchaLargos: Story = {
@@ -504,16 +504,13 @@ export const NombreYCanchaLargos: Story = {
   },
 }
 
-/** `?vista=compacta`: una línea por reserva, sin la línea secundaria de seña. */
-export const VistaCompacta: Story = {
-  // La fila SEÑADA y no la confirmada sin seña: el assert de abajo comprueba
-  // que la vista compacta ESCONDE la línea de seña, y sobre una fila que no
-  // tiene seña pasaría por vacuidad.
-  args: { booking: ROW_SENADA, compact: true },
+/** `showCourt={false}` (uso dentro de `CourtBoard`): la línea secundaria pierde el nombre de cancha — ya es el header de columna, repetirlo es ruido. */
+export const DentroDeUnaColumnaDeCourtBoard: Story = {
+  args: { booking: ROW_SENADA, showCourt: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(money(ROW_SENADA.priceSnapshot))).toBeVisible()
-    await expect(canvas.queryByText('Seña pagada', { exact: false })).toBeNull()
+    await expect(canvas.queryByText(ROW_SENADA.courtName, { exact: false })).toBeNull()
+    await expect(canvas.getByText('Seña pagada', { exact: false })).toBeVisible()
   },
 }
 

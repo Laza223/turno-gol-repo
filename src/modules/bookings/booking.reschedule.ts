@@ -257,6 +257,11 @@ export async function rescheduleBooking(
   if (booking.type === 'tournament' || booking.type === 'block') {
     throw new BookingNotReschedulableError(input.bookingId, 'not_a_player_booking')
   }
+  try {
+    assertSlotDuration(booking.time_start.slice(0, 5), booking.time_end.slice(0, 5))
+  } catch {
+    throw new BookingNotReschedulableError(input.bookingId, 'multi_hour_event')
+  }
   // Sesión de abonado (`type: 'fixed'`): HABILITADA para moverse (decisión del
   // dueño, 2026-08-05). Estaba bloqueada porque su precio no sale de la grilla
   // de tarifas —`generateAbonadoSlots` graba `priceSnapshot =

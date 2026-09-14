@@ -45,6 +45,23 @@ export const createManualBookingSchema = z
       message: 'Reserva manual: no combinar un jugador registrado con datos de invitado.',
     },
   )
+  .refine(
+    (v) => {
+      if (v.type !== 'block') return true
+      // Rediseño 2026-09-14: un `block` (mantenimiento) NUNCA carga plata —
+      // ni precio ni seña. `priceOverride`/`depositAmount` toleran 0 explícito
+      // (mismo valor que ya produce un block sin override), pero no un monto
+      // positivo; `depositMethod`/`depositStatus` no tienen sentido sin plata.
+      if (v.priceOverride !== undefined && v.priceOverride !== 0) return false
+      if (v.depositAmount !== undefined && v.depositAmount !== 0) return false
+      if (v.depositMethod !== undefined) return false
+      if (v.depositStatus !== undefined) return false
+      return true
+    },
+    {
+      message: 'Un bloqueo no puede tener precio ni seña.',
+    },
+  )
 
 /**
  * Reprogramar (Fase 3). Sin `type` ni datos de titular: mover un turno cambia

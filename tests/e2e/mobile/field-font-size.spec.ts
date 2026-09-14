@@ -92,8 +92,12 @@ test.describe('campos ≥16px — con overlays abiertos', () => {
     const page = await ctx.newPage()
     await page.goto('/grilla', { waitUntil: 'networkidle' })
 
-    // Un slot libre abre el modal de creación (BookingFormModal).
-    await page.getByRole('button', { name: /libre/i }).first().click()
+    // Un slot libre abre DIRECTO el modal de creación (rediseño 2026-09-14,
+    // BookingFormModal + create-modal/), con "Turno" ya elegido.
+    await page
+      .getByRole('button', { name: /Reservar turno/i })
+      .first()
+      .click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     const small = await collectSmallFields(page)

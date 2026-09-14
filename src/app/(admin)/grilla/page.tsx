@@ -27,6 +27,7 @@ import {
   cancelBookingAction,
   releaseBlockAction,
 } from '@/app/(admin)/reservas/actions'
+import { createAbonadoAction } from '@/app/(admin)/abonados/actions'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
@@ -155,11 +156,9 @@ export default async function GrillaPage(props: {
         closedDates={tenant.closedDates ?? []}
         closesNextDay={tenant.closesNextDay}
         action={createBookingAction}
+        createAbonadoAction={createAbonadoAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}
         searchPlayersAction={searchBookingPlayersAction}
-        // Sugerencia de seña del popover de alta rápida (Fase 3). Mismo default
-        // que usa el resto del producto cuando el complejo no lo configuró.
-        depositPercentage={tenant.settings.deposit_percentage ?? 30}
         slotPanelActions={{
           chargeDebtAction,
           completeAndChargeBookingAction,

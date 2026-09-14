@@ -391,6 +391,23 @@ describe('rescheduleBooking — mover el turno', () => {
     ).rejects.toBeInstanceOf(BookingNotReschedulableError)
   }, 30_000)
 
+  // Evento de varias horas (decisión 2026-09-14): el destino siempre es de 60
+  // min, así que moverlo lo recortaría conservando el precio total.
+  it('rechaza mover un evento de varias horas en vez de recortarlo a 60 min', async () => {
+    const date = dateIn(11)
+    const evento = await insertBooking({
+      courtId: courtA,
+      date,
+      timeStart: '14:00',
+      timeEnd: '17:00',
+      price: 9_000_000,
+      withPlayer: false,
+    })
+    await expect(
+      move({ bookingId: evento, courtId: courtA, date, timeStart: '19:00', timeEnd: '20:00' }),
+    ).rejects.toMatchObject({ reason: 'multi_hour_event' })
+  }, 30_000)
+
   /**
    * Mover una sesión suelta de abonado: HABILITADO por decisión del dueño
    * (2026-08-05). Este test estaba invertido —asertaba el rechazo— desde la

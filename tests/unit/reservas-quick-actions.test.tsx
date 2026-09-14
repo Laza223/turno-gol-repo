@@ -65,6 +65,19 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
+/**
+ * La tarjeta ancha (`@sm`+, fila de botones) y la angosta (columna del
+ * tablero, botón primario + menú) viven las DOS en el DOM a la vez — la
+ * diferencia es CSS (`@container`), no un `if`. jsdom no calcula layout real,
+ * así que sin este scope un `getByRole('button', {name:'Completada'})` pelado
+ * encuentra dos coincidencias (una por variante) y explota. Los tests de este
+ * archivo ejercitan la fila ancha (el comportamiento "de siempre"); la
+ * variante angosta tiene su propio bloque de tests más abajo.
+ */
+function wideActions() {
+  return within(screen.getByTestId('quick-actions-wide'))
+}
+
 describe('hasQuickActions', () => {
   it('solo pending_payment y confirmed tienen acciones; los bloqueos nunca', () => {
     expect(hasQuickActions({ status: 'pending_payment', type: 'spontaneous' })).toBe(true)
@@ -89,7 +102,7 @@ describe('QuickActions — confirmar pago con picker de método', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pago' }))
+    fireEvent.click(wideActions().getByRole('button', { name: 'Confirmar pago' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('radio', { name: 'Efectivo' })).toBeChecked()
 
@@ -115,7 +128,7 @@ describe('QuickActions — confirmar pago con picker de método', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pago' }))
+    fireEvent.click(wideActions().getByRole('button', { name: 'Confirmar pago' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('radio', { name: 'Transferencia' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
@@ -136,7 +149,7 @@ describe('QuickActions — confirmar pago con picker de método', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pago' }))
+    fireEvent.click(wideActions().getByRole('button', { name: 'Confirmar pago' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
 
@@ -150,7 +163,7 @@ describe('QuickActions — confirmar pago con picker de método', () => {
 describe('QuickActions — confirmed', () => {
   it('muestra Completada / Ausente / Cancelar inline', () => {
     render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
-    expect(screen.getByRole('button', { name: 'Completada' })).toBeTruthy()
+    expect(wideActions().getByRole('button', { name: 'Completada' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Ausente' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeTruthy()
   })
@@ -168,7 +181,7 @@ describe('QuickActions — confirmed', () => {
     getBookingChargesMock.mockResolvedValueOnce({ ok: true, chargesTotal: 500000 })
     render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Completada' }))
+    fireEvent.click(wideActions().getByRole('button', { name: 'Completada' }))
 
     await waitFor(() => expect(getBookingChargesMock).toHaveBeenCalledWith('b1'))
     const dialog = await screen.findByRole('dialog')
@@ -188,7 +201,7 @@ describe('QuickActions — confirmed', () => {
     getBookingChargesMock.mockResolvedValueOnce({ ok: false, error: 'boom' } as never)
     render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Completada' }))
+    fireEvent.click(wideActions().getByRole('button', { name: 'Completada' }))
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).queryByText('Cobros previos')).toBeNull()
@@ -204,7 +217,7 @@ describe('QuickActions — confirmed', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Completada' }))
+    fireEvent.click(wideActions().getByRole('button', { name: 'Completada' }))
 
     expect(await screen.findByRole('dialog')).toBeTruthy()
     expect(getBookingChargesMock).not.toHaveBeenCalled()
@@ -322,6 +335,55 @@ describe('QuickActions — confirmed', () => {
   it('el menú contextual mobile existe con aria-label descriptivo', () => {
     render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
     expect(screen.getByRole('button', { name: 'Acciones para Juan · 14:00' })).toBeTruthy()
+  })
+})
+
+/**
+ * Tarjeta angosta (columnas del tablero, ≤`@sm` del `@container` de
+ * BookingListItem): la acción primaria dejó de estar escondida en el menú
+ * (H079) — es un botón propio, visible sin abrir nada. El menú al lado solo
+ * tiene lo secundario.
+ */
+describe('QuickActions — tarjeta angosta', () => {
+  function narrowActions() {
+    return within(screen.getByTestId('quick-actions-narrow'))
+  }
+
+  it('confirmed: botón "Completada" visible + menú con solo Ausente/Cancelar', async () => {
+    render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
+
+    expect(narrowActions().getByRole('button', { name: 'Completada' })).toBeTruthy()
+
+    // Radix DropdownMenu: el pointerdown real de un mouse no se simula bien en
+    // happy-dom (mismo patrón que staff-actions-role-menu.test.tsx) — abre con teclado.
+    fireEvent.keyDown(narrowActions().getByRole('button', { name: 'Acciones para Juan · 14:00' }), {
+      key: 'Enter',
+    })
+    expect(await screen.findByRole('menuitem', { name: 'Marcar ausente' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Cancelar reserva' })).toBeTruthy()
+    // "Completada" ya no vive en el menú: es el botón de al lado.
+    expect(screen.queryByRole('menuitem', { name: 'Marcar completada' })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: 'Completada' })).toBeNull()
+  })
+
+  it('pending_payment: solo el botón "Confirmar pago" — sin secundarias, no hay menú', () => {
+    render(
+      <QuickActions
+        booking={booking({ status: 'pending_payment' })}
+        label="Juan · 14:00"
+        {...quickActions}
+      />,
+    )
+
+    expect(narrowActions().getByRole('button', { name: 'Confirmar pago' })).toBeTruthy()
+    expect(narrowActions().queryByRole('button', { name: /Acciones para/ })).toBeNull()
+  })
+
+  it('el botón "Completada" de la tarjeta angosta abre el mismo CompleteBookingDialog', async () => {
+    render(<QuickActions booking={booking()} label="Juan · 14:00" {...quickActions} />)
+
+    fireEvent.click(narrowActions().getByRole('button', { name: 'Completada' }))
+    expect(await screen.findByRole('heading', { name: 'Completar turno' })).toBeTruthy()
   })
 })
 

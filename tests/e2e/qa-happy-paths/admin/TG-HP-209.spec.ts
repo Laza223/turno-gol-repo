@@ -7,7 +7,7 @@ import {
   E2E_COURT_ID,
 } from '../../_helpers/booking-seed'
 import { suppressPushPrompt } from '../_qa/session'
-import { openQuickBookingPopover } from '../../_helpers/grid'
+import { openCreateModal } from '../../_helpers/grid'
 
 /**
  * TG-HP-209 — Grilla realtime: celda ocupada se actualiza sin reload.
@@ -65,22 +65,13 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
       await expect(pageB.getByText(offlineBanner)).not.toBeVisible({ timeout: 10_000 })
 
       // Admin A crea la reserva manual — slot 21:00 (208 ya usa 20:00 en la misma fecha).
-      // Fase 3: el modal completo (guestName + guestPhone) vive detrás de
-      // "Más opciones"; el popover de alta rápida es lo primero que abre.
-      await openQuickBookingPopover(pageA, '21:00')
-      // `exact`: la barra de la grilla tiene "Más opciones de la grilla" (#303).
-      await pageA.getByRole('button', { name: 'Más opciones', exact: true }).click()
-      await expect(pageA.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
-      await pageA.fill('#guestName', 'E2E QA-209 Realtime')
-      // El teléfono vive colapsado bajo "Opciones avanzadas" desde el rediseño
-      // del modal (progressive disclosure). Este spec lo llenaba directo y
-      // fallaba con "element is not visible" — roto en main desde antes de Fase 3.
-      await pageA.getByRole('button', { name: 'Opciones avanzadas' }).click()
-      await pageA.fill('#guestPhone', '+5491100000209')
-      // "No cobré" viene preseleccionado (revierte PR #185); se deja
-      // explícito igual para que el spec no dependa del default.
-      await pageA.selectOption('#depositMethod', 'none')
-      await pageA.getByRole('button', { name: 'Confirmar reserva' }).click()
+      // Rediseño 2026-09-14: el click de la celda libre abre DIRECTO el modal
+      // único, con "Turno" ya elegido — el alta rápida se eliminó.
+      await openCreateModal(pageA, '21:00')
+      await pageA.getByLabel('¿A nombre de quién?').fill('E2E QA-209 Realtime')
+      await pageA.getByLabel('Teléfono').fill('11 0000-0209')
+      // "No cobré" viene preseleccionado: alcanza con el nombre para confirmar.
+      await pageA.getByRole('button', { name: /Reservar/ }).click()
       await expect(pageA.getByText('Reserva creada', { exact: true })).toBeVisible({
         timeout: 10_000,
       })

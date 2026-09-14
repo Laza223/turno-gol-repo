@@ -8,7 +8,7 @@ import {
 } from '@/modules/cashflow/street-money-window'
 import { listPendingRefunds } from '@/modules/payments/refund.service'
 import { track } from '@/shared/observability/breadcrumbs'
-import { CajaHeaderStats } from '../components/CajaHeaderStats'
+import { formatArs } from '@/lib/format'
 import { CajaTabs } from '../components/CajaTabs'
 import { AddMovementButton } from '../cantina/AddMovementButton'
 import { MovementsList } from '../cantina/MovementsList'
@@ -60,10 +60,9 @@ export default async function CajaCuentasPage(props: {
     },
   )
 
-  // Los dos totales salen de las MISMAS filas que se listan abajo. La card y la
-  // lista no pueden divergir porque no hay dos cuentas: hay una.
+  // Único uso: la instrumentación de abajo. La propia StreetMoneyList calcula
+  // este mismo total sobre las MISMAS filas para su card — no hay dos cuentas.
   const streetMoneyCents = sumStreetMoney(streetMoneyRows)
-  const pendingRefundsCents = refunds.reduce((acc, r) => acc + r.amountCents, 0)
 
   // Proxy "plata en la calle: tendencia ↓ por tenant" (§11) — misma fuente que
   // la pantalla, así que el dato instrumentado nunca puede divergir del que se ve.
@@ -71,14 +70,22 @@ export default async function CajaCuentasPage(props: {
 
   return (
     <div className="space-y-6">
-      {/* MASTER §6.8: la vista no abre encabezado propio. El rótulo del día y
-          el alta de movimiento cuelgan del hueco de la barra superior, al lado
-          de los tres destinos. El rótulo se esconde abajo de `sm` porque ahí la
-          barra apenas entra con las pestañas. */}
+      {/* MASTER §6.8: la vista no abre encabezado propio. Lo cobrado hoy, el
+          rótulo del día y el alta de movimiento cuelgan del hueco de la barra
+          superior, al lado de los tres destinos — nunca una card propia:
+          "Deudas" y "Devolvés" ya tienen la SUYA más abajo, en la lista que
+          las respalda, y repetirlas arriba era el mismo número dos veces con
+          dos maquetas distintas (feedback del dueño, 2026-09-14). "Cobrado
+          hoy" se esconde antes que la fecha porque es el dato menos urgente
+          de los dos para quien entra a mirar deudas. */}
       <CajaTabs
         active="/caja/cuentas"
         actions={
           <>
+            <span className="hidden whitespace-nowrap text-sm text-muted-foreground lg:inline">
+              Cobrado hoy{' '}
+              <span className="font-semibold text-foreground">{formatArs(summary.collected)}</span>
+            </span>
             <span className="hidden whitespace-nowrap text-sm text-muted-foreground sm:inline">
               {operatingDayLabel(today, cutoffMins)}
             </span>
@@ -92,21 +99,10 @@ export default async function CajaCuentasPage(props: {
         }
       />
 
-      <div className="card-entrance" style={{ animationDelay: '40ms' }}>
-        <CajaHeaderStats
-          collectedTodayCents={summary.collected}
-          collectedByMethod={summary.collectedByMethod}
-          streetMoneyCents={streetMoneyCents}
-          streetMoneyCount={streetMoneyRows.length}
-          pendingRefundsCents={pendingRefundsCents}
-          pendingRefundsCount={refunds.length}
-        />
-      </div>
-
       {/* Las dos direcciones de la plata pendiente, lado a lado y con su propio
           total cada una. Deudas manda en ancho: tiene más filas y más acción. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="card-entrance space-y-3" style={{ animationDelay: '80ms' }}>
+        <div className="card-entrance space-y-3" style={{ animationDelay: '40ms' }}>
           <StreetMoneyList rows={streetMoneyRows} />
 
           {/* El rótulo dice qué se está viendo SIEMPRE, no solo cuando hay algo
@@ -138,12 +134,12 @@ export default async function CajaCuentasPage(props: {
           </p>
         </div>
 
-        <div className="card-entrance" style={{ animationDelay: '120ms' }}>
+        <div className="card-entrance" style={{ animationDelay: '80ms' }}>
           <PendingRefundsList rows={refunds} action={markRefundSettledAction} />
         </div>
       </div>
 
-      <div className="card-entrance" style={{ animationDelay: '160ms' }}>
+      <div className="card-entrance" style={{ animationDelay: '120ms' }}>
         <MovementsList
           cashFlows={cashFlows}
           date={today}

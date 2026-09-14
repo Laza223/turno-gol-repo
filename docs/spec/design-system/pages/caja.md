@@ -5,12 +5,14 @@
 > mismos tokens, mismo semáforo financiero §2.5, mismo vocabulario §8.5.
 > Para INTERACCIÓN (cómo se confirma o se deshace algo) manda `gramatica-interaccion.md`.
 
-**Versión:** 2.0 — 2026-09-12 (rediseño: tres destinos por audiencia — Vender · Cuentas · Productos;
-la pantalla de venta se queda solo con la venta, y todo lo agregado se muda a Cuentas)
-**Anterior:** 1.0 — 2026-07-02, con parche de alcance el 2026-08-27 (describía "Caja del día":
-navegación por fecha, arqueo y ritual de cierre, un subsistema que se eliminó entero el 2026-09-11)
+**Versión:** 2.1 — 2026-09-14 (Cuentas pierde la banda de KPIs: "Deudas" y "Devolvés" quedaban
+repetidos con la card que ya trae su propia lista, y "Cobrado hoy" pasa a texto en la barra superior)
+**Anterior:** 2.0 — 2026-09-12 (rediseño: tres destinos por audiencia — Vender · Cuentas · Productos;
+la pantalla de venta se queda solo con la venta, y todo lo agregado se muda a Cuentas). 1.0 —
+2026-07-02, con parche de alcance el 2026-08-27 (describía "Caja del día": navegación por fecha,
+arqueo y ritual de cierre, un subsistema que se eliminó entero el 2026-09-11)
 **Código:** `src/app/(admin)/caja/page.tsx` · `cuentas/page.tsx` · `productos/page.tsx` ·
-`components/{CajaTabs,CajaHeaderStats,Disclosure}.tsx` · `cantina/*` · `deudas/*` · `devoluciones/*` ·
+`components/{CajaTabs,Disclosure}.tsx` · `cantina/*` · `deudas/*` · `devoluciones/*` ·
 `caja-lib.ts` · `queries.ts`
 **Personalidad:** Admin ("El Mostrador") — densidad alta, motion ≤ 200 ms, cero decoración.
 
@@ -104,11 +106,11 @@ fiados abiertos (`listOpenTabs`). No hay encabezado propio, no hay totales, no h
 
 ### §2.2 Cuentas — `/caja/cuentas`
 
-El libro. En el hueco de la barra superior, al lado de los tres destinos, cuelgan el rótulo del
-día de trabajo (oculto abajo de `sm`, donde la barra apenas entra con las pestañas) y el botón
-"Movimiento". Debajo: los tres números, después Deudas y Devolvés lado a lado
-(`lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]` — Deudas manda en ancho: tiene más filas y más
-acción), y al final el diario del día a ancho completo.
+El libro. En el hueco de la barra superior, al lado de los tres destinos, cuelgan lo cobrado hoy
+(oculto abajo de `lg`), el rótulo del día de trabajo (oculto abajo de `sm`, donde la barra apenas
+entra con las pestañas) y el botón "Movimiento" — nunca una card propia, ver §3. Debajo: Deudas y
+Devolvés lado a lado (`lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]` — Deudas manda en ancho: tiene
+más filas y más acción), y al final el diario del día a ancho completo.
 
 ### §2.3 Productos — `/caja/productos`
 
@@ -134,31 +136,30 @@ Catálogo a la izquierda y "qué se vende" a la derecha, con la misma proporció
   (`canEditCatalog={role === 'admin'}`, enforced de verdad en las tres actions con
   `requireAdminStaffAction`). Reponer stock sí puede, y por eso "Editar" no le aparece en la fila.
 
-## §3 Los tres números — `CajaHeaderStats`
+## §3 Cobrado hoy — texto, no card
 
-Tres `MetricCard` en Cuentas, y **solo** en Cuentas. Perdieron su `href`: antes llevaban a la
-pestaña con el detalle, y ahora el detalle está en esa misma pantalla, más abajo.
+Hasta la v2.0, Cuentas abría con `CajaHeaderStats`: tres `MetricCard` ("Cobrado hoy", "Deudas",
+"Devolvés") en una banda de ancho completo. Se eliminó (feedback directo del dueño, 2026-09-14):
+"Deudas" y "Devolvés" eran el MISMO número que ya muestran, como su propia card, `StreetMoneyList`
+y `PendingRefundsList` más abajo (§4) — dos maquetas para un solo dato, pagando espacio de pantalla
+por cero información nueva. Para una pantalla que el dueño mira a diario, ese costo no se justificaba.
 
-| Card | Fuente | Accent | Sub |
-|---|---|---|---|
-| Cobrado hoy | `summary.collected` | `emerald` siempre | desglose por método en el `footer` |
-| Deudas | `sumStreetMoney(rows)` | `amber` si > 0, `emerald` si 0 | "N pendientes de cobro" / "Nadie te debe nada" |
-| Devolvés | suma de `listPendingRefunds` | `red` si > 0, `emerald` si 0 | "N señas sin devolver" / "No debés ninguna seña" |
+`getDaySummary` sigue devolviendo `collectedByMethod` y el servicio no cambió — lo que se sacó es
+la vidriera. El detalle por método (antes en el `footer` de la card) se sacó entero: en una pantalla
+de valor bajo por visita, mostrarlo exigía la misma o más superficie que el número solo, y nadie lo
+pidió junto con el reclamo de espacio.
 
-**Decisión: el desglose muestra lo COBRADO por método, no el neto.** `summary.byMethod` resta los
-egresos de su propio método porque servía al arqueo; sus partes suman `balance`. Metido dentro de
-una card cuyo título dice "Cobrado hoy" eso sería una contradicción aritmética a la vista: los
-números de adentro no darían el número de arriba. Por eso `getDaySummary` devuelve además
-`collectedByMethod` (ingresos + ajustes, sin egresos), cuyas partes suman exactamente `collected`.
-`byMethod` se conserva: contesta otra pregunta y tiene su propio test de integración.
-
-**Decisión: cero en verde, con texto.** Cuando no hay deuda ni devoluciones pendientes las cards
-pasan a `emerald` y el sub lo dice en palabras. Es un premio, no un vacío — y el color nunca viaja
-solo (§1.4).
-
-**Decisión: el sub cuenta filas, no antigüedad.** "La más vieja hace 20 días" exigía un helper de
-humanización nuevo; la antigüedad ya está en cada fila de la lista, que está ordenada por eso
-mismo. El count es el dato accionable y sale de las filas que se listan abajo.
+- **"Cobrado hoy" pasa a texto** en el hueco de la barra superior (`CajaTabs.actions`), al lado del
+  rótulo del día. Sin card, sin ícono, sin accent: `summary.collected` con `formatArs`, nada más.
+- **Se esconde antes que la fecha** (`lg:inline` contra el `sm:inline` de la fecha): es el dato
+  menos urgente de los dos para quien entra a Cuentas a mirar deudas, y la barra ya viene ajustada
+  de ancho con solo la fecha (§2.2).
+- **Deudas y Devolvés no tienen "su" número arriba nunca más**, y con esto se pierde el "cero en
+  `emerald`, con el sub en palabras" que era de `CajaHeaderStats` (`MetricCard`) — el `StatCard`
+  de `StreetMoneyList`/`PendingRefundsList` queda siempre en `amber`/`red`, con o sin filas. En $0
+  el aviso lo da el `EmptyState` de abajo ("Sin deudas" / "No debés ninguna devolución"), no el
+  color de la card. Consecuencia aceptada: perder ese premio visual vale menos que la duplicación
+  que sacaba.
 
 ## §4 Deudas y Devolvés — dos listas, nunca un neto
 
@@ -167,8 +168,10 @@ muestran juntas porque son la misma pregunta, y separadas porque restarlas rompe
 más protegido de esta sección.
 
 - El total de Deudas tiene **una sola fuente**: `src/modules/cashflow/street-money.service.ts`. Lo
-  leen esta pantalla, la lista de abajo y la pantalla "Hoy". Cuentas usa `sumStreetMoney` sobre las
-  MISMAS filas que lista, así que la card y la lista no pueden divergir: no hay dos cuentas, hay una.
+  leen la pantalla "Hoy" y `StreetMoneyList`, que suma las filas de `getStreetMoney` DENTRO del
+  propio componente para su `StatCard` — un solo cálculo, no dos números que puedan divergir. El
+  `sumStreetMoney` que corre en `cuentas/page.tsx` alimenta únicamente el breadcrumb
+  `street_money.viewed` (§11); nada visible depende de él desde que se sacó la banda de KPIs (§3).
 - Devolvés sale de `listPendingRefunds`, que deliberadamente **no** entra en `getStreetMoney`.
 - La ventana por defecto son los últimos 12 meses (`STREET_MONEY_DEFAULT_MONTHS`) y el rótulo lo
   dice **siempre**, no solo cuando hay algo escondido: una pantalla de plata que muestra una
@@ -244,8 +247,8 @@ normaliza el texto del DOM pero no el matcher. Fechas en formato medio §8.3, nu
 - `tests/unit/admin-routes-reachable.test.ts` — lee `CajaTabs.tsx` como fuente de rutas.
 - `tests/unit/app-page-guard-chain.test.ts` — `deudas/` y `devoluciones/` están exentas por ser
   redirects de compat, igual que `cantina/`.
-- Stories: `CajaHeaderStats` (el desglose y los tres estados de color), `TicketPanel`, `FiadosList`
-  (incluye que la nota del fiado **no** se publica), `ProductsTable`, `CanteenReport`.
+- Stories: `TicketPanel`, `FiadosList` (incluye que la nota del fiado **no** se publica),
+  `ProductsTable`, `CanteenReport`. `CajaHeaderStats.stories.tsx` se borró junto con el componente.
 - Integración: `street-money-window.test.ts`, `street-money-consistency.test.ts`, `cashflow.test.ts`,
   `canteen-*.test.ts`, `refund-lifecycle.test.ts`.
 - e2e: `tests/e2e/caja-redesign.spec.ts`.

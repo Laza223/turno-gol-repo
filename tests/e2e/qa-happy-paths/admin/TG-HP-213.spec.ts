@@ -78,12 +78,10 @@ test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
       await expect(page.getByText('¿Quién cancela?')).toBeVisible()
 
       await page.getByRole('radio', { name: /El complejo necesita cancelar/i }).click()
-      // El copy del aviso de reembolso depende de paymentMethod (MP vs
-      // efectivo/transferencia, BookingActions.tsx:130-139) — el seed usa
-      // paymentMethod=null (mismo DECISION que la spec de referencia), así que
-      // cae en la rama "Coordiná el reembolso..." en vez de "Se reembolsará
-      // ... vía MercadoPago." El regex cubre ambas ramas sin acoplarse a cuál.
-      await expect(page.getByText(/(Se reembolsará la seña|Coordiná el reembolso)/i)).toBeVisible()
+      // El copy del aviso depende de paymentMethod (MP vs efectivo/transferencia,
+      // BookingActions.tsx) pero las dos ramas arrancan con el mismo prefijo:
+      // TurnoGol no reembolsa por API, la devuelve el complejo.
+      await expect(page.getByText(/La seña de .* queda para devolver/i)).toBeVisible()
       await page.locator('#cancel-reason').fill('rotura de la cancha, mantenimiento programado')
 
       await page.getByRole('dialog').getByRole('button', { name: 'Cancelar reserva' }).click()

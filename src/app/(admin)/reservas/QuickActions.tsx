@@ -293,15 +293,15 @@ export function QuickActions({
     } else if (cancelType === 'complejo') {
       refundWarning =
         booking.paymentMethod === 'mercadopago'
-          ? `Se reembolsará la seña de ${formatArs(booking.depositAmount)} vía MercadoPago.`
-          : `Coordiná el reembolso de ${formatArs(booking.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+          ? `La seña de ${formatArs(booking.depositAmount)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
+          : `La seña de ${formatArs(booking.depositAmount)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
     } else if (inPolicy === null) {
-      refundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount)} si está dentro del plazo, retención si no.`
+      refundWarning = `Se aplica la política de cancelación: si corresponde devolver la seña de ${formatArs(booking.depositAmount)}, la devolvés vos y la marcás en Caja → Cuentas; fuera de plazo, queda retenida.`
     } else if (inPolicy) {
       refundWarning =
         booking.paymentMethod === 'mercadopago'
-          ? `Se reembolsará la seña de ${formatArs(booking.depositAmount)} vía MercadoPago.`
-          : `Coordiná el reembolso de ${formatArs(booking.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+          ? `La seña de ${formatArs(booking.depositAmount)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
+          : `La seña de ${formatArs(booking.depositAmount)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
     } else {
       refundWarning = `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatArs(booking.depositAmount)} queda para el complejo (sin reembolso).`
     }
@@ -473,7 +473,11 @@ export function QuickActions({
             >
               <RadioChip
                 value="complejo"
-                description="Rotura, mantenimiento o error. Reembolso automático."
+                description={
+                  hasPaidDeposit
+                    ? 'Rotura, mantenimiento o error. La seña queda para que se la devuelvas vos.'
+                    : 'Rotura, mantenimiento o error.'
+                }
               >
                 El complejo necesita cancelar
               </RadioChip>

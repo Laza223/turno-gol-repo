@@ -233,7 +233,7 @@ export const MarcarAusenteConfirmado: Story = {
   },
 }
 
-/** Cancela el complejo: reembolso automático de la seña vía MercadoPago, sin importar la ventana horaria. */
+/** Cancela el complejo: la seña de MercadoPago queda para que la devuelva el complejo, no es automático. */
 export const CancelarComplejoReembolsoAutomatico: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
@@ -246,7 +246,11 @@ export const CancelarComplejoReembolsoAutomatico: Story = {
     // Mismo gotcha: el diálogo (y el bloque de preview recién insertado) puede
     // seguir en su animación de entrada.
     await waitFor(() =>
-      expect(dialog.getByText('Se reembolsará la seña de $ 4.500 vía MercadoPago.')).toBeVisible(),
+      expect(
+        dialog.getByText(
+          'La seña de $ 4.500 queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.',
+        ),
+      ).toBeVisible(),
     )
     await userEvent.type(dialog.getByLabelText('Motivo (obligatorio)'), 'Cancha en mantenimiento')
     await userEvent.click(dialog.getByRole('button', { name: 'Cancelar reserva' }))
@@ -306,7 +310,7 @@ export const CancelarJugadorDentroDePlazoPagoEnEfectivo: Story = {
     await waitFor(() =>
       expect(
         dialog.getByText(
-          'Coordiná el reembolso de $ 4.500 en efectivo/transferencia con el jugador (no es automático).',
+          'La seña de $ 4.500 queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.',
         ),
       ).toBeVisible(),
     )

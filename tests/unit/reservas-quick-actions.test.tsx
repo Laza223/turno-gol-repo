@@ -328,11 +328,11 @@ describe('QuickActions — confirmed', () => {
 /**
  * Clase de B3: `decideAdminRefund` (backend) nunca reembolsa un turno YA
  * TERMINADO, ni para 'complejo'. Antes de este fix, el warning para
- * 'complejo' decía "Se reembolsará…" de forma incondicional (líneas
+ * 'complejo' decía "queda para devolver…" de forma incondicional (líneas
  * 146-150), sin mirar si el turno ya se jugó.
  */
 describe('QuickActions — turno ya terminado nunca promete reembolso (clase B3)', () => {
-  it('booking.endsAt en el pasado + complejo: warning dice "sin reembolso", no "Se reembolsará vía MercadoPago"', async () => {
+  it('booking.endsAt en el pasado + complejo: warning dice "sin reembolso", no "queda para devolver"', async () => {
     const past = new Date(Date.now() - 3_600_000).toISOString()
     render(
       <QuickActions
@@ -354,7 +354,7 @@ describe('QuickActions — turno ya terminado nunca promete reembolso (clase B3)
     expect(dialog).toHaveTextContent(
       'El turno ya se jugó: la seña queda para el complejo (sin reembolso).',
     )
-    expect(dialog).not.toHaveTextContent('Se reembolsará vía MercadoPago')
+    expect(dialog).not.toHaveTextContent('queda para devolver')
   })
 
   it('booking.endsAt en el pasado + sin seña pagada: el check de !hasPaidDeposit gana, warning dice "no tiene seña pagada"', async () => {
@@ -378,6 +378,6 @@ describe('QuickActions — turno ya terminado nunca promete reembolso (clase B3)
 
     expect(dialog).toHaveTextContent('Esta reserva no tiene seña pagada. Solo se libera el turno.')
     expect(dialog).not.toHaveTextContent('El turno ya se jugó')
-    expect(dialog).not.toHaveTextContent('Se reembolsará')
+    expect(dialog).not.toHaveTextContent('queda para devolver')
   })
 })

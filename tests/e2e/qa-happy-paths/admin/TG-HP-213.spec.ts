@@ -13,17 +13,23 @@
  *   ("deposit_status stays 'paid'") está desactualizado: esa rama offline no
  *   existía cuando se escribió; el código actual SÍ la tiene.
  *
- * Caso SIN refund: cancellationType='jugador' + reserva con inicio YA PASADO
- *   (ayer) → inPolicy=false determinísticamente sin depender de
- *   cancellation_policy.hours_before del tenant → shouldRefund=false →
- *   status=canceled_no_refund, deposit_status='captured'.
+ * Caso SIN refund: cancellationType='jugador' + reserva que arranca en 2h
+ *   (dentro de las próximas horas, muy por debajo de las 12h de
+ *   cancellation_policy.hours_before del tenant demo — scripts/seed-e2e.ts:207)
+ *   → inPolicy=false, turnoEnded=false (todavía no arrancó) → shouldRefund=false
+ *   → status=canceled_no_refund, deposit_status='captured'.
+ *   (Antes usaba un turno de AYER: eso también daba inPolicy=false, pero de
+ *   paso también turnoEnded=true, que en BookingActions.tsx:358-368 toma la
+ *   rama de copy "El turno ya se jugó..." en vez de "Fuera del plazo de
+ *   cancelación...", que es lo que este test verifica en la línea de abajo —
+ *   el fixture probaba la rama B3 sin querer, no la de política.)
  *
  * CASO DE PLATA — no se limpia nada al final.
  * Evidencia: src/app/(admin)/reservas/actions.ts:236-342 (cancelBookingAction),
  * src/modules/bookings/booking.cancellation.ts:26-44,262-410 (decideAdminRefund,
  * cancelByAdmin), src/app/(admin)/reservas/[id]/BookingActions.tsx:96-240.
  */
-import { subDays } from 'date-fns'
+import { addHours } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { test, expect } from '../../fixtures'
 import {
@@ -37,8 +43,27 @@ import {
 import { writeEvidence } from '../_qa/evidence'
 import { suppressPushPrompt } from '../_qa/session'
 
-function yesterdayDateIsoArt(): string {
-  return formatInTimeZone(subDays(new Date(), 1), 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd')
+const ART_TZ = 'America/Argentina/Buenos_Aires'
+
+/**
+ * Turno que arranca en `hoursFromNow` horas (ART) — fuera de la ventana de
+ * cancellationPolicyHours del tenant demo (12h, scripts/seed-e2e.ts:207) pero
+ * todavía sin jugarse, para ejercitar la rama "fuera de plazo" de
+ * BookingActions.tsx sin pisar la rama "turno ya terminado" (B3, cubierta por
+ * tests/unit/booking-actions-cancel-preview.test.tsx).
+ */
+function inHoursBookingWindowArt(hoursFromNow: number): {
+  date: string
+  timeStart: string
+  timeEnd: string
+} {
+  const start = addHours(new Date(), hoursFromNow)
+  const end = addHours(start, 1)
+  return {
+    date: formatInTimeZone(start, ART_TZ, 'yyyy-MM-dd'),
+    timeStart: formatInTimeZone(start, ART_TZ, 'HH:mm:ss'),
+    timeEnd: formatInTimeZone(end, ART_TZ, 'HH:mm:ss'),
+  }
 }
 
 test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
@@ -126,14 +151,14 @@ test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
     adminStorageState,
   }) => {
     const supabase = makeServiceClient()
-    const yesterday = yesterdayDateIsoArt()
+    const { date, timeStart, timeEnd } = inHoursBookingWindowArt(2)
 
     const bookingId = await insertBookingServiceRole(supabase, {
       tenantId: E2E_TENANT_ID,
       courtId: E2E_COURT_ID,
-      date: yesterday,
-      timeStart: '09:00:00',
-      timeEnd: '10:00:00',
+      date,
+      timeStart,
+      timeEnd,
       status: 'confirmed',
       depositStatus: 'paid',
       depositAmount: 50_000,

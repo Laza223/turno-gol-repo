@@ -5,6 +5,7 @@ import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { courts } from '@/test/fixtures/court'
 import { openingHours, tenant } from '@/test/fixtures/tenant'
 import { booking, saturdayAfternoonGridBookings } from '@/test/fixtures/booking'
+import { abonado } from '@/test/fixtures/abonado'
 import { ADMIN_HEADER_SLOT_ID } from '@/components/layout/admin-header-slot'
 import { BookingGrid } from './BookingGrid'
 
@@ -53,6 +54,12 @@ const meta = {
     action: fn(async () => ({
       success: true as const,
       booking: booking(),
+    })),
+    createAbonadoAction: fn(async () => ({
+      success: true as const,
+      abonado: abonado(),
+      slotsGenerated: 8,
+      conflictDates: [],
     })),
   },
   decorators: [

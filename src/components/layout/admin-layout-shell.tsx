@@ -43,7 +43,11 @@ export function AdminLayoutShell({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
   const pathname = usePathname()
-  const isGrilla = pathname === '/grilla'
+  // Grilla y Reservas (lista) comparten el mismo tratamiento de viewport fijo
+  // full-bleed: sin `max-w-7xl` y sin scroll de página propio, cada una
+  // resuelve el scroll adentro (GridScroller / CourtBoard). Comparación
+  // exacta: `/reservas/[id]` sigue con el layout normal (max-w-7xl).
+  const isFullBleed = pathname === '/grilla' || pathname === '/reservas'
 
   function handleSignOut() {
     startTransition(async () => {
@@ -55,7 +59,7 @@ export function AdminLayoutShell({
     // dvh y no vh: en iOS `100vh` incluye la barra de URL, así que el contenedor
     // queda más alto que el área visible — y con `overflow-hidden` el excedente
     // es INALCANZABLE (los últimos turnos de la grilla no se podían tocar).
-    <div className={cn('min-h-dvh shell-bg', isGrilla && 'h-dvh overflow-hidden flex flex-col')}>
+    <div className={cn('min-h-dvh shell-bg', isFullBleed && 'h-dvh overflow-hidden flex flex-col')}>
       {/* Riel de 72 px (el cajón mobile lo trae el Sheet de AdminSidebar) */}
       <AdminSidebar
         tenantName={tenantName}
@@ -83,12 +87,12 @@ export function AdminLayoutShell({
 
       {/* Main content */}
       <div
-        className={cn('lg:pl-[72px]', isGrilla && 'h-dvh flex flex-col min-h-0 overflow-hidden')}
+        className={cn('lg:pl-[72px]', isFullBleed && 'h-dvh flex flex-col min-h-0 overflow-hidden')}
       >
         <div
           className={cn(
             'pt-[calc(3.75rem+env(safe-area-inset-top))]',
-            isGrilla && 'flex-1 flex flex-col min-h-0 overflow-hidden',
+            isFullBleed && 'flex-1 flex flex-col min-h-0 overflow-hidden',
           )}
         >
           {/* Banner de impersonación (super admin): pegado bajo el header */}
@@ -109,7 +113,7 @@ export function AdminLayoutShell({
             id="main-content"
             className={cn(
               'content-area-gradient mx-auto w-full px-4 sm:px-6 lg:px-8',
-              isGrilla
+              isFullBleed
                 ? 'max-w-full flex-1 flex flex-col min-h-0 overflow-hidden pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-4'
                 : 'max-w-7xl pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-3.75rem)]',
             )}

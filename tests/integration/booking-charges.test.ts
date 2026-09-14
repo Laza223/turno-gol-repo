@@ -78,20 +78,23 @@ async function insertBooking(opts: {
   price: number
   depositStatus?: string
   depositAmount?: number
+  /** Default 'spontaneous'. Un `block` nunca carga plata (rediseño 2026-09-14). */
+  type?: string
 }): Promise<string> {
   const sql = getSql()
   const rows = await sql<{ id: string }[]>`
     INSERT INTO bookings (
       tenant_id, court_id, player_id, date, time_start, time_end,
       starts_at, ends_at,
-      price_snapshot, deposit_amount, deposit_status, payment_method, status
+      price_snapshot, deposit_amount, deposit_status, payment_method, status, type
     )
     VALUES (
       ${opts.tenantId}, ${opts.courtId}, ${opts.playerId},
       ${FUTURE_DATE}::date, ${opts.timeStart}::time, ${opts.timeEnd}::time,
       (${FUTURE_DATE}::date + ${opts.timeStart}::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
       (${FUTURE_DATE}::date + ${opts.timeEnd}::time)   AT TIME ZONE 'America/Argentina/Buenos_Aires',
-      ${opts.price}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, NULL, 'confirmed'
+      ${opts.price}, ${opts.depositAmount ?? 0}, ${opts.depositStatus ?? 'not_required'}, NULL, 'confirmed',
+      ${(opts.type ?? 'spontaneous') as 'spontaneous' | 'block'}::booking_type
     )
     RETURNING id
   `
@@ -391,5 +394,34 @@ describe('Hallazgo C — TOCTOU de cobros concurrentes (addBookingChargeAction, 
       WHERE booking_id = ${bookingId} AND type = 'income' AND category = 'booking'
     `
     expect(Number(cashFlows[0]!.c)).toBe(1)
+  })
+})
+
+// Rediseño 2026-09-14: un `block` no es el turno de nadie, no hay a quién
+// cobrarle.
+describe('un block nunca carga plata: addBookingChargeAction lo rechaza', () => {
+  it('rechaza cobrar un booking type=block', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const bookingId = await insertBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      timeStart: '21:00',
+      timeEnd: '22:00',
+      price: 0,
+      type: 'block',
+    })
+
+    asStaff(tenant.id, staff.id)
+
+    const result = await addBookingChargeAction({ bookingId, amount: 1_000_00, method: 'cash' })
+    expect(result.success).toBe(false)
+    expect((result as { success: false; error: string }).error).toContain('bloqueo')
   })
 })

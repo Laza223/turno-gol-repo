@@ -13,6 +13,8 @@ import { toast } from '@/hooks/use-toast'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
 import { formatArs } from '@/lib/format'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
+import { hhmmToMins } from '@/shared/time/operating-day'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
@@ -196,8 +198,19 @@ export function BookingSlotPanel({
   // `fixed` (sesión de abonado) SÍ entra desde la decisión del dueño del
   // 2026-08-05: se mueve conservando el precio del contrato (el backend lo
   // impone, no depende de esta UI).
+  //
+  // Duración: rediseño 2026-09-14. `rescheduleBooking` sólo valida la duración
+  // del DESTINO (siempre 60 min, vía `assertSlotDuration`) — nunca mira la del
+  // turno que se mueve. Un evento de N horas ofrecido acá se "reprogramaría"
+  // recortado a un único slot de 60 min sin que el backend lo frene: el gate
+  // vive acá, no allá. `endMins === 0` cubre el legado `time_end='00:00'`
+  // (medianoche), mismo criterio que `slotDurationMins`.
+  const bookingEndMins = hhmmToMins(booking.timeEnd)
+  const bookingDurationMins =
+    (bookingEndMins === 0 ? 24 * 60 : bookingEndMins) - hhmmToMins(booking.timeStart)
   const canReschedule =
     isClientBooking &&
+    bookingDurationMins === SLOT_DURATION_MINUTES &&
     (booking.status === 'confirmed' || booking.status === 'pending_payment') &&
     Boolean(actions?.listRescheduleSlotsAction && actions?.rescheduleBookingAction) &&
     Boolean(courts?.length)

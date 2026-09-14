@@ -4,12 +4,14 @@
 > para todo lo demás rige el MASTER. La grilla es la vista donde el admin vive 8 h/día:
 > **cualquier decisión que enlentezca leer o cargar una reserva es un bug de diseño** (MASTER §1, principio 1).
 
-**Versión:** 2.0 — 2026-09-11 (rediseño: los controles suben a la barra superior del panel, la misma
+**Versión:** 2.1 — 2026-09-14 (el alta rápida se elimina: tocar un casillero abre el modal único por
+tipo, §3bis. Decisión `docs/decisions/2026-09-14-alta-grilla-modal-unico-y-reservas-por-cancha.md`).
+2.0 — 2026-09-11 (rediseño: los controles suben a la barra superior del panel, la misma
 matriz sirve para escritorio y teléfono, y el selector de densidad se elimina. La v1.0 — 2026-07-02 —
 describe una pantalla que ya no existe)
 **Código:** `src/app/(admin)/grilla/page.tsx` · `GrillaTabs.tsx` · `src/components/booking/BookingGrid.tsx` ·
 `grid/GridHeaderBar.tsx` · `grid/GridScroller.tsx` · `grid/GridLegend.tsx` · `BookingCard.tsx` ·
-`WeekStrip.tsx` · `BookingSlotPanel.tsx` · `QuickBookingForm.tsx` · `src/lib/booking/grid-cells.ts` ·
+`WeekStrip.tsx` · `BookingSlotPanel.tsx` · `BookingFormModal.tsx` · `src/lib/booking/grid-cells.ts` ·
 `src/hooks/use-grid-layout.ts`
 **Personalidad:** Admin ("El Mostrador") — densidad alta, motion ≤ 200 ms, cero decoración.
 
@@ -49,7 +51,7 @@ baja a una fila sobre la matriz, que es donde llega el pulgar:
 ├─ Matriz, misma que escritorio, columnas de 48px ───────────────────────────┤
 ```
 
-- La tarea principal (cargar una reserva) se completa en **2 interacciones**: tap en slot → "Reservar" en el popover de alta rápida. Nunca agregar pasos intermedios.
+- Tocar un casillero libre abre **directo** el modal de alta (§3bis), con "Turno" ya elegido y el foco en el nombre: el caso común sigue siendo tap → nombre → Enter. No hay superficie intermedia (el popover de alta rápida se eliminó el 2026-09-14): el admin abre la grilla para cargar lo que no entró online, y ahí manda que el alta sea completa y se entienda.
 - El slot **completo** es el blanco de click/tap (Fitts). Prohibido reducir la acción a un botoncito interno.
 - **El título de la vista es el segmento** `Grilla | Reservas` (`GrillaTabs.tsx`, portalizado). Por eso el rótulo de la matriz pasó de "Calendario" a "Grilla": el `<h1>` desapareció y este segmento quedó como el único lugar donde la pantalla se nombra. **No reponer un `<h1>`**: sería volver a poner la fila que se sacó.
 - **"Por cobrar hoy"** (`GridHeaderBar.tsx`, prop `pendingSummary`, sumado en `BookingGrid.tsx` con `sumPendingCents` de `src/lib/booking/grid-cells.ts`): suma de lo pendiente entre las reservas **del día visible**, no de todo el complejo. Sólo aparece con `count > 0`. El "hoy" del rótulo lo distingue explícitamente de "Deudas" en Caja, que sí suma toda la deuda del complejo (H040): misma palabra, alcance distinto, y ahora cada uno dice el suyo.
@@ -129,11 +131,23 @@ Superficies con tokens (`bg-card`, `border-border`).
 - **Acciones plegadas** (`SlotActionButtons.tsx`): cargar cantina queda a la vista; **reprogramar, marcar ausente y cancelar** se pliegan detrás de **"Más"**. Eran cinco botones compitiendo por la misma atención, tres de ellos rojos, para tareas de una vez por semana. Un toque de más en lo semanal a cambio de que lo diario no tenga que elegir entre cinco (Hick, MASTER §9).
 - **Liberar el bloqueo** y **deshacer la ausencia** NO se pliegan: en esos estados son la única acción que existe, y esconder la única acción no es resta.
 
-**Alta rápida** (`QuickBookingForm.tsx`; `Popover` anclado a la celda en `lg`+, `Sheet` desde abajo
-en el teléfono — ver §4bis): nombre + "Reservar". El
-precio se **muestra**, no se pide. Teléfono y seña se pliegan detrás de "Agregar teléfono" y "Cobrar
-algo ahora". El modal completo sigue a un click, en "Más opciones" — ahí viven los bloqueos, los 120
-minutos, el precio a mano y las notas, y **no se elimina**: sin él esos caminos se quedan sin puerta.
+## 3bis. Alta — un modal, cuatro tipos
+
+`BookingFormModal.tsx` (+ `create-modal/`). Reemplaza al alta rápida (popover/sheet) y al modal viejo
+de chips + "Opciones avanzadas". Arranca preguntando **"¿Qué vas a agendar?"**; cada tipo muestra
+solo sus campos, sin colapsables ni avisos en ámbar.
+
+| Tipo | Explicación (una línea) | Guarda | Campos |
+| --- | --- | --- | --- |
+| **Turno** (default) | Una hora de cancha para alguien | `spontaneous`, 60 min | a nombre de quién (jugador o nombre), teléfono, horario, precio de la grilla (editable), ¿cobraste algo ahora?, nota |
+| **Turno fijo** | Todas las semanas, mismo día y hora | abonado (`createAbonadoAction`) | nombre y teléfono, día y horario del casillero, precio por turno, desde/hasta, cómo paga |
+| **Evento** | Varias horas: escuelita, torneo, cumpleaños | `spontaneous`, N horas enteras | qué es (chips que precargan el nombre), responsable, teléfono, hasta, precio total sugerido o "No se cobra", ¿cobraste algo ahora? |
+| **Bloquear cancha** | Nadie puede usarla: mantenimiento, cierre | `block` | motivo, hasta. **Nunca plata ni contacto** |
+
+- **Escritorio:** grande (`max-w-6xl`): tipos a la izquierda, campos al centro, **resumen fijo** a la derecha (cancha, fecha, horario y duración, total, cobrado ahora, queda por cobrar) con el botón que dice verbo + monto ("Reservar · $ 24.000", "Agendar evento · $ 72.000", "Bloquear cancha").
+- **Teléfono:** pantalla completa; tipos como chips arriba, footer fijo con total + botón.
+- Los horarios salen de la grilla ya cargada (horas reales del día y reservas de esa cancha): el fin se topea en la próxima reserva o el cierre (máx. 24:00). El servidor sigue siendo la barrera (solapamiento).
+- El precio de un evento lo recalcula el servidor salvo que el admin lo cambie o elija "No se cobra".
 
 ## 4. Medidas — una sola densidad, resuelta por CSS
 
@@ -162,7 +176,7 @@ que es el gesto que el carrusel imitaba a mano.
 
 - Lo que se gana: la lectura aprendida en escritorio (posición, color, ícono, saldo) es **literalmente la misma**, no una traducción. Un solo nombre accesible por celda, así que los tests dejan de necesitar dos matchers para el mismo hecho.
 - Lo que se pierde y se asume: en 375 px hay que **scrollear en dos ejes**. Se compensa con headers de cancha sticky arriba, eje de horas sticky a la izquierda y `snap-start` por columna. El scroll 2D era el argumento de la v1 contra la matriz; con 48 px en vez de 150 el costo bajó lo suficiente.
-- **Regla de corte: medidas por CSS, superficies por hook.** La matriz entera (anchos, altos, qué renglón lleva qué) se resuelve con variables y `lg:`, porque un hook responde después del primer pintado y se ve el salto. `useIsDesktop` (`src/hooks/use-is-desktop.ts`) **sigue vivo** y se usa sólo para elegir la SUPERFICIE de las dos superposiciones de Radix, que no es algo que CSS pueda decidir: el alta rápida es `Popover` anclado a la celda en `lg`+ y `Sheet` desde abajo en el teléfono (un popover sobre una columna de 48 px no tiene dónde anclarse, y abajo es donde llega el pulgar), y el panel del turno entra por la derecha o por abajo con el mismo criterio.
+- **Regla de corte: medidas por CSS, superficies por hook.** La matriz entera (anchos, altos, qué renglón lleva qué) se resuelve con variables y `lg:`, porque un hook responde después del primer pintado y se ve el salto. `useIsDesktop` (`src/hooks/use-is-desktop.ts`) **sigue vivo** y se usa sólo para elegir la SUPERFICIE del panel del turno, que no es algo que CSS pueda decidir: entra por la derecha en `lg`+ y por abajo en el teléfono. El modal de alta (§3bis) resuelve escritorio/teléfono por CSS.
 - Lo que no viaja al teléfono: la tira semanal (la reemplaza `‹ fecha ›`, §1) y la navegación 2D por flechas.
 
 ## 5. Madrugada muerta colapsada
@@ -232,7 +246,7 @@ en escritorio lo dice la tira semanal. Horas 24 h `HH:MM`, rango con en-dash sin
 ## 10. Teclado y accesibilidad
 
 - Flechas mueven el foco entre slots (roving por `data-col`/`data-row`, saltando filas cubiertas por spans y celdas no interactivas). Los índices son sobre las filas **visibles** (colapso incluido).
-- Escape cierra el popover sin perder el foco. Contenedor scrolleable con `tabIndex=0` + `role="region"` + label con la fecha.
+- Escape cierra el modal de alta y devuelve el foco a la celda. Contenedor scrolleable con `tabIndex=0` + `role="region"` + label con la fecha.
 - Todo estado cumple §1.4 (color + ícono + texto/aria) y §2.4 (labels en escala AA verificada).
 - Touch ≥ 44 px en todo: celda (columna de 48 px menos los 2 px de margen por lado), chevrons del día, "···", chip "Por cobrar hoy" y chips de método del panel — estos últimos bajan a 36 px recién en `md`/`lg`, donde el puntero es un mouse.
 

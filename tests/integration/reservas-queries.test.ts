@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import {
+  BOARD_PER_COURT_LIMIT,
   countTenantBookingsByStatus,
   getBookingDetail,
   listTenantBookings,
+  listTenantBookingsForBoard,
   RESERVAS_PAGE_SIZE,
   type ReservaListFilters,
   type ReservaListRow,
@@ -266,6 +268,76 @@ describe('reservas queries', () => {
 
       expect(lejos.rows).toHaveLength(0)
       expect(lejos.hasMore).toBe(false)
+    })
+  })
+
+  /**
+   * Hallazgo #3 (revisión redesign booking modal, 2026-09-14): la MISMA clase
+   * de bug que B10, repartida por columna en vez de por página — un `LIMIT`
+   * plano sobre la unión de todas las canchas podía dejar a una entera fuera
+   * de la ventana visible mientras otra con pocos turnos se veía completa.
+   */
+  describe('listTenantBookingsForBoard — cupo por cancha, no OFFSET global', () => {
+    async function seedCourt(tenantId: string, name: string, n: number): Promise<string> {
+      const sql = getSql()
+      const court = await sql<{ id: string }[]>`
+        INSERT INTO courts (tenant_id, name, capacity, pricing, status)
+        VALUES (${tenantId}, ${name}, 10, ${sql.json(PRICING)}, 'online') RETURNING id
+      `
+      const courtId = court[0]!.id
+      await sql`
+        INSERT INTO bookings (
+          tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+          type, status, price_snapshot, guest_name
+        )
+        SELECT
+          ${tenantId}, ${courtId}::uuid, d::date, '10:00', '11:00',
+          (d::date + '10:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+          (d::date + '11:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+          'spontaneous', 'confirmed', 900000, 'Bulk ' || d::text
+        FROM generate_series(
+          '2099-09-01'::date, '2099-09-01'::date + ${n - 1}::int, '1 day'
+        ) d
+      `
+      return courtId
+    }
+
+    it('una cancha con más del cupo queda capada con su total real; la otra se ve completa', async () => {
+      const sql = getSql()
+      await cleanupAll(sql)
+      const tenant = await createTestTenant(sql)
+      const courtAId = await seedCourt(tenant.id, 'Cancha A', BOARD_PER_COURT_LIMIT + 5)
+      const courtBId = await seedCourt(tenant.id, 'Cancha B', 2)
+
+      const rows = await withTenantContext(tenant.id, (tx) =>
+        listTenantBookingsForBoard(tenant.id, { scope: 'proximas', today: TODAY }, tx),
+      )
+
+      const rowsA = rows.filter((r) => r.courtId === courtAId)
+      const rowsB = rows.filter((r) => r.courtId === courtBId)
+
+      // El bug: un LIMIT global sobre las dos canchas mezcladas hubiera dejado
+      // a Cancha B (la más chica, si su orden cae después) fuera de la
+      // ventana. Acá cada cancha tiene SU cupo — B nunca se recorta por lo
+      // que tiene A.
+      expect(rowsA).toHaveLength(BOARD_PER_COURT_LIMIT)
+      expect(rowsA[0]!.courtTotal).toBe(BOARD_PER_COURT_LIMIT + 5)
+      expect(rowsB).toHaveLength(2)
+      expect(rowsB[0]!.courtTotal).toBe(2)
+    })
+
+    it('sin tope: el total real es igual a las filas devueltas', async () => {
+      const sql = getSql()
+      await cleanupAll(sql)
+      const tenant = await createTestTenant(sql)
+      const courtId = await seedCourt(tenant.id, 'Cancha Única', 3)
+
+      const rows = await withTenantContext(tenant.id, (tx) =>
+        listTenantBookingsForBoard(tenant.id, { scope: 'proximas', today: TODAY }, tx),
+      )
+
+      expect(rows).toHaveLength(3)
+      expect(rows.every((r) => r.courtId === courtId && r.courtTotal === 3)).toBe(true)
     })
   })
 })

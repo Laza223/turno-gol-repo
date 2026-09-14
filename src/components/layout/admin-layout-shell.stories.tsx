@@ -4,8 +4,8 @@ import { ImpersonationBanner } from './impersonation-banner'
 import { AdminLayoutShell } from './admin-layout-shell'
 
 /**
- * `usePathname` decide `isGrilla` (layout full-height sin scroll en /grilla) —
- * viene del mock estándar de next/navigation. `signOut` es una Server Action
+ * `usePathname` decide `isFullBleed` (layout full-height sin scroll en /grilla
+ * y /reservas) — viene del mock estándar de next/navigation. `signOut` es una Server Action
  * tipada `() => Promise<never>`: acá un mock que nunca resuelve (nadie espera
  * su retorno en el layout — el botón dispara un `startTransition`).
  */

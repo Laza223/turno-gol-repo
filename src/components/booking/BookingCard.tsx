@@ -2,14 +2,12 @@
 
 import React from 'react'
 import { Plus } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { gridSlotVisual, slotPendingCents } from '@/lib/booking/slot-visual'
 import { holdExpiresAtIso, holdRemainingLabel } from '@/lib/booking/hold'
 import { formatArs } from '@/lib/format'
 import { useNowMsAfterHydration } from '@/hooks/use-now'
 import type { GridBooking } from './BookingGrid'
-import { quickPopoverSide, type QuickPopoverSide } from './grid/quick-popover-side'
 
 /** Un tick por segundo: el contador muestra mm:ss. */
 const ONE_SECOND = 1000
@@ -42,14 +40,6 @@ type BookingCardProps = {
   /** Panel lateral de detalle+acciones (solo slots ocupados): lo controla BookingGrid, uno a la vez. */
   detailOpen?: boolean
   onDetailChange?: (bookingId: string | null) => void
-  /**
-   * Alta rápida (Fase 3): si el caller devuelve contenido, la celda libre se
-   * envuelve en un Popover anclado a ella misma y el click lo abre en vez de
-   * ir directo al modal. Sin esto la celda se comporta como antes.
-   */
-  quickOpen?: boolean
-  renderQuickForm?: () => React.ReactNode
-  onQuickClose?: () => void
 }
 
 /** Posición explícita en la grilla CSS: rowOffset deja lugar a la columna de horas, la fila de headers y la banda de colapso. */
@@ -146,14 +136,7 @@ function BookingCardComponent({
   onSlotClick,
   detailOpen = false,
   onDetailChange,
-  quickOpen = false,
-  renderQuickForm,
-  onQuickClose,
 }: BookingCardProps) {
-  // Se decide al tocar la celda, que es cuando se conoce dónde quedó en
-  // pantalla. Ver quick-popover-side.ts.
-  const [quickSide, setQuickSide] = React.useState<QuickPopoverSide>('right')
-
   if (!booking) {
     const interactive = !isPast && !!onSlotClick && !!courtId
 
@@ -171,20 +154,15 @@ function BookingCardComponent({
 
     // Libre: superficie card con borde (visible, no lavado emerald) + Plus
     // SIEMPRE visible al 40% — en touch no hay hover y la affordance no se
-    // adivina (pages/grilla.md §2, desvío documentado de §2.6).
-    const freeButton = (
+    // adivina (pages/grilla.md §2, desvío documentado de §2.6). El click abre
+    // DIRECTO el modal de alta (§3bis): no hay superficie intermedia.
+    return (
       <button
         type="button"
         style={placement(col, row, span, rowOffset)}
         data-col={col}
         data-row={row}
-        onClick={(e) => {
-          // Sin chequear `renderQuickForm`: GridScroller se lo pasa a la celda
-          // recién cuando ya está abierta, así que en este click todavía no
-          // llegó. El cálculo es barato y solo lo usa la celda que se abre.
-          setQuickSide(quickPopoverSide(e.currentTarget.getBoundingClientRect(), window.innerWidth))
-          onSlotClick?.(courtId!, timeStart)
-        }}
+        onClick={() => onSlotClick?.(courtId!, timeStart)}
         aria-label={`Reservar turno ${timeStart} en ${courtName}`}
         className={cn(
           'group m-0.5 flex cursor-pointer items-center justify-center rounded-md',
@@ -192,7 +170,6 @@ function BookingCardComponent({
           'hover:border-emerald-500 hover:bg-emerald-500/5 dark:hover:border-emerald-400',
           'transition-colors duration-150',
           'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-          quickOpen && 'border-emerald-500 bg-emerald-500/5',
         )}
       >
         <Plus
@@ -204,26 +181,6 @@ function BookingCardComponent({
           )}
         />
       </button>
-    )
-
-    if (!renderQuickForm) return freeButton
-
-    // El Popover se ancla a la celda: el admin ve el formulario donde tocó, sin
-    // perder de vista la grilla. `Root` sin contenido montado cuesta un contexto
-    // por celda; el `Content` sólo se portaliza cuando está abierto.
-    return (
-      <Popover open={quickOpen} onOpenChange={(v) => !v && onQuickClose?.()}>
-        <PopoverTrigger asChild>{freeButton}</PopoverTrigger>
-        <PopoverContent
-          align="start"
-          side={quickSide}
-          sideOffset={6}
-          collisionPadding={12}
-          className="w-auto p-3"
-        >
-          {renderQuickForm()}
-        </PopoverContent>
-      </Popover>
     )
   }
 

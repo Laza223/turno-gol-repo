@@ -174,4 +174,38 @@ describe('completeAndChargeBookingAction', () => {
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
     expect(vi.mocked(tx.execute)).not.toHaveBeenCalled()
   })
+
+  // Rediseño 2026-09-14: un bloqueo o una hora de torneo nunca cargan plata.
+  // El rechazo tiene que ser un THROW dentro de la tx (rollback de la
+  // completación que ya corrió), no un `return` — devolver un objeto adentro
+  // de withTenantContext commitea. Por eso el caso sin cobros (`charges: []`),
+  // que es el único donde ningún otro guard lo frena.
+  it.each(['block', 'tournament'])(
+    'rechaza completar un %s tirando adentro de la tx (rollback), aun sin cobros',
+    async (type) => {
+      vi.mocked(completeBooking).mockResolvedValue({
+        ...fakeBooking({ priceSnapshot: 0 }),
+        type,
+      } as never)
+      const insideTx: { threw: boolean } = { threw: false }
+      vi.mocked(withTenantContext).mockImplementation((async (
+        _id: string,
+        cb: (t: never) => Promise<unknown>,
+      ) => {
+        try {
+          return await cb({ execute: vi.fn() } as never)
+        } catch (err) {
+          insideTx.threw = true
+          throw err
+        }
+      }) as never)
+
+      const res = await completeAndChargeBookingAction({ bookingId: BOOKING_ID, charges: [] })
+
+      expect(res.success).toBe(false)
+      if (!res.success) expect(res.error).toMatch(/bloqueo ni una hora de torneo/i)
+      expect(insideTx.threw).toBe(true)
+      expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+    },
+  )
 })

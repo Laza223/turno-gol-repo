@@ -1,31 +1,38 @@
 // @vitest-environment happy-dom
 /**
- * Regression tests for BookingFormModal's loading-state recovery.
+ * Modal único por tipo (pages/grilla.md §3bis, decisión 2026-09-14): payload
+ * de cada tipo, defaults, y las reglas de plata que separan Turno/Evento de
+ * Bloquear cancha.
  *
- * The bug: the submit handler runs `await createBookingAction()` inside a
- * transition with no try/catch. If the action *throws* (network drop, server
- * crash) instead of returning `{ success: false }`, the button stays stuck on
- * "Guardando…". These tests pin that a thrown action recovers the button and
- * surfaces a readable error.
+ * `TypePicker` duplica sus 4 opciones en dos controles (chips de teléfono +
+ * columna de escritorio, resueltos por CSS): happy-dom no aplica CSS, así que
+ * los DOS quedan en el DOM a la vez. El nombre accesible del chip (sin la
+ * línea de ayuda) es más CORTO que el de la tarjeta de escritorio, así que un
+ * `name` EXACTO ("Turno fijo") selecciona sólo el chip sin ambigüedad.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, fireEvent, waitFor, within } from '@testing-library/react'
+import { generateTimeSlots } from '@/lib/booking/grid-cells'
+import { BookingFormModal } from '@/components/booking/BookingFormModal'
+import type { GridBooking } from '@/lib/booking/grid-cells'
 
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 
-import { BookingFormModal } from '@/components/booking/BookingFormModal'
-
-// La action llega por PROP (no por import: ver el comentario en
-// BookingFormModal.tsx), así que el test la mockea como cualquier otro
-// callback — ya no hace falta vi.mock del módulo de actions.
 const createBookingAction = vi.fn()
+const createAbonadoAction = vi.fn()
+
+const pricing = {
+  rules: [
+    { days: ['mon', 'tue', 'wed', 'thu', 'fri'], from: '08:00', to: '24:00', price: 1000000 },
+    { days: ['sat', 'sun'], from: '08:00', to: '24:00', price: 1500000 },
+  ],
+}
 
 const slot = {
   courtId: 'court-1',
   courtName: 'Cancha 1',
-  date: '2026-06-10',
+  date: '2026-03-16', // lunes
   timeStart: '18:00',
-  durationMins: 60 as const,
 }
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof BookingFormModal>> = {}) {
@@ -34,309 +41,278 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof BookingFormM
   const res = render(
     <BookingFormModal
       slot={slot}
+      pricing={pricing}
+      dayBookings={[]}
+      daySlots={generateTimeSlots('08:00', '23:00')}
+      isSlotPast={() => false}
       open
       onClose={onClose}
       onSuccess={onSuccess}
-      action={createBookingAction}
+      createBookingAction={createBookingAction}
+      createAbonadoAction={createAbonadoAction}
       {...overrides}
     />,
   )
   return { container: res.container, onClose, onSuccess }
 }
 
+function body() {
+  return within(document.body)
+}
+
+function pickType(name: string) {
+  fireEvent.click(body().getByRole('radio', { name }))
+}
+
 /**
- * El dueño revirtió PR #185: "No cobré" viene preseleccionado, así que cargar
- * el turno más repetido del día se confirma con el nombre y nada más. El
- * helper ya no necesita tocar el control — sólo confirma que arrancó ahí
- * antes de que cada test dispare el submit. Los bloqueos internos no
- * muestran el control, así que sigue sin hacer nada ahí.
+ * `Summary` renderiza DOS veces el botón primario (card de escritorio + footer
+ * de teléfono, resueltos por CSS) — en happy-dom, sin CSS, los dos quedan en
+ * el DOM a la vez con el MISMO nombre accesible. El de escritorio es el
+ * primero en el árbol (mismo criterio que el resto de la suite para DOM
+ * duplicado: within + variante `All`).
  */
-function contestarSinCobro() {
-  const select = screen.queryByLabelText('¿Cobraste algo ahora?') as HTMLSelectElement | null
-  if (select) expect(select.value).toBe('none')
+function submitButton(name: string | RegExp) {
+  return body().getAllByRole('button', { name })[0]!
+}
+
+/** Mismo criterio que `submitButton`: `Summary` duplica el `role="alert"` de error. */
+function alertText(): string {
+  return body().getAllByRole('alert')[0]!.textContent ?? ''
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-/**
- * Decisión del dueño (revierte PR #185, a sabiendas): "No cobré" preseleccionado
- * no debe crear ningún hecho de plata. La preselección solo evita la pregunta
- * obligatoria — los tres campos de seña (method/amount/status) siguen sin viajar
- * si nadie tocó el control.
- */
-describe('BookingFormModal — "No cobré" preseleccionado', () => {
-  it('el select arranca en "No cobré"', () => {
+describe('BookingFormModal — Turno (default)', () => {
+  it('arranca en Turno con el foco en el nombre', () => {
     renderModal()
-    const select = screen.getByLabelText('¿Cobraste algo ahora?') as HTMLSelectElement
-    expect(select.value).toBe('none')
+    expect(document.activeElement).toBe(body().getByLabelText('¿A nombre de quién?'))
   })
 
-  it('confirmar sin tocar el control llama al server y no manda campos de seña', async () => {
+  it('confirma con nombre + precio de la grilla, 60 min fijo', async () => {
     createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
     renderModal()
 
-    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
+    fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
+    fireEvent.click(submitButton(/Reservar/))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    const payload = createBookingAction.mock.calls[0]![0] as Record<string, unknown>
-    expect(payload).not.toHaveProperty('depositMethod')
-    expect(payload).not.toHaveProperty('depositAmount')
-    expect(payload).not.toHaveProperty('depositStatus')
-  })
-})
-
-describe('BookingFormModal — loading recovery', () => {
-  it('a thrown action does not leave the button stuck on "Guardando…"', async () => {
-    createBookingAction.mockRejectedValueOnce(new Error('network down'))
-    const { onSuccess } = renderModal()
-
-    contestarSinCobro()
-    const submit = screen.getByRole('button', { name: 'Confirmar reserva' })
-    fireEvent.click(submit)
-
-    // Button recovers to its idle label instead of hanging on "Guardando…".
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
-    })
-    expect(
-      (screen.getByRole('button', { name: 'Confirmar reserva' }) as HTMLButtonElement).disabled,
-    ).toBe(false)
-
-    // A recoverable error is shown to the user.
-    const alert = screen.getByRole('alert')
-    expect(alert.textContent).toMatch(/no pudimos crear la reserva/i)
-    expect(onSuccess).not.toHaveBeenCalled()
-  })
-
-  it('an action returning { success:false } shows the server error', async () => {
-    createBookingAction.mockResolvedValueOnce({ success: false, error: 'Horario ocupado' })
-    renderModal()
-
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('Horario ocupado')
-    })
-    // Dentro de un waitFor: React 19 hizo las transiciones async de verdad, así que
-    // `isPending` sigue true un tick después de que el error ya está en el DOM. Si
-    // el botón nunca se recupera, el waitFor expira y el test falla igual.
-    await waitFor(() => {
-      expect(
-        (screen.getByRole('button', { name: 'Confirmar reserva' }) as HTMLButtonElement).disabled,
-      ).toBe(false)
-    })
-  })
-
-  it('a successful action calls onSuccess with the booking', async () => {
-    const booking = { id: 'b-1' }
-    createBookingAction.mockResolvedValueOnce({ success: true, booking })
-    const { onSuccess } = renderModal()
-
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
-
-    await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith(booking)
-    })
-  })
-})
-
-describe('BookingFormModal — reason / block-type dropdown', () => {
-  function lastPayload() {
-    return createBookingAction.mock.calls.at(-1)?.[0] as Record<string, unknown>
-  }
-
-  it('defaults to "Reserva Telefónica": contact fields visible, spontaneous on submit', async () => {
-    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
-    renderModal()
-
-    // Contact path: guest name input is present by default; el teléfono es
-    // secundario (Fase 3 UX, progressive disclosure) y vive colapsado bajo
-    // "Opciones avanzadas". forceMount lo deja en el DOM aun colapsado (debe
-    // serializar en FormData), así que acá se asserta el estado del trigger,
-    // no la presencia del input (happy-dom no computa el CSS de Tailwind).
-    expect(screen.queryByLabelText(/Nombre/i)).toBeTruthy()
-    const advancedTrigger = screen.getByRole('button', { name: 'Opciones avanzadas' })
-    expect(advancedTrigger.getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(advancedTrigger)
-    expect(advancedTrigger.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeTruthy()
-
-    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
-    fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), { target: { value: '11-1234-5678' } })
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
-
-    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    expect(lastPayload()).toMatchObject({
+    const payload = createBookingAction.mock.calls[0]![0]
+    expect(payload).toMatchObject({
+      courtId: 'court-1',
+      date: '2026-03-16',
+      timeStart: '18:00',
+      timeEnd: '19:00',
       type: 'spontaneous',
       guestName: 'Juan',
-      guestPhone: '+54 11-1234-5678',
+    })
+    // El precio de la grilla NO se manda como override salvo que se edite
+    // (botón "Cambiar"): el server lo recalcula solo.
+    expect(payload).not.toHaveProperty('priceOverride')
+  })
+
+  it('confirmar manda kind + durationMs + withPlayer + withDeposit a la telemetría', async () => {
+    const { track } = await import('@/shared/observability/breadcrumbs')
+    const gridSpy = vi.spyOn(track, 'grid').mockImplementation(() => {})
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
+    fireEvent.click(body().getByRole('radio', { name: 'Todo' }))
+    fireEvent.click(submitButton(/Reservar/))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    const confirmedCall = gridSpy.mock.calls.find(([ev]) => ev === 'create_modal.confirmed')
+    expect(confirmedCall?.[1]).toMatchObject({
+      kind: 'turno',
+      withPlayer: false,
+      withDeposit: true,
+    })
+    expect(confirmedCall?.[1]!.durationMs).toBeGreaterThanOrEqual(0)
+
+    gridSpy.mockRestore()
+  })
+
+  it('sin nombre no llama al server', () => {
+    renderModal()
+    fireEvent.click(submitButton(/Reservar/))
+    expect(createBookingAction).not.toHaveBeenCalled()
+    expect(alertText()).toMatch(/Poné a nombre de quién/)
+  })
+
+  it('"Todo" precarga el monto igual al total y lo manda como seña pagada', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+
+    fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
+    fireEvent.click(body().getByRole('radio', { name: 'Todo' }))
+    fireEvent.click(submitButton(/Reservar/))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    expect(createBookingAction.mock.calls[0]![0]).toMatchObject({
+      depositMethod: 'cash',
+      depositAmount: 1000000,
+      depositStatus: 'paid',
     })
   })
 
-  it('advanced fields filled then RE-collapsed still reach the payload (forceMount)', async () => {
+  it('"Todo" y después bajar el precio con "Cambiar": la seña se resincroniza, nunca lo supera', async () => {
     createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
     renderModal()
 
-    const advancedTrigger = screen.getByRole('button', { name: 'Opciones avanzadas' })
-    fireEvent.click(advancedTrigger)
-    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Juan' } })
-    fireEvent.change(screen.getByLabelText(/Tel[eé]fono/i), { target: { value: '11-1234-5678' } })
-    fireEvent.change(screen.getByLabelText(/Notas internas/i), { target: { value: 'llega tarde' } })
-    // Colapsar de nuevo ANTES de confirmar: sin forceMount, Radix desmontaba
-    // los inputs y el FormData perdía estos campos en silencio (bug real
-    // atrapado por verificación adversarial, Fase 3).
-    fireEvent.click(advancedTrigger)
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
+    fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
+    fireEvent.click(body().getByRole('radio', { name: 'Todo' }))
+    // Precio de la grilla ($10.000) baja a $5.000 DESPUÉS de precargar "Todo".
+    fireEvent.click(body().getByRole('button', { name: 'Cambiar' }))
+    fireEvent.change(body().getByLabelText('Precio del turno'), { target: { value: '5000' } })
+    fireEvent.click(submitButton(/Reservar/))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    expect(lastPayload()).toMatchObject({
-      guestName: 'Juan',
-      guestPhone: '+54 11-1234-5678',
-      notesInternal: 'llega tarde',
-    })
+    const payload = createBookingAction.mock.calls[0]![0]
+    expect(payload.priceOverride).toBe(500000)
+    expect(payload.depositAmount).toBe(500000)
+    expect(payload.depositAmount).toBeLessThanOrEqual(payload.priceOverride)
   })
 
-  it('"Mantenimiento" hides contact fields and submits a block with the reason as guestName', async () => {
-    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
-    renderModal()
-
-    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
-
-    // Internal block: no free-text contact fields.
-    expect(screen.queryByLabelText(/Nombre/i)).toBeNull()
-    expect(screen.queryByLabelText(/Tel[eé]fono/i)).toBeNull()
-
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Bloquear cancha' }))
-
-    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    const payload = lastPayload()
-    expect(payload).toMatchObject({ type: 'block', guestName: 'Mantenimiento' })
-    expect(payload.guestPhone).toBeUndefined()
-  })
-
-  it('"Escuelita de Fútbol" submits a block named after the reason', async () => {
-    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
-    renderModal()
-
-    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'school' } })
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Bloquear cancha' }))
-
-    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    expect(lastPayload()).toMatchObject({ type: 'block', guestName: 'Escuelita de Fútbol' })
-  })
-
-  it('"Otro" keeps spontaneous with optional contact (name only, no phone required)', async () => {
-    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
-    renderModal()
-
-    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'other' } })
-    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Pepe' } })
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
-
-    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    const payload = lastPayload()
-    expect(payload).toMatchObject({ type: 'spontaneous', guestName: 'Pepe' })
-    expect(payload.guestPhone).toBeUndefined()
-  })
-
-  it('"Otro" ofrece selector de duración y envía tipo block si dura más de 1 hora', async () => {
-    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
-    renderModal()
-
-    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'other' } })
-
-    expect(screen.getByRole('button', { name: 'Seleccionar horario de fin' })).toBeTruthy()
-
-    const durationSelect = document.querySelector<HTMLSelectElement>('select#duration')!
-    fireEvent.change(durationSelect, { target: { value: '120' } })
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Bloquear cancha' }))
-
-    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    expect(lastPayload()).toMatchObject({ type: 'block', timeStart: '18:00', timeEnd: '20:00' })
-  })
-})
-
-describe('BookingFormModal — slot de medianoche (día operativo)', () => {
-  const midnightSlot = { ...slot, timeStart: '23:00' }
-
-  it('el slot 23:00 envía timeEnd="24:00", no "00:00" (chk_time_valid exige time_end > time_start)', async () => {
-    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
-    renderModal({ slot: midnightSlot })
-
-    contestarSinCobro()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
-
-    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
-    expect(createBookingAction).toHaveBeenCalledWith(
-      expect.objectContaining({ timeStart: '23:00', timeEnd: '24:00' }),
-    )
-  })
-
-  it('el bloqueo interno a las 23:00 no ofrece 2 horas (cruzaría medianoche, rango inrepresentable)', async () => {
-    renderModal({ slot: midnightSlot })
-
-    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
-
-    await waitFor(() => expect(screen.getByRole('option', { name: /1 hora/i })).toBeTruthy())
-    expect(screen.queryByRole('option', { name: /2 horas/i })).toBeNull()
-  })
-
-  it('un slot común (18:00) sigue ofreciendo 2 horas para bloqueos internos', async () => {
-    renderModal()
-
-    fireEvent.change(screen.getByLabelText(/Motivo/i), { target: { value: 'maintenance' } })
-
-    await waitFor(() => expect(screen.getByRole('option', { name: /2 horas/i })).toBeTruthy())
-  })
-})
-
-// Fase 4 UX — chequeo optimista de disponibilidad al abrir el modal. La prop
-// es opcional: sin ella, ningún caller/story vieja se rompe.
-describe('BookingFormModal — checkAvailabilityAction (Fase 4 UX)', () => {
-  it('available:false al abrir muestra el aviso de colisión (mismo copy que el server)', async () => {
-    const checkAvailabilityAction = vi.fn(async () => ({ available: false }))
-    renderModal({ checkAvailabilityAction })
-
-    await waitFor(() =>
-      expect(checkAvailabilityAction).toHaveBeenCalledWith({
-        courtId: slot.courtId,
+  it('el fin de la próxima reserva de esa cancha tapa las opciones de horario', () => {
+    const courtBookings: GridBooking[] = [
+      {
+        id: 'b-next',
+        courtId: 'court-1',
         date: slot.date,
-        timeStart: slot.timeStart,
-      }),
-    )
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('Este turno acaba de ser tomado.')
+        timeStart: '19:00',
+        timeEnd: '20:00',
+        status: 'confirmed',
+        type: 'spontaneous',
+        guestName: 'Otro',
+        playerFirstName: null,
+        playerLastName: null,
+        priceSnapshot: 1000000,
+      },
+    ]
+    renderModal({ dayBookings: courtBookings })
+    // Sólo el 18:00 queda libre antes de la próxima reserva — no hay otro
+    // horario de inicio ofrecido más allá del actual.
+    const startSelect = body().getByLabelText('Empieza') as HTMLSelectElement
+    const options = Array.from(startSelect.options).map((o) => o.value)
+    expect(options).not.toContain('19:00')
+  })
+})
+
+describe('BookingFormModal — Turno fijo', () => {
+  it('llama a createAbonadoAction con el día y horario del casillero', async () => {
+    createAbonadoAction.mockResolvedValueOnce({
+      success: true,
+      abonado: { id: 'a1' },
+      slotsGenerated: 8,
+      conflictDates: [],
     })
-    // Es solo un aviso: el submit sigue habilitado, el server decide.
-    expect(
-      (screen.getByRole('button', { name: 'Confirmar reserva' }) as HTMLButtonElement).disabled,
-    ).toBe(false)
-  })
-
-  it('available:true al abrir no muestra ningún aviso', async () => {
-    const checkAvailabilityAction = vi.fn(async () => ({ available: true }))
-    renderModal({ checkAvailabilityAction })
-
-    await waitFor(() => expect(checkAvailabilityAction).toHaveBeenCalled())
-    expect(screen.queryByRole('alert')).toBeNull()
-  })
-
-  it('sin la prop, el comportamiento queda intacto (no rompe nada existente)', async () => {
     renderModal()
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
+    pickType('Turno fijo')
+
+    fireEvent.change(await body().findByLabelText('Nombre de contacto'), {
+      target: { value: 'Julián' },
     })
-    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.change(body().getByLabelText('Teléfono'), { target: { value: '11 2233-4455' } })
+    fireEvent.click(submitButton('Crear turno fijo'))
+
+    await waitFor(() => expect(createAbonadoAction).toHaveBeenCalled())
+    expect(createAbonadoAction.mock.calls[0]![0]).toMatchObject({
+      courtId: 'court-1',
+      contactName: 'Julián',
+      contactPhone: '+54 11 2233-4455',
+      dayOfWeek: 1,
+      timeStart: '18:00',
+      startsOn: '2026-03-16',
+    })
+  })
+
+  it('muestra las fechas en conflicto que devuelve el server', async () => {
+    const { toast } = await import('@/hooks/use-toast')
+    createAbonadoAction.mockResolvedValueOnce({
+      success: true,
+      abonado: { id: 'a1' },
+      slotsGenerated: 6,
+      conflictDates: ['2026-09-21'],
+    })
+    renderModal()
+    pickType('Turno fijo')
+
+    fireEvent.change(await body().findByLabelText('Nombre de contacto'), {
+      target: { value: 'Julián' },
+    })
+    fireEvent.change(body().getByLabelText('Teléfono'), { target: { value: '11 2233-4455' } })
+    fireEvent.click(submitButton('Crear turno fijo'))
+
+    await waitFor(() => expect(toast).toHaveBeenCalled())
+    const call = (toast as ReturnType<typeof vi.fn>).mock.calls[0]![0]
+    expect(call.title).toBe('Turno fijo creado')
+    expect(call.description).toContain('21/09')
+  })
+})
+
+describe('BookingFormModal — Evento', () => {
+  it('sin editar el precio sugerido, NO manda priceOverride', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+    pickType('Evento')
+
+    fireEvent.change(await body().findByLabelText('Nombre del evento o responsable'), {
+      target: { value: 'Escuelita' },
+    })
+    fireEvent.click(submitButton(/Agendar evento/))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    const payload = createBookingAction.mock.calls[0]![0]
+    expect(payload).toMatchObject({ type: 'spontaneous', guestName: 'Escuelita' })
+    expect(payload).not.toHaveProperty('priceOverride')
+  })
+
+  it('"No se cobra" manda priceOverride 0 y esconde el cobro', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+    pickType('Evento')
+
+    fireEvent.change(await body().findByLabelText('Nombre del evento o responsable'), {
+      target: { value: 'Escuelita' },
+    })
+    fireEvent.click(body().getByRole('radio', { name: 'No se cobra' }))
+    expect(body().queryByText('¿Cobraste algo ahora?')).toBeNull()
+
+    fireEvent.click(submitButton('Agendar evento'))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    const payload = createBookingAction.mock.calls[0]![0]
+    expect(payload).toMatchObject({ priceOverride: 0 })
+    expect(payload).not.toHaveProperty('depositMethod')
+  })
+})
+
+describe('BookingFormModal — Bloquear cancha', () => {
+  it('nunca manda precio, seña ni contacto', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal()
+    pickType('Bloquear cancha')
+
+    fireEvent.click(submitButton('Bloquear cancha'))
+
+    await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
+    const payload = createBookingAction.mock.calls[0]![0]
+    expect(payload).toMatchObject({ type: 'block', guestName: 'Mantenimiento' })
+    expect(payload).not.toHaveProperty('priceOverride')
+    expect(payload).not.toHaveProperty('depositMethod')
+    expect(payload).not.toHaveProperty('depositAmount')
+    expect(payload).not.toHaveProperty('guestPhone')
+    expect(payload).not.toHaveProperty('playerId')
+  })
+
+  it('"Otro" pide un motivo a mano', async () => {
+    renderModal()
+    pickType('Bloquear cancha')
+    fireEvent.click(body().getByRole('button', { name: 'Otro' }))
+    fireEvent.click(submitButton('Bloquear cancha'))
+    expect(createBookingAction).not.toHaveBeenCalled()
+    expect(alertText()).toMatch(/motivo/)
   })
 })

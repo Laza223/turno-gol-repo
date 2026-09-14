@@ -11,9 +11,10 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type {
   CheckSlotAvailabilityAction,
+  CreateAbonadoAction,
   CreateBookingAction,
   SearchBookingPlayersAction,
-} from '../BookingFormModal'
+} from '../create-modal/types'
 
 const BookingFormModal = dynamic(
   () => import('../BookingFormModal').then((m) => m.BookingFormModal),
@@ -21,8 +22,8 @@ const BookingFormModal = dynamic(
 )
 
 /**
- * Las dos superficies que se montan POR ENCIMA de la grilla: el modal completo
- * de alta y el panel de acciones del turno.
+ * Las dos superficies que se montan POR ENCIMA de la grilla: el modal de alta
+ * (§3bis) y el panel de acciones del turno.
  *
  * Las dos se montan sólo cuando hay algo abierto — el `Sheet` del panel no vive
  * suscrito al DOM en la vista donde el admin pasa el día — y hay UNA sola de
@@ -32,7 +33,11 @@ export function GridOverlays({
   selectedSlot,
   onCloseModal,
   onBookingSuccess,
-  action,
+  bookings,
+  daySlots,
+  isSlotPast,
+  createBookingAction,
+  createAbonadoAction,
   checkAvailabilityAction,
   searchPlayersAction,
   detailBooking,
@@ -47,7 +52,11 @@ export function GridOverlays({
   selectedSlot: SelectedSlot | null
   onCloseModal: () => void
   onBookingSuccess: () => void
-  action: CreateBookingAction
+  bookings: GridBooking[]
+  daySlots: string[]
+  isSlotPast: (slotTime: string) => boolean
+  createBookingAction: CreateBookingAction
+  createAbonadoAction: CreateAbonadoAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction
   detailBooking: GridBooking | null
@@ -59,15 +68,22 @@ export function GridOverlays({
   renderCanteenDialog?: RenderCanteenDialog
   slotPanelActions?: SlotPanelActions
 }) {
+  const selectedCourt = selectedSlot ? courts.find((c) => c.id === selectedSlot.courtId) : undefined
+
   return (
     <>
-      {selectedSlot && (
+      {selectedSlot && selectedCourt && (
         <BookingFormModal
           slot={selectedSlot}
+          pricing={selectedCourt.pricing}
+          dayBookings={bookings}
+          daySlots={daySlots}
+          isSlotPast={isSlotPast}
           open={true}
           onClose={onCloseModal}
           onSuccess={onBookingSuccess}
-          action={action}
+          createBookingAction={createBookingAction}
+          createAbonadoAction={createAbonadoAction}
           checkAvailabilityAction={checkAvailabilityAction}
           searchPlayersAction={searchPlayersAction}
         />

@@ -14,12 +14,15 @@ vi.mock('@/modules/staff/guards', () => ({
   })),
 }))
 // withTenantContext invoca el callback con un tx dummy: deja correr la llamada
-// a listTenantBookings (mockeada) sin tocar la DB real.
+// a listTenantBookings/listTenantBookingsForBoard (mockeadas) sin tocar la DB real.
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
 }))
 vi.mock('@/app/(admin)/reservas/queries', () => ({
   listTenantBookings: vi.fn(async () => ({ rows: [], hasMore: false })),
+  // Hoy/Próximas sin filtro de cancha (boardMode, hallazgo #3) pasan por acá
+  // en vez de `listTenantBookings` — ver `(list)/page.tsx`.
+  listTenantBookingsForBoard: vi.fn(async () => []),
   RESERVAS_PAGE_SIZE: 100,
   countTenantBookingsByStatus: vi.fn(async () => ({})),
   // La page la usa para derivar el saldo de los turnos terminados (píldora
@@ -43,7 +46,7 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-import { listTenantBookings } from '@/app/(admin)/reservas/queries'
+import { listTenantBookings, listTenantBookingsForBoard } from '@/app/(admin)/reservas/queries'
 import ReservasPage from '@/app/(admin)/reservas/(list)/page'
 
 beforeEach(() => {
@@ -51,53 +54,51 @@ beforeEach(() => {
 })
 
 describe('ReservasPage — ?status allowlist (#30)', () => {
+  // Todos estos casos quedan en scope 'hoy' sin `?cancha`: boardMode, así que
+  // la query real es `listTenantBookingsForBoard` (sin `page`, el board no
+  // pagina — hallazgo #3).
   it('ignora un ?status fuera del allowlist (texto basura -> sin filtro)', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ status: 'foo' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
       expect.anything(),
-      0,
     )
   })
 
   it('ignora un enum valido pero no listado en FILTERS (canceled_refunded crudo)', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ status: 'canceled_refunded' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
       expect.anything(),
-      0,
     )
   })
 
   it('respeta un ?status del allowlist', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ status: 'confirmed' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', status: 'confirmed' },
       expect.anything(),
-      0,
     )
   })
 
   it('acepta el filtro virtual "canceladas" (agrupa ambos canceled_*)', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ status: 'canceladas' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', status: 'canceladas' },
       expect.anything(),
-      0,
     )
   })
 
   it('sin ?status filtra por todas', async () => {
     await ReservasPage({ searchParams: Promise.resolve({}) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12' },
       expect.anything(),
-      0,
     )
   })
 })
@@ -105,22 +106,21 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
 describe('ReservasPage — ?dia allowlist', () => {
   it('default es hoy', async () => {
     await ReservasPage({ searchParams: Promise.resolve({}) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'hoy' }),
       expect.anything(),
-      0,
     )
   })
 
   it('respeta ?dia=proximas y ?dia=historial', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ dia: 'proximas' }) })
-    expect(listTenantBookings).toHaveBeenLastCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenLastCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'proximas' }),
       expect.anything(),
-      0,
     )
+    // Historial NO es boardMode: sigue el paginado de siempre.
     await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial' }) })
     expect(listTenantBookings).toHaveBeenLastCalledWith(
       'tenant-1',
@@ -132,11 +132,10 @@ describe('ReservasPage — ?dia allowlist', () => {
 
   it('degrada un ?dia basura a hoy', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ dia: 'ayer' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookingsForBoard).toHaveBeenCalledWith(
       'tenant-1',
       expect.objectContaining({ scope: 'hoy' }),
       expect.anything(),
-      0,
     )
   })
 })

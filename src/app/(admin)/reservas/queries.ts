@@ -111,6 +111,31 @@ function searchCond(q: string | undefined): SQL {
   )`
 }
 
+/** Columnas del SELECT de una fila de reserva — compartidas por `listTenantBookings` y `listTenantBookingsForBoard`, para que no diverjan. */
+function bookingSelectColumns(): SQL {
+  return sql`b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
+           b.status, b.type, b.price_snapshot AS "priceSnapshot",
+           b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
+           (
+             -- COUNT(*) primero y no un COALESCE afuera: un subselect con
+             -- agregado SIEMPRE devuelve una fila, y bool_or sobre el conjunto
+             -- vacío da NULL, que caía en el ELSE y marcaba como devuelta una
+             -- reserva sin ninguna devolución.
+             SELECT CASE
+                      WHEN COUNT(*) = 0 THEN 'none'
+                      WHEN bool_or(pr.status = 'pending') THEN 'pending'
+                      ELSE 'settled'
+                    END
+             FROM payments pr
+             WHERE pr.booking_id = b.id AND pr.type = 'refund'
+               AND pr.status IN ('approved', 'pending')
+           ) AS "refundState",
+           b.payment_method AS "paymentMethod", b.starts_at AS "startsAt", b.ends_at AS "endsAt",
+           c.name AS "courtName",
+           CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
+           b.guest_name AS "guestName"`
+}
+
 /** Cuántas reservas entran en una página de la lista. */
 export const RESERVAS_PAGE_SIZE = 100
 
@@ -157,27 +182,7 @@ export async function listTenantBookings(
         : sql`ORDER BY b.date DESC, b.time_start DESC, c.name ASC`
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 0
   const rows = await tx.execute(sql`
-    SELECT b.id, b.date::text AS date, b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
-           b.status, b.type, b.price_snapshot AS "priceSnapshot",
-           b.deposit_amount AS "depositAmount", b.deposit_status AS "depositStatus",
-           (
-             -- COUNT(*) primero y no un COALESCE afuera: un subselect con
-             -- agregado SIEMPRE devuelve una fila, y bool_or sobre el conjunto
-             -- vacío da NULL, que caía en el ELSE y marcaba como devuelta una
-             -- reserva sin ninguna devolución.
-             SELECT CASE
-                      WHEN COUNT(*) = 0 THEN 'none'
-                      WHEN bool_or(pr.status = 'pending') THEN 'pending'
-                      ELSE 'settled'
-                    END
-             FROM payments pr
-             WHERE pr.booking_id = b.id AND pr.type = 'refund'
-               AND pr.status IN ('approved', 'pending')
-           ) AS "refundState",
-           b.payment_method AS "paymentMethod", b.starts_at AS "startsAt", b.ends_at AS "endsAt",
-           c.name AS "courtName",
-           CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
-           b.guest_name AS "guestName"
+    SELECT ${bookingSelectColumns()}
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
     LEFT JOIN players p ON p.id = b.player_id
@@ -192,6 +197,63 @@ export async function listTenantBookings(
   const list = rows as unknown as ReservaListRow[]
   const hasMore = list.length > RESERVAS_PAGE_SIZE
   return { rows: hasMore ? list.slice(0, RESERVAS_PAGE_SIZE) : list, hasMore }
+}
+
+/** Cupo por cancha del tablero de Hoy/Próximas sin filtro de cancha (ver `listTenantBookingsForBoard`). */
+export const BOARD_PER_COURT_LIMIT = 50
+
+export type BoardListRow = ReservaListRow & {
+  courtId: string
+  /** Total REAL de reservas de esta cancha en el scope/filtro actual — puede ser mayor a las filas devueltas (tope `BOARD_PER_COURT_LIMIT`). */
+  courtTotal: number
+}
+
+/**
+ * Board de Hoy/Próximas (`CourtBoard`) sin filtro de cancha: un cupo de
+ * `BOARD_PER_COURT_LIMIT` filas POR CANCHA, no un `OFFSET` global sobre la
+ * unión de todas — la misma clase de bug que B10 (ver comentario arriba de
+ * `listTenantBookings`), pero repartido por columna en vez de por página: un
+ * `LIMIT` plano sobre todas las canchas podía dejar a una entera fuera de la
+ * ventana visible (mostrando "Sin reservas" con turnos reales esperando en la
+ * página 2) mientras otra con pocos turnos se veía completa. `ROW_NUMBER()`
+ * particionado por cancha garantiza que CADA columna reciba su propio cupo, y
+ * `COUNT(*) OVER` da el total real para el header y el link "Ver todas".
+ *
+ * Sólo tiene sentido sin `?cancha=`: con una cancha elegida el tablero es una
+ * sola columna y usa `listTenantBookings` paginado (offset simple, sin las
+ * demás canchas de por medio). Nunca se usa en `historial` (esa vista no es
+ * `CourtBoard`, agrupa por fecha).
+ */
+export async function listTenantBookingsForBoard(
+  tenantId: string,
+  filters: Omit<ReservaListFilters, 'courtId'>,
+  tx: DbTx,
+): Promise<BoardListRow[]> {
+  // Mismo orden que `listTenantBookings` para 'hoy'/'proximas', sin `c.name`:
+  // adentro de la partición (una cancha) el nombre es constante.
+  const innerOrder =
+    filters.scope === 'hoy' ? sql`b.time_start ASC` : sql`b.date ASC, b.time_start ASC`
+  const outerOrder =
+    filters.scope === 'hoy'
+      ? sql`"courtName" ASC, "timeStart" ASC`
+      : sql`"courtName" ASC, "date" ASC, "timeStart" ASC`
+  const rows = await tx.execute(sql`
+    SELECT * FROM (
+      SELECT ${bookingSelectColumns()}, b.court_id AS "courtId",
+             ROW_NUMBER() OVER (PARTITION BY b.court_id ORDER BY ${innerOrder}) AS rn,
+             COUNT(*) OVER (PARTITION BY b.court_id)::int AS "courtTotal"
+      FROM bookings b
+      JOIN courts c ON c.id = b.court_id
+      LEFT JOIN players p ON p.id = b.player_id
+      WHERE b.tenant_id = ${tenantId}
+        ${scopeCond(filters.scope, filters.today)}
+        ${statusCond(filters.status)}
+        ${searchCond(filters.q)}
+    ) ranked
+    WHERE rn <= ${BOARD_PER_COURT_LIMIT}
+    ORDER BY ${outerOrder}
+  `)
+  return rows as unknown as BoardListRow[]
 }
 
 /**

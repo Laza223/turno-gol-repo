@@ -183,6 +183,12 @@ export class BookingNotReschedulableError extends Error {
       | 'terminal_status'
       | 'not_a_player_booking'
       /**
+       * `multi_hour_event`: evento de varias horas cargado por el staff
+       * (decisión 2026-09-14). El destino siempre es un turno de 60 min, así
+       * que moverlo lo recortaría en silencio conservando el precio total.
+       */
+      | 'multi_hour_event'
+      /**
        * `deposit_pending`: hay una seña esperando pago (link de MercadoPago
        * vivo con un monto ya cotizado al jugador). `deposit_amount` se calculó
        * como % del precio VIEJO y nadie lo recalcula al mover el turno, así

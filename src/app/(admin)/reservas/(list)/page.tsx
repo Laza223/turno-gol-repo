@@ -1,16 +1,14 @@
-import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarX, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
-import { PageHeader } from '@/components/admin/PageHeader'
+import { CalendarX, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { artTodayStr } from '@/shared/dates/art'
 import { formatDateLong } from '@/lib/format'
-import { cn } from '@/lib/utils'
 import {
   countTenantBookingsByStatus,
   listTenantBookings,
+  listTenantBookingsForBoard,
   RESERVAS_PAGE_SIZE,
   sumBookingChargesByBooking,
   type ReservaListRow,
@@ -19,9 +17,17 @@ import {
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { listCourts } from '@/modules/courts/court.service'
 import { BookingListItem } from '../BookingListItem'
-import { ReservasToolbar } from '../ReservasToolbar'
-import { GrillaTabs } from '@/app/(admin)/grilla/GrillaTabs'
+import { CourtBoard } from '../CourtBoard'
+import { ReservasHeaderBar } from '../ReservasHeaderBar'
 import { EmptyState } from '@/components/ui/empty-state'
+import {
+  ALLOWED_SCOPES,
+  ALLOWED_STATUS,
+  buildHref,
+  countFor,
+  groupBy,
+  parsePage,
+} from '../reservas-filters'
 import {
   cancelBookingAction,
   completeAndChargeBookingAction,
@@ -40,93 +46,15 @@ const QUICK_ACTIONS = {
   getBookingChargesAction,
 }
 
-const SCOPES: Array<{ value: ReservaScope; label: string }> = [
-  { value: 'hoy', label: 'Hoy' },
-  { value: 'proximas', label: 'Próximas' },
-  { value: 'historial', label: 'Historial' },
-]
-const ALLOWED_SCOPES = new Set<string>(SCOPES.map((s) => s.value))
-
-const FILTERS = [
-  { value: '', label: 'Todas' },
-  { value: 'confirmed', label: 'Confirmadas' },
-  { value: 'pending_payment', label: 'Esperando seña' },
-  { value: 'completed', label: 'Completadas' },
-  { value: 'no_show', label: 'Ausentes' },
-  { value: 'canceladas', label: 'Canceladas' },
-]
-// #30: allowlist de estados filtrables. Un ?status fuera de este set (texto
-// basura o un enum no listado) reventaba el cast `${status}::booking_status`
-// en la query -> 500/error.tsx. Lo degradamos a "sin filtro" (Todas).
-// 'canceladas' es un valor virtual que la query expande a ambos enums canceled_*.
-const ALLOWED_STATUS = new Set(FILTERS.map((f) => f.value).filter(Boolean))
-
-/** Arma /reservas?… omitiendo defaults para URLs limpias y compartibles. */
-function buildHref(params: {
-  dia: ReservaScope
-  status: string
-  q: string
-  compact: boolean
-  /** H110 — courts.id, o '' para "Todas las canchas". */
-  cancha: string
-  /** Página 0-based; se omite en la 1 (`?pagina=` es 1-based, como se lee). */
-  page?: number
-}): string {
-  const search = new URLSearchParams()
-  if (params.dia !== 'hoy') search.set('dia', params.dia)
-  if (params.status) search.set('status', params.status)
-  if (params.q) search.set('q', params.q)
-  if (params.compact) search.set('vista', 'compacta')
-  if (params.cancha) search.set('cancha', params.cancha)
-  if (params.page && params.page > 0) search.set('pagina', String(params.page + 1))
-  const qs = search.toString()
-  return qs ? `/reservas?${qs}` : '/reservas'
-}
-
-/**
- * Contador para una píldora: '' suma todo, 'canceladas' agrupa ambos enums.
- * Los counts vienen sin filtro de estado para que cada píldora muestre su
- * número aunque otra esté activa.
- */
-function countFor(counts: Record<string, number>, filterValue: string): number {
-  if (!filterValue) return Object.values(counts).reduce((acc, n) => acc + n, 0)
-  if (filterValue === 'canceladas') {
-    return (counts.canceled_refunded ?? 0) + (counts.canceled_no_refund ?? 0)
-  }
-  return counts[filterValue] ?? 0
-}
-
-/** Agrupa preservando el orden de llegada (la query ya ordena). */
-function groupBy(
-  rows: ReservaListRow[],
-  key: (r: ReservaListRow) => string,
-): Array<[string, ReservaListRow[]]> {
-  const groups = new Map<string, ReservaListRow[]>()
-  for (const row of rows) {
-    const k = key(row)
-    const bucket = groups.get(k)
-    if (bucket) bucket.push(row)
-    else groups.set(k, [row])
-  }
-  return Array.from(groups.entries())
-}
-
 type Props = {
   searchParams: Promise<{
     dia?: string
     status?: string
     q?: string
-    vista?: string
     pagina?: string
     /** H110 — courts.id; se valida contra las canchas reales del tenant. */
     cancha?: string
   }>
-}
-
-/** `?pagina=` es 1-based en la URL y 0-based adentro. Basura → página 1. */
-function parsePage(raw: string | undefined): number {
-  const n = Number.parseInt(raw ?? '', 10)
-  return Number.isFinite(n) && n > 1 ? n - 1 : 0
 }
 
 export default async function ReservasPage(props: Props) {
@@ -148,12 +76,13 @@ export default async function ReservasPage(props: Props) {
   const requestedStatus = searchParams.status ?? ''
   const status = ALLOWED_STATUS.has(requestedStatus) ? requestedStatus : ''
   const q = (searchParams.q ?? '').trim().slice(0, 80)
-  const compact = searchParams.vista === 'compacta'
+  // `?vista=` (densidad) se eliminó del todo: un valor viejo en un link
+  // compartido/bookmark se ignora en silencio, no rompe nada.
   const page = parsePage(searchParams.pagina)
   const requestedCourt = searchParams.cancha ?? ''
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
-  const { rows, counts, hasMore, courts, courtId } = await withTenantContext(
+  const { rows, counts, hasMore, courts, courtId, courtTotals } = await withTenantContext(
     tenant.id,
     async (tx) => {
       // H110 — allowlist contra las canchas reales del tenant, mismo criterio
@@ -164,18 +93,40 @@ export default async function ReservasPage(props: Props) {
       const courtIds = new Set(courtRows.map((c) => c.id))
       const courtId = courtIds.has(requestedCourt) ? requestedCourt : undefined
 
-      const { rows: list, hasMore: more } = await listTenantBookings(
-        tenant.id,
-        {
-          scope,
-          today,
-          ...(status ? { status } : {}),
-          ...(q ? { q } : {}),
-          ...(courtId ? { courtId } : {}),
-        },
-        tx,
-        page,
-      )
+      // Tablero (Hoy/Próximas) SIN filtro de cancha: cupo por cancha, no
+      // OFFSET global (hallazgo #3, revisión redesign booking modal
+      // 2026-09-14) — ver `listTenantBookingsForBoard`. Con `?cancha=` (una
+      // sola columna) o en Historial, sigue el paginado de siempre.
+      const boardMode = scope !== 'historial' && !courtId
+
+      let list: ReservaListRow[]
+      let more = false
+      let courtTotals: Map<string, number> | undefined
+      if (boardMode) {
+        const boardRows = await listTenantBookingsForBoard(
+          tenant.id,
+          { scope, today, ...(status ? { status } : {}), ...(q ? { q } : {}) },
+          tx,
+        )
+        list = boardRows
+        courtTotals = new Map(boardRows.map((r) => [r.courtId, r.courtTotal]))
+      } else {
+        const page1 = await listTenantBookings(
+          tenant.id,
+          {
+            scope,
+            today,
+            ...(status ? { status } : {}),
+            ...(q ? { q } : {}),
+            ...(courtId ? { courtId } : {}),
+          },
+          tx,
+          page,
+        )
+        list = page1.rows
+        more = page1.hasMore
+      }
+
       const byStatus = await countTenantBookingsByStatus(
         tenant.id,
         { scope, today, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
@@ -207,17 +158,21 @@ export default async function ReservasPage(props: Props) {
         hasMore: more,
         courts: courtRows.map((c) => ({ id: c.id, name: c.name })),
         courtId,
+        courtTotals,
       }
     },
   )
 
-  // Hoy: secciones por cancha (la query ordena cancha, hora). Próximas e
-  // historial: secciones por fecha para que el día sea escaneable.
-  const groups = scope === 'hoy' ? groupBy(rows, (r) => r.courtName) : groupBy(rows, (r) => r.date)
+  // Historial: secciones por fecha (mezcla canchas, así que el header de
+  // columna de CourtBoard no serviría). Hoy/Próximas: tablero por cancha,
+  // ver CourtBoard (agrupa adentro).
+  const historialGroups = scope === 'historial' ? groupBy(rows, (r) => r.date) : []
+  const boardCourts = courtId ? courts.filter((c) => c.id === courtId) : courts
+  // Tablero sin filtro de cancha: sin paginado global (cada columna tiene su
+  // propio cupo/link "Ver todas" — nunca un OFFSET que corta canchas).
+  const boardMode = scope !== 'historial' && !courtId
 
-  const total = status ? countFor(counts, status) : countFor(counts, '')
-  const reservaWord = total === 1 ? '1 reserva' : `${total} reservas`
-  const headerSubtitle = scope === 'hoy' ? `${formatDateLong(today)} · ${reservaWord}` : reservaWord
+  const total = countFor(counts, status)
 
   // B10 — el subtítulo y las píldoras salen de un COUNT sin techo, y la lista
   // venía de un `LIMIT 200` mudo: podía decir "740 reservas" y mostrar 200, sin
@@ -225,131 +180,24 @@ export default async function ReservasPage(props: Props) {
   // dice explícito y las páginas siguientes son alcanzables.
   const firstIndex = page * RESERVAS_PAGE_SIZE + 1
   const lastIndex = page * RESERVAS_PAGE_SIZE + rows.length
-  const paginado = page > 0 || hasMore
+  const paginado = !boardMode && (page > 0 || hasMore)
 
   return (
-    <div className="space-y-5">
-      {/* Fase 4: esta pantalla es la vista Lista del espacio Grilla. El CTA
-          "Ir a la grilla" que vivía en el encabezado se fue: la pestaña
-          Calendario hace exactamente eso, y dos caminos al mismo lugar en la
-          misma pantalla son ruido. */}
-      <GrillaTabs active="/reservas" />
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-3">
+      {/* Fase 4/rediseño: sin `PageHeader` — el segmento Grilla|Reservas
+          (ReservasHeaderBar, portalizado) es el único lugar donde la
+          pantalla se nombra. El h1 queda solo para el árbol de accesibilidad. */}
+      <h1 className="sr-only">Reservas</h1>
 
-      <PageHeader
-        title="Reservas"
-        subtitle={headerSubtitle}
-        icon={<CalendarCheck className="h-6 w-6" aria-hidden="true" />}
+      <ReservasHeaderBar
+        scope={scope}
+        status={status}
+        q={q}
+        cancha={courtId ?? ''}
+        courts={courts}
+        counts={counts}
+        total={total}
       />
-
-      <div
-        className="card-entrance flex flex-wrap items-center justify-between gap-3"
-        style={{ animationDelay: '80ms' }}
-      >
-        <nav aria-label="Rango de fechas" className="inline-flex rounded-lg bg-muted p-1">
-          {SCOPES.map((s) => {
-            const active = scope === s.value
-            return (
-              <Link
-                key={s.value}
-                href={buildHref({ dia: s.value, status, q, compact, cancha: courtId ?? '' })}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'inline-flex min-h-11 items-center rounded-md px-4 py-1.5 text-sm font-medium transition-colors md:min-h-8',
-                  active
-                    ? 'bg-card text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {s.label}
-              </Link>
-            )
-          })}
-        </nav>
-        <Suspense
-          fallback={<div className="h-10 w-full rounded-lg bg-muted sm:w-72" aria-hidden />}
-        >
-          <ReservasToolbar />
-        </Suspense>
-      </div>
-
-      <nav
-        aria-label="Filtro por estado"
-        className="card-entrance flex flex-wrap gap-2"
-        style={{ animationDelay: '120ms' }}
-      >
-        {FILTERS.map((f) => {
-          const active = status === f.value
-          const count = countFor(counts, f.value)
-          return (
-            <Link
-              key={f.label}
-              href={buildHref({ dia: scope, status: f.value, q, compact, cancha: courtId ?? '' })}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0',
-                active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',
-              )}
-            >
-              {f.label}
-              <span
-                className={cn(
-                  'rounded-full px-1.5 py-px text-[11px] font-semibold tabular-nums',
-                  active
-                    ? 'bg-primary-foreground/20 text-primary-foreground'
-                    : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {count}
-              </span>
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* H110 — filtro por cancha: sin esto no había forma de ver de un saque
-          qué tiene una cancha puntual hacia adelante (scope 'proximas', que
-          agrupa por fecha, no por cancha). Mismo patrón de chips que
-          "Filtro por estado", una sola cancha a la vez. */}
-      {courts.length > 1 && (
-        <nav
-          aria-label="Filtro por cancha"
-          className="card-entrance flex flex-wrap gap-2"
-          style={{ animationDelay: '140ms' }}
-        >
-          <Link
-            href={buildHref({ dia: scope, status, q, compact, cancha: '' })}
-            aria-current={!courtId ? 'page' : undefined}
-            className={cn(
-              'inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0',
-              !courtId
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',
-            )}
-          >
-            Todas las canchas
-          </Link>
-          {courts.map((c) => {
-            const active = courtId === c.id
-            return (
-              <Link
-                key={c.id}
-                href={buildHref({ dia: scope, status, q, compact, cancha: c.id })}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0',
-                  active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground ring-1 ring-inset ring-border hover:bg-accent',
-                )}
-              >
-                {c.name}
-              </Link>
-            )
-          })}
-        </nav>
-      )}
 
       {rows.length === 0 ? (
         <EmptyState
@@ -373,9 +221,9 @@ export default async function ReservasPage(props: Props) {
           }
         />
       ) : (
-        <div className="card-entrance space-y-6" style={{ animationDelay: '200ms' }}>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto lg:overflow-hidden">
           {paginado && (
-            <p className="text-sm text-muted-foreground" role="status">
+            <p className="shrink-0 text-sm text-muted-foreground" role="status">
               Mostrando{' '}
               <span className="font-medium tabular-nums text-foreground">
                 {firstIndex}–{lastIndex}
@@ -383,32 +231,44 @@ export default async function ReservasPage(props: Props) {
               de <span className="font-medium tabular-nums text-foreground">{total}</span>
             </p>
           )}
-          {groups.map(([groupKey, groupRows]) => (
-            <section
-              key={groupKey}
-              aria-label={scope === 'hoy' ? groupKey : formatDateLong(groupKey)}
-            >
-              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                {scope === 'hoy' ? groupKey : formatDateLong(groupKey)}
-              </h2>
-              <ul className={compact ? 'space-y-1' : 'space-y-2'}>
-                {groupRows.map((r) => (
-                  <BookingListItem
-                    key={r.id}
-                    booking={r}
-                    compact={compact}
-                    actions={QUICK_ACTIONS}
-                    cancellationPolicyHours={cancellationPolicyHours}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))}
+
+          {scope === 'historial' ? (
+            <div className="grid min-h-0 content-start gap-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 xl:grid-cols-2">
+              {historialGroups.map(([date, dateRows]) => (
+                <section key={date} aria-label={formatDateLong(date)}>
+                  <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    {formatDateLong(date)}
+                  </h2>
+                  <ul className="space-y-2">
+                    {dateRows.map((r) => (
+                      <BookingListItem
+                        key={r.id}
+                        booking={r}
+                        actions={QUICK_ACTIONS}
+                        cancellationPolicyHours={cancellationPolicyHours}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <CourtBoard
+              courts={boardCourts}
+              bookings={rows}
+              scope={scope}
+              status={status}
+              q={q}
+              actions={QUICK_ACTIONS}
+              cancellationPolicyHours={cancellationPolicyHours}
+              courtTotals={courtTotals}
+            />
+          )}
 
           {paginado && (
             <nav
               aria-label="Paginación de reservas"
-              className="flex items-center justify-between gap-3 border-t border-border pt-4"
+              className="flex shrink-0 items-center justify-between gap-3 border-t border-border pt-3"
             >
               {page > 0 ? (
                 <Link
@@ -416,7 +276,6 @@ export default async function ReservasPage(props: Props) {
                     dia: scope,
                     status,
                     q,
-                    compact,
                     cancha: courtId ?? '',
                     page: page - 1,
                   })}
@@ -436,7 +295,6 @@ export default async function ReservasPage(props: Props) {
                     dia: scope,
                     status,
                     q,
-                    compact,
                     cancha: courtId ?? '',
                     page: page + 1,
                   })}

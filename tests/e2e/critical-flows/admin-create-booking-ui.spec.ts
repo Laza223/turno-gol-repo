@@ -1,23 +1,15 @@
 /**
  * E2E — Admin crea reserva manual desde UI (doc7 Flujo 1)
  *
- * DIVERGENCIA con el plan original (fase F14 T2):
- *   El plan decía "1 test parametrizado por método de pago (cash/transfer/mercadopago)".
- *   Al revisar BookingFormModal.tsx, el modal NO tiene selector de método de pago.
- *   Sus campos son: Duración (60/120), Nombre invitado, Teléfono, Notas internas.
- *   El método de pago se asigna después en el módulo /caja al momento del cobro,
- *   que ya está cubierto por caja-crud.spec.ts.
- *   Por lo tanto T2 implementa 1 test único (no 3 parametrizados).
+ * Rediseño 2026-09-14 (pages/grilla.md §3bis): el alta rápida se eliminó —
+ * tocar una celda libre abre DIRECTO el modal único, con "Turno" ya elegido.
  *
- * Flujo cubierto: click cell libre en grilla → popover de alta rápida (Fase 3)
- *   → "Más opciones" → modal "Nueva reserva" → submit → booking visible en
- *   grilla + confirmado en DB.
- *
- * El camino corto (reservar SIN abrir el modal) lo cubre el segundo test.
+ * Flujo cubierto: click cell libre en grilla → modal "Nueva reserva" (Turno) →
+ * nombre + Enter → submit → booking visible en grilla + confirmado en DB.
  */
 
 import { test, expect } from '../fixtures'
-import { openQuickBookingPopover } from '../_helpers/grid'
+import { openCreateModal } from '../_helpers/grid'
 import {
   tomorrowDateIsoArt,
   cleanupBookingsByIds,
@@ -53,33 +45,15 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       // Wait for the grid table to render.
       await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 15_000 })
 
-      // Fase 3: el click de una celda libre abre el POPOVER de alta rápida.
-      // Este spec cubre el camino del modal completo (nombre + teléfono bajo
-      // "Opciones avanzadas"), que ahora vive detrás de "Más opciones".
-      await openQuickBookingPopover(page, '16:00')
-      // `exact`: la barra de la grilla tiene "Más opciones de la grilla" (#303)
-      // y un regex matchea los dos botones.
-      await page.getByRole('button', { name: 'Más opciones', exact: true }).click()
+      // El click de una celda libre abre DIRECTO el modal, con "Turno" elegido.
+      await openCreateModal(page, '16:00')
 
-      await expect(page.getByText('Nueva reserva')).toBeVisible({ timeout: 5_000 })
+      // Fill guest details ("¿A nombre de quién?" es el campo de Turno).
+      await page.getByLabel('¿A nombre de quién?').fill('E2E Admin Create')
+      await page.getByLabel('Teléfono').fill('11 2345-6789')
 
-      // Duration is fixed at 60 min for guest bookings (cambio #14 eliminated the
-      // picker — SLOT_DURATION_MINUTES). It only renders for internal blocks.
-
-      // Fill guest details (guestName requires guestPhone per modal validation).
-      await page.fill('#guestName', 'E2E Admin Create')
-
-      // Fase 3 UX: el teléfono vive colapsado bajo "Opciones avanzadas"
-      // (progressive disclosure) — hay que abrirlo antes de llenarlo.
-      await page.getByRole('button', { name: 'Opciones avanzadas' }).click()
-      await page.fill('#guestPhone', '+5491100000099')
-
-      // "No cobré" viene preseleccionado (revierte PR #185); se deja explícito
-      // igual para que el spec no dependa del default.
-      await page.selectOption('#depositMethod', 'none')
-
-      // Submit the form.
-      await page.getByRole('button', { name: 'Confirmar reserva' }).click()
+      // Submit — botón "Reservar" (+ monto de la grilla).
+      await page.getByRole('button', { name: /Reservar/ }).click()
 
       // Toast success.
       // exact:true — the aria-live announcement renders
@@ -123,9 +97,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
   })
 
   // ══════════════════════════════════════════════════════════════════════════
-  // TEST — camino corto de Fase 3: reservar SIN abrir el modal
+  // TEST — Enter confirma sin tocar el botón (el caso común: tap → nombre → Enter)
   // ══════════════════════════════════════════════════════════════════════════
-  test('admin creates booking via quick popover — 2 campos + Enter → confirmed in DB @critical', async ({
+  test('admin creates booking pressing Enter — no cobra nada → confirmed in DB @critical', async ({
     browser,
     adminStorageState,
   }) => {
@@ -139,23 +113,18 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       const page = await context.newPage()
       await page.goto(`/grilla?date=${tomorrow}`, { waitUntil: 'networkidle' })
       // 14:00: los otros specs de admin usan 16:00/20:00/21:00 en esta fecha.
-      await openQuickBookingPopover(page, '14:00')
+      await openCreateModal(page, '14:00')
       const nombre = page.getByLabel('¿A nombre de quién?')
 
-      // Criterio de salida #3: el precio llega YA calculado, no es un campo.
-      await expect(page.getByText(/^\$/).first()).toBeVisible()
-
-      await nombre.fill('E2E Quick Popover')
-      // Un solo campo a la vista: el cobro arranca plegado en "No cobré", que es
-      // lo del complejo que cobra al terminar de jugar.
-      await expect(page.getByRole('radio', { name: 'No cobré' })).toHaveCount(0)
+      // "No cobré" es el default: el nombre alcanza para confirmar.
+      await nombre.fill('E2E Quick Enter')
       // Enter confirma — sin tocar el botón.
       await nombre.press('Enter')
 
       await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(/E2E Quick Popover/i)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/E2E Quick Enter/i)).toBeVisible({ timeout: 10_000 })
 
       const { data, error } = await supabase
         .from('bookings')
@@ -170,8 +139,8 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       expect(data).not.toBeNull()
       expect(data?.status).toBe('confirmed')
       expect(data?.type).toBe('spontaneous')
-      expect(data?.guest_name).toBe('E2E Quick Popover')
-      // Con "No cobré": el turno no arrastra deposit.
+      expect(data?.guest_name).toBe('E2E Quick Enter')
+      // Sin contestar qué se cobró (default "No cobré"): el turno no arrastra deposit.
       expect(data?.deposit_status).toBe('not_required')
 
       bookingId = data?.id ?? null

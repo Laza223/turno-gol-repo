@@ -30,11 +30,6 @@ type Props = {
   onSlotClick: (courtId: string, slotTime: string) => void
   onGridKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
   onExpandMorning: () => void
-  /** Celda con el popover de alta rápida abierto, como `courtId:HH:MM`. */
-  quickSlotKey?: string | null
-  onQuickClose?: () => void
-  /** Devuelve el formulario de alta rápida para esa celda (Fase 3). */
-  renderQuickForm?: (courtId: string, courtName: string, slotTime: string) => React.ReactNode
 }
 
 /**
@@ -76,9 +71,6 @@ export function GridScroller({
   onSlotClick,
   onGridKeyDown,
   onExpandMorning,
-  quickSlotKey,
-  onQuickClose,
-  renderQuickForm,
 }: Props) {
   return (
     <div
@@ -208,10 +200,9 @@ export function GridScroller({
             }
 
             const clickable = court.status === 'online' && !isSlotPast(slotTime)
-            const cellKey = `${court.id}:${slotTime}`
             return (
               <BookingCard
-                key={cellKey}
+                key={`${court.id}:${slotTime}`}
                 booking={null}
                 timeStart={slotTime}
                 isPast={isSlotPast(slotTime)}
@@ -221,15 +212,6 @@ export function GridScroller({
                 courtId={clickable ? court.id : undefined}
                 courtName={court.name}
                 onSlotClick={clickable ? onSlotClick : undefined}
-                quickOpen={quickSlotKey === cellKey}
-                onQuickClose={onQuickClose}
-                // Sólo la celda abierta arma el formulario: las demás pasan
-                // `undefined` y ni siquiera montan el Popover.
-                renderQuickForm={
-                  clickable && renderQuickForm && quickSlotKey === cellKey
-                    ? () => renderQuickForm(court.id, court.name, slotTime)
-                    : undefined
-                }
               />
             )
           }),

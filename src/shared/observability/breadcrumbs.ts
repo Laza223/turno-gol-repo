@@ -181,23 +181,23 @@ type CashflowCtx = {
  * reserva ≤ 10 s". Mismo patrón que `cashflow` de Fase 1 — solo instrumentación;
  * el baseline se arma después con estos datos en Sentry, no acá.
  *
- * `quick_create.abandoned` importa tanto como `.confirmed`: un popover que se
- * abre y se cierra sin reservar es la señal de que faltan campos y el admin se
- * fue al modal completo — sin ese evento, el promedio de duración solo mediría
- * los casos donde el popover alcanzó.
+ * Reemplaza a `quick_create.*` (el alta rápida se eliminó, decisión
+ * 2026-09-14): el modal único por tipo es ahora la única superficie de alta
+ * desde la grilla. `create_modal.abandoned` importa tanto como `.confirmed`:
+ * un modal que se abre y se cierra sin confirmar es la señal de que algo no
+ * convenció — sin ese evento, el promedio de duración sólo mediría los casos
+ * que llegaron a buen puerto.
  */
-type GridEvent =
-  | 'quick_create.opened'
-  | 'quick_create.confirmed'
-  | 'quick_create.more_options'
-  | 'quick_create.abandoned'
+type GridEvent = 'create_modal.opened' | 'create_modal.confirmed' | 'create_modal.abandoned'
 
 type GridCtx = {
-  /** confirmed/more_options/abandoned: ms desde que se abrió el popover. */
+  /** Tipo elegido: turno (default) | fijo | evento | bloqueo. */
+  kind?: 'turno' | 'fijo' | 'evento' | 'bloqueo'
+  /** confirmed/abandoned: ms desde que se abrió el modal. */
   durationMs?: number
   /** confirmed: si la reserva se creó a nombre de un jugador registrado. */
   withPlayer?: boolean
-  /** confirmed: si además se cobró seña de mostrador en el mismo paso. */
+  /** confirmed: si además se cobró algo de mostrador en el mismo paso. */
   withDeposit?: boolean
 }
 
@@ -292,7 +292,7 @@ type ActivationCtx = {
  * Segundo destino de los eventos, registrado desde el servidor.
  *
  * Este archivo es ISOMÓRFICO: lo importan componentes cliente (ej.
- * `QuickBookingForm`), así que no puede importar nada que toque la DB — el
+ * `create-modal/TurnoForm`), así que no puede importar nada que toque la DB — el
  * driver de Postgres no entra en el bundle del navegador. Por
  * eso la dependencia se invierte: `@/shared/observability/analytics` (solo
  * servidor) se registra acá vía `setAnalyticsSink`, desde `instrumentation.ts`

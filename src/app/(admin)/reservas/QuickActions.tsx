@@ -313,15 +313,29 @@ export function QuickActions({
   // CompleteBookingDialog), solo cambia el label cuando hay saldo pendiente.
   const hasPendingBalance = (booking.pending ?? 0) > 0
   const completeLabel = hasPendingBalance ? 'Cobrar' : 'Completada'
-  const completeMenuLabel = hasPendingBalance ? 'Cobrar' : 'Marcar completada'
 
   const inlineBtn =
     'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
+  // La tarjeta angosta vive tanto en columnas de escritorio (mouse, puede ser
+  // chica) como en el teléfono (touch, siempre chica) — sin forma de
+  // distinguir por CSS, se asume touch (MASTER §10, 44px) como antes hacía
+  // el trigger mobile-only que este botón reemplaza en parte.
+  const narrowBtn =
+    'h-11 rounded-md px-3 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
 
   return (
     <>
-      {/* Desktop: botones inline. z-10: encima del Link estirado de la fila. */}
-      <div className="relative z-10 hidden shrink-0 items-center gap-1.5 sm:flex">
+      {/* Tarjeta ancha (@sm+ del `@container` de BookingListItem): fila de
+          botones inline. z-10: encima del Link estirado de la fila.
+          `data-testid`: la tarjeta angosta de abajo repite el mismo label
+          ("Completada"/"Confirmar pago") en un botón propio — sin ambas
+          visibles a la vez en jsdom (no hay layout real), los tests que
+          hacían `getByRole('button', {name})` colisionaban; se scopean con
+          este id (ver reservas-quick-actions.test.tsx). */}
+      <div
+        data-testid="quick-actions-wide"
+        className="relative z-10 hidden shrink-0 items-center gap-1.5 @sm:flex"
+      >
         {isPendingPayment ? (
           <button
             type="button"
@@ -370,34 +384,55 @@ export function QuickActions({
         )}
       </div>
 
-      {/* Mobile: menú contextual, sin botones siempre visibles. z-10: encima del Link estirado de la fila. */}
-      <div className="absolute right-1.5 top-1.5 z-10 sm:hidden">
-        {/* modal={false}: menú de acciones rápidas de una fila, no un diálogo. Con el
-            default (modal=true) Radix llama hideOthers() y marca aria-hidden todo el
-            árbol fuera del portal —incluido el propio trigger, que sigue siendo
-            focuseable— violando aria-hidden-focus (axe). Mismo criterio que
-            StaffActions, ShareButton, HeroSearch y SearchBar. */}
-        <DropdownMenu modal={false}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger
-                disabled={pending}
-                aria-label={`Acciones para ${label}`}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
-              >
-                <MoreVertical aria-hidden className="h-5 w-5" />
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Acciones</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="end">
-            {isPendingPayment ? (
-              <DropdownMenuItem onSelect={openConfirmDeposit}>Confirmar pago</DropdownMenuItem>
-            ) : (
-              <>
-                <DropdownMenuItem onSelect={openCompleteDialog}>
-                  {completeMenuLabel}
-                </DropdownMenuItem>
+      {/* Tarjeta angosta (< @sm, columnas del tablero): la acción primaria
+          queda visible —no escondida en un menú, H079— y lo secundario
+          (Ausente/Cancelar) va en un menú chico al lado. `pending_payment`
+          no tiene secundarias, así que no hay menú en ese caso. */}
+      <div
+        data-testid="quick-actions-narrow"
+        className="relative z-10 flex shrink-0 items-center gap-1 @sm:hidden"
+      >
+        {isPendingPayment ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={openConfirmDeposit}
+            className={cn(narrowBtn, 'bg-primary text-primary-foreground hover:bg-primary/90')}
+          >
+            Confirmar pago
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={openCompleteDialog}
+              className={cn(
+                narrowBtn,
+                'border border-border bg-card text-foreground hover:bg-accent',
+              )}
+            >
+              {completeLabel}
+            </button>
+            {/* modal={false}: menú de acciones rápidas de una fila, no un diálogo. Con el
+                default (modal=true) Radix llama hideOthers() y marca aria-hidden todo el
+                árbol fuera del portal —incluido el propio trigger, que sigue siendo
+                focuseable— violando aria-hidden-focus (axe). Mismo criterio que
+                StaffActions, ShareButton, HeroSearch y SearchBar. */}
+            <DropdownMenu modal={false}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger
+                    disabled={pending}
+                    aria-label={`Acciones para ${label}`}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+                  >
+                    <MoreVertical aria-hidden className="h-5 w-5" />
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Acciones</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => setNoShowOpen(true)}>
                   Marcar ausente
                 </DropdownMenuItem>
@@ -407,10 +442,10 @@ export function QuickActions({
                 >
                   Cancelar reserva
                 </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
       </div>
 
       <ConfirmDialog

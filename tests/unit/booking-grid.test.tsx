@@ -134,9 +134,8 @@ function renderGrid(opts?: {
   courts?: CourtRow[]
   bookings?: GridBooking[]
   date?: string
-  /** Presente = alta rápida activa (el click de una celda libre abre el popover). */
-  depositPercentage?: number
   action?: ReturnType<typeof vi.fn>
+  createAbonadoAction?: ReturnType<typeof vi.fn>
   checkAvailabilityAction?: ReturnType<typeof vi.fn>
   searchPlayersAction?: ReturnType<typeof vi.fn>
   /** Para asertar sobre una acción puntual (ej. addBookingChargeAction) hay que pasar el MISMO objeto que ve el test. */
@@ -154,9 +153,9 @@ function renderGrid(opts?: {
       // next/dynamic está mockeado más abajo con un stub que ignora `action`
       // (el modal real no se monta en estos tests).
       action={opts?.action ?? vi.fn()}
+      createAbonadoAction={opts?.createAbonadoAction ?? vi.fn()}
       checkAvailabilityAction={opts?.checkAvailabilityAction}
       searchPlayersAction={opts?.searchPlayersAction}
-      depositPercentage={opts?.depositPercentage}
       slotPanelActions={opts?.slotPanelActions ?? panelActions()}
       // El diálogo de cantina llega inyectado (vive bajo la ruta porque reusa
       // el TicketPanel de /caja). Acá alcanza con un stub: lo que se testea es
@@ -505,6 +504,23 @@ describe('BookingGrid — panel de acciones del turno', () => {
   })
 
   /**
+   * Rediseño 2026-09-14: un evento de N horas (>60 min) no ofrece reprogramar.
+   * `rescheduleBooking` sólo valida la duración del DESTINO (siempre 60 min) —
+   * nunca la del turno que se mueve — así que sin este gate en la UI, mover un
+   * turno de 3 horas lo recortaría a un único slot de 60 min sin que el
+   * backend lo frene.
+   */
+  it('un turno de 3 horas no ofrece reprogramar', async () => {
+    renderGrid({
+      bookings: [booking({ timeStart: '16:00', timeEnd: '19:00', pending: 2000000, totalPaid: 0 })],
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–19:00/ }))
+    const panel = await screen.findByRole('dialog')
+    expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
+    expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
+  })
+
+  /**
    * `rescheduleBooking` sólo acepta confirmed/pending_payment: ofrecer el botón
    * sobre un turno ya jugado sería prometer algo que el backend rechaza. La
    * cantina en cambio SÍ sigue disponible — lo normal es consumir durante el
@@ -564,199 +580,5 @@ describe('BookingGrid — panel de acciones del turno', () => {
 
     fireEvent.click(within(panel).getByRole('button', { name: /Cargar cantina/ }))
     expect(await screen.findByTestId('canteen-dialog')).toBeTruthy()
-  })
-})
-
-/**
- * Fase 3, criterio de salida #3: el click de una celda libre abre un POPOVER de
- * alta rápida (≤3 campos visibles, precio ya resuelto, Enter confirma), no el
- * modal de 10 campos. El modal sigue existiendo intacto detrás de "Más opciones".
- */
-describe('BookingGrid — popover de alta rápida', () => {
-  const FREE = 'Reservar turno 16:00 en Cancha 1'
-
-  it('sin depositPercentage se comporta como antes: la celda libre abre el modal', async () => {
-    renderGrid()
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    const dialog = await screen.findByTestId('booking-form-modal')
-    expect(dialog.getAttribute('data-time')).toBe('16:00')
-    expect(screen.queryByLabelText('¿A nombre de quién?')).toBeNull()
-  })
-
-  it('abre el popover con el precio PRE-CALCULADO y sin pasar por el modal', async () => {
-    renderGrid({ depositPercentage: 30 })
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-
-    expect(await screen.findByLabelText('¿A nombre de quién?')).toBeTruthy()
-    // El precio sale de court.pricing en el cliente: $24.000, sin round-trip.
-    expect(screen.getByText(/24\.000/)).toBeTruthy()
-    // UN campo a la vista: el cobro y el teléfono arrancan plegados.
-    expect(screen.queryByRole('radio')).toBeNull()
-    // "No cobré" sigue preseleccionado al desplegar (pedido del dueño, revierte
-    // PR #185): el porcentaje online del complejo no tiene voz en el mostrador.
-    fireEvent.click(screen.getByRole('button', { name: /Cobrar algo ahora/ }))
-    for (const opcion of screen.getAllByRole('radio')) {
-      const esperado = opcion.textContent === 'No cobré' ? 'true' : 'false'
-      expect(opcion.getAttribute('aria-checked')).toBe(esperado)
-    }
-    // El modal completo NO se abrió.
-    expect(screen.queryByTestId('booking-form-modal')).toBeNull()
-  })
-
-  it('Enter confirma: crea la reserva con el slot y el nombre tipeados', async () => {
-    const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'nueva' } }))
-    renderGrid({ depositPercentage: 30, action })
-
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    const input = await screen.findByLabelText('¿A nombre de quién?')
-    fireEvent.change(input, { target: { value: 'Juan Telefónico' } })
-    // Sin tocar nada más: el cobro ni se despliega, y "No cobré" ya viene puesto.
-    // Enter dentro del campo dispara el submit del form — es el criterio.
-    fireEvent.submit(input.closest('form')!)
-
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-    expect(action.mock.calls[0]![0]).toMatchObject({
-      courtId: 'c1',
-      date: '2026-06-12',
-      timeStart: '16:00',
-      timeEnd: '17:00',
-      type: 'spontaneous',
-      guestName: 'Juan Telefónico',
-    })
-    // Con "No cobré", los tres campos de seña NO viajan.
-    expect(action.mock.calls[0]![0]).not.toHaveProperty('depositMethod')
-  })
-
-  it('sin nombre no llama al server: avisa en el popover', async () => {
-    const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'x' } }))
-    renderGrid({ depositPercentage: 30, action })
-
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    const input = await screen.findByLabelText('¿A nombre de quién?')
-    fireEvent.submit(input.closest('form')!)
-
-    expect(await screen.findByRole('alert')).toBeTruthy()
-    expect(action).not.toHaveBeenCalled()
-  })
-
-  it('elegir un método manda los TRES campos juntos con el monto tipeado', async () => {
-    const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'x' } }))
-    renderGrid({ depositPercentage: 30, action })
-
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    const input = await screen.findByLabelText('¿A nombre de quién?')
-    fireEvent.change(input, { target: { value: 'Con seña' } })
-    fireEvent.click(screen.getByRole('button', { name: /Cobrar algo ahora/ }))
-    // F-007: DepositFieldset ahora usa SegmentedControl (Radix RadioGroup) —
-    // role="radio", no "button" (ese es justo el punto del fix).
-    fireEvent.click(screen.getByRole('radio', { name: 'Efectivo' }))
-
-    // El monto arranca VACÍO aunque el complejo tenga porcentaje configurado:
-    // `settings.deposit_percentage` es la política del portal online y
-    // precargarla acá creaba turnos "pagados completos" de un click.
-    const monto = screen.getByLabelText('Cuánto cobraste') as HTMLInputElement
-    expect(monto.value).toBe('')
-    fireEvent.change(monto, { target: { value: '7200' } })
-
-    fireEvent.submit(input.closest('form')!)
-
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-    expect(action.mock.calls[0]![0]).toMatchObject({
-      depositMethod: 'cash',
-      depositAmount: 720000,
-      depositStatus: 'paid',
-    })
-  })
-
-  /**
-   * Decisión del dueño (revierte PR #185, a sabiendas): "No cobré" viene
-   * preseleccionado para que la acción más repetida del día — cargar un
-   * turno — se confirme con un solo campo, el nombre. La preselección NO
-   * inventa un cobro: los tres campos de seña siguen sin viajar.
-   */
-  it('sin contestar qué se cobró SÍ llama al server: "No cobré" viene preseleccionado', async () => {
-    const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'x' } }))
-    renderGrid({ depositPercentage: 30, action })
-
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    const input = await screen.findByLabelText('¿A nombre de quién?')
-    fireEvent.change(input, { target: { value: 'Sin contestar' } })
-    fireEvent.submit(input.closest('form')!)
-
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-    expect(action.mock.calls[0]![0]).not.toHaveProperty('depositMethod')
-    expect(action.mock.calls[0]![0]).not.toHaveProperty('depositAmount')
-    expect(action.mock.calls[0]![0]).not.toHaveProperty('depositStatus')
-    expect(screen.queryByRole('alert')).toBeNull()
-  })
-
-  /**
-   * El lado se decide con dónde quedó la celda al tocarla (quick-popover-side.ts).
-   * Este test mira que la decisión LLEGUE al popover: la primera versión del fix
-   * la calculaba solo si la celda ya tenía `renderQuickForm`, que GridScroller
-   * le pasa recién cuando está abierta, y el popover seguía abriendo a la derecha.
-   * happy-dom mide la ventana en 1024 px.
-   */
-  it.each([
-    {
-      cell: { left: 163, right: 1245 },
-      side: 'bottom',
-      caso: 'una sola cancha: no entra a ningún costado',
-    },
-    { cell: { left: 163, right: 400 }, side: 'right', caso: 'entra a la derecha' },
-  ])('abre el popover del lado que entra ($caso)', async ({ cell, side }) => {
-    renderGrid({ depositPercentage: 30 })
-    const button = screen.getByRole('button', { name: FREE })
-    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(
-      DOMRect.fromRect({ x: cell.left, y: 0, width: cell.right - cell.left, height: 64 }),
-    )
-
-    fireEvent.click(button)
-    const input = await screen.findByLabelText('¿A nombre de quién?')
-    expect(input.closest('[data-side]')?.getAttribute('data-side')).toBe(side)
-  })
-
-  it('"Más opciones" abre el modal completo con el MISMO slot', async () => {
-    renderGrid({ depositPercentage: 30 })
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    await screen.findByLabelText('¿A nombre de quién?')
-
-    fireEvent.click(screen.getByRole('button', { name: /Más opciones/ }))
-    const dialog = await screen.findByTestId('booking-form-modal')
-    expect(dialog.getAttribute('data-time')).toBe('16:00')
-    expect(dialog.getAttribute('data-date')).toBe('2026-06-12')
-  })
-
-  /**
-   * checkSlotAvailabilityAction es fail-open, así que un `false` es señal
-   * POSITIVA de que el turno se ocupó. Sin mostrarlo, la carrera de doble
-   * reserva quedaría sólo en el constraint de la DB y el admin vería el error
-   * recién al confirmar.
-   */
-  it('si el turno se ocupó mientras tanto, avisa y bloquea el confirmar', async () => {
-    const action = vi.fn(async (_data: unknown) => ({ success: true, booking: { id: 'x' } }))
-    renderGrid({
-      depositPercentage: 30,
-      action,
-      checkAvailabilityAction: vi.fn(async () => ({ available: false })),
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    expect(await screen.findByText(/acaba de ser tomado/)).toBeTruthy()
-    const confirmar = screen.getByRole('button', { name: 'Reservar' })
-    expect((confirmar as HTMLButtonElement).disabled).toBe(true)
-  })
-
-  it('un fallo del chequeo de disponibilidad NO bloquea el alta (fail-open)', async () => {
-    renderGrid({
-      depositPercentage: 30,
-      checkAvailabilityAction: vi.fn(async () => {
-        throw new Error('red caída')
-      }),
-    })
-    fireEvent.click(screen.getByRole('button', { name: FREE }))
-    const confirmar = await screen.findByRole('button', { name: 'Reservar' })
-    await waitFor(() => expect((confirmar as HTMLButtonElement).disabled).toBe(false))
-    expect(screen.queryByText(/acaba de ser tomado/)).toBeNull()
   })
 })

@@ -238,7 +238,7 @@ test.describe('reservas — edge: cancel with paid deposit', () => {
       // Refund preview text must mention the deposit amount.
       // Amount is 500 ARS — formatted as "$ 500" or similar by Intl.NumberFormat es-AR.
       await expect(page.locator('.rounded-md.bg-amber-50')).toBeVisible()
-      await expect(page.getByText(/Coordiná el reembolso/i)).toBeVisible()
+      await expect(page.getByText(/queda para devolver/i)).toBeVisible()
 
       await page.locator('#cancel-reason').fill('Cancelación de prueba E2E con reembolso')
       await page.getByRole('button', { name: 'Cancelar reserva' }).click()

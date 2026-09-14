@@ -260,8 +260,8 @@ export function BookingSlotPanel({
   } else if (cancelType === 'complejo') {
     cancelRefundWarning =
       booking.paymentMethod === 'mercadopago'
-        ? `Se reembolsará la seña de ${formatArs(booking.depositAmount ?? 0)} vía MercadoPago.`
-        : `Coordiná el reembolso de ${formatArs(booking.depositAmount ?? 0)} en efectivo/transferencia con el jugador (no es automático).`
+        ? `La seña de ${formatArs(booking.depositAmount ?? 0)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
+        : `La seña de ${formatArs(booking.depositAmount ?? 0)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
   } else {
     cancelRefundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount ?? 0)} si está dentro del plazo, retención si no.`
   }
@@ -406,7 +406,11 @@ export function BookingSlotPanel({
               >
                 <RadioChip
                   value="complejo"
-                  description="Rotura, mantenimiento o error. Reembolso automático."
+                  description={
+                    hasPaidDeposit
+                      ? 'Rotura, mantenimiento o error. La seña queda para que se la devuelvas vos.'
+                      : 'Rotura, mantenimiento o error.'
+                  }
                 >
                   El complejo necesita cancelar
                 </RadioChip>

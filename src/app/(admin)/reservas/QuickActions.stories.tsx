@@ -262,7 +262,7 @@ export const CancelarSinDatosMuestraError: Story = {
   },
 }
 
-/** Complejo cancela con seña pagada por MercadoPago: reembolso automático, flujo completo. */
+/** Complejo cancela con seña pagada por MercadoPago: queda para que el complejo la devuelva, no es automático. */
 export const CancelarPorElComplejoConSenaMercadoPago: Story = {
   args: { booking: CONFIRMADA_SENA_MP },
   play: async ({ canvasElement, args }) => {
@@ -275,7 +275,7 @@ export const CancelarPorElComplejoConSenaMercadoPago: Story = {
     await waitFor(() =>
       expect(
         body.getByText(
-          `Se reembolsará la seña de ${money(CONFIRMADA_SENA_MP.depositAmount)} vía MercadoPago.`,
+          `La seña de ${money(CONFIRMADA_SENA_MP.depositAmount)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`,
         ),
       ).toBeVisible(),
     )
@@ -312,7 +312,7 @@ export const CancelarPorElComplejoConSenaEnEfectivo: Story = {
     await waitFor(() =>
       expect(
         body.getByText(
-          `Coordiná el reembolso de ${money(CONFIRMADA_SENA_MP.depositAmount)} en efectivo/transferencia con el jugador (no es automático).`,
+          `La seña de ${money(CONFIRMADA_SENA_MP.depositAmount)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`,
         ),
       ).toBeVisible(),
     )
@@ -331,7 +331,7 @@ export const CancelarPorElJugadorConSenaPagada: Story = {
     await waitFor(() =>
       expect(
         body.getByText(
-          `Se aplica la política de cancelación: reembolso de ${money(CONFIRMADA_SENA_MP.depositAmount)} si está dentro del plazo, retención si no.`,
+          `Se aplica la política de cancelación: si corresponde devolver la seña de ${money(CONFIRMADA_SENA_MP.depositAmount)}, la devolvés vos y la marcás en Caja → Cuentas; fuera de plazo, queda retenida.`,
         ),
       ).toBeVisible(),
     )

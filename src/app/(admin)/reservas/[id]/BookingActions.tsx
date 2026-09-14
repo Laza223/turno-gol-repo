@@ -359,8 +359,8 @@ export default function BookingActions({
     if (willRefund) {
       refundPreview =
         paymentMethod === 'mercadopago'
-          ? `Se reembolsará la seña de ${formatArs(depositAmount)} vía MercadoPago.`
-          : `Coordiná el reembolso de ${formatArs(depositAmount)} en efectivo/transferencia con el jugador (no es automático).`
+          ? `La seña de ${formatArs(depositAmount)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
+          : `La seña de ${formatArs(depositAmount)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
     } else if (turnoEnded) {
       refundPreview = `El turno ya se jugó: la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
     } else {
@@ -425,7 +425,11 @@ export default function BookingActions({
             >
               <RadioChip
                 value="complejo"
-                description="Rotura, mantenimiento o error. Reembolso automático de la seña."
+                description={
+                  hasPaidDeposit
+                    ? 'Rotura, mantenimiento o error. La seña queda para que se la devuelvas vos.'
+                    : 'Rotura, mantenimiento o error.'
+                }
               >
                 El complejo necesita cancelar
               </RadioChip>

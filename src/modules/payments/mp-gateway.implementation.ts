@@ -262,8 +262,11 @@ export class MercadoPagoGateway implements PaymentGateway {
           external_reference: input.tenantId,
           status: 'pending',
           auto_recurring: {
-            frequency: 1,
-            frequency_type: input.frequency === 'annual' ? 'years' : 'months',
+            // El SDK (`AutoRecurringRequest.frequency_type`) sólo documenta
+            // `days` | `months` — `years` no es una unidad válida. Un plan
+            // anual se modela como 12 unidades de `months`.
+            frequency: input.frequency === 'annual' ? 12 : 1,
+            frequency_type: 'months',
             transaction_amount: centsToPesos(input.amount),
             currency_id: 'ARS',
             // Fix trial-first-charge: `start_date` SÍ está tipado en

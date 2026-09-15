@@ -43,7 +43,7 @@ import type {
 
 const PRORATION_PREFERENCE_TTL_HOURS = 24
 
-type PlanRow = {
+export type PlanRow = {
   id: string
   slug: string
   name: string
@@ -240,8 +240,16 @@ function resolvePayerEmail(
   return sub.mp_payer_email ?? owner?.ownerEmail ?? null
 }
 
-function planAmount(plan: PlanRow, cycle: BillingCycle): number {
-  return cycle === 'annual' ? plan.price_annual : plan.price_monthly
+/**
+ * Monto que se le cobra a MP por ciclo de facturación, en centavos ARS.
+ *
+ * `plans.price_annual` guarda el EQUIVALENTE MENSUAL con 20% off (migr. 071),
+ * no el total anual — el cobro real de un preapproval `annual` es una sola
+ * vez por año por `price_annual * 12`. Devolver `price_annual` a pelo manda
+ * a MP 12 veces menos de lo que corresponde.
+ */
+export function planAmount(plan: PlanRow, cycle: BillingCycle): number {
+  return cycle === 'annual' ? plan.price_annual * 12 : plan.price_monthly
 }
 
 /**

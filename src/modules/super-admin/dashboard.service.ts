@@ -43,7 +43,11 @@ type RecentWebhook = {
 }
 
 export type DashboardData = {
-  /** MRR en centavos ARS: SUM(plans.price_monthly) de las subs activas (doc12 §9.5). */
+  /**
+   * MRR en centavos ARS de las subs activas (doc12 §9.5): `price_monthly`
+   * para ciclo mensual, `price_annual` (ya es el equivalente mensual, migr.
+   * 071) para ciclo anual.
+   */
   mrrCents: number
   /** Conteo de tenants por cada uno de los 8 estados (0 incluido). */
   tenantsByStatus: Record<TenantStatus, number>
@@ -162,8 +166,11 @@ async function getMrrCents(): Promise<number> {
   const db = getWorkerDb()
   const rows = await db
     .select({
+      // `plans.price_annual` YA es el equivalente mensual con 20% off (migr.
+      // 071) — no el total anual — así que el MRR de una sub anual suma esa
+      // columna tal cual, nunca `price_monthly` ni `price_annual / 12`.
       // SUM(integer) llega como bigint (string) — coalesce + cast a number.
-      mrr: sql<string>`coalesce(sum(${plans.priceMonthly}), 0)`,
+      mrr: sql<string>`coalesce(sum(case when ${tenantSubscriptions.billingCycle} = 'annual' then ${plans.priceAnnual} else ${plans.priceMonthly} end), 0)`,
     })
     .from(tenantSubscriptions)
     .innerJoin(plans, eq(plans.id, tenantSubscriptions.planId))

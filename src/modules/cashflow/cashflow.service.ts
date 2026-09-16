@@ -217,7 +217,14 @@ export async function chargeSplitPayment(
 }
 
 export type ResolvedIdempotentCharges =
-  { ok: true; newChargingCents: number } | { ok: false; error: string }
+  | { ok: true; newChargingCents: number }
+  /**
+   * `registeredCents` es el monto REAL que ya quedó guardado bajo esa clave.
+   * Viaja aparte del mensaje porque no todos los callers devuelven un
+   * `ActionResult` con texto listo: los de torneos tiran un error de dominio y
+   * la copy la arma `src/app/(admin)/torneos/actions.ts`.
+   */
+  | { ok: false; registeredCents: number; error: string }
 
 /**
  * Separa, dentro de una tanda de cargos, lo que YA está commiteado bajo esta
@@ -282,6 +289,7 @@ export async function resolveIdempotentCharges(
     if (already.amount !== charge.amount || already.method !== charge.method) {
       return {
         ok: false,
+        registeredCents: already.amount,
         error: `Este cobro ya se había registrado por ${formatArs(already.amount)}. Refrescá la pantalla: el saldo del turno ya lo tiene en cuenta.`,
       }
     }

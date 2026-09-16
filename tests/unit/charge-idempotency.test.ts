@@ -71,6 +71,9 @@ describe('resolveIdempotentCharges', () => {
     // y la validación contra el pendiente, y el ON CONFLICT devolvía la fila
     // vieja con success: true.
     expect(res.error).toContain(formatArs(600_000))
+    // El monto también viaja estructurado: los callers de torneos arman su
+    // propia copy desde un error de dominio, no reusan esta frase.
+    expect(res.registeredCents).toBe(600_000)
   })
 
   it('la misma clave con otro MÉTODO también es conflicto', async () => {

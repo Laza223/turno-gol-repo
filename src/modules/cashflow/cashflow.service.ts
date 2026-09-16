@@ -4,6 +4,7 @@ import type { DbTx } from '@/shared/db/client'
 import { InvalidCashFlowTypeError, InvalidCashFlowCategoryError } from './cashflow.errors'
 import { operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { balanceFrom, collectedFrom } from './totals'
+import { formatArs } from '@/lib/format'
 import type {
   CashFlowType,
   CashFlowCategory,
@@ -213,6 +214,80 @@ export async function chargeSplitPayment(
     )
   }
   return rows
+}
+
+export type ResolvedIdempotentCharges =
+  { ok: true; newChargingCents: number } | { ok: false; error: string }
+
+/**
+ * Separa, dentro de una tanda de cargos, lo que YA está commiteado bajo esta
+ * `clientIdempotencyKey` de lo que es NUEVO — y rechaza el caso en que la misma
+ * key vuelve con OTRO contenido.
+ *
+ * Por qué existe (🔴 1 de la revisión de la tanda #319-#324,
+ * `docs/audit/2026-09-16-revision-tanda-319-324.md`): el chequeo anterior
+ * miraba sólo si la key de la línea ya existía, nunca el monto. Un reintento
+ * tras un error de red con un monto distinto daba `newCharging = 0`, se
+ * salteaba entero el `FOR UPDATE` y la validación contra el pendiente, y el
+ * `ON CONFLICT DO NOTHING` de `createCashFlow` devolvía la fila VIEJA: la caja
+ * se quedaba con el monto viejo mientras la UI cantaba el nuevo.
+ *
+ * La key NO se rota del lado del cliente ante un error de red, y eso es
+ * correcto: no se sabe si el cobro entró, y mandar una key nueva convertiría
+ * esa duda en un cobro duplicado seguro. La key se mantiene y la decisión se
+ * toma acá, contra lo que hay en la DB:
+ *
+ *  - key ausente       → línea nueva: suma a `newChargingCents` y el caller la
+ *                        valida contra el pendiente recalculado bajo lock.
+ *  - key + mismo cobro → reintento legítimo (Fix #55): no se re-valida (el
+ *                        pendiente ya bajó por ese mismo cobro) y el
+ *                        `ON CONFLICT` deja la fila como está.
+ *  - key + otro cobro  → conflicto: se rechaza nombrando el monto REAL ya
+ *                        registrado, así el mostrador puede reconciliar en vez
+ *                        de creerle a un cartel que miente.
+ *
+ * El índice único de `client_idempotency_key` es GLOBAL (migr. 023), sin
+ * tenant_id: filtro explícito por tenant además de RLS, mismo patrón que
+ * `createCashFlow`.
+ */
+export async function resolveIdempotentCharges(
+  tenantId: string,
+  charges: readonly SplitCharge[],
+  clientIdempotencyKey: string | undefined,
+  tx: DbTx,
+): Promise<ResolvedIdempotentCharges> {
+  if (!clientIdempotencyKey || charges.length === 0) {
+    return { ok: true, newChargingCents: charges.reduce((sum, c) => sum + c.amount, 0) }
+  }
+
+  const lineKeys = charges.map((_, i) => `${clientIdempotencyKey}-${i}`)
+  const committedRows = (await tx.execute(sql`
+    SELECT client_idempotency_key AS key, amount, method FROM cash_flows
+    WHERE tenant_id = ${tenantId}
+      AND client_idempotency_key = ANY(ARRAY[${sql.join(
+        lineKeys.map((k) => sql`${k}`),
+        sql`, `,
+      )}])
+  `)) as unknown as Array<{ key: string; amount: number; method: string }>
+  const committed = new Map(committedRows.map((r) => [r.key, r]))
+
+  let newChargingCents = 0
+  for (let i = 0; i < charges.length; i++) {
+    const charge = charges[i]!
+    const already = committed.get(lineKeys[i]!)
+    if (!already) {
+      newChargingCents += charge.amount
+      continue
+    }
+    if (already.amount !== charge.amount || already.method !== charge.method) {
+      return {
+        ok: false,
+        error: `Este cobro ya se había registrado por ${formatArs(already.amount)}. Refrescá la pantalla: el saldo del turno ya lo tiene en cuenta.`,
+      }
+    }
+  }
+
+  return { ok: true, newChargingCents }
 }
 
 export async function getCashFlows(

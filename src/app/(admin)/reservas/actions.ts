@@ -27,7 +27,7 @@ import {
   searchTenantPlayers,
   type PlayerSearchResult,
 } from '@/modules/players/player-search.service'
-import { createCashFlow } from '@/modules/cashflow/cashflow.service'
+import { createCashFlow, resolveIdempotentCharges } from '@/modules/cashflow/cashflow.service'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import {
   confirmManualDepositPayment,
@@ -836,38 +836,22 @@ export async function addBookingChargeAction(
     // cash_flow por charge). Revisión roja: chequear solo la línea 0 saltaba
     // TODA la validación para el lote completo si un reintento reusaba la key
     // pero agregaba líneas nuevas (turno de $10.000 podía terminar cobrando
-    // $14.000, sin que esas líneas nuevas pasaran nunca por acá). Por eso acá
-    // se chequea CADA línea por su propia key sufijada: lo ya commiteado no
-    // se re-valida (rechazaría un reintento legítimo contra un pendiente que
-    // él mismo bajó), pero lo nuevo SIEMPRE se valida contra el pendiente
-    // recalculado. Mismo patrón que registerInscriptionPayment
-    // (tournament-payment.service.ts).
-    const lineKeys = clientIdempotencyKey
-      ? charges.map((_, i) => `${clientIdempotencyKey}-${i}`)
-      : []
-    const alreadyChargedKeys = new Set(
-      lineKeys.length === 0
-        ? []
-        : // El índice único de client_idempotency_key en cash_flows es
-          // GLOBAL (migr. 023), sin tenant_id — filtro explícito además de
-          // RLS (mismo patrón que cashflow.service.ts / canteen-tab.service.ts
-          // / canteen-sale.service.ts, hallazgo #8 de la campaña de mutación).
-          (
-            (await tx.execute(sql`
-              SELECT client_idempotency_key AS key FROM cash_flows
-              WHERE tenant_id = ${tenant.id}
-                AND client_idempotency_key = ANY(ARRAY[${sql.join(
-                  lineKeys.map((k) => sql`${k}`),
-                  sql`, `,
-                )}])
-            `)) as unknown as Array<{ key: string }>
-          ).map((r) => r.key),
-    )
-
-    const newCharging = charges.reduce((sum, c, i) => {
-      const key = lineKeys[i]
-      return key !== undefined && alreadyChargedKeys.has(key) ? sum : sum + c.amount
-    }, 0)
+    // $14.000, sin que esas líneas nuevas pasaran nunca por acá). Por eso se
+    // chequea CADA línea por su propia key sufijada: lo ya commiteado no se
+    // re-valida, pero lo nuevo SIEMPRE se valida contra el pendiente
+    // recalculado.
+    //
+    // 🔴 1 de la revisión de la tanda #319-#324: ese chequeo miraba sólo la
+    // EXISTENCIA de la key, nunca el monto, así que un reintento con otro
+    // importe daba `newCharging = 0` y se salteaba todo lo de abajo mientras
+    // el ON CONFLICT dejaba la fila vieja. `resolveIdempotentCharges` compara
+    // también el contenido y rechaza la key reusada con otro cobro. Misma
+    // fuente única que chargeDebtAction (caja/deudas/actions.ts).
+    const idempotent = await resolveIdempotentCharges(tenant.id, charges, clientIdempotencyKey, tx)
+    if (!idempotent.ok) {
+      return { success: false as const, error: idempotent.error }
+    }
+    const newCharging = idempotent.newChargingCents
 
     if (newCharging > 0) {
       // Hallazgo C (TOCTOU, ENS-3 real): dos cobros concurrentes del mismo

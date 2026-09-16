@@ -17,6 +17,18 @@ function Controlled() {
   )
 }
 
+/** Igual que `Controlled`, pero arranca con un monto YA precargado — el caso
+ *  que introdujo el PR #322 (el campo deja de arrancar vacío). */
+function ControlledPrecargado({ initialCents }: { initialCents: number }) {
+  const [cents, setCents] = useState<number | null>(initialCents)
+  return (
+    <div>
+      <MoneyInput id="monto" valueCents={cents} onValueChange={setCents} />
+      <output data-testid="cents">{cents ?? 'null'}</output>
+    </div>
+  )
+}
+
 describe('MoneyInput', () => {
   it('formatea con separador de miles mientras se tipea', () => {
     render(<Controlled />)
@@ -282,5 +294,70 @@ describe('MoneyInput — editar un valor ya agrupado (regresión reclamo real 20
     await new Promise((resolve) => requestAnimationFrame(resolve))
     const ownCalls = spy.mock.calls.filter((call) => call.length === 2)
     expect(ownCalls).toEqual([[input.value.length, input.value.length]])
+  })
+})
+
+/**
+ * Auditoría 2026-09-16, hallazgo 🟡 5. Desde el PR #322 el campo arranca
+ * precargado (ya no vacío), así que "pegar sobre un campo vacío" dejó de ser
+ * el único caso de pegado atómico: ahora también existe "seleccionar todo +
+ * pegar/tipear" sobre un valor YA agrupado. `isAppend` no lo detecta (el
+ * string nuevo no continúa el anterior) y antes del fix cualquier reemplazo
+ * total caía en la rama que borra separadores — pegar "50,75" sobre "8.400"
+ * parseaba "5075" y daba $5.075 en vez de $50.
+ *
+ * happy-dom replica el comportamiento real del navegador: asignar `.value`
+ * mueve el caret al final del string nuevo (selectionStart = selectionEnd =
+ * value.length), la misma señal que deja un pegado atómico real. Por eso
+ * estos tests no necesitan pasar `selectionStart` a mano.
+ */
+describe('MoneyInput — reemplazo total de un campo precargado (auditoría 2026-09-16 hallazgo 5)', () => {
+  it('pegar "50,75" sobre "8.400" precargado da $50, no $5.075', () => {
+    render(<ControlledPrecargado initialCents={840_000} />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    expect(input.value).toBe('8.400')
+
+    fireEvent.change(input, { target: { value: '50,75' } })
+
+    // El monto es lo que importa acá: $50, no $5.075. La cola ",75" no queda
+    // a la vista en este salto puntual — mismo matiz visual documentado en el
+    // caso de pegado atómico de arriba ("pegar 1.500,50"), no la clase de bug
+    // de este hallazgo (que es sobre el VALOR).
+    expect(screen.getByTestId('cents').textContent).toBe('5000')
+    expect(input.value).toBe('50')
+  })
+
+  it('pegar "18500.75" (calculadora, punto decimal) sobre un precargado da $18.500, no $1.850.075', () => {
+    render(<ControlledPrecargado initialCents={840_000} />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+
+    fireEvent.change(input, { target: { value: '18500.75' } })
+
+    expect(screen.getByTestId('cents').textContent).toBe('1850000')
+  })
+
+  it('reemplazar un precargado por un entero nuevo (sin decimal) sigue funcionando igual', () => {
+    render(<ControlledPrecargado initialCents={840_000} />)
+    const input = screen.getByRole('textbox') as HTMLInputElement
+
+    fireEvent.change(input, { target: { value: '35000' } })
+
+    expect(input.value).toBe('35.000')
+    expect(screen.getByTestId('cents').textContent).toBe('3500000')
+  })
+
+  // Guarda contra sobre-disparar la detección: un reemplazo en el MEDIO del
+  // string (el caret no termina al final) sigue tratando el separador como
+  // agrupación, igual que antes del fix — no es "reemplazo total".
+  it('editar en el medio de un valor agrupado (caret no queda al final) no se trata como decimal fresco', () => {
+    render(<ControlledPrecargado initialCents={123_456_700} />) // "1.234.567"
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    expect(input.value).toBe('1.234.567')
+
+    // Reemplaza "234" por "99" en el medio de "1.234.567" → "1.99.567". El
+    // caret queda en la posición 4 (recién después del "99"), no al final.
+    fireEvent.change(input, { target: { value: '1.99.567', selectionStart: 4 } })
+
+    expect(screen.getByTestId('cents').textContent).toBe('19956700') // $199.567
   })
 })

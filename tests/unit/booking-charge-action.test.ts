@@ -30,7 +30,14 @@ vi.mock('@/modules/staff/guards', () => ({
 }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn() }))
-vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
+// `createCashFlow` mockeado, pero `resolveIdempotentCharges` REAL: hace su
+// propio `tx.execute` y estos tests encodean la secuencia exacta de execute,
+// así que stubbearlo desalinearía las respuestas — y además el fix del 🔴 1
+// queda ejercitado de verdad, no contra un doble.
+vi.mock('@/modules/cashflow/cashflow.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/modules/cashflow/cashflow.service')>()),
+  createCashFlow: vi.fn(),
+}))
 vi.mock('@/modules/bookings/booking.service', () => ({
   createManualBooking: vi.fn(),
   completeBooking: vi.fn(),
@@ -355,7 +362,7 @@ describe('addBookingChargeAction', () => {
     const KEY = '22222222-2222-4222-8222-222222222222'
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
-      [{ key: `${KEY}-0` }], // SELECT por idempotency key: `${KEY}-0` ya existe
+      [{ key: `${KEY}-0`, amount: 100_00, method: 'cash' }], // ya existe, MISMO cobro
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-existing' } as never)
 
@@ -432,7 +439,7 @@ describe('addBookingChargeAction', () => {
     const KEY = '55555555-5555-4555-8555-555555555555'
     const tx = mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
-      [{ key: `${KEY}-0` }], // SELECT por idempotency key: ya existe
+      [{ key: `${KEY}-0`, amount: 100_00, method: 'cash' }], // ya existe, MISMO cobro
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-tenant-scoped' } as never)
 
@@ -461,7 +468,7 @@ describe('addBookingChargeAction', () => {
     const KEY = '77777777-7777-4777-8777-777777777777'
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking: pendiente total $100
-      [{ key: `${KEY}-0` }], // dedupe: solo la línea 0 ya existe, la 1 es nueva
+      [{ key: `${KEY}-0`, amount: 100_00, method: 'cash' }], // solo la línea 0 existe; la 1 es nueva
       [], // FOR UPDATE lock del booking (hay línea nueva que valida)
       [
         {
@@ -490,6 +497,38 @@ describe('addBookingChargeAction', () => {
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
 
+  /**
+   * 🔴 1 de la revisión de la tanda #319-#324. El caso real: turno de $100, el
+   * mostrador cobra $60, la respuesta se pierde pero el INSERT commiteó, y el
+   * admin reintenta con $100 creyendo que no entró nada. Antes esto devolvía
+   * `success: true` sin insertar nada (la key ya existía → newCharging 0 →
+   * sin FOR UPDATE, sin validación, y el ON CONFLICT devolvía la fila vieja),
+   * así que la caja quedaba con $60 y el cartel decía $100.
+   */
+  it('la MISMA key con OTRO monto se rechaza en vez de mentir un éxito', async () => {
+    const KEY = '88888888-8888-4888-8888-888888888888'
+    const tx = mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
+      [{ key: `${KEY}-0`, amount: 60_00, method: 'cash' }], // ya se cobraron $60 con esta key
+    ])
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash' }], // el admin reintenta por el total
+      clientIdempotencyKey: KEY,
+    })
+
+    expect(res.success).toBe(false)
+    if (!res.success) {
+      // Nombra el monto REAL para que el mostrador pueda reconciliar.
+      expect(res.error).toMatch(/60/)
+    }
+    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+    const dialect2 = new PgDialect()
+    const queries = vi.mocked(tx.execute).mock.calls.map(([q]) => dialect2.sqlToQuery(q as SQL))
+    expect(queries.some((q) => q.sql.includes('FOR UPDATE'))).toBe(false)
+  })
+
   // El reintento idempotente NO toma el lock: alreadyRegistered=true corta
   // antes de la validación de pendiente (ver test de arriba), así que el
   // lock — que solo protege ese camino de validar+insertar — no aparece.
@@ -498,7 +537,7 @@ describe('addBookingChargeAction', () => {
     const KEY = '44444444-4444-4444-8444-444444444444'
     const tx = mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
-      [{ key: `${KEY}-0` }], // idempotency key: ya existe
+      [{ key: `${KEY}-0`, amount: 100_00, method: 'cash' }], // ya existe, MISMO cobro
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-retry' } as never)
 

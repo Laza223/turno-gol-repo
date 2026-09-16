@@ -1,9 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { TenantRow } from '@/modules/tenants/tenant.types'
 
 vi.mock('@/lib/sentry', () => ({ captureException: vi.fn() }))
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn((url: string) => {
+    throw new Error(`REDIRECT:${url}`)
+  }),
+}))
+vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
+vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
 
 import { captureException } from '@/lib/sentry'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { parseGeorefResponse, searchAddress } from '@/modules/tenants/geocode.service'
+import { requireAuthenticatedStaffAction } from '@/modules/staff/guards'
 
 /** Respuesta real verificada contra Georef el 2026-09-15 (ver contrato). */
 const RESPUESTA_REAL = {
@@ -108,5 +119,72 @@ describe('searchAddress', () => {
     const result = await searchAddress({ address: 'Cualquiera 123' })
     expect(result).toEqual([])
     expect(captureException).toHaveBeenCalled()
+  })
+})
+
+// Hallazgo 🔴 2 (auditoría 2026-09-16): `geocodeAddressAction` corría detrás de
+// `requireAdminStaffAction`, que exige un tenant ya creado — el paso 1 del
+// wizard de onboarding llama esa MISMA action ANTES de que el tenant exista
+// (alta nueva), así que el buscador de dirección tiraba "Tenant no
+// encontrado" a todo dueño nuevo. `requireAuthenticatedStaffAction` es el
+// guard que reemplaza esa dependencia: mismo chequeo de identidad que
+// `createTenantAction` usa para el alta, pero sin exigir tenant.
+describe('requireAuthenticatedStaffAction — guard pre-tenant del buscador de dirección', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function staffUser(tenantId: string | null) {
+    return {
+      type: 'staff' as const,
+      id: 'auth-1',
+      email: 'nuevo@duenio.com',
+      staffUserId: 'staff-1',
+      tenantId,
+      role: 'admin' as const,
+    }
+  }
+
+  it('deja pasar a un staff autenticado SIN tenant todavía (alta nueva, wizard paso 1)', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(staffUser(null))
+    vi.mocked(getStaffTenant).mockResolvedValue(null)
+
+    const result = await requireAuthenticatedStaffAction()
+
+    expect(result).toEqual({
+      ok: true,
+      user: expect.objectContaining({ staffUserId: 'staff-1' }),
+      tenant: null,
+    })
+  })
+
+  it('devuelve el tenant si ya existe (revisita de /settings/perfil o del paso 1)', async () => {
+    const tenant = { id: 'tenant-1' } as unknown as TenantRow
+    vi.mocked(extractAuthUser).mockResolvedValue(staffUser('tenant-1'))
+    vi.mocked(getStaffTenant).mockResolvedValue(tenant)
+
+    const result = await requireAuthenticatedStaffAction()
+
+    expect(result.ok).toBe(true)
+    expect(result.ok && result.tenant?.id).toBe('tenant-1')
+  })
+
+  it('redirige a /login si no hay sesión de staff (no es un open relay)', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(null)
+
+    await expect(requireAuthenticatedStaffAction()).rejects.toThrow('REDIRECT:/login')
+    expect(getStaffTenant).not.toHaveBeenCalled()
+  })
+
+  it('redirige a /login si la sesión es de un jugador, no de staff', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue({
+      type: 'player',
+      id: 'auth-2',
+      playerId: 'player-1',
+      email: 'jugador@test.com',
+    })
+
+    await expect(requireAuthenticatedStaffAction()).rejects.toThrow('REDIRECT:/login')
+    expect(getStaffTenant).not.toHaveBeenCalled()
   })
 })

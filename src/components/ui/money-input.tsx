@@ -94,15 +94,27 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(fu
     // Backspace/edición ("24.000" + Backspace → "24.00", el mismo string que
     // si alguien tipeara literalmente "24,00"). Solo confiamos la detección de
     // decimal cuando el string nuevo es el anterior con caracteres agregados
-    // AL FINAL (tipeo hacia adelante o pegado sobre un campo vacío): ahí
+    // AL FINAL (tipeo hacia adelante o pegado sobre un campo vacío), o cuando
+    // es un reemplazo TOTAL del campo (ver `isFreshReplacement` abajo): ahí
     // cualquier separador nuevo es intención fresca del usuario, nunca un
-    // resto de nuestro propio formateo. Fuera de ese caso (backspace, editar
-    // en el medio, reemplazar una selección) sacamos los separadores antes de
-    // parsear para no reinterpretar un remanente de agrupación como decimal
-    // (bug real 2026-09-15: "quería poner 20.000 y solo me dejaba cobrar los
-    // 84" — editar "84.000" con Backspace lo leía como $84).
+    // resto de nuestro propio formateo. Fuera de esos casos (Backspace,
+    // editar un dígito en el medio) sacamos los separadores antes de parsear
+    // para no reinterpretar un remanente de agrupación como decimal (bug real
+    // 2026-09-15: "quería poner 20.000 y solo me dejaba cobrar los 84" —
+    // editar "84.000" con Backspace lo leía como $84).
     const isAppend = raw.length > display.length && raw.startsWith(display)
-    const parseableRaw = isAppend ? raw : raw.replace(/[.,]/g, '')
+    // Reemplazo total (seleccionar todo + pegar/tipear) sobre un campo YA
+    // precargado (desde el PR #322 el campo ya no arranca vacío): ni continúa
+    // el display anterior (isAppend) ni es un Backspace acortándolo por el
+    // final (isTruncation) — y el caret quedó al final del string nuevo, la
+    // firma de "esto entró todo junto" y no de estar corrigiendo un dígito en
+    // el medio de lo que ya había. Ahí el separador también es decimal
+    // genuino: pegar "50,75" sobre "8.400" precargado tiene que dar $50, no
+    // $5.075 (auditoría 2026-09-16 hallazgo 5 — sin esto caía en la rama de
+    // abajo, que borra el separador y lee "5075").
+    const isTruncation = raw.length < display.length && display.startsWith(raw)
+    const isFreshReplacement = caretWasAtEnd && !isAppend && !isTruncation
+    const parseableRaw = isAppend || isFreshReplacement ? raw : raw.replace(/[.,]/g, '')
 
     const parsed = parsePesosToCents(parseableRaw)
     // La cola decimal se conserva en el display aunque no valga: si se borrara

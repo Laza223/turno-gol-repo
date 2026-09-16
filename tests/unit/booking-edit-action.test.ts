@@ -62,4 +62,29 @@ describe('editBookingAction', () => {
       expect(res.error).toBe('La cancha no está disponible.')
     }
   })
+
+  // 🟡 Hallazgo 7 (auditoría 2026-09-16): el schema normaliza el '' que manda
+  // el diálogo al borrar el teléfono en `null` — distinto de omitirlo, que
+  // deja el valor viejo intacto. `editBooking` tiene que recibir esa señal.
+  it('normaliza guestPhone: "" a null antes de llamar a editBooking (borrar el teléfono)', async () => {
+    vi.mocked(editBooking).mockResolvedValue({ id: BOOKING_ID } as never)
+
+    await editBookingAction({ bookingId: BOOKING_ID, guestName: 'Juan Pérez', guestPhone: '' })
+
+    expect(editBooking).toHaveBeenCalledWith(
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ guestPhone: null }),
+      expect.anything(),
+    )
+  })
+
+  it('un guestPhone ausente no se manda a editBooking (no lo tocó)', async () => {
+    vi.mocked(editBooking).mockResolvedValue({ id: BOOKING_ID } as never)
+
+    await editBookingAction({ bookingId: BOOKING_ID, guestName: 'Juan Pérez' })
+
+    const [, , input] = vi.mocked(editBooking).mock.calls[0]!
+    expect(Object.prototype.hasOwnProperty.call(input, 'guestPhone')).toBe(false)
+  })
 })

@@ -8,7 +8,7 @@ import { SEARCHABLE_TENANT_STATUSES } from './search.service'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { addDays } from '@/shared/dates/art'
-import { END_OF_DAY_MINS, hhmmToMins } from '@/shared/time/operating-day'
+import { hhmmToMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { dateStr, hhmm } from '@/shared/validation/primitives'
 
 /**
@@ -290,9 +290,11 @@ export function freeTimesFrom(
   closesNextDay: boolean,
 ): string[] {
   const openMins = hhmmToMins(openHhmm)
+  // Punto (no rango): start===end, reusamos el helper canónico de día operativo
+  // en vez de reimplementar el mismo desplazamiento acá.
   const toOpenDayMins = (hhmm: string): number => {
     const mins = hhmmToMins(hhmm)
-    return closesNextDay && mins < openMins ? mins + END_OF_DAY_MINS : mins
+    return normalizeRangeToOpenDay(mins, mins, openMins, closesNextDay).startMins
   }
   const fromMins = toOpenDayMins(fromTime)
   return slots

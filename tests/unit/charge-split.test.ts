@@ -111,11 +111,16 @@ describe('chargeSplit', () => {
     expect(s.canSplitShare).toBe(false)
   })
 
-  it('turno saldado: ni atajos ni rótulo', () => {
+  it('turno saldado: ni atajos ni rótulo, y los montos en cero', () => {
     const s = chargeSplit(booking({ totalPaid: 6_000_000, pending: 0 }), F5)
     expect(s.canSplitHalf).toBe(false)
     expect(s.canSplitShare).toBe(false)
     expect(s.note).toBeNull()
+    // Aserción que verificaba `team-split.test.ts` hasta que #323 lo borró y
+    // este archivo no la repitió (🟢 11 de la revisión de la tanda #319-#324):
+    // sin saldo, la mitad tiene que dar 0 y no la mitad del precio del turno —
+    // un `halfCents` residual precargaría el panel con plata que no se debe.
+    expect(s.halfCents).toBe(0)
   })
 
   /**

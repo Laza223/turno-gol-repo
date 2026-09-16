@@ -283,7 +283,11 @@ export default function CompleteBookingDialog({
                   onClick={quickHalfCash}
                   className="w-full h-10 rounded-lg border border-dashed border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                 >
-                  Cobrar la mitad — {formatArs(halfOfPending(summary.pending))}
+                  {/* Mismo rótulo que el panel de la grilla: dos nombres para el
+                      mismo cobro es exactamente lo que H017 prohíbe. Acá no va
+                      "Pagó uno" — este diálogo no conoce la cancha del turno, y
+                      sin los jugadores que entran no hay parte que ofrecer. */}
+                  Pagó un equipo — {formatArs(halfOfPending(summary.pending))}
                 </button>
               )}
             </div>

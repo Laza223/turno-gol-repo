@@ -22,7 +22,7 @@ import { useSlotCharges } from './slot-panel/use-slot-charges'
 import { SlotPriceSummary } from './slot-panel/SlotPriceSummary'
 import { SlotChargeSection } from './slot-panel/SlotChargeSection'
 import { SlotActionButtons } from './slot-panel/SlotActionButtons'
-import { teamSplit } from './slot-panel/charge-copy'
+import { chargeSplit } from './slot-panel/charge-copy'
 import type { RenderCanteenDialog, SlotPanelActions } from './slot-panel/actions'
 
 // Los tipos de las Server Actions (y el de RenderCanteenDialog) viven en
@@ -73,8 +73,14 @@ type Props = {
    * equivocada, y además impura en render.
    */
   hasEnded?: boolean
-  /** Canchas del complejo — sólo las necesita el diálogo de reprogramar. */
-  courts?: Array<{ id: string; name: string; status?: 'online' | 'offline' }>
+  /**
+   * Canchas del complejo: las necesita el diálogo de reprogramar y, por
+   * `capacity` (jugadores que entran = `format × 2`), el atajo "Pagó uno".
+   *
+   * `capacity` es opcional porque las stories y los payloads viejos no lo traen;
+   * sin él ese botón simplemente no se ofrece, en vez de inventar un monto.
+   */
+  courts?: Array<{ id: string; name: string; status?: 'online' | 'offline'; capacity?: number }>
   /** Ver `RenderCanteenDialog`. Sin esto, el panel no ofrece cargar cantina. */
   renderCanteenDialog?: RenderCanteenDialog
   actions?: SlotPanelActions
@@ -130,7 +136,7 @@ export function BookingSlotPanel({
     pending,
     submitCharge,
     submitFullCharge,
-    submitHalfCharge,
+    submitPartialCharge,
     confirmNoShow,
     revertNoShow,
   } = useSlotCharges({
@@ -159,9 +165,10 @@ export function BookingSlotPanel({
   if (!booking) return null
 
   const visual = gridSlotVisual(booking)
-  // Cobro por equipo: de acá salen el atajo de la mitad y el rótulo "Equipo 1
-  // pagó · falta Equipo 2". Es cálculo puro sobre lo que el turno ya trae.
-  const split = teamSplit(booking)
+  // Cobro de a partes: de acá salen los atajos "Pagó un equipo" / "Pagó uno" y
+  // el renglón "Pagaron 4 de 10". Cálculo puro sobre lo que el turno ya trae más
+  // la capacidad de SU cancha; nada de esto se guarda.
+  const split = chargeSplit(booking, courts?.find((c) => c.id === booking.courtId)?.capacity)
 
   // Marcar ausente: sólo sobre un turno de un cliente que ya terminó. Una hora
   // de torneo no tiene a quién dar por ausente (el torneo es dueño del horario,
@@ -315,7 +322,11 @@ export function BookingSlotPanel({
           </SheetHeader>
 
           <div className="flex flex-col gap-4 p-5">
-            <SlotPriceSummary booking={booking} displayName={displayName} />
+            <SlotPriceSummary
+              booking={booking}
+              displayName={displayName}
+              capacity={courts?.find((c) => c.id === booking.courtId)?.capacity}
+            />
 
             {mode && actions && (
               <SlotChargeSection
@@ -334,7 +345,7 @@ export function BookingSlotPanel({
                 onSubmit={submitCharge}
                 onFullCharge={submitFullCharge}
                 split={split}
-                onHalfCharge={submitHalfCharge}
+                onPartialCharge={submitPartialCharge}
               />
             )}
 

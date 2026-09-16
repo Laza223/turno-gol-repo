@@ -7,7 +7,7 @@ import type { MethodKey } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
-import { chargeMode } from './charge-copy'
+import { chargeMode, teamSplit } from './charge-copy'
 import type { ChargeInput, SlotPanelActions } from './actions'
 import type { ActionResult } from '@/shared/types/action-result'
 
@@ -127,6 +127,23 @@ export function useSlotCharges({
     runCharge([{ amount: pending, method }])
   }
 
+  /**
+   * Cobra la MITAD de lo pendiente, para el complejo que cobra por equipo.
+   *
+   * Mismo camino que `submitFullCharge` — misma Server Action, mismo guard,
+   * mismo toast: lo único que cambia es el monto. El resto queda como saldo del
+   * turno y aparece en Deudas hasta que lo paguen, que es exactamente el
+   * control que pidió el mostrador.
+   */
+  function submitHalfCharge(method: MethodKey) {
+    if (!booking || !actions || !mode || pending <= 0) return
+    const half = teamSplit(booking).halfCents
+    if (half <= 0) return
+    setError(null)
+    setLines([newChargeLine(half, method)])
+    runCharge([{ amount: half, method }])
+  }
+
   async function confirmNoShow(): Promise<ActionResult> {
     if (!booking || !actions) return { success: false, error: 'Sin acciones disponibles.' }
     const bookingId = booking.id
@@ -185,6 +202,7 @@ export function useSlotCharges({
     pending,
     submitCharge,
     submitFullCharge,
+    submitHalfCharge,
     confirmNoShow,
     revertNoShow,
   }

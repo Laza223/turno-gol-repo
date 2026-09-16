@@ -180,6 +180,83 @@ export const CobrarPorAdelantado: Story = {
   },
 }
 
+/**
+ * Cobro por equipo (2026-09-15) — la mayoría de los complejos cobran en dos
+ * veces, una por equipo. El atajo es un botón y no el link gris de "Cobrar otro
+ * monto": es el camino normal de mucha gente, no la excepción.
+ */
+export const CobrarPorEquipo: Story = {
+  args: {
+    booking: {
+      ...toGridBooking(bookingCompleted()),
+      date: AYER,
+      priceSnapshot: 2400000,
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      totalPaid: 0,
+      pending: 2400000,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    await expect(await panel.findByRole('button', { name: /^Cobrar \$.?24\.000$/ })).toBeTruthy()
+    await expect(
+      await panel.findByRole('button', { name: /^Cobrar la mitad — \$.?12\.000$/ }),
+    ).toBeTruthy()
+    // Todavía no pagó nadie: rotular equipos acá no diría nada.
+    await expect(panel.queryByText(/Equipo 1 pagó/)).toBeNull()
+  },
+}
+
+/**
+ * Pagó el primer equipo. El atajo de la mitad desaparece solo —el botón grande
+ * ya dice exactamente lo que falta— y aparece el rótulo de quién debe.
+ */
+export const MitadCobrada: Story = {
+  args: {
+    booking: {
+      ...toGridBooking(bookingCompleted()),
+      date: AYER,
+      priceSnapshot: 2400000,
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      totalPaid: 1200000,
+      pending: 1200000,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    await expect(await panel.findByText('Equipo 1 pagó · falta Equipo 2')).toBeTruthy()
+    await expect(await panel.findByRole('button', { name: /^Cobrar \$.?12\.000$/ })).toBeTruthy()
+    await expect(panel.queryByRole('button', { name: /Cobrar la mitad/ })).toBeNull()
+  },
+}
+
+/**
+ * Seña pagada online y CERO cobros de mostrador: la seña no es "un equipo que
+ * pagó". Si contara, todo turno señado por el jugador mentiría.
+ */
+export const SeniaNoEsUnEquipo: Story = {
+  args: {
+    booking: {
+      ...toGridBooking(booking(), player()),
+      date: AYER,
+      priceSnapshot: 2400000,
+      depositStatus: 'paid',
+      depositAmount: 720000,
+      totalPaid: 720000,
+      pending: 1680000,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    await expect(panel.queryByText(/Equipo 1 pagó/)).toBeNull()
+    await expect(
+      await panel.findByRole('button', { name: /^Cobrar la mitad — \$.?8\.400$/ }),
+    ).toBeTruthy()
+  },
+}
+
 /** Turno saldado: no hay nada que cobrar, el panel no ofrece la sección. */
 export const SinSaldo: Story = {
   args: {

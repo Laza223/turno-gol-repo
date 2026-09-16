@@ -1,7 +1,10 @@
 import { User } from 'lucide-react'
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
+import { TONE_TEXT } from '@/lib/status-tone'
+import { cn } from '@/lib/utils'
 import type { GridBooking } from '@/lib/booking/grid-cells'
+import { teamSplit } from './charge-copy'
 
 type Props = {
   booking: GridBooking
@@ -18,6 +21,7 @@ type Props = {
 export function SlotPriceSummary({ booking, displayName }: Props) {
   const pending = typeof booking.pending === 'number' ? booking.pending : null
   const paid = typeof booking.totalPaid === 'number' ? booking.totalPaid : null
+  const split = teamSplit(booking)
 
   const detail: string[] = []
   if (booking.type !== 'tournament' && booking.priceSnapshot !== 0) {
@@ -54,6 +58,13 @@ export function SlotPriceSummary({ booking, displayName }: Props) {
 
       {detail.length > 0 && (
         <p className="mt-1 text-xs tabular-nums text-muted-foreground">{detail.join(' · ')}</p>
+      )}
+
+      {/* Cobro por equipo: renglón propio y no un ítem más del pie, porque no es
+          un dato del turno sino el estado de quién falta — es lo que el
+          mostrador necesita para no cobrarle dos veces al mismo. */}
+      {split.note && (
+        <p className={cn('mt-1.5 text-xs font-medium', TONE_TEXT.warning)}>{split.note}</p>
       )}
 
       {displayName && (

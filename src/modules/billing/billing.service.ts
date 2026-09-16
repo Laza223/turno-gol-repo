@@ -320,6 +320,84 @@ async function createPreapprovalOrThrowFriendly(
   }
 }
 
+/**
+ * Si el `mp_subscription_id` que ya tiene el tenant sigue siendo un checkout
+ * VIVO y utilizable para este mismo pedido (plan + ciclo), devuelve su
+ * `initPoint` en vez de forzar a `subscribe()`/`reactivate()` a cancelarlo y
+ * crear uno nuevo.
+ *
+ * Motivo (medido en producción, 2026-09-16): cada cancelPreapproval dispara un
+ * mail de MP "se canceló tu suscripción" al dueño y a la cuenta pagadora. Un
+ * dueño que toca "Activar"/"Reactivar" varias veces sin terminar el checkout
+ * (mira el precio, vuelve, toca de nuevo) recibía un mail de cancelación por
+ * cada intento, en medio de estar tratando de contratar.
+ *
+ * Reusa solo si TODO coincide con el pedido actual: el preapproval sigue
+ * `pending` en MP, es del mismo tenant (`external_reference`), el monto y la
+ * frecuencia son EXACTAMENTE los de `planAmount(plan, billingCycle)` — un plan
+ * o ciclo distinto no matchea y cae al camino de siempre (cancelar + crear).
+ * Cualquier falla al leer el estado (MP caído, id que ya no existe) se
+ * absorbe acá: nunca debe propagar y frenar el subscribe/reactivate.
+ */
+/**
+ * Dos fechas de primer cobro son "la misma" con un minuto de tolerancia: MP
+ * devuelve `start_date` con su propio offset y redondeo, no el string exacto
+ * que se mandó. Ausente de los dos lados también cuenta como igual (cobro
+ * inmediato: el trial ya venció o no existe).
+ */
+function sameFirstCharge(fromMp: Date | null, expected: Date | undefined): boolean {
+  if (!fromMp && !expected) return true
+  if (!fromMp || !expected) return false
+  return Math.abs(fromMp.getTime() - expected.getTime()) <= 60_000
+}
+
+async function reusablePendingCheckout(
+  sub: Pick<SubRow, 'mp_subscription_id'>,
+  plan: PlanRow,
+  billingCycle: BillingCycle,
+  tenantId: string,
+  gateway: PaymentGateway,
+  expected: { reason: string; firstChargeAt: Date | undefined },
+): Promise<PreapprovalResult | null> {
+  const preapprovalId = sub.mp_subscription_id
+  if (!preapprovalId) return null
+
+  let state: Awaited<ReturnType<PaymentGateway['getSubscriptionState']>>
+  try {
+    state = await gateway.getSubscriptionState(preapprovalId)
+  } catch {
+    return null
+  }
+  if (!state) return null
+  if (state.status !== 'pending') return null
+  if (state.externalReference !== tenantId) return null
+
+  if (state.amountCents !== planAmount(plan, billingCycle)) return null
+
+  const expectedFrequency = billingCycle === 'annual' ? 12 : 1
+  if (state.frequency !== expectedFrequency || state.frequencyType !== 'months') return null
+
+  // El monto solo no alcanza para identificar el plan: el preapproval no lleva
+  // `plan_id` (MP no lo acepta sin plan asociado) y dos planes podrían costar
+  // igual. El `reason` es el único vínculo, y además es lo que el pagador vio.
+  if (state.reason !== expected.reason) return null
+
+  // Fix trial-first-charge, parte 2: el `start_date` viejo del checkout
+  // pendiente puede ser ANTERIOR al fin del trial de hoy — soporte pudo
+  // extenderlo (`extendTrial`) después de aquel intento. Reusarlo cobraría
+  // durante la prueba, que es justo lo que ese fix prohíbe.
+  if (!sameFirstCharge(state.startDate ?? null, expected.firstChargeAt)) return null
+
+  // `pending` no debería tener cobros, pero si MP alguna vez devuelve esa
+  // combinación, reusar sería mandar al dueño a pagar algo ya cobrado.
+  if (state.chargedQuantity > 0) return null
+
+  const initPoint = state.initPoint
+  if (!initPoint) return null
+
+  return { preapprovalId, initPoint }
+}
+
 // ─── subscribe ──────────────────────────────────────────────────────────────
 
 export async function subscribe(
@@ -358,6 +436,35 @@ export async function subscribe(
   }
 
   const amount = planAmount(plan, billingCycle)
+  const reason = `TurnoGol — ${plan.name} (${billingCycle === 'annual' ? 'anual' : 'mensual'})`
+  // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
+  // termine la prueba. Se calcula ACÁ para que el reuso compare contra la
+  // misma fecha que mandaría un preapproval nuevo.
+  const firstChargeAt = resolveFirstChargeAt(owner?.trialEndsAt, now)
+
+  if (sub.mp_subscription_id) {
+    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
+      reason,
+      firstChargeAt,
+    })
+    if (reused) {
+      await tx.execute(sql`
+        UPDATE tenant_subscriptions
+        SET plan_id = ${planId},
+            billing_cycle = ${billingCycle}::billing_cycle,
+            updated_at = NOW()
+        WHERE tenant_id = ${tenantId}
+      `)
+      await insertSystemAuditLog(tx, {
+        tenantId,
+        action: 'subscription.checkout_reused',
+        resourceType: 'tenant_subscription',
+        resourceId: tenantId,
+        metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
+      })
+      return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
+    }
+  }
 
   // B5 (🔴 huérfano MP↔DB): un `mp_subscription_id` previo significa que un
   // subscribe anterior (re-subscribe durante el trial, o el perdedor de una
@@ -366,7 +473,9 @@ export async function subscribe(
   // pedir uno nuevo lo pisa en la DB sin apagarlo — queda huérfano cobrando.
   // Mismo patrón que `reactivate()` (líneas más abajo): tolera "ya estaba
   // cancelado en MP" (`isMpAlreadyCancelledPreapprovalError`), cualquier otro
-  // error aborta el subscribe entero.
+  // error aborta el subscribe entero. Si llegamos acá, `reusablePendingCheckout`
+  // ya descartó que el preapproval previo sirva tal cual (Fix
+  // "reuso-checkout-pendiente").
   if (sub.mp_subscription_id) {
     try {
       await gateway.cancelPreapproval(sub.mp_subscription_id)
@@ -381,13 +490,13 @@ export async function subscribe(
     amount,
     frequency: billingCycle,
     planId,
-    reason: `TurnoGol — ${plan.name} (${billingCycle === 'annual' ? 'anual' : 'mensual'})`,
+    reason,
     returnUrl: computeReturnUrl(),
     notificationUrl: computeNotificationUrl(tenantId),
     // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
     // termine la prueba (decisión del dueño). `undefined` = trial vencido o
     // inconsistente → cobra de inmediato, igual que antes de este fix.
-    firstChargeAt: resolveFirstChargeAt(owner?.trialEndsAt, now),
+    firstChargeAt,
   })
 
   await tx.execute(sql`
@@ -770,6 +879,36 @@ export async function reactivate(
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
   const amount = planAmount(plan, billingCycle)
+  // Reactivar es post-trial (canceled/churned/suspended/blocked): el cobro sale
+  // ya, sin `firstChargeAt`. El reuso exige que el pendiente tampoco tenga
+  // fecha futura grabada.
+  const reason = `TurnoGol — ${plan.name} (reactivación)`
+
+  if (sub.mp_subscription_id) {
+    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
+      reason,
+      firstChargeAt: undefined,
+    })
+    if (reused) {
+      await tx.execute(sql`
+        UPDATE tenant_subscriptions
+        SET plan_id = ${planId},
+            billing_cycle = ${billingCycle}::billing_cycle,
+            pending_plan_change = NULL,
+            pending_change_at = NULL,
+            updated_at = NOW()
+        WHERE tenant_id = ${tenantId}
+      `)
+      await insertSystemAuditLog(tx, {
+        tenantId,
+        action: 'subscription.checkout_reused',
+        resourceType: 'tenant_subscription',
+        resourceId: tenantId,
+        metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
+      })
+      return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
+    }
+  }
 
   // Fix 1 (R2 🔴): el preapproval VIEJO puede seguir vivo en MP reintentando
   // — el sweep de dunning (dunning-retry.worker.ts) solo escala estado
@@ -816,7 +955,7 @@ export async function reactivate(
     amount,
     frequency: billingCycle,
     planId,
-    reason: `TurnoGol — ${plan.name} (reactivación)`,
+    reason,
     returnUrl: computeReturnUrl(),
     notificationUrl: computeNotificationUrl(tenantId),
   })

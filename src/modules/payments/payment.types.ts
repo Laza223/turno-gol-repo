@@ -64,6 +64,24 @@ export type GatewaySubscriptionState = {
   chargedQuantity: number
   lastChargedDate: Date | null
   lastChargedAmountCents: number | null
+  /**
+   * Reuso de checkout pendiente (billing.service.ts:reusablePendingCheckout):
+   * el link vivo del preapproval, ya sin `&activation=true`
+   * (`stripActivationFlag`, esa URL da 404). Opcional/`null` porque los
+   * fixtures de `decideSubscriptionReconcile`/reconcile-subscriptions no lo
+   * conocen y no les concierne.
+   */
+  initPoint?: string | null
+  /** Centavos ARS del `auto_recurring.transaction_amount` vigente. */
+  amountCents?: number | null
+  /** `auto_recurring.frequency` (12 = anual, 1 = mensual en este repo). */
+  frequency?: number | null
+  /** `auto_recurring.frequency_type` ('months', único valor que usa el repo). */
+  frequencyType?: string | null
+  /** `auto_recurring.start_date`: cuándo sale el primer cobro grabado en MP. */
+  startDate?: Date | null
+  /** Texto que MP le muestra al pagador; en TurnoGol identifica plan y ciclo. */
+  reason?: string | null
 }
 
 export type CreatePreferenceInput = {

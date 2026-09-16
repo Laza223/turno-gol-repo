@@ -134,6 +134,41 @@ describe('AvailabilityGrid (ISR: fetch inicial client-side)', () => {
   })
 })
 
+describe('AvailabilityGrid — orden de día operativo', () => {
+  it('el turno de las 00:00 de un complejo que cierra a la 01:00 va DESPUÉS de las 23:00', async () => {
+    const today = artToday()
+    // Orden tal cual lo emite el server (generateSlots, eje continuo): la
+    // madrugada al final. Ordenar por etiqueta lo mandaba arriba de todo.
+    const body: AvailabilityResponse = {
+      date: today,
+      courts: [
+        {
+          id: 'c1',
+          name: 'Cancha 1',
+          surfaceType: 'futbol5',
+          isCovered: false,
+          hasLighting: true,
+          slots: (['22:00', '23:00', '00:00'] as const).map((time) => ({
+            time,
+            duration: 60,
+            status: 'free' as PublicSlotStatus,
+            price: 1000000,
+          })),
+        },
+      ],
+    }
+    mockFetchSequence([{ body, ok: true }])
+
+    render(<AvailabilityGrid tenant={tenant} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('00:00')).toBeTruthy()
+    })
+    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
+    expect(rows.map((r) => r.firstElementChild?.textContent)).toEqual(['22:00', '23:00', '00:00'])
+  })
+})
+
 describe('AvailabilityGrid (#39)', () => {
   it('al fallar el fetch del día siguiente NO avanza la fecha y muestra un alerta', async () => {
     const today = artToday()

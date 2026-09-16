@@ -8,6 +8,7 @@ import { SEARCHABLE_TENANT_STATUSES } from './search.service'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { addDays } from '@/shared/dates/art'
+import { END_OF_DAY_MINS, hhmmToMins } from '@/shared/time/operating-day'
 import { dateStr, hhmm } from '@/shared/validation/primitives'
 
 /**
@@ -274,6 +275,32 @@ export function pickFreeSlotPills(
 }
 
 /**
+ * Horarios libres desde la hora buscada, comparando en el eje del DÍA OPERATIVO
+ * y no como texto (puro, exportado para test).
+ *
+ * En un complejo que cierra a la 01:00, el turno de las 00:00 sucede DESPUÉS
+ * del de las 23:00 aunque `'00:00' < '23:00'`. Comparando las etiquetas, una
+ * búsqueda "desde las 20:00" descartaba justo los turnos de madrugada, que son
+ * los que el complejo más necesita vender.
+ */
+export function freeTimesFrom(
+  slots: readonly { time: string; status: string }[],
+  fromTime: string,
+  openHhmm: string,
+  closesNextDay: boolean,
+): string[] {
+  const openMins = hhmmToMins(openHhmm)
+  const toOpenDayMins = (hhmm: string): number => {
+    const mins = hhmmToMins(hhmm)
+    return closesNextDay && mins < openMins ? mins + END_OF_DAY_MINS : mins
+  }
+  const fromMins = toOpenDayMins(fromTime)
+  return slots
+    .filter((s) => s.status === 'free' && toOpenDayMins(s.time) >= fromMins)
+    .map((s) => s.time)
+}
+
+/**
  * Hasta 3 turnos libres por tenant a partir de la hora buscada (tenantId →
  * pills), para mostrar como badges clickeables en las cards de /explorar.
  * Mismas semánticas puras que la grilla del perfil (generateSlots) + una sola
@@ -351,7 +378,12 @@ async function loadFreeSlotPillsByTenant({
       nowDateStr: now.nowDateStr,
       nowMins: now.nowMins,
     })
-    const times = slots.filter((sl) => sl.status === 'free' && sl.time >= time).map((sl) => sl.time)
+    const times = freeTimesFrom(
+      slots,
+      time,
+      dayHours?.open ?? '08:00',
+      (row.closesNextDay ?? false) as boolean,
+    )
     if (times.length > 0) candidates.set(row.id, { times, durationMins })
   }
   if (candidates.size === 0) return {}

@@ -8,8 +8,8 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
  *                status 'completed').
  *  - `finish`  — está confirmado y ya terminó: cobrar y darlo por jugado en el
  *                mismo movimiento, que es lo que realmente pasa en el mostrador.
- *  - `advance` — todavía no terminó: es un adelanto, y el backend sólo acepta
- *                una línea, así que el mixto se deshabilita en vez de mentir.
+ *  - `advance` — todavía no terminó: es un adelanto (addBookingChargeAction, que
+ *                desde D3 acepta N líneas, igual que los otros dos modos).
  */
 export type ChargeMode = 'settle' | 'finish' | 'advance' | null
 

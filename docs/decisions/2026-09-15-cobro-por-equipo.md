@@ -18,9 +18,9 @@ saber cuál de los dos ya pagó sin acordarse de memoria.
 
 ## Esto revierte la mitad de D2
 
-`docs/planning/2026-08-01-decisiones-de-fase-v2.md` §D2 decidió, textualmente: *"cada cobro se
+`docs/planning/2026-08-01-decisiones-de-fase-v2.md` §D2 decidió, textualmente: _"cada cobro se
 registra a UNA persona en UNA transacción, pero esa transacción puede partirse en métodos … **Sin N
-pagadores** (los parciales completos quedan fuera de alcance)"*. El motivo declarado era no abrir
+pagadores** (los parciales completos quedan fuera de alcance)"_. El motivo declarado era no abrir
 "la contabilidad de terceros que hace pantanoso el arqueo".
 
 Se revierte la parte de N pagadores. Tres razones:
@@ -62,7 +62,7 @@ Se evaluó guardar quién pagó cada mitad (`cash_flows.payer_slot`, o una etiqu
   lo mismo que el ordinal de la fila es denormalizar algo gratis.
 - **Guardarla como texto dentro de `description` estaba directamente vetado por precedente.** Este
   repo ya paga el costo de una semántica metida en un texto de caja: el literal `'Seña — turno
-  <uuid>'`, que `getBookingCharges` usa como clave de exclusión y que está hardcodeado en SQL crudo
+<uuid>'`, que `getBookingCharges` usa como clave de exclusión y que está hardcodeado en SQL crudo
   en `booking.debts.ts` (×2) y `caja-lib.ts`, reconocido como frágil en ese mismo archivo. No se
   repite el patrón.
 - **Nunca texto libre sobre personas** (Ley 25.326, veto vigente): "Equipo 1/2" es un rótulo fijo
@@ -134,3 +134,24 @@ Consecuencias:
   valida, pero cobrar de más no puede depender de que el cliente calcule bien.
 - `CompleteBookingDialog` adopta el rótulo "Pagó un equipo" para no tener dos nombres del mismo
   cobro (H017). **No** ofrece "Pagó uno": ese diálogo no conoce la cancha del turno.
+
+## Nota 2026-09-16 (tarde) — "Dividir pago por equipo" en vez de "Pagó un equipo"
+
+El dueño, viéndolo andar: el atajo de la mitad cobraba de un toque sin mostrar nada, y lo que quiere
+es **ver los dos equipos**. "Pagó un equipo" pasa a ser **"Dividir pago por equipo"**, que parte el
+cobro en dos filas rotuladas **Equipo 1 / Equipo 2** — la misma interacción que el pago dividido por
+método, con el rótulo del equipo en vez del índice. Cada fila tiene monto (precargado con la mitad,
+editable), método y **su propio "Cobrar"**, así se le cobra a cada equipo cuando paga; el botón
+grande sigue cobrando las dos filas juntas. "Cobrar en un solo pago" vuelve atrás.
+
+- **Sigue sin guardarse nada.** Las filas son estado de la pantalla; una vez que entró un cobro, el
+  panel se reconstruye desde la plata (`canSplitHalf` pasa a false) y el rótulo de arriba dice
+  **"Equipo 1 pagó · falta Equipo 2"**. Por eso la mitad justa dejó de decir "Pagaron 5 de 10 · un
+  equipo entero": dos nombres para lo mismo en el mismo panel.
+- **El "Cobrar" de una fila no usa `submitPartialCharge`** (`submitLineCharge` en
+  `use-slot-charges.ts`): aquel reemplaza las líneas por una sola, y si el cobro fallaba el admin
+  perdía la fila del otro equipo y el monto que había corregido.
+- El modo exige exactamente dos líneas y se reinicia con `key={booking.id}`: entre un cobro exitoso y
+  el refresco del turno las líneas vuelven a una, y ahí se cae a la vista normal en vez de dibujar un
+  equipo huérfano.
+- `CompleteBookingDialog` adopta el mismo gesto: carga dos líneas de la mitad, rotuladas por equipo.

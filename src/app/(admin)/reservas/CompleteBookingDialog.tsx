@@ -75,12 +75,16 @@ export default function CompleteBookingDialog({
   const [charges, setCharges] = useState<ChargeLine[]>([])
   const [debtNote, setDebtNote] = useState('')
   const [lastBookingId, setLastBookingId] = useState<string | null>(null)
+  // "Dividir pago por equipo": sólo cambia los rótulos de las dos líneas. Se
+  // apaga solo si el admin agrega o saca una línea (deja de haber dos equipos).
+  const [teamMode, setTeamMode] = useState(false)
 
   // Reset when a new booking is passed
   if (booking && booking.id !== lastBookingId) {
     setLastBookingId(booking.id)
     setError(null)
     setDebtNote('')
+    setTeamMode(false)
 
     // Pre-fill with a single charge for the pending amount
     const summary = summarizeBookingCharges({
@@ -115,6 +119,7 @@ export default function CompleteBookingDialog({
     return sum + (c.amountCents != null && c.amountCents > 0 ? c.amountCents : 0)
   }, 0)
 
+  const showTeams = teamMode && charges.length === 2
   const remainingAfterCharge = Math.max(0, summary.pending - totalChargingCents)
   const hasDebt = remainingAfterCharge > 0
 
@@ -134,15 +139,22 @@ export default function CompleteBookingDialog({
   }
 
   /**
-   * Cobro por equipo desde esta puerta: carga la mitad de lo que falta.
+   * Cobro por equipo desde esta puerta: parte lo que falta en dos líneas de la
+   * mitad, rotuladas Equipo 1 / Equipo 2 — el mismo gesto que el panel de la
+   * grilla. Cada equipo elige su método; si uno todavía no pagó, se borra su
+   * línea y queda como deuda.
    *
    * Sólo se ofrece mientras no haya cobros previos — si ya pagó uno, "Cobrar
    * todo en efectivo" ya es exactamente lo que falta del otro.
    */
-  function quickHalfCash() {
+  function quickTeamSplit() {
     const half = halfOfPending(summary.pending)
     if (half <= 0) return
-    setCharges([{ id: crypto.randomUUID(), amountCents: half, method: 'cash' }])
+    setTeamMode(true)
+    setCharges([
+      { id: crypto.randomUUID(), amountCents: half, method: 'cash' },
+      { id: crypto.randomUUID(), amountCents: summary.pending - half, method: 'cash' },
+    ])
   }
 
   function quickAllCash() {
@@ -280,14 +292,14 @@ export default function CompleteBookingDialog({
               {summary.pending > 0 && booking.chargesTotal === 0 && (
                 <button
                   type="button"
-                  onClick={quickHalfCash}
+                  onClick={quickTeamSplit}
                   className="w-full h-10 rounded-lg border border-dashed border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                 >
-                  {/* Mismo rótulo que el panel de la grilla: dos nombres para el
-                      mismo cobro es exactamente lo que H017 prohíbe. Acá no va
-                      "Pagó uno" — este diálogo no conoce la cancha del turno, y
-                      sin los jugadores que entran no hay parte que ofrecer. */}
-                  Pagó un equipo — {formatArs(halfOfPending(summary.pending))}
+                  {/* Mismo gesto y mismo rótulo que el panel de la grilla: dos
+                      nombres para el mismo cobro es lo que H017 prohíbe. Acá no
+                      va "Pagó uno" — este diálogo no conoce la cancha del turno,
+                      y sin los jugadores que entran no hay parte que ofrecer. */}
+                  Dividir pago por equipo
                 </button>
               )}
             </div>
@@ -303,8 +315,14 @@ export default function CompleteBookingDialog({
                   {charges.map((c, idx) => (
                     <div key={c.id} className="flex items-center gap-2">
                       <div className="flex-1 space-y-1">
-                        {idx === 0 && (
-                          <span className="text-xs font-medium text-muted-foreground">Monto</span>
+                        {showTeams ? (
+                          <span className="text-xs font-semibold text-foreground">
+                            Equipo {idx + 1}
+                          </span>
+                        ) : (
+                          idx === 0 && (
+                            <span className="text-xs font-medium text-muted-foreground">Monto</span>
+                          )
                         )}
                         <MoneyInput
                           valueCents={c.amountCents}
@@ -314,7 +332,7 @@ export default function CompleteBookingDialog({
                         />
                       </div>
                       <div className="flex-1 space-y-1">
-                        {idx === 0 && (
+                        {(showTeams || idx === 0) && (
                           <span className="text-xs font-medium text-muted-foreground">Método</span>
                         )}
                         <SegmentedControl

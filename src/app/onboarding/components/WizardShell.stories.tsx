@@ -27,7 +27,7 @@ function PreviewPlaceholder({ label }: { label: string }) {
     <div className="card-premium rounded-2xl p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-3 text-sm text-muted-foreground">
-        Vista previa (ver PublicCardPreview/WeekPreview/GridPreview).
+        Vista previa (ver PublicCardPreview/WeekPreview/CourtsPreview).
       </p>
     </div>
   )

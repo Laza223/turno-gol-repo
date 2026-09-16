@@ -41,21 +41,25 @@ export function formatPct(value: number): string {
   return `${pctFormatter.format(value)}%`
 }
 
-/** "Desde $X" para tarjetas de complejo. Devuelve null si no hay precio. */
-export function formatFromPrice(cents: number | null | undefined): string | null {
-  if (cents == null) return null
-  return `Desde ${formatArs(cents)}`
+/**
+ * Redondeo de presentación del precio por jugador: hacia arriba, a la centena
+ * de pesos (10.000 centavos). Vive acá y no en la DB porque es presentación —
+ * y además da igual el orden: `min(ceil(x)) === ceil(min(x))`.
+ */
+export function roundPerPlayerCents(cents: number): number {
+  return Math.ceil(cents / 10000) * 10000
 }
 
 /**
- * Precio aproximado por jugador en centavos, redondeado hacia arriba al
- * múltiplo de $100 (10.000 centavos) más cercano.
- *
- * Lógica: toma el formato más chico del complejo (el que más probablemente
- * corresponde al `fromPriceCents`) y divide el precio entre el total de
- * jugadores (formato × 2). Si no hay formatos o precio, retorna null.
+ * Precio por jugador de UNA cancha, en centavos: precio del turno ÷ jugadores
+ * (formato × 2), redondeado a $100. Si no hay formatos o precio, null.
  *
  * Ej: $60.000 (6.000.000¢) ÷ 14 jugadores (F7) = ~$4.286 → $4.300.
+ *
+ * OJO con el nivel complejo: `formats` es el array de TODOS sus formatos y el
+ * precio mínimo puede ser de otra cancha, así que el resultado es aproximado.
+ * Para una card de complejo usar `tenants.from_price_per_player_cents` (el
+ * mínimo real, denormalizado en la migr. 087) vía `formatPerPlayerArs`.
  */
 export function perPlayerPriceCents(
   fromPriceCents: number | null | undefined,
@@ -64,19 +68,13 @@ export function perPlayerPriceCents(
   if (fromPriceCents == null || formats.length === 0) return null
   const minFormat = Math.min(...formats)
   const totalPlayers = minFormat * 2
-  const perPlayer = fromPriceCents / totalPlayers
-  // Redondear hacia arriba a la centena de pesos más cercana (= 10.000 centavos).
-  return Math.ceil(perPlayer / 10000) * 10000
+  return roundPerPlayerCents(fromPriceCents / totalPlayers)
 }
 
-/** Precio por jugador formateado: "~$4.300/jugador". Retorna null si no aplica. */
-export function formatPerPlayer(
-  fromPriceCents: number | null | undefined,
-  formats: number[],
-): string | null {
-  const pp = perPlayerPriceCents(fromPriceCents, formats)
-  if (pp == null) return null
-  return `~${formatArs(pp)}/jugador`
+/** Precio por jugador ya calculado, formateado: "$ 4.300". Null si no aplica. */
+export function formatPerPlayerArs(cents: number | null | undefined): string | null {
+  if (cents == null) return null
+  return formatArs(roundPerPlayerCents(cents))
 }
 
 const dateFormatter = new Intl.DateTimeFormat('es-AR', {

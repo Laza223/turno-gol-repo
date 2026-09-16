@@ -2,13 +2,15 @@ import Image from 'next/image'
 import { Users } from 'lucide-react'
 import type { PublicCourtCard } from '@/modules/tenants/public.service'
 import { formatLabel, surfaceLabel } from '@/components/public/courtFacets'
-import { formatFromPrice, formatPerPlayer } from '@/lib/format'
+import { formatArs, perPlayerPriceCents, formatPerPlayerArs } from '@/lib/format'
 
 /** Tarjeta de cancha individual en el perfil del complejo. */
 export default function CourtCard({ court }: { court: PublicCourtCard }) {
   const photo = court.photos[0]
-  const fromPrice = formatFromPrice(court.fromPriceCents)
-  const perPlayer = formatPerPlayer(court.fromPriceCents, [court.format])
+  const fromPrice = court.fromPriceCents != null ? formatArs(court.fromPriceCents) : null
+  // Acá el cálculo es EXACTO: el precio y el formato son de esta misma cancha
+  // (a nivel complejo hace falta el mínimo denormalizado, migr. 087).
+  const perPlayer = formatPerPlayerArs(perPlayerPriceCents(court.fromPriceCents, [court.format]))
 
   return (
     <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0">
@@ -52,13 +54,16 @@ export default function CourtCard({ court }: { court: PublicCourtCard }) {
             {surfaceLabel(court.surfaceType)}
           </span>
         </div>
-        {fromPrice && (
+        {(perPlayer ?? fromPrice) && (
           <div>
             <p className="font-display text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-              {fromPrice}
+              {perPlayer ?? fromPrice}
+              <span className="ml-1 text-[11px] font-medium text-muted-foreground">
+                {perPlayer ? 'por jugador' : 'el turno'}
+              </span>
             </p>
-            {perPlayer && (
-              <p className="text-[11px] tabular-nums text-muted-foreground">{perPlayer}</p>
+            {perPlayer && fromPrice && (
+              <p className="text-[11px] tabular-nums text-muted-foreground">{fromPrice} el turno</p>
             )}
           </div>
         )}

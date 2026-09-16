@@ -76,6 +76,9 @@ const publicTenantCardSchema = z.object({
   coverUrl: z.string().nullable(),
   allowOnlineBooking: z.boolean(),
   fromPriceCents: z.number().int().nullable(),
+  // Sin esta línea, z.object strippea la clave y el campo desaparece de la
+  // respuesta pública EN SILENCIO, con el parse en verde.
+  fromPricePerPlayerCents: z.number().int().nullable(),
   amenities: z.record(z.string(), z.boolean()),
   avgRating: z.number(),
   reviewCount: z.number().int(),

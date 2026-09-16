@@ -8,10 +8,16 @@ import { getAbonados } from '@/modules/abonados/abonado.service'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 import { AbonadosList } from './AbonadosList'
 import { ClientesTabs } from '@/app/(admin)/jugadores/ClientesTabs'
-import { pauseAbonadoAction, reactivateAbonadoAction, cancelAbonadoAction } from './actions'
+import { reactivateAbonadoAction, cancelAbonadoAction } from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
 
 const VALID_STATUSES: AbonadoStatus[] = ['active', 'paused', 'canceled']
+
+// Pestañas visibles. 'paused' sigue siendo un filtro válido por URL y esas filas
+// siguen listándose en "Todos" (quedan de antes: pausar se eliminó del producto,
+// porque saltear una fecha se hace cancelando ese turno desde la grilla sin
+// perder el fijo), pero una pestaña que ya no puede llenarse es ruido.
+const FILTER_TABS: AbonadoStatus[] = ['active', 'canceled']
 
 const STATUS_LABELS: Record<AbonadoStatus, string> = {
   active: 'Fijos activos',
@@ -75,7 +81,7 @@ export default async function AbonadosPage(props: {
         >
           Todos
         </Link>
-        {VALID_STATUSES.map((s) => (
+        {FILTER_TABS.map((s) => (
           <Link
             key={s}
             href={`/abonados?status=${s}`}
@@ -95,7 +101,6 @@ export default async function AbonadosPage(props: {
           abonados={abonados}
           filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
           justCreated={justCreated}
-          pauseAction={pauseAbonadoAction}
           reactivateAction={reactivateAbonadoAction}
           cancelAction={cancelAbonadoAction}
           previewSlotsAction={previewAbonadoSlotsAction}

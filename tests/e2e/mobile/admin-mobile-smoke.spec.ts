@@ -112,9 +112,9 @@ test.describe('Admin mobile smoke', () => {
       // abonado seedeado muestra el contacto y sus acciones tienen ≥44px.
       const card = page.locator('li').filter({ hasText: 'E2E Mobile Smoke' })
       await expect(card).toBeVisible()
-      const pausar = card.getByRole('button', { name: 'Pausar' })
-      await expect(pausar).toBeVisible()
-      const box = await pausar.boundingBox()
+      const cancelarBtn = card.getByRole('button', { name: 'Cancelar turno fijo' })
+      await expect(cancelarBtn).toBeVisible()
+      const box = await cancelarBtn.boundingBox()
       expect(box).not.toBeNull()
       expect(box!.height).toBeGreaterThanOrEqual(44)
     } finally {

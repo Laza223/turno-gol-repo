@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  CONTACT_EMAIL,
+  CONTACT_INSTAGRAM_HANDLE,
   CONTACT_WHATSAPP_DIGITS,
   CONTACT_WHATSAPP_DISPLAY,
+  contactInstagramUrl,
+  contactMailtoUrl,
   contactWhatsappUrl,
 } from '@/lib/contact'
 
@@ -79,5 +83,39 @@ describe('ningún archivo hardcodea un número de WhatsApp', () => {
       offenders,
       `hardcodean un wa.me con número: usá contactWhatsappUrl() de @/lib/contact`,
     ).toEqual([])
+  })
+
+  /**
+   * Mismo candado para Instagram, por el mismo motivo: el handle es un dato de
+   * marketing que puede cambiar, y el modo de que se desincronice es que un
+   * pie de página lo escriba a mano.
+   */
+  it('src/ solo tiene el perfil de Instagram en src/lib/contact.ts', () => {
+    const root = process.cwd()
+    const hardcodedIg = /instagram\.com\/[A-Za-z0-9._]/
+    const offenders = walk(join(root, 'src'))
+      .map((full) => full.slice(root.length + 1).replace(/\\/g, '/'))
+      .filter((rel) => !ALLOWED.includes(rel))
+      .filter((rel) => hardcodedIg.test(readFileSync(join(root, rel), 'utf-8')))
+
+    expect(
+      offenders,
+      `hardcodean un instagram.com con usuario: usá contactInstagramUrl() de @/lib/contact`,
+    ).toEqual([])
+  })
+})
+
+describe('los otros dos canales de contacto', () => {
+  it('el handle de Instagram va sin @ y sin barras: es lo que se pega en la URL', () => {
+    expect(CONTACT_INSTAGRAM_HANDLE).toMatch(/^[a-z0-9._]+$/)
+    expect(contactInstagramUrl()).toBe(`https://instagram.com/${CONTACT_INSTAGRAM_HANDLE}`)
+  })
+
+  it('el mail de contacto arma el mailto, con y sin asunto', () => {
+    expect(CONTACT_EMAIL).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]+$/)
+    expect(contactMailtoUrl()).toBe(`mailto:${CONTACT_EMAIL}`)
+    expect(contactMailtoUrl('Necesito ayuda')).toBe(
+      `mailto:${CONTACT_EMAIL}?subject=Necesito%20ayuda`,
+    )
   })
 })

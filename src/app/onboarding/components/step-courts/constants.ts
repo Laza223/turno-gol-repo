@@ -15,10 +15,10 @@ export type SurfaceType = (typeof SURFACE_OPTIONS)[number]['value']
 /**
  * Un borrador de cancha del paso 3.
  *
- * Sin fotos a propósito: el wizard tenía un uploader por cancha cuyo resultado
- * el submit NUNCA mandaba —la cancha se creaba sin foto y el blob quedaba
- * huérfano en R2— y encima es lo primero que sobra en un alta rápida. Se cargan
- * después desde `/canchas`, que ya tiene el mismo uploader.
+ * `photoUrl` vuelve al wizard (antes el uploader subía y el submit NO mandaba el
+ * campo: la cancha nacía sin foto y el objeto quedaba huérfano). Ahora la URL
+ * viaja en el payload y el service la valida contra el prefijo del propio
+ * complejo. Opcional siempre: la foto no bloquea terminar el alta.
  */
 export type Draft = {
   key: number
@@ -28,6 +28,8 @@ export type Draft = {
   isCovered: boolean
   /** Precio por turno en centavos (MoneyInput ya entrega/recibe cents). */
   priceCents: number | null
+  /** Foto ya subida a R2 (prefijo `court-drafts/`), si cargó una. */
+  photoUrl?: string | null
 }
 
 /** Precio "desde" de una cancha existente para la fila-resumen. */

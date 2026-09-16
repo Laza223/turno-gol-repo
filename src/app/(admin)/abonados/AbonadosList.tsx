@@ -16,7 +16,7 @@ import { formatArs, formatTime } from '@/lib/format'
 import { AbonadoStatusBadge } from './status-visual'
 import { toast } from '@/hooks/use-toast'
 
-// The pause/reactivate/cancel dialogs pull in the Radix-backed ConfirmDialog and
+// The reactivate/cancel dialogs pull in the Radix-backed ConfirmDialog and
 // are only needed once an admin clicks a row action. Lazy-load the whole subtree
 // and mount it only while a dialog is open, so ConfirmDialog stays out of the
 // initial Abonados chunk.
@@ -38,7 +38,7 @@ function defaultCancelDate(): string {
   return d.toISOString().slice(0, 10)
 }
 
-type DialogKind = 'pause' | 'reactivate' | 'cancel' | 'cancel-single' | null
+type DialogKind = 'reactivate' | 'cancel' | 'cancel-single' | null
 
 type RowState = {
   dialog: DialogKind
@@ -63,12 +63,11 @@ function defaultRowState(): RowState {
 }
 
 /**
- * Las 4 Server Actions llegan por PROP, no por import: ./actions y
+ * Las Server Actions llegan por PROP, no por import: ./actions y
  * ./nuevo/actions son `'use server'` y arrastran drizzle/postgres →
  * `node:async_hooks`, que rompe cualquier bundle de browser (Storybook).
  * Ver el comentario en ReservasPolicyForm.tsx.
  */
-type PauseAbonadoAction = (id: string) => Promise<AbonadoActionResult>
 type ReactivateAbonadoAction = (id: string) => Promise<AbonadoActionResult>
 type CancelAbonadoAction = (id: string, fromDate: string) => Promise<AbonadoActionResult>
 type PreviewAbonadoSlotsAction = (
@@ -81,7 +80,6 @@ type Props = {
   filterLabel?: string
   /** H054: viene de `?created=1` — page.tsx lo levanta del redirect de /abonados/nuevo. */
   justCreated?: boolean
-  pauseAction: PauseAbonadoAction
   reactivateAction: ReactivateAbonadoAction
   cancelAction: CancelAbonadoAction
   previewSlotsAction: PreviewAbonadoSlotsAction
@@ -91,7 +89,6 @@ export function AbonadosList({
   abonados,
   filterLabel,
   justCreated,
-  pauseAction,
   reactivateAction,
   cancelAction,
   previewSlotsAction,
@@ -180,7 +177,6 @@ export function AbonadosList({
                 <AbonadoTableRow
                   key={a.id}
                   abonado={a}
-                  pauseAction={pauseAction}
                   reactivateAction={reactivateAction}
                   cancelAction={cancelAction}
                   previewSlotsAction={previewSlotsAction}
@@ -195,7 +191,6 @@ export function AbonadosList({
               <AbonadoCard
                 key={a.id}
                 abonado={a}
-                pauseAction={pauseAction}
                 reactivateAction={reactivateAction}
                 cancelAction={cancelAction}
                 previewSlotsAction={previewSlotsAction}
@@ -209,7 +204,6 @@ export function AbonadosList({
 }
 
 type AbonadoServerActions = {
-  pauseAction: PauseAbonadoAction
   reactivateAction: ReactivateAbonadoAction
   cancelAction: CancelAbonadoAction
   previewSlotsAction: PreviewAbonadoSlotsAction
@@ -231,16 +225,6 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
 
   function closeDialog() {
     setState(defaultRowState)
-  }
-
-  // ── Pause ─────────────────────────────────────────────────────────────────
-  async function onConfirmPause(): Promise<ActionResult> {
-    const res = await actions.pauseAction(a.id)
-    if (!res.success) {
-      return { success: false, error: res.error }
-    }
-    toast({ title: 'Abonado pausado correctamente.', variant: 'success' })
-    return { success: true }
   }
 
   // ── Reactivate ────────────────────────────────────────────────────────────
@@ -308,14 +292,13 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
     openDialog,
     closeDialog,
     openReactivate,
-    onConfirmPause,
     onConfirmReactivate,
     onConfirmCancel,
     setCancelFromDate,
   }
 }
 
-/** Portal de dialogs (pausar/reactivar/cancelar), montado solo mientras hay uno abierto. */
+/** Portal de dialogs (reactivar/cancelar), montado solo mientras hay uno abierto. */
 function AbonadoActionDialogs({
   abonado: a,
   actions,
@@ -335,7 +318,6 @@ function AbonadoActionDialogs({
       reactivatePreviewConflicts={actions.state.reactivatePreviewConflicts}
       reactivatePreviewError={actions.state.reactivatePreviewError}
       onClose={actions.closeDialog}
-      onConfirmPause={actions.onConfirmPause}
       onConfirmReactivate={actions.onConfirmReactivate}
       onConfirmCancel={actions.onConfirmCancel}
     />,
@@ -375,14 +357,6 @@ function AbonadoTableRow({
                 className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cómo cancelar una fecha
-              </button>
-              <button
-                type="button"
-                disabled={actions.isPending}
-                onClick={() => actions.openDialog('pause')}
-                className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Pausar
               </button>
               <button
                 type="button"
@@ -450,24 +424,14 @@ function AbonadoCard({
       {(isActive || isPaused) && (
         <div className="flex flex-wrap gap-2">
           {isActive && (
-            <>
-              <button
-                type="button"
-                disabled={actions.isPending}
-                onClick={() => actions.openDialog('cancel-single')}
-                className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
-              >
-                Cómo cancelar una fecha
-              </button>
-              <button
-                type="button"
-                disabled={actions.isPending}
-                onClick={() => actions.openDialog('pause')}
-                className={`${actionButtonClass} text-amber-700 dark:text-amber-400`}
-              >
-                Pausar
-              </button>
-            </>
+            <button
+              type="button"
+              disabled={actions.isPending}
+              onClick={() => actions.openDialog('cancel-single')}
+              className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
+            >
+              Cómo cancelar una fecha
+            </button>
           )}
           {isPaused && (
             <button

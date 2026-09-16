@@ -23,6 +23,7 @@ const t = (id: string, name: string): PublicTenantCard => ({
   coverUrl: null,
   allowOnlineBooking: true,
   fromPriceCents: 900000,
+  fromPricePerPlayerCents: 90000,
   amenities: {},
   avgRating: 0,
   reviewCount: 0,

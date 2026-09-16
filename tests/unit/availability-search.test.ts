@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  freeTimesFrom,
   parseAvailabilitySearchParams,
   tenantMatchesRequestedSlot,
 } from '@/modules/tenants/availability-search.service'
@@ -100,6 +101,37 @@ describe('tenantMatchesRequestedSlot', () => {
 
   it('rejects past dates outright', () => {
     expect(tenantMatchesRequestedSlot(cfg(), '2026-06-09', '20:00', NOW)).toBe(false)
+  })
+})
+
+describe('freeTimesFrom', () => {
+  const slots = (...times: string[]) => times.map((time) => ({ time, status: 'free' }))
+
+  it('con cierre post-medianoche, "desde las 20:00" incluye los turnos de madrugada', () => {
+    // Orden del server: la madrugada va al final del día operativo.
+    const grid = slots('19:00', '20:00', '21:00', '22:00', '23:00', '00:00', '01:00')
+    expect(freeTimesFrom(grid, '20:00', '19:00', true)).toEqual([
+      '20:00',
+      '21:00',
+      '22:00',
+      '23:00',
+      '00:00',
+      '01:00',
+    ])
+  })
+
+  it('desde una hora de madrugada, no vuelve a ofrecer la tarde del mismo día operativo', () => {
+    const grid = slots('19:00', '23:00', '00:00', '01:00')
+    expect(freeTimesFrom(grid, '00:00', '19:00', true)).toEqual(['00:00', '01:00'])
+  })
+
+  it('sin cierre post-medianoche compara horas de pared y descarta lo ocupado', () => {
+    const grid = [
+      { time: '19:00', status: 'occupied' },
+      { time: '20:00', status: 'free' },
+      { time: '21:00', status: 'free' },
+    ]
+    expect(freeTimesFrom(grid, '20:00', '08:00', false)).toEqual(['20:00', '21:00'])
   })
 })
 

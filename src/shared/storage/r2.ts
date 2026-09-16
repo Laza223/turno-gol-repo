@@ -1,6 +1,11 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { captureException } from '@/lib/sentry'
 
+// Re-export: la definición vive en `r2-config.ts` (sin el SDK de AWS) para que
+// un Server Component pueda preguntar "¿hay storage?" sin bundlear el cliente
+// S3. Los call sites de siempre no cambian.
+export { isR2Configured, keyFromPublicUrl } from './r2-config'
+
 function getConfig() {
   return {
     accountId: process.env.R2_ACCOUNT_ID,
@@ -9,12 +14,6 @@ function getConfig() {
     bucket: process.env.R2_BUCKET,
     publicBaseUrl: process.env.R2_PUBLIC_BASE_URL,
   }
-}
-
-/** true si las 5 credenciales R2 están presentes en el entorno actual. */
-export function isR2Configured(): boolean {
-  const c = getConfig()
-  return Boolean(c.accountId && c.accessKeyId && c.secretAccessKey && c.bucket && c.publicBaseUrl)
 }
 
 let cachedClient: S3Client | null = null
@@ -96,22 +95,4 @@ export async function deleteImage(key: string): Promise<void> {
 export function publicUrl(key: string): string {
   const c = getConfig()
   return `${c.publicBaseUrl}/${key}`
-}
-
-/**
- * Inverso de `publicUrl`: extrae la key de una URL pública. Devuelve `null` si
- * la URL no pertenece al host configurado (anti-IDOR: el caller debe validar
- * la key resultante contra el prefijo del tenant antes de borrar).
- */
-export function keyFromPublicUrl(url: string): string | null {
-  const c = getConfig()
-  if (!c.publicBaseUrl) return null
-  try {
-    const base = new URL(c.publicBaseUrl)
-    const target = new URL(url)
-    if (target.host !== base.host) return null
-    return target.pathname.replace(/^\/+/, '')
-  } catch {
-    return null
-  }
 }

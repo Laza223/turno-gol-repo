@@ -11,9 +11,11 @@
  *   #3  Edge — cancel with future date: pre-create active abonado via service-role → in UI
  *              click "Cancelar" → type "CANCELAR" → pick today+14d as cancel-from date →
  *              confirm → assert bookings >= cancel-from are gone, earlier ones remain.
- *   #4  Edge — pause + reactivate: pre-create abonado → click "Pausar" → confirm →
- *              status "Pausado" + future bookings deleted → click "Reactivar" → preview
- *              loads → confirm → status "Activo" + 8 future bookings exist.
+ *   #4  Edge — reactivate a legacy paused abonado: "Pausar" se retiró del producto (el dueño
+ *              saltea una fecha puntual cancelando ese turno desde la Grilla, sin perder el
+ *              fijo) — se simula una fila 'paused' histórica insertándola directo, sin pasar
+ *              por la UI → click "Reactivar" → preview loads → confirm → status "Activo" +
+ *              future bookings exist.
  *
  * ISOLATION: every test uses dedicated future dates and a fresh abonado UUID. Tests are
  * `fullyParallel`. Cleanup deletes abonados + bookings in `finally` even on assertion fail.
@@ -162,6 +164,9 @@ async function insertAbonado(
     dayOfWeek?: number
     timeStart?: string
     timeEnd?: string
+    // 'paused' solo para simular una fila legacy (ver test #4) — no hay
+    // camino de UI que produzca ese status hoy.
+    status?: 'active' | 'paused'
   },
 ): Promise<void> {
   const { error } = await supabase.from('abonados').insert({
@@ -175,7 +180,7 @@ async function insertAbonado(
     time_end: opts.timeEnd ?? '15:00',
     price_per_session: 500000,
     starts_on: opts.startsOn,
-    status: 'active',
+    status: opts.status ?? 'active',
     payment_method: 'cash',
   })
   if (error) throw new Error(`insertAbonado failed: ${error.message}`)
@@ -383,7 +388,7 @@ test.describe('Abonados CRUD', () => {
     }
   })
 
-  test('#4 edge — pause then reactivate restores status and regenerates slots', async ({
+  test('#4 edge — reactivate a legacy paused abonado restores status and regenerates slots', async ({
     page,
     adminStorageState,
   }) => {
@@ -395,56 +400,14 @@ test.describe('Abonados CRUD', () => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
 
     try {
-      await insertAbonado(supabase, { id: abonadoId, startsOn, contactPhone })
-      // Seed 3 future bookings so we can verify they're deleted on pause
-      const cursor = new Date(`${startsOn}T00:00:00Z`)
-      for (let i = 0; i < 3; i++) {
-        await supabase.from('bookings').insert({
-          tenant_id: TENANT_ID,
-          court_id: COURT_ID,
-          abonado_id: abonadoId,
-          date: cursor.toISOString().slice(0, 10),
-          time_start: '14:00',
-          time_end: '15:00',
-          // NOT NULL desde el refactor de instantes físicos (ver _helpers/booking-instants.ts).
-          ...bookingInstants({
-            date: cursor.toISOString().slice(0, 10),
-            timeStart: '14:00',
-            timeEnd: '15:00',
-          }),
-          type: 'fixed',
-          status: 'confirmed',
-          price_snapshot: 500000,
-          deposit_amount: 0,
-          deposit_status: 'not_required',
-        })
-        cursor.setUTCDate(cursor.getUTCDate() + 7)
-      }
+      // "Pausar" se retiró del producto: ya no hay forma de llegar a 'paused'
+      // desde la UI. Se simula una fila legacy insertándola directo con ese
+      // status — "Reactivar" sigue existiendo para sacarlas de ahí.
+      await insertAbonado(supabase, { id: abonadoId, startsOn, contactPhone, status: 'paused' })
 
       await page.goto('/abonados')
 
-      // Pause
-      await page.getByRole('button', { name: 'Pausar' }).first().click()
-      const pauseDialog = page.getByRole('dialog')
-      await expect(pauseDialog).toBeVisible()
-      await pauseDialog.getByRole('button', { name: 'Pausar' }).click()
-      await expect(pauseDialog).toBeHidden()
-
-      // Verify status + bookings cleared
-      const { data: pausedRow } = await supabase
-        .from('abonados')
-        .select('status')
-        .eq('id', abonadoId)
-        .single()
-      expect(pausedRow?.status).toBe('paused')
-      const { count: pausedCnt } = await supabase
-        .from('bookings')
-        .select('id', { count: 'exact', head: true })
-        .eq('abonado_id', abonadoId)
-      expect(pausedCnt ?? 0).toBe(0)
-
       // Reactivate
-      await page.reload()
       await page.getByRole('button', { name: 'Reactivar' }).first().click()
       const reactivateDialog = page.getByRole('dialog')
       await expect(reactivateDialog).toBeVisible()

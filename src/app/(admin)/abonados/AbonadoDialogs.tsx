@@ -4,7 +4,7 @@ import type { ActionResult } from '@/shared/types/action-result'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import DatePicker from '@/components/ui/date-picker'
 
-type DialogKind = 'pause' | 'reactivate' | 'cancel' | 'cancel-single' | null
+type DialogKind = 'reactivate' | 'cancel' | 'cancel-single' | null
 
 type ConfirmResult = ActionResult
 
@@ -24,13 +24,12 @@ export type AbonadoDialogsProps = {
   reactivatePreviewConflicts: string[]
   reactivatePreviewError: string | null
   onClose: () => void
-  onConfirmPause: () => Promise<ConfirmResult>
   onConfirmReactivate: () => Promise<ConfirmResult>
   onConfirmCancel: () => Promise<ConfirmResult>
 }
 
 /**
- * The abonado action dialogs (pause / reactivate / cancel / cancel-single) all pull in the
+ * The abonado action dialogs (reactivate / cancel / cancel-single) all pull in the
  * Radix-backed ConfirmDialog. They are only needed once an admin clicks a row
  * action, so this whole subtree is lazy-loaded by AbonadosList and mounted only
  * while a dialog is active — keeping ConfirmDialog out of the initial chunk.
@@ -45,28 +44,11 @@ export function AbonadoDialogs({
   reactivatePreviewConflicts,
   reactivatePreviewError,
   onClose,
-  onConfirmPause,
   onConfirmReactivate,
   onConfirmCancel,
 }: AbonadoDialogsProps) {
   return (
     <>
-      <ConfirmDialog
-        open={dialog === 'pause'}
-        onOpenChange={(open) => {
-          if (!open) onClose()
-        }}
-        title="Pausar turno fijo"
-        consequences={[
-          'Elimina todas las reservas futuras de este turno fijo.',
-          'Podés reactivarlo después, pero las horas liberadas mientras tanto pueden ocuparse.',
-        ]}
-        variant="destructive"
-        confirmLabel="Pausar"
-        cancelLabel="Volver"
-        onConfirm={onConfirmPause}
-      />
-
       <ConfirmDialog
         open={dialog === 'reactivate'}
         onOpenChange={(open) => {

@@ -6,11 +6,13 @@ import { bookings, tenants } from '@/shared/db/schema'
 import { updateOnboardingStep } from '@/modules/tenants/tenant.service'
 import type { OpeningHours, TenantRow, TenantSettings } from '@/modules/tenants/tenant.types'
 import {
+  appendCourtPhoto,
   createCourt,
   getCourtCountAndLimit,
   listCourts,
   validatePricingRulesCoverage,
 } from '@/modules/courts/court.service'
+import { keyFromPublicUrl } from '@/shared/storage/r2-config'
 import { createCourtSchema } from '@/modules/courts/court.schema'
 import { uniformRulesFromOpeningHours } from '@/modules/courts/pricing-grid'
 import type { CourtRow } from '@/modules/courts/court.types'
@@ -60,6 +62,34 @@ export async function saveOnboardingSchedule(
 }
 
 /**
+ * ¿Esta key de R2 es una foto de borrador DE ESTE complejo?
+ *
+ * La URL la manda el cliente, así que sin este corte `courts.photos` sería una
+ * entrada de URLs arbitrarias. El prefijo del tenant solo no alcanza: dejaría
+ * colar cualquier otro objeto suyo (su logo, su portada). Por eso la forma
+ * completa, incluido el UUID y la extensión que escribe la Server Action.
+ */
+const DRAFT_PHOTO_KEY = /^[0-9a-f-]{36}\/court-drafts\/[0-9a-f-]{36}\.webp$/i
+
+export function isOwnDraftPhotoKey(tenantId: string, key: string): boolean {
+  return DRAFT_PHOTO_KEY.test(key) && key.startsWith(`${tenantId}/court-drafts/`)
+}
+
+/**
+ * URL de foto de borrador válida para este complejo, o `null`.
+ *
+ * `null` NO es un error: la foto es opcional y la cancha se crea igual. Ese es
+ * también el camino cuando R2 no está configurado (local, e2e), donde
+ * `keyFromPublicUrl` devuelve null porque no hay host contra el cual comparar.
+ */
+function ownDraftPhotoUrl(tenantId: string, url: string | undefined): string | null {
+  if (!url) return null
+  const key = keyFromPublicUrl(url)
+  if (!key || !isOwnDraftPhotoKey(tenantId, key)) return null
+  return url
+}
+
+/**
  * Convierte los drafts del paso 3 en inputs validados de cancha, generando las
  * reglas de precio uniformes sobre los horarios YA confirmados en el paso 2.
  *
@@ -67,7 +97,7 @@ export async function saveOnboardingSchedule(
  * legible que encuentre — el wizard muestra uno por vez, no una lista.
  */
 function buildCourtInputsFromDrafts(
-  tenant: Pick<TenantRow, 'openingHours' | 'closesNextDay'>,
+  tenant: Pick<TenantRow, 'id' | 'openingHours' | 'closesNextDay'>,
   drafts: readonly WizardCourtDraftInput[],
 ): { ok: true; inputs: z.infer<typeof createCourtSchema>[] } | { ok: false; error: string } {
   const inputs: z.infer<typeof createCourtSchema>[] = []
@@ -86,12 +116,14 @@ function buildCourtInputsFromDrafts(
       }
     }
 
+    const photo = ownDraftPhotoUrl(tenant.id, draft.photoUrl)
     const courtParsed = createCourtSchema.safeParse({
       name: draft.name,
       surfaceType: draft.surfaceType,
       isCovered: draft.isCovered,
       format: draft.format,
       pricing: { rules },
+      photos: photo ? [photo] : [],
     })
     if (!courtParsed.success) {
       return { ok: false, error: courtParsed.error.issues[0]?.message ?? 'Datos inválidos' }
@@ -143,6 +175,14 @@ export async function createOnboardingCourts(
     const toCreate = built.inputs.filter(
       (data) => !existingNames.has(data.name.trim().toLocaleLowerCase('es')),
     )
+    // Reenvío ("Volver" + Continuar, o doble POST) con una foto recién subida:
+    // la cancha ya existe y el filtro de arriba la saltea entera, así que la
+    // foto se perdía en silencio y el objeto quedaba huérfano. Si la existente
+    // no tiene ninguna, se le agrega.
+    const skippedWithPhoto = built.inputs.filter(
+      (data) =>
+        existingNames.has(data.name.trim().toLocaleLowerCase('es')) && data.photos?.[0] != null,
+    )
 
     if (maxCourts !== null && count + toCreate.length > maxCourts) {
       return {
@@ -153,6 +193,18 @@ export async function createOnboardingCourts(
 
     for (const data of toCreate) {
       await createCourt(tenant.id, data, tx)
+    }
+
+    if (skippedWithPhoto.length > 0) {
+      const existing = await listCourts(tenant.id, tx)
+      for (const data of skippedWithPhoto) {
+        const court = existing.find(
+          (c) => c.name.trim().toLocaleLowerCase('es') === data.name.trim().toLocaleLowerCase('es'),
+        )
+        if (court && court.photos.length === 0) {
+          await appendCourtPhoto(court.id, tenant.id, data.photos![0]!, tx)
+        }
+      }
     }
     return { success: true as const }
   })

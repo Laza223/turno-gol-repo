@@ -30,6 +30,7 @@ const baseTenant: PublicTenantCard = {
   coverUrl: null,
   allowOnlineBooking: true,
   fromPriceCents: null,
+  fromPricePerPlayerCents: null,
   amenities: {},
   avgRating: 0,
   reviewCount: 0,
@@ -141,16 +142,33 @@ describe('TenantCard — píldoras de turnos libres', () => {
 })
 
 describe('TenantCard — body (rediseño Matchday)', () => {
-  it('muestra el precio en el body con font-display y "/turno"', () => {
-    render(<TenantCard tenant={{ ...baseTenant, fromPriceCents: 1200000 }} />)
-    const price = screen.getByText(/\$\s?12\.000/)
-    expect(price.className).toContain('font-display')
+  it('el número grande es el precio POR JUGADOR y el total queda como línea secundaria', () => {
+    render(
+      <TenantCard
+        tenant={{ ...baseTenant, fromPriceCents: 1200000, fromPricePerPlayerCents: 120000 }}
+      />,
+    )
+    const perPlayer = screen.getByText(/\$\s?1\.200$/)
+    expect(perPlayer.className).toContain('font-display')
+    expect(screen.getByText('por jugador')).toBeTruthy()
+    expect(screen.getByText(/\$\s?12\.000 el turno/)).toBeTruthy()
+  })
+
+  it('sin el por-jugador denormalizado cae al total del turno', () => {
+    render(
+      <TenantCard
+        tenant={{ ...baseTenant, fromPriceCents: 1200000, fromPricePerPlayerCents: null }}
+      />,
+    )
+    expect(screen.getByText(/\$\s?12\.000/)).toBeTruthy()
     expect(screen.getByText('/turno')).toBeTruthy()
+    expect(screen.queryByText('por jugador')).toBeNull()
   })
 
   it('sin precio no rompe ni muestra "/turno"', () => {
     render(<TenantCard tenant={{ ...baseTenant, fromPriceCents: null }} />)
     expect(screen.queryByText('/turno')).toBeNull()
+    expect(screen.queryByText('por jugador')).toBeNull()
   })
 
   it('muestra el rating en el body cuando hay reseñas', () => {
@@ -172,17 +190,24 @@ describe('TenantCard — body (rediseño Matchday)', () => {
 })
 
 describe('TenantCard — variante compact', () => {
-  it('muestra nombre, precio y link al perfil; sin controles de carrusel', () => {
+  it('muestra nombre, precio por jugador y link al perfil; sin controles de carrusel', () => {
     render(
       <TenantCard
-        tenant={{ ...baseTenant, coverUrl: '/c.jpg', fromPriceCents: 950000 }}
+        tenant={{
+          ...baseTenant,
+          coverUrl: '/c.jpg',
+          fromPriceCents: 950000,
+          fromPricePerPlayerCents: 90000,
+        }}
         variant="compact"
       />,
     )
     expect(screen.getByRole('link', { name: /El Potrero/ }).getAttribute('href')).toBe(
       '/el-potrero',
     )
-    expect(screen.getByText(/\$\s?9\.500/)).toBeTruthy()
+    // La card compacta tiene 3 líneas: entra un solo precio, el por jugador.
+    expect(screen.getByText(/\$\s?900$/)).toBeTruthy()
+    expect(screen.getByText('por jugador')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Foto siguiente' })).toBeNull()
   })
 })

@@ -8,7 +8,8 @@ import {
 } from '@/components/admin/SplitPaymentFields'
 import { cn } from '@/lib/utils'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
-import { chargeCta, type ChargeMode } from './charge-copy'
+import { formatArs } from '@/lib/format'
+import { chargeCta, type ChargeMode, type TeamSplit } from './charge-copy'
 
 /**
  * Los tres métodos que se usan en el mostrador, en orden de frecuencia. "Otro"
@@ -28,6 +29,10 @@ type Props = {
   onSubmit: () => void
   /** Cobra TODO lo pendiente con ese método, en un solo toque. */
   onFullCharge: (method: MethodKey) => void
+  /** Estado por equipos: si ofrecer el atajo de la mitad y cuánto es. */
+  split: TeamSplit
+  /** Cobra la MITAD de lo pendiente con ese método, en un solo toque. */
+  onHalfCharge: (method: MethodKey) => void
 }
 
 /**
@@ -48,6 +53,8 @@ export function SlotChargeSection({
   isPending,
   onSubmit,
   onFullCharge,
+  split,
+  onHalfCharge,
 }: Props) {
   const [method, setMethod] = useState<MethodKey>('cash')
   const [customOpen, setCustomOpen] = useState(false)
@@ -89,6 +96,23 @@ export function SlotChargeSection({
       >
         {isPending ? 'Procesando…' : chargeCta(mode, pending)}
       </button>
+
+      {/* Cobrar por equipo: la mayoría de los complejos cobran en dos veces, una
+          por equipo. Es un botón y no el link gris de abajo porque es el camino
+          NORMAL de mucha gente, no la excepción — y lo que había ("Cobrar otro
+          monto") además abre el monto prellenado con el total, para corregirlo.
+          Desaparece solo en cuanto pagó el primero: ahí el botón grande ya dice
+          exactamente lo que falta. */}
+      {split.canSplit && (
+        <button
+          type="button"
+          onClick={() => onHalfCharge(method)}
+          disabled={isPending}
+          className="mt-2 h-11 w-full rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
+        >
+          {isPending ? 'Procesando…' : `Cobrar la mitad — ${formatArs(split.halfCents)}`}
+        </button>
+      )}
 
       {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el
           token es red-600 en los DOS temas y sobre la superficie oscura da 3.87:1. */}

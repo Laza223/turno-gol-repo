@@ -58,8 +58,8 @@ const restaura = storyTenant('restaura', [
  * prop, nunca importada (ver comentario en StepIdentity.tsx / regla del repo).
  *
  * Desde el split panel (Fase 3), `StepCourts` arma su propio `<WizardShell>`
- * con preview (`GridPreview`) — `fullscreen`, sin decorator: el shell pone el
- * `card-premium` solo.
+ * con preview (`CourtsPreview`, las cards públicas reales) — `fullscreen`, sin
+ * decorator: el shell pone el `card-premium` solo.
  */
 const meta = {
   title: 'Onboarding/StepCourts',
@@ -69,6 +69,17 @@ const meta = {
     existingCourts: [],
     tenantId: 'sb-default',
     createCourtsAction: fn(async () => ({ success: true as const })),
+    // Sin storage configurado el uploader no se muestra (entorno local/e2e):
+    // las stories del paso lo prenden salvo `SinStorage`.
+    photosEnabled: true,
+    uploadPhotoAction: fn(async () => ({
+      success: true as const,
+      url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjYiLz4=',
+    })),
+    deletePhotoAction: fn(async () => ({
+      success: true as const,
+      url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjYiLz4=',
+    })),
   },
 } satisfies Meta<typeof StepCourts>
 
@@ -89,7 +100,7 @@ export const ConCanchasExistentes: Story = {
     const resumen = canvas.getByText('Estas ya están creadas — las editás después desde Canchas.')
     await expect(resumen).toBeInTheDocument()
     // Scopeado al contenedor de ExistingCourtsList: "Cancha 1"/"Cancha 2"
-    // también aparecen como columnas en el preview (GridPreview, ×2 por el
+    // también aparecen como cards en el preview (CourtsPreview, ×2 por el
     // split desktop/mobile de PreviewPane).
     const lista = within(resumen.parentElement!)
     await expect(lista.getByText('Cancha 1', { exact: true })).toBeInTheDocument()
@@ -175,7 +186,7 @@ export const RestauraBorradoresGuardados: Story = {
     const editarBtn = canvas.getByRole('button', { name: /editar/i })
     await expect(editarBtn).toBeInTheDocument()
     // Scopeado a la tarjeta colapsada: el precio también aparece en el
-    // preview (GridPreview, ×2 por el split desktop/mobile de PreviewPane).
+    // preview (CourtsPreview, ×2 por el split desktop/mobile de PreviewPane).
     const tarjetaColapsada = within(editarBtn.closest('fieldset')!)
     await expect(tarjetaColapsada.getByText('$ 20.000')).toBeInTheDocument()
   },

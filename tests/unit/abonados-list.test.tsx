@@ -52,9 +52,8 @@ const CANCELED_ABONADO = makeAbonado({
   contactName: 'Grupo Cancelado',
 })
 
-// Las 4 Server Actions ya no se importan del módulo — AbonadosList las recibe
+// Las Server Actions ya no se importan del módulo — AbonadosList las recibe
 // por prop (ver el comentario en AbonadosList.tsx). Acá van como mocks locales.
-const pauseAbonadoAction = vi.fn()
 const reactivateAbonadoAction = vi.fn()
 const cancelAbonadoAction = vi.fn()
 const previewAbonadoSlotsAction = vi.fn()
@@ -64,7 +63,6 @@ function renderList(abonados: AbonadoRow[], filterLabel?: string) {
     <AbonadosList
       abonados={abonados}
       filterLabel={filterLabel}
-      pauseAction={pauseAbonadoAction}
       reactivateAction={reactivateAbonadoAction}
       cancelAction={cancelAbonadoAction}
       previewSlotsAction={previewAbonadoSlotsAction}
@@ -92,10 +90,13 @@ describe('AbonadosList — rendering', () => {
     expect(screen.getAllByText('Cancelado').length).toBeGreaterThan(0)
   })
 
-  it('active row shows Pausar + Cancelar buttons', () => {
+  it('active row shows "Cómo cancelar una fecha" + "Cancelar turno fijo", and no Pausar (regresión: el botón se eliminó)', () => {
     renderList([ACTIVE_ABONADO])
-    expect(screen.getAllByRole('button', { name: 'Pausar' }).length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByRole('button', { name: 'Cómo cancelar una fecha' }).length,
+    ).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Cancelar turno fijo' }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: 'Pausar' })).toBeNull()
   })
 
   it('paused row shows Reactivar + Cancelar buttons', () => {
@@ -106,7 +107,6 @@ describe('AbonadosList — rendering', () => {
 
   it('canceled row shows no action buttons', () => {
     renderList([CANCELED_ABONADO])
-    expect(screen.queryByRole('button', { name: 'Pausar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Cancelar turno fijo' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Reactivar' })).toBeNull()
   })
@@ -126,7 +126,6 @@ describe('AbonadosList — H054 toast on create', () => {
       <AbonadosList
         abonados={[ACTIVE_ABONADO]}
         justCreated
-        pauseAction={pauseAbonadoAction}
         reactivateAction={reactivateAbonadoAction}
         cancelAction={cancelAbonadoAction}
         previewSlotsAction={previewAbonadoSlotsAction}
@@ -258,40 +257,6 @@ describe('AbonadosList — Cancel action', () => {
         ACTIVE_ABONADO.id,
         expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       )
-    })
-  })
-})
-
-describe('AbonadosList — Pause action', () => {
-  it('clicking Pausar opens ConfirmDialog without type-to-confirm', async () => {
-    renderList([ACTIVE_ABONADO])
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Pausar' })[0]!)
-
-    await waitFor(() => {
-      expect(screen.getByText('Pausar turno fijo')).toBeTruthy()
-    })
-
-    // No phrase input for pause
-    expect(screen.queryByLabelText(/Escribí/i)).toBeNull()
-  })
-
-  it('successful pause calls pauseAbonadoAction', async () => {
-    pauseAbonadoAction.mockResolvedValue({
-      success: true,
-      abonado: { ...ACTIVE_ABONADO, status: 'paused' },
-    })
-
-    renderList([ACTIVE_ABONADO])
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Pausar' })[0]!)
-    await waitFor(() => expect(screen.getByText('Pausar turno fijo')).toBeTruthy())
-
-    // Dialog abierto: Radix deja el resto aria-hidden → un solo "Pausar" accesible.
-    fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
-
-    await waitFor(() => {
-      expect(pauseAbonadoAction).toHaveBeenCalledWith(ACTIVE_ABONADO.id)
     })
   })
 })

@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { halfOfPending } from '@/components/booking/slot-panel/charge-copy'
 import type { CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
 
 // Mismas etiquetas cortas que ya tenía el render (Transf./MP), ahora precalculadas.
@@ -130,6 +131,18 @@ export default function CompleteBookingDialog({
 
   function updateChargeLine(id: string, patch: Partial<Omit<ChargeLine, 'id'>>) {
     setCharges((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+  }
+
+  /**
+   * Cobro por equipo desde esta puerta: carga la mitad de lo que falta.
+   *
+   * Sólo se ofrece mientras no haya cobros previos — si ya pagó uno, "Cobrar
+   * todo en efectivo" ya es exactamente lo que falta del otro.
+   */
+  function quickHalfCash() {
+    const half = halfOfPending(summary.pending)
+    if (half <= 0) return
+    setCharges([{ id: crypto.randomUUID(), amountCents: half, method: 'cash' }])
   }
 
   function quickAllCash() {
@@ -261,6 +274,16 @@ export default function CompleteBookingDialog({
                   className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
                 >
                   Cobrar todo en efectivo — {formatArs(summary.pending)}
+                </button>
+              )}
+
+              {summary.pending > 0 && booking.chargesTotal === 0 && (
+                <button
+                  type="button"
+                  onClick={quickHalfCash}
+                  className="w-full h-10 rounded-lg border border-dashed border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  Cobrar la mitad — {formatArs(halfOfPending(summary.pending))}
                 </button>
               )}
             </div>

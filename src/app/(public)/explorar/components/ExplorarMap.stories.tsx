@@ -34,6 +34,7 @@ const complejoFenix = publicTenantCard({
   latitude: -34.6091,
   longitude: -58.4416,
   fromPriceCents: 900000,
+  fromPricePerPlayerCents: 90000, // F5 a $9.000 → $900 por jugador
 })
 
 const complejoBelgrano = publicTenantCard({
@@ -43,6 +44,9 @@ const complejoBelgrano = publicTenantCard({
   latitude: -34.5633,
   longitude: -58.4573,
   fromPriceCents: 1100000,
+  // El mínimo por jugador sale de la F7 ($11.000/14 = $785,71 → $800), no de la
+  // cancha del precio mínimo: por eso el dato viene denormalizado (migr. 087).
+  fromPricePerPlayerCents: 78572,
 })
 
 const complejoCatedral = publicTenantCard({
@@ -52,6 +56,7 @@ const complejoCatedral = publicTenantCard({
   latitude: -34.5885,
   longitude: -58.4306,
   fromPriceCents: 800000,
+  fromPricePerPlayerCents: 65000, // F11 barata por cabeza → $700
 })
 
 /** Complejo sin `latitude`/`longitude` cargada: `isLocated()` lo filtra antes de llegar al mapa. */
@@ -62,16 +67,17 @@ const complejoSinUbicacion = publicTenantCard({
   latitude: null,
   longitude: null,
   fromPriceCents: 700000,
+  fromPricePerPlayerCents: 70000,
 })
 
-/** Varios complejos con coordenadas: un pin "Desde $X" por cada uno. */
+/** Varios complejos con coordenadas: un pin "$X/jug" por cada uno. */
 export const VariosComplejos: Story = {
   args: { results: [complejoFenix, complejoBelgrano, complejoCatedral] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.findByText('$ 9.000')).resolves.toBeInTheDocument()
-    await expect(canvas.findByText('$ 11.000')).resolves.toBeInTheDocument()
-    await expect(canvas.findByText('$ 8.000')).resolves.toBeInTheDocument()
+    await expect(canvas.findByText('$ 900/jug')).resolves.toBeInTheDocument()
+    await expect(canvas.findByText('$ 800/jug')).resolves.toBeInTheDocument()
+    await expect(canvas.findByText('$ 700/jug')).resolves.toBeInTheDocument()
   },
 }
 
@@ -80,8 +86,8 @@ export const ComplejosSinCoordenadas: Story = {
   args: { results: [complejoFenix, complejoSinUbicacion] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.findByText('$ 9.000')).resolves.toBeInTheDocument()
-    await expect(canvas.queryByText('$ 7.000')).not.toBeInTheDocument()
+    await expect(canvas.findByText('$ 900/jug')).resolves.toBeInTheDocument()
+    await expect(canvas.queryByText('$ 700/jug')).not.toBeInTheDocument()
   },
 }
 
@@ -96,8 +102,8 @@ export const ComplejoActivoVsInactivo: Story = {
   args: { results: [complejoFenix, complejoBelgrano], activeId: complejoFenix.id },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const activo = await canvas.findByText('$ 9.000')
-    const inactivo = await canvas.findByText('$ 11.000')
+    const activo = await canvas.findByText('$ 900/jug')
+    const inactivo = await canvas.findByText('$ 800/jug')
     await expect(activo).toHaveStyle({ backgroundColor: 'rgb(6, 95, 70)' }) // #065f46
     await expect(inactivo).toHaveStyle({ backgroundColor: 'rgb(4, 120, 87)' }) // #047857
   },

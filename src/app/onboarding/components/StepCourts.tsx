@@ -7,18 +7,27 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { stepPath } from '@/modules/onboarding/onboarding.steps'
 import type { CourtRow } from '@/modules/courts/court.types'
-import type { WizardActionResult, WizardCourtDraftInput } from '../actions'
+import type { WizardActionResult, WizardCourtDraftInput, WizardPhotoResult } from '../actions'
+import type { Draft } from './step-courts/constants'
 import { useWizardNavigation } from './use-wizard-navigation'
 import { CourtDraftCard } from './step-courts/CourtDraftCard'
 import { ExistingCourtsList } from './step-courts/ExistingCourtsList'
 import { useCourtDrafts } from './step-courts/use-court-drafts'
 import { WizardShell } from './WizardShell'
-import { GridPreview } from './GridPreview'
+import { CourtsPreview } from './CourtsPreview'
 
 /** Firma de la Server Action que crea las canchas del wizard. */
 type CreateWizardCourtsAction = (input: {
   courts: WizardCourtDraftInput[]
 }) => Promise<WizardActionResult>
+
+/**
+ * Actions de foto por PROP (`import type`): importar un módulo `'use server'`
+ * desde un componente cliente arrastra drizzle y `node:async_hooks` al bundle
+ * del browser y rompe Storybook.
+ */
+type UploadPhotoAction = (formData: FormData) => Promise<WizardPhotoResult>
+type DeletePhotoAction = (url: string) => Promise<WizardPhotoResult>
 
 type Props = {
   /** Canchas ya creadas (revisita con "Volver"): se listan, no se editan acá. */
@@ -26,6 +35,10 @@ type Props = {
   /** Namespacea los borradores guardados: el staff puede tener más de un complejo. */
   tenantId: string
   createCourtsAction: CreateWizardCourtsAction
+  /** false si el entorno no tiene R2 configurado: el paso sigue funcionando sin fotos. */
+  photosEnabled: boolean
+  uploadPhotoAction: UploadPhotoAction
+  deletePhotoAction: DeletePhotoAction
 }
 
 /**
@@ -35,7 +48,14 @@ type Props = {
  * franja (día/noche, finde) vive en /canchas. Orquesta: lista de existentes +
  * tarjetas de borrador (estado en useCourtDrafts) + submit a la Server Action.
  */
-export function StepCourts({ existingCourts, tenantId, createCourtsAction }: Props) {
+export function StepCourts({
+  existingCourts,
+  tenantId,
+  createCourtsAction,
+  photosEnabled,
+  uploadPhotoAction,
+  deletePhotoAction,
+}: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const navigate = useWizardNavigation()
@@ -50,6 +70,31 @@ export function StepCourts({ existingCourts, tenantId, createCourtsAction }: Pro
     removeDraft,
     clearStoredDrafts,
   } = useCourtDrafts(existingCourts, tenantId)
+
+  /**
+   * Sube la foto del borrador. La cancha todavía no existe, así que la URL se
+   * guarda en el draft y recién el submit la convierte en `courts.photos`.
+   * Reemplazar una foto borra la anterior: es el huérfano más frecuente.
+   */
+  async function uploadPhoto(draft: Draft, blob: Blob) {
+    const fd = new FormData()
+    fd.set('file', blob, 'court.webp')
+    const result = await uploadPhotoAction(fd)
+    if (!result.success) {
+      setError(result.error)
+      return
+    }
+    const previous = draft.photoUrl
+    updateDraft(draft.key, { photoUrl: result.url })
+    setError(null)
+    if (previous) void deletePhotoAction(previous)
+  }
+
+  async function removePhoto(draft: Draft) {
+    const previous = draft.photoUrl
+    updateDraft(draft.key, { photoUrl: null })
+    if (previous) void deletePhotoAction(previous)
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -73,6 +118,8 @@ export function StepCourts({ existingCourts, tenantId, createCourtsAction }: Pro
         surfaceType: d.surfaceType,
         isCovered: d.isCovered,
         priceCents: d.priceCents,
+        // Lo que faltaba la vez anterior: sin esto la foto se sube y se pierde.
+        ...(d.photoUrl ? { photoUrl: d.photoUrl } : {}),
       })
     }
 
@@ -91,15 +138,15 @@ export function StepCourts({ existingCourts, tenantId, createCourtsAction }: Pro
 
   return (
     <WizardShell
-      previewTitle="Tu grilla"
-      preview={<GridPreview existingCourts={existingCourts} drafts={drafts} />}
+      previewTitle="Tus canchas"
+      preview={<CourtsPreview existingCourts={existingCourts} drafts={drafts} />}
     >
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">Tus canchas</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Con una cancha y su precio ya podés recibir reservas online. Las fotos se cargan después
-            desde Canchas.
+            Con una cancha y su precio ya podés recibir reservas online. Sumá una foto si la tenés a
+            mano: es lo primero que mira el jugador.
           </p>
         </div>
 
@@ -116,6 +163,9 @@ export function StepCourts({ existingCourts, tenantId, createCourtsAction }: Pro
               onToggle={toggleExpand}
               onUpdate={updateDraft}
               onRemove={removeDraft}
+              photosEnabled={photosEnabled}
+              onUploadPhoto={(blob) => uploadPhoto(draft, blob)}
+              onRemovePhoto={() => removePhoto(draft)}
             />
           ))}
 

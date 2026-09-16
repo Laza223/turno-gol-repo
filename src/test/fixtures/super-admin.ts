@@ -254,7 +254,11 @@ export type SaPlanSummary = {
   priceAnnual: number
 }
 
-/** Los 3 planes SaaS vigentes (migr. 043 / CLAUDE.md): Predio/Complejo/Estadio. */
+/**
+ * Los 3 planes SaaS vigentes (migr. 043 / CLAUDE.md): Predio/Complejo/Estadio.
+ * `priceAnnual` es el EQUIVALENTE MENSUAL con 20% off (migr. 071), NO el
+ * total anual — 80% de `priceMonthly`.
+ */
 export const planSummaries = (): SaPlanSummary[] => [
   {
     id: uid(7010),
@@ -262,7 +266,7 @@ export const planSummaries = (): SaPlanSummary[] => [
     name: 'Predio',
     maxCourts: 2,
     priceMonthly: 5_500_000,
-    priceAnnual: 52_800_000,
+    priceAnnual: 4_400_000,
   },
   {
     id: uid(7011),
@@ -270,7 +274,7 @@ export const planSummaries = (): SaPlanSummary[] => [
     name: 'Complejo',
     maxCourts: 5,
     priceMonthly: 8_500_000,
-    priceAnnual: 81_600_000,
+    priceAnnual: 6_800_000,
   },
   {
     id: uid(7012),
@@ -278,7 +282,7 @@ export const planSummaries = (): SaPlanSummary[] => [
     name: 'Estadio',
     maxCourts: null,
     priceMonthly: 11_500_000,
-    priceAnnual: 110_400_000,
+    priceAnnual: 9_200_000,
   },
 ]
 
@@ -425,7 +429,7 @@ const subscriptionDefault = (overrides: Partial<SaSubscription> = {}): SaSubscri
   planName: 'Complejo',
   planSlug: 'complejo',
   priceMonthly: 8_500_000,
-  priceAnnual: 81_600_000,
+  priceAnnual: 6_800_000,
   billingCycle: 'monthly',
   currentPeriodStart: daysFromNow(-10),
   currentPeriodEnd: daysFromNow(20),

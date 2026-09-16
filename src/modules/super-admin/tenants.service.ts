@@ -69,13 +69,17 @@ export type TenantList = {
   pageSize: number
 }
 
-/** MRR mensual equivalente en centavos: anual se prorratea /12. */
+/**
+ * MRR mensual equivalente en centavos. `plans.price_annual` YA es el
+ * equivalente mensual con 20% off (migr. 071) — no el total anual — así que
+ * no se vuelve a dividir por 12.
+ */
 function monthlyEquivalentCents(
   cycle: BillingCycle | null,
   priceMonthly: number | null,
   priceAnnual: number | null,
 ): number {
-  if (cycle === 'annual') return Math.round((priceAnnual ?? 0) / 12)
+  if (cycle === 'annual') return priceAnnual ?? 0
   return priceMonthly ?? 0
 }
 

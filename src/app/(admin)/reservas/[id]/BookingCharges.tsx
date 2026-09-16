@@ -152,36 +152,24 @@ export default function BookingCharges({
       const amount2 = splitCents2Value
 
       startTransition(async () => {
-        const key1 =
-          typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
-        const key2 =
+        const clientIdempotencyKey =
           typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
 
-        const res1 = await addBookingChargeAction({
+        // Un solo llamado, atómico (addBookingChargeAction inserta las N
+        // líneas en la MISMA transacción): antes eran dos cobros separados y
+        // un fallo a mitad de camino dejaba la plata del primero adentro sin
+        // el segundo.
+        const res = await addBookingChargeAction({
           bookingId,
-          amount: amount1,
-          method: splitMethod1,
-          clientIdempotencyKey: key1,
+          charges: [
+            { amount: amount1, method: splitMethod1 },
+            { amount: amount2, method: splitMethod2 },
+          ],
+          clientIdempotencyKey,
         })
 
-        if (!res1.success) {
-          setError(`Error en cobro 1 (${METHOD_LABELS[splitMethod1]}): ${res1.error}`)
-          return
-        }
-
-        const res2 = await addBookingChargeAction({
-          bookingId,
-          amount: amount2,
-          method: splitMethod2,
-          clientIdempotencyKey: key2,
-        })
-
-        if (!res2.success) {
-          setError(
-            `Cobro 1 (${formatArs(amount1)}) registrado. Error en cobro 2 (${METHOD_LABELS[splitMethod2]}): ${res2.error}`,
-          )
-          router.refresh()
-          // La plata del cobro 1 YA entró aunque el 2 haya fallado.
+        if (!res.success) {
+          setError(res.error)
           return
         }
 
@@ -211,7 +199,11 @@ export default function BookingCharges({
       typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
 
     startTransition(async () => {
-      const res = await addBookingChargeAction({ bookingId, amount, method, clientIdempotencyKey })
+      const res = await addBookingChargeAction({
+        bookingId,
+        charges: [{ amount, method }],
+        clientIdempotencyKey,
+      })
       if (res.success) {
         toast({ title: 'Cobro registrado', variant: 'success' })
         setOpen(false)

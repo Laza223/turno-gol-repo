@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Ban, ChevronDown, CupSoda, MoveRight, Trash2, Trophy, UserX } from 'lucide-react'
+import { Ban, ChevronDown, CupSoda, MoveRight, Pencil, Trash2, Trophy, UserX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SlotPanelActions } from './actions'
 
@@ -11,6 +11,9 @@ type Props = {
   isTournament: boolean
   canSellCanteen: boolean
   onOpenCanteen: () => void
+  /** D2: nombre/teléfono, duración y precio. Visible SIEMPRE que aplique — no detrás de "Más". */
+  canEdit: boolean
+  onOpenEdit: () => void
   canReschedule: boolean
   onOpenReschedule: () => void
   canMarkNoShow: boolean
@@ -48,6 +51,8 @@ export function SlotActionButtons({
   isTournament,
   canSellCanteen,
   onOpenCanteen,
+  canEdit,
+  onOpenEdit,
   canReschedule,
   onOpenReschedule,
   canMarkNoShow,
@@ -73,6 +78,13 @@ export function SlotActionButtons({
         <button type="button" onClick={onOpenCanteen} disabled={isPending} className={ROW_NEUTRAL}>
           <CupSoda aria-hidden className="h-4 w-4" />
           Cargar cantina
+        </button>
+      )}
+
+      {canEdit && (
+        <button type="button" onClick={onOpenEdit} disabled={isPending} className={ROW_NEUTRAL}>
+          <Pencil aria-hidden className="h-4 w-4" />
+          Editar
         </button>
       )}
 

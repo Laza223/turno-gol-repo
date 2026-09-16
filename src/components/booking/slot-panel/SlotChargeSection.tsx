@@ -1,19 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  newChargeLine,
-  SplitPaymentFields,
-  type ChargeLine,
-} from '@/components/admin/SplitPaymentFields'
+import type { FocusEvent, MouseEvent } from 'react'
+import { SplitPaymentFields, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { cn } from '@/lib/utils'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
 import { chargeCta, type ChargeMode } from './charge-copy'
 
 /**
  * Los tres métodos que se usan en el mostrador, en orden de frecuencia. "Otro"
- * queda fuera a propósito: existe para el detalle de un cobro raro y vive
- * detrás de "Cobrar otro monto", que es donde se arma un cobro a mano.
+ * queda fuera a propósito: existe para el detalle de un cobro raro y se elige
+ * desde el `<select>` de cada línea, no acá arriba.
  */
 const QUICK_METHODS: MethodKey[] = ['cash', 'transfer', 'mercadopago']
 
@@ -24,20 +20,20 @@ type Props = {
   pending: number
   error: string | null
   isPending: boolean
-  /** Cobra el detalle armado a mano (una o varias líneas). */
+  /** Cobra el detalle armado (una o varias líneas), con el monto que esté tipeado. */
   onSubmit: () => void
-  /** Cobra TODO lo pendiente con ese método, en un solo toque. */
-  onFullCharge: (method: MethodKey) => void
 }
 
 /**
  * Cobrar, en dos toques: elegir el método (Efectivo ya viene elegido) y tocar el
  * botón, que dice el monto.
  *
- * Antes había un formulario abierto con el campo del monto en blanco más un
- * atajo punteado "Cobrar todo en efectivo" al costado — dos caminos para lo
- * mismo, y el largo pedía escribir un número que el panel ya sabía: lo que
- * falta. Escribir un monto distinto sigue existiendo, pero como excepción.
+ * D3 (2026-09-15): el monto queda A LA VISTA en los tres modos — antes vivía
+ * detrás de "Cobrar otro monto", y el encargado que quiso registrar $20.000 de
+ * un turno de $84.000 en rojo no encontraba cómo. El campo arranca precargado
+ * con el pendiente (se corrige para abajo, no se escribe de cero) y "Agregar
+ * pago dividido" (dentro de `SplitPaymentFields`) suma líneas con otro método,
+ * en los tres modos por igual — el backend ya soporta N líneas en los tres.
  */
 export function SlotChargeSection({
   mode,
@@ -47,10 +43,52 @@ export function SlotChargeSection({
   error,
   isPending,
   onSubmit,
-  onFullCharge,
 }: Props) {
-  const [method, setMethod] = useState<MethodKey>('cash')
-  const [customOpen, setCustomOpen] = useState(false)
+  const primaryMethod = lines[0]?.method ?? 'cash'
+  const total = lines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
+
+  function selectMethod(m: MethodKey) {
+    if (lines.length === 0) return
+    onLinesChange([{ ...lines[0]!, method: m }, ...lines.slice(1)])
+  }
+
+  /**
+   * Diagnóstico Stream D (2026-09-15): editar EN EL SITIO un valor ya
+   * agrupado en miles ("24.000" + una tecla al final, único lugar donde puede
+   * estar el caret) lo corrompe — `money.ts` reinterpreta el separador de
+   * miles ya escrito como coma decimal. Seleccionar todo el texto al enfocar
+   * hace que la PRIMERA tecla reemplace el valor entero: el admin vuelve a
+   * escribir el monto en vez de "corregirlo" por el medio, que es la única
+   * operación que rompe el parser. Vía delegación de foco/mouse de React
+   * (bubblean desde React 17): no toca `money-input.tsx` ni
+   * `SplitPaymentFields.tsx`, que quedan fuera de este alcance.
+   *
+   * `onFocus` solo no alcanza en un click real: el navegador posiciona el
+   * caret en el punto tocado como parte del propio `mousedown` (ANTES de que
+   * el `focus` corra `.select()`), así que la selección queda pisada por el
+   * click que la originó — medido con Storybook en Chromium real (el unit
+   * test con `fireEvent.focus` no lo agarra porque no simula el mousedown).
+   * Frenar ese `mousedown` con `preventDefault` cuando el campo TODAVÍA no
+   * estaba enfocado, y enfocarlo a mano, evita que el navegador llegue a
+   * poner el caret — un click posterior con el campo YA enfocado no entra acá
+   * y reposiciona el caret con normalidad (corregir un dígito puntual).
+   */
+  function selectAllOnMouseDown(e: MouseEvent<HTMLDivElement>) {
+    const target = e.target
+    if (
+      target instanceof HTMLInputElement &&
+      target.type === 'text' &&
+      document.activeElement !== target
+    ) {
+      e.preventDefault()
+      target.focus()
+    }
+  }
+
+  function selectAllOnFocus(e: FocusEvent<HTMLDivElement>) {
+    const target = e.target
+    if (target instanceof HTMLInputElement && target.type === 'text') target.select()
+  }
 
   return (
     <section className="rounded-lg border border-border p-3">
@@ -63,15 +101,15 @@ export function SlotChargeSection({
           <button
             key={m}
             type="button"
-            onClick={() => setMethod(m)}
-            aria-pressed={method === m}
+            onClick={() => selectMethod(m)}
+            aria-pressed={primaryMethod === m}
             disabled={isPending}
             className={cn(
               // 44px en touch (MASTER §10): el panel entra desde abajo en el
               // teléfono y este es el PRIMER toque del cobro.
               'h-11 flex-1 rounded-md px-2 font-semibold transition-colors disabled:opacity-60 md:h-9',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-              method === m
+              primaryMethod === m
                 ? 'bg-card text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground',
             )}
@@ -81,14 +119,14 @@ export function SlotChargeSection({
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => onFullCharge(method)}
-        disabled={isPending}
-        className="mt-3 h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
-      >
-        {isPending ? 'Procesando…' : chargeCta(mode, pending)}
-      </button>
+      <div className="mt-3" onFocus={selectAllOnFocus} onMouseDown={selectAllOnMouseDown}>
+        <SplitPaymentFields
+          lines={lines}
+          onChange={onLinesChange}
+          maxLines={5}
+          disabled={isPending}
+        />
+      </div>
 
       {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el
           token es red-600 en los DOS temas y sobre la superficie oscura da 3.87:1. */}
@@ -98,41 +136,14 @@ export function SlotChargeSection({
         </p>
       )}
 
-      {customOpen ? (
-        <div className="mt-3 border-t border-border pt-3">
-          <SplitPaymentFields
-            lines={lines}
-            onChange={onLinesChange}
-            // El adelanto va por addBookingChargeAction, que acepta UNA
-            // línea: mostrar el mixto y después mandar sólo la primera
-            // sería cobrar de menos sin avisar.
-            maxLines={mode === 'advance' ? 1 : 5}
-            disabled={isPending}
-          />
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={isPending}
-            className="mt-3 h-11 w-full rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
-          >
-            {isPending ? 'Procesando…' : 'Registrar este cobro'}
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            // El detalle arranca con lo que falta y el método ya elegido: se
-            // abre para CORREGIR un monto, no para escribirlo de cero.
-            if (lines.length === 0) onLinesChange([newChargeLine(pending, method)])
-            setCustomOpen(true)
-          }}
-          disabled={isPending}
-          className="mt-2 w-full text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
-        >
-          Cobrar otro monto
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={isPending}
+        className="mt-3 h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+      >
+        {isPending ? 'Procesando…' : chargeCta(mode, pending, total)}
+      </button>
     </section>
   )
 }

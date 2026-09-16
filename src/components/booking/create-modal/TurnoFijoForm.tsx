@@ -7,13 +7,13 @@ import { formatArs, formatDateLong } from '@/lib/format'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
 import { SegmentedControl } from '@/components/ui/segmented-control'
-import DatePicker from '@/components/ui/date-picker'
 import { priceForRange } from '@/lib/booking/pricing'
 import { cn } from '@/lib/utils'
 import { ContactField } from './ContactField'
+import { DateRangeFields } from './DateRangeFields'
 import { Summary } from './Summary'
 import { usePlayerSearch } from './use-player-search'
-import { endTimeOptions, weekdayOf, WEEKDAY_NAMES_ES } from './time-options'
+import { endTimeOptions, weekdayOf, toDdMm, WEEKDAY_NAMES_ES } from './time-options'
 import { selectClass } from './styles'
 import type { TypeFormProps } from './types'
 
@@ -24,12 +24,6 @@ const paymentChipClass = (active: boolean) =>
       ? 'border-primary bg-primary text-primary-foreground'
       : 'border-border bg-card hover:bg-accent',
   )
-
-/** Un DD/MM chico — sólo lo usa el toast de conflictos de esta form. */
-function toDdMm(dateStr: string): string {
-  const [, m, d] = dateStr.split('-')
-  return `${d}/${m}`
-}
 
 /** Turno fijo — abonado semanal (mismo día y hora, todas las semanas). */
 export function TurnoFijoForm({
@@ -235,30 +229,15 @@ export function TurnoFijoForm({
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="fijo-desde">Desde</Label>
-              <DatePicker
-                id="fijo-desde"
-                value={startsOn}
-                onChange={(v) => v && setStartsOn(v)}
-                min={slot.date}
-                allowedDayOfWeek={dayOfWeek}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="fijo-hasta">
-                Hasta <span className="font-normal text-muted-foreground">(opcional)</span>
-              </Label>
-              <DatePicker
-                id="fijo-hasta"
-                value={endsOn}
-                onChange={setEndsOn}
-                min={startsOn}
-                allowedDayOfWeek={dayOfWeek}
-              />
-            </div>
-          </div>
+          <DateRangeFields
+            idPrefix="fijo"
+            startsOn={startsOn}
+            onStartsOnChange={setStartsOn}
+            endsOn={endsOn}
+            onEndsOnChange={setEndsOn}
+            min={slot.date}
+            dayOfWeek={dayOfWeek}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="fijo-pago">

@@ -133,7 +133,10 @@ export const AgregarCargo: Story = {
     // $5.000 en pesos → 500.000 centavos: el número exacto que tiene que viajar al servidor.
     await waitFor(() =>
       expect(args.addBookingChargeAction).toHaveBeenCalledWith(
-        expect.objectContaining({ bookingId: BOOKING_ID, amount: 500_000, method: 'transfer' }),
+        expect.objectContaining({
+          bookingId: BOOKING_ID,
+          charges: [{ amount: 500_000, method: 'transfer' }],
+        }),
       ),
     )
     await waitFor(() => expect(getRouter().refresh).toHaveBeenCalled())

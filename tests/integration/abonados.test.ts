@@ -522,4 +522,105 @@ describe('abonado service', () => {
     )
     expect(cancelados.find((a) => a.id === abonado.id)).toBeUndefined()
   })
+
+  /**
+   * D1 (docs/decisions/2026-09-15-evento-repetible-edicion-y-cobro-parcial.md):
+   * el Evento semanal de la grilla crea un abonado sin teléfono y/o gratis
+   * (migr. 087). Cada sesión sin jugador vinculado tiene que llevar el nombre
+   * del abonado en `guest_name` — es el criterio obligatorio de la grilla
+   * (BookingCard.bookingDisplayName mira guestName antes que playerFirstName).
+   */
+  it('evento semanal gratis y sin teléfono: 8 sesiones price_snapshot=0 con el nombre visible en la grilla', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const { abonado, slotsGenerated, conflictDates } = await withTenantContext(tenant.id, (tx) =>
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Escuelita Sabatina',
+          dayOfWeek: ABO_DOW,
+          timeStart: '10:00',
+          timeEnd: '11:00',
+          pricePerSession: 0,
+          startsOn: ABO_START,
+        },
+        tx,
+      ),
+    )
+
+    expect(abonado.contactPhone).toBeNull()
+    expect(abonado.pricePerSession).toBe(0)
+    expect(conflictDates).toHaveLength(0)
+    expect(slotsGenerated).toBe(8)
+
+    const bookingRows = await sql<
+      { price_snapshot: number; guest_name: string | null; player_id: string | null }[]
+    >`
+      SELECT price_snapshot, guest_name, player_id FROM bookings
+      WHERE abonado_id = ${abonado.id}
+    `
+    expect(bookingRows).toHaveLength(8)
+    for (const row of bookingRows) {
+      expect(row.price_snapshot).toBe(0)
+      expect(row.guest_name).toBe('Escuelita Sabatina')
+      expect(row.player_id).toBeNull()
+    }
+  })
+
+  it('rolling job: evento semanal gratis mantiene price 0 y el nombre en las sesiones nuevas', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    const { abonado } = await withTenantContext(tenant.id, (tx) =>
+      createAbonado(
+        tenant.id,
+        staff.id,
+        {
+          courtId,
+          contactName: 'Escuelita Rolling',
+          dayOfWeek: ABO_DOW,
+          timeStart: '11:00',
+          timeEnd: '12:00',
+          pricePerSession: 0,
+          startsOn: ABO_START,
+        },
+        tx,
+      ),
+    )
+
+    // Deja 3 de las 8 sesiones futuras (mismo patrón que el test rolling de arriba).
+    await sql`
+      DELETE FROM bookings
+      WHERE abonado_id = ${abonado.id}
+        AND date >= NOW()::date
+        AND id IN (
+          SELECT id FROM bookings
+          WHERE abonado_id = ${abonado.id} AND date >= NOW()::date
+          ORDER BY date DESC
+          LIMIT 5
+        )
+    `
+    expect(await countFutureBookings(abonado.id)).toBe(3)
+
+    await runRollingSlotGeneration()
+
+    const rows = await sql<{ price_snapshot: number; guest_name: string | null }[]>`
+      SELECT price_snapshot, guest_name FROM bookings
+      WHERE abonado_id = ${abonado.id} AND date >= NOW()::date
+    `
+    expect(rows.length).toBeGreaterThanOrEqual(4)
+    for (const row of rows) {
+      expect(row.price_snapshot).toBe(0)
+      expect(row.guest_name).toBe('Escuelita Rolling')
+    }
+  })
 })

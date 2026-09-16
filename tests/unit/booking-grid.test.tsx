@@ -326,10 +326,9 @@ describe('BookingGrid — panel de acciones del turno', () => {
 
   /**
    * F-0XX (QA prod 2026-08-17): "Pagar todo en efectivo" iluminaba el atajo pero
-   * NO cobraba, sólo rellenaba el formulario de abajo. Desde el rediseño ese
-   * atajo ES el camino: el botón principal cobra todo lo pendiente con el método
-   * elegido arriba, sin formulario de por medio. Escribir un monto distinto vive
-   * detrás de "Cobrar otro monto".
+   * NO cobraba, sólo rellenaba el formulario de abajo. Desde el rediseño (y D3,
+   * 2026-09-15) el botón principal SIEMPRE cobra lo que esté tipeado —
+   * precargado con el pendiente completo salvo que el admin lo edite.
    */
   it('el botón principal cobra todo lo pendiente de una, con el monto en el rótulo', async () => {
     // Mock propio con el parámetro tipado (el de `panelActions()` no lo
@@ -337,8 +336,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     const addBookingChargeAction = vi.fn(
       async (_input: {
         bookingId: string
-        amount: number
-        method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+        charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' | 'other' }[]
         clientIdempotencyKey?: string
       }) => ({ success: true as const }),
     )
@@ -361,8 +359,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     await waitFor(() => expect(addBookingChargeAction).toHaveBeenCalledTimes(1))
     expect(addBookingChargeAction.mock.calls[0]![0]).toMatchObject({
       bookingId: 'b1',
-      amount: 1500000,
-      method: 'cash',
+      charges: [{ amount: 1500000, method: 'cash' }],
     })
     // El resto de las acciones de cobro NO se disparan por este atajo.
     expect(actions.chargeDebtAction).not.toHaveBeenCalled()

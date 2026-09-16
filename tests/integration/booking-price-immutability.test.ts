@@ -189,6 +189,52 @@ describe('migr. 070 — price_snapshot al reprogramar', () => {
     ).rejects.toThrow(/estado terminal/)
   }, 20_000)
 
+  it('migr. 088: RECHAZA cambiar solo el precio de un confirmed SIN el marcador app.booking_edit', async () => {
+    const sql = getSql()
+    const id = await insertBooking({ timeStart: '09:00', timeEnd: '10:00', status: 'confirmed' })
+
+    // Mismo caso que "RECHAZA cambiar solo el precio, sin mover el slot" de
+    // arriba, pero dejado explícito acá porque es justo lo que la 088 podría
+    // haber roto: un booking `confirmed` YA NO alcanza por sí solo — hace
+    // falta el marcador puesto por `editBooking` (SET LOCAL), y una conexión
+    // nueva nunca lo tiene.
+    await expect(
+      sql`UPDATE bookings SET price_snapshot = ${NEW_PRICE} WHERE id = ${id}`,
+    ).rejects.toThrow(/price_snapshot es inmutable/)
+
+    expect(await priceOf(id)).toBe(BASE_PRICE)
+  }, 20_000)
+
+  it('migr. 088: permite cambiar el precio de un confirmed CON el marcador app.booking_edit (SET LOCAL)', async () => {
+    const sql = getSql()
+    const id = await insertBooking({ timeStart: '11:00', timeEnd: '12:00', status: 'confirmed' })
+
+    await sql.begin(async (tx) => {
+      await tx`SELECT set_config('app.booking_edit', 'on', true)`
+      await tx`UPDATE bookings SET price_snapshot = ${NEW_PRICE} WHERE id = ${id}`
+    })
+
+    expect(await priceOf(id)).toBe(NEW_PRICE)
+  }, 20_000)
+
+  it('migr. 088: el marcador NO abre la puerta en un booking terminal (Regla 2 exige status=confirmed)', async () => {
+    const sql = getSql()
+    const id = await insertBooking({ timeStart: '13:00', timeEnd: '14:00', status: 'completed' })
+
+    // La excepción de la 088 exige `OLD.status = 'confirmed'` explícito —no
+    // "cualquier estado no terminal"—, así que en un booking `completed` el
+    // marcador no cambia nada: sigue cayendo en "price_snapshot es inmutable"
+    // (Regla 2), sin llegar siquiera a evaluar el bloqueo de Regla 1.
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SELECT set_config('app.booking_edit', 'on', true)`
+        await tx`UPDATE bookings SET price_snapshot = ${NEW_PRICE} WHERE id = ${id}`
+      }),
+    ).rejects.toThrow(/price_snapshot es inmutable/)
+
+    expect(await priceOf(id)).toBe(BASE_PRICE)
+  }, 20_000)
+
   it('mover el slot SIN tocar el precio sigue permitido (no se rompió el camino común)', async () => {
     const sql = getSql()
     const id = await insertBooking({ date: OTHER_DATE, timeStart: '16:00', timeEnd: '17:00' })

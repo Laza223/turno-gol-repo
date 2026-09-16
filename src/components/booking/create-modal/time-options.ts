@@ -118,3 +118,9 @@ export function durationHours(timeStart: string, timeEnd: string): number {
   const end = timeEnd === '24:00' ? END_OF_DAY_MINS : hhmmToMins(timeEnd)
   return Math.max(1, Math.round((end - start) / 60))
 }
+
+/** Un DD/MM chico — lo usan los toasts de fechas en conflicto (Turno fijo, Evento semanal). */
+export function toDdMm(dateStr: string): string {
+  const [, m, d] = dateStr.split('-')
+  return `${d}/${m}`
+}

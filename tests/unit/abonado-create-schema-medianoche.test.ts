@@ -52,3 +52,30 @@ describe('createAbonadoSchema — timeEnd acepta 24:00 (ENS-13)', () => {
     expect(result.success).toBe(false)
   })
 })
+
+// Revisión amarilla: Turno fijo llama a createAbonadoAction (este MISMO
+// schema) directo, sin pasar por el schema propio de /abonados/nuevo que sí
+// exige teléfono server-side. Sin este refine, el teléfono de Turno fijo
+// quedaba obligatorio SOLO en la UI (TurnoFijoForm.tsx).
+describe('createAbonadoSchema — teléfono obligatorio salvo `viaWeeklyEvent` (D1)', () => {
+  it('rechaza sin contactPhone ni viaWeeklyEvent (Turno fijo sin el gate de UI)', () => {
+    const { contactPhone: _omit, ...rest } = base
+    const result = createAbonadoSchema.safeParse({ ...rest, timeEnd: '11:00' })
+    expect(result.success).toBe(false)
+  })
+
+  it('acepta sin contactPhone cuando viaWeeklyEvent=true (evento semanal, D1)', () => {
+    const { contactPhone: _omit, ...rest } = base
+    const result = createAbonadoSchema.safeParse({
+      ...rest,
+      timeEnd: '11:00',
+      viaWeeklyEvent: true,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('sigue aceptando con contactPhone, con o sin viaWeeklyEvent', () => {
+    const result = createAbonadoSchema.safeParse({ ...base, timeEnd: '11:00' })
+    expect(result.success).toBe(true)
+  })
+})

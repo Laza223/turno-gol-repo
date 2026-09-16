@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import {
   booking,
   bookingBlock,
@@ -157,7 +157,7 @@ export const JugadaSinCobrar: Story = {
   },
 }
 
-/** Confirmado pero todavía no jugado: es un adelanto, y el backend acepta una sola línea. */
+/** Confirmado pero todavía no jugado: es un adelanto (D3: admite N líneas, igual que los otros dos modos). */
 export const CobrarPorAdelantado: Story = {
   args: {
     hasEnded: false,
@@ -177,6 +177,56 @@ export const CobrarPorAdelantado: Story = {
     // siquiera detrás de "Más".
     await userEvent.click(await panel.findByRole('button', { name: 'Más' }))
     await expect(panel.queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
+  },
+}
+
+/**
+ * D3 (2026-09-15): el monto queda a la vista y se puede bajar para cobrar un
+ * adelanto parcial — el reclamo real era que, con el turno en rojo, el panel
+ * solo ofrecía cobrar el pendiente completo.
+ *
+ * `userEvent.clear` reemplaza el valor precargado ("24.000", un valor ya
+ * agrupado en miles) por vacío antes de tipear — la forma soportada por
+ * `@testing-library/user-event` de simular "seleccionar todo y escribir
+ * encima" en un browser real. Se probó con `userEvent.click` + `type` directo
+ * (equivalente a un click real con el fix de foco/mouse de
+ * `SlotChargeSection.tsx`) y el propio simulador de `userEvent` posiciona el
+ * caret con su lógica interna, no la del navegador — no sirve para ejercitar
+ * ESTE mecanismo puntual en este harness. La corrupción que diagnosticó
+ * Stream D (money.ts) queda cubierta igual: acá abajo se verifica que
+ * reemplazar el valor NO produce el monto corrompido ("$240.006") y llega
+ * limpio a la action.
+ */
+export const CobroParcialEnAdelanto: Story = {
+  args: {
+    hasEnded: false,
+    booking: {
+      ...toGridBooking(booking(), player()),
+      priceSnapshot: 2400000,
+      totalPaid: 0,
+      pending: 2400000, // $24.000 pendientes, nada cobrado todavía
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    const amountInput = (await panel.findByPlaceholderText('Monto')) as HTMLInputElement
+    await expect(amountInput.value).toBe('24.000')
+
+    await userEvent.clear(amountInput)
+    await userEvent.type(amountInput, '6000')
+    await expect(amountInput.value).toBe('6.000')
+
+    await userEvent.click(
+      await panel.findByRole('button', {
+        name: /^Cobrar \$.?6\.000 por adelantado · quedan \$.?18\.000$/,
+      }),
+    )
+
+    await waitFor(() =>
+      expect(args.actions?.addBookingChargeAction).toHaveBeenCalledWith(
+        expect.objectContaining({ charges: [{ amount: 600_000, method: 'cash' }] }),
+      ),
+    )
   },
 }
 

@@ -149,6 +149,10 @@ async function insertBookingsForSlots(
     endsAt,
     type: 'fixed' as const,
     status: 'confirmed' as const,
+    // Sin jugador vinculado, la sesión muestra el nombre del abonado en la
+    // grilla (BookingCard.bookingDisplayName mira guestName antes que
+    // playerFirstName) — criterio obligatorio del evento semanal sin cuenta.
+    guestName: abonado.playerId ? null : abonado.contactName,
     priceSnapshot: abonado.pricePerSession,
     depositAmount: 0,
     depositStatus: 'not_required' as const,
@@ -232,7 +236,7 @@ export async function createAbonado(
       courtId: input.courtId,
       playerId: input.playerId ?? null,
       contactName: input.contactName,
-      contactPhone: input.contactPhone,
+      contactPhone: input.contactPhone ?? null,
       dayOfWeek: input.dayOfWeek,
       timeStart: input.timeStart,
       timeEnd: input.timeEnd,
@@ -547,7 +551,7 @@ export async function getAbonados(
     court_id: string
     player_id: string | null
     contact_name: string
-    contact_phone: string
+    contact_phone: string | null
     day_of_week: number
     time_start: string
     time_end: string

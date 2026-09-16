@@ -99,6 +99,11 @@ export function GridOverlays({
           // operativo; el panel no lo recalcula (ver su prop hasEnded).
           hasEnded={hasEnded}
           courts={courts}
+          // D2: BookingEditDialog necesita el día completo (para calcular la
+          // duración máxima sin pisar otro turno) y la grilla horaria — ya
+          // están acá para BookingFormModal, sólo se reenvían.
+          dayBookings={bookings}
+          daySlots={daySlots}
           renderCanteenDialog={renderCanteenDialog}
           actions={slotPanelActions}
         />

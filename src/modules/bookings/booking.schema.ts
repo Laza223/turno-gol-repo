@@ -79,6 +79,21 @@ export const rescheduleBookingSchema = z.object({
   priceOverride: z.number().int().nonnegative().optional(),
 })
 
+/**
+ * Editar reserva (D2, 2026-09-15). Todos los campos son opcionales A PROPÓSITO:
+ * el admin puede tocar sólo el precio, o sólo el nombre, sin tener que
+ * reenviar el resto. La legitimidad de CADA campo (nombre/teléfono sólo si es
+ * invitado; duración sólo en un evento `spontaneous` cargado por el staff) la
+ * valida el service — el schema sólo confirma la FORMA.
+ */
+export const editBookingSchema = z.object({
+  bookingId: uuid,
+  guestName: boundedText(200).min(1, 'El nombre no puede estar vacío.').optional(),
+  guestPhone: boundedText(50).min(1, 'El teléfono no puede estar vacío.').optional(),
+  timeEnd: hhmmEnd.optional(),
+  priceOverride: z.number().int().nonnegative().optional(),
+})
+
 // ── Output (response) contracts — doc15 §2 ────────────────────────────────────
 // Mirror `BookingRow` (booking.types.ts) as serialized over the wire: Date fields
 // become ISO strings. `z.strictObject` so a new/renamed field surfaces as drift.

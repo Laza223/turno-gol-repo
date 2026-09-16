@@ -14,6 +14,14 @@ import type { SQL } from 'drizzle-orm'
 // saldo. La query de reintento por idempotencyKey se cubre aparte: un
 // reintento genuino (misma key ya insertada) no debe re-validar contra un
 // pendiente que ya bajó por ese mismo cobro.
+//
+// D3 (2026-09-15): la acción pasó de {amount, method} a {charges: [...]}
+// (1..5 líneas, mismo patrón que completeAndChargeBookingAction) para que el
+// adelanto también admita pago dividido. La idempotencia es POR LÍNEA
+// (`${key}-${i}`) — el dedupe de reintento chequea CADA línea por su propia
+// key sufijada (no solo la 0): lo ya commiteado no se re-valida, pero una
+// línea NUEVA agregada a un reintento con la MISMA key siempre se valida
+// contra el pendiente recalculado (revisión roja, sobrecobro).
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/modules/staff/guards', () => ({
@@ -90,7 +98,25 @@ beforeEach(() => {
 
 describe('addBookingChargeAction', () => {
   it('rechaza monto 0 o negativo sin tocar la caja', async () => {
-    const res = await addBookingChargeAction({ bookingId: BOOKING_ID, amount: 0, method: 'cash' })
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 0, method: 'cash' }],
+    })
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+  })
+
+  it('rechaza 0 líneas', async () => {
+    const res = await addBookingChargeAction({ bookingId: BOOKING_ID, charges: [] })
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+  })
+
+  it('rechaza más de 5 líneas', async () => {
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: Array.from({ length: 6 }, () => ({ amount: 1_00, method: 'cash' as const })),
+    })
     expect(res.success).toBe(false)
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
@@ -99,8 +125,7 @@ describe('addBookingChargeAction', () => {
     mockTx([[{ status: 'canceled_no_refund' }]])
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 20_000_00,
-      method: 'cash',
+      charges: [{ amount: 20_000_00, method: 'cash' }],
     })
     expect(res.success).toBe(false)
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
@@ -110,8 +135,7 @@ describe('addBookingChargeAction', () => {
     mockTx([[]])
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 20_000_00,
-      method: 'cash',
+      charges: [{ amount: 20_000_00, method: 'cash' }],
     })
     expect(res.success).toBe(false)
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
@@ -127,8 +151,7 @@ describe('addBookingChargeAction', () => {
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 38_500_00,
-      method: 'transfer',
+      charges: [{ amount: 38_500_00, method: 'transfer' }],
     })
 
     expect(res.success).toBe(true)
@@ -156,8 +179,7 @@ describe('addBookingChargeAction', () => {
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 570_00, // $570 > $100 pendiente — el caso real del ensayo
-      method: 'cash',
+      charges: [{ amount: 570_00, method: 'cash' }], // $570 > $100 pendiente — el caso real del ensayo
     })
 
     expect(res.success).toBe(false)
@@ -180,8 +202,7 @@ describe('addBookingChargeAction', () => {
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 100_00,
-      method: 'cash',
+      charges: [{ amount: 100_00, method: 'cash' }],
     })
 
     expect(res.success).toBe(true)
@@ -198,8 +219,7 @@ describe('addBookingChargeAction', () => {
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 1_00,
-      method: 'cash',
+      charges: [{ amount: 1_00, method: 'cash' }],
     })
 
     expect(res.success).toBe(false)
@@ -227,29 +247,121 @@ describe('addBookingChargeAction', () => {
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 30_00, // pendiente real = 100-80 = 20, 30 > 20
-      method: 'cash',
+      charges: [{ amount: 30_00, method: 'cash' }], // pendiente real = 100-80 = 20, 30 > 20
     })
 
     expect(res.success).toBe(false)
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
 
-  // Idempotencia: un reintento con la MISMA clientIdempotencyKey (ya insertada)
-  // no debe re-validar contra el pendiente ya reducido por ese mismo cobro —
-  // eso rechazaría por error un reintento legítimo (Fix #55 no debe romperse).
-  it('un reintento con clientIdempotencyKey ya registrada no re-valida el pendiente', async () => {
+  // D3: adelanto dividido en varios métodos — la SUMA de las líneas se valida
+  // contra el pendiente, no cada línea por separado.
+  it('acepta varias líneas y suma su total contra el pendiente', async () => {
+    mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })],
+      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [], // sin cobros previos
+    ])
+    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-line' } as never)
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [
+        { amount: 60_00, method: 'cash' },
+        { amount: 40_00, method: 'transfer' },
+      ],
+    })
+
+    expect(res.success).toBe(true)
+    expect(vi.mocked(createCashFlow)).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(createCashFlow)).toHaveBeenNthCalledWith(
+      1,
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ amount: 60_00, method: 'cash' }),
+      expect.anything(),
+    )
+    expect(vi.mocked(createCashFlow)).toHaveBeenNthCalledWith(
+      2,
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ amount: 40_00, method: 'transfer' }),
+      expect.anything(),
+    )
+  })
+
+  it('rechaza si la SUMA de las líneas supera el pendiente, aunque cada una quepa individualmente', async () => {
+    mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })],
+      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [],
+    ])
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [
+        { amount: 60_00, method: 'cash' },
+        { amount: 60_00, method: 'transfer' }, // 60+60 = 120 > 100 pendiente
+      ],
+    })
+
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+  })
+
+  // Idempotencia POR LÍNEA: cada cash_flow se inserta con `${key}-${i}`, y el
+  // dedupe de reintento chequea la existencia de CADA key sufijada.
+  it('inserta cada línea con su propia clientIdempotencyKey (`${key}-${i}`)', async () => {
+    const KEY = '66666666-6666-4666-8666-666666666666'
+    mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })],
+      [], // idempotency key: no existe todavía
+      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [], // getBookingCharges: sin cobros previos
+    ])
+    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-multi' } as never)
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [
+        { amount: 60_00, method: 'cash' },
+        { amount: 40_00, method: 'transfer' },
+      ],
+      clientIdempotencyKey: KEY,
+    })
+
+    expect(res.success).toBe(true)
+    expect(vi.mocked(createCashFlow)).toHaveBeenNthCalledWith(
+      1,
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ clientIdempotencyKey: `${KEY}-0` }),
+      expect.anything(),
+    )
+    expect(vi.mocked(createCashFlow)).toHaveBeenNthCalledWith(
+      2,
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ clientIdempotencyKey: `${KEY}-1` }),
+      expect.anything(),
+    )
+  })
+
+  // Idempotencia: un reintento con la MISMA clientIdempotencyKey (ya insertada
+  // como línea 0) no debe re-validar contra el pendiente ya reducido por ese
+  // mismo cobro — eso rechazaría por error un reintento legítimo (Fix #55 no
+  // debe romperse).
+  it('un reintento con clientIdempotencyKey ya registrada (línea 0) no re-valida el pendiente', async () => {
     const KEY = '22222222-2222-4222-8222-222222222222'
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
-      [{ exists: 1 }], // SELECT por idempotency key: ya existe
+      [{ key: `${KEY}-0` }], // SELECT por idempotency key: `${KEY}-0` ya existe
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-existing' } as never)
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 100_00,
-      method: 'cash',
+      charges: [{ amount: 100_00, method: 'cash' }],
       clientIdempotencyKey: KEY,
     })
 
@@ -273,8 +385,7 @@ describe('addBookingChargeAction', () => {
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 570_00,
-      method: 'cash',
+      charges: [{ amount: 570_00, method: 'cash' }],
       clientIdempotencyKey: KEY,
     })
 
@@ -297,8 +408,7 @@ describe('addBookingChargeAction', () => {
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 50_00,
-      method: 'cash',
+      charges: [{ amount: 50_00, method: 'cash' }],
     })
 
     expect(res.success).toBe(true)
@@ -317,19 +427,18 @@ describe('addBookingChargeAction', () => {
   // 023), sin tenant_id. El SELECT de dedupe acá debe filtrar por tenant_id
   // explícitamente además de RLS (CLAUDE.md) o un complejo B puede leer un
   // reintento idempotente insertado por el complejo A y tratarlo como propio.
-  it('el SELECT de dedupe por clientIdempotencyKey filtra por tenant_id', async () => {
+  it('el SELECT de dedupe por clientIdempotencyKey (línea 0) filtra por tenant_id', async () => {
     const dialect = new PgDialect()
     const KEY = '55555555-5555-4555-8555-555555555555'
     const tx = mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
-      [{ exists: 1 }], // SELECT por idempotency key: ya existe
+      [{ key: `${KEY}-0` }], // SELECT por idempotency key: ya existe
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-tenant-scoped' } as never)
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 100_00,
-      method: 'cash',
+      charges: [{ amount: 100_00, method: 'cash' }],
       clientIdempotencyKey: KEY,
     })
 
@@ -338,7 +447,47 @@ describe('addBookingChargeAction', () => {
     const dedupeQuery = queries.find((q) => q.sql.includes('client_idempotency_key'))
     expect(dedupeQuery).toBeDefined()
     expect(dedupeQuery!.sql).toMatch(/tenant_id/)
+    expect(dedupeQuery!.params).toContain(`${KEY}-0`)
     expect(dedupeQuery!.params).toContain('tenant-1')
+  })
+
+  // Revisión roja: un reintento que reusa la MISMA key pero AGREGA una línea
+  // nueva no debe saltear la validación de esa línea nueva solo porque la
+  // línea 0 ya esté commiteada. Turno pagado por completo con la línea 0
+  // ($100) + retry mutado que agrega una línea 1 ($40) tiene que rechazarse:
+  // la línea nueva SÍ se valida contra el pendiente recalculado (que ya
+  // descuenta lo que la línea 0 cobró), en vez de saltear todo el lote.
+  it('un reintento con la MISMA key pero una línea NUEVA valida esa línea contra el pendiente real', async () => {
+    const KEY = '77777777-7777-4777-8777-777777777777'
+    mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking: pendiente total $100
+      [{ key: `${KEY}-0` }], // dedupe: solo la línea 0 ya existe, la 1 es nueva
+      [], // FOR UPDATE lock del booking (hay línea nueva que valida)
+      [
+        {
+          id: 'cf-line0',
+          amount: 100_00,
+          method: 'cash',
+          description: 'Cobro de turno',
+          occurredAt: '2026-01-01',
+        },
+      ], // getBookingCharges: la línea 0 ya cobró el pendiente entero
+    ])
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [
+        { amount: 100_00, method: 'cash' }, // línea 0: ya commiteada, no se re-valida
+        { amount: 40_00, method: 'transfer' }, // línea 1: nueva, sobrecobro
+      ],
+      clientIdempotencyKey: KEY,
+    })
+
+    expect(res.success).toBe(false)
+    if (!res.success) {
+      expect(res.error).toMatch(/ya está pagado por completo/i)
+    }
+    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
 
   // El reintento idempotente NO toma el lock: alreadyRegistered=true corta
@@ -349,14 +498,13 @@ describe('addBookingChargeAction', () => {
     const KEY = '44444444-4444-4444-8444-444444444444'
     const tx = mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
-      [{ exists: 1 }], // idempotency key: ya existe
+      [{ key: `${KEY}-0` }], // idempotency key: ya existe
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-retry' } as never)
 
     const res = await addBookingChargeAction({
       bookingId: BOOKING_ID,
-      amount: 100_00,
-      method: 'cash',
+      charges: [{ amount: 100_00, method: 'cash' }],
       clientIdempotencyKey: KEY,
     })
 

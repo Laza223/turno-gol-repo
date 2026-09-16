@@ -225,6 +225,7 @@ type OnboardingEvent =
   | 'onboarding.step.back'
   | 'onboarding.step.error'
   | 'onboarding.courts.added'
+  | 'onboarding.court_photo.uploaded'
   | 'onboarding.first_booking.created'
   | 'onboarding.first_booking.skipped'
   | 'onboarding.completed'

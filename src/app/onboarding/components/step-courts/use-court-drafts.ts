@@ -34,7 +34,11 @@ function isDraft(value: unknown): value is Draft {
     typeof d.format === 'number' &&
     typeof d.surfaceType === 'string' &&
     typeof d.isCovered === 'boolean' &&
-    (d.priceCents === null || typeof d.priceCents === 'number')
+    (d.priceCents === null || typeof d.priceCents === 'number') &&
+    // Sólo se valida SI está: un borrador guardado antes de que existiera el
+    // campo no tiene la clave, y exigirla le borraría las canchas a medio
+    // cargar a todos los dueños en el momento del deploy.
+    (d.photoUrl === undefined || d.photoUrl === null || typeof d.photoUrl === 'string')
   )
 }
 

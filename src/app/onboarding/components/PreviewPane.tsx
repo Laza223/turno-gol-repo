@@ -12,7 +12,7 @@ type Props = {
 
 /**
  * Dónde vive el preview del paso, no qué muestra (eso lo decide cada tarjeta:
- * `PublicCardPreview`, `WeekPreview`, `GridPreview`). Split panel §E.1 del plan
+ * `PublicCardPreview`, `WeekPreview`, `CourtsPreview`). Split panel §E.1 del plan
  * de refactor de onboarding.
  *
  * Desktop: columna fija a la derecha, siempre visible — es la mitad de la

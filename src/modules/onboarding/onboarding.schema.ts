@@ -7,9 +7,11 @@ import { uuid, dateStr, hhmm, hhmmEnd } from '@/shared/validation/primitives'
  *
  * Estaba declarado inline dentro de la Server Action.
  *
- * Sin `photos`: el paso 3 dejó de pedirlas (ver el comentario en `actions.ts`).
- * Aceptar el campo "por si acaso" dejaría abierta una entrada de URLs arbitrarias
- * a `courts.photos` que ninguna pantalla escribe.
+ * `photoUrl` es la foto opcional que el dueño subió en el paso (la cancha
+ * todavía no existe cuando sube, así que el archivo viaja como URL). Acá solo se
+ * valida la FORMA: que sea del propio complejo lo decide `ownDraftPhotoUrl` en
+ * el service, que es el único que conoce el tenantId — sin ese corte, esto sería
+ * una entrada de URLs arbitrarias a `courts.photos`.
  */
 export const wizardCourtsSchema = z.object({
   courts: z
@@ -24,6 +26,7 @@ export const wizardCourtsSchema = z.object({
         surfaceType: z.enum(['synthetic_grass', 'natural_grass', 'cement', 'tile']),
         isCovered: z.boolean(),
         priceCents: z.number().int().positive('Cargá el precio por turno de cada cancha'),
+        photoUrl: z.url().max(500).optional(),
       }),
     )
     .max(20, 'Máximo 20 canchas por vez'),

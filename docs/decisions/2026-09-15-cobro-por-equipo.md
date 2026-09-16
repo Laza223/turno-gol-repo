@@ -94,8 +94,43 @@ Se deriva entonces de lo que el panel ya tiene (`priceSnapshot`, `totalPaid`, `d
 
 ## Verificación
 
-- `tests/unit/team-split.test.ts`: los seis casos del helper, incluido "seña pagada y cero cobros de
-  mostrador → no dice que pagó un equipo" y el redondeo con saldo impar.
-- `BookingSlotPanel.stories.tsx`: `CobrarPorEquipo`, `MitadCobrada`, `SeniaNoEsUnEquipo`.
+- `tests/unit/charge-split.test.ts`: los casos del helper, incluido "seña pagada y cero cobros de
+  mostrador → no dice que pagó gente" y el redondeo con saldo impar.
+- `BookingSlotPanel.stories.tsx`: `CobrarDeAPartes`, `PagaronCuatroDeDiez`, `MitadCobrada`,
+  `SeniaNoEsGenteQuePago`.
 - Backend sin test nuevo a propósito: `tests/integration/booking-charges.test.ts` ya cubre cobro
   parcial, tope por pendiente y dos cobros concurrentes.
+
+## Nota 2026-09-16 — "Pagó uno": cobrar jugador por jugador
+
+El dueño, revisando lo de arriba: cobrar por equipo es **sólo un contador visual** para el que está
+en el mostrador, y el caso más frecuente no es el equipo sino que **cada jugador paga lo suyo a
+medida que llega**. Se agrega un segundo atajo, **"Pagó uno — $X"**, y el rótulo pasa a contar
+gente: **"Pagaron 4 de 10"** (con "· un equipo entero" cuando cae justo en la mitad).
+
+Encuadre explícito del dueño, que acota el alcance: **no se registra un cliente por equipo ni por
+jugador.** Sería demasiada fricción y llenaría el sistema de datos que no sirven ni a este complejo
+ni a ningún otro. En la vida real, si hay que reclamar, se le reclama **al que reservó** por
+WhatsApp — incluso cuando el que no pagó es del otro equipo. La simplicidad es el requisito, no un
+recorte.
+
+Consecuencias:
+
+- **La parte de un jugador sale del PRECIO del turno**, no de lo pendiente: lo que pone cada uno no
+  cambia porque otro ya haya pagado. Con seña, la seña cubre las primeras partes y el pendiente baja
+  solo. Divisor: `courts.capacity` (jugadores que entran = `format × 2`), que ya existe.
+- **El panel necesitaba un dato que no tenía**: la capacidad de la cancha del turno. Viajaba hasta
+  `BookingGrid` dentro de `CourtRow` pero el panel recortaba el tipo a `{id, name, status}`. Se
+  ensanchó esa prop — no hay query nueva. Sin `capacity`, el botón no se ofrece y el rótulo vuelve a
+  hablar de equipos: degrada, no rompe.
+- **`canSplitShare` exige `pending > shareCents`, estrictamente.** Cuando lo que falta ES una parte,
+  el botón grande ya dice "Cobrar $2.400": ofrecer los dos sería el mismo cobro dos veces.
+- **El conteo se deduce dividiendo** (`counterPaid / shareCents`), porque el panel sabe cuánto entró
+  y no en cuántas veces. Un cobro suelto por "Cobrar otro monto" puede correr el conteo un jugador;
+  por eso el número grande sigue siendo **lo que falta**, que nunca se deduce, y el rótulo no repite
+  el monto. Contar filas exactas pediría traer los cobros de cada turno a la grilla, la consulta por
+  turno que `sumBookingChargesByBooking` evita a propósito.
+- **`submitPartialCharge` topea contra el pendiente** antes de llamar a la action. El backend ya lo
+  valida, pero cobrar de más no puede depender de que el cliente calcule bien.
+- `CompleteBookingDialog` adopta el rótulo "Pagó un equipo" para no tener dos nombres del mismo
+  cobro (H017). **No** ofrece "Pagó uno": ese diálogo no conoce la cancha del turno.

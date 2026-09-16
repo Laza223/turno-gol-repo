@@ -7,7 +7,7 @@ import type { MethodKey } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
-import { chargeMode, teamSplit } from './charge-copy'
+import { chargeMode } from './charge-copy'
 import type { ChargeInput, SlotPanelActions } from './actions'
 import type { ActionResult } from '@/shared/types/action-result'
 
@@ -46,9 +46,9 @@ export function useSlotCharges({
   /**
    * Corre la mutación real (misma Server Action, mismo guard, mismo toast y
    * manejo de error en los tres modos) a partir de un array de cargos ya
-   * validado. La usan `submitCharge` (con `lines`) y `submitHalfCharge` (con
-   * el cargo armado en el momento, sin depender de `lines` porque `setState`
-   * es async y todavía no se actualizó en el mismo click).
+   * validado. La usan `submitCharge` (con `lines`) y `submitPartialCharge`
+   * (con el cargo armado en el momento, sin depender de `lines` porque
+   * `setState` es async y todavía no se actualizó en el mismo click).
    */
   function runCharge(charges: ChargeInput[], total: number) {
     if (!booking || !actions || !mode) return
@@ -118,20 +118,24 @@ export function useSlotCharges({
   }
 
   /**
-   * Cobra la MITAD de lo pendiente, para el complejo que cobra por equipo.
+   * Cobra una PARTE de lo pendiente: la mitad (un equipo) o lo de un jugador.
    *
    * Mismo camino que `submitCharge` — misma Server Action, mismo guard,
    * mismo toast: lo único que cambia es el monto. El resto queda como saldo del
    * turno y aparece en Deudas hasta que lo paguen, que es exactamente el
    * control que pidió el mostrador.
+   *
+   * Tope defensivo contra lo pendiente: el backend ya lo valida y devolvería el
+   * error, pero cobrar de más nunca puede depender de que el cliente calcule
+   * bien. Con el turno casi saldado, "Pagó uno" cobra lo que queda y no más.
    */
-  function submitHalfCharge(method: MethodKey) {
+  function submitPartialCharge(amountCents: number, method: MethodKey) {
     if (!booking || !mode || pending <= 0) return
-    const half = teamSplit(booking).halfCents
-    if (half <= 0) return
+    const amount = Math.min(amountCents, pending)
+    if (amount <= 0) return
     setError(null)
-    setLines([newChargeLine(half, method)])
-    runCharge([{ amount: half, method }], half)
+    setLines([newChargeLine(amount, method)])
+    runCharge([{ amount, method }], amount)
   }
 
   async function confirmNoShow(): Promise<ActionResult> {
@@ -191,7 +195,7 @@ export function useSlotCharges({
     mode,
     pending,
     submitCharge,
-    submitHalfCharge,
+    submitPartialCharge,
     confirmNoShow,
     revertNoShow,
   }

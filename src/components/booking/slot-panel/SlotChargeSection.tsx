@@ -5,7 +5,7 @@ import { SplitPaymentFields, type ChargeLine } from '@/components/admin/SplitPay
 import { cn } from '@/lib/utils'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
 import { formatArs } from '@/lib/format'
-import { chargeCta, type ChargeMode, type TeamSplit } from './charge-copy'
+import { chargeCta, type ChargeMode, type ChargeSplit } from './charge-copy'
 
 /**
  * Los tres métodos que se usan en el mostrador, en orden de frecuencia. "Otro"
@@ -13,6 +13,14 @@ import { chargeCta, type ChargeMode, type TeamSplit } from './charge-copy'
  * desde el `<select>` de cada línea, no acá arriba.
  */
 const QUICK_METHODS: MethodKey[] = ['cash', 'transfer', 'mercadopago']
+
+/**
+ * Los atajos de cobro parcial. 44px en touch (MASTER §10): "Pagó uno" se toca
+ * una vez por jugador, así que es el botón MÁS tocado del panel en un turno que
+ * se cobra de a poco — errar el dedo acá cuesta un cobro de más.
+ */
+const PARTIAL_BUTTON =
+  'h-11 w-full rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10'
 
 type Props = {
   mode: Exclude<ChargeMode, null>
@@ -23,10 +31,10 @@ type Props = {
   isPending: boolean
   /** Cobra el detalle armado (una o varias líneas), con el monto que esté tipeado. */
   onSubmit: () => void
-  /** Estado por equipos: si ofrecer el atajo de la mitad y cuánto es. */
-  split: TeamSplit
-  /** Cobra la MITAD de lo pendiente con el método elegido, en un solo toque. */
-  onHalfCharge: (method: MethodKey) => void
+  /** Cobro de a partes: qué atajos ofrecer y de cuánto es cada uno. */
+  split: ChargeSplit
+  /** Cobra ese monto exacto con el método elegido, en un solo toque. */
+  onPartialCharge: (amountCents: number, method: MethodKey) => void
 }
 
 /**
@@ -40,11 +48,12 @@ type Props = {
  * pago dividido" (dentro de `SplitPaymentFields`) suma líneas con otro método,
  * en los tres modos por igual — el backend ya soporta N líneas en los tres.
  *
- * Cobrar por equipo (2026-09-15): "Cobrar la mitad" es un atajo aparte, no un
- * reemplazo del campo — la mayoría de los complejos cobra una vez por equipo,
- * así que resolverlo en un toque sin tocar el monto es el camino corto. Deja
- * de ofrecerse en cuanto entró el primer cobro de mostrador (`split.canSplit`),
- * porque ahí el campo y el botón grande ya dicen exactamente lo que falta.
+ * Cobro de a partes (2026-09-15): "Pagó un equipo"/"Pagó uno" son atajos aparte
+ * del campo editable, no un reemplazo — la mayoría de los complejos cobra por
+ * equipo o jugador por jugador, así que resolverlo en un toque sin tocar el
+ * monto es el camino corto. "Pagó un equipo" desaparece con el primer cobro de
+ * mostrador; "Pagó uno" se queda mientras falte más de una parte (`ChargeSplit`
+ * en `charge-copy.ts`).
  */
 export function SlotChargeSection({
   mode,
@@ -55,7 +64,7 @@ export function SlotChargeSection({
   isPending,
   onSubmit,
   split,
-  onHalfCharge,
+  onPartialCharge,
 }: Props) {
   const primaryMethod = lines[0]?.method ?? 'cash'
   const total = lines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
@@ -132,19 +141,36 @@ export function SlotChargeSection({
         ))}
       </div>
 
-      {/* Cobrar por equipo: la mayoría de los complejos cobran en dos veces, una
-          por equipo. Es un atajo aparte del campo editable, no un reemplazo —
-          desaparece en cuanto pagó el primero, ahí el campo y el botón grande
-          ya dicen exactamente lo que falta. */}
-      {split.canSplit && (
-        <button
-          type="button"
-          onClick={() => onHalfCharge(primaryMethod)}
-          disabled={isPending}
-          className="mt-2 h-11 w-full rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
-        >
-          {isPending ? 'Procesando…' : `Cobrar la mitad — ${formatArs(split.halfCents)}`}
-        </button>
+      {/* Cobrar de a partes. Los complejos casi nunca cobran el turno entero de
+          una: o juntan por equipo, o cada jugador paga lo suyo a medida que
+          llega. Son atajos aparte del campo editable, no un reemplazo — el
+          monto va ADENTRO del rótulo, igual que en el botón grande (H017,
+          misma regla que `chargeCta`). "Pagó un equipo" desaparece en cuanto
+          entró el primer cobro; "Pagó uno" se queda mientras falte más de una
+          parte, porque es el que se toca varias veces. */}
+      {(split.canSplitHalf || split.canSplitShare) && (
+        <div className="mt-2 flex flex-col gap-2">
+          {split.canSplitHalf && (
+            <button
+              type="button"
+              onClick={() => onPartialCharge(split.halfCents, primaryMethod)}
+              disabled={isPending}
+              className={PARTIAL_BUTTON}
+            >
+              {isPending ? 'Procesando…' : `Pagó un equipo — ${formatArs(split.halfCents)}`}
+            </button>
+          )}
+          {split.canSplitShare && split.shareCents !== null && (
+            <button
+              type="button"
+              onClick={() => onPartialCharge(split.shareCents ?? 0, primaryMethod)}
+              disabled={isPending}
+              className={PARTIAL_BUTTON}
+            >
+              {isPending ? 'Procesando…' : `Pagó uno — ${formatArs(split.shareCents)}`}
+            </button>
+          )}
+        </div>
       )}
 
       <div className="mt-3" onFocus={selectAllOnFocus} onMouseDown={selectAllOnMouseDown}>

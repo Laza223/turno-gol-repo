@@ -7,12 +7,7 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
-import {
-  createAbonado,
-  pauseAbonado,
-  reactivateAbonado,
-  cancelAbonado,
-} from '@/modules/abonados/abonado.service'
+import { createAbonado, reactivateAbonado, cancelAbonado } from '@/modules/abonados/abonado.service'
 import { createAbonadoSchema } from '@/modules/abonados/abonado.schema'
 import {
   AbonadoConflictError,
@@ -73,32 +68,6 @@ export async function createAbonadoAction(input: CreateAbonadoInput): Promise<Ab
     slotsGenerated: created.slotsGenerated,
     conflictDates: created.conflictDates,
   }
-}
-
-export async function pauseAbonadoAction(id: string): Promise<AbonadoActionResult> {
-  const parsedId = uuid.safeParse(id)
-  if (!parsedId.success) return { success: false, error: 'ID inválido.' }
-  const auth = await requireOperatorStaff()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { user, tenant } = auth
-
-  const limited = await adminRateLimited(tenant.id)
-  if (limited) return { success: false, error: limited }
-
-  let abonado: AbonadoRow
-  try {
-    abonado = await withTenantContext(tenant.id, (tx) =>
-      pauseAbonado(tenant.id, parsedId.data, user.staffUserId!, tx),
-    )
-  } catch (err) {
-    if (err instanceof AbonadoNotFoundError || err instanceof AbonadoAlreadyCanceledError) {
-      return { success: false, error: (err as Error).message }
-    }
-    throw err
-  }
-
-  revalidatePath('/abonados')
-  return { success: true, abonado }
 }
 
 export async function reactivateAbonadoAction(id: string): Promise<AbonadoActionResult> {

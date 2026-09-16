@@ -358,7 +358,9 @@ async function seedAbonados(sql: SqlClient): Promise<void> {
       1, '20:00', '21:00', 4000000, ${startsOn}, 'active', 'cash'
     )
   `
-  // Vinculado al jugador demo, en pausa.
+  // Vinculado al jugador demo, en pausa. Data legacy a propósito: "Pausar" se
+  // retiró del producto (2026-09-15), pero la fila deja ver el badge
+  // "Pausado" y probar el botón Reactivar sobre un estado que ya existía.
   await sql`
     INSERT INTO abonados (
       id, tenant_id, court_id, player_id, contact_name, contact_phone,

@@ -52,6 +52,23 @@ function normalizeUrl(url: string | undefined): string | undefined {
   return url.replace(/:\/\/localhost\b/i, '://127.0.0.1')
 }
 
+/**
+ * El `init_point` que MP devuelve al crear un preapproval **sin plan** viene con
+ * `?...&activation=true`, y esa URL responde "Esta página no existe" (404) en
+ * `mercadopago.com.ar`. La MISMA URL sin ese parámetro abre el checkout normal
+ * ("¿Cómo querés pagar?" + el detalle de la suscripción).
+ *
+ * Verificado a mano contra producción el 2026-09-16 con tres preapprovals
+ * distintos (mensual y anual): con el parámetro, 404; sin él, checkout. Sin
+ * este strip NINGÚN dueño puede activar ni reactivar su plan: el botón lo
+ * manda a una página rota de MP y el circuito de cobro del SaaS queda muerto.
+ */
+export function stripActivationFlag(initPoint: string): string {
+  return initPoint.replace(/([?&])activation=true(&|$)/, (_m, sep: string, tail: string) =>
+    sep === '?' && tail === '&' ? '?' : tail === '&' ? sep : '',
+  )
+}
+
 const MP_ID_RE = /^\d{1,32}$/
 
 /**
@@ -299,7 +316,7 @@ export class MercadoPagoGateway implements PaymentGateway {
       }
       return {
         preapprovalId: String(res.id),
-        initPoint: res.init_point,
+        initPoint: stripActivationFlag(res.init_point),
       }
     } catch (err) {
       if (err instanceof MpGatewayError) throw err

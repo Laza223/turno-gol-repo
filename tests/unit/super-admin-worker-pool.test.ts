@@ -102,6 +102,35 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
     expect(h.getWorkerDb).toHaveBeenCalled()
     expect(h.getDb).not.toHaveBeenCalled()
   })
+
+  // Bug de plata: `plans.price_annual` YA es el equivalente mensual con 20%
+  // off (migr. 071) — `monthlyEquivalentCents` volvía a dividirlo /12, así
+  // que el MRR de un tenant anual salía 12 veces menor.
+  it('ciclo anual: mrrCents es priceAnnual TAL CUAL (nunca priceAnnual / 12)', async () => {
+    const rows: FakeRow[] = [
+      {
+        id: 't2',
+        name: 'Complejo 2',
+        slug: 'c2',
+        email: 'c2@test.com',
+        status: 'active',
+        trialEndsAt: null,
+        createdAt: new Date('2026-01-01'),
+        planName: 'Complejo',
+        planSlug: 'complejo',
+        priceMonthly: 8_500_000,
+        priceAnnual: 6_800_000,
+        billingCycle: 'annual',
+        subscriptionStatus: 'active',
+      },
+    ]
+    h.getWorkerDb.mockReturnValue(makeChain(rows))
+    const { listTenants } = await import('@/modules/super-admin/tenants.service')
+
+    const result = await listTenants({ page: 1, pageSize: 20 })
+
+    expect(result.rows[0]).toMatchObject({ id: 't2', mrrCents: 6_800_000 })
+  })
 })
 
 describe('getTenantDetail (tenants.service) — subscription vía getWorkerDb, tenant vía getDb', () => {

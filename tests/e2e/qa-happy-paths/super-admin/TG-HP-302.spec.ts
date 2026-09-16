@@ -29,7 +29,7 @@ test.describe('TG-HP-302 — Dashboard global', () => {
       const totalTenants = Number(totalRows[0]!.n)
 
       const mrrRows = await runSql<{ mrr: string }>(`
-        SELECT COALESCE(SUM(p.price_monthly), 0)::text AS mrr
+        SELECT COALESCE(SUM(CASE WHEN ts.billing_cycle = 'annual' THEN p.price_annual ELSE p.price_monthly END), 0)::text AS mrr
         FROM tenant_subscriptions ts
         JOIN plans p ON p.id = ts.plan_id
         WHERE ts.status = 'active'

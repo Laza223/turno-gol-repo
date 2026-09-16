@@ -34,6 +34,17 @@ Van Westendorp, 4 preguntas, en este orden, sobre "un sistema que te resuelva [l
 
 Más dos anclas: *"¿A cuánto está tu turno hoy?"* y, si hay confianza, *"¿cuánto te cuesta por mes el encargado, más o menos?"* (monto solo en `data/`).
 
+### Cotización lineal (HP4 — vigente hasta la revisión del 2026-10-02)
+
+Recién **después** de las 4 de Van Westendorp (si se cotiza antes, sus números quedan anclados al nuestro y no sirven). Precio para SUS canchas: **$47.000 la primera + $30.000 por cada extra** → 1 = $47.000 · 2 = $77.000 · 3 = $107.000 · 4 = $137.000 · 5 = $167.000 · 6 = $197.000 · 7 = $227.000 · 8 = $257.000.
+
+- Decirlo en una frase y callarse: *"Para tus [N] canchas serían $[monto] por mes: $47.000 la primera y $30.000 cada una que sumás."*
+- No justificar, no ofrecer descuento, no comparar con ATC. Esperar la reacción y anotarla **textual**.
+- Si pregunta por el anual: 20% menos pagando el año. No destacarlo (D3).
+- La lista publicada en `/precios` sigue siendo la de bandas: si la vio y lo menciona, *"estoy revisando los precios, este es el que te pasaría a vos"*.
+- CRM: `precio_comunicado = si` (monto en notas), `precio_reaccion` y los cuatro `vw_*`. Cuenta para HP4 si `vw_demasiado` ≤ el monto cotizado ("demasiado caro") o si la reacción textual es "caro" sin que la conversación siga. Si se pierde la venta por precio puro: `motivo_salida = perdido-precio`.
+- Criterio y umbrales: [`07-tablero-hipotesis.md`](07-tablero-hipotesis.md) HP4 · por qué: [`board/2026-09-15-precio-por-cancha.md`](../board/2026-09-15-precio-por-cancha.md).
+
 ## Observables de ICP (anotar sin preguntar)
 
 Canchas (contar en Maps/IG si no lo dijo) · fútbol puro o mixto · cierra pasada la medianoche · dueño presente · IG activo · bio con "reservas por WhatsApp" · usa MP · grupo de WhatsApp de dueños (preguntar al cierre: *"¿tenés contacto con otros dueños de la zona?"*).

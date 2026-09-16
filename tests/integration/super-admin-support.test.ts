@@ -55,6 +55,7 @@ async function seedSubscription(
     mpSubscriptionId?: string | null
     dunningStartedAt?: Date | null
     canceledAt?: Date | null
+    billingCycle?: 'monthly' | 'annual'
   } = {},
 ): Promise<void> {
   await sql`
@@ -63,7 +64,7 @@ async function seedSubscription(
       current_period_start, current_period_end,
       mp_subscription_id, dunning_started_at, canceled_at
     ) VALUES (
-      ${tenantId}, ${plans[planSlug]}, 'monthly'::billing_cycle,
+      ${tenantId}, ${plans[planSlug]}, ${opts.billingCycle ?? 'monthly'}::billing_cycle,
       ${status}::subscription_status,
       NOW() - INTERVAL '10 days', NOW() + INTERVAL '20 days',
       ${opts.mpSubscriptionId ?? null},
@@ -498,6 +499,24 @@ describe('changePlanForSupport', () => {
       after: { planId: plans.complejo },
       mpAmountUpdated: true,
     })
+  })
+
+  it('swapea el plan con ciclo anual: el monto recurrente nuevo es price_annual × 12 (NUNCA el equivalente mensual a pelo)', async () => {
+    const sql = getSql()
+    const tenantId = await seedTenantWithStaff(sql)
+    await seedSubscription(sql, tenantId, 'active', 'predio', {
+      mpSubscriptionId: 'mp-preapp-test-annual-1',
+      billingCycle: 'annual',
+    })
+
+    const result = await changePlanForSupport(tenantId, plans.complejo, systemAdminId, mockGateway)
+    expect(result).toEqual({ fromPlanId: plans.predio, toPlanId: plans.complejo })
+
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
+    const [{ price_annual: complejoAnnual }] = await sql<{ price_annual: number }[]>`
+      SELECT price_annual FROM plans WHERE id = ${plans.complejo}
+    `
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(complejoAnnual * 12)
   })
 
   it('bloquea el downgrade si el tenant supera el límite de canchas del plan destino', async () => {

@@ -63,6 +63,7 @@
 - HP1: $99.000 para 4-6 canchas se percibe como "menos de dos turnos". — abierta.
 - HP2: el salto 3→4 (+57%) se percibe como injusto. — abierta.
 - HP3: 1-2 canchas no es mercado para TurnoGol a $63.000. — abierta (no se prospecta; se registra si aparece).
+- HP4 (2026-09-15): precio lineal $47.000 la primera cancha + $30.000 por cada extra ($137k-$197k a 4-6 canchas) no mata la venta en el ICP. Umbral confirma: en ≥10 Van Westendorp cotizando ese precio, "demasiado caro" NO es mayoritario a 4-6 canchas. Umbral mata: mayoría "demasiado caro" o ≥3 ventas perdidas por precio puro (mismo criterio que D3). Si se confirma, se implementa con el contrato de [`board/2026-09-15-precio-por-cancha.md`](../board/2026-09-15-precio-por-cancha.md) §5; resuelve HP2 de paso. Revisión: 2026-10-02. — abierta.
 
 ## Cerradas
 

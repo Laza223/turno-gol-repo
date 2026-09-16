@@ -24,7 +24,7 @@ interface AdminHeaderProps {
  */
 export function AdminHeader({ tenantName, homeHref = '/grilla' }: AdminHeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(3.75rem+env(safe-area-inset-top))] items-center gap-4 border-b border-border bg-card px-4 pt-[env(safe-area-inset-top)] sm:px-6 lg:left-[72px]">
+    <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(3.75rem+env(safe-area-inset-top))] items-center gap-4 border-b border-border bg-card px-4 pt-[env(safe-area-inset-top)] sm:px-6 lg:left-[72px] xl:left-[220px]">
       {/* Marca en mobile: acá no hay hamburguesa (Fase 4 — la navegación
           primaria es la barra inferior) ni riel, así que sin esto el panel se
           queda sin ninguna marca arriba. */}

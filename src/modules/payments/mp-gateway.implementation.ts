@@ -470,7 +470,13 @@ export class MercadoPagoGateway implements PaymentGateway {
       // Ausente en un preapproval creado a mano sin auto_recurring (no debería
       // pasar en producción, pero un 200 sin el campo no debe explotar acá).
       const autoRecurring = raw.auto_recurring as
-        { transaction_amount?: unknown; frequency?: unknown; frequency_type?: unknown } | undefined
+        | {
+            transaction_amount?: unknown
+            frequency?: unknown
+            frequency_type?: unknown
+            start_date?: unknown
+          }
+        | undefined
 
       return {
         preapprovalId,
@@ -499,6 +505,14 @@ export class MercadoPagoGateway implements PaymentGateway {
         frequency: typeof autoRecurring?.frequency === 'number' ? autoRecurring.frequency : null,
         frequencyType:
           typeof autoRecurring?.frequency_type === 'string' ? autoRecurring.frequency_type : null,
+        // `start_date` es la fecha del PRIMER cobro que quedó grabada al crear
+        // el preapproval. Un checkout pendiente creado antes de que soporte
+        // extendiera el trial la tiene vieja: reusarlo cobraría durante la
+        // prueba. El reuso la compara contra `resolveFirstChargeAt`.
+        startDate: parseMpDate(autoRecurring?.start_date),
+        // Identidad del plan: el preapproval no lleva `plan_id`, así que el
+        // único vínculo es este texto (`TurnoGol — <plan> (<ciclo>)`).
+        reason: typeof raw.reason === 'string' ? raw.reason : null,
       }
     } catch (err) {
       if (err instanceof MpGatewayError) throw err

@@ -78,6 +78,10 @@ export type GatewaySubscriptionState = {
   frequency?: number | null
   /** `auto_recurring.frequency_type` ('months', único valor que usa el repo). */
   frequencyType?: string | null
+  /** `auto_recurring.start_date`: cuándo sale el primer cobro grabado en MP. */
+  startDate?: Date | null
+  /** Texto que MP le muestra al pagador; en TurnoGol identifica plan y ciclo. */
+  reason?: string | null
 }
 
 export type CreatePreferenceInput = {

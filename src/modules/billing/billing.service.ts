@@ -339,12 +339,25 @@ async function createPreapprovalOrThrowFriendly(
  * Cualquier falla al leer el estado (MP caído, id que ya no existe) se
  * absorbe acá: nunca debe propagar y frenar el subscribe/reactivate.
  */
+/**
+ * Dos fechas de primer cobro son "la misma" con un minuto de tolerancia: MP
+ * devuelve `start_date` con su propio offset y redondeo, no el string exacto
+ * que se mandó. Ausente de los dos lados también cuenta como igual (cobro
+ * inmediato: el trial ya venció o no existe).
+ */
+function sameFirstCharge(fromMp: Date | null, expected: Date | undefined): boolean {
+  if (!fromMp && !expected) return true
+  if (!fromMp || !expected) return false
+  return Math.abs(fromMp.getTime() - expected.getTime()) <= 60_000
+}
+
 async function reusablePendingCheckout(
   sub: Pick<SubRow, 'mp_subscription_id'>,
   plan: PlanRow,
   billingCycle: BillingCycle,
   tenantId: string,
   gateway: PaymentGateway,
+  expected: { reason: string; firstChargeAt: Date | undefined },
 ): Promise<PreapprovalResult | null> {
   const preapprovalId = sub.mp_subscription_id
   if (!preapprovalId) return null
@@ -363,6 +376,21 @@ async function reusablePendingCheckout(
 
   const expectedFrequency = billingCycle === 'annual' ? 12 : 1
   if (state.frequency !== expectedFrequency || state.frequencyType !== 'months') return null
+
+  // El monto solo no alcanza para identificar el plan: el preapproval no lleva
+  // `plan_id` (MP no lo acepta sin plan asociado) y dos planes podrían costar
+  // igual. El `reason` es el único vínculo, y además es lo que el pagador vio.
+  if (state.reason !== expected.reason) return null
+
+  // Fix trial-first-charge, parte 2: el `start_date` viejo del checkout
+  // pendiente puede ser ANTERIOR al fin del trial de hoy — soporte pudo
+  // extenderlo (`extendTrial`) después de aquel intento. Reusarlo cobraría
+  // durante la prueba, que es justo lo que ese fix prohíbe.
+  if (!sameFirstCharge(state.startDate ?? null, expected.firstChargeAt)) return null
+
+  // `pending` no debería tener cobros, pero si MP alguna vez devuelve esa
+  // combinación, reusar sería mandar al dueño a pagar algo ya cobrado.
+  if (state.chargedQuantity > 0) return null
 
   const initPoint = state.initPoint
   if (!initPoint) return null
@@ -408,9 +436,17 @@ export async function subscribe(
   }
 
   const amount = planAmount(plan, billingCycle)
+  const reason = `TurnoGol — ${plan.name} (${billingCycle === 'annual' ? 'anual' : 'mensual'})`
+  // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
+  // termine la prueba. Se calcula ACÁ para que el reuso compare contra la
+  // misma fecha que mandaría un preapproval nuevo.
+  const firstChargeAt = resolveFirstChargeAt(owner?.trialEndsAt, now)
 
   if (sub.mp_subscription_id) {
-    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway)
+    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
+      reason,
+      firstChargeAt,
+    })
     if (reused) {
       await tx.execute(sql`
         UPDATE tenant_subscriptions
@@ -454,13 +490,13 @@ export async function subscribe(
     amount,
     frequency: billingCycle,
     planId,
-    reason: `TurnoGol — ${plan.name} (${billingCycle === 'annual' ? 'anual' : 'mensual'})`,
+    reason,
     returnUrl: computeReturnUrl(),
     notificationUrl: computeNotificationUrl(tenantId),
     // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
     // termine la prueba (decisión del dueño). `undefined` = trial vencido o
     // inconsistente → cobra de inmediato, igual que antes de este fix.
-    firstChargeAt: resolveFirstChargeAt(owner?.trialEndsAt, now),
+    firstChargeAt,
   })
 
   await tx.execute(sql`
@@ -843,9 +879,16 @@ export async function reactivate(
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
   const amount = planAmount(plan, billingCycle)
+  // Reactivar es post-trial (canceled/churned/suspended/blocked): el cobro sale
+  // ya, sin `firstChargeAt`. El reuso exige que el pendiente tampoco tenga
+  // fecha futura grabada.
+  const reason = `TurnoGol — ${plan.name} (reactivación)`
 
   if (sub.mp_subscription_id) {
-    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway)
+    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
+      reason,
+      firstChargeAt: undefined,
+    })
     if (reused) {
       await tx.execute(sql`
         UPDATE tenant_subscriptions
@@ -912,7 +955,7 @@ export async function reactivate(
     amount,
     frequency: billingCycle,
     planId,
-    reason: `TurnoGol — ${plan.name} (reactivación)`,
+    reason,
     returnUrl: computeReturnUrl(),
     notificationUrl: computeNotificationUrl(tenantId),
   })

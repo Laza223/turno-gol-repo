@@ -20,6 +20,10 @@ import type { DbTx } from '@/shared/db/client'
 const TENANT_ID = 't-1'
 const PLAN_ID = 'plan-1'
 const OLD_PREAPPROVAL = 'mp-pending-1'
+// El preapproval no lleva `plan_id`: el `reason` es el único vínculo con el
+// plan, y es lo que el pagador ve en la pantalla de MP.
+const REASON_MENSUAL = 'TurnoGol — Predio (mensual)'
+const REASON_REACTIVACION = 'TurnoGol — Predio (reactivación)'
 
 const planRow = {
   id: PLAN_ID,
@@ -96,6 +100,8 @@ function pendingState(over: Partial<GatewaySubscriptionState> = {}): GatewaySubs
     amountCents: planRow.price_monthly,
     frequency: 1,
     frequencyType: 'months',
+    reason: REASON_MENSUAL,
+    startDate: null,
     ...over,
   }
 }
@@ -176,6 +182,90 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     expect(gateway.preapprovalCalls).toHaveLength(1)
   })
 
+  it('el `reason` es de otro plan (dos planes podrían costar lo mismo) → NO reusa', async () => {
+    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const gateway = new MockGateway()
+    gateway.subscriptionState = pendingState({ reason: 'TurnoGol — Complejo (mensual)' })
+
+    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+
+    expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
+    expect(gateway.preapprovalCalls).toHaveLength(1)
+  })
+
+  it('el preapproval es de OTRO tenant → NO reusa (aislamiento)', async () => {
+    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const gateway = new MockGateway()
+    gateway.subscriptionState = pendingState({ externalReference: 'tenant-ajeno' })
+
+    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+
+    expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
+    expect(gateway.preapprovalCalls).toHaveLength(1)
+  })
+
+  it('el pendiente ya cobró algo (chargedQuantity > 0) → NO reusa', async () => {
+    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const gateway = new MockGateway()
+    gateway.subscriptionState = pendingState({ chargedQuantity: 1 })
+
+    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+
+    expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
+    expect(gateway.preapprovalCalls).toHaveLength(1)
+  })
+
+  it('el pendiente tiene un start_date viejo y el trial se extendió después → NO reusa: cobrarían durante la prueba', async () => {
+    // Soporte corrió `extendTrial` después del intento anterior, así que el
+    // preapproval pendiente arrastra la fecha vieja de primer cobro.
+    const trialEndsAt = new Date('2027-03-01T00:00:00Z')
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce([makeSubscribeSubRow()])
+      .mockResolvedValueOnce([planRow])
+      .mockResolvedValueOnce([{ n: 0 }])
+      .mockResolvedValueOnce([{ ...ownerRow, trialEndsAt }])
+      .mockResolvedValueOnce([])
+    const tx = { execute } as unknown as DbTx
+    const gateway = new MockGateway()
+    gateway.subscriptionState = pendingState({ startDate: new Date('2027-02-01T00:00:00Z') })
+
+    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx, new Date('2027-01-15T00:00:00Z'))
+
+    expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
+    expect(gateway.preapprovalCalls).toHaveLength(1)
+    expect(gateway.preapprovalCalls[0]!.firstChargeAt?.toISOString()).toBe(
+      trialEndsAt.toISOString(),
+    )
+  })
+
+  it('el start_date del pendiente sigue siendo el fin del trial de hoy → SÍ reusa', async () => {
+    const trialEndsAt = new Date('2027-03-01T00:00:00Z')
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce([makeSubscribeSubRow()])
+      .mockResolvedValueOnce([planRow])
+      .mockResolvedValueOnce([{ n: 0 }])
+      .mockResolvedValueOnce([{ ...ownerRow, trialEndsAt }])
+      .mockResolvedValueOnce([])
+    const tx = { execute } as unknown as DbTx
+    const gateway = new MockGateway()
+    gateway.subscriptionState = pendingState({ startDate: trialEndsAt })
+
+    const result = await subscribe(
+      TENANT_ID,
+      PLAN_ID,
+      'monthly',
+      gateway,
+      tx,
+      new Date('2027-01-15T00:00:00Z'),
+    )
+
+    expect(result.preapprovalId).toBe(OLD_PREAPPROVAL)
+    expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
+    expect(gateway.preapprovalCalls).toHaveLength(0)
+  })
+
   it('getSubscriptionState tira error (MP caído) → no propaga, sigue el camino de siempre y termina OK', async () => {
     const tx = makeSubscribeTx(makeSubscribeSubRow())
     const gateway = new MockGateway()
@@ -193,7 +283,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
   it('preapproval pending, mismo tenant, monto y frecuencia exactos → reusa: mismo checkoutUrl/preapprovalId, sin tocar MP', async () => {
     const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
     const gateway = new MockGateway()
-    gateway.subscriptionState = pendingState()
+    gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION })
 
     const result = await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
 
@@ -220,7 +310,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
   it('pide un ciclo distinto → NO reusa: cancela y crea uno nuevo', async () => {
     const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
     const gateway = new MockGateway()
-    gateway.subscriptionState = pendingState() // pending mensual
+    gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION }) // pending mensual
 
     await reactivate(TENANT_ID, PLAN_ID, 'annual', gateway, tx)
 

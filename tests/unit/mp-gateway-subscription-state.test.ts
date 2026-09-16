@@ -72,7 +72,13 @@ describe('MercadoPagoGateway.getSubscriptionState — reuso de checkout pendient
         status: 'pending',
         external_reference: TENANT,
         init_point: 'https://mp.test/checkout',
-        auto_recurring: { frequency: 12, frequency_type: 'months', transaction_amount: 44_000 },
+        reason: 'TurnoGol — Predio (anual)',
+        auto_recurring: {
+          frequency: 12,
+          frequency_type: 'months',
+          transaction_amount: 44_000,
+          start_date: '2027-03-01T00:00:00.000Z',
+        },
       }),
     )
 
@@ -81,6 +87,10 @@ describe('MercadoPagoGateway.getSubscriptionState — reuso de checkout pendient
     expect(state?.amountCents).toBe(4_400_000)
     expect(state?.frequency).toBe(12)
     expect(state?.frequencyType).toBe('months')
+    // `reason` y `start_date` son los que usa el reuso de checkout para no
+    // confundir dos planes del mismo precio ni cobrar durante el trial.
+    expect(state?.reason).toBe('TurnoGol — Predio (anual)')
+    expect(state?.startDate?.toISOString()).toBe('2027-03-01T00:00:00.000Z')
   })
 
   it('tolera auto_recurring AUSENTE: amountCents/frequency/frequencyType quedan null, no explota', async () => {
@@ -98,6 +108,8 @@ describe('MercadoPagoGateway.getSubscriptionState — reuso de checkout pendient
     expect(state?.amountCents).toBeNull()
     expect(state?.frequency).toBeNull()
     expect(state?.frequencyType).toBeNull()
+    expect(state?.startDate).toBeNull()
+    expect(state?.reason).toBeNull()
   })
 
   it('sin init_point en la respuesta → null (nunca undefined ni string vacío)', async () => {

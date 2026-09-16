@@ -34,6 +34,9 @@ const meta = {
     onToggle: fn(),
     onUpdate: fn(),
     onRemove: fn(),
+    photosEnabled: true,
+    onUploadPhoto: fn(async () => {}),
+    onRemovePhoto: fn(async () => {}),
   },
 } satisfies Meta<typeof CourtDraftCard>
 
@@ -97,15 +100,31 @@ export const Expandido: Story = {
 }
 
 /**
- * La tarjeta ya no pide foto: el uploader que vivía acá subía a R2 y el submit
- * del paso descartaba el resultado. Se cargan desde `/canchas`, contra
- * la cancha real.
+ * La foto volvió al paso 3 (casi nadie la cargaba después desde `/canchas`).
+ * Es opcional y la URL viaja en el borrador hasta el submit, que es lo que
+ * faltaba la vez anterior — antes se subía a R2 y el payload la descartaba.
  */
-export const SinUploaderDeFoto: Story = {
-  args: { draft: draft(), isExpanded: true },
+export const ConFoto: Story = {
+  args: {
+    draft: draft({
+      photoUrl:
+        'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjYiLz4=',
+    }),
+    isExpanded: true,
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByLabelText('Subir foto')).not.toBeInTheDocument()
-    await expect(canvas.queryByText(/foto de la cancha/i)).not.toBeInTheDocument()
+    await expect(canvas.getByText('Foto de la cancha')).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Cambiar imagen' })).toBeInTheDocument()
+  },
+}
+
+/** Entorno sin R2 (local, e2e): el paso funciona igual, sin uploader. */
+export const SinStorage: Story = {
+  args: { draft: draft(), isExpanded: true, photosEnabled: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByText('Foto de la cancha')).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: /agregar foto/i })).not.toBeInTheDocument()
   },
 }

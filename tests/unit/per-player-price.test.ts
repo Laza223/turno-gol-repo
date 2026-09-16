@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { perPlayerPriceCents, formatPerPlayer } from '@/lib/format'
+import {
+  formatArs,
+  perPlayerPriceCents,
+  formatPerPlayerArs,
+  roundPerPlayerCents,
+} from '@/lib/format'
 
 describe('perPlayerPriceCents', () => {
   it('returns null when fromPriceCents is null', () => {
@@ -46,15 +51,29 @@ describe('perPlayerPriceCents', () => {
   })
 })
 
-describe('formatPerPlayer', () => {
-  it('returns null when price or formats are missing', () => {
-    expect(formatPerPlayer(null, [7])).toBeNull()
-    expect(formatPerPlayer(6000000, [])).toBeNull()
+describe('roundPerPlayerCents', () => {
+  it('redondea hacia arriba a la centena de pesos', () => {
+    expect(roundPerPlayerCents(428572)).toBe(430000)
+    expect(roundPerPlayerCents(500000)).toBe(500000)
   })
 
-  it('formats as "~$X/jugador"', () => {
-    const result = formatPerPlayer(6000000, [7])
-    expect(result).toMatch(/^~\$/)
-    expect(result).toContain('/jugador')
+  it('es monótona: da lo mismo redondear antes o después del mínimo', () => {
+    // Por eso la columna denormalizada (migr. 087) guarda el mínimo CRUDO.
+    const crudos = [428572, 450000, 363637]
+    const minLuegoRedondeo = roundPerPlayerCents(Math.min(...crudos))
+    const redondeoLuegoMin = Math.min(...crudos.map(roundPerPlayerCents))
+    expect(minLuegoRedondeo).toBe(redondeoLuegoMin)
+  })
+})
+
+describe('formatPerPlayerArs', () => {
+  it('returns null when there is no per-player price', () => {
+    expect(formatPerPlayerArs(null)).toBeNull()
+    expect(formatPerPlayerArs(undefined)).toBeNull()
+  })
+
+  it('formatea el mínimo crudo ya redondeado a $100', () => {
+    // 428.572¢ = $4.285,72 → $4.300
+    expect(formatPerPlayerArs(428572)).toBe(formatArs(430000))
   })
 })

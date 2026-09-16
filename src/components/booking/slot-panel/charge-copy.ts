@@ -68,3 +68,64 @@ export function chargeCta(
   if (mode === 'advance') return `Cobrar ${monto} por adelantado · quedan ${resto}`
   return `Cobrar ${monto} · quedan ${resto}`
 }
+
+/**
+ * La mitad de lo que falta, para el cobro por equipo.
+ *
+ * Redondea para ARRIBA: el primero paga el peso de más y el segundo nunca queda
+ * con un saldo de un centavo colgado, que en el mostrador no se cobra y deja el
+ * turno figurando como deuda para siempre.
+ *
+ * Vive acá y no inline en cada botón porque son dos pantallas (el panel de la
+ * grilla y el diálogo de `/reservas`) y tienen que partir igual.
+ */
+export function halfOfPending(pendingCents: number): number {
+  return pendingCents > 0 ? Math.ceil(pendingCents / 2) : 0
+}
+
+export type TeamSplit = {
+  /** La mitad de lo que falta. Lo que carga el atajo "Cobrar la mitad". */
+  halfCents: number
+  /** Si corresponde ofrecer el atajo: hay saldo y todavía no pagó nadie. */
+  canSplit: boolean
+  /** Rótulo del estado por equipos para el panel, o `null` si no aporta nada. */
+  note: string | null
+}
+
+/**
+ * Cobrar por equipo, que es como se cobra en la mayoría de los complejos: el
+ * turno es uno solo pero la plata entra en dos momentos y de dos manos, y el
+ * que está en el mostrador necesita ver cuál de los dos ya pagó.
+ *
+ * Todo sale de datos que el panel YA tiene. No hay columna nueva ni etiqueta
+ * guardada: "Equipo 1 / Equipo 2" es presentación, y lo que de verdad distingue
+ * a los dos cobros es que uno ya está y el otro no.
+ *
+ * La seña NO cuenta como "un equipo pagó" — se descuenta con la MISMA regla que
+ * `summarizeBookingCharges` (`paid`/`captured` y nada más). Sin esto, un turno
+ * señado online por el jugador diría "Equipo 1 pagó" sin que nadie haya puesto
+ * un peso en el mostrador.
+ *
+ * Límite conocido: el panel sabe CUÁNTO se cobró, no en cuántas veces. Si el
+ * mostrador partió el turno en tres, el rótulo igual dice "Equipo 1 / Equipo 2";
+ * el monto que falta, que es lo que decide qué cobrar, sigue siendo exacto. La
+ * lista del detalle de la reserva sí tiene las filas y ahí el rótulo se apaga
+ * cuando son más de dos.
+ */
+export function teamSplit(booking: GridBooking): TeamSplit {
+  const pending = typeof booking.pending === 'number' ? booking.pending : 0
+  const totalPaid = typeof booking.totalPaid === 'number' ? booking.totalPaid : 0
+  const depositCounted =
+    booking.depositStatus === 'paid' || booking.depositStatus === 'captured'
+      ? (booking.depositAmount ?? 0)
+      : 0
+  const counterPaid = Math.max(0, totalPaid - depositCounted)
+
+  const halfCents = halfOfPending(pending)
+
+  if (pending <= 0) return { halfCents: 0, canSplit: false, note: null }
+  if (counterPaid > 0) {
+    return { halfCents, canSplit: false, note: 'Equipo 1 pagó · falta Equipo 2' }
+  }
+  return { halfCents, canSplit: true, note: null }
+}

@@ -28,7 +28,7 @@ import {
  *  - la duración sólo se edita en un evento `spontaneous` cargado por el staff
  *    (nunca en una reserva online, aunque comparta el mismo `type`);
  *  - el precio nunca baja de lo ya cobrado;
- *  - la migración 088 exige el marcador `app.booking_edit` para tocar
+ *  - la migración 089 exige el marcador `app.booking_edit` para tocar
  *    `price_snapshot` — sin `editBooking` de por medio, el trigger sigue
  *    rechazando (ver booking-price-immutability.test.ts).
  */

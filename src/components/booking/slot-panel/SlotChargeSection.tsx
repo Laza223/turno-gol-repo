@@ -4,7 +4,8 @@ import type { FocusEvent, MouseEvent } from 'react'
 import { SplitPaymentFields, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { cn } from '@/lib/utils'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
-import { chargeCta, type ChargeMode } from './charge-copy'
+import { formatArs } from '@/lib/format'
+import { chargeCta, type ChargeMode, type TeamSplit } from './charge-copy'
 
 /**
  * Los tres métodos que se usan en el mostrador, en orden de frecuencia. "Otro"
@@ -22,6 +23,10 @@ type Props = {
   isPending: boolean
   /** Cobra el detalle armado (una o varias líneas), con el monto que esté tipeado. */
   onSubmit: () => void
+  /** Estado por equipos: si ofrecer el atajo de la mitad y cuánto es. */
+  split: TeamSplit
+  /** Cobra la MITAD de lo pendiente con el método elegido, en un solo toque. */
+  onHalfCharge: (method: MethodKey) => void
 }
 
 /**
@@ -34,6 +39,12 @@ type Props = {
  * con el pendiente (se corrige para abajo, no se escribe de cero) y "Agregar
  * pago dividido" (dentro de `SplitPaymentFields`) suma líneas con otro método,
  * en los tres modos por igual — el backend ya soporta N líneas en los tres.
+ *
+ * Cobrar por equipo (2026-09-15): "Cobrar la mitad" es un atajo aparte, no un
+ * reemplazo del campo — la mayoría de los complejos cobra una vez por equipo,
+ * así que resolverlo en un toque sin tocar el monto es el camino corto. Deja
+ * de ofrecerse en cuanto entró el primer cobro de mostrador (`split.canSplit`),
+ * porque ahí el campo y el botón grande ya dicen exactamente lo que falta.
  */
 export function SlotChargeSection({
   mode,
@@ -43,6 +54,8 @@ export function SlotChargeSection({
   error,
   isPending,
   onSubmit,
+  split,
+  onHalfCharge,
 }: Props) {
   const primaryMethod = lines[0]?.method ?? 'cash'
   const total = lines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
@@ -118,6 +131,21 @@ export function SlotChargeSection({
           </button>
         ))}
       </div>
+
+      {/* Cobrar por equipo: la mayoría de los complejos cobran en dos veces, una
+          por equipo. Es un atajo aparte del campo editable, no un reemplazo —
+          desaparece en cuanto pagó el primero, ahí el campo y el botón grande
+          ya dicen exactamente lo que falta. */}
+      {split.canSplit && (
+        <button
+          type="button"
+          onClick={() => onHalfCharge(primaryMethod)}
+          disabled={isPending}
+          className="mt-2 h-11 w-full rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
+        >
+          {isPending ? 'Procesando…' : `Cobrar la mitad — ${formatArs(split.halfCents)}`}
+        </button>
+      )}
 
       <div className="mt-3" onFocus={selectAllOnFocus} onMouseDown={selectAllOnMouseDown}>
         <SplitPaymentFields

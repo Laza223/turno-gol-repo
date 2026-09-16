@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ImageUploader } from '@/components/ui/image-uploader'
 import { MoneyInput } from '@/components/ui/money-input'
 import { cn } from '@/lib/utils'
 import { formatArs } from '@/lib/format'
@@ -17,6 +18,10 @@ type Props = {
   onToggle: (key: number) => void
   onUpdate: (key: number, patch: Partial<Draft>) => void
   onRemove: (key: number) => void
+  /** false cuando el entorno no tiene R2 (local, e2e): el uploader no se muestra. */
+  photosEnabled: boolean
+  onUploadPhoto: (blob: Blob) => Promise<void>
+  onRemovePhoto: () => Promise<void>
 }
 
 /** Tarjeta de un borrador de cancha: fila-resumen colapsable + form inline. */
@@ -28,6 +33,9 @@ export function CourtDraftCard({
   onToggle,
   onUpdate,
   onRemove,
+  photosEnabled,
+  onUploadPhoto,
+  onRemovePhoto,
 }: Props) {
   const surfaceLabel =
     SURFACE_OPTIONS.find((s) => s.value === draft.surfaceType)?.label ?? draft.surfaceType
@@ -216,6 +224,25 @@ export function CourtDraftCard({
             />
             <span className="text-sm text-foreground">Techada</span>
           </label>
+
+          {/* La foto se pide ACÁ y no "después desde Canchas": de los complejos
+              que probaron el alta, casi ninguno volvió a cargarlas. La previa de
+              la derecha muestra la card cambiando en el momento. */}
+          {photosEnabled && (
+            <div>
+              <span className={labelClass}>Foto de la cancha</span>
+              <ImageUploader
+                preset="court"
+                value={draft.photoUrl ?? ''}
+                onUpload={onUploadPhoto}
+                onRemove={onRemovePhoto}
+                emptyLabel="Agregar foto (opcional)"
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Con foto, tu cancha se ve como la ve el jugador. Podés cambiarla después.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </fieldset>

@@ -76,17 +76,59 @@ export default {
       //  (e) labels de GRUPO vía aria-labelledby (role="group"/"radiogroup").
       // Verificado leyendo cada componente. Los que SÍ eran reales ya se arreglaron
       // en código (CourtForm wiring, aria-labels en buscadores, ProfileForm label→span).
-      { files: ['src/components/ui/combobox.tsx', 'src/app/onboarding/components/StepCourts.tsx', '**/AbonadoDialogs.tsx', '**/AbonadoCreditLoader.tsx', '**/QuickActions.tsx', '**/register/page.tsx'], rules: ['react-doctor/control-has-associated-label'] },
-      { files: ['src/components/booking/BookingFormModal.tsx', 'src/components/ui/label.tsx'], rules: ['react-doctor/label-has-associated-control'] },
-      { files: ['src/components/ui/combobox.tsx', 'src/components/ui/phone-input.tsx'], rules: ['react-doctor/no-noninteractive-element-to-interactive-role'] },
-      { files: ['src/components/ui/combobox.tsx'], rules: ['react-doctor/click-events-have-key-events'] },
-      { files: ['src/components/admin/PushNotificationManager.tsx'], rules: ['react-doctor/media-has-caption'] },
-      { files: ['src/components/admin/PushNotificationManager.tsx', '**/PricingGrid.tsx', '**/PricingGridTable.tsx'], rules: ['react-doctor/no-aria-hidden-on-focusable'] },
-      { files: ['src/components/booking/BookingGrid.tsx'], rules: ['react-doctor/no-noninteractive-tabindex', 'react-doctor/no-static-element-interactions'] },
+      {
+        files: [
+          'src/components/ui/combobox.tsx',
+          'src/app/onboarding/components/StepCourts.tsx',
+          '**/AbonadoDialogs.tsx',
+          '**/AbonadoCreditLoader.tsx',
+          '**/QuickActions.tsx',
+          '**/register/page.tsx',
+        ],
+        rules: ['react-doctor/control-has-associated-label'],
+      },
+      {
+        files: ['src/components/booking/BookingFormModal.tsx', 'src/components/ui/label.tsx'],
+        rules: ['react-doctor/label-has-associated-control'],
+      },
+      {
+        files: ['src/components/ui/combobox.tsx', 'src/components/ui/phone-input.tsx'],
+        rules: ['react-doctor/no-noninteractive-element-to-interactive-role'],
+      },
+      {
+        files: ['src/components/ui/combobox.tsx'],
+        rules: ['react-doctor/click-events-have-key-events'],
+      },
+      {
+        files: ['src/components/admin/PushNotificationManager.tsx'],
+        rules: ['react-doctor/media-has-caption'],
+      },
+      {
+        files: [
+          'src/components/admin/PushNotificationManager.tsx',
+          '**/PricingGrid.tsx',
+          '**/PricingGridTable.tsx',
+        ],
+        rules: ['react-doctor/no-aria-hidden-on-focusable'],
+      },
+      {
+        files: ['src/components/booking/BookingGrid.tsx'],
+        rules: [
+          'react-doctor/no-noninteractive-tabindex',
+          'react-doctor/no-static-element-interactions',
+        ],
+      },
       { files: ['**/LeaveReviewButton.tsx'], rules: ['react-doctor/interactive-supports-focus'] },
       // Test files: a11y en fixtures de test (imgs mock sin alt, dialogs de test) no es
       // UI shippeada. Se excluyen esas reglas de `tests/**`.
-      { files: ['tests/**'], rules: ['react-doctor/alt-text', 'react-doctor/dialog-has-accessible-name', 'react-doctor/prefer-html-dialog'] },
+      {
+        files: ['tests/**'],
+        rules: [
+          'react-doctor/alt-text',
+          'react-doctor/dialog-has-accessible-name',
+          'react-doctor/prefer-html-dialog',
+        ],
+      },
 
       // ─── State/Effect correctness — FP + by-design (batch 3, triage 2026-07-04) ───
       // 37 FP + 13 defer, solo 2 fixes reales (effect-needs-cleanup, ya aplicados en
@@ -106,20 +148,88 @@ export default {
       // Refactors genuinos DIFERIDOS (documentados en PROGRESS.md, no suprimidos por bug sino
       // por riesgo de regresión): HeroSearch merge setState, BookingFormModal key-remount,
       // InviteStaffDialog async-wrapper. Verificado leyendo cada componente (28 investigadores).
-      { files: ['src/components/booking/BookingGrid.tsx', 'src/components/admin/PushNotificationManager.tsx', '**/CajaCierreHint.tsx', 'src/components/site/Reveal.tsx', 'src/components/admin/AdminThemeMenu.tsx', 'src/components/theme/ThemeToggle.tsx', 'src/hooks/use-art-now.ts', '**/ShareActions.tsx'], rules: ['react-doctor/no-initialize-state'] },
-      { files: ['src/components/site/HeroSearch.tsx', 'src/components/booking/BookingGrid.tsx', 'src/components/ui/phone-input.tsx', '**/SearchBar.tsx', 'src/components/ui/date-picker.tsx', 'src/components/booking/BookingFormModal.tsx'], rules: ['react-doctor/no-derived-state'] },
-      { files: ['**/CourtList.tsx', '**/HorariosForms.tsx', '**/support-actions-panel.tsx', 'src/app/onboarding/components/StepSchedule.tsx', '**/ReviewsSection.tsx'], rules: ['react-doctor/no-derived-useState'] },
+      {
+        files: [
+          'src/components/booking/BookingGrid.tsx',
+          'src/components/admin/PushNotificationManager.tsx',
+          '**/CajaCierreHint.tsx',
+          'src/components/site/Reveal.tsx',
+          'src/components/admin/AdminThemeMenu.tsx',
+          'src/components/theme/ThemeToggle.tsx',
+          'src/hooks/use-art-now.ts',
+          '**/ShareActions.tsx',
+        ],
+        rules: ['react-doctor/no-initialize-state'],
+      },
+      {
+        files: [
+          'src/components/site/HeroSearch.tsx',
+          'src/components/booking/BookingGrid.tsx',
+          'src/components/ui/phone-input.tsx',
+          '**/SearchBar.tsx',
+          'src/components/ui/date-picker.tsx',
+          'src/components/booking/BookingFormModal.tsx',
+        ],
+        rules: ['react-doctor/no-derived-state'],
+      },
+      {
+        files: [
+          '**/CourtList.tsx',
+          '**/HorariosForms.tsx',
+          '**/support-actions-panel.tsx',
+          'src/app/onboarding/components/StepSchedule.tsx',
+          '**/ReviewsSection.tsx',
+        ],
+        rules: ['react-doctor/no-derived-useState'],
+      },
       { files: ['**/SearchBar.tsx'], rules: ['react-doctor/no-derived-state-effect'] },
-      { files: ['src/components/site/HeroSearch.tsx', 'src/components/booking/PaymentStatusWatcher.tsx', 'src/hooks/use-nearest-city.ts', '**/AvailabilityGrid.tsx'], rules: ['react-doctor/no-adjust-state-on-prop-change'] },
-      { files: ['src/components/site/HeroSearch.tsx', 'src/components/ui/phone-input.tsx'], rules: ['react-doctor/no-chain-state-updates'] },
-      { files: ['**/AvailabilityGrid.tsx', '**/SearchBar.tsx', '**/ExplorarFilters.tsx'], rules: ['react-doctor/no-cascading-set-state'] },
-      { files: ['**/AvailabilityGrid.tsx', 'src/components/booking/PaymentStatusWatcher.tsx', 'src/hooks/use-nearest-city.ts', 'src/components/site/PortalSessionProvider.tsx'], rules: ['react-doctor/no-fetch-in-effect'] },
-      { files: ['**/PricingSection.tsx', 'src/components/ui/date-picker.tsx'], rules: ['react-doctor/no-pass-data-to-parent'] },
+      {
+        files: [
+          'src/components/site/HeroSearch.tsx',
+          'src/components/booking/PaymentStatusWatcher.tsx',
+          'src/hooks/use-nearest-city.ts',
+          '**/AvailabilityGrid.tsx',
+        ],
+        rules: ['react-doctor/no-adjust-state-on-prop-change'],
+      },
+      {
+        files: ['src/components/site/HeroSearch.tsx', 'src/components/ui/phone-input.tsx'],
+        rules: ['react-doctor/no-chain-state-updates'],
+      },
+      {
+        files: ['**/AvailabilityGrid.tsx', '**/SearchBar.tsx', '**/ExplorarFilters.tsx'],
+        rules: ['react-doctor/no-cascading-set-state'],
+      },
+      {
+        files: [
+          '**/AvailabilityGrid.tsx',
+          'src/components/booking/PaymentStatusWatcher.tsx',
+          'src/hooks/use-nearest-city.ts',
+          'src/components/site/PortalSessionProvider.tsx',
+        ],
+        rules: ['react-doctor/no-fetch-in-effect'],
+      },
+      {
+        files: ['**/PricingSection.tsx', 'src/components/ui/date-picker.tsx'],
+        rules: ['react-doctor/no-pass-data-to-parent'],
+      },
       { files: ['**/PricingSection.tsx'], rules: ['react-doctor/no-pass-live-state-to-parent'] },
-      { files: ['**/PricingSection.tsx', '**/InviteStaffDialog.tsx'], rules: ['react-doctor/no-prop-callback-in-effect'] },
-      { files: ['**/PricingSection.tsx', '**/CourtList.tsx'], rules: ['react-doctor/no-array-index-as-key'] },
-      { files: ['**/ExplorarFilters.tsx', '**/RegisterMovementModal.tsx'], rules: ['react-doctor/prefer-useReducer'] },
-      { files: ['src/components/site/BusinessFooter.tsx', 'src/components/site/SiteFooter.tsx'], rules: ['react-doctor/rendering-hydration-mismatch-time'] },
+      {
+        files: ['**/PricingSection.tsx', '**/InviteStaffDialog.tsx'],
+        rules: ['react-doctor/no-prop-callback-in-effect'],
+      },
+      {
+        files: ['**/PricingSection.tsx', '**/CourtList.tsx'],
+        rules: ['react-doctor/no-array-index-as-key'],
+      },
+      {
+        files: ['**/ExplorarFilters.tsx', '**/RegisterMovementModal.tsx'],
+        rules: ['react-doctor/prefer-useReducer'],
+      },
+      {
+        files: ['src/components/site/BusinessFooter.tsx', 'src/components/site/SiteFooter.tsx'],
+        rules: ['react-doctor/rendering-hydration-mismatch-time'],
+      },
 
       // ─── Performance — FP + defer (batch 4, triage 2026-07-04) ───
       // 68 findings → 16 fixes mecánicos aplicados (js-hoist-intl x11, combine x3,
@@ -136,20 +246,91 @@ export default {
       // unit): data-export async-parallel (4 SELECTs ARCO → Promise.all, getSql pooled),
       // prefer-dynamic-import de charts recharts (MetricsDashboard/ReportCharts), PricingGrid
       // anchor useState→useRef. Verificado por 51 investigadores.
-      { files: ['public/sw.js', 'src/components/ui/combobox.tsx', 'src/modules/bookings/booking.service.ts', 'src/modules/courts/court.service.ts', 'src/modules/courts/pricing-grid.ts', 'src/modules/tenants/availability-search.service.ts', 'src/modules/tenants/public.service.ts'], rules: ['react-doctor/js-set-map-lookups'] },
-      { files: ['**/perfil/page.tsx', 'src/components/ui/phone-input.tsx', 'src/modules/courts/court.service.ts', 'src/modules/courts/pricing-grid.ts', 'src/modules/metrics/metrics.service.ts', 'src/shared/cache/slots-cache.ts'], rules: ['react-doctor/js-tosorted-immutable'] },
-      { files: ['**/CourtList.tsx', '**/support-actions-panel.tsx', 'src/lib/seo/structured-data.ts', 'src/shared/time/week-days.ts', 'src/modules/tenants/availability-search.service.ts'], rules: ['react-doctor/js-combine-iterations'] },
+      {
+        files: [
+          'public/sw.js',
+          'src/components/ui/combobox.tsx',
+          'src/modules/bookings/booking.service.ts',
+          'src/modules/courts/court.service.ts',
+          'src/modules/courts/pricing-grid.ts',
+          'src/modules/tenants/availability-search.service.ts',
+          'src/modules/tenants/public.service.ts',
+        ],
+        rules: ['react-doctor/js-set-map-lookups'],
+      },
+      {
+        files: [
+          '**/perfil/page.tsx',
+          'src/components/ui/phone-input.tsx',
+          'src/modules/courts/court.service.ts',
+          'src/modules/courts/pricing-grid.ts',
+          'src/modules/metrics/metrics.service.ts',
+          'src/shared/cache/slots-cache.ts',
+        ],
+        rules: ['react-doctor/js-tosorted-immutable'],
+      },
+      {
+        files: [
+          '**/CourtList.tsx',
+          '**/support-actions-panel.tsx',
+          'src/lib/seo/structured-data.ts',
+          'src/shared/time/week-days.ts',
+          'src/modules/tenants/availability-search.service.ts',
+        ],
+        rules: ['react-doctor/js-combine-iterations'],
+      },
       { files: ['**/reservas/page.tsx'], rules: ['react-doctor/js-flatmap-filter'] },
-      { files: ['src/modules/notifications/push-quiet-hours.ts'], rules: ['react-doctor/js-hoist-intl'] },
-      { files: ['src/shared/api-output.ts'], rules: ['react-doctor/no-json-parse-stringify-clone'] },
-      { files: ['src/app/api/player/data-export/route.ts', 'src/components/admin/PushNotificationManager.tsx', 'src/modules/abonados/abonado.service.ts', 'src/modules/bookings/booking.cancellation.ts', 'src/modules/metrics/metrics.service.ts', 'src/modules/super-admin/tenants.service.ts', 'src/shared/jobs/workers/expire-pending-booking.worker.ts', 'src/shared/jobs/workers/index.ts'], rules: ['react-doctor/async-parallel'] },
-      { files: ['src/modules/cashflow/cashflow.service.ts'], rules: ['react-doctor/async-defer-await'] },
-      { files: ['**/AbonadoForm.tsx', 'src/components/admin/AdminThemeMenu.tsx', '**/RegisterMovementModal.tsx', '**/CourtForm.tsx', '**/CourtList.tsx', 'src/app/onboarding/components/StepCourts.tsx', '**/PricingGrid.tsx'], rules: ['react-doctor/rerender-state-only-in-handlers'] },
+      {
+        files: ['src/modules/notifications/push-quiet-hours.ts'],
+        rules: ['react-doctor/js-hoist-intl'],
+      },
+      {
+        files: ['src/shared/api-output.ts'],
+        rules: ['react-doctor/no-json-parse-stringify-clone'],
+      },
+      {
+        files: [
+          'src/app/api/player/data-export/route.ts',
+          'src/components/admin/PushNotificationManager.tsx',
+          'src/modules/abonados/abonado.service.ts',
+          'src/modules/bookings/booking.cancellation.ts',
+          'src/modules/metrics/metrics.service.ts',
+          'src/modules/super-admin/tenants.service.ts',
+          'src/shared/jobs/workers/expire-pending-booking.worker.ts',
+          'src/shared/jobs/workers/index.ts',
+        ],
+        rules: ['react-doctor/async-parallel'],
+      },
+      {
+        files: ['src/modules/cashflow/cashflow.service.ts'],
+        rules: ['react-doctor/async-defer-await'],
+      },
+      {
+        files: [
+          '**/AbonadoForm.tsx',
+          'src/components/admin/AdminThemeMenu.tsx',
+          '**/RegisterMovementModal.tsx',
+          '**/CourtForm.tsx',
+          '**/CourtList.tsx',
+          'src/app/onboarding/components/StepCourts.tsx',
+          '**/PricingGrid.tsx',
+        ],
+        rules: ['react-doctor/rerender-state-only-in-handlers'],
+      },
       { files: ['**/TenantCard.tsx'], rules: ['react-doctor/rerender-memo-with-default-value'] },
-      { files: ['src/components/booking/PaymentStatusWatcher.tsx'], rules: ['react-doctor/rerender-lazy-ref-init'] },
+      {
+        files: ['src/components/booking/PaymentStatusWatcher.tsx'],
+        rules: ['react-doctor/rerender-lazy-ref-init'],
+      },
       { files: ['**/layout.tsx'], rules: ['react-doctor/jsx-no-jsx-as-prop'] },
-      { files: ['**/MetricsDashboard.tsx', '**/ReportCharts.tsx'], rules: ['react-doctor/prefer-dynamic-import'] },
-      { files: ['**/para-complejos/page.tsx', 'src/components/site/BusinessHeader.tsx'], rules: ['react-doctor/no-large-animated-blur'] },
+      {
+        files: ['**/MetricsDashboard.tsx', '**/ReportCharts.tsx'],
+        rules: ['react-doctor/prefer-dynamic-import'],
+      },
+      {
+        files: ['**/para-complejos/page.tsx', 'src/components/site/BusinessHeader.tsx'],
+        rules: ['react-doctor/no-large-animated-blur'],
+      },
 
       // ─── Frontend Next.js bugs — FP + defer (batch 5, triage 2026-07-04) ───
       // 15 findings → 6 fixes reales aplicados (Suspense wraps de useSearchParams en
@@ -163,9 +344,22 @@ export default {
       //  · nextjs-no-img-element: image-uploader = preview de blob/upload (ya eslint-disabled);
       //    AccountMenu = avatar de host arbitrario (next/image exige remotePatterns → BACKLOG).
       //  · nextjs-no-edge-og-runtime = `runtime='edge'` intencional para la OG image (latencia).
-      { files: ['**/facturacion/page.tsx', 'src/app/onboarding/components/StepPayments.tsx'], rules: ['react-doctor/nextjs-no-a-element'] },
-      { files: ['src/components/site/HeroSearch.tsx', 'src/components/ui/date-picker.tsx', 'src/components/ui/phone-input.tsx'], rules: ['react-doctor/no-event-handler'] },
-      { files: ['src/components/ui/image-uploader.tsx', 'src/components/site/AccountMenu.tsx'], rules: ['react-doctor/nextjs-no-img-element'] },
+      {
+        files: ['**/facturacion/page.tsx', 'src/app/onboarding/components/StepPayments.tsx'],
+        rules: ['react-doctor/nextjs-no-a-element'],
+      },
+      {
+        files: [
+          'src/components/site/HeroSearch.tsx',
+          'src/components/ui/date-picker.tsx',
+          'src/components/ui/phone-input.tsx',
+        ],
+        rules: ['react-doctor/no-event-handler'],
+      },
+      {
+        files: ['src/components/ui/image-uploader.tsx', 'src/components/site/AccountMenu.tsx'],
+        rules: ['react-doctor/nextjs-no-img-element'],
+      },
       { files: ['src/app/opengraph-image.tsx'], rules: ['react-doctor/nextjs-no-edge-og-runtime'] },
 
       // ─── Maintainability — unused-export/unused-file (batch 6, triage 2026-07-04) ───
@@ -211,7 +405,7 @@ export default {
         rules: ['react-doctor/server-auth-actions'],
       },
       {
-        // createAbonadoAction, pauseAbonadoAction, reactivateAbonadoAction,
+        // createAbonadoAction, reactivateAbonadoAction,
         // cancelAbonadoAction llaman requireOperatorStaff() antes de tocar DB
         // (mismo wrapper no reconocido, ver override de reservas/actions.ts
         // arriba). submitNewAbonado no chequea auth inline: delega en

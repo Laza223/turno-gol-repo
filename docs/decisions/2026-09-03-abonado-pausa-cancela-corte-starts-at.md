@@ -40,3 +40,16 @@ respuesta en el 99% de los casos, con un desacople extra a mantener.
 cancelAbonado línea ~425) llevan `AND starts_at >= NOW()`. Test:
 `tests/unit/abonado-pause-cancel-starts-at.test.ts` (verifica el SQL enviado, no un resultado
 simulado — no hay Supabase local en este entorno para probarlo contra la DB real).
+
+## Nota 2026-09-15 — la mitad "pausa" se retiró del producto
+
+Decisión del dueño: el botón "Pausar" sobraba porque saltear una fecha puntual ya se resuelve
+cancelando ese turno específico desde la Grilla, sin dar de baja el fijo. Se borraron
+`pauseAbonado` (`abonado.service.ts`), la Server Action, el botón/diálogo y sus tests
+(`tests/unit/abonado-pause-cancel-starts-at.test.ts` pasó a llamarse
+`tests/unit/abonado-cancel-starts-at.test.ts`, sin la mitad de pause).
+
+El enum `abonado_status` sigue aceptando `'paused'` y el botón + acción + servicio de
+**Reactivar** se conservan a propósito: existen filas `paused` de antes de este cambio que
+tienen que poder salir de ese estado. La pestaña "Pausados" ya no se renderiza, pero el filtro
+`?status=paused` y "Todos" siguen mostrando esas filas.

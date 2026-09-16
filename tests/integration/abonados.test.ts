@@ -11,7 +11,6 @@ import {
 import {
   createAbonado,
   getAbonados,
-  pauseAbonado,
   reactivateAbonado,
   cancelAbonado,
   getAbonadoSlotConflicts,
@@ -113,100 +112,6 @@ describe('abonado service', () => {
     }
   })
 
-  it('pauses abonado and deletes future bookings', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const courtId = await insertCourt(tenant.id)
-
-    const { abonado } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(
-        tenant.id,
-        staff.id,
-        {
-          courtId,
-          contactName: 'Pausa Test',
-          contactPhone: '0000000001',
-          dayOfWeek: ABO_DOW,
-          timeStart: '16:00',
-          timeEnd: '17:00',
-          pricePerSession: 800000,
-          startsOn: ABO_START,
-        },
-        tx,
-      ),
-    )
-
-    expect(await countFutureBookings(abonado.id)).toBe(8)
-
-    const paused = await withTenantContext(tenant.id, (tx) =>
-      pauseAbonado(tenant.id, abonado.id, staff.id, tx),
-    )
-
-    expect(paused.status).toBe('paused')
-    expect(await countFutureBookings(abonado.id)).toBe(0)
-  })
-
-  it('pausa a las 22:00 ART (ya "mañana" en UTC) y borra la reserva de HOY en ART, no la de mañana UTC', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    const staff = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, staff.id)
-    const courtId = await insertCourt(tenant.id)
-
-    // startsOn lejano a propósito: el abonado no debe generar nada en 2026-06-15,
-    // esa fila la insertamos a mano abajo para aislar el caso de borde.
-    const { abonado } = await withTenantContext(tenant.id, (tx) =>
-      createAbonado(
-        tenant.id,
-        staff.id,
-        {
-          courtId,
-          contactName: 'TZ Pausa Test',
-          contactPhone: '0000000099',
-          dayOfWeek: ABO_DOW,
-          timeStart: '11:00',
-          timeEnd: '12:00',
-          pricePerSession: 800000,
-          startsOn: ABO_START,
-        },
-        tx,
-      ),
-    )
-
-    // Reserva "de hoy en ART" (2026-06-15) insertada a mano, con status 'confirmed'.
-    await sql`
-      INSERT INTO bookings (tenant_id, court_id, abonado_id, date, time_start, time_end,
-        starts_at, ends_at, type, status, price_snapshot, deposit_amount, deposit_status)
-      VALUES (
-        ${tenant.id}, ${courtId}, ${abonado.id},
-        ${'2026-06-15'}::date, '22:00'::time, '23:00'::time,
-        (${'2026-06-15'}::date + '22:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
-        (${'2026-06-15'}::date + '23:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
-        'fixed', 'confirmed', ${800000}, 0, 'not_required'
-      )
-    `
-
-    // Congela el reloj JS en 2026-06-16T01:00:00Z = 2026-06-15 22:00 ART: en UTC
-    // ya es "mañana" (16), pero en ART todavía es "hoy" (15). El bug original
-    // (NOW()::date en Postgres, columna server-side sin SET TIME ZONE ART)
-    // hubiese comparado contra el 16 y dejado viva esta reserva de hoy.
-    vi.setSystemTime(new Date('2026-06-16T01:00:00.000Z'))
-
-    const paused = await withTenantContext(tenant.id, (tx) =>
-      pauseAbonado(tenant.id, abonado.id, staff.id, tx),
-    )
-    expect(paused.status).toBe('paused')
-
-    const remaining = await sql<{ n: number }[]>`
-      SELECT COUNT(*)::int AS n FROM bookings
-      WHERE abonado_id = ${abonado.id} AND date = ${'2026-06-15'}::date
-        AND status IN ('confirmed','pending_payment')
-    `
-    expect(remaining[0]!.n).toBe(0)
-  })
-
   it('reactivates paused abonado and regenerates 8 weeks', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
@@ -232,7 +137,14 @@ describe('abonado service', () => {
       ),
     )
 
-    await withTenantContext(tenant.id, (tx) => pauseAbonado(tenant.id, abonado.id, staff.id, tx))
+    // pausar ya no existe como camino de producto (el dueño saltea una fecha
+    // puntual cancelando ese turno desde la grilla, sin perder el fijo) — se
+    // simula a mano el estado en que quedan las filas 'paused' históricas:
+    // status actualizado por UPDATE directo y sus bookings futuros borrados,
+    // igual que hacía la vieja pauseAbonado, para seguir probando que
+    // Reactivar sigue funcionando sobre esas filas.
+    await sql`DELETE FROM bookings WHERE abonado_id = ${abonado.id} AND date >= NOW()::date`
+    await sql`UPDATE abonados SET status = 'paused' WHERE id = ${abonado.id}`
 
     expect(await countFutureBookings(abonado.id)).toBe(0)
 
@@ -526,7 +438,7 @@ describe('abonado service', () => {
   /**
    * D1 (docs/decisions/2026-09-15-evento-repetible-edicion-y-cobro-parcial.md):
    * el Evento semanal de la grilla crea un abonado sin teléfono y/o gratis
-   * (migr. 087). Cada sesión sin jugador vinculado tiene que llevar el nombre
+   * (migr. 088). Cada sesión sin jugador vinculado tiene que llevar el nombre
    * del abonado en `guest_name` — es el criterio obligatorio de la grilla
    * (BookingCard.bookingDisplayName mira guestName antes que playerFirstName).
    */

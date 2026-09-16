@@ -1,5 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { expect, within } from 'storybook/test'
 import BusinessFooter from './BusinessFooter'
+import {
+  CONTACT_EMAIL,
+  CONTACT_INSTAGRAM_HANDLE,
+  CONTACT_WHATSAPP_DISPLAY,
+  contactInstagramUrl,
+  contactMailtoUrl,
+  contactWhatsappUrl,
+} from '@/lib/contact'
 
 /**
  * Fondo `#020617` hardcodeado — superficie SIEMPRE oscura (landing B2B
@@ -27,4 +36,20 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Default: Story = {}
+/** Mismos tres canales que el pie del portal, en el clima oscuro fijo. */
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('link', { name: `WhatsApp ${CONTACT_WHATSAPP_DISPLAY}` }),
+    ).toHaveAttribute('href', contactWhatsappUrl())
+    await expect(
+      canvas.getByRole('link', { name: `Instagram @${CONTACT_INSTAGRAM_HANDLE}` }),
+    ).toHaveAttribute('href', contactInstagramUrl())
+    await expect(canvas.getByRole('link', { name: `Mail ${CONTACT_EMAIL}` })).toHaveAttribute(
+      'href',
+      contactMailtoUrl(),
+    )
+    await expect(canvas.queryByRole('link', { name: 'Contacto' })).toBeNull()
+  },
+}

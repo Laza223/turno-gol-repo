@@ -8,8 +8,8 @@
 
 - **D (diagnóstico):** causa raíz de "no se puede cobrar parcial en adelanto desde la grilla", reproducida con test.
 - **A (cobro):** monto editable a la vista en los 3 modos del panel; adelanto con N líneas (`addBookingChargeAction` con `charges[]`, atómico).
-- **B (evento semanal):** migr. 087 (`price_per_session >= 0`, `contact_phone` nullable); EventoForm "Una vez / Cada semana" vía `createAbonadoAction`; sesión sin jugador con nombre en la grilla.
-- **C (editar):** migr. 088 (excepción del trigger con `app.booking_edit`); `editBooking` + `editBookingAction` + `BookingEditDialog` (nombre/teléfono, precio, duración).
+- **B (evento semanal):** migr. 088 (`price_per_session >= 0`, `contact_phone` nullable); EventoForm "Una vez / Cada semana" vía `createAbonadoAction`; sesión sin jugador con nombre en la grilla.
+- **C (editar):** migr. 089 (excepción del trigger con `app.booking_edit`); `editBooking` + `editBookingAction` + `BookingEditDialog` (nombre/teléfono, precio, duración).
 
 **No se toca:** reserva online, reprogramación, fiados, alta de Turno fijo, `/abonados/nuevo`.
 

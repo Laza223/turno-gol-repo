@@ -239,10 +239,14 @@ export default function BookingCharges({
             <dd className="text-foreground">{formatArs(depositAmount)}</dd>
           </div>
         )}
-        {charges.map((c) => (
+        {charges.map((c, i) => (
           <div key={c.id} className="flex items-center justify-between">
             <dt className="text-muted-foreground">
-              Cobro · {(METHOD_LABELS as Record<string, string>)[c.method] ?? c.method}
+              {/* Cobro por equipo: cuando el turno se cobró en DOS veces, cada
+                  fila dice de qué equipo salió. Con una sola, o con tres o más,
+                  el rótulo mentiría — ahí vuelve a decir "Cobro" a secas. */}
+              {charges.length === 2 ? `Equipo ${i + 1}` : 'Cobro'} ·{' '}
+              {(METHOD_LABELS as Record<string, string>)[c.method] ?? c.method}
               {c.description && c.description !== 'Cobro de turno' ? ` · ${c.description}` : ''}
             </dt>
             <dd className="text-foreground">{formatArs(c.amount)}</dd>

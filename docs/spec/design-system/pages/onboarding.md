@@ -21,20 +21,20 @@ complejo del usuario. Este refactor no cambia colores: cambia qué ocupa la pant
 
 ## 1. Qué cambió respecto a la v1
 
-| # | v1 (2026-07-02) | Ahora |
-|---|---|---|
-| 1 | Paso 4 = "¿Cobrás seña?", CTA primario = OAuth a MercadoPago | Paso 4 = "Tu primera reserva": grilla real, tocás un slot y cargás un turno. La seña se movió a la checklist del dashboard (ítem destacado, `/settings/facturacion` ya tenía su card) |
-| 2 | Panel derecho = card de formulario sola, `bg-background` plano | Split panel: form a la izquierda, preview del producto a la derecha (`PublicCardPreview`/`WeekPreview`/`GridPreview`, armándose en vivo) |
-| 3 | Mobile: rail oculto, sin preview, solo header + form | Preview en barra sticky colapsable al pie (`PreviewPane`), nunca ausente |
-| 4 | Paso NO estaba en la URL — `page.tsx` lo calculaba de DB en cada render | `/onboarding/[paso]` (`complejo`/`horarios`/`canchas`/`reserva`); el botón atrás del navegador funciona |
-| 5 | Paso 2 sin "Volver" | `StepSchedule` y `StepCourts` tienen "Volver"; `updateWizardTenantAction` nuevo permite corregir el paso 1 sin reiniciar |
-| 6 | Fotos de cancha se subían a R2 y se perdían en el submit (el payload no las incluía) | El paso 3 no pide fotos — se cargan después en `/settings/canchas`, mismo uploader contra la cancha real |
-| 7 | Drafts de canchas en `useState` puro — perder la conexión los borraba | `sessionStorage` por tenant (`use-court-drafts.ts`) |
-| 8 | Checklist del dashboard: 2 de 7 ítems (`complexData`, `hasSchedule`) hardcodeados a `true` | `hasSchedule` sale de `hasOperableDay()` real; `complexData` sigue `true` a propósito (los campos son NOT NULL, no hay nada que chequear) |
-| 9 | Cero eventos de analytics en todo el flujo | Categoría `onboarding` completa + `activation.first_online_booking` (§8) |
-| 10 | Lógica de negocio en `src/app/onboarding/actions.ts` (Zod inline, UPDATE crudo) | `src/modules/onboarding/` (service/schema/types/steps), la action queda de capa fina |
-| 11 | Sin `layout.tsx`/`loading.tsx`/`error.tsx` | Los tres existen; `layout.tsx` además es el gate de sesión (§4) |
-| 12 | `useActionState` en `StepIdentity` | `useTransition` + `onSubmit` manual — ver nota de la Fase 9 en el service, `createTenantAction` muta la cookie de sesión y `useActionState` pierde la carrera contra la revalidación automática de Next |
+| #   | v1 (2026-07-02)                                                                            | Ahora                                                                                                                                                                                                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Paso 4 = "¿Cobrás seña?", CTA primario = OAuth a MercadoPago                               | Paso 4 = "Tu primera reserva": grilla real, tocás un slot y cargás un turno. La seña se movió a la checklist del dashboard (ítem destacado, `/settings/facturacion` ya tenía su card)                                                                                                                                                                                                   |
+| 2   | Panel derecho = card de formulario sola, `bg-background` plano                             | Split panel: form a la izquierda, preview del producto a la derecha (`PublicCardPreview`/`WeekPreview`/`CourtsPreview`, armándose en vivo)                                                                                                                                                                                                                                              |
+| 3   | Mobile: rail oculto, sin preview, solo header + form                                       | Preview en barra sticky colapsable al pie (`PreviewPane`), nunca ausente                                                                                                                                                                                                                                                                                                                |
+| 4   | Paso NO estaba en la URL — `page.tsx` lo calculaba de DB en cada render                    | `/onboarding/[paso]` (`complejo`/`horarios`/`canchas`/`reserva`); el botón atrás del navegador funciona                                                                                                                                                                                                                                                                                 |
+| 5   | Paso 2 sin "Volver"                                                                        | `StepSchedule` y `StepCourts` tienen "Volver"; `updateWizardTenantAction` nuevo permite corregir el paso 1 sin reiniciar                                                                                                                                                                                                                                                                |
+| 6   | Fotos de cancha se subían a R2 y se perdían en el submit (el payload no las incluía)       | El paso 3 no pedía fotos. **Revertido el 2026-09-15**: de los complejos que probaron el alta casi ninguno volvió a cargarlas desde `/canchas`, así que la foto vuelve al paso 3 como campo opcional — ahora con el lazo cerrado (la URL viaja en el draft, `ownDraftPhotoUrl` la valida contra el prefijo del propio complejo y `createOnboardingCourts` la escribe en `courts.photos`) |
+| 7   | Drafts de canchas en `useState` puro — perder la conexión los borraba                      | `sessionStorage` por tenant (`use-court-drafts.ts`)                                                                                                                                                                                                                                                                                                                                     |
+| 8   | Checklist del dashboard: 2 de 7 ítems (`complexData`, `hasSchedule`) hardcodeados a `true` | `hasSchedule` sale de `hasOperableDay()` real; `complexData` sigue `true` a propósito (los campos son NOT NULL, no hay nada que chequear)                                                                                                                                                                                                                                               |
+| 9   | Cero eventos de analytics en todo el flujo                                                 | Categoría `onboarding` completa + `activation.first_online_booking` (§8)                                                                                                                                                                                                                                                                                                                |
+| 10  | Lógica de negocio en `src/app/onboarding/actions.ts` (Zod inline, UPDATE crudo)            | `src/modules/onboarding/` (service/schema/types/steps), la action queda de capa fina                                                                                                                                                                                                                                                                                                    |
+| 11  | Sin `layout.tsx`/`loading.tsx`/`error.tsx`                                                 | Los tres existen; `layout.tsx` además es el gate de sesión (§4)                                                                                                                                                                                                                                                                                                                         |
+| 12  | `useActionState` en `StepIdentity`                                                         | `useTransition` + `onSubmit` manual — ver nota de la Fase 9 en el service, `createTenantAction` muta la cookie de sesión y `useActionState` pierde la carrera contra la revalidación automática de Next                                                                                                                                                                                 |
 
 ## 2. Estructura de pasos
 
@@ -77,10 +77,12 @@ Fuente única de la tabla de pasos: `src/modules/onboarding/onboarding.steps.ts`
 
 ### Paso 3 — "Tus canchas"
 
-- Pide: Nombre · Formato (chips) · Superficie · Precio por turno (uniforme, un precio por cancha).
-- No pide: fotos (§1.6).
-- Preview: `GridPreview` — cada cancha (existente o draft) es una columna que entra animada
-  (`AnimatePresence` + `layout`, spring 200ms) al agregarse.
+- Pide: Nombre · Formato (chips) · Superficie · Precio por turno (uniforme, un precio por cancha) ·
+  **Foto (opcional)**, subida a `${tenantId}/court-drafts/<uuid>.webp` porque la cancha todavía no
+  existe. Sin R2 configurado (local, e2e) el uploader no se renderiza y el paso funciona igual.
+- Preview: `CourtsPreview` — las **cards públicas reales** (`CourtCard` del portal), no una grilla en
+  miniatura: el dueño ve la foto y el precio por jugador como los ve el jugador. Cada cancha entra
+  animada (`AnimatePresence` + `layout`, spring 200ms) al agregarse.
 - "+ Agregar otra cancha" duplica la anterior (nombre autoincremental). Drafts persistidos en
   `sessionStorage` por tenant. Revisita: canchas ya creadas se listan aparte (`ExistingCourtsList`)
   con hint "Podés editarlas después desde Canchas".
@@ -190,13 +192,13 @@ fechada 2026-08-15). `WizardMotionProvider` (`motion-provider.tsx`) monta `LazyM
 `domAnimation` (~15 KB, no el bundle completo) y `MotionConfig reducedMotion="user"` — sin esa línea
 se rompe la política de `prefers-reduced-motion` que el resto del producto respeta en tres capas.
 
-| Momento | Componente | Cómo |
-|---|---|---|
-| Cambio de paso | `WizardChrome` | slide+fade direccional, `AnimatePresence mode="wait"` |
-| Cancha agregada | `GridPreview` | columna nueva entra con `layout` + spring (200ms) |
-| Barra de progreso | `WizardChrome` | width con spring |
+| Momento                    | Componente         | Cómo                                                          |
+| -------------------------- | ------------------ | ------------------------------------------------------------- |
+| Cambio de paso             | `WizardChrome`     | slide+fade direccional, `AnimatePresence mode="wait"`         |
+| Cancha agregada            | `GridPreview`      | columna nueva entra con `layout` + spring (200ms)             |
+| Barra de progreso          | `WizardChrome`     | width con spring                                              |
 | Slot de la primera reserva | `StepFirstBooking` | `scale` keyframes reactivos a `done`, 400ms — el momento pico |
-| Cierre `/listo` | `ListoReveal` | stagger de las acciones, ~500ms total |
+| Cierre `/listo`            | `ListoReveal`      | stagger de las acciones, ~500ms total                         |
 
 Reglas técnicas: solo `transform`/`opacity` (nunca `height`/`top`), interrumpibles (default de
 `motion`), duraciones al 80% en mobile.

@@ -1,13 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import { expectGone } from '@/test/expect-gone'
 import { abonado, abonadoCanceled, abonadoPaused, abonados } from '@/test/fixtures'
 import { AbonadosList } from './AbonadosList'
 
 /**
- * pauseAction/reactivateAction/cancelAction/previewSlotsAction llegan por
- * prop (ver el comentario en AbonadosList.tsx): './actions' y
- * './nuevo/actions' son `'use server'`.
+ * reactivateAction/cancelAction/previewSlotsAction llegan por prop (ver el
+ * comentario en AbonadosList.tsx): './actions' y './nuevo/actions' son
+ * `'use server'`.
  */
 const meta = {
   title: 'Admin/Abonados/AbonadosList',
@@ -15,7 +14,6 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     abonados: abonados(),
-    pauseAction: fn(async () => ({ success: true as const, abonado: abonado() })),
     reactivateAction: fn(async () => ({
       success: true as const,
       abonado: abonado(),
@@ -63,37 +61,6 @@ export const ListaVaciaConFiltro: Story = {
   },
 }
 
-/** Pausar un abonado activo: confirmar dispara pauseAction y muestra el toast. */
-export const PausarAbonado: Story = {
-  args: { abonados: [abonado()] },
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement)
-    const body = within(canvasElement.ownerDocument.body)
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Pausar' }))
-    // El diálogo confirma con un botón que se llama IGUAL que el trigger de la
-    // fila ("Pausar"): esperar el dialog y clickear DENTRO de él evita que
-    // findByRole agarre el trigger de vuelta (que además queda disabled con el
-    // dialog abierto, pero eso no lo saca del accessibility tree). AbonadoDialogs
-    // entra por next/dynamic: timeout largo para no flakear bajo carga (batería
-    // completa de stories, chunk más lento de cargar).
-    const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
-    await waitFor(() =>
-      expect(dialog.getByRole('heading', { name: 'Pausar turno fijo' })).toBeVisible(),
-    )
-    await userEvent.click(dialog.getByRole('button', { name: 'Pausar' }))
-
-    await expect(args.pauseAction).toHaveBeenCalledWith(abonado().id)
-    const toastText = await body.findByText('Abonado pausado correctamente.')
-    await expect(toastText).toBeVisible()
-    // El toast (variant success, 4s de duración) sobrevive al cambio de story:
-    // cerrarlo acá evita que la siguiente story lo agarre a mitad de la
-    // animación de salida (color transitorio => falso positivo de axe).
-    await userEvent.click(body.getByRole('button', { name: 'Cerrar' }))
-    await expectGone(() => body.queryByText('Abonado pausado correctamente.'))
-  },
-}
-
 /** Reactivar un pausado: carga el preview de fechas y muestra libres/ocupadas. */
 export const ReactivarConVistaPrevia: Story = {
   args: {
@@ -109,8 +76,7 @@ export const ReactivarConVistaPrevia: Story = {
     const body = within(canvasElement.ownerDocument.body)
 
     await userEvent.click(canvas.getByRole('button', { name: 'Reactivar' }))
-    // AbonadoDialogs entra por next/dynamic: timeout largo (ver comentario en
-    // "Pausar Abonado").
+    // AbonadoDialogs entra por next/dynamic: timeout largo para el primer chunk.
     const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
     // El "2" va en un <strong> aparte: getByText por defecto solo mira los text
     // nodes DIRECTOS de un elemento (no agrega texto de hijos), así que hay que

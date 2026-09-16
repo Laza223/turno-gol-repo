@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
-import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
+import { newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
+import type { MethodKey } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
-import { chargeMode } from './charge-copy'
+import { chargeMode, teamSplit } from './charge-copy'
 import type { ChargeInput, SlotPanelActions } from './actions'
 import type { ActionResult } from '@/shared/types/action-result'
 
@@ -43,34 +44,14 @@ export function useSlotCharges({
   const pending = booking?.pending ?? 0
 
   /**
-   * Valida `lines` y cobra (misma Server Action, mismo guard, mismo toast y
-   * manejo de error en los tres modos). Único caller de la mutación: el
-   * "Cobrar todo en efectivo" de un toque se fue con D3 — ahora `lines[0]`
-   * SIEMPRE arranca precargada con el pendiente, así que el botón de siempre
-   * ya manda el monto completo salvo que el admin lo haya editado.
+   * Corre la mutación real (misma Server Action, mismo guard, mismo toast y
+   * manejo de error en los tres modos) a partir de un array de cargos ya
+   * validado. La usan `submitCharge` (con `lines`) y `submitHalfCharge` (con
+   * el cargo armado en el momento, sin depender de `lines` porque `setState`
+   * es async y todavía no se actualizó en el mismo click).
    */
-  function submitCharge() {
+  function runCharge(charges: ChargeInput[], total: number) {
     if (!booking || !actions || !mode) return
-    setError(null)
-
-    const charges: ChargeInput[] = []
-    for (const l of lines) {
-      if (l.amountCents == null || l.amountCents <= 0) {
-        setError('Todos los cobros deben tener un monto mayor a $0.')
-        return
-      }
-      charges.push({ amount: l.amountCents, method: l.method })
-    }
-    if (charges.length === 0) {
-      setError('Ingresá al menos una línea de cobro.')
-      return
-    }
-    const total = charges.reduce((s, c) => s + c.amount, 0)
-    if (total > pending) {
-      setError(`El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
-      return
-    }
-
     const bookingId = booking.id
     startTransition(async () => {
       try {
@@ -104,6 +85,53 @@ export function useSlotCharges({
         setError('No se pudo registrar el cobro. Revisá tu conexión e intentá de nuevo.')
       }
     })
+  }
+
+  /**
+   * Valida `lines` y cobra. Único caller manual de la mutación: el "Cobrar
+   * todo en efectivo" de un toque se fue con D3 — ahora `lines[0]` SIEMPRE
+   * arranca precargada con el pendiente, así que el botón de siempre ya manda
+   * el monto completo salvo que el admin lo haya editado.
+   */
+  function submitCharge() {
+    if (!booking || !actions || !mode) return
+    setError(null)
+
+    const charges: ChargeInput[] = []
+    for (const l of lines) {
+      if (l.amountCents == null || l.amountCents <= 0) {
+        setError('Todos los cobros deben tener un monto mayor a $0.')
+        return
+      }
+      charges.push({ amount: l.amountCents, method: l.method })
+    }
+    if (charges.length === 0) {
+      setError('Ingresá al menos una línea de cobro.')
+      return
+    }
+    const total = charges.reduce((s, c) => s + c.amount, 0)
+    if (total > pending) {
+      setError(`El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
+      return
+    }
+    runCharge(charges, total)
+  }
+
+  /**
+   * Cobra la MITAD de lo pendiente, para el complejo que cobra por equipo.
+   *
+   * Mismo camino que `submitCharge` — misma Server Action, mismo guard,
+   * mismo toast: lo único que cambia es el monto. El resto queda como saldo del
+   * turno y aparece en Deudas hasta que lo paguen, que es exactamente el
+   * control que pidió el mostrador.
+   */
+  function submitHalfCharge(method: MethodKey) {
+    if (!booking || !mode || pending <= 0) return
+    const half = teamSplit(booking).halfCents
+    if (half <= 0) return
+    setError(null)
+    setLines([newChargeLine(half, method)])
+    runCharge([{ amount: half, method }], half)
   }
 
   async function confirmNoShow(): Promise<ActionResult> {
@@ -163,6 +191,7 @@ export function useSlotCharges({
     mode,
     pending,
     submitCharge,
+    submitHalfCharge,
     confirmNoShow,
     revertNoShow,
   }

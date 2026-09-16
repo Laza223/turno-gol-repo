@@ -1,5 +1,5 @@
 -- ============================================================
--- 088_booking_price_edit.sql
+-- 089_booking_price_edit.sql
 -- D2 (docs/decisions/2026-09-15-evento-repetible-edicion-y-cobro-parcial.md):
 -- editar una reserva desde la grilla (nombre/teléfono, precio, duración) sin
 -- pasar por `rescheduleBooking` — el turno NO se mueve (mismo court_id, mismo

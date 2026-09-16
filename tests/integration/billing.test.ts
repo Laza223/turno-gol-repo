@@ -106,6 +106,7 @@ async function seedActiveTenant(
   sql: Sql,
   planSlug: 'predio' | 'complejo' | 'estadio' = 'predio',
   opts: {
+    billingCycle?: 'monthly' | 'annual'
     currentPeriodStart?: Date
     currentPeriodEnd?: Date
     mpSubscriptionId?: string
@@ -568,44 +569,59 @@ describe('Test F — downgrade court-count gate', () => {
     expect(rows[0]!.pending_plan_change).toBeNull()
   })
 
-  it('downgrade programado se APLICA en el sweep cuando pending_change_at venció', async () => {
-    const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'complejo', {
-      currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
-    })
-    for (let i = 0; i < 2; i += 1) {
-      await sql`
+  // El monto del preapproval tiene que seguir al plan nuevo: sin el PUT, MP
+  // seguía cobrando el plan viejo. Anual = price_annual (equivalente mensual) × 12.
+  it.each([
+    { billingCycle: 'monthly' as const, expectedAmount: 6_300_000 },
+    { billingCycle: 'annual' as const, expectedAmount: 60_480_000 },
+  ])(
+    'downgrade programado se APLICA en el sweep cuando pending_change_at venció ($billingCycle)',
+    async ({ billingCycle, expectedAmount }) => {
+      const sql = getSql()
+      const { tenantId } = await seedActiveTenant(sql, 'complejo', {
+        billingCycle,
+        currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
+      })
+      for (let i = 0; i < 2; i += 1) {
+        await sql`
         INSERT INTO courts (tenant_id, name, capacity, status)
         VALUES (${tenantId}, ${`Cancha ${i + 1}`}, 10, 'online')
       `
-    }
+      }
 
-    await withTenantContext(tenantId, async (tx) => {
-      await billingDowngrade(tenantId, plans.predio, tx)
-    })
+      await withTenantContext(tenantId, async (tx) => {
+        await billingDowngrade(tenantId, plans.predio, tx)
+      })
 
-    // Forzar el vencimiento de pending_change_at y correr el sweep.
-    await sql`
+      // Forzar el vencimiento de pending_change_at y correr el sweep.
+      await sql`
       UPDATE tenant_subscriptions SET pending_change_at = NOW() - INTERVAL '1 hour'
       WHERE tenant_id = ${tenantId}
     `
-    await runDunningSweep()
+      await runDunningSweep()
 
-    const rows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<
-          { plan_id: string; pending_plan_change: string | null; pending_change_at: Date | null }[]
-        >`
+      const rows = await asApp(
+        tenantId,
+        (tx) =>
+          tx<
+            {
+              plan_id: string
+              pending_plan_change: string | null
+              pending_change_at: Date | null
+            }[]
+          >`
         SELECT plan_id, pending_plan_change, pending_change_at
         FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
       `,
-    )
-    expect(rows[0]!.plan_id).toBe(plans.predio) // plan efectivamente cambiado
-    expect(rows[0]!.pending_plan_change).toBeNull()
-    expect(rows[0]!.pending_change_at).toBeNull()
-    expect(await fetchSubStatus(tenantId)).toBe('active') // sigue activo
-  })
+      )
+      expect(rows[0]!.plan_id).toBe(plans.predio) // plan efectivamente cambiado
+      expect(rows[0]!.pending_plan_change).toBeNull()
+      expect(rows[0]!.pending_change_at).toBeNull()
+      expect(await fetchSubStatus(tenantId)).toBe('active') // sigue activo
+      expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
+      expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(expectedAmount)
+    },
+  )
 
   it('Complejo with 2 courts → downgrade scheduled to predio at period_end', async () => {
     const sql = getSql()
@@ -874,9 +890,11 @@ describe('billing cycle anual', () => {
       return billingSubscribe(tenant.id, plans.predio, 'annual', mockGateway, tx)
     })
     expect(result.checkoutUrl).toContain('mp.test')
-    // Predio anual = 5_040_000 centavos (NO el mensual 6_300_000).
+    // Predio anual: el cobro real es price_annual (equivalente mensual con
+    // 20% off) × 12 meses = 60_480_000 (NO el mensual 6_300_000 ni el
+    // equivalente mensual 5_040_000 a pelo).
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
-    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(5_040_000)
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(60_480_000)
     expect(mockGateway.preapprovalCalls[0]!.frequency).toBe('annual')
 
     const cycleRows = await asApp(

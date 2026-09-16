@@ -17,6 +17,8 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WhatsappIcon } from '@/components/icons/WhatsappIcon'
+import { SUPPORT_WHATSAPP_URL } from '@/shared/constants'
 import type { StaffRole } from '@/modules/staff/roles'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -144,6 +146,45 @@ function navIconClass(active: boolean) {
   return cn('h-5 w-5 shrink-0', active && 'text-emerald-700 dark:text-emerald-400')
 }
 
+/**
+ * Ayuda — el único acceso a soporte desde adentro del panel.
+ *
+ * Hasta ahora el WhatsApp de TurnoGol sólo aparecía en el banner de cuenta
+ * suspendida (`status-banner.tsx`): un complejo que está trabajando y se traba
+ * no tenía de dónde preguntar. Va arriba de Configuración, en el pie del riel,
+ * porque tampoco es del flujo diario.
+ *
+ * Lo ve también el encargado: es un link, no un permiso, y el que está en el
+ * mostrador a las 11 de la noche es justamente el que necesita preguntar.
+ *
+ * El ícono es el de WhatsApp a propósito: el rótulo dice "Ayuda" pero esto se
+ * va de la aplicación, y el glifo lo avisa antes del toque.
+ */
+function SupportLink({
+  className,
+  labelClassName,
+  onNavigate,
+}: {
+  className: string
+  /** El riel apila ícono y rótulo; el cajón los pone en fila. El rótulo se
+   *  estira sólo en el segundo — con `flex-1` en el riel crecería a lo alto. */
+  labelClassName: string
+  onNavigate?: () => void
+}) {
+  return (
+    <a
+      href={SUPPORT_WHATSAPP_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onNavigate}
+      className={cn(className, NAV_IDLE)}
+    >
+      <WhatsappIcon className="h-5 w-5 shrink-0" />
+      <span className={labelClassName}>Ayuda</span>
+    </a>
+  )
+}
+
 /** Inicial de la cuenta a partir del email, que es lo único que el shell tiene. */
 function accountInitial(email: string) {
   return (email.trim()[0] ?? '?').toUpperCase()
@@ -256,6 +297,8 @@ function SidebarRail({
       </nav>
 
       <div className="flex-1" />
+
+      <SupportLink className={RAIL_ITEM} labelClassName="max-w-full truncate" />
 
       {canConfigure ? (
         <Link
@@ -374,6 +417,8 @@ function SidebarDrawerContent({
             </Link>
           )
         })}
+
+        <SupportLink className={rowClass} labelClassName="flex-1 truncate" onNavigate={onClose} />
 
         {canConfigure ? (
           <Link

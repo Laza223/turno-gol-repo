@@ -23,6 +23,7 @@ import { useSlotCharges } from './slot-panel/use-slot-charges'
 import { SlotPriceSummary } from './slot-panel/SlotPriceSummary'
 import { SlotChargeSection } from './slot-panel/SlotChargeSection'
 import { SlotActionButtons } from './slot-panel/SlotActionButtons'
+import { teamSplit } from './slot-panel/charge-copy'
 import type { RenderCanteenDialog, SlotPanelActions } from './slot-panel/actions'
 
 // Los tipos de las Server Actions (y el de RenderCanteenDialog) viven en
@@ -155,6 +156,7 @@ export function BookingSlotPanel({
     mode,
     pending,
     submitCharge,
+    submitHalfCharge,
     confirmNoShow,
     revertNoShow,
   } = useSlotCharges({
@@ -197,6 +199,9 @@ export function BookingSlotPanel({
   if (!booking) return null
 
   const visual = gridSlotVisual(booking)
+  // Cobro por equipo: de acá salen el atajo de la mitad y el rótulo "Equipo 1
+  // pagó · falta Equipo 2". Es cálculo puro sobre lo que el turno ya trae.
+  const split = teamSplit(booking)
 
   // Marcar ausente: sólo sobre un turno de un cliente que ya terminó. Una hora
   // de torneo no tiene a quién dar por ausente (el torneo es dueño del horario,
@@ -379,6 +384,8 @@ export function BookingSlotPanel({
                 error={error}
                 isPending={isPending}
                 onSubmit={submitCharge}
+                split={split}
+                onHalfCharge={submitHalfCharge}
               />
             )}
 

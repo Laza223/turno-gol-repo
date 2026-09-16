@@ -25,6 +25,7 @@ export type PublicTenantCardFixture = {
   coverUrl: string | null
   allowOnlineBooking: boolean
   fromPriceCents: number | null
+  fromPricePerPlayerCents: number | null
   amenities: Record<string, boolean>
   avgRating: number
   reviewCount: number
@@ -175,6 +176,8 @@ export const publicTenantCard = (
   coverUrl: null,
   allowOnlineBooking: true,
   fromPriceCents: 900000,
+  // Mínimo REAL por jugador: la cancha más barata es la F5 ($9.000 / 10).
+  fromPricePerPlayerCents: 90000,
   amenities: { techado: true, iluminacion: true, estacionamiento: true, duchas: true },
   avgRating: 4.8,
   reviewCount: 62,
@@ -210,6 +213,7 @@ export const publicTenantCardSinReservaOnline = (): PublicTenantCardFixture =>
     address: 'Av. Boedo 1780',
     allowOnlineBooking: false,
     fromPriceCents: null,
+    fromPricePerPlayerCents: null,
     distanceKm: null,
   })
 
@@ -225,6 +229,10 @@ export const publicTenantCards = (): PublicTenantCardFixture[] => [
     reviewCount: 38,
     distanceKm: 2.1,
     fromPriceCents: 1100000,
+    // El total mínimo es de la F5 y el por-jugador mínimo es de la F7
+    // ($11.000/14 = $785,71): vienen de canchas distintas, que es justo el caso
+    // que la columna denormalizada existe para resolver.
+    fromPricePerPlayerCents: 78572,
     amenities: { estacionamiento: true, bar: true },
   }),
   publicTenantCard({
@@ -236,6 +244,7 @@ export const publicTenantCards = (): PublicTenantCardFixture[] => [
     reviewCount: 145,
     distanceKm: 0.8,
     fromPriceCents: 800000,
+    fromPricePerPlayerCents: 80000,
     amenities: { techado: true, iluminacion: true, wifi: true },
   }),
   publicTenantCardSinResenas(),
@@ -250,6 +259,7 @@ export const publicTenantCards = (): PublicTenantCardFixture[] => [
     reviewCount: 19,
     distanceKm: 8.7,
     fromPriceCents: 750000,
+    fromPricePerPlayerCents: 75000,
     amenities: { parrilla: true, estacionamiento: true },
   }),
   publicTenantCardSinReservaOnline(),

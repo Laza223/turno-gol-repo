@@ -18,6 +18,8 @@ export type PublicTenantCard = {
   allowOnlineBooking: boolean
   // Interfaz pública estilo ATC.
   fromPriceCents: number | null
+  /** Mínimo REAL por jugador (centavos crudos). Denormalizado: ver migr. 087. */
+  fromPricePerPlayerCents: number | null
   amenities: Record<string, boolean>
   avgRating: number
   reviewCount: number
@@ -212,6 +214,7 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
         coverUrl: tenants.coverUrl,
         settings: tenants.settings,
         fromPriceCents: tenants.fromPriceCents,
+        fromPricePerPlayerCents: tenants.fromPricePerPlayerCents,
         amenities: tenants.amenities,
         latitude: tenants.latitude,
         longitude: tenants.longitude,
@@ -244,6 +247,7 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     coverUrl: r.coverUrl,
     allowOnlineBooking: (r.settings as TenantSettings).allow_online_booking ?? true,
     fromPriceCents: r.fromPriceCents ?? null,
+    fromPricePerPlayerCents: r.fromPricePerPlayerCents ?? null,
     amenities: (r.amenities ?? {}) as Record<string, boolean>,
     avgRating: Number(r.avgRating ?? 0),
     reviewCount: Number(r.reviewCount ?? 0),

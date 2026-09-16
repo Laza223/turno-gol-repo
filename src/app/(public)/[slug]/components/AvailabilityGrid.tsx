@@ -53,11 +53,17 @@ type TimeRow = {
 }
 
 function buildTimeRows(courts: AvailabilityResponse['courts']): TimeRow[] {
+  // El orden lo manda el server: `generateSlots` los emite en DÍA OPERATIVO
+  // (…22:00, 23:00, 00:00) y el `Set` conserva el orden de inserción. Ordenar
+  // por la etiqueta —lo que hacía este componente— manda el turno de las 00:00
+  // de un complejo que cierra a la 01:00 ARRIBA de las 19:00, porque
+  // `'00:00' < '19:00'` como texto. La aritmética de madrugada no se
+  // reimplementa acá (CLAUDE.md): simplemente no se reordena.
   const timeSet = new Set<string>()
   for (const court of courts) {
     for (const slot of court.slots) timeSet.add(slot.time)
   }
-  const times = Array.from(timeSet).sort()
+  const times = Array.from(timeSet)
   return times.map((time) => ({
     time,
     cells: courts.map((court) => ({

@@ -189,12 +189,12 @@ describe('migr. 070 — price_snapshot al reprogramar', () => {
     ).rejects.toThrow(/estado terminal/)
   }, 20_000)
 
-  it('migr. 088: RECHAZA cambiar solo el precio de un confirmed SIN el marcador app.booking_edit', async () => {
+  it('migr. 089: RECHAZA cambiar solo el precio de un confirmed SIN el marcador app.booking_edit', async () => {
     const sql = getSql()
     const id = await insertBooking({ timeStart: '09:00', timeEnd: '10:00', status: 'confirmed' })
 
     // Mismo caso que "RECHAZA cambiar solo el precio, sin mover el slot" de
-    // arriba, pero dejado explícito acá porque es justo lo que la 088 podría
+    // arriba, pero dejado explícito acá porque es justo lo que la 089 podría
     // haber roto: un booking `confirmed` YA NO alcanza por sí solo — hace
     // falta el marcador puesto por `editBooking` (SET LOCAL), y una conexión
     // nueva nunca lo tiene.
@@ -205,7 +205,7 @@ describe('migr. 070 — price_snapshot al reprogramar', () => {
     expect(await priceOf(id)).toBe(BASE_PRICE)
   }, 20_000)
 
-  it('migr. 088: permite cambiar el precio de un confirmed CON el marcador app.booking_edit (SET LOCAL)', async () => {
+  it('migr. 089: permite cambiar el precio de un confirmed CON el marcador app.booking_edit (SET LOCAL)', async () => {
     const sql = getSql()
     const id = await insertBooking({ timeStart: '11:00', timeEnd: '12:00', status: 'confirmed' })
 
@@ -217,11 +217,11 @@ describe('migr. 070 — price_snapshot al reprogramar', () => {
     expect(await priceOf(id)).toBe(NEW_PRICE)
   }, 20_000)
 
-  it('migr. 088: el marcador NO abre la puerta en un booking terminal (Regla 2 exige status=confirmed)', async () => {
+  it('migr. 089: el marcador NO abre la puerta en un booking terminal (Regla 2 exige status=confirmed)', async () => {
     const sql = getSql()
     const id = await insertBooking({ timeStart: '13:00', timeEnd: '14:00', status: 'completed' })
 
-    // La excepción de la 088 exige `OLD.status = 'confirmed'` explícito —no
+    // La excepción de la 089 exige `OLD.status = 'confirmed'` explícito —no
     // "cualquier estado no terminal"—, así que en un booking `completed` el
     // marcador no cambia nada: sigue cayendo en "price_snapshot es inmutable"
     // (Regla 2), sin llegar siquiera a evaluar el bloqueo de Regla 1.

@@ -4,8 +4,8 @@ import { uid } from '@/test/fixtures'
 import { AbonadoDialogs } from './AbonadoDialogs'
 
 /**
- * Los 3 diálogos de acción de un abonado (pausar/reactivar/cancelar). Radix
- * Dialog porta el contenido a `document.body` con su propia superficie
+ * Los diálogos de acción de un abonado (reactivar/cancelar). Radix Dialog
+ * porta el contenido a `document.body` con su propia superficie
  * (`bg-popover/95`), así que no depende del fondo de la página que lo abre —
  * no hace falta reproducir un contenedor especial acá (regla 2).
  */
@@ -23,7 +23,6 @@ const meta = {
     reactivatePreviewConflicts: [],
     reactivatePreviewError: null,
     onClose: fn(),
-    onConfirmPause: fn(async () => ({ success: true as const })),
     onConfirmReactivate: fn(async () => ({ success: true as const })),
     onConfirmCancel: fn(async () => ({ success: true as const })),
   },
@@ -31,21 +30,6 @@ const meta = {
 
 export default meta
 type Story = StoryObj<typeof meta>
-
-export const Pause: Story = {
-  args: { dialog: 'pause' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement.ownerDocument.body)
-    // El diálogo arranca abierto (args.dialog='pause' desde el mount, sin click
-    // que dispare el delay natural del userEvent): la animación de entrada de
-    // Radix (fade-in, ~200ms) todavía puede estar en curso cuando arranca el
-    // play, así que hay que esperar a que termine antes de medir visibilidad.
-    await waitFor(() =>
-      expect(canvas.getByRole('heading', { name: 'Pausar turno fijo' })).toBeVisible(),
-    )
-    await expect(canvas.getByRole('button', { name: 'Pausar' })).toBeEnabled()
-  },
-}
 
 export const ReactivateLoading: Story = {
   args: { dialog: 'reactivate', reactivatePreviewLoading: true },

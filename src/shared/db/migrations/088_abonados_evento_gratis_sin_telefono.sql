@@ -1,5 +1,5 @@
 -- ============================================================
--- 087_abonados_evento_gratis_sin_telefono.sql
+-- 088_abonados_evento_gratis_sin_telefono.sql
 -- D1 de docs/decisions/2026-09-15-evento-repetible-edicion-y-cobro-parcial.md
 --
 -- El Evento de la grilla se repite "cada semana" creando un abonado (mismo

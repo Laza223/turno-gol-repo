@@ -20,10 +20,18 @@ import {
   createOnboardingFirstBookingAction,
   createTenantAction,
   createWizardCourtsAction,
+  deleteWizardCourtPhotoAction,
   finishOnboardingAction,
   saveWizardScheduleAction,
   updateWizardTenantAction,
+  uploadWizardCourtPhotoAction,
 } from '../actions'
+// `r2-config` y no `r2`: preguntar por el storage desde acá no debe meter el SDK
+// de AWS en el grafo de esta ruta.
+import { isR2Configured } from '@/shared/storage/r2-config'
+// El buscador de dirección vive con el resto de la edición del perfil del
+// complejo; el wizard consume la MISMA action para no tener dos copias.
+import { geocodeAddressAction } from '@/app/(admin)/settings/perfil/actions'
 
 /**
  * Un paso del wizard. La URL dice qué paso mostrar; la DB dice hasta dónde tiene
@@ -54,7 +62,7 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
     // por cada GET del paso 1 pre-tenant (reload, doble tab) — sobreconteo
     // aceptable, el embudo mide intención de arrancar, no sesiones únicas.
     track.onboarding('onboarding.started', {})
-    return <StepIdentity action={createTenantAction} />
+    return <StepIdentity action={createTenantAction} geocodeAction={geocodeAddressAction} />
   }
 
   const settings = tenant.settings as TenantSettings
@@ -103,6 +111,7 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
       {step === 1 && (
         <StepIdentity
           action={updateWizardTenantAction}
+          geocodeAction={geocodeAddressAction}
           defaultValues={{
             name: tenant.name,
             address: tenant.address,
@@ -126,6 +135,9 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
           existingCourts={existingCourts}
           tenantId={tenant.id}
           createCourtsAction={createWizardCourtsAction}
+          photosEnabled={isR2Configured()}
+          uploadPhotoAction={uploadWizardCourtPhotoAction}
+          deletePhotoAction={deleteWizardCourtPhotoAction}
         />
       )}
       {step === 4 && firstBookingSlots && (

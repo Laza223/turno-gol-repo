@@ -49,6 +49,10 @@ const complejoFenix = publicTenantCard({
   latitude: -34.6091,
   longitude: -58.4416,
   fromPriceCents: 900000,
+  // Explícito, no el default de la fábrica: los pines se buscan POR TEXTO, así
+  // que los dos complejos tienen que dar distinto. Desde que el pin rotula por
+  // jugador, dejarlo al default los hacía idénticos aunque el total difiriera.
+  fromPricePerPlayerCents: 90000,
 })
 
 const complejoBelgrano = publicTenantCard({
@@ -58,6 +62,7 @@ const complejoBelgrano = publicTenantCard({
   latitude: -34.5633,
   longitude: -58.4573,
   fromPriceCents: 1100000,
+  fromPricePerPlayerCents: 110000,
 })
 
 /**
@@ -90,8 +95,8 @@ export const Composicion: Story = {
     ).resolves.toBeInTheDocument()
     // Columna mapa: un pin "Desde $X" por complejo.
     const mapa = mapColumnOf(canvasElement)
-    const pinFenix = await mapa.findByText('$ 9.000')
-    await expect(mapa.findByText('$ 11.000')).resolves.toBeInTheDocument()
+    const pinFenix = await mapa.findByText('$ 900/jug')
+    await expect(mapa.findByText('$ 1.100/jug')).resolves.toBeInTheDocument()
     // Layout real: grid de 2 columnas (`lg:grid lg:grid-cols-2`), no una sola columna apilada.
     const root = pinFenix.closest('.lg\\:grid')
     if (!root) throw new Error('No se encontró el contenedor `lg:grid` de ExplorarSplitView')
@@ -157,27 +162,27 @@ export const HoverResaltaPinEnMapa: Story = {
     //
     // `getByText` (no `findByText`) adentro del `waitFor`: un `findBy*` anidado
     // se come el presupuesto del `waitFor` y le deja un solo intento.
-    await mapa.findByText('$ 9.000')
+    await mapa.findByText('$ 900/jug')
     const bg = (texto: string) => getComputedStyle(mapa.getByText(texto)).backgroundColor
 
     await soltarHoverDeLaLista()
     await waitFor(async () => {
-      await expect(bg('$ 9.000')).toBe(INACTIVO)
-      await expect(bg('$ 11.000')).toBe(INACTIVO)
+      await expect(bg('$ 900/jug')).toBe(INACTIVO)
+      await expect(bg('$ 1.100/jug')).toBe(INACTIVO)
     })
 
     // El pin de Fénix se resalta; el de Belgrano queda sin cambios.
     await userEvent.hover(fila)
     await waitFor(async () => {
-      await expect(bg('$ 9.000')).toBe(ACTIVO)
-      await expect(bg('$ 11.000')).toBe(INACTIVO)
+      await expect(bg('$ 900/jug')).toBe(ACTIVO)
+      await expect(bg('$ 1.100/jug')).toBe(INACTIVO)
     })
 
     await userEvent.unhover(fila)
     await soltarHoverDeLaLista()
     await waitFor(async () => {
-      await expect(bg('$ 9.000')).toBe(INACTIVO)
-      await expect(bg('$ 11.000')).toBe(INACTIVO)
+      await expect(bg('$ 900/jug')).toBe(INACTIVO)
+      await expect(bg('$ 1.100/jug')).toBe(INACTIVO)
     })
   },
 }
@@ -191,7 +196,7 @@ export const Mobile: Story = {
     await expect(
       canvas.findByRole('heading', { name: 'Complejo Fénix' }),
     ).resolves.toBeInTheDocument()
-    const pinFenix = await mapColumnOf(canvasElement).findByText('$ 9.000')
+    const pinFenix = await mapColumnOf(canvasElement).findByText('$ 900/jug')
     const root = pinFenix.closest('.lg\\:grid')
     if (!root) throw new Error('No se encontró el contenedor `lg:grid` de ExplorarSplitView')
     await expect(root).not.toHaveStyle({ display: 'grid' })

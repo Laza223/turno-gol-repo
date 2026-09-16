@@ -292,72 +292,6 @@ export async function createAbonado(
   return { abonado, slotsGenerated, conflictDates }
 }
 
-export async function pauseAbonado(
-  tenantId: string,
-  abonadoId: string,
-  staffUserId: string,
-  tx: DbTx,
-): Promise<AbonadoRow> {
-  const existing = await tx
-    .select()
-    .from(abonados)
-    .where(and(eq(abonados.id, abonadoId), eq(abonados.tenantId, tenantId)))
-    .limit(1)
-
-  if (existing.length === 0) throw new AbonadoNotFoundError(abonadoId)
-  const current = existing[0]!
-  if (current.status === 'canceled') throw new AbonadoAlreadyCanceledError()
-  if (current.status === 'paused') return rowToAbonadoRow(current)
-
-  // NOW()::date trunca en UTC (la sesión de Postgres no tiene SET TIME ZONE a
-  // ART): entre las 21:00 y 23:59 ART ya es "mañana" en UTC, y el DELETE con
-  // "date >= mañana" deja viva la reserva de bookings.date=hoy. artToday()
-  // (mismo cálculo que cancelAbonado hace con `fromDate` explícito) da la
-  // fecha operativa ART correcta.
-  const today = artToday()
-
-  // Corte por instante físico ADEMÁS de date >= hoy (hallazgo #4, campaña de
-  // mutación): `date` es el día operativo, no cuándo pasó de verdad. Una
-  // sesión de hoy a las 09:00 sigue en 'confirmed' hasta que el trigger de
-  // 24h la mueva — sin este filtro, pausar a las 15:00 la borraba igual.
-  // starts_at/ends_at (TIMESTAMPTZ) son la fuente única para "ya pasó" (CLAUDE.md).
-  //
-  // El instante se liga desde JS y NO con `NOW()` de Postgres a propósito: la
-  // otra mitad del WHERE ya sale del reloj de la app (`artToday()`), y mezclar
-  // los dos relojes en la misma query rompe cualquier test que simule el
-  // tiempo — `vi.setSystemTime` congela el de JS y no el del server, así que
-  // `NOW()` ubicaba una reserva simulada del pasado meses atrás y no la
-  // borraba nunca (lo cazó `tests/integration/abonados.test.ts`, el caso de
-  // las 22:00 ART). En producción los dos relojes son el mismo.
-  const nowIso = new Date().toISOString()
-
-  await tx.execute(sql`
-    DELETE FROM bookings
-    WHERE abonado_id = ${abonadoId}
-      AND date >= ${today}::date
-      AND starts_at >= ${nowIso}::timestamptz
-      AND status IN ('confirmed','pending_payment')
-  `)
-
-  const updated = await tx
-    .update(abonados)
-    .set({ status: 'paused', updatedAt: new Date() })
-    .where(eq(abonados.id, abonadoId))
-    .returning()
-
-  await insertAuditLog(tx, {
-    tenantId,
-    actorId: staffUserId,
-    actorType: 'staff',
-    action: 'abonado.paused',
-    resourceType: 'abonado',
-    resourceId: abonadoId,
-    metadata: {},
-  })
-
-  return rowToAbonadoRow(updated[0]!)
-}
-
 export async function reactivateAbonado(
   tenantId: string,
   abonadoId: string,
@@ -451,10 +385,11 @@ export async function cancelAbonado(
   if (current.status === 'canceled') throw new AbonadoAlreadyCanceledError()
 
   // Corte por instante físico ADEMÁS de date >= fromDate (hallazgo #4, campaña
-  // de mutación): misma razón que pauseAbonado — `date` es el día operativo, no
+  // de mutación): `date` es el día operativo, no
   // cuándo pasó de verdad, así que cancelar con fromDate=hoy borraba una sesión
   // ya jugada. El instante se liga desde JS y no con `NOW()`, mismo motivo de
-  // un solo reloj que está explicado en pauseAbonado.
+  // un solo reloj (mezclarlo con NOW() de Postgres rompe cualquier test que
+  // simule el tiempo: vi.setSystemTime congela el de JS y no el del server).
   const nowIso = new Date().toISOString()
 
   await tx.execute(sql`

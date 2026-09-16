@@ -30,7 +30,7 @@ import type { BookingRow } from './booking.types'
  *
  * `price_snapshot` es inmutable por el trigger `enforce_booking_invariants_fn`
  * salvo dos excepciones: reprogramar (migr. 070) y ESTA — un turno `confirmed`
- * dentro de una tx que marcó `app.booking_edit = 'on'` (migr. 088). El marcador
+ * dentro de una tx que marcó `app.booking_edit = 'on'` (migr. 089). El marcador
  * se setea acá mismo, con `SET LOCAL`, sólo cuando el precio de verdad cambia.
  */
 

@@ -23,7 +23,7 @@ export const createAbonadoSchema = z
     courtId: uuid,
     playerId: uuid.optional(),
     contactName: boundedText(120).min(1, 'Ingresá el nombre de contacto'),
-    // Opcional desde la migr. 087 (D1): el evento semanal de la grilla puede no
+    // Opcional desde la migr. 088 (D1): el evento semanal de la grilla puede no
     // tener teléfono. Turno fijo y /abonados/nuevo lo siguen exigiendo — acá el
     // gate server-side vivía SOLO en el schema propio de /abonados/nuevo
     // (nuevo/actions.ts), pero Turno fijo llama a ESTA MISMA action

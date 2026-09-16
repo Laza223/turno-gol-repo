@@ -1,5 +1,11 @@
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
+import { ContactChannels } from './ContactChannels'
+
+// Mismo mínimo de 44px del resto de la fila, pero cuadrado: son íconos, así que
+// el ancho no lo da el texto.
+const channelCls =
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded transition-colors hover:text-foreground sm:min-h-9 sm:min-w-9'
 
 export default function SiteFooter() {
   return (
@@ -32,12 +38,6 @@ export default function SiteFooter() {
           >
             Ingresar
           </Link>
-          <a
-            href="mailto:hola@turnogol.app"
-            className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0"
-          >
-            Contacto
-          </a>
           <Link
             href="/privacidad"
             className="inline-flex min-h-11 items-center transition-colors hover:text-foreground sm:min-h-0"
@@ -50,6 +50,7 @@ export default function SiteFooter() {
           >
             Términos
           </Link>
+          <ContactChannels linkClassName={channelCls} />
         </div>
       </div>
     </footer>

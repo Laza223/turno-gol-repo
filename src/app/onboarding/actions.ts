@@ -22,6 +22,7 @@ import {
   createOnboardingCourts,
   createOnboardingFirstBooking,
   hasAnyBooking,
+  isOwnDraftPhotoKey,
   saveOnboardingSchedule,
 } from '@/modules/onboarding/onboarding.service'
 import {
@@ -357,11 +358,81 @@ export async function finishOnboardingAction(): Promise<void> {
   redirect('/onboarding/listo')
 }
 
-// Acá vivían `uploadOnboardingCourtPhotoAction` y `deleteOnboardingCourtPhotoAction`.
-// El uploader del paso 3 subía a `${tenantId}/courts/draft/…` y el submit armaba
-// el payload SIN el campo `photos`: la cancha se creaba sin foto y el objeto
-// quedaba huérfano en R2 para siempre. La foto no bloquea recibir reservas, y
-// `/canchas` ya tiene el mismo uploader contra la cancha real — así que
-// el paso 3 la deja de pedir en vez de arrastrar dos actions para perder el
-// archivo. Los objetos ya subidos bajo ese prefijo quedan en el bucket: R2 no
-// tiene barrido y el prefijo es inerte (nadie lo lee ni lo vuelve a escribir).
+// ─── Foto de la cancha, en el paso 3 ────────────────────────────────────────
+//
+// Esto ya existió y se retiró: el uploader subía a `${tenantId}/courts/draft/…`
+// y el submit armaba el payload SIN `photos`, así que la cancha se creaba sin
+// foto y el objeto quedaba huérfano. Vuelve porque de todos los complejos que
+// probaron el alta, casi ninguno cargó fotos después desde `/canchas` — y una
+// cancha sin foto se ve peor en el portal público que cualquier otra cosa que
+// el wizard pida. Ahora el lazo se cierra entero: la URL viaja en el draft,
+// `createOnboardingCourts` la valida contra el prefijo del propio complejo y la
+// escribe en `courts.photos`.
+//
+// Prefijo propio (`court-drafts/`, no `courts/`): deja el barrido de huérfanos
+// trivial y no se mezcla con las fotos de canchas que ya existen.
+
+export type WizardPhotoResult = { success: true; url: string } | { success: false; error: string }
+
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024
+
+export async function uploadWizardCourtPhotoAction(formData: FormData): Promise<WizardPhotoResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  // Dynamic import: r2.ts trae @aws-sdk/client-s3, pesado y solo necesario acá.
+  // Top-level rompería TODAS las actions de este módulo 'use server' si el SDK
+  // no resuelve en el entorno (mismo motivo que en canchas/actions.ts).
+  const { isR2Configured, putImage, publicUrl } = await import('@/shared/storage/r2')
+  if (!isR2Configured()) {
+    return { success: false, error: 'Storage no configurado en este entorno' }
+  }
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const file = formData.get('file')
+  if (!(file instanceof Blob) || file.size === 0) {
+    return { success: false, error: 'Archivo inválido' }
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { success: false, error: 'La imagen no puede superar 2MB' }
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const key = `${tenant.id}/court-drafts/${crypto.randomUUID()}.webp`
+  try {
+    await putImage(key, bytes, 'image/webp')
+  } catch {
+    // putImage ya loguea y manda a Sentry con el detalle del bucket.
+    return { success: false, error: 'No pudimos subir la imagen. Probá de nuevo en un momento.' }
+  }
+
+  track.onboarding('onboarding.court_photo.uploaded', { tenantId: tenant.id })
+  return { success: true, url: publicUrl(key) }
+}
+
+/**
+ * Borra una foto de borrador. Es el huérfano más frecuente (el dueño cambia de
+ * foto antes de terminar el paso), y acá sí vale la pena: la cancha todavía no
+ * existe, así que nadie más apunta a ese objeto.
+ */
+export async function deleteWizardCourtPhotoAction(url: string): Promise<WizardPhotoResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { isR2Configured, deleteImage, keyFromPublicUrl } = await import('@/shared/storage/r2')
+  if (!isR2Configured()) return { success: false, error: 'Storage no configurado en este entorno' }
+
+  const key = keyFromPublicUrl(url)
+  if (!key || !isOwnDraftPhotoKey(tenant.id, key)) {
+    return { success: false, error: 'Esa imagen no es de este complejo.' }
+  }
+  await deleteImage(key)
+  return { success: true, url }
+}

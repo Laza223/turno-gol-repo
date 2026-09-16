@@ -6,7 +6,9 @@ import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import type { WizardActionResult } from '../actions'
 import { generateSlug } from '@/modules/tenants/tenant.utils'
 import { PROVINCES, resolveMapCenter } from '@/modules/tenants/tenant.geo'
-import LocationPickerField from '@/components/maps/LocationPickerField'
+import LocationPickerField, {
+  type GeocodeAddressAction,
+} from '@/components/maps/LocationPickerField'
 import { fieldClass, labelClass } from './wizard-styles'
 import { useWizardNavigation } from './use-wizard-navigation'
 import { WizardShell } from './WizardShell'
@@ -45,6 +47,13 @@ type Props = {
   action: CreateTenantAction
   /** Ausente = alta (crea el complejo). Presente = revisita: edita y no toca el slug. */
   defaultValues?: TenantIdentityValues
+  /**
+   * Buscador de dirección contra Georef — ver `geocodeAddressAction`
+   * (settings/perfil/actions.ts). Opcional: sin esta prop,
+   * `LocationPickerField` se comporta como antes (mapa manual, sin buscador),
+   * que es lo que hace su story y el form standalone de ubicación.
+   */
+  geocodeAction?: GeocodeAddressAction
 }
 
 /**
@@ -66,13 +75,18 @@ type Props = {
  * nueva. `await action(...)` acá es una promesa común: no pasa por ningún
  * hook de React, así que ninguna revalidación de la página puede pisarla.
  */
-export function StepIdentity({ action, defaultValues }: Props) {
+export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState(defaultValues?.name ?? '')
   const [address, setAddress] = useState(defaultValues?.address ?? '')
   const [city, setCity] = useState(defaultValues?.city ?? '')
   const [province, setProvince] = useState(defaultValues?.province ?? '')
+  // Sin punto, el complejo no sale en el mapa de /explorar ni se puede ordenar
+  // por cercanía: el preview lo dice, para que cargarlo tenga consecuencia visible.
+  const [hasLocation, setHasLocation] = useState(
+    defaultValues?.latitude != null && defaultValues?.longitude != null,
+  )
   const navigate = useWizardNavigation()
   // La provincia elegida es lo único que tenemos para abrir el mapa cerca del
   // complejo: sin geocodificador (doc10 §82), es eso o el centro del país.
@@ -105,7 +119,9 @@ export function StepIdentity({ action, defaultValues }: Props) {
   return (
     <WizardShell
       previewTitle="Tu complejo"
-      preview={<PublicCardPreview name={name} address={address} city={city} />}
+      preview={
+        <PublicCardPreview name={name} address={address} city={city} hasLocation={hasLocation} />
+      }
     >
       <div className="space-y-6">
         <div>
@@ -206,6 +222,11 @@ export function StepIdentity({ action, defaultValues }: Props) {
             fallbackCenter={mapFallback.center}
             fallbackZoom={mapFallback.zoom}
             collapsible
+            defaultQuery={address}
+            city={city}
+            province={province}
+            geocodeAction={geocodeAction}
+            onHasPointChange={setHasLocation}
           />
 
           {error && (

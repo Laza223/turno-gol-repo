@@ -29,6 +29,7 @@ const CARD = {
   coverUrl: null,
   allowOnlineBooking: true,
   fromPriceCents: 800000,
+  fromPricePerPlayerCents: 80000,
   amenities: {},
   avgRating: 4.5,
   reviewCount: 3,

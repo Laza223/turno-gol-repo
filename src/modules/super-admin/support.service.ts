@@ -10,7 +10,11 @@ import {
   transitionToActiveFromAny,
   transitionTrialingToActive,
 } from '@/modules/billing/lifecycle.service'
-import { cancel as billingCancel } from '@/modules/billing/billing.service'
+import {
+  cancel as billingCancel,
+  planAmount,
+  type PlanRow,
+} from '@/modules/billing/billing.service'
 import {
   DowngradeBlockedError,
   InvalidTransitionError,
@@ -336,19 +340,12 @@ export async function changePlanForSupport(
     if (sub.plan_id === targetPlanId) throw new PlanAlreadyAssignedError(tenantId)
 
     const planRows = await tx.execute(sql`
-      SELECT id, max_courts, price_monthly, price_annual
+      SELECT id, slug, name, max_courts, price_monthly, price_annual
       FROM plans
       WHERE id = ${targetPlanId} AND is_active = true
       LIMIT 1
     `)
-    const plan = (
-      planRows as unknown as Array<{
-        id: string
-        max_courts: number | null
-        price_monthly: number
-        price_annual: number
-      }>
-    )[0]
+    const plan = (planRows as unknown as Array<PlanRow>)[0]
     if (!plan) throw new PlanNotFoundError(targetPlanId)
 
     if (plan.max_courts !== null) {
@@ -375,7 +372,7 @@ export async function changePlanForSupport(
     // Dentro de la tx (mismo patrón que billing.service): si MP falla, el
     // cambio de plan rollbackea junto con el audit.
     if (sub.mp_subscription_id) {
-      const newAmount = sub.billing_cycle === 'annual' ? plan.price_annual : plan.price_monthly
+      const newAmount = planAmount(plan, sub.billing_cycle)
       await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
     }
 

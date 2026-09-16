@@ -28,7 +28,7 @@ export const abonados = pgTable(
       .references(() => courts.id),
     playerId: uuid('player_id').references(() => players.id),
     contactName: text('contact_name').notNull(),
-    // Nullable desde la migr. 087 (D1, decisión 2026-09-15): el evento semanal
+    // Nullable desde la migr. 088 (D1, decisión 2026-09-15): el evento semanal
     // de la grilla puede no tener teléfono. Turno fijo y /abonados/nuevo lo
     // siguen exigiendo en la UI — esto solo afloja el CHECK de la base.
     contactPhone: text('contact_phone'),

@@ -89,3 +89,33 @@ describe('MercadoPagoGateway.createPreapproval — auto_recurring.start_date', (
     expect('start_date' in autoRecurring).toBe(false)
   })
 })
+
+describe('MercadoPagoGateway.createPreapproval — auto_recurring.frequency', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('mensual: frequency 1, frequency_type months', async () => {
+    const gw = new MercadoPagoGateway('token', { plaintextToken: true })
+
+    await gw.createPreapproval({ ...INPUT, frequency: 'monthly' })
+
+    const autoRecurring = capturedBody().auto_recurring as Record<string, unknown>
+    expect(autoRecurring.frequency).toBe(1)
+    expect(autoRecurring.frequency_type).toBe('months')
+  })
+
+  // El SDK (`AutoRecurringRequest.frequency_type` en
+  // node_modules/mercadopago/dist/clients/preApproval/commonTypes.d.ts) solo
+  // documenta `days` | `months` — `years` no es una unidad válida y MP la
+  // rechaza. Un plan anual se modela como 12 unidades de `months`.
+  it('anual: frequency 12, frequency_type months (NUNCA years)', async () => {
+    const gw = new MercadoPagoGateway('token', { plaintextToken: true })
+
+    await gw.createPreapproval({ ...INPUT, frequency: 'annual' })
+
+    const autoRecurring = capturedBody().auto_recurring as Record<string, unknown>
+    expect(autoRecurring.frequency).toBe(12)
+    expect(autoRecurring.frequency_type).toBe('months')
+  })
+})

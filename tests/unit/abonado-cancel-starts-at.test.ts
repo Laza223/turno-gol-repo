@@ -6,10 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // /ends_at (TIMESTAMPTZ) = fuente única para lógica fuerte", NO el día
 // operativo del complejo, que es el criterio de caja/cantina, no de bookings).
 //
-// pauseAbonado/cancelAbonado borraban las sesiones futuras del abonado con
-// `date >= hoy` — una sesión jugada HOY a las 09:00 sigue en 'confirmed'
-// hasta que el trigger de 24h la mueva, así que pausar/cancelar a las 15:00
-// la borraba igual. Este test verifica el SQL efectivamente enviado a la DB.
+// cancelAbonado borraba las sesiones futuras del abonado con `date >= hoy` —
+// una sesión jugada HOY a las 09:00 sigue en 'confirmed' hasta que el trigger
+// de 24h la mueva, así que cancelar a las 15:00 la borraba igual. Este test
+// verifica el SQL efectivamente enviado a la DB.
 
 type StringChunkLike = { value: string[] }
 function isStringChunk(c: unknown): c is StringChunkLike {
@@ -26,7 +26,7 @@ function sqlValues(sqlObj: unknown): unknown[] {
 
 vi.mock('@/shared/db/audit', () => ({ insertAuditLog: vi.fn() }))
 
-import { pauseAbonado, cancelAbonado } from '@/modules/abonados/abonado.service'
+import { cancelAbonado } from '@/modules/abonados/abonado.service'
 import type { DbTx } from '@/shared/db/client'
 
 const ABONADO_ROW = {
@@ -83,20 +83,6 @@ beforeEach(() => {
   captured = undefined
 })
 
-describe('pauseAbonado — el DELETE de sesiones futuras nunca toca una ya jugada', () => {
-  it('el SQL liga starts_at >= NOW() además de date >= hoy', async () => {
-    let captured: unknown
-    const tx = makeTx((arg) => {
-      captured = arg
-    })
-
-    await pauseAbonado('tenant-1', 'abonado-1', 'staff-1', tx)
-
-    expect(captured).toBeDefined()
-    expect(sqlText(captured)).toMatch(/starts_at/)
-  })
-})
-
 describe('cancelAbonado — el DELETE de sesiones futuras nunca toca una ya jugada', () => {
   it('el SQL liga starts_at >= NOW() además de date >= fromDate', async () => {
     let captured: unknown
@@ -119,7 +105,6 @@ describe('cancelAbonado — el DELETE de sesiones futuras nunca toca una ya juga
 // `NOW()` real ubicaba la fecha simulada meses en el pasado.
 describe('el corte de tiempo usa UN SOLO reloj, el de la app', () => {
   it.each([
-    ['pauseAbonado', () => pauseAbonado('tenant-1', 'abonado-1', 'staff-1', makeTxCapturing())],
     [
       'cancelAbonado',
       () => cancelAbonado('tenant-1', 'abonado-1', '2026-06-15', 'staff-1', makeTxCapturing()),

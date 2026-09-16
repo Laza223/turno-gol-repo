@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import LocationPickerField from './LocationPickerField'
 
 /**
@@ -121,5 +121,55 @@ export const ColapsableConPuntoYaCargado: Story = {
       'aria-expanded',
       'true',
     )
+  },
+}
+
+/** Georef puede devolver varias direcciones para el mismo texto: se muestran como candidatos, nunca se autocompleta a ciegas. */
+export const BuscarConCandidatos: Story = {
+  args: {
+    geocodeAction: fn(async () => ({
+      success: true as const,
+      candidates: [
+        {
+          label: 'BV ORONO 1500, Rosario, Santa Fe',
+          lat: -32.9522688313066,
+          lng: -60.6555845314547,
+        },
+        { label: 'BV ORONO 1500, Funes, Santa Fe', lat: -32.9186, lng: -60.8112 },
+      ],
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(canvas.getByLabelText(/Buscar dirección/i), 'Bv Orono 1500')
+    await userEvent.click(canvas.getByRole('button', { name: /^Buscar$/i }))
+
+    const candidato = await canvas.findByRole('button', { name: /Rosario, Santa Fe/i })
+    await expect(canvas.getByRole('button', { name: /Funes, Santa Fe/i })).toBeInTheDocument()
+
+    await userEvent.click(candidato)
+
+    // Elegir un candidato fija el punto igual que un click en el mapa: los
+    // inputs ocultos (el contrato real con el form) tienen que reflejarlo.
+    await expect(hiddenValue(canvasElement, 'latitude')).toBe('-32.9522688313066')
+    await expect(hiddenValue(canvasElement, 'longitude')).toBe('-60.6555845314547')
+    await expect(canvas.getByText(/Punto marcado en/i)).toBeInTheDocument()
+    // La lista se cierra tras elegir: no queda un candidato descartado visible.
+    await expect(canvas.queryByRole('button', { name: /Funes, Santa Fe/i })).not.toBeInTheDocument()
+  },
+}
+
+/** `cantidad: 0` de Georef: nunca es un error, el dueño sigue pudiendo marcar el punto a mano. */
+export const BuscarSinResultados: Story = {
+  args: {
+    geocodeAction: fn(async () => ({ success: true as const, candidates: [] })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(canvas.getByLabelText(/Buscar dirección/i), 'Calle inexistente 1')
+    await userEvent.click(canvas.getByRole('button', { name: /^Buscar$/i }))
+    await expect(
+      await canvas.findByText(/No la encontramos\. Marcá el punto en el mapa\./i),
+    ).toBeInTheDocument()
   },
 }

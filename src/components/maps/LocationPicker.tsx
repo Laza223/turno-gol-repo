@@ -50,11 +50,32 @@ function ClickToPlace({ onPick }: { onPick: (lat: number, lng: number) => void }
   return null
 }
 
+/**
+ * Mueve el mapa a un punto puntual (elegir un candidato del buscador de
+ * dirección). Distinto de `RecenterWhenEmpty`: ese sólo actúa MIENTRAS no hay
+ * punto, así que no sirve para esto — acá el punto ya existe, lo que cambia
+ * es la intención de "andá para allá ahora".
+ *
+ * `target` tiene que ser un objeto NUEVO en cada selección (aunque sea la
+ * misma dirección elegida dos veces): el efecto dispara por identidad de
+ * referencia, no por valor, y es lo que hace que el segundo click también
+ * mueva el mapa.
+ */
+function FlyToTarget({ target }: { target: { lat: number; lng: number; zoom: number } | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!target) return
+    map.setView([target.lat, target.lng], target.zoom)
+  }, [map, target])
+  return null
+}
+
 export default function LocationPicker({
   latitude,
   longitude,
   fallbackCenter,
   fallbackZoom,
+  flyTo = null,
   onPick,
   onMapReady,
 }: {
@@ -62,6 +83,8 @@ export default function LocationPicker({
   longitude: number | null
   fallbackCenter: [number, number]
   fallbackZoom: number
+  /** Punto al que saltar (candidato elegido en el buscador de dirección). */
+  flyTo?: { lat: number; lng: number; zoom: number } | null
   onPick: (lat: number, lng: number) => void
   /** Expone el mapa al padre para el botón "Poner el punto acá" (centro actual). */
   onMapReady?: (map: LeafletMap | null) => void
@@ -102,6 +125,7 @@ export default function LocationPicker({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <RecenterWhenEmpty center={fallbackCenter} zoom={fallbackZoom} hasPoint={hasPoint} />
+      <FlyToTarget target={flyTo} />
       <ClickToPlace onPick={onPick} />
       {hasPoint && (
         // Este pin SÍ es interactivo (se arrastra), así que a diferencia del de

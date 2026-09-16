@@ -5,6 +5,8 @@ type Props = {
   name: string
   address: string
   city: string
+  /** ¿Ya marcó el punto en el mapa? Sin él no aparece en el mapa de /explorar. */
+  hasLocation?: boolean
 }
 
 /**
@@ -18,7 +20,7 @@ type Props = {
  * el paso 1 y `/explorar` se sientan la misma superficie, con solo los tres
  * datos que este paso realmente pide.
  */
-export function PublicCardPreview({ name, address, city }: Props) {
+export function PublicCardPreview({ name, address, city, hasLocation = false }: Props) {
   const displayName = name.trim() || 'Tu complejo'
   const hasName = name.trim().length > 0
   const initials = displayName.slice(0, 2).toUpperCase()
@@ -63,6 +65,14 @@ export function PublicCardPreview({ name, address, city }: Props) {
         ) : (
           <p className="mt-1.5 text-xs text-muted-foreground">Así te van a ver los jugadores.</p>
         )}
+        {/* La ubicación es opcional, pero sin punto el complejo no sale en el
+            mapa de /explorar ni puede ordenarse por distancia: que se vea acá
+            es lo único que le da consecuencia visible a cargarla. */}
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {hasLocation
+            ? 'Con ubicación: aparecés en el mapa y ordenado por cercanía.'
+            : 'Sin ubicación todavía: no vas a aparecer en el mapa.'}
+        </p>
       </div>
     </div>
   )

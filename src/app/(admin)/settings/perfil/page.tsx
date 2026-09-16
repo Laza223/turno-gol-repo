@@ -11,6 +11,7 @@ import {
   updateUserEmailAction,
   updateTenantProfileAction,
   updateAvisosSettingsAction,
+  geocodeAddressAction,
 } from './actions'
 import { SettingsTabs } from '../SettingsTabs'
 
@@ -68,6 +69,7 @@ export default async function PerfilPage() {
         currentLatitude={tenant.latitude}
         currentLongitude={tenant.longitude}
         action={updateTenantProfileAction}
+        geocodeAction={geocodeAddressAction}
       />
 
       {/* H161: Avisos era su propia pestaña top-level para esta única

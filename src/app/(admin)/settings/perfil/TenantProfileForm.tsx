@@ -5,7 +5,9 @@ import { Building2, AlertTriangle } from 'lucide-react'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { PhoneInput } from '@/components/ui/phone-input'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
-import LocationPickerField from '@/components/maps/LocationPickerField'
+import LocationPickerField, {
+  type GeocodeAddressAction,
+} from '@/components/maps/LocationPickerField'
 import { PROVINCES, resolveMapCenter } from '@/modules/tenants/tenant.geo'
 import type { UpdateTenantProfileResult } from './actions'
 
@@ -42,6 +44,7 @@ export function TenantProfileForm({
   currentLatitude,
   currentLongitude,
   action,
+  geocodeAction,
 }: {
   currentPhone: string
   currentEmail: string
@@ -52,6 +55,7 @@ export function TenantProfileForm({
   currentLatitude: number | null
   currentLongitude: number | null
   action: UpdateTenantProfileAction
+  geocodeAction: GeocodeAddressAction
 }) {
   const [state, formAction] = useActionState(action, INITIAL)
   // Mismo patrón que ReservasPolicyForm: sin esto, `state.success` sigue en
@@ -203,6 +207,10 @@ export function TenantProfileForm({
             fallbackCenter={fallback.center}
             fallbackZoom={fallback.zoom}
             collapsible
+            defaultQuery={currentAddress}
+            city={currentCity}
+            province={province}
+            geocodeAction={geocodeAction}
           />
         </div>
 

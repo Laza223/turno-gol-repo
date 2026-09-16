@@ -93,6 +93,46 @@ describe('MercadoPagoGateway.getSubscriptionState — reuso de checkout pendient
     expect(state?.startDate?.toISOString()).toBe('2027-03-01T00:00:00.000Z')
   })
 
+  it('respuesta real de producción (2026-09-16): summarized en null y start_date completado por MP', async () => {
+    fetchMock.mockResolvedValue(
+      responder(200, {
+        id: PREAPPROVAL,
+        status: 'pending',
+        external_reference: TENANT,
+        reason: 'TurnoGol — Predio (reactivación)',
+        init_point: `https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_id=${PREAPPROVAL}&activation=true`,
+        date_created: '2026-09-16T17:38:00.000-04:00',
+        auto_recurring: {
+          frequency: 12,
+          frequency_type: 'months',
+          transaction_amount: 604800,
+          currency_id: 'ARS',
+          start_date: '2026-09-16T17:38:00.000-04:00',
+          has_billing_day: false,
+          free_trial: null,
+        },
+        summarized: {
+          quotas: null,
+          charged_quantity: null,
+          pending_charge_quantity: null,
+          charged_amount: null,
+          pending_charge_amount: null,
+          semaphore: null,
+          last_charged_date: null,
+          last_charged_amount: null,
+        },
+      }),
+    )
+
+    const state = await new MercadoPagoGateway('enc-token').getSubscriptionState(PREAPPROVAL)
+
+    expect(state?.status).toBe('pending')
+    expect(state?.chargedQuantity).toBe(0)
+    expect(state?.amountCents).toBe(60_480_000)
+    expect(state?.startDate?.toISOString()).toBe('2026-09-16T21:38:00.000Z')
+    expect(state?.initPoint).not.toContain('activation=true')
+  })
+
   it('tolera auto_recurring AUSENTE: amountCents/frequency/frequencyType quedan null, no explota', async () => {
     fetchMock.mockResolvedValue(
       responder(200, {

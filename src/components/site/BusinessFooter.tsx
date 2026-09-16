@@ -1,11 +1,18 @@
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
+import { ContactChannels } from './ContactChannels'
 
 // MEJORA-UX QA (WCAG 2.5.5, ≥44px): medían 16px de alto en mobile — mismo fix
 // ya aplicado en el componente hermano `SiteFooter.tsx` (min-h-11, se retrae
 // en sm+ porque ahí ya no son dedo sino mouse).
 const linkCls =
   'inline-flex min-h-11 items-center transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded sm:min-h-0'
+
+// Los canales son íconos: mismo mínimo táctil, pero cuadrado (sin texto que dé
+// el ancho). El color lo hereda de la fila (`text-slate-400`, ya calibrado a
+// 7.87:1 sobre #020617) y el hover lo lleva a blanco como el resto.
+const channelCls =
+  'inline-flex min-h-11 min-w-11 items-center justify-center transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded sm:min-h-9 sm:min-w-9'
 
 export default function BusinessFooter() {
   return (
@@ -40,15 +47,13 @@ export default function BusinessFooter() {
           <Link href="/register" className={linkCls}>
             Empezar gratis
           </Link>
-          <a href="mailto:hola@turnogol.app" className={linkCls}>
-            Contacto
-          </a>
           <Link href="/privacidad" className={linkCls}>
             Privacidad
           </Link>
           <Link href="/terminos" className={linkCls}>
             Términos
           </Link>
+          <ContactChannels linkClassName={channelCls} />
         </div>
       </div>
     </footer>

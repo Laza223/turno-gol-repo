@@ -29,6 +29,7 @@ function tenant(id: string, name: string): PublicTenantCard {
     coverUrl: null,
     allowOnlineBooking: true,
     fromPriceCents: null,
+    fromPricePerPlayerCents: null,
     amenities: {},
     avgRating: 0,
     reviewCount: 0,

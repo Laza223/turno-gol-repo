@@ -67,6 +67,46 @@ describe('search upgrade: from_price_cents (trigger)', () => {
     const card = results.find((r) => r.id === tenant.id)!
     expect(card.fromPriceCents).toBe(700000) // mínimo entre canchas online
   })
+
+  it('el precio por jugador sale de la cancha que lo minimiza, no de la más barata', async () => {
+    // El caso que motivó la migr. 087: la F5 es la más barata por turno, pero
+    // la F7 es la más barata POR CABEZA. Dividir el mínimo total por el formato
+    // más chico daba $4.500 cuando el mínimo real es $4.285,72.
+    const tenant = await createTestTenant()
+    await insertCourt(tenant.id, { format: 5, p60: 4500000 }) // $45.000 / 10 = $4.500
+    await insertCourt(tenant.id, { format: 7, p60: 6000000 }) // $60.000 / 14 = $4.285,72
+    // Cancha offline aún más barata por cabeza: no cuenta.
+    await insertCourt(tenant.id, { format: 11, p60: 1000000, status: 'offline' })
+
+    const { results } = await searchPublicTenants({ city: undefined, q: undefined })
+    const card = results.find((r) => r.id === tenant.id)!
+    expect(card.fromPriceCents).toBe(4500000)
+    expect(card.fromPricePerPlayerCents).toBe(428572) // CEIL(6.000.000 / 14)
+  })
+
+  it('sin canchas online, el total y el por jugador quedan los DOS en NULL', async () => {
+    const tenant = await createTestTenant()
+    await insertCourt(tenant.id, { p60: 900000, status: 'offline' })
+
+    const { results } = await searchPublicTenants({ city: undefined, q: undefined })
+    const card = results.find((r) => r.id === tenant.id)!
+    expect(card.fromPriceCents).toBeNull()
+    expect(card.fromPricePerPlayerCents).toBeNull()
+  })
+
+  it('cambiar SOLO el formato de una cancha recalcula el precio por jugador', async () => {
+    // El trigger no escuchaba `format` hasta la migr. 087: funcionaba de rebote
+    // porque updateCourt() escribe capacity en el mismo UPDATE.
+    const tenant = await createTestTenant()
+    const courtId = await insertCourt(tenant.id, { format: 5, p60: 6000000 })
+
+    const sql = getSql()
+    await sql`UPDATE courts SET format = 11 WHERE id = ${courtId}`
+
+    const { results } = await searchPublicTenants({ city: undefined, q: undefined })
+    const card = results.find((r) => r.id === tenant.id)!
+    expect(card.fromPricePerPlayerCents).toBe(272728) // CEIL(6.000.000 / 22)
+  })
 })
 
 describe('search upgrade: filtros', () => {

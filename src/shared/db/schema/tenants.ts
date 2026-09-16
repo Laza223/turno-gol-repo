@@ -97,6 +97,13 @@ export const tenants = pgTable(
     // precios de canchas 'online' del complejo). NULL = sin canchas online.
     fromPriceCents: integer('from_price_cents'),
 
+    // Mínimo real de precio POR JUGADOR (centavos, crudo: el redondeo a $100 es
+    // presentación y vive en src/lib/format.ts). Mismo trigger. Existe porque
+    // dividir from_price_cents por el formato más chico mezcla canchas
+    // distintas: el precio mínimo y el formato mínimo pueden no ser de la misma
+    // cancha (migr. 087). NULL exactamente cuando fromPriceCents es NULL.
+    fromPricePerPlayerCents: integer('from_price_per_player_cents'),
+
     // Facets denormalizados de las canchas 'online' para filtros públicos sin
     // tocar courts (RLS-aislada). Mantenidos por courts_recalc_from_price.
     courtSurfaces: text('court_surfaces')

@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import type { SlotPill } from '@/modules/tenants/availability-search.service'
-import { formatArs, formatPerPlayer } from '@/lib/format'
+import { formatArs, formatPerPlayerArs } from '@/lib/format'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import { formatLabel, surfaceLabel } from '@/components/public/courtFacets'
 import RatingStars from '@/components/public/RatingStars'
@@ -33,7 +33,7 @@ export default function TenantCard({
     return <TenantCardCompact tenant={tenant} initialFavorited={initialFavorited} />
 
   const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
-  const perPlayer = formatPerPlayer(tenant.fromPriceCents, tenant.courtFormats)
+  const perPlayer = formatPerPlayerArs(tenant.fromPricePerPlayerCents)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
   const formats = tenant.courtFormats.slice(0, 3)
   const surfaces = tenant.courtSurfaces.slice(0, 1)
@@ -165,19 +165,27 @@ export default function TenantCard({
           ) : (
             <span />
           )}
-          {fromPrice && (
+          {/* El número grande es lo que pone CADA UNO: es como el jugador
+              piensa el precio. El total del turno queda abajo porque es lo que
+              se cobra de verdad y lo que filtra el buscador. Un solo "desde"
+              gobierna las dos líneas: los dos son mínimos del complejo. */}
+          {(perPlayer ?? fromPrice) && (
             <div className="text-right">
               <p className="flex items-baseline justify-end gap-1">
                 <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">
                   desde
                 </span>
                 <span className="font-display text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
-                  {fromPrice}
+                  {perPlayer ?? fromPrice}
                 </span>
-                <span className="text-xs text-muted-foreground">/turno</span>
+                <span className="text-xs text-muted-foreground">
+                  {perPlayer ? 'por jugador' : '/turno'}
+                </span>
               </p>
-              {perPlayer && (
-                <p className="text-[11px] tabular-nums text-muted-foreground">{perPlayer}</p>
+              {perPlayer && fromPrice && (
+                <p className="text-[11px] tabular-nums text-muted-foreground">
+                  {fromPrice} el turno
+                </p>
               )}
             </div>
           )}
@@ -195,6 +203,7 @@ function TenantCardCompact({
   initialFavorited?: boolean
 }) {
   const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
+  const perPlayer = formatPerPlayerArs(tenant.fromPricePerPlayerCents)
   return (
     <article className="group relative flex gap-3 rounded-xl border border-border bg-card p-2.5 shadow-xs transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
       <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -228,12 +237,18 @@ function TenantCardCompact({
         <p className="truncate text-xs text-muted-foreground">
           {tenant.city}, {tenant.province}
         </p>
-        {fromPrice && (
+        {/* La card compacta (split view del mapa) tiene 3 líneas de alto: entra
+            un solo precio. Va el por jugador, que es el que muestra el pin del
+            mapa de al lado; el total queda para lectores de pantalla. */}
+        {(perPlayer ?? fromPrice) && (
           <p className="mt-auto flex items-baseline gap-1">
             <span className="font-display text-base font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
-              {fromPrice}
+              {perPlayer ?? fromPrice}
             </span>
-            <span className="text-xs text-muted-foreground">/turno</span>
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {perPlayer ? 'por jugador' : '/turno'}
+            </span>
+            {perPlayer && fromPrice && <span className="sr-only">desde {fromPrice} el turno</span>}
           </p>
         )}
       </div>

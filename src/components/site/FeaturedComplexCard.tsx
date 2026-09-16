@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
-import { formatFromPrice } from '@/lib/format'
+import { formatArs, formatPerPlayerArs } from '@/lib/format'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import RatingStars from '@/components/public/RatingStars'
 
@@ -12,7 +12,8 @@ import RatingStars from '@/components/public/RatingStars'
  * El lift/glow de hover lo da CSS (`card-premium-interactive`) — sin JS.
  */
 export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCard }) {
-  const fromPrice = formatFromPrice(tenant.fromPriceCents)
+  const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
+  const perPlayer = formatPerPlayerArs(tenant.fromPricePerPlayerCents)
   const amenities = activeAmenities(tenant.amenities).slice(0, 4)
   const initials = tenant.name.slice(0, 2).toUpperCase()
 
@@ -93,11 +94,22 @@ export default function FeaturedComplexCard({ tenant }: { tenant: PublicTenantCa
 
         {/* Pie */}
         <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-border pt-4 dark:border-white/8">
+          {/* Titular: lo que pone cada jugador. El total del turno abajo. */}
           <div>
-            {fromPrice && (
-              <span className="font-display text-[17px] font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                {fromPrice}
-              </span>
+            {(perPlayer ?? fromPrice) && (
+              <>
+                <span className="font-display text-[17px] font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  Desde {perPlayer ?? fromPrice}
+                </span>
+                <span className="ml-1 text-xs text-muted-foreground">
+                  {perPlayer ? 'por jugador' : '/turno'}
+                </span>
+                {perPlayer && fromPrice && (
+                  <p className="text-[11px] tabular-nums text-muted-foreground">
+                    {fromPrice} el turno
+                  </p>
+                )}
+              </>
             )}
           </div>
           <span className="inline-flex items-center gap-[5px] whitespace-nowrap text-[13.5px] font-bold text-emerald-700 dark:text-emerald-400">

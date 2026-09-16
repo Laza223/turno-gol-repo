@@ -7,7 +7,7 @@ import L from 'leaflet'
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
-import { formatArs } from '@/lib/format'
+import { formatArs, formatPerPlayerArs } from '@/lib/format'
 import RatingStars from '@/components/public/RatingStars'
 
 type Located = PublicTenantCard & { latitude: number; longitude: number }
@@ -20,8 +20,16 @@ function isLocated(t: PublicTenantCard): t is Located {
 // el bug de los íconos por defecto de Leaflet con bundlers.
 // active=true → color más oscuro + leve escala para resaltar en split view.
 function priceIcon(t: Located, active = false): L.DivIcon {
-  const label =
-    t.fromPriceCents != null ? formatArs(t.fromPriceCents) : t.name.slice(0, 2).toUpperCase()
+  // Por jugador, igual que la card de al lado en el split view: dos unidades
+  // distintas para el mismo complejo en la misma pantalla es exactamente la
+  // confusión que este cambio viene a sacar. El sufijo "/jug" no es cosmético:
+  // sin él, el número pelado se lee como el precio del turno.
+  const perPlayer = formatPerPlayerArs(t.fromPricePerPlayerCents)
+  const label = perPlayer
+    ? `${perPlayer}/jug`
+    : t.fromPriceCents != null
+      ? formatArs(t.fromPriceCents)
+      : t.name.slice(0, 2).toUpperCase()
   // Texto blanco bold de 12px: eso es "texto normal" para WCAG (12px no califica como
   // grande ni en bold), así que el fondo tiene que dar 4.5:1 contra #fff.
   //   #059669  emerald-600  3.76:1  ✗   <- era el pin por defecto, o sea CASI TODOS
@@ -120,8 +128,19 @@ export default function ExplorarMap({
                     <span className="text-xs text-muted-foreground">Sin reseñas</span>
                   )}
                   {t.fromPriceCents != null && (
-                    <span className="text-sm font-bold text-foreground tabular-nums">
-                      {formatArs(t.fromPriceCents)}
+                    <span className="text-right">
+                      <span className="block text-sm font-bold text-foreground tabular-nums">
+                        {formatPerPlayerArs(t.fromPricePerPlayerCents) ??
+                          formatArs(t.fromPriceCents)}
+                        <span className="ml-1 text-[11px] font-medium text-muted-foreground">
+                          {t.fromPricePerPlayerCents != null ? 'por jugador' : 'el turno'}
+                        </span>
+                      </span>
+                      {t.fromPricePerPlayerCents != null && (
+                        <span className="block text-[11px] tabular-nums text-muted-foreground">
+                          {formatArs(t.fromPriceCents)} el turno
+                        </span>
+                      )}
                     </span>
                   )}
                 </div>

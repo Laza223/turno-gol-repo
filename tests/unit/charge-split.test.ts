@@ -9,8 +9,8 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
 /**
  * Cobro de a partes (2026-09-16): los complejos casi nunca cobran el turno
  * entero de una. A veces juntan por equipo; lo más frecuente es que cada
- * jugador pague lo suyo a medida que llega. El panel ofrece "Pagó un equipo" y
- * "Pagó uno", y dice cuánta gente ya puso.
+ * jugador pague lo suyo a medida que llega. El panel ofrece "Dividir pago por
+ * equipo" y "Pagó uno", y dice cuánta gente ya puso.
  *
  * Acá se prueba el cálculo, que es TODO lo que hay: no existe columna ni
  * registro de quién pagó. Dos casos justifican el archivo entero:
@@ -93,15 +93,15 @@ describe('chargeSplit', () => {
   it('pagó un jugador: cuenta gente y deja de ofrecer el equipo', () => {
     const s = chargeSplit(booking({ totalPaid: PARTE, pending: 5_400_000 }), F5)
     expect(s.note).toBe('Pagaron 1 de 10')
-    // "Pagó un equipo" se va —ya entró plata—, pero "Pagó uno" se queda: es el
+    // Dividir por equipo se va —ya entró plata—, pero "Pagó uno" se queda: es el
     // botón que se toca una vez por jugador.
     expect(s.canSplitHalf).toBe(false)
     expect(s.canSplitShare).toBe(true)
   })
 
-  it('a la mitad justa avisa que hay un equipo entero saldado', () => {
+  it('a la mitad justa habla de equipos, con las mismas palabras que las filas', () => {
     const s = chargeSplit(booking({ totalPaid: 3_000_000, pending: 3_000_000 }), F5)
-    expect(s.note).toBe('Pagaron 5 de 10 · un equipo entero')
+    expect(s.note).toBe('Equipo 1 pagó · falta Equipo 2')
   })
 
   it('cuando falta exactamente una parte, el botón grande ya la cobra', () => {

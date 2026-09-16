@@ -161,6 +161,7 @@ export function BookingSlotPanel({
     pending,
     submitCharge,
     submitPartialCharge,
+    submitLineCharge,
     confirmNoShow,
     revertNoShow,
   } = useSlotCharges({
@@ -203,7 +204,7 @@ export function BookingSlotPanel({
   if (!booking) return null
 
   const visual = gridSlotVisual(booking)
-  // Cobro de a partes: de acá salen los atajos "Pagó un equipo" / "Pagó uno" y
+  // Cobro de a partes: de acá salen "Dividir pago por equipo" / "Pagó uno" y
   // el renglón "Pagaron 4 de 10". Cálculo puro sobre lo que el turno ya trae más
   // la capacidad de SU cancha; nada de esto se guarda.
   const split = chargeSplit(booking, courts?.find((c) => c.id === booking.courtId)?.capacity)
@@ -380,6 +381,8 @@ export function BookingSlotPanel({
 
             {mode && actions && (
               <SlotChargeSection
+                // Otro turno = otro formulario: el modo por equipo no se arrastra.
+                key={booking.id}
                 mode={mode}
                 lines={lines}
                 // F-010 (QA prod 2026-08-17): sin esto, corregir el monto dejaba el
@@ -395,6 +398,7 @@ export function BookingSlotPanel({
                 onSubmit={submitCharge}
                 split={split}
                 onPartialCharge={submitPartialCharge}
+                onLineCharge={submitLineCharge}
               />
             )}
 

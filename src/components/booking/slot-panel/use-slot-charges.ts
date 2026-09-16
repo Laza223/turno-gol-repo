@@ -138,6 +138,30 @@ export function useSlotCharges({
     runCharge([{ amount, method }], amount)
   }
 
+  /**
+   * Cobra UNA línea del pago dividido por equipo (el "Cobrar" de la fila de un
+   * equipo), sin tocar `lines`.
+   *
+   * Por qué no reusa `submitPartialCharge`: ese reemplaza las líneas por una
+   * sola, y si el cobro falla (red, caja cerrada) el admin se queda sin la fila
+   * del otro equipo y con el monto que había corregido pisado. Acá las dos filas
+   * sobreviven al error; si el cobro sale bien, el refresco del turno las
+   * resincroniza solo.
+   */
+  function submitLineCharge(amountCents: number | null, method: MethodKey) {
+    if (!booking || !mode) return
+    setError(null)
+    if (amountCents == null || amountCents <= 0) {
+      setError('El cobro tiene que tener un monto mayor a $0.')
+      return
+    }
+    if (amountCents > pending) {
+      setError(`El cobro (${formatArs(amountCents)}) supera lo pendiente (${formatArs(pending)}).`)
+      return
+    }
+    runCharge([{ amount: amountCents, method }], amountCents)
+  }
+
   async function confirmNoShow(): Promise<ActionResult> {
     if (!booking || !actions) return { success: false, error: 'Sin acciones disponibles.' }
     const bookingId = booking.id
@@ -196,6 +220,7 @@ export function useSlotCharges({
     pending,
     submitCharge,
     submitPartialCharge,
+    submitLineCharge,
     confirmNoShow,
     revertNoShow,
   }

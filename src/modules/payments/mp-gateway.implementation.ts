@@ -467,6 +467,10 @@ export class MercadoPagoGateway implements PaymentGateway {
       // mal, un complejo en prueba se activaría solo sin haber pagado nada.
       const sum = (raw.summarized ?? {}) as Record<string, unknown>
       const conocidos: readonly string[] = ['pending', 'authorized', 'paused', 'cancelled']
+      // Ausente en un preapproval creado a mano sin auto_recurring (no debería
+      // pasar en producción, pero un 200 sin el campo no debe explotar acá).
+      const autoRecurring = raw.auto_recurring as
+        { transaction_amount?: unknown; frequency?: unknown; frequency_type?: unknown } | undefined
 
       return {
         preapprovalId,
@@ -484,6 +488,17 @@ export class MercadoPagoGateway implements PaymentGateway {
           typeof sum.last_charged_amount === 'number'
             ? pesosToCents(sum.last_charged_amount)
             : null,
+        // Reuso de checkout pendiente (billing.service.ts): mismo strip que
+        // `createPreapproval` — el `init_point` de un preapproval sin plan
+        // viene con `&activation=true`, que da 404 en mercadopago.com.ar.
+        initPoint: typeof raw.init_point === 'string' ? stripActivationFlag(raw.init_point) : null,
+        amountCents:
+          typeof autoRecurring?.transaction_amount === 'number'
+            ? pesosToCents(autoRecurring.transaction_amount)
+            : null,
+        frequency: typeof autoRecurring?.frequency === 'number' ? autoRecurring.frequency : null,
+        frequencyType:
+          typeof autoRecurring?.frequency_type === 'string' ? autoRecurring.frequency_type : null,
       }
     } catch (err) {
       if (err instanceof MpGatewayError) throw err

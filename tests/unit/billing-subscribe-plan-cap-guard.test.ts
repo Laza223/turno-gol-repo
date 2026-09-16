@@ -54,16 +54,19 @@ function planRow(maxCourts: number | null) {
 
 /**
  * tx.execute order dentro de `subscribe()` cuando el guard de cupo NO
- * bloquea: 1) loadSubForUpdate, 2) loadPlan, 3) countOnlineCourts (SOLO si
+ * bloquea: 1) loadSub (sin lock), 2) loadPlan, 3) countOnlineCourts (SOLO si
  * `maxCourts !== null` — con techo NULL el guard ni ejecuta esa query),
- * 4) loadTenantOwner, 5) UPDATE. Cuando SÍ bloquea, `subscribe()` tira antes
- * de llegar a loadTenantOwner — la tx no necesita esa respuesta.
+ * 4) loadTenantOwner, 5) loadSubForUpdate (Fix D4-A1: mp_subscription_id es
+ * siempre NULL en `makeSubRow`, así que nunca reusa y cae directo a pedir el
+ * lock real), 6) UPDATE. Cuando SÍ bloquea, `subscribe()` tira antes de
+ * llegar a loadTenantOwner — la tx no necesita esa respuesta.
  */
 function makeTx(maxCourts: number | null, onlineCourtCount: number) {
-  const execute = vi.fn().mockResolvedValueOnce([makeSubRow()]) // loadSubForUpdate
+  const execute = vi.fn().mockResolvedValueOnce([makeSubRow()]) // loadSub (sin lock)
   execute.mockResolvedValueOnce([planRow(maxCourts)]) // loadPlan
   if (maxCourts !== null) execute.mockResolvedValueOnce([{ n: onlineCourtCount }]) // countOnlineCourts
   execute.mockResolvedValueOnce([ownerRow]) // loadTenantOwner (solo se llega acá si no bloquea)
+  execute.mockResolvedValueOnce([makeSubRow()]) // loadSubForUpdate
   execute.mockResolvedValueOnce([]) // UPDATE tenant_subscriptions
   return { execute } as unknown as DbTx
 }

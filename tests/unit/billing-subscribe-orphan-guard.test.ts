@@ -53,19 +53,24 @@ const planRow = {
 const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: 'marcelo@x.com' }
 
 /**
- * tx.execute order dentro de `subscribe()`: 1) loadSubForUpdate, 2) loadPlan,
- * 3) countOnlineCourts (guard de cupo de plan, fix aparte — 0 < max_courts
- * así que nunca bloquea acá), 4) loadTenantOwner, 5) el UPDATE final.
- * `insertSystemAuditLog` está mockeado a nivel de módulo (arriba) y no pasa
- * por `tx.execute`.
+ * tx.execute order dentro de `subscribe()`: 1) loadSub (sin lock, Fix D4-A1),
+ * 2) loadPlan, 3) countOnlineCourts (guard de cupo de plan, fix aparte — 0 <
+ * max_courts así que nunca bloquea acá), 4) loadTenantOwner, 5) loadSubForUpdate
+ * (con `mp_subscription_id` seteado, `reusablePendingCheckout` SÍ dispara el
+ * GET a MP acá arriba — pero el `MockGateway` sin `subscriptionState` sembrado
+ * devuelve `null`, así que nunca reusa y cae derecho a pedir el lock real; con
+ * `mp_subscription_id` NULL ese GET ni se intenta, mismo resultado), 6) el
+ * UPDATE final. `insertSystemAuditLog` está mockeado a nivel de módulo
+ * (arriba) y no pasa por `tx.execute`.
  */
 function makeTx(subRow: ReturnType<typeof makeSubRow>) {
   const execute = vi
     .fn()
-    .mockResolvedValueOnce([subRow]) // loadSubForUpdate
+    .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
     .mockResolvedValueOnce([planRow]) // loadPlan
     .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
+    .mockResolvedValueOnce([subRow]) // loadSubForUpdate
     .mockResolvedValueOnce([]) // UPDATE tenant_subscriptions
   return { execute } as unknown as DbTx
 }

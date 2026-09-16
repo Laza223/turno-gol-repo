@@ -53,10 +53,13 @@ function makeSubscribeTx() {
   const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: OWNER_EMAIL }
   const execute = vi
     .fn()
-    .mockResolvedValueOnce([subRow]) // loadSub
+    .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
     .mockResolvedValueOnce([planRow]) // loadPlan
     .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts (guard de plan nuevo, 0 < max_courts)
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
+    // Fix D4-A1: mp_subscription_id es NULL → no hay nada que reusar, así que
+    // sigue derecho a pedir el lock real (mismo estado, nada cambió).
+    .mockResolvedValueOnce([subRow]) // loadSubForUpdate
   return { execute } as unknown as DbTx
 }
 
@@ -88,9 +91,14 @@ function makeReactivateTx() {
   const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: OWNER_EMAIL }
   const execute = vi
     .fn()
-    .mockResolvedValueOnce([subRow]) // loadSub
+    .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
     .mockResolvedValueOnce([planRow]) // loadPlan
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
+    // Fix D4-A1: mp_subscription_id = 'mp-old' → SÍ intenta reusar, pero el
+    // gateway acá no define getSubscriptionState (ver comentario abajo), así
+    // que `reusablePendingCheckout` lo absorbe y devuelve null → sigue
+    // derecho a pedir el lock real.
+    .mockResolvedValueOnce([subRow]) // loadSubForUpdate
   return { execute } as unknown as DbTx
 }
 

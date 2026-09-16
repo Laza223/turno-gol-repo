@@ -45,11 +45,17 @@ function makeTx(status: string, opts: { scheduledDeletionAt?: string | null } = 
     price_annual: 4_400_000,
   }
   const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: 'marcelo@x.com' }
+  // Fix D4-A1: mp_subscription_id = 'mp-old' → reactivate() SÍ intenta
+  // reusar (GET a MP vía reusablePendingCheckout), pero `new MockGateway()`
+  // sin `subscriptionState` sembrado devuelve null → nunca reusa y cae
+  // derecho a pedir el lock real (loadSubForUpdate, mismo estado que la
+  // lectura sin lock: nada cambió).
   const execute = vi
     .fn()
-    .mockResolvedValueOnce([subRow]) // loadSub
+    .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
     .mockResolvedValueOnce([planRow]) // loadPlan
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
+    .mockResolvedValueOnce([subRow]) // loadSubForUpdate
     .mockResolvedValueOnce([]) // UPDATE tenant_subscriptions
   return { execute } as unknown as DbTx
 }
@@ -152,11 +158,14 @@ describe('reactivate — cancela el preapproval viejo antes de crear el nuevo (F
       price_annual: 4_400_000,
     }
     const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: 'marcelo@x.com' }
+    // Fix D4-A1: mp_subscription_id NULL → ni siquiera intenta reusar (no hay
+    // preapproval que consultar), cae derecho a pedir el lock real.
     const execute = vi
       .fn()
-      .mockResolvedValueOnce([subRow])
+      .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
       .mockResolvedValueOnce([planRow])
       .mockResolvedValueOnce([ownerRow])
+      .mockResolvedValueOnce([subRow]) // loadSubForUpdate
       .mockResolvedValueOnce([])
     const tx = { execute } as unknown as DbTx
     const gateway = new MockGateway()

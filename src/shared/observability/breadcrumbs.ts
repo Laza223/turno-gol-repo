@@ -30,6 +30,7 @@ type PaymentEvent =
   | 'payment.reconcile.drift_detected'
   | 'payment.subscription.reconciled'
   | 'payment.subscription.mp_desync'
+  | 'payment.subscription.amount_drift'
 
 type WebhookEvent =
   'mp.webhook.received' | 'mp.webhook.duplicate' | 'mp.webhook.processed' | 'mp.webhook.failed'

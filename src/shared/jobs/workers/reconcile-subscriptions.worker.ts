@@ -14,8 +14,10 @@ import {
 import {
   buildSubscriptionChargeKey,
   decideSubscriptionReconcile,
+  detectPreapprovalAmountDrift,
   type LocalSubSnapshot,
 } from '@/modules/billing/subscription-reconcile.service'
+import { planAmount } from '@/modules/billing/billing.service'
 import type { BillingCycle, SubscriptionStatus } from '@/modules/billing/billing.types'
 import {
   CRON_WORK_OPTIONS,
@@ -54,12 +56,23 @@ import { logger } from '@/shared/lib/logger'
  * `docs/superpowers/specs/2026-08-20-reconcile-subscriptions-design.md`.
  */
 
-type Candidate = {
+type SubSnapshotRow = {
   tenantId: string
   status: SubscriptionStatus
   billingCycle: BillingCycle
   mpSubscriptionId: string
   lastPaymentAt: Date | string | null
+}
+
+/**
+ * Los precios del plan viajan en el JOIN del barrido: el chequeo de monto
+ * (`checkAmountDrift`) los necesita y así no hace falta una query por candidato.
+ * `plans` es global y sin RLS, así que el JOIN es legal desde el pool de
+ * servicio.
+ */
+type Candidate = SubSnapshotRow & {
+  priceMonthly: number
+  priceAnnual: number
 }
 
 /** Núcleo: los dos estados donde vive un complejo que pagó y no se aplicó. */
@@ -68,6 +81,14 @@ const CORE_STATUSES: readonly SubscriptionStatus[] = ['trialing', 'past_due']
 const POST_TERMINAL_STATUSES: readonly SubscriptionStatus[] = ['suspended', 'blocked']
 /** Ventana del rescate post-terminal: un `blocked` viejo no es un aviso perdido. */
 const POST_TERMINAL_WINDOW_DAYS = 30
+/**
+ * Chequeo de monto (🔴 3 de la revisión de la tanda #319-#324): un preapproval
+ * que cobra de menos está en un complejo que paga feliz, o sea `active` — un
+ * estado que ninguno de los dos barridos de arriba mira. Los otros estados no
+ * necesitan su propia pasada: `reconcileOne` ya les pide el estado a MP y
+ * aprovecha esa misma respuesta.
+ */
+const AMOUNT_CHECK_STATUSES: readonly SubscriptionStatus[] = ['active']
 
 /**
  * Lectura cross-tenant ⇒ pool de servicio (BYPASSRLS). Una sola query no se
@@ -85,8 +106,11 @@ async function loadCandidates(
            ts.status             AS "status",
            ts.billing_cycle      AS "billingCycle",
            ts.mp_subscription_id AS "mpSubscriptionId",
-           ts.last_payment_at    AS "lastPaymentAt"
+           ts.last_payment_at    AS "lastPaymentAt",
+           p.price_monthly       AS "priceMonthly",
+           p.price_annual        AS "priceAnnual"
     FROM tenant_subscriptions ts
+    JOIN plans p ON p.id = ts.plan_id
     WHERE ts.mp_subscription_id IS NOT NULL
       AND ts.status = ANY(${statuses as unknown as string[]}::subscription_status[])
       ${
@@ -107,11 +131,11 @@ async function loadCandidates(
  * CORRIDA, para siempre. 20 h y no 24 para que un cron levemente corrido no
  * quede siempre por debajo del umbral y nunca vuelva a alertar.
  */
-async function recentlyAlerted(sql: Sql): Promise<Set<string>> {
+async function recentlyAlerted(sql: Sql, action: string): Promise<Set<string>> {
   const rows = await sql<{ resourceId: string }[]>`
     SELECT resource_id AS "resourceId"
     FROM audit_logs
-    WHERE action = 'subscription.mp_desync'
+    WHERE action = ${action}
       AND created_at > NOW() - INTERVAL '20 hours'
   `
   return new Set(rows.map((r) => r.resourceId))
@@ -131,7 +155,7 @@ async function recentlyAlerted(sql: Sql): Promise<Set<string>> {
  * `FOR UPDATE` pelado y no `OF ts`: acá no hay JOIN con `plans`, así que no hay
  * ninguna fila global que se pueda lockear de más.
  */
-async function lockSub(tx: DbTx, tenantId: string): Promise<Candidate | null> {
+async function lockSub(tx: DbTx, tenantId: string): Promise<SubSnapshotRow | null> {
   const rows = (await tx.execute(drizzleSql`
     SELECT tenant_id          AS "tenantId",
            status             AS "status",
@@ -142,7 +166,7 @@ async function lockSub(tx: DbTx, tenantId: string): Promise<Candidate | null> {
     WHERE tenant_id = ${tenantId}
     LIMIT 1
     FOR UPDATE
-  `)) as unknown as Candidate[]
+  `)) as unknown as SubSnapshotRow[]
   return rows[0] ?? null
 }
 
@@ -174,6 +198,76 @@ async function alertDesync(tenantId: string, preapprovalId: string, reason: stri
     extra: { tenantId, preapprovalId, reason },
   })
   track.payment('payment.subscription.mp_desync', { tenantId, preapprovalId })
+}
+
+/**
+ * 🔴 3 de la revisión de la tanda #319-#324: SOLO avisa, no toca nada.
+ *
+ * Corregirlo sería llamar a `updatePreapprovalAmount` sobre un preapproval vivo
+ * — o sea, cambiarle el monto a un cliente que ya autorizó otro. Eso es una
+ * decisión del dueño, no del cron (opción 1 de las tres que dejó abierta el
+ * informe). El audit log deja el rastro con los dos montos para que la
+ * corrección manual sepa exactamente qué corregir.
+ */
+async function alertAmountDrift(
+  tenantId: string,
+  preapprovalId: string,
+  drift: { expectedCents: number; actualCents: number; reason: string },
+  billingCycle: BillingCycle,
+): Promise<void> {
+  await withTenantContext(tenantId, (tx) =>
+    insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'subscription.amount_drift',
+      resourceType: 'tenant_subscription',
+      resourceId: tenantId,
+      metadata: {
+        preapprovalId,
+        billingCycle,
+        expectedCents: drift.expectedCents,
+        actualCents: drift.actualCents,
+        reason: drift.reason,
+      },
+    }),
+  )
+  captureMessage(`preapproval amount drifted from the plan price: ${drift.reason}`, {
+    level: 'warning',
+    extra: {
+      tenantId,
+      preapprovalId,
+      billingCycle,
+      expectedCents: drift.expectedCents,
+      actualCents: drift.actualCents,
+    },
+  })
+  track.payment('payment.subscription.amount_drift', { tenantId, preapprovalId })
+}
+
+/**
+ * Compara lo que MP va a cobrar contra lo que el plan vale hoy. Devuelve true si
+ * encontró (y avisó) un desfasaje.
+ *
+ * Se llama con una respuesta de MP que el caller YA tiene en mano: el barrido
+ * núcleo aprovecha la de `reconcileOne` y no gasta un segundo viaje.
+ */
+async function checkAmountDrift(
+  cand: Candidate,
+  remote: Awaited<ReturnType<ReturnType<typeof getBillingGateway>['getSubscriptionState']>>,
+  amountAlerted: Set<string>,
+): Promise<boolean> {
+  if (remote === null) return false
+
+  const expected = planAmount(
+    { price_monthly: cand.priceMonthly, price_annual: cand.priceAnnual },
+    cand.billingCycle,
+  )
+  const drift = detectPreapprovalAmountDrift(expected, remote)
+  if (drift === null) return false
+
+  if (amountAlerted.has(cand.tenantId)) return true
+  amountAlerted.add(cand.tenantId)
+  await alertAmountDrift(cand.tenantId, cand.mpSubscriptionId, drift, cand.billingCycle)
+  return true
 }
 
 /**
@@ -222,9 +316,18 @@ async function findChargePaymentId(
  * pool idle-in-transaction durante el round trip HTTP — el hallazgo D4-A1 que
  * ya se corrigió una vez en el camino del webhook; no se reintroduce acá.
  */
-async function reconcileOne(cand: Candidate, alerted: Set<string>): Promise<boolean> {
+async function reconcileOne(
+  cand: Candidate,
+  alerted: Set<string>,
+  amountAlerted: Set<string>,
+): Promise<boolean> {
   // ── Fase SEARCH: MP, sin ninguna transacción abierta ──────────────────────
   const remote = await getBillingGateway().getSubscriptionState(cand.mpSubscriptionId)
+
+  // Gratis: la respuesta de MP ya está en mano. Va antes del `return` del 404 y
+  // de cualquier decisión porque el desfasaje de monto es ortogonal a si la
+  // suscripción se rescata o no.
+  await checkAmountDrift(cand, remote, amountAlerted)
 
   if (remote === null) {
     if (!alerted.has(cand.tenantId)) {
@@ -399,6 +502,7 @@ async function sweep(
   statuses: readonly SubscriptionStatus[],
   windowDays: number | null,
   alerted: Set<string>,
+  amountAlerted: Set<string>,
 ): Promise<number> {
   const candidates = await loadCandidates(getWorkerSql(), statuses, windowDays)
 
@@ -408,7 +512,7 @@ async function sweep(
       // secuencial: `getWorkerSql()` es una conexión postgres-js compartida y no
       // corre queries en paralelo (mismo motivo que en dunning-retry.worker.ts).
       // react-doctor-disable-next-line react-doctor/async-await-in-loop
-      if (await reconcileOne(cand, alerted)) fixed += 1
+      if (await reconcileOne(cand, alerted, amountAlerted)) fixed += 1
     } catch (err) {
       logger.error('failed subscription reconcile', {
         module: 'reconcile-subscriptions',
@@ -431,8 +535,16 @@ async function sweep(
  * Ventana de 30 días sobre `updated_at`: un `blocked` de hace un año no es un
  * aviso perdido, es un complejo que se fue.
  */
-async function rescuePostTerminalSubscriptions(alerted: Set<string>): Promise<number> {
-  const rescued = await sweep(POST_TERMINAL_STATUSES, POST_TERMINAL_WINDOW_DAYS, alerted)
+async function rescuePostTerminalSubscriptions(
+  alerted: Set<string>,
+  amountAlerted: Set<string>,
+): Promise<number> {
+  const rescued = await sweep(
+    POST_TERMINAL_STATUSES,
+    POST_TERMINAL_WINDOW_DAYS,
+    alerted,
+    amountAlerted,
+  )
   if (rescued > 0) {
     logger.info('rescued post-terminal subscriptions', {
       module: 'reconcile-subscriptions',
@@ -442,6 +554,49 @@ async function rescuePostTerminalSubscriptions(alerted: Set<string>): Promise<nu
   return rescued
 }
 
+/**
+ * Chequeo de monto sobre los `active` — los que ningún otro barrido mira.
+ *
+ * Éste SÍ gasta un viaje a MP por complejo, porque no hay otro motivo para
+ * pedirle el estado a una suscripción que está sana — es el único costo que
+ * agrega este chequeo. Medido contra producción el 2026-09-16: CERO
+ * suscripciones `active` (2 en `trialing`, 1 `canceled`), así que hoy el
+ * barrido no hace ni una llamada. Cuando eso cambie el costo es 1 GET por
+ * complejo que paga, por hora; si llega a decenas, el paso siguiente es
+ * mudarlo a su propia cola con cron diario (`definitions.ts` +
+ * `queue-names.ts`), no cambiarle la lógica: lo único que sobra es la
+ * FRECUENCIA.
+ *
+ * No devuelve nada que active a nadie: cuenta desfasajes encontrados, para el
+ * log. Un error de MP en un complejo no corta el barrido de los demás, igual
+ * que en `sweep`.
+ */
+async function sweepPreapprovalAmounts(amountAlerted: Set<string>): Promise<number> {
+  const candidates = await loadCandidates(getWorkerSql(), AMOUNT_CHECK_STATUSES, null)
+
+  let drifted = 0
+  for (const cand of candidates) {
+    try {
+      // secuencial: mismo motivo que en `sweep` — `getWorkerSql()` es una
+      // conexión postgres-js compartida y no corre queries en paralelo.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      const remote = await getBillingGateway().getSubscriptionState(cand.mpSubscriptionId)
+      // Un 404 sobre un `active` es un desync, no un desfasaje de monto — y de
+      // ése ya se ocupa `reconcileOne` en los estados que le tocan. Acá se
+      // ignora a propósito para no duplicar alertas.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      if (await checkAmountDrift(cand, remote, amountAlerted)) drifted += 1
+    } catch (err) {
+      logger.error('failed preapproval amount check', {
+        module: 'reconcile-subscriptions',
+        tenantId: cand.tenantId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+  return drifted
+}
+
 export async function reconcileSubscriptions(): Promise<number> {
   // Modo mock (E2E): `getBillingGateway()` NO honra MP_MOCK_ENABLED —sólo lo
   // hace `resolveTenantGateway`—, así que acá pegaría contra MP con el token
@@ -449,9 +604,10 @@ export async function reconcileSubscriptions(): Promise<number> {
   // eso siga siendo verdad si algún día corren.
   if (MP_MOCK_ENABLED) return 0
 
-  const alerted = await recentlyAlerted(getWorkerSql())
+  const alerted = await recentlyAlerted(getWorkerSql(), 'subscription.mp_desync')
+  const amountAlerted = await recentlyAlerted(getWorkerSql(), 'subscription.amount_drift')
 
-  const fixed = await sweep(CORE_STATUSES, null, alerted)
+  const fixed = await sweep(CORE_STATUSES, null, alerted, amountAlerted)
   if (fixed > 0) {
     logger.info('activated subscriptions via reconcile', {
       module: 'reconcile-subscriptions',
@@ -459,7 +615,19 @@ export async function reconcileSubscriptions(): Promise<number> {
     })
   }
 
-  return fixed + (await rescuePostTerminalSubscriptions(alerted))
+  const rescued = await rescuePostTerminalSubscriptions(alerted, amountAlerted)
+
+  // No suma al valor de retorno: ese número es "cuántas suscripciones levanté",
+  // y un desfasaje de monto no levanta nada — sólo avisa.
+  const drifted = await sweepPreapprovalAmounts(amountAlerted)
+  if (drifted > 0) {
+    logger.warn('preapprovals charging an amount that does not match their plan', {
+      module: 'reconcile-subscriptions',
+      count: drifted,
+    })
+  }
+
+  return fixed + rescued
 }
 
 export async function registerReconcileSubscriptionsWorker(boss: PgBoss): Promise<void> {

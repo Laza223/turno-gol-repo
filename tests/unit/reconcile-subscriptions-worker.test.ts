@@ -55,18 +55,31 @@ const PREAPPROVAL = '275616150bef48aa85d502d9b490a359'
  * Despacha por CONTENIDO y no por orden de llamada: `loadCandidates` interpola
  * un fragmento (`sql\`\`` o `sql\`AND ts.updated_at ...\``) que se evalúa ANTES
  * que el template que lo contiene, así que contar llamadas da un orden que no
- * es el que uno leería en el código. Y los dos barridos comparten el MISMO
+ * es el que uno leería en el código. Y los TRES barridos comparten el MISMO
  * template literal, así que tampoco se distinguen por el texto: lo que los
  * separa es el array de estados interpolado.
+ *
+ * Las dos llamadas a `recentlyAlerted` también comparten template y se separan
+ * por la acción interpolada (`subscription.mp_desync` vs
+ * `subscription.amount_drift`).
  */
-function mockWorkerSql(alertRows: unknown[], coreRows: unknown[], postTerminalRows: unknown[]) {
+function mockWorkerSql(
+  alertRows: unknown[],
+  coreRows: unknown[],
+  postTerminalRows: unknown[],
+  activeRows: unknown[] = [],
+  amountAlertRows: unknown[] = [],
+) {
   const stub = vi
     .fn()
     .mockImplementation(async (strings: TemplateStringsArray, ...values: unknown[]) => {
       const text = Array.isArray(strings) ? strings.join(' ') : String(strings)
-      if (text.includes('audit_logs')) return alertRows
+      if (text.includes('audit_logs')) {
+        return values[0] === 'subscription.amount_drift' ? amountAlertRows : alertRows
+      }
       if (text.includes('tenant_subscriptions')) {
         const statuses = values[0]
+        if (Array.isArray(statuses) && statuses.includes('active')) return activeRows
         const esPostTerminal = Array.isArray(statuses) && statuses.includes('blocked')
         return esPostTerminal ? postTerminalRows : coreRows
       }
@@ -76,6 +89,7 @@ function mockWorkerSql(alertRows: unknown[], coreRows: unknown[], postTerminalRo
   return stub
 }
 
+/** Predio mensual: $50.400. El JOIN con `plans` trae los dos precios. */
 function candidate(over: Record<string, unknown> = {}) {
   return {
     tenantId: TENANT,
@@ -83,7 +97,27 @@ function candidate(over: Record<string, unknown> = {}) {
     billingCycle: 'monthly',
     mpSubscriptionId: PREAPPROVAL,
     lastPaymentAt: null,
+    priceMonthly: 6_300_000,
+    priceAnnual: 5_040_000,
     ...over,
+  }
+}
+
+/**
+ * Estado remoto `authorized` con el monto que se le quiera dar. Los campos que
+ * no toca el chequeo de monto van en su valor neutro: `decideSubscriptionReconcile`
+ * no activa nada sin `lastChargedDate`, que es justo lo que queremos acá.
+ */
+function remoteAuthorized(amountCents: number | null) {
+  return {
+    preapprovalId: PREAPPROVAL,
+    status: 'authorized' as const,
+    externalReference: TENANT,
+    nextPaymentDate: null,
+    chargedQuantity: 0,
+    lastChargedDate: null,
+    lastChargedAmountCents: null,
+    amountCents,
   }
 }
 
@@ -161,6 +195,138 @@ describe('reconcileSubscriptions', () => {
 
     await expect(reconcileSubscriptions()).resolves.toBe(0)
     expect(getSubscriptionState).toHaveBeenCalledTimes(2)
+  })
+})
+
+/**
+ * 🔴 3 de la revisión de la tanda #319-#324
+ * (`docs/audit/2026-09-16-revision-tanda-319-324.md`).
+ *
+ * Un preapproval autorizado ANTES del fix de #319 puede estar cobrando
+ * `price_annual` (el equivalente mensual con 20% off) en vez de
+ * `price_annual * 12`, o sea 1/12 de lo que corresponde, para siempre. El
+ * complejo está `active` y paga feliz, así que ninguno de los dos barridos de
+ * rescate lo mira nunca.
+ *
+ * La tabla de decisión pura vive en `subscription-reconcile-decision.test.ts`;
+ * acá se prueba el cableado del worker: a quién le pregunta, qué escribe, y que
+ * NO toque nada.
+ */
+describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockWithTenantContext.mockImplementation(
+      async (_tenantId: string, fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ execute: vi.fn(async () => []) }),
+    )
+  })
+
+  const anual = candidate({ status: 'active', billingCycle: 'annual' })
+
+  it('alerta cuando MP va a cobrar 1/12 de lo que vale el plan anual', async () => {
+    mockWorkerSql([], [], [], [anual])
+    // El bug: `price_annual` a pelo en vez de `price_annual * 12`.
+    mockGetBillingGateway.mockReturnValue({
+      getSubscriptionState: vi.fn(async () => remoteAuthorized(5_040_000)),
+    })
+
+    await reconcileSubscriptions()
+
+    expect(mockInsertAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        action: 'subscription.amount_drift',
+        tenantId: TENANT,
+        metadata: expect.objectContaining({
+          billingCycle: 'annual',
+          expectedCents: 60_480_000,
+          actualCents: 5_040_000,
+        }),
+      }),
+    )
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('NO corrige nada: sólo deja el rastro', async () => {
+    const gateway = {
+      getSubscriptionState: vi.fn(async () => remoteAuthorized(5_040_000)),
+      updatePreapprovalAmount: vi.fn(),
+      cancelPreapproval: vi.fn(),
+    }
+    mockWorkerSql([], [], [], [anual])
+    mockGetBillingGateway.mockReturnValue(gateway)
+
+    await reconcileSubscriptions()
+
+    // Opción 1 de las tres del informe: cambiarle el monto a un preapproval que
+    // el cliente ya autorizó es una decisión del dueño, no del cron.
+    expect(gateway.updatePreapprovalAmount).not.toHaveBeenCalled()
+    expect(gateway.cancelPreapproval).not.toHaveBeenCalled()
+  })
+
+  it('el monto correcto no alerta', async () => {
+    mockWorkerSql([], [], [], [anual])
+    mockGetBillingGateway.mockReturnValue({
+      getSubscriptionState: vi.fn(async () => remoteAuthorized(60_480_000)),
+    })
+
+    await reconcileSubscriptions()
+
+    expect(mockInsertAudit).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
+  })
+
+  it('no repite la alerta de un complejo ya avisado en las últimas 20 h', async () => {
+    mockWorkerSql([], [], [], [anual], [{ resourceId: TENANT }])
+    mockGetBillingGateway.mockReturnValue({
+      getSubscriptionState: vi.fn(async () => remoteAuthorized(5_040_000)),
+    })
+
+    await reconcileSubscriptions()
+
+    expect(mockInsertAudit).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
+  })
+
+  it('un fallo contra MP en el chequeo de monto no frena a los demás', async () => {
+    const getSubscriptionState = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('MP 503'))
+      .mockResolvedValueOnce(remoteAuthorized(5_040_000))
+    mockGetBillingGateway.mockReturnValue({ getSubscriptionState })
+    mockWorkerSql(
+      [],
+      [],
+      [],
+      [
+        candidate({ tenantId: 'tenant-a', status: 'active', billingCycle: 'annual' }),
+        candidate({ tenantId: 'tenant-b', status: 'active', billingCycle: 'annual' }),
+      ],
+    )
+
+    await reconcileSubscriptions()
+
+    expect(getSubscriptionState).toHaveBeenCalledTimes(2)
+    expect(mockInsertAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: 'subscription.amount_drift', tenantId: 'tenant-b' }),
+    )
+  })
+
+  it('aprovecha la respuesta que el barrido núcleo ya le pidió a MP, sin un segundo viaje', async () => {
+    const getSubscriptionState = vi.fn(async () => remoteAuthorized(5_040_000))
+    mockGetBillingGateway.mockReturnValue({ getSubscriptionState })
+    // El candidato está en `trialing`, así que lo levanta el barrido núcleo y
+    // NO aparece en el de `active`.
+    mockWorkerSql([], [candidate({ billingCycle: 'annual' })], [], [])
+
+    await reconcileSubscriptions()
+
+    expect(getSubscriptionState).toHaveBeenCalledTimes(1)
+    expect(mockInsertAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: 'subscription.amount_drift' }),
+    )
   })
 })
 

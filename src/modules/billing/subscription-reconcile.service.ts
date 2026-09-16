@@ -48,6 +48,55 @@ export function buildSubscriptionChargeKey(mpPaymentId: string): string {
   return `sub-charge:${mpPaymentId}`
 }
 
+/**
+ * Lo que MP va a cobrar NO coincide con lo que el plan vale hoy.
+ *
+ * 🔴 3 de la revisión de la tanda #319-#324
+ * (`docs/audit/2026-09-16-revision-tanda-319-324.md`). Antes del fix de #319 un
+ * alta anual podía quedar `authorized` en MP con `transaction_amount =
+ * price_annual` — que es el EQUIVALENTE MENSUAL con 20% off, no el total del
+ * año (migr. 071). Ese preapproval sigue vivo cobrando 1/12 de lo que
+ * corresponde, para siempre, y ningún camino automático lo mira:
+ * `decideSubscriptionReconcile` sólo compara `status` y fechas, y los tres
+ * llamados a `updatePreapprovalAmount` dependen de un upgrade, un downgrade
+ * programado o un cambio manual de soporte.
+ *
+ * Esto SÓLO detecta y devuelve el desfasaje. No corrige: cambiarle el monto a
+ * un preapproval vivo es cobrarle distinto a un cliente sin avisarle, y esa es
+ * una decisión del dueño, no del cron (opción 1 de las tres que dejó abierta el
+ * informe).
+ *
+ * Silencios deliberados:
+ *  - `status !== 'authorized'`: un preapproval `pending` todavía no cobra nada y
+ *    su monto lo valida `reusablePendingCheckout` antes de reusarlo; uno
+ *    `paused`/`cancelled` tampoco cobra. Alertar ahí sería ruido puro.
+ *  - `amountCents` ausente o <= 0: MP omite `auto_recurring` entero en un
+ *    preapproval creado a mano, y los fixtures de reconciliación no lo
+ *    conocen. Sin dato no hay desfasaje que afirmar.
+ */
+export type PreapprovalAmountDrift = {
+  expectedCents: number
+  actualCents: number
+  reason: string
+}
+
+export function detectPreapprovalAmountDrift(
+  expectedCents: number,
+  remote: GatewaySubscriptionState,
+): PreapprovalAmountDrift | null {
+  if (remote.status !== 'authorized') return null
+
+  const actualCents = remote.amountCents
+  if (typeof actualCents !== 'number' || actualCents <= 0) return null
+  if (actualCents === expectedCents) return null
+
+  return {
+    expectedCents,
+    actualCents,
+    reason: `MercadoPago cobra ${actualCents} centavos y el plan vale ${expectedCents}`,
+  }
+}
+
 function addCycle(from: Date, cycle: BillingCycle): Date {
   const d = new Date(from)
   if (cycle === 'monthly') d.setUTCMonth(d.getUTCMonth() + 1)

@@ -248,7 +248,10 @@ function resolvePayerEmail(
  * vez por año por `price_annual * 12`. Devolver `price_annual` a pelo manda
  * a MP 12 veces menos de lo que corresponde.
  */
-export function planAmount(plan: PlanRow, cycle: BillingCycle): number {
+export function planAmount(
+  plan: Pick<PlanRow, 'price_monthly' | 'price_annual'>,
+  cycle: BillingCycle,
+): number {
   return cycle === 'annual' ? plan.price_annual * 12 : plan.price_monthly
 }
 

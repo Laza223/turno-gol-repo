@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSubscriptionChargeKey,
   decideSubscriptionReconcile,
+  detectPreapprovalAmountDrift,
   type LocalSubSnapshot,
 } from '@/modules/billing/subscription-reconcile.service'
 import type { GatewaySubscriptionState } from '@/modules/payments/payment.types'
@@ -187,5 +188,77 @@ describe('buildSubscriptionChargeKey', () => {
   it('se ancla en el id del pago, que es lo único que los dos caminos ven igual', () => {
     // El id real del pago del cobro que sí se aplicó el 2026-08-20.
     expect(buildSubscriptionChargeKey('173841538187')).toBe('sub-charge:173841538187')
+  })
+})
+
+/**
+ * 🔴 3 de la revisión de la tanda #319-#324
+ * (`docs/audit/2026-09-16-revision-tanda-319-324.md`).
+ *
+ * `plans.price_annual` guarda el EQUIVALENTE MENSUAL con 20% off (migr. 071),
+ * no el total del año. Antes del fix de #319, un alta anual mandaba ese número
+ * a MP tal cual: el preapproval queda `authorized` cobrando 1/12 de lo que
+ * corresponde y nadie lo vuelve a mirar nunca.
+ *
+ * Números del plan Predio en producción: $63.000 mensual, $50.400 el
+ * equivalente mensual anual → $604.800 al año.
+ */
+describe('detectPreapprovalAmountDrift', () => {
+  const PREDIO_MENSUAL = 6_300_000
+  const PREDIO_ANUAL_EQUIV_MENSUAL = 5_040_000
+  const PREDIO_ANUAL_TOTAL = 60_480_000
+
+  it('agarra el bug de #319: el anual cobrando el equivalente mensual', () => {
+    const drift = detectPreapprovalAmountDrift(
+      PREDIO_ANUAL_TOTAL,
+      remote({ amountCents: PREDIO_ANUAL_EQUIV_MENSUAL }),
+    )
+
+    expect(drift).toEqual({
+      expectedCents: PREDIO_ANUAL_TOTAL,
+      actualCents: PREDIO_ANUAL_EQUIV_MENSUAL,
+      reason: expect.stringContaining(String(PREDIO_ANUAL_EQUIV_MENSUAL)),
+    })
+  })
+
+  it('el monto correcto no es desfasaje', () => {
+    expect(
+      detectPreapprovalAmountDrift(PREDIO_ANUAL_TOTAL, remote({ amountCents: PREDIO_ANUAL_TOTAL })),
+    ).toBeNull()
+    expect(
+      detectPreapprovalAmountDrift(PREDIO_MENSUAL, remote({ amountCents: PREDIO_MENSUAL })),
+    ).toBeNull()
+  })
+
+  it('también agarra el desfasaje al revés (MP cobrando de MÁS)', () => {
+    const drift = detectPreapprovalAmountDrift(
+      PREDIO_MENSUAL,
+      remote({ amountCents: PREDIO_ANUAL_TOTAL }),
+    )
+    expect(drift?.actualCents).toBe(PREDIO_ANUAL_TOTAL)
+  })
+
+  it('un preapproval que todavía no cobra nada no es desfasaje', () => {
+    // `pending` es un checkout sin autorizar: su monto lo valida
+    // `reusablePendingCheckout` antes de reusarlo. `paused`/`cancelled` no
+    // cobran. Alertar en los tres sería ruido puro.
+    for (const status of ['pending', 'paused', 'cancelled', 'unknown'] as const) {
+      expect(
+        detectPreapprovalAmountDrift(
+          PREDIO_ANUAL_TOTAL,
+          remote({ status, amountCents: PREDIO_ANUAL_EQUIV_MENSUAL }),
+        ),
+      ).toBeNull()
+    }
+  })
+
+  it('sin monto no se afirma nada', () => {
+    // MP omite `auto_recurring` entero en un preapproval creado a mano, y los
+    // fixtures de reconciliación no conocen el campo.
+    expect(detectPreapprovalAmountDrift(PREDIO_ANUAL_TOTAL, remote({}))).toBeNull()
+    expect(
+      detectPreapprovalAmountDrift(PREDIO_ANUAL_TOTAL, remote({ amountCents: null })),
+    ).toBeNull()
+    expect(detectPreapprovalAmountDrift(PREDIO_ANUAL_TOTAL, remote({ amountCents: 0 }))).toBeNull()
   })
 })

@@ -38,9 +38,11 @@ import { captureMessage, captureException } from '@/lib/sentry'
 import {
   createManualBookingSchema,
   rescheduleBookingSchema,
+  editBookingSchema,
   bookingResponseSchema,
 } from '@/modules/bookings/booking.schema'
 import { rescheduleBooking, type RescheduleOutcome } from '@/modules/bookings/booking.reschedule'
+import { editBooking } from '@/modules/bookings/booking.edit'
 import { validateApiOutput } from '@/shared/api-output'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { artNowParts, addDays } from '@/shared/dates/art'
@@ -63,6 +65,8 @@ import {
   NoShowRevertWindowExpiredError,
   BookingNotReschedulableError,
   BookingDateOutOfRangeError,
+  BookingNotEditableError,
+  BookingPriceBelowPaidError,
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { ActionResult } from '@/shared/types/action-result'
@@ -744,9 +748,18 @@ const CHARGEABLE_STATUSES = ['confirmed', 'completed'] as const
 
 const addBookingChargeSchema = z.object({
   bookingId: uuid,
-  // Cobro de mostrador: siempre positivo. moneyCents admite 0, acá lo excluimos.
-  amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
-  method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+  // Cobro de mostrador (parcial o total, mixto entre métodos): mismo patrón
+  // que completeAndChargeBookingAction/chargeDebtAction. Cada línea siempre
+  // positiva — moneyCents admite 0, acá lo excluimos.
+  charges: z
+    .array(
+      z.object({
+        amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
+        method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+      }),
+    )
+    .min(1, 'Ingresá al menos un cobro.')
+    .max(5, 'Máximo 5 cobros por turno.'),
   clientIdempotencyKey: uuid.optional(),
   note: boundedText(200).optional(),
 })
@@ -754,10 +767,12 @@ const addBookingChargeSchema = z.object({
 export type AddBookingChargeInput = z.input<typeof addBookingChargeSchema>
 
 /**
- * Tarea #8 — "Cobros de turno": registra un pago (parcial o total) del turno en
- * el mostrador como CashFlow income vinculado al booking_id. Reusa createCashFlow
- * (mismo path transaccional: idempotencia + guard de caja cerrada) dentro de
- * withTenantContext, así el cobro queda aislado por tenant y sin duplicados.
+ * Tarea #8 — "Cobros de turno": registra uno o varios pagos (parcial o total,
+ * mixto entre métodos) del turno en el mostrador como CashFlow income
+ * vinculado al booking_id. Reusa createCashFlow dentro de withTenantContext,
+ * así el cobro queda aislado por tenant y sin duplicados — un cash_flow por
+ * línea, con idempotencia POR LÍNEA (`${clientIdempotencyKey}-${i}`), mismo
+ * patrón que completeAndChargeBookingAction.
  */
 export async function addBookingChargeAction(
   input: AddBookingChargeInput,
@@ -773,7 +788,7 @@ export async function addBookingChargeAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  const { bookingId, amount, method, clientIdempotencyKey, note } = parsed.data
+  const { bookingId, charges, clientIdempotencyKey, note } = parsed.data
 
   const result: BookingChargeActionResult = await withTenantContext(tenant.id, async (tx) => {
     // El booking tiene que existir en este tenant (RLS) y estar en un estado
@@ -817,36 +832,53 @@ export async function addBookingChargeAction(
     // (Fix #55, doble-submit/reintento de red) es el MISMO cobro ya aceptado
     // — no hay que re-validar contra un pendiente que ya bajó por ese cobro,
     // o un reintento legítimo se rechazaría por error.
-    let alreadyRegistered = false
-    if (clientIdempotencyKey) {
-      // El índice único de client_idempotency_key en cash_flows es GLOBAL
-      // (migr. 023), sin tenant_id — filtro explícito además de RLS
-      // (mismo patrón que cashflow.service.ts / canteen-tab.service.ts /
-      // canteen-sale.service.ts, hallazgo #8 de la campaña de mutación).
-      const dup = await tx.execute(sql`
-        SELECT 1 FROM cash_flows
-        WHERE client_idempotency_key = ${clientIdempotencyKey} AND tenant_id = ${tenant.id}
-        LIMIT 1
-      `)
-      alreadyRegistered = (dup as unknown[]).length > 0
-    }
+    // La idempotencia es POR LÍNEA (`${clientIdempotencyKey}-${i}`, un
+    // cash_flow por charge). Revisión roja: chequear solo la línea 0 saltaba
+    // TODA la validación para el lote completo si un reintento reusaba la key
+    // pero agregaba líneas nuevas (turno de $10.000 podía terminar cobrando
+    // $14.000, sin que esas líneas nuevas pasaran nunca por acá). Por eso acá
+    // se chequea CADA línea por su propia key sufijada: lo ya commiteado no
+    // se re-valida (rechazaría un reintento legítimo contra un pendiente que
+    // él mismo bajó), pero lo nuevo SIEMPRE se valida contra el pendiente
+    // recalculado. Mismo patrón que registerInscriptionPayment
+    // (tournament-payment.service.ts).
+    const lineKeys = clientIdempotencyKey
+      ? charges.map((_, i) => `${clientIdempotencyKey}-${i}`)
+      : []
+    const alreadyChargedKeys = new Set(
+      lineKeys.length === 0
+        ? []
+        : // El índice único de client_idempotency_key en cash_flows es
+          // GLOBAL (migr. 023), sin tenant_id — filtro explícito además de
+          // RLS (mismo patrón que cashflow.service.ts / canteen-tab.service.ts
+          // / canteen-sale.service.ts, hallazgo #8 de la campaña de mutación).
+          (
+            (await tx.execute(sql`
+              SELECT client_idempotency_key AS key FROM cash_flows
+              WHERE tenant_id = ${tenant.id}
+                AND client_idempotency_key = ANY(ARRAY[${sql.join(
+                  lineKeys.map((k) => sql`${k}`),
+                  sql`, `,
+                )}])
+            `)) as unknown as Array<{ key: string }>
+          ).map((r) => r.key),
+    )
 
-    if (!alreadyRegistered) {
+    const newCharging = charges.reduce((sum, c, i) => {
+      const key = lineKeys[i]
+      return key !== undefined && alreadyChargedKeys.has(key) ? sum : sum + c.amount
+    }, 0)
+
+    if (newCharging > 0) {
       // Hallazgo C (TOCTOU, ENS-3 real): dos cobros concurrentes del mismo
       // booking leían el mismo `pending` sin lock y ambos pasaban la
       // validación (turno de $10.000 aceptaba 2×$8.000). Lockear la fila del
       // booking ANTES de leer los charges serializa los cobros: el segundo
-      // espera a que el primero commitee su cash_flow y relee el pendiente ya
-      // actualizado. Mismo patrón que createDepositPayment
-      // (payment.service.ts). Solo en este camino (valida+inserta) — el
-      // reintento idempotente (alreadyRegistered) no re-valida el pendiente,
-      // así que no necesita el lock.
-      //
-      // Orden de locks: fila del booking (FOR UPDATE) SIEMPRE antes que el
-      // advisory lock diario (`daily_close:${tenantId}`, tomado dentro de
-      // createCashFlow → assertDayOpen). Ningún otro caller de createCashFlow
-      // invierte ese orden (grep de pg_advisory_xact_lock + FOR UPDATE en
-      // cashflow/bookings/payments) — evita deadlock.
+      // espera a que el primero commitee sus cash_flows y relee el pendiente
+      // ya actualizado. Mismo patrón que createDepositPayment
+      // (payment.service.ts) y completeAndChargeBookingAction. Solo corre
+      // cuando hay algo NUEVO para cobrar — un reintento sin líneas nuevas no
+      // necesita el lock.
       await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
 
       const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
@@ -859,29 +891,39 @@ export async function addBookingChargeAction(
       if (pending <= 0) {
         return { success: false as const, error: 'Este turno ya está pagado por completo.' }
       }
-      if (amount > pending) {
+      if (newCharging > pending) {
         return {
           success: false as const,
-          error: `El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pending)}).`,
+          error: `El cobro (${formatArs(newCharging)}) supera lo pendiente (${formatArs(pending)}).`,
         }
       }
     }
 
-    const cashFlow = await createCashFlow(
-      tenant.id,
-      user.staffUserId,
-      {
-        type: 'income',
-        category: 'booking',
-        amount,
-        method,
-        description: note?.trim() ? note.trim() : 'Cobro de turno',
-        bookingId,
-        clientIdempotencyKey,
-      },
-      tx,
-    )
-    return { success: true as const, cashFlow }
+    let cashFlow: CashFlowRow | undefined
+    for (let i = 0; i < charges.length; i++) {
+      const charge = charges[i]!
+      const description = note?.trim()
+        ? note.trim()
+        : charges.length === 1
+          ? 'Cobro de turno'
+          : `Cobro de turno (${i + 1}/${charges.length})`
+      const lineKey = clientIdempotencyKey ? `${clientIdempotencyKey}-${i}` : undefined
+      cashFlow = await createCashFlow(
+        tenant.id,
+        user.staffUserId,
+        {
+          type: 'income',
+          category: 'booking',
+          amount: charge.amount,
+          method: charge.method,
+          description,
+          bookingId,
+          clientIdempotencyKey: lineKey,
+        },
+        tx,
+      )
+    }
+    return { success: true as const, cashFlow: cashFlow! }
   })
 
   if (result.success) {
@@ -1034,5 +1076,78 @@ export async function completeAndChargeBookingAction(
   validateApiOutput(bookingResponseSchema, { data: booking }, 'completeAndChargeBookingAction')
   revalidateBooking(bookingId)
   revalidatePath('/caja/cuentas')
+  return { success: true, booking }
+}
+
+// ─── editBookingAction ──────────────────────────────────────────────
+// D2 (docs/decisions/2026-09-15-evento-repetible-edicion-y-cobro-parcial.md):
+// editar nombre/teléfono (invitado), duración (evento spontaneous cargado por
+// el staff) y precio (nunca por debajo de lo ya cobrado) de un turno
+// confirmed, sin pasar por reprogramar.
+
+export type EditBookingActionInput = z.input<typeof editBookingSchema>
+
+/**
+ * `requireOperatorStaff`, no `requireAdminStaffAction`: el Encargado también
+ * puede corregir un nombre mal escrito o un precio pactado, mismo criterio que
+ * el resto de las mutaciones de este archivo (crear, cobrar, reprogramar).
+ */
+export async function editBookingAction(
+  input: EditBookingActionInput,
+): Promise<BookingActionResult> {
+  const parsed = editBookingSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  // El try/catch va FUERA de withTenantContext: atraparlo adentro y devolver un
+  // objeto commitearía lo escrito antes del throw (mismo motivo documentado en
+  // rescheduleBookingAction/cancelBookingAction de este archivo).
+  let booking: BookingRow
+  try {
+    booking = await withTenantContext(tenant.id, (tx) =>
+      editBooking(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+  } catch (err) {
+    if (err instanceof BookingNotEditableError) {
+      return {
+        success: false,
+        error:
+          err.reason === 'not_a_player_booking'
+            ? 'Los bloqueos y las horas de torneo se gestionan desde su propia pantalla.'
+            : err.reason === 'terminal_status'
+              ? 'Solo se pueden editar reservas confirmadas.'
+              : 'La reserva no existe.',
+      }
+    }
+    if (err instanceof BookingPriceBelowPaidError) {
+      return { success: false, error: 'Ese precio es menor a lo que ya se cobró de este turno.' }
+    }
+    if (err instanceof SlotTakenError) {
+      return { success: false, error: 'Esa duración choca con otro turno en esa cancha.' }
+    }
+    // Revisión roja: `editBooking` lockea la cancha del turno con
+    // `lockCourtOrThrow` (mismo orden de locks que reschedule), que tira este
+    // error si la cancha quedó `offline` — sin esta rama, editar un turno de
+    // una cancha desactivada volaba como 500 en vez de un mensaje de dominio
+    // (mismo patrón que createBookingAction/rescheduleBookingAction).
+    if (err instanceof CourtOfflineError) {
+      return { success: false, error: 'La cancha no está disponible.' }
+    }
+    if (err instanceof BookingValidationError) {
+      return { success: false, error: err.message }
+    }
+    throw err
+  }
+
+  validateApiOutput(bookingResponseSchema, { data: booking }, 'editBookingAction')
+  revalidateBooking(parsed.data.bookingId)
   return { success: true, booking }
 }

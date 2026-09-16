@@ -374,8 +374,8 @@ describe('Hallazgo C — TOCTOU de cobros concurrentes (addBookingChargeAction, 
     asStaff(tenant.id, staff.id)
 
     const [r1, r2] = await Promise.all([
-      addBookingChargeAction({ bookingId, amount: 8_000_00, method: 'cash' }),
-      addBookingChargeAction({ bookingId, amount: 8_000_00, method: 'cash' }),
+      addBookingChargeAction({ bookingId, charges: [{ amount: 8_000_00, method: 'cash' }] }),
+      addBookingChargeAction({ bookingId, charges: [{ amount: 8_000_00, method: 'cash' }] }),
     ])
 
     const results = [r1, r2]
@@ -420,7 +420,10 @@ describe('un block nunca carga plata: addBookingChargeAction lo rechaza', () => 
 
     asStaff(tenant.id, staff.id)
 
-    const result = await addBookingChargeAction({ bookingId, amount: 1_000_00, method: 'cash' })
+    const result = await addBookingChargeAction({
+      bookingId,
+      charges: [{ amount: 1_000_00, method: 'cash' }],
+    })
     expect(result.success).toBe(false)
     expect((result as { success: false; error: string }).error).toContain('bloqueo')
   })

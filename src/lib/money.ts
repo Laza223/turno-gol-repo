@@ -23,6 +23,17 @@
  * se acaba de tipear la coma. Si ahí se descartara, la coma desaparecería del
  * campo y el dígito siguiente se pegaría al entero, que es exactamente cómo
  * "1500,50" terminaba valiendo $150.050.
+ *
+ * ⚠️ Esta función NO puede distinguir, mirando solo el string final, un punto
+ * o coma recién tipeado (decimal genuino) de un separador de miles que YA
+ * estaba ahí y quedó con menos dígitos detrás por un Backspace/edición
+ * ("24.000" + Backspace → "24.00" es EL MISMO string que si alguien tipeara
+ * literalmente "24,00") — llamarla con ese remanente de agrupación corrompe
+ * el monto 100x para abajo sin ningún aviso (bug real 2026-09-15: "quería
+ * poner 20.000 y solo me dejaba cobrar los 84"). El caller que edita un valor
+ * ya mostrado (no solo tipea hacia adelante) tiene que sacar los separadores
+ * ANTES de llamar a esta función — `MoneyInput` lo hace vía su guard
+ * `isAppend`, ver `src/components/ui/money-input.tsx`.
  */
 export function splitPesosInput(input: string): { digits: string; decimals: string | null } {
   const decimalMatch = /[.,](\d{0,2})$/.exec(input)

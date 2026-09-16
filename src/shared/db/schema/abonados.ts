@@ -28,7 +28,10 @@ export const abonados = pgTable(
       .references(() => courts.id),
     playerId: uuid('player_id').references(() => players.id),
     contactName: text('contact_name').notNull(),
-    contactPhone: text('contact_phone').notNull(),
+    // Nullable desde la migr. 088 (D1, decisión 2026-09-15): el evento semanal
+    // de la grilla puede no tener teléfono. Turno fijo y /abonados/nuevo lo
+    // siguen exigiendo en la UI — esto solo afloja el CHECK de la base.
+    contactPhone: text('contact_phone'),
 
     dayOfWeek: smallint('day_of_week').notNull(),
     timeStart: time('time_start').notNull(),
@@ -48,7 +51,7 @@ export const abonados = pgTable(
   (table) => ({
     timeValid: check('chk_abonado_time_valid', sql`${table.timeEnd} > ${table.timeStart}`),
     dayValid: check('chk_abonado_day_valid', sql`${table.dayOfWeek} BETWEEN 0 AND 6`),
-    pricePositive: check('chk_abonado_price_positive', sql`${table.pricePerSession} > 0`),
+    pricePositive: check('chk_abonado_price_non_negative', sql`${table.pricePerSession} >= 0`),
     tenantStatusIdx: index('idx_abonados_tenant_status').on(table.tenantId, table.status),
     courtIdx: index('idx_abonados_court').on(table.tenantId, table.courtId),
     playerIdx: index('idx_abonados_player')

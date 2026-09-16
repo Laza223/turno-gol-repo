@@ -11,16 +11,20 @@ import { priceForRange } from '@/lib/booking/pricing'
 import { cn } from '@/lib/utils'
 import { ContactField } from './ContactField'
 import { ChargeSection } from './ChargeSection'
+import { DateRangeFields } from './DateRangeFields'
 import { Summary } from './Summary'
 import { usePlayerSearch } from './use-player-search'
 import { useSlotAvailability } from './use-slot-availability'
-import { durationHours, endTimeOptions } from './time-options'
+import { durationHours, endTimeOptions, toDdMm, weekdayOf, WEEKDAY_NAMES_ES } from './time-options'
 import { selectClass } from './styles'
 import type { ChargeChoice, DepositMethod, TypeFormProps } from './types'
 
 const EVENT_CHIPS = ['Escuelita', 'Torneo', 'Cumpleaños', 'Clase', 'Otro'] as const
 
 type PriceMode = 'priced' | 'free'
+/** "Una vez" crea la reserva del slot clicado; "Cada semana" crea un abonado
+ * (mismo camino que Turno fijo) — D1, docs/decisions/2026-09-15-evento-repetible-edicion-y-cobro-parcial.md. */
+type RepeatMode = 'once' | 'weekly'
 
 /** Evento — varias horas cobrables (escuelita, torneo, cumpleaños): `spontaneous`, N horas. */
 export function EventoForm({
@@ -31,6 +35,7 @@ export function EventoForm({
   checkAvailabilityAction,
   searchPlayersAction,
   createBookingAction,
+  createAbonadoAction,
   onClose,
   onSuccess,
   trackConfirmed,
@@ -38,6 +43,12 @@ export function EventoForm({
   const timeStart = slot.timeStart
   const endOptions = endTimeOptions({ slots: daySlots, startTime: timeStart, courtBookings })
   const [timeEnd, setTimeEnd] = useState(endOptions[1] ?? endOptions[0]!)
+
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('once')
+  const dayOfWeek = weekdayOf(slot.date)
+  const dayName = WEEKDAY_NAMES_ES[dayOfWeek]
+  const [startsOn, setStartsOn] = useState(slot.date)
+  const [endsOn, setEndsOn] = useState('')
 
   const {
     name,
@@ -91,6 +102,18 @@ export function EventoForm({
     }
   }
 
+  function handleRepeatModeChange(next: RepeatMode) {
+    setRepeatMode(next)
+    // El cobro semanal se hace por sesión desde el panel, no al alta: el
+    // evento repetible nunca manda depositMethod/depositAmount (ChargeSection
+    // queda oculta en este modo).
+    if (next === 'weekly') {
+      setChargeChoice('none')
+      setChargeMethod(null)
+      setChargeAmount(null)
+    }
+  }
+
   function pickChip(chip: string) {
     if (chip === 'Otro') {
       handleNameChange('')
@@ -102,7 +125,7 @@ export function EventoForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (isPending || taken) return
+    if (isPending || (repeatMode === 'once' && taken)) return
     const trimmedName = name.trim()
     if (!playerId && !trimmedName) {
       setError('Poné el nombre del evento o del responsable.')
@@ -112,12 +135,62 @@ export function EventoForm({
       setError('Ingresá el precio del evento.')
       return
     }
-    if (chargeChoice !== 'none' && (!chargeMethod || !chargeAmount || chargeAmount <= 0)) {
+    if (
+      repeatMode === 'once' &&
+      chargeChoice !== 'none' &&
+      (!chargeMethod || !chargeAmount || chargeAmount <= 0)
+    ) {
       setError('Ingresá cuánto cobraste.')
       return
     }
 
     const trimmedPhone = phone.trim()
+    setError(null)
+
+    if (repeatMode === 'weekly') {
+      const weeklyData = {
+        courtId: slot.courtId,
+        ...(playerId ? { playerId } : {}),
+        contactName: trimmedName,
+        ...(trimmedPhone ? { contactPhone: trimmedPhone } : {}),
+        // Único camino con teléfono opcional (D1) — el gate server-side de
+        // `createAbonadoSchema` lo exige salvo que venga esta marca.
+        viaWeeklyEvent: true,
+        dayOfWeek,
+        timeStart,
+        timeEnd,
+        pricePerSession: priceMode === 'free' ? 0 : (effectivePrice ?? 0),
+        startsOn,
+        ...(endsOn ? { endsOn } : {}),
+      }
+
+      startTransition(async () => {
+        try {
+          const result = await createAbonadoAction(weeklyData)
+          if (!result.success) {
+            setError(result.error)
+            return
+          }
+          trackConfirmed({ withPlayer: !!playerId })
+          const conflicts = result.conflictDates ?? []
+          toast({
+            title: 'Evento semanal creado',
+            description:
+              `${result.slotsGenerated ?? 0} fechas` +
+              (conflicts.length > 0
+                ? ` — Fechas ocupadas: ${conflicts.map(toDdMm).join(', ')}`
+                : ''),
+            variant: 'success',
+          })
+          onSuccess()
+        } catch (err) {
+          Sentry.captureException(err)
+          setError('No pudimos crear el evento semanal. Revisá tu conexión e intentá de nuevo.')
+        }
+      })
+      return
+    }
+
     const data = {
       courtId: slot.courtId,
       date: slot.date,
@@ -140,7 +213,6 @@ export function EventoForm({
         : {}),
     }
 
-    setError(null)
     startTransition(async () => {
       try {
         const result = await createBookingAction(data)
@@ -165,11 +237,38 @@ export function EventoForm({
     })
   }
 
-  const durationLabel = `${durationHours(timeStart, timeEnd)} h`
+  const durationLabel =
+    repeatMode === 'weekly'
+      ? `${durationHours(timeStart, timeEnd)} h · por semana`
+      : `${durationHours(timeStart, timeEnd)} h`
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden lg:flex-row">
       <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:p-6">
+        <section className="space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Repetición
+          </h4>
+          <SegmentedControl
+            className="grid grid-cols-2 gap-1.5"
+            aria-label="Repetición del evento"
+            value={repeatMode}
+            onValueChange={handleRepeatModeChange}
+            itemClassName={(active) =>
+              cn(
+                'h-11 md:h-9 cursor-pointer rounded-lg border text-xs font-semibold transition-colors',
+                active
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card hover:bg-accent',
+              )
+            }
+            options={[
+              { value: 'once', label: 'Una vez' },
+              { value: 'weekly', label: 'Cada semana' },
+            ]}
+          />
+        </section>
+
         <section className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Quién
@@ -211,6 +310,9 @@ export function EventoForm({
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Horario
           </h4>
+          {repeatMode === 'weekly' && (
+            <p className="text-sm font-medium text-foreground">Todos los {dayName}</p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Empieza</Label>
@@ -234,7 +336,7 @@ export function EventoForm({
               </select>
             </div>
           </div>
-          {taken && (
+          {repeatMode === 'once' && taken && (
             <p role="alert" className="text-xs text-amber-700 dark:text-amber-400">
               Este turno acaba de ser tomado.
             </p>
@@ -305,7 +407,7 @@ export function EventoForm({
               </p>
             ))}
 
-          {priceMode === 'priced' && (
+          {repeatMode === 'once' && priceMode === 'priced' && (
             <ChargeSection
               totalCents={effectivePrice ?? 0}
               choice={chargeChoice}
@@ -314,6 +416,18 @@ export function EventoForm({
               onChoiceChange={setChargeChoice}
               onMethodChange={setChargeMethod}
               onAmountChange={setChargeAmount}
+            />
+          )}
+
+          {repeatMode === 'weekly' && (
+            <DateRangeFields
+              idPrefix="evento"
+              startsOn={startsOn}
+              onStartsOnChange={setStartsOn}
+              endsOn={endsOn}
+              onEndsOnChange={setEndsOn}
+              min={slot.date}
+              dayOfWeek={dayOfWeek}
             />
           )}
         </section>
@@ -328,13 +442,15 @@ export function EventoForm({
         totalCents={priceMode === 'free' ? null : (effectivePrice ?? 0)}
         collectedCents={chargeChoice !== 'none' ? (chargeAmount ?? 0) : 0}
         primaryLabel={
-          priceMode === 'free' || effectivePrice == null
-            ? 'Agendar evento'
-            : `Agendar evento · ${formatArs(effectivePrice)}`
+          repeatMode === 'weekly'
+            ? 'Crear evento semanal'
+            : priceMode === 'free' || effectivePrice == null
+              ? 'Agendar evento'
+              : `Agendar evento · ${formatArs(effectivePrice)}`
         }
         onCancel={onClose}
         isPending={isPending}
-        disabled={isPending || taken || priceMissing}
+        disabled={isPending || (repeatMode === 'once' && taken) || priceMissing}
         error={error}
       />
     </form>

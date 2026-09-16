@@ -62,6 +62,9 @@ export async function createAbonadoAction(input: CreateAbonadoInput): Promise<Ab
   }
 
   revalidatePath('/abonados')
+  // El evento semanal se crea desde el modal de la grilla (EventoForm) y sus
+  // sesiones tienen que aparecer ahí sin esperar el revalidate de /abonados.
+  revalidatePath('/grilla')
   return {
     success: true,
     abonado: created.abonado,

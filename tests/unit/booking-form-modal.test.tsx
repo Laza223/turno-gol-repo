@@ -290,6 +290,64 @@ describe('BookingFormModal — Evento', () => {
     expect(payload).toMatchObject({ priceOverride: 0 })
     expect(payload).not.toHaveProperty('depositMethod')
   })
+
+  it('"Cada semana" llama a createAbonadoAction con día/horario/precio del casillero y esconde el cobro', async () => {
+    createAbonadoAction.mockResolvedValueOnce({
+      success: true,
+      abonado: { id: 'a1' },
+      slotsGenerated: 8,
+      conflictDates: [],
+    })
+    renderModal()
+    pickType('Evento')
+
+    fireEvent.change(await body().findByLabelText('Nombre del evento o responsable'), {
+      target: { value: 'Escuelita' },
+    })
+    fireEvent.click(body().getByRole('radio', { name: 'Cada semana' }))
+    expect(body().queryByText('¿Cobraste algo ahora?')).toBeNull()
+    fireEvent.click(submitButton('Crear evento semanal'))
+
+    await waitFor(() => expect(createAbonadoAction).toHaveBeenCalled())
+    const payload = createAbonadoAction.mock.calls[0]![0]
+    expect(payload).toMatchObject({
+      courtId: 'court-1',
+      contactName: 'Escuelita',
+      dayOfWeek: 1, // lunes (slot.date = 2026-03-16)
+      timeStart: '18:00',
+      // Evento default a 2 h (endOptions[1]) — tarifa de la grilla × 2, sin editar.
+      pricePerSession: 2000000,
+      startsOn: '2026-03-16',
+    })
+    expect(payload).not.toHaveProperty('contactPhone')
+  })
+
+  it('"Cada semana" + "No se cobra" manda pricePerSession 0', async () => {
+    createAbonadoAction.mockResolvedValueOnce({
+      success: true,
+      abonado: { id: 'a1' },
+      slotsGenerated: 8,
+      conflictDates: ['2026-09-21'],
+    })
+    const { toast } = await import('@/hooks/use-toast')
+    renderModal()
+    pickType('Evento')
+
+    fireEvent.change(await body().findByLabelText('Nombre del evento o responsable'), {
+      target: { value: 'Escuelita' },
+    })
+    fireEvent.click(body().getByRole('radio', { name: 'Cada semana' }))
+    fireEvent.click(body().getByRole('radio', { name: 'No se cobra' }))
+    fireEvent.click(submitButton('Crear evento semanal'))
+
+    await waitFor(() => expect(createAbonadoAction).toHaveBeenCalled())
+    expect(createAbonadoAction.mock.calls[0]![0]).toMatchObject({ pricePerSession: 0 })
+
+    const call = (toast as ReturnType<typeof vi.fn>).mock.calls[0]![0]
+    expect(call.title).toBe('Evento semanal creado')
+    expect(call.description).toContain('8 fechas')
+    expect(call.description).toContain('21/09')
+  })
 })
 
 describe('BookingFormModal — Bloquear cancha', () => {

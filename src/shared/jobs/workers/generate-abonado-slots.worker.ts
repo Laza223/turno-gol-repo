@@ -28,6 +28,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
       tenant_id: string
       court_id: string
       player_id: string | null
+      contact_name: string
       day_of_week: number
       time_start: string
       time_end: string
@@ -39,7 +40,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
       closed_dates: string[] | null
     }[]
   >`
-    SELECT a.id, a.tenant_id, a.court_id, a.player_id,
+    SELECT a.id, a.tenant_id, a.court_id, a.player_id, a.contact_name,
            a.day_of_week, a.time_start, a.time_end,
            a.price_per_session, a.starts_on::text, a.ends_on::text,
            t.status AS tenant_status,
@@ -146,11 +147,16 @@ export async function runRollingSlotGeneration(): Promise<void> {
             timeEnd: abonado.time_end,
             physicallyNextDay,
           })
+          // Sin jugador vinculado, la sesión rodante también lleva el nombre
+          // del abonado como guest_name — mismo criterio que insertBookingsForSlots
+          // (abonado.service.ts): BookingCard.bookingDisplayName mira guestName
+          // antes que playerFirstName.
+          const guestName = abonado.player_id ? null : abonado.contact_name
           return drizzleSql`(
             ${abonado.tenant_id}, ${abonado.court_id}, ${abonado.player_id ?? null}, ${abonado.id},
             ${dateStr}::date, ${abonado.time_start}::time, ${abonado.time_end}::time,
             ${startsAt.toISOString()}::timestamptz, ${endsAt.toISOString()}::timestamptz,
-            'fixed', 'confirmed', ${abonado.price_per_session}, 0, 'not_required'
+            'fixed', 'confirmed', ${abonado.price_per_session}, 0, 'not_required', ${guestName}
           )`
         }),
         drizzleSql`, `,
@@ -164,7 +170,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
           tenant_id, court_id, player_id, abonado_id,
           date, time_start, time_end,
           starts_at, ends_at,
-          type, status, price_snapshot, deposit_amount, deposit_status
+          type, status, price_snapshot, deposit_amount, deposit_status, guest_name
         ) VALUES ${values}
         ON CONFLICT DO NOTHING
         RETURNING id

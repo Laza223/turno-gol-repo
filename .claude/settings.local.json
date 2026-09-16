@@ -108,7 +108,8 @@
       "Bash(curl -s http://localhost:3000/api/status)",
       "Bash(python -c ' *)",
       "Bash(gh pr create --head fix/no-show-requiere-turno-terminado --title 'fix\\(bookings\\): marcar ausente exige que el turno haya terminado \\(RI #5 de D4\\)' --body ' *)",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(echo \"typecheck=$?\")"
     ]
   }
 }

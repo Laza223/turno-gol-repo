@@ -45,15 +45,13 @@ export function useSlotCharges({
 
   /**
    * Corre la mutación real (misma Server Action, mismo guard, mismo toast y
-   * manejo de error que "Registrar cobro") a partir de un array de cargos ya
-   * validado. La sacamos de `submitCharge` para que el atajo "Cobrar todo en
-   * efectivo" pueda ejecutarla con un cargo armado en el momento, sin
-   * depender de `lines` (que todavía no se actualizó por el `setLines` de
-   * este mismo click — `setState` es async).
+   * manejo de error en los tres modos) a partir de un array de cargos ya
+   * validado. La usan `submitCharge` (con `lines`) y `submitPartialCharge`
+   * (con el cargo armado en el momento, sin depender de `lines` porque
+   * `setState` es async y todavía no se actualizó en el mismo click).
    */
-  function runCharge(charges: ChargeInput[]) {
+  function runCharge(charges: ChargeInput[], total: number) {
     if (!booking || !actions || !mode) return
-    const total = charges.reduce((s, c) => s + c.amount, 0)
     const bookingId = booking.id
     startTransition(async () => {
       try {
@@ -72,8 +70,7 @@ export function useSlotCharges({
                 })
               : await actions.addBookingChargeAction({
                   bookingId,
-                  amount: charges[0]!.amount,
-                  method: charges[0]!.method,
+                  charges,
                   clientIdempotencyKey: idempotencyKey,
                 })
         if (!res.success) {
@@ -90,6 +87,12 @@ export function useSlotCharges({
     })
   }
 
+  /**
+   * Valida `lines` y cobra. Único caller manual de la mutación: el "Cobrar
+   * todo en efectivo" de un toque se fue con D3 — ahora `lines[0]` SIEMPRE
+   * arranca precargada con el pendiente, así que el botón de siempre ya manda
+   * el monto completo salvo que el admin lo haya editado.
+   */
   function submitCharge() {
     if (!booking || !actions || !mode) return
     setError(null)
@@ -111,26 +114,13 @@ export function useSlotCharges({
       setError(`El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
       return
     }
-    runCharge(charges)
-  }
-
-  /**
-   * Cobra TODO lo pendiente con un método, en un solo toque. Es el camino normal
-   * del mostrador: el monto no se escribe porque ya se sabe —es lo que falta— y
-   * el método se elige arriba del botón. Escribir un monto distinto es la
-   * excepción y vive detrás de "Cobrar otro monto".
-   */
-  function submitFullCharge(method: MethodKey) {
-    if (!booking || !actions || !mode || pending <= 0) return
-    setError(null)
-    setLines([newChargeLine(pending, method)])
-    runCharge([{ amount: pending, method }])
+    runCharge(charges, total)
   }
 
   /**
    * Cobra una PARTE de lo pendiente: la mitad (un equipo) o lo de un jugador.
    *
-   * Mismo camino que `submitFullCharge` — misma Server Action, mismo guard,
+   * Mismo camino que `submitCharge` — misma Server Action, mismo guard,
    * mismo toast: lo único que cambia es el monto. El resto queda como saldo del
    * turno y aparece en Deudas hasta que lo paguen, que es exactamente el
    * control que pidió el mostrador.
@@ -140,12 +130,12 @@ export function useSlotCharges({
    * bien. Con el turno casi saldado, "Pagó uno" cobra lo que queda y no más.
    */
   function submitPartialCharge(amountCents: number, method: MethodKey) {
-    if (!booking || !actions || !mode || pending <= 0) return
+    if (!booking || !mode || pending <= 0) return
     const amount = Math.min(amountCents, pending)
     if (amount <= 0) return
     setError(null)
     setLines([newChargeLine(amount, method)])
-    runCharge([{ amount, method }])
+    runCharge([{ amount, method }], amount)
   }
 
   async function confirmNoShow(): Promise<ActionResult> {
@@ -205,7 +195,6 @@ export function useSlotCharges({
     mode,
     pending,
     submitCharge,
-    submitFullCharge,
     submitPartialCharge,
     confirmNoShow,
     revertNoShow,

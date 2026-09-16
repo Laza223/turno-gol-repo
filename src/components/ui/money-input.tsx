@@ -81,13 +81,36 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(fu
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value
-    const parsed = parsePesosToCents(raw)
+    // El navegador ya aplicó la tecla/paste al DOM antes de disparar `change`:
+    // `selectionStart` es dónde quedó el caret DESPUÉS de esa edición. Si
+    // coincide con el final del string, el usuario estaba tipeando al final
+    // (el caso común); si no, estaba corrigiendo un dígito en el medio.
+    const caretWasAtEnd = e.target.selectionStart == null || e.target.selectionStart >= raw.length
+
+    // `splitPesosInput` no puede distinguir, mirando solo el string final, un
+    // punto/coma recién tipeado (decimal genuino, ej. teclado numérico que
+    // emite "." o pegar "18500.75" desde una calculadora) de un separador de
+    // miles que YA estaba ahí y quedó con menos dígitos detrás por un
+    // Backspace/edición ("24.000" + Backspace → "24.00", el mismo string que
+    // si alguien tipeara literalmente "24,00"). Solo confiamos la detección de
+    // decimal cuando el string nuevo es el anterior con caracteres agregados
+    // AL FINAL (tipeo hacia adelante o pegado sobre un campo vacío): ahí
+    // cualquier separador nuevo es intención fresca del usuario, nunca un
+    // resto de nuestro propio formateo. Fuera de ese caso (backspace, editar
+    // en el medio, reemplazar una selección) sacamos los separadores antes de
+    // parsear para no reinterpretar un remanente de agrupación como decimal
+    // (bug real 2026-09-15: "quería poner 20.000 y solo me dejaba cobrar los
+    // 84" — editar "84.000" con Backspace lo leía como $84).
+    const isAppend = raw.length > display.length && raw.startsWith(display)
+    const parseableRaw = isAppend ? raw : raw.replace(/[.,]/g, '')
+
+    const parsed = parsePesosToCents(parseableRaw)
     // La cola decimal se conserva en el display aunque no valga: si se borrara
     // acá, la coma desaparecería en la misma tecla y los dígitos de los
     // centavos se pegarían al entero en la siguiente ("1.500" + "5" = "15.005"
     // camino a $150.050 — 🔴 QA 2026-08-28 F-01). Dejarla a la vista hace
     // evidente que el campo es de pesos enteros mientras se tipea.
-    const { decimals } = splitPesosInput(raw)
+    const { decimals } = splitPesosInput(parseableRaw)
     const nextDisplay =
       parsed == null ? '' : centsToInputDisplay(parsed) + (decimals == null ? '' : `,${decimals}`)
     setDisplay(nextDisplay)
@@ -95,11 +118,17 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(fu
     onValueChange?.(parsed)
 
     // El usuario tipea de izquierda a derecha; sin esto, insertar el separador
-    // de miles manda el caret al principio del campo en cada tecla.
-    requestAnimationFrame(() => {
-      const el = innerRef.current
-      if (el) el.setSelectionRange(nextDisplay.length, nextDisplay.length)
-    })
+    // de miles manda el caret al principio del campo en cada tecla. Pero
+    // forzarlo SIEMPRE al final es lo que hacía imposible corregir un dígito
+    // en el medio de un monto ya agrupado (solo se podía editar por el final,
+    // justo el único lugar donde el bug de `splitPesosInput` podía morder) —
+    // por eso solo se fuerza cuando el propio tipeo ya estaba en el final.
+    if (caretWasAtEnd) {
+      requestAnimationFrame(() => {
+        const el = innerRef.current
+        if (el) el.setSelectionRange(nextDisplay.length, nextDisplay.length)
+      })
+    }
   }
 
   function handleBlur() {

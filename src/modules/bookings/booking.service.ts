@@ -111,11 +111,11 @@ export function assertSlotDuration(timeStart: string, timeEnd: string): void {
  * (`createOnlineBookingImpl`) y de la reprogramación (`booking.reschedule.ts`),
  * que el contrato de este rediseño deja intactas a propósito.
  *
- * Sin `export`: a diferencia de `assertSlotDuration`, nadie más la necesita
- * hoy (la duración del destino de una reprogramación sigue siendo estricta),
- * y un export usado solo en su propio archivo tira `knip`.
+ * `export` (D2, 2026-09-15): `booking.edit.ts` la reusa para validar la
+ * duración editada de un evento `spontaneous` cargado por el staff — el mismo
+ * gate de "horas enteras, mínimo 60" que ya vale al crearlo.
  */
-function assertWholeHours(timeStart: string, timeEnd: string): void {
+export function assertWholeHours(timeStart: string, timeEnd: string): void {
   const duration = slotDurationMins(timeStart, timeEnd)
   if (duration < SLOT_DURATION_MINUTES || duration % SLOT_DURATION_MINUTES !== 0) {
     throw new BookingValidationError(

@@ -17,6 +17,7 @@ import { hhmmToMins } from '@/shared/time/operating-day'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import type { GridBooking } from '@/lib/booking/grid-cells'
+import type { CourtPricingData } from '@/modules/courts/court.types'
 import { useIsDesktop } from '@/hooks/use-is-desktop'
 import { useSlotCharges } from './slot-panel/use-slot-charges'
 import { SlotPriceSummary } from './slot-panel/SlotPriceSummary'
@@ -35,6 +36,12 @@ export type { RenderCanteenDialog, SlotPanelActions } from './slot-panel/actions
 // cobrar, no para mover el turno.
 const BookingRescheduleDialog = dynamic(
   () => import('./BookingRescheduleDialog').then((m) => m.BookingRescheduleDialog),
+  { ssr: false },
+)
+
+// D2: mismo motivo que arriba — editar es semanal, no diario.
+const BookingEditDialog = dynamic(
+  () => import('./BookingEditDialog').then((m) => m.BookingEditDialog),
   { ssr: false },
 )
 
@@ -74,13 +81,24 @@ type Props = {
    */
   hasEnded?: boolean
   /**
-   * Canchas del complejo: las necesita el diálogo de reprogramar y, por
-   * `capacity` (jugadores que entran = `format × 2`), el atajo "Pagó uno".
-   *
-   * `capacity` es opcional porque las stories y los payloads viejos no lo traen;
-   * sin él ese botón simplemente no se ofrece, en vez de inventar un monto.
+   * Canchas del complejo. `pricing` es opcional y sólo lo necesita
+   * `BookingEditDialog` para sugerir el precio al cambiar la duración — sin
+   * él, el diálogo de reprogramar sigue andando igual (nunca lo usó).
+   * `capacity` (jugadores que entran = `format × 2`) es lo que necesita el
+   * atajo "Pagó uno"; sin él ese botón simplemente no se ofrece, en vez de
+   * inventar un monto.
    */
-  courts?: Array<{ id: string; name: string; status?: 'online' | 'offline'; capacity?: number }>
+  courts?: Array<{
+    id: string
+    name: string
+    status?: 'online' | 'offline'
+    pricing?: CourtPricingData
+    capacity?: number
+  }>
+  /** Todas las reservas del día (todas las canchas) — sólo las necesita BookingEditDialog. */
+  dayBookings?: GridBooking[]
+  /** Grilla horaria del día — sólo la necesita BookingEditDialog. */
+  daySlots?: string[]
   /** Ver `RenderCanteenDialog`. Sin esto, el panel no ofrece cargar cantina. */
   renderCanteenDialog?: RenderCanteenDialog
   actions?: SlotPanelActions
@@ -93,6 +111,8 @@ export function BookingSlotPanel({
   onMutated,
   hasEnded = false,
   courts,
+  dayBookings,
+  daySlots,
   renderCanteenDialog,
   actions,
 }: Props) {
@@ -116,6 +136,7 @@ export function BookingSlotPanel({
   const [noShowOpen, setNoShowOpen] = useState(false)
   const [canteenOpen, setCanteenOpen] = useState(false)
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
   const [cancelReason, setCancelReason] = useState('')
@@ -124,6 +145,10 @@ export function BookingSlotPanel({
   // Cambio de turno → estado limpio. Patrón "derived state on prop change"
   // (sin useEffect), igual que StreetMoneyChargeDialog.
   const [lastId, setLastId] = useState<string | null>(null)
+  // D3: el pendiente con el que se precargó `lines[0]`, para saber si un
+  // refetch (otro cobro desde otra pestaña, reconcile de 30s) tiene que
+  // resincronizar el campo o si el admin ya lo editó y no hay que pisarlo.
+  const [lastSyncedPending, setLastSyncedPending] = useState(0)
 
   const {
     isPending,
@@ -135,7 +160,6 @@ export function BookingSlotPanel({
     mode,
     pending,
     submitCharge,
-    submitFullCharge,
     submitPartialCharge,
     confirmNoShow,
     revertNoShow,
@@ -155,11 +179,25 @@ export function BookingSlotPanel({
     setError(null)
     setIdempotencyKey(crypto.randomUUID())
     setLines([newChargeLine(booking.pending ?? null, 'cash')])
+    setLastSyncedPending(booking.pending ?? 0)
     setNoShowOpen(false)
     setCanteenOpen(false)
     setRescheduleOpen(false)
+    setEditOpen(false)
     setCancelOpen(false)
     setReleaseBlockOpen(false)
+  } else if (
+    booking &&
+    pending !== lastSyncedPending &&
+    lines.length > 0 &&
+    lines[0]!.amountCents === lastSyncedPending
+  ) {
+    // El admin no tocó el monto precargado: si `pending` cambió por un
+    // refetch, la precarga se sincroniza con el nuevo pendiente. Si `lines[0]`
+    // ya no coincide con lo último sincronizado, es porque lo editó — no se
+    // le pisa lo que está tipeando.
+    setLastSyncedPending(pending)
+    setLines([{ ...lines[0]!, amountCents: pending }, ...lines.slice(1)])
   }
 
   if (!booking) return null
@@ -203,6 +241,18 @@ export function BookingSlotPanel({
   // La cantina sigue disponible con el turno ya jugado: lo normal es que la
   // gente consuma durante el partido y pague todo junto al final.
   const canSellCanteen = isClientBooking && Boolean(renderCanteenDialog)
+
+  // D2: editar nombre/teléfono, duración y precio — sólo turnos `confirmed`
+  // que son la reserva de alguien (nunca block/tournament; un turno terminal
+  // ya lo bloquea el trigger de DB, este gate evita ofrecer un botón que el
+  // backend siempre rechazaría). Visible SIEMPRE que aplique, no detrás de
+  // "Más" (a diferencia de reprogramar/cancelar: no es una tarea semanal, es
+  // la corrección de un dato mal cargado).
+  const canEdit =
+    isClientBooking &&
+    booking.status === 'confirmed' &&
+    Boolean(actions?.editBookingAction && actions?.getBookingEditDetailAction)
+  const editCourt = courts?.find((c) => c.id === booking.courtId)
 
   // Mismos estados Y tipos que acepta `rescheduleBooking`: un botón que el
   // backend siempre va a rechazar es peor que no tener el botón.
@@ -332,9 +382,9 @@ export function BookingSlotPanel({
               <SlotChargeSection
                 mode={mode}
                 lines={lines}
-                // F-010 (QA prod 2026-08-17): sin esto, corregir el monto (o tocar
-                // "Pagar todo en efectivo") dejaba el error de sobrecobro viejo en
-                // pantalla, contradiciendo lo que el usuario ve mientras toca plata.
+                // F-010 (QA prod 2026-08-17): sin esto, corregir el monto dejaba el
+                // error de sobrecobro viejo en pantalla, contradiciendo lo que el
+                // usuario ve mientras toca plata.
                 onLinesChange={(next) => {
                   setError(null)
                   setLines(next)
@@ -343,7 +393,6 @@ export function BookingSlotPanel({
                 error={error}
                 isPending={isPending}
                 onSubmit={submitCharge}
-                onFullCharge={submitFullCharge}
                 split={split}
                 onPartialCharge={submitPartialCharge}
               />
@@ -354,6 +403,8 @@ export function BookingSlotPanel({
               isTournament={booking.type === 'tournament'}
               canSellCanteen={canSellCanteen}
               onOpenCanteen={() => setCanteenOpen(true)}
+              canEdit={canEdit}
+              onOpenEdit={() => setEditOpen(true)}
               canReschedule={canReschedule}
               onOpenReschedule={() => setRescheduleOpen(true)}
               canMarkNoShow={canMarkNoShow}
@@ -402,6 +453,24 @@ export function BookingSlotPanel({
             }}
           />
         )}
+
+      {canEdit && editOpen && actions?.editBookingAction && actions.getBookingEditDetailAction && (
+        <BookingEditDialog
+          open
+          onOpenChange={setEditOpen}
+          booking={booking}
+          dayBookings={dayBookings ?? [booking]}
+          daySlots={daySlots ?? []}
+          pricing={editCourt?.pricing}
+          getDetailAction={actions.getBookingEditDetailAction}
+          editAction={actions.editBookingAction}
+          onSuccess={() => {
+            setEditOpen(false)
+            setLastId(null)
+            notifyMutated()
+          }}
+        />
+      )}
 
       {actions && (
         <ConfirmDialog

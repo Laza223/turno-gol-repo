@@ -30,11 +30,10 @@ export type SlotPanelActions = {
     charges: ChargeInput[]
     clientIdempotencyKey?: string
   }) => Promise<ActionResult>
-  /** Turno que todavía no empezó: adelanto. Una sola línea (el backend no acepta mixto acá). */
+  /** Turno que todavía no empezó: adelanto. Admite método mixto (D3, N líneas). */
   addBookingChargeAction: (input: {
     bookingId: string
-    amount: number
-    method: ChargeInput['method']
+    charges: ChargeInput[]
     clientIdempotencyKey?: string
   }) => Promise<ActionResult>
   markNoShowAction: (bookingId: string) => Promise<ActionResult>
@@ -58,4 +57,23 @@ export type SlotPanelActions = {
    * tests viejos siguen compilando.
    */
   releaseBlockAction?: (bookingId: string) => Promise<ActionResult>
+  /**
+   * Editar reserva (D2): nombre/teléfono de invitado, duración (evento
+   * spontaneous cargado por el staff) y precio. Opcional, mismo criterio que
+   * el resto: sin ella el panel no ofrece "Editar".
+   */
+  editBookingAction?: (input: {
+    bookingId: string
+    guestName?: string
+    guestPhone?: string
+    timeEnd?: string
+    priceOverride?: number
+  }) => Promise<ActionResult>
+  /** Lectura para precargar el diálogo de editar (guestPhone/createdByStaff). */
+  getBookingEditDetailAction?: (
+    bookingId: string,
+  ) => Promise<
+    | { success: true; guestPhone: string | null; createdByStaff: string | null }
+    | { success: false; error: string }
+  >
 }

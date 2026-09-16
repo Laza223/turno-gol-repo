@@ -76,8 +76,7 @@ export const ReactivarConVistaPrevia: Story = {
     const body = within(canvasElement.ownerDocument.body)
 
     await userEvent.click(canvas.getByRole('button', { name: 'Reactivar' }))
-    // AbonadoDialogs entra por next/dynamic: timeout largo (ver comentario en
-    // "Pausar Abonado").
+    // AbonadoDialogs entra por next/dynamic: timeout largo para el primer chunk.
     const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
     // El "2" va en un <strong> aparte: getByText por defecto solo mira los text
     // nodes DIRECTOS de un elemento (no agrega texto de hijos), así que hay que

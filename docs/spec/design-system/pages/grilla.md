@@ -74,20 +74,20 @@ el tinte de fondo es refuerzo. Siempre color + ícono + texto (§1.4). Tintes v�
 (`bg-warning/10`), nunca hex nuevos. El texto del label usa escala AA verificada (§2.4):
 `*-800` en light, `*-300` en dark; el nombre va en `text-foreground` (es el dato primario).
 
-| Estado (derivación)                              | Borde-l                | Tinte                                                                   | Label (color light/dark)                          | Ícono                                     |
-| ------------------------------------------------ | ---------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------- |
-| Libre (`kind=free`, futuro, cancha online)       | —                      | `bg-card`, borde `border-border/60`                                     | — (aria: "Reservar turno HH:MM en X")             | `Plus` centrado, 40 % → 100 % hover/focus |
-| Esperando seña (`pending_payment`)                | `border-l-warning`     | `bg-warning/10` (dark `/15`)                                            | "Esperando seña" `text-amber-800`/`text-amber-300` | `Clock`                                   |
-| Confirmada (`confirmed`, sin seña paga)          | `border-l-info`        | `bg-info/10` (dark `/15`)                                               | "Confirmada" `text-blue-800`/`text-blue-300`      | `HandCoins`                               |
-| Señada (`confirmed` + deposit `paid`/`captured`) | `border-l-success`     | `bg-success/10` (dark `/15`)                                            | "Señada" `text-emerald-800`/`text-emerald-300`    | `CheckCircle2`                            |
-| Jugada (`completed`)                             | `border-l-success`     | `bg-success/15` (dark `/20`) — fill más fuerte                          | "Jugada" `text-emerald-800`/`text-emerald-300`    | `CheckCheck`                              |
-| **Sin cobrar (`unpaid_alarm`)**                  | `border-l-destructive` | `bg-destructive/10` (dark `/15`) + `.slot-alarm-ring` (anillo pulsante) | "Sin cobrar" `text-red-700`/`text-red-300`        | `CheckCheck`                              |
-| Ausente (`no_show`)                              | `border-l-destructive` | `bg-destructive/10` (dark `/15`)                                        | "Ausente" `text-red-700`/`text-red-300`           | `UserX`                                   |
-| Abonado (`type=fixed`, confirmada)               | `border-l-info`        | `bg-info/10` (dark `/15`)                                               | "Abonado" `text-blue-800`/`text-blue-300`         | `Repeat`                                  |
-| **Torneo (`type=tournament`)**                   | `border-l-warning`     | `.slot-blocked-stripes` + `bg-warning/10` (dark `/15`)                  | "Torneo" `text-amber-800`/`text-amber-300`        | `Trophy`                                  |
-| Bloqueado (`type=block`)                         | `border-l-slate-400`   | `.slot-blocked-stripes` (rayado diagonal `--muted`)                     | "Bloqueado" `text-muted-foreground`               | `Ban`                                     |
-| Pasado (modificador)                             | —                      | `opacity-60 saturate-50` sobre el estado base                           | —                                                 | —                                         |
-| Libre pasado / cancha pausada                    | —                      | transparente / `bg-muted/40`, no interactivo                            | —                                                 | —                                         |
+| Estado (derivación)                              | Borde-l                | Tinte                                                                   | Label (color light/dark)                           | Ícono                                     |
+| ------------------------------------------------ | ---------------------- | ----------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------- |
+| Libre (`kind=free`, futuro, cancha online)       | —                      | `bg-card`, borde `border-border/60`                                     | — (aria: "Reservar turno HH:MM en X")              | `Plus` centrado, 40 % → 100 % hover/focus |
+| Esperando seña (`pending_payment`)               | `border-l-warning`     | `bg-warning/10` (dark `/15`)                                            | "Esperando seña" `text-amber-800`/`text-amber-300` | `Clock`                                   |
+| Confirmada (`confirmed`, sin seña paga)          | `border-l-info`        | `bg-info/10` (dark `/15`)                                               | "Confirmada" `text-blue-800`/`text-blue-300`       | `HandCoins`                               |
+| Señada (`confirmed` + deposit `paid`/`captured`) | `border-l-success`     | `bg-success/10` (dark `/15`)                                            | "Señada" `text-emerald-800`/`text-emerald-300`     | `CheckCircle2`                            |
+| Jugada (`completed`)                             | `border-l-success`     | `bg-success/15` (dark `/20`) — fill más fuerte                          | "Jugada" `text-emerald-800`/`text-emerald-300`     | `CheckCheck`                              |
+| **Sin cobrar (`unpaid_alarm`)**                  | `border-l-destructive` | `bg-destructive/10` (dark `/15`) + `.slot-alarm-ring` (anillo pulsante) | "Sin cobrar" `text-red-700`/`text-red-300`         | `CheckCheck`                              |
+| Ausente (`no_show`)                              | `border-l-destructive` | `bg-destructive/10` (dark `/15`)                                        | "Ausente" `text-red-700`/`text-red-300`            | `UserX`                                   |
+| Abonado (`type=fixed`, confirmada)               | `border-l-info`        | `bg-info/10` (dark `/15`)                                               | "Abonado" `text-blue-800`/`text-blue-300`          | `Repeat`                                  |
+| **Torneo (`type=tournament`)**                   | `border-l-warning`     | `.slot-blocked-stripes` + `bg-warning/10` (dark `/15`)                  | "Torneo" `text-amber-800`/`text-amber-300`         | `Trophy`                                  |
+| Bloqueado (`type=block`)                         | `border-l-slate-400`   | `.slot-blocked-stripes` (rayado diagonal `--muted`)                     | "Bloqueado" `text-muted-foreground`                | `Ban`                                     |
+| Pasado (modificador)                             | —                      | `opacity-60 saturate-50` sobre el estado base                           | —                                                  | —                                         |
+| Libre pasado / cancha pausada                    | —                      | transparente / `bg-muted/40`, no interactivo                            | —                                                  | —                                         |
 
 Prioridad cuando compiten (Fase 3, `src/lib/booking/slot-visual.ts` — fuente única, reemplazó 3
 copias que ya habían divergido): torneo > bloqueo > **alarma (sin cobrar)** > ausente > jugada >
@@ -109,10 +109,10 @@ duplicada" de MASTER §13.5). Las celdas no renderizan `HH:MM`; el rango complet
 **DOS renglones, nunca tres, en los dos tamaños.** Lo que cambia con el ancho es QUÉ va en el
 segundo. Tres renglones se recortaban en la fila, y un dato recortado es peor que ausente.
 
-| Ancho | Renglón 1 | Renglón 2 |
-| ----- | --------- | --------- |
-| `lg`+ | nombre (`text-[13px] font-semibold`) · **saldo** a la derecha, en el color del estado y en negrita | ícono 12 px + label de estado (`text-[11px]`) |
-| Teléfono | nombre (`text-[11px]`) | ícono + **saldo** (`text-[10px]`); el label textual se omite |
+| Ancho    | Renglón 1                                                                                          | Renglón 2                                                    |
+| -------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `lg`+    | nombre (`text-[13px] font-semibold`) · **saldo** a la derecha, en el color del estado y en negrita | ícono 12 px + label de estado (`text-[11px]`)                |
+| Teléfono | nombre (`text-[11px]`)                                                                             | ícono + **saldo** (`text-[10px]`); el label textual se omite |
 
 - **El saldo entró a la celda** y ya no vive sólo en el panel: es lo que se busca de lejos en una matriz de 7 canchas. En el teléfono no entra al lado del nombre, así que baja al segundo renglón y desplaza al label — que el color y el ícono ya comunican (§2, regla de lectura).
 - La diferencia por ancho se resuelve **por CSS** (`hidden lg:inline` / `lg:hidden` sobre nodos duplicados), no por un hook de viewport: un hook responde recién después del primer pintado y se ve el salto. El `aria-label` lleva el dato una sola vez, así que el lector de pantalla no lo escucha duplicado.
@@ -126,9 +126,9 @@ no existe en touch (el admin del mostrador usa tablet), y un panel que solo mira
 `/reservas` justo cuando hay alguien esperando para pagar (Fase 3, criterio de salida #2).
 Superficies con tokens (`bg-card`, `border-border`).
 
-- **Cobrar, en dos toques** (`SlotChargeSection.tsx`): chips de método (Efectivo · Transferencia · MercadoPago, con Efectivo ya elegido) y **un botón que dice el monto adentro** — "Cobrar $ 15.000 y dar por jugado" / "…por adelantado" / "Cobrar $ 15.000", según el estado (`chargeCta` en `charge-copy.ts`). El monto va EN el botón porque es lo que evita tener que leer una tabla para saber qué se está por cobrar. El verbo es **siempre "cobrar"** (H017): "cerrar" está reservado y el título y el botón del mismo panel no pueden decir cosas distintas.
-- **Cobrar de a partes** (2026-09-16): debajo del botón grande, dos atajos con el monto ADENTRO del rótulo — **"Pagó un equipo — $X"** y **"Pagó uno — $Y"**. Los complejos casi nunca cobran el turno entero de una: o juntan por equipo, o cada jugador paga lo suyo cuando llega, que es lo más frecuente. Por eso son botones y no el link gris de abajo. "Pagó un equipo" desaparece con el primer cobro (ahí el botón grande ya dice lo que falta); **"Pagó uno" se queda**, porque es el que se toca una vez por jugador. El resumen de plata rotula **"Pagaron 4 de 10"** (con "· un equipo entero" en la mitad justa), sin repetir el monto — ya está arriba, en grande. Nada de esto se guarda: no hay cliente por equipo ni por jugador, y la seña **no** cuenta como gente que pagó. La parte sale de `courts.capacity`; sin ese dato el botón no se ofrece y el rótulo vuelve a hablar de equipos. Decisión: `docs/decisions/2026-09-15-cobro-por-equipo.md`
-- El cobro a medida (partido entre métodos, monto distinto) vive detrás de **"Cobrar otro monto"**, prellenado con lo que falta.
+- **Cobrar, en dos toques** (`SlotChargeSection.tsx`): chips de método (Efectivo · Transferencia · MercadoPago, con Efectivo ya elegido) y **un botón que dice el monto adentro** — "Cobrar $ 15.000 y dar por jugado" / "…por adelantado" / "Cobrar $ 15.000" cuando se cobra el pendiente completo (`chargeCta` en `charge-copy.ts`). El monto va EN el botón porque es lo que evita tener que leer una tabla para saber qué se está por cobrar. El verbo es **siempre "cobrar"** (H017): "cerrar" está reservado y el título y el botón del mismo panel no pueden decir cosas distintas.
+- **El monto queda A LA VISTA, en los tres modos** (D3, 2026-09-15): el campo (`SplitPaymentFields`, siempre montado) arranca precargado con el pendiente completo — se corrige para abajo, no se escribe de cero — y admite hasta 5 líneas con "Agregar pago dividido", también en `advance` (el backend ya acepta N líneas ahí). Si se tipea menos que el pendiente, el botón cambia a "Cobrar $ 20.000 · quedan $ 64.000" (en `finish`, "… y dar por jugado · quedan $ X de deuda": el turno se da igual por jugado, el saldo pasa a ser deuda). Enfocar el campo selecciona todo el texto: la primera tecla reemplaza el monto precargado en vez de editarlo en el sitio (evita el bug de agrupamiento de miles de `money.ts` al corregir un valor ya formateado).
+- **Cobrar de a partes** (2026-09-16): debajo del botón grande, dos atajos con el monto ADENTRO del rótulo — **"Pagó un equipo — $X"** y **"Pagó uno — $Y"**. Los complejos casi nunca cobran el turno entero de una: o juntan por equipo, o cada jugador paga lo suyo cuando llega, que es lo más frecuente. Por eso son botones, además del monto editable de arriba. "Pagó un equipo" desaparece con el primer cobro (ahí el botón grande ya dice lo que falta); **"Pagó uno" se queda**, porque es el que se toca una vez por jugador. El resumen de plata rotula **"Pagaron 4 de 10"** (con "· un equipo entero" en la mitad justa), sin repetir el monto — ya está arriba, en grande. Nada de esto se guarda: no hay cliente por equipo ni por jugador, y la seña **no** cuenta como gente que pagó. La parte sale de `courts.capacity`; sin ese dato el botón no se ofrece y el rótulo vuelve a hablar de equipos. Decisión: `docs/decisions/2026-09-15-cobro-por-equipo.md`
 - **Acciones plegadas** (`SlotActionButtons.tsx`): cargar cantina queda a la vista; **reprogramar, marcar ausente y cancelar** se pliegan detrás de **"Más"**. Eran cinco botones compitiendo por la misma atención, tres de ellos rojos, para tareas de una vez por semana. Un toque de más en lo semanal a cambio de que lo diario no tenga que elegir entre cinco (Hick, MASTER §9).
 - **Liberar el bloqueo** y **deshacer la ausencia** NO se pliegan: en esos estados son la única acción que existe, y esconder la única acción no es resta.
 
@@ -138,12 +138,12 @@ Superficies con tokens (`bg-card`, `border-border`).
 de chips + "Opciones avanzadas". Arranca preguntando **"¿Qué vas a agendar?"**; cada tipo muestra
 solo sus campos, sin colapsables ni avisos en ámbar.
 
-| Tipo | Explicación (una línea) | Guarda | Campos |
-| --- | --- | --- | --- |
-| **Turno** (default) | Una hora de cancha para alguien | `spontaneous`, 60 min | a nombre de quién (jugador o nombre), teléfono, horario, precio de la grilla (editable), ¿cobraste algo ahora?, nota |
-| **Turno fijo** | Todas las semanas, mismo día y hora | abonado (`createAbonadoAction`) | nombre y teléfono, día y horario del casillero, precio por turno, desde/hasta, cómo paga |
-| **Evento** | Varias horas: escuelita, torneo, cumpleaños | `spontaneous`, N horas enteras | qué es (chips que precargan el nombre), responsable, teléfono, hasta, precio total sugerido o "No se cobra", ¿cobraste algo ahora? |
-| **Bloquear cancha** | Nadie puede usarla: mantenimiento, cierre | `block` | motivo, hasta. **Nunca plata ni contacto** |
+| Tipo                | Explicación (una línea)                     | Guarda                          | Campos                                                                                                                             |
+| ------------------- | ------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Turno** (default) | Una hora de cancha para alguien             | `spontaneous`, 60 min           | a nombre de quién (jugador o nombre), teléfono, horario, precio de la grilla (editable), ¿cobraste algo ahora?, nota               |
+| **Turno fijo**      | Todas las semanas, mismo día y hora         | abonado (`createAbonadoAction`) | nombre y teléfono, día y horario del casillero, precio por turno, desde/hasta, cómo paga                                           |
+| **Evento**          | Varias horas: escuelita, torneo, cumpleaños | `spontaneous`, N horas enteras  | qué es (chips que precargan el nombre), responsable, teléfono, hasta, precio total sugerido o "No se cobra", ¿cobraste algo ahora? |
+| **Bloquear cancha** | Nadie puede usarla: mantenimiento, cierre   | `block`                         | motivo, hasta. **Nunca plata ni contacto**                                                                                         |
 
 - **Escritorio:** grande (`max-w-6xl`): tipos a la izquierda, campos al centro, **resumen fijo** a la derecha (cancha, fecha, horario y duración, total, cobrado ahora, queda por cobrar) con el botón que dice verbo + monto ("Reservar · $ 24.000", "Agendar evento · $ 72.000", "Bloquear cancha").
 - **Teléfono:** pantalla completa; tipos como chips arriba, footer fijo con total + botón.
@@ -156,11 +156,11 @@ solo sus campos, sin colapsables ni avisos en ámbar.
 Nadie en el mostrador lo tocaba más de una vez, y la densidad real la decide la cantidad de canchas,
 no una preferencia. Menos un control, menos un estado que persistir. No reponerlo.
 
-| | Teléfono | `lg`+ |
-| --- | --- | --- |
-| Alto de fila | `4rem` (64 px) | `4rem` |
-| Ancho de columna (`--tg-col`) | `3rem` (48 px) | `8.5rem` |
-| Columna de horas (`--tg-hours`) | `2.75rem` | `3.5rem` |
+|                                 | Teléfono       | `lg`+    |
+| ------------------------------- | -------------- | -------- |
+| Alto de fila                    | `4rem` (64 px) | `4rem`   |
+| Ancho de columna (`--tg-col`)   | `3rem` (48 px) | `8.5rem` |
+| Columna de horas (`--tg-hours`) | `2.75rem`      | `3.5rem` |
 
 - **64 px de fila** es lo que necesitan los dos renglones de §3: con 52 el saldo se recortaba.
 - Las medidas son **variables CSS con override en `lg:`**, no un hook de media query — un hook resuelve después del primer pintado y se ve el salto de anchos. El ancho mínimo de la matriz es `calc(var(--tg-hours) + N × var(--tg-col))`.
@@ -226,18 +226,18 @@ horarios vacíos de la mañana obligan a scrollear"):
 
 Vocabulario canónico §8.5 + extensiones de grilla:
 
-| Código                     | UI                                                                                                  |
-| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| Código                     | UI                                                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `pending_payment`          | **Esperando seña** (MASTER §8.5; decisión del dueño 2026-09-10, deja sin efecto la "Decisión v2 D1" que había desviado solo la grilla — la urgencia la comunica el contador, no el rótulo) |
-| `confirmed` sin seña       | **Confirmada**                                                                                      |
-| `confirmed` + seña paga    | **Señada**                                                                                          |
-| `completed`                | **Jugada**                                                                                          |
-| `unpaid_alarm` (Fase 3)    | **Sin cobrar**                                                                                      |
-| `no_show`                  | **Ausente**                                                                                         |
-| `type=fixed`               | **Abonado**                                                                                         |
-| `type=tournament` (Fase 3) | **Torneo**                                                                                          |
-| `type=block`               | **Bloqueado**                                                                                       |
-| court `offline`            | **(pausada)** — nunca "(offline)"                                                                   |
+| `confirmed` sin seña       | **Confirmada**                                                                                                                                                                             |
+| `confirmed` + seña paga    | **Señada**                                                                                                                                                                                 |
+| `completed`                | **Jugada**                                                                                                                                                                                 |
+| `unpaid_alarm` (Fase 3)    | **Sin cobrar**                                                                                                                                                                             |
+| `no_show`                  | **Ausente**                                                                                                                                                                                |
+| `type=fixed`               | **Abonado**                                                                                                                                                                                |
+| `type=tournament` (Fase 3) | **Torneo**                                                                                                                                                                                 |
+| `type=block`               | **Bloqueado**                                                                                                                                                                              |
+| court `offline`            | **(pausada)** — nunca "(offline)"                                                                                                                                                          |
 
 Fechas: formato medio §8.3 ("mié 1 de julio") — en el teléfono es el rótulo entre los dos chevrons;
 en escritorio lo dice la tira semanal. Horas 24 h `HH:MM`, rango con en-dash sin espacios

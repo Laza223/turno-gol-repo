@@ -206,6 +206,34 @@ export class BookingNotReschedulableError extends Error {
   }
 }
 
+/**
+ * D2 (2026-09-15): editar una reserva desde la grilla — nombre/teléfono,
+ * precio y duración. Gate de ELEGIBILIDAD del turno entero (no de un campo
+ * puntual): sólo `status='confirmed'`, nunca `block`/`tournament`.
+ */
+export class BookingNotEditableError extends Error {
+  constructor(
+    public readonly bookingId: string,
+    public readonly reason: 'not_found' | 'terminal_status' | 'not_a_player_booking',
+  ) {
+    super(`Booking ${bookingId} cannot be edited: ${reason}`)
+    this.name = 'BookingNotEditableError'
+  }
+}
+
+/**
+ * D2: el precio nuevo no puede quedar por debajo de lo que el cliente ya pagó
+ * (seña contada + cobros de mostrador) — mismo criterio que
+ * `BookingNotReschedulableError('price_below_paid')` en booking.reschedule.ts,
+ * como error propio porque acá el turno NO se mueve (edit ≠ reschedule).
+ */
+export class BookingPriceBelowPaidError extends Error {
+  constructor(public readonly bookingId: string) {
+    super(`Booking ${bookingId} price cannot go below what's already paid`)
+    this.name = 'BookingPriceBelowPaidError'
+  }
+}
+
 // INV-ABUSE-001: tope duro de holds (pending_payment) simultáneos sin pagar
 // por jugador+tenant — defensa de Denial-of-Inventory del portal público.
 export class TooManyActiveHoldsError extends Error {

@@ -8,6 +8,7 @@ import {
   toGridBooking,
 } from '@/test/fixtures/booking'
 import { player } from '@/test/fixtures/player'
+import { courtFutbol5, courtFutbol7 } from '@/test/fixtures/court'
 import { BookingSlotPanel, type SlotPanelActions } from './BookingSlotPanel'
 
 /**
@@ -44,9 +45,13 @@ const okActions = (): SlotPanelActions => ({
   releaseBlockAction: fn(async () => ({ success: true as const })),
 })
 
+// Los ids salen de las fixtures y NO de strings inventados: el panel busca la
+// cancha del turno por `courtId` para sacar su `capacity` (jugadores que entran
+// = format × 2), y con ids que no matchean el atajo "Pagó uno" no aparecería —
+// la story pasaría en verde sin probar nada.
 const COURTS = [
-  { id: 'court-1', name: 'Cancha 1' },
-  { id: 'court-2', name: 'Cancha 2' },
+  { id: courtFutbol5().id, name: 'Cancha 1', capacity: courtFutbol5().capacity },
+  { id: courtFutbol7().id, name: 'Cancha 2', capacity: courtFutbol7().capacity },
 ]
 
 /** Un turno de hoy que ya terminó — es cuando el mostrador cobra de verdad. */
@@ -181,14 +186,20 @@ export const CobrarPorAdelantado: Story = {
 }
 
 /**
- * Cobro por equipo (2026-09-15) — la mayoría de los complejos cobran en dos
- * veces, una por equipo. El atajo es un botón y no el link gris de "Cobrar otro
- * monto": es el camino normal de mucha gente, no la excepción.
+ * Cobro de a partes — los complejos casi nunca cobran el turno entero de una: o
+ * juntan por equipo, o cada jugador paga lo suyo cuando llega. Los dos atajos
+ * son botones y no el link gris de "Cobrar otro monto": es el camino normal de
+ * mucha gente, no la excepción.
+ *
+ * El turno es una F5 ($24.000, 10 jugadores): la mitad es $12.000 y la parte de
+ * cada uno, $2.400. Los montos van ADENTRO del rótulo, que es lo que hace que el
+ * encargado entienda el botón sin que nadie se lo explique.
  */
-export const CobrarPorEquipo: Story = {
+export const CobrarDeAPartes: Story = {
   args: {
     booking: {
       ...toGridBooking(bookingCompleted()),
+      courtId: courtFutbol5().id,
       date: AYER,
       priceSnapshot: 2400000,
       depositStatus: 'not_required',
@@ -201,21 +212,51 @@ export const CobrarPorEquipo: Story = {
     const panel = within(canvasElement.ownerDocument.body)
     await expect(await panel.findByRole('button', { name: /^Cobrar \$.?24\.000$/ })).toBeTruthy()
     await expect(
-      await panel.findByRole('button', { name: /^Cobrar la mitad — \$.?12\.000$/ }),
+      await panel.findByRole('button', { name: /^Pagó un equipo — \$.?12\.000$/ }),
     ).toBeTruthy()
-    // Todavía no pagó nadie: rotular equipos acá no diría nada.
-    await expect(panel.queryByText(/Equipo 1 pagó/)).toBeNull()
+    await expect(await panel.findByRole('button', { name: /^Pagó uno — \$.?2\.400$/ })).toBeTruthy()
+    // Todavía no puso nadie: contar gente acá no diría nada.
+    await expect(panel.queryByText(/^Pagaron /)).toBeNull()
   },
 }
 
 /**
- * Pagó el primer equipo. El atajo de la mitad desaparece solo —el botón grande
- * ya dice exactamente lo que falta— y aparece el rótulo de quién debe.
+ * Cuatro jugadores fueron pagando de a uno. El renglón cuenta gente y "Pagó uno"
+ * SIGUE ofreciéndose: es el botón que se toca una vez por jugador que llega.
+ *
+ * El monto no se repite en el renglón — ya está arriba, en grande.
+ */
+export const PagaronCuatroDeDiez: Story = {
+  args: {
+    booking: {
+      ...toGridBooking(bookingCompleted()),
+      courtId: courtFutbol5().id,
+      date: AYER,
+      priceSnapshot: 2400000,
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      totalPaid: 960000,
+      pending: 1440000,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    await expect(await panel.findByText('Pagaron 4 de 10')).toBeTruthy()
+    await expect(await panel.findByRole('button', { name: /^Pagó uno — \$.?2\.400$/ })).toBeTruthy()
+    // Ya entró plata: juntar por equipo dejó de tener sentido.
+    await expect(panel.queryByRole('button', { name: /Pagó un equipo/ })).toBeNull()
+  },
+}
+
+/**
+ * Justo la mitad. El dato útil no es "5", es que hay un equipo entero saldado —
+ * que es lo que el mostrador quiere saber cuando juntan la plata de a grupos.
  */
 export const MitadCobrada: Story = {
   args: {
     booking: {
       ...toGridBooking(bookingCompleted()),
+      courtId: courtFutbol5().id,
       date: AYER,
       priceSnapshot: 2400000,
       depositStatus: 'not_required',
@@ -226,20 +267,24 @@ export const MitadCobrada: Story = {
   },
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    await expect(await panel.findByText('Equipo 1 pagó · falta Equipo 2')).toBeTruthy()
+    await expect(await panel.findByText('Pagaron 5 de 10 · un equipo entero')).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /^Cobrar \$.?12\.000$/ })).toBeTruthy()
-    await expect(panel.queryByRole('button', { name: /Cobrar la mitad/ })).toBeNull()
+    await expect(panel.queryByRole('button', { name: /Pagó un equipo/ })).toBeNull()
   },
 }
 
 /**
- * Seña pagada online y CERO cobros de mostrador: la seña no es "un equipo que
- * pagó". Si contara, todo turno señado por el jugador mentiría.
+ * Seña pagada online y CERO cobros de mostrador: la seña no es gente que pagó en
+ * el mostrador. Si contara, todo turno señado por el jugador mentiría.
+ *
+ * Ojo al monto de "Pagó uno": la parte de cada jugador sale del PRECIO del turno
+ * ($2.400), no de lo que falta. Lo que la seña baja es el pendiente.
  */
-export const SeniaNoEsUnEquipo: Story = {
+export const SeniaNoEsGenteQuePago: Story = {
   args: {
     booking: {
       ...toGridBooking(booking(), player()),
+      courtId: courtFutbol5().id,
       date: AYER,
       priceSnapshot: 2400000,
       depositStatus: 'paid',
@@ -250,10 +295,11 @@ export const SeniaNoEsUnEquipo: Story = {
   },
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    await expect(panel.queryByText(/Equipo 1 pagó/)).toBeNull()
+    await expect(panel.queryByText(/^Pagaron /)).toBeNull()
     await expect(
-      await panel.findByRole('button', { name: /^Cobrar la mitad — \$.?8\.400$/ }),
+      await panel.findByRole('button', { name: /^Pagó un equipo — \$.?8\.400$/ }),
     ).toBeTruthy()
+    await expect(await panel.findByRole('button', { name: /^Pagó uno — \$.?2\.400$/ })).toBeTruthy()
   },
 }
 

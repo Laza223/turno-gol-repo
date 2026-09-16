@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
 import { formatArs } from '@/lib/format'
-import { chargeCta, type ChargeMode, type TeamSplit } from './charge-copy'
+import { chargeCta, type ChargeMode, type ChargeSplit } from './charge-copy'
 
 /**
  * Los tres métodos que se usan en el mostrador, en orden de frecuencia. "Otro"
@@ -17,6 +17,14 @@ import { chargeCta, type ChargeMode, type TeamSplit } from './charge-copy'
  * detrás de "Cobrar otro monto", que es donde se arma un cobro a mano.
  */
 const QUICK_METHODS: MethodKey[] = ['cash', 'transfer', 'mercadopago']
+
+/**
+ * Los atajos de cobro parcial. 44px en touch (MASTER §10): "Pagó uno" se toca
+ * una vez por jugador, así que es el botón MÁS tocado del panel en un turno que
+ * se cobra de a poco — errar el dedo acá cuesta un cobro de más.
+ */
+const PARTIAL_BUTTON =
+  'h-11 w-full rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10'
 
 type Props = {
   mode: Exclude<ChargeMode, null>
@@ -29,10 +37,10 @@ type Props = {
   onSubmit: () => void
   /** Cobra TODO lo pendiente con ese método, en un solo toque. */
   onFullCharge: (method: MethodKey) => void
-  /** Estado por equipos: si ofrecer el atajo de la mitad y cuánto es. */
-  split: TeamSplit
-  /** Cobra la MITAD de lo pendiente con ese método, en un solo toque. */
-  onHalfCharge: (method: MethodKey) => void
+  /** Cobro de a partes: qué atajos ofrecer y de cuánto es cada uno. */
+  split: ChargeSplit
+  /** Cobra ese monto exacto con ese método, en un solo toque. */
+  onPartialCharge: (amountCents: number, method: MethodKey) => void
 }
 
 /**
@@ -54,7 +62,7 @@ export function SlotChargeSection({
   onSubmit,
   onFullCharge,
   split,
-  onHalfCharge,
+  onPartialCharge,
 }: Props) {
   const [method, setMethod] = useState<MethodKey>('cash')
   const [customOpen, setCustomOpen] = useState(false)
@@ -97,21 +105,43 @@ export function SlotChargeSection({
         {isPending ? 'Procesando…' : chargeCta(mode, pending)}
       </button>
 
-      {/* Cobrar por equipo: la mayoría de los complejos cobran en dos veces, una
-          por equipo. Es un botón y no el link gris de abajo porque es el camino
+      {/* Cobrar de a partes. Los complejos casi nunca cobran el turno entero de
+          una: o juntan por equipo, o cada jugador paga lo suyo a medida que
+          llega. Son botones y no el link gris de abajo porque es el camino
           NORMAL de mucha gente, no la excepción — y lo que había ("Cobrar otro
           monto") además abre el monto prellenado con el total, para corregirlo.
-          Desaparece solo en cuanto pagó el primero: ahí el botón grande ya dice
-          exactamente lo que falta. */}
-      {split.canSplit && (
-        <button
-          type="button"
-          onClick={() => onHalfCharge(method)}
-          disabled={isPending}
-          className="mt-2 h-11 w-full rounded-lg border border-border text-sm font-semibold transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
-        >
-          {isPending ? 'Procesando…' : `Cobrar la mitad — ${formatArs(split.halfCents)}`}
-        </button>
+
+          El monto va ADENTRO del rótulo, igual que en el botón grande: es lo que
+          hace que el encargado entienda qué va a cobrar sin que nadie le
+          explique el botón (H017, misma regla que `chargeCta`).
+
+          "Pagó un equipo" desaparece en cuanto entró el primer cobro: ahí el
+          botón grande ya dice exactamente lo que falta. "Pagó uno" se queda
+          mientras falte más de una parte, porque es el que se toca varias
+          veces — una por jugador que llega. */}
+      {(split.canSplitHalf || split.canSplitShare) && (
+        <div className="mt-2 flex flex-col gap-2">
+          {split.canSplitHalf && (
+            <button
+              type="button"
+              onClick={() => onPartialCharge(split.halfCents, method)}
+              disabled={isPending}
+              className={PARTIAL_BUTTON}
+            >
+              {isPending ? 'Procesando…' : `Pagó un equipo — ${formatArs(split.halfCents)}`}
+            </button>
+          )}
+          {split.canSplitShare && split.shareCents !== null && (
+            <button
+              type="button"
+              onClick={() => onPartialCharge(split.shareCents ?? 0, method)}
+              disabled={isPending}
+              className={PARTIAL_BUTTON}
+            >
+              {isPending ? 'Procesando…' : `Pagó uno — ${formatArs(split.shareCents)}`}
+            </button>
+          )}
+        </div>
       )}
 
       {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el

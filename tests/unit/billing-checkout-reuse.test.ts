@@ -361,7 +361,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
   })
 
   it('el pendiente tiene un primer cobro FUTURO pero reactivar cobra ya → NO reusa', async () => {
-    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
+    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({
       reason: REASON_REACTIVACION,

@@ -124,7 +124,10 @@ function pendingState(over: Partial<GatewaySubscriptionState> = {}): GatewaySubs
     frequency: 1,
     frequencyType: 'months',
     reason: REASON_MENSUAL,
-    startDate: null,
+    // Realista: MP completa `start_date` con la fecha de creación aunque no se
+    // le mande (medido en producción el 2026-09-16). Un fixture con `null`
+    // escondió que el reuso no se daba nunca.
+    startDate: new Date('2026-01-01T00:00:00Z'),
     ...over,
   }
 }
@@ -330,6 +333,47 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
 })
 
 describe('reactivate — mismo reuso de checkout pendiente que subscribe', () => {
+  it('caso real de producción: MP devolvió start_date = fecha de creación (sin que se lo mandáramos) → SÍ reusa', async () => {
+    // Respuesta real de GET /preapproval del 2026-09-16, recortada: pending,
+    // 12/months, 604800 ARS, start_date = date_created, summarized todo en null.
+    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
+    const gateway = new MockGateway()
+    gateway.subscriptionState = pendingState({
+      reason: REASON_REACTIVACION,
+      amountCents: planRow.price_annual * 12,
+      frequency: 12,
+      startDate: new Date('2026-09-16T17:38:00.000-04:00'),
+      chargedQuantity: 0,
+    })
+
+    const result = await reactivate(
+      TENANT_ID,
+      PLAN_ID,
+      'annual',
+      gateway,
+      tx,
+      new Date('2026-09-16T21:39:30Z'),
+    )
+
+    expect(result.preapprovalId).toBe(OLD_PREAPPROVAL)
+    expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
+    expect(gateway.preapprovalCalls).toHaveLength(0)
+  })
+
+  it('el pendiente tiene un primer cobro FUTURO pero reactivar cobra ya → NO reusa', async () => {
+    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
+    const gateway = new MockGateway()
+    gateway.subscriptionState = pendingState({
+      reason: REASON_REACTIVACION,
+      startDate: new Date('2026-10-01T00:00:00Z'),
+    })
+
+    await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx, new Date('2026-09-16T21:39:30Z'))
+
+    expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
+    expect(gateway.preapprovalCalls).toHaveLength(1)
+  })
+
   it('preapproval pending, mismo tenant, monto y frecuencia exactos → reusa: mismo checkoutUrl/preapprovalId, sin tocar MP', async () => {
     const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
     const gateway = new MockGateway()

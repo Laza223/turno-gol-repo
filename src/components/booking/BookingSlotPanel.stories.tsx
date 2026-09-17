@@ -261,12 +261,74 @@ export const CobrarDeAPartes: Story = {
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
     await expect(await panel.findByRole('button', { name: /^Cobrar \$.?24\.000$/ })).toBeTruthy()
-    await expect(
-      await panel.findByRole('button', { name: /^Pagó un equipo — \$.?12\.000$/ }),
-    ).toBeTruthy()
+    await expect(await panel.findByRole('button', { name: 'Dividir pago por equipo' })).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /^Pagó uno — \$.?2\.400$/ })).toBeTruthy()
     // Todavía no puso nadie: contar gente acá no diría nada.
     await expect(panel.queryByText(/^Pagaron /)).toBeNull()
+  },
+}
+
+/**
+ * "Dividir pago por equipo" parte el cobro en dos filas rotuladas, igual que el
+ * pago dividido, cada una con su propio "Cobrar". Se le cobra a un equipo solo
+ * —el otro todavía no llegó— y el cobro sale por ESA fila, con su monto y su
+ * método, sin tocar la del otro equipo.
+ */
+export const DividirPorEquipo: Story = {
+  args: {
+    actions: okActions(),
+    booking: {
+      ...toGridBooking(bookingCompleted()),
+      courtId: courtFutbol5().id,
+      date: AYER,
+      priceSnapshot: 2400000,
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      totalPaid: 0,
+      pending: 2400000,
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await panel.findByRole('button', { name: 'Dividir pago por equipo' }))
+
+    await expect(await panel.findByText('Equipo 1')).toBeTruthy()
+    await expect(await panel.findByText('Equipo 2')).toBeTruthy()
+    // En modo equipo los atajos se van: el formulario ya es el atajo.
+    await expect(panel.queryByRole('button', { name: /^Pagó uno/ })).toBeNull()
+    await expect(panel.queryByRole('button', { name: 'Dividir pago por equipo' })).toBeNull()
+
+    await userEvent.click(await panel.findByRole('button', { name: 'Cobrar al Equipo 1' }))
+    // Turno ya jugado = cobro de deuda. Una sola línea: la mitad, en efectivo.
+    await waitFor(() =>
+      expect(args.actions?.chargeDebtAction).toHaveBeenCalledWith(
+        expect.objectContaining({ charges: [{ amount: 1200000, method: 'cash' }] }),
+      ),
+    )
+  },
+}
+
+/** "Cobrar en un solo pago" deshace la división y vuelve al monto completo. */
+export const DividirYVolver: Story = {
+  args: {
+    booking: {
+      ...toGridBooking(bookingCompleted()),
+      courtId: courtFutbol5().id,
+      date: AYER,
+      priceSnapshot: 2400000,
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      totalPaid: 0,
+      pending: 2400000,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await panel.findByRole('button', { name: 'Dividir pago por equipo' }))
+    await userEvent.click(await panel.findByRole('button', { name: 'Cobrar en un solo pago' }))
+    await waitFor(() => expect(panel.queryByText('Equipo 2')).toBeNull())
+    await expect(await panel.findByRole('button', { name: /^Cobrar \$.?24\.000$/ })).toBeTruthy()
+    await expect(await panel.findByRole('button', { name: 'Dividir pago por equipo' })).toBeTruthy()
   },
 }
 
@@ -293,14 +355,14 @@ export const PagaronCuatroDeDiez: Story = {
     const panel = within(canvasElement.ownerDocument.body)
     await expect(await panel.findByText('Pagaron 4 de 10')).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /^Pagó uno — \$.?2\.400$/ })).toBeTruthy()
-    // Ya entró plata: juntar por equipo dejó de tener sentido.
-    await expect(panel.queryByRole('button', { name: /Pagó un equipo/ })).toBeNull()
+    // Ya entró plata: dividir por equipo dejó de tener sentido.
+    await expect(panel.queryByRole('button', { name: 'Dividir pago por equipo' })).toBeNull()
   },
 }
 
 /**
- * Justo la mitad. El dato útil no es "5", es que hay un equipo entero saldado —
- * que es lo que el mostrador quiere saber cuando juntan la plata de a grupos.
+ * Justo la mitad. El dato útil no es "5 de 10", es que un equipo está saldado —
+ * dicho con las mismas palabras que las filas de "Dividir pago por equipo".
  */
 export const MitadCobrada: Story = {
   args: {
@@ -317,9 +379,9 @@ export const MitadCobrada: Story = {
   },
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
-    await expect(await panel.findByText('Pagaron 5 de 10 · un equipo entero')).toBeTruthy()
+    await expect(await panel.findByText('Equipo 1 pagó · falta Equipo 2')).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /^Cobrar \$.?12\.000$/ })).toBeTruthy()
-    await expect(panel.queryByRole('button', { name: /Pagó un equipo/ })).toBeNull()
+    await expect(panel.queryByRole('button', { name: 'Dividir pago por equipo' })).toBeNull()
   },
 }
 
@@ -346,9 +408,7 @@ export const SeniaNoEsGenteQuePago: Story = {
   play: async ({ canvasElement }) => {
     const panel = within(canvasElement.ownerDocument.body)
     await expect(panel.queryByText(/^Pagaron /)).toBeNull()
-    await expect(
-      await panel.findByRole('button', { name: /^Pagó un equipo — \$.?8\.400$/ }),
-    ).toBeTruthy()
+    await expect(await panel.findByRole('button', { name: 'Dividir pago por equipo' })).toBeTruthy()
     await expect(await panel.findByRole('button', { name: /^Pagó uno — \$.?2\.400$/ })).toBeTruthy()
   },
 }

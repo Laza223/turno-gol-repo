@@ -101,11 +101,11 @@ export function playerShare(priceSnapshot: number, capacity: number | undefined)
 }
 
 export type ChargeSplit = {
-  /** La mitad de lo que falta. Lo que carga "Pagó un equipo". */
+  /** La mitad de lo que falta. Lo que precarga cada fila de "Dividir pago por equipo". */
   halfCents: number
   /** Lo que pone un jugador. `null` si no sabemos cuántos entran en la cancha. */
   shareCents: number | null
-  /** Ofrecer "Pagó un equipo": hay saldo y todavía no pagó nadie. */
+  /** Ofrecer "Dividir pago por equipo": hay saldo y todavía no pagó nadie. */
   canSplitHalf: boolean
   /** Ofrecer "Pagó uno": sabemos la parte y todavía falta más de una. */
   canSplitShare: boolean
@@ -176,10 +176,11 @@ function splitNote(
   if (shareCents !== null && capacity) {
     const paidCount = Math.round(counterPaid / shareCents)
     if (paidCount <= 0) return null
-    // Justo la mitad: el dato útil es que un equipo entero está saldado, que es
-    // lo que el mostrador quiere saber cuando juntan la plata de a grupos.
-    const equipo = paidCount * 2 === capacity ? ' · un equipo entero' : ''
-    return `Pagaron ${paidCount} de ${capacity}${equipo}`
+    // Justo la mitad: el dato útil no es "5 de 10" sino que un equipo entero
+    // está saldado — y con el mismo vocabulario que las filas de "Dividir pago
+    // por equipo", para que el panel no nombre lo mismo de dos maneras.
+    if (paidCount * 2 === capacity) return 'Equipo 1 pagó · falta Equipo 2'
+    return `Pagaron ${paidCount} de ${capacity}`
   }
   // Sin capacidad no se puede contar gente, pero sí decir que falta la otra
   // mitad — que era el rótulo original y sigue siendo cierto.

@@ -343,14 +343,20 @@ async function createPreapprovalOrThrowFriendly(
  * absorbe acá: nunca debe propagar y frenar el subscribe/reactivate.
  */
 /**
- * Dos fechas de primer cobro son "la misma" con un minuto de tolerancia: MP
- * devuelve `start_date` con su propio offset y redondeo, no el string exacto
- * que se mandó. Ausente de los dos lados también cuenta como igual (cobro
- * inmediato: el trial ya venció o no existe).
+ * ¿El primer cobro grabado en el preapproval pendiente es el que mandaríamos
+ * hoy? Un minuto de tolerancia: MP devuelve `start_date` con su propio offset
+ * y redondeo, no el string exacto que se mandó.
+ *
+ * Cobro inmediato (`expected` ausente: reactivación, o trial vencido): MP
+ * COMPLETA `start_date` con la fecha de creación aunque no se la mandemos
+ * (medido en producción el 2026-09-16: `"2026-09-16T17:38:00.000-04:00"` en un
+ * preapproval creado sin el campo). Por eso acá no se exige ausencia sino que
+ * esa fecha no sea futura: pasada o de hace un rato también cobra al autorizar.
+ * Exigir ausencia hacía que el reuso no se diera NUNCA en la vida real.
  */
-function sameFirstCharge(fromMp: Date | null, expected: Date | undefined): boolean {
-  if (!fromMp && !expected) return true
-  if (!fromMp || !expected) return false
+function sameFirstCharge(fromMp: Date | null, expected: Date | undefined, now: Date): boolean {
+  if (!expected) return !fromMp || fromMp.getTime() <= now.getTime() + 60_000
+  if (!fromMp) return false
   return Math.abs(fromMp.getTime() - expected.getTime()) <= 60_000
 }
 
@@ -360,7 +366,7 @@ async function reusablePendingCheckout(
   billingCycle: BillingCycle,
   tenantId: string,
   gateway: PaymentGateway,
-  expected: { reason: string; firstChargeAt: Date | undefined },
+  expected: { reason: string; firstChargeAt: Date | undefined; now: Date },
 ): Promise<PreapprovalResult | null> {
   const preapprovalId = sub.mp_subscription_id
   if (!preapprovalId) return null
@@ -389,7 +395,7 @@ async function reusablePendingCheckout(
   // pendiente puede ser ANTERIOR al fin del trial de hoy — soporte pudo
   // extenderlo (`extendTrial`) después de aquel intento. Reusarlo cobraría
   // durante la prueba, que es justo lo que ese fix prohíbe.
-  if (!sameFirstCharge(state.startDate ?? null, expected.firstChargeAt)) return null
+  if (!sameFirstCharge(state.startDate ?? null, expected.firstChargeAt, expected.now)) return null
 
   // `pending` no debería tener cobros, pero si MP alguna vez devuelve esa
   // combinación, reusar sería mandar al dueño a pagar algo ya cobrado.
@@ -460,6 +466,7 @@ export async function subscribe(
     const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
       reason,
       firstChargeAt,
+      now,
     })
     if (reused) {
       // CAS: solo pisa plan/ciclo si `mp_subscription_id` sigue siendo el que
@@ -928,6 +935,7 @@ export async function reactivate(
     const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
       reason,
       firstChargeAt: undefined,
+      now,
     })
     if (reused) {
       // CAS: mismo criterio que `subscribe()` — 0 filas significa que otra tx

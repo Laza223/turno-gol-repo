@@ -87,7 +87,10 @@ export function AdminLayoutShell({
 
       {/* Main content */}
       <div
-        className={cn('lg:pl-[72px]', isFullBleed && 'h-dvh flex flex-col min-h-0 overflow-hidden')}
+        className={cn(
+          'lg:pl-[72px] xl:pl-[220px]',
+          isFullBleed && 'h-dvh flex flex-col min-h-0 overflow-hidden',
+        )}
       >
         <div
           className={cn(

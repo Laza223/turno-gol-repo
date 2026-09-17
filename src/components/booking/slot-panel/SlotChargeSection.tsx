@@ -205,7 +205,9 @@ export function SlotChargeSection({
           "Pagó uno" sigue siendo de un toque: se toca una vez por jugador, y
           abrir un formulario por cada uno sería fricción pura. */}
       {!showTeams && (split.canSplitHalf || split.canSplitShare) && (
-        <div className="mt-2 flex flex-col gap-2">
+        // En escritorio, lado a lado: el panel es más ancho y apilados empujaban
+        // las acciones del turno debajo del borde. Si queda uno solo, ocupa la fila.
+        <div className="mt-2 flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:[&>*:last-child:nth-child(odd)]:col-span-2">
           {split.canSplitHalf && (
             <button
               type="button"

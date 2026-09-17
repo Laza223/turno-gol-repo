@@ -1,5 +1,8 @@
 import type { Sql } from 'postgres'
-import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
+import {
+  depositCashFlowDescription,
+  DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX,
+} from '@/modules/bookings/booking.charges'
 import { logger } from '@/shared/lib/logger'
 
 /**
@@ -354,21 +357,71 @@ async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> {
  * INV9 — cash_flow de categoría `booking` vía `mercadopago` sin ningún
  * payment `approved` que lo respalde: huérfano (guardia — plata que aparece
  * en caja sin origen rastreable en `payments`).
+ *
+ * Hallazgo 🟡9 (auditoría tanda 319-324, docs/audit/2026-09-16-revision-tanda-319-324.md):
+ * `method='mercadopago'` en `cash_flows` NO implica Checkout Pro. Un cobro de
+ * mostrador (QR o transferencia de MP cobrado en persona) usa el mismo
+ * `method` pero lo carga el staff a mano vía `addBookingChargeAction` /
+ * `completeAndChargeBookingAction` (reservas/actions.ts) o `chargeDebtAction`
+ * (caja/deudas/actions.ts) — nunca pasa por el gateway ni genera fila en
+ * `payments`, así que exigírsela producía huérfanos falsos que sólo crecían
+ * (8 filas reales, tenant `ed346072`, 4 bookings `spontaneous` con
+ * `sum(cash_flows.amount) = price_snapshot` exacto — la plata estaba bien).
+ * El único cash_flow que SÍ tiene que tener respaldo es el reflejo automático
+ * de una seña de Checkout Pro (`recordDepositCashFlow`, payment.service.ts).
+ * No hay columna que marque "origen online" en el schema actual, así que el
+ * discriminante son DOS condiciones, las dos en el WHERE:
+ *
+ *  1. `description` exacta de `depositCashFlowDescription` — todo cobro manual
+ *     arma la suya ("Cobro de turno...", "Cobro de deuda atrasada..." o una
+ *     nota libre del staff).
+ *  2. que exista ALGUNA fila en `payments` para ese booking. Sola, la
+ *     condición 1 no alcanza: `recordManualBookingDepositCashFlow`
+ *     (booking.service.ts) escribe la MISMA description cuando el staff marca
+ *     a mano una seña cobrada por MP, y eso nunca genera fila en `payments`.
+ *     El camino online, en cambio, inserta el `payments` en `pending` al crear
+ *     el checkout, mucho antes del cash_flow — o sea: "hubo checkout online
+ *     pero ningún pago aprobado lo respalda", que es exactamente el drift que
+ *     esta invariante busca. Tiene que ser una fila de COBRO online
+ *     (`deposit`, el único que escriben hoy `createDepositPayment` y
+ *     `upsertPaymentRow`, o `full_payment`, que `prepareRefund` ya trata como
+ *     pago reembolsable y quedaría ciego si algún día se escribe): la
+ *     devolución manual pendiente que deja `prepareManualRefund` al cancelar
+ *     también es una fila en `payments`, y sin el tipo volvía a marcar como
+ *     huérfana una seña de mostrador cobrada con el QR de MP (revisión del PR
+ *     #326).
+ *
+ * Las dos van en SQL a propósito y NO después del `LIMIT`: filtrar en JS dejaba
+ * que 500 cobros de mostrador (`ORDER BY created_at ASC`) llenaran la ventana y
+ * taparan para siempre un huérfano genuino más nuevo — el mismo problema que
+ * este hallazgo venía a resolver, corrido de lugar.
+ *
+ * Exportada (a diferencia de las demás INV*) para cobertura unitaria directa
+ * del discriminante en tests/unit/mp-reconcile-service.test.ts — las otras
+ * ya se cubren end-to-end contra Postgres real en
+ * tests/integration/reconciliation-drift.test.ts.
  */
-async function findOrphanCashflows(sql: Sql): Promise<DriftFinding[]> {
+export async function findOrphanCashflows(sql: Sql): Promise<DriftFinding[]> {
   const rows = await sql<
     {
       id: string
       tenantId: string
       bookingId: string
       amount: number
+      description: string
     }[]
   >`
-    SELECT cf.id, cf.tenant_id AS "tenantId", cf.booking_id AS "bookingId", cf.amount
+    SELECT cf.id, cf.tenant_id AS "tenantId", cf.booking_id AS "bookingId", cf.amount,
+           cf.description
     FROM cash_flows cf
     WHERE cf.category = 'booking'
       AND cf.method = 'mercadopago'
       AND cf.booking_id IS NOT NULL
+      AND cf.description = ${DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX} || cf.booking_id::text
+      AND EXISTS (
+        SELECT 1 FROM payments p
+        WHERE p.booking_id = cf.booking_id AND p.type IN ('deposit', 'full_payment')
+      )
       AND NOT EXISTS (
         SELECT 1 FROM payments p
         WHERE p.booking_id = cf.booking_id AND p.status = 'approved'
@@ -380,7 +433,16 @@ async function findOrphanCashflows(sql: Sql): Promise<DriftFinding[]> {
 
   warnIfTruncated(rows.length, 'inv9_orphan_cashflow')
 
-  return rows.map((row) => ({
+  // Segunda pasada redundante A PROPÓSITO sobre la condición 1: el WHERE ya la
+  // aplicó, esto la vuelve a chequear con el template armado por
+  // `depositCashFlowDescription`. Mismo idiom de defensa en profundidad que el
+  // filtro explícito por tenant_id "además de RLS" (CLAUDE.md), y es lo que
+  // hace verificable el discriminante en un test unitario sin Postgres.
+  const onlineDepositReflections = rows.filter(
+    (row) => row.description === depositCashFlowDescription(row.bookingId),
+  )
+
+  return onlineDepositReflections.map((row) => ({
     invariant: 'inv9_orphan_cashflow' as const,
     tenantId: row.tenantId,
     resourceType: 'cash_flow' as const,

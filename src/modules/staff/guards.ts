@@ -124,6 +124,35 @@ export async function requireBillingAdminStaffAction(): Promise<StaffActionAuth>
   })
 }
 
+/** Resultado de `requireAuthenticatedStaffAction`: `tenant` puede no existir todavía. */
+export type AuthenticatedStaffAuth =
+  | { ok: true; user: StaffUser & { staffUserId: string }; tenant: TenantRow | null }
+  | { ok: false; error: string }
+
+/**
+ * Guard para Server Actions que son un simple proxy autenticado hacia un
+ * tercero (p. ej. `geocodeAddressAction`, que sin guard sería un open relay
+ * hacia Georef) y que necesitan correr ANTES de que el tenant exista: el paso
+ * 1 del wizard de onboarding, cuando el dueño todavía está creando su
+ * complejo. `requireAdminStaffAction`/`requireOperatorStaff` no sirven acá
+ * porque `getStaffRole` necesita un `tenant.id` que todavía no existe —
+ * exigirlo cortaba con "Tenant no encontrado" al primer dueño nuevo que
+ * probaba el buscador de dirección (hallazgo 🔴 2, auditoría 2026-09-16).
+ *
+ * Mismo chequeo de identidad que ya usa `createTenantAction` para el alta:
+ * solo staff autenticado. Sin mirar rol (no hay membresía que leer sin
+ * tenant) ni lifecycle del tenant (no hay mutación de datos del tenant acá,
+ * es una consulta de solo lectura a Georef). Si ya existe un tenant para este
+ * staff, se devuelve igual — lo usa también la revisita de Perfil/paso 1.
+ */
+export async function requireAuthenticatedStaffAction(): Promise<AuthenticatedStaffAuth> {
+  const user = await extractAuthUser()
+  if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+
+  const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
+  return { ok: true, user: { ...user, staffUserId: user.staffUserId }, tenant }
+}
+
 /**
  * Guard server-side para zonas solo-admin (Configuración, Vista Equipo).
  * El Encargado (manager) rebota a /dashboard por default — esa página lo

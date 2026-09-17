@@ -178,6 +178,97 @@ describe('BookingEditDialog', () => {
     await waitFor(() => expect(onSuccess).toHaveBeenCalled())
   })
 
+  // 🟡 Hallazgo 7 (auditoría 2026-09-16): vaciar el campo de teléfono tiene que
+  // mandarse como '' (no omitirse) — es la señal de "borrarlo a propósito".
+  it('vacía el teléfono: llama a editAction con guestPhone: ""', async () => {
+    const editAction = vi.fn(async () => ({ success: true as const }))
+    const guest = bookingGuest()
+
+    render(
+      <BookingEditDialog
+        open
+        onOpenChange={vi.fn()}
+        booking={toGridBooking(guest)}
+        dayBookings={[]}
+        daySlots={DAY_SLOTS}
+        getDetailAction={vi.fn(async () => ({
+          success: true as const,
+          guestPhone: guest.guestPhone,
+          createdByStaff: staffManager().id,
+        }))}
+        editAction={editAction}
+        onSuccess={vi.fn()}
+      />,
+    )
+
+    const phone = (await screen.findByLabelText('Teléfono')) as HTMLInputElement
+    expect(phone.value).toBe(guest.guestPhone)
+    fireEvent.change(phone, { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() =>
+      expect(editAction).toHaveBeenCalledWith(expect.objectContaining({ guestPhone: '' })),
+    )
+  })
+
+  // 🟡 Hallazgo 8 (auditoría 2026-09-16): mismo aviso que el precio, para el
+  // nombre — corregirlo en una sesión de abonado sin jugador vinculado sólo
+  // aplica a esta fecha, el worker rolling la vuelve a generar con
+  // `abonados.contact_name`.
+  it('sesión de abonado sin jugador: avisa que el nombre es sólo para esta fecha', async () => {
+    render(
+      <BookingEditDialog
+        open
+        onOpenChange={vi.fn()}
+        booking={toGridBooking(
+          booking({ type: 'fixed', playerId: null, guestName: 'Escuelita Martes' }),
+        )}
+        dayBookings={[]}
+        daySlots={DAY_SLOTS}
+        getDetailAction={vi.fn(async () => ({
+          success: true as const,
+          guestPhone: null,
+          createdByStaff: null,
+        }))}
+        editAction={vi.fn()}
+        onSuccess={vi.fn()}
+      />,
+    )
+
+    await screen.findByLabelText('Nombre')
+    expect(
+      screen.getByText(
+        'Turno fijo: este nombre es sólo para esta fecha, no cambia el contacto del abonado.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('invitado común (no abonado): no muestra el aviso de nombre', async () => {
+    render(
+      <BookingEditDialog
+        open
+        onOpenChange={vi.fn()}
+        booking={toGridBooking(bookingGuest())}
+        dayBookings={[]}
+        daySlots={DAY_SLOTS}
+        getDetailAction={vi.fn(async () => ({
+          success: true as const,
+          guestPhone: null,
+          createdByStaff: staffManager().id,
+        }))}
+        editAction={vi.fn()}
+        onSuccess={vi.fn()}
+      />,
+    )
+
+    await screen.findByLabelText('Nombre')
+    expect(
+      screen.queryByText(
+        'Turno fijo: este nombre es sólo para esta fecha, no cambia el contacto del abonado.',
+      ),
+    ).toBeNull()
+  })
+
   it('sesión de abonado: avisa que el precio es sólo para esta fecha, no para el contrato', async () => {
     render(
       <BookingEditDialog

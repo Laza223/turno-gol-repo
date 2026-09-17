@@ -171,8 +171,11 @@ export function BookingEditDialog({
         return
       }
       input.guestName = trimmedName
-      const trimmedPhone = phone.trim()
-      if (trimmedPhone) input.guestPhone = trimmedPhone
+      // Siempre se manda, igual que el nombre arriba: '' es "borrar el
+      // teléfono a propósito", no "no tocarlo" — omitirlo cuando queda vacío
+      // hacía que vaciar el campo se ignorara en silencio y el valor viejo
+      // quedara guardado (🟡 hallazgo 7, auditoría 2026-09-16).
+      input.guestPhone = phone.trim()
     }
 
     const durationChanged = canEditDuration && timeEnd !== booking.timeEnd
@@ -242,6 +245,12 @@ export function BookingEditDialog({
                   />
                 </div>
               </div>
+            )}
+
+            {isGuest && isAbonadoSession && (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
+                Turno fijo: este nombre es sólo para esta fecha, no cambia el contacto del abonado.
+              </p>
             )}
 
             {canEditDuration && (

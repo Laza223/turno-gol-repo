@@ -7,7 +7,11 @@ import { uuid, moneyCents } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
+import {
+  chargeSplitPayment,
+  rejectChargeConflict,
+  resolveIdempotentCharges,
+} from '@/modules/cashflow/cashflow.service'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { formatArs } from '@/lib/format'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
@@ -65,31 +69,47 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
       }
     }
 
-    // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
-    // en reservas/actions.ts): dos cobros concurrentes del mismo booking leían
-    // el mismo `pending` sin lock y ambos pasaban la validación. Lockear la
-    // fila del booking ANTES de leer los charges serializa los cobros: el
-    // segundo espera a que el primero commitee su cash_flow y relee el
-    // pendiente ya actualizado.
-    await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
-
-    const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
-    const { pending } = summarizeBookingCharges({
-      priceSnapshot: booking.priceSnapshot,
-      depositAmount: booking.depositAmount,
-      depositStatus: booking.depositStatus,
-      chargesTotal,
-    })
-
-    if (pending <= 0) {
-      return { success: false as const, error: 'Esta reserva ya no tiene saldo pendiente.' }
+    // 🟡 4 de la revisión de la tanda #319-#324: acá se comparaba el total
+    // COMPLETO de `charges` contra el pendiente, sin excluir las líneas ya
+    // insertadas por key — el fix que su función hermana
+    // (`addBookingChargeAction`, reservas/actions.ts) ya documentaba como
+    // corregido y que nunca se propagó hasta acá. Un reintento idéntico se
+    // rechazaba con un error falso ("ya no tiene saldo pendiente" / "supera lo
+    // pendiente") aunque el cobro hubiera entrado; uno con otro monto caía en
+    // el mismo silencio del 🔴 1. Las dos usan ahora la misma fuente única.
+    const idempotent = await resolveIdempotentCharges(tenant.id, charges, clientIdempotencyKey, tx)
+    if (!idempotent.ok) {
+      return { success: false as const, error: idempotent.error }
     }
+    const newCharging = idempotent.newChargingCents
 
-    const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
-    if (totalCharging > pending) {
-      return {
-        success: false as const,
-        error: `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`,
+    if (newCharging > 0) {
+      // Hallazgo C (TOCTOU, ENS-3 real, mismo patrón que addBookingChargeAction
+      // en reservas/actions.ts): dos cobros concurrentes del mismo booking leían
+      // el mismo `pending` sin lock y ambos pasaban la validación. Lockear la
+      // fila del booking ANTES de leer los charges serializa los cobros: el
+      // segundo espera a que el primero commitee su cash_flow y relee el
+      // pendiente ya actualizado. Solo corre cuando hay algo NUEVO para cobrar:
+      // un reintento sin líneas nuevas no necesita el lock ni la validación.
+      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+
+      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+      const { pending } = summarizeBookingCharges({
+        priceSnapshot: booking.priceSnapshot,
+        depositAmount: booking.depositAmount,
+        depositStatus: booking.depositStatus,
+        chargesTotal,
+      })
+
+      if (pending <= 0) {
+        return { success: false as const, error: 'Esta reserva ya no tiene saldo pendiente.' }
+      }
+
+      if (newCharging > pending) {
+        return {
+          success: false as const,
+          error: `El cobro total (${formatArs(newCharging)}) supera lo pendiente (${formatArs(pending)}).`,
+        }
       }
     }
 
@@ -114,7 +134,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
     )
 
     return { success: true as const }
-  })
+  }).catch(rejectChargeConflict)
 
   if (result.success) {
     // `/deudas` era un stub de redirect: revalidarlo no refrescaba ninguna

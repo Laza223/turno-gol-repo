@@ -248,7 +248,10 @@ function resolvePayerEmail(
  * vez por año por `price_annual * 12`. Devolver `price_annual` a pelo manda
  * a MP 12 veces menos de lo que corresponde.
  */
-export function planAmount(plan: PlanRow, cycle: BillingCycle): number {
+export function planAmount(
+  plan: Pick<PlanRow, 'price_monthly' | 'price_annual'>,
+  cycle: BillingCycle,
+): number {
   return cycle === 'annual' ? plan.price_annual * 12 : plan.price_monthly
 }
 
@@ -414,7 +417,18 @@ export async function subscribe(
   tx: DbTx,
   now: Date = new Date(),
 ): Promise<SubscribeResult> {
-  const sub = await loadSubForUpdate(tenantId, tx)
+  // Fix D4-A1 (mismo patrón que mp-webhook.handler.ts, hallazgo 🟢10 auditoría
+  // 2026-09-16): esta primera lectura es SIN lock (`loadSub`, no
+  // `loadSubForUpdate`). El GET de `reusablePendingCheckout` de más abajo
+  // puede tardar hasta 8s (24s si dispara refresh de token OAuth, ver
+  // mp-oauth.ts) — antes corría sosteniendo el `FOR UPDATE`, bloqueando
+  // cualquier otra tx sobre esta misma fila (otro subscribe/reactivate
+  // concurrente, o el webhook procesando un cobro de este tenant) durante todo
+  // ese tiempo. El camino de reuso no crea ni cancela nada en MP (ver el CAS
+  // más abajo), así que no necesita el lock; el camino de cancelar+crear sí
+  // (B5, huérfano MP↔DB) — por eso vuelve a leer CON lock recién antes de
+  // tocar MP con un efecto que hay que serializar de verdad.
+  const sub = await loadSub(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
   if (sub.status !== 'trialing') {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
@@ -436,7 +450,7 @@ export async function subscribe(
   }
 
   const owner = await loadTenantOwner(tenantId, tx)
-  const payerEmail = resolvePayerEmail(sub, owner)
+  let payerEmail = resolvePayerEmail(sub, owner)
   if (!payerEmail) {
     throw new SubscriptionNotFoundError(tenantId)
   }
@@ -455,21 +469,29 @@ export async function subscribe(
       now,
     })
     if (reused) {
-      await tx.execute(sql`
+      // CAS: solo pisa plan/ciclo si `mp_subscription_id` sigue siendo el que
+      // vimos en la lectura SIN lock de arriba. 0 filas = otra tx ganó la
+      // carrera mientras esperábamos la respuesta de MP (canceló/reemplazó el
+      // preapproval) — el `checkoutUrl` que reusaríamos ya no sirve, así que
+      // NO se devuelve: cae al camino de abajo con estado fresco.
+      const reuseUpdate = await tx.execute(sql`
         UPDATE tenant_subscriptions
         SET plan_id = ${planId},
             billing_cycle = ${billingCycle}::billing_cycle,
             updated_at = NOW()
-        WHERE tenant_id = ${tenantId}
+        WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
+        RETURNING tenant_id
       `)
-      await insertSystemAuditLog(tx, {
-        tenantId,
-        action: 'subscription.checkout_reused',
-        resourceType: 'tenant_subscription',
-        resourceId: tenantId,
-        metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
-      })
-      return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
+      if ((reuseUpdate as unknown as Array<{ tenant_id: string }>).length > 0) {
+        await insertSystemAuditLog(tx, {
+          tenantId,
+          action: 'subscription.checkout_reused',
+          resourceType: 'tenant_subscription',
+          resourceId: tenantId,
+          metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
+        })
+        return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
+      }
     }
   }
 
@@ -482,10 +504,25 @@ export async function subscribe(
   // cancelado en MP" (`isMpAlreadyCancelledPreapprovalError`), cualquier otro
   // error aborta el subscribe entero. Si llegamos acá, `reusablePendingCheckout`
   // ya descartó que el preapproval previo sirva tal cual (Fix
-  // "reuso-checkout-pendiente").
-  if (sub.mp_subscription_id) {
+  // "reuso-checkout-pendiente"), o el CAS de arriba detectó que ese descarte
+  // ya no aplica contra el estado actual.
+  //
+  // Recién ACÁ se pide el lock real: nada de lo de arriba hizo un efecto en MP
+  // que haya que deshacer, así que no hacía falta serializarlo.
+  const lockedSub = await loadSubForUpdate(tenantId, tx)
+  if (!lockedSub) throw new SubscriptionNotFoundError(tenantId)
+  if (lockedSub.status !== 'trialing') {
+    throw new ReactivateNotAllowedError(tenantId, lockedSub.status)
+  }
+  // `mp_payer_email` pudo cambiar entre la lectura sin lock y acá.
+  payerEmail = resolvePayerEmail(lockedSub, owner)
+  if (!payerEmail) {
+    throw new SubscriptionNotFoundError(tenantId)
+  }
+
+  if (lockedSub.mp_subscription_id) {
     try {
-      await gateway.cancelPreapproval(sub.mp_subscription_id)
+      await gateway.cancelPreapproval(lockedSub.mp_subscription_id)
     } catch (err) {
       if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
     }
@@ -859,7 +896,10 @@ export async function reactivate(
   tx: DbTx,
   now: Date = new Date(),
 ): Promise<SubscribeResult> {
-  const sub = await loadSubForUpdate(tenantId, tx)
+  // Fix D4-A1 — mismo criterio que `subscribe()` (ver ese comentario): esta
+  // primera lectura es SIN lock. El GET de `reusablePendingCheckout` no debe
+  // sostener el `FOR UPDATE` mientras espera a MP.
+  const sub = await loadSub(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
 
   // ENS-20: se suman `suspended` y `blocked` — doc4 §2 los clasifica como
@@ -882,7 +922,7 @@ export async function reactivate(
   if (!plan) throw new PlanNotFoundError(planId)
 
   const owner = await loadTenantOwner(tenantId, tx)
-  const payerEmail = resolvePayerEmail(sub, owner)
+  let payerEmail = resolvePayerEmail(sub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
   const amount = planAmount(plan, billingCycle)
@@ -898,25 +938,45 @@ export async function reactivate(
       now,
     })
     if (reused) {
-      await tx.execute(sql`
+      // CAS: mismo criterio que `subscribe()` — 0 filas significa que otra tx
+      // ya reemplazó `mp_subscription_id` mientras esperábamos a MP.
+      const reuseUpdate = await tx.execute(sql`
         UPDATE tenant_subscriptions
         SET plan_id = ${planId},
             billing_cycle = ${billingCycle}::billing_cycle,
             pending_plan_change = NULL,
             pending_change_at = NULL,
             updated_at = NOW()
-        WHERE tenant_id = ${tenantId}
+        WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
+        RETURNING tenant_id
       `)
-      await insertSystemAuditLog(tx, {
-        tenantId,
-        action: 'subscription.checkout_reused',
-        resourceType: 'tenant_subscription',
-        resourceId: tenantId,
-        metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
-      })
-      return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
+      if ((reuseUpdate as unknown as Array<{ tenant_id: string }>).length > 0) {
+        await insertSystemAuditLog(tx, {
+          tenantId,
+          action: 'subscription.checkout_reused',
+          resourceType: 'tenant_subscription',
+          resourceId: tenantId,
+          metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
+        })
+        return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
+      }
     }
   }
+
+  // Recién ACÁ se pide el lock real (mismo criterio que `subscribe()`):
+  // serializa el cancelar+crear de abajo contra cualquier otra tx concurrente.
+  // Estado fresco: puede haber cambiado desde la lectura sin lock de arriba.
+  const lockedSub = await loadSubForUpdate(tenantId, tx)
+  if (!lockedSub) throw new SubscriptionNotFoundError(tenantId)
+  if (!allowed.includes(lockedSub.status)) {
+    throw new ReactivateNotAllowedError(tenantId, lockedSub.status)
+  }
+  if (lockedSub.scheduled_deletion_at && toDate(lockedSub.scheduled_deletion_at) <= now) {
+    throw new ReactivateNotAllowedError(tenantId, `${lockedSub.status}_past_deletion`)
+  }
+  // `mp_payer_email` pudo cambiar entre la lectura sin lock y acá.
+  payerEmail = resolvePayerEmail(lockedSub, owner)
+  if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
   // Fix 1 (R2 🔴): el preapproval VIEJO puede seguir vivo en MP reintentando
   // — el sweep de dunning (dunning-retry.worker.ts) solo escala estado
@@ -949,9 +1009,9 @@ export async function reactivate(
   // churned vía dunning), datos legacy pre-fix, o el escenario de arriba
   // (rollback tras un cancel exitoso); una baja voluntaria previa normal ya
   // no deja nada que cancelar (ver test dedicado).
-  if (sub.mp_subscription_id) {
+  if (lockedSub.mp_subscription_id) {
     try {
-      await gateway.cancelPreapproval(sub.mp_subscription_id)
+      await gateway.cancelPreapproval(lockedSub.mp_subscription_id)
     } catch (err) {
       if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
     }
@@ -993,7 +1053,7 @@ export async function reactivate(
     metadata: {
       planId,
       billingCycle,
-      fromStatus: sub.status,
+      fromStatus: lockedSub.status,
       mpSubscriptionId: preapproval.preapprovalId,
     },
   })

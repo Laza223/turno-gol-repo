@@ -37,6 +37,13 @@ export function summarizeBookingCharges(opts: {
  * Método-agnóstico a propósito: el `method` real de la fila ya se muestra
  * aparte en la UI (/caja), así que el texto no debe asumir MercadoPago.
  */
+/**
+ * Prefijo del `description` del reflejo de seña. Exportado aparte para que la
+ * reconciliación (INV9) pueda filtrar EN SQL sin duplicar el literal: si el
+ * texto cambia, cambian juntos el que se escribe y el que se busca.
+ */
+export const DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX = 'Seña — turno '
+
 export function depositCashFlowDescription(bookingId: string): string {
-  return `Seña — turno ${bookingId}`
+  return `${DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX}${bookingId}`
 }

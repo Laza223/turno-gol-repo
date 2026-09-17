@@ -15,12 +15,15 @@ vi.mock('@/modules/payments/payment.service', () => ({
   dispatchPaymentInfo: vi.fn(),
 }))
 
+import type { Sql } from 'postgres'
 import { withTenantContext } from '@/shared/db/client'
 import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.service'
 import {
   reconcileApprovedPaymentForBooking,
   ReconcileProcessingError,
 } from '@/modules/payments/mp-reconcile.service'
+import { findOrphanCashflows } from '@/modules/payments/reconciliation.service'
+import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
 
 const mockWithTenantContext = withTenantContext as ReturnType<typeof vi.fn>
 const mockLockMpEvent = lockMpEvent as ReturnType<typeof vi.fn>
@@ -297,5 +300,111 @@ describe('reconcileApprovedPaymentForBooking — pago tardío', () => {
 
     expect(result).toEqual({ confirmed: false, notificationIds: [] })
     expect(mockDispatchPaymentInfo).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Hallazgo 🟡9 (auditoría tanda 319-324): `method='mercadopago'` en
+ * `cash_flows` no implica Checkout Pro — un cobro de mostrador (QR/transfer.
+ * de MP cobrado en persona) usa el mismo method pero jamás genera fila en
+ * `payments`. El discriminante es la description exacta que arma
+ * `depositCashFlowDescription`: sólo ESE texto identifica el reflejo online
+ * de una seña que sí tiene que tener respaldo.
+ *
+ * `findOrphanCashflows` hace UNA sola query — el fake `sql` de acá simula la
+ * fila que ya salió filtrada de la DB (method/category/booking_id/NOT EXISTS
+ * ya aplicados por el WHERE real) y el test verifica el filtro por
+ * description que corre después, en JS.
+ */
+describe('findOrphanCashflows (INV9) — discriminante por description', () => {
+  const TENANT_ID = 'tenant-inv9'
+  const BOOKING_ID = '22222222-2222-4222-8222-222222222222'
+
+  function fakeSql(rows: unknown[]): Sql {
+    return (async () => rows) as unknown as Sql
+  }
+
+  it('cobro de mostrador (método mixto, ej. QR de MP cobrado a mano) → NO se marca huérfano', async () => {
+    const sql = fakeSql([
+      {
+        id: 'cf-mostrador-1',
+        tenantId: TENANT_ID,
+        bookingId: BOOKING_ID,
+        amount: 80000,
+        // Descripción real de completeAndChargeBookingAction/addBookingChargeAction
+        // (reservas/actions.ts) para un cobro partido en varias líneas.
+        description: 'Cobro de turno (2/3)',
+      },
+    ])
+
+    const findings = await findOrphanCashflows(sql)
+
+    expect(findings).toEqual([])
+  })
+
+  it('cobro de deuda atrasada por mostrador vía MP → tampoco se marca huérfano', async () => {
+    const sql = fakeSql([
+      {
+        id: 'cf-deuda-1',
+        tenantId: TENANT_ID,
+        bookingId: BOOKING_ID,
+        amount: 50000,
+        // Descripción real de chargeDebtAction (caja/deudas/actions.ts).
+        description: 'Cobro de deuda atrasada',
+      },
+    ])
+
+    const findings = await findOrphanCashflows(sql)
+
+    expect(findings).toEqual([])
+  })
+
+  it('reflejo de seña online (Checkout Pro) sin payment approved detrás → SÍ se marca huérfano', async () => {
+    const sql = fakeSql([
+      {
+        id: 'cf-online-1',
+        tenantId: TENANT_ID,
+        bookingId: BOOKING_ID,
+        amount: 240000,
+        description: depositCashFlowDescription(BOOKING_ID),
+      },
+    ])
+
+    const findings = await findOrphanCashflows(sql)
+
+    expect(findings).toEqual([
+      {
+        invariant: 'inv9_orphan_cashflow',
+        tenantId: TENANT_ID,
+        resourceType: 'cash_flow',
+        resourceId: 'cf-online-1',
+        metadata: { bookingId: BOOKING_ID, amount: 240000 },
+      },
+    ])
+  })
+
+  it('mezcla: cobro de mostrador + reflejo online huérfano → sólo el segundo aparece', async () => {
+    const otherBookingId = '33333333-3333-4333-8333-333333333333'
+    const sql = fakeSql([
+      {
+        id: 'cf-mostrador-2',
+        tenantId: TENANT_ID,
+        bookingId: BOOKING_ID,
+        amount: 30000,
+        description: 'Cobro de turno',
+      },
+      {
+        id: 'cf-online-2',
+        tenantId: TENANT_ID,
+        bookingId: otherBookingId,
+        amount: 100000,
+        description: depositCashFlowDescription(otherBookingId),
+      },
+    ])
+
+    const findings = await findOrphanCashflows(sql)
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toMatchObject({ resourceId: 'cf-online-2', tenantId: TENANT_ID })
   })
 })

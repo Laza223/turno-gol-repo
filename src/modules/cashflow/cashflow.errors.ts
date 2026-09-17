@@ -11,3 +11,16 @@ export class InvalidCashFlowCategoryError extends Error {
     this.name = 'InvalidCashFlowCategoryError'
   }
 }
+
+/**
+ * La `client_idempotency_key` ya estaba guardada con OTRO movimiento (monto,
+ * método, tipo, categoría o entidad). No es un reintento: devolver la fila vieja
+ * como si fuera la pedida hace que la pantalla cante un cobro que no entró.
+ * `registeredCents` es el monto real ya guardado, para poder reconciliar.
+ */
+export class CashFlowIdempotencyConflictError extends Error {
+  constructor(public readonly registeredCents: number) {
+    super(`Idempotency key already used for a different cash flow of ${registeredCents}.`)
+    this.name = 'CashFlowIdempotencyConflictError'
+  }
+}

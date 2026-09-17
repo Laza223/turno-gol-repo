@@ -1,9 +1,14 @@
 import { sql } from 'drizzle-orm'
 import { cashFlows } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
-import { InvalidCashFlowTypeError, InvalidCashFlowCategoryError } from './cashflow.errors'
+import {
+  CashFlowIdempotencyConflictError,
+  InvalidCashFlowTypeError,
+  InvalidCashFlowCategoryError,
+} from './cashflow.errors'
 import { operatingDayRangeUtc } from '@/shared/time/operating-day'
 import { balanceFrom, collectedFrom } from './totals'
+import { formatArs } from '@/lib/format'
 import type {
   CashFlowType,
   CashFlowCategory,
@@ -139,12 +144,28 @@ export async function createCashFlow(
     // único de client_idempotency_key es GLOBAL (migr. 023), sin tenant_id:
     // filtro explícito SIEMPRE además de RLS (defensa en profundidad, CLAUDE.md
     // — en dev la app conecta como superusuario y RLS no aplica).
-    const existing = await tx.execute<CashFlowRawRow>(sql`
+    const existingRows = await tx.execute<CashFlowRawRow>(sql`
       SELECT * FROM cash_flows
       WHERE tenant_id = ${tenantId} AND client_idempotency_key = ${input.clientIdempotencyKey}
       LIMIT 1
     `)
-    return rawRowToCashFlowRow([...existing][0]!)
+    const existing = rawRowToCashFlowRow([...existingRows][0]!)
+    // Revisión del PR #326: la fila vieja sólo es "el mismo movimiento" si
+    // coincide en lo que define la plata. Este es el último punto donde se
+    // puede ver — `resolveIdempotentCharges` compara ANTES del lock, y un
+    // reintento que llega con el primer request todavía sin commitear pasa esa
+    // comparación sin ver nada y termina acá.
+    if (
+      existing.amount !== input.amount ||
+      existing.method !== input.method ||
+      existing.type !== input.type ||
+      existing.category !== input.category ||
+      existing.bookingId !== (input.bookingId ?? null) ||
+      existing.tournamentTeamId !== (input.tournamentTeamId ?? null)
+    ) {
+      throw new CashFlowIdempotencyConflictError(existing.amount)
+    }
+    return existing
   }
 
   const rows = await tx
@@ -213,6 +234,107 @@ export async function chargeSplitPayment(
     )
   }
   return rows
+}
+
+export type ResolvedIdempotentCharges =
+  | { ok: true; newChargingCents: number }
+  /**
+   * `registeredCents` es el monto REAL que ya quedó guardado bajo esa clave.
+   * Viaja aparte del mensaje porque no todos los callers devuelven un
+   * `ActionResult` con texto listo: los de torneos tiran un error de dominio y
+   * la copy la arma `src/app/(admin)/torneos/actions.ts`.
+   */
+  | { ok: false; registeredCents: number; error: string }
+
+/**
+ * Separa, dentro de una tanda de cargos, lo que YA está commiteado bajo esta
+ * `clientIdempotencyKey` de lo que es NUEVO — y rechaza el caso en que la misma
+ * key vuelve con OTRO contenido.
+ *
+ * Por qué existe (🔴 1 de la revisión de la tanda #319-#324,
+ * `docs/audit/2026-09-16-revision-tanda-319-324.md`): el chequeo anterior
+ * miraba sólo si la key de la línea ya existía, nunca el monto. Un reintento
+ * tras un error de red con un monto distinto daba `newCharging = 0`, se
+ * salteaba entero el `FOR UPDATE` y la validación contra el pendiente, y el
+ * `ON CONFLICT DO NOTHING` de `createCashFlow` devolvía la fila VIEJA: la caja
+ * se quedaba con el monto viejo mientras la UI cantaba el nuevo.
+ *
+ * La key NO se rota del lado del cliente ante un error de red, y eso es
+ * correcto: no se sabe si el cobro entró, y mandar una key nueva convertiría
+ * esa duda en un cobro duplicado seguro. La key se mantiene y la decisión se
+ * toma acá, contra lo que hay en la DB:
+ *
+ *  - key ausente       → línea nueva: suma a `newChargingCents` y el caller la
+ *                        valida contra el pendiente recalculado bajo lock.
+ *  - key + mismo cobro → reintento legítimo (Fix #55): no se re-valida (el
+ *                        pendiente ya bajó por ese mismo cobro) y el
+ *                        `ON CONFLICT` deja la fila como está.
+ *  - key + otro cobro  → conflicto: se rechaza nombrando el monto REAL ya
+ *                        registrado, así el mostrador puede reconciliar en vez
+ *                        de creerle a un cartel que miente.
+ *
+ * El índice único de `client_idempotency_key` es GLOBAL (migr. 023), sin
+ * tenant_id: filtro explícito por tenant además de RLS, mismo patrón que
+ * `createCashFlow`.
+ */
+export async function resolveIdempotentCharges(
+  tenantId: string,
+  charges: readonly SplitCharge[],
+  clientIdempotencyKey: string | undefined,
+  tx: DbTx,
+): Promise<ResolvedIdempotentCharges> {
+  if (!clientIdempotencyKey || charges.length === 0) {
+    return { ok: true, newChargingCents: charges.reduce((sum, c) => sum + c.amount, 0) }
+  }
+
+  const lineKeys = charges.map((_, i) => `${clientIdempotencyKey}-${i}`)
+  const committedRows = (await tx.execute(sql`
+    SELECT client_idempotency_key AS key, amount, method FROM cash_flows
+    WHERE tenant_id = ${tenantId}
+      AND client_idempotency_key = ANY(ARRAY[${sql.join(
+        lineKeys.map((k) => sql`${k}`),
+        sql`, `,
+      )}])
+  `)) as unknown as Array<{ key: string; amount: number; method: string }>
+  const committed = new Map(committedRows.map((r) => [r.key, r]))
+
+  let newChargingCents = 0
+  for (let i = 0; i < charges.length; i++) {
+    const charge = charges[i]!
+    const already = committed.get(lineKeys[i]!)
+    if (!already) {
+      newChargingCents += charge.amount
+      continue
+    }
+    if (already.amount !== charge.amount || already.method !== charge.method) {
+      return {
+        ok: false,
+        registeredCents: already.amount,
+        error: chargeConflictMessage(already.amount),
+      }
+    }
+  }
+
+  return { ok: true, newChargingCents }
+}
+
+/** Copy única del conflicto de clave en los cobros de turno. */
+export function chargeConflictMessage(registeredCents: number): string {
+  return `Este cobro ya se había registrado por ${formatArs(registeredCents)}. Refrescá la pantalla: el saldo del turno ya lo tiene en cuenta.`
+}
+
+/**
+ * Para el `.catch()` de las Server Actions de cobro de turno: traduce el
+ * `CashFlowIdempotencyConflictError` que tira `createCashFlow` a un rechazo con
+ * la misma copy que `resolveIdempotentCharges`, y relanza cualquier otro error.
+ * Va AFUERA de `withTenantContext`: el throw ya hizo rollback de todo lo que la
+ * tx había escrito antes del conflicto.
+ */
+export function rejectChargeConflict(err: unknown): { success: false; error: string } {
+  if (err instanceof CashFlowIdempotencyConflictError) {
+    return { success: false, error: chargeConflictMessage(err.registeredCents) }
+  }
+  throw err
 }
 
 export async function getCashFlows(

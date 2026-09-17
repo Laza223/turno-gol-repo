@@ -24,9 +24,11 @@ vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://lo
 vi.mock('@/modules/auth/auth.service', () => ({ isStaffEmailTaken: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/modules/auth/impersonation.server', () => ({ getImpersonationSession: vi.fn() }))
+vi.mock('@/modules/tenants/geocode.service', () => ({ searchAddress: vi.fn() }))
 
 import { revalidatePath, updateTag } from 'next/cache'
 import {
+  geocodeAddressAction,
   setTenantImageAction,
   removeTenantImageAction,
   updateUserEmailAction,
@@ -41,6 +43,7 @@ import { isR2Configured, putImage, deleteImage } from '@/shared/storage/r2'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import { createClient } from '@/lib/supabase/server'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
+import { searchAddress } from '@/modules/tenants/geocode.service'
 
 const STAFF_USER = { type: 'staff', staffUserId: 'staff-1' }
 const TENANT = { id: 'tenant-1', slug: 'demo' }
@@ -382,5 +385,31 @@ describe('updateTenantProfileAction', () => {
       expect(res.success).toBe(false)
       expect(vi.mocked(updateTenant)).not.toHaveBeenCalled()
     })
+  })
+})
+
+// 🔴 2 de la revisión de la tanda #319-#324: el wizard llama a esta action en
+// el paso 1 de un alta nueva, ANTES de que exista el tenant. Con el guard de
+// admin cortaba con "Tenant no encontrado". El test del guard solo no alcanza:
+// volver la action a `requireAdminStaffAction` lo dejaba en verde (revisión del
+// PR #326).
+describe('geocodeAddressAction — alta nueva, sin tenant todavía', () => {
+  it('busca la dirección con el rate limit atado al staff, no al tenant', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue(null)
+    vi.mocked(searchAddress).mockResolvedValue([
+      { label: 'BV ORONO 1500, Rosario, Santa Fe', lat: -32.95, lng: -60.65 },
+    ])
+
+    const res = await geocodeAddressAction({
+      address: 'Bv. Oroño 1500',
+      city: 'Rosario',
+      province: 'Santa Fe',
+    })
+
+    expect(res).toEqual({
+      success: true,
+      candidates: [{ label: 'BV ORONO 1500, Rosario, Santa Fe', lat: -32.95, lng: -60.65 }],
+    })
+    expect(vi.mocked(adminRateLimited)).toHaveBeenCalledWith('staff-1')
   })
 })

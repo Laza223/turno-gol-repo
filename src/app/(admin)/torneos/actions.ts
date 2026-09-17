@@ -78,6 +78,7 @@ import {
   EventTeamNotInMatchError,
   GoalsExceedScoreError,
   GroupStageNotFinishedError,
+  InscriptionChargeConflictError,
   InscriptionOverpaidError,
   KnockoutTieUnresolvedError,
   MatchEventNotFoundError,
@@ -243,6 +244,9 @@ function mapTournamentError(err: unknown): string | null {
   }
   if (err instanceof TeamHasNoFeeError) {
     return `${err.teamName} no tiene arancel cargado: no hay nada que cobrar.`
+  }
+  if (err instanceof InscriptionChargeConflictError) {
+    return `Ese cobro ya se había registrado por ${formatArs(err.registeredCents)}. Refrescá la pantalla: lo que ${err.teamName} debe ya lo tiene en cuenta.`
   }
   if (err instanceof InscriptionOverpaidError) {
     return err.pending === 0

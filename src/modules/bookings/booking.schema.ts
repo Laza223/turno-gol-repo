@@ -89,7 +89,15 @@ export const rescheduleBookingSchema = z.object({
 export const editBookingSchema = z.object({
   bookingId: uuid,
   guestName: boundedText(200).min(1, 'El nombre no puede estar vacío.').optional(),
-  guestPhone: boundedText(50).min(1, 'El teléfono no puede estar vacío.').optional(),
+  // El teléfono, a diferencia del nombre, SÍ se puede dejar vacío a propósito:
+  // es el único dato de invitado opcional, así que '' es una entrada válida
+  // que significa "borrarlo" — se normaliza a `null` acá mismo, distinto de
+  // `undefined` ("no lo toqué"). Sin esto, vaciar el campo en el diálogo
+  // quedaba silenciosamente ignorado y el valor viejo persistía (🟡 hallazgo 7,
+  // auditoría 2026-09-16, docs/audit/2026-09-16-revision-tanda-319-324.md).
+  guestPhone: boundedText(50)
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === '' ? null : v)),
   timeEnd: hhmmEnd.optional(),
   priceOverride: z.number().int().nonnegative().optional(),
 })

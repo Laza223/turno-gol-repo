@@ -338,6 +338,24 @@ export class InscriptionOverpaidError extends Error {
   }
 }
 
+/**
+ * La misma `clientIdempotencyKey` volvió con un cobro DISTINTO. No es un
+ * reintento: es una clave reusada para otra plata. Se rechaza nombrando el
+ * monto real ya guardado para que el mostrador pueda reconciliar, en vez de
+ * dejar pasar un no-op silencioso (🔴 1 de la revisión de la tanda #319-#324).
+ */
+export class InscriptionChargeConflictError extends Error {
+  constructor(
+    public readonly teamName: string,
+    public readonly registeredCents: number,
+  ) {
+    super(
+      `Idempotency key already used for a different charge of ${registeredCents} on team '${teamName}'.`,
+    )
+    this.name = 'InscriptionChargeConflictError'
+  }
+}
+
 /** Un equipo con plata cobrada no se borra: se marca 'withdrawn'. */
 export class TeamHasPaymentsError extends Error {
   constructor(public readonly count: number) {

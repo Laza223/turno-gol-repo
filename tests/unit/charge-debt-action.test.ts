@@ -14,7 +14,12 @@ vi.mock('@/modules/staff/guards', () => ({
 }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn() }))
-vi.mock('@/modules/cashflow/cashflow.service', () => ({ chargeSplitPayment: vi.fn() }))
+// Igual que en booking-charge-action.test.ts: `chargeSplitPayment` mockeado,
+// `resolveIdempotentCharges` real (hace su propio `tx.execute`).
+vi.mock('@/modules/cashflow/cashflow.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/modules/cashflow/cashflow.service')>()),
+  chargeSplitPayment: vi.fn(),
+}))
 vi.mock('@/modules/bans/ban.service', () => ({
   banPlayerManually: vi.fn(),
   resolveManualBanUntil: vi.fn(),

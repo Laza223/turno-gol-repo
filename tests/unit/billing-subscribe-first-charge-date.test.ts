@@ -65,10 +65,13 @@ function makeTx(trialEndsAt: string | null): DbTx {
   }
   const execute = vi
     .fn()
-    .mockResolvedValueOnce([makeSubRow()]) // loadSubForUpdate
+    .mockResolvedValueOnce([makeSubRow()]) // loadSub (sin lock)
     .mockResolvedValueOnce([planRow]) // loadPlan
     .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts (guard de plan, 0 < max_courts)
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
+    // Fix D4-A1: mp_subscription_id siempre NULL acá → nunca reusa, cae
+    // directo a pedir el lock real (mismo estado: nada cambió).
+    .mockResolvedValueOnce([makeSubRow()]) // loadSubForUpdate
     .mockResolvedValueOnce([]) // UPDATE tenant_subscriptions
   return { execute } as unknown as DbTx
 }

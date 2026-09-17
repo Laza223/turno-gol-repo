@@ -11,7 +11,7 @@
  */
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { chargeSplitPayment } from '@/modules/cashflow/cashflow.service'
+import { chargeSplitPayment, resolveIdempotentCharges } from '@/modules/cashflow/cashflow.service'
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 import {
   DEFAULT_STREET_MONEY_WINDOW,
@@ -20,6 +20,7 @@ import {
 } from '@/modules/cashflow/street-money-window'
 import { getTeam } from './tournament-team.service'
 import {
+  InscriptionChargeConflictError,
   InscriptionOverpaidError,
   TeamHasNoFeeError,
   TeamHasPaymentsError,
@@ -245,6 +246,15 @@ export async function countTeamPayments(
  *      agrega líneas) colara plata sin pasar por el `FOR UPDATE` ni por
  *      `InscriptionOverpaidError` — caza-bugs de la revisión adversarial de
  *      Fase 1 T7, con escenario de sobre-cobro reproducido paso a paso.
+ *   4. Y esa comparación mira el CONTENIDO de la línea, no sólo si la clave
+ *      existe. Esa era la copia local del 🔴 1 de la revisión de la tanda
+ *      #319-#324 (`docs/audit/2026-09-16-revision-tanda-319-324.md`): con una
+ *      línea 0 que reusa la clave pero cambia el monto, el chequeo viejo la
+ *      excluía como "ya cobrada" y el `ON CONFLICT` del insert la dejaba en
+ *      el monto viejo — cobro distinto al que dice la pantalla. Ahora eso es
+ *      `InscriptionChargeConflictError`, con el monto real ya guardado.
+ *      La fuente única es `resolveIdempotentCharges` (cashflow.service.ts),
+ *      la misma que usan `addBookingChargeAction` y `chargeDebtAction`.
  */
 export async function registerInscriptionPayment(
   tenantId: string,
@@ -261,36 +271,25 @@ export async function registerInscriptionPayment(
 
   await tx.execute(sql`SELECT id FROM tournament_teams WHERE id = ${input.teamId} FOR UPDATE`)
 
-  const lineKeys = input.clientIdempotencyKey
-    ? input.charges.map((_, i) => `${input.clientIdempotencyKey}-${i}`)
-    : []
-  const alreadyChargedKeys = new Set(
-    lineKeys.length === 0
-      ? []
-      : (
-          (await tx.execute(sql`
-            SELECT client_idempotency_key AS key FROM cash_flows
-            WHERE tenant_id = ${tenantId}
-              AND client_idempotency_key = ANY(ARRAY[${sql.join(
-                lineKeys.map((k) => sql`${k}`),
-                sql`, `,
-              )}])
-          `)) as unknown as Array<{ key: string }>
-        ).map((r) => r.key),
+  // Solo cuenta contra `pending` lo que todavía NO está commiteado: una línea
+  // idéntica a la ya guardada es un no-op garantizado por el ON CONFLICT de
+  // chargeSplitPayment, así que no debe sumar de nuevo (rechazaría un
+  // reintento legítimo). Lo que SÍ es nuevo se valida siempre, sea la primera
+  // vez o la línea agregada en un reintento mutado. Y una línea que reusa la
+  // clave con OTRO cobro no es ninguna de las dos cosas: es un conflicto.
+  const idempotent = await resolveIdempotentCharges(
+    tenantId,
+    input.charges,
+    input.clientIdempotencyKey,
+    tx,
   )
+  if (!idempotent.ok) {
+    throw new InscriptionChargeConflictError(team.name, idempotent.registeredCents)
+  }
 
   const paid = await sumTeamPayments(tenantId, input.teamId, tx)
   const pending = pendingFor(team.inscriptionFee, paid)
-  // Solo cuenta contra `pending` lo que todavía NO está commiteado: una línea
-  // cuya key ya existe es un no-op garantizado por el ON CONFLICT de
-  // chargeSplitPayment, así que no debe sumar de nuevo (rechazaría un
-  // reintento legítimo). Lo que SÍ es nuevo (índice sin key previa) se valida
-  // siempre, sea la primera vez o la línea agregada en un reintento mutado.
-  const newCharging = input.charges.reduce((sum, c, i) => {
-    const key = lineKeys[i]
-    return key !== undefined && alreadyChargedKeys.has(key) ? sum : sum + c.amount
-  }, 0)
-  if (newCharging > pending) {
+  if (idempotent.newChargingCents > pending) {
     throw new InscriptionOverpaidError(team.name, pending)
   }
 

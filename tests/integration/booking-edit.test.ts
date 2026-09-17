@@ -135,7 +135,7 @@ function edit(
   bookingId: string,
   input: {
     guestName?: string
-    guestPhone?: string
+    guestPhone?: string | null
     timeEnd?: string
     priceOverride?: number
   },
@@ -181,6 +181,27 @@ describe('editBooking — editar reserva desde la grilla (D2)', () => {
     const b = await readBooking(id)
     expect(b.guest_name).toBe('Juan Gómez')
     expect(b.guest_phone).toBe('1199988877')
+  }, 20_000)
+
+  // 🟡 Hallazgo 7 (auditoría 2026-09-16): `guestPhone: null` es la señal de
+  // "borrar a propósito" que manda el schema al normalizar el '' del diálogo —
+  // a diferencia de omitir el campo, que deja el valor viejo intacto.
+  it('borra el teléfono de un invitado con guestPhone: null', async () => {
+    const date = dateIn(17)
+    const id = await insertBooking({
+      date,
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      withPlayer: false,
+      guestName: 'Juan Pérez',
+      guestPhone: '1122334455',
+    })
+
+    await edit(id, { guestPhone: null })
+
+    const b = await readBooking(id)
+    expect(b.guest_phone).toBeNull()
+    expect(b.guest_name).toBe('Juan Pérez')
   }, 20_000)
 
   it('rechaza editar nombre/teléfono de un turno con jugador registrado', async () => {

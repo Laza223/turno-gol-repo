@@ -16,6 +16,7 @@ import {
   registerInscriptionPayment,
 } from '@/modules/tournaments/tournament-payment.service'
 import {
+  InscriptionChargeConflictError,
   InscriptionOverpaidError,
   TeamHasNoFeeError,
   TeamHasPaymentsError,
@@ -371,6 +372,16 @@ describe('registerInscriptionPayment', () => {
     // Reintento MUTADO: misma key, pero un array distinto que agrega una
     // línea nueva — si el atajo viejo siguiera vivo, esta línea se insertaría
     // sin validar (la key de la línea 0 ya existe → "alreadyRegistered").
+    //
+    // El error cambió de `InscriptionOverpaidError` a
+    // `InscriptionChargeConflictError` al pasar esta función a
+    // `resolveIdempotentCharges` (🔴 1 de la revisión de la tanda #319-#324):
+    // la línea 0 de este reintento manda $3.000 contra los $10.000 que esa
+    // MISMA key ya tiene guardados, y eso ahora se nombra por lo que es —una
+    // clave reusada para otro cobro— en vez de diagnosticarse de rebote como
+    // sobrecobro de la línea 1. Lo que importa no se movió y se sigue
+    // afirmando abajo: no entra un peso de más. El caso de sobrecobro con la
+    // línea 0 INTACTA tiene su propio test acá al lado.
     await expect(
       withTenantContext(tenant.id, (tx) =>
         registerInscriptionPayment(
@@ -387,12 +398,62 @@ describe('registerInscriptionPayment', () => {
           tx,
         ),
       ),
-    ).rejects.toThrow(InscriptionOverpaidError)
+    ).rejects.toThrow(InscriptionChargeConflictError)
 
     const rows = await withTenantContext(tenant.id, (tx) =>
       listInscriptionStatus(tenant.id, tournamentId, tx),
     )
     // Nunca $1.700.000: el equipo quedó exactamente en lo que pagó la primera vez.
+    expect(rows[0]!.paid).toBe(1_000_000)
+    expect(rows[0]!.payments).toBe(1)
+  })
+
+  /**
+   * El mismo ataque de la revisión adversarial de Fase 1 T7, pero con la línea
+   * 0 INTACTA: es el camino que el test de arriba dejó de cubrir cuando su
+   * línea 0 pasó a ser un conflicto de clave. Acá el reintento reenvía el
+   * mismo cobro de $10.000 y le AGREGA una línea nueva — esa línea no tiene
+   * clave commiteada, así que tiene que validarse contra el pendiente (que ya
+   * es 0) y rebotar por sobrecobro.
+   */
+  it('un reintento con la línea 0 intacta y una línea nueva rebota por sobrecobro', async () => {
+    const { tenant, staff, tournamentId, teamIds } = await setup({ teams: 1, fee: 1_000_000 })
+    const key = crypto.randomUUID()
+
+    await withTenantContext(tenant.id, (tx) =>
+      registerInscriptionPayment(
+        tenant.id,
+        staff.id,
+        {
+          teamId: teamIds[0]!,
+          charges: [{ amount: 1_000_000, method: 'cash' }],
+          clientIdempotencyKey: key,
+        },
+        tx,
+      ),
+    )
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        registerInscriptionPayment(
+          tenant.id,
+          staff.id,
+          {
+            teamId: teamIds[0]!,
+            charges: [
+              { amount: 1_000_000, method: 'cash' }, // idéntica: reintento legítimo
+              { amount: 700_000, method: 'transfer' }, // nueva: sobre el pendiente en 0
+            ],
+            clientIdempotencyKey: key,
+          },
+          tx,
+        ),
+      ),
+    ).rejects.toThrow(InscriptionOverpaidError)
+
+    const rows = await withTenantContext(tenant.id, (tx) =>
+      listInscriptionStatus(tenant.id, tournamentId, tx),
+    )
     expect(rows[0]!.paid).toBe(1_000_000)
     expect(rows[0]!.payments).toBe(1)
   })

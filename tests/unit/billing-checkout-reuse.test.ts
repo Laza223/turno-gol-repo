@@ -58,32 +58,55 @@ function makeSubscribeSubRow(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 /**
- * tx.execute order dentro de `subscribe()`: 1) loadSubForUpdate, 2) loadPlan,
- * 3) countOnlineCourts, 4) loadTenantOwner, 5) UPDATE — mismo orden gane o no
- * gane el reuso (el reuso y el camino viejo escriben un solo UPDATE cada uno).
+ * tx.execute order dentro de `subscribe()` — Fix D4-A1 (hallazgo 🟢10, auditoría
+ * 2026-09-16): la primera lectura (`loadSub`) ahora es SIN lock, así que la
+ * cantidad de llamadas depende de si el reuso gana o no:
+ * - Gana (`reused: true`, default): 1) loadSub, 2) loadPlan,
+ *   3) countOnlineCourts, 4) loadTenantOwner, 5) el UPDATE con CAS del reuso
+ *   (devuelve una fila: el `mp_subscription_id` no cambió desde la lectura 1).
+ * - No gana (`reused: false`): mismos 1-4, más 5) loadSubForUpdate (recién acá
+ *   se pide el lock real) y 6) el UPDATE final de cancelar+crear.
  */
-function makeSubscribeTx(subRow: ReturnType<typeof makeSubscribeSubRow>): DbTx {
+function makeSubscribeTx(
+  subRow: ReturnType<typeof makeSubscribeSubRow>,
+  opts: { reused?: boolean; lockedSubRow?: ReturnType<typeof makeSubscribeSubRow> } = {},
+): DbTx {
+  const { reused = true, lockedSubRow = subRow } = opts
   const execute = vi
     .fn()
     .mockResolvedValueOnce([subRow])
     .mockResolvedValueOnce([planRow])
     .mockResolvedValueOnce([{ n: 0 }])
     .mockResolvedValueOnce([ownerRow])
-    .mockResolvedValueOnce([])
+  if (reused) {
+    execute.mockResolvedValueOnce([{ tenant_id: TENANT_ID }])
+  } else {
+    execute.mockResolvedValueOnce([lockedSubRow]).mockResolvedValueOnce([])
+  }
   return { execute } as unknown as DbTx
 }
 
 /**
- * tx.execute order dentro de `reactivate()`: 1) loadSubForUpdate, 2) loadPlan,
- * 3) loadTenantOwner, 4) UPDATE. No hay guard de cupo de plan acá.
+ * tx.execute order dentro de `reactivate()` — mismo criterio que
+ * `makeSubscribeTx` (no hay guard de cupo de plan acá, así que un llamado menos):
+ * - Gana: 1) loadSub, 2) loadPlan, 3) loadTenantOwner, 4) UPDATE con CAS.
+ * - No gana: 1-3 iguales, más 4) loadSubForUpdate y 5) UPDATE final.
  */
-function makeReactivateTx(subRow: ReturnType<typeof makeSubscribeSubRow>): DbTx {
+function makeReactivateTx(
+  subRow: ReturnType<typeof makeSubscribeSubRow>,
+  opts: { reused?: boolean; lockedSubRow?: ReturnType<typeof makeSubscribeSubRow> } = {},
+): DbTx {
+  const { reused = true, lockedSubRow = subRow } = opts
   const execute = vi
     .fn()
     .mockResolvedValueOnce([subRow])
     .mockResolvedValueOnce([planRow])
     .mockResolvedValueOnce([ownerRow])
-    .mockResolvedValueOnce([])
+  if (reused) {
+    execute.mockResolvedValueOnce([{ tenant_id: TENANT_ID }])
+  } else {
+    execute.mockResolvedValueOnce([lockedSubRow]).mockResolvedValueOnce([])
+  }
   return { execute } as unknown as DbTx
 }
 
@@ -142,7 +165,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('pide un ciclo distinto (mensual pendiente, pide anual) → NO reusa: cancela y crea uno nuevo', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState() // pending mensual
 
@@ -153,7 +176,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('el monto no coincide (otro plan, o el precio cambió desde el intento anterior) → NO reusa', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ amountCents: planRow.price_monthly - 1 })
 
@@ -164,7 +187,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('MP dice `authorized` (ya no está pending) → NO reusa', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ status: 'authorized' })
 
@@ -175,7 +198,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('MP dice `cancelled` → NO reusa', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ status: 'cancelled' })
 
@@ -186,7 +209,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('el `reason` es de otro plan (dos planes podrían costar lo mismo) → NO reusa', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: 'TurnoGol — Complejo (mensual)' })
 
@@ -197,7 +220,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('el preapproval es de OTRO tenant → NO reusa (aislamiento)', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ externalReference: 'tenant-ajeno' })
 
@@ -208,7 +231,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('el pendiente ya cobró algo (chargedQuantity > 0) → NO reusa', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ chargedQuantity: 1 })
 
@@ -218,17 +241,44 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     expect(gateway.preapprovalCalls).toHaveLength(1)
   })
 
+  it('el mp_subscription_id cambió mientras esperábamos a MP (otra tx ganó la carrera) → el CAS no reusa un checkout ya muerto, cae a cancelar+crear con el estado fresco', async () => {
+    const RACED_PREAPPROVAL = 'mp-pending-2'
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce([makeSubscribeSubRow()]) // 1) loadSub SIN lock: ve OLD_PREAPPROVAL
+      .mockResolvedValueOnce([planRow]) // 2) loadPlan
+      .mockResolvedValueOnce([{ n: 0 }]) // 3) countOnlineCourts
+      .mockResolvedValueOnce([ownerRow]) // 4) loadTenantOwner
+      .mockResolvedValueOnce([]) // 5) CAS del reuso: 0 filas — otra tx ya pisó mp_subscription_id
+      .mockResolvedValueOnce([makeSubscribeSubRow({ mp_subscription_id: RACED_PREAPPROVAL })]) // 6) loadSubForUpdate: estado fresco
+      .mockResolvedValueOnce([]) // 7) UPDATE final
+    const tx = { execute } as unknown as DbTx
+    const gateway = new MockGateway()
+    // Al momento del GET, sigue viendo el pendiente viejo como reusable —
+    // la carrera pasó a nivel DB (otra tx ya escribió mp_subscription_id
+    // nuevo), no a nivel MP.
+    gateway.subscriptionState = pendingState()
+
+    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+
+    // Cancela el preapproval FRESCO (el que dejó la otra tx), no el viejo que
+    // vimos en la lectura sin lock.
+    expect(gateway.cancelPreapprovalCalls).toEqual([RACED_PREAPPROVAL])
+    expect(gateway.preapprovalCalls).toHaveLength(1)
+  })
+
   it('el pendiente tiene un start_date viejo y el trial se extendió después → NO reusa: cobrarían durante la prueba', async () => {
     // Soporte corrió `extendTrial` después del intento anterior, así que el
     // preapproval pendiente arrastra la fecha vieja de primer cobro.
     const trialEndsAt = new Date('2027-03-01T00:00:00Z')
     const execute = vi
       .fn()
-      .mockResolvedValueOnce([makeSubscribeSubRow()])
+      .mockResolvedValueOnce([makeSubscribeSubRow()]) // loadSub sin lock
       .mockResolvedValueOnce([planRow])
       .mockResolvedValueOnce([{ n: 0 }])
       .mockResolvedValueOnce([{ ...ownerRow, trialEndsAt }])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeSubscribeSubRow()]) // loadSubForUpdate (no reusa)
+      .mockResolvedValueOnce([]) // UPDATE final
     const tx = { execute } as unknown as DbTx
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ startDate: new Date('2027-02-01T00:00:00Z') })
@@ -250,7 +300,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
       .mockResolvedValueOnce([planRow])
       .mockResolvedValueOnce([{ n: 0 }])
       .mockResolvedValueOnce([{ ...ownerRow, trialEndsAt }])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ tenant_id: TENANT_ID }]) // CAS del reuso: sigue vigente
     const tx = { execute } as unknown as DbTx
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ startDate: trialEndsAt })
@@ -270,7 +320,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   })
 
   it('getSubscriptionState tira error (MP caído) → no propaga, sigue el camino de siempre y termina OK', async () => {
-    const tx = makeSubscribeTx(makeSubscribeSubRow())
+    const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
     gateway.getSubscriptionState = vi.fn().mockRejectedValue(new Error('ECONNRESET'))
 
@@ -311,7 +361,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
   })
 
   it('el pendiente tiene un primer cobro FUTURO pero reactivar cobra ya → NO reusa', async () => {
-    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
+    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({
       reason: REASON_REACTIVACION,
@@ -352,7 +402,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
   })
 
   it('pide un ciclo distinto → NO reusa: cancela y crea uno nuevo', async () => {
-    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
+    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }), { reused: false })
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION }) // pending mensual
 
@@ -363,7 +413,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
   })
 
   it('getSubscriptionState tira error → no propaga, sigue el camino de siempre y termina OK', async () => {
-    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
+    const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }), { reused: false })
     const gateway = new MockGateway()
     gateway.getSubscriptionState = vi.fn().mockRejectedValue(new Error('ECONNRESET'))
 

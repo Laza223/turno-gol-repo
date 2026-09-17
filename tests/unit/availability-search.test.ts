@@ -133,6 +133,14 @@ describe('freeTimesFrom', () => {
     ]
     expect(freeTimesFrom(grid, '20:00', '08:00', false)).toEqual(['20:00', '21:00'])
   })
+
+  it('la hora de apertura exacta no se desplaza (comparación estricta <, igual que normalizeRangeToOpenDay)', () => {
+    const grid = slots('19:00', '20:00', '00:00')
+    // fromTime === openHhmm: mins === openMins, NO es < openMins, así que no se
+    // desplaza a pesar de closesNextDay. Si esto se rompiera, la madrugada
+    // ('00:00') dejaría de ordenarse al final del día operativo.
+    expect(freeTimesFrom(grid, '19:00', '19:00', true)).toEqual(['19:00', '20:00', '00:00'])
+  })
 })
 
 describe('parseAvailabilitySearchParams', () => {

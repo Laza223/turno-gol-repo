@@ -141,4 +141,56 @@ describe('Cobro parcial en modo "advance" (turno confirmado, todavía no jugado)
       ),
     )
   })
+
+  // Auditoría 2026-09-16, hallazgo 🟡 5: el fix de `money-input.tsx` de arriba
+  // (seleccionar todo al enfocar) resuelve editar EN EL SITIO un monto
+  // precargado, pero no cubre pegar/tipear un DECIMAL sobre la selección
+  // completa — "50,75" pegado sobre "24.000" precargado caía en la rama que
+  // borra separadores y cobraba $5.075 en vez de $50. El fix vive en
+  // `money-input.tsx` (`isFreshReplacement`); este test cubre el circuito
+  // completo, con el mismo precargado real que usan los casos de arriba.
+  it('reemplazar el monto precargado por uno pegado con separador decimal no lo infla ×100', async () => {
+    const addBookingChargeAction = vi.fn(async () => ({ success: true as const }))
+    const actions = makeActions({ addBookingChargeAction })
+
+    render(
+      <BookingSlotPanel
+        booking={{
+          ...toGridBooking(booking(), player()),
+          priceSnapshot: 2_400_000,
+          totalPaid: 0,
+          pending: 2_400_000, // $24.000 pendientes
+        }}
+        courtName="Cancha 1"
+        onClose={vi.fn()}
+        hasEnded={false} // turno todavía no jugado ⇒ mode 'advance'
+        courts={COURTS}
+        actions={actions}
+      />,
+    )
+
+    const amountInput = (await screen.findByPlaceholderText('Monto')) as HTMLInputElement
+    expect(amountInput.value).toBe('24.000')
+
+    // Pegado atómico sobre el campo YA precargado (seleccionar todo + pegar):
+    // el string nuevo no continúa "24.000" ni lo acorta por el final.
+    fireEvent.focus(amountInput)
+    fireEvent.change(amountInput, { target: { value: '50,75' } })
+    // La cola ",75" no queda a la vista en este salto puntual (mismo matiz
+    // visual ya documentado para el pegado atómico en money-input.test.tsx) —
+    // lo que importa es el monto: $50, no $5.075.
+    expect(amountInput.value).toBe('50')
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /^Cobrar \$.?50 por adelantado · quedan \$.?23\.950$/,
+      }),
+    )
+
+    await waitFor(() =>
+      expect(addBookingChargeAction).toHaveBeenCalledWith(
+        expect.objectContaining({ charges: [{ amount: 5_000, method: 'cash' }] }),
+      ),
+    )
+  })
 })

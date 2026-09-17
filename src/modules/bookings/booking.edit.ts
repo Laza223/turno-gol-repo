@@ -39,7 +39,9 @@ const EDITABLE_STATUS = 'confirmed'
 export type EditBookingInput = {
   bookingId: string
   guestName?: string
-  guestPhone?: string
+  // `null` = borrar el teléfono a propósito (el schema normaliza '' a esto);
+  // `undefined` = no tocarlo. Ver el comentario en editBookingSchema.
+  guestPhone?: string | null
   timeEnd?: string
   priceOverride?: number
 }

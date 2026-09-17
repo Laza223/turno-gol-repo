@@ -508,8 +508,19 @@ describe('reconciliation-drift: INV9 cashflow huérfano', () => {
       depositStatus: 'not_required',
       paymentMethod: null,
     })
+    // Hay checkout online (fila en `payments`) pero NINGUNO aprobado: el pago
+    // quedó colgado en `pending` y el cash_flow se escribió igual. Ése es el
+    // huérfano de verdad.
+    //
+    // Antes este fixture no creaba NINGUNA fila en payments, y eso no es
+    // alcanzable por el camino online: `createDepositPayment` inserta el
+    // `payments` en `pending` al crear el checkout, mucho antes de que el
+    // webhook pueda llamar a `recordDepositCashFlow`. Cero filas es la firma de
+    // una seña cargada A MANO (`recordManualBookingDepositCashFlow`), que es
+    // legítima y ahora tiene su propio control negativo abajo (🟡 9 de la
+    // revisión de la tanda #319-#324).
+    await createTestPayment(sql, fx.tenantId, bookingId, fx.playerId, { status: 'pending' })
     const cashFlowId = await createTestCashFlow(sql, fx.tenantId, bookingId, fx.staffId)
-    // CERO filas en payments para este booking.
 
     await runReconciliationSweep()
 
@@ -523,6 +534,109 @@ describe('reconciliation-drift: INV9 cashflow huérfano', () => {
     )
     expect(auditCount).toBeGreaterThan(0)
   }, 30_000)
+
+  /**
+   * 🟡 9 de la revisión de la tanda #319-#324: el falso positivo que motivó
+   * estrechar la invariante. Ya eran 8 filas en producción, todas legítimas.
+   */
+  it('control negativo: seña cargada A MANO con método MP (cero filas en payments) → sin finding', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const bookingId = await createTestBooking(sql, fx.tenantId, fx.courtId, fx.playerId, {
+      depositStatus: 'paid',
+      paymentMethod: null,
+    })
+    // `recordManualBookingDepositCashFlow` escribe la MISMA description que el
+    // reflejo online y nunca genera fila en `payments`: el staff marcó a mano
+    // que el jugador le mandó la seña por MP. La plata está bien.
+    const cashFlowId = await createTestCashFlow(sql, fx.tenantId, bookingId, fx.staffId)
+
+    const findings = await runAccountingReconciliation(sql)
+    expect(idsFor(findings, 'inv9_orphan_cashflow')).not.toContain(cashFlowId)
+  }, 30_000)
+
+  /** Un cobro de mostrador tampoco: su description no es la del reflejo de seña. */
+  it('control negativo: cobro de mostrador por MP (otra description) → sin finding', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const bookingId = await createTestBooking(sql, fx.tenantId, fx.courtId, fx.playerId, {
+      depositStatus: 'not_required',
+      paymentMethod: null,
+    })
+    await createTestPayment(sql, fx.tenantId, bookingId, fx.playerId, { status: 'pending' })
+    const cashFlowId = await createTestCashFlow(sql, fx.tenantId, bookingId, fx.staffId, {
+      description: 'Cobro de turno (2/3)',
+    })
+
+    const findings = await runAccountingReconciliation(sql)
+    expect(idsFor(findings, 'inv9_orphan_cashflow')).not.toContain(cashFlowId)
+  }, 30_000)
+
+  /**
+   * Revisión del PR #326: el `EXISTS` de "hubo checkout online" no miraba el
+   * tipo. La devolución manual que registra `prepareManualRefund` al cancelar
+   * (type refund, pending) lo cumplía, y una seña de mostrador cobrada con el QR
+   * de MP volvía a figurar como huérfana hasta que el complejo saldara la
+   * devolución.
+   */
+  it('control negativo: seña de mostrador por MP + devolución manual pendiente → sin finding', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const bookingId = await createTestBooking(sql, fx.tenantId, fx.courtId, fx.playerId, {
+      depositStatus: 'paid',
+      paymentMethod: null,
+    })
+    const cashFlowId = await createTestCashFlow(sql, fx.tenantId, bookingId, fx.staffId)
+    await createTestPayment(sql, fx.tenantId, bookingId, fx.playerId, {
+      type: 'refund',
+      status: 'pending',
+      method: 'other',
+    })
+
+    const findings = await runAccountingReconciliation(sql)
+    expect(idsFor(findings, 'inv9_orphan_cashflow')).not.toContain(cashFlowId)
+  }, 30_000)
+
+  /**
+   * El discriminante por description tiene que ir en el WHERE y no después del
+   * LIMIT: si se filtra en memoria, los cobros de mostrador más viejos llenan la
+   * ventana y un huérfano genuino más nuevo no aparece nunca. Revisión del PR
+   * #326: sin este caso, sacar la condición del SQL dejaba la suite en verde.
+   */
+  it('más cobros de mostrador que el tope de la query no tapan a un huérfano genuino más nuevo', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const mostrador = await createTestBooking(sql, fx.tenantId, fx.courtId, fx.playerId, {
+      depositStatus: 'not_required',
+      paymentMethod: null,
+    })
+    await createTestPayment(sql, fx.tenantId, mostrador, fx.playerId, { status: 'pending' })
+    // 500 = DRIFT_QUERY_LIMIT. Más viejos que el huérfano, así que ordenan primero.
+    await sql`
+      INSERT INTO cash_flows (
+        tenant_id, type, category, amount, method, description, booking_id, registered_by,
+        occurred_at, created_at
+      )
+      SELECT ${fx.tenantId}, 'income', 'booking', 1000, 'mercadopago', 'Cobro de turno',
+             ${mostrador}, ${fx.staffId}, NOW() - INTERVAL '2 hours',
+             NOW() - INTERVAL '2 hours' - make_interval(secs => g)
+      FROM generate_series(1, 500) AS g
+    `
+
+    // Otro complejo: el fixture de bookings usa siempre el mismo horario y dos
+    // en la misma cancha chocan contra no_overlapping_bookings. La query de
+    // INV9 es cross-tenant, así que no cambia lo que se prueba.
+    const fx2 = await setupFixture(sql)
+    const huerfano = await createTestBooking(sql, fx2.tenantId, fx2.courtId, fx2.playerId, {
+      depositStatus: 'not_required',
+      paymentMethod: null,
+    })
+    await createTestPayment(sql, fx2.tenantId, huerfano, fx2.playerId, { status: 'pending' })
+    const cashFlowId = await createTestCashFlow(sql, fx2.tenantId, huerfano, fx2.staffId)
+
+    const findings = await runAccountingReconciliation(sql)
+    expect(idsFor(findings, 'inv9_orphan_cashflow')).toContain(cashFlowId)
+  }, 60_000)
 
   it('control negativo: cash_flow con payment approved real detrás → sin finding', async () => {
     const sql = getSql()

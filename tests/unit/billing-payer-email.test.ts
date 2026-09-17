@@ -59,10 +59,13 @@ function makeTx(
     last_payment_failed_at: null,
     last_payment_at: null,
   }
-  const execute = vi.fn().mockResolvedValueOnce([subRow]) // loadSubForUpdate
+  const execute = vi.fn().mockResolvedValueOnce([subRow]) // loadSub (sin lock)
   execute.mockResolvedValueOnce([PLAN_ROW]) // loadPlan
   if (forSubscribe) execute.mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
   execute.mockResolvedValueOnce([OWNER_ROW]) // loadTenantOwner
+  // Fix D4-A1: mp_subscription_id siempre NULL acá → nunca reusa, cae directo
+  // al lock real (mismo estado: nada cambió entre las dos lecturas).
+  execute.mockResolvedValueOnce([subRow]) // loadSubForUpdate
   execute.mockResolvedValue([]) // UPDATE + lo que siga
   return { execute } as unknown as DbTx
 }

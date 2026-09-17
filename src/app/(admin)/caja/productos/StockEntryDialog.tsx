@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
 import { toast } from '@/hooks/use-toast'
+import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
+import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
 import { formatArs } from '@/lib/format'
 import { chipClass } from '../caja-lib'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
@@ -37,6 +38,13 @@ export type RegisterPurchaseAction = (input: {
   clientIdempotencyKey: string
 }) => Promise<StockActionResult>
 
+type EntryAttempt = {
+  input: Omit<Parameters<RegisterPurchaseAction>[0], 'clientIdempotencyKey'>
+  productName: string
+  /** El producto no lleva stock: el toast no puede decir que se movió. */
+  untracked: boolean
+}
+
 /**
  * Reposición de mercadería. La UI pide packs × unidades por pack (así se
  * carga como llega la mercadería) y manda `units` TOTALES al service —
@@ -62,7 +70,8 @@ export function StockEntryDialog({
   const [payFromCash, setPayFromCash] = useState(false)
   const [expenseMethod, setExpenseMethod] = useState<ExpenseMethod>('cash')
   const [note, setNote] = useState('')
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const attempt = useUnconfirmedSubmit<EntryAttempt>()
+  const retry = attempt.retryPayload
 
   const [lastProductId, setLastProductId] = useState<string | null>(null)
   if (product && product.id !== lastProductId) {
@@ -75,7 +84,6 @@ export function StockEntryDialog({
     setExpenseMethod('cash')
     setNote('')
     setError(null)
-    setIdempotencyKey(crypto.randomUUID())
   }
 
   const packsNum = Number(packs)
@@ -115,38 +123,44 @@ export function StockEntryDialog({
 
     const unitCost = unitCostCents
 
+    run({
+      input: {
+        productId: product.id,
+        units: totalUnits,
+        unitCost,
+        updateProductCost: unitCost != null && updateCost,
+        expense:
+          payFromCash && unitCost != null && unitCost > 0 ? { method: expenseMethod } : undefined,
+        note: note.trim() === '' ? null : note.trim(),
+      },
+      productName: product.name,
+      untracked: product.stock == null,
+    })
+  }
+
+  function run(payload: EntryAttempt) {
+    setError(null)
     startTransition(async () => {
-      try {
-        const res = await registerPurchaseAction({
-          productId: product.id,
-          units: totalUnits,
-          unitCost,
-          updateProductCost: unitCost != null && updateCost,
-          expense:
-            payFromCash && unitCost != null && unitCost > 0 ? { method: expenseMethod } : undefined,
-          note: note.trim() === '' ? null : note.trim(),
-          clientIdempotencyKey: idempotencyKey,
+      const res = await attempt.send(payload, ({ input }, clientIdempotencyKey) =>
+        registerPurchaseAction({ ...input, clientIdempotencyKey }),
+      )
+      if (!res) return
+      if (res.success) {
+        const { units } = payload.input
+        // Sin control de stock (stock === null), el service no toca el número
+        // de stock (Nielsen #1: el toast no puede sonar a éxito genérico
+        // cuando el dato que el usuario vino a mover no se movió).
+        toast({
+          title: payload.untracked
+            ? 'Reposición registrada — no mueve stock (producto sin control)'
+            : `Reposición registrada — ${units} unidad${units === 1 ? '' : 'es'}`,
+          variant: 'success',
         })
-        if (res.success) {
-          // Sin control de stock (stock === null), el service no toca el número
-          // de stock (Nielsen #1: el toast no puede sonar a éxito genérico
-          // cuando el dato que el usuario vino a mover no se movió).
-          toast({
-            title:
-              product.stock == null
-                ? 'Reposición registrada — no mueve stock (producto sin control)'
-                : `Reposición registrada — ${totalUnits} unidad${totalUnits === 1 ? '' : 'es'}`,
-            variant: 'success',
-          })
-          setLastProductId(null)
-          onSaved()
-          onClose()
-        } else {
-          setError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setError('No pudimos registrar la reposición. Revisá tu conexión e intentá de nuevo.')
+        setLastProductId(null)
+        onSaved()
+        onClose()
+      } else {
+        setError(res.error)
       }
     })
   }
@@ -155,9 +169,17 @@ export function StockEntryDialog({
     <Dialog open={product !== null} onOpenChange={handleClose}>
       <DialogContent className="w-[95vw] max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Reponer — {product?.name}</DialogTitle>
+          <DialogTitle>Reponer — {retry ? retry.productName : product?.name}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        {retry && (
+          <UnconfirmedRetry
+            what={`la reposición de ${retry.input.units} × ${retry.productName}`}
+            retryLabel="Reintentar reposición"
+            isPending={isPending}
+            onRetry={() => run(retry)}
+          />
+        )}
+        <div className="space-y-4" hidden={retry !== null}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Columna Izquierda: Cantidades e ingreso */}
             <div className="space-y-3">

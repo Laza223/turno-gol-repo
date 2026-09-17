@@ -2,6 +2,8 @@ import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { captureMessage } from '@/lib/sentry'
+import type { PaymentGateway } from '@/modules/payments/mp-gateway'
+import { isMpAlreadyCancelledPreapprovalError } from '@/modules/payments/mp-token-refresh'
 import {
   transitionActiveToPastDue,
   transitionPastDueToActive,
@@ -145,6 +147,14 @@ function formatDate(d: Date): string {
  * verificó y no matchea (incluye el caso central: `cancel()` puso
  * `mp_subscription_id = NULL` — Fix 2a — así que CUALQUIER preapproval en el
  * pago es, por definición, uno viejo) → no confiar, no reactivar.
+ *
+ * Fix "checkout viejo pagado" (billing.service.ts: `subscribe()`/`reactivate()`
+ * dejan un `mp_subscription_id` pendiente-nunca-cobrado VIVO en vez de
+ * cancelarlo — ver `isPendingNeverCharged`): si alguien vuelve atrás en el
+ * navegador y paga ese link viejo, este mismatch es el que lo detecta. El
+ * cobro ya entró y no se reactiva (mismo criterio de siempre), pero acá
+ * además se cancela el preapproval huérfano para que no siga cobrando meses
+ * sin que la DB lo referencie — ver el bloque de cancelación más abajo.
  */
 function preapprovalIdMatches(
   currentMpSubscriptionId: string | null,
@@ -245,6 +255,13 @@ export async function onPaymentRejected(
  * pasa; callers preexistentes que no los conocen (tests de FSM/idempotencia)
  * siguen confiando en la máquina de estados como antes — ver
  * `preapprovalIdMatches`.
+ *
+ * `gateway` (nuevo, OPCIONAL): solo se usa cuando el mismatch de arriba se da
+ * de verdad, para cancelar en MP el preapproval huérfano que cobró sin ser el
+ * vigente (checkout viejo pagado — ver el comentario de `preapprovalIdMatches`).
+ * `undefined` = comportamiento de siempre (solo alerta, no cancela); lo pasa
+ * `mp-webhook.handler.ts` con la cuenta MASTER (un preapproval SaaS nunca se
+ * cancela con el token OAuth del complejo).
  */
 export async function onPaymentApproved(
   tenantId: string,
@@ -256,6 +273,7 @@ export async function onPaymentApproved(
   mpPaymentId?: string,
   preapprovalId?: string | null,
   chargeKey?: string,
+  gateway?: Pick<PaymentGateway, 'cancelPreapproval'>,
 ): Promise<{ alreadyProcessed: boolean }> {
   const fresh = await lockWebhook(mpEventId, eventType, rawPayload, tx)
   if (!fresh) return { alreadyProcessed: true }
@@ -299,12 +317,64 @@ export async function onPaymentApproved(
 
   if (!preapprovalIdMatches(sub.mp_subscription_id, preapprovalId)) {
     // Plata entró para una suscripción que ya no tiene ese preapproval como
-    // vigente (típicamente: baja voluntaria previa). No reactivamos ni
-    // mandamos `subscription_renewed` — el webhook igual se marca
-    // procesado (no reintenta infinito, `lockWebhook` ya insertó el evento);
-    // esto queda para conciliación/refund manual.
+    // vigente. Dos escenarios reales caen acá: baja voluntaria previa con un
+    // pago "en vuelo" del preapproval viejo (`cancel()`, Fix 2a, deja
+    // `mp_subscription_id = NULL`), o alguien pagando un checkout viejo que
+    // `subscribe()`/`reactivate()` dejó pending-sin-cobrar A PROPÓSITO (Fix
+    // "no cancelar un checkout que nunca se pagó", billing.service.ts) en vez
+    // de cancelarlo. En NINGÚN caso reactivamos ni mandamos
+    // `subscription_renewed` — el webhook igual se marca procesado (no
+    // reintenta infinito, `lockWebhook` ya insertó el evento). El cobro que
+    // ya entró no se reembolsa por API (TurnoGol no reembolsa por API):
+    // queda para que el complejo lo devuelva a mano desde el panel de MP.
+    //
+    // `preapprovalId` no vacío (el caller verificó y es OTRO preapproval) +
+    // un `gateway` provisto: el preapproval que cobró de más sigue vivo en
+    // MP — cancelarlo evita que siga cobrando meses sin que la DB lo
+    // referencie. Tolera "ya estaba cancelado en MP" (el caso normal: la
+    // baja voluntaria ya lo había cancelado); cualquier OTRO error propaga —
+    // la tx rollbackea (incluido el lock de este evento) y pg-boss reintenta,
+    // mismo criterio "MP último" que el resto del módulo.
+    let canceledOrphan = false
+    if (preapprovalId && gateway) {
+      try {
+        await gateway.cancelPreapproval(preapprovalId)
+        canceledOrphan = true
+      } catch (err) {
+        if (!isMpAlreadyCancelledPreapprovalError(err)) {
+          // 🔴 (revisión): sin este captureMessage, un fallo REAL al cancelar
+          // el huérfano (no el 400 "ya cancelado", tolerado arriba) tiraba
+          // ANTES de llegar al warning de más abajo — si pg-boss agota los
+          // reintentos, un cobro que hay que devolver a mano quedaba sin
+          // NINGUNA alerta. `level: 'error'` (no 'warning' como el camino
+          // feliz de abajo, que queda sin cambios): acá el cancel falló de
+          // verdad, no es solo "conciliación manual". Mismo mensaje/extra que
+          // ese warning + `canceledOrphan: false` + el mensaje del error
+          // (nunca el objeto completo — podría traer headers/tokens del SDK
+          // de MP). Re-lanza igual que antes: el rollback de la tx y el
+          // reintento de pg-boss no cambian.
+          captureMessage(
+            'subscription_authorized_payment approved for a preapproval that does not match the tenant current subscription — either an in-flight payment after a voluntary cancel, or someone paying an old pending checkout link; the charge itself is not refunded automatically',
+            {
+              level: 'error',
+              extra: {
+                tenantId,
+                mpPaymentId: mpPaymentId ?? null,
+                preapprovalId: preapprovalId ?? null,
+                currentMpSubscriptionId: sub.mp_subscription_id,
+                canceledOrphan: false,
+                error: err instanceof Error ? err.message : String(err),
+              },
+            },
+          )
+          throw err
+        }
+        canceledOrphan = true
+      }
+    }
+
     captureMessage(
-      'subscription_authorized_payment approved for a preapproval that does not match the tenant current subscription — likely an in-flight payment after a voluntary cancel',
+      'subscription_authorized_payment approved for a preapproval that does not match the tenant current subscription — either an in-flight payment after a voluntary cancel, or someone paying an old pending checkout link; the charge itself is not refunded automatically',
       {
         level: 'warning',
         extra: {
@@ -312,6 +382,7 @@ export async function onPaymentApproved(
           mpPaymentId: mpPaymentId ?? null,
           preapprovalId: preapprovalId ?? null,
           currentMpSubscriptionId: sub.mp_subscription_id,
+          canceledOrphan,
         },
       },
     )

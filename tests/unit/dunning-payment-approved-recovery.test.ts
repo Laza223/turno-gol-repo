@@ -36,6 +36,8 @@ import {
 } from '@/modules/billing/lifecycle.service'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { captureMessage } from '@/lib/sentry'
+import { MockGateway } from '@/modules/payments/mp-gateway.mock'
+import { MpGatewayError } from '@/modules/payments/payment.errors'
 import type { DbTx } from '@/shared/db/client'
 
 const TENANT_ID = 'tenant-1'
@@ -225,5 +227,157 @@ describe('onPaymentApproved — Fix 2b: solo reactiva si el preapproval del pago
 
     expect(transitionToActiveFromAny).not.toHaveBeenCalled()
     expect(captureMessage).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ─── Fix "checkout viejo pagado": cancelación del preapproval huérfano ─────
+//
+// Alguien vuelve atrás en el navegador (el checkout se abre con
+// `window.location.assign`) y paga un link viejo que `subscribe()`/
+// `reactivate()` dejó `pending`-sin-cancelar a propósito (Fix "no cancelar un
+// checkout que nunca se pagó"). El mismatch de arriba sigue sin reactivar;
+// acá se agrega que, si el caller pasó un `gateway`, el huérfano se cancela
+// en MP para que no siga cobrando meses sin referencia en la DB.
+
+describe('onPaymentApproved — Fix "checkout viejo pagado": cancela el preapproval huérfano si se recibe gateway', () => {
+  it('preapproval distinto al vigente + gateway → cancela ESE preapproval, no activa', async () => {
+    const tx = makeTx('past_due', 'mp-current')
+    const gateway = new MockGateway()
+
+    const result = await onPaymentApproved(
+      TENANT_ID,
+      'mp-evt-orphan-cancel',
+      'subscription_authorized_payment',
+      { test: 1 },
+      PAID_AT,
+      tx,
+      'mp-pay-orphan-cancel',
+      'mp-old-pending-checkout',
+      undefined,
+      gateway,
+    )
+
+    expect(result.alreadyProcessed).toBe(false)
+    expect(transitionPastDueToActive).not.toHaveBeenCalled()
+    expect(transitionToActiveFromAny).not.toHaveBeenCalled()
+    expect(enqueueTenantOwnerNotification).not.toHaveBeenCalled()
+    expect(gateway.cancelPreapprovalCalls).toEqual(['mp-old-pending-checkout'])
+    expect(captureMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        extra: expect.objectContaining({ canceledOrphan: true }),
+      }),
+    )
+  })
+
+  it('cancelar devuelve "ya estaba cancelado en MP" → tolera, sigue sin reactivar', async () => {
+    const tx = makeTx('canceled', null)
+    const gateway = new MockGateway()
+    gateway.cancelPreapprovalError = new MpGatewayError(
+      'Failed to cancel MP preapproval mp-old-canceled',
+      { message: 'You can not modify a cancelled preapproval.', status: 400 },
+    )
+
+    const result = await onPaymentApproved(
+      TENANT_ID,
+      'mp-evt-orphan-already-cancelled',
+      'subscription_authorized_payment',
+      { test: 1 },
+      PAID_AT,
+      tx,
+      'mp-pay-orphan-already-cancelled',
+      'mp-old-canceled',
+      undefined,
+      gateway,
+    )
+
+    expect(result.alreadyProcessed).toBe(false)
+    expect(transitionToActiveFromAny).not.toHaveBeenCalled()
+    expect(gateway.cancelPreapprovalCalls).toEqual(['mp-old-canceled'])
+    expect(captureMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ extra: expect.objectContaining({ canceledOrphan: true }) }),
+    )
+  })
+
+  it('cancelar tira otro error (no el de "ya cancelado") → propaga Y alerta con level error (no queda tapado)', async () => {
+    const tx = makeTx('past_due', 'mp-current')
+    const gateway = new MockGateway()
+    gateway.cancelPreapprovalError = new Error('MP 500')
+
+    await expect(
+      onPaymentApproved(
+        TENANT_ID,
+        'mp-evt-orphan-hard-error',
+        'subscription_authorized_payment',
+        { test: 1 },
+        PAID_AT,
+        tx,
+        'mp-pay-orphan-hard-error',
+        'mp-old-pending-checkout',
+        undefined,
+        gateway,
+      ),
+    ).rejects.toThrow('MP 500')
+
+    expect(transitionToActiveFromAny).not.toHaveBeenCalled()
+    // Si pg-boss agota los reintentos, este `error` (no `warning`) es la
+    // única alerta de que quedó un cobro sin cancelar y sin devolver a mano.
+    expect(captureMessage).toHaveBeenCalledTimes(1)
+    expect(captureMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        level: 'error',
+        extra: expect.objectContaining({
+          tenantId: TENANT_ID,
+          preapprovalId: 'mp-old-pending-checkout',
+          canceledOrphan: false,
+          error: 'MP 500',
+        }),
+      }),
+    )
+  })
+
+  it('preapprovalId null (ambigüedad) + gateway provisto → NO cancela nada (no hay id que cancelar)', async () => {
+    const tx = makeTx('canceled', null)
+    const gateway = new MockGateway()
+
+    await onPaymentApproved(
+      TENANT_ID,
+      'mp-evt-null-with-gateway',
+      'subscription_authorized_payment',
+      { test: 1 },
+      PAID_AT,
+      tx,
+      'mp-pay-null-with-gateway',
+      null,
+      undefined,
+      gateway,
+    )
+
+    expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
+    expect(transitionToActiveFromAny).not.toHaveBeenCalled()
+  })
+
+  it('preapproval que SÍ matchea el vigente + gateway provisto → no cancela nada, activa como siempre', async () => {
+    const tx = makeTx('past_due', 'mp-1')
+    const gateway = new MockGateway()
+
+    await onPaymentApproved(
+      TENANT_ID,
+      'mp-evt-match-with-gateway',
+      'subscription_authorized_payment',
+      { test: 1 },
+      PAID_AT,
+      tx,
+      'mp-pay-match-with-gateway',
+      'mp-1',
+      undefined,
+      gateway,
+    )
+
+    expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
+    expect(transitionPastDueToActive).toHaveBeenCalledTimes(1)
+    expect(captureMessage).not.toHaveBeenCalled()
   })
 })

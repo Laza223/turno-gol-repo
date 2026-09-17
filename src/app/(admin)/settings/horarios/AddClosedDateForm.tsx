@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { Input } from '@/components/ui/input'
+import DatePicker from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
 import type { HorariosActionResult } from './actions'
@@ -24,15 +24,30 @@ export function AddClosedDateForm({
 }) {
   const [state, formAction] = useActionState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
+  const [date, setDate] = useState('')
+
+  const [lastState, setLastState] = useState(state)
+  if (state !== lastState) {
+    setLastState(state)
+    if (state.success) setDate('')
+  }
 
   return (
     <form action={formAction} onSubmit={() => setDidSubmit(true)} className="space-y-2">
       <div className="flex items-end gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="closedDate">Agregar día cerrado</Label>
-          <Input id="closedDate" name="date" type="date" className="w-48" min={minDate} />
+          <DatePicker
+            id="closedDate"
+            value={date}
+            onChange={setDate}
+            min={minDate}
+            placeholder="Elegí una fecha"
+            className="w-56"
+          />
+          <input type="hidden" name="date" value={date} />
         </div>
-        <SubmitButton variant="outline" pendingLabel="Agregando…">
+        <SubmitButton variant="outline" pendingLabel="Agregando…" disabled={!date}>
           Agregar
         </SubmitButton>
       </div>

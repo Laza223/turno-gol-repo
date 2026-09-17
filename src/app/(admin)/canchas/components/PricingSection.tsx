@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Clock } from 'lucide-react'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { PricingRule } from '@/modules/courts/court.types'
 import { formatArs } from '@/lib/format'
@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { MoneyInput } from '@/components/ui/money-input'
 import { Label } from '@/components/ui/label'
+import { SelectMenu } from '@/components/ui/select-menu'
 import { PricingGrid } from './PricingGrid'
 
 /** Otra cancha del complejo, fuente para "Copiar precios de otra cancha". */
@@ -252,18 +253,14 @@ export function PricingSection({
             <>
               <div className="space-y-1.5">
                 <Label htmlFor="tpl-cut">La noche arranca a las</Label>
-                <select
+                <SelectMenu
                   id="tpl-cut"
-                  value={cutHour}
-                  onChange={(e) => setCutHour(Number(e.target.value))}
-                  className="block h-11 w-32 rounded-md border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10"
-                >
-                  {cutOptions.map((h) => (
-                    <option key={h} value={h}>
-                      {hourLabel(h)}
-                    </option>
-                  ))}
-                </select>
+                  value={String(cutHour)}
+                  onChange={(v) => setCutHour(Number(v))}
+                  options={cutOptions.map((h) => ({ value: String(h), label: hourLabel(h) }))}
+                  icon={<Clock className="h-4 w-4" />}
+                  className="h-11 w-32 md:h-10"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="tpl-day">Precio de día</Label>
@@ -304,18 +301,13 @@ export function PricingSection({
           <Label htmlFor="copy-court" className="text-sm text-muted-foreground">
             Copiar precios de otra cancha:
           </Label>
-          <select
+          <SelectMenu
             id="copy-court"
             value={copyFromId}
-            onChange={(e) => setCopyFromId(e.target.value)}
-            className="block h-11 rounded-md border border-border bg-background px-2 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-9"
-          >
-            {otherCourts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={setCopyFromId}
+            options={otherCourts.map((c) => ({ value: c.id, label: c.name }))}
+            className="h-10 w-auto md:h-9"
+          />
           <Button type="button" variant="outline" size="sm" onClick={copyFromCourt}>
             Copiar
           </Button>

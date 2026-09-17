@@ -1,5 +1,6 @@
 'use client'
 
+import { Check } from 'lucide-react'
 import { formatArs } from '@/lib/format'
 import { MoneyInput } from '@/components/ui/money-input'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -100,7 +101,7 @@ export function PricingGridTable({
                 const isSelected = selected.has(key)
                 const isEditing = editing === key
                 const style =
-                  price != null
+                  price != null && !isSelected
                     ? heatStyle(price, priceStats.min, priceStats.max, isDark)
                     : undefined
 
@@ -139,12 +140,15 @@ export function PricingGridTable({
                           price != null ? ` ${formatArs(price)}` : ' sin precio'
                         }`}
                         aria-pressed={isSelected}
-                        className={`flex h-11 md:h-8 w-full items-center justify-center rounded-md text-xs font-medium tabular-nums transition-colors ${
-                          price == null
-                            ? 'bg-amber-50 text-amber-500 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20'
-                            : ''
-                        } ${isSelected ? 'ring-2 ring-emerald-500 ring-offset-1' : ''}`}
+                        className={`flex h-11 md:h-8 w-full items-center justify-center gap-1 rounded-md text-xs font-medium tabular-nums transition-colors ${
+                          isSelected
+                            ? 'bg-foreground text-background'
+                            : price == null
+                              ? 'bg-amber-50 text-amber-500 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30 dark:hover:bg-amber-500/20'
+                              : ''
+                        }`}
                       >
+                        {isSelected && <Check className="h-3 w-3 shrink-0" aria-hidden="true" />}
                         {price != null ? formatArs(price) : '—'}
                       </button>
                     )}

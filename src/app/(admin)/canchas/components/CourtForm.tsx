@@ -10,6 +10,7 @@ import type { CourtActionResult, CourtPhotoActionResult } from '../actions'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
 import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/components/ui/image-uploader'
+import { SelectMenu } from '@/components/ui/select-menu'
 
 /**
  * Las 5 Server Actions llegan por PROP, no por import: '../actions' es
@@ -217,7 +218,7 @@ export function CourtForm({
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: Cancha 1"
             required
-            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="h-12 w-full rounded-xl border border-border bg-background px-3.5 text-base md:text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
@@ -225,38 +226,26 @@ export function CourtForm({
           <label htmlFor="court-surface" className="block text-sm font-medium mb-1">
             Superficie <span className="text-red-500">*</span>
           </label>
-          <select
+          <SelectMenu
             id="court-surface"
             name="surfaceType"
             value={surfaceType}
-            onChange={(e) => setSurfaceType(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
-          >
-            {SURFACE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            onChange={setSurfaceType}
+            options={SURFACE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          />
         </div>
 
         <div>
           <label htmlFor="court-format" className="block text-sm font-medium mb-1">
             Formato <span className="text-red-500">*</span>
           </label>
-          <select
+          <SelectMenu
             id="court-format"
             name="format"
-            value={format}
-            onChange={(e) => setFormat(Number(e.target.value))}
-            className="w-full border rounded-md px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
-          >
-            {FORMAT_OPTIONS.map((f) => (
-              <option key={f} value={f}>
-                Fútbol {f}
-              </option>
-            ))}
-          </select>
+            value={String(format)}
+            onChange={(v) => setFormat(Number(v))}
+            options={FORMAT_OPTIONS.map((f) => ({ value: String(f), label: `Fútbol ${f}` }))}
+          />
         </div>
       </div>
 

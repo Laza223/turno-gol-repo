@@ -2,10 +2,12 @@
 
 import * as React from 'react'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
+import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
@@ -47,4 +49,33 @@ const DropdownMenuItem = React.forwardRef<
 ))
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 
-export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem }
+const DropdownMenuRadioItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+>(({ className, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.RadioItem
+    ref={ref}
+    className={cn(
+      'group relative flex cursor-pointer select-none items-center min-h-11 md:min-h-9 rounded-lg py-2 pl-8 pr-2.5 text-sm outline-hidden transition-all duration-200 focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
+      className,
+    )}
+    {...props}
+  >
+    <span className="absolute left-2.5 flex h-3.5 w-3.5 items-center justify-center">
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Check className="h-4 w-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </DropdownMenuPrimitive.RadioItem>
+))
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
+
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+}

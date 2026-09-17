@@ -73,7 +73,7 @@ async function fillFormAndSubmit() {
 
   await selectCombobox(/Cancha/i, 'Cancha A')
   // Elegir "10:00" en Hora inicio auto-completa Hora fin a "11:00"
-  // (onChange de Hora inicio llama addOneHour) — justo el valor que
+  // (onChange de Hora inicio setea inicio+1h) — justo el valor que
   // este helper necesita, sin tocar el combobox de Hora fin aparte.
   await selectCombobox(/Hora inicio/i, '10:00')
   await selectStartsOnToday()
@@ -99,7 +99,7 @@ async function fillFormAndSubmit() {
 }
 
 describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
-  it('normaliza timeEnd "00:00" a "24:00" antes de llamar a previewAction', async () => {
+  it('con Hora inicio 23:00 la única opción de fin es "00:00 (medianoche)" y manda timeEnd "24:00"', async () => {
     previewAbonadoSlotsAction.mockResolvedValue({
       success: true,
       dates: MOCK_DATES,
@@ -111,11 +111,14 @@ describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
 
     await selectCombobox(/Cancha/i, 'Cancha A')
     await selectCombobox(/Hora inicio/i, '23:00')
-    // El auto-link de "Hora inicio" ya deja Hora fin en "00:00"
-    // (addOneHour('23:00')), pero se selecciona explícito acá para no
-    // depender de ese efecto lateral y mantener el intent del test claro:
-    // el admin elige "00:00" para decir "hasta medianoche".
-    await selectCombobox(/Hora fin/i, '00:00')
+
+    // Un turno nunca cruza medianoche (chk_time_valid): con inicio 23:00 la
+    // lista de fin (recalculada por `endTimeOptions`) tiene una sola opción.
+    fireEvent.click(screen.getByRole('combobox', { name: /Hora fin/i }))
+    const endOptions = await screen.findAllByRole('option')
+    expect(endOptions).toHaveLength(1)
+    expect(endOptions[0]).toHaveTextContent('00:00 (medianoche)')
+    fireEvent.click(endOptions[0])
     await selectStartsOnToday()
 
     fireEvent.change(form.querySelector('input[name="contactName"]') as HTMLInputElement, {

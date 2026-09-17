@@ -49,9 +49,22 @@ async function fillRequiredFields(canvas: ReturnType<typeof within>, canvasEleme
   // ensancha lo suficiente para pegarle.
   await waitFor(() => expect(body.queryByRole('button', { name: '16' })).not.toBeInTheDocument())
 
-  // Hora inicio: Combobox — elegir 20:00 también setea Hora fin a 21:00
-  // (AbonadoForm.tsx: onChange de timeStart llama addOneHour).
+  // Hora inicio: turnos son de hora entera (SLOT_DURATION_MINUTES=60) — la
+  // lista ya no ofrece medias horas.
+  await userEvent.click(canvas.getByLabelText('Hora inicio'))
+  await body.findByRole('listbox', { name: 'Horario de inicio' })
+  await expect(body.queryByRole('option', { name: '19:30' })).not.toBeInTheDocument()
+  // Elegir 20:00 también setea Hora fin a 21:00 (AbonadoForm.tsx: onChange de
+  // timeStart hace inicio+1h).
   await selectComboboxOption(canvas, body, 'Hora inicio', '20:00')
+  await expect(canvas.getByLabelText('Hora fin')).toHaveValue('21:00')
+
+  // Hora fin queda topeada a horas enteras desde ese inicio: tampoco ofrece
+  // medias horas.
+  await userEvent.click(canvas.getByLabelText('Hora fin'))
+  await body.findByRole('listbox', { name: 'Horario de fin' })
+  await expect(body.queryByRole('option', { name: '20:30' })).not.toBeInTheDocument()
+  await selectComboboxOption(canvas, body, 'Hora fin', '21:00')
 
   // Cliente: el <label> ("Cliente") tampoco tiene htmlFor — se ubica por el
   // placeholder del input.

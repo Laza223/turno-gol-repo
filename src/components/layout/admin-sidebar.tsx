@@ -136,16 +136,9 @@ export function visibleNavItems(opts: {
  * Fila del riel: ícono arriba, rótulo abajo, 60×52. El rótulo se ve siempre y no
  * vive en un tooltip: el mostrador atiende desde una tablet, donde no hay hover
  * y un ícono solo es una adivinanza.
- *
- * Desde `xl` (≥1280, o sea cualquier monitor de escritorio) la misma fila se
- * acuesta: ícono y rótulo en línea, a lo ancho de una barra de 220 px. Pedido
- * del dueño (2026-09-16): el riel de 72 dejaba el escritorio con rótulos de 10 px
- * y abreviados ("Ajustes") habiendo espacio de sobra. Entre `lg` y `xl` —tablet
- * apaisada, notebooks chicas— sigue el riel, porque ahí cada píxel de ancho es
- * una columna de cancha menos en la grilla.
  */
 const RAIL_ITEM =
-  'group flex w-[60px] min-h-[52px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[10px] px-1 text-[10px] font-semibold tracking-[0.01em] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring xl:min-h-10 xl:w-full xl:flex-row xl:justify-start xl:gap-3 xl:px-3 xl:text-sm xl:font-medium xl:tracking-normal'
+  'group flex w-[60px] min-h-[52px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[10px] px-1 text-[10px] font-semibold tracking-[0.01em] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
 const NAV_ACTIVE = 'bg-primary/10 text-emerald-800 dark:text-emerald-300'
 const NAV_IDLE = 'text-muted-foreground hover:bg-accent hover:text-foreground'
 
@@ -213,27 +206,13 @@ function AccountMenu({
           type="button"
           aria-label={`Cuenta: ${userEmail}`}
           className={cn(
-            'group flex shrink-0 items-center gap-3 rounded-full text-left transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-            // Desde xl la barra tiene ancho: la cuenta se lee entera en vez de
-            // ser una inicial que hay que tocar para saber de quién es.
-            'xl:w-full xl:rounded-[10px] xl:p-1.5 xl:hover:bg-accent',
+            // 44px (MASTER §10): el mostrador atiende desde una tablet, que
+            // entra en el mismo ancho donde vive el riel.
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
             className,
           )}
         >
-          {/* 44px (MASTER §10): el mostrador atiende desde una tablet, que
-              entra en el mismo ancho donde vive el riel. */}
-          <span
-            aria-hidden
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground ring-1 ring-inset ring-border transition-colors group-hover:bg-accent xl:h-9 xl:w-9"
-          >
-            {accountInitial(userEmail)}
-          </span>
-          <span
-            aria-hidden
-            className="hidden min-w-0 truncate text-xs text-muted-foreground xl:block"
-          >
-            {userEmail}
-          </span>
+          {accountInitial(userEmail)}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" side="right" sideOffset={8} className="w-64 p-2">
@@ -278,11 +257,11 @@ function SidebarRail({
   const configActive = isNavItemActive(CONFIG_ITEM, pathname)
 
   return (
-    <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[72px] flex-col items-center gap-1 border-r border-border bg-card py-3 xl:w-[220px] xl:items-stretch xl:px-3">
+    <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[72px] flex-col items-center gap-1 border-r border-border bg-card py-3">
       <Link
         href={staffRole === 'admin' ? '/dashboard' : '/grilla'}
         aria-label="TurnoGol"
-        className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring xl:hidden"
+        className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >
         {/* accentClassName = textClassName: la G por defecto es emerald, y este
             badge YA es `bg-primary` (emerald) — con el default la G se funde
@@ -294,22 +273,10 @@ function SidebarRail({
           accentClassName="text-primary-foreground"
         />
       </Link>
-      {/* Desde xl hay ancho para la marca entera, la misma del pie de página. */}
-      <Link
-        href={staffRole === 'admin' ? '/dashboard' : '/grilla'}
-        aria-label="TurnoGol"
-        className="mb-4 hidden h-10 shrink-0 items-center rounded-[10px] px-3 outline-hidden focus-visible:ring-2 focus-visible:ring-ring xl:flex"
-      >
-        <Logo
-          variant="horizontal"
-          textClassName="text-foreground text-base"
-          iconClassName="h-8 w-8"
-        />
-      </Link>
 
       <nav
         aria-label="Navegación del panel"
-        className="flex w-full flex-col items-center gap-1 overflow-y-auto xl:items-stretch"
+        className="flex w-full flex-col items-center gap-1 overflow-y-auto"
       >
         {navItems.map((item) => {
           const { href, icon: Icon, label, tourId } = item
@@ -341,8 +308,7 @@ function SidebarRail({
           className={cn(RAIL_ITEM, configActive ? NAV_ACTIVE : NAV_IDLE)}
         >
           <ConfigIcon className={navIconClass(configActive)} />
-          <span className="max-w-full truncate xl:hidden">{CONFIG_RAIL_LABEL}</span>
-          <span className="hidden max-w-full truncate xl:inline">{CONFIG_ITEM.label}</span>
+          <span className="max-w-full truncate">{CONFIG_RAIL_LABEL}</span>
         </Link>
       ) : (
         // MASTER §6.8: al manager el ítem se le BLOQUEA, no se le esconde — el
@@ -367,8 +333,7 @@ function SidebarRail({
                   aria-hidden
                 />
               </span>
-              <span className="max-w-full truncate xl:hidden">{CONFIG_RAIL_LABEL}</span>
-              <span className="hidden max-w-full truncate xl:inline">{CONFIG_ITEM.label}</span>
+              <span className="max-w-full truncate">{CONFIG_RAIL_LABEL}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Solo el dueño</TooltipContent>

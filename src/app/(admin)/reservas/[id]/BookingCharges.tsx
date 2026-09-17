@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import * as Sentry from '@sentry/nextjs'
 import { ArrowRightLeft, Banknote, Check, ChevronDown, Coins, CreditCard } from 'lucide-react'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { toast } from '@/hooks/use-toast'
@@ -58,6 +59,17 @@ const PAYMENT_METHODS = [
   },
 ] as const
 
+type ChargeLine = AddBookingChargeInput['charges'][number]
+
+/** Un cobro que salió y cuya respuesta no llegó: no se sabe si entró. */
+type UnconfirmedCharge = {
+  key: string
+  charges: ChargeLine[]
+  total: number
+  toastTitle: string
+  toastDescription?: string
+}
+
 const DEPOSIT_STATUS_LABELS: Record<string, string> = {
   pending: 'pendiente',
   // La plata todavía no se movió: el complejo la debe. Ver `deposit-display.ts`.
@@ -83,6 +95,18 @@ export default function BookingCharges({
   const [amountCents, setAmountCents] = useState<number | null>(null)
   const [method, setMethod] = useState<'cash' | 'transfer' | 'mercadopago' | 'other'>('cash')
   const [isMethodOpen, setIsMethodOpen] = useState(false)
+  /**
+   * La key vive lo que vive UN intento de cobro. Antes se armaba una nueva en
+   * cada toque de "Registrar cobro": si la request se cortaba por la red pero el
+   * cobro entraba, el reintento viajaba con otra key y el servidor lo insertaba
+   * de nuevo. Ahora se conserva hasta que el servidor contesta y, mientras no se
+   * sepa si el cobro entró, lo único que se puede mandar es ESE cobro — si se
+   * pudiera cargar otro con la misma key, un cobro idéntico se tomaría por
+   * reintento (el mismo problema que el panel de la grilla).
+   */
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const [unconfirmed, setUnconfirmed] = useState<UnconfirmedCharge | null>(null)
+  const retryCharge = unconfirmed?.key === idempotencyKey ? unconfirmed : null
 
   const {
     depositCounted,
@@ -151,36 +175,19 @@ export default function BookingCharges({
       const amount1 = splitCents1
       const amount2 = splitCents2Value
 
-      startTransition(async () => {
-        const clientIdempotencyKey =
-          typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
-
-        // Un solo llamado, atómico (addBookingChargeAction inserta las N
-        // líneas en la MISMA transacción): antes eran dos cobros separados y
-        // un fallo a mitad de camino dejaba la plata del primero adentro sin
-        // el segundo.
-        const res = await addBookingChargeAction({
-          bookingId,
-          charges: [
-            { amount: amount1, method: splitMethod1 },
-            { amount: amount2, method: splitMethod2 },
-          ],
-          clientIdempotencyKey,
-        })
-
-        if (!res.success) {
-          setError(res.error)
-          return
-        }
-
-        toast({
-          title: 'Cobro dividido registrado',
-          description: `${formatArs(amount1)} (${METHOD_LABELS[splitMethod1]}) + ${formatArs(amount2)} (${METHOD_LABELS[splitMethod2]})`,
-          variant: 'success',
-        })
-        setOpen(false)
-        setAmountCents(null)
-        router.refresh()
+      // Un solo llamado, atómico (addBookingChargeAction inserta las N
+      // líneas en la MISMA transacción): antes eran dos cobros separados y
+      // un fallo a mitad de camino dejaba la plata del primero adentro sin
+      // el segundo.
+      runCharge({
+        key: idempotencyKey,
+        charges: [
+          { amount: amount1, method: splitMethod1 },
+          { amount: amount2, method: splitMethod2 },
+        ],
+        total: amount1 + amount2,
+        toastTitle: 'Cobro dividido registrado',
+        toastDescription: `${formatArs(amount1)} (${METHOD_LABELS[splitMethod1]}) + ${formatArs(amount2)} (${METHOD_LABELS[splitMethod2]})`,
       })
       return
     }
@@ -195,24 +202,51 @@ export default function BookingCharges({
       setError(`El cobro (${formatArs(amount)}) supera lo pendiente (${formatArs(pendingAmount)}).`)
       return
     }
-    const clientIdempotencyKey =
-      typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined
+    runCharge({
+      key: idempotencyKey,
+      charges: [{ amount, method }],
+      total: amount,
+      toastTitle: 'Cobro registrado',
+    })
+  }
 
+  function runCharge(attempt: UnconfirmedCharge) {
     startTransition(async () => {
-      const res = await addBookingChargeAction({
-        bookingId,
-        charges: [{ amount, method }],
-        clientIdempotencyKey,
-      })
-      if (res.success) {
-        toast({ title: 'Cobro registrado', variant: 'success' })
+      try {
+        const res = await addBookingChargeAction({
+          bookingId,
+          charges: attempt.charges,
+          clientIdempotencyKey: attempt.key,
+        })
+        // El servidor contestó: el intento quedó resuelto (entró, o no dejó nada
+        // escrito), así que el próximo cobro va con otra key.
+        setUnconfirmed(null)
+        setIdempotencyKey(crypto.randomUUID())
+        if (!res.success) {
+          setError(res.error)
+          return
+        }
+        toast({
+          title: attempt.toastTitle,
+          description: attempt.toastDescription,
+          variant: 'success',
+        })
         setOpen(false)
         setAmountCents(null)
         router.refresh()
-      } else {
-        setError(res.error)
+      } catch (err) {
+        Sentry.captureException(err)
+        setError(null)
+        setUnconfirmed(attempt)
       }
     })
+  }
+
+  /** Reenvía el cobro que quedó sin confirmar: mismas líneas, misma key. */
+  function retryUnconfirmedCharge() {
+    if (!retryCharge) return
+    setError(null)
+    runCharge(retryCharge)
   }
 
   return (
@@ -281,317 +315,342 @@ export default function BookingCharges({
         </button>
       ) : (
         <div className="mt-4 space-y-4 rounded-lg border border-border bg-muted/40 p-4">
-          {/* Pestañas de modo de cobro */}
-          <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-            <button
-              type="button"
-              onClick={() => {
-                setChargeMode('single')
-                setError(null)
-              }}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
-                chargeMode === 'single'
-                  ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-              )}
-            >
-              Pago único
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setChargeMode('split')
-                setError(null)
-              }}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
-                chargeMode === 'split'
-                  ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-              )}
-            >
-              Pago dividido (2 medios)
-            </button>
-          </div>
+          {/* Con un cobro sin confirmar no se toca nada: sólo se reintenta ese. */}
+          <fieldset disabled={retryCharge !== null} className="min-w-0 space-y-4">
+            {/* Pestañas de modo de cobro */}
+            <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setChargeMode('single')
+                  setError(null)
+                }}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+                  chargeMode === 'single'
+                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}
+              >
+                Pago único
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChargeMode('split')
+                  setError(null)
+                }}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+                  chargeMode === 'split'
+                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}
+              >
+                Pago dividido (2 medios)
+              </button>
+            </div>
 
-          {chargeMode === 'single' ? (
-            <div className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="charge-amount" className="text-xs font-medium text-foreground">
-                      Monto (ARS)
+            {chargeMode === 'single' ? (
+              <div className="space-y-3">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label
+                        htmlFor="charge-amount"
+                        className="text-xs font-medium text-foreground"
+                      >
+                        Monto (ARS)
+                      </label>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setAmountCents(Math.round(pendingAmount / 2))}
+                          className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px]"
+                        >
+                          50%
+                        </button>
+                        <span className="text-muted-foreground">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setAmountCents(pendingAmount)}
+                          className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px]"
+                        >
+                          Total
+                        </button>
+                      </div>
+                    </div>
+                    <MoneyInput
+                      id="charge-amount"
+                      minCents={1}
+                      maxCents={pendingAmount}
+                      valueCents={amountCents}
+                      onValueChange={setAmountCents}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Máximo cobrable: {formatArs(pendingAmount)}
+                    </p>
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label htmlFor="charge-method" className="text-xs font-medium text-foreground">
+                      Medio de pago
                     </label>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => setAmountCents(Math.round(pendingAmount / 2))}
-                        className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px]"
+                    <select
+                      id="charge-method"
+                      value={method}
+                      onChange={(e) => setMethod(e.target.value as typeof method)}
+                      className="sr-only"
+                    >
+                      <option value="cash">Efectivo</option>
+                      <option value="transfer">Transferencia</option>
+                      <option value="mercadopago">MercadoPago</option>
+                      <option value="other">Otro</option>
+                    </select>
+
+                    <Popover open={isMethodOpen} onOpenChange={setIsMethodOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Medio de pago"
+                          className="flex h-11 md:h-9 w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/40 shadow-xs cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            {(() => {
+                              const current =
+                                PAYMENT_METHODS.find((m) => m.value === method) ??
+                                PAYMENT_METHODS[0]
+                              const Icon = current.icon
+                              return (
+                                <>
+                                  <Icon className={cn('h-4 w-4 shrink-0', current.accentClass)} />
+                                  <span className="font-semibold text-foreground">
+                                    {current.label}
+                                  </span>
+                                </>
+                              )
+                            })()}
+                          </div>
+                          <ChevronDown
+                            className={cn(
+                              'h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200',
+                              isMethodOpen && 'rotate-180',
+                            )}
+                          />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50"
                       >
-                        50%
-                      </button>
-                      <span className="text-muted-foreground">•</span>
-                      <button
-                        type="button"
-                        onClick={() => setAmountCents(pendingAmount)}
-                        className="text-emerald-700 dark:text-emerald-400 hover:underline text-[11px]"
+                        {PAYMENT_METHODS.map((m) => {
+                          const isSelected = method === m.value
+                          const Icon = m.icon
+                          return (
+                            <button
+                              key={m.value}
+                              type="button"
+                              onClick={() => {
+                                setMethod(m.value)
+                                setIsMethodOpen(false)
+                              }}
+                              className={cn(
+                                'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer text-left',
+                                isSelected
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
+                                  : 'hover:bg-accent text-foreground',
+                              )}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <Icon className={cn('h-4 w-4 shrink-0', m.accentClass)} />
+                                <span>{m.label}</span>
+                              </div>
+                              {isSelected && (
+                                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground/90 italic">
+                  💡 Si pagaron con 2 medios (ej. parte Efectivo y parte Transferencia), podés usar
+                  la pestaña arriba <strong>&quot;Pago dividido&quot;</strong>.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-md bg-background/60 p-3 border border-border/60 space-y-3">
+                  <p className="text-xs font-semibold text-foreground">Primer pago</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="split-amount-1"
+                        className="text-xs font-medium text-foreground"
                       >
-                        Total
-                      </button>
+                        Monto 1 (ARS)
+                      </label>
+                      <MoneyInput
+                        id="split-amount-1"
+                        minCents={1}
+                        maxCents={pendingAmount - 1}
+                        valueCents={splitCents1}
+                        onValueChange={setSplitCents1}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="split-method-1"
+                        className="text-xs font-medium text-foreground"
+                      >
+                        Medio de pago 1
+                      </label>
+                      <select
+                        id="split-method-1"
+                        value={splitMethod1}
+                        onChange={(e) => setSplitMethod1(e.target.value as typeof splitMethod1)}
+                        className="sr-only"
+                      >
+                        <option value="cash">Efectivo</option>
+                        <option value="transfer">Transferencia</option>
+                        <option value="mercadopago">MercadoPago</option>
+                        <option value="other">Otro</option>
+                      </select>
+                      <Popover open={isMethod1Open} onOpenChange={setIsMethod1Open}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden cursor-pointer"
+                          >
+                            <span className="font-semibold text-foreground">
+                              {METHOD_LABELS[splitMethod1]}
+                            </span>
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          align="start"
+                          className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50"
+                        >
+                          {PAYMENT_METHODS.map((m) => (
+                            <button
+                              key={m.value}
+                              type="button"
+                              onClick={() => {
+                                setSplitMethod1(m.value)
+                                setIsMethod1Open(false)
+                              }}
+                              className={cn(
+                                'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-left cursor-pointer',
+                                splitMethod1 === m.value
+                                  ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300'
+                                  : 'hover:bg-accent',
+                              )}
+                            >
+                              <span>{m.label}</span>
+                            </button>
+                          ))}
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
-                  <MoneyInput
-                    id="charge-amount"
-                    minCents={1}
-                    maxCents={pendingAmount}
-                    valueCents={amountCents}
-                    onValueChange={setAmountCents}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Máximo cobrable: {formatArs(pendingAmount)}
+                </div>
+
+                <div className="rounded-md bg-background/60 p-3 border border-border/60 space-y-3">
+                  <p className="text-xs font-semibold text-foreground">
+                    Segundo pago (saldo restante)
                   </p>
-                </div>
-                <div className="flex-1 space-y-1">
-                  <label htmlFor="charge-method" className="text-xs font-medium text-foreground">
-                    Medio de pago
-                  </label>
-                  <select
-                    id="charge-method"
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value as typeof method)}
-                    className="sr-only"
-                  >
-                    <option value="cash">Efectivo</option>
-                    <option value="transfer">Transferencia</option>
-                    <option value="mercadopago">MercadoPago</option>
-                    <option value="other">Otro</option>
-                  </select>
-
-                  <Popover open={isMethodOpen} onOpenChange={setIsMethodOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Medio de pago"
-                        className="flex h-11 md:h-9 w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500/40 shadow-xs cursor-pointer"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="split-amount-2"
+                        className="text-xs font-medium text-foreground"
                       >
-                        <div className="flex items-center gap-2 truncate">
-                          {(() => {
-                            const current =
-                              PAYMENT_METHODS.find((m) => m.value === method) ?? PAYMENT_METHODS[0]
-                            const Icon = current.icon
-                            return (
-                              <>
-                                <Icon className={cn('h-4 w-4 shrink-0', current.accentClass)} />
-                                <span className="font-semibold text-foreground">
-                                  {current.label}
-                                </span>
-                              </>
-                            )
-                          })()}
-                        </div>
-                        <ChevronDown
-                          className={cn(
-                            'h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200',
-                            isMethodOpen && 'rotate-180',
-                          )}
-                        />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="start"
-                      className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card text-card-foreground border border-border/90 shadow-xl backdrop-blur-xl space-y-0.5 z-50"
-                    >
-                      {PAYMENT_METHODS.map((m) => {
-                        const isSelected = method === m.value
-                        const Icon = m.icon
-                        return (
+                        Monto 2 (ARS)
+                      </label>
+                      <MoneyInput id="split-amount-2" valueCents={splitCents2Value} disabled />
+                    </div>
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="split-method-2"
+                        className="text-xs font-medium text-foreground"
+                      >
+                        Medio de pago 2
+                      </label>
+                      <select
+                        id="split-method-2"
+                        value={splitMethod2}
+                        onChange={(e) => setSplitMethod2(e.target.value as typeof splitMethod2)}
+                        className="sr-only"
+                      >
+                        <option value="cash">Efectivo</option>
+                        <option value="transfer">Transferencia</option>
+                        <option value="mercadopago">MercadoPago</option>
+                        <option value="other">Otro</option>
+                      </select>
+                      <Popover open={isMethod2Open} onOpenChange={setIsMethod2Open}>
+                        <PopoverTrigger asChild>
                           <button
-                            key={m.value}
                             type="button"
-                            onClick={() => {
-                              setMethod(m.value)
-                              setIsMethodOpen(false)
-                            }}
-                            className={cn(
-                              'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer text-left',
-                              isSelected
-                                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
-                                : 'hover:bg-accent text-foreground',
-                            )}
+                            className="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden cursor-pointer"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <Icon className={cn('h-4 w-4 shrink-0', m.accentClass)} />
+                            <span className="font-semibold text-foreground">
+                              {METHOD_LABELS[splitMethod2]}
+                            </span>
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          align="start"
+                          className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50"
+                        >
+                          {PAYMENT_METHODS.map((m) => (
+                            <button
+                              key={m.value}
+                              type="button"
+                              onClick={() => {
+                                setSplitMethod2(m.value)
+                                setIsMethod2Open(false)
+                              }}
+                              className={cn(
+                                'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-left cursor-pointer',
+                                splitMethod2 === m.value
+                                  ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300'
+                                  : 'hover:bg-accent',
+                              )}
+                            >
                               <span>{m.label}</span>
-                            </div>
-                            {isSelected && (
-                              <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            )}
-                          </button>
-                        )
-                      })}
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground/90 italic">
-                💡 Si pagaron con 2 medios (ej. parte Efectivo y parte Transferencia), podés usar la
-                pestaña arriba <strong>&quot;Pago dividido&quot;</strong>.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="rounded-md bg-background/60 p-3 border border-border/60 space-y-3">
-                <p className="text-xs font-semibold text-foreground">Primer pago</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label htmlFor="split-amount-1" className="text-xs font-medium text-foreground">
-                      Monto 1 (ARS)
-                    </label>
-                    <MoneyInput
-                      id="split-amount-1"
-                      minCents={1}
-                      maxCents={pendingAmount - 1}
-                      valueCents={splitCents1}
-                      onValueChange={setSplitCents1}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="split-method-1" className="text-xs font-medium text-foreground">
-                      Medio de pago 1
-                    </label>
-                    <select
-                      id="split-method-1"
-                      value={splitMethod1}
-                      onChange={(e) => setSplitMethod1(e.target.value as typeof splitMethod1)}
-                      className="sr-only"
-                    >
-                      <option value="cash">Efectivo</option>
-                      <option value="transfer">Transferencia</option>
-                      <option value="mercadopago">MercadoPago</option>
-                      <option value="other">Otro</option>
-                    </select>
-                    <Popover open={isMethod1Open} onOpenChange={setIsMethod1Open}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden cursor-pointer"
-                        >
-                          <span className="font-semibold text-foreground">
-                            {METHOD_LABELS[splitMethod1]}
-                          </span>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        align="start"
-                        className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50"
-                      >
-                        {PAYMENT_METHODS.map((m) => (
-                          <button
-                            key={m.value}
-                            type="button"
-                            onClick={() => {
-                              setSplitMethod1(m.value)
-                              setIsMethod1Open(false)
-                            }}
-                            className={cn(
-                              'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-left cursor-pointer',
-                              splitMethod1 === m.value
-                                ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300'
-                                : 'hover:bg-accent',
-                            )}
-                          >
-                            <span>{m.label}</span>
-                          </button>
-                        ))}
-                      </PopoverContent>
-                    </Popover>
+                            </button>
+                          ))}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="rounded-md bg-background/60 p-3 border border-border/60 space-y-3">
-                <p className="text-xs font-semibold text-foreground">
-                  Segundo pago (saldo restante)
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label htmlFor="split-amount-2" className="text-xs font-medium text-foreground">
-                      Monto 2 (ARS)
-                    </label>
-                    <MoneyInput id="split-amount-2" valueCents={splitCents2Value} disabled />
-                  </div>
-                  <div className="space-y-1">
-                    <label htmlFor="split-method-2" className="text-xs font-medium text-foreground">
-                      Medio de pago 2
-                    </label>
-                    <select
-                      id="split-method-2"
-                      value={splitMethod2}
-                      onChange={(e) => setSplitMethod2(e.target.value as typeof splitMethod2)}
-                      className="sr-only"
-                    >
-                      <option value="cash">Efectivo</option>
-                      <option value="transfer">Transferencia</option>
-                      <option value="mercadopago">MercadoPago</option>
-                      <option value="other">Otro</option>
-                    </select>
-                    <Popover open={isMethod2Open} onOpenChange={setIsMethod2Open}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-background dark:bg-zinc-900/60 px-3.5 text-sm font-medium text-foreground transition-all hover:bg-accent focus-visible:outline-hidden cursor-pointer"
-                        >
-                          <span className="font-semibold text-foreground">
-                            {METHOD_LABELS[splitMethod2]}
-                          </span>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        align="start"
-                        className="w-(--radix-popover-trigger-width) p-1.5 rounded-xl bg-card border border-border z-50"
-                      >
-                        {PAYMENT_METHODS.map((m) => (
-                          <button
-                            key={m.value}
-                            type="button"
-                            onClick={() => {
-                              setSplitMethod2(m.value)
-                              setIsMethod2Open(false)
-                            }}
-                            className={cn(
-                              'flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-left cursor-pointer',
-                              splitMethod2 === m.value
-                                ? 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300'
-                                : 'hover:bg-accent',
-                            )}
-                          >
-                            <span>{m.label}</span>
-                          </button>
-                        ))}
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                  <span>
+                    Resumen: {formatArs(splitCents1Value)} ({METHOD_LABELS[splitMethod1]}) +{' '}
+                    {formatArs(splitCents2Value)} ({METHOD_LABELS[splitMethod2]})
+                  </span>
+                  <span className="font-semibold">
+                    Total: {formatArs(splitCents1Value + splitCents2Value)}
+                  </span>
                 </div>
               </div>
-
-              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                <span>
-                  Resumen: {formatArs(splitCents1Value)} ({METHOD_LABELS[splitMethod1]}) +{' '}
-                  {formatArs(splitCents2Value)} ({METHOD_LABELS[splitMethod2]})
-                </span>
-                <span className="font-semibold">
-                  Total: {formatArs(splitCents1Value + splitCents2Value)}
-                </span>
-              </div>
-            </div>
-          )}
+            )}
+          </fieldset>
 
           {error && (
             <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
+            </p>
+          )}
+          {retryCharge && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              Se cortó la conexión y no sabemos si ese cobro entró. Reintentalo antes de cargar
+              otro: si ya había entrado, no se cobra dos veces.
             </p>
           )}
 
@@ -599,10 +658,14 @@ export default function BookingCharges({
             <button
               type="button"
               disabled={pending}
-              onClick={onSubmit}
+              onClick={retryCharge ? retryUnconfirmedCharge : onSubmit}
               className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60 cursor-pointer"
             >
-              {chargeMode === 'split' ? 'Registrar cobro dividido' : 'Registrar cobro'}
+              {retryCharge
+                ? `Reintentar cobro de ${formatArs(retryCharge.total)}`
+                : chargeMode === 'split'
+                  ? 'Registrar cobro dividido'
+                  : 'Registrar cobro'}
             </button>
             <button
               type="button"

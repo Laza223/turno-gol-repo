@@ -16,7 +16,12 @@ vi.mock('@/modules/staff/guards', () => ({
 }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn() }))
-vi.mock('@/modules/cashflow/cashflow.service', () => ({ createCashFlow: vi.fn() }))
+// `createCashFlow` mockeado, `resolveIdempotentCharges` real (sin key no toca
+// la DB, así que no cambia la secuencia de `tx.execute` de abajo).
+vi.mock('@/modules/cashflow/cashflow.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/modules/cashflow/cashflow.service')>()),
+  createCashFlow: vi.fn(),
+}))
 vi.mock('@/modules/bookings/booking.service', () => ({
   createManualBooking: vi.fn(),
   completeBooking: vi.fn(),

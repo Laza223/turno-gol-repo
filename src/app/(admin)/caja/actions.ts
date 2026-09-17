@@ -10,9 +10,11 @@ import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { cashFlowResponseSchema } from '@/modules/cashflow/cashflow.schema'
 import { validateApiOutput } from '@/shared/api-output'
 import {
+  CashFlowIdempotencyConflictError,
   InvalidCashFlowTypeError,
   InvalidCashFlowCategoryError,
 } from '@/modules/cashflow/cashflow.errors'
+import { formatArs } from '@/lib/format'
 import type { CashFlowRow, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
 /** Margen para el desfasaje de reloj del navegador contra el del servidor. */
@@ -99,6 +101,14 @@ export async function createCashFlowAction(
   } catch (err) {
     if (err instanceof InvalidCashFlowTypeError || err instanceof InvalidCashFlowCategoryError) {
       return { success: false, error: (err as Error).message }
+    }
+    // Misma key, otro movimiento (revisión del PR #326): antes se devolvía la
+    // fila vieja como si fuera la pedida.
+    if (err instanceof CashFlowIdempotencyConflictError) {
+      return {
+        success: false,
+        error: `Ese movimiento ya se había registrado por ${formatArs(err.registeredCents)}. Refrescá la pantalla antes de cargar otro.`,
+      }
     }
     throw err
   }

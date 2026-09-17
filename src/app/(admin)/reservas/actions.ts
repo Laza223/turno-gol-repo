@@ -27,7 +27,13 @@ import {
   searchTenantPlayers,
   type PlayerSearchResult,
 } from '@/modules/players/player-search.service'
-import { createCashFlow, resolveIdempotentCharges } from '@/modules/cashflow/cashflow.service'
+import {
+  chargeConflictMessage,
+  createCashFlow,
+  rejectChargeConflict,
+  resolveIdempotentCharges,
+} from '@/modules/cashflow/cashflow.service'
+import { CashFlowIdempotencyConflictError } from '@/modules/cashflow/cashflow.errors'
 import type { CashFlowRow } from '@/modules/cashflow/cashflow.types'
 import {
   confirmManualDepositPayment,
@@ -908,7 +914,7 @@ export async function addBookingChargeAction(
       )
     }
     return { success: true as const, cashFlow: cashFlow! }
-  })
+  }).catch(rejectChargeConflict)
 
   if (result.success) {
     revalidateBooking(bookingId)
@@ -1005,10 +1011,27 @@ export async function completeAndChargeBookingAction(
           chargesTotal,
         })
 
-        const totalCharging = charges.reduce((sum, c) => sum + c.amount, 0)
-        if (totalCharging > pending) {
+        // Revisión del PR #326: esta función había quedado afuera de
+        // `resolveIdempotentCharges`, y el panel de la grilla usa UNA key para
+        // los tres modos. Un adelanto commiteado con la respuesta perdida y,
+        // al terminar el turno, "cobrar el resto" con la misma key validaba el
+        // monto nuevo, completaba el turno y el ON CONFLICT dejaba la fila del
+        // adelanto: éxito en pantalla, caja corta y una deuda falsa. Throw y no
+        // return, por el mismo motivo que el resto de este bloque: la
+        // completación de arriba tiene que deshacerse.
+        const idempotent = await resolveIdempotentCharges(
+          tenant.id,
+          charges,
+          clientIdempotencyKey,
+          tx,
+        )
+        if (!idempotent.ok) {
+          throw new BookingValidationError(idempotent.error)
+        }
+        const newCharging = idempotent.newChargingCents
+        if (newCharging > pending) {
           throw new BookingValidationError(
-            `El cobro total (${formatArs(totalCharging)}) supera lo pendiente (${formatArs(pending)}).`,
+            `El cobro total (${formatArs(newCharging)}) supera lo pendiente (${formatArs(pending)}).`,
           )
         }
 
@@ -1053,6 +1076,9 @@ export async function completeAndChargeBookingAction(
     }
     if (err instanceof BookingValidationError) {
       return { success: false, error: err.message }
+    }
+    if (err instanceof CashFlowIdempotencyConflictError) {
+      return { success: false, error: chargeConflictMessage(err.registeredCents) }
     }
     throw err
   }

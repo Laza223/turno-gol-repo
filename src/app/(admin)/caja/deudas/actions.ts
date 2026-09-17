@@ -7,7 +7,11 @@ import { uuid, moneyCents } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import { chargeSplitPayment, resolveIdempotentCharges } from '@/modules/cashflow/cashflow.service'
+import {
+  chargeSplitPayment,
+  rejectChargeConflict,
+  resolveIdempotentCharges,
+} from '@/modules/cashflow/cashflow.service'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { formatArs } from '@/lib/format'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
@@ -130,7 +134,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
     )
 
     return { success: true as const }
-  })
+  }).catch(rejectChargeConflict)
 
   if (result.success) {
     // `/deudas` era un stub de redirect: revalidarlo no refrescaba ninguna

@@ -2,14 +2,22 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatArs } from '@/lib/format'
 import { toast } from '@/hooks/use-toast'
+import type { UnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
+import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
 import type { CreateTabAction } from './TicketPanel'
 import type { TicketLine } from './ticket-lib'
+
+/** Un fiado que salió: lo que se reenvía si la respuesta no vuelve. */
+export type TabAttempt = {
+  debtorName: string
+  lines: { productId: string; qty: number }[]
+  total: number
+}
 
 /**
  * "Anotáselo al capitán": una sola pregunta, a nombre de quién.
@@ -28,6 +36,7 @@ export function TabDialog({
   lines,
   total,
   createTabAction,
+  attempt,
   onSuccess,
 }: {
   open: boolean
@@ -35,26 +44,29 @@ export function TabDialog({
   lines: TicketLine[]
   total: number
   createTabAction: CreateTabAction
+  /**
+   * Vive en TicketPanel y no acá: mientras no se sepa si el fiado entró, el
+   * ticket no se puede cobrar ni tocar (esas líneas pueden ya estar anotadas).
+   */
+  attempt: UnconfirmedSubmit<TabAttempt>
   onSuccess: () => void
 }) {
   const router = useRouter()
   const [debtorName, setDebtorName] = useState('')
   const [tabError, setTabError] = useState<string | null>(null)
   const [tabPending, startTabTransition] = useTransition()
-  const [tabIdempotencyKey, setTabIdempotencyKey] = useState(() => crypto.randomUUID())
+  const retry = attempt.retryPayload
 
   // Se re-inicializa en cada apertura, en RENDER (mismo patrón que
   // FiadosList/SettleTabDialog) — no en onOpenChange: ese callback de Radix
   // solo dispara ante triggers INTERNOS del diálogo (Escape, overlay, botón
   // cerrar), nunca cuando el padre cambia `open` directamente desde afuera
-  // (TicketPanel hace justamente eso), así que la key quedaba en null para
-  // siempre y el submit hacía return silencioso.
+  // (TicketPanel hace justamente eso).
   const [lastOpen, setLastOpen] = useState(false)
   if (open && !lastOpen) {
     setLastOpen(true)
     setDebtorName('')
     setTabError(null)
-    setTabIdempotencyKey(crypto.randomUUID())
   } else if (!open && lastOpen) {
     setLastOpen(false)
   }
@@ -65,31 +77,33 @@ export function TabDialog({
   }
 
   function submitTab() {
-    if (lines.length === 0 || !tabIdempotencyKey) return
+    if (lines.length === 0) return
     const trimmedName = debtorName.trim()
     if (trimmedName === '') {
       setTabError('Poné un nombre para el fiado.')
       return
     }
+    runTab({
+      debtorName: trimmedName,
+      lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
+      total,
+    })
+  }
+
+  function runTab(payload: TabAttempt) {
     setTabError(null)
     startTabTransition(async () => {
-      try {
-        const res = await createTabAction({
-          debtorName: trimmedName,
-          lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
-          clientIdempotencyKey: tabIdempotencyKey,
-        })
-        if (res.success) {
-          toast({ title: `Fiado anotado — ${res.debtorName}`, variant: 'success' })
-          onSuccess()
-          onOpenChange(false)
-          router.refresh()
-        } else {
-          setTabError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setTabError('No pudimos anotar el fiado. Revisá tu conexión e intentá de nuevo.')
+      const res = await attempt.send(payload, (p, clientIdempotencyKey) =>
+        createTabAction({ debtorName: p.debtorName, lines: p.lines, clientIdempotencyKey }),
+      )
+      if (!res) return
+      if (res.success) {
+        toast({ title: `Fiado anotado — ${res.debtorName}`, variant: 'success' })
+        onSuccess()
+        onOpenChange(false)
+        router.refresh()
+      } else {
+        setTabError(res.error)
       }
     })
   }
@@ -100,7 +114,15 @@ export function TabDialog({
         <DialogHeader>
           <DialogTitle>Anotar fiado</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        {retry && (
+          <UnconfirmedRetry
+            what={`el fiado de ${formatArs(retry.total)} a nombre de ${retry.debtorName}`}
+            retryLabel="Reintentar fiado"
+            isPending={tabPending}
+            onRetry={() => runTab(retry)}
+          />
+        )}
+        <div className="space-y-4" hidden={retry !== null}>
           <div className="space-y-1">
             <Label htmlFor="tab-debtor-name">¿A nombre de quién?</Label>
             <Input

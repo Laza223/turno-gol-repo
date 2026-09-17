@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { chipClass } from '../caja-lib'
 import { toast } from '@/hooks/use-toast'
+import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
+import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import type { StockActionResult } from './actions'
 
@@ -26,6 +27,11 @@ const REASONS = [
 ] as const
 
 type ExitReason = (typeof REASONS)[number]['value']
+
+type ExitAttempt = {
+  input: Omit<Parameters<RegisterStockExitAction>[0], 'clientIdempotencyKey'>
+  productName: string
+}
 
 /**
  * Salida no comercial: mueve stock, NO toca caja. El motivo es obligatorio
@@ -48,7 +54,8 @@ export function StockExitDialog({
   const [reason, setReason] = useState<ExitReason>('waste')
   const [units, setUnits] = useState('1')
   const [note, setNote] = useState('')
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const attempt = useUnconfirmedSubmit<ExitAttempt>()
+  const retry = attempt.retryPayload
 
   const [lastProductId, setLastProductId] = useState<string | null>(null)
   if (product && product.id !== lastProductId) {
@@ -57,7 +64,6 @@ export function StockExitDialog({
     setUnits('1')
     setNote('')
     setError(null)
-    setIdempotencyKey(crypto.randomUUID())
   }
 
   function handleClose(next: boolean) {
@@ -81,26 +87,26 @@ export function StockExitDialog({
       return
     }
 
+    run({
+      input: { productId: product.id, units: unitsNum, reason, note: note.trim() },
+      productName: product.name,
+    })
+  }
+
+  function run(payload: ExitAttempt) {
+    setError(null)
     startTransition(async () => {
-      try {
-        const res = await registerStockExitAction({
-          productId: product.id,
-          units: unitsNum,
-          reason,
-          note: note.trim(),
-          clientIdempotencyKey: idempotencyKey,
-        })
-        if (res.success) {
-          toast({ title: 'Salida registrada', variant: 'success' })
-          setLastProductId(null)
-          onSaved()
-          onClose()
-        } else {
-          setError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setError('No pudimos registrar la salida. Revisá tu conexión e intentá de nuevo.')
+      const res = await attempt.send(payload, ({ input }, clientIdempotencyKey) =>
+        registerStockExitAction({ ...input, clientIdempotencyKey }),
+      )
+      if (!res) return
+      if (res.success) {
+        toast({ title: 'Salida registrada', variant: 'success' })
+        setLastProductId(null)
+        onSaved()
+        onClose()
+      } else {
+        setError(res.error)
       }
     })
   }
@@ -109,9 +115,17 @@ export function StockExitDialog({
     <Dialog open={product !== null} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Salida — {product?.name}</DialogTitle>
+          <DialogTitle>Salida — {retry ? retry.productName : product?.name}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        {retry && (
+          <UnconfirmedRetry
+            what={`la salida de ${retry.input.units} × ${retry.productName}`}
+            retryLabel="Reintentar salida"
+            isPending={isPending}
+            onRetry={() => run(retry)}
+          />
+        )}
+        <div className="space-y-4" hidden={retry !== null}>
           <p className="text-xs text-muted-foreground">
             Esto no toca la caja: solo descuenta stock.
           </p>

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import * as Sentry from '@sentry/nextjs'
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import {
@@ -16,6 +15,8 @@ import {
 import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
+import { unconfirmedMessage } from '@/components/admin/UnconfirmedRetry'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import type { CreateTabActionResult, SellTicketActionResult } from './actions'
 import {
@@ -28,7 +29,7 @@ import {
   ticketTotal,
   type TicketLine,
 } from './ticket-lib'
-import { TabDialog } from './TabDialog'
+import { TabDialog, type TabAttempt } from './TabDialog'
 
 export type SellTicketAction = (input: {
   lines: { productId: string; qty: number }[]
@@ -52,6 +53,13 @@ export type CreateTabAction = (input: {
  */
 const SEARCH_MIN_PRODUCTS = 13
 
+/** Una venta que salió: lo que se reenvía si la respuesta no vuelve. */
+type SaleAttempt = {
+  lines: { productId: string; qty: number }[]
+  method: SaleMethod
+  total: number
+}
+
 export function TicketPanel({
   products,
   sellTicketAction,
@@ -69,14 +77,24 @@ export function TicketPanel({
   const [comboboxValue, setComboboxValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  // Una key por ticket: se genera al agregar el primer ítem y se regenera
-  // recién tras cobrar OK (mismo criterio anti doble-tap que CanteenQuickSale/Fix #55).
-  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null)
+  // La key de la venta y la del fiado (ver useUnconfirmedSubmit). Si una de las
+  // dos quedó sin respuesta, esas líneas pueden ya estar registradas: el ticket
+  // entero se traba hasta reintentar ESE envío.
+  const sale = useUnconfirmedSubmit<SaleAttempt>()
+  const tab = useUnconfirmedSubmit<TabAttempt>()
+  const saleRetry = sale.retryPayload
+  const tabRetry = tab.retryPayload
+  const locked = isPending || saleRetry !== null || tabRetry !== null
   const [tabDialogOpen, setTabDialogOpen] = useState(false)
 
   const total = ticketTotal(lines)
   const count = ticketCount(lines)
   const showSearch = products.length >= SEARCH_MIN_PRODUCTS
+  const message = saleRetry
+    ? unconfirmedMessage(`la venta de ${formatArs(saleRetry.total)}`)
+    : tabRetry
+      ? unconfirmedMessage(`el fiado a nombre de ${tabRetry.debtorName}`)
+      : error
 
   const comboboxOptions: ComboboxOption[] = products.map((p) => {
     const badge = canteenStockBadge(p.stock, p.minStock)
@@ -91,7 +109,7 @@ export function TicketPanel({
   })
 
   function handleAdd(product: CanteenProductRow) {
-    if (isPending) return
+    if (locked) return
     setError(null)
     setLines((prev) =>
       addProduct(prev, {
@@ -101,39 +119,50 @@ export function TicketPanel({
         stock: product.stock,
       }),
     )
-    setIdempotencyKey((prev) => prev ?? crypto.randomUUID())
   }
 
   function submit() {
-    if (lines.length === 0 || !idempotencyKey) return
+    if (lines.length === 0 || locked) return
+    runSale({
+      lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
+      method,
+      total,
+    })
+  }
+
+  function runSale(payload: SaleAttempt) {
     setError(null)
     startTransition(async () => {
-      try {
-        const res = await sellTicketAction({
-          lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
-          method,
-          clientIdempotencyKey: idempotencyKey,
-        })
-        if (res.success) {
-          toast({ title: `Venta registrada — ${formatArs(res.total)}`, variant: 'success' })
-          setLines([])
-          setMethod('cash')
-          setIdempotencyKey(null)
-          router.refresh()
-        } else {
-          setError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setError('No pudimos registrar la venta. Revisá tu conexión e intentá de nuevo.')
+      const res = await sale.send(payload, (p, clientIdempotencyKey) =>
+        sellTicketAction({ lines: p.lines, method: p.method, clientIdempotencyKey }),
+      )
+      if (!res) return
+      if (res.success) {
+        toast({ title: `Venta registrada — ${formatArs(res.total)}`, variant: 'success' })
+        setLines([])
+        setMethod('cash')
+        router.refresh()
+      } else {
+        setError(res.error)
       }
     })
   }
 
+  /** El botón de cobrar: con una venta sin respuesta, reintenta ESA. */
+  function handleCharge() {
+    if (saleRetry) runSale(saleRetry)
+    else submit()
+  }
+
+  const chargeLabel = isPending
+    ? 'Cobrando…'
+    : saleRetry
+      ? `Reintentar cobro de ${formatArs(saleRetry.total)}`
+      : `Cobrar ${formatArs(total)}`
+
   function handleTabSuccess() {
     setLines([])
     setMethod('cash')
-    setIdempotencyKey(null)
   }
 
   if (products.length === 0) {
@@ -160,7 +189,7 @@ export function TicketPanel({
           key={m.value}
           type="button"
           onClick={() => setMethod(m.value)}
-          disabled={isPending}
+          disabled={locked}
           aria-pressed={method === m.value}
           className={chipClass(method === m.value)}
         >
@@ -233,7 +262,7 @@ export function TicketPanel({
                       key={p.id}
                       type="button"
                       onClick={() => handleAdd(p)}
-                      disabled={out || isPending}
+                      disabled={out || locked}
                       className={cn(
                         'min-h-[64px] flex flex-col justify-between rounded-lg border p-3 text-left transition-all hover:border-emerald-500 hover:bg-primary/5 active:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:border-emerald-500 dark:hover:bg-emerald-500/10',
                         // Lo que ya está en el ticket se marca con borde y fondo
@@ -331,7 +360,7 @@ export function TicketPanel({
                       <button
                         type="button"
                         onClick={() => setLines((prev) => decrementLine(prev, l.productId))}
-                        disabled={isPending}
+                        disabled={locked}
                         aria-label={`Restar uno a ${l.name}`}
                         className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
                       >
@@ -343,7 +372,7 @@ export function TicketPanel({
                       <button
                         type="button"
                         onClick={() => setLines((prev) => incrementLine(prev, l.productId))}
-                        disabled={isPending || l.qty >= maxQtyFor(l.stock)}
+                        disabled={locked || l.qty >= maxQtyFor(l.stock)}
                         aria-label={`Sumar uno a ${l.name}`}
                         className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent disabled:opacity-40"
                       >
@@ -352,7 +381,7 @@ export function TicketPanel({
                       <button
                         type="button"
                         onClick={() => setLines((prev) => removeLine(prev, l.productId))}
-                        disabled={isPending}
+                        disabled={locked}
                         aria-label={`Quitar ${l.name} del ticket`}
                         className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
                       >
@@ -370,27 +399,27 @@ export function TicketPanel({
               <legend className="mb-1.5 text-xs font-medium text-foreground">Método de pago</legend>
               {methodChips}
             </fieldset>
-            {error && (
+            {message && (
               <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-                {error}
+                {message}
               </p>
             )}
             <button
               type="button"
-              onClick={submit}
-              disabled={isPending || lines.length === 0}
+              onClick={handleCharge}
+              disabled={isPending || tabRetry !== null || lines.length === 0}
               className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
-              {isPending ? 'Cobrando…' : `Cobrar ${formatArs(total)}`}
+              {chargeLabel}
             </button>
             {createTabAction && lines.length > 0 && (
               <button
                 type="button"
                 onClick={() => setTabDialogOpen(true)}
-                disabled={isPending}
+                disabled={isPending || saleRetry !== null}
                 className="h-11 w-full rounded-md border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
               >
-                Anotar como fiado
+                {tabRetry ? 'Reintentar fiado' : 'Anotar como fiado'}
               </button>
             )}
           </div>
@@ -411,7 +440,7 @@ export function TicketPanel({
             <button
               type="button"
               onClick={() => setLines([])}
-              disabled={isPending}
+              disabled={locked}
               className="h-11 shrink-0 px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
             >
               Vaciar
@@ -421,28 +450,28 @@ export function TicketPanel({
             <legend className="sr-only">Método de pago</legend>
             {methodChips}
           </fieldset>
-          {error && (
+          {message && (
             <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-              {error}
+              {message}
             </p>
           )}
           <div className="grid grid-cols-[1fr_auto] gap-2">
             <button
               type="button"
-              onClick={submit}
-              disabled={isPending}
+              onClick={handleCharge}
+              disabled={isPending || tabRetry !== null}
               className="h-12 rounded-md bg-primary text-base font-semibold tabular-nums text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
-              {isPending ? 'Cobrando…' : `Cobrar ${formatArs(total)}`}
+              {chargeLabel}
             </button>
             {createTabAction && (
               <button
                 type="button"
                 onClick={() => setTabDialogOpen(true)}
-                disabled={isPending}
+                disabled={isPending || saleRetry !== null}
                 className="h-12 rounded-md border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
               >
-                Fiado
+                {tabRetry ? 'Reintentar fiado' : 'Fiado'}
               </button>
             )}
           </div>
@@ -456,6 +485,7 @@ export function TicketPanel({
           lines={lines}
           total={total}
           createTabAction={createTabAction}
+          attempt={tab}
           onSuccess={handleTabSuccess}
         />
       )}

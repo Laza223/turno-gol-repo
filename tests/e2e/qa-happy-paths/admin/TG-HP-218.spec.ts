@@ -8,17 +8,71 @@
  * src/app/(admin)/abonados/nuevo/actions.ts:1-158,
  * src/modules/abonados/abonado.service.ts:141-212.
  */
+import type { Page } from '@playwright/test'
 import { test, expect } from '../../fixtures'
-import { tomorrowDateIsoArt, E2E_TENANT_ID, E2E_COURT_ID } from '../../_helpers/booking-seed'
+import { dateIsoArtIn, E2E_TENANT_ID, E2E_COURT_ID } from '../../_helpers/booking-seed'
 import { runSql, writeEvidence } from '../_qa/evidence'
 import { suppressPushPrompt } from '../_qa/session'
+
+const MONTH_NAMES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+]
+
+/** Próximo lunes a partir de mañana (ART). "Empieza el" solo habilita el día semanal elegido. */
+function nextMondayIsoArt(): string {
+  for (let i = 1; i <= 7; i++) {
+    const iso = dateIsoArtIn(i)
+    if (new Date(`${iso}T12:00:00Z`).getUTCDay() === 1) return iso
+  }
+  throw new Error('unreachable: 7 días seguidos sin lunes')
+}
+
+/**
+ * Los campos de cancha/día/horas son `Combobox` (role=combobox + listbox), no
+ * <select>. Mismo patrón que tests/e2e/abonados-crud.spec.ts: la opción se
+ * scopea al `#<fieldId>-listbox` porque Radix deja montado el popover anterior
+ * durante la animación de salida y "Hora inicio"/"Hora fin" comparten opciones.
+ */
+async function selectCombobox(page: Page, fieldId: string, optionName: string): Promise<void> {
+  await page.locator(`#${fieldId}`).click()
+  await page
+    .locator(`#${fieldId}-listbox`)
+    .getByRole('option', { name: optionName, exact: true })
+    .click()
+}
+
+/** "Empieza el" es un DatePicker con calendario propio (ver abonados-crud.spec.ts `pickDate`). */
+async function pickDate(page: Page, dateStr: string): Promise<void> {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const targetLabel = `${MONTH_NAMES[m! - 1]} de ${y}`
+  await page.locator('#startsOn').click()
+  const panel = page.getByRole('dialog', { name: 'Elegir fecha' })
+  await expect(panel).toBeVisible()
+  const nextMonthBtn = panel.getByRole('button', { name: 'Mes siguiente' })
+  for (let i = 0; i < 24; i++) {
+    if (await panel.getByText(targetLabel, { exact: true }).isVisible()) break
+    await nextMonthBtn.click()
+  }
+  await panel.getByRole('button', { name: String(d), exact: true }).click()
+}
 
 test.describe('TG-HP-218 — crear abonado', () => {
   test('admin crea un abonado (turno fijo Lunes 18-19) → abonados + bookings generados', async ({
     browser,
     adminStorageState,
   }) => {
-    const startsOn = tomorrowDateIsoArt()
+    const startsOn = nextMondayIsoArt()
     const contactName = `QA Abonado ${Date.now()}`
     const pricePerSessionPesos = 25_000 // → 2.500.000 centavos
 
@@ -31,28 +85,29 @@ test.describe('TG-HP-218 — crear abonado', () => {
       const page = await context.newPage()
 
       await page.goto('/abonados/nuevo')
-      await expect(page.getByRole('heading', { name: 'Nuevo abonado' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Nuevo turno fijo' })).toBeVisible({
         timeout: 15_000,
       })
 
-      await page.getByLabel('Cancha').selectOption({ label: 'Cancha E2E 1' })
-      await page.getByLabel('Día de la semana').selectOption({ label: 'Lunes' })
-      await page.getByLabel('Empieza el').fill(startsOn)
-      await page.getByLabel('Hora de inicio').fill('18:00')
-      await page.getByLabel('Hora de fin').fill('19:00')
-      await page.getByLabel('Nombre y apellido').fill(contactName)
-      await page.getByLabel('Teléfono').fill('1123456789')
-      await page.getByLabel('Precio por turno (en pesos)').fill(String(pricePerSessionPesos))
-      // Método de pago se deja en el default (Efectivo, mock data del manual).
+      await selectCombobox(page, 'courtId', 'Cancha E2E 1')
+      await selectCombobox(page, 'dayOfWeek', 'Lunes')
+      await pickDate(page, startsOn)
+      await selectCombobox(page, 'timeStart', '18:00')
+      await selectCombobox(page, 'timeEnd', '19:00')
+      await page.locator('#contactName').fill(contactName)
+      // #contactPhone = input tel visible del PhoneInput (el name=contactPhone es hidden).
+      await page.locator('#contactPhone').fill('1123456789')
+      await page.getByLabel('Precio por turno (pesos)').fill(String(pricePerSessionPesos))
+      // Método de pago: no hay campo en el form; la action defaultea a 'cash'.
 
-      await page.getByRole('button', { name: 'Ver fechas del turno' }).click()
+      await page.getByRole('button', { name: 'Continuar' }).click()
 
-      await expect(page.getByRole('heading', { name: 'Fechas del turno fijo' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Vista previa de fechas' })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(/Se crearán \d+ turnos?\./)).toBeVisible()
+      await expect(page.getByText(/^\d+ turnos? libres?$/)).toBeVisible()
 
-      const createButton = page.getByRole('button', { name: 'Crear abonado' })
+      const createButton = page.getByRole('button', { name: 'Confirmar y Crear Abonado' })
       await expect(createButton).toBeEnabled()
       await createButton.click()
 

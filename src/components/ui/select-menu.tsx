@@ -23,6 +23,14 @@ type Props = {
   icon?: ReactNode
   className?: string
   contentClassName?: string
+  disabled?: boolean
+  /**
+   * Nombre accesible cuando no hay un `<label htmlFor>` al lado. En las líneas
+   * de cobro hay varios de estos seguidos y el único texto visible es el valor
+   * ("Efectivo"), que no dice QUÉ se está eligiendo: sin esto axe lo marca y
+   * un lector de pantalla no distingue el método del cobro 1 del del cobro 2.
+   */
+  'aria-label'?: string
 }
 
 /**
@@ -40,6 +48,8 @@ export function SelectMenu({
   icon,
   className,
   contentClassName,
+  disabled = false,
+  'aria-label': ariaLabel,
 }: Props) {
   const selected = options.find((o) => o.value === value)
 
@@ -49,8 +59,10 @@ export function SelectMenu({
         <button
           type="button"
           id={id}
+          disabled={disabled}
+          aria-label={ariaLabel}
           className={cn(
-            'relative h-12 w-full rounded-xl border border-border bg-background text-base md:text-sm text-foreground shadow-xs transition-colors flex items-center justify-between text-left focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
+            'relative h-12 w-full rounded-xl border border-border bg-background text-base md:text-sm text-foreground shadow-xs transition-colors flex items-center justify-between text-left focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
             icon ? 'pl-10' : 'pl-3.5',
             'pr-10',
             className,

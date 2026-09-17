@@ -268,6 +268,7 @@ function SettleTabDialog({
             onQuickAllCash={submitQuickAllCash}
             disabled={isPending}
             methodOptions={CANTEEN_METHOD_OPTIONS}
+            idPrefix="fiado"
           />
           {error && (
             <p role="alert" className="text-xs text-red-700 dark:text-red-400">

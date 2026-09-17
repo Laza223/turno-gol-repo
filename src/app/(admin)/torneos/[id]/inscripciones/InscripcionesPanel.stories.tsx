@@ -52,7 +52,9 @@ export const FormularioPrecargado: Story = {
     await userEvent.click(canvas.getAllByRole('button', { name: /cobrar/i })[1]!)
     // $25.000 pendientes → "25.000" en el input (SplitPaymentFields, sin label asociado: placeholder "Monto").
     await expect(await canvas.findByPlaceholderText('Monto')).toHaveValue('25.000')
-    await expect(canvas.getByRole('combobox')).toHaveValue('cash')
+    await expect(canvas.getByRole('button', { name: 'Método de pago' })).toHaveTextContent(
+      'Efectivo',
+    )
   },
 }
 

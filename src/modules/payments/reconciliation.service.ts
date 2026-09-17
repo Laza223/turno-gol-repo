@@ -382,7 +382,12 @@ async function findUnreflectedRefunds(sql: Sql): Promise<DriftFinding[]> {
  *     El camino online, en cambio, inserta el `payments` en `pending` al crear
  *     el checkout, mucho antes del cash_flow — o sea: "hubo checkout online
  *     pero ningún pago aprobado lo respalda", que es exactamente el drift que
- *     esta invariante busca.
+ *     esta invariante busca. Tiene que ser una fila de SEÑA (`type='deposit'`,
+ *     la única que escriben `createDepositPayment` y `upsertPaymentRow`): la
+ *     devolución manual pendiente que deja `prepareManualRefund` al cancelar
+ *     también es una fila en `payments`, y sin el tipo volvía a marcar como
+ *     huérfana una seña de mostrador cobrada con el QR de MP (revisión del PR
+ *     #326).
  *
  * Las dos van en SQL a propósito y NO después del `LIMIT`: filtrar en JS dejaba
  * que 500 cobros de mostrador (`ORDER BY created_at ASC`) llenaran la ventana y
@@ -413,7 +418,7 @@ export async function findOrphanCashflows(sql: Sql): Promise<DriftFinding[]> {
       AND cf.description = ${DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX} || cf.booking_id::text
       AND EXISTS (
         SELECT 1 FROM payments p
-        WHERE p.booking_id = cf.booking_id
+        WHERE p.booking_id = cf.booking_id AND p.type = 'deposit'
       )
       AND NOT EXISTS (
         SELECT 1 FROM payments p

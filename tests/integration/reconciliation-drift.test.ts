@@ -572,6 +572,72 @@ describe('reconciliation-drift: INV9 cashflow huérfano', () => {
     expect(idsFor(findings, 'inv9_orphan_cashflow')).not.toContain(cashFlowId)
   }, 30_000)
 
+  /**
+   * Revisión del PR #326: el `EXISTS` de "hubo checkout online" no miraba el
+   * tipo. La devolución manual que registra `prepareManualRefund` al cancelar
+   * (type refund, pending) lo cumplía, y una seña de mostrador cobrada con el QR
+   * de MP volvía a figurar como huérfana hasta que el complejo saldara la
+   * devolución.
+   */
+  it('control negativo: seña de mostrador por MP + devolución manual pendiente → sin finding', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const bookingId = await createTestBooking(sql, fx.tenantId, fx.courtId, fx.playerId, {
+      depositStatus: 'paid',
+      paymentMethod: null,
+    })
+    const cashFlowId = await createTestCashFlow(sql, fx.tenantId, bookingId, fx.staffId)
+    await createTestPayment(sql, fx.tenantId, bookingId, fx.playerId, {
+      type: 'refund',
+      status: 'pending',
+      method: 'other',
+    })
+
+    const findings = await runAccountingReconciliation(sql)
+    expect(idsFor(findings, 'inv9_orphan_cashflow')).not.toContain(cashFlowId)
+  }, 30_000)
+
+  /**
+   * El discriminante por description tiene que ir en el WHERE y no después del
+   * LIMIT: si se filtra en memoria, los cobros de mostrador más viejos llenan la
+   * ventana y un huérfano genuino más nuevo no aparece nunca. Revisión del PR
+   * #326: sin este caso, sacar la condición del SQL dejaba la suite en verde.
+   */
+  it('más cobros de mostrador que el tope de la query no tapan a un huérfano genuino más nuevo', async () => {
+    const sql = getSql()
+    const fx = await setupFixture(sql)
+    const mostrador = await createTestBooking(sql, fx.tenantId, fx.courtId, fx.playerId, {
+      depositStatus: 'not_required',
+      paymentMethod: null,
+    })
+    await createTestPayment(sql, fx.tenantId, mostrador, fx.playerId, { status: 'pending' })
+    // 500 = DRIFT_QUERY_LIMIT. Más viejos que el huérfano, así que ordenan primero.
+    await sql`
+      INSERT INTO cash_flows (
+        tenant_id, type, category, amount, method, description, booking_id, registered_by,
+        occurred_at, created_at
+      )
+      SELECT ${fx.tenantId}, 'income', 'booking', 1000, 'mercadopago', 'Cobro de turno',
+             ${mostrador}, ${fx.staffId}, NOW() - INTERVAL '2 hours',
+             NOW() - INTERVAL '2 hours' - make_interval(secs => g)
+      FROM generate_series(1, 500) AS g
+    `
+
+    // Otro complejo: el fixture de bookings usa siempre el mismo horario y dos
+    // en la misma cancha chocan contra no_overlapping_bookings. La query de
+    // INV9 es cross-tenant, así que no cambia lo que se prueba.
+    const fx2 = await setupFixture(sql)
+    const huerfano = await createTestBooking(sql, fx2.tenantId, fx2.courtId, fx2.playerId, {
+      depositStatus: 'not_required',
+      paymentMethod: null,
+    })
+    await createTestPayment(sql, fx2.tenantId, huerfano, fx2.playerId, { status: 'pending' })
+    const cashFlowId = await createTestCashFlow(sql, fx2.tenantId, huerfano, fx2.staffId)
+
+    const findings = await runAccountingReconciliation(sql)
+    expect(idsFor(findings, 'inv9_orphan_cashflow')).toContain(cashFlowId)
+  }, 60_000)
+
   it('control negativo: cash_flow con payment approved real detrás → sin finding', async () => {
     const sql = getSql()
     const fx = await setupFixture(sql)

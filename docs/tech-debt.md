@@ -6,6 +6,27 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 ---
 
+## Los pagos no tienen una pasada completa de punta a punta en el sandbox de MercadoPago
+
+**Qué es**: cada circuito de plata tiene tests unitarios y de integración con MP simulado, y algunos pasos se probaron a mano en producción con el complejo de prueba. Nunca se hizo una corrida completa contra el sandbox de MP que recorra todos los caminos con cobros, webhooks y cancelaciones reales.
+
+**Por qué existe**: los arreglos de facturación de septiembre (#319, #321, #324, #327, #333) se verificaron sobre producción solo hasta el checkout, sin pagar: el anual abre a $604.800, reintentar la misma opción reusa el link y cambiar de opción ya no manda mails de cancelación (2026-09-17). Lo que nunca se ejecutó con plata o notificaciones reales:
+- el primer cobro diferido al fin de la prueba (`start_date` futuro);
+- el cobro recurrente que llega por webhook;
+- la mora (`past_due`) y la recuperación;
+- el proraeo del upgrade;
+- el PUT del monto al aplicar un downgrade;
+- la cancelación automática de un link viejo que alguien paga (rama mismatch de `onPaymentApproved`);
+- la seña por Checkout Pro después de los cambios del panel de cobro.
+
+**Costo de no resolverla ahora**: bajo mientras no haya clientes pagos (0 al 2026-09-17). El riesgo es que el primer cobro real sea la primera vez que corre alguno de esos caminos. Un error ahí es plata mal cobrada o una suscripción que no se activa, y TurnoGol no reembolsa por API.
+
+**Costo estimado de resolverla**: medio, ~1 jornada. Cuentas de prueba de MP (vendedora y compradora), un complejo en staging apuntando al sandbox, y un guion por camino con lo esperado en `tenant_subscriptions`, `audit_logs` y Sentry. Se puede partir de [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).
+
+**Disparador de resolución**: lo decide Lazar ("a futuro, ahora no porque hay otras prioridades", 2026-09-17). Señal para subirlo: el primer complejo que vaya a pagar el plan, incluido P1 al día 91.
+
+---
+
 ## El `.env.production` local tiene credenciales vencidas
 
 **Qué es**: el archivo `.env.production` de la máquina de Lazar apunta a la base con un usuario y una contraseña que producción ya no acepta. Medido el 2026-09-07 al correr la sonda de la fase 2A: `28P01 password authentication failed for user "postgres"`.

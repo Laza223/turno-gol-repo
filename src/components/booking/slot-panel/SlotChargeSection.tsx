@@ -42,6 +42,13 @@ type Props = {
   onPartialCharge: (amountCents: number, method: MethodKey) => void
   /** Cobra una sola fila del pago por equipo, sin tocar las demás líneas. */
   onLineCharge: (amountCents: number | null, method: MethodKey) => void
+  /**
+   * Monto de un cobro que se cortó por la red y no se sabe si entró, o null.
+   * Mientras hay uno, lo único que se puede hacer es reintentarlo.
+   */
+  retryTotal: number | null
+  /** Reenvía ese mismo cobro, con la misma clave de idempotencia. */
+  onRetry: () => void
 }
 
 /**
@@ -72,8 +79,15 @@ export function SlotChargeSection({
   split,
   onPartialCharge,
   onLineCharge,
+  retryTotal,
+  onRetry,
 }: Props) {
   const primaryMethod = lines[0]?.method ?? 'cash'
+  // Con un cobro sin confirmar no se puede armar otro: si el primero entró y el
+  // segundo es igual (el Equipo 2, otro "Pagó uno"), el servidor lo tomaría por
+  // un reintento y no lo cobraría (R3 de la revisión del PR #326).
+  const awaitingRetry = retryTotal !== null
+  const locked = isPending || awaitingRetry
   const total = lines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
 
   // Pago dividido por equipo. Se apaga solo apenas entra el primer cobro de
@@ -158,7 +172,7 @@ export function SlotChargeSection({
               type="button"
               onClick={() => selectMethod(m)}
               aria-pressed={primaryMethod === m}
-              disabled={isPending}
+              disabled={locked}
               className={cn(
                 // 44px en touch (MASTER §10): el panel entra desde abajo en el
                 // teléfono y este es el PRIMER toque del cobro.
@@ -196,7 +210,7 @@ export function SlotChargeSection({
             <button
               type="button"
               onClick={splitByTeam}
-              disabled={isPending}
+              disabled={locked}
               className={PARTIAL_BUTTON}
             >
               Dividir pago por equipo
@@ -206,7 +220,7 @@ export function SlotChargeSection({
             <button
               type="button"
               onClick={() => onPartialCharge(split.shareCents ?? 0, primaryMethod)}
-              disabled={isPending}
+              disabled={locked}
               className={PARTIAL_BUTTON}
             >
               {isPending ? 'Procesando…' : `Pagó uno — ${formatArs(split.shareCents)}`}
@@ -233,7 +247,7 @@ export function SlotChargeSection({
                   <button
                     type="button"
                     onClick={() => onLineCharge(line.amountCents, line.method)}
-                    disabled={isPending}
+                    disabled={locked}
                     aria-label={`Cobrar al Equipo ${i + 1}`}
                     className="h-9 shrink-0 rounded-lg border border-border px-3 text-xs font-semibold transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
                   >
@@ -247,14 +261,14 @@ export function SlotChargeSection({
                       onValueChange={(cents) => updateLine(line.id, { amountCents: cents })}
                       minCents={1}
                       placeholder="Monto"
-                      disabled={isPending}
+                      disabled={locked}
                       aria-label={`Monto del Equipo ${i + 1}`}
                     />
                   </div>
                   <select
                     value={line.method}
                     onChange={(e) => updateLine(line.id, { method: e.target.value as MethodKey })}
-                    disabled={isPending}
+                    disabled={locked}
                     aria-label={`Método de pago del Equipo ${i + 1}`}
                     className="h-10 rounded-lg border border-input bg-background px-2 text-base font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring disabled:opacity-60 md:text-sm"
                   >
@@ -274,7 +288,7 @@ export function SlotChargeSection({
             <button
               type="button"
               onClick={mergeTeams}
-              disabled={isPending}
+              disabled={locked}
               className="flex min-h-11 items-center text-xs font-medium text-emerald-800 hover:underline disabled:opacity-60 md:min-h-0 dark:text-emerald-400"
             >
               Cobrar en un solo pago
@@ -285,7 +299,7 @@ export function SlotChargeSection({
             lines={lines}
             onChange={onLinesChange}
             maxLines={5}
-            disabled={isPending}
+            disabled={locked}
           />
         )}
       </div>
@@ -297,14 +311,24 @@ export function SlotChargeSection({
           {error}
         </p>
       )}
+      {awaitingRetry && (
+        <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-300">
+          Se cortó la conexión y no sabemos si ese cobro entró. Reintentalo antes de cobrar otra
+          cosa: si ya había entrado, no se cobra dos veces.
+        </p>
+      )}
 
       <button
         type="button"
-        onClick={onSubmit}
+        onClick={awaitingRetry ? onRetry : onSubmit}
         disabled={isPending}
         className="mt-3 h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
       >
-        {isPending ? 'Procesando…' : chargeCta(mode, pending, total)}
+        {isPending
+          ? 'Procesando…'
+          : awaitingRetry
+            ? `Reintentar cobro de ${formatArs(retryTotal)}`
+            : chargeCta(mode, pending, total)}
       </button>
     </section>
   )

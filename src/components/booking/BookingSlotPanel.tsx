@@ -162,6 +162,8 @@ export function BookingSlotPanel({
     submitCharge,
     submitPartialCharge,
     submitLineCharge,
+    retryTotal,
+    retryUnconfirmedCharge,
     confirmNoShow,
     revertNoShow,
   } = useSlotCharges({
@@ -399,6 +401,8 @@ export function BookingSlotPanel({
                 split={split}
                 onPartialCharge={submitPartialCharge}
                 onLineCharge={submitLineCharge}
+                retryTotal={retryTotal}
+                onRetry={retryUnconfirmedCharge}
               />
             )}
 

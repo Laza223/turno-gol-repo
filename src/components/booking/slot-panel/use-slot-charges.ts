@@ -11,6 +11,9 @@ import { chargeMode } from './charge-copy'
 import type { ChargeInput, SlotPanelActions } from './actions'
 import type { ActionResult } from '@/shared/types/action-result'
 
+/** Un cobro que salió y cuya respuesta no llegó: no se sabe si entró. */
+type UnconfirmedCharge = { key: string; charges: ChargeInput[]; total: number }
+
 /**
  * Estado y handlers de "cobrar" del panel del turno: las líneas de pago, el
  * idempotency key, el error y las tres mutaciones (cobrar, marcar ausente,
@@ -39,6 +42,18 @@ export function useSlotCharges({
   const [error, setError] = useState<string | null>(null)
   const [lines, setLines] = useState<ChargeLine[]>([])
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  /**
+   * R3 de la revisión del PR #326: la key sobrevive a un corte de red a
+   * propósito (si el cobro entró, un reintento con key nueva lo cobraría dos
+   * veces). Pero mientras sobrevive, cualquier OTRO cobro con el mismo monto y
+   * método —el segundo "Pagó uno", el Equipo 2— viaja con ella y el servidor
+   * lo toma por reintento del primero: aviso verde y plata que no entra. El
+   * servidor no puede distinguirlo, así que se resuelve acá: después de un
+   * corte, lo único que se puede mandar es ESE mismo cobro. Atado a la key: si
+   * la key rota (cambio de turno), deja de valer solo.
+   */
+  const [unconfirmed, setUnconfirmed] = useState<UnconfirmedCharge | null>(null)
+  const retryCharge = unconfirmed?.key === idempotencyKey ? unconfirmed : null
 
   const mode = booking ? chargeMode(booking, hasEnded) : null
   const pending = booking?.pending ?? 0
@@ -53,6 +68,7 @@ export function useSlotCharges({
   function runCharge(charges: ChargeInput[], total: number) {
     if (!booking || !actions || !mode) return
     const bookingId = booking.id
+    const key = idempotencyKey
     startTransition(async () => {
       try {
         const res =
@@ -60,21 +76,25 @@ export function useSlotCharges({
             ? await actions.chargeDebtAction({
                 bookingId,
                 charges,
-                clientIdempotencyKey: idempotencyKey,
+                clientIdempotencyKey: key,
               })
             : mode === 'finish'
               ? await actions.completeAndChargeBookingAction({
                   bookingId,
                   charges,
-                  clientIdempotencyKey: idempotencyKey,
+                  clientIdempotencyKey: key,
                 })
               : await actions.addBookingChargeAction({
                   bookingId,
                   charges,
-                  clientIdempotencyKey: idempotencyKey,
+                  clientIdempotencyKey: key,
                 })
+        setUnconfirmed(null)
         if (!res.success) {
           setError(('error' in res && res.error) || 'No se pudo registrar el cobro.')
+          // El servidor contestó, así que este intento no dejó nada escrito bajo
+          // la key: se rota para que el próximo cobro no la herede.
+          setIdempotencyKey(crypto.randomUUID())
           return
         }
         toast({ title: `Cobro registrado — ${formatArs(total)}`, variant: 'success' })
@@ -82,7 +102,9 @@ export function useSlotCharges({
         notifyMutated()
       } catch (err) {
         Sentry.captureException(err)
-        setError('No se pudo registrar el cobro. Revisá tu conexión e intentá de nuevo.')
+        // El aviso lo dibuja SlotChargeSection junto al botón de reintentar.
+        setError(null)
+        setUnconfirmed({ key, charges, total })
       }
     })
   }
@@ -94,7 +116,7 @@ export function useSlotCharges({
    * el monto completo salvo que el admin lo haya editado.
    */
   function submitCharge() {
-    if (!booking || !actions || !mode) return
+    if (!booking || !actions || !mode || retryCharge) return
     setError(null)
 
     const charges: ChargeInput[] = []
@@ -130,7 +152,7 @@ export function useSlotCharges({
    * bien. Con el turno casi saldado, "Pagó uno" cobra lo que queda y no más.
    */
   function submitPartialCharge(amountCents: number, method: MethodKey) {
-    if (!booking || !mode || pending <= 0) return
+    if (!booking || !mode || pending <= 0 || retryCharge) return
     const amount = Math.min(amountCents, pending)
     if (amount <= 0) return
     setError(null)
@@ -149,7 +171,7 @@ export function useSlotCharges({
    * resincroniza solo.
    */
   function submitLineCharge(amountCents: number | null, method: MethodKey) {
-    if (!booking || !mode) return
+    if (!booking || !mode || retryCharge) return
     setError(null)
     if (amountCents == null || amountCents <= 0) {
       setError('El cobro tiene que tener un monto mayor a $0.')
@@ -160,6 +182,13 @@ export function useSlotCharges({
       return
     }
     runCharge([{ amount: amountCents, method }], amountCents)
+  }
+
+  /** Reenvía el cobro que quedó sin confirmar: mismas líneas, misma key. */
+  function retryUnconfirmedCharge() {
+    if (!retryCharge) return
+    setError(null)
+    runCharge(retryCharge.charges, retryCharge.total)
   }
 
   async function confirmNoShow(): Promise<ActionResult> {
@@ -221,6 +250,8 @@ export function useSlotCharges({
     submitCharge,
     submitPartialCharge,
     submitLineCharge,
+    retryTotal: retryCharge?.total ?? null,
+    retryUnconfirmedCharge,
     confirmNoShow,
     revertNoShow,
   }

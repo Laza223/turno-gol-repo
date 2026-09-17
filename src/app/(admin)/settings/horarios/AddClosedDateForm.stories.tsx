@@ -38,10 +38,19 @@ export const Default: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
 }
 
+async function pickToday(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement)
+  await userEvent.click(canvas.getByLabelText('Agregar día cerrado'))
+  // El panel (PopoverContent) va portaled a document.body, fuera de canvasElement.
+  const body = within(canvasElement.ownerDocument.body)
+  await userEvent.click(await body.findByRole('button', { name: 'Hoy' }))
+}
+
 export const Agregado: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await pickToday(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Agregar' }))
     await expect(await canvas.findByRole('status')).toHaveTextContent('Día agregado.')
   },
@@ -53,6 +62,7 @@ export const FechaInvalida: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await pickToday(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Agregar' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Fecha inválida.')
   },

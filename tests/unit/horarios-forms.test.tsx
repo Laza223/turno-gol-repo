@@ -147,9 +147,34 @@ describe('HorariosPage — minDate en ART (regresión 05-horarios-mindate-utc)',
     // El cierre vencido (06-11, anterior a hoy ART) sigue filtrado de la lista.
     expect(screen.queryByText(/11 de jun de 2026/)).toBeNull()
 
-    // El <input type="date"> de "Agregar día cerrado" acepta hoy en ART, no
-    // un día adelantado por el reloj UTC del server.
-    const input = screen.getByLabelText('Agregar día cerrado') as HTMLInputElement
-    expect(input.min).toBe('2026-06-12')
+    // "Agregar día cerrado" acepta hoy en ART, no un día adelantado por el
+    // reloj UTC del server: el calendario del DatePicker deshabilita el día
+    // anterior al mínimo (11) y deja habilitado el posterior (13).
+    fireEvent.click(screen.getByLabelText('Agregar día cerrado'))
+    const day11 = await screen.findByRole('button', { name: '11' })
+    const day13 = screen.getByRole('button', { name: '13' })
+    expect(day11).toBeDisabled()
+    expect(day13).not.toBeDisabled()
   }, 20_000)
+})
+
+describe('AddClosedDateForm — DatePicker (#19)', () => {
+  it('el botón "Agregar" arranca deshabilitado y se habilita al elegir una fecha, que viaja en el FormData', async () => {
+    formState.mockReturnValue({ success: true })
+    render(<AddClosedDateForm minDate="2026-06-09" action={noopAction} />)
+
+    const submit = screen.getByRole('button', { name: 'Agregar' })
+    expect(submit).toBeDisabled()
+
+    fireEvent.click(screen.getByLabelText('Agregar día cerrado'))
+    const hoy = await screen.findByRole('button', { name: 'Hoy' })
+    fireEvent.click(hoy)
+
+    expect(submit).not.toBeDisabled()
+
+    const form = submit.closest('form')!
+    const hiddenInput = form.querySelector('input[name="date"]') as HTMLInputElement
+    expect(hiddenInput.value).not.toBe('')
+    expect(new FormData(form).get('date')).toBe(hiddenInput.value)
+  })
 })

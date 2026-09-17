@@ -14,6 +14,8 @@ import { relativeTimeEs } from '@/lib/format'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
+import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
+import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
 import type { CanteenTabRow } from '@/modules/canteen/canteen.types'
 import type { CancelTabActionResult, SettleTabActionResult } from './actions'
 
@@ -138,6 +140,13 @@ export function FiadosList({
   )
 }
 
+/** Un cobro de fiado que salió: lo que se reenvía si la respuesta no vuelve. */
+type SettleAttempt = {
+  tabId: string
+  debtorName: string
+  charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[]
+}
+
 function SettleTabDialog({
   tab,
   onClose,
@@ -152,18 +161,18 @@ function SettleTabDialog({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [lines, setLines] = useState<ChargeLine[]>([])
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const attempt = useUnconfirmedSubmit<SettleAttempt>()
+  const retry = attempt.retryPayload
 
-  // Se re-inicializa por fiado (mismo patrón que StockExitDialog): la key de
-  // idempotencia es propia de cada apertura del diálogo. Precarga una línea
-  // con el total del ticket en efectivo — el atajo "Pagar todo en efectivo"
-  // de SplitPaymentFields reproduce ese mismo estado inicial.
+  // Se re-inicializa por fiado (mismo patrón que StockExitDialog). Precarga una
+  // línea con el total del ticket en efectivo — el atajo "Pagar todo en
+  // efectivo" de SplitPaymentFields reproduce ese mismo estado inicial. La key
+  // NO se rota acá: un cobro cortado por la red se reintenta al reabrir.
   const [lastTabId, setLastTabId] = useState<string | null>(null)
   if (tab && tab.id !== lastTabId) {
     setLastTabId(tab.id)
     setLines([newChargeLine(tab.totalAmount, 'cash')])
     setError(null)
-    setIdempotencyKey(crypto.randomUUID())
   }
 
   function handleOpenChange(next: boolean) {
@@ -180,25 +189,24 @@ function SettleTabDialog({
    * invocar con un cargo armado en el momento, sin depender de `lines` (que
    * todavía no se actualizó por el `setLines` de ese mismo click).
    */
-  function runCharge(charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[]) {
+  function runCharge(charges: SettleAttempt['charges']) {
     if (!tab) return
+    run({ tabId: tab.id, debtorName: tab.debtorName, charges })
+  }
+
+  function run(payload: SettleAttempt) {
+    setError(null)
     startTransition(async () => {
-      try {
-        const res = await settleTabAction({
-          tabId: tab.id,
-          charges,
-          clientIdempotencyKey: idempotencyKey,
-        })
-        if (res.success) {
-          toast({ title: `Fiado cobrado — ${tab.debtorName}`, variant: 'success' })
-          setLastTabId(null)
-          onSettled()
-        } else {
-          setError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setError('No pudimos cobrar el fiado. Revisá tu conexión e intentá de nuevo.')
+      const res = await attempt.send(payload, (p, clientIdempotencyKey) =>
+        settleTabAction({ tabId: p.tabId, charges: p.charges, clientIdempotencyKey }),
+      )
+      if (!res) return
+      if (res.success) {
+        toast({ title: `Fiado cobrado — ${payload.debtorName}`, variant: 'success' })
+        setLastTabId(null)
+        onSettled()
+      } else {
+        setError(res.error)
       }
     })
   }
@@ -242,9 +250,17 @@ function SettleTabDialog({
     <Dialog open={tab !== null} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Cobrar fiado — {tab?.debtorName}</DialogTitle>
+          <DialogTitle>Cobrar fiado — {retry ? retry.debtorName : tab?.debtorName}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        {retry && (
+          <UnconfirmedRetry
+            what={`el cobro de ${formatArs(retry.charges.reduce((s, c) => s + c.amount, 0))} del fiado de ${retry.debtorName}`}
+            retryLabel="Reintentar cobro"
+            isPending={isPending}
+            onRetry={() => run(retry)}
+          />
+        )}
+        <div className="space-y-4" hidden={retry !== null}>
           <SplitPaymentFields
             lines={lines}
             onChange={setLines}

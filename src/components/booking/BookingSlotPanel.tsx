@@ -357,11 +357,15 @@ export function BookingSlotPanel({
       <Sheet open onOpenChange={handleOpenChange}>
         {/* Desde abajo en el teléfono: el panel es la misma superficie que abre
             una celda de la matriz, y en 375 px una hoja lateral de 24 rem tapa
-            la pantalla entera entrando desde el costado equivocado. */}
+            la pantalla entera entrando desde el costado equivocado.
+            En escritorio va a 30 rem (el Sheet trae 24): con 24 un turno
+            confirmado no entraba sin scroll en una notebook al 125 % (pedido
+            del dueño, 2026-09-17). El panel tapa la grilla igual, así que el
+            ancho de más no le quita columnas de cancha. */}
         <SheetContent
           side={isDesktop ? 'right' : 'bottom'}
           aria-label="Acciones del turno"
-          className="gap-0"
+          className="gap-0 lg:w-[30rem]"
         >
           <SheetHeader className="border-b border-border p-5 pr-12">
             <SheetTitle className="font-display text-lg">{displayName ?? visual.label}</SheetTitle>

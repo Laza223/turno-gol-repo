@@ -62,8 +62,8 @@ const MONTH_NAMES = [
  * getByRole('option') global): Radix mantiene el popover previo montado
  * durante su animación de salida, así que justo después de cerrar un
  * combobox y abrir el siguiente pueden coexistir dos listbox con la misma
- * opción visible (p. ej. "Hora inicio" y "Hora fin" comparten el mismo
- * TIME_OPTIONS) — sin scope, el locator por nombre da strict-mode violation.
+ * opción visible (p. ej. "15:00" existe en "Hora inicio" y en "Hora fin")
+ * — sin scope, el locator por nombre da strict-mode violation.
  */
 async function selectCombobox(page: Page, fieldId: string, optionName: string): Promise<void> {
   await page.locator(`#${fieldId}`).click()

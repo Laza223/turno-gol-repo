@@ -16,6 +16,12 @@ import { MoneyInput } from '@/components/ui/money-input'
 import { formatArs } from '@/lib/format'
 import { todayART } from '@/shared/time/art-date'
 import {
+  END_OF_DAY_MINS,
+  endLabelFromMins,
+  hhmmToMins,
+  startLabelFromMins,
+} from '@/shared/time/operating-day'
+import {
   Clock,
   CalendarDays,
   MapPin,
@@ -54,17 +60,10 @@ const DAYS: ComboboxOption[] = [
   { value: '0', label: 'Domingo' },
 ]
 
-/** Opciones de horarios en intervalos de 30 minutos (00:00 a 23:30) */
-const TIME_OPTIONS: ComboboxOption[] = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor((i * 30) / 60)
-  const m = (i * 30) % 60
-  const hh = String(h).padStart(2, '0')
-  const mm = String(m).padStart(2, '0')
-  const val = `${hh}:${mm}`
-  return {
-    value: val,
-    label: val === '00:00' && i > 0 ? '00:00 (Medianoche)' : val,
-  }
+/** Horas enteras 00:00 a 23:00 — los turnos arrancan en hora en punto (SLOT_DURATION_MINUTES = 60). */
+const START_TIME_OPTIONS: ComboboxOption[] = Array.from({ length: 24 }, (_, h) => {
+  const value = startLabelFromMins(h * 60)
+  return { value, label: value }
 })
 
 const initial: NewAbonadoState = { status: 'idle' }
@@ -76,19 +75,6 @@ const initial: NewAbonadoState = { status: 'idle' }
  */
 function pluralizeDayLabel(label: string): string {
   return label.endsWith('s') ? label : `${label}s`
-}
-
-function normalizeMidnightEnd(timeEnd: string): string {
-  return timeEnd === '00:00' ? '24:00' : timeEnd
-}
-
-function addOneHour(time: string): string {
-  const [h, m] = time.split(':').map(Number)
-  if (isNaN(h) || isNaN(m)) return '20:00'
-  const nextH = (h + 1) % 24
-  const hh = String(nextH).padStart(2, '0')
-  const mm = String(m).padStart(2, '0')
-  return `${hh}:${mm}`
 }
 
 function getNextMatchingDate(fromDateStr: string | null, targetDayOfWeek: number): string {
@@ -335,6 +321,18 @@ export default function AbonadoForm({
     [courts],
   )
 
+  // Horas enteras desde timeStart+1h hasta medianoche inclusive (chk_time_valid:
+  // un turno fijo nunca cruza medianoche, aunque dure varias horas).
+  const endTimeOptions: ComboboxOption[] = useMemo(() => {
+    const startMins = hhmmToMins(timeStart)
+    const options: ComboboxOption[] = []
+    for (let mins = startMins + 60; mins <= END_OF_DAY_MINS; mins += 60) {
+      const value = endLabelFromMins(mins)
+      options.push({ value, label: value === '24:00' ? '00:00 (medianoche)' : value })
+    }
+    return options
+  }, [timeStart])
+
   const selectedCourtName = useMemo(() => {
     return courts.find((c) => c.id === courtId)?.name || 'Sin seleccionar'
   }, [courts, courtId])
@@ -372,7 +370,7 @@ export default function AbonadoForm({
       playerId,
       dayOfWeek,
       timeStart: (fd.get('timeStart') as string) || timeStart,
-      timeEnd: normalizeMidnightEnd((fd.get('timeEnd') as string) || timeEnd),
+      timeEnd: (fd.get('timeEnd') as string) || timeEnd,
       contactName,
       contactPhone: phoneFromForm,
       pricePerSessionCents,
@@ -547,11 +545,11 @@ export default function AbonadoForm({
                   </label>
                   <Combobox
                     id="timeStart"
-                    options={TIME_OPTIONS}
+                    options={START_TIME_OPTIONS}
                     value={timeStart}
                     onChange={(val) => {
                       setTimeStart(val)
-                      setTimeEnd(addOneHour(val))
+                      setTimeEnd(endLabelFromMins(hhmmToMins(val) + 60))
                     }}
                     placeholder="Seleccionar hora"
                     inputClassName={`${fieldBase} pl-10 pr-8 font-medium`}
@@ -572,7 +570,7 @@ export default function AbonadoForm({
                   </label>
                   <Combobox
                     id="timeEnd"
-                    options={TIME_OPTIONS}
+                    options={endTimeOptions}
                     value={timeEnd}
                     onChange={setTimeEnd}
                     placeholder="Seleccionar hora"
@@ -762,7 +760,7 @@ export default function AbonadoForm({
                   <Clock className="h-3.5 w-3.5 text-primary" /> Horario
                 </span>
                 <span className="font-semibold text-foreground">
-                  {timeStart} a {timeEnd} hs
+                  {timeStart} a {timeEnd === '24:00' ? '00:00' : timeEnd} hs
                 </span>
               </div>
 

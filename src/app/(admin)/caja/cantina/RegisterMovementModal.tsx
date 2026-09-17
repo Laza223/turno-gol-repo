@@ -3,7 +3,6 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { chipClass } from '../caja-lib'
@@ -11,6 +10,9 @@ import type { CashFlowActionResult } from '../actions'
 import { occurredAtForDate } from './occurred-at'
 import { isValidMovement } from './is-valid-movement'
 import { toast } from '@/hooks/use-toast'
+import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
+import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
+import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import { MoneyInput } from '@/components/ui/money-input'
 import type { CashFlowCategory, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
@@ -80,9 +82,9 @@ export function RegisterMovementModal({
   const [method, setMethod] = useState('cash')
   const [amountCents, setAmountCents] = useState<number | null>(null)
   const [description, setDescription] = useState('')
-  // Fix #55: UUID generado una sola vez por apertura del modal.
-  // El server hace ON CONFLICT DO NOTHING con esta clave para ignorar reenvíos.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  // Fix #55: la clave de idempotencia deja que el server ignore un reenvío.
+  const attempt = useUnconfirmedSubmit<Omit<CreateCashFlowInput, 'clientIdempotencyKey'>>()
+  const retry = attempt.retryPayload
 
   // Fase 4 UX: el botón "Guardar" arranca deshabilitado con campos vacíos, en
   // vez de recién avisar el error al clickear.
@@ -95,7 +97,6 @@ export function RegisterMovementModal({
     setAmountCents(null)
     setDescription('')
     setError(null)
-    setIdempotencyKey(crypto.randomUUID())
   }
 
   // Cambiar de tipo re-selecciona la primera categoría válida del combo
@@ -116,32 +117,33 @@ export function RegisterMovementModal({
       setError('Ingresá una descripción.')
       return
     }
+    run({
+      type,
+      category: category as CashFlowCategory,
+      method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
+      amount: amountCents,
+      description: description.trim(),
+      occurredAt: occurredAtForDate(date, cutoffMins),
+    })
+  }
+
+  function run(input: Omit<CreateCashFlowInput, 'clientIdempotencyKey'>) {
+    setError(null)
     startTransition(async () => {
-      try {
-        const res = await createCashFlowAction({
-          type,
-          category: category as CashFlowCategory,
-          method: method as 'cash' | 'transfer' | 'mercadopago' | 'other',
-          amount: amountCents,
-          description: description.trim(),
-          occurredAt: occurredAtForDate(date, cutoffMins),
-          clientIdempotencyKey: idempotencyKey,
-        })
-        if (res.success) {
-          toast({ title: 'Movimiento registrado', variant: 'success' })
-          reset()
-          router.refresh()
-          // El mismo modal registra `expense`, que no cambia "Hoy" (income +
-          // adjustments): el fetch extra devuelve el mismo valor.
-          onClose()
-        } else setError(res.error)
-      } catch (err) {
-        // A thrown action must not leave the modal stuck on "Guardando…" — which
-        // also locks the close button (handleOpenChange bails while isPending).
-        // Report it (a silent catch would hide a real server failure) and recover.
-        Sentry.captureException(err)
-        setError('No pudimos registrar el movimiento. Revisá tu conexión e intentá de nuevo.')
-      }
+      // Una action que tira no puede dejar el modal trabado en "Guardando…"
+      // (eso también traba el cerrar): `send` la atrapa y la deja para reintentar.
+      const res = await attempt.send(input, (payload, clientIdempotencyKey) =>
+        createCashFlowAction({ ...payload, clientIdempotencyKey }),
+      )
+      if (!res) return
+      if (res.success) {
+        toast({ title: 'Movimiento registrado', variant: 'success' })
+        reset()
+        router.refresh()
+        // El mismo modal registra `expense`, que no cambia "Hoy" (income +
+        // adjustments): el fetch extra devuelve el mismo valor.
+        onClose()
+      } else setError(res.error)
     })
   }
 
@@ -159,7 +161,15 @@ export function RegisterMovementModal({
         <DialogHeader>
           <DialogTitle>Agregar movimiento</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {retry && (
+          <UnconfirmedRetry
+            what={`el movimiento de ${formatArs(retry.amount)}`}
+            retryLabel="Reintentar movimiento"
+            isPending={isPending}
+            onRetry={() => run(retry)}
+          />
+        )}
+        <form onSubmit={handleSubmit} className="space-y-4" hidden={retry !== null}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Columna Izquierda: Tipo y Categoría */}
             <div className="space-y-4">

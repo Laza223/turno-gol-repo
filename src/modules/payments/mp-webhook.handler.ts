@@ -10,6 +10,7 @@ import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.
 import { buildSubscriptionChargeKey } from '@/modules/billing/subscription-reconcile.service'
 import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
+import { MP_MOCK_ENABLED } from './mock-mp'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
 import { track } from '@/shared/observability'
@@ -142,6 +143,25 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // as how dispatchEmail fires post-commit).
   let confirmedBookingId: string | null = null
 
+  // Fix "checkout viejo pagado": el gateway que `onPaymentApproved` usa para
+  // cancelar un preapproval huérfano (mismatch, ver dunning.service.ts) tiene
+  // que ser SIEMPRE la cuenta MASTER — un preapproval SaaS nunca se cancela
+  // con el token OAuth del complejo, ni siquiera cuando este job resolvió
+  // `gateway` como el del tenant (rama `payment` sin `source=saas`).
+  //
+  // LAZY a propósito (se llama recién adentro de las dos ramas que de verdad
+  // invocan `onPaymentApproved`, más abajo): si `gateway` YA es la cuenta
+  // master (`isMasterAccountEvent`), la reusa sin pegarle a MP de nuevo — un
+  // evento de suscripción o un `payment` con `source=saas` no necesita un
+  // segundo `getBillingGateway()`. Si no, pide uno nuevo — modo mock (E2E/dev):
+  // `getBillingGateway()` NO honra `MP_MOCK_ENABLED` (mismo guard que
+  // `reconcile-subscriptions.worker.ts`/`dunning-retry.worker.ts`) — sin este
+  // chequeo, un cancel real pegaría contra MP con el token vacío.
+  function resolveBillingCancelGateway(): Pick<PaymentGateway, 'cancelPreapproval'> | undefined {
+    if (isMasterAccountEvent) return gateway
+    return MP_MOCK_ENABLED ? undefined : getBillingGateway()
+  }
+
   // Fase PROCESS: tx tenant-scoped, solo DB — usa el `info` ya resuelto
   // arriba, nunca vuelve a llamar a MP.
   const outcome = await withTenantContext(job.tenantId, async (tx) => {
@@ -184,6 +204,10 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           // encuentra `reconcile-subscriptions.worker`. Sin esto, dos caminos
           // que apliquen el mismo cobro extienden el período dos veces.
           buildSubscriptionChargeKey(info.mpPaymentId),
+          // Cuenta MASTER siempre para cancelar un preapproval huérfano si el
+          // mismatch se da de verdad — nunca el `gateway` de esta función
+          // (acá SÍ es el master, pero no hay que asumirlo).
+          resolveBillingCancelGateway(),
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
         await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)
@@ -232,6 +256,11 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           // Misma clave por cobro que la rama de arriba: acá `info.mpPaymentId`
           // ya es el id del pago porque el evento vino como `payment`.
           buildSubscriptionChargeKey(info.mpPaymentId),
+          // Cuenta MASTER siempre: a diferencia de la rama de arriba, acá
+          // `gateway` puede ser el OAuth del complejo (si esto llegó sin
+          // `source=saas`) — el cancel de un preapproval SaaS nunca usa ese
+          // token.
+          resolveBillingCancelGateway(),
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
         await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)

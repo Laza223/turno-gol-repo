@@ -1,7 +1,11 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
-import type { CreatePreapprovalInput, PreapprovalResult } from '@/modules/payments/payment.types'
+import type {
+  CreatePreapprovalInput,
+  GatewaySubscriptionState,
+  PreapprovalResult,
+} from '@/modules/payments/payment.types'
 import {
   isMpInvalidPayerError,
   isMpAlreadyCancelledPreapprovalError,
@@ -338,9 +342,13 @@ async function createPreapprovalOrThrowFriendly(
  * Reusa solo si TODO coincide con el pedido actual: el preapproval sigue
  * `pending` en MP, es del mismo tenant (`external_reference`), el monto y la
  * frecuencia son EXACTAMENTE los de `planAmount(plan, billingCycle)` — un plan
- * o ciclo distinto no matchea y cae al camino de siempre (cancelar + crear).
- * Cualquier falla al leer el estado (MP caído, id que ya no existe) se
- * absorbe acá: nunca debe propagar y frenar el subscribe/reactivate.
+ * o ciclo distinto no matchea y cae al camino de siempre. "Camino de siempre"
+ * ya NO es cancelar + crear sin condiciones: cuando el plan/ciclo no matchea
+ * pero el preapproval anterior sigue `pending` y nunca cobró, tampoco se
+ * cancela (ver `isPendingNeverCharged`, más abajo) — mismo motivo, evitar un
+ * mail de MP sobre algo que nunca pasó. El estado que consume esta función lo
+ * lee `readSubscriptionState` (tolera cualquier falla → `null`); acá ya no se
+ * hace ningún GET.
  */
 /**
  * ¿El primer cobro grabado en el preapproval pendiente es el que mandaríamos
@@ -360,23 +368,37 @@ function sameFirstCharge(fromMp: Date | null, expected: Date | undefined, now: D
   return Math.abs(fromMp.getTime() - expected.getTime()) <= 60_000
 }
 
-async function reusablePendingCheckout(
-  sub: Pick<SubRow, 'mp_subscription_id'>,
-  plan: PlanRow,
-  billingCycle: BillingCycle,
-  tenantId: string,
+/**
+ * GET a MP tolerando cualquier error (MP caído, id que ya no existe): nunca
+ * debe propagar y frenar subscribe/reactivate. Un solo golpe a MP por
+ * llamada: el resultado alimenta tanto el chequeo de reuso
+ * (`reusablePendingCheckout`) como el de "no cancelar un checkout que nunca
+ * se pagó" (`isPendingNeverCharged`) — antes cada uno hacía su propio GET.
+ */
+async function readSubscriptionState(
+  preapprovalId: string,
   gateway: PaymentGateway,
-  expected: { reason: string; firstChargeAt: Date | undefined; now: Date },
-): Promise<PreapprovalResult | null> {
-  const preapprovalId = sub.mp_subscription_id
-  if (!preapprovalId) return null
-
-  let state: Awaited<ReturnType<PaymentGateway['getSubscriptionState']>>
+): Promise<GatewaySubscriptionState | null> {
   try {
-    state = await gateway.getSubscriptionState(preapprovalId)
+    return await gateway.getSubscriptionState(preapprovalId)
   } catch {
     return null
   }
+}
+
+/**
+ * ¿El estado ya leído de MP (`readSubscriptionState`, resuelto por el
+ * caller) sirve TAL CUAL para el pedido actual (plan + ciclo)? `null` cuando
+ * no: no se pudo leer, plan/ciclo/reason/monto distintos, ya no está
+ * `pending`, es de otro tenant, o ya cobró algo.
+ */
+function reusablePendingCheckout(
+  state: GatewaySubscriptionState | null,
+  plan: PlanRow,
+  billingCycle: BillingCycle,
+  tenantId: string,
+  expected: { reason: string; firstChargeAt: Date | undefined; now: Date },
+): PreapprovalResult | null {
   if (!state) return null
   if (state.status !== 'pending') return null
   if (state.externalReference !== tenantId) return null
@@ -404,7 +426,31 @@ async function reusablePendingCheckout(
   const initPoint = state.initPoint
   if (!initPoint) return null
 
-  return { preapprovalId, initPoint }
+  return { preapprovalId: state.preapprovalId, initPoint }
+}
+
+/**
+ * "Checkout pendiente que nunca cobró" (medido en prod 2026-09-16): cancelarlo
+ * solo para pedir uno nuevo dispara el mail "se canceló tu suscripción" de MP
+ * sin que haya pasado nada — nadie pagó, nadie perdió acceso. `subscribe()`/
+ * `reactivate()` lo dejan vivo en MP en vez de cancelarlo (huérfano
+ * DELIBERADO, distinto del huérfano B5 de `loadSubForUpdate`: ese es
+ * concurrencia no vista, este es un id que sí vemos y elegimos no tocar) y
+ * registran el id en el audit (`leftPendingMpSubscriptionId`) para forense.
+ * No exige que el plan/ciclo/monto matcheen el pedido actual — a diferencia
+ * de `reusablePendingCheckout`, acá no importa si serviría para ESTE pedido,
+ * solo si tocarlo sería gratuito para el dueño (nunca lo fue: sigue pending,
+ * nadie pagó). El riesgo que esto abre —alguien paga ese link viejo más
+ * tarde— lo cierra `dunning.service.ts:onPaymentApproved` cancelando el
+ * huérfano si llega a cobrar.
+ */
+function isPendingNeverCharged(state: GatewaySubscriptionState | null, tenantId: string): boolean {
+  return (
+    state !== null &&
+    state.status === 'pending' &&
+    state.externalReference === tenantId &&
+    state.chargedQuantity === 0
+  )
 }
 
 // ─── subscribe ──────────────────────────────────────────────────────────────
@@ -419,7 +465,7 @@ export async function subscribe(
 ): Promise<SubscribeResult> {
   // Fix D4-A1 (mismo patrón que mp-webhook.handler.ts, hallazgo 🟢10 auditoría
   // 2026-09-16): esta primera lectura es SIN lock (`loadSub`, no
-  // `loadSubForUpdate`). El GET de `reusablePendingCheckout` de más abajo
+  // `loadSubForUpdate`). El GET de `readSubscriptionState` de más abajo
   // puede tardar hasta 8s (24s si dispara refresh de token OAuth, ver
   // mp-oauth.ts) — antes corría sosteniendo el `FOR UPDATE`, bloqueando
   // cualquier otra tx sobre esta misma fila (otro subscribe/reactivate
@@ -462,8 +508,20 @@ export async function subscribe(
   // misma fecha que mandaría un preapproval nuevo.
   const firstChargeAt = resolveFirstChargeAt(owner?.trialEndsAt, now)
 
+  // Fix "no cancelar un checkout que nunca se pagó" (medido en prod
+  // 2026-09-16): un solo GET acá arriba — su resultado alimenta el chequeo de
+  // reuso de ESTE pedido (`reusablePendingCheckout`) y, más abajo, el de "vale
+  // la pena cancelar el `mp_subscription_id` previo" (`isPendingNeverCharged`).
+  // `checkedPreapprovalId`/`checkedState` quedan en el scope de la función:
+  // el bloque de cancelar+crear de más abajo (ya con el lock real) los compara
+  // contra `lockedSub.mp_subscription_id` para saber si siguen describiendo el
+  // mismo preapproval.
+  let checkedPreapprovalId: string | null = null
+  let checkedState: GatewaySubscriptionState | null = null
   if (sub.mp_subscription_id) {
-    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
+    checkedPreapprovalId = sub.mp_subscription_id
+    checkedState = await readSubscriptionState(checkedPreapprovalId, gateway)
+    const reused = reusablePendingCheckout(checkedState, plan, billingCycle, tenantId, {
       reason,
       firstChargeAt,
       now,
@@ -498,14 +556,11 @@ export async function subscribe(
   // B5 (🔴 huérfano MP↔DB): un `mp_subscription_id` previo significa que un
   // subscribe anterior (re-subscribe durante el trial, o el perdedor de una
   // carrera concurrente ahora serializada por el `FOR UPDATE` de
-  // `loadSubForUpdate`) ya dejó un preapproval vivo en MP. Sin este cancel,
+  // `loadSubForUpdate`) ya dejó un preapproval vivo en MP. Sin cancelarlo,
   // pedir uno nuevo lo pisa en la DB sin apagarlo — queda huérfano cobrando.
-  // Mismo patrón que `reactivate()` (líneas más abajo): tolera "ya estaba
-  // cancelado en MP" (`isMpAlreadyCancelledPreapprovalError`), cualquier otro
-  // error aborta el subscribe entero. Si llegamos acá, `reusablePendingCheckout`
-  // ya descartó que el preapproval previo sirva tal cual (Fix
-  // "reuso-checkout-pendiente"), o el CAS de arriba detectó que ese descarte
-  // ya no aplica contra el estado actual.
+  // Si llegamos acá, `reusablePendingCheckout` ya descartó que el preapproval
+  // previo sirva tal cual (Fix "reuso-checkout-pendiente"), o el CAS de arriba
+  // detectó que ese descarte ya no aplica contra el estado actual.
   //
   // Recién ACÁ se pide el lock real: nada de lo de arriba hizo un efecto en MP
   // que haya que deshacer, así que no hacía falta serializarlo.
@@ -520,11 +575,30 @@ export async function subscribe(
     throw new SubscriptionNotFoundError(tenantId)
   }
 
+  // Fix "no cancelar un checkout que nunca se pagó": si el preapproval que hay
+  // que reemplazar es EXACTAMENTE el que se leyó sin lock (nadie ganó una
+  // carrera en el medio) y ese estado es un `pending` sin cobros de este
+  // tenant, cancelarlo no evita nada real — solo dispara el mail de MP. Se
+  // deja vivo y se registra para forense (`leftPendingMpSubscriptionId` en el
+  // audit de abajo); el riesgo de que alguien lo pague después lo cierra
+  // `dunning.service.ts:onPaymentApproved`. Cualquier otro caso —el GET falló,
+  // ya cobró, es de otro tenant, ya no está `pending`, o el id cambió entre
+  // las dos lecturas— cancela EXACTAMENTE como antes, tolerando "ya estaba
+  // cancelado en MP" (`isMpAlreadyCancelledPreapprovalError`); cualquier otro
+  // error aborta el subscribe entero.
+  let leftPendingMpSubscriptionId: string | undefined
   if (lockedSub.mp_subscription_id) {
-    try {
-      await gateway.cancelPreapproval(lockedSub.mp_subscription_id)
-    } catch (err) {
-      if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+    if (
+      lockedSub.mp_subscription_id === checkedPreapprovalId &&
+      isPendingNeverCharged(checkedState, tenantId)
+    ) {
+      leftPendingMpSubscriptionId = lockedSub.mp_subscription_id
+    } else {
+      try {
+        await gateway.cancelPreapproval(lockedSub.mp_subscription_id)
+      } catch (err) {
+        if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+      }
     }
   }
 
@@ -561,6 +635,7 @@ export async function subscribe(
       planId,
       billingCycle,
       mpSubscriptionId: preapproval.preapprovalId,
+      ...(leftPendingMpSubscriptionId ? { leftPendingMpSubscriptionId } : {}),
     },
   })
 
@@ -897,7 +972,7 @@ export async function reactivate(
   now: Date = new Date(),
 ): Promise<SubscribeResult> {
   // Fix D4-A1 — mismo criterio que `subscribe()` (ver ese comentario): esta
-  // primera lectura es SIN lock. El GET de `reusablePendingCheckout` no debe
+  // primera lectura es SIN lock. El GET de `readSubscriptionState` no debe
   // sostener el `FOR UPDATE` mientras espera a MP.
   const sub = await loadSub(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
@@ -931,8 +1006,15 @@ export async function reactivate(
   // fecha futura grabada.
   const reason = `TurnoGol — ${plan.name} (reactivación)`
 
+  // Fix "no cancelar un checkout que nunca se pagó" — mismo criterio que
+  // `subscribe()` (ver ese comentario): un solo GET, guardado para el chequeo
+  // de "vale la pena cancelar" de más abajo.
+  let checkedPreapprovalId: string | null = null
+  let checkedState: GatewaySubscriptionState | null = null
   if (sub.mp_subscription_id) {
-    const reused = await reusablePendingCheckout(sub, plan, billingCycle, tenantId, gateway, {
+    checkedPreapprovalId = sub.mp_subscription_id
+    checkedState = await readSubscriptionState(checkedPreapprovalId, gateway)
+    const reused = reusablePendingCheckout(checkedState, plan, billingCycle, tenantId, {
       reason,
       firstChargeAt: undefined,
       now,
@@ -1009,11 +1091,24 @@ export async function reactivate(
   // churned vía dunning), datos legacy pre-fix, o el escenario de arriba
   // (rollback tras un cancel exitoso); una baja voluntaria previa normal ya
   // no deja nada que cancelar (ver test dedicado).
+  //
+  // Fix "no cancelar un checkout que nunca se pagó" (mismo criterio que
+  // `subscribe()`): si ese id no nulo es justo el que se leyó sin lock y
+  // sigue siendo un `pending` sin cobros de este tenant, no hay nada que
+  // cancelar de verdad — se deja vivo y se registra para forense.
+  let leftPendingMpSubscriptionId: string | undefined
   if (lockedSub.mp_subscription_id) {
-    try {
-      await gateway.cancelPreapproval(lockedSub.mp_subscription_id)
-    } catch (err) {
-      if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+    if (
+      lockedSub.mp_subscription_id === checkedPreapprovalId &&
+      isPendingNeverCharged(checkedState, tenantId)
+    ) {
+      leftPendingMpSubscriptionId = lockedSub.mp_subscription_id
+    } else {
+      try {
+        await gateway.cancelPreapproval(lockedSub.mp_subscription_id)
+      } catch (err) {
+        if (!isMpAlreadyCancelledPreapprovalError(err)) throw err
+      }
     }
   }
 
@@ -1055,6 +1150,7 @@ export async function reactivate(
       billingCycle,
       fromStatus: lockedSub.status,
       mpSubscriptionId: preapproval.preapprovalId,
+      ...(leftPendingMpSubscriptionId ? { leftPendingMpSubscriptionId } : {}),
     },
   })
 

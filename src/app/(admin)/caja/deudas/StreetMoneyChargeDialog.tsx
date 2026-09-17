@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   SplitPaymentFields,
@@ -10,6 +9,8 @@ import {
   type ChargeLine,
 } from '@/components/admin/SplitPaymentFields'
 import { toast } from '@/hooks/use-toast'
+import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
+import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
@@ -28,6 +29,12 @@ const ORIGIN_LABEL: Record<StreetMoneyRow['origin'], string> = {
 
 // Fiados no admiten 'other' (canteen.types.ts: CanteenSaleMethod excluye 'other').
 const CANTEEN_METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS.filter((m) => m.value !== 'other')
+
+/** Un cobro que salió: lo que se reenvía si la respuesta no vuelve. */
+type ChargeAttempt = {
+  row: StreetMoneyRow
+  charges: { amount: number; method: ChargeLine['method'] }[]
+}
 
 /**
  * "Cobrar" único para las 3 filas de Plata en la calle (criterio de salida
@@ -48,13 +55,15 @@ export function StreetMoneyChargeDialog({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [lines, setLines] = useState<ChargeLine[]>([])
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const attempt = useUnconfirmedSubmit<ChargeAttempt>()
+  const retry = attempt.retryPayload
 
+  // La key NO se rota al abrir otra fila: un cobro cortado por la red se
+  // reintenta al reabrir (ver useUnconfirmedSubmit).
   const [lastRefId, setLastRefId] = useState<string | null>(null)
   if (row && row.refId !== lastRefId) {
     setLastRefId(row.refId)
     setError(null)
-    setIdempotencyKey(crypto.randomUUID())
     setLines([newChargeLine(row.pendingCents, 'cash')])
   }
 
@@ -74,47 +83,46 @@ export function StreetMoneyChargeDialog({
    * pueda invocar con un cargo armado en el momento, sin depender de `lines`
    * (que todavía no se actualizó por el `setLines` de ese mismo click).
    */
-  function runCharge(parsedCharges: { amount: number; method: ChargeLine['method'] }[]) {
+  function runCharge(parsedCharges: ChargeAttempt['charges']) {
     if (!row) return
-    const totalCents = parsedCharges.reduce((s, c) => s + c.amount, 0)
+    run({ row, charges: parsedCharges })
+  }
+
+  function run(payload: ChargeAttempt) {
+    const { row: charged, charges } = payload
+    const totalCents = charges.reduce((s, c) => s + c.amount, 0)
+    setError(null)
     startTransition(async () => {
-      try {
-        const res =
-          row.origin === 'booking'
-            ? await chargeDebtAction({
-                bookingId: row.refId,
-                charges: parsedCharges,
-                clientIdempotencyKey: idempotencyKey,
+      const res = await attempt.send(payload, (_, clientIdempotencyKey) =>
+        charged.origin === 'booking'
+          ? chargeDebtAction({ bookingId: charged.refId, charges, clientIdempotencyKey })
+          : charged.origin === 'canteen_tab'
+            ? settleTabAction({
+                tabId: charged.refId,
+                charges: charges as {
+                  amount: number
+                  method: 'cash' | 'transfer' | 'mercadopago'
+                }[],
+                clientIdempotencyKey,
               })
-            : row.origin === 'canteen_tab'
-              ? await settleTabAction({
-                  tabId: row.refId,
-                  charges: parsedCharges as {
-                    amount: number
-                    method: 'cash' | 'transfer' | 'mercadopago'
-                  }[],
-                  clientIdempotencyKey: idempotencyKey,
-                })
-              : await registerInscriptionPaymentAction({
-                  teamId: row.refId,
-                  charges: parsedCharges,
-                  clientIdempotencyKey: idempotencyKey,
-                })
-        if (res.success) {
-          toast({
-            title: `Cobro registrado — ${row.debtorName}`,
-            description: `${formatArs(totalCents)} · ${totalCents >= row.pendingCents ? 'saldado' : 'pago parcial'}.`,
-            variant: 'success',
-          })
-          setLastRefId(null)
-          onClose()
-          router.refresh()
-        } else {
-          setError(res.error)
-        }
-      } catch (err) {
-        Sentry.captureException(err)
-        setError('No pudimos registrar el cobro. Revisá tu conexión e intentá de nuevo.')
+            : registerInscriptionPaymentAction({
+                teamId: charged.refId,
+                charges,
+                clientIdempotencyKey,
+              }),
+      )
+      if (!res) return
+      if (res.success) {
+        toast({
+          title: `Cobro registrado — ${charged.debtorName}`,
+          description: `${formatArs(totalCents)} · ${totalCents >= charged.pendingCents ? 'saldado' : 'pago parcial'}.`,
+          variant: 'success',
+        })
+        setLastRefId(null)
+        onClose()
+        router.refresh()
+      } else {
+        setError(res.error)
       }
     })
   }
@@ -170,9 +178,17 @@ export function StreetMoneyChargeDialog({
     <Dialog open={row !== null} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Cobrar — {row.debtorName}</DialogTitle>
+          <DialogTitle>Cobrar — {(retry?.row ?? row).debtorName}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        {retry && (
+          <UnconfirmedRetry
+            what={`el cobro de ${formatArs(retry.charges.reduce((s, c) => s + c.amount, 0))} a ${retry.row.debtorName}`}
+            retryLabel="Reintentar cobro"
+            isPending={isPending}
+            onRetry={() => run(retry)}
+          />
+        )}
+        <div className="space-y-4" hidden={retry !== null}>
           <p className="text-sm text-muted-foreground">
             Deuda de {ORIGIN_LABEL[row.origin]} · pendiente{' '}
             <span className="font-semibold text-foreground">{formatArs(row.pendingCents)}</span>

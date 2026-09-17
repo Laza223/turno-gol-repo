@@ -126,6 +126,9 @@ describe('handleMpWebhookJob — pasa mpPaymentId/preapprovalId a onPaymentAppro
       // con el `mp_event_id`, para que el webhook y `reconcile-subscriptions`
       // lleguen a la MISMA clave y no apliquen el cobro dos veces.
       'sub-charge:mp-pay-1',
+      // Fix "checkout viejo pagado": gateway de la cuenta MASTER para poder
+      // cancelar un preapproval huérfano si el mismatch se da de verdad.
+      expect.anything(),
     )
   })
 
@@ -155,6 +158,7 @@ describe('handleMpWebhookJob — pasa mpPaymentId/preapprovalId a onPaymentAppro
       // La clave del cobro NO depende del preapproval: sale del id del pago,
       // que acá sí vino.
       'sub-charge:mp-pay-1',
+      expect.anything(),
     )
   })
 

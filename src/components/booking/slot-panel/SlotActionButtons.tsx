@@ -71,104 +71,118 @@ export function SlotActionButtons({
   const canCancelHere = canCancel && !!actions?.cancelBookingAction
   const canNoShowHere = canMarkNoShow && !!actions
   const hasFolded = canReschedule || canNoShowHere || canCancelHere
+  const hasButtons = canSellCanteen || canEdit || canRevertNoShow || canReleaseBlock || hasFolded
 
   return (
     <>
-      {canSellCanteen && (
-        <button type="button" onClick={onOpenCanteen} disabled={isPending} className={ROW_NEUTRAL}>
-          <CupSoda aria-hidden className="h-4 w-4" />
-          Cargar cantina
-        </button>
-      )}
-
-      {canEdit && (
-        <button type="button" onClick={onOpenEdit} disabled={isPending} className={ROW_NEUTRAL}>
-          <Pencil aria-hidden className="h-4 w-4" />
-          Editar
-        </button>
-      )}
-
-      {canRevertNoShow && (
-        <button
-          type="button"
-          onClick={onRevertNoShow}
-          disabled={isPending}
-          className={cn(ROW_NEUTRAL, 'font-medium')}
-        >
-          Deshacer la ausencia
-        </button>
-      )}
-
-      {canReleaseBlock && (
-        <button
-          type="button"
-          onClick={onOpenReleaseBlock}
-          disabled={isPending}
-          className={`${ROW} border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10`}
-        >
-          <Trash2 aria-hidden className="h-4 w-4" />
-          Liberar el bloqueo
-        </button>
-      )}
-
-      {hasFolded && !moreOpen && (
-        <button
-          type="button"
-          onClick={() => setMoreOpen(true)}
-          disabled={isPending}
-          aria-expanded={false}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60 md:h-10"
-        >
-          <ChevronDown aria-hidden className="h-4 w-4" />
-          Más
-        </button>
-      )}
-
-      {hasFolded && moreOpen && (
-        <>
-          {canReschedule && (
+      {/* En escritorio, de a dos por fila: apiladas, Cantina + Editar + Más
+          quedaban debajo del borde del panel y había que scrollear para
+          llegar. El impar del final ocupa la fila entera. En el teléfono
+          siguen una debajo de la otra. */}
+      {hasButtons && (
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-2 lg:[&>*:last-child:nth-child(odd)]:col-span-2">
+          {canSellCanteen && (
             <button
               type="button"
-              onClick={onOpenReschedule}
+              onClick={onOpenCanteen}
               disabled={isPending}
               className={ROW_NEUTRAL}
             >
-              <MoveRight aria-hidden className="h-4 w-4" />
-              Reprogramar
+              <CupSoda aria-hidden className="h-4 w-4" />
+              Cargar cantina
             </button>
           )}
 
-          {canNoShowHere && (
-            <button
-              type="button"
-              onClick={onOpenNoShow}
-              disabled={isPending}
-              className={`${ROW} border-destructive/40 bg-destructive/5 text-red-700 hover:bg-destructive/10 dark:text-red-300`}
-            >
-              <UserX aria-hidden className="h-4 w-4" />
-              Marcar ausente
+          {canEdit && (
+            <button type="button" onClick={onOpenEdit} disabled={isPending} className={ROW_NEUTRAL}>
+              <Pencil aria-hidden className="h-4 w-4" />
+              Editar
             </button>
           )}
 
-          {canCancelHere && (
+          {canRevertNoShow && (
             <button
               type="button"
-              onClick={onOpenCancel}
+              onClick={onRevertNoShow}
               disabled={isPending}
-              // H007 (LEY-von-restorff): con "Marcar ausente" visible a la vez, ese
-              // es el rojo destructivo — este botón baja a outline/neutral para no
-              // competir por la misma atención.
-              className={
-                canNoShowHere
-                  ? ROW_NEUTRAL
-                  : `${ROW} border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10`
-              }
+              className={cn(ROW_NEUTRAL, 'font-medium')}
             >
-              <Ban aria-hidden className="h-4 w-4" />
-              Cancelar reserva
+              Deshacer la ausencia
             </button>
           )}
-        </>
+
+          {canReleaseBlock && (
+            <button
+              type="button"
+              onClick={onOpenReleaseBlock}
+              disabled={isPending}
+              className={`${ROW} border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10`}
+            >
+              <Trash2 aria-hidden className="h-4 w-4" />
+              Liberar el bloqueo
+            </button>
+          )}
+
+          {hasFolded && !moreOpen && (
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              disabled={isPending}
+              aria-expanded={false}
+              className="flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60 md:h-10"
+            >
+              <ChevronDown aria-hidden className="h-4 w-4" />
+              Más
+            </button>
+          )}
+
+          {hasFolded && moreOpen && (
+            <>
+              {canReschedule && (
+                <button
+                  type="button"
+                  onClick={onOpenReschedule}
+                  disabled={isPending}
+                  className={ROW_NEUTRAL}
+                >
+                  <MoveRight aria-hidden className="h-4 w-4" />
+                  Reprogramar
+                </button>
+              )}
+
+              {canNoShowHere && (
+                <button
+                  type="button"
+                  onClick={onOpenNoShow}
+                  disabled={isPending}
+                  className={`${ROW} border-destructive/40 bg-destructive/5 text-red-700 hover:bg-destructive/10 dark:text-red-300`}
+                >
+                  <UserX aria-hidden className="h-4 w-4" />
+                  Marcar ausente
+                </button>
+              )}
+
+              {canCancelHere && (
+                <button
+                  type="button"
+                  onClick={onOpenCancel}
+                  disabled={isPending}
+                  // H007 (LEY-von-restorff): con "Marcar ausente" visible a la vez, ese
+                  // es el rojo destructivo — este botón baja a outline/neutral para no
+                  // competir por la misma atención.
+                  className={
+                    canNoShowHere
+                      ? ROW_NEUTRAL
+                      : `${ROW} border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10`
+                  }
+                >
+                  <Ban aria-hidden className="h-4 w-4" />
+                  Cancelar reserva
+                </button>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {isTournament && (

@@ -54,24 +54,27 @@ describe('RegisterMovementModal — loading recovery', () => {
 
     submit()
 
-    // A recoverable error is shown instead of hanging on "Guardando…".
+    // A recoverable error is shown instead of hanging on "Guardando…". Since the
+    // request may have gone through, the only way forward is retrying THAT
+    // movement (see tests/unit/caja-network-error.test.tsx).
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toMatch(/no pudimos registrar el movimiento/i)
+      expect(screen.getByRole('alert').textContent).toMatch(/no sabemos si el movimiento/i)
     })
 
-    // Button is back to idle (modal no longer locked) and the failure is
+    // The retry button is idle (modal no longer locked) and the failure is
     // reported to Sentry rather than swallowed silently.
     //
     // Dentro de un waitFor y no como assert sync: React 19 hizo las transiciones
     // async de verdad — `isPending` de useTransition se mantiene true hasta que el
     // callback async del startTransition termina, no flipea al toque como en 18.
-    // El error ya está en el DOM un tick antes de que el botón vuelva a "Guardar".
+    // El aviso ya está en el DOM un tick antes de que el botón se habilite.
     // Sigue siendo el mismo contrato: si el botón NUNCA se recupera, el waitFor
     // expira y el test falla.
     await waitFor(() => {
-      expect((screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement).disabled).toBe(
-        false,
-      )
+      expect(
+        (screen.getByRole('button', { name: 'Reintentar movimiento' }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(false)
     })
     expect(captureException).toHaveBeenCalledOnce()
     expect(onClose).not.toHaveBeenCalled()

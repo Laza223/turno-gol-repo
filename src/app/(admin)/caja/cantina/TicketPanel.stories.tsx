@@ -36,7 +36,7 @@ export const ConProductos: Story = {
       // matchea los botones de +/- del ticket, así que el matcher es ambiguo.
       await expect(canvas.getAllByRole('button', { name: new RegExp(p.name) })[0]).toBeVisible()
     }
-    await expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible()
+    await expect(canvas.getByText('Buscá o tocá un producto para empezar')).toBeVisible()
   },
 }
 
@@ -78,7 +78,7 @@ export const VentaDeUnItem: Story = {
     )
     // Éxito: el ticket se vacía (vuelve el hint) — listo para la próxima venta.
     await waitFor(() =>
-      expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible(),
+      expect(canvas.getByText('Buscá o tocá un producto para empezar')).toBeVisible(),
     )
   },
 }
@@ -134,7 +134,7 @@ export const QuitarLinea: Story = {
     await expect(canvas.getAllByText('×1')[0]).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: `Quitar ${product.name} del ticket` }))
-    await expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible()
+    await expect(canvas.getByText('Buscá o tocá un producto para empezar')).toBeVisible()
   },
 }
 
@@ -191,7 +191,7 @@ export const AnotarComoFiado: Story = {
     )
     // Éxito: el ticket se vacía, igual que tras cobrar.
     await waitFor(() =>
-      expect(canvas.getByText('Tocá un producto o servicio para empezar')).toBeVisible(),
+      expect(canvas.getByText('Buscá o tocá un producto para empezar')).toBeVisible(),
     )
   },
 }
@@ -212,5 +212,51 @@ export const AnotarFiadoSinNombre: Story = {
 
     await expect(await dialog.findByRole('alert')).toHaveTextContent(/nombre/i)
     await expect(args.createTabAction).not.toHaveBeenCalled()
+  },
+}
+
+/**
+ * Vender sin tocar el mouse: escribir parte del nombre y Enter agrega el primer
+ * resultado y limpia el buscador para el próximo. Sin acentos ni mayúsculas:
+ * "AGUA" encuentra "Agua mineral 500ml".
+ */
+export const BuscarYEnter: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const search = canvas.getByRole('searchbox', { name: /Buscar producto o servicio/ })
+
+    await userEvent.type(search, 'AGUA')
+    // El filtro deja solo lo que coincide: Gatorade desaparece de la lista.
+    await expect(canvas.queryAllByRole('button', { name: /^Gatorade/ })).toHaveLength(0)
+
+    await userEvent.keyboard('{Enter}')
+    await expect(canvas.getAllByText('×1')[0]).toBeVisible()
+    await expect(search).toHaveValue('')
+    // Con el buscador limpio vuelve el catálogo entero.
+    await expect(canvas.getAllByRole('button', { name: /^Gatorade/ })[0]).toBeVisible()
+  },
+}
+
+/**
+ * Los grupos salen de lo que la base ya distingue (con stock / sin stock), no
+ * de una columna de categoría. "Servicios" deja solo lo que no lleva stock.
+ */
+export const FiltroPorGrupo: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const service = PRODUCTS.find((p) => p.stock === null)!
+    const tracked = PRODUCTS.find((p) => p.stock !== null)!
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Servicios' }))
+    await expect(canvas.getByRole('button', { name: 'Servicios' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(
+      canvas.getAllByRole('button', { name: new RegExp(`^${service.name}`) })[0],
+    ).toBeVisible()
+    await expect(
+      canvas.queryAllByRole('button', { name: new RegExp(`^${tracked.name}`) }),
+    ).toHaveLength(0)
   },
 }

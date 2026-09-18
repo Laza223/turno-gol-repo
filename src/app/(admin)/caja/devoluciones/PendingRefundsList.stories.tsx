@@ -51,7 +51,7 @@ export const ConDevoluciones: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Tenés que devolver')).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'Tenés que devolver' })).toBeInTheDocument()
     // El total es la suma de las dos filas: $8.000.
     await expect(canvas.getByText(/8\.000/)).toBeInTheDocument()
     // El origen se muestra porque decide si MercadoPago todavía puede
@@ -93,12 +93,18 @@ export const SinNingunContacto: Story = {
   },
 }
 
-/** El vacío es el premio, igual que en "Necesita tu atención". */
+/**
+ * Sin devoluciones no se dibuja NADA: ni título, ni total en $ 0, ni el
+ * párrafo de "acá va a aparecer". Para la mayoría de los complejos ese bloque
+ * era permanente, y en uno que no cobra seña por MercadoPago, imposible de
+ * llenar.
+ */
 export const SinDevoluciones: Story = {
   args: { rows: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('No debés ninguna devolución')).toBeInTheDocument()
+    await expect(canvas.queryByRole('heading', { name: 'Tenés que devolver' })).toBeNull()
     await expect(canvas.queryByRole('button', { name: /Ya devolví/ })).toBeNull()
+    await expect(canvas.queryByText(/devolv/i)).toBeNull()
   },
 }

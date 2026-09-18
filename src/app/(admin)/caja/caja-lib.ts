@@ -71,6 +71,29 @@ export function stockBadgeToneClass(tone: StockBadge['tone']): string {
   return 'text-muted-foreground'
 }
 
+/**
+ * ¿Este producto pide una reposición? Es el MISMO corte que el badge "low" y
+ * "out" de arriba, dicho como predicado para poder contarlo.
+ *
+ * Existe para que el aviso agregado (el punto ámbar de la pestaña Productos) y
+ * el badge de cada fila no puedan discrepar: un contador que dice "2 bajo el
+ * mínimo" mientras las filas muestran tres badges ámbar destruye la confianza
+ * en el aviso, que es lo único que hace que alguien lo mire. `lowStockCount()`
+ * de `canteen.service.ts` replica este predicado en SQL para las pantallas que
+ * no cargan el catálogo.
+ */
+function isLowStock(p: { stock: number | null; minStock: number | null }): boolean {
+  const badge = canteenStockBadge(p.stock, p.minStock)
+  return badge?.tone === 'low' || badge?.tone === 'out'
+}
+
+/** Cuántos productos activos piden reposición. Ver `isLowStock`. */
+export function countLowStock(
+  products: { stock: number | null; minStock: number | null; isActive: boolean }[],
+): number {
+  return products.filter((p) => p.isActive && isLowStock(p)).length
+}
+
 // ── Categorías ───────────────────────────────────────────────────────────────
 
 /**

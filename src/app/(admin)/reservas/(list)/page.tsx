@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarX, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarX, CalendarDays } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { artTodayStr } from '@/shared/dates/art'
@@ -21,6 +21,7 @@ import { BookingListItem } from '../BookingListItem'
 import { CourtBoard } from '../CourtBoard'
 import { ReservasHeaderBar } from '../ReservasHeaderBar'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Pager } from '@/components/ui/pager'
 import {
   ALLOWED_SCOPES,
   ALLOWED_STATUS,
@@ -271,48 +272,13 @@ export default async function ReservasPage(props: Props) {
           )}
 
           {paginado && (
-            <nav
-              aria-label="Paginación de reservas"
-              className="flex shrink-0 items-center justify-between gap-3 border-t border-border pt-3"
-            >
-              {page > 0 ? (
-                <Link
-                  href={buildHref({
-                    dia: scope,
-                    status,
-                    q,
-                    cancha: courtId ?? '',
-                    page: page - 1,
-                  })}
-                  rel="prev"
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                  Anteriores
-                </Link>
-              ) : (
-                <span />
-              )}
-              <span className="text-xs text-muted-foreground tabular-nums">Página {page + 1}</span>
-              {hasMore ? (
-                <Link
-                  href={buildHref({
-                    dia: scope,
-                    status,
-                    q,
-                    cancha: courtId ?? '',
-                    page: page + 1,
-                  })}
-                  rel="next"
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground ring-1 ring-inset ring-border transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  Siguientes
-                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              ) : (
-                <span />
-              )}
-            </nav>
+            <Pager
+              label="Paginación de reservas"
+              page={page}
+              hasMore={hasMore}
+              className="shrink-0"
+              hrefFor={(p) => buildHref({ dia: scope, status, q, cancha: courtId ?? '', page: p })}
+            />
           )}
         </div>
       )}

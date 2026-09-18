@@ -11,17 +11,21 @@
  *    diálogo intermedio) y verlo en el diario con la categoría "Cantina/Bar".
  * 2. Ticket con 2 productos distintos: un solo "Cobrar" genera UN solo
  *    movimiento con la descripción de ambos y el monto sumado.
- * 3. "Agregar movimiento" con tipo "Gasto" (migr. 050: categorías específicas,
+ * 3. "Registrar movimiento" con tipo "Gasto" (migr. 050: categorías específicas,
  *    auto-selecciona "Mercadería") registra el egreso y aparece en la lista
  *    con su badge y el monto en negativo.
- * 4. Fiado: anotarlo (en vez de cobrarlo), verlo en "Fiados abiertos",
- *    cobrarlo en efectivo y verlo desaparecer de la lista + aparecer como
- *    movimiento "Fiado cobrado — …" en Cuentas.
+ * 4. Fiado: anotarlo en Vender (en vez de cobrarlo), seguir el aviso de
+ *    "fiados abiertos" hasta Cuentas, cobrarlo en efectivo desde la tabla de
+ *    deudas y verlo desaparecer + aparecer como "Fiado cobrado — …" en el diario.
  */
 
 import { test, expect } from './fixtures'
 
-/** Crea un producto de cantina vía /caja/productos (ProductsTable + ProductFormDialog). */
+/**
+ * Crea un producto de cantina vía /caja/productos (ProductsTable + ProductFormDialog).
+ * Desde 2026-09-17 el alta arranca con "Sí, controlar stock" y el stock inicial
+ * es obligatorio: sin él el producto nacería "Agotado" y no se podría vender.
+ */
 async function createCanteenProduct(
   page: import('@playwright/test').Page,
   name: string,
@@ -32,6 +36,7 @@ async function createCanteenProduct(
   await expect(dialog).toBeVisible()
   await dialog.getByLabel('Nombre').fill(name)
   await dialog.getByLabel('Precio (pesos)').fill(pesos)
+  await dialog.getByLabel('Stock inicial').fill('50')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Producto creado').first()).toBeVisible()
 }
@@ -59,10 +64,21 @@ test.describe('Caja redesign', () => {
     const aguaButton = page.getByRole('button', { name: new RegExp(`^${productName}`) }).first()
     await aguaButton.click()
     await aguaButton.click()
-    await expect(page.getByText('×2')).toBeVisible()
+    // Acotado a la fila del producto: la barra de cobro del teléfono (oculta en
+    // escritorio pero en el DOM) también dice "Agua … ×2" y rompe strict mode.
+    await expect(aguaButton.getByText('×2')).toBeVisible()
     await page.getByRole('button', { name: /^Cobrar/ }).click()
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
+
+    // Acuse de recibo sin salir de Vender: la venta aparece en "Últimos
+    // movimientos" apenas el server component se refresca.
+    await expect(
+      page
+        .getByRole('row')
+        .filter({ hasText: `${productName} x2` })
+        .first(),
+    ).toBeVisible({ timeout: 10_000 })
 
     // La venta aparece en "Movimientos del día", que vive en Cuentas — recarga
     // completa para confirmar que persistió en DB, no solo en el estado local.
@@ -109,8 +125,8 @@ test.describe('Caja redesign', () => {
 
     // Un ticket con las dos líneas (1 tap cada una) y un solo Cobrar.
     await page.goto('/caja', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: new RegExp(nameA) }).click()
-    await page.getByRole('button', { name: new RegExp(nameB) }).click()
+    await page.getByRole('button', { name: new RegExp(`^${nameA}`) }).click()
+    await page.getByRole('button', { name: new RegExp(`^${nameB}`) }).click()
     await page.getByRole('button', { name: /^Cobrar/ }).click()
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
@@ -135,7 +151,7 @@ test.describe('Caja redesign', () => {
     await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
 
     const description = `Gasto e2e ${Date.now()}`
-    await page.getByRole('button', { name: /Agregar movimiento/ }).click()
+    await page.getByRole('button', { name: 'Registrar movimiento' }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
 
@@ -189,12 +205,25 @@ test.describe('Caja redesign', () => {
 
     await expect(page.getByText(`Fiado anotado — ${debtorName}`).first()).toBeVisible()
 
-    // Aparece en "Fiados abiertos" (mismo tab, tras el refresh del server component).
-    const fiadoRow = page.locator('li').filter({ hasText: debtorName })
+    // Vender ya no lista los fiados (2026-09-17): deja UNA línea que avisa
+    // cuántos hay y lleva a Cuentas, donde se cobran todas las deudas.
+    const fiadosLink = page.getByRole('link', { name: /fiados? abiertos?.*Cobrar en Cuentas/ })
+    await expect(fiadosLink).toBeVisible({ timeout: 10_000 })
+    await fiadosLink.click()
+    await expect(page).toHaveURL(/\/caja\/cuentas/)
+
+    // En Cuentas el fiado es una fila más de la tabla de deudas. Se filtra por
+    // nombre porque el tenant demo lo comparten otros specs.
+    await page.getByRole('searchbox', { name: 'Buscar deuda por nombre' }).fill(debtorName)
+    // Acotado a la región "Deudas": después del cobro, la fila del diario
+    // ("Fiado cobrado — {nombre}") también contiene el nombre.
+    const fiadoRow = page
+      .getByRole('region', { name: 'Deudas' })
+      .getByRole('row')
+      .filter({ hasText: debtorName })
     await expect(fiadoRow).toBeVisible()
 
-    // Cobrarlo en efectivo (método default del diálogo). El botón de la fila
-    // lleva el monto adentro desde el rediseño: "Cobrar $ 400".
+    // Cobrarlo en efectivo (método default del diálogo).
     await fiadoRow.getByRole('button', { name: /^Cobrar/ }).click()
     const settleDialog = page.getByRole('dialog')
     await expect(settleDialog).toBeVisible()
@@ -203,12 +232,10 @@ test.describe('Caja redesign', () => {
     // violation. El atajo nombra el metodo; el submit, no.
     await settleDialog.getByRole('button', { name: /^Cobrar(?! todo en efectivo)/ }).click()
 
-    await expect(page.getByText(`Fiado cobrado — ${debtorName}`).first()).toBeVisible()
-    // Desaparece de "Fiados pendientes": ya está 'paid', listOpenTabs no lo trae más.
-    await expect(fiadoRow).toHaveCount(0)
+    // Ya está 'paid': getStreetMoney no lo trae más y la fila desaparece.
+    await expect(fiadoRow).toHaveCount(0, { timeout: 10_000 })
 
-    // El cobro generó el movimiento, visible en Cuentas (misma cash_flow de siempre).
-    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
+    // El cobro generó el movimiento, en el diario del día de la misma pantalla.
     const movementRow = page.getByRole('row').filter({ hasText: `Fiado cobrado — ${debtorName}` })
     await expect(movementRow).toBeVisible({ timeout: 10_000 })
   })

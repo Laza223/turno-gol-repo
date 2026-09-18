@@ -15,7 +15,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArs } from '@/lib/format'
 import { toast } from '@/hooks/use-toast'
-import { canteenStockBadge, stockBadgeToneClass, type StockBadge } from '../caja-lib'
+import { SectionHeader } from '@/components/admin/SectionHeader'
+import { canteenStockBadge, countLowStock, stockBadgeToneClass, type StockBadge } from '../caja-lib'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import {
   ProductFormDialog,
@@ -54,12 +55,11 @@ function reponerClass(tone: StockBadge['tone'] | null): string {
   const base = 'inline-flex items-center rounded-md px-2.5 text-xs font-medium'
   return tone === 'out' || tone === 'low'
     ? `${base} border border-emerald-600 bg-primary/10 text-emerald-800 hover:bg-primary/15 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300`
-    : `${base} text-emerald-700 hover:bg-accent dark:text-emerald-400`
+    : `${base} text-emerald-800 hover:bg-accent dark:text-emerald-400`
 }
 
 function StockCell({ badge }: { badge: StockBadge | null }) {
-  if (!badge)
-    return <span className="text-xs text-muted-foreground">Sin control (Servicio / Alquiler)</span>
+  if (!badge) return <span className="text-xs text-muted-foreground">Servicio (sin stock)</span>
   return (
     <span className={`text-xs font-medium ${stockBadgeToneClass(badge.tone)}`}>{badge.label}</span>
   )
@@ -107,38 +107,59 @@ export function ProductsTable({
     }
   }
 
+  const activeCount = products.filter((p) => p.isActive).length
+  const lowCount = countLowStock(products)
+
   return (
-    <div className="rounded-lg border border-border bg-card shadow-xs">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="font-medium text-foreground">Catálogo</h2>
-        {canEditCatalog ? (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-accent dark:text-emerald-400"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Agregar producto
-          </button>
-        ) : (
-          // Bloqueado por rol: candado, no desaparición (mismo criterio que
-          // torneos/page.tsx y CorteZonasCard.tsx — MASTER CHK-admin §12).
-          <span
-            className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground"
-            title="Solo el dueño puede agregar productos"
-          >
-            <Lock className="h-4 w-4" aria-hidden="true" />
-            Agregar producto
-            <span className="sr-only">— solo el dueño puede hacerlo</span>
-          </span>
-        )}
-      </div>
+    <section aria-labelledby="catalogo-titulo" className="space-y-3">
+      <SectionHeader
+        id="catalogo-titulo"
+        title="Catálogo"
+        meta={
+          products.length > 0 ? (
+            <>
+              {activeCount} {activeCount === 1 ? 'producto' : 'productos'}
+              {/* Lo mismo que dice el punto de la pestaña, con el número: acá
+                  el dueño ya está parado donde se repone. */}
+              {lowCount > 0 && (
+                <span className="text-amber-800 dark:text-amber-300">
+                  {' '}
+                  · {lowCount} para reponer
+                </span>
+              )}
+            </>
+          ) : null
+        }
+        actions={
+          canEditCatalog ? (
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent md:h-9"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Agregar producto
+            </button>
+          ) : (
+            // Bloqueado por rol: candado, no desaparición (mismo criterio que
+            // torneos/page.tsx y CorteZonasCard.tsx — MASTER CHK-admin §12).
+            <span
+              className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground md:h-9"
+              title="Solo el dueño puede agregar productos"
+            >
+              <Lock className="h-4 w-4" aria-hidden="true" />
+              Agregar producto
+              <span className="sr-only">— solo el dueño puede hacerlo</span>
+            </span>
+          )
+        }
+      />
 
       {products.length === 0 ? (
         <EmptyState
           icon={Package}
           title="Todavía no cargaste productos"
-          description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Cantina."
+          description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Vender."
           action={
             canEditCatalog ? (
               <button
@@ -164,14 +185,15 @@ export function ProductsTable({
         />
       ) : (
         <ResponsiveList
+          flat
           cards={
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border border-b border-border">
               {ordered.map((p) => {
                 const badge = canteenStockBadge(p.stock, p.minStock)
                 return (
                   <li
                     key={p.id}
-                    className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                    className={`flex items-center justify-between gap-3 py-2.5 ${
                       badge?.tone === 'out' ? 'bg-red-50 dark:bg-red-500/10' : ''
                     }`}
                   >
@@ -227,16 +249,16 @@ export function ProductsTable({
             <table className="w-full min-w-[460px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Producto
                   </th>
-                  <th className="p-2.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 pr-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Precio
                   </th>
-                  <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Stock
                   </th>
-                  <th className="p-2.5 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Acciones
                   </th>
                 </tr>
@@ -252,7 +274,7 @@ export function ProductsTable({
                       }`}
                     >
                       <td
-                        className={`p-2.5 pl-4 font-medium ${
+                        className={`py-2 pr-3 font-medium ${
                           p.isActive ? 'text-foreground' : 'text-muted-foreground'
                         }`}
                       >
@@ -263,13 +285,13 @@ export function ProductsTable({
                           </span>
                         )}
                       </td>
-                      <td className="p-2.5 text-right tabular-nums text-foreground">
+                      <td className="py-2 pr-3 text-right tabular-nums text-foreground">
                         {formatArs(p.price)}
                       </td>
-                      <td className="p-2.5">
+                      <td className="py-2 pr-3">
                         <StockCell badge={badge} />
                       </td>
-                      <td className="p-2.5 pr-4 text-right">
+                      <td className="py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {/* Reponer y Editar a la vista: son las dos acciones de la
                               visita semanal, y esconderlas en un menú "..." obliga a
@@ -328,7 +350,7 @@ export function ProductsTable({
         onSaved={() => router.refresh()}
         registerStockExitAction={registerStockExitAction}
       />
-    </div>
+    </section>
   )
 }
 

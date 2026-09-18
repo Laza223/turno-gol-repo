@@ -8,6 +8,14 @@ type Props = {
   cards: ReactNode
   /** Vista desktop (sm+): tabla densa; pasarle min-w-[…] para que scrollee el wrapper. */
   table: ReactNode
+  /**
+   * Sin card: ni borde exterior, ni fondo propio, ni sombra. Para las listas
+   * que apoyan directo sobre el fondo de la página y se separan del resto por
+   * su encabezado, no por una caja alrededor
+   * (`docs/planning/2026-09-17-plan-diseno-sacar-lo-generico.md` §2: "superficies
+   * sin sombra, separadas por borde de 1 px o por espacio").
+   */
+  flat?: boolean
   className?: string
 }
 
@@ -19,11 +27,12 @@ type Props = {
  * acciones repetidas en ambas vistas y deben agarrar la visible (la tabla).
  * El orden visual no cambia: solo una vista se muestra por breakpoint.
  */
-export function ResponsiveList({ header, cards, table, className }: Props) {
+export function ResponsiveList({ header, cards, table, flat, className }: Props) {
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-xl border border-border/60 bg-card shadow-xs',
+        'overflow-hidden',
+        flat ? 'min-w-0' : 'rounded-xl border border-border/60 bg-card shadow-xs',
         className,
       )}
     >

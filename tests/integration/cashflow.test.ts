@@ -300,6 +300,47 @@ describe('cashflow service', () => {
     expect(sale!.method).toBe('cash')
   })
 
+  // Vender muestra los últimos 5 y Cuentas pagina el día de a 25. Páginas que
+  // se pisan o se saltean una fila son plata que aparece dos veces o ninguna,
+  // así que el contrato es: las páginas juntas reproducen EXACTAMENTE la lista
+  // sin límite, en el mismo orden (el `cf.id` desempata instantes iguales).
+  it('limit/offset recorren el día sin repetir ni saltear filas', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+
+    for (let i = 1; i <= 7; i++) {
+      await withTenantContext(tenant.id, (tx) =>
+        createCashFlow(
+          tenant.id,
+          staff.id,
+          {
+            type: 'income',
+            category: 'product_sale',
+            amount: i * 10000,
+            method: 'cash',
+            description: `Venta ${i}`,
+          },
+          tx,
+        ),
+      )
+    }
+
+    const [all, p1, p2, p3] = await withTenantContext(tenant.id, async (tx) => [
+      await getCashFlows(tenant.id, TODAY, 0, tx),
+      await getCashFlows(tenant.id, TODAY, 0, tx, { limit: 3, offset: 0 }),
+      await getCashFlows(tenant.id, TODAY, 0, tx, { limit: 3, offset: 3 }),
+      await getCashFlows(tenant.id, TODAY, 0, tx, { limit: 3, offset: 6 }),
+    ])
+
+    expect(all).toHaveLength(7)
+    expect([p1.length, p2.length, p3.length]).toEqual([3, 3, 1])
+    expect([...p1, ...p2, ...p3].map((cf) => cf.id)).toEqual(all.map((cf) => cf.id))
+    // Del más nuevo al más viejo: la primera fila es la última venta cargada.
+    expect(p1[0]!.description).toBe('Venta 7')
+  })
+
   it('P10 regression: cancelByPlayer with paid deposit creates no cashflow rows', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)

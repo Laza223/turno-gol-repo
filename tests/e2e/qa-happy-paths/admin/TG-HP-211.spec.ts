@@ -2,11 +2,16 @@
  * TG-HP-211 — Marcar COMPLETADA (jugada).
  * Rol: Admin/manager (requireOperatorStaff). Prereq: reserva confirmed cuyo
  * horario de FIN ya pasó (server valida BookingNotYetEndedError si no).
- * No-plata: se limpia el booking en finally.
- * Evidencia: src/app/(admin)/reservas/actions.ts:164-197 (completeBookingAction),
- * src/app/(admin)/reservas/[id]/BookingActions.tsx:141-151.
- * NOTA (GAPS #4 del manual): este botón NO dispara toast — solo router.refresh()
- * silencioso. La sección de acciones desaparece porque status ya no es 'confirmed'.
+ * Desde la Fase 3 "Marcar completada" abre `CompleteBookingDialog` ("Completar
+ * turno") y la completación sale por `completeAndChargeBookingAction`, que en la
+ * misma transacción registra el cobro del saldo como `cash_flows`. Con el seed
+ * (price_snapshot 10000, sin seña) el diálogo precarga un cobro en efectivo por
+ * el total: el submit es "Completar y cobrar" y deja un ingreso de $100.
+ * Evidencia: src/app/(admin)/reservas/actions.ts (completeAndChargeBookingAction),
+ * src/app/(admin)/reservas/CompleteBookingDialog.tsx.
+ * Cleanup: el cash_flow referencia al booking (FK NO ACTION), así que se borra
+ * antes que el booking — si no, el DELETE falla en silencio y el turno de ayer
+ * queda vivo en la cancha E2E.
  */
 import { subDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
@@ -57,9 +62,15 @@ test.describe('TG-HP-211 — marcar completada', () => {
       await expect(page.locator('dd').filter({ hasText: 'Confirmada' })).toBeVisible()
 
       await page.getByRole('button', { name: 'Marcar completada' }).click()
+      await expect(page.getByRole('heading', { name: 'Completar turno' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-      // Sin toast (asimetría real del código, ver GAPS #4) — el fin de la
-      // acción se observa por el cambio de estado + la desaparición del botón.
+      // Label exacto a propósito (no el regex de reservas-crud): con el seed de
+      // arriba no queda deuda, y si cambia la aritmética del saldo este test
+      // tiene que enterarse.
+      await page.getByRole('button', { name: 'Completar y cobrar', exact: true }).click()
+
       await expect(page.locator('dd').filter({ hasText: 'Jugada' })).toBeVisible({
         timeout: 10_000,
       })
@@ -76,14 +87,29 @@ test.describe('TG-HP-211 — marcar completada', () => {
       expect(error).toBeNull()
       expect(row?.status).toBe('completed')
 
+      // El cobro precargado entra a caja en la misma transacción.
+      const { data: flows, error: flowsError } = await supabase
+        .from('cash_flows')
+        .select('type, category, amount, method')
+        .eq('booking_id', bookingId)
+
+      expect(flowsError).toBeNull()
+      expect(flows).toEqual([
+        { type: 'income', category: 'booking', amount: 10000, method: 'cash' },
+      ])
+
       await writeEvidence('TG-HP-211', {
         status: 'pass',
         bookingId,
         finalStatus: row?.status,
-        notes: 'Sin toast de éxito (asimetría real del código, BookingActions.tsx:88-95).',
+        cashFlows: flows,
+        notes:
+          'Completado vía CompleteBookingDialog ("Completar y cobrar"), cobro en efectivo por el saldo.',
       })
     } finally {
       await context.close()
+      const cash = await supabase.from('cash_flows').delete().eq('booking_id', bookingId)
+      if (cash.error) console.warn(`[TG-HP-211] cleanup cash_flows: ${cash.error.message}`)
       await cleanupBookingsByIds(supabase, [bookingId])
     }
   })

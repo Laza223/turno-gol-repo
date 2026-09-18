@@ -65,6 +65,9 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     expect(screen.getByRole('button', { name: /Agregar pago dividido/ })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Registrar cobro' })).toBeNull()
 
+    // Mismo contrato que el caso de abajo: un toque sobre un botón todavía
+    // deshabilitado se pierde y el reintento no sale.
+    expect(retry).toBeEnabled()
     fireEvent.click(retry)
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(2))
@@ -83,13 +86,13 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     fireEvent.click(screen.getByRole('button', { name: 'Registrar cobro' }))
     await screen.findByRole('button', { name: /^Reintentar cobro de/ })
 
-    // "Reintentar" aparece dentro de la transición (el catch corre antes de
-    // que termine), y "Cancelar" está `disabled={pending}` hasta que termina:
-    // sin esperar, el click caía sobre un botón deshabilitado y, con la CPU
-    // cargada por otros archivos en paralelo, el formulario seguía abierto
-    // (~1 de cada 3 corridas en lote, medido 2026-09-18).
+    // Sin esperar: "Reintentar" tiene que salir en el MISMO commit en que termina
+    // la transición. Cuando el componente lo pintaba antes (setState suelto
+    // después del `await`), "Cancelar" seguía `disabled={pending}`, el click se
+    // perdía y el formulario quedaba abierto — 200 de 200 con la CPU cargada,
+    // ~2 de 100 sin carga (medido 2026-09-18). Ver el catch de `runCharge`.
     const cancel = screen.getByRole('button', { name: 'Cancelar' })
-    await waitFor(() => expect(cancel).toBeEnabled())
+    expect(cancel).toBeEnabled()
     fireEvent.click(cancel)
     fireEvent.click(screen.getByRole('button', { name: '+ Agregar cobro' }))
 
@@ -108,7 +111,9 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     fireEvent.click(screen.getByRole('button', { name: 'Registrar cobro' }))
     await screen.findByText('Demasiadas solicitudes.')
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Registrar cobro' }))
+    const registrar = screen.getByRole('button', { name: 'Registrar cobro' })
+    expect(registrar).toBeEnabled()
+    fireEvent.click(registrar)
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(2))
     const [first, second] = action.mock.calls.map((c) => c[0])

@@ -43,9 +43,9 @@ const meta = {
   decorators: [
     // `[id]/page.tsx` monta BookingCharges bajo el mismo <h1> "Detalle de la
     // reserva" que BookingDetailCard (ver el decorator homólogo en
-    // BookingDetailCard.stories.tsx). El componente trae su propia superficie
-    // (.card-premium), pero su primer heading es un <h2> ("Cobros de turno");
-    // sin el <h1> por delante, axe marca heading-order.
+    // BookingDetailCard.stories.tsx). Su primer heading es un <h2> ("Cobros de
+    // turno"); sin el <h1> por delante, axe marca heading-order. 42rem ≈ la
+    // columna izquierda del detalle en escritorio (7/12 de 1152px).
     (Story) => (
       <div className="max-w-2xl space-y-6">
         <h1 className="text-2xl font-semibold text-foreground">Detalle de la reserva</h1>
@@ -119,15 +119,13 @@ export const AgregarCargo: Story = {
     const body = within(canvasElement.ownerDocument.body)
 
     await userEvent.click(canvas.getByRole('button', { name: '+ Agregar cobro' }))
-    const amountInput = canvas.getByLabelText('Monto (ARS)')
+    const amountInput = canvas.getByLabelText('Monto')
     await userEvent.clear(amountInput)
     await userEvent.type(amountInput, '5000')
-    // "Medio de pago" también nombra el <select> nativo sr-only detrás del
-    // trigger (mismo texto en <label htmlFor> y en el aria-label del botón):
-    // getByLabelText matchea los dos. La interacción real es con el botón
-    // visible (Popover), no con el select oculto.
-    await userEvent.click(canvas.getByRole('button', { name: 'Medio de pago' }))
-    await userEvent.click(await body.findByRole('button', { name: 'Transferencia' }))
+    // El método es el `SelectMenu` del control compartido (2026-09-17): un
+    // DropdownMenu de Radix cuyo panel va portaled a document.body.
+    await userEvent.click(canvas.getByRole('button', { name: 'Método de pago' }))
+    await userEvent.click(await body.findByRole('menuitemradio', { name: 'Transferencia' }))
     await userEvent.click(canvas.getByRole('button', { name: 'Registrar cobro' }))
 
     // $5.000 en pesos → 500.000 centavos: el número exacto que tiene que viajar al servidor.
@@ -156,6 +154,51 @@ export const AgregarCargo: Story = {
     // acá: timeout explícito más generoso (mismo criterio que los
     // findByRole('dialog', {}, { timeout: 15_000 }) de AbonadosList.stories.tsx
     // para diálogos que entran por next/dynamic).
+    await expectGone(toastText, { timeout: 5000 })
+  },
+}
+
+/**
+ * Pagaron con dos medios: se agrega una línea, y las dos viajan en UN solo
+ * llamado (la action las inserta en la misma transacción). Antes el detalle
+ * tenía su propio "Pago dividido (2 medios)" fijo a dos líneas y con el
+ * segundo monto bloqueado; ahora es el mismo control que la grilla y Caja.
+ */
+export const CobroEnDosMedios: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('button', { name: 'Pago único' })).toBeNull()
+
+    await userEvent.click(canvas.getByRole('button', { name: '+ Agregar cobro' }))
+    // Arranca con lo que falta ($10.500) en efectivo; se baja a $6.000 y el
+    // resto va por transferencia en una línea nueva.
+    const primero = canvas.getByLabelText('Monto')
+    await userEvent.clear(primero)
+    await userEvent.type(primero, '6000')
+    await userEvent.click(canvas.getByRole('button', { name: 'Agregar pago dividido' }))
+    await userEvent.type(canvas.getByLabelText('Monto · cobro 2'), '4500')
+    await expect(
+      canvas.getByRole('button', { name: 'Método de pago · cobro 2' }),
+    ).toHaveTextContent('Transferencia')
+    await userEvent.click(canvas.getByRole('button', { name: 'Registrar cobro' }))
+
+    await waitFor(() =>
+      expect(args.addBookingChargeAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          charges: [
+            { amount: 600_000, method: 'cash' },
+            { amount: 450_000, method: 'transfer' },
+          ],
+        }),
+      ),
+    )
+    await expect(args.addBookingChargeAction).toHaveBeenCalledTimes(1)
+
+    const body = within(canvasElement.ownerDocument.body)
+    const toastText = await body.findByText('Cobro dividido registrado')
+    const toastItem = toastText.closest('li')
+    if (!toastItem) throw new Error('No se encontró el toast')
+    await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
     await expectGone(toastText, { timeout: 5000 })
   },
 }

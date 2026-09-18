@@ -201,6 +201,7 @@ export function StreetMoneyChargeDialog({
             onQuickAllCash={submitQuickAllCash}
             disabled={isPending}
             methodOptions={row.origin === 'canteen_tab' ? CANTEEN_METHOD_OPTIONS : undefined}
+            idPrefix="deuda"
           />
 
           {error && (

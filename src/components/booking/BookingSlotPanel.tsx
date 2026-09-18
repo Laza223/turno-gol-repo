@@ -161,7 +161,7 @@ export function BookingSlotPanel({
     pending,
     submitCharge,
     submitPartialCharge,
-    submitLineCharge,
+    submitTeamCharge,
     retryTotal,
     retryUnconfirmedCharge,
     confirmNoShow,
@@ -378,10 +378,12 @@ export function BookingSlotPanel({
             </div>
           </SheetHeader>
 
+          {/* Una sola columna continua: la plata, el cobro y las acciones separados
+              por un filete de 1px en vez de tres recuadros apilados adentro de la
+              hoja (plan de diseño 2026-09-17 §5 — "Cards: borde o espacio"). */}
           <div className="flex flex-col gap-4 p-5">
             <SlotPriceSummary
               booking={booking}
-              displayName={displayName}
               capacity={courts?.find((c) => c.id === booking.courtId)?.capacity}
             />
 
@@ -404,7 +406,7 @@ export function BookingSlotPanel({
                 onSubmit={submitCharge}
                 split={split}
                 onPartialCharge={submitPartialCharge}
-                onLineCharge={submitLineCharge}
+                onTeamCharge={submitTeamCharge}
                 retryTotal={retryTotal}
                 onRetry={retryUnconfirmedCharge}
               />

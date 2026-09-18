@@ -2,16 +2,29 @@
 
 import { Plus, Trash2 } from 'lucide-react'
 import { MoneyInput } from '@/components/ui/money-input'
+import { SelectMenu } from '@/components/ui/select-menu'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 
-export type ChargeLine = { id: string; amountCents: number | null; method: MethodKey }
+/**
+ * `team` sólo existe para el cobro por equipo del panel del turno: agrupa las
+ * líneas en pantalla, no viaja al servidor ni se guarda en ningún lado (el
+ * sistema no registra quién es cada uno, ver `charge-copy.ts`). Sin él, cada
+ * equipo estaba limitado a UN método de pago.
+ */
+export type ChargeLine = {
+  id: string
+  amountCents: number | null
+  method: MethodKey
+  team?: 1 | 2
+}
 
 export function newChargeLine(
   amountCents: number | null = null,
   method: MethodKey = 'cash',
+  team?: 1 | 2,
 ): ChargeLine {
-  return { id: crypto.randomUUID(), amountCents, method }
+  return { id: crypto.randomUUID(), amountCents, method, ...(team ? { team } : {}) }
 }
 
 /**
@@ -37,6 +50,18 @@ export function SplitPaymentFields({
   disabled = false,
   /** Default: las 4 (incluye 'other'). Cantina no admite 'other' (canteen.types.ts). */
   methodOptions = PAYMENT_METHOD_OPTIONS,
+  /**
+   * Prefijo de los `id` de cada campo (`${idPrefix}-amount-1`,
+   * `${idPrefix}-method-1`, …). `SelectMenu` exige `id`, y con varias
+   * instancias en la misma pantalla (los dos equipos) tienen que ser únicos.
+   */
+  idPrefix,
+  /**
+   * Se intercala en el nombre accesible de cada campo, p. ej. `del Equipo 1`.
+   * El texto visible del select es sólo el valor ("Efectivo"), que no dice
+   * QUÉ se está eligiendo ni de quién.
+   */
+  groupLabel,
 }: {
   lines: ChargeLine[]
   onChange: (lines: ChargeLine[]) => void
@@ -45,13 +70,15 @@ export function SplitPaymentFields({
   onQuickAllCash?: () => void
   disabled?: boolean
   methodOptions?: { value: MethodKey; label: string }[]
+  idPrefix: string
+  groupLabel?: string
 }) {
   function update(id: string, patch: Partial<Pick<ChargeLine, 'amountCents' | 'method'>>) {
     onChange(lines.map((l) => (l.id === id ? { ...l, ...patch } : l)))
   }
 
   function add() {
-    onChange([...lines, newChargeLine(null, 'transfer')])
+    onChange([...lines, newChargeLine(null, 'transfer', lines[0]?.team)])
   }
 
   function remove(id: string) {
@@ -65,6 +92,11 @@ export function SplitPaymentFields({
       return
     }
     onChange([newChargeLine(quickAllCashCents, 'cash')])
+  }
+
+  const suffix = groupLabel ? ` ${groupLabel}` : ''
+  function fieldLabel(base: string, i: number) {
+    return lines.length > 1 ? `${base}${suffix} · cobro ${i + 1}` : `${base}${suffix}`
   }
 
   return (
@@ -86,43 +118,47 @@ export function SplitPaymentFields({
 
       {lines.map((line, i) => (
         <div key={line.id} className="flex items-center gap-2">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <MoneyInput
+              id={`${idPrefix}-amount-${i + 1}`}
               valueCents={line.amountCents}
               onValueChange={(cents) => update(line.id, { amountCents: cents })}
               minCents={1}
               placeholder="Monto"
               disabled={disabled}
+              aria-label={fieldLabel('Monto', i)}
             />
           </div>
-          <select
+          {/* Mismo desplegable que "Editar cancha" y el campo "Hora" del buscador
+              público: el `<select>` nativo que había acá era el único control del
+              panel que se veía del navegador y no de la app (pedido del dueño,
+              2026-09-17). Altura y radio se bajan a los del MoneyInput de al lado
+              — el default del primitivo (h-12/rounded-xl) es el de un formulario
+              de página, no el de una fila de cobro. */}
+          <SelectMenu
+            id={`${idPrefix}-method-${i + 1}`}
             value={line.method}
-            onChange={(e) => update(line.id, { method: e.target.value as MethodKey })}
+            onChange={(v) => update(line.id, { method: v as MethodKey })}
+            options={methodOptions}
             disabled={disabled}
-            // Sin nombre accesible, axe lo marca `select-name`: en un lector de
-            // pantalla el control se anuncia sólo por su valor ("Efectivo") y
-            // no se entiende qué se está eligiendo. Con varias líneas de cobro
-            // hay varios selects idénticos, así que el índice va en el nombre.
-            aria-label={lines.length > 1 ? `Método de pago del cobro ${i + 1}` : 'Método de pago'}
-            className="h-10 rounded-lg border border-input bg-background px-3 text-base md:text-sm font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring disabled:opacity-60"
-          >
-            {methodOptions.map((m) => (
-              <option
-                key={m.value}
-                value={m.value}
-                className="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100"
-              >
-                {m.label}
-              </option>
-            ))}
-          </select>
+            aria-label={fieldLabel('Método de pago', i)}
+            // 9.75rem: "Transferencia" a 14px más el chevron no entra en menos
+            // y quedaba cortado ("Transferen…"). `bg-card` para que el campo sea
+            // la MISMA superficie que el MoneyInput de al lado — el default del
+            // primitivo (`bg-background`) es medio tono más gris y se notaba.
+            // `text-sm` también en el teléfono: el primitivo trae `text-base
+            // md:text-sm` por la regla de iOS (zoomea los campos de menos de
+            // 16px), pero esto es un `<button>`, no un campo donde se tipea —
+            // iOS no lo zoomea y a 16px "Transferencia" no entra en 375px.
+            className="h-11 w-[9.75rem] shrink-0 rounded-lg bg-card text-sm md:h-10"
+          />
           {lines.length > 1 && (
             <button
               type="button"
               onClick={() => remove(line.id)}
               disabled={disabled}
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-60"
-              aria-label="Eliminar cobro"
+              className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-60 md:h-10"
+              aria-label={`Eliminar cobro ${i + 1}${suffix}`}
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -135,6 +171,9 @@ export function SplitPaymentFields({
           type="button"
           onClick={add}
           disabled={disabled}
+          // Con los dos equipos en pantalla hay DOS botones con este mismo
+          // texto: sin el sufijo, el nombre accesible no los distingue.
+          {...(groupLabel ? { 'aria-label': `Agregar pago dividido ${groupLabel}` } : {})}
           // `text-primary` en claro ES emerald-700 (--primary), así que a 12px
           // sobre el fondo atenuado daba 4.47:1. Mismo criterio que el atajo de
           // arriba: un tono más oscuro en claro, emerald-400 en oscuro.

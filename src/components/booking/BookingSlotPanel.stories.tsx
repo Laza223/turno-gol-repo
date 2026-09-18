@@ -308,6 +308,70 @@ export const DividirPorEquipo: Story = {
   },
 }
 
+/**
+ * Un equipo junta la plata con DOS medios (parte en efectivo, parte
+ * transferencia) — antes cada equipo estaba limitado a uno solo y ese cobro no
+ * se podía registrar como entró. Los dos van en UN llamado: dos llamados serían
+ * dos movimientos de caja que pueden quedar a medias.
+ *
+ * Verifica de paso que las pestañas Efectivo/Transferencia/MercadoPago que
+ * había arriba ya no existen (2026-09-17): eran una segunda forma de elegir lo
+ * mismo que el desplegable de la línea, y con dos líneas mentían.
+ */
+export const EquipoConDosMetodos: Story = {
+  args: {
+    actions: okActions(),
+    booking: {
+      ...toGridBooking(bookingCompleted()),
+      courtId: courtFutbol5().id,
+      date: AYER,
+      priceSnapshot: 2400000,
+      depositStatus: 'not_required',
+      depositAmount: 0,
+      totalPaid: 0,
+      pending: 2400000,
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const panel = within(canvasElement.ownerDocument.body)
+    await expect(panel.queryByRole('group', { name: 'Método de pago' })).toBeNull()
+
+    await userEvent.click(await panel.findByRole('button', { name: 'Dividir pago por equipo' }))
+    await userEvent.click(
+      await panel.findByRole('button', { name: 'Agregar pago dividido del Equipo 1' }),
+    )
+
+    const primero = (await panel.findByLabelText(
+      'Monto del Equipo 1 · cobro 1',
+    )) as HTMLInputElement
+    await userEvent.clear(primero)
+    await userEvent.type(primero, '7000')
+    const segundo = (await panel.findByLabelText(
+      'Monto del Equipo 1 · cobro 2',
+    )) as HTMLInputElement
+    await userEvent.type(segundo, '5000')
+
+    // La línea que se agrega arranca en Transferencia: el pago dividido existe
+    // justamente porque el segundo medio no es el mismo que el primero.
+    await expect(
+      await panel.findByRole('button', { name: 'Método de pago del Equipo 1 · cobro 2' }),
+    ).toHaveTextContent('Transferencia')
+
+    await userEvent.click(await panel.findByRole('button', { name: 'Cobrar al Equipo 1' }))
+
+    await waitFor(() =>
+      expect(args.actions?.chargeDebtAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          charges: [
+            { amount: 700000, method: 'cash' },
+            { amount: 500000, method: 'transfer' },
+          ],
+        }),
+      ),
+    )
+  },
+}
+
 /** "Cobrar en un solo pago" deshace la división y vuelve al monto completo. */
 export const DividirYVolver: Story = {
   args: {

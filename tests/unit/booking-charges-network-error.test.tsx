@@ -57,8 +57,12 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
 
     const retry = await screen.findByRole('button', { name: /^Reintentar cobro de/ })
     expect(screen.getByText(/no sabemos si ese cobro entró/i)).toBeInTheDocument()
-    // No se puede cambiar el monto ni el modo: lo único que sale es ESE cobro.
-    expect(screen.getByRole('button', { name: 'Pago único' })).toBeDisabled()
+    // No se puede cambiar el monto, el método ni sumar líneas: lo único que sale
+    // es ESE cobro. (Antes se medía con la pestaña "Pago único", que se fue
+    // cuando el detalle pasó al control de cobro compartido.)
+    expect(screen.getByLabelText('Monto')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Método de pago' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Agregar pago dividido/ })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Registrar cobro' })).toBeNull()
 
     fireEvent.click(retry)
@@ -79,7 +83,14 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     fireEvent.click(screen.getByRole('button', { name: 'Registrar cobro' }))
     await screen.findByRole('button', { name: /^Reintentar cobro de/ })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    // "Reintentar" aparece dentro de la transición (el catch corre antes de
+    // que termine), y "Cancelar" está `disabled={pending}` hasta que termina:
+    // sin esperar, el click caía sobre un botón deshabilitado y, con la CPU
+    // cargada por otros archivos en paralelo, el formulario seguía abierto
+    // (~1 de cada 3 corridas en lote, medido 2026-09-18).
+    const cancel = screen.getByRole('button', { name: 'Cancelar' })
+    await waitFor(() => expect(cancel).toBeEnabled())
+    fireEvent.click(cancel)
     fireEvent.click(screen.getByRole('button', { name: '+ Agregar cobro' }))
 
     expect(screen.getByRole('button', { name: /^Reintentar cobro de/ })).toBeInTheDocument()

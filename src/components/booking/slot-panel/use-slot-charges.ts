@@ -161,27 +161,41 @@ export function useSlotCharges({
   }
 
   /**
-   * Cobra UNA línea del pago dividido por equipo (el "Cobrar" de la fila de un
-   * equipo), sin tocar `lines`.
+   * Cobra las líneas de UN equipo del pago dividido (el "Cobrar" de su
+   * bloque), sin tocar `lines`.
+   *
+   * Recibe N líneas y no una sola porque un equipo puede juntar la plata con
+   * más de un medio (mitad efectivo, mitad transferencia): las manda en UN
+   * solo llamado, que es lo que hace la Server Action atómica desde #326 —
+   * dos llamados serían dos movimientos de caja que pueden quedar a medias.
    *
    * Por qué no reusa `submitPartialCharge`: ese reemplaza las líneas por una
-   * sola, y si el cobro falla (red, caja cerrada) el admin se queda sin la fila
-   * del otro equipo y con el monto que había corregido pisado. Acá las dos filas
-   * sobreviven al error; si el cobro sale bien, el refresco del turno las
-   * resincroniza solo.
+   * sola, y si el cobro falla (red, caja cerrada) el admin se queda sin las
+   * filas del otro equipo y con los montos que había corregido pisados. Acá
+   * las filas sobreviven al error; si el cobro sale bien, el refresco del
+   * turno las resincroniza solo.
    */
-  function submitLineCharge(amountCents: number | null, method: MethodKey) {
+  function submitTeamCharge(teamLines: ChargeLine[]) {
     if (!booking || !mode || retryCharge) return
     setError(null)
-    if (amountCents == null || amountCents <= 0) {
-      setError('El cobro tiene que tener un monto mayor a $0.')
+    const charges: ChargeInput[] = []
+    for (const l of teamLines) {
+      if (l.amountCents == null || l.amountCents <= 0) {
+        setError('Todos los cobros deben tener un monto mayor a $0.')
+        return
+      }
+      charges.push({ amount: l.amountCents, method: l.method })
+    }
+    if (charges.length === 0) {
+      setError('Ingresá al menos una línea de cobro.')
       return
     }
-    if (amountCents > pending) {
-      setError(`El cobro (${formatArs(amountCents)}) supera lo pendiente (${formatArs(pending)}).`)
+    const total = charges.reduce((s, c) => s + c.amount, 0)
+    if (total > pending) {
+      setError(`El cobro (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
       return
     }
-    runCharge([{ amount: amountCents, method }], amountCents)
+    runCharge(charges, total)
   }
 
   /** Reenvía el cobro que quedó sin confirmar: mismas líneas, misma key. */
@@ -249,7 +263,7 @@ export function useSlotCharges({
     pending,
     submitCharge,
     submitPartialCharge,
-    submitLineCharge,
+    submitTeamCharge,
     retryTotal: retryCharge?.total ?? null,
     retryUnconfirmedCharge,
     confirmNoShow,

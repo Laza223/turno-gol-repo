@@ -45,7 +45,9 @@ export function PortalPanel({
     startTransition(async () => {
       const result = await setVisibilityAction({ id: tournamentId, isPublic: !isPublic })
       if (!result.success) {
-        setError(result.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(result.error))
         return
       }
       router.refresh()
@@ -57,7 +59,7 @@ export function PortalPanel({
     startTransition(async () => {
       const result = await openRegistrationAction({ id: tournamentId, status: 'registration' })
       if (!result.success) {
-        setError(result.error)
+        startTransition(() => setError(result.error))
         return
       }
       router.refresh()

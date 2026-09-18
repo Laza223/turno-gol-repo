@@ -160,7 +160,9 @@ export function StockEntryDialog({
         onSaved()
         onClose()
       } else {
-        setError(res.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(res.error))
       }
     })
   }

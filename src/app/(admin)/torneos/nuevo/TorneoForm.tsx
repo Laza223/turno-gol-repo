@@ -83,7 +83,9 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
         matchDurationMinutes: Number(matchDuration),
       })
       if (!result.success) {
-        setError(result.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(result.error))
         return
       }
       router.push(result.id ? `/torneos/${result.id}` : '/torneos')

@@ -285,7 +285,9 @@ function CourtCard({
     startTransition(async () => {
       const res = await toggleStatusAction(court.id, 'online')
       if (!res.success) {
-        setCurrentStatus(prev)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setCurrentStatus(prev))
         if (res.requiresBillingConfirmation) {
           // No es un error: la cancha sigue apagada porque prenderla sube la
           // cuota y el dueño tiene que ver el monto nuevo antes.

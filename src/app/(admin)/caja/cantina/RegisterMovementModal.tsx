@@ -143,7 +143,11 @@ export function RegisterMovementModal({
         // El mismo modal registra `expense`, que no cambia "Hoy" (income +
         // adjustments): el fetch extra devuelve el mismo valor.
         onClose()
-      } else setError(res.error)
+      } else {
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(res.error))
+      }
     })
   }
 

@@ -63,11 +63,15 @@ export function StreetMoneyCancelTabDialog({
           onClose()
           router.refresh()
         } else {
-          setError(res.error)
+          // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+          // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+          startTransition(() => setError(res.error))
         }
       } catch (err) {
         Sentry.captureException(err)
-        setError('No pudimos anular el fiado. Revisá tu conexión e intentá de nuevo.')
+        startTransition(() =>
+          setError('No pudimos anular el fiado. Revisá tu conexión e intentá de nuevo.'),
+        )
       }
     })
   }

@@ -306,27 +306,32 @@ describe('QuickActions — confirmed', () => {
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toBeTruthy()
 
-    // findByRole y no getByRole en los clicks del confirm: React 19 hizo las
-    // transiciones async de verdad, así que el botón se queda en "Procesando…"
-    // un tick más de lo que se quedaba en React 18. findByRole reintenta hasta
-    // que vuelve a estar idle; getByRole miraba una sola vez y no lo encontraba.
+    // Sin esperar al botón después del aviso: el error del ConfirmDialog tiene que
+    // salir en el MISMO commit en que termina la transición. Si sale antes (set*
+    // suelto después del `await`), el botón sigue en "Procesando…" y el toque se
+    // pierde — antes esto se tapaba con un findByRole que reintentaba hasta verlo.
+    const confirmar = () => screen.getByRole('button', { name: 'Cancelar reserva' })
+
     // Sin elegir quién cancela ni motivo → error, no dispara la action.
-    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar reserva' }))
-    expect(await screen.findByRole('alert')).toBeTruthy()
+    fireEvent.click(confirmar())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Indicá quién cancela la reserva.')
     expect(cancelMock).not.toHaveBeenCalled()
+    expect(confirmar()).toBeEnabled()
 
     // Paso 1: el jugador pidió cancelar (0 = complejo, 1 = jugador).
     const radios = screen.getAllByRole('radio')
     fireEvent.click(radios[1]!)
 
     // Motivo todavía vacío → sigue exigiendo motivo.
-    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar reserva' }))
+    fireEvent.click(confirmar())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ingresá un motivo')
     expect(cancelMock).not.toHaveBeenCalled()
+    expect(confirmar()).toBeEnabled()
 
     fireEvent.change(screen.getByLabelText('Motivo (obligatorio)'), {
       target: { value: 'Lluvia torrencial' },
     })
-    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar reserva' }))
+    fireEvent.click(confirmar())
     await waitFor(() =>
       expect(cancelMock).toHaveBeenCalledWith('b1', 'Lluvia torrencial', 'jugador'),
     )

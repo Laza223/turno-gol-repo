@@ -89,7 +89,10 @@ const meta = {
       // `@container`: QuickActions elige fila de botones vs menú por el ancho
       // del contenedor (en la app, la tarjeta de BookingListItem). Sin
       // contenedor la container query nunca matchea y todo quedaba angosto.
-      <div className="@container relative max-w-xl rounded-xl border border-border bg-card p-3 shadow-xs">
+      // `max-w-4xl`: la fila de tres botones aparece desde `@3xl` (768px de
+      // contenido) — en la app, el tablero filtrado a una sola cancha. Con el
+      // `max-w-xl` de antes estas stories caían en la variante compacta.
+      <div className="@container relative max-w-4xl rounded-xl border border-border bg-card p-3 shadow-xs">
         <Story />
       </div>
     ),

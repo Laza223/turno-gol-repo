@@ -260,6 +260,10 @@ export async function runDunningSweep(): Promise<void> {
 
   for (const item of pendingItems) {
     try {
+      // Secuencial a propósito, como los barridos de arriba: cada ítem es una
+      // tx propia que además le pega a MercadoPago; en paralelo agotaría el pool
+      // y dispararía N PUTs a MP a la vez.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
       await withTenantContext(item.tenant_id, async (tx) => {
         // Piso: nunca se aplica una baja por debajo de las canchas prendidas
         // HOY. Entre que el dueño agendó la baja y el cierre del período pudo

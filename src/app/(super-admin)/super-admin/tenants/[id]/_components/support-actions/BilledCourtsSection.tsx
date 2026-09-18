@@ -98,7 +98,11 @@ export function BilledCourtsSection({
               min={floor}
               max={MAX_BILLED_COURTS}
               value={target}
-              onChange={(e) => setTarget(Number(e.target.value))}
+              // Campo vacío o a medio tipear = NaN, nunca 0: `Number('')` es 0 y
+              // se leería como "por debajo de las canchas online".
+              onChange={(e) =>
+                setTarget(e.target.value === '' ? Number.NaN : Number(e.target.value))
+              }
               className={`${inputCls} w-24 tabular-nums`}
             />
             <button
@@ -124,9 +128,11 @@ export function BilledCourtsSection({
 
           {!targetValid && (
             <p className="text-sm text-red-700 dark:text-red-300">
-              {target < floor
-                ? `El complejo tiene ${onlineCourts} cancha${onlineCourts === 1 ? '' : 's'} online: no se puede facturar por menos de ${floor}.`
-                : `Máximo ${MAX_BILLED_COURTS} canchas.`}
+              {!Number.isInteger(target)
+                ? 'Ingresá una cantidad entera de canchas.'
+                : target < floor
+                  ? `El complejo tiene ${onlineCourts} cancha${onlineCourts === 1 ? '' : 's'} online: no se puede facturar por menos de ${floor}.`
+                  : `Máximo ${MAX_BILLED_COURTS} canchas.`}
             </p>
           )}
 

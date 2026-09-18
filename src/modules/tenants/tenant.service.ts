@@ -85,6 +85,25 @@ export async function createTenantWithTrial(
   const trialDays = input.trialDays ?? TRIAL_DAYS
   const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000)
 
+  // Fila de precio vigente. Desde la migr. 091 `plans` tiene UNA sola activa
+  // (`slug = 'turnogol'`), así que ya no se elige plan: se resuelve. Acá
+  // vivía `slug = 'predio'` hardcodeado, un string mágico que con el precio
+  // por cancha deja de existir como plan vendible y rompe TODA alta nueva.
+  // Sin esta fila, subscribe() no encuentra suscripción y tira
+  // SubscriptionNotFoundError para todo tenant nuevo.
+  //
+  // Se resuelve ANTES de insertar el tenant: `db` no es una transacción, así
+  // que tirar después dejaba un complejo huérfano, sin suscripción.
+  const [activePlan] = await db
+    .select({ id: plans.id })
+    .from(plans)
+    .where(eq(plans.isActive, true))
+    .orderBy(plans.sortOrder)
+    .limit(1)
+  if (!activePlan) {
+    throw new Error('No hay ningún plan activo — no se puede crear el trial')
+  }
+
   const [tenant] = await db
     .insert(tenants)
     .values({
@@ -102,22 +121,6 @@ export async function createTenantWithTrial(
       settings: DEFAULT_SETTINGS as unknown as Record<string, unknown>,
     })
     .returning({ id: tenants.id, slug: tenants.slug })
-
-  // Fila de precio vigente. Desde la migr. 091 `plans` tiene UNA sola activa
-  // (`slug = 'turnogol'`), así que ya no se elige plan: se resuelve. Acá
-  // vivía `slug = 'predio'` hardcodeado, un string mágico que con el precio
-  // por cancha deja de existir como plan vendible y rompe TODA alta nueva.
-  // Sin esta fila, subscribe() no encuentra suscripción y tira
-  // SubscriptionNotFoundError para todo tenant nuevo.
-  const [activePlan] = await db
-    .select({ id: plans.id })
-    .from(plans)
-    .where(eq(plans.isActive, true))
-    .orderBy(plans.sortOrder)
-    .limit(1)
-  if (!activePlan) {
-    throw new Error('No hay ningún plan activo — no se puede crear el trial')
-  }
 
   // tenant.id was just generated — there's no pre-existing tenant context to
   // inherit, so RLS on tenant_staff_members / tenant_subscriptions

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import * as Sentry from '@sentry/nextjs'
 
 /**
@@ -62,7 +62,14 @@ export function useUnconfirmedSubmit<P>(): UnconfirmedSubmit<P> {
       return res
     } catch (err) {
       Sentry.captureException(err)
-      setUnconfirmed({ key: sentKey, payload })
+      // `send` corre adentro del startTransition(async) del componente, y después
+      // del await un set* suelto ya no es parte de esa transición: el aviso de
+      // reintento se pintaba un render antes de que `pending` bajara, con los
+      // controles todavía deshabilitados. Envuelto, toma el carril de la acción en
+      // curso y sale en el mismo commit. Cuando el servidor contesta queda afuera a
+      // propósito: la key tiene que rotar ya, y si el componente después llama a
+      // router.refresh(), la transición espera al RSC.
+      startTransition(() => setUnconfirmed({ key: sentKey, payload }))
       return null
     }
   }

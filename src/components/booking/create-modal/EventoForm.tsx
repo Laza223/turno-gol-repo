@@ -168,7 +168,9 @@ export function EventoForm({
         try {
           const result = await createAbonadoAction(weeklyData)
           if (!result.success) {
-            setError(result.error)
+            // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+            // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+            startTransition(() => setError(result.error))
             return
           }
           trackConfirmed({ withPlayer: !!playerId })
@@ -185,7 +187,9 @@ export function EventoForm({
           onSuccess()
         } catch (err) {
           Sentry.captureException(err)
-          setError('No pudimos crear el evento semanal. Revisá tu conexión e intentá de nuevo.')
+          startTransition(() =>
+            setError('No pudimos crear el evento semanal. Revisá tu conexión e intentá de nuevo.'),
+          )
         }
       })
       return
@@ -217,7 +221,7 @@ export function EventoForm({
       try {
         const result = await createBookingAction(data)
         if (!result.success) {
-          setError(result.error)
+          startTransition(() => setError(result.error))
           return
         }
         trackConfirmed({
@@ -232,7 +236,9 @@ export function EventoForm({
         onSuccess(result.booking)
       } catch (err) {
         Sentry.captureException(err)
-        setError('No pudimos agendar el evento. Revisá tu conexión e intentá de nuevo.')
+        startTransition(() =>
+          setError('No pudimos agendar el evento. Revisá tu conexión e intentá de nuevo.'),
+        )
       }
     })
   }

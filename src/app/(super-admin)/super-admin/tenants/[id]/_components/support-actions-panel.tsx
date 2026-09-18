@@ -73,7 +73,9 @@ export function SupportActionsPanel({
         setFeedback({ kind: 'ok', text: res.message ?? 'Acción ejecutada.' })
         router.refresh()
       } else {
-        setFeedback({ kind: 'error', text: res.error })
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setFeedback({ kind: 'error', text: res.error }))
       }
     })
   }

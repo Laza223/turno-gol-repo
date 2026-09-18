@@ -66,7 +66,9 @@ export function ConfirmDialog({
       try {
         const res = await onConfirm()
         if (res && res.success === false) {
-          setError(res.error ?? 'No se pudo completar la acción.')
+          // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+          // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+          startTransition(() => setError(res.error ?? 'No se pudo completar la acción.'))
           return
         }
         setTyped('')
@@ -76,7 +78,9 @@ export function ConfirmDialog({
         // catch la transicion quedaba rechazada y el modal colgado en
         // "Procesando…". Reportamos a Sentry y mostramos error inline sin cerrar.
         Sentry.captureException(err)
-        setError('No se pudo completar la acción. Revisá tu conexión e intentá de nuevo.')
+        startTransition(() =>
+          setError('No se pudo completar la acción. Revisá tu conexión e intentá de nuevo.'),
+        )
       }
     })
   }

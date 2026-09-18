@@ -91,10 +91,14 @@ export function useSlotCharges({
                 })
         setUnconfirmed(null)
         if (!res.success) {
-          setError(('error' in res && res.error) || 'No se pudo registrar el cobro.')
-          // El servidor contestó, así que este intento no dejó nada escrito bajo
-          // la key: se rota para que el próximo cobro no la herede.
-          setIdempotencyKey(crypto.randomUUID())
+          // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+          // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+          startTransition(() => {
+            setError(('error' in res && res.error) || 'No se pudo registrar el cobro.')
+            // El servidor contestó, así que este intento no dejó nada escrito bajo
+            // la key: se rota para que el próximo cobro no la herede.
+            setIdempotencyKey(crypto.randomUUID())
+          })
           return
         }
         toast({ title: `Cobro registrado — ${formatArs(total)}`, variant: 'success' })
@@ -103,8 +107,10 @@ export function useSlotCharges({
       } catch (err) {
         Sentry.captureException(err)
         // El aviso lo dibuja SlotChargeSection junto al botón de reintentar.
-        setError(null)
-        setUnconfirmed({ key, charges, total })
+        startTransition(() => {
+          setError(null)
+          setUnconfirmed({ key, charges, total })
+        })
       }
     })
   }
@@ -219,12 +225,24 @@ export function useSlotCharges({
             action: {
               label: 'Deshacer',
               onClick: () => {
-                void revert(bookingId).then((r) => {
-                  if (r.success) {
+                // El panel pudo haberse cerrado: el fallo se avisa en otro toast,
+                // no en el `error` del hook, que nadie estaría mirando.
+                void revert(bookingId)
+                  .then((r) => {
+                    if (!r.success) {
+                      toast({
+                        title: r.error ?? 'No se pudo deshacer la ausencia.',
+                        variant: 'destructive',
+                      })
+                      return
+                    }
                     toast({ title: 'Ausencia deshecha', variant: 'success' })
                     notifyMutated()
-                  }
-                })
+                  })
+                  .catch((err: unknown) => {
+                    Sentry.captureException(err)
+                    toast({ title: 'No se pudo deshacer la ausencia.', variant: 'destructive' })
+                  })
               },
             },
           }
@@ -239,15 +257,20 @@ export function useSlotCharges({
     if (!booking || !actions?.revertNoShowAction) return
     const bookingId = booking.id
     const revert = actions.revertNoShowAction
+    setError(null)
     startTransition(async () => {
       const res = await revert(bookingId)
-      if (!res.success) {
-        setError(res.error ?? 'No se pudo deshacer la ausencia.')
-        return
-      }
-      toast({ title: 'Ausencia deshecha', variant: 'success' })
-      resetLastId()
-      notifyMutated()
+      // React 19: un set* después del await queda fuera de la transición y se
+      // pinta con isPending todavía en true. Se re-envuelve.
+      startTransition(() => {
+        if (!res.success) {
+          setError(res.error ?? 'No se pudo deshacer la ausencia.')
+          return
+        }
+        toast({ title: 'Ausencia deshecha', variant: 'success' })
+        resetLastId()
+        notifyMutated()
+      })
     })
   }
 

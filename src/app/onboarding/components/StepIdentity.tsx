@@ -105,7 +105,9 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
     startTransition(async () => {
       const result = await action(INITIAL, formData)
       if (!result.success) {
-        setError(result.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(result.error))
         return
       }
       // La navegación la maneja el cliente (ver use-wizard-navigation), no un

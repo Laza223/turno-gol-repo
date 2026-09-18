@@ -103,7 +103,9 @@ export function TabDialog({
         onOpenChange(false)
         router.refresh()
       } else {
-        setTabError(res.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTabTransition(() => setTabError(res.error))
       }
     })
   }

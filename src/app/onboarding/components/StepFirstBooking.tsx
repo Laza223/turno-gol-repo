@@ -102,14 +102,18 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
         guestName: trimmed,
       })
       if (!result.success) {
-        setError(result.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(result.error))
         return
       }
-      setBookedKeys((prev) =>
-        new Set(prev).add(slotKey(result.booking.courtId, result.booking.timeStart)),
-      )
-      setActiveSlot(null)
-      setGuestName('')
+      startTransition(() => {
+        setBookedKeys((prev) =>
+          new Set(prev).add(slotKey(result.booking.courtId, result.booking.timeStart)),
+        )
+        setActiveSlot(null)
+        setGuestName('')
+      })
     })
   }
 

@@ -21,6 +21,8 @@ type Props = {
   onOpenNoShow: () => void
   canRevertNoShow: boolean
   onRevertNoShow: () => void
+  /** El aviso de un deshacer fallido: en `no_show` no hay sección de cobro que lo pinte. */
+  revertNoShowError: string | null
   canCancel: boolean
   onOpenCancel: () => void
   canReleaseBlock: boolean
@@ -60,6 +62,7 @@ export function SlotActionButtons({
   onOpenNoShow,
   canRevertNoShow,
   onRevertNoShow,
+  revertNoShowError,
   canCancel,
   onOpenCancel,
   canReleaseBlock,
@@ -113,14 +116,21 @@ export function SlotActionButtons({
             )}
 
             {canRevertNoShow && (
-              <button
-                type="button"
-                onClick={onRevertNoShow}
-                disabled={isPending}
-                className={cn(ROW_NEUTRAL, 'font-medium')}
-              >
-                Deshacer la ausencia
-              </button>
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={onRevertNoShow}
+                  disabled={isPending}
+                  className={cn(ROW_NEUTRAL, 'font-medium')}
+                >
+                  Deshacer la ausencia
+                </button>
+                {revertNoShowError && (
+                  <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-300">
+                    {revertNoShowError}
+                  </p>
+                )}
+              </div>
             )}
 
             {canReleaseBlock && (

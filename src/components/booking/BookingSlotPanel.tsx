@@ -426,6 +426,7 @@ export function BookingSlotPanel({
               onOpenNoShow={() => setNoShowOpen(true)}
               canRevertNoShow={canRevertNoShow}
               onRevertNoShow={revertNoShow}
+              revertNoShowError={canRevertNoShow ? error : null}
               canCancel={canCancel}
               onOpenCancel={openCancel}
               canReleaseBlock={canReleaseBlock}

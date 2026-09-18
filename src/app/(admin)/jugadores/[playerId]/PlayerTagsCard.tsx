@@ -61,7 +61,9 @@ export function PlayerTagsCard({ playerId, tags, setPlayerTagsAction }: Props) {
       } else {
         // Revertir a lo último confirmado: dejar los checkboxes en un estado que
         // el servidor rechazó haría creer que la etiqueta quedó puesta.
-        setSelected(saved)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setSelected(saved))
         toast({
           title: 'No se pudieron guardar',
           description: res.error,

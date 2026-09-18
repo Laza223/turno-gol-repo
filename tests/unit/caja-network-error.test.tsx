@@ -219,7 +219,11 @@ describe('StockExitDialog', () => {
 
     fillAndSubmit()
     await screen.findByText('No hay stock suficiente.')
-    fireEvent.click(await screen.findByRole('button', { name: 'Registrar salida' }))
+    // Sin esperar: el error sale en el MISMO commit en que termina la transición.
+    // Si sale antes, el botón todavía dice "Registrando…" y el toque se pierde.
+    const registrar = screen.getByRole('button', { name: 'Registrar salida' })
+    expect(registrar).toBeEnabled()
+    fireEvent.click(registrar)
 
     await waitFor(() => expect(registerStockExitAction).toHaveBeenCalledTimes(2))
     const [first, second] = calls(registerStockExitAction)

@@ -124,7 +124,9 @@ export function TurnoForm({
       try {
         const result = await createBookingAction(data)
         if (!result.success) {
-          setError(result.error)
+          // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+          // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+          startTransition(() => setError(result.error))
           return
         }
         trackConfirmed({ withPlayer: !!playerId, withDeposit: chargeChoice !== 'none' })
@@ -136,7 +138,9 @@ export function TurnoForm({
         onSuccess(result.booking)
       } catch (err) {
         Sentry.captureException(err)
-        setError('No pudimos crear la reserva. Revisá tu conexión e intentá de nuevo.')
+        startTransition(() =>
+          setError('No pudimos crear la reserva. Revisá tu conexión e intentá de nuevo.'),
+        )
       }
     })
   }

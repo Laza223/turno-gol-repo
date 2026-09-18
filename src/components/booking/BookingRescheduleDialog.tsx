@@ -165,10 +165,14 @@ export function BookingRescheduleDialog({
         if (!res.success) {
           // El hueco pudo haberse ocupado entre el listado y el submit: releer
           // deja la lista mostrando la verdad en vez del estado que falló.
-          setSelected(null)
-          setSlots(null)
-          setError(res.error ?? 'No se pudo mover el turno.')
-          setReloadToken((t) => t + 1)
+          // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+          // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+          startTransition(() => {
+            setSelected(null)
+            setSlots(null)
+            setError(res.error ?? 'No se pudo mover el turno.')
+            setReloadToken((t) => t + 1)
+          })
           return
         }
         toast({
@@ -184,7 +188,9 @@ export function BookingRescheduleDialog({
         onSuccess()
       } catch (err) {
         Sentry.captureException(err)
-        setError('No se pudo mover el turno. Revisá tu conexión e intentá de nuevo.')
+        startTransition(() =>
+          setError('No se pudo mover el turno. Revisá tu conexión e intentá de nuevo.'),
+        )
       }
     })
   }

@@ -91,10 +91,14 @@ export function useSlotCharges({
                 })
         setUnconfirmed(null)
         if (!res.success) {
-          setError(('error' in res && res.error) || 'No se pudo registrar el cobro.')
-          // El servidor contestó, así que este intento no dejó nada escrito bajo
-          // la key: se rota para que el próximo cobro no la herede.
-          setIdempotencyKey(crypto.randomUUID())
+          // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+          // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+          startTransition(() => {
+            setError(('error' in res && res.error) || 'No se pudo registrar el cobro.')
+            // El servidor contestó, así que este intento no dejó nada escrito bajo
+            // la key: se rota para que el próximo cobro no la herede.
+            setIdempotencyKey(crypto.randomUUID())
+          })
           return
         }
         toast({ title: `Cobro registrado — ${formatArs(total)}`, variant: 'success' })
@@ -103,8 +107,10 @@ export function useSlotCharges({
       } catch (err) {
         Sentry.captureException(err)
         // El aviso lo dibuja SlotChargeSection junto al botón de reintentar.
-        setError(null)
-        setUnconfirmed({ key, charges, total })
+        startTransition(() => {
+          setError(null)
+          setUnconfirmed({ key, charges, total })
+        })
       }
     })
   }

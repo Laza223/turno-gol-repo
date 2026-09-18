@@ -37,8 +37,12 @@ export function MarketplaceVisibilityToggle({ tenantId, initialVisible, action }
       if (res.success) {
         router.refresh()
       } else {
-        setVisible(visible)
-        setError(res.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => {
+          setVisible(visible)
+          setError(res.error)
+        })
       }
     })
   }

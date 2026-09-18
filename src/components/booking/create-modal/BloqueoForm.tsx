@@ -63,7 +63,9 @@ export function BloqueoForm({
       try {
         const result = await createBookingAction(data)
         if (!result.success) {
-          setError(result.error)
+          // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+          // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+          startTransition(() => setError(result.error))
           return
         }
         trackConfirmed()
@@ -75,7 +77,9 @@ export function BloqueoForm({
         onSuccess(result.booking)
       } catch (err) {
         Sentry.captureException(err)
-        setError('No pudimos bloquear la cancha. Revisá tu conexión e intentá de nuevo.')
+        startTransition(() =>
+          setError('No pudimos bloquear la cancha. Revisá tu conexión e intentá de nuevo.'),
+        )
       }
     })
   }

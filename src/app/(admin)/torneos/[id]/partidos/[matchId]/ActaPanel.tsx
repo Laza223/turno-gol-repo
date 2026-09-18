@@ -94,7 +94,9 @@ export function ActaPanel({
     startTransition(async () => {
       const res = await fn()
       if (!res.success) {
-        setError(res.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(res.error))
         return
       }
       if (successTitle) toast({ title: successTitle, variant: 'success' })
@@ -142,7 +144,7 @@ export function ActaPanel({
     startTransition(async () => {
       const res = await deleteEventAction({ eventId: ev.id })
       if (!res.success) {
-        setError(res.error)
+        startTransition(() => setError(res.error))
         return
       }
       toast({

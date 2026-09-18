@@ -93,7 +93,12 @@ describe('panel de cobro: un corte de red no deja que otro cobro herede la key',
     await screen.findByText('Demasiadas solicitudes.')
     expect(screen.queryByRole('button', { name: /^Reintentar cobro de/ })).toBeNull()
 
-    fireEvent.click(await screen.findByRole('button', { name: /^Pagó uno/ }))
+    // Sin esperar: el error tiene que salir en el MISMO commit en que termina la
+    // transición. Si sale antes (set* suelto después del `await`), "Pagó uno"
+    // todavía dice "Procesando…" y está deshabilitado: el toque se pierde.
+    const pagoUno = screen.getByRole('button', { name: /^Pagó uno/ })
+    expect(pagoUno).toBeEnabled()
+    fireEvent.click(pagoUno)
 
     await waitFor(() => expect(addBookingChargeAction).toHaveBeenCalledTimes(2))
     const [first, second] = addBookingChargeAction.mock.calls.map((c) => c[0] as ChargeCall)

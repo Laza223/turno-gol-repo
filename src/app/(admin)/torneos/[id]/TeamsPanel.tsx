@@ -102,7 +102,9 @@ export function TeamsPanel({
         contactPhone: contactPhone.trim() === '' ? null : contactPhone.trim(),
       })
       if (!result.success) {
-        setError(result.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startTransition(() => setError(result.error))
         return
       }
       toast({ title: 'Equipo anotado', description: name.trim(), variant: 'success' })
@@ -468,7 +470,7 @@ function TeamEditor({
     }
     startTransition(async () => {
       const result = await applyStatus(next, { withUndo: true })
-      if (!result.success) setError(result.error)
+      if (!result.success) startTransition(() => setError(result.error))
     })
   }
 
@@ -589,7 +591,7 @@ function TeamDataForm({
         notes: notes.trim() === '' ? null : notes.trim(),
       })
       if (!result.success) {
-        setError(result.error)
+        startTransition(() => setError(result.error))
         return
       }
       toast({ title: 'Equipo actualizado', description: name.trim(), variant: 'success' })
@@ -739,7 +741,7 @@ function TeamRosterEditor({
         dni: dni.trim() === '' ? null : dni.trim(),
       })
       if (!result.success) {
-        setError(result.error)
+        startTransition(() => setError(result.error))
         return
       }
       toast({
@@ -772,7 +774,7 @@ function TeamRosterEditor({
     startTransition(async () => {
       const result = await removePlayerAction({ id: p.id })
       if (!result.success) {
-        setError(result.error)
+        startTransition(() => setError(result.error))
         return
       }
       toast({

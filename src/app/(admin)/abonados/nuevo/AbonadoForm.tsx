@@ -406,7 +406,9 @@ export default function AbonadoForm({
     startPreviewTransition(async () => {
       const result = await previewAction(input)
       if (!result.success) {
-        setPreviewError(result.error)
+        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
+        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
+        startPreviewTransition(() => setPreviewError(result.error))
         return
       }
       setFormValues(values)

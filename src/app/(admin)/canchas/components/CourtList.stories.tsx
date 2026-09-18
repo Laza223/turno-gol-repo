@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { courtFutbol5, courtOffline, courts, openingHours } from '@/test/fixtures'
 import { CourtList } from './CourtList'
-import type { CourtDeactivationImpactResult } from '../actions'
+import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
 
 /**
  * Las 7 Server Actions llegan por prop (ver el comentario en CourtList.tsx).
@@ -181,6 +181,48 @@ export const ErrorAlVerificarImpacto: Story = {
     // cuándo se fue.
     await waitFor(() =>
       expect(canvas.queryByText('No se pudo verificar el impacto')).not.toBeInTheDocument(),
+    )
+  },
+}
+
+/**
+ * Prender una cancha por encima de las facturadas: no se bloquea, pero antes
+ * de prenderla se muestra cuánto pasa a costar la cuota (decisión 2026-09-17).
+ */
+export const ActivarCanchaSubeLaCuota: Story = {
+  args: {
+    initialCourts: [courtOffline()],
+    toggleStatusAction: fn(async (): Promise<CourtActionResult> => ({
+      success: false,
+      error: 'Prender esta cancha sube tu cuota.',
+      requiresBillingConfirmation: {
+        currentBilledCourts: 4,
+        nextBilledCourts: 5,
+        currentMonthlyCents: 13_700_000,
+        nextMonthlyCents: 16_700_000,
+        isTrialing: false,
+      },
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Activar' }))
+    const dialog = await within(canvasElement.ownerDocument.body).findByRole(
+      'dialog',
+      {},
+      { timeout: 15_000 },
+    )
+    await expect(dialog).toHaveTextContent('Esto suma tu 5ª cancha')
+    await expect(dialog).toHaveTextContent(/137\.000/)
+    await expect(dialog).toHaveTextContent(/167\.000/)
+
+    // Mismo motivo que en DesactivarConImpacto: un portal abierto contamina la
+    // story siguiente del archivo.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(
+        within(canvasElement.ownerDocument.body).queryByRole('dialog'),
+      ).not.toBeInTheDocument(),
     )
   },
 }

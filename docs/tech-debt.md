@@ -14,8 +14,7 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 - el primer cobro diferido al fin de la prueba (`start_date` futuro);
 - el cobro recurrente que llega por webhook;
 - la mora (`past_due`) y la recuperación;
-- el proraeo del upgrade;
-- el PUT del monto al aplicar un downgrade;
+- el PUT del monto al aplicar un cambio de canchas facturadas agendado (el sweep de `dunning-retry.worker.ts`), y el PUT sobre un preapproval en prueba sin romperle el `start_date`;
 - la cancelación automática de un link viejo que alguien paga (rama mismatch de `onPaymentApproved`);
 - la seña por Checkout Pro después de los cambios del panel de cobro.
 
@@ -83,17 +82,63 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 ---
 
-## No hay forma de ofrecerle un plan a un solo complejo
+## No hay forma de cobrarle un precio distinto a un solo complejo
 
-**Qué es**: la tabla `plans` ([plans.ts](src/shared/db/schema/plans.ts)) tiene `is_active` y nada más para controlar visibilidad: un plan está prendido para todos o apagado para todos. Las dos consultas que arman el catálogo — `listActivePlans` ([billing.service.ts:92](src/modules/billing/billing.service.ts:92), pantalla del complejo) y su gemela del panel ([super-admin/tenants.service.ts:168](src/modules/super-admin/tenants.service.ts:168)) — filtran solo por `is_active = true`.
+> **Reescrita el 2026-09-17.** Antes se llamaba "No hay forma de ofrecerle un plan a un solo complejo" y describía el catálogo de tres bandas. El precio lineal por cancha (migr. 090/091) **no la resolvió: le cambió la forma y le sacó el workaround**. Se deja el encabezado nuevo para que el grep por "plan" no la encuentre con una premisa vieja.
 
-**Por qué existe**: hasta ahora los planes eran tres y públicos (Predio, Complejo, Estadio), así que un flag booleano alcanzaba. El primer caso que no entra apareció el 2026-08-28: el plan "Prueba interna — NO OFRECER" de $100/mes tiene que estar visible para que un complejo puntual se suscriba y arranque el ensayo P-02, pero no debería existir para nadie más.
+**Qué es**: no existe manera de darle a un complejo puntual un precio que no sea el de la lista. La tabla `plans` ([plans.ts](src/shared/db/schema/plans.ts)) sigue teniendo `is_active` y nada más para controlar visibilidad, y ahora **hay una sola fila activa**: `loadActivePlan` ([billing.service.ts:108](src/modules/billing/billing.service.ts:108)) hace `WHERE is_active = true ORDER BY sort_order LIMIT 1` y resuelve el precio server-side, sin que el cliente mande ningún `planId`.
 
-**Costo de no resolverla ahora**: bajo mientras los complejos en producción sean los dos propios. El workaround es prender el plan, suscribir y apagarlo — verificado seguro para la suscripción que queda viva, porque los tres lugares que leen el plan de una suscripción en curso (`reconcile-subscriptions.worker.ts:346`, `billing.service.ts:816`, `dunning.service.ts:87`) hacen `JOIN plans` sin filtrar `is_active`. Dos agujeros conocidos: durante la ventana cualquier complejo en `trialing`/`active` que abra `/settings/facturacion` ve el plan, y **reactivar** una suscripción de un plan apagado falla con `PlanNotFoundError` porque ese camino sí pasa por `loadPlan` ([:283](src/modules/billing/billing.service.ts:283) y [:698](src/modules/billing/billing.service.ts:698)). El costo crece con el primer cliente pago real, y se vuelve bloqueante en el primer precio especial, plan heredado o piloto.
+**Por qué existe**: con tres bandas el workaround era prender un plan especial, suscribir al complejo y apagarlo; el agujero era una ventana de visibilidad. Con fila única ese workaround **ya no funciona y además es peligroso**: una segunda fila activa no es "un plan más en el catálogo", es una segunda candidata a ser LA fila de precio de todos los tenants, decidida por `sort_order`. El caso que la originó (el plan "Prueba interna — NO OFRECER" de $100/mes para el ensayo P-02, 2026-08-28) ya no tiene camino.
 
-**Costo estimado de resolverla**: bajo-medio, ~2-3h. Migración nueva con una columna nullable en `plans` que apunte al tenant dueño del plan (NULL = público), las dos consultas del catálogo respetándola, y `loadPlan` aceptando el plan privado cuando el tenant coincide — eso último es lo que además arregla el caso de reactivación. Tests: catálogo de un tenant ajeno no lo lista, el dueño sí, y reactivación sobre plan privado no rompe.
+**Costo de no resolverla ahora**: bajo mientras el precio sea uno solo para todos, que es exactamente la decisión vigente (`2026-09-17-precio-por-cancha.md`: no se crean precios por complejo ni cupones). Se vuelve bloqueante en el primer precio especial, plan heredado, piloto o grandfathering — y ahí no hay atajo: hoy la única salida es un UPDATE a mano sobre la fila global, que le cambia el precio a todo el mundo.
 
-**Disparador de resolución**: antes de que se suscriba el primer complejo que no sea de Lazar. Mientras tanto el workaround alcanza, y el procedimiento está escrito en [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).
+**Costo estimado de resolverla**: bajo-medio, ~2-3h. Migración nueva con una columna nullable en `plans` apuntando al tenant dueño de la fila (NULL = pública), `loadActivePlan` prefiriendo la fila del tenant sobre la global, y `listActivePlans` ([billing.service.ts:169](src/modules/billing/billing.service.ts:169), que alimenta `/settings/facturacion`) respetándola. Tests: un tenant ajeno no ve ni cobra la fila privada; el dueño de la fila cobra la privada; sin fila privada, todos siguen con la global.
+
+**Disparador de resolución**: el primer precio distinto al de lista que Lazar quiera dar — sea un piloto, un grandfathering o el fallback de $35.000 + $16.000 del trigger de reversión aplicado a un solo cliente. Antes de eso no hace falta.
+
+---
+
+## `plans.price_monthly` / `price_annual` y `tenant_subscriptions.pending_plan_change` quedaron muertas
+
+**Qué es**: tres columnas que ya no participan de ningún cálculo ni de ninguna escritura, sobrevivientes del modelo de bandas (migr. 090/091, 2026-09-17).
+- `plans.price_monthly` y `plans.price_annual`: siguen `NOT NULL` y en la fila activa valen $47.000 y $42.300, o sea **el caso de una cancha**. Ningún cobro sale de ahí — el monto lo calcula [`pricing.ts`](src/modules/billing/pricing.ts) sobre `billed_courts`.
+- `tenant_subscriptions.pending_plan_change`: `uuid REFERENCES plans(id)`. La reemplazó `pending_billed_courts` (integer), que no se pudo hacer sobre la misma columna por el tipo. Ya no tiene escritores; los dos lugares que tocaban un cambio pendiente ([billing.service.ts](src/modules/billing/billing.service.ts) y [dunning-retry.worker.ts](src/shared/jobs/workers/dunning-retry.worker.ts)) la ponen en NULL explícitamente.
+
+**Por qué existe**: expand-contract deliberado. La 090/091 entró en un PR de circuito de plata y dropear columnas en el mismo release abre la ventana de un deploy sirviendo código viejo contra un schema nuevo — la clase ya documentada en este repo.
+
+**Costo de no resolverla ahora**: bajo, pero no cero: son tres columnas que **mienten con cara de fuente de verdad**. Un `SUM(price_monthly)` para sacar el MRR compila, corre y da un número plausible y equivocado (el precio de una cancha por tenant). Ese error ya estaba escrito en doc12 §9.5 y se corrigió el mismo día.
+
+**Costo estimado de resolverla**: bajo, ~1h. Una migración de contracción que las dropee, más el barrido de los `SELECT` que todavía las arrastran (`loadActivePlan`, `listActivePlans`, `PlanSummary`, el seed de doc13) y las stories/tests que las fixturean. `price_versions.price_monthly` / `price_annual` **se quedan**: son histórico insert-only de las bandas y borrarlas rompe la trazabilidad.
+
+**Disparador de resolución**: después de confirmar en producción que nada las lee — mirar `plans` y `tenant_subscriptions` tras un ciclo de facturación completo con la lista nueva. Antes de eso no hay nada que ganar.
+
+---
+
+## La web pública `/precios` quedó congelada con los tres planes viejos
+
+**Qué es**: [`plans-data.ts`](<src/app/(business)/precios/plans-data.ts>) sigue anunciando Predio $63.000 / Complejo $99.000 / Estadio $129.000 con 20% off anual. La tabla `plans` ya no tiene nada de eso: una fila, precio lineal, 10% off. La página y el catálogo real dicen cosas distintas **a propósito** (decisión [`2026-09-17-precio-por-cancha.md`](decisions/2026-09-17-precio-por-cancha.md) P6).
+
+**Por qué existe**: el dueño decidió mover el cobro real y el panel del cliente ahora, y decidir aparte cómo se comunica la lista nueva. Cambiar la web comercial sigue explícitamente vetado por el feature freeze mientras no haya evidencia del caso cero.
+
+**Costo de no resolverla ahora**: un prospecto puede leer un precio en `/precios` y recibir otra cotización. Hoy esa página no tiene tráfico de conversión, así que el costo real es cero — pero crece con el primer prospecto que llegue por ahí, y el daño es de confianza, en la primera conversación.
+
+**Costo estimado de resolverla**: no es trabajo de código sino de producto. Una lista lineal sin techo no entra en tres tarjetas: hay que decidir qué se muestra (¿una calculadora? ¿una tabla de ejemplos? ¿solo "$47.000 + $30.000 por cancha"?) y cómo se cuenta el anual con 10%. Recién después es un rediseño de la página, ~medio día.
+
+**Disparador de resolución**: cuando el dueño decida comunicar la lista nueva. Mientras tanto, **el archivo no se "corrige" por error**: lleva un comentario de bloque que lo dice, y el candado contra la DB ([pricing-sync.test.ts](tests/integration/pricing-sync.test.ts)) verifica esa divergencia en vez de prohibirla.
+
+---
+
+## Una cancha prendida estando en mora no sube la cuota
+
+**Qué es**: el aviso de "esto te sube la cuota" ([canchas/actions.ts](<src/app/(admin)/canchas/actions.ts>)) solo existe con la suscripción `active` o `trialing`. En `past_due` / `suspended` / `blocked` / `canceled`, [`getCourtCountAndBilled`](src/modules/courts/court.service.ts) devuelve `billedCourts: null` a propósito y crear o prender canchas pasa sin aviso y sin mover `billed_courts`. Si el complejo vuelve a `active` por un pago tardío que se concilia **sin pasar por `reactivate()`** (que sí fija `billed_courts` con lo que el dueño confirma), queda operando más canchas de las que paga, y nada lo detecta: `reconcile-subscriptions` compara el monto de MP contra `billed_courts`, no `billed_courts` contra las canchas prendidas.
+
+**Por qué existe**: `changeBilledCourts` rechaza los estados que no son `active`/`trialing`, así que forzar el aviso ahí bloquearía prender una cancha a un complejo en mora — una decisión de producto que no se tomó. La variante más probable del agujero (una baja agendada y después volver a prender canchas) se cerró el 2026-09-18 por dos lados: el aviso compara contra lo agendado, y el sweep de `dunning-retry` nunca aplica una baja por debajo de las canchas prendidas en ese momento.
+
+**Costo de no resolverla ahora**: bajo hoy — ningún complejo paga todavía y ninguno está en mora. Es subfacturación silenciosa, así que crece con cada cliente pago que pase por mora.
+
+**Costo estimado de resolverla**: bajo, ~1-2h. Un chequeo en `reconcile-subscriptions` que alerte (sin tocar plata) cuando una suscripción `active` tiene más canchas online que `billed_courts`, con el mismo dedup de 20 h que las alertas de monto.
+
+**Disparador de resolución**: el primer cliente pago que entre en mora, o antes si se decide qué tiene que pasar al prender una cancha en ese estado.
 
 ---
 

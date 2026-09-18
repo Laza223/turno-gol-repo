@@ -27,6 +27,8 @@ Escala de confianza: **alta** = respaldada por hechos observados y por el propio
 
 ## D3 — Pricing: mensual por defecto, lista sin cambios
 
+> **SUPERADA el 2026-09-17** por [`2026-09-17-precio-por-cancha.md`](2026-09-17-precio-por-cancha.md): la lista pasa a **lineal por cancha** ($47.000 la primera + $30.000 por extra, sin techo) y el anual baja a 10%. El método de validación también cambió: Van Westendorp queda descartado, se valida por preferencia revelada. Lo que sigue abajo es el razonamiento histórico, no la decisión vigente.
+
 - **Decisión:** precios $63.000 / $99.000 / $129.000 se mantienen **como hipótesis**. Mensual por defecto durante esta fase; el anual -20% sigue disponible pero no se destaca hasta ≥10 clientes pagos. No bajar precios por CanchaFija ni tocar bandas. Precio comunicado al piloto desde el día 0 según sus canchas.
 - **Evidencia:** teardown §11 (posición por tamaño), Board §4.1 y §1.9, decisión previa del founder de destacar el anual (marketing) revertida por etapa.
 - **Confianza:** media para "no bajar"; baja para el número en sí.
@@ -84,7 +86,7 @@ Escala de confianza: **alta** = respaldada por hechos observados y por el propio
 
 ## Lo que esta decisión NO habilita (kill list vigente)
 
-Ads pagos · reels/IG viral/avatares · WhatsApp Business API · cobro automático de abonados · billetera del jugador · Falta Uno · lista de espera · profesores/escuelitas · torneos (flag off) · Cam · rankings · perfil público del jugador · red social · marketplace como promesa · mejoras a `/explorar` · app nativa · importador ATC · read-only del día 31 (build) · IVA en código · precio fundador · pausa estacional · tarjeta al alta · expansión fuera del corredor · nuevas secciones de la web · cambios de default anual, seña, lifecycle, referidos o instrumentación **hasta tener evidencia del caso cero**.
+Ads pagos · reels/IG viral/avatares · WhatsApp Business API · cobro automático de abonados · billetera del jugador · Falta Uno · lista de espera · profesores/escuelitas · torneos (flag off) · Cam · rankings · perfil público del jugador · red social · marketplace como promesa · mejoras a `/explorar` · app nativa · importador ATC · read-only del día 31 (build) · IVA en código · precio fundador · pausa estacional · tarjeta al alta · expansión fuera del corredor · nuevas secciones de la web · cambios de seña, lifecycle, referidos o instrumentación **hasta tener evidencia del caso cero** (el default anual y el pricing salieron de esta lista el 2026-09-17, ver [`2026-09-17-precio-por-cancha.md`](2026-09-17-precio-por-cancha.md)).
 
 ## Docs superados parcialmente por esta decisión
 

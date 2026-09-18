@@ -996,8 +996,15 @@ El equipo de TurnoGol (nosotros) necesita ver métricas cross-tenant: MRR, churn
 
 async function getDashboardMetrics() {
   // Estas queries NO pasan por RLS — usan el service role
+  // OJO: desde el precio lineal por cancha (migr. 090/091) el MRR NO es la suma de
+  // una columna de precio. Se calcula sobre `billed_courts` con los parámetros de la
+  // única fila activa de `plans` — `p.price_monthly` es un valor de referencia legacy
+  // y sumarlo da el precio de una cancha por tenant. La query de abajo es MRR de
+  // lista: no descuenta el 10% de los tenants con ciclo anual. Ver doc4 §1 y §13.
   const mrr = await systemDb.query(`
-    SELECT SUM(p.price_monthly) as mrr
+    SELECT SUM(
+      p.price_first_court_cents + (ts.billed_courts - 1) * p.price_extra_court_cents
+    ) as mrr
     FROM tenant_subscriptions ts
     JOIN plans p ON p.id = ts.plan_id
     WHERE ts.status = 'active'

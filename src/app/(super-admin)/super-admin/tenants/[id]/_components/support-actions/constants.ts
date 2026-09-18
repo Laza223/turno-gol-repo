@@ -24,7 +24,7 @@ export type SupportActionsBag = {
   forceStatus: SupportAction
   reactivate: SupportAction
   extendTrial: SupportAction
-  changePlan: SupportAction
+  changeBilledCourts: SupportAction
   updateSettings: SupportAction
   resetPassword: SupportAction
   cancelSubscription: SupportAction
@@ -41,7 +41,17 @@ export type SupportPanelSettings = {
   auto_complete_minutes: number
 }
 
-export type SupportPanelPlan = { id: string; name: string; priceMonthly: number }
+/**
+ * Parámetros del precio lineal por cancha (decisión 2026-09-17), para que la
+ * sección calcule el monto EN CLIENTE antes de confirmar. Reemplaza a
+ * `SupportPanelPlan`: con una sola fila activa en `plans` ya no se elige un
+ * plan, se corrige una cantidad de canchas.
+ */
+export type BilledCourtsPricing = {
+  priceFirstCourtCents: number
+  priceExtraCourtCents: number
+  annualDiscountBps: number
+}
 
 export const STATUS_LABELS: Record<TenantStatus, string> = {
   trialing: 'Trial',

@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { plans } from './plans'
 import { billingCycleEnum, subscriptionStatusEnum } from './enums'
@@ -15,6 +15,12 @@ export const tenantSubscriptions = pgTable(
       .notNull()
       .references(() => plans.id),
     billingCycle: billingCycleEnum('billing_cycle').notNull().default('monthly'),
+
+    // Migr. 090 — precio por cancha. Canchas sobre las que esta calculado el
+    // cobro VIGENTE, o sea lo que esta cargado en el preapproval de MP. NO es
+    // "cuantas canchas tiene hoy" (eso es `courts WHERE status='online'`):
+    // solo se mueve cuando un cambio confirmado se aplica al cierre del periodo.
+    billedCourts: integer('billed_courts').notNull().default(1),
     status: subscriptionStatusEnum('status').notNull().default('trialing'),
 
     currentPeriodStart: timestamp('current_period_start', {
@@ -36,7 +42,11 @@ export const tenantSubscriptions = pgTable(
     // del email de login. NULL = el del dueño (staff_users).
     mpPayerEmail: text('mp_payer_email'),
 
+    /** @deprecated migr. 090/091 — la reemplaza `pendingBilledCourts`. Sin escritores. */
     pendingPlanChange: uuid('pending_plan_change').references(() => plans.id),
+    // A cuantas canchas pasa el cobro en `pendingChangeAt`. Sumar o sacar una
+    // cancha nunca se cobra prorrateado: se aplica en el proximo ciclo.
+    pendingBilledCourts: integer('pending_billed_courts'),
     pendingChangeAt: timestamp('pending_change_at', {
       withTimezone: true,
       mode: 'date',

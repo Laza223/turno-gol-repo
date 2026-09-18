@@ -4,7 +4,7 @@ import { closeSql, getSql } from '@/shared/db/client'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import {
   cancelSubscriptionForSupport,
-  changePlanForSupport,
+  changeBilledCourtsForSupport,
   extendTrial,
   forceTenantStatus,
   PlanAlreadyAssignedError,
@@ -13,11 +13,7 @@ import {
   TrialNotActiveError,
   updateTenantSettingsForSupport,
 } from '@/modules/super-admin/support.service'
-import {
-  InvalidTransitionError,
-  PlanNotFoundError,
-  SubscriptionNotFoundError,
-} from '@/modules/billing/billing.errors'
+import { InvalidTransitionError, SubscriptionNotFoundError } from '@/modules/billing/billing.errors'
 import {
   cleanupAll,
   createTestStaffUser,
@@ -56,15 +52,18 @@ async function seedSubscription(
     dunningStartedAt?: Date | null
     canceledAt?: Date | null
     billingCycle?: 'monthly' | 'annual'
+    /** Canchas facturadas al sembrar. Sin especificar, el DEFAULT de la columna es 1. */
+    billedCourts?: number
   } = {},
 ): Promise<void> {
   await sql`
     INSERT INTO tenant_subscriptions (
-      tenant_id, plan_id, billing_cycle, status,
+      tenant_id, plan_id, billing_cycle, billed_courts, status,
       current_period_start, current_period_end,
       mp_subscription_id, dunning_started_at, canceled_at
     ) VALUES (
       ${tenantId}, ${plans[planSlug]}, ${opts.billingCycle ?? 'monthly'}::billing_cycle,
+      ${opts.billedCourts ?? 1},
       ${status}::subscription_status,
       NOW() - INTERVAL '10 days', NOW() + INTERVAL '20 days',
       ${opts.mpSubscriptionId ?? null},
@@ -125,9 +124,9 @@ async function fetchTenantStatus(sql: Sql, tenantId: string): Promise<string> {
 async function fetchSubRow(
   sql: Sql,
   tenantId: string,
-): Promise<{ status: string; plan_id: string }> {
-  const rows = await sql<{ status: string; plan_id: string }[]>`
-    SELECT status, plan_id FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+): Promise<{ status: string; plan_id: string; billed_courts: number }> {
+  const rows = await sql<{ status: string; plan_id: string; billed_courts: number }[]>`
+    SELECT status, plan_id, billed_courts FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
   `
   return rows[0]!
 }
@@ -463,45 +462,47 @@ describe('reactivateTenant', () => {
   })
 })
 
-// ─── changePlanForSupport ────────────────────────────────────────────────────
+// ─── changeBilledCourtsForSupport ───────────────────────────────────────────
+//
+// Reemplaza a `changePlanForSupport` (decisión 2026-09-17, precio lineal por
+// cancha): ya no hay catálogo de planes entre los que soporte "swapee" — la
+// única fila activa es 'turnogol' y lo que se corrige es la CANTIDAD de
+// canchas facturadas. El caso "plan destino inexistente/inactivo"
+// (PlanNotFoundError) se elimina sin reemplazo: con un solo target numérico
+// no hay un id de plan que el caller pueda mandar mal.
 
-describe('changePlanForSupport', () => {
-  it('swapea el plan sin cobro, actualiza el preapproval MP y audita support.tenant.plan_changed', async () => {
+describe('changeBilledCourtsForSupport', () => {
+  it('corrige la cantidad de canchas sin cobro, actualiza el preapproval MP y audita support.tenant.plan_changed', async () => {
     const sql = getSql()
     const tenantId = await seedTenantWithStaff(sql)
     await seedSubscription(sql, tenantId, 'active', 'predio', {
       mpSubscriptionId: 'mp-preapp-test-1',
     })
 
-    const result = await changePlanForSupport(tenantId, plans.complejo, systemAdminId, mockGateway)
-    expect(result).toEqual({ fromPlanId: plans.predio, toPlanId: plans.complejo })
+    const result = await changeBilledCourtsForSupport(tenantId, 3, systemAdminId, mockGateway)
+    expect(result).toEqual({ fromBilledCourts: 1, toBilledCourts: 3 })
 
-    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.complejo)
+    expect((await fetchSubRow(sql, tenantId)).billed_courts).toBe(3)
 
-    // Sin cobro hoy: cero preferences de proración; solo update del monto recurrente.
+    // Sin proraeo (P4): cero preferences de cobro único; solo update del monto recurrente.
     expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(0)
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
     expect(mockGateway.updatePreapprovalCalls[0]!.preapprovalId).toBe('mp-preapp-test-1')
-    // El monto recurrente nuevo debe ser EXACTAMENTE el price_monthly del plan
-    // destino (centavos). Sin este assert, mandar el precio del plan viejo o el
-    // anual en vez del mensual pasaría inadvertido.
-    const [{ price_monthly: complejoMonthly }] = await sql<{ price_monthly: number }[]>`
-      SELECT price_monthly FROM plans WHERE id = ${plans.complejo}
-    `
-    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(complejoMonthly)
+    // $47.000 + 2 × $30.000 = $107.000 (tabla de la decisión, no recalculado).
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(10_700_000)
 
     const audits = await fetchSupportAudits(sql, tenantId)
     expect(audits).toHaveLength(1)
     expect(audits[0]!.action).toBe('support.tenant.plan_changed')
     expect(audits[0]!.actor_id).toBe(systemAdminId)
     expect(audits[0]!.metadata).toMatchObject({
-      before: { planId: plans.predio },
-      after: { planId: plans.complejo },
+      before: { billedCourts: 1 },
+      after: { billedCourts: 3 },
       mpAmountUpdated: true,
     })
   })
 
-  it('swapea el plan con ciclo anual: el monto recurrente nuevo es price_annual × 12 (NUNCA el equivalente mensual a pelo)', async () => {
+  it('con ciclo anual: el monto recurrente nuevo es el equivalente mensual con 10% off × 12 (NUNCA el equivalente mensual a pelo)', async () => {
     const sql = getSql()
     const tenantId = await seedTenantWithStaff(sql)
     await seedSubscription(sql, tenantId, 'active', 'predio', {
@@ -509,22 +510,20 @@ describe('changePlanForSupport', () => {
       billingCycle: 'annual',
     })
 
-    const result = await changePlanForSupport(tenantId, plans.complejo, systemAdminId, mockGateway)
-    expect(result).toEqual({ fromPlanId: plans.predio, toPlanId: plans.complejo })
+    await changeBilledCourtsForSupport(tenantId, 3, systemAdminId, mockGateway)
 
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
-    const [{ price_annual: complejoAnnual }] = await sql<{ price_annual: number }[]>`
-      SELECT price_annual FROM plans WHERE id = ${plans.complejo}
-    `
-    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(complejoAnnual * 12)
+    // $96.300 por mes (10% off de $107.000) × 12 = $1.155.600.
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(115_560_000)
   })
 
-  it('bloquea el downgrade si el tenant supera el límite de canchas del plan destino', async () => {
+  it('bloquea bajar la cantidad de canchas por debajo de las que están ONLINE', async () => {
     const sql = getSql()
     const tenantId = await seedTenantWithStaff(sql)
-    await seedSubscription(sql, tenantId, 'active', 'estadio')
+    await seedSubscription(sql, tenantId, 'active', 'predio', { billedCourts: 5 })
 
-    // Plan predio: max_courts 2 → con 4 canchas online el downgrade se bloquea.
+    // Mismo invariante que el `max_courts` viejo, ahora contra canchas
+    // ONLINE: con 4 prendidas no se puede bajar a 2.
     for (let i = 0; i < 4; i++) {
       await sql`
         INSERT INTO courts (tenant_id, name, capacity, status)
@@ -533,22 +532,22 @@ describe('changePlanForSupport', () => {
     }
 
     await expect(
-      changePlanForSupport(tenantId, plans.predio, systemAdminId, mockGateway),
+      changeBilledCourtsForSupport(tenantId, 2, systemAdminId, mockGateway),
     ).rejects.toMatchObject({ code: 'DOWNGRADE_BLOCKED' })
 
-    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.estadio)
+    expect((await fetchSubRow(sql, tenantId)).billed_courts).toBe(5)
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
   })
 
-  it('cambia el plan sin preapproval MP: no llama al gateway y audita mpAmountUpdated=false', async () => {
+  it('corrige la cantidad sin preapproval MP: no llama al gateway y audita mpAmountUpdated=false', async () => {
     const sql = getSql()
     const tenantId = await seedTenantWithStaff(sql)
     await seedSubscription(sql, tenantId, 'active', 'predio') // sin mpSubscriptionId
 
-    const result = await changePlanForSupport(tenantId, plans.complejo, systemAdminId, mockGateway)
-    expect(result).toEqual({ fromPlanId: plans.predio, toPlanId: plans.complejo })
+    const result = await changeBilledCourtsForSupport(tenantId, 3, systemAdminId, mockGateway)
+    expect(result).toEqual({ fromBilledCourts: 1, toBilledCourts: 3 })
 
-    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.complejo)
+    expect((await fetchSubRow(sql, tenantId)).billed_courts).toBe(3)
     // Sin preapproval activo NO debe tocarse MP.
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
 
@@ -558,12 +557,12 @@ describe('changePlanForSupport', () => {
     expect(audits[0]!.metadata).toMatchObject({ mpAmountUpdated: false })
   })
 
-  it('si el update del preapproval MP falla, rollbackea el plan y NO deja audit', async () => {
+  it('si el update del preapproval MP falla, rollbackea la cantidad y NO deja audit', async () => {
     // Invariante de atomicidad declarado en support.service: el UPDATE de
-    // plan_id corre ANTES de tocar MP, pero todo vive en la misma tx de
-    // withTenantContext. Si MP tira, la tx rollbackea → plan_id intacto y sin
-    // audit. Este test caería si alguien sacara el plan_id del withTenantContext
-    // o swallowara el error del gateway.
+    // billed_courts corre ANTES de tocar MP, pero todo vive en la misma tx de
+    // withTenantContext. Si MP tira, la tx rollbackea → billed_courts intacto
+    // y sin audit. Este test caería si alguien sacara el UPDATE del
+    // withTenantContext o swallowara el error del gateway.
     class FailingGateway extends MockGateway {
       override async updatePreapprovalAmount(): Promise<void> {
         throw new Error('MP 500 — preapproval update failed')
@@ -576,41 +575,28 @@ describe('changePlanForSupport', () => {
     })
 
     await expect(
-      changePlanForSupport(tenantId, plans.complejo, systemAdminId, new FailingGateway()),
+      changeBilledCourtsForSupport(tenantId, 3, systemAdminId, new FailingGateway()),
     ).rejects.toThrow('MP 500')
 
-    // Rollback: el plan sigue siendo el original y no quedó audit huérfano.
-    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.predio)
+    // Rollback: la cantidad sigue siendo la original y no quedó audit huérfano.
+    expect((await fetchSubRow(sql, tenantId)).billed_courts).toBe(1)
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
   })
 
-  it('rechaza reasignar el mismo plan con PlanAlreadyAssignedError sin tocar MP ni audit', async () => {
+  it('rechaza pedir la misma cantidad con PlanAlreadyAssignedError sin tocar MP ni audit', async () => {
     const sql = getSql()
     const tenantId = await seedTenantWithStaff(sql)
     await seedSubscription(sql, tenantId, 'active', 'predio', {
       mpSubscriptionId: 'mp-preapp-same-1',
+      billedCourts: 3,
     })
 
     await expect(
-      changePlanForSupport(tenantId, plans.predio, systemAdminId, mockGateway),
+      changeBilledCourtsForSupport(tenantId, 3, systemAdminId, mockGateway),
     ).rejects.toBeInstanceOf(PlanAlreadyAssignedError)
 
-    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.predio)
+    expect((await fetchSubRow(sql, tenantId)).billed_courts).toBe(3)
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
-    expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
-  })
-
-  it('rechaza un plan destino inexistente/inactivo con PlanNotFoundError', async () => {
-    const sql = getSql()
-    const tenantId = await seedTenantWithStaff(sql)
-    await seedSubscription(sql, tenantId, 'active', 'predio')
-    const ghostPlan = '00000000-0000-0000-0000-0000000000bb'
-
-    await expect(
-      changePlanForSupport(tenantId, ghostPlan, systemAdminId, mockGateway),
-    ).rejects.toBeInstanceOf(PlanNotFoundError)
-
-    expect((await fetchSubRow(sql, tenantId)).plan_id).toBe(plans.predio)
     expect(await fetchSupportAudits(sql, tenantId)).toHaveLength(0)
   })
 })

@@ -76,7 +76,7 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
           label="MRR"
           value={formatArs(data.mrrCents)}
           icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
-          sub="Suscripciones activas, precio mensual"
+          sub="Suscripciones activas, equivalente mensual"
         />
         <SaMetricCard
           label="Tenants"

@@ -17,13 +17,15 @@ import {
 } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { listCourts } from '@/modules/courts/court.service'
+import { buildPriceBreakdown } from '@/modules/billing/pricing'
+import type { SubscriptionStatus } from '@/modules/billing/billing.types'
 import { formatArs } from '@/lib/format'
-import { PLANS } from '@/app/(business)/precios/plans-data'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { HashOpenCollapsible } from './HashOpenCollapsible'
 import { SettingsTabs } from '../SettingsTabs'
-import { ActivatePlanSection } from './ActivatePlanSection'
-import { ChangePlanSection } from './ChangePlanSection'
+import { CuotaSection } from './CuotaSection'
+import { PriceBreakdown } from './PriceBreakdown'
+import { firstCuotaPricing } from './cuota-pricing'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
 import { DisconnectMpSection } from './DisconnectMpSection'
 import { InvoiceHistorySection, STATUS_LABELS } from './InvoiceHistorySection'
@@ -52,10 +54,18 @@ function formatDate(d: string | Date | null): string {
   return new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/** "Hasta N canchas" / "Canchas ilimitadas", según el techo del plan (`PLANS`). */
-function courtsRangeLabel(maxCourts: number | null): string {
-  if (maxCourts === null) return 'Canchas ilimitadas'
-  return `Hasta ${maxCourts} ${maxCourts === 1 ? 'cancha' : 'canchas'}`
+/**
+ * Estado de la suscripción en criollo. El dueño no tiene por qué saber qué es
+ * `past_due`; los 7 estados son los de `SubscriptionStatus` (sin `deleted`).
+ */
+const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
+  trialing: 'Prueba gratis',
+  active: 'Activa',
+  past_due: 'Pago pendiente',
+  suspended: 'Suspendida',
+  blocked: 'Bloqueada',
+  canceled: 'Cancelada',
+  churned: 'Dada de baja',
 }
 
 /**
@@ -126,23 +136,41 @@ export default async function FacturacionPage(
   // aunque no haya fila de suscripción: `getBillingPayerEmail` tolera el caso
   // y la sección igual muestra de dónde sale el default.
   const payer = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
-  const defaultCourts = courts.length || 3
 
-  // Bug raíz: createTenantWithTrial no insertaba tenant_subscriptions, así que
-  // subscribe() siempre tiraba SubscriptionNotFoundError (fix 1a). Con la fila
-  // ya sembrada en 'trialing', el admin necesita una forma de activar el plan.
-  //
-  // Ya suscripto (`active`) el catálogo se sigue necesitando, ahora para
-  // CAMBIAR de plan: el complejo que sumó canchas se choca contra el techo del
-  // suyo y hasta ahora no tenía salida in-app (el endpoint existía, ninguna UI
-  // lo llamaba). Los demás estados no ofrecen catálogo a propósito: en
-  // `past_due`/`suspended`/`blocked` lo que corresponde es regularizar el pago,
-  // no cambiar de plan, y `upgrade()` los rechaza igual.
-  const needsPlanCatalog = sub?.status === 'trialing' || sub?.status === 'active'
-  const activePlans = needsPlanCatalog
-    ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx))
-    : []
-  const showPlanChange = needsPlanCatalog && activePlans.length > 0
+  // Las canchas PRENDIDAS son el piso de la cuota: facturar por menos sería
+  // operar de más pagando de menos (el server lo rechaza con DOWNGRADE_BLOCKED).
+  const onlineCourts = courts.filter((c) => c.status === 'online').length
+
+  // El catálogo ya no es un menú de planes: es la fila única con los tres
+  // parámetros de la cuenta (migr. 091). Se lee siempre que haya suscripción,
+  // porque hasta la vista de solo lectura necesita mostrar el desglose.
+  const activePlans = sub ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx)) : []
+  const pricing = firstCuotaPricing(activePlans)
+
+  // `trialing` SIN preapproval todavía es la primera activación (checkout de
+  // MP). Con preapproval ya creado —o con la suscripción activa— cambiar la
+  // cantidad es mover el monto de uno que ya existe, y eso nunca cobra en el
+  // momento (decisión P4). En `past_due` no se ofrece tocar nada: lo que
+  // corresponde es regularizar el pago, y el service lo rechaza igual.
+  const cuotaMode: 'activate' | 'manage' | null =
+    !sub || !pricing
+      ? null
+      : sub.status === 'trialing'
+        ? sub.mpSubscriptionId
+          ? 'manage'
+          : 'activate'
+        : sub.status === 'active'
+          ? 'manage'
+          : null
+
+  const readOnlyBreakdown =
+    sub && pricing && !cuotaMode
+      ? buildPriceBreakdown({
+          billedCourts: sub.billedCourts,
+          cycle: sub.billingCycle,
+          ...pricing,
+        })
+      : null
 
   // doc15 §5.8: historial de cobros, leído en vivo de MercadoPago (sin tabla
   // local, ver InvoiceEntry). Igual que `sub` arriba: si MP no responde, la
@@ -156,146 +184,171 @@ export default async function FacturacionPage(
   const lastInvoice = invoices[0] ?? null
   const showCancelOrDisconnect = !!sub || mpConnected
 
-  const currentPlanMaxCourts = sub
-    ? (PLANS.find((p) => p.slug === sub.planSlug)?.maxCourts ?? null)
-    : null
-
   return (
     <div className="space-y-6">
       {/* MASTER §6.8: la vista no abre encabezado propio — ver reservas/page.tsx. */}
       <SettingsTabs active="/settings/facturacion" />
 
-      {/* "En 3 segundos": lo único que se ve sin plegar nada. */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <section className="card-premium rounded-xl p-6">
-          <h2 className="text-base font-semibold text-foreground">Tu plan</h2>
-          {sub ? (
-            <dl className="mt-4 space-y-3 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Plan</dt>
-                <dd className="font-medium text-foreground">
-                  {/* Todo tenant en trial ya tiene un plan_id real desde el alta (el
-                      super admin lo asigna) — "Sin plan elegido" era un ternario
-                      hardcodeado que ignoraba sub.planName y le hacía creer al
-                      dueño que todavía no había plan, cuando en realidad lo que
-                      falta es el primer cobro. Calificamos en vez de esconder. */}
-                  {sub.status === 'trialing'
-                    ? `${sub.planName} · todavía no se cobra`
-                    : sub.planName}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Canchas</dt>
-                <dd className="font-medium text-foreground">
-                  {courtsRangeLabel(currentPlanMaxCourts)} · usás {courts.length}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">
-                  {sub.status === 'trialing' ? 'Fin de la prueba' : 'Próximo cobro'}
-                </dt>
-                <dd className="font-medium text-foreground tabular-nums">
-                  {/* En trial la fecha real vive en tenants.trial_ends_at: es la que
-                      mueve extendTrial, la que lee el worker que expira trials y la
-                      que ve super admin. tenant_subscriptions.current_period_end
-                      quedó clavado en el valor sembrado al crear el tenant y
-                      extendTrial no lo toca (a propósito: tocarlo perpetuaría dos
-                      copias de la misma fecha) — por eso esta pantalla tiene que
-                      leer la misma columna que todos los demás lectores en vez de
-                      mostrar una segunda fecha que se desincroniza sola. */}
-                  {formatDate(
-                    sub.status === 'trialing' ? tenant.trialEndsAt : sub.currentPeriodEnd,
-                  )}
-                </dd>
-              </div>
-            </dl>
+      {/* "En 3 segundos": lo único que se ve sin plegar nada. La cuota va
+          primera y ocupa más ancho porque es la única pregunta que el dueño
+          tiene en esta pantalla — "¿cuánto pago?" y "¿cómo lo cambio?". */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          {sub && pricing && cuotaMode ? (
+            <CuotaSection
+              pricing={pricing}
+              mode={cuotaMode}
+              onlineCourts={onlineCourts}
+              billedCourts={sub.billedCourts}
+              pendingBilledCourts={sub.pendingBilledCourts}
+              periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
+              billingCycle={sub.billingCycle}
+            />
           ) : (
-            <p className="mt-4 text-sm text-muted-foreground">
-              Todavía no tenés una suscripción activa. Conectá MercadoPago para empezar a cobrar
-              señas y activar tu plan.
-            </p>
+            <section className="card-premium rounded-xl p-6">
+              <h2 className="text-base font-semibold text-foreground">Tu cuota</h2>
+              {readOnlyBreakdown && sub ? (
+                <>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Estás pagando por {sub.billedCourts}{' '}
+                    {sub.billedCourts === 1 ? 'cancha' : 'canchas'}. Para cambiarla, primero
+                    regularizá el pago.
+                  </p>
+                  <PriceBreakdown breakdown={readOnlyBreakdown} className="mt-4" />
+                </>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Todavía no tenés una suscripción activa. Conectá MercadoPago para empezar a cobrar
+                  señas y activar tu cuota.
+                </p>
+              )}
+            </section>
           )}
-        </section>
+        </div>
 
-        <section className="card-premium rounded-xl p-6">
-          <div className="flex items-start justify-between gap-4">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <CreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />{' '}
-              MercadoPago para cobrar señas
-            </h2>
-            {mpConnected && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-500/30">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Conectado
-              </span>
-            )}
-          </div>
+        <div className="space-y-6 lg:col-span-2">
+          {sub && (
+            <section className="card-premium rounded-xl p-6">
+              <h2 className="text-base font-semibold text-foreground">Tu suscripción</h2>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">Estado</dt>
+                  <dd className="font-medium text-foreground">
+                    {SUBSCRIPTION_STATUS_LABEL[sub.status]}
+                    {sub.status === 'trialing' && ' · todavía no se cobra'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Canchas facturadas</dt>
+                  <dd className="font-medium text-foreground tabular-nums">
+                    {sub.billedCourts} · tenés {onlineCourts} prendidas
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">
+                    {sub.status === 'trialing' ? 'Fin de la prueba' : 'Próximo cobro'}
+                  </dt>
+                  <dd className="font-medium text-foreground tabular-nums">
+                    {/* En trial la fecha real vive en tenants.trial_ends_at: es la que
+                        mueve extendTrial, la que lee el worker que expira trials y la
+                        que ve super admin. tenant_subscriptions.current_period_end
+                        quedó clavado en el valor sembrado al crear el tenant y
+                        extendTrial no lo toca (a propósito: tocarlo perpetuaría dos
+                        copias de la misma fecha) — por eso esta pantalla tiene que
+                        leer la misma columna que todos los demás lectores en vez de
+                        mostrar una segunda fecha que se desincroniza sola. */}
+                    {formatDate(
+                      sub.status === 'trialing' ? tenant.trialEndsAt : sub.currentPeriodEnd,
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          )}
 
-          {mpConnected ? (
-            <>
-              {/* Decir CUÁL cuenta está conectada, no solo que hay una: MercadoPago
+          <section className="card-premium rounded-xl p-6">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <CreditCard
+                  className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden
+                />{' '}
+                MercadoPago para cobrar señas
+              </h2>
+              {mpConnected && (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-500/30">
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Conectado
+                </span>
+              )}
+            </div>
+
+            {mpConnected ? (
+              <>
+                {/* Decir CUÁL cuenta está conectada, no solo que hay una: MercadoPago
                     no vuelve a pedir permiso si la app ya está autorizada, así que
                     conectar la cuenta personal en vez de la del complejo era un clic
                     sin ninguna pantalla de por medio — y las señas caían ahí sin que
                     nada lo dijera. */}
-              <p className="mt-2 text-sm text-foreground">
-                Cobrando en la cuenta{' '}
-                <span className="font-semibold">{tenant.mpNickname ?? 'conectada'}</span>. Si no es
-                la del complejo, desconectala y conectá la correcta.
-              </p>
-              {/* Mercado Pago le pone 18 días de plazo a toda cuenta nueva por default
+                <p className="mt-2 text-sm text-foreground">
+                  Cobrando en la cuenta{' '}
+                  <span className="font-semibold">{tenant.mpNickname ?? 'conectada'}</span>. Si no
+                  es la del complejo, desconectala y conectá la correcta.
+                </p>
+                {/* Mercado Pago le pone 18 días de plazo a toda cuenta nueva por default
                     (verificado en producción, 2026-08-19: la cuenta configurada libera
                     antes, la default no). Es un ajuste DENTRO del panel de Mercado Pago,
                     no algo que TurnoGol pueda cambiar por el complejo — por eso el aviso
                     recién aparece acá, una vez conectado, y no en el botón de Conectar:
                     antes de eso el complejo no tiene panel de Costos y cuotas que tocar. */}
-              <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
-                <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <span>
-                  Por defecto, Mercado Pago tarda 18 días en acreditarte la seña.{' '}
-                  <a
-                    href="https://youtu.be/pwUFOdZMxYs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
-                  >
-                    Mirá cómo cambiarlo a al instante (2 min)
-                  </a>
-                  .
-                </span>
+                <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                  <span>
+                    Por defecto, Mercado Pago tarda 18 días en acreditarte la seña.{' '}
+                    <a
+                      href="https://youtu.be/pwUFOdZMxYs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
+                    >
+                      Mirá cómo cambiarlo a al instante (2 min)
+                    </a>
+                    .
+                  </span>
+                </p>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Conectá tu cuenta de MercadoPago para cobrar las señas de las reservas online
+                directamente.
               </p>
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-muted-foreground">
-              Conectá tu cuenta de MercadoPago para cobrar las señas de las reservas online
-              directamente.
-            </p>
-          )}
+            )}
 
-          {searchParams?.error && (
-            <div
-              role="alert"
-              className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <p>{mpErrorMessage(searchParams.error, searchParams.complejo)}</p>
-            </div>
-          )}
+            {searchParams?.error && (
+              <div
+                role="alert"
+                className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <p>{mpErrorMessage(searchParams.error, searchParams.complejo)}</p>
+              </div>
+            )}
 
-          {!mpConnected && (
-            <a
-              href="/api/mp/oauth-start"
-              className="mt-4 inline-flex h-11 md:h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Conectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
-            </a>
-          )}
-        </section>
+            {!mpConnected && (
+              <a
+                href="/api/mp/oauth-start"
+                className="mt-4 inline-flex h-11 md:h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Conectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
+              </a>
+            )}
+          </section>
+        </div>
       </div>
 
       {/* Todo lo demás, plegado. */}
       <div className="space-y-3">
         <BillingDisclosure
-          title="Pagos del plan"
+          title="Pagos de tu cuota"
           summary={
             lastInvoice
               ? `Último: ${formatDate(lastInvoice.date)} · ${formatArs(lastInvoice.amount)} · ${STATUS_LABELS[lastInvoice.status].toLowerCase()}`
@@ -306,33 +359,13 @@ export default async function FacturacionPage(
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
               <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>
-                Ya hay una suscripción de MercadoPago creada para este plan. Revisá el método de
-                pago conectado en tu cuenta de MercadoPago.
+                Ya hay una suscripción de MercadoPago creada para tu cuota. Revisá el método de pago
+                conectado en tu cuenta de MercadoPago.
               </span>
             </p>
           )}
           <InvoiceHistorySection invoices={invoices} />
         </BillingDisclosure>
-
-        {showPlanChange && (
-          <BillingDisclosure
-            title="Cambiar de plan"
-            summary="Solo si sumás canchas y no te entran."
-          >
-            {sub?.status === 'trialing' && (
-              <ActivatePlanSection plans={activePlans} defaultCourts={defaultCourts} />
-            )}
-            {sub?.status === 'active' && (
-              <ChangePlanSection
-                plans={activePlans}
-                currentPlanId={sub.planId}
-                billingCycle={sub.billingCycle}
-                pendingPlanId={sub.pendingPlanChange}
-                periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
-              />
-            )}
-          </BillingDisclosure>
-        )}
 
         <BillingDisclosure
           id="cuenta-mp"

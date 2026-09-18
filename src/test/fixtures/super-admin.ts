@@ -221,7 +221,7 @@ export const dashboardDataQueuesDown = (): SaDashboardData =>
     queues: SA_QUEUES.map((queue) => ({ queue, depth: null, error: 'unavailable' as const })),
   })
 
-// ─── Lista de tenants (tenants.service.ts → TenantList / PlanSummary) ────────
+// ─── Lista de tenants (tenants.service.ts → TenantList) ─────────────────────
 
 export type SaTenantListRow = {
   id: string
@@ -231,8 +231,8 @@ export type SaTenantListRow = {
   status: SaTenantStatus
   trialEndsAt: Date | null
   createdAt: Date
-  planName: string | null
-  planSlug: string | null
+  /** Canchas facturadas (migr. 090). `null` = sin fila en tenant_subscriptions. */
+  billedCourts: number | null
   billingCycle: SaBillingCycle | null
   subscriptionStatus: SaSubscriptionStatus | null
   mrrCents: number
@@ -245,46 +245,25 @@ export type SaTenantList = {
   pageSize: number
 }
 
-export type SaPlanSummary = {
-  id: string
-  slug: string
-  name: string
-  maxCourts: number | null
-  priceMonthly: number
-  priceAnnual: number
+/**
+ * Parámetros del precio LINEAL POR CANCHA vigente (decisión 2026-09-17,
+ * migr. 090/091): $47.000 la primera + $30.000 cada extra, anual 10% off.
+ * Reemplaza a `planSummaries()` — ya no hay bandas que listar.
+ */
+export type SaBilledCourtsPricing = {
+  priceFirstCourtCents: number
+  priceExtraCourtCents: number
+  annualDiscountBps: number
 }
 
-/**
- * Los 3 planes SaaS vigentes (migr. 043 / CLAUDE.md): Predio/Complejo/Estadio.
- * `priceAnnual` es el EQUIVALENTE MENSUAL con 20% off (migr. 071), NO el
- * total anual — 80% de `priceMonthly`.
- */
-export const planSummaries = (): SaPlanSummary[] => [
-  {
-    id: uid(7010),
-    slug: 'predio',
-    name: 'Predio',
-    maxCourts: 2,
-    priceMonthly: 5_500_000,
-    priceAnnual: 4_400_000,
-  },
-  {
-    id: uid(7011),
-    slug: 'complejo',
-    name: 'Complejo',
-    maxCourts: 5,
-    priceMonthly: 8_500_000,
-    priceAnnual: 6_800_000,
-  },
-  {
-    id: uid(7012),
-    slug: 'estadio',
-    name: 'Estadio',
-    maxCourts: null,
-    priceMonthly: 11_500_000,
-    priceAnnual: 9_200_000,
-  },
-]
+export const billedCourtsPricing = (
+  overrides: Partial<SaBilledCourtsPricing> = {},
+): SaBilledCourtsPricing => ({
+  priceFirstCourtCents: 4_700_000,
+  priceExtraCourtCents: 3_000_000,
+  annualDiscountBps: 1000,
+  ...overrides,
+})
 
 export const tenantListRow = (overrides: Partial<SaTenantListRow> = {}): SaTenantListRow => ({
   id: uid(7020),
@@ -294,11 +273,11 @@ export const tenantListRow = (overrides: Partial<SaTenantListRow> = {}): SaTenan
   status: 'active',
   trialEndsAt: null,
   createdAt: daysFromNow(-180),
-  planName: 'Complejo',
-  planSlug: 'complejo',
+  billedCourts: 5,
   billingCycle: 'monthly',
   subscriptionStatus: 'active',
-  mrrCents: 8_500_000,
+  // 5 canchas mensual: 4.700.000 + 4 × 3.000.000 (centavos ARS).
+  mrrCents: 16_700_000,
   ...overrides,
 })
 
@@ -313,8 +292,7 @@ export const tenantListRows = (): SaTenantListRow[] => [
     status: 'trialing',
     trialEndsAt: daysFromNow(9),
     createdAt: daysFromNow(-5),
-    planName: 'Predio',
-    planSlug: 'predio',
+    billedCourts: 1,
     billingCycle: 'monthly',
     subscriptionStatus: 'trialing',
     mrrCents: 0,
@@ -326,8 +304,7 @@ export const tenantListRows = (): SaTenantListRow[] => [
     email: 'admin@polideportivobelgrano.com.ar',
     status: 'past_due',
     createdAt: daysFromNow(-320),
-    planName: 'Estadio',
-    planSlug: 'estadio',
+    billedCourts: 8,
     billingCycle: 'annual',
     subscriptionStatus: 'past_due',
     mrrCents: 0,
@@ -339,8 +316,7 @@ export const tenantListRows = (): SaTenantListRow[] => [
     email: 'contacto@lalomafutbol5.com.ar',
     status: 'canceled',
     createdAt: daysFromNow(-500),
-    planName: null,
-    planSlug: null,
+    billedCourts: null,
     billingCycle: null,
     subscriptionStatus: 'canceled',
     mrrCents: 0,
@@ -382,15 +358,15 @@ export type SaTenantDetail = {
   subscription: {
     status: SaSubscriptionStatus
     planId: string
-    planName: string | null
-    planSlug: string | null
-    priceMonthly: number | null
-    priceAnnual: number | null
+    billedCourts: number
+    pendingBilledCourts: number | null
+    priceFirstCourtCents: number | null
+    priceExtraCourtCents: number | null
+    annualDiscountBps: number | null
     billingCycle: SaBillingCycle
     currentPeriodStart: Date
     currentPeriodEnd: Date
     mpSubscriptionId: string | null
-    pendingPlanChange: string | null
     pendingChangeAt: Date | null
     canceledAt: Date | null
     cancellationReason: string | null
@@ -422,19 +398,17 @@ const t = tenant()
 
 type SaSubscription = NonNullable<SaTenantDetail['subscription']>
 
-/** Suscripción activa por defecto, plan Complejo — base reusada por las variantes. */
+/** Suscripción activa por defecto, 5 canchas facturadas — base reusada por las variantes. */
 const subscriptionDefault = (overrides: Partial<SaSubscription> = {}): SaSubscription => ({
   status: 'active',
   planId: uid(7011),
-  planName: 'Complejo',
-  planSlug: 'complejo',
-  priceMonthly: 8_500_000,
-  priceAnnual: 6_800_000,
+  billedCourts: 5,
+  pendingBilledCourts: null,
+  ...billedCourtsPricing(),
   billingCycle: 'monthly',
   currentPeriodStart: daysFromNow(-10),
   currentPeriodEnd: daysFromNow(20),
   mpSubscriptionId: 'mp-preapproval-5544332211',
-  pendingPlanChange: null,
   pendingChangeAt: null,
   canceledAt: null,
   cancellationReason: null,
@@ -497,6 +471,15 @@ export const tenantDetailTrialing = (): SaTenantDetail =>
     subscription: null,
     courts: [],
     staff: [staffMember({ id: uid(7031), staffUserId: uid(7031) })],
+  })
+
+/** Cambio de canchas ya agendado para el cierre del período (nunca prorrateado, P4). */
+export const tenantDetailPendingCourtsChange = (): SaTenantDetail =>
+  tenantDetail({
+    subscription: subscriptionDefault({
+      pendingBilledCourts: 7,
+      pendingChangeAt: daysFromNow(20),
+    }),
   })
 
 /** Complejo moroso con dunning en curso y eliminación programada — estado destructivo cerca. */

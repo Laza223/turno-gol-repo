@@ -45,11 +45,16 @@ export type SubscriptionState = {
   planSlug: string
   planName: string
   billingCycle: BillingCycle
+  /** Canchas sobre las que esta calculado el cobro vigente (migr. 090). */
+  billedCourts: number
+  /** Canchas a las que pasa el cobro en `pendingChangeAt`. NULL = sin cambio. */
+  pendingBilledCourts: number | null
   currentPeriodStart: Date
   currentPeriodEnd: Date
   mpSubscriptionId: string | null
   /** Migr. 078 — NULL = se cobra al email del dueño (`staff_users`). */
   mpPayerEmail: string | null
+  /** @deprecated migr. 090/091 — la reemplaza `pendingBilledCourts`. */
   pendingPlanChange: string | null
   pendingChangeAt: Date | null
   canceledAt: Date | null
@@ -65,15 +70,21 @@ export type SubscribeResult = {
   preapprovalId: string
 }
 
-export type UpgradeResult = {
-  checkoutUrl: string
-  prorationAmount: number
-  preferenceId: string
-}
-
-export type DowngradeResult = {
-  appliesAt: Date
-  targetPlanId: string
+/**
+ * Resultado de cambiar la cantidad de canchas facturadas.
+ *
+ * Reemplaza a `UpgradeResult`/`DowngradeResult`, que existian cuando subir o
+ * bajar significaba saltar de banda. Con precio por cancha ningun cambio se
+ * cobra prorrateado (decision 2026-09-17, P4): o se aplica en el acto porque
+ * todavia no se cobro nada (trial), o se agenda para el proximo ciclo.
+ */
+export type ChangeBilledCourtsResult = {
+  /** true = ya quedo aplicado (trial). false = agendado para `appliesAt`. */
+  applied: boolean
+  /** Cuando empieza a regir. `null` si ya rige. */
+  appliesAt: Date | null
+  billedCourts: number
+  previousBilledCourts: number
 }
 
 export type CancelResult = {
@@ -91,6 +102,11 @@ export type PlanSummary = {
   priceMonthly: number
   /** Centavos ARS/mes pagando el ciclo anual. */
   priceAnnual: number
+  /** Migr. 090 — precio por cancha. NULL en las filas legacy inactivas. */
+  priceFirstCourtCents: number | null
+  priceExtraCourtCents: number | null
+  /** Descuento del ciclo anual en basis points. 1000 = 10%. */
+  annualDiscountBps: number | null
 }
 
 /**

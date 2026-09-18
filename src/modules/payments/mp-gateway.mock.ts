@@ -72,7 +72,7 @@ export class MockGateway implements PaymentGateway {
 
   preapprovalCalls: CreatePreapprovalInput[] = []
   cancelPreapprovalCalls: string[] = []
-  updatePreapprovalCalls: Array<{ preapprovalId: string; amount: number }> = []
+  updatePreapprovalCalls: Array<{ preapprovalId: string; amount: number; reason?: string }> = []
   preapprovalCounter = 0
 
   /**
@@ -161,8 +161,12 @@ export class MockGateway implements PaymentGateway {
     return this.subscriptionState ?? null
   }
 
-  async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {
-    this.updatePreapprovalCalls.push({ preapprovalId, amount })
+  async updatePreapprovalAmount(
+    preapprovalId: string,
+    amount: number,
+    opts?: { reason?: string },
+  ): Promise<void> {
+    this.updatePreapprovalCalls.push({ preapprovalId, amount, reason: opts?.reason })
   }
 
   saasUpgradePreferenceCalls: CreateSaasUpgradePreferenceInput[] = []

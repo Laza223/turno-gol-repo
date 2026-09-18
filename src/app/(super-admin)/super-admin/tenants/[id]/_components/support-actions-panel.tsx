@@ -2,19 +2,19 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { TenantStatus } from '@/modules/billing/billing.types'
+import type { BillingCycle, TenantStatus } from '@/modules/billing/billing.types'
 import { ForceStatusSection } from './support-actions/ForceStatusSection'
 import { ReactivateSection } from './support-actions/ReactivateSection'
 import { ExtendTrialSection } from './support-actions/ExtendTrialSection'
-import { ChangePlanSection } from './support-actions/ChangePlanSection'
+import { BilledCourtsSection } from './support-actions/BilledCourtsSection'
 import { SettingsSection } from './support-actions/SettingsSection'
 import { ResetPasswordSection } from './support-actions/ResetPasswordSection'
 import { CancelSection } from './support-actions/CancelSection'
 import type {
+  BilledCourtsPricing,
   Feedback,
   RunAction,
   SupportActionsBag,
-  SupportPanelPlan,
   SupportPanelSettings,
 } from './support-actions/constants'
 
@@ -30,8 +30,12 @@ type Props = {
   canReactivate: boolean
   isTrialing: boolean
   hasSubscription: boolean
-  currentPlanId: string | null
-  plans: SupportPanelPlan[]
+  /** Canchas facturadas hoy. `null` = sin fila en tenant_subscriptions. */
+  billedCourts: number | null
+  billingCycle: BillingCycle | null
+  /** Canchas con `status='online'`: piso de lo que se puede facturar. */
+  onlineCourts: number
+  pricing: BilledCourtsPricing | null
   settings: SupportPanelSettings
   actions: SupportActionsBag
 }
@@ -52,8 +56,10 @@ export function SupportActionsPanel({
   canReactivate,
   isTrialing,
   hasSubscription,
-  currentPlanId,
-  plans,
+  billedCourts,
+  billingCycle,
+  onlineCourts,
+  pricing,
   settings,
   actions,
 }: Props) {
@@ -102,14 +108,15 @@ export function SupportActionsPanel({
         action={actions.extendTrial}
       />
 
-      <ChangePlanSection
+      <BilledCourtsSection
         tenantId={tenantId}
-        hasSubscription={hasSubscription}
-        currentPlanId={currentPlanId}
-        plans={plans}
+        currentBilledCourts={billedCourts}
+        billingCycle={billingCycle}
+        onlineCourts={onlineCourts}
+        pricing={pricing}
         pending={pending}
         run={run}
-        action={actions.changePlan}
+        action={actions.changeBilledCourts}
       />
 
       <SettingsSection

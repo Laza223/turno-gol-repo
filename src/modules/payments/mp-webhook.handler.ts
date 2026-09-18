@@ -8,12 +8,12 @@ import { TenantMpNotConnectedError } from './payment.errors'
 import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import { buildSubscriptionChargeKey } from '@/modules/billing/subscription-reconcile.service'
-import { handleUpgradeApproved } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { MP_MOCK_ENABLED } from './mock-mp'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
 import { track } from '@/shared/observability'
+import { captureMessage } from '@/lib/sentry'
 
 /**
  * Payload for the `process-mp-webhook` queue. The route enqueues this; the
@@ -311,13 +311,24 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           `webhook tenant mismatch: claimed=${job.tenantId} actual=${upgrade.tenantId}`,
         )
       }
+      // El proraeo de upgrade ya no existe (decision 2026-09-17, P4: cambiar
+      // la cantidad de canchas nunca cobra en el medio del periodo, se aplica
+      // en el proximo ciclo), asi que NADIE crea preferencias
+      // `saas-upgrade:` desde el deploy del precio por cancha. Un pago con
+      // esta referencia solo puede ser una preferencia vieja que alguien pago
+      // tarde. No se aplica nada automatico —el modelo destino ni siquiera es
+      // un plan— pero tampoco se traga en silencio: es plata que entro.
       if (info.status === 'approved') {
-        await handleUpgradeApproved(
-          upgrade.tenantId,
-          upgrade.targetPlanId,
-          gateway,
-          tx,
-          job.mpPaymentId,
+        captureMessage(
+          'mp-webhook: llego un pago de proraeo de upgrade, un camino que ya no existe (precio por cancha). Queda para conciliacion manual.',
+          {
+            level: 'warning',
+            extra: {
+              tenantId: upgrade.tenantId,
+              externalReference: info.externalReference,
+              mpPaymentId: job.mpPaymentId,
+            },
+          },
         )
       }
       return

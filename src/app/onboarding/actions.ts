@@ -33,7 +33,7 @@ import { stepPath, WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { requireAdminStaff, requireAdminStaffAction } from '@/modules/staff/guards'
 import { getStaffContact } from '@/modules/staff/staff.service'
-import { getCourtCountAndLimit } from '@/modules/courts/court.service'
+import { getCourtCountAndBilled } from '@/modules/courts/court.service'
 import { track } from '@/shared/observability/breadcrumbs'
 
 /** slug de WIZARD_STEPS por número, para el `stepName` de los eventos de analytics. */
@@ -340,9 +340,9 @@ export async function finishOnboardingAction(): Promise<void> {
   // razonamiento que /onboarding/listo). `first_booking.created` ya se emitió
   // en ese momento (createOnboardingFirstBookingAction) — acá solo hace falta
   // el caso contrario, que no tiene ningún otro punto de emisión posible.
-  const [hasFirstBooking, { count: courtsCount }] = await Promise.all([
+  const [hasFirstBooking, { onlineCourts: courtsCount }] = await Promise.all([
     hasAnyBooking(tenant.id),
-    withTenantContext(tenant.id, (tx) => getCourtCountAndLimit(tenant.id, tx)),
+    withTenantContext(tenant.id, (tx) => getCourtCountAndBilled(tenant.id, tx)),
   ])
   if (!hasFirstBooking) {
     track.onboarding('onboarding.first_booking.skipped', { tenantId: tenant.id })

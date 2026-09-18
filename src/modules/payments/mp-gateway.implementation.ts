@@ -520,19 +520,82 @@ export class MercadoPagoGateway implements PaymentGateway {
     }
   }
 
-  async updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void> {
+  /**
+   * PELIGRO DE PLATA — por qué esto lee antes de escribir.
+   *
+   * La API de preapproval de MercadoPago REEMPLAZA el objeto `auto_recurring`
+   * entero con lo que se le manda. La versión anterior de este método mandaba
+   * solo `transaction_amount` + `currency_id`, así que el PUT borraba
+   * `frequency`, `frequency_type` y, sobre todo, `start_date`.
+   *
+   * Consecuencia concreta: un complejo en prueba tiene su preapproval creado
+   * con `start_date` al final del trial (fix trial-first-charge). Ajustarle el
+   * monto con el PUT viejo le borraba esa fecha y MP le cobraba EN EL ACTO,
+   * en medio de la prueba gratis. Con precio por cancha esto dejó de ser
+   * hipotético: cada vez que un complejo suma o saca una cancha se pasa por
+   * acá.
+   *
+   * Por eso: GET primero, y se reenvía el `auto_recurring` completo con el
+   * monto nuevo. Si el GET no trae la frecuencia, se aborta en vez de
+   * adivinar — mandar una frecuencia inventada cambia cada cuánto se le cobra
+   * al complejo.
+   */
+  async updatePreapprovalAmount(
+    preapprovalId: string,
+    amount: number,
+    opts?: { reason?: string },
+  ): Promise<void> {
     const preapproval = new PreApproval(this.config)
     try {
+      const current = await preapproval.get({ id: preapprovalId })
+      // Mismo hueco de tipos que en `getSubscriptionState`: el SDK no declara
+      // `start_date`/`end_date` en `AutoRecurringResponse` aunque la API REST
+      // los devuelve. Se lee con un cast acotado, no con `any`.
+      const recurring = current?.auto_recurring as
+        | {
+            frequency?: unknown
+            frequency_type?: unknown
+            currency_id?: unknown
+            start_date?: unknown
+            end_date?: unknown
+          }
+        | undefined
+      const frequency = typeof recurring?.frequency === 'number' ? recurring.frequency : null
+      const frequencyType =
+        typeof recurring?.frequency_type === 'string' ? recurring.frequency_type : null
+      if (frequency === null || frequencyType === null) {
+        throw new MpGatewayError(
+          `MP preapproval ${preapprovalId} came back without auto_recurring.frequency; refusing to overwrite it`,
+        )
+      }
+      const startDate = typeof recurring?.start_date === 'string' ? recurring.start_date : null
+      const endDate = typeof recurring?.end_date === 'string' ? recurring.end_date : null
+
       await preapproval.update({
         id: preapprovalId,
         body: {
+          ...(opts?.reason ? { reason: opts.reason } : {}),
+          // `frequency`/`start_date`/`end_date` no están todos declarados en
+          // `AutoRecurringRequest`, pero la API REST los acepta y el SDK
+          // reenvía el body tal cual — mismo patrón que `notification_url` en
+          // `createPreapproval`.
           auto_recurring: {
+            frequency,
+            frequency_type: frequencyType,
             transaction_amount: centsToPesos(amount),
-            currency_id: 'ARS',
-          },
+            currency_id: typeof recurring?.currency_id === 'string' ? recurring.currency_id : 'ARS',
+            // `start_date` es lo que sostiene la prueba gratis. Se reenvía tal
+            // cual vino; si MP no lo devuelve, tampoco se manda (el
+            // preapproval no tenía fecha futura y cobra al autorizar).
+            ...(startDate ? { start_date: startDate } : {}),
+            ...(endDate ? { end_date: endDate } : {}),
+          } as unknown as NonNullable<
+            Parameters<PreApproval['update']>[0]['body']
+          >['auto_recurring'],
         },
       })
     } catch (err) {
+      if (err instanceof MpGatewayError) throw err
       throw new MpGatewayError(`Failed to update MP preapproval amount ${preapprovalId}`, err)
     }
   }

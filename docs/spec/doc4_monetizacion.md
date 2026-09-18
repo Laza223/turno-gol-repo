@@ -13,61 +13,106 @@
 
 ## 1. Modelo de Pricing
 
-### Decisión: Suscripción mensual por cantidad de canchas
+### Decisión: precio LINEAL por cancha, sin techo ni bandas
 
-**Por qué este modelo y no otro:**
+**La regla completa cabe en una línea:**
+
+> **$47.000 la primera cancha + $30.000 por cada cancha extra, por mes. Anual: 10% off.**
+> Sin bandas, sin techo, sin descuento por volumen.
+
+**Por qué una suscripción por cantidad de canchas y no otra cosa:**
 - Ya fue validado por ATC Sports con miles de clientes en Argentina → no hay que educar al mercado
 - Es predecible para el dueño (sabe exactamente cuánto paga por mes)
 - Es predecible para nosotros (MRR estable, no comisiones variables)
 - Alternativa descartada: comisión por reserva → volatilidad de ingresos, incentivo desalineado
 
+**Por qué lineal y no en bandas** (decisión del dueño 2026-09-17,
+[`docs/decisions/2026-09-17-precio-por-cancha.md`](../decisions/2026-09-17-precio-por-cancha.md) P1):
+las bandas regalan margen **por construcción**, porque el que está arriba de una banda paga lo
+mismo que el que está abajo. Medido contra la facturación real de un complejo en producción
+(ticket promedio de Luján, ~$3,2M por cancha por mes): las bandas dejaban la cuota en 0,50-0,77%
+de lo que factura el complejo según dónde cayera, y la lista lineal la deja en **1,0-1,1% en todos
+los tamaños**. Detalle en el board del precio, §8.3.
+
 ---
 
-### Planes
+### La lista, en ejemplos
 
-| Plan | Canchas | Precio mensual | Precio anual (por mes) | Ahorro anual |
+El monto **no está guardado en ninguna columna**: es una función de la cantidad de canchas
+facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
+[`src/modules/billing/pricing.ts`](../../src/modules/billing/pricing.ts) sobre los parámetros de la
+única fila activa de `plans`.
+
+| Canchas | Mensual | Anual (por mes, 10% off) | Anual (cobro único) | Ahorro en el año |
 |---|---|---|---|---|
-| **Predio** | 1 – 3 canchas | $63.000 ARS | $50.400 ARS (20% off) | $151.200 ARS |
-| **Complejo** | 4 – 6 canchas | $99.000 ARS | $79.200 ARS (20% off) | $237.600 ARS |
-| **Estadio** | 7+ canchas | $129.000 ARS | $103.200 ARS (20% off) | $309.600 ARS |
+| 1 | $47.000 | $42.300 | $507.600 | $56.400 |
+| 3 | $107.000 | $96.300 | $1.155.600 | $128.400 |
+| 4 | $137.000 | $123.300 | $1.479.600 | $164.400 |
+| 5 | $167.000 | $150.300 | $1.803.600 | $200.400 |
+| 6 | $197.000 | $177.300 | $2.127.600 | $236.400 |
+| 8 | $257.000 | $231.300 | $2.775.600 | $308.400 |
+
+> [!IMPORTANT]
+> **El ciclo anual cobra UNA vez por año**, y el monto que se le manda a MercadoPago es el
+> equivalente mensual con descuento **multiplicado por 12** (columna "cobro único"). Mandar el
+> equivalente mensual a pelo le cobra al complejo 12 veces menos de lo que va: está documentado
+> como trampa en `computeSubscriptionAmount`.
 
 > [!NOTE]
-> **Actualizado 2026-08-07 (migr. 071).** Antes: 1-2 / 3-5 / 6+ a $55.000 / $85.000 / $115.000.
-> Cambiaron **los cortes, no solo los precios**: ATC corta en 1-3 / 4-6 / 7+ y nosotros cortábamos
-> distinto, así que la comparación daba diferente según la cantidad de canchas y en DOS franjas
-> (3 y 6) TurnoGol salía más caro — con 3 canchas siendo el piso del ICP. Con los cortes
-> alineados la comparación es franja contra franja y TurnoGol queda ~11% abajo en las tres.
-> Fundamento: `docs/planning/2026-08-07-analisis-rubro-y-decisiones.md` §4.
+> **Historia de la lista.** Hasta el 2026-09-16 eran tres planes por bandas de canchas:
+> Predio 1-3 $63.000 · Complejo 4-6 $99.000 · Estadio 7+ $129.000, anual 20% off (migr. 071;
+> antes de eso, 1-2 / 3-5 / 6+ a $55.000 / $85.000 / $115.000, migr. 043). Las tres filas siguen
+> en la tabla `plans` con `is_active = false` — no se borraron, porque `price_versions` y
+> `audit_logs` las referencian (migr. 090/091).
 >
-> ATC cobra $71.000 / $111.000 / $145.000 ARS/mes (navegado por el founder desde IP argentina,
-> 2026-08-07; en julio eran $66.000 / $104.000 / $136.000).
+> **El anual bajó de 20% a 10%** (decisión P2): con inflación de 1,5-2,5% mensual, un anual con
+> 20% off entrega 25-29% menos que un mensual ajustado por trimestre. Era el segundo lugar donde
+> más margen se regalaba, después de las bandas.
+>
+> **La comparación con ATC cambia de signo y está asumido.** ATC cobra $71.000 / $111.000 /
+> $145.000 ARS/mes para 1-3 / 4-6 / 7+ (navegado por el founder desde IP argentina, 2026-08-07).
+> Con la lista lineal, TurnoGol queda **más barato con 1 cancha y más caro de 3 para arriba**: en
+> el ICP (4-6 canchas) pasa de estar 11% abajo de ATC a estar entre 23% y 77% arriba (board §7).
+> El trigger de reversión es explícito: 3 o más ventas perdidas por precio puro en 8 ofertas
+> escritas o menos → fallback a la misma estructura con $35.000 + $16.000.
+>
 > Revisar precios cada 3 meses dado el IPC argentino (ver sección 5: ARS volátil).
+> Revisión de esta decisión: 2026-12-15.
 
 > [!WARNING]
-> **El IVA está sin resolver y afecta la comparación con ATC.** Este documento decía
-> *"Precios NO incluyen IVA — se agrega 21% en el checkout"*, pero **el código no agrega IVA en
-> ningún lado** (barrido completo de `src/`, 2026-08-07: cero implementación). Hoy el checkout
-> cobra el precio pelado de la tabla.
+> **El IVA sigue sin resolverse** (decisión P7, que mantiene D9 de
+> [`2026-09-02-experimento-30-dias.md`](../decisions/2026-09-02-experimento-30-dias.md) abierto).
+> Este documento decía *"Precios NO incluyen IVA — se agrega 21% en el checkout"*, pero **el
+> código no agrega IVA en ningún lado** (barrido completo de `src/`, 2026-08-07; sigue así con el
+> precio lineal). Hoy el checkout cobra el número pelado que devuelve `pricing.ts`.
 >
-> Importa porque cambia el signo de la comparación: si $63.000 es final, ganamos 11% contra los
-> $71.000 de ATC; si hay que sumarle 21% ($76.230), **perdemos**. Y el sitio de ATC no aclara si
-> sus precios llevan IVA (verificado en julio y de nuevo en agosto).
+> Mientras esté abierto, **ningún texto de la aplicación dice "+ IVA" ni "precio final"**: el
+> desglose que ve el dueño muestra el monto y nada más. Eso incluye los textos legales públicos
+> (`/terminos`, `/privacidad`), que describen la regla de cobro sin afirmar nada fiscal.
 >
 > Es una decisión de negocio + fiscal, no técnica: queda como **REQUIERE INPUT** hasta que el
-> dueño defina si el precio publicado es final o si el IVA se discrimina. Las menciones de IVA
-> que quedan en §10 y §11 de este documento describen ese estado no implementado.
+> dueño defina si el precio publicado es final o si el IVA se discrimina — a más tardar antes del
+> primer cobro real. Las menciones de IVA que quedan en §10 y §11 describen ese estado no
+> implementado.
+
+> [!NOTE]
+> **La web pública `/precios` sigue mostrando los tres planes viejos, a propósito** (decisión P6).
+> El panel del cliente y el cobro real pasan a precio por cancha ahora; la comunicación comercial
+> se decide aparte. `src/app/(business)/precios/plans-data.ts` quedó como snapshot de marketing
+> congelado, desacoplado del catálogo real. Riesgo asumido: un prospecto puede ver un precio y
+> recibir otra cotización — hoy esa página no tiene tráfico de conversión.
 
 **Trial**: 30 días gratis, sin tarjeta requerida al inicio.
 **Sin costos de instalación, capacitación ni mantenimiento** (igual que ATC, ya es expectativa del mercado).
 
 ---
 
-### Diferenciadores incluidos en todos los planes
+### Diferenciadores incluidos en el servicio
 - Dashboard analytics visual
 - Onboarding self-service con UX guiada paso a paso
 - Reservas online con pago de seña vía MercadoPago
 - Gestión de turnos fijos (abonados) desde la grilla del admin
-- Reportes completos (mismo nivel para todos los planes)
+- Reportes completos (mismo nivel para todos, sin importar cuántas canchas se facturen)
 - Sin límite de staff: se permiten **múltiples cuentas admin** por complejo con privilegios completos (sin límite duro; única regla: debe quedar ≥1 admin activo), más managers permisivos sin necesidad de PIN (Decisión de auditoría 2026-07-21: corregido de "una sola cuenta admin por complejo" a multi-admin, alineado con US-ADM-003 y el código)
 
 ---
@@ -283,7 +328,15 @@ FALLA ─── retry ─── retry ─── SUSPENDED ── BLOCKED ──�
 > atracción comercial. Revisar cuando haya datos reales de % de clientes en plan anual.
 
 ### Implicancia técnica
-- Campo `price_locked_until` en la suscripción para clientes anuales
+
+> [!WARNING]
+> **Diseño, no estado actual.** De los cuatro puntos de abajo, lo único construido es
+> `price_versions` como histórico insert-only (que desde la migr. 090 guarda la REGLA lineal, no
+> un precio fijo). `price_locked_until` existe como columna y **nadie la escribe ni la lee**
+> (grep, 2026-09-17), y no hay ningún middleware que resuelva precio por
+> `subscription_start_date`: hoy todos los tenants calculan con los parámetros de la fila activa.
+
+- Campo `price_locked_until` en la suscripción para clientes anuales (columna inerte, ver arriba)
 - Los precios en la DB son históricos (no se edita el precio actual, se crea una nueva versión)
 - Tabla `price_versions` con fecha de vigencia
 - Middleware que determina qué precio aplica a cada tenant según su `subscription_start_date`
@@ -308,63 +361,90 @@ Política v1 (Decisión de auditoría 2026-07-21 — ARG-07):
 
 ---
 
-## 6. Upgrades y Downgrades
+## 6. Cambiar la cantidad de canchas facturadas
 
-### Upgrade (de Predio a Complejo, etc.)
+> [!IMPORTANT]
+> **"Upgrade" y "downgrade de plan" ya no existen como concepto de producto.** No hay planes
+> entre los cuales moverse: hay una cantidad de canchas facturadas, y sube o baja. En el código
+> `upgrade()`, `downgrade()` y `handleUpgradeApproved()` fueron reemplazadas por una sola función,
+> `changeBilledCourts()` ([`billing.service.ts`](../../src/modules/billing/billing.service.ts)), y
+> las rutas `/api/billing/upgrade` y `/api/billing/downgrade` por
+> **`POST /api/billing/canchas`** con body `{ billedCourts }`, detrás del feature flag
+> `saas_upgrade`.
 
-**Cuándo pasa**: El dueño agrega más canchas que su plan permite.
+### La regla: nunca se cobra prorrateado
+
+**Sumar o sacar una cancha no genera un cargo en el medio del período, en ninguno de los dos
+sentidos** (decisión P4). Lo que queda del período en curso va sin cargo y la cuota nueva arranca
+en el próximo cobro.
+
+**Por qué**: el objetivo declarado del dueño es un precio sin sorpresas. Un cargo prorrateado el
+día que alguien agrega una cancha es exactamente la sorpresa que se quiere evitar. Efecto
+colateral buscado: desapareció toda la maquinaria de proraeo — no hay Preference de cobro único,
+no hay webhook de upgrade acreditado, no hay pago que pueda quedar huérfano. Menos superficie de
+bug en un circuito de plata.
+
+### Los dos caminos, según el estado de la suscripción
 
 ```
-Admin intenta crear la cancha N+1 (supera el límite del plan)
+El dueño pide facturar por N canchas (POST /api/billing/canchas)
       ↓
-Sistema muestra modal: "Tu plan Predio permite hasta 3 canchas.
-Actualizá a Complejo para agregar más canchas."
-[CTA: Actualizar a Complejo - $99.000/mes]   ← el "+ IVA" se saca hasta resolver el REQUIERE INPUT de §1
+Guard server-side: N no puede ser menor a las canchas PRENDIDAS (courts WHERE status='online')
+  → si lo es: DowngradeBlockedError (code DOWNGRADE_BLOCKED). "Apagá canchas primero."
       ↓
-Si confirma:
-  - Calcula el prorrateo de días restantes del período actual
-  - Cobra la diferencia en el momento (via MP Checkout, no suscripción)
-  - Activa el nuevo plan inmediatamente
-  - Email: "🎉 Actualizado a plan Complejo. Ya podés agregar más canchas."
+  ┌─ trialing ─────────────────────────────────────────────────────┐
+  │ Todavía no se cobró un peso → se aplica YA (billed_courts = N). │
+  │ Si ya pasó por el checkout, se ajusta el monto del preapproval  │
+  │ SIN tocar su start_date: la prueba gratis queda intacta.        │
+  └────────────────────────────────────────────────────────────────┘
+  ┌─ active ───────────────────────────────────────────────────────┐
+  │ Se AGENDA: pending_billed_courts = N,                           │
+  │            pending_change_at = current_period_end.              │
+  │ Lo aplica el sweep diario de dunning-retry.worker.ts, que       │
+  │ además hace el PUT del monto nuevo en MercadoPago.              │
+  └────────────────────────────────────────────────────────────────┘
 ```
 
-**Fórmula de prorrateo:**
-```
-días_restantes = fecha_fin_período - hoy
-precio_día_nuevo = precio_nuevo / días_del_período
-precio_día_viejo = precio_viejo / días_del_período
-cargo_extra = (precio_día_nuevo - precio_día_viejo) * días_restantes
-```
+**El sweep es el único lugar donde se mueve el monto de una suscripción que ya cobra.** Si el PUT
+contra MP falla, la transacción entera (UPDATE + audit log) hace rollback y el próximo tick del
+cron reintenta: la DB nunca queda diciendo una cosa mientras el preapproval dice otra.
 
-### Downgrade (de Complejo a Predio, etc.)
+Un cambio pendiente **se pisa sin drama** (no tiene plata asociada, vale la última decisión del
+dueño), y volver a la cantidad actual cancela el pendiente.
 
-**Regla**: No se puede hacer downgrade si tenés más canchas activas de las que permite el plan inferior.
-```
-Admin intenta bajar de Complejo (4-6 canchas) a Predio (1-3) pero tiene 5 canchas configuradas
-      ↓
-Sistema: "Para cambiar al plan Predio necesitás tener máximo 3 canchas activas.
-Desactivá 2 canchas primero."
-      ↓
-Si el dueño desactiva la cancha → puede hacer downgrade
-      ↓
-El downgrade aplica al inicio del próximo período (no inmediato)
-No se genera reembolso por días no usados del plan superior
-```
+### El piso: no se factura por menos canchas de las que están prendidas
 
-> [!NOTE]
-> **Downgrade con plan ANUAL vigente** (Decisión de auditoría 2026-07-21 — LOG-09/GAP-10):
-> el downgrade de un cliente anual **aplica recién en la renovación** (fin del término pagado),
-> nunca a mitad del año. NO se recalcula ni se reembolsa el prepago (consistente con la regla
-> general "sin reembolso"), y el precio congelado por `price_locked_until` rige hasta el
-> vencimiento. En la renovación se le ofrece el plan inferior al precio vigente de ese momento.
+Con bandas, el gate impedía elegir un plan cuyo techo fuera menor a las canchas online. Con precio
+por cancha **no hay techo** (decisión P3: agregar una cancha no se bloquea, cuesta $30.000 más por
+mes), pero el piso sigue existiendo por la misma razón de siempre: sin él, apagar canchas, bajar
+la cuota y volver a prenderlas deja al complejo operando de más y pagando de menos.
 
-### Efectos cascada de cambio de plan
+`DowngradeBlockedError` conserva el nombre y el code `DOWNGRADE_BLOCKED` por compatibilidad, pero
+su tercer campo pasó de `targetMaxCourts` a **`targetBilledCourts`**: ya no significa "el plan
+elegido no te alcanza", significa "no podés facturar por menos canchas de las que tenés
+prendidas".
+
+**Apagar una cancha no baja la cuota sola.** Bajarla es una acción deliberada del dueño, y recién
+ahí se agenda para el fin del período.
+
+### Efectos cascada
 
 | Escenario | Qué pasa |
 |---|---|
-| Downgrade con turnos fijos en cancha desactivada | Admin debe cancelar los turnos fijos de esa cancha primero |
-| Downgrade con reservas futuras en cancha desactivada | Warning: "Hay {N} reservas futuras. Se cancelarán si desactivás." |
-| Upgrade de plan | Inmediato, sin efectos colaterales negativos |
+| Bajar canchas facturadas con turnos fijos en una cancha que habría que apagar | Admin debe cancelar los turnos fijos de esa cancha primero |
+| Bajar canchas facturadas con reservas futuras en la cancha a apagar | Warning: "Hay {N} reservas futuras. Se cancelarán si desactivás." |
+| Subir canchas facturadas | Sin efectos colaterales negativos; el cargo nuevo arranca en el próximo cobro |
+
+> [!NOTE]
+> **Ciclo ANUAL**: la nota vieja sobre "downgrade de un cliente anual aplica recién en la
+> renovación" (auditoría 2026-07-21 — LOG-09/GAP-10) sigue siendo cierta por construcción, y ahora
+> por la regla general y no por una excepción: el cambio se agenda a `current_period_end`, que en
+> un anual es el fin del término pagado. No se recalcula ni se reembolsa el prepago.
+>
+> Ojo con `price_locked_until`: la columna existe en `tenant_subscriptions` pero **ningún código
+> la escribe ni la lee** (grep sobre `src/`, 2026-09-17: cero referencias fuera del schema de
+> Drizzle). Quien la mencione como mecanismo vigente está describiendo un diseño, no el sistema.
+> La decisión del 2026-09-17 la deja explícitamente fuera de alcance.
 
 ---
 
@@ -482,18 +562,27 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 ---
 
-## 8. Diferenciación entre planes
+## 8. Qué incluye el servicio (ya no hay planes que diferenciar)
 
-> Retirada la tabla de "Feature Flags por Plan" (2026-08-27, auditoría de docs) — prometía gates de historial de
-> reservas, exportación CSV vs CSV+Excel, API access y soporte prioritario que no existen en el código: todos los
-> planes tienen exactamente las mismas features hoy. El único diferenciador real entre Predio/Complejo/Estadio es
-> la cantidad de canchas (`plans.max_courts`, ver §1) y el precio. Si se quiere diferenciar por feature en el
-> futuro, es una decisión de producto a tomar explícitamente, no algo que este doc deba dar por hecho.
+**Desde el 2026-09-17 no hay planes.** Hay un solo producto, `plans.slug = 'turnogol'`, y la única
+variable es **cuántas canchas se facturan**. Todas las funciones están para todos: no existe una
+función que se desbloquee pagando más, ni un tamaño de complejo que reciba menos producto.
+
+Antes tampoco existía de verdad: la tabla de "Feature Flags por Plan" se retiró el 2026-08-27
+(auditoría de docs) porque prometía gates de historial de reservas, exportación CSV vs CSV+Excel,
+API access y soporte prioritario **que no estaban en el código**. Lo único que diferenciaba a
+Predio/Complejo/Estadio era el techo de canchas y el precio. Con el precio lineal el techo
+desaparece (`plans.max_courts = NULL` en la fila única) y queda solo el precio.
+
+La columna `plans.features` (JSONB) sobrevive con los valores heredados de las tres filas viejas y
+**nadie la consulta para gatear nada**. Si alguna vez se quiere diferenciar por feature, es una
+decisión de producto a tomar explícitamente, no algo que este doc deba dar por hecho.
 
 > [!NOTE]
-> **Regla de diseño para cuando exista algún límite real (ej. cantidad de canchas)**: El sistema NUNCA muestra un
-> error crudo cuando se supera un límite. Siempre muestra un mensaje que explica el límite, la solución, y un CTA
-> de upgrade claro. Ejemplo: "Tu plan permite 3 canchas. Para agregar más, actualizá a Complejo →"
+> **Regla de diseño para el único límite que queda** (el piso de §6: no se factura por menos
+> canchas de las que están prendidas): el sistema NUNCA muestra un error crudo. Muestra qué pasa,
+> por qué, y la salida concreta. Ejemplo: "Estás facturando 4 canchas y tenés 5 prendidas. Apagá
+> una cancha o subí el cobro a 5 canchas ($167.000/mes desde el próximo cobro)."
 
 ---
 
@@ -501,7 +590,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 | Parámetro | Valor | Configurable |
 |---|---|---|
-| Retención (oferta de downgrade) | Roadmap, no implementado (auditado 2026-08-27): la UI real (`CancelSubscriptionSection.tsx`) es un campo de texto libre para el motivo, sin flujo estructurado ni oferta de downgrade | No |
+| Retención (oferta de bajar canchas facturadas) | Roadmap, no implementado (auditado 2026-08-27): la UI real (`CancelSubscriptionSection.tsx`) es un campo de texto libre para el motivo, sin flujo estructurado ni contraoferta | No |
 | Acceso post-cancelación | Hasta fin del período pago | No |
 | Datos post-expiración | 60 días en BLOCKED | No |
 | Reembolso del período restante | No | No |
@@ -526,17 +615,17 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 | Decisión de negocio | Requisito técnico concreto |
 |---|---|
 | Trial de 30 días sin tarjeta | Campo `trial_ends_at` en `tenants`. Cron job diario que evalúa expiración. |
-| 3 planes por cantidad de canchas | Tabla `plans` con `max_courts`. Middleware que valida al crear cancha. |
+| Precio lineal por cancha, sin techo | UNA fila activa en `plans` (`slug='turnogol'`, `max_courts=NULL`) con `price_first_court_cents` / `price_extra_court_cents`, y `tenant_subscriptions.billed_courts`. El monto NO es una columna: lo calcula `src/modules/billing/pricing.ts`. Sin middleware que bloquee crear canchas — solo el piso "no facturar por menos de las prendidas". |
 | Pago mensual y anual | Campo `billing_cycle` (monthly/annual) en suscripción. |
-| Descuento 20% anual | Calculado en el momento del checkout, no como cupón. Precio base almacenado. |
-| IVA excluido (se suma en checkout) | Campo `price_without_tax` en la tabla plans; cálculo de IVA 21% en checkout. |
+| Descuento 10% anual | `plans.annual_discount_bps` (1000 bps). Se aplica en el cálculo, no como cupón. El preapproval anual cobra el equivalente mensual con descuento × 12. |
+| IVA excluido (se suma en checkout) | **NUNCA se implementó y sigue sin decidirse** (ver el WARNING de §1). No existe `price_without_tax` ni cálculo de IVA en ningún lado del código. |
 | 8 estados del tenant | ENUM `tenant_status` con 8 valores. Middleware en todos los endpoints que verifica estado. |
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
 | Dunning: 3 reintentos en 5 días | MP lo maneja los reintentos. Nosotros procesamos webhooks de `payment.rejected`. |
 | Datos conservados post-churn | Cancelación voluntaria: 60d BLOCKED → CHURNED → 7d → DELETED (67d total). Dunning: 90d post-primer-fallo → CHURNED → 7d → DELETED (97d total). Campo `scheduled_deletion_at` en `tenants`. (Decisión de auditoría 2026-07-21: evaluar reducir la ruta de dunning a 60 días — implementación de código PENDIENTE, ver nota en §2.) |
 | Notificaciones de trial por email | Scheduled jobs en pg-boss (tabla `pgboss.job`). Ver ADR-005. |
-| Upgrade con prorrateo | Cálculo al momento del upgrade. Cargo vía MP Checkout (no suscripción). |
-| Downgrade solo al inicio del próximo período | Campo `pending_plan_change` + cron job que lo aplica en la fecha de renovación. |
+| Cambiar canchas facturadas nunca se cobra prorrateado | En `trialing` se aplica en el acto; en `active` se agenda con `pending_billed_courts` + `pending_change_at` y lo aplica el sweep diario de `dunning-retry.worker.ts`, que además hace el PUT del monto en MP. El prorrateo y su Preference de cobro único se ELIMINARON. |
+| No facturar por menos canchas de las prendidas | `assertBilledCourtsCoverOnline` server-side en `billing.service.ts` (`DowngradeBlockedError`). El número llega del cliente, así que se valida siempre. |
 | ARS volátil: precios históricos | Tabla `price_versions` con `valid_from`. |
 | Webhook idempotencia | Tabla `processed_webhooks` con `mp_event_id`. Check antes de procesar. |
 | Señas van directo al complejo | OAuth del complejo durante onboarding. TurnoGol no intermedia fondos. |
@@ -550,26 +639,31 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 > No es un documento contable. Es para entender qué escala necesitamos para ser viables.
 
 > [!NOTE]
-> **Precios desactualizados.** La tabla de abajo usa los precios PRE-migr. 071 ($55.000/$85.000/
-> $115.000). Los vigentes desde 2026-08-07 son $63.000/$99.000/$129.000 (ver §1) — el MRR y la
-> comisión de MP de más abajo están calculados con los precios viejos y no se recalcularon.
+> **Recalculado el 2026-09-17 con la lista lineal.** La versión anterior arrastraba los precios
+> PRE-migr. 071 ($55.000/$85.000/$115.000) sin recalcular. Los números de abajo usan
+> $47.000 + $30.000/cancha extra, 100% ciclo mensual. **El mix de tamaños es un supuesto, no una
+> medición**: no hay clientes pagos (0 al 2026-09-17), así que la distribución de canchas por
+> complejo está inventada a partir del ICP (4-6 canchas). Tratar el MRR como orden de magnitud.
 
-### Con 100 clientes activos (mix estimado)
+### Con 100 clientes activos (mix de tamaños SUPUESTO)
 
-| Plan | Clientes | Precio/mes (sin IVA) | MRR |
+| Tamaño del complejo | Clientes | Precio/mes | MRR |
 |---|---|---|---|
-| Predio (mensual) | 50 | $55.000 | $2.750.000 |
-| Complejo (mensual) | 35 | $85.000 | $2.975.000 |
-| Estadio (mensual) | 15 | $115.000 | $1.725.000 |
-| **Total MRR** | **100** | | **$7.450.000 ARS** |
+| 3 canchas | 50 | $107.000 | $5.350.000 |
+| 5 canchas | 35 | $167.000 | $5.845.000 |
+| 8 canchas | 15 | $257.000 | $3.855.000 |
+| **Total MRR** | **100** | | **$15.050.000 ARS** |
+
+ARPU con este mix: **$150.500**. Cada cliente que elija el ciclo anual entrega 10% menos de
+ingreso por ese cliente (y lo entrega por adelantado, que es su contrapartida — ver §5).
 
 ### Costos fijos estimados (infraestructura, sin equipo)
 - Hosting/infra (Vercel + Supabase Pro): ~$150.000-300.000 ARS/mes
 - Emails transaccionales (Resend/SendGrid): ~$0-20.000 ARS/mes (tier free cubre v1)
 - Worker externo (Railway): ~$5-15.000 ARS/mes
-- MercadoPago comisiones sobre suscripción SaaS: ~2.99% del MRR ≈ $228.000 ARS/mes
+- MercadoPago comisiones sobre suscripción SaaS: ~2.99% del MRR ≈ $450.000 ARS/mes
 
-**Break-even de infraestructura**: con 10-20 clientes activos.
+**Break-even de infraestructura**: con 2-4 clientes activos (los costos fijos de arriba suman ~$170.000-335.000/mes y la cuota más chica es $47.000).
 **El negocio escala bien**: los costos variables son mínimos respecto al MRR.
 
 > [!TIP]
@@ -584,7 +678,7 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 |---|---|---|
 | **Trial → Paid Conversion** | tenants que pagan / tenants que empiezan trial | Crítica |
 | **Monthly Churn Rate** | tenants que churnan este mes / tenants activos inicio de mes | Crítica |
-| **MRR** | Σ(precio plan × tenants por plan) | Crítica |
+| **MRR** | Σ(cuota de cada tenant) — la cuota sale de `pricing.ts` sobre `billed_courts`, NO de una columna de precio | Crítica |
 | **ARPU** | MRR / total tenants activos | Importante |
 | **LTV** | ARPU / churn_rate | Importante |
 | **Dunning Recovery Rate** | cobros recuperados en dunning / cobros fallidos totales | Importante |
@@ -596,9 +690,18 @@ No se modela fee explícitamente en v1 — el complejo ve lo que MP le deposita 
 
 ## 13. Entidades Involucradas (referencia)
 
+> [!IMPORTANT]
+> **El precio ya no es un `plan_id`: es una función de `billed_courts`.** `plan_id` sobrevive,
+> pero apunta siempre a la misma fila (`slug = 'turnogol'`) y lo único que aporta son los
+> parámetros de la regla. Quien quiera saber cuánto paga un complejo NO lee una columna de precio:
+> llama a `computeSubscriptionAmount(billed_courts, billing_cycle, params)`.
+
 ```
 TenantSubscription
-  ├── plan_id ──────────────→ Plan (global)
+  ├── plan_id ──────────────→ Plan (global, fila única 'turnogol': aporta los PARÁMETROS)
+  ├── billed_courts ────────→ canchas sobre las que está calculado el cobro VIGENTE,
+  │                           o sea lo que está cargado en el preapproval de MP.
+  │                           NO es "cuántas canchas tiene hoy" (eso es courts WHERE status='online').
   ├── status: trialing | active | past_due | suspended | blocked | canceled | churned
   ├── billing_cycle: monthly | annual
   ├── mp_subscription_id ──→ MercadoPago Suscripción
@@ -606,10 +709,23 @@ TenantSubscription
   ├── current_period_end
   ├── canceled_at (si canceló voluntariamente)
   ├── cancellation_reason
-  ├── price_locked_until (si anual)
-  ├── pending_plan_change (si hay downgrade pendiente)
+  ├── price_locked_until (columna existente, SIN escritores ni lectores — ver §6)
+  ├── pending_billed_courts ─→ a cuántas canchas pasa el cobro en pending_change_at
+  ├── pending_change_at ─────→ = current_period_end cuando hay cambio agendado
+  ├── pending_plan_change (DEPRECADA, migr. 090/091: sin escritores, se dropea después)
   └── scheduled_deletion_at (60+7 días post-bloqueo)
+
+Plan (global, una sola fila activa)
+  ├── slug = 'turnogol' · max_courts = NULL (sin techo)
+  ├── price_first_court_cents  = 4700000   ($47.000)
+  ├── price_extra_court_cents  = 3000000   ($30.000)
+  ├── annual_discount_bps      = 1000      (10%)
+  └── price_monthly / price_annual: REFERENCIA heredada del modelo de bandas.
+      Ningún cálculo de cobro las usa. DROP en una migración de contracción posterior.
 ```
+
+**Monto = `price_first_court_cents + (billed_courts − 1) × price_extra_court_cents`**, y si el
+ciclo es anual, `round(monto × (1 − annual_discount_bps/10000)) × 12` para el cobro único.
 
 > [!NOTE]
 > **Ortografía canónica:** se usa `canceled` (americano, una L) en todos los ENUMs del sistema.

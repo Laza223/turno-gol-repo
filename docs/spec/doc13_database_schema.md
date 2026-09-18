@@ -429,9 +429,9 @@ COMMENT ON TABLE staff_users IS 'Usuarios de staff. La relación con tenants est
 -- ============================================================
 CREATE TABLE plans (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name            TEXT NOT NULL,                 -- 'Predio', 'Complejo', 'Estadio'
-  slug            TEXT NOT NULL UNIQUE,          -- 'predio', 'complejo', 'estadio'
-  max_courts      INTEGER,                       -- NULL = ilimitado
+  name            TEXT NOT NULL,                 -- 'TurnoGol' (única fila activa desde migr. 091)
+  slug            TEXT NOT NULL UNIQUE,          -- 'turnogol'; legacy: 'predio', 'complejo', 'estadio'
+  max_courts      INTEGER,                       -- NULL = sin techo (la fila activa lo tiene en NULL)
 
   features        JSONB NOT NULL DEFAULT '{
     "history_months": 6,
@@ -440,8 +440,15 @@ CREATE TABLE plans (
     "support_channels": ["email"]
   }'::JSONB,
 
+  -- Modelo de BANDAS (legacy). Quedan como valor de referencia de la fila única;
+  -- NINGÚN cálculo de cobro las usa desde la migr. 090/091.
   price_monthly   INTEGER NOT NULL,              -- Centavos ARS
   price_annual    INTEGER NOT NULL,              -- Centavos ARS (mensualizado)
+
+  -- Precio LINEAL POR CANCHA (migr. 090). Nullable: solo la fila 'turnogol' los usa.
+  price_first_court_cents INTEGER,               -- 4700000 = $47.000/mes la 1ª cancha
+  price_extra_court_cents INTEGER,               -- 3000000 = $30.000/mes por cada extra
+  annual_discount_bps     INTEGER,               -- 1000 = 10% off en el ciclo anual
 
   is_active       BOOLEAN NOT NULL DEFAULT true,
   sort_order      INTEGER NOT NULL DEFAULT 0,    -- Orden de presentación en UI
@@ -452,7 +459,23 @@ CREATE TABLE plans (
 COMMENT ON TABLE plans IS 'Planes de suscripción SaaS. Globales, no por tenant.';
 COMMENT ON COLUMN plans.price_monthly IS 'Precio mensual en centavos ARS. Ej: $88.000 = 8800000';
 COMMENT ON COLUMN plans.max_courts IS 'NULL = ilimitado. Valor numérico = límite del plan.';
+COMMENT ON COLUMN plans.price_first_court_cents IS 'Centavos ARS/mes de la primera cancha. Solo tiene sentido en la fila slug=turnogol; NULL en las 3 filas legacy.';
+COMMENT ON COLUMN plans.price_extra_court_cents IS 'Centavos ARS/mes por cada cancha además de la primera. El monto total NO está en ninguna columna: lo calcula src/modules/billing/pricing.ts sobre tenant_subscriptions.billed_courts.';
+COMMENT ON COLUMN plans.annual_discount_bps IS 'Descuento del ciclo anual en basis points (1000 = 10 por ciento).';
 ```
+
+> [!IMPORTANT]
+> **Desde la migr. 091 hay UNA sola fila activa** (`slug = 'turnogol'`, `max_courts = NULL`) y el
+> precio es lineal por cancha: $47.000 la primera + $30.000 por cada extra, anual 10% off
+> (decisión [`2026-09-17-precio-por-cancha.md`](../decisions/2026-09-17-precio-por-cancha.md),
+> detalle en doc4 §1). Las tres filas de bandas (`predio`/`complejo`/`estadio`) quedan con
+> `is_active = false` y **no se borraron**: `price_versions` tiene FK a su `id` y
+> `audit_logs.metadata` las referencia como texto.
+>
+> `price_monthly` y `price_annual` siguen siendo `NOT NULL` por herencia del modelo de bandas y
+> quedaron como **valor de referencia**: en la fila `turnogol` valen $47.000 y $42.300 (el caso de
+> una cancha), pero ningún cobro sale de ahí. Se dropean en una migración de contracción
+> posterior, junto con `tenant_subscriptions.pending_plan_change` (anotado en `docs/tech-debt.md`).
 
 > [!NOTE]
 > **`features.history_months` es un soft-limit de query, NUNCA un borrado físico** (Decisión de auditoría 2026-07-21).
@@ -462,6 +485,10 @@ COMMENT ON COLUMN plans.max_courts IS 'NULL = ilimitado. Valor numérico = lími
 > Ley 25.326 y la trazabilidad contable). Si el complejo sube de plan, el historial más antiguo vuelve a
 > ser visible sin restaurar nada. Consistente con doc6 (entidad Plan, desglose de `features`).
 > (Implementación de código pendiente: el gate se aplica en la capa de query/reportes, no en el schema.)
+>
+> **Con una sola fila activa (migr. 091) esto quedó sin objeto**: no hay planes entre los cuales
+> subir, así que `features` sobrevive con los valores heredados y nadie lo consulta para gatear
+> nada. Ver doc4 §8.
 
 ### 2.5 `price_versions` — Historial de precios de planes
 
@@ -476,6 +503,10 @@ CREATE TABLE price_versions (
   plan_id         UUID NOT NULL REFERENCES plans(id),
   price_monthly   INTEGER NOT NULL,              -- Centavos ARS
   price_annual    INTEGER NOT NULL,              -- Centavos ARS (mensualizado)
+  -- Migr. 090: la versión histórica guarda la REGLA lineal, no un precio fijo.
+  price_first_court_cents INTEGER,
+  price_extra_court_cents INTEGER,
+  annual_discount_bps     INTEGER,
   valid_from      DATE NOT NULL,                 -- Fecha desde la que aplica
   valid_until     DATE,                          -- NULL = vigente
   reason          TEXT,                          -- "Ajuste por inflación Q2 2026"
@@ -486,6 +517,12 @@ CREATE INDEX idx_price_versions_plan ON price_versions(plan_id, valid_from DESC)
 
 COMMENT ON TABLE price_versions IS 'Historial de precios. INSERT only. Nunca UPDATE.';
 ```
+
+> [!NOTE]
+> Desde la migr. 090 una fila de `price_versions` puede describir **una regla** (los tres
+> parámetros del precio lineal) en vez de un par de precios fijos. Las filas anteriores al
+> 2026-09-17 tienen los tres campos nuevos en NULL y siguen leyéndose como antes; la 091 les cerró
+> la vigencia (`valid_until = '2026-09-17'`) a las de las tres bandas.
 
 ### 2.6 `processed_webhooks` — Idempotencia de webhooks
 
@@ -1010,6 +1047,12 @@ CREATE TABLE tenant_subscriptions (
   tenant_id             UUID NOT NULL REFERENCES tenants(id) UNIQUE, -- 1:1 con tenant
   plan_id               UUID NOT NULL REFERENCES plans(id),
   billing_cycle         billing_cycle NOT NULL DEFAULT 'monthly',
+
+  -- Migr. 090 — precio por cancha. Canchas sobre las que está calculado el cobro
+  -- VIGENTE, o sea lo que está cargado en el preapproval de MP. NO es "cuántas
+  -- canchas tiene hoy" (eso es courts WHERE status='online'): solo se mueve
+  -- cuando un cambio confirmado se aplica al cierre del período.
+  billed_courts         INTEGER NOT NULL DEFAULT 1,
   status                subscription_status NOT NULL DEFAULT 'trialing',
 
   current_period_start  TIMESTAMPTZ NOT NULL,
@@ -1022,9 +1065,15 @@ CREATE TABLE tenant_subscriptions (
   -- (migr. 078). NULL = el del dueño (staff_users).
   mp_payer_email        TEXT,
 
-  -- Cambios de plan pendientes (downgrade se aplica al próximo ciclo)
+  -- Cambio de canchas facturadas agendado. Sumar o sacar una cancha NUNCA se
+  -- cobra prorrateado: se aplica en el próximo ciclo (decisión 2026-09-17 P4).
+  pending_billed_courts INTEGER,                 -- NULL = sin cambio pendiente
+  pending_change_at     TIMESTAMPTZ,             -- = current_period_end cuando hay cambio
+
+  -- DEPRECADA (migr. 090/091): la reemplazó pending_billed_courts. Sin escritores.
+  -- No se pudo reusar: es uuid REFERENCES plans(id), tipo incompatible con integer.
+  -- DROP en una migración de contracción posterior.
   pending_plan_change   UUID REFERENCES plans(id),
-  pending_change_at     TIMESTAMPTZ,
 
   -- Cancelación
   canceled_at           TIMESTAMPTZ,
@@ -1753,36 +1802,42 @@ CREATE TRIGGER enforce_booking_invariants
 -- SEED: Planes de suscripción (datos globales del sistema)
 -- Precios basados en Doc 4 — Monetización
 -- ============================================================
-INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, sort_order, features) VALUES
--- Valores vigentes tras la migr. 071 (cortes alineados con ATC: 1-3 / 4-6 / 7+).
--- Este seed es ilustrativo: el estado real sale de 007 + las migraciones de
--- precios posteriores (043, 071).
-(
-  'Predio', 'predio', 3,
-  6300000,   -- $63.000 ARS en centavos
-  5040000,   -- $50.400 ARS en centavos (mensualizado, 20% descuento anual)
-  1,
-  '{"history_months": 6, "export_formats": ["csv"], "api_access": false, "support_channels": ["email"]}'
-),
-(
-  'Complejo', 'complejo', 6,
-  9900000,   -- $99.000 ARS
-  7920000,   -- $79.200 ARS (20% descuento anual)
-  2,
-  '{"history_months": 12, "export_formats": ["csv", "excel"], "api_access": false, "support_channels": ["email"]}'
-),
-(
-  'Estadio', 'estadio', NULL,  -- NULL = ilimitado
-  12900000,  -- $129.000 ARS
-  10320000,  -- $103.200 ARS (20% descuento anual)
-  3,
-  '{"history_months": null, "export_formats": ["csv", "excel"], "api_access": true, "support_channels": ["email", "priority_email"]}'
+-- Estado vigente desde la migr. 091 (2026-09-17): UNA sola fila activa, precio
+-- LINEAL por cancha, sin techo. Este seed es ilustrativo: el estado real sale de
+-- 007 + las migraciones de precios posteriores (043, 071, 090, 091).
+INSERT INTO plans (
+  name, slug, max_courts,
+  price_monthly, price_annual,
+  price_first_court_cents, price_extra_court_cents, annual_discount_bps,
+  is_active, sort_order, features
+) VALUES (
+  'TurnoGol', 'turnogol',
+  NULL,      -- sin techo: agregar una cancha no se bloquea, cuesta $30.000 más
+  4700000,   -- price_monthly: REFERENCIA (el caso de una cancha). No se usa para cobrar.
+  4230000,   -- price_annual: REFERENCIA, equivalente mensual con 10% off ($42.300).
+  4700000,   -- $47.000 la primera cancha
+  3000000,   -- $30.000 por cada cancha extra
+  1000,      -- 10% off en el ciclo anual
+  true, 0,
+  '{"history_months": null, "export_formats": ["csv", "excel"], "api_access": false, "support_channels": ["email"]}'
 );
 
--- Versión de precios inicial
-INSERT INTO price_versions (plan_id, price_monthly, price_annual, valid_from, reason)
-SELECT id, price_monthly, price_annual, '2026-04-01', 'Precio de lanzamiento'
-FROM plans;
+-- Las 3 filas de bandas (predio/complejo/estadio, migr. 007/043/071) siguen en la
+-- tabla con is_active = false. No se borran: price_versions tiene FK a su id y
+-- audit_logs.metadata las referencia como texto.
+
+-- Versión histórica de la REGLA (price_versions es insert-only).
+INSERT INTO price_versions (
+  plan_id, price_monthly, price_annual,
+  price_first_court_cents, price_extra_court_cents, annual_discount_bps,
+  valid_from, reason
+)
+SELECT
+  id, price_monthly, price_annual,
+  price_first_court_cents, price_extra_court_cents, annual_discount_bps,
+  '2026-09-17',
+  'Precio lineal por cancha: $47.000 la primera + $30.000 por cada extra, sin techo, anual 10% off.'
+FROM plans WHERE slug = 'turnogol';
 ```
 
 ---

@@ -85,6 +85,25 @@ export async function createTenantWithTrial(
   const trialDays = input.trialDays ?? TRIAL_DAYS
   const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000)
 
+  // Fila de precio vigente. Desde la migr. 091 `plans` tiene UNA sola activa
+  // (`slug = 'turnogol'`), así que ya no se elige plan: se resuelve. Acá
+  // vivía `slug = 'predio'` hardcodeado, un string mágico que con el precio
+  // por cancha deja de existir como plan vendible y rompe TODA alta nueva.
+  // Sin esta fila, subscribe() no encuentra suscripción y tira
+  // SubscriptionNotFoundError para todo tenant nuevo.
+  //
+  // Se resuelve ANTES de insertar el tenant: `db` no es una transacción, así
+  // que tirar después dejaba un complejo huérfano, sin suscripción.
+  const [activePlan] = await db
+    .select({ id: plans.id })
+    .from(plans)
+    .where(eq(plans.isActive, true))
+    .orderBy(plans.sortOrder)
+    .limit(1)
+  if (!activePlan) {
+    throw new Error('No hay ningún plan activo — no se puede crear el trial')
+  }
+
   const [tenant] = await db
     .insert(tenants)
     .values({
@@ -103,19 +122,6 @@ export async function createTenantWithTrial(
     })
     .returning({ id: tenants.id, slug: tenants.slug })
 
-  // Plan default del trial: 'predio' (el plan real se elige recién al
-  // suscribirse — subscribe() hace UPDATE de plan_id). Sin esta fila,
-  // subscribe() no encuentra suscripción y tira SubscriptionNotFoundError
-  // para todo tenant nuevo.
-  const [predioPlan] = await db
-    .select({ id: plans.id })
-    .from(plans)
-    .where(and(eq(plans.slug, 'predio'), eq(plans.isActive, true)))
-    .limit(1)
-  if (!predioPlan) {
-    throw new Error("Plan 'predio' no encontrado o inactivo — no se puede crear el trial")
-  }
-
   // tenant.id was just generated — there's no pre-existing tenant context to
   // inherit, so RLS on tenant_staff_members / tenant_subscriptions
   // (tenant_id = app.current_tenant_id) needs it set explicitly to this
@@ -129,7 +135,10 @@ export async function createTenantWithTrial(
     })
     await tx.insert(tenantSubscriptions).values({
       tenantId: tenant.id,
-      planId: predioPlan.id,
+      planId: activePlan.id,
+      // Nace facturando por 1 cancha (el piso del modelo). El paso 3 del
+      // wizard lo sube a las que el complejo realmente cargó.
+      billedCourts: 1,
       currentPeriodStart: new Date(),
       currentPeriodEnd: trialEndsAt,
     })

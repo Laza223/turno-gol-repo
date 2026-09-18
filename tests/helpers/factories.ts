@@ -5,16 +5,28 @@ import { artTodayStr } from '@/shared/dates/art'
 
 const dayMs = 86400000
 
+/**
+ * Id de la fila de precio VIGENTE (`plans`, `is_active = true`).
+ *
+ * Antes buscaba `slug = 'predio'` y, si no lo encontraba, INSERTABA una fila
+ * con datos inventados (max_courts 2, $55.000). Las dos mitades murieron con
+ * el precio lineal por cancha (migr. 090/091): `predio` quedó inactivo y el
+ * catálogo pasó a tener UNA sola fila activa, que además el rol de la app ni
+ * siquiera puede insertar (la migr. 085 le revocó INSERT sobre `plans`).
+ *
+ * Y el fallback era peor que inútil: si las migraciones no estaban aplicadas,
+ * fabricaba un plan de mentira y los tests corrían contra un catálogo que no
+ * existe en ningún lado. Ahora FALLA con el motivo real.
+ */
 export async function getOrCreatePlanId(sql: Sql): Promise<string> {
-  const existing = await sql<{ id: string }[]>`
-    SELECT id FROM plans WHERE slug = 'predio' LIMIT 1
-  `
-  if (existing.length) return existing[0].id
   const rows = await sql<{ id: string }[]>`
-    INSERT INTO plans (name, slug, max_courts, price_monthly, price_annual, is_active)
-    VALUES ('Predio', ${'predio-test-' + faker.string.alphanumeric(6)}, 2, 5500000, 4400000, true)
-    RETURNING id
+    SELECT id FROM plans WHERE is_active = true ORDER BY sort_order LIMIT 1
   `
+  if (!rows.length) {
+    throw new Error(
+      'No hay ninguna fila activa en `plans`: faltan aplicar las migraciones (090/091 dejan una sola, slug=turnogol).',
+    )
+  }
   return rows[0].id
 }
 
@@ -258,15 +270,30 @@ export async function insertDailyCashClose(
 
 export async function insertSubscription(
   sql: Sql,
-  opts: { tenantId: string; planId: string },
+  opts: {
+    tenantId: string
+    planId: string
+    /** Estado de la suscripción. Default: el de la tabla (`trialing`). */
+    status?: 'trialing' | 'active'
+    /**
+     * Canchas por las que se factura hoy (migr. 090). Default 1, igual que la
+     * columna: es el piso del modelo lineal, no "sin definir".
+     */
+    billedCourts?: number
+  },
 ): Promise<string> {
   const start = new Date()
   const end = new Date(start.getTime() + 30 * dayMs)
   const rows = await sql<{ id: string }[]>`
     INSERT INTO tenant_subscriptions (
-      tenant_id, plan_id, current_period_start, current_period_end
+      tenant_id, plan_id, status, billed_courts, current_period_start, current_period_end
     )
-    VALUES (${opts.tenantId}, ${opts.planId}, ${start.toISOString()}, ${end.toISOString()})
+    VALUES (
+      ${opts.tenantId}, ${opts.planId},
+      ${opts.status ?? 'trialing'}::subscription_status,
+      ${opts.billedCourts ?? 1},
+      ${start.toISOString()}, ${end.toISOString()}
+    )
     RETURNING id
   `
   return rows[0].id

@@ -1,12 +1,19 @@
 'use client'
 
-import { useCallback, useState, useTransition } from 'react'
+import { useCallback, useRef, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
+import type { ActionResult } from '@/shared/types/action-result'
 import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { countEmptyCells, expandRulesToGrid } from '@/modules/courts/pricing-grid'
 import * as Sentry from '@sentry/nextjs'
 import { track } from '@/shared/observability/breadcrumbs'
 import type { CourtActionResult, CourtPhotoActionResult } from '../actions'
+import {
+  billingChangeMessage,
+  billingChangeTitle,
+  type BillingChangePreview,
+} from '../billing-copy'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
 import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/components/ui/image-uploader'
@@ -17,8 +24,15 @@ import { SelectMenu } from '@/components/ui/select-menu'
  * `'use server'` y arrastra drizzle/postgres → `node:async_hooks`, que rompe
  * cualquier bundle de browser (Storybook). Ver el comentario en
  * ReservasPolicyForm.tsx.
+ *
+ * `confirmBillingChange` es el segundo paso del aviso de cuota: la primera
+ * llamada vuelve con `requiresBillingConfirmation` y sin crear nada, y recién
+ * la segunda —con el dueño ya informado del monto nuevo— ejecuta.
  */
-export type CreateCourtAction = (formData: FormData) => Promise<CourtActionResult>
+export type CreateCourtAction = (
+  formData: FormData,
+  confirmBillingChange?: boolean,
+) => Promise<CourtActionResult>
 export type UpdateCourtAction = (courtId: string, formData: FormData) => Promise<CourtActionResult>
 export type UploadCourtPhotoAction = (
   courtId: string,
@@ -32,6 +46,13 @@ export type ReorderCourtPhotosAction = (
   courtId: string,
   urls: string[],
 ) => Promise<CourtPhotoActionResult>
+
+// Mismo criterio que CourtList: el Radix Dialog solo pesa cuando el aviso de
+// cuota aparece de verdad, que es la excepción y no el alta normal.
+const ConfirmDialog = dynamic(
+  () => import('@/components/ui/confirm-dialog').then((m) => m.ConfirmDialog),
+  { ssr: false },
+)
 
 const SURFACE_OPTIONS = [
   { value: 'synthetic_grass', label: 'Césped sintético' },
@@ -78,6 +99,11 @@ export function CourtForm({
   const isEdit = court !== null
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  // Aviso de "esta cancha te sube la cuota". El FormData del intento frenado se
+  // guarda tal cual para reenviarlo idéntico al confirmar: rearmarlo desde el
+  // estado abriría la puerta a que se confirme un monto y se guarde otra cosa.
+  const [billingPreview, setBillingPreview] = useState<BillingChangePreview | null>(null)
+  const pendingFormData = useRef<FormData | null>(null)
 
   const [name, setName] = useState(court?.name ?? '')
   const [surfaceType, setSurfaceType] = useState<string>(court?.surfaceType ?? 'synthetic_grass')
@@ -163,28 +189,48 @@ export function CourtForm({
       const result = isEdit ? await updateAction(court.id, formData) : await createAction(formData)
 
       if (!result.success) {
+        if (result.requiresBillingConfirmation) {
+          // No es un error: la cancha no se creó todavía porque sube la cuota y
+          // el dueño tiene que ver el monto nuevo antes.
+          pendingFormData.current = formData
+          setBillingPreview(result.requiresBillingConfirmation)
+          return
+        }
         setError(result.error)
         return
       }
-      // Reload page data by triggering a navigation refresh — parent handles via revalidatePath
-      // For now signal parent with a stub row so list updates optimistically
-      onSaved({
-        ...(court ?? {
-          id: result.courtId ?? '',
-          tenantId: '',
-          photos: [],
-          createdAt: new Date(),
-        }),
-        name,
-        surfaceType,
-        format,
-        capacity: format * 2,
-        status: court?.status ?? 'online',
-        description: court?.description ?? null,
-        pricing: { rules },
-        updatedAt: new Date(),
-      } as CourtRow)
+      notifySaved(result)
     })
+  }
+
+  // Reload page data by triggering a navigation refresh — parent handles via revalidatePath
+  // For now signal parent with a stub row so list updates optimistically
+  function notifySaved(result: { courtId?: string }) {
+    onSaved({
+      ...(court ?? {
+        id: result.courtId ?? '',
+        tenantId: '',
+        photos: [],
+        createdAt: new Date(),
+      }),
+      name,
+      surfaceType,
+      format,
+      capacity: format * 2,
+      status: court?.status ?? 'online',
+      description: court?.description ?? null,
+      pricing: { rules },
+      updatedAt: new Date(),
+    } as CourtRow)
+  }
+
+  async function confirmBillingChange(): Promise<ActionResult | void> {
+    const formData = pendingFormData.current
+    if (!formData) return { success: false, error: 'Volvé a enviar el formulario.' }
+    const result = await createAction(formData, true)
+    if (!result.success) return { success: false, error: result.error }
+    pendingFormData.current = null
+    notifySaved(result)
   }
 
   return (
@@ -296,6 +342,23 @@ export function CourtForm({
       <Button type="submit" isLoading={isPending} className="w-full h-11">
         {isEdit ? 'Guardar cambios' : 'Crear cancha'}
       </Button>
+
+      {billingPreview && (
+        <ConfirmDialog
+          open
+          onOpenChange={(next) => {
+            if (!next) {
+              setBillingPreview(null)
+              pendingFormData.current = null
+            }
+          }}
+          title={billingChangeTitle(billingPreview)}
+          description={<p>{billingChangeMessage(billingPreview)}</p>}
+          confirmLabel="Confirmar"
+          cancelLabel="Cancelar"
+          onConfirm={confirmBillingChange}
+        />
+      )}
     </form>
   )
 }

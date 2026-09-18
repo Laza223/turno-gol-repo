@@ -12,27 +12,24 @@ import {
 } from '@/modules/payments/mp-token-refresh'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
-import { captureMessage } from '@/lib/sentry'
 import {
   DowngradeBlockedError,
   InvalidPayerEmailError,
   PlanNotFoundError,
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
-  UpgradeAlreadyPendingError,
 } from './billing.errors'
+import { computeSubscriptionAmount } from './pricing'
 import { transitionToCanceled } from './lifecycle.service'
-import { track } from '@/shared/observability'
 import type {
   BillingCycle,
   CancelResult,
-  DowngradeResult,
+  ChangeBilledCourtsResult,
   InvoiceEntry,
   PlanSummary,
   SubscribeResult,
   SubscriptionState,
   SubscriptionStatus,
-  UpgradeResult,
 } from './billing.types'
 
 /**
@@ -45,21 +42,29 @@ import type {
  * we don't retry within a single business call.
  */
 
-const PRORATION_PREFERENCE_TTL_HOURS = 24
-
 export type PlanRow = {
   id: string
   slug: string
   name: string
+  /** @deprecated migr. 090/091 — sin techo. Siempre NULL en la fila activa. */
   max_courts: number | null
+  /** @deprecated migr. 090/091 — valor de referencia, no fuente de cobro. */
   price_monthly: number
+  /** @deprecated migr. 090/091 — valor de referencia, no fuente de cobro. */
   price_annual: number
+  price_first_court_cents: number | null
+  price_extra_court_cents: number | null
+  annual_discount_bps: number | null
 }
 
 type SubRow = {
   status: SubscriptionStatus
   plan_id: string
   billing_cycle: BillingCycle
+  /** Canchas sobre las que esta calculado el cobro vigente (migr. 090). */
+  billed_courts: number
+  /** Canchas a las que pasa el cobro en `pending_change_at`. NULL = sin cambio. */
+  pending_billed_courts: number | null
   current_period_start: Date | string
   current_period_end: Date | string
   mp_subscription_id: string | null
@@ -78,14 +83,66 @@ function toDate(v: Date | string): Date {
   return v instanceof Date ? v : new Date(v)
 }
 
-async function loadPlan(planId: string, tx: DbTx): Promise<PlanRow | null> {
+/**
+ * La fila de precio vigente. Desde la migr. 091 `plans` tiene UNA sola fila
+ * activa (`slug='turnogol'`), asi que el precio ya no se "elige": se resuelve
+ * server-side. Sustituye al `planId` que antes viajaba en el request — un
+ * `planId` que llega del cliente es superficie de manipulacion sobre plata.
+ */
+export async function loadActivePlan(tx: DbTx): Promise<PlanRow> {
   const rows = await tx.execute(sql`
-    SELECT id, slug, name, max_courts, price_monthly, price_annual
+    SELECT id, slug, name, max_courts, price_monthly, price_annual,
+           price_first_court_cents, price_extra_court_cents, annual_discount_bps
     FROM plans
-    WHERE id = ${planId} AND is_active = true
+    WHERE is_active = true
+    ORDER BY sort_order
     LIMIT 1
   `)
-  return (rows as unknown as Array<PlanRow>)[0] ?? null
+  const plan = (rows as unknown as Array<PlanRow>)[0]
+  if (!plan) throw new PlanNotFoundError('active')
+  return plan
+}
+
+/**
+ * Parametros de precio de una fila de `plans`, validados.
+ *
+ * Las 3 columnas son nullable en el schema porque las filas legacy
+ * (predio/complejo/estadio, `is_active=false` desde la 091) no las tienen. La
+ * fila activa SI las tiene: si llegan en NULL, el catalogo esta roto y cobrar
+ * un monto inventado seria peor que fallar.
+ */
+export function pricingParamsOf(plan: PlanRow): {
+  priceFirstCourtCents: number
+  priceExtraCourtCents: number
+  annualDiscountBps: number
+} {
+  if (
+    plan.price_first_court_cents === null ||
+    plan.price_extra_court_cents === null ||
+    plan.annual_discount_bps === null
+  ) {
+    throw new PlanNotFoundError(`${plan.id} (sin parametros de precio lineal)`)
+  }
+  return {
+    priceFirstCourtCents: plan.price_first_court_cents,
+    priceExtraCourtCents: plan.price_extra_court_cents,
+    annualDiscountBps: plan.annual_discount_bps,
+  }
+}
+
+/**
+ * Monto que se le cobra a MercadoPago por ciclo, en centavos ARS.
+ *
+ * Reemplaza a `planAmount()`, que leia un precio fijo de la fila del plan.
+ * Ahora el monto es funcion de `billed_courts`: la regla vive en
+ * `./pricing.ts` y esta funcion solo le pasa los parametros del catalogo.
+ */
+export function subscriptionAmount(
+  plan: PlanRow,
+  billedCourts: number,
+  cycle: BillingCycle,
+): number {
+  return computeSubscriptionAmount({ billedCourts, cycle, ...pricingParamsOf(plan) })
 }
 
 /**
@@ -96,7 +153,10 @@ async function loadPlan(planId: string, tx: DbTx): Promise<PlanRow | null> {
 export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
   const rows = await tx.execute(sql`
     SELECT id, slug, name, max_courts AS "maxCourts",
-           price_monthly AS "priceMonthly", price_annual AS "priceAnnual"
+           price_monthly AS "priceMonthly", price_annual AS "priceAnnual",
+           price_first_court_cents AS "priceFirstCourtCents",
+           price_extra_court_cents AS "priceExtraCourtCents",
+           annual_discount_bps AS "annualDiscountBps"
     FROM plans
     WHERE is_active = true
     ORDER BY sort_order
@@ -106,7 +166,7 @@ export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
 
 async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
-    SELECT status, plan_id, billing_cycle,
+    SELECT status, plan_id, billing_cycle, billed_courts, pending_billed_courts,
            current_period_start, current_period_end,
            mp_subscription_id, mp_payer_email, pending_plan_change, pending_change_at,
            canceled_at, cancellation_reason, scheduled_deletion_at,
@@ -135,7 +195,7 @@ async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
  */
 async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
-    SELECT status, plan_id, billing_cycle,
+    SELECT status, plan_id, billing_cycle, billed_courts, pending_billed_courts,
            current_period_start, current_period_end,
            mp_subscription_id, mp_payer_email, pending_plan_change, pending_change_at,
            canceled_at, cancellation_reason, scheduled_deletion_at,
@@ -245,21 +305,6 @@ function resolvePayerEmail(
 }
 
 /**
- * Monto que se le cobra a MP por ciclo de facturación, en centavos ARS.
- *
- * `plans.price_annual` guarda el EQUIVALENTE MENSUAL con 20% off (migr. 071),
- * no el total anual — el cobro real de un preapproval `annual` es una sola
- * vez por año por `price_annual * 12`. Devolver `price_annual` a pelo manda
- * a MP 12 veces menos de lo que corresponde.
- */
-export function planAmount(
-  plan: Pick<PlanRow, 'price_monthly' | 'price_annual'>,
-  cycle: BillingCycle,
-): number {
-  return cycle === 'annual' ? plan.price_annual * 12 : plan.price_monthly
-}
-
-/**
  * Canchas ONLINE del tenant — mismo criterio que `getCourtCountAndLimit`
  * (court.service.ts): una cancha apagada no genera reservas ni ingresos, así
  * que no debe contar contra el techo de ningún plan. Compartida por
@@ -341,8 +386,9 @@ async function createPreapprovalOrThrowFriendly(
  *
  * Reusa solo si TODO coincide con el pedido actual: el preapproval sigue
  * `pending` en MP, es del mismo tenant (`external_reference`), el monto y la
- * frecuencia son EXACTAMENTE los de `planAmount(plan, billingCycle)` — un plan
- * o ciclo distinto no matchea y cae al camino de siempre. "Camino de siempre"
+ * frecuencia son EXACTAMENTE los que mandaríamos hoy (`subscriptionAmount`
+ * sobre las canchas y el ciclo pedidos) — otra cantidad de canchas u otro
+ * ciclo no matchea y cae al camino de siempre. "Camino de siempre"
  * ya NO es cancelar + crear sin condiciones: cuando el plan/ciclo no matchea
  * pero el preapproval anterior sigue `pending` y nunca cobró, tampoco se
  * cancela (ver `isPendingNeverCharged`, más abajo) — mismo motivo, evitar un
@@ -394,7 +440,7 @@ async function readSubscriptionState(
  */
 function reusablePendingCheckout(
   state: GatewaySubscriptionState | null,
-  plan: PlanRow,
+  amount: number,
   billingCycle: BillingCycle,
   tenantId: string,
   expected: { reason: string; firstChargeAt: Date | undefined; now: Date },
@@ -403,14 +449,14 @@ function reusablePendingCheckout(
   if (state.status !== 'pending') return null
   if (state.externalReference !== tenantId) return null
 
-  if (state.amountCents !== planAmount(plan, billingCycle)) return null
+  if (state.amountCents !== amount) return null
 
   const expectedFrequency = billingCycle === 'annual' ? 12 : 1
   if (state.frequency !== expectedFrequency || state.frequencyType !== 'months') return null
 
-  // El monto solo no alcanza para identificar el plan: el preapproval no lleva
-  // `plan_id` (MP no lo acepta sin plan asociado) y dos planes podrían costar
-  // igual. El `reason` es el único vínculo, y además es lo que el pagador vio.
+  // El monto solo no alcanza: el preapproval no lleva la cantidad de canchas
+  // en ningún campo estructurado. El `reason` ("TurnoGol — N canchas") es el
+  // único vínculo, y además es exactamente lo que el pagador vio.
   if (state.reason !== expected.reason) return null
 
   // Fix trial-first-charge, parte 2: el `start_date` viejo del checkout
@@ -453,11 +499,44 @@ function isPendingNeverCharged(state: GatewaySubscriptionState | null, tenantId:
   )
 }
 
+/**
+ * `billed_courts` nunca puede quedar por debajo de las canchas PRENDIDAS.
+ *
+ * Con bandas, el gate impedia elegir un plan cuyo techo fuera menor a las
+ * canchas online. Con precio por cancha no hay techo, pero el piso sigue
+ * existiendo por la misma razon de siempre (comentario de
+ * `canchas/actions.ts:toggleStatus`): sin esto, apagar canchas, bajar la
+ * cuota y volver a prenderlas deja al complejo operando de mas y pagando de
+ * menos. El numero llega del cliente, asi que se valida server-side siempre.
+ */
+function assertBilledCourtsCoverOnline(
+  tenantId: string,
+  billedCourts: number,
+  onlineCourts: number,
+): void {
+  if (!Number.isInteger(billedCourts) || billedCourts < 1) {
+    throw new DowngradeBlockedError(tenantId, onlineCourts, billedCourts)
+  }
+  if (billedCourts < onlineCourts) {
+    throw new DowngradeBlockedError(tenantId, onlineCourts, billedCourts)
+  }
+}
+
+/**
+ * Lo que el pagador ve en MercadoPago. Es ademas el unico vinculo entre un
+ * preapproval y la cantidad de canchas que representa (MP no tiene un campo
+ * estructurado para eso), asi que `reusablePendingCheckout` lo compara.
+ */
+function billingReason(billedCourts: number, cycle: BillingCycle): string {
+  const canchas = billedCourts === 1 ? '1 cancha' : `${billedCourts} canchas`
+  return `TurnoGol — ${canchas} (${cycle === 'annual' ? 'anual' : 'mensual'})`
+}
+
 // ─── subscribe ──────────────────────────────────────────────────────────────
 
 export async function subscribe(
   tenantId: string,
-  planId: string,
+  billedCourts: number,
   billingCycle: BillingCycle,
   gateway: PaymentGateway,
   tx: DbTx,
@@ -480,20 +559,16 @@ export async function subscribe(
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
 
-  const plan = await loadPlan(planId, tx)
-  if (!plan) throw new PlanNotFoundError(planId)
+  const plan = await loadActivePlan(tx)
+  const planId = plan.id
 
-  // Guard que faltaba (mismo criterio y mismo error que `downgrade()`, ver
-  // `countOnlineCourts`): sin esto, un complejo con más canchas online que el
-  // techo del plan elegido podía suscribirse igual y quedar por encima del
-  // límite desde el minuto cero — el gate solo existía para BAJAR de plan,
-  // nunca para elegir uno por primera vez.
-  if (plan.max_courts !== null) {
-    const courtCount = await countOnlineCourts(tenantId, tx)
-    if (courtCount > plan.max_courts) {
-      throw new DowngradeBlockedError(tenantId, courtCount, plan.max_courts)
-    }
-  }
+  // El gate cambió de sentido con el precio por cancha (migr. 090/091): ya no
+  // hay techo que respetar, pero sigue sin poder facturarse por MENOS canchas
+  // de las que el complejo tiene prendidas — eso sería operar de más pagando
+  // de menos, que es exactamente para lo que existía el gate viejo.
+  // `billedCourts` llega del cliente, así que se valida server-side siempre.
+  const courtCount = await countOnlineCourts(tenantId, tx)
+  assertBilledCourtsCoverOnline(tenantId, billedCourts, courtCount)
 
   const owner = await loadTenantOwner(tenantId, tx)
   let payerEmail = resolvePayerEmail(sub, owner)
@@ -501,8 +576,8 @@ export async function subscribe(
     throw new SubscriptionNotFoundError(tenantId)
   }
 
-  const amount = planAmount(plan, billingCycle)
-  const reason = `TurnoGol — ${plan.name} (${billingCycle === 'annual' ? 'anual' : 'mensual'})`
+  const amount = subscriptionAmount(plan, billedCourts, billingCycle)
+  const reason = billingReason(billedCourts, billingCycle)
   // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
   // termine la prueba. Se calcula ACÁ para que el reuso compare contra la
   // misma fecha que mandaría un preapproval nuevo.
@@ -521,7 +596,7 @@ export async function subscribe(
   if (sub.mp_subscription_id) {
     checkedPreapprovalId = sub.mp_subscription_id
     checkedState = await readSubscriptionState(checkedPreapprovalId, gateway)
-    const reused = reusablePendingCheckout(checkedState, plan, billingCycle, tenantId, {
+    const reused = reusablePendingCheckout(checkedState, amount, billingCycle, tenantId, {
       reason,
       firstChargeAt,
       now,
@@ -536,6 +611,9 @@ export async function subscribe(
         UPDATE tenant_subscriptions
         SET plan_id = ${planId},
             billing_cycle = ${billingCycle}::billing_cycle,
+            billed_courts = ${billedCourts},
+            pending_billed_courts = NULL,
+            pending_change_at = NULL,
             updated_at = NOW()
         WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
         RETURNING tenant_id
@@ -546,7 +624,7 @@ export async function subscribe(
           action: 'subscription.checkout_reused',
           resourceType: 'tenant_subscription',
           resourceId: tenantId,
-          metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
+          metadata: { planId, billedCourts, billingCycle, mpSubscriptionId: reused.preapprovalId },
         })
         return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
       }
@@ -621,6 +699,9 @@ export async function subscribe(
     UPDATE tenant_subscriptions
     SET plan_id = ${planId},
         billing_cycle = ${billingCycle}::billing_cycle,
+        billed_courts = ${billedCourts},
+        pending_billed_courts = NULL,
+        pending_change_at = NULL,
         mp_subscription_id = ${preapproval.preapprovalId},
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
@@ -633,6 +714,7 @@ export async function subscribe(
     resourceId: tenantId,
     metadata: {
       planId,
+      billedCourts,
       billingCycle,
       mpSubscriptionId: preapproval.preapprovalId,
       ...(leftPendingMpSubscriptionId ? { leftPendingMpSubscriptionId } : {}),
@@ -645,223 +727,129 @@ export async function subscribe(
   }
 }
 
-// ─── upgrade ────────────────────────────────────────────────────────────────
-
-export async function upgrade(
-  tenantId: string,
-  targetPlanId: string,
-  gateway: PaymentGateway,
-  tx: DbTx,
-  now: Date = new Date(),
-): Promise<UpgradeResult> {
-  // B5 (🔴 huérfano MP↔DB, misma causa raíz que en `cancel()`): `loadSubForUpdate`
-  // en vez de `loadSub` — la proración/monto se calculan sobre una lectura
-  // lockeada, serializada contra `subscribe()`/`reactivate()`/`cancel()`
-  // concurrentes sobre la misma fila.
-  const sub = await loadSubForUpdate(tenantId, tx)
-  if (!sub) throw new SubscriptionNotFoundError(tenantId)
-  if (sub.status !== 'active') {
-    throw new ReactivateNotAllowedError(tenantId, sub.status)
-  }
-  // 01-billing-upgrade-dedup: sin este guard, una segunda llamada pisaba
-  // `pending_plan_change` (y creaba una preferencia MP nueva) sin invalidar
-  // la anterior — si el pago viejo se acreditaba después, el CAS de
-  // `handleUpgradeApproved` ya no matcheaba y ese pago quedaba huérfano.
-  if (sub.pending_plan_change) {
-    throw new UpgradeAlreadyPendingError(tenantId, sub.pending_plan_change)
-  }
-
-  const targetPlan = await loadPlan(targetPlanId, tx)
-  if (!targetPlan) throw new PlanNotFoundError(targetPlanId)
-
-  const currentPlan = await loadPlan(sub.plan_id, tx)
-  if (!currentPlan) throw new PlanNotFoundError(sub.plan_id)
-
-  const newAmount = planAmount(targetPlan, sub.billing_cycle)
-  const oldAmount = planAmount(currentPlan, sub.billing_cycle)
-
-  const periodEnd = toDate(sub.current_period_end)
-  const periodStart = toDate(sub.current_period_start)
-  const periodMs = periodEnd.getTime() - periodStart.getTime()
-  const remainingMs = periodEnd.getTime() - now.getTime()
-  const daysInPeriod = Math.max(1, Math.round(periodMs / 86_400_000))
-  const daysRemaining = Math.max(0, Math.round(remainingMs / 86_400_000))
-  const prorationAmount = Math.max(
-    0,
-    Math.round(((newAmount - oldAmount) / daysInPeriod) * daysRemaining),
-  )
-
-  const expiresAt = new Date(now.getTime() + PRORATION_PREFERENCE_TTL_HOURS * 3_600_000)
-  const preference = await gateway.createSaasUpgradePreference({
-    tenantId,
-    targetPlanId,
-    amount: prorationAmount,
-    description: `Upgrade a ${targetPlan.name}`,
-    returnUrl: computeReturnUrl(),
-    notificationUrl: computeNotificationUrl(tenantId),
-    expiresAt,
-  })
-
-  // Mark pending upgrade. `pending_change_at = NULL` differentiates from
-  // downgrade (which sets it to current_period_end).
-  await tx.execute(sql`
-    UPDATE tenant_subscriptions
-    SET pending_plan_change = ${targetPlanId},
-        pending_change_at = NULL,
-        updated_at = NOW()
-    WHERE tenant_id = ${tenantId} AND status = 'active'
-  `)
-
-  await insertSystemAuditLog(tx, {
-    tenantId,
-    action: 'subscription.upgrade_initiated',
-    resourceType: 'tenant_subscription',
-    resourceId: tenantId,
-    metadata: {
-      fromPlanId: sub.plan_id,
-      toPlanId: targetPlanId,
-      prorationAmount,
-      daysRemaining,
-      daysInPeriod,
-      preferenceId: preference.preferenceId,
-    },
-  })
-
-  return {
-    checkoutUrl: preference.initPoint,
-    prorationAmount,
-    preferenceId: preference.preferenceId,
-  }
-}
+// ─── cambiar la cantidad de canchas facturadas ──────────────────────────────
 
 /**
- * Webhook callback when an upgrade-proration MP payment lands as approved.
- * Idempotency: the dispatcher locks via `processed_webhooks(mp_event_id)`.
+ * Sube o baja las canchas por las que se cobra. Reemplaza a `upgrade()` y
+ * `downgrade()`, que existían porque el precio venía en bandas discretas.
+ *
+ * Con precio por cancha (decisión 2026-09-17, P4) **ningún cambio se cobra
+ * prorrateado en el medio del período**: lo que queda del mes en curso va sin
+ * cargo y la cuota nueva arranca en el próximo cobro, en los dos sentidos. Por
+ * eso desapareció toda la maquinaria de proraeo: no hay Preference de cobro
+ * único, no hay webhook de upgrade acreditado, no hay pago que pueda quedar
+ * huérfano si el CAS no matchea.
+ *
+ * Dos caminos según el estado:
+ *
+ * - `trialing`: todavía no se cobró un peso, así que el cambio se aplica YA.
+ *   Si el complejo ya pasó por el checkout (tiene `mp_subscription_id`), hay
+ *   que ajustar el monto del preapproval — sin tocar su `start_date`, que es
+ *   lo que mantiene la prueba intacta (ver `updatePreapprovalAmount`).
+ * - `active`: se agenda para `current_period_end` y lo aplica el sweep diario
+ *   (`dunning-retry.worker.ts`), que es el único lugar donde el monto de MP se
+ *   mueve para una suscripción que ya cobra.
+ *
+ * Un cambio pendiente se pisa sin drama: no tiene plata asociada, así que la
+ * última decisión del dueño es la que vale.
  */
-export async function handleUpgradeApproved(
+export async function changeBilledCourts(
   tenantId: string,
-  targetPlanId: string,
+  targetBilledCourts: number,
   gateway: PaymentGateway,
   tx: DbTx,
-  mpPaymentId?: string,
-): Promise<void> {
-  track.payment('payment.saas.upgrade.approved', { tenantId })
-
-  const sub = await loadSub(tenantId, tx)
-  if (!sub) return // tenant gone — nothing to do
-  if (sub.status !== 'active') return
-  if (sub.pending_plan_change !== targetPlanId) return // race / stale event
-
-  const targetPlan = await loadPlan(targetPlanId, tx)
-  if (!targetPlan) return
-
-  const newAmount = planAmount(targetPlan, sub.billing_cycle)
-
-  // B4: el UPDATE local es el gate atómico — corre ANTES de tocar MP.
-  // El WHERE repite `status = 'active' AND pending_plan_change = targetPlanId`
-  // (los mismos guards de arriba, pero como condición de escritura): si entre
-  // el loadSub y este UPDATE una tx concurrente (ej. el sweep de dunning)
-  // sacó a la suscripción de ese estado, o un webhook duplicado ya consumió
-  // el pending_plan_change, el UPDATE afecta 0 filas y MP nunca se toca —
-  // evita la divergencia MP↔DB (mismo patrón que support.service.changePlanForSupport).
-  const updated = await tx.execute(sql`
-    UPDATE tenant_subscriptions
-    SET plan_id = ${targetPlanId},
-        pending_plan_change = NULL,
-        pending_change_at = NULL,
-        updated_at = NOW()
-    WHERE tenant_id = ${tenantId} AND status = 'active' AND pending_plan_change = ${targetPlanId}
-    RETURNING id
-  `)
-  if ((updated as unknown as Array<{ id: string }>).length === 0) {
-    // 01-billing-upgrade-dedup: este pago se acreditó pero el gate atómico no
-    // matcheó — o el `pending_plan_change` ya fue sobreescrito por una
-    // llamada posterior a `upgrade()`, o la sub salió de `status='active'`
-    // entre el `loadSub` y este UPDATE. MP ya cobró esa plata; sin esto se
-    // perdía en silencio. Mismo patrón que
-    // dunning.service.ts:onPaymentApproved (preapprovalIdMatches).
-    captureMessage(
-      'handleUpgradeApproved: CAS UPDATE affected 0 rows — an approved upgrade payment did not match the tenant current pending_plan_change/status; left for manual reconciliation',
-      {
-        level: 'warning',
-        extra: {
-          tenantId,
-          targetPlanId,
-          pendingPlanChange: sub.pending_plan_change,
-          mpPaymentId: mpPaymentId ?? null,
-        },
-      },
-    )
-    return
-  }
-
-  await insertSystemAuditLog(tx, {
-    tenantId,
-    action: 'subscription.upgrade_completed',
-    resourceType: 'tenant_subscription',
-    resourceId: tenantId,
-    metadata: { fromPlanId: sub.plan_id, toPlanId: targetPlanId },
-  })
-
-  // MP último: cualquier fallo previo rollbackea limpio (nada se tocó fuera
-  // de esta tx); si esta llamada falla, la tx entera (UPDATE + audit)
-  // rollbackea y el webhook reintenta (lock en `processed_webhooks`,
-  // mp-webhook.handler.ts).
-  if (sub.mp_subscription_id) {
-    await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
-  }
-}
-
-// ─── downgrade (deferred to period end) ─────────────────────────────────────
-
-export async function downgrade(
-  tenantId: string,
-  targetPlanId: string,
-  tx: DbTx,
-): Promise<DowngradeResult> {
-  // B5 (🔴 huérfano MP↔DB, misma causa raíz que en `cancel()`): `loadSubForUpdate`
-  // en vez de `loadSub` — cierra el race sobre `pending_plan_change` y el
-  // `fromPlanId` del audit contra `subscribe()`/`reactivate()`/`cancel()`
-  // concurrentes. Sin llamada a MP acá, pero la fila igual se serializa.
+): Promise<ChangeBilledCourtsResult> {
+  // B5 (huérfano MP↔DB): lectura lockeada, igual que `cancel()`/`subscribe()`.
   const sub = await loadSubForUpdate(tenantId, tx)
   if (!sub) throw new SubscriptionNotFoundError(tenantId)
-  if (sub.status !== 'active') {
+  if (sub.status !== 'active' && sub.status !== 'trialing') {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
 
-  const targetPlan = await loadPlan(targetPlanId, tx)
-  if (!targetPlan) throw new PlanNotFoundError(targetPlanId)
+  const onlineCourts = await countOnlineCourts(tenantId, tx)
+  assertBilledCourtsCoverOnline(tenantId, targetBilledCourts, onlineCourts)
 
-  if (targetPlan.max_courts !== null) {
-    const courtCount = await countOnlineCourts(tenantId, tx)
-    if (courtCount > targetPlan.max_courts) {
-      throw new DowngradeBlockedError(tenantId, courtCount, targetPlan.max_courts)
+  const plan = await loadActivePlan(tx)
+  const appliesAt = toDate(sub.current_period_end)
+
+  // ── Trial: se aplica ya, no hay cobro de por medio ───────────────────────
+  if (sub.status === 'trialing') {
+    const updated = await tx.execute(sql`
+      UPDATE tenant_subscriptions
+      SET billed_courts = ${targetBilledCourts},
+          pending_billed_courts = NULL,
+          pending_change_at = NULL,
+          updated_at = NOW()
+      WHERE tenant_id = ${tenantId} AND status = 'trialing'
+      RETURNING mp_subscription_id
+    `)
+    const row = (updated as unknown as Array<{ mp_subscription_id: string | null }>)[0]
+    if (!row) throw new SubscriptionNotFoundError(tenantId)
+
+    await insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'subscription.billed_courts_changed',
+      resourceType: 'tenant_subscription',
+      resourceId: tenantId,
+      metadata: {
+        from: sub.billed_courts,
+        to: targetBilledCourts,
+        appliedImmediately: true,
+        reason: 'trialing',
+      },
+    })
+
+    // MP último: si falla, la tx entera rollbackea y la DB no queda diciendo
+    // una cosa mientras el preapproval dice otra. `updatePreapprovalAmount`
+    // preserva `start_date`, así que el primer cobro sigue cayendo al final de
+    // la prueba.
+    if (row.mp_subscription_id) {
+      await gateway.updatePreapprovalAmount(
+        row.mp_subscription_id,
+        subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle),
+        { reason: billingReason(targetBilledCourts, sub.billing_cycle) },
+      )
+    }
+
+    return {
+      applied: true,
+      appliesAt: null,
+      billedCourts: targetBilledCourts,
+      previousBilledCourts: sub.billed_courts,
     }
   }
 
+  // ── Activa: se agenda para el cierre del período ──────────────────────────
+  // Volver a la cantidad actual = cancelar el cambio pendiente.
+  const pending = targetBilledCourts === sub.billed_courts ? null : targetBilledCourts
+
   await tx.execute(sql`
     UPDATE tenant_subscriptions
-    SET pending_plan_change = ${targetPlanId},
-        pending_change_at = current_period_end,
+    SET pending_billed_courts = ${pending},
+        pending_change_at = CASE WHEN ${pending}::int IS NULL THEN NULL ELSE current_period_end END,
+        pending_plan_change = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId} AND status = 'active'
   `)
 
   await insertSystemAuditLog(tx, {
     tenantId,
-    action: 'subscription.downgrade_scheduled',
+    action: 'subscription.billed_courts_scheduled',
     resourceType: 'tenant_subscription',
     resourceId: tenantId,
     metadata: {
-      fromPlanId: sub.plan_id,
-      toPlanId: targetPlanId,
-      appliesAt: toDate(sub.current_period_end).toISOString(),
+      from: sub.billed_courts,
+      to: targetBilledCourts,
+      appliesAt: appliesAt.toISOString(),
+      canceled: pending === null,
     },
   })
 
   return {
-    appliesAt: toDate(sub.current_period_end),
-    targetPlanId,
+    applied: false,
+    appliesAt,
+    billedCourts: targetBilledCourts,
+    previousBilledCourts: sub.billed_courts,
   }
 }
 
@@ -965,7 +953,7 @@ export async function cancel(
 
 export async function reactivate(
   tenantId: string,
-  planId: string,
+  billedCourts: number,
   billingCycle: BillingCycle,
   gateway: PaymentGateway,
   tx: DbTx,
@@ -993,18 +981,20 @@ export async function reactivate(
     throw new ReactivateNotAllowedError(tenantId, `${sub.status}_past_deletion`)
   }
 
-  const plan = await loadPlan(planId, tx)
-  if (!plan) throw new PlanNotFoundError(planId)
+  const plan = await loadActivePlan(tx)
+  const planId = plan.id
+  const onlineCourts = await countOnlineCourts(tenantId, tx)
+  assertBilledCourtsCoverOnline(tenantId, billedCourts, onlineCourts)
 
   const owner = await loadTenantOwner(tenantId, tx)
   let payerEmail = resolvePayerEmail(sub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
-  const amount = planAmount(plan, billingCycle)
+  const amount = subscriptionAmount(plan, billedCourts, billingCycle)
   // Reactivar es post-trial (canceled/churned/suspended/blocked): el cobro sale
   // ya, sin `firstChargeAt`. El reuso exige que el pendiente tampoco tenga
   // fecha futura grabada.
-  const reason = `TurnoGol — ${plan.name} (reactivación)`
+  const reason = `${billingReason(billedCourts, billingCycle)} — reactivación`
 
   // Fix "no cancelar un checkout que nunca se pagó" — mismo criterio que
   // `subscribe()` (ver ese comentario): un solo GET, guardado para el chequeo
@@ -1014,7 +1004,7 @@ export async function reactivate(
   if (sub.mp_subscription_id) {
     checkedPreapprovalId = sub.mp_subscription_id
     checkedState = await readSubscriptionState(checkedPreapprovalId, gateway)
-    const reused = reusablePendingCheckout(checkedState, plan, billingCycle, tenantId, {
+    const reused = reusablePendingCheckout(checkedState, amount, billingCycle, tenantId, {
       reason,
       firstChargeAt: undefined,
       now,
@@ -1026,7 +1016,9 @@ export async function reactivate(
         UPDATE tenant_subscriptions
         SET plan_id = ${planId},
             billing_cycle = ${billingCycle}::billing_cycle,
+            billed_courts = ${billedCourts},
             pending_plan_change = NULL,
+            pending_billed_courts = NULL,
             pending_change_at = NULL,
             updated_at = NOW()
         WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
@@ -1038,7 +1030,7 @@ export async function reactivate(
           action: 'subscription.checkout_reused',
           resourceType: 'tenant_subscription',
           resourceId: tenantId,
-          metadata: { planId, billingCycle, mpSubscriptionId: reused.preapprovalId },
+          metadata: { planId, billedCourts, billingCycle, mpSubscriptionId: reused.preapprovalId },
         })
         return { checkoutUrl: reused.initPoint, preapprovalId: reused.preapprovalId }
       }
@@ -1123,18 +1115,19 @@ export async function reactivate(
     notificationUrl: computeNotificationUrl(tenantId),
   })
 
-  // Residual B5 (upgrade/downgrade pendiente stale): reactivar establece un
-  // plan fresco (`planId` arriba, elegido por el dueño ahora); cualquier
-  // `pending_plan_change` que haya sobrevivido desde antes del cancel (fix
-  // gemelo en `transitionToCanceled`, o legado pre-fix) es stale y no debe
-  // reaplicarse tarde vía un CAS de `handleUpgradeApproved` o el sweep de
-  // dunning.
+  // Residual B5 (cambio de canchas pendiente stale): reactivar fija una
+  // cantidad de canchas fresca (la que el dueño acaba de elegir); cualquier
+  // `pending_billed_courts`/`pending_plan_change` que haya sobrevivido desde
+  // antes del cancel (fix gemelo en `transitionToCanceled`, o legado pre-fix)
+  // es stale y no debe reaplicarse tarde vía el sweep de dunning.
   await tx.execute(sql`
     UPDATE tenant_subscriptions
     SET plan_id = ${planId},
         billing_cycle = ${billingCycle}::billing_cycle,
+        billed_courts = ${billedCourts},
         mp_subscription_id = ${preapproval.preapprovalId},
         pending_plan_change = NULL,
+        pending_billed_courts = NULL,
         pending_change_at = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
@@ -1147,6 +1140,7 @@ export async function reactivate(
     resourceId: tenantId,
     metadata: {
       planId,
+      billedCourts,
       billingCycle,
       fromStatus: lockedSub.status,
       mpSubscriptionId: preapproval.preapprovalId,
@@ -1170,6 +1164,8 @@ export async function getSubscriptionState(tenantId: string, tx: DbTx): Promise<
            p.slug AS "planSlug",
            p.name AS "planName",
            ts.billing_cycle AS "billingCycle",
+           ts.billed_courts AS "billedCourts",
+           ts.pending_billed_courts AS "pendingBilledCourts",
            ts.current_period_start AS "currentPeriodStart",
            ts.current_period_end AS "currentPeriodEnd",
            ts.mp_subscription_id AS "mpSubscriptionId",

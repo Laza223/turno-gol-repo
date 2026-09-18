@@ -16,36 +16,44 @@ import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { DbTx } from '@/shared/db/client'
 
 const TENANT_ID = 't-1'
-const PLAN_ID = 'plan-1'
+/** Canchas facturadas del pedido. Con 0 prendidas cualquier número ≥ 1 pasa el piso. */
+const BILLED_COURTS = 1
 const OWNER_EMAIL = 'complejo@turnogol.app'
 const MP_EMAIL = 'lajugadora@gmail.com'
 
+/**
+ * Fila única de `plans` desde la migr. 091. El monto ya no sale de
+ * `price_monthly` sino de las tres columnas de precio por cancha; este archivo
+ * no asserta montos, pero sin ellas `pricingParamsOf` tira `PlanNotFoundError`
+ * antes de llegar a MP y todos los casos morirían por el motivo equivocado.
+ */
 const PLAN_ROW = {
-  id: PLAN_ID,
-  slug: 'predio',
-  name: 'Predio',
-  max_courts: 2,
-  price_monthly: 5_500_000,
-  price_annual: 4_400_000,
+  id: 'plan-turnogol',
+  slug: 'turnogol',
+  name: 'TurnoGol',
+  max_courts: null,
+  price_monthly: 4_700_000,
+  price_annual: 4_230_000,
+  price_first_court_cents: 4_700_000,
+  price_extra_court_cents: 3_000_000,
+  annual_discount_bps: 1_000,
 }
 
 const OWNER_ROW = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: OWNER_EMAIL }
 
 /**
- * `subscribe()` (a diferencia de `reactivate()`) ahora tiene el guard de
- * cupo de plan (`countOnlineCourts`, billing.service.ts) entre `loadPlan` y
- * `loadTenantOwner` — `forSubscribe` inserta esa respuesta intermedia (0
- * canchas, siempre por debajo de `PLAN_ROW.max_courts`) solo cuando la tx se
- * usa para probar `subscribe()`.
+ * `subscribe()` y `reactivate()` hacen hoy la MISMA secuencia de lecturas
+ * (loadSub → loadActivePlan → countOnlineCourts → loadTenantOwner →
+ * loadSubForUpdate): el piso de canchas facturadas lo miden las dos, a
+ * diferencia del techo de plan viejo, que solo se chequeaba al bajar.
  */
-function makeTx(
-  overrides: { status: string; mp_payer_email: string | null },
-  forSubscribe = true,
-): DbTx {
+function makeTx(overrides: { status: string; mp_payer_email: string | null }): DbTx {
   const subRow = {
     status: overrides.status,
     plan_id: 'plan-old',
     billing_cycle: 'monthly',
+    billed_courts: 1,
+    pending_billed_courts: null,
     current_period_start: '2027-01-01T00:00:00Z',
     current_period_end: '2027-02-01T00:00:00Z',
     mp_subscription_id: null,
@@ -60,8 +68,8 @@ function makeTx(
     last_payment_at: null,
   }
   const execute = vi.fn().mockResolvedValueOnce([subRow]) // loadSub (sin lock)
-  execute.mockResolvedValueOnce([PLAN_ROW]) // loadPlan
-  if (forSubscribe) execute.mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
+  execute.mockResolvedValueOnce([PLAN_ROW]) // loadActivePlan
+  execute.mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
   execute.mockResolvedValueOnce([OWNER_ROW]) // loadTenantOwner
   // Fix D4-A1: mp_subscription_id siempre NULL acá → nunca reusa, cae directo
   // al lock real (mismo estado: nada cambió entre las dos lecturas).
@@ -89,7 +97,7 @@ describe('payer_email de MercadoPago (migr. 078)', () => {
 
     await subscribe(
       TENANT_ID,
-      PLAN_ID,
+      BILLED_COURTS,
       'monthly',
       gateway,
       makeTx({ status: 'trialing', mp_payer_email: MP_EMAIL }),
@@ -105,7 +113,7 @@ describe('payer_email de MercadoPago (migr. 078)', () => {
 
     await subscribe(
       TENANT_ID,
-      PLAN_ID,
+      BILLED_COURTS,
       'monthly',
       gateway,
       makeTx({ status: 'trialing', mp_payer_email: null }),
@@ -121,10 +129,10 @@ describe('payer_email de MercadoPago (migr. 078)', () => {
 
     await reactivate(
       TENANT_ID,
-      PLAN_ID,
+      BILLED_COURTS,
       'monthly',
       gateway,
-      makeTx({ status: 'suspended', mp_payer_email: MP_EMAIL }, false),
+      makeTx({ status: 'suspended', mp_payer_email: MP_EMAIL }),
     )
 
     expect(gateway.createPreapproval).toHaveBeenCalledWith(

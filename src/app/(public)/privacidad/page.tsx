@@ -13,7 +13,9 @@ export default function PrivacidadPage() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Política de Privacidad
         </h1>
-        <p className="text-sm text-muted-foreground">Última actualización: 25 de mayo de 2026.</p>
+        <p className="text-sm text-muted-foreground">
+          Última actualización: 17 de septiembre de 2026.
+        </p>
       </header>
 
       <section className="space-y-4 text-foreground">
@@ -82,8 +84,8 @@ export default function PrivacidadPage() {
             tengas reservas activas.
           </li>
           <li>
-            Facturar la suscripción mensual a los complejos clientes (planes Predio, Complejo y
-            Estadio).
+            Facturar la suscripción de los complejos clientes, cuyo importe se calcula según la
+            cantidad de canchas facturadas y se cobra por ciclo mensual o anual.
           </li>
           <li>
             Cumplir con obligaciones legales y contables (retención de comprobantes, respuesta a

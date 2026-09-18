@@ -36,7 +36,13 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('@/modules/courts/court.service', () => ({
   createCourt: vi.fn(async () => ({ id: 'court-1' })),
-  getCourtCountAndLimit: vi.fn(async () => ({ count: 1, maxCourts: null, planSlug: null })),
+  // Migr. 090/091: ya no hay techo de plan. La funcion devuelve contra que
+  // se compara ahora: canchas prendidas vs canchas facturadas.
+  getCourtCountAndBilled: vi.fn(async () => ({
+    onlineCourts: 1,
+    billedCourts: null,
+    isTrialing: true,
+  })),
   listCourts: vi.fn(async () => []),
   validatePricingRulesCoverage: vi.fn(() => ({ valid: true, gaps: [] })),
 }))

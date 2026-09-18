@@ -89,7 +89,11 @@ function mockWorkerSql(
   return stub
 }
 
-/** Predio mensual: $50.400. El JOIN con `plans` trae los dos precios. */
+/**
+ * Una cancha, mensual: $47.000. El JOIN con `plans` trae los parámetros de la
+ * regla lineal (migr. 090), no un precio fijo — el monto esperado se calcula
+ * sobre `billedCourts`.
+ */
 function candidate(over: Record<string, unknown> = {}) {
   return {
     tenantId: TENANT,
@@ -97,8 +101,10 @@ function candidate(over: Record<string, unknown> = {}) {
     billingCycle: 'monthly',
     mpSubscriptionId: PREAPPROVAL,
     lastPaymentAt: null,
-    priceMonthly: 6_300_000,
-    priceAnnual: 5_040_000,
+    billedCourts: 1,
+    priceFirstCourtCents: 4_700_000,
+    priceExtraCourtCents: 3_000_000,
+    annualDiscountBps: 1_000,
     ...over,
   }
 }
@@ -223,11 +229,13 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
 
   const anual = candidate({ status: 'active', billingCycle: 'annual' })
 
-  it('alerta cuando MP va a cobrar 1/12 de lo que vale el plan anual', async () => {
+  it('alerta cuando MP va a cobrar 1/12 de lo que vale el año', async () => {
     mockWorkerSql([], [], [], [anual])
-    // El bug: `price_annual` a pelo en vez de `price_annual * 12`.
+    // El bug que este chequeo caza: mandarle a MP el equivalente MENSUAL con
+    // descuento ($42.300) cuando el preapproval anual cobra una vez al año y
+    // corresponde ese número × 12.
     mockGetBillingGateway.mockReturnValue({
-      getSubscriptionState: vi.fn(async () => remoteAuthorized(5_040_000)),
+      getSubscriptionState: vi.fn(async () => remoteAuthorized(4_230_000)),
     })
 
     await reconcileSubscriptions()
@@ -239,8 +247,8 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
         tenantId: TENANT,
         metadata: expect.objectContaining({
           billingCycle: 'annual',
-          expectedCents: 60_480_000,
-          actualCents: 5_040_000,
+          expectedCents: 4_230_000 * 12,
+          actualCents: 4_230_000,
         }),
       }),
     )
@@ -267,7 +275,7 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
   it('el monto correcto no alerta', async () => {
     mockWorkerSql([], [], [], [anual])
     mockGetBillingGateway.mockReturnValue({
-      getSubscriptionState: vi.fn(async () => remoteAuthorized(60_480_000)),
+      getSubscriptionState: vi.fn(async () => remoteAuthorized(4_230_000 * 12)),
     })
 
     await reconcileSubscriptions()

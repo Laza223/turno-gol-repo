@@ -26,7 +26,7 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
     await closeSql()
   })
 
-  it('crea una fila trialing con el plan predio y period_end = trial_ends_at', async () => {
+  it('crea una fila trialing sobre la fila única de precio, con 1 cancha facturada y period_end = trial_ends_at', async () => {
     const sql = getSql()
     const staff = await createTestStaffUser(sql)
 
@@ -45,11 +45,12 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
         status: string
         billing_cycle: string
         plan_slug: string
+        billed_courts: number
         current_period_start: Date | string
         current_period_end: Date | string
       }[]
     >`
-      SELECT ts.status, ts.billing_cycle, p.slug AS plan_slug,
+      SELECT ts.status, ts.billing_cycle, p.slug AS plan_slug, ts.billed_courts,
              ts.current_period_start, ts.current_period_end
       FROM tenant_subscriptions ts
       JOIN plans p ON p.id = ts.plan_id
@@ -58,7 +59,10 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
     expect(subRows).toHaveLength(1)
     expect(subRows[0]!.status).toBe('trialing')
     expect(subRows[0]!.billing_cycle).toBe('monthly')
-    expect(subRows[0]!.plan_slug).toBe('predio')
+    // Precio por cancha (migr. 090/091): ya no hay bandas, todo tenant nace
+    // sobre la fila única y se factura desde una cancha.
+    expect(subRows[0]!.plan_slug).toBe('turnogol')
+    expect(subRows[0]!.billed_courts).toBe(1)
 
     const tenantRows = await sql<{ trial_ends_at: Date | string }[]>`
       SELECT trial_ends_at FROM tenants WHERE id = ${tenant.id}

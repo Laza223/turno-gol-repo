@@ -17,7 +17,7 @@ import {
   detectPreapprovalAmountDrift,
   type LocalSubSnapshot,
 } from '@/modules/billing/subscription-reconcile.service'
-import { planAmount } from '@/modules/billing/billing.service'
+import { computeSubscriptionAmount } from '@/modules/billing/pricing'
 import type { BillingCycle, SubscriptionStatus } from '@/modules/billing/billing.types'
 import {
   CRON_WORK_OPTIONS,
@@ -71,8 +71,11 @@ type SubSnapshotRow = {
  * servicio.
  */
 type Candidate = SubSnapshotRow & {
-  priceMonthly: number
-  priceAnnual: number
+  /** Canchas facturadas (migr. 090) — la base del monto esperado. */
+  billedCourts: number
+  priceFirstCourtCents: number | null
+  priceExtraCourtCents: number | null
+  annualDiscountBps: number | null
 }
 
 /** Núcleo: los dos estados donde vive un complejo que pagó y no se aplicó. */
@@ -107,8 +110,10 @@ async function loadCandidates(
            ts.billing_cycle      AS "billingCycle",
            ts.mp_subscription_id AS "mpSubscriptionId",
            ts.last_payment_at    AS "lastPaymentAt",
-           p.price_monthly       AS "priceMonthly",
-           p.price_annual        AS "priceAnnual"
+           ts.billed_courts      AS "billedCourts",
+           p.price_first_court_cents AS "priceFirstCourtCents",
+           p.price_extra_court_cents AS "priceExtraCourtCents",
+           p.annual_discount_bps     AS "annualDiscountBps"
     FROM tenant_subscriptions ts
     JOIN plans p ON p.id = ts.plan_id
     WHERE ts.mp_subscription_id IS NOT NULL
@@ -257,10 +262,24 @@ async function checkAmountDrift(
 ): Promise<boolean> {
   if (remote === null) return false
 
-  const expected = planAmount(
-    { price_monthly: cand.priceMonthly, price_annual: cand.priceAnnual },
-    cand.billingCycle,
-  )
+  // Si el catálogo vino sin los parámetros del precio lineal, no se inventa un
+  // monto esperado: alertar un desfasaje falso es peor que no alertar. Es
+  // imposible con la fila activa de la migr. 091, pero este barrido corre
+  // cross-tenant sobre lo que haya en la base.
+  if (
+    cand.priceFirstCourtCents === null ||
+    cand.priceExtraCourtCents === null ||
+    cand.annualDiscountBps === null
+  ) {
+    return false
+  }
+  const expected = computeSubscriptionAmount({
+    billedCourts: cand.billedCourts,
+    cycle: cand.billingCycle,
+    priceFirstCourtCents: cand.priceFirstCourtCents,
+    priceExtraCourtCents: cand.priceExtraCourtCents,
+    annualDiscountBps: cand.annualDiscountBps,
+  })
   const drift = detectPreapprovalAmountDrift(expected, remote)
   if (drift === null) return false
 

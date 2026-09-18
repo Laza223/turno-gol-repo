@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { courts, tenantSubscriptions, plans, tenants } from '@/shared/db/schema'
+import { courts, tenantSubscriptions } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { priceForSlot } from '@/lib/booking/pricing'
@@ -124,59 +124,57 @@ export async function toggleStatus(
 }
 
 /**
- * Cuenta las canchas ONLINE del complejo y devuelve el techo que le impone su
- * plan. `maxCourts: null` = sin techo.
+ * Canchas ONLINE del complejo y canchas por las que hoy se factura.
  *
- * Solo cuenta canchas `status = 'online'`: una apagada no genera reservas ni
- * ingresos, así que no consume cupo del plan (decisión del dueño). Antes de
- * este fix esta función contaba TODAS las canchas (incluidas las apagadas) —
- * distinto del criterio que ya usaba `downgrade()` en billing.service.ts
- * (solo online), así que un complejo con una cancha de prueba apagada, o rota
- * y en obra, gastaba cupo para siempre y no podía cargar una cancha nueva
- * aunque su plan sí tuviera lugar. Ahora los dos gates usan el MISMO criterio.
+ * Reemplaza a `getCourtCountAndLimit`, que devolvía el techo de
+ * `plans.max_courts`. Desde la decisión del 2026-09-17 (precio lineal por
+ * cancha) **no hay techo**: agregar una cancha no se bloquea, cuesta $30.000
+ * más por mes. Lo que se compara ahora es contra
+ * `tenant_subscriptions.billed_courts`, o sea lo que está cargado en el
+ * preapproval de MercadoPago.
  *
- * **Durante el trial NO hay techo.** `createTenantWithTrial` arranca a todos en
- * el plan `predio` (max_courts=3 desde la migr. 071; era 2), así que sin esta
- * excepción un complejo más grande que ese techo se choca contra el gate en el
- * paso 3 del wizard, y en ese momento el
- * upgrade self-service todavía devolvía 501: quedaba trabado SIN SALIDA in-app,
- * con un SuperAdmin cambiándole el plan a mano como única puerta. Con registro
- * público eso no escala y el complejo se va sin que nos enteremos. (El upgrade
- * ya se abrió — migr. 067 — pero esta excepción sigue siendo la correcta: en el
- * trial no se le cobra nada todavía.)
+ * Solo cuenta `status = 'online'`: una cancha apagada no genera reservas ni
+ * ingresos. Es a propósito el MISMO criterio que `countOnlineCourts`
+ * (billing.service.ts) — el aviso de /canchas y el piso de facturación tienen
+ * que medir lo mismo, o el complejo queda atrapado entre dos números que no
+ * coinciden.
  *
- * El techo vuelve a aplicar apenas el complejo pasa a un estado pago: la
- * decisión de a qué plan entra la toma al suscribirse, ya sabiendo cuántas
- * canchas cargó.
+ * `billedCourts` es por cuántas canchas se va a cobrar en el PRÓXIMO cobro:
+ * `pending_billed_courts` si hay un cambio agendado, si no `billed_courts`.
+ * Comparar solo contra `billed_courts` dejaba un agujero de plata: con una baja
+ * agendada (5 → 3), volver a prender las canchas 4 y 5 no avisaba nada (5 ≤ 5),
+ * la baja seguía en pie y el sweep terminaba cobrando 3 con 5 prendidas.
+ *
+ * `billedCourts: null` = no hay suscripción en un estado donde mover el cobro
+ * signifique algo (`active` / `trialing`). En ese caso no hay nada que
+ * confirmar ni que agendar: crear o prender canchas pasa sin ruido.
  */
-export async function getCourtCountAndLimit(
+export async function getCourtCountAndBilled(
   tenantId: string,
   tx: DbTx,
-): Promise<{ count: number; maxCourts: number | null; planSlug: string | null }> {
+): Promise<{ onlineCourts: number; billedCourts: number | null; isTrialing: boolean }> {
   const [countRow] = await tx
     .select({ count: sql<number>`COUNT(*)::int` })
     .from(courts)
     .where(and(eq(courts.tenantId, tenantId), eq(courts.status, 'online')))
 
   const subRows = await tx
-    .select({ maxCourts: plans.maxCourts, planSlug: plans.slug })
+    .select({
+      billedCourts: tenantSubscriptions.billedCourts,
+      pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
+      status: tenantSubscriptions.status,
+    })
     .from(tenantSubscriptions)
-    .innerJoin(plans, eq(tenantSubscriptions.planId, plans.id))
     .where(eq(tenantSubscriptions.tenantId, tenantId))
     .limit(1)
 
-  const [tenantRow] = await tx
-    .select({ status: tenants.status })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1)
-
-  const enTrial = tenantRow?.status === 'trialing'
+  const sub = subRows[0]
+  const adjustable = sub != null && (sub.status === 'active' || sub.status === 'trialing')
 
   return {
-    count: Number(countRow?.count ?? 0),
-    maxCourts: enTrial ? null : (subRows[0]?.maxCourts ?? null),
-    planSlug: subRows[0]?.planSlug ?? null,
+    onlineCourts: Number(countRow?.count ?? 0),
+    billedCourts: adjustable ? (sub.pendingBilledCourts ?? sub.billedCourts) : null,
+    isTrialing: sub?.status === 'trialing',
   }
 }
 

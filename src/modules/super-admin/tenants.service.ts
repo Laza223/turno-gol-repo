@@ -9,6 +9,7 @@ import {
   tenantSubscriptions,
 } from '@/shared/db/schema'
 import { listStaffRoster } from '@/modules/staff/staff.service'
+import { annualMonthlyEquivalent, monthlyListAmount } from '@/modules/billing/pricing'
 import { TENANT_STATUSES, isTenantStatus } from '@/modules/billing/billing.types'
 import type {
   BillingCycle,
@@ -41,7 +42,6 @@ export { TENANT_STATUSES, isTenantStatus }
 export type TenantListFilters = {
   q?: string
   status?: TenantStatus
-  planSlug?: string
   page: number
   pageSize: number
 }
@@ -54,8 +54,13 @@ type TenantListRow = {
   status: TenantStatus
   trialEndsAt: Date | null
   createdAt: Date
-  planName: string | null
-  planSlug: string | null
+  /**
+   * Canchas por las que se le factura (migr. 090). `null` = el complejo no
+   * tiene fila en `tenant_subscriptions` todavía. Reemplaza a la columna
+   * "Plan": con una sola fila activa en `plans`, el nombre del plan es el
+   * mismo para todos y no distingue nada.
+   */
+  billedCourts: number | null
   billingCycle: BillingCycle | null
   subscriptionStatus: SubscriptionStatus | null
   /** Centavos ARS/mes. 0 si la suscripción no está activa (no genera MRR). */
@@ -70,17 +75,47 @@ export type TenantList = {
 }
 
 /**
- * MRR mensual equivalente en centavos. `plans.price_annual` YA es el
- * equivalente mensual con 20% off (migr. 071) — no el total anual — así que
- * no se vuelve a dividir por 12.
+ * MRR mensual equivalente de UNA suscripción, en centavos ARS.
+ *
+ * Este es el cálculo que MIENTE si alguien se olvida de tocarlo. Antes sumaba
+ * `plans.price_monthly`; desde la migr. 091 `plans` tiene una sola fila activa,
+ * así que esa versión no rompe: devuelve "precio de una cancha × cantidad de
+ * complejos" y el panel muestra un número plausible y falso. El monto real es
+ * función de `billed_courts` (decisión 2026-09-17).
+ *
+ * Usa las mismas funciones puras que el cobro (`@/modules/billing/pricing`)
+ * para que el panel y lo que se le manda a MercadoPago no puedan divergir.
+ * El ciclo anual aporta su equivalente MENSUAL, no el cobro del año: el MRR es
+ * una tasa mensual.
  */
 function monthlyEquivalentCents(
   cycle: BillingCycle | null,
-  priceMonthly: number | null,
-  priceAnnual: number | null,
+  billedCourts: number | null,
+  plan: {
+    priceFirstCourtCents: number | null
+    priceExtraCourtCents: number | null
+    annualDiscountBps: number | null
+  },
 ): number {
-  if (cycle === 'annual') return priceAnnual ?? 0
-  return priceMonthly ?? 0
+  // Sin fila de suscripción, o con un plan legacy sin parámetros de precio
+  // lineal, no hay monto que declarar. Inventarlo sería peor que mostrar 0.
+  if (
+    billedCourts === null ||
+    billedCourts < 1 ||
+    plan.priceFirstCourtCents === null ||
+    plan.priceExtraCourtCents === null ||
+    plan.annualDiscountBps === null
+  ) {
+    return 0
+  }
+  const params = {
+    priceFirstCourtCents: plan.priceFirstCourtCents,
+    priceExtraCourtCents: plan.priceExtraCourtCents,
+    annualDiscountBps: plan.annualDiscountBps,
+  }
+  return cycle === 'annual'
+    ? annualMonthlyEquivalent(billedCourts, params)
+    : monthlyListAmount(billedCourts, params)
 }
 
 export async function listTenants(filters: TenantListFilters): Promise<TenantList> {
@@ -97,7 +132,6 @@ export async function listTenants(filters: TenantListFilters): Promise<TenantLis
     if (cond) conditions.push(cond)
   }
   if (filters.status) conditions.push(eq(tenants.status, filters.status))
-  if (filters.planSlug) conditions.push(eq(plans.slug, filters.planSlug))
   const where = conditions.length ? and(...conditions) : undefined
 
   const offset = (filters.page - 1) * filters.pageSize
@@ -111,10 +145,10 @@ export async function listTenants(filters: TenantListFilters): Promise<TenantLis
       status: tenants.status,
       trialEndsAt: tenants.trialEndsAt,
       createdAt: tenants.createdAt,
-      planName: plans.name,
-      planSlug: plans.slug,
-      priceMonthly: plans.priceMonthly,
-      priceAnnual: plans.priceAnnual,
+      billedCourts: tenantSubscriptions.billedCourts,
+      priceFirstCourtCents: plans.priceFirstCourtCents,
+      priceExtraCourtCents: plans.priceExtraCourtCents,
+      annualDiscountBps: plans.annualDiscountBps,
       billingCycle: tenantSubscriptions.billingCycle,
       subscriptionStatus: tenantSubscriptions.status,
     })
@@ -143,13 +177,12 @@ export async function listTenants(filters: TenantListFilters): Promise<TenantLis
       status: r.status,
       trialEndsAt: r.trialEndsAt,
       createdAt: r.createdAt,
-      planName: r.planName,
-      planSlug: r.planSlug,
+      billedCourts: r.billedCourts,
       billingCycle: r.billingCycle,
       subscriptionStatus: r.subscriptionStatus,
       mrrCents:
         r.subscriptionStatus === 'active'
-          ? monthlyEquivalentCents(r.billingCycle, r.priceMonthly, r.priceAnnual)
+          ? monthlyEquivalentCents(r.billingCycle, r.billedCourts, r)
           : 0,
     })),
     total: totalRows[0]?.total ?? 0,
@@ -158,32 +191,11 @@ export async function listTenants(filters: TenantListFilters): Promise<TenantLis
   }
 }
 
-// ─── Planes (selector de filtros + cambio de plan) ───────────────────────────
-
-export type PlanSummary = {
-  id: string
-  slug: string
-  name: string
-  maxCourts: number | null
-  priceMonthly: number
-  priceAnnual: number
-}
-
-export async function listActivePlans(): Promise<PlanSummary[]> {
-  const db = getDb()
-  return db
-    .select({
-      id: plans.id,
-      slug: plans.slug,
-      name: plans.name,
-      maxCourts: plans.maxCourts,
-      priceMonthly: plans.priceMonthly,
-      priceAnnual: plans.priceAnnual,
-    })
-    .from(plans)
-    .where(eq(plans.isActive, true))
-    .orderBy(plans.sortOrder)
-}
+// El `listActivePlans()` + `PlanSummary` que vivían acá se eliminaron: eran un
+// duplicado del par canónico de `@/modules/billing` (`listActivePlans(tx)` +
+// `PlanSummary` de billing.types), y con una sola fila activa en `plans` el
+// panel ya no necesita listar nada. Los parámetros de precio que la UI de
+// soporte precisa vienen JOINeados en `getTenantDetail`, sin segunda query.
 
 // ─── Resumen mínimo (confirmaciones server-side de las actions) ──────────────
 
@@ -223,15 +235,23 @@ export type TenantDetail = {
   subscription: {
     status: SubscriptionStatus
     planId: string
-    planName: string | null
-    planSlug: string | null
-    priceMonthly: number | null
-    priceAnnual: number | null
+    /** Canchas por las que se le factura hoy (migr. 090). */
+    billedCourts: number
+    /** A cuántas canchas pasa el cobro en `pendingChangeAt`. `null` = sin cambio. */
+    pendingBilledCourts: number | null
+    /**
+     * Parámetros de precio del plan al que apunta la suscripción. Llegan
+     * JOINeados para que la UI arme el desglose con las mismas funciones que
+     * el cobro. `null` solo si la fila es una banda legacy (migr. 091 repunta
+     * todas las suscripciones a la fila lineal, así que no debería pasar).
+     */
+    priceFirstCourtCents: number | null
+    priceExtraCourtCents: number | null
+    annualDiscountBps: number | null
     billingCycle: BillingCycle
     currentPeriodStart: Date
     currentPeriodEnd: Date
     mpSubscriptionId: string | null
-    pendingPlanChange: string | null
     pendingChangeAt: Date | null
     canceledAt: Date | null
     cancellationReason: string | null
@@ -294,15 +314,15 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
     .select({
       status: tenantSubscriptions.status,
       planId: tenantSubscriptions.planId,
-      planName: plans.name,
-      planSlug: plans.slug,
-      priceMonthly: plans.priceMonthly,
-      priceAnnual: plans.priceAnnual,
+      billedCourts: tenantSubscriptions.billedCourts,
+      pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
+      priceFirstCourtCents: plans.priceFirstCourtCents,
+      priceExtraCourtCents: plans.priceExtraCourtCents,
+      annualDiscountBps: plans.annualDiscountBps,
       billingCycle: tenantSubscriptions.billingCycle,
       currentPeriodStart: tenantSubscriptions.currentPeriodStart,
       currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
       mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
-      pendingPlanChange: tenantSubscriptions.pendingPlanChange,
       pendingChangeAt: tenantSubscriptions.pendingChangeAt,
       canceledAt: tenantSubscriptions.canceledAt,
       cancellationReason: tenantSubscriptions.cancellationReason,

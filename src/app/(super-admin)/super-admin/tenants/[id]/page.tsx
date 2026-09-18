@@ -4,8 +4,6 @@ import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
 import {
   getTenantActivity,
   getTenantDetail,
-  listActivePlans,
-  type PlanSummary,
   type TenantDetail,
 } from '@/modules/super-admin/tenants.service'
 import { DESTRUCTIVE_TARGET_STATUSES } from '@/modules/super-admin/support.schema'
@@ -24,7 +22,7 @@ import { SuscripcionTab } from './_components/suscripcion-tab'
 import { ActividadTab } from './_components/actividad-tab'
 import {
   cancelSubscriptionAction,
-  changePlanAction,
+  changeBilledCourtsAction,
   extendTrialAction,
   forceTenantStatusAction,
   reactivateTenantAction,
@@ -72,7 +70,6 @@ export default async function SuperAdminTenantDetailPage(props: {
   if (!detail) notFound()
 
   const tab = parseTab(searchParams.tab)
-  const plansList = await listActivePlans()
 
   const activity =
     tab === 'actividad'
@@ -128,9 +125,9 @@ export default async function SuperAdminTenantDetailPage(props: {
           updateMarketplaceVisibilityAction={updateTenantMarketplaceVisibilityAction}
         />
       )}
-      {tab === 'suscripcion' && <SuscripcionTab detail={detail} plans={plansList} />}
+      {tab === 'suscripcion' && <SuscripcionTab detail={detail} />}
       {tab === 'actividad' && activity && <ActividadTab tenantId={tenant.id} activity={activity} />}
-      {tab === 'acciones' && <AccionesTab detail={detail} plans={plansList} />}
+      {tab === 'acciones' && <AccionesTab detail={detail} />}
     </div>
   )
 }
@@ -141,15 +138,33 @@ const SUPPORT_ACTIONS: SupportActionsBag = {
   forceStatus: forceTenantStatusAction,
   reactivate: reactivateTenantAction,
   extendTrial: extendTrialAction,
-  changePlan: changePlanAction,
+  changeBilledCourts: changeBilledCourtsAction,
   updateSettings: updateTenantSettingsAction,
   resetPassword: resetStaffPasswordAction,
   cancelSubscription: cancelSubscriptionAction,
 }
 
-function AccionesTab({ detail, plans }: { detail: TenantDetail; plans: PlanSummary[] }) {
+function AccionesTab({ detail }: { detail: TenantDetail }) {
   const { tenant, subscription } = detail
   const s = tenant.settings
+
+  // Piso de lo que se puede facturar: el server rechaza bajar de las canchas
+  // prendidas (DOWNGRADE_BLOCKED), la UI directamente no deja intentarlo.
+  const onlineCourts = detail.courts.filter((c) => c.status === 'online').length
+
+  // Los tres parámetros del precio lineal vienen JOINeados con la suscripción.
+  // Van juntos o no van: una banda legacy los tiene los tres en NULL.
+  const pricing =
+    subscription &&
+    subscription.priceFirstCourtCents !== null &&
+    subscription.priceExtraCourtCents !== null &&
+    subscription.annualDiscountBps !== null
+      ? {
+          priceFirstCourtCents: subscription.priceFirstCourtCents,
+          priceExtraCourtCents: subscription.priceExtraCourtCents,
+          annualDiscountBps: subscription.annualDiscountBps,
+        }
+      : null
 
   const panelSettings: SupportPanelSettings = {
     requires_deposit: s.requires_deposit ?? false,
@@ -172,8 +187,10 @@ function AccionesTab({ detail, plans }: { detail: TenantDetail; plans: PlanSumma
       canReactivate={subscription !== null && REACTIVATABLE_STATUSES.includes(tenant.status)}
       isTrialing={tenant.status === 'trialing'}
       hasSubscription={subscription !== null}
-      currentPlanId={subscription?.planId ?? null}
-      plans={plans.map((p) => ({ id: p.id, name: p.name, priceMonthly: p.priceMonthly }))}
+      billedCourts={subscription?.billedCourts ?? null}
+      billingCycle={subscription?.billingCycle ?? null}
+      onlineCourts={onlineCourts}
+      pricing={pricing}
       settings={panelSettings}
       actions={SUPPORT_ACTIONS}
     />

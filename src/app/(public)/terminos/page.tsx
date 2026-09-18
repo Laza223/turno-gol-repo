@@ -13,7 +13,9 @@ export default function TerminosPage() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Términos y Condiciones
         </h1>
-        <p className="text-sm text-muted-foreground">Última actualización: 25 de mayo de 2026.</p>
+        <p className="text-sm text-muted-foreground">
+          Última actualización: 17 de septiembre de 2026.
+        </p>
       </header>
 
       <section className="space-y-4 text-foreground">
@@ -87,8 +89,9 @@ export default function TerminosPage() {
           <strong>no intermedia ese dinero</strong>: no recibe, no retiene y no remite los fondos.
         </p>
         <p>
-          La <strong>suscripción mensual SaaS</strong> que paga el complejo a TurnoGol también se
-          procesa por MercadoPago, mediante el sistema de suscripciones recurrentes.
+          La <strong>suscripción SaaS</strong> que paga el complejo a TurnoGol (mensual o anual, ver
+          punto 6) también se procesa por MercadoPago, mediante el sistema de suscripciones
+          recurrentes.
         </p>
         <p>
           Cualquier disputa sobre un cobro debe iniciarse en primer lugar con el complejo
@@ -118,26 +121,33 @@ export default function TerminosPage() {
           6. Suscripciones SaaS (clientes B2B)
         </h2>
         <p>
-          TurnoGol ofrece tres planes de suscripción mensual para complejos, según la cantidad de
-          canchas:
+          TurnoGol es un único servicio y{' '}
+          <strong>el importe de la suscripción se calcula por cantidad de canchas</strong>: un
+          importe por la primera cancha, más un importe fijo por cada cancha adicional. No hay
+          planes ni categorías: todas las funciones están disponibles para todos los complejos, sin
+          importar su tamaño, y no existe un límite máximo de canchas.
         </p>
-        <ul className="list-disc space-y-1 pl-6">
-          <li>
-            <strong>Predio</strong>: 1 o 2 canchas.
-          </li>
-          <li>
-            <strong>Complejo</strong>: 3 a 5 canchas.
-          </li>
-          <li>
-            <strong>Estadio</strong>: 6 o más canchas.
-          </li>
-        </ul>
         <p>
-          El cobro es mensual y se debita por MercadoPago. Los complejos pueden cancelar su
-          suscripción en cualquier momento; tras la cancelación, la cuenta sigue activa hasta el
-          final del período facturado. Si hay un cobro fallido, la cuenta pasa por los estados{' '}
-          <em>past_due</em> y <em>suspended</em> antes de la baja definitiva. Los detalles del
-          lifecycle SaaS están en el documento de monetización (doc4).
+          El complejo elige el ciclo de facturación, <strong>mensual o anual</strong>; el ciclo
+          anual se cobra por adelantado con un descuento sobre el importe mensual. Los importes
+          vigentes se muestran siempre en el panel del complejo antes de confirmar la suscripción,
+          con el detalle de cómo se componen.
+        </p>
+        <p>
+          <strong>
+            Cambiar la cantidad de canchas facturadas nunca genera un cargo proporcional a mitad de
+            período.
+          </strong>{' '}
+          Vale en los dos sentidos: lo que resta del período en curso no se modifica y el importe
+          nuevo rige a partir del cobro siguiente. Mientras una cancha esté habilitada para recibir
+          reservas, debe estar incluida en la facturación: no es posible reducir la cantidad de
+          canchas facturadas por debajo de las canchas activas sin desactivarlas primero.
+        </p>
+        <p>
+          El cobro se debita por MercadoPago. Los complejos pueden cancelar su suscripción en
+          cualquier momento; tras la cancelación, la cuenta sigue activa hasta el final del período
+          facturado. Si hay un cobro fallido, la cuenta pasa por los estados <em>past_due</em> y{' '}
+          <em>suspended</em> antes de la baja definitiva.
         </p>
         <p>
           Los datos del complejo se conservan 90 días tras la baja (estado <em>churned</em>) para

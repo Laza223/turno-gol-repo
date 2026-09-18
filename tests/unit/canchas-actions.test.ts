@@ -25,7 +25,7 @@ vi.mock('@/modules/courts/court.service', async (importOriginal) => {
     createCourt: vi.fn(),
     updateCourt: vi.fn(),
     toggleStatus: vi.fn(),
-    getCourtCountAndLimit: vi.fn(),
+    getCourtCountAndBilled: vi.fn(),
     getCourtById: vi.fn(),
     appendCourtPhoto: vi.fn(),
     removeCourtPhoto: vi.fn(),
@@ -37,7 +37,7 @@ import { createCourtAction, updateCourtAction } from '@/app/(admin)/canchas/acti
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
-import { createCourt, updateCourt, getCourtCountAndLimit } from '@/modules/courts/court.service'
+import { createCourt, updateCourt, getCourtCountAndBilled } from '@/modules/courts/court.service'
 import { captureMessage } from '@/lib/sentry'
 
 const WEEK = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
@@ -90,31 +90,21 @@ describe('createCourtAction — señal en Sentry al bloquear', () => {
     )
   })
 
-  it('techo de plan alcanzado: rechaza y avisa (warning) con el conteo y el techo', async () => {
-    vi.mocked(getCourtCountAndLimit).mockResolvedValue({
-      count: 3,
-      maxCourts: 3,
-      planSlug: 'predio',
-    })
+  // El test "techo de plan alcanzado: rechaza y avisa (warning)" se borra: con
+  // precio lineal por cancha (decisión 2026-09-17, P3) ya no hay techo que
+  // bloquee. `canchas/actions.ts:billingPreviewFor` reemplazó ese rechazo por
+  // una CONFIRMACIÓN (`requiresBillingConfirmation`, sin señal en Sentry — no
+  // es una regla de negocio que frena, es un aviso de que la cuota sube) y,
+  // al confirmar, agenda la suba vía `changeBilledCourts`. Ese flujo nuevo no
+  // tiene cobertura en este archivo (su propósito es específicamente "señal en
+  // Sentry al bloquear", y el nuevo camino no bloquea ni señaliza) — queda
+  // fuera del alcance de este fix.
 
-    const res = await createCourtAction(courtFormData(FULL_WEEK_RULE))
-
-    expect(res.success).toBe(false)
-    expect(vi.mocked(createCourt)).not.toHaveBeenCalled()
-    expect(vi.mocked(captureMessage)).toHaveBeenCalledWith(
-      'crear cancha: techo de plan alcanzado',
-      expect.objectContaining({
-        level: 'warning',
-        extra: { tenantId: 'tenant-1', count: 3, maxCourts: 3 },
-      }),
-    )
-  })
-
-  it('sin huecos y sin techo: crea la cancha y no deja ninguna señal en Sentry', async () => {
-    vi.mocked(getCourtCountAndLimit).mockResolvedValue({
-      count: 0,
-      maxCourts: null,
-      planSlug: null,
+  it('sin huecos y sin cuota que confirmar: crea la cancha y no deja ninguna señal en Sentry', async () => {
+    vi.mocked(getCourtCountAndBilled).mockResolvedValue({
+      onlineCourts: 0,
+      billedCourts: null,
+      isTrialing: false,
     })
     vi.mocked(createCourt).mockResolvedValue({ id: 'court-1' } as never)
 

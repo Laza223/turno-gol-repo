@@ -4,14 +4,12 @@ import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import { setBillingGateway } from '@/modules/billing/billing.gateway'
 import {
   cancel as billingCancel,
+  changeBilledCourts,
   getBillingPayerEmail,
   setBillingPayerEmail,
-  downgrade as billingDowngrade,
   getSubscriptionState,
-  handleUpgradeApproved,
   reactivate as billingReactivate,
   subscribe as billingSubscribe,
-  upgrade as billingUpgrade,
 } from '@/modules/billing/billing.service'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import {
@@ -24,7 +22,6 @@ import {
   DowngradeBlockedError,
   InvalidTransitionError,
   ReactivateNotAllowedError,
-  UpgradeAlreadyPendingError,
 } from '@/modules/billing/billing.errors'
 import { runDunningSweep } from '@/shared/jobs/workers/dunning-retry.worker'
 import {
@@ -37,29 +34,48 @@ import {
 } from '../helpers/tenant'
 import type { Sql } from 'postgres'
 
-type PlansById = { predio: string; complejo: string; estadio: string }
+/**
+ * Montos de referencia del precio LINEAL POR CANCHA
+ * (`docs/decisions/2026-09-17-precio-por-cancha.md` P1/P2): $47.000 la primera
+ * cancha + $30.000 por cada extra, anual 10% off.
+ *
+ * Escritos a mano, no derivados de `pricing.ts`: si el test recalculara con la
+ * misma función que ejercita, un cambio de parámetros lo dejaría verde igual.
+ * El candado del catálogo contra la tabla real vive en `pricing-sync.test.ts`;
+ * acá los números están para que se vea QUÉ monto viaja a MercadoPago en cada
+ * camino.
+ */
+const MONTHLY_3 = 10_700_000
+const MONTHLY_5 = 16_700_000
+/** Anual = equivalente mensual con 10% off, × 12 (el preapproval anual cobra 1 vez). */
+const ANNUAL_1 = 50_760_000 // $42.300 × 12
+const ANNUAL_3 = 115_560_000 // $96.300 × 12
+const ANNUAL_5 = 180_360_000 // $150.300 × 12
 
-let plans: PlansById
+/**
+ * Desde la migr. 091 `plans` tiene UNA sola fila activa. El fixture dejó de ser
+ * "qué plan elijo" (antes: `PlansById { predio, complejo, estadio }`) y pasó a
+ * ser el id de la única fila: lo que el complejo elige ahora es la CANTIDAD DE
+ * CANCHAS, no un plan.
+ */
+let planId: string
 
-async function loadPlans(sql: Sql): Promise<PlansById> {
-  const rows = await sql<{ id: string; slug: string }[]>`
-    SELECT id, slug FROM plans
+async function loadActivePlanId(sql: Sql): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    SELECT id FROM plans WHERE is_active = true ORDER BY sort_order LIMIT 1
   `
-  const map: Record<string, string> = {}
-  for (const r of rows) map[r.slug] = r.id
-  return {
-    predio: map.predio!,
-    complejo: map.complejo!,
-    estadio: map.estadio!,
-  }
+  const id = rows[0]?.id
+  if (!id) throw new Error('no hay plan activo — ¿faltan aplicar las migraciones 090/091?')
+  return id
 }
 
 async function seedSubscription(
   sql: Sql,
   tenantId: string,
   status: string,
-  planSlug: 'predio' | 'complejo' | 'estadio',
   opts: {
+    /** Canchas por las que se cobra hoy (`tenant_subscriptions.billed_courts`). */
+    billedCourts?: number
     billingCycle?: 'monthly' | 'annual'
     currentPeriodStart?: Date
     currentPeriodEnd?: Date
@@ -69,7 +85,6 @@ async function seedSubscription(
     scheduledDeletionAt?: Date | null
   } = {},
 ): Promise<void> {
-  const planId = plans[planSlug]
   const start = (opts.currentPeriodStart ?? new Date('2027-04-01T00:00:00Z')).toISOString()
   const end = (opts.currentPeriodEnd ?? new Date('2027-05-01T00:00:00Z')).toISOString()
   const dunningStartedAt = opts.dunningStartedAt ? opts.dunningStartedAt.toISOString() : null
@@ -80,12 +95,13 @@ async function seedSubscription(
 
   await sql`
     INSERT INTO tenant_subscriptions (
-      tenant_id, plan_id, billing_cycle, status,
+      tenant_id, plan_id, billing_cycle, billed_courts, status,
       current_period_start, current_period_end,
       mp_subscription_id, dunning_started_at,
       canceled_at, scheduled_deletion_at
     ) VALUES (
       ${tenantId}, ${planId}, ${opts.billingCycle ?? 'monthly'}::billing_cycle,
+      ${opts.billedCourts ?? 1},
       ${status}::subscription_status,
       ${start}::timestamptz, ${end}::timestamptz,
       ${opts.mpSubscriptionId ?? null},
@@ -104,8 +120,8 @@ async function seedSubscription(
 
 async function seedActiveTenant(
   sql: Sql,
-  planSlug: 'predio' | 'complejo' | 'estadio' = 'predio',
   opts: {
+    billedCourts?: number
     billingCycle?: 'monthly' | 'annual'
     currentPeriodStart?: Date
     currentPeriodEnd?: Date
@@ -115,11 +131,21 @@ async function seedActiveTenant(
   const tenant = await createTestTenant(sql)
   const staff = await createTestStaffUser(sql)
   await linkStaffToTenant(sql, tenant.id, staff.id)
-  await seedSubscription(sql, tenant.id, 'active', planSlug, {
+  await seedSubscription(sql, tenant.id, 'active', {
     ...opts,
     mpSubscriptionId: opts.mpSubscriptionId ?? `mp-preapp-test-${tenant.id}`,
   })
   return { tenantId: tenant.id, staffId: staff.id }
+}
+
+/** N canchas ONLINE — lo que mide el piso de facturación (`countOnlineCourts`). */
+async function seedOnlineCourts(sql: Sql, tenantId: string, n: number): Promise<void> {
+  for (let i = 0; i < n; i += 1) {
+    await sql`
+      INSERT INTO courts (tenant_id, name, capacity, status)
+      VALUES (${tenantId}, ${`Cancha ${i + 1}`}, 10, 'online')
+    `
+  }
 }
 
 async function fetchSubStatus(tenantId: string): Promise<string> {
@@ -131,6 +157,24 @@ async function fetchSubStatus(tenantId: string): Promise<string> {
     `,
   )
   return rows[0]!.status
+}
+
+type BillingRow = {
+  billed_courts: number
+  pending_billed_courts: number | null
+  pending_change_at: Date | string | null
+}
+
+async function fetchBilling(tenantId: string): Promise<BillingRow> {
+  const rows = await asApp(
+    tenantId,
+    (tx) =>
+      tx<BillingRow[]>`
+      SELECT billed_courts, pending_billed_courts, pending_change_at
+      FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `,
+  )
+  return rows[0]!
 }
 
 // tenants es tabla GLOBAL sin RLS (no tiene tenant_id que aislar): se queda
@@ -146,7 +190,7 @@ beforeAll(async () => {
   const sql = getSql()
   await ensureRoles(sql)
   await cleanupAll(sql)
-  plans = await loadPlans(sql)
+  planId = await loadActivePlanId(sql)
 }, 30_000)
 
 afterAll(async () => {
@@ -172,7 +216,7 @@ describe('lifecycle FSM', () => {
   it('trialing → active (legal)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
-    await seedSubscription(sql, tenant.id, 'trialing', 'predio')
+    await seedSubscription(sql, tenant.id, 'trialing')
 
     await withTenantContext(tenant.id, async (tx) => {
       await transitionTrialingToActive(
@@ -193,7 +237,7 @@ describe('lifecycle FSM', () => {
   it('rechaza doble cancelación: la 2da transitionToCanceled lanza InvalidTransitionError y el estado queda en canceled', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
-    await seedSubscription(sql, tenant.id, 'trialing', 'predio')
+    await seedSubscription(sql, tenant.id, 'trialing')
 
     // 1ra cancelación (legal: trialing → canceled), commiteada en su propia tx.
     await withTenantContext(tenant.id, async (tx) => {
@@ -325,100 +369,147 @@ describe('Test A — dunning escalation drives blocked → churned', () => {
   })
 })
 
-// ─── Test B: upgrade mid-period → correct proration ───────────────────────
+// ─── Test B — cambiar la cantidad de canchas facturadas ────────────────────
+//
+// Reemplaza al viejo "Test B — upgrade Predio → Complejo proration". El
+// proraeo YA NO EXISTE: con precio por cancha, sumar o sacar una cancha nunca
+// se cobra en el medio del período (decisión 2026-09-17, P4). Lo que hay que
+// probar ahora es lo contrario de lo que probaba aquel test: que NO se cobra
+// nada, y que el cambio queda agendado para el cierre del período.
 
-describe('Test B — upgrade Predio → Complejo proration', () => {
-  // Derivación, para que el número no sea mágico: Complejo $99.000 − Predio
-  // $63.000 = $36.000 de diferencia mensual (migr. 071); quedan 15 de los 30
-  // días del período → $18.000 = 1_800_000 centavos.
-  // Antes de la 071 la diferencia era $85.000 − $55.000 = $30.000 → 1_500_000.
-  it('day 15 of 30 → proration = 1_800_000 cents', async () => {
+describe('Test B — changeBilledCourts con la suscripción ACTIVA: se agenda, no se cobra', () => {
+  it('agenda pending_billed_courts al fin del período, sin tocar MP ni cobrar un peso', async () => {
     const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'predio', {
+    const { tenantId } = await seedActiveTenant(sql, {
+      billedCourts: 3,
       currentPeriodStart: new Date('2027-04-01T00:00:00Z'),
       currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
     })
 
-    const result = await withTenantContext(tenantId, async (tx) => {
-      return billingUpgrade(
-        tenantId,
-        plans.complejo,
-        mockGateway,
-        tx,
-        new Date('2027-04-16T00:00:00Z'),
-      )
-    })
-
-    expect(result.prorationAmount).toBe(1_800_000)
-    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(1)
-    expect(mockGateway.saasUpgradePreferenceCalls[0]!.amount).toBe(1_800_000)
-
-    // Simulate webhook: upgrade approved → billing.handleUpgradeApproved
-    await withTenantContext(tenantId, async (tx) => {
-      await handleUpgradeApproved(tenantId, plans.complejo, mockGateway, tx)
-    })
-
-    expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
-    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(9_900_000)
-
-    const subRows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<{ plan_id: string; pending_plan_change: string | null }[]>`
-        SELECT plan_id, pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
+    const result = await withTenantContext(tenantId, (tx) =>
+      changeBilledCourts(tenantId, 5, mockGateway, tx),
     )
-    expect(subRows[0]!.plan_id).toBe(plans.complejo)
-    expect(subRows[0]!.pending_plan_change).toBeNull()
+
+    expect(result.applied).toBe(false)
+    expect(result.previousBilledCourts).toBe(3)
+    expect(result.billedCourts).toBe(5)
+    expect(result.appliesAt?.toISOString()).toBe('2027-05-01T00:00:00.000Z')
+
+    // Cero plata en el medio del período: ni una preferencia de cobro único,
+    // ni un cambio de monto en el preapproval. Este es el corazón de P4 — si
+    // alguien reintroduce el proraeo, muere acá.
+    expect(mockGateway.preferenceCalls).toHaveLength(0)
+    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(0)
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+
+    const billing = await fetchBilling(tenantId)
+    expect(billing.billed_courts).toBe(3) // lo VIGENTE no se movió
+    expect(billing.pending_billed_courts).toBe(5)
+    expect(new Date(billing.pending_change_at as unknown as string).toISOString()).toBe(
+      '2027-05-01T00:00:00.000Z',
+    )
+    expect(await fetchSubStatus(tenantId)).toBe('active')
+  })
+
+  it('un segundo cambio pendiente pisa al primero: no hay plata atada, vale la última decisión', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, { billedCourts: 3 })
+
+    await withTenantContext(tenantId, (tx) => changeBilledCourts(tenantId, 5, mockGateway, tx))
+    await withTenantContext(tenantId, (tx) => changeBilledCourts(tenantId, 4, mockGateway, tx))
+
+    // Con bandas esto era `UpgradeAlreadyPendingError`, porque el primer cambio
+    // tenía una preferencia de pago viva y pisarlo dejaba ese pago huérfano.
+    // Sin proraeo no hay pago que huerfanar.
+    const billing = await fetchBilling(tenantId)
+    expect(billing.pending_billed_courts).toBe(4)
+    expect(billing.billed_courts).toBe(3)
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+  })
+
+  it('pedir la cantidad que ya se factura cancela el cambio pendiente', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, { billedCourts: 3 })
+
+    await withTenantContext(tenantId, (tx) => changeBilledCourts(tenantId, 5, mockGateway, tx))
+    expect((await fetchBilling(tenantId)).pending_billed_courts).toBe(5)
+
+    await withTenantContext(tenantId, (tx) => changeBilledCourts(tenantId, 3, mockGateway, tx))
+
+    const billing = await fetchBilling(tenantId)
+    expect(billing.pending_billed_courts).toBeNull()
+    expect(billing.pending_change_at).toBeNull()
+    expect(billing.billed_courts).toBe(3)
   })
 })
 
-// ─── Test B2 (01-billing-upgrade-dedup): segunda upgrade() con una ya
-// pendiente se rechaza, no pisa el pending_plan_change ni crea otra
-// preferencia MP ────────────────────────────────────────────────────────────
-
-describe('Test B2 — upgrade() con un cambio ya pendiente', () => {
-  it('segunda llamada a upgrade() → UpgradeAlreadyPendingError, sin pisar pending_plan_change ni tocar MP de nuevo', async () => {
+describe('Test B2 — changeBilledCourts en TRIAL: se aplica en el acto', () => {
+  it('mueve billed_courts ya y ajusta el monto del preapproval (todavía no se cobró nada)', async () => {
     const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'predio', {
-      currentPeriodStart: new Date('2027-04-01T00:00:00Z'),
-      currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'trialing', {
+      billedCourts: 1,
+      mpSubscriptionId: 'mp-preapp-trial-1',
     })
 
-    await withTenantContext(tenantId, async (tx) => {
-      await billingUpgrade(
-        tenantId,
-        plans.complejo,
-        mockGateway,
-        tx,
-        new Date('2027-04-16T00:00:00Z'),
-      )
-    })
-    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(1)
-
-    await expect(
-      withTenantContext(tenantId, async (tx) => {
-        await billingUpgrade(
-          tenantId,
-          plans.estadio,
-          mockGateway,
-          tx,
-          new Date('2027-04-20T00:00:00Z'),
-        )
-      }),
-    ).rejects.toBeInstanceOf(UpgradeAlreadyPendingError)
-
-    // Sin segunda preferencia MP; `pending_plan_change` sigue apuntando al
-    // upgrade original (complejo), no al estadio del intento rechazado.
-    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(1)
-    const rows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<{ pending_plan_change: string | null }[]>`
-        SELECT pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
+    const result = await withTenantContext(tenant.id, (tx) =>
+      changeBilledCourts(tenant.id, 5, mockGateway, tx),
     )
-    expect(rows[0]!.pending_plan_change).toBe(plans.complejo)
+
+    expect(result.applied).toBe(true)
+    expect(result.appliesAt).toBeNull()
+    expect(result.previousBilledCourts).toBe(1)
+
+    const billing = await fetchBilling(tenant.id)
+    expect(billing.billed_courts).toBe(5)
+    expect(billing.pending_billed_courts).toBeNull()
+    expect(billing.pending_change_at).toBeNull()
+
+    // El preapproval del trial ya existe: si el monto no se ajusta, el primer
+    // cobro al final de la prueba sale por 1 cancha y el complejo opera 5.
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
+    expect(mockGateway.updatePreapprovalCalls[0]!.preapprovalId).toBe('mp-preapp-trial-1')
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(MONTHLY_5)
+    // El `reason` es el ÚNICO vínculo entre un preapproval y la cantidad de
+    // canchas que representa (MP no tiene campo estructurado para eso): si
+    // queda con el número viejo, el reuso de checkout pendiente deja de
+    // matchear (`reusablePendingCheckout`).
+    expect(mockGateway.updatePreapprovalCalls[0]!.reason).toBe('TurnoGol — 5 canchas (mensual)')
+  })
+
+  it('en trial SIN preapproval todavía: aplica local y no llama a MP', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'trialing', { billedCourts: 1 })
+
+    const result = await withTenantContext(tenant.id, (tx) =>
+      changeBilledCourts(tenant.id, 3, mockGateway, tx),
+    )
+
+    expect(result.applied).toBe(true)
+    expect((await fetchBilling(tenant.id)).billed_courts).toBe(3)
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+  })
+
+  it('ciclo anual en trial: el monto nuevo es el equivalente mensual con descuento × 12', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'trialing', {
+      billedCourts: 1,
+      billingCycle: 'annual',
+      mpSubscriptionId: 'mp-preapp-trial-annual',
+    })
+
+    await withTenantContext(tenant.id, (tx) => changeBilledCourts(tenant.id, 3, mockGateway, tx))
+
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(ANNUAL_3)
+    expect(mockGateway.updatePreapprovalCalls[0]!.reason).toBe('TurnoGol — 3 canchas (anual)')
   })
 })
 
@@ -427,7 +518,7 @@ describe('Test B2 — upgrade() con un cambio ya pendiente', () => {
 describe('Test C — voluntary cancel', () => {
   it('cancel → preapproval canceled, period_end intact; sweep at end → blocked + CANCELED_BLOCKED_DELETION_DAYS', async () => {
     const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'predio', {
+    const { tenantId } = await seedActiveTenant(sql, {
       currentPeriodEnd: new Date(Date.now() + 86_400_000), // tomorrow
     })
 
@@ -491,34 +582,29 @@ describe('Test C — voluntary cancel', () => {
 // ─── Test E (service-level) — suspended blocks billing-mutating ops ────────
 
 describe('Test E — suspended state rejects mutations', () => {
-  it('upgrade rejected on suspended tenant', async () => {
+  it('changeBilledCourts rechazado en un tenant suspended', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'suspended', 'predio', {
+    await seedSubscription(sql, tenant.id, 'suspended', {
+      billedCourts: 3,
       mpSubscriptionId: 'mp-test',
       dunningStartedAt: new Date(Date.now() - 7 * 86_400_000),
     })
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
-        await billingUpgrade(tenant.id, plans.complejo, mockGateway, tx)
+        await changeBilledCourts(tenant.id, 5, mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
 
-    // El rechazo es ANTES de tocar el gateway o la DB: sin preferencia creada,
-    // sin pending_plan_change, plan intacto.
-    expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(0)
-    const rows = await asApp(
-      tenant.id,
-      (tx) =>
-        tx<{ plan_id: string; pending_plan_change: string | null }[]>`
-        SELECT plan_id, pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
-      `,
-    )
-    expect(rows[0]!.plan_id).toBe(plans.predio)
-    expect(rows[0]!.pending_plan_change).toBeNull()
+    // El rechazo es ANTES de tocar el gateway o la DB: sin monto cambiado en
+    // MP, sin cambio pendiente, canchas facturadas intactas.
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
+    const billing = await fetchBilling(tenant.id)
+    expect(billing.billed_courts).toBe(3)
+    expect(billing.pending_billed_courts).toBeNull()
   })
 
   it('subscription state still readable on suspended', async () => {
@@ -526,132 +612,122 @@ describe('Test E — suspended state rejects mutations', () => {
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'suspended', 'predio')
+    await seedSubscription(sql, tenant.id, 'suspended', { billedCourts: 4 })
 
     const state = await withTenantContext(tenant.id, async (tx) => {
       return getSubscriptionState(tenant.id, tx)
     })
     expect(state.status).toBe('suspended')
-    expect(state.planSlug).toBe('predio')
+    expect(state.planSlug).toBe('turnogol')
+    // Lo que la UI necesita para el desglose de precio (migr. 090).
+    expect(state.billedCourts).toBe(4)
+    expect(state.pendingBilledCourts).toBeNull()
   })
 })
 
-// ─── Test F — downgrade blocked by court count ────────────────────────────
+// ─── Test F — piso de canchas prendidas ───────────────────────────────────
+//
+// Con bandas esto era "el plan destino tiene un techo más bajo que tus
+// canchas". Sin techo (P3) el gate cambió de sentido pero no desapareció: no
+// se puede facturar por MENOS canchas de las que están prendidas, porque eso
+// es operar de más pagando de menos — exactamente lo que el gate viejo
+// impedía (ver el comentario de `toggleStatus` en canchas/actions.ts).
 
-describe('Test F — downgrade court-count gate', () => {
-  it('Complejo with 5 courts → downgrade to Predio (max 3) throws DowngradeBlockedError', async () => {
+describe('Test F — no se puede facturar por menos canchas de las que están prendidas', () => {
+  it('5 canchas online → bajar a 3 facturadas lanza DowngradeBlockedError', async () => {
     const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'complejo')
-
-    // 5 online courts
-    for (let i = 0; i < 5; i += 1) {
-      await sql`
-        INSERT INTO courts (tenant_id, name, capacity, status)
-        VALUES (${tenantId}, ${`Cancha ${i + 1}`}, 10, 'online')
-      `
-    }
+    const { tenantId } = await seedActiveTenant(sql, { billedCourts: 5 })
+    await seedOnlineCourts(sql, tenantId, 5)
 
     await expect(
       withTenantContext(tenantId, async (tx) => {
-        await billingDowngrade(tenantId, plans.predio, tx)
+        await changeBilledCourts(tenantId, 3, mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(DowngradeBlockedError)
 
-    // El bloqueo NO debe dejar un downgrade pendiente: plan y pending intactos.
-    const rows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<{ plan_id: string; pending_plan_change: string | null }[]>`
-        SELECT plan_id, pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
-    )
-    expect(rows[0]!.plan_id).toBe(plans.complejo)
-    expect(rows[0]!.pending_plan_change).toBeNull()
+    // El bloqueo NO debe dejar un cambio agendado ni mover lo vigente.
+    const billing = await fetchBilling(tenantId)
+    expect(billing.billed_courts).toBe(5)
+    expect(billing.pending_billed_courts).toBeNull()
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
   })
 
-  // El monto del preapproval tiene que seguir al plan nuevo: sin el PUT, MP
-  // seguía cobrando el plan viejo. Anual = price_annual (equivalente mensual) × 12.
+  it('bajar hasta las canchas prendidas SÍ se permite (apagó 2 y las quiere dejar de pagar)', async () => {
+    const sql = getSql()
+    const { tenantId } = await seedActiveTenant(sql, { billedCourts: 5 })
+    await seedOnlineCourts(sql, tenantId, 3)
+    // Dos apagadas: no generan reservas ni ingresos, así que no cuentan contra
+    // el piso (mismo criterio que `countOnlineCourts`).
+    await sql`
+      INSERT INTO courts (tenant_id, name, capacity, status)
+      VALUES (${tenantId}, 'En obra 1', 10, 'offline'), (${tenantId}, 'En obra 2', 10, 'offline')
+    `
+
+    const result = await withTenantContext(tenantId, (tx) =>
+      changeBilledCourts(tenantId, 3, mockGateway, tx),
+    )
+
+    expect(result.applied).toBe(false)
+    expect((await fetchBilling(tenantId)).pending_billed_courts).toBe(3)
+  })
+
+  // El monto del preapproval tiene que seguir a las canchas nuevas: sin el PUT,
+  // MP sigue cobrando el monto viejo. Este es EL punto donde el modelo lineal
+  // puede desincronizarse de MercadoPago, y el único lugar donde el monto de
+  // una suscripción que ya cobra se mueve.
   it.each([
-    { billingCycle: 'monthly' as const, expectedAmount: 6_300_000 },
-    { billingCycle: 'annual' as const, expectedAmount: 60_480_000 },
+    { billingCycle: 'monthly' as const, expectedAmount: MONTHLY_3 },
+    { billingCycle: 'annual' as const, expectedAmount: ANNUAL_3 },
   ])(
-    'downgrade programado se APLICA en el sweep cuando pending_change_at venció ($billingCycle)',
+    'el cambio agendado se APLICA en el sweep y actualiza el monto en MP ($billingCycle)',
     async ({ billingCycle, expectedAmount }) => {
       const sql = getSql()
-      const { tenantId } = await seedActiveTenant(sql, 'complejo', {
+      const { tenantId } = await seedActiveTenant(sql, {
+        billedCourts: 5,
         billingCycle,
         currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
       })
-      for (let i = 0; i < 2; i += 1) {
-        await sql`
-        INSERT INTO courts (tenant_id, name, capacity, status)
-        VALUES (${tenantId}, ${`Cancha ${i + 1}`}, 10, 'online')
-      `
-      }
+      await seedOnlineCourts(sql, tenantId, 3)
 
-      await withTenantContext(tenantId, async (tx) => {
-        await billingDowngrade(tenantId, plans.predio, tx)
-      })
+      await withTenantContext(tenantId, (tx) => changeBilledCourts(tenantId, 3, mockGateway, tx))
 
       // Forzar el vencimiento de pending_change_at y correr el sweep.
       await sql`
-      UPDATE tenant_subscriptions SET pending_change_at = NOW() - INTERVAL '1 hour'
-      WHERE tenant_id = ${tenantId}
-    `
+        UPDATE tenant_subscriptions SET pending_change_at = NOW() - INTERVAL '1 hour'
+        WHERE tenant_id = ${tenantId}
+      `
       await runDunningSweep()
 
-      const rows = await asApp(
-        tenantId,
-        (tx) =>
-          tx<
-            {
-              plan_id: string
-              pending_plan_change: string | null
-              pending_change_at: Date | null
-            }[]
-          >`
-        SELECT plan_id, pending_plan_change, pending_change_at
-        FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
-      )
-      expect(rows[0]!.plan_id).toBe(plans.predio) // plan efectivamente cambiado
-      expect(rows[0]!.pending_plan_change).toBeNull()
-      expect(rows[0]!.pending_change_at).toBeNull()
+      const billing = await fetchBilling(tenantId)
+      expect(billing.billed_courts).toBe(3) // ya rige
+      expect(billing.pending_billed_courts).toBeNull()
+      expect(billing.pending_change_at).toBeNull()
       expect(await fetchSubStatus(tenantId)).toBe('active') // sigue activo
       expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
       expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(expectedAmount)
+      expect(mockGateway.updatePreapprovalCalls[0]!.reason).toBe(
+        `TurnoGol — 3 canchas (${billingCycle === 'annual' ? 'anual' : 'mensual'})`,
+      )
     },
   )
 
-  it('Complejo with 2 courts → downgrade scheduled to predio at period_end', async () => {
+  it('el sweep NO aplica un cambio cuyo pending_change_at todavía no venció', async () => {
+    // Control negativo del test de arriba: sin esto, un sweep que aplicara
+    // TODO lo pendiente pasaría igual de verde y le cobraría de más a alguien
+    // un mes antes de lo pactado.
     const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'complejo', {
-      currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
+    const { tenantId } = await seedActiveTenant(sql, {
+      billedCourts: 3,
+      currentPeriodEnd: new Date(Date.now() + 15 * 86_400_000),
     })
 
-    for (let i = 0; i < 2; i += 1) {
-      await sql`
-        INSERT INTO courts (tenant_id, name, capacity, status)
-        VALUES (${tenantId}, ${`Cancha ${i + 1}`}, 10, 'online')
-      `
-    }
+    await withTenantContext(tenantId, (tx) => changeBilledCourts(tenantId, 5, mockGateway, tx))
+    await runDunningSweep()
 
-    const result = await withTenantContext(tenantId, async (tx) => {
-      return billingDowngrade(tenantId, plans.predio, tx)
-    })
-    expect(result.targetPlanId).toBe(plans.predio)
-    expect(result.appliesAt.toISOString()).toBe('2027-05-01T00:00:00.000Z')
-
-    const rows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<{ pending_plan_change: string; pending_change_at: Date | string }[]>`
-        SELECT pending_plan_change, pending_change_at FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
-    )
-    expect(rows[0]!.pending_plan_change).toBe(plans.predio)
-    const changeAt = new Date(rows[0]!.pending_change_at as unknown as string)
-    expect(changeAt.toISOString()).toBe('2027-05-01T00:00:00.000Z')
+    const billing = await fetchBilling(tenantId)
+    expect(billing.billed_courts).toBe(3)
+    expect(billing.pending_billed_courts).toBe(5)
+    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
   })
 })
 
@@ -663,15 +739,16 @@ describe('subscribe → first webhook activates', () => {
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'trialing', 'predio')
+    await seedSubscription(sql, tenant.id, 'trialing')
 
     const result = await withTenantContext(tenant.id, async (tx) => {
-      return billingSubscribe(tenant.id, plans.predio, 'monthly', mockGateway, tx)
+      return billingSubscribe(tenant.id, 3, 'monthly', mockGateway, tx)
     })
 
     expect(result.checkoutUrl).toContain('mp.test')
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
-    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(6_300_000)
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(MONTHLY_3)
+    expect(mockGateway.preapprovalCalls[0]!.reason).toBe('TurnoGol — 3 canchas (mensual)')
 
     const subRowsBefore = await asApp(
       tenant.id,
@@ -680,13 +757,17 @@ describe('subscribe → first webhook activates', () => {
           {
             mp_subscription_id: string | null
             status: string
+            billed_courts: number
           }[]
         >`
-        SELECT mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+        SELECT mp_subscription_id, status, billed_courts
+        FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
       `,
     )
     expect(subRowsBefore[0]!.mp_subscription_id).toBe(result.preapprovalId)
     expect(subRowsBefore[0]!.status).toBe('trialing')
+    // Elegir plan ahora es elegir cantidad: queda persistida desde el checkout.
+    expect(subRowsBefore[0]!.billed_courts).toBe(3)
 
     await withTenantContext(tenant.id, async (tx) => {
       await onPaymentApproved(
@@ -702,6 +783,24 @@ describe('subscribe → first webhook activates', () => {
     expect(await fetchSubStatus(tenant.id)).toBe('active')
     expect(await fetchTenantStatus(sql, tenant.id)).toBe('active')
   })
+
+  it('subscribe por menos canchas de las prendidas → DowngradeBlockedError, sin preapproval', async () => {
+    // El número llega del cliente: sin gate server-side, alguien con 5 canchas
+    // se suscribe por 1 y opera igual.
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'trialing')
+    await seedOnlineCourts(sql, tenant.id, 5)
+
+    await expect(
+      withTenantContext(tenant.id, async (tx) => {
+        await billingSubscribe(tenant.id, 1, 'monthly', mockGateway, tx)
+      }),
+    ).rejects.toBeInstanceOf(DowngradeBlockedError)
+    expect(mockGateway.preapprovalCalls).toHaveLength(0)
+  })
 })
 
 // ─── Reactivate from canceled before deletion ─────────────────────────────
@@ -712,30 +811,32 @@ describe('reactivate', () => {
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'canceled', 'predio', {
+    await seedSubscription(sql, tenant.id, 'canceled', {
+      billedCourts: 1,
       mpSubscriptionId: 'mp-old',
       canceledAt: new Date(),
       scheduledDeletionAt: new Date(Date.now() + 30 * 86_400_000),
     })
 
     const result = await withTenantContext(tenant.id, async (tx) => {
-      return billingReactivate(tenant.id, plans.complejo, 'monthly', mockGateway, tx)
+      return billingReactivate(tenant.id, 5, 'monthly', mockGateway, tx)
     })
     expect(result.checkoutUrl).toContain('mp.test')
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
-    // Reactivar al plan complejo → preapproval por el monto mensual de complejo.
-    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(9_900_000)
+    // Reactivar por 5 canchas → preapproval por el monto de 5 canchas.
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(MONTHLY_5)
 
-    // DB: plan y nuevo mp_subscription_id seteados; status SIGUE canceled
-    // (recién se activa con el primer onPaymentApproved, no acá).
+    // DB: canchas facturadas y nuevo mp_subscription_id seteados; status SIGUE
+    // canceled (recién se activa con el primer onPaymentApproved, no acá).
     const rows = await asApp(
       tenant.id,
       (tx) =>
-        tx<{ plan_id: string; mp_subscription_id: string | null; status: string }[]>`
-        SELECT plan_id, mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+        tx<{ billed_courts: number; mp_subscription_id: string | null; status: string }[]>`
+        SELECT billed_courts, mp_subscription_id, status
+        FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
       `,
     )
-    expect(rows[0]!.plan_id).toBe(plans.complejo)
+    expect(rows[0]!.billed_courts).toBe(5)
     expect(rows[0]!.mp_subscription_id).toBe(result.preapprovalId)
     expect(rows[0]!.mp_subscription_id).not.toBe('mp-old') // ya no es el viejo
     expect(rows[0]!.status).toBe('canceled')
@@ -746,7 +847,7 @@ describe('reactivate', () => {
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'canceled', 'predio', {
+    await seedSubscription(sql, tenant.id, 'canceled', {
       mpSubscriptionId: 'mp-old',
       canceledAt: new Date(),
       scheduledDeletionAt: new Date(Date.now() - 86_400_000), // ayer (vencido)
@@ -754,7 +855,7 @@ describe('reactivate', () => {
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
-        await billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
+        await billingReactivate(tenant.id, 1, 'monthly', mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
 
@@ -771,10 +872,10 @@ describe('reactivate', () => {
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'blocked', 'predio', { mpSubscriptionId: 'mp-old' })
+    await seedSubscription(sql, tenant.id, 'blocked', { mpSubscriptionId: 'mp-old' })
 
     const result = await withTenantContext(tenant.id, async (tx) => {
-      return billingReactivate(tenant.id, plans.complejo, 'monthly', mockGateway, tx)
+      return billingReactivate(tenant.id, 3, 'monthly', mockGateway, tx)
     })
 
     expect(result.checkoutUrl).toContain('mp.test')
@@ -782,11 +883,12 @@ describe('reactivate', () => {
     const rows = await asApp(
       tenant.id,
       (tx) =>
-        tx<{ plan_id: string; mp_subscription_id: string | null; status: string }[]>`
-        SELECT plan_id, mp_subscription_id, status FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
+        tx<{ billed_courts: number; mp_subscription_id: string | null; status: string }[]>`
+        SELECT billed_courts, mp_subscription_id, status
+        FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
       `,
     )
-    expect(rows[0]!.plan_id).toBe(plans.complejo)
+    expect(rows[0]!.billed_courts).toBe(3)
     expect(rows[0]!.mp_subscription_id).not.toBe('mp-old')
     expect(rows[0]!.status).toBe('blocked') // reactivate() no transiciona: eso lo hace onPaymentApproved
   })
@@ -796,10 +898,10 @@ describe('reactivate', () => {
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'suspended', 'predio', { mpSubscriptionId: 'mp-old' })
+    await seedSubscription(sql, tenant.id, 'suspended', { mpSubscriptionId: 'mp-old' })
 
     const result = await withTenantContext(tenant.id, async (tx) => {
-      return billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
+      return billingReactivate(tenant.id, 1, 'monthly', mockGateway, tx)
     })
 
     expect(result.checkoutUrl).toContain('mp.test')
@@ -811,11 +913,11 @@ describe('reactivate', () => {
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'past_due', 'predio')
+    await seedSubscription(sql, tenant.id, 'past_due')
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
-        await billingReactivate(tenant.id, plans.predio, 'monthly', mockGateway, tx)
+        await billingReactivate(tenant.id, 1, 'monthly', mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
     expect(mockGateway.preapprovalCalls).toHaveLength(0)
@@ -827,7 +929,7 @@ describe('reactivate', () => {
 describe('dunning recovery — pago aprobado durante past_due', () => {
   it('past_due → active: limpia dunning_started_at y extiende el período', async () => {
     const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'predio', {
+    const { tenantId } = await seedActiveTenant(sql, {
       currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
     })
 
@@ -876,25 +978,25 @@ describe('dunning recovery — pago aprobado durante past_due', () => {
 // ─── GAP (audit): ciclo de facturación ANUAL (todo el resto usa monthly) ────
 
 describe('billing cycle anual', () => {
-  it('subscribe anual usa price_annual y la activación extiende el período un año', async () => {
+  it('subscribe anual cobra el equivalente mensual con descuento × 12 y la activación extiende un año', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'trialing', 'predio', {
+    await seedSubscription(sql, tenant.id, 'trialing', {
       billingCycle: 'annual',
       currentPeriodEnd: new Date('2027-05-01T00:00:00Z'),
     })
 
     const result = await withTenantContext(tenant.id, async (tx) => {
-      return billingSubscribe(tenant.id, plans.predio, 'annual', mockGateway, tx)
+      return billingSubscribe(tenant.id, 1, 'annual', mockGateway, tx)
     })
     expect(result.checkoutUrl).toContain('mp.test')
-    // Predio anual: el cobro real es price_annual (equivalente mensual con
-    // 20% off) × 12 meses = 60_480_000 (NO el mensual 6_300_000 ni el
-    // equivalente mensual 5_040_000 a pelo).
+    // Una cancha, anual: el preapproval anual cobra UNA vez, así que el monto
+    // es el equivalente mensual con 10% off ($42.300) × 12 = $507.600. NO el
+    // mensual de lista ($47.000) ni el equivalente mensual a pelo.
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
-    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(60_480_000)
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(ANNUAL_1)
     expect(mockGateway.preapprovalCalls[0]!.frequency).toBe('annual')
 
     const cycleRows = await asApp(
@@ -928,6 +1030,21 @@ describe('billing cycle anual', () => {
     const periodEnd = new Date(rows[0]!.current_period_end as unknown as string)
     expect(periodEnd.toISOString()).toBe('2028-05-01T00:00:00.000Z')
   })
+
+  it('subscribe anual por 5 canchas: $150.300 por mes → $1.803.600 al año', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    await seedSubscription(sql, tenant.id, 'trialing', { billingCycle: 'annual' })
+
+    await withTenantContext(tenant.id, (tx) =>
+      billingSubscribe(tenant.id, 5, 'annual', mockGateway, tx),
+    )
+
+    expect(mockGateway.preapprovalCalls[0]!.amount).toBe(ANNUAL_5)
+    expect(mockGateway.preapprovalCalls[0]!.reason).toBe('TurnoGol — 5 canchas (anual)')
+  })
 })
 
 // ─── GAP (audit): subscribe sólo es legal desde trialing ───────────────────
@@ -939,171 +1056,76 @@ describe('subscribe guard de estado', () => {
 
     await expect(
       withTenantContext(tenantId, async (tx) => {
-        await billingSubscribe(tenantId, plans.predio, 'monthly', mockGateway, tx)
+        await billingSubscribe(tenantId, 1, 'monthly', mockGateway, tx)
       }),
     ).rejects.toBeInstanceOf(ReactivateNotAllowedError)
     expect(mockGateway.preapprovalCalls).toHaveLength(0)
   })
 })
 
-// ─── GAP (audit): handleUpgradeApproved es no-op ante evento stale ──────────
+// ─── Residual B5: un cambio pendiente no sobrevive cancel→reactivate ───────
+// El riesgo original (upgrade pendiente reaplicado tarde) sigue existiendo con
+// el nombre nuevo: si `pending_billed_courts` sobreviviera a una baja y a una
+// reactivación por OTRA cantidad, el sweep de dunning se lo aplicaría tarde y
+// el complejo terminaría pagando por canchas que nunca pidió.
 
-describe('handleUpgradeApproved guard de idempotencia/stale', () => {
-  it('sin upgrade pendiente → no-op: no actualiza preapproval ni cambia el plan', async () => {
+describe('cancel() no deja un cambio de canchas listo para dispararse', () => {
+  it('tras cancel(), pending_change_at queda NULL y el sweep no puede aplicar nada', async () => {
     const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'predio')
-
-    // Llega un webhook de upgrade aprobado a complejo SIN que exista
-    // pending_plan_change (evento duplicado/stale tras un upgrade ya aplicado).
-    await withTenantContext(tenantId, async (tx) => {
-      await handleUpgradeApproved(tenantId, plans.complejo, mockGateway, tx)
-    })
-
-    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
-    const rows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<{ plan_id: string }[]>`
-        SELECT plan_id FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
-    )
-    expect(rows[0]!.plan_id).toBe(plans.predio) // plan NO cambió
-  })
-})
-
-// ─── Residual B5: pending_plan_change stale sobrevive cancel→reactivate ────
-// cancel() y reactivate() no limpiaban `pending_plan_change`/`pending_change_at`.
-// Un upgrade pedido y no confirmado (webhook en vuelo) dejaba el pending vivo
-// a través de un ciclo cancel→reactivate con OTRO plan; cuando el webhook
-// tardío llegaba, `handleUpgradeApproved` volvía a matchear su CAS-WHERE
-// (`status='active' AND pending_plan_change=target`) y reaplicaba el plan
-// viejo + cobraba de más en MP. Fix: limpiar pending en los dos puntos que no
-// lo hacían — así el CAS tardío ve 0 filas y no toca nada.
-
-describe('cancel() limpia pending_plan_change stale (residuo B5)', () => {
-  it('sub active con upgrade pendiente → tras cancel(), pending_plan_change y pending_change_at quedan NULL', async () => {
-    const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'predio', {
+    const { tenantId } = await seedActiveTenant(sql, {
+      billedCourts: 3,
       mpSubscriptionId: 'mp-cancel-pending-test',
+      currentPeriodEnd: new Date(Date.now() + 86_400_000),
     })
-
-    // Simula un upgrade pedido y no confirmado (pending_change_at NULL, como
-    // deja `upgrade()` real — ver comentario en billing.service.ts:upgrade).
-    await sql`
-      UPDATE tenant_subscriptions
-      SET pending_plan_change = ${plans.complejo}, pending_change_at = NULL
-      WHERE tenant_id = ${tenantId}
-    `
+    await withTenantContext(tenantId, (tx) => changeBilledCourts(tenantId, 5, mockGateway, tx))
+    expect((await fetchBilling(tenantId)).pending_billed_courts).toBe(5)
 
     await withTenantContext(tenantId, async (tx) => {
       await billingCancel(tenantId, 'me arrepentí', mockGateway, tx)
     })
 
-    const rows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<
-          {
-            pending_plan_change: string | null
-            pending_change_at: Date | null
-          }[]
-        >`
-        SELECT pending_plan_change, pending_change_at
-        FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
-    )
-    expect(rows[0]!.pending_plan_change).toBeNull()
-    expect(rows[0]!.pending_change_at).toBeNull()
+    // `pending_change_at` en NULL es lo que corta el disparo: el sweep exige
+    // que NO sea nulo y que esté vencido (dunning-retry.worker.ts).
+    expect((await fetchBilling(tenantId)).pending_change_at).toBeNull()
+
+    await runDunningSweep()
+    expect((await fetchBilling(tenantId)).billed_courts).toBe(3)
   })
 })
 
-describe('reactivate() limpia pending_plan_change stale (residuo B5)', () => {
-  it('sub canceled con downgrade pendiente stale → tras reactivate(), pending_plan_change y pending_change_at quedan NULL', async () => {
+describe('reactivate() limpia el cambio de canchas pendiente stale', () => {
+  it('sub canceled con pending_billed_courts stale → tras reactivate() queda NULL y rige lo elegido', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, staff.id)
-    await seedSubscription(sql, tenant.id, 'canceled', 'predio', {
+    await seedSubscription(sql, tenant.id, 'canceled', {
+      billedCourts: 3,
       mpSubscriptionId: 'mp-old-pending',
       canceledAt: new Date(),
       scheduledDeletionAt: new Date(Date.now() + 30 * 86_400_000),
     })
-    // Simula un downgrade programado stale (pending_change_at en el pasado,
-    // como dejaría un `downgrade()` cuyo period_end ya venció sin que el
-    // sweep lo haya limpiado todavía).
+    // Cambio agendado stale: `pending_change_at` en el pasado, como dejaría un
+    // cambio cuyo period_end venció sin que el sweep lo limpiara.
     await sql`
       UPDATE tenant_subscriptions
-      SET pending_plan_change = ${plans.estadio}, pending_change_at = NOW() - INTERVAL '1 hour'
+      SET pending_billed_courts = 8, pending_change_at = NOW() - INTERVAL '1 hour'
       WHERE tenant_id = ${tenant.id}
     `
 
     await withTenantContext(tenant.id, async (tx) => {
-      await billingReactivate(tenant.id, plans.complejo, 'monthly', mockGateway, tx)
+      await billingReactivate(tenant.id, 5, 'monthly', mockGateway, tx)
     })
 
-    const rows = await asApp(
-      tenant.id,
-      (tx) =>
-        tx<
-          {
-            pending_plan_change: string | null
-            pending_change_at: Date | null
-          }[]
-        >`
-        SELECT pending_plan_change, pending_change_at
-        FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
-      `,
-    )
-    expect(rows[0]!.pending_plan_change).toBeNull()
-    expect(rows[0]!.pending_change_at).toBeNull()
-  })
-})
+    const billing = await fetchBilling(tenant.id)
+    expect(billing.billed_courts).toBe(5) // lo que el dueño acaba de elegir
+    expect(billing.pending_billed_courts).toBeNull()
+    expect(billing.pending_change_at).toBeNull()
 
-describe('B5 residual — extremo a extremo: upgrade pendiente + cancel + reactivate a otro plan', () => {
-  it('el webhook tardío de la upgrade original NO reaplica el plan viejo ni toca MP', async () => {
-    const sql = getSql()
-    const { tenantId } = await seedActiveTenant(sql, 'predio')
-
-    // 1. El dueño pide upgrade a estadio → pending_plan_change='estadio'.
-    await withTenantContext(tenantId, async (tx) => {
-      await billingUpgrade(tenantId, plans.estadio, mockGateway, tx)
-    })
-    const pendingRows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<{ pending_plan_change: string | null }[]>`
-        SELECT pending_plan_change FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
-    )
-    expect(pendingRows[0]!.pending_plan_change).toBe(plans.estadio)
-
-    // 2. Antes de que llegue el webhook, el dueño cancela.
-    await withTenantContext(tenantId, async (tx) => {
-      await billingCancel(tenantId, 'me arrepentí', mockGateway, tx)
-    })
-
-    // 3. Y reactiva con un plan DISTINTO (complejo, no el 'estadio' pendiente).
-    await withTenantContext(tenantId, async (tx) => {
-      await billingReactivate(tenantId, plans.complejo, 'monthly', mockGateway, tx)
-    })
-
-    // 4. Llega el webhook tardío de la upgrade original (a estadio).
-    await withTenantContext(tenantId, async (tx) => {
-      await handleUpgradeApproved(tenantId, plans.estadio, mockGateway, tx)
-    })
-
-    // Con el fix (cancel limpia pending): el CAS-WHERE de handleUpgradeApproved
-    // (`status='active' AND pending_plan_change='estadio'`) no matchea → 0
-    // filas → nunca toca MP ni pisa el plan de la reactivación.
-    expect(mockGateway.updatePreapprovalCalls).toHaveLength(0)
-    const finalRows = await asApp(
-      tenantId,
-      (tx) =>
-        tx<{ plan_id: string }[]>`
-        SELECT plan_id FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
-      `,
-    )
-    expect(finalRows[0]!.plan_id).toBe(plans.complejo)
+    // Y el sweep ya no tiene nada que reaplicar: sin esto, el complejo
+    // terminaría pagando por 8 canchas que nunca pidió.
+    await runDunningSweep()
+    expect((await fetchBilling(tenant.id)).billed_courts).toBe(5)
   })
 })
 
@@ -1119,7 +1141,7 @@ describe('con qué cuenta de MercadoPago paga el complejo', () => {
     // subqueries de loadTenantOwner podían devolver a este y cobrarle a él.
     await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
     await linkStaffToTenant(sql, tenant.id, owner.id, 'admin')
-    await seedSubscription(sql, tenant.id, 'trialing', 'predio')
+    await seedSubscription(sql, tenant.id, 'trialing')
 
     const before = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
     expect(before.override).toBeNull()
@@ -1127,7 +1149,7 @@ describe('con qué cuenta de MercadoPago paga el complejo', () => {
     expect(before.effective).toBe(owner.email)
 
     await withTenantContext(tenant.id, (tx) =>
-      billingSubscribe(tenant.id, plans.predio, 'monthly', mockGateway, tx),
+      billingSubscribe(tenant.id, 1, 'monthly', mockGateway, tx),
     )
     expect(mockGateway.preapprovalCalls[0]!.payerEmail).toBe(owner.email)
 
@@ -1145,7 +1167,7 @@ describe('con qué cuenta de MercadoPago paga el complejo', () => {
     // Re-subscribe durante el trial: el segundo preapproval ya va al email
     // declarado, que es el flujo que destrabó el caso real de producción.
     await withTenantContext(tenant.id, (tx) =>
-      billingSubscribe(tenant.id, plans.predio, 'monthly', mockGateway, tx),
+      billingSubscribe(tenant.id, 1, 'monthly', mockGateway, tx),
     )
     expect(mockGateway.preapprovalCalls[1]!.payerEmail).toBe(mpEmail)
   })
@@ -1155,7 +1177,7 @@ describe('con qué cuenta de MercadoPago paga el complejo', () => {
     const tenant = await createTestTenant(sql)
     const owner = await createTestStaffUser(sql)
     await linkStaffToTenant(sql, tenant.id, owner.id)
-    await seedSubscription(sql, tenant.id, 'trialing', 'predio')
+    await seedSubscription(sql, tenant.id, 'trialing')
 
     await withTenantContext(tenant.id, (tx) =>
       setBillingPayerEmail(tenant.id, 'cuenta.mp@gmail.com', tx),

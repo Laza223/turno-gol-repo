@@ -37,7 +37,7 @@ export const POST = withBillingTenant(
     try {
       const result = await reactivate(
         user.tenantId!,
-        parsed.data.planId,
+        parsed.data.billedCourts,
         parsed.data.billingCycle,
         getBillingGateway(),
         tx,

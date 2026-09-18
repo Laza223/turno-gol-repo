@@ -9,10 +9,9 @@ import { getDb, withTenantContext } from '@/shared/db/client'
 import { plans } from '@/shared/db/schema'
 import { getBillingPayerEmail, getSubscriptionState } from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
-import {
-  ActivatePlanSection,
-  type ActivatePlanOption,
-} from '@/app/(admin)/settings/facturacion/ActivatePlanSection'
+import type { PricingParams } from '@/modules/billing/pricing'
+import { CuotaSection } from '@/app/(admin)/settings/facturacion/CuotaSection'
+import { firstCuotaPricing } from '@/app/(admin)/settings/facturacion/cuota-pricing'
 import { CancelSubscriptionSection } from '@/app/(admin)/settings/facturacion/CancelSubscriptionSection'
 import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 import { MpPayerEmailSection } from '@/app/(admin)/settings/facturacion/MpPayerEmailSection'
@@ -73,24 +72,25 @@ function formatDate(d: Date | string): string {
 }
 
 /**
- * Planes activos para el selector de reactivación. `plans` es tabla global sin
+ * Parámetros de precio por cancha (migr. 090/091). `plans` es tabla global sin
  * RLS (CLAUDE.md: "Tablas globales: tenants, players, staff_users, plans...")
  * — se lee del pool restringido sin necesitar `app.current_tenant_id`.
+ *
+ * Ya no se traen "los planes": desde el 2026-09-17 hay una sola fila activa y
+ * lo único que aporta son los tres parámetros de la cuenta.
  */
-async function loadActivePlans(): Promise<ActivatePlanOption[]> {
+async function loadCuotaPricing(): Promise<PricingParams | null> {
   const db = getDb()
-  return db
+  const rows = await db
     .select({
-      id: plans.id,
-      slug: plans.slug,
-      name: plans.name,
-      maxCourts: plans.maxCourts,
-      priceMonthly: plans.priceMonthly,
-      priceAnnual: plans.priceAnnual,
+      priceFirstCourtCents: plans.priceFirstCourtCents,
+      priceExtraCourtCents: plans.priceExtraCourtCents,
+      annualDiscountBps: plans.annualDiscountBps,
     })
     .from(plans)
     .where(eq(plans.isActive, true))
     .orderBy(asc(plans.sortOrder))
+  return firstCuotaPricing(rows)
 }
 
 export default async function ReactivarPage() {
@@ -129,7 +129,9 @@ export default async function ReactivarPage() {
   }
 
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
-  const defaultCourts = courts.length || 3
+  // Piso de la cuota: las canchas PRENDIDAS. Reactivar por menos sería volver
+  // a operar de más pagando de menos (el server lo corta igual).
+  const onlineCourts = courts.filter((c) => c.status === 'online').length
 
   const copy = STATUS_COPY[tenant.status] ?? DEFAULT_COPY
   const deadline = sub?.scheduledDeletionAt ?? null
@@ -141,7 +143,7 @@ export default async function ReactivarPage() {
   const deadlinePassed = deadline ? new Date(deadline).getTime() <= Date.now() : false
   const canReactivate = REACTIVATE_ELIGIBLE.has(tenant.status) && !deadlinePassed
 
-  const activePlans = canReactivate ? await loadActivePlans() : []
+  const pricing = canReactivate ? await loadCuotaPricing() : null
 
   // Con qué cuenta de MercadoPago paga (migr. 078). Va acá y no solo en
   // /settings/facturacion porque el hard-lock del panel deja al dueño
@@ -155,12 +157,6 @@ export default async function ReactivarPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{copy.title}</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{copy.description}</p>
 
-        {sub && (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Plan: <span className="font-medium text-foreground">{sub.planName}</span>
-          </p>
-        )}
-
         {deadline && (
           <p className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">
             {deadlinePassed
@@ -170,19 +166,17 @@ export default async function ReactivarPage() {
         )}
       </div>
 
-      {canReactivate && activePlans.length > 0 && (
-        <ActivatePlanSection
-          plans={activePlans}
-          defaultCourts={defaultCourts}
-          endpoint="/api/billing/reactivate"
-          title="Reactivar plan"
-          description="Elegí tu plan para volver a operar."
-          ctaLabel="Reactivar plan"
-          ctaLoadingLabel="Reactivando…"
+      {canReactivate && pricing && (
+        <CuotaSection
+          pricing={pricing}
+          mode="reactivate"
+          onlineCourts={onlineCourts}
+          billedCourts={sub?.billedCourts ?? 1}
+          billingCycle={sub?.billingCycle ?? 'monthly'}
         />
       )}
 
-      {canReactivate && activePlans.length > 0 && (
+      {canReactivate && pricing && (
         <MpPayerEmailSection
           currentEmail={payer.override}
           ownerEmail={payer.ownerEmail}
@@ -190,7 +184,7 @@ export default async function ReactivarPage() {
         />
       )}
 
-      {(!canReactivate || activePlans.length === 0) && (
+      {(!canReactivate || !pricing) && (
         <div className="flex flex-col items-center gap-3 text-center">
           <a
             href={`mailto:${SUPPORT_EMAIL}`}

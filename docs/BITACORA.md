@@ -142,3 +142,4 @@ lo que está abierto se consulta en los PRs y el CI, no se escribe acá.
 - **2026-09-18 13:34** `worktree-redisenio-caja` — Las tres vistas quedaron sin cards y a 1600 px de ancho.
 - **2026-09-18 14:40** `worktree-redisenio-caja` — Un solo paginador en todo el producto, con el total y las páginas numeradas: Caja, Turnos fijos, Jugadores y su ficha (antes cortaba el historial en 20), historial de Reservas, Mis reservas y super-admin.
 - **2026-09-18 17:58** `claude/awesome-hertz-e9568d` — TG-HP-211 pasa por el diálogo "Completar turno", verifica el badge "Jugada", el estado en la base y el cobro en caja, y borra el cobro antes que la reserva. Pasó en CI.
+- **2026-09-18 20:52** `claude/cool-blackburn-858762` — "Deshacer la ausencia" ya no falla en silencio: el error del botón del panel se ve debajo del botón y el del "Deshacer" del aviso sale en un aviso rojo. `pnpm test` completo en verde.

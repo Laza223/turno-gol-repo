@@ -124,7 +124,16 @@ export async function deactivateProduct(
   return updateProduct(tenantId, productId, { isActive: false }, tx)
 }
 
-/** Cantidad de productos activos con stock en o bajo el mínimo (badge de la tab). */
+/**
+ * Cantidad de productos activos que piden reposición, para el punto de aviso
+ * de la pestaña Productos.
+ *
+ * Espejo EXACTO en SQL de `isLowStock` / `countLowStock` (`caja/caja-lib.ts`),
+ * que es el mismo corte que decide el badge de cada fila. La versión anterior
+ * exigía `min_stock IS NOT NULL` y por eso no contaba un producto agotado sin
+ * mínimo cargado — o sea, el caso más urgente quedaba afuera del contador.
+ * Las pantallas que ya cargan el catálogo NO llaman acá: cuentan en memoria.
+ */
 export async function lowStockCount(tenantId: string, tx: DbTx): Promise<number> {
   const rows = await tx.execute(sql`
     SELECT COUNT(*)::int AS count
@@ -132,8 +141,7 @@ export async function lowStockCount(tenantId: string, tx: DbTx): Promise<number>
     WHERE tenant_id = ${tenantId}
       AND is_active = true
       AND stock IS NOT NULL
-      AND min_stock IS NOT NULL
-      AND stock <= min_stock
+      AND (stock <= 0 OR (min_stock IS NOT NULL AND stock <= min_stock))
   `)
   return (rows as unknown as Array<{ count: number }>)[0]?.count ?? 0
 }

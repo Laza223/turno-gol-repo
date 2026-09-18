@@ -40,14 +40,16 @@ export function Disclosure({
   const contentId = useId()
 
   return (
-    <div className={cn('rounded-lg border border-border bg-card shadow-xs', className)}>
+    // Plano como el resto de Caja: una línea arriba y abajo marca el bloque, sin
+    // card ni sombra (plan de diseño 2026-09-17 §2).
+    <div className={cn('border-y border-border', className)}>
       <h2 className="text-sm font-semibold text-foreground">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls={contentId}
-          className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-accent/50"
+          className="flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left transition-colors hover:text-foreground"
         >
           <span className="min-w-0">
             <span className="block">{heading}</span>
@@ -72,7 +74,7 @@ export function Disclosure({
         </button>
       </h2>
       {open && (
-        <div id={contentId} className="border-t border-border p-4">
+        <div id={contentId} className="pb-4">
           {children}
         </div>
       )}

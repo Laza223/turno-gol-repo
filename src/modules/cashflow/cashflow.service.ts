@@ -337,15 +337,28 @@ export function rejectChargeConflict(err: unknown): { success: false; error: str
   throw err
 }
 
+/**
+ * Los movimientos de UN día operativo, del más nuevo al más viejo.
+ *
+ * `opts.limit` / `opts.offset` existen porque esta lectura no tenía techo: un
+ * sábado de torneo son decenas de filas y las traía todas, para dos superficies
+ * que muestran 3 y 25. Vender pide `limit + 1` y usa la fila sobrante para
+ * saber si ofrece "Ver todos"; Cuentas pagina con el total de `countCashFlows`.
+ */
 export async function getCashFlows(
   tenantId: string,
   date: string,
   cutoffMins: number,
   tx: DbTx,
+  opts: { limit?: number; offset?: number } = {},
 ): Promise<CashFlowListRow[]> {
   // Rango UTC sargable en vez de expresión AT TIME ZONE: ver operatingDayRangeUtc
   // (bajo RLS la expresión no entra al índice — hallazgo D3).
   const day = operatingDayRangeUtc(date, cutoffMins)
+  // Sin `limit` la consulta queda como estaba: el día entero. Con él, el clamp
+  // evita que un `?pagina=` con basura pida el día de un complejo grande.
+  const limit = opts.limit == null ? null : Math.min(Math.max(opts.limit, 1), 500)
+  const offset = Math.max(opts.offset ?? 0, 0)
   // `cf.*` explícito: con el JOIN, un `SELECT *` pelado pisaría `id` con el de
   // bookings/players. Mismo patrón que getDebts (booking.debts.ts).
   const rows = await tx.execute<CashFlowListRawRow>(
@@ -357,9 +370,31 @@ export async function getCashFlows(
         WHERE cf.tenant_id = ${tenantId}
           AND cf.occurred_at >= ${day.fromUtc.toISOString()}
           AND cf.occurred_at < ${day.toUtc.toISOString()}
-        ORDER BY cf.occurred_at DESC`,
+        ORDER BY cf.occurred_at DESC, cf.id DESC
+        ${limit == null ? sql`` : sql`LIMIT ${limit} OFFSET ${offset}`}`,
   )
   return [...rows].map(rawRowToCashFlowListRow)
+}
+
+/**
+ * Cuántos movimientos tiene el día operativo: el total del paginador de
+ * Cuentas ("Mostrando 26–50 de 63"). Mismo rango que `getCashFlows`.
+ */
+export async function countCashFlows(
+  tenantId: string,
+  date: string,
+  cutoffMins: number,
+  tx: DbTx,
+): Promise<number> {
+  const day = operatingDayRangeUtc(date, cutoffMins)
+  const rows = await tx.execute<{ n: number }>(
+    sql`SELECT COUNT(*)::int AS n
+        FROM cash_flows
+        WHERE tenant_id = ${tenantId}
+          AND occurred_at >= ${day.fromUtc.toISOString()}
+          AND occurred_at < ${day.toUtc.toISOString()}`,
+  )
+  return [...rows][0]?.n ?? 0
 }
 
 export async function getDaySummary(

@@ -55,4 +55,27 @@ describe('CajaTabs', () => {
     expect(screen.getByRole('link', { name: 'Cuentas' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Vender' })).not.toHaveAttribute('aria-current')
   })
+
+  // El aviso de stock bajo es un punto sin texto visible: si no viajara en el
+  // nombre accesible, quien no ve color no se enteraría nunca (MASTER §10).
+  it('con productos para reponer, "Productos" lo dice en su nombre accesible', () => {
+    render(<CajaTabs active="/caja" lowStock={2} />)
+    expect(
+      screen.getByRole('link', { name: 'Productos — 2 productos para reponer' }),
+    ).toHaveAttribute('href', '/caja/productos')
+    // El aviso cuelga SOLO de Productos: los otros dos destinos no cambian.
+    expect(screen.getByRole('link', { name: 'Vender' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Cuentas' })).toBeInTheDocument()
+  })
+
+  it('en singular con un solo producto, y sin aviso con cero', () => {
+    const { unmount } = render(<CajaTabs active="/caja" lowStock={1} />)
+    expect(
+      screen.getByRole('link', { name: 'Productos — 1 producto para reponer' }),
+    ).toBeInTheDocument()
+    unmount()
+
+    render(<CajaTabs active="/caja" lowStock={0} />)
+    expect(screen.getByRole('link', { name: 'Productos' })).toBeInTheDocument()
+  })
 })

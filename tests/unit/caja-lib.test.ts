@@ -11,6 +11,7 @@ import {
   CATEGORY_BADGE,
   categoryLabel,
   chipClass,
+  countLowStock,
   formatTimeArt,
   mediumDateLabel,
   methodBreakdown,
@@ -48,6 +49,35 @@ describe('canteenStockBadge', () => {
   it('stock por encima de minStock (o sin minStock) marca "Stock N" (ok)', () => {
     expect(canteenStockBadge(6, 5)).toEqual({ label: 'Stock 6', tone: 'ok' })
     expect(canteenStockBadge(20)).toEqual({ label: 'Stock 20', tone: 'ok' })
+  })
+})
+
+/**
+ * El contador del punto de aviso tiene que decir lo MISMO que los badges de las
+ * filas: si uno cuenta 2 y las filas muestran 3 en ámbar, nadie vuelve a
+ * creerle al aviso. Por eso cada caso de acá es un caso de `canteenStockBadge`.
+ */
+describe('countLowStock', () => {
+  const p = (stock: number | null, minStock: number | null, isActive = true) => ({
+    stock,
+    minStock,
+    isActive,
+  })
+
+  it('cuenta lo que el badge marca "Quedan N" y "Agotado"', () => {
+    expect(countLowStock([p(1, 5), p(5, 5), p(0, 5)])).toBe(3)
+  })
+
+  it('un agotado SIN mínimo cargado también cuenta: es el caso más urgente', () => {
+    expect(countLowStock([p(0, null), p(-1, null)])).toBe(2)
+  })
+
+  it('no cuenta lo que el badge marca "Stock N" ni lo que no controla stock', () => {
+    expect(countLowStock([p(6, 5), p(1, null), p(null, null), p(null, 5)])).toBe(0)
+  })
+
+  it('un producto pausado no pide reposición', () => {
+    expect(countLowStock([p(0, 5, false), p(1, 5, false)])).toBe(0)
   })
 })
 

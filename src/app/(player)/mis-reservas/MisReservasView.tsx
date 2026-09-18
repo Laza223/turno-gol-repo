@@ -1,9 +1,8 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import {
   CalendarX,
   CheckCheck,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   Clock,
   Compass,
@@ -14,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { formatArs } from '@/lib/format'
+import { Pager } from '@/components/ui/pager'
 import { RefundContactPanel } from './RefundContactPanel'
 import type { RefundContactInfo } from './actions'
 import { CancelBookingButton, type CancelMyBookingAction } from './CancelBookingButton'
@@ -128,8 +128,33 @@ function pageHref(tab: 'proximos' | 'historial', page: number): string {
   return qs ? `/mis-reservas?${qs}` : '/mis-reservas'
 }
 
-const PAGER_LINK =
-  'inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+/** Botón de acción de una tarjeta vacía (CTA "Explorar complejos" / "Volver al principio"). */
+const EMPTY_CARD_CTA =
+  'inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25'
+
+/** Tarjeta vacía compartida: "no tenés nada" y "esa página no existe" son el mismo molde con distinto texto. */
+function EmptyCard({
+  title,
+  description,
+  action,
+}: {
+  title: string
+  description: string
+  action: ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-xs">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
+        <CalendarX className="h-8 w-8" aria-hidden />
+      </div>
+      <div className="space-y-1">
+        <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </div>
+  )
+}
 
 /**
  * Vista presentacional de /mis-reservas: banda hero, tabs próximos/historial,
@@ -141,17 +166,20 @@ export function MisReservasView({
   tab,
   upcomingCount,
   cancelAction,
-  page = 0,
-  hasMore = false,
+  page,
+  total,
+  pageSize,
 }: {
   bookings: MisReservasBookingRow[]
   tab: 'proximos' | 'historial'
   upcomingCount: number
   cancelAction: CancelMyBookingAction
   /** Página 0-based que se está viendo (B10). */
-  page?: number
-  /** Hay al menos una reserva más después de esta página (B10). */
-  hasMore?: boolean
+  page: number
+  /** Reservas en total para este tab (`COUNT(*) OVER()`, mismo filtro que la lista) — alimenta el Pager compartido en modo total. */
+  total: number
+  /** Tamaño de página real (`MIS_RESERVAS_PAGE_SIZE`) — vive en page.tsx, se pasa por prop porque esta vista es presentacional. */
+  pageSize: number
 }) {
   const tabClass = (active: boolean) =>
     `flex min-h-11 md:min-h-9 flex-1 items-center justify-center rounded-full py-2 text-center text-sm font-semibold transition-all duration-150 ${
@@ -205,28 +233,36 @@ export function MisReservasView({
 
       {/* Booking list */}
       {bookings.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-xs">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
-            <CalendarX className="h-8 w-8" aria-hidden />
-          </div>
-          <div className="space-y-1">
-            <h2 className="font-display text-lg font-bold tracking-tight text-foreground">
-              {tab === 'proximos' ? 'Todavía no tenés reservas' : 'Historial vacío'}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {tab === 'proximos'
+        page > 0 ? (
+          // Página fuera de rango (link viejo/compartido a una página que ya
+          // no existe): no es "no tenés reservas", es "esa página no existe" —
+          // decir lo primero con el tab lleno de filas sería mentir (mismo
+          // criterio que MovementsList en Cuentas).
+          <EmptyCard
+            title="Esa página no existe"
+            description={`${tab === 'proximos' ? 'Tus próximas reservas' : 'Tu historial'} tiene menos que lo que pide este link.`}
+            action={
+              <Link href={pageHref(tab, 0)} className={EMPTY_CARD_CTA}>
+                Volver al principio
+              </Link>
+            }
+          />
+        ) : (
+          <EmptyCard
+            title={tab === 'proximos' ? 'Todavía no tenés reservas' : 'Historial vacío'}
+            description={
+              tab === 'proximos'
                 ? 'Encontrá tu próxima cancha y reservá al instante.'
-                : 'Acá van a aparecer tus partidos jugados.'}
-            </p>
-          </div>
-          <Link
-            href="/explorar"
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
-          >
-            <Compass className="h-4 w-4" aria-hidden />
-            Explorar complejos
-          </Link>
-        </div>
+                : 'Acá van a aparecer tus partidos jugados.'
+            }
+            action={
+              <Link href="/explorar" className={EMPTY_CARD_CTA}>
+                <Compass className="h-4 w-4" aria-hidden />
+                Explorar complejos
+              </Link>
+            }
+          />
+        )
       ) : (
         <ul className="space-y-3">
           {bookings.map((b) => {
@@ -359,30 +395,18 @@ export function MisReservasView({
       {/* B10 — antes la query traía 200 reservas y el corte próximos/historial
           se hacía en JS. Como el orden es por fecha descendente, lo que se
           perdía era la COLA DEL HISTORIAL: un jugador de años no llegaba a sus
-          reservas más viejas y nada se lo decía. */}
-      {(page > 0 || hasMore) && (
-        <nav
-          aria-label="Paginación de reservas"
-          className="flex items-center justify-between gap-3 pt-1"
-        >
-          {page > 0 ? (
-            <Link href={pageHref(tab, page - 1)} rel="prev" className={PAGER_LINK}>
-              <ChevronLeft className="h-4 w-4" aria-hidden />
-              Anteriores
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span className="text-xs text-muted-foreground tabular-nums">Página {page + 1}</span>
-          {hasMore ? (
-            <Link href={pageHref(tab, page + 1)} rel="next" className={PAGER_LINK}>
-              Siguientes
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </Link>
-          ) : (
-            <span />
-          )}
-        </nav>
+          reservas más viejas y nada se lo decía. Paginador compartido (con
+          total): nunca se dibuja con una sola página, y con la lista vacía
+          (`bookings.length === 0`, arriba) ninguna rama llega hasta acá. */}
+      {bookings.length > 0 && (
+        <Pager
+          label="Paginación de reservas"
+          page={page}
+          total={total}
+          pageSize={pageSize}
+          shown={bookings.length}
+          hrefFor={(p) => pageHref(tab, p)}
+        />
       )}
     </div>
   )

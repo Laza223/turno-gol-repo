@@ -2,7 +2,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { cleanupAll, createTestStaffUser, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { createProduct } from '@/modules/canteen/canteen.service'
-import { adjustStock, registerExit, registerPurchase } from '@/modules/canteen/stock.service'
+import {
+  adjustStock,
+  countLedger,
+  getLedger,
+  registerExit,
+  registerPurchase,
+} from '@/modules/canteen/stock.service'
 import {
   InsufficientStockError,
   ProductNotFoundError,
@@ -62,6 +68,43 @@ async function getCashFlowsByKey(
     WHERE tenant_id = ${tenantId} AND client_idempotency_key = ${key}
   `
 }
+
+// El bloque "Movimientos de stock" de Productos pagina de a 20. Mismo contrato
+// que getCashFlows: las páginas juntas reproducen EXACTAMENTE la lista sin
+// offset, en el mismo orden, sin repetir ni saltear una fila.
+describe('stock service — getLedger con offset', () => {
+  it('recorre el ledger sin repetir ni saltear filas', async () => {
+    const { tenant, staff } = await setup()
+    const product = await withTenantContext(tenant.id, (tx) =>
+      createProduct(tenant.id, { name: 'Gaseosa', price: 200000, stock: 0 }, tx),
+    )
+    for (let i = 0; i < 5; i++) {
+      await withTenantContext(tenant.id, (tx) =>
+        registerPurchase(
+          tenant.id,
+          staff.id,
+          { productId: product.id, units: i + 1, clientIdempotencyKey: crypto.randomUUID() },
+          tx,
+        ),
+      )
+    }
+
+    const [all, p1, p2] = await withTenantContext(tenant.id, async (tx) => [
+      await getLedger(tenant.id, tx, { limit: 50 }),
+      await getLedger(tenant.id, tx, { limit: 3, offset: 0 }),
+      await getLedger(tenant.id, tx, { limit: 3, offset: 3 }),
+    ])
+
+    const total = await withTenantContext(tenant.id, (tx) => countLedger(tenant.id, tx))
+
+    expect(all).toHaveLength(5)
+    expect(total).toBe(5)
+    expect([p1.length, p2.length]).toEqual([3, 2])
+    expect([...p1, ...p2].map((e) => e.id)).toEqual(all.map((e) => e.id))
+    // Del más nuevo al más viejo: la última compra cargada fue de 5 unidades.
+    expect(p1[0]!.qty).toBe(5)
+  })
+})
 
 describe('stock service — registerPurchase', () => {
   it('adds units to a controlled product and leaves one purchase movement', async () => {

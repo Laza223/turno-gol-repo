@@ -407,6 +407,17 @@ Mapeo de estados → §2.6. El texto del badge usa el vocabulario canónico de �
 - Numéricas: right-align + `tabular-nums`. Montos con formato §8.2.
 - Fila clickeable entera si abre detalle (Fitts: blanco grande), con `cursor-pointer` + focus visible.
 - Densidad admin: `py-2.5` por celda como base; nunca inflar por estética.
+- **Paginación: una sola, `components/ui/pager.tsx`** (2026-09-18). Toda lista que crece con el
+  tiempo tiene techo y lo dice: "Mostrando 26–50 de 312", páginas numeradas con la primera y la
+  última siempre a mano, la actual marcada (`aria-current`), y "Anteriores"/"Siguientes" apagados
+  en su lugar cuando no hay adónde ir (si desaparecen, la barra salta). En el teléfono los números
+  pasan a "3 de 13" y las flechas quedan de 44 px. Sin total (`LIMIT n+1`) solo dice "Página N".
+  La página va en la URL (1-based, la primera sin parámetro) cuando la trae el servidor; en el
+  cliente, solo cuando la lista ya se filtra ahí entera. Una sola página: no se dibuja. Tamaños:
+  25 por defecto, 50 en listas de filas densas (Jugadores, Reservas), 20 en tarjetas del portal
+  del jugador, 5 en una cola que va arriba de otra lista (devoluciones). "Ver más" queda para lo
+  público (explorar, reseñas), donde se recorre y no se busca una fila. Nada de scroll infinito
+  en el panel: el pie de página tiene que ser alcanzable y la fila 140 tiene que tener dirección.
 
 ### 6.7 Modales, toasts, estados
 

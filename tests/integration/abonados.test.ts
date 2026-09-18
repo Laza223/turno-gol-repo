@@ -11,6 +11,7 @@ import {
 import {
   createAbonado,
   getAbonados,
+  countAbonados,
   reactivateAbonado,
   cancelAbonado,
   getAbonadoSlotConflicts,
@@ -370,9 +371,9 @@ describe('abonado service', () => {
    * llegando a la UI, en vez de un error de Postgres en el deploy.
    * (`abonados.notes` se dropeó en la 074 y este `SELECT *` no se enteró.)
    *
-   * Sigue SIN `LIMIT`, a propósito: el total de la pantalla sale de `.length`
-   * sobre estas mismas filas, así que el número nunca puede contradecir la
-   * lista — no es la clase "la UI miente" que se cerró en /reservas.
+   * Sin `opts.limit`, sigue trayendo todas las filas (el caso de este test):
+   * `/abonados` ahora pagina de a 25 con `opts.limit`/`opts.offset` — ver el
+   * test de acá abajo — pero el total sale de `countAbonados`, aparte.
    */
   it('getAbonados trae todas las columnas que promete el tipo, y filtra por estado', async () => {
     const sql = getSql()
@@ -433,6 +434,46 @@ describe('abonado service', () => {
       getAbonados(tenant.id, { status: 'canceled' }, tx),
     )
     expect(cancelados.find((a) => a.id === abonado.id)).toBeUndefined()
+  })
+
+  // /abonados pagina de a 25 (los `canceled` no se borran nunca y un complejo
+  // viejo acumula cientos). Mismo contrato que el análogo de cash_flows
+  // ("limit/offset recorren el día...", cashflow.test.ts): las páginas juntas
+  // tienen que reproducir EXACTAMENTE getAbonados() sin límite, en el mismo
+  // orden, y countAbonados tiene que coincidir con ese total.
+  it('limit/offset recorren la lista sin repetir ni saltear filas y countAbonados coincide', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+
+    // 7 fijos en días distintos (0..6): no se solapan entre sí, así el INSERT
+    // directo no necesita pasar por el chequeo de conflictos de createAbonado
+    // (acá no importa generar bookings, solo tener filas para paginar).
+    for (let dow = 0; dow <= 6; dow++) {
+      await sql`
+        INSERT INTO abonados (tenant_id, court_id, contact_name, contact_phone,
+          day_of_week, time_start, time_end, price_per_session, starts_on, status, payment_method)
+        VALUES (
+          ${tenant.id}, ${courtId}, ${`Fijo ${dow}`}, ${'1100000000'},
+          ${dow}, '10:00'::time, '11:00'::time, ${800000}, ${ABO_START}::date, 'active', 'cash'
+        )
+      `
+    }
+
+    const [all, p1, p2, p3] = await withTenantContext(tenant.id, async (tx) => [
+      await getAbonados(tenant.id, {}, tx),
+      await getAbonados(tenant.id, {}, tx, { limit: 3, offset: 0 }),
+      await getAbonados(tenant.id, {}, tx, { limit: 3, offset: 3 }),
+      await getAbonados(tenant.id, {}, tx, { limit: 3, offset: 6 }),
+    ])
+    const total = await withTenantContext(tenant.id, (tx) => countAbonados(tenant.id, {}, tx))
+
+    expect(all).toHaveLength(7)
+    expect(total).toBe(7)
+    expect([p1.length, p2.length, p3.length]).toEqual([3, 3, 1])
+    expect([...p1, ...p2, ...p3].map((a) => a.id)).toEqual(all.map((a) => a.id))
   })
 
   /**

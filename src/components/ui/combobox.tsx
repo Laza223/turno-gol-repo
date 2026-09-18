@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
+import { normalizeForSearch } from '@/lib/search'
 import { cn } from '@/lib/utils'
 
 export type ComboboxOption = { value: string; label: string; hint?: string }
@@ -38,9 +39,7 @@ type Props = {
 }
 
 /** Comparación insensible a acentos y mayúsculas ("cordoba" matchea "Córdoba"). */
-function normalize(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
+const normalize = normalizeForSearch
 
 /**
  * Combobox accesible (patrón ARIA 1.2 combobox + listbox, WCAG 2.1 AA):

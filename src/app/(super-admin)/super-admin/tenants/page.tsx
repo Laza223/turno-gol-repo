@@ -54,7 +54,10 @@ export default async function SuperAdminTenantsPage(props: {
     : undefined
 
   const result = await listTenants({ q, status, planSlug, page, pageSize: PAGE_SIZE })
-  const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE))
+
+  // El Pager trabaja en 0-based; la URL de esta pantalla sigue en 1-based.
+  const tenantsHref = (p: number) =>
+    `/super-admin/tenants${buildQuery(searchParams, { page: String(p + 1) })}`
 
   return (
     <div className="space-y-6">
@@ -70,18 +73,10 @@ export default async function SuperAdminTenantsPage(props: {
 
       <TenantsTable
         rows={result.rows}
-        page={result.page}
-        totalPages={totalPages}
-        prevHref={
-          result.page > 1
-            ? `/super-admin/tenants${buildQuery(searchParams, { page: String(result.page - 1) })}`
-            : null
-        }
-        nextHref={
-          result.page < totalPages
-            ? `/super-admin/tenants${buildQuery(searchParams, { page: String(result.page + 1) })}`
-            : null
-        }
+        page={result.page - 1}
+        total={result.total}
+        pageSize={PAGE_SIZE}
+        hrefFor={tenantsHref}
       />
     </div>
   )

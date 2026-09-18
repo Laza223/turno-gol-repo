@@ -5,10 +5,17 @@ import { cn } from '@/lib/utils'
 import { capitalizeFirst, formatArs } from '@/lib/format'
 import { bookingBadgeVisual } from '@/lib/booking/slot-visual'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { Pager } from '@/components/ui/pager'
 import { resolveDepositDisplayStatus } from '@/app/(admin)/reservas/deposit-display'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import type { ManualBanDuration } from '@/modules/bans/ban.schema'
-import type { PlayerProfile, PlayerStats, PlayerBookingRow, PlayerFixedSlotRow } from '../queries'
+import {
+  PLAYER_HISTORY_PAGE_SIZE,
+  type PlayerProfile,
+  type PlayerStats,
+  type PlayerBookingRow,
+  type PlayerFixedSlotRow,
+} from '../queries'
 import { BanPlayerControls } from './BanPlayerControls'
 import { PlayerTagsCard, type SetPlayerTagsFn } from './PlayerTagsCard'
 import { PlayerFixedSlotsCard, type UnlinkContactFn } from './PlayerFixedSlotsCard'
@@ -62,6 +69,15 @@ function formatDate(dateStr: string): string {
   )
 }
 
+/**
+ * `/jugadores/[playerId]?historial=` — la ficha no tiene otros filtros que
+ * preservar. 1-based en la URL (igual que `?pagina=` de /jugadores); la
+ * página 1 va sin query string.
+ */
+function historyHref(playerId: string, page: number): string {
+  return page > 0 ? `/jugadores/${playerId}?historial=${page + 1}` : `/jugadores/${playerId}`
+}
+
 function formatDateArt(date: Date): string {
   return capitalizeFirst(
     date.toLocaleDateString('es-AR', {
@@ -77,6 +93,10 @@ type Props = {
   profile: PlayerProfile
   stats: PlayerStats
   history: PlayerBookingRow[]
+  /** Página 0-based del historial que se está viendo. */
+  historyPage: number
+  /** Reservas totales de la persona, sumando todas las páginas del historial. */
+  historyTotal: number
   ban: BanCheckResult
   fixedSlots: PlayerFixedSlotRow[]
   banPlayerAction: (
@@ -99,6 +119,8 @@ export function JugadorProfileView({
   profile,
   stats,
   history,
+  historyPage,
+  historyTotal,
   ban,
   fixedSlots,
   banPlayerAction,
@@ -192,40 +214,69 @@ export function JugadorProfileView({
       <section className="card-premium rounded-xl p-6">
         <h2 className="text-sm font-semibold text-foreground">Historial de reservas</h2>
         {history.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Sin reservas registradas.</p>
+          historyPage > 0 ? (
+            // Página fuera de rango (un link viejo, o el historial se achicó):
+            // no es "nunca jugó acá" — decirlo igual mentiría con un
+            // historial que en realidad tiene filas en otra página.
+            <p className="mt-2 text-sm text-muted-foreground">
+              Esa página no existe.{' '}
+              <Link
+                href={historyHref(profile.playerId, 0)}
+                className="font-medium text-foreground underline"
+              >
+                Volver al principio
+              </Link>
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">Sin reservas registradas.</p>
+          )
         ) : (
-          <ul className="mt-4 divide-y divide-slate-100 text-sm">
-            {history.map((b) => {
-              const visual = bookingBadgeVisual(b)
-              const money = paymentStatus(b)
-              return (
-                <li key={b.id}>
-                  <Link
-                    href={`/reservas/${b.id}`}
-                    className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                  >
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {formatDate(b.date)} · {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {b.courtName} · {TYPE_LABELS[b.type] ?? b.type}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <p className="text-foreground">{formatArs(b.priceSnapshot)}</p>
-                      <StatusBadge visual={visual} />
-                      {money && (
-                        <p className={cn('text-xs font-medium', PAYMENT_TONE_CLASS[money.tone])}>
-                          {money.text}
+          <>
+            <ul className="mt-4 divide-y divide-slate-100 text-sm">
+              {history.map((b) => {
+                const visual = bookingBadgeVisual(b)
+                const money = paymentStatus(b)
+                return (
+                  <li key={b.id}>
+                    <Link
+                      href={`/reservas/${b.id}`}
+                      className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {formatDate(b.date)} · {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
                         </p>
-                      )}
-                    </div>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
+                        <p className="text-xs text-muted-foreground">
+                          {b.courtName} · {TYPE_LABELS[b.type] ?? b.type}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <p className="text-foreground">{formatArs(b.priceSnapshot)}</p>
+                        <StatusBadge visual={visual} />
+                        {money && (
+                          <p className={cn('text-xs font-medium', PAYMENT_TONE_CLASS[money.tone])}>
+                            {money.text}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+            {/* Antes el historial se cortaba en 20 SIN forma de ver las
+                reservas anteriores — el Pager en modo total dice cuántas hay
+                en total y numera. */}
+            <Pager
+              label="Paginación del historial"
+              page={historyPage}
+              total={historyTotal}
+              pageSize={PLAYER_HISTORY_PAGE_SIZE}
+              shown={history.length}
+              className="mt-4"
+              hrefFor={(p) => historyHref(profile.playerId, p)}
+            />
+          </>
         )}
       </section>
 

@@ -226,20 +226,39 @@ export async function adjustStock(
 }
 
 /** Últimos movimientos del ledger, con nombre actual del producto (UI tab Productos). */
+/** Cuántos movimientos de stock hay: el total del paginador del ledger. */
+export async function countLedger(
+  tenantId: string,
+  tx: DbTx,
+  opts: { productId?: string } = {},
+): Promise<number> {
+  const rows = await tx.execute(sql`
+    SELECT COUNT(*)::int AS n
+    FROM stock_movements
+    WHERE tenant_id = ${tenantId}
+      ${opts.productId ? sql`AND product_id = ${opts.productId}` : sql``}
+  `)
+  return (rows as unknown as Array<{ n: number }>)[0]?.n ?? 0
+}
+
 export async function getLedger(
   tenantId: string,
   tx: DbTx,
-  opts: { limit?: number; productId?: string } = {},
+  opts: { limit?: number; offset?: number; productId?: string } = {},
 ): Promise<StockLedgerEntry[]> {
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200)
+  // `offset` existe para paginar el bloque "Movimientos de stock" de Productos
+  // (antes eran los últimos 20 y el resto no se podía ver). `sm.id` desempata
+  // instantes iguales: sin él, dos páginas podían repetir o saltear una fila.
+  const offset = Math.max(opts.offset ?? 0, 0)
   const rows = await tx.execute(sql`
     SELECT sm.*, cp.name AS product_name
     FROM stock_movements sm
     JOIN canteen_products cp ON cp.id = sm.product_id
     WHERE sm.tenant_id = ${tenantId}
       ${opts.productId ? sql`AND sm.product_id = ${opts.productId}` : sql``}
-    ORDER BY sm.occurred_at DESC
-    LIMIT ${limit}
+    ORDER BY sm.occurred_at DESC, sm.id DESC
+    LIMIT ${limit} OFFSET ${offset}
   `)
   return (
     rows as unknown as Array<{

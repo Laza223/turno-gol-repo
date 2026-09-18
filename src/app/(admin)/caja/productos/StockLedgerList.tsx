@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { History } from 'lucide-react'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -33,7 +34,7 @@ function QtyChip({ qty }: { qty: number }) {
   return (
     <span
       className={`shrink-0 text-sm font-medium tabular-nums ${
-        qty < 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'
+        qty < 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-800 dark:text-emerald-400'
       }`}
     >
       {qty > 0 ? `+${qty}` : qty}
@@ -57,76 +58,88 @@ export function lastMovementSummary(entries: StockLedgerEntry[]): string | null 
   return `Último: ${last.productName} ${qty} · ${kindLabel(last)} · ${shortDate(last.occurredAt)}`
 }
 
-/** Últimos movimientos de stock (compras, ventas, mermas, ajustes) — tab Productos. */
-export function StockLedgerList({ entries }: { entries: StockLedgerEntry[] }) {
+/**
+ * Movimientos de stock (compras, ventas, mermas, ajustes) — tab Productos.
+ *
+ * Vive adentro del `Disclosure` "Movimientos de stock", que ya es su título:
+ * por eso no abre card ni encabezado propio (antes decía "Movimientos de stock"
+ * dos veces, una arriba de la otra). `footer` recibe el paginador.
+ */
+export function StockLedgerList({
+  entries,
+  footer,
+}: {
+  entries: StockLedgerEntry[]
+  footer?: ReactNode
+}) {
   if (entries.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card shadow-xs">
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="font-medium text-foreground">Movimientos de stock</h2>
-        </div>
-        <EmptyState icon={History} title="Todavía no hay movimientos de stock." />
-      </div>
+      <>
+        <EmptyState
+          icon={History}
+          title="Todavía no hay movimientos de stock."
+          className="border-0 py-8"
+        />
+        {footer}
+      </>
     )
   }
 
   return (
-    <ResponsiveList
-      className="shadow-xs"
-      header={
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="font-medium text-foreground">Movimientos de stock</h2>
-        </div>
-      }
-      cards={
-        <ul className="divide-y divide-border">
-          {entries.map((e) => (
-            <li key={e.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">{e.productName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {kindLabel(e)} · {shortDate(e.occurredAt)}
-                </p>
-              </div>
-              <QtyChip qty={e.qty} />
-            </li>
-          ))}
-        </ul>
-      }
-      table={
-        <table className="w-full min-w-[520px] text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="p-2.5 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Fecha
-              </th>
-              <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Producto
-              </th>
-              <th className="p-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Tipo
-              </th>
-              <th className="p-2.5 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Cantidad
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+    <div className="space-y-3">
+      <ResponsiveList
+        flat
+        cards={
+          <ul className="divide-y divide-border border-b border-border">
             {entries.map((e) => (
-              <tr key={e.id} className="transition-colors hover:bg-accent/50">
-                <td className="p-2.5 pl-4 tabular-nums text-muted-foreground">
-                  {shortDate(e.occurredAt)}
-                </td>
-                <td className="p-2.5 text-foreground">{e.productName}</td>
-                <td className="p-2.5 text-foreground">{kindLabel(e)}</td>
-                <td className="p-2.5 pr-4 text-right">
-                  <QtyChip qty={e.qty} />
-                </td>
-              </tr>
+              <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{e.productName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {kindLabel(e)} · {shortDate(e.occurredAt)}
+                  </p>
+                </div>
+                <QtyChip qty={e.qty} />
+              </li>
             ))}
-          </tbody>
-        </table>
-      }
-    />
+          </ul>
+        }
+        table={
+          <table className="w-full min-w-[520px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Fecha
+                </th>
+                <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Producto
+                </th>
+                <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Tipo
+                </th>
+                <th className="py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Cantidad
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {entries.map((e) => (
+                <tr key={e.id} className="transition-colors hover:bg-accent/50">
+                  <td className="py-2 pr-3 tabular-nums text-muted-foreground">
+                    {shortDate(e.occurredAt)}
+                  </td>
+                  <td className="py-2 pr-3 text-foreground">{e.productName}</td>
+                  <td className="py-2 pr-3 text-foreground">{kindLabel(e)}</td>
+                  <td className="py-2 text-right">
+                    <QtyChip qty={e.qty} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        }
+      />
+      {footer}
+    </div>
   )
 }

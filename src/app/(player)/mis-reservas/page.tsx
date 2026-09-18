@@ -47,10 +47,16 @@ type RawMisReservasRow = {
   /** Medio de la MISMA fila que dio `refund_status`. */
   refund_method: 'mercadopago' | 'cash' | 'transfer' | 'other' | null
   refund_processed_at: Date | string | null
+  /**
+   * Total de reservas de ESTE tab (mismo WHERE/tabCond que la lista), via
+   * `COUNT(*) OVER()` — la misma fila lo trae sin pagar una segunda pasada por
+   * la tabla. Alimenta el Pager compartido en modo total.
+   */
+  total: number
 }
 
-/** Reservas por página. El jugador lee esto en el celular: 50 sobra. */
-export const MIS_RESERVAS_PAGE_SIZE = 50
+/** Reservas por página. Tarjetas grandes tipo ecommerce: 20 entran sin abrumar el scroll del celular. */
+export const MIS_RESERVAS_PAGE_SIZE = 20
 
 /** `?pagina=` es 1-based en la URL y 0-based adentro. Basura → página 1. */
 function parsePage(raw: string | undefined): number {
@@ -153,14 +159,21 @@ export default async function MisReservasPage(props: {
                WHERE pr.booking_id = b.id AND pr.type = 'refund'
                  AND pr.status IN ('approved', 'pending')
                ORDER BY (pr.status = 'pending') DESC, pr.created_at ASC
-               LIMIT 1) AS refund_processed_at
+               LIMIT 1) AS refund_processed_at,
+             -- Ventana sobre el mismo WHERE/tabCond, ANTES del LIMIT: el total
+             -- real del tab sale en la misma pasada, sin una segunda query ni
+             -- el viejo truco de pedir una fila de más para detectar "hay más".
+             COUNT(*) OVER()::int AS total
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.player_id = ${user.playerId}
         ${tabCond}
-      ORDER BY b.date DESC, b.time_start DESC
-      LIMIT ${MIS_RESERVAS_PAGE_SIZE + 1} OFFSET ${page * MIS_RESERVAS_PAGE_SIZE}
+      -- id como desempate: dos reservas con el mismo date+time_start (dos
+      -- canchas del mismo complejo, por ejemplo) sin un orden estable movían
+      -- filas entre páginas contiguas.
+      ORDER BY b.date DESC, b.time_start DESC, b.id ASC
+      LIMIT ${MIS_RESERVAS_PAGE_SIZE} OFFSET ${page * MIS_RESERVAS_PAGE_SIZE}
     `)
     // "Tenés N turnos por jugar" ya no se puede derivar de las filas en
     // pantalla: parado en Historial no hay ninguna próxima a la vista. Los
@@ -181,9 +194,10 @@ export default async function MisReservasPage(props: {
     return { rows: paged, upcoming: Number([...counted][0]?.n ?? 0) }
   })
 
-  const pageRows = rows as unknown as RawMisReservasRow[]
-  const hasMore = pageRows.length > MIS_RESERVAS_PAGE_SIZE
-  const rawRows = hasMore ? pageRows.slice(0, MIS_RESERVAS_PAGE_SIZE) : pageRows
+  const rawRows = rows as unknown as RawMisReservasRow[]
+  // El total viaja en cada fila (misma ventana) — con página vacía (fuera de
+  // rango) no hay fila de la que leerlo, ahí no hay nada que paginar.
+  const total = rawRows[0]?.total ?? 0
 
   // ENS-2: consecuencia concreta de cancelar AHORA, calculada server-side con
   // la misma política que cancelByPlayer (getCancellationPreview reusa
@@ -227,7 +241,8 @@ export default async function MisReservasPage(props: {
         bookings={pageBookings}
         tab={tab}
         page={page}
-        hasMore={hasMore}
+        total={total}
+        pageSize={MIS_RESERVAS_PAGE_SIZE}
         upcomingCount={upcoming}
         cancelAction={cancelMyBookingAction}
       />

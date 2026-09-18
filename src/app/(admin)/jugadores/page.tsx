@@ -22,7 +22,7 @@ export default async function JugadoresPage(props: {
 
   const q = searchParams.q?.trim() || undefined
   const page = parsePage(searchParams.pagina)
-  const { rows, hasMore } = await withTenantContext(tenant.id, (tx) =>
+  const { rows, total } = await withTenantContext(tenant.id, (tx) =>
     listTenantClients(tenant.id, { q }, tx, page),
   )
 
@@ -31,7 +31,7 @@ export default async function JugadoresPage(props: {
       clients={rows}
       q={q}
       page={page}
-      hasMore={hasMore}
+      total={total}
       searchAction={searchLinkCandidatesAction}
       linkAction={linkContactAction}
     />

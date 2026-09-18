@@ -13,6 +13,7 @@ import {
   ProductNotFoundError,
   StockNotEditableFromCatalogError,
 } from '@/modules/canteen/canteen.errors'
+import { countLowStock } from '@/app/(admin)/caja/caja-lib'
 
 async function getStock(productId: string): Promise<number | null> {
   const sql = getSql()
@@ -156,9 +157,42 @@ describe('canteen catalog service', () => {
         ),
       )
       await withTenantContext(tenant.id, (tx) => deactivateProduct(tenant.id, inactiveLow.id, tx))
+      // F: AGOTADO sin minStock -> CUENTA. Es el badge "Agotado" de la fila, y
+      // la versión anterior de la consulta lo dejaba afuera por exigir un mínimo.
+      await withTenantContext(tenant.id, (tx) =>
+        createProduct(tenant.id, { name: 'Agotado sin mínimo', price: 100000, stock: 0 }, tx),
+      )
 
       const count = await withTenantContext(tenant.id, (tx) => lowStockCount(tenant.id, tx))
-      expect(count).toBe(1)
+      expect(count).toBe(2)
+    })
+
+    // Espejo del predicado puro: la pantalla que carga el catálogo cuenta en
+    // memoria y la que no, en SQL. Si divergen, el punto de aviso dice un
+    // número distinto según desde qué pestaña lo mires.
+    it('da el mismo número que countLowStock sobre el catálogo', async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+      const cases = [
+        { name: 'Bajo', stock: 2, minStock: 5 },
+        { name: 'Justo en el mínimo', stock: 5, minStock: 5 },
+        { name: 'Sano', stock: 10, minStock: 5 },
+        { name: 'Agotado con mínimo', stock: 0, minStock: 5 },
+        { name: 'Agotado sin mínimo', stock: 0 },
+        { name: 'Bajo sin mínimo', stock: 1 },
+        { name: 'Servicio', minStock: 5 },
+      ]
+      for (const c of cases) {
+        await withTenantContext(tenant.id, (tx) =>
+          createProduct(tenant.id, { price: 100000, ...c }, tx),
+        )
+      }
+
+      const [inSql, catalog] = await withTenantContext(tenant.id, (tx) =>
+        Promise.all([lowStockCount(tenant.id, tx), listProducts(tenant.id, tx)]),
+      )
+      expect(inSql).toBe(countLowStock(catalog))
+      expect(inSql).toBe(4)
     })
   })
 

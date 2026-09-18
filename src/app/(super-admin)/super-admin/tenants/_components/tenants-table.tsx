@@ -1,26 +1,29 @@
 import Link from 'next/link'
 import { formatArs } from '@/lib/format'
 import type { TenantList } from '@/modules/super-admin/tenants.service'
+import { Pager } from '@/components/ui/pager'
 import { TenantStatusBadge } from '../../_components/tenant-status-visual'
 import { formatDateArt } from './format'
 
 /**
- * Tabla de tenants + paginación (Link, sin client state). `prevHref`/`nextHref`
- * llegan ya armados desde la page (que conoce los searchParams completos) —
- * `null` cuando no hay página anterior/siguiente.
+ * Tabla de tenants + paginación (Pager compartido, Link, sin client state).
+ * `hrefFor` llega armada desde la page (que conoce los searchParams
+ * completos): recibe la página 0-based del Pager y arma la URL con el
+ * `?page=` 1-based que ya usaba esta pantalla.
  */
 export function TenantsTable({
   rows,
   page,
-  totalPages,
-  prevHref,
-  nextHref,
+  total,
+  pageSize,
+  hrefFor,
 }: {
   rows: TenantList['rows']
+  /** Página actual, 0-based (el Pager trabaja siempre así). */
   page: number
-  totalPages: number
-  prevHref: string | null
-  nextHref: string | null
+  total: number
+  pageSize: number
+  hrefFor: (page: number) => string
 }) {
   return (
     <>
@@ -41,7 +44,18 @@ export function TenantsTable({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                  No hay tenants que coincidan con los filtros.
+                  {/* `?page=99` de un link viejo: hay complejos, lo que no existe
+                      es esa página. Decir "no hay" sería mentir. */}
+                  {total > 0 ? (
+                    <>
+                      Esa página no existe.{' '}
+                      <Link href={hrefFor(0)} className="font-medium underline underline-offset-4">
+                        Volver al principio
+                      </Link>
+                    </>
+                  ) : (
+                    'No hay tenants que coincidan con los filtros.'
+                  )}
                 </td>
               </tr>
             )}
@@ -78,45 +92,14 @@ export function TenantsTable({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <nav aria-label="Paginación" className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            Página {page} de {totalPages}
-          </span>
-          <div className="flex gap-2">
-            {prevHref ? (
-              <Link
-                href={prevHref}
-                className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
-              >
-                Anterior
-              </Link>
-            ) : (
-              <span
-                aria-disabled="true"
-                className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
-              >
-                Anterior
-              </span>
-            )}
-            {nextHref ? (
-              <Link
-                href={nextHref}
-                className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
-              >
-                Siguiente
-              </Link>
-            ) : (
-              <span
-                aria-disabled="true"
-                className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
-              >
-                Siguiente
-              </span>
-            )}
-          </div>
-        </nav>
-      )}
+      <Pager
+        label="Paginación de complejos"
+        page={page}
+        total={total}
+        pageSize={pageSize}
+        shown={rows.length}
+        hrefFor={hrefFor}
+      />
     </>
   )
 }

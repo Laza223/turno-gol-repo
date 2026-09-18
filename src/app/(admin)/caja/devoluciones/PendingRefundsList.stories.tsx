@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, within } from 'storybook/test'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import type { PendingRefundRow } from '@/modules/payments/refund.service'
 import { PendingRefundsList } from './PendingRefundsList'
 
@@ -51,7 +51,7 @@ export const ConDevoluciones: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Tenés que devolver')).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'Tenés que devolver' })).toBeInTheDocument()
     // El total es la suma de las dos filas: $8.000.
     await expect(canvas.getByText(/8\.000/)).toBeInTheDocument()
     // El origen se muestra porque decide si MercadoPago todavía puede
@@ -61,6 +61,33 @@ export const ConDevoluciones: Story = {
     // H105: el nombre accesible ahora lleva monto y jugador (no solo "Ya
     // devolví"), así que el match es por substring.
     await expect(canvas.getAllByRole('button', { name: /Ya devolví/ })).toHaveLength(2)
+  },
+}
+
+/**
+ * Siete señas: de a cinco, empezando por la más vieja. El total del encabezado
+ * suma las siete, no solo la página.
+ */
+export const VariasPaginas: Story = {
+  args: {
+    rows: Array.from({ length: 7 }, (_, i) =>
+      row({
+        refundPaymentId: `44444444-4444-4444-8444-44444444444${i}`,
+        debtorName: `Jugador ${i + 1}`,
+        amountCents: 100000,
+      }),
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/7\.000/)).toBeInTheDocument()
+    await expect(canvas.getAllByRole('button', { name: /Ya devolví/ })).toHaveLength(5)
+    const pager = within(canvas.getByRole('navigation', { name: 'Paginación de devoluciones' }))
+    await expect(pager.getByRole('status')).toHaveTextContent('1–5 de 7')
+
+    await userEvent.click(pager.getByRole('button', { name: /Siguientes/ }))
+    await expect(canvas.getAllByRole('button', { name: /Ya devolví/ })).toHaveLength(2)
+    await expect(canvas.getByText('Jugador 6')).toBeInTheDocument()
   },
 }
 
@@ -93,12 +120,18 @@ export const SinNingunContacto: Story = {
   },
 }
 
-/** El vacío es el premio, igual que en "Necesita tu atención". */
+/**
+ * Sin devoluciones no se dibuja NADA: ni título, ni total en $ 0, ni el
+ * párrafo de "acá va a aparecer". Para la mayoría de los complejos ese bloque
+ * era permanente, y en uno que no cobra seña por MercadoPago, imposible de
+ * llenar.
+ */
 export const SinDevoluciones: Story = {
   args: { rows: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('No debés ninguna devolución')).toBeInTheDocument()
+    await expect(canvas.queryByRole('heading', { name: 'Tenés que devolver' })).toBeNull()
     await expect(canvas.queryByRole('button', { name: /Ya devolví/ })).toBeNull()
+    await expect(canvas.queryByText(/devolv/i)).toBeNull()
   },
 }

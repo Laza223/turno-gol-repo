@@ -1,14 +1,16 @@
 import Link from 'next/link'
 import { withTenantContext } from '@/shared/db/client'
-import { getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
+import { countCashFlows, getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import {
   DEFAULT_STREET_MONEY_WINDOW,
   STREET_MONEY_DEFAULT_MONTHS,
 } from '@/modules/cashflow/street-money-window'
+import { lowStockCount } from '@/modules/canteen/canteen.service'
 import { listPendingRefunds } from '@/modules/payments/refund.service'
 import { track } from '@/shared/observability/breadcrumbs'
 import { formatArs } from '@/lib/format'
+import { Pager } from '@/components/ui/pager'
 import { CajaTabs } from '../components/CajaTabs'
 import { AddMovementButton } from '../cantina/AddMovementButton'
 import { MovementsList } from '../cantina/MovementsList'
@@ -19,9 +21,18 @@ import { createCashFlowAction } from '../actions'
 import { requireCajaContext } from '../queries'
 import { operatingDayLabel } from '../caja-lib'
 
+/** Movimientos del día por página. Mismo número que las deudas de al lado. */
+const MOVEMENTS_PAGE_SIZE = 25
+
+/** `?mov=` es 1-based en la URL (igual que `?pagina=` de /jugadores). Basura → 1. */
+function parseMovementsPage(raw: string | undefined): number {
+  const n = Number(raw)
+  return Number.isInteger(n) && n > 1 ? n - 1 : 0
+}
+
 /**
- * Cuentas: el libro del complejo. Lo que entró hoy, quién te debe, qué señas
- * debés, y el diario del día.
+ * Cuentas: el libro del complejo. Quién te debe, qué señas debés y qué pasó
+ * hoy con la plata.
  *
  * Reemplaza a las pestañas Deudas y Devoluciones, que eran dos URLs para la
  * misma pregunta —"¿qué plata está pendiente?"— mirada desde los dos lados. Se
@@ -29,15 +40,16 @@ import { operatingDayLabel } from '../caja-lib'
  * deben y lo que debés son direcciones opuestas, y restarlas rompería el
  * invariante de fuente única del total de "Deudas".
  *
- * También absorbe lo que vivía en la raíz de /caja y no era vender: los tres
- * totales, el desglose por método y los movimientos del día. Quien vende no
- * los mira, y ocupaban la mitad de la pantalla donde trabaja.
+ * Deudas a la izquierda y el diario del día a la derecha, las dos visibles sin
+ * scrollear en escritorio: son las dos preguntas con las que el dueño entra
+ * acá. "Tenés que devolver" no tiene lugar fijo: aparece arriba, a lo ancho,
+ * solo cuando hay algo que devolver (ver PendingRefundsList).
  *
- * Siempre "hoy": igual que Deudas y Devoluciones, esta pantalla no navega por
- * fecha. El día es el OPERATIVO del complejo (`cutoffMins`), no el calendario.
+ * Siempre "hoy": esta pantalla no navega por fecha. El día es el OPERATIVO del
+ * complejo (`cutoffMins`), no el calendario.
  */
 export default async function CajaCuentasPage(props: {
-  searchParams: Promise<{ todas?: string }>
+  searchParams: Promise<{ todas?: string; mov?: string }>
 }) {
   const { tenant, cutoffMins, today } = await requireCajaContext()
   const searchParams = await props.searchParams
@@ -46,74 +58,80 @@ export default async function CajaCuentasPage(props: {
   // de deberse — `?todas=1` la trae entera. Ver street-money-window.ts.
   const showAll = searchParams.todas === '1'
   const window = showAll ? 'all' : DEFAULT_STREET_MONEY_WINDOW
+  const movPage = parseMovementsPage(searchParams.mov)
 
-  const { summary, cashFlows, streetMoneyRows, refunds } = await withTenantContext(
-    tenant.id,
-    async (tx) => {
-      const [s, cf, sm, rf] = await Promise.all([
+  const { summary, movRows, movTotal, streetMoneyRows, refunds, lowStock } =
+    await withTenantContext(tenant.id, async (tx) => {
+      const [s, cf, n, sm, rf, ls] = await Promise.all([
         getDaySummary(tenant.id, today, cutoffMins, tx),
-        getCashFlows(tenant.id, today, cutoffMins, tx),
+        getCashFlows(tenant.id, today, cutoffMins, tx, {
+          limit: MOVEMENTS_PAGE_SIZE,
+          offset: movPage * MOVEMENTS_PAGE_SIZE,
+        }),
+        // El total del paginador: "Mostrando 26–50 de 63" y el número de la
+        // última página, a un clic.
+        countCashFlows(tenant.id, today, cutoffMins, tx),
         getStreetMoney(tenant.id, tx, window),
         listPendingRefunds(tenant.id, tx),
+        // Cuentas no carga el catálogo: el aviso de stock sale de un COUNT.
+        lowStockCount(tenant.id, tx),
       ])
-      return { summary: s, cashFlows: cf, streetMoneyRows: sm, refunds: rf }
-    },
-  )
+      return {
+        summary: s,
+        movRows: cf,
+        movTotal: n,
+        streetMoneyRows: sm,
+        refunds: rf,
+        lowStock: ls,
+      }
+    })
 
   // Único uso: la instrumentación de abajo. La propia StreetMoneyList calcula
-  // este mismo total sobre las MISMAS filas para su card — no hay dos cuentas.
+  // este mismo total sobre las MISMAS filas para su encabezado — no hay dos cuentas.
   const streetMoneyCents = sumStreetMoney(streetMoneyRows)
 
   // Proxy "plata en la calle: tendencia ↓ por tenant" (§11) — misma fuente que
   // la pantalla, así que el dato instrumentado nunca puede divergir del que se ve.
   track.cashflow('street_money.viewed', { tenantId: tenant.id, totalCents: streetMoneyCents })
 
-  return (
-    <div className="space-y-6">
-      {/* MASTER §6.8: la vista no abre encabezado propio. Lo cobrado hoy, el
-          rótulo del día y el alta de movimiento cuelgan del hueco de la barra
-          superior, al lado de los tres destinos — nunca una card propia:
-          "Deudas" y "Devolvés" ya tienen la SUYA más abajo, en la lista que
-          las respalda, y repetirlas arriba era el mismo número dos veces con
-          dos maquetas distintas (feedback del dueño, 2026-09-14). "Cobrado
-          hoy" se esconde antes que la fecha porque es el dato menos urgente
-          de los dos para quien entra a mirar deudas. */}
-      <CajaTabs
-        active="/caja/cuentas"
-        actions={
-          <>
-            <span className="hidden whitespace-nowrap text-sm text-muted-foreground lg:inline">
-              Cobrado hoy{' '}
-              <span className="font-semibold text-foreground">{formatArs(summary.collected)}</span>
-            </span>
-            <span className="hidden whitespace-nowrap text-sm text-muted-foreground sm:inline">
-              {operatingDayLabel(today, cutoffMins)}
-            </span>
-            <AddMovementButton
-              label="Movimiento"
-              date={today}
-              cutoffMins={cutoffMins}
-              createCashFlowAction={createCashFlowAction}
-            />
-          </>
-        }
-      />
+  /**
+   * La URL de Cuentas con los dos estados de la pantalla: la ventana de deuda
+   * (`?todas=1`) y la página del diario (`?mov=`). Cambiar uno no resetea el
+   * otro — son dos listas independientes, una al lado de la otra.
+   */
+  function cuentasHref({ all = showAll, mov = movPage }: { all?: boolean; mov?: number }) {
+    const qs = new URLSearchParams()
+    if (all) qs.set('todas', '1')
+    if (mov > 0) qs.set('mov', String(mov + 1))
+    const s = qs.toString()
+    return s ? `/caja/cuentas?${s}` : '/caja/cuentas'
+  }
+  const movHref = (page: number) => cuentasHref({ mov: page })
 
-      {/* Las dos direcciones de la plata pendiente, lado a lado y con su propio
-          total cada una. Deudas manda en ancho: tiene más filas y más acción. */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="card-entrance space-y-3" style={{ animationDelay: '40ms' }}>
+  return (
+    <div className="space-y-8">
+      {/* La barra superior queda con los tres destinos y nada más. "Cobrado
+          hoy", el día y el alta de movimiento bajaron al encabezado del diario:
+          ahí el número tiene contexto y el botón queda al lado de la lista que
+          alimenta (feedback del dueño, 2026-09-17: arriba "no se percibe y no
+          se entiende qué hace"). */}
+      <CajaTabs active="/caja/cuentas" lowStock={lowStock} />
+
+      <PendingRefundsList rows={refunds} action={markRefundSettledAction} />
+
+      <div className="grid grid-cols-1 items-start gap-x-8 gap-y-10 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="space-y-3">
           <StreetMoneyList rows={streetMoneyRows} />
 
           {/* El rótulo dice qué se está viendo SIEMPRE, no solo cuando hay algo
-              escondido: una pantalla de plata que muestra una ventana sin decirlo
-              se lee como "esto es todo lo que me deben". */}
-          <p className="text-center text-sm text-muted-foreground">
+              escondido: una pantalla de plata que muestra una ventana sin
+              decirlo se lee como "esto es todo lo que me deben". */}
+          <p className="text-sm text-muted-foreground">
             {showAll ? (
               <>
                 Mostrando <strong className="text-foreground">toda</strong> la deuda registrada.{' '}
                 <Link
-                  href="/caja/cuentas"
+                  href={cuentasHref({ all: false })}
                   className="underline underline-offset-4 hover:text-foreground"
                 >
                   Ver solo los últimos {STREET_MONEY_DEFAULT_MONTHS} meses
@@ -124,7 +142,7 @@ export default async function CajaCuentasPage(props: {
                 Mostrando los últimos{' '}
                 <strong className="text-foreground">{STREET_MONEY_DEFAULT_MONTHS} meses</strong>.{' '}
                 <Link
-                  href="/caja/cuentas?todas=1"
+                  href={cuentasHref({ all: true })}
                   className="underline underline-offset-4 hover:text-foreground"
                 >
                   Ver deuda anterior
@@ -134,17 +152,52 @@ export default async function CajaCuentasPage(props: {
           </p>
         </div>
 
-        <div className="card-entrance" style={{ animationDelay: '80ms' }}>
-          <PendingRefundsList rows={refunds} action={markRefundSettledAction} />
-        </div>
-      </div>
-
-      <div className="card-entrance" style={{ animationDelay: '120ms' }}>
         <MovementsList
-          cashFlows={cashFlows}
-          date={today}
-          cutoffMins={cutoffMins}
-          createCashFlowAction={createCashFlowAction}
+          cashFlows={movRows}
+          meta={
+            <>
+              {operatingDayLabel(today, cutoffMins)} · Cobrado{' '}
+              <span className="font-semibold text-foreground">{formatArs(summary.collected)}</span>
+            </>
+          }
+          actions={
+            <AddMovementButton
+              variant="outline"
+              label="Registrar movimiento"
+              date={today}
+              cutoffMins={cutoffMins}
+              createCashFlowAction={createCashFlowAction}
+            />
+          }
+          // Página fuera de rango (`?mov=9` de un link viejo): no es "sin
+          // movimientos", es "esa página no existe" — decir lo primero con el
+          // día lleno de cobros sería mentir.
+          {...(movPage > 0 && movRows.length === 0
+            ? {
+                emptyTitle: 'Esa página no existe',
+                emptyDescription: 'El día tiene menos movimientos que los que pide el link.',
+                emptyAction: (
+                  <Link
+                    href={movHref(0)}
+                    className="text-sm font-medium underline underline-offset-4"
+                  >
+                    Volver al principio
+                  </Link>
+                ),
+              }
+            : {})}
+          footer={
+            movRows.length > 0 && (
+              <Pager
+                label="Paginación de movimientos del día"
+                page={movPage}
+                total={movTotal}
+                pageSize={MOVEMENTS_PAGE_SIZE}
+                shown={movRows.length}
+                hrefFor={movHref}
+              />
+            )
+          }
         />
       </div>
     </div>

@@ -3,7 +3,13 @@ import { expect, fn, within } from 'storybook/test'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import { uid } from '@/test/fixtures/ids'
 import { daysFromNow } from '@/test/fixtures/clock'
-import type { PlayerProfile, PlayerStats, PlayerBookingRow, PlayerFixedSlotRow } from '../queries'
+import {
+  PLAYER_HISTORY_PAGE_SIZE,
+  type PlayerProfile,
+  type PlayerStats,
+  type PlayerBookingRow,
+  type PlayerFixedSlotRow,
+} from '../queries'
 import { JugadorProfileView } from './JugadorProfileView'
 
 /**
@@ -105,6 +111,8 @@ const meta = {
     profile: profile(),
     stats: stats(),
     history: HISTORY,
+    historyPage: 0,
+    historyTotal: HISTORY.length,
     ban: NOT_BANNED,
     fixedSlots: [],
     banPlayerAction: fn(async () => ({ success: true as const })),
@@ -147,7 +155,7 @@ export const ConSoftbanActivo: Story = {
 
 /** Sin reservas registradas: el jugador se vinculó pero todavía no jugó (o recién se linkeó a un abonado). */
 export const SinHistorial: Story = {
-  args: { history: [] },
+  args: { history: [], historyTotal: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Sin reservas registradas.')).toBeInTheDocument()
@@ -159,12 +167,43 @@ export const StatsEnCero: Story = {
   args: {
     stats: stats({ total: 0, completed: 0, noShow: 0, canceled: 0, noShowRate: 0 }),
     history: [],
+    historyTotal: 0,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('0%')).toBeInTheDocument() // Tasa de ausencia
     // Reservas totales, Completadas, Ausencias: las 3 quedan en "0".
     await expect(canvas.getAllByText('0', { exact: true })).toHaveLength(3)
+  },
+}
+
+/**
+ * El historial se cortaba en 20 SIN forma de ver las reservas anteriores. Con
+ * más de una página, el Pager aparece bajo la lista y numera.
+ */
+export const ConPaginasDeHistorial: Story = {
+  args: { historyPage: 1, historyTotal: PLAYER_HISTORY_PAGE_SIZE + 3 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const pager = canvas.getByRole('navigation', { name: 'Paginación del historial' })
+    await expect(pager).toHaveTextContent('Mostrando')
+    await expect(within(pager).getByRole('link', { name: /Anteriores/ })).toHaveAttribute(
+      'href',
+      `/jugadores/${uid(231)}`,
+    )
+  },
+}
+
+/** Página fuera de rango: no dice "nunca jugó acá" — el historial tiene filas, solo no en esta página. */
+export const HistorialPaginaFueraDeRango: Story = {
+  args: { history: [], historyPage: 2, historyTotal: PLAYER_HISTORY_PAGE_SIZE + 3 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Esa página no existe.')).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Volver al principio' })).toHaveAttribute(
+      'href',
+      `/jugadores/${uid(231)}`,
+    )
   },
 }
 

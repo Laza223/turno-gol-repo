@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { chipClass } from '../caja-lib'
 import { toast } from '@/hooks/use-toast'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
@@ -33,17 +34,29 @@ export type UpdateProductAction = (input: {
 }) => Promise<ProductActionResult>
 
 /**
- * "$ 1.200 · 45%" — margen = (precio − costo) / precio. `null` si falta alguno
- * de los dos, o si el precio todavía es 0: un margen del 100% sobre precio cero
- * no informa nada y aparecería mientras el dueño tipea.
+ * La ganancia por unidad, dicha en palabras: "Ganás $ 800 por unidad (40 % del
+ * precio)". `null` si falta alguno de los dos números o si el precio todavía es
+ * 0 — un 100 % sobre precio cero no informa nada y aparecería mientras el dueño
+ * tipea.
  *
- * Vivía como columna del catálogo. Se movió acá con el rediseño: es un dato de
- * decisión de precio, no de repaso de stock.
+ * Antes decía "Margen: $ 1.200 de costo · 45%", que obligaba a saber qué es un
+ * margen y mostraba el costo que el dueño acababa de escribir. Vender por debajo
+ * del costo se dice como pérdida, no como un porcentaje negativo.
  */
-function marginLabel(priceCents: number | null, costCents: number | null): string | null {
+function profitLabel(
+  priceCents: number | null,
+  costCents: number | null,
+): { text: string; loss: boolean } | null {
   if (priceCents == null || costCents == null || priceCents <= 0) return null
-  const margin = Math.round(((priceCents - costCents) / priceCents) * 100)
-  return `${formatArs(costCents)} de costo · ${margin}%`
+  const diff = priceCents - costCents
+  if (diff < 0) {
+    return {
+      text: `Perdés ${formatArs(-diff)} por unidad: el costo es más alto que el precio.`,
+      loss: true,
+    }
+  }
+  const pct = Math.round((diff / priceCents) * 100)
+  return { text: `Ganás ${formatArs(diff)} por unidad (${pct} % del precio).`, loss: false }
 }
 
 export function ProductFormDialog({
@@ -67,7 +80,10 @@ export function ProductFormDialog({
   const [name, setName] = useState('')
   const [priceCents, setPriceCents] = useState<number | null>(null)
   const [costCents, setCostCents] = useState<number | null>(null)
-  const [trackStock, setTrackStock] = useState(false)
+  // Controla stock por defecto: el 90 % de lo que vende una cantina es
+  // mercadería contable (bebidas, kiosco). Lo que no se cuenta —alquiler de
+  // pecheras, fichas de ducha— es la excepción y se elige a propósito.
+  const [trackStock, setTrackStock] = useState(true)
   const [stock, setStock] = useState('')
   const [minStock, setMinStock] = useState('')
 
@@ -80,7 +96,7 @@ export function ProductFormDialog({
     setName(product?.name ?? '')
     setPriceCents(product ? product.price : null)
     setCostCents(product?.cost ?? null)
-    setTrackStock(product ? product.stock != null : false)
+    setTrackStock(product ? product.stock != null : true)
     setStock(product?.stock != null ? String(product.stock) : '')
     setMinStock(product?.minStock != null ? String(product.minStock) : '')
     setError(null)
@@ -190,156 +206,225 @@ export function ProductFormDialog({
     })
   }
 
+  const profit = profitLabel(priceCents, costCents)
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-2xl">
+      <DialogContent className="w-[95vw] max-w-4xl gap-6 p-6 sm:p-8" aria-describedby="pf-intro">
         <DialogHeader>
-          <DialogTitle>{product ? 'Editar producto' : 'Nuevo producto'}</DialogTitle>
+          <DialogTitle className="text-xl">
+            {product ? 'Editar producto' : 'Nuevo producto'}
+          </DialogTitle>
+          <p id="pf-intro" className="text-sm text-muted-foreground">
+            Lo que vendés en la cantina: bebidas, cosas del kiosco o alquileres como pecheras.
+          </p>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-            {/* Columna Izquierda: Información de producto */}
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label htmlFor="pf-name">Nombre del producto</Label>
-                <Input
-                  id="pf-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={40}
-                  placeholder="Ej: Gatorade 500ml, Alquiler Pecheras"
-                  disabled={isPending}
-                  className="h-10 rounded-lg"
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="pf-price">Precio (pesos)</Label>
-                  <MoneyInput
-                    id="pf-price"
-                    valueCents={priceCents}
-                    onValueChange={setPriceCents}
-                    disabled={isPending}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="pf-cost">Costo (opcional)</Label>
-                  <MoneyInput
-                    id="pf-cost"
-                    valueCents={costCents}
-                    onValueChange={setCostCents}
-                    disabled={isPending}
-                  />
-                </div>
-              </div>
+        {/* Dos bloques con su título, separados por una línea: "qué es y cuánto
+            sale" a la izquierda, "cuántos hay" a la derecha. Cada campo lleva
+            una línea que explica para qué sirve: el que carga su primer
+            producto no tiene por qué saber qué es un stock mínimo. */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-0 md:divide-x md:divide-border">
+          <section aria-labelledby="pf-sec-producto" className="space-y-5 md:pr-8">
+            <h3 id="pf-sec-producto" className="text-sm font-semibold text-foreground">
+              El producto
+            </h3>
 
-              {/* El margen vive acá, al lado de los dos números que lo forman, y
-                  ya no como columna del catálogo: es un dato que el dueño mira
-                  cuando decide un precio, no cada vez que repasa el stock. */}
-              {marginLabel(priceCents, costCents) && (
-                <p className="text-xs text-muted-foreground">
-                  Margen: {marginLabel(priceCents, costCents)}
-                </p>
-              )}
-            </div>
-
-            {/* Columna Derecha: Control de Stock */}
-            <div className="space-y-3">
-              <fieldset>
-                <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Control de stock
-                </legend>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    aria-pressed={trackStock}
-                    disabled={isPending}
-                    onClick={() => setTrackStock(true)}
-                    className={chipClass(trackStock)}
-                  >
-                    Sí, controlar
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={!trackStock}
-                    disabled={isPending}
-                    onClick={() => setTrackStock(false)}
-                    className={chipClass(!trackStock)}
-                  >
-                    No controlar
-                  </button>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {trackStock
-                    ? 'Controla inventario físico disponible (ej: Agua, Gatorade, cerveza, alfajores).'
-                    : 'Sin límite de stock. Ideal para servicios o alquileres (ej: Alquiler de pecheras, pelotas, fichas de ducha, pases).'}
-                </p>
-              </fieldset>
-
-              {trackStock && (
-                <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="space-y-1">
-                    <Label htmlFor="pf-stock">
-                      {stockLockedFromCatalog ? 'Stock actual' : 'Stock inicial'}
-                    </Label>
-                    <Input
-                      id="pf-stock"
-                      type="number"
-                      min="0"
-                      step="1"
-                      inputMode="numeric"
-                      value={stock}
-                      onChange={(e) => setStock(e.target.value)}
-                      disabled={isPending || stockLockedFromCatalog}
-                      className="h-10 rounded-lg tabular-nums"
-                    />
-                    {stockLockedFromCatalog && (
-                      <p className="text-xs text-muted-foreground">
-                        Se ajusta desde Reposición o Merma.
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="pf-minstock">Stock mínimo (alerta)</Label>
-                    <Input
-                      id="pf-minstock"
-                      type="number"
-                      min="0"
-                      step="1"
-                      inputMode="numeric"
-                      value={minStock}
-                      onChange={(e) => setMinStock(e.target.value)}
-                      disabled={isPending}
-                      className="h-10 rounded-lg tabular-nums"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-              {error}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => handleClose(false)}
-              className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60"
+            <Field
+              id="pf-name"
+              label="Nombre del producto"
+              help="Como lo vas a buscar al vender. Poné el tamaño si tenés varios."
             >
-              Cancelar
-            </button>
-            <Button type="button" isLoading={isPending} onClick={submit} className="px-5">
-              {isPending ? 'Guardando…' : 'Guardar'}
-            </Button>
-          </div>
+              <Input
+                id="pf-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={40}
+                placeholder="Ej: Gatorade 500ml"
+                disabled={isPending}
+                aria-describedby="pf-name-help"
+              />
+            </Field>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+              <Field id="pf-price" label="Precio (pesos)" help="Lo que paga el cliente por unidad.">
+                <MoneyInput
+                  id="pf-price"
+                  valueCents={priceCents}
+                  onValueChange={setPriceCents}
+                  disabled={isPending}
+                  aria-describedby="pf-price-help"
+                />
+              </Field>
+              <Field
+                id="pf-cost"
+                label="Costo (opcional)"
+                help="Lo que te sale a vos comprar una unidad. Sirve para saber cuánto ganás."
+              >
+                <MoneyInput
+                  id="pf-cost"
+                  valueCents={costCents}
+                  onValueChange={setCostCents}
+                  disabled={isPending}
+                  aria-describedby="pf-cost-help"
+                />
+              </Field>
+            </div>
+
+            {/* La ganancia vive acá, al lado de los dos números que la forman:
+                es un dato que el dueño mira cuando decide un precio, no cada
+                vez que repasa el stock. */}
+            {profit && (
+              <p
+                className={cn(
+                  'rounded-lg px-3 py-2 text-sm',
+                  profit.loss
+                    ? 'bg-red-500/10 text-red-700 dark:text-red-300'
+                    : 'bg-muted text-foreground',
+                )}
+              >
+                {profit.text}
+              </p>
+            )}
+          </section>
+
+          <section aria-labelledby="pf-sec-stock" className="space-y-5 md:pl-8">
+            <h3 id="pf-sec-stock" className="text-sm font-semibold text-foreground">
+              Stock
+            </h3>
+
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-sm font-medium text-foreground">
+                ¿Querés llevar la cuenta de cuántas unidades tenés?
+              </legend>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  aria-pressed={trackStock}
+                  disabled={isPending}
+                  onClick={() => setTrackStock(true)}
+                  className={chipClass(trackStock)}
+                >
+                  Sí, controlar
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={!trackStock}
+                  disabled={isPending}
+                  onClick={() => setTrackStock(false)}
+                  className={chipClass(!trackStock)}
+                >
+                  No controlar
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {trackStock
+                  ? 'Cada venta descuenta una unidad y te avisamos cuando queda poco. Para bebidas y kiosco.'
+                  : 'Se vende sin límite de unidades. Para servicios y alquileres: pecheras, fichas de ducha.'}
+              </p>
+            </fieldset>
+
+            {trackStock && (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
+                <Field
+                  id="pf-stock"
+                  label={stockLockedFromCatalog ? 'Stock actual' : 'Stock inicial'}
+                  help={
+                    stockLockedFromCatalog
+                      ? 'Se corrige con Reponer o con una salida de stock, no desde acá.'
+                      : 'Cuántas unidades tenés hoy. Después se ajusta solo con cada venta y reposición.'
+                  }
+                >
+                  <Input
+                    id="pf-stock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={stock}
+                    onChange={(e) => setStock(e.target.value)}
+                    placeholder={stockLockedFromCatalog ? undefined : 'Ej: 24'}
+                    disabled={isPending || stockLockedFromCatalog}
+                    aria-describedby="pf-stock-help"
+                    className="tabular-nums"
+                  />
+                </Field>
+                <Field
+                  id="pf-minstock"
+                  label="Stock mínimo (alerta)"
+                  help="Cuando queden esta cantidad o menos, te avisamos que hay que reponer. Opcional."
+                >
+                  <Input
+                    id="pf-minstock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={minStock}
+                    onChange={(e) => setMinStock(e.target.value)}
+                    placeholder="Ej: 6"
+                    disabled={isPending}
+                    aria-describedby="pf-minstock-help"
+                    className="tabular-nums"
+                  />
+                </Field>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {error && (
+          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            {error}
+          </p>
+        )}
+
+        <div className="flex flex-col-reverse gap-2.5 border-t border-border pt-5 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleClose(false)}
+            className="h-11 rounded-lg border border-border px-5 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60 md:h-10"
+          >
+            Cancelar
+          </button>
+          <Button
+            type="button"
+            isLoading={isPending}
+            onClick={submit}
+            className="h-11 px-6 md:h-10"
+          >
+            {isPending ? 'Guardando…' : 'Guardar'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Un campo con su línea de ayuda debajo. La ayuda cuelga del input por
+ * `aria-describedby` (`{id}-help`): el lector de pantalla la lee junto con el
+ * rótulo, no queda como texto suelto.
+ */
+function Field({
+  id,
+  label,
+  help,
+  children,
+}: {
+  id: string
+  label: string
+  help: string
+  children: ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      <p id={`${id}-help`} className="text-xs leading-relaxed text-muted-foreground">
+        {help}
+      </p>
+    </div>
   )
 }

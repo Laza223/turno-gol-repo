@@ -1,10 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-export type ScrollTab = { href: string; label: string }
+export type ScrollTab = {
+  href: string
+  label: string
+  /**
+   * Aviso que cuelga a la derecha del label (un punto, un contador). Va DENTRO
+   * del link para que el destino y su aviso sean el mismo objetivo táctil.
+   *
+   * Lo que se pase acá entra en el nombre accesible del link: un aviso que solo
+   * existe como color no lo percibe nadie que no vea color (MASTER §10), así
+   * que el badge tiene que traer su propio texto — visible o `sr-only`.
+   */
+  badge?: ReactNode
+}
 
 type Props = {
   tabs: ScrollTab[]
@@ -85,7 +97,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
           className,
         )}
       >
-        {tabs.map(({ href, label }) => {
+        {tabs.map(({ href, label, badge }) => {
           const active = href === activeHref
           return (
             <Link
@@ -93,7 +105,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
               href={href}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-2 px-4 text-sm font-medium transition-colors duration-150 md:min-h-9',
+                'flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-4 text-sm font-medium transition-colors duration-150 md:min-h-9',
                 // `text-emerald-700` (el idiom "correcto" en el resto del repo)
                 // mide 4.41:1 sobre `bg-background` — donde vive este tab bar
                 // de verdad (SettingsPage lo renderiza fuera de cualquier
@@ -105,6 +117,7 @@ export function ScrollTabs({ tabs, activeHref, ariaLabel, className }: Props) {
               )}
             >
               {label}
+              {badge}
             </Link>
           )
         })}

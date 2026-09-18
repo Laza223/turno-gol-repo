@@ -41,12 +41,9 @@ function RangeChip({ value, active }: { value: 7 | 30; active: boolean }) {
  */
 export function CanteenReport({ range, ranking, byMethod, daily }: Props) {
   return (
-    <section
-      aria-labelledby={REPORT_HEADING_ID}
-      className="rounded-lg border border-border bg-card p-4 shadow-xs"
-    >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 id={REPORT_HEADING_ID} className="text-sm font-semibold text-foreground">
+    <section aria-labelledby={REPORT_HEADING_ID} className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2">
+        <h2 id={REPORT_HEADING_ID} className="text-base font-semibold text-foreground">
           Ventas de cantina — últimos {range} días
         </h2>
         <div className="flex items-center gap-2" role="group" aria-label="Rango del reporte">

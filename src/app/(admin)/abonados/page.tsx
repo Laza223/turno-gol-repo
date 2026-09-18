@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Pager } from '@/components/ui/pager'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
-import { getAbonados } from '@/modules/abonados/abonado.service'
+import { getAbonados, countAbonados } from '@/modules/abonados/abonado.service'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 import { AbonadosList } from './AbonadosList'
 import { ClientesTabs } from '@/app/(admin)/jugadores/ClientesTabs'
@@ -12,6 +14,16 @@ import { reactivateAbonadoAction, cancelAbonadoAction } from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
 
 const VALID_STATUSES: AbonadoStatus[] = ['active', 'paused', 'canceled']
+
+/** Turnos fijos por página. Los `canceled` no se borran nunca: sin techo, un
+ * complejo viejo trae cientos de filas de una. */
+const PAGE_SIZE = 25
+
+/** `?pagina=` es 1-based en la URL (la página 1 va sin parámetro). Basura → 0. */
+function parseAbonadosPage(raw: string | undefined): number {
+  const n = Number(raw)
+  return Number.isInteger(n) && n > 1 ? n - 1 : 0
+}
 
 // Pestañas visibles. 'paused' sigue siendo un filtro válido por URL y esas filas
 // siguen listándose en "Todos" (quedan de antes: pausar se eliminó del producto,
@@ -26,7 +38,7 @@ const STATUS_LABELS: Record<AbonadoStatus, string> = {
 }
 
 export default async function AbonadosPage(props: {
-  searchParams: Promise<{ status?: string; created?: string }>
+  searchParams: Promise<{ status?: string; created?: string; pagina?: string }>
 }) {
   const searchParams = await props.searchParams
   const auth = await requireOperatorStaff()
@@ -40,16 +52,41 @@ export default async function AbonadosPage(props: {
   // forma de devolver estado al cliente a través de un redirect() server-side)
   // — AbonadosList levanta el flag al montar, muestra el toast y limpia la URL.
   const justCreated = searchParams.created === '1'
+  const page = parseAbonadosPage(searchParams.pagina)
 
-  const abonados = await withTenantContext(tenant.id, (tx) =>
-    getAbonados(tenant.id, { status: statusFilter }, tx),
-  )
+  const { abonados, total } = await withTenantContext(tenant.id, async (tx) => {
+    const [rows, count] = await Promise.all([
+      getAbonados(tenant.id, { status: statusFilter }, tx, {
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
+      }),
+      // El total del paginador (y del subtítulo del encabezado): mismo WHERE
+      // que getAbonados, aparte, para que "N turnos fijos" nunca hable solo
+      // del largo de esta página.
+      countAbonados(tenant.id, { status: statusFilter }, tx),
+    ])
+    return { abonados: rows, total: count }
+  })
 
-  const total = abonados.length
   const totalWord = total === 1 ? '1 turno fijo' : `${total} turnos fijos`
   const headerSubtitle = statusFilter
     ? `${totalWord} · ${STATUS_LABELS[statusFilter].toLowerCase()}`
     : totalWord
+
+  /** `/abonados` con el status activo y la página del paginador. Cambiar de
+   * pestaña de status resetea a la página 1 (esos links no pasan por acá). */
+  function abonadosHref(targetPage: number): string {
+    const qs = new URLSearchParams()
+    if (statusFilter) qs.set('status', statusFilter)
+    if (targetPage > 0) qs.set('pagina', String(targetPage + 1))
+    const s = qs.toString()
+    return s ? `/abonados?${s}` : '/abonados'
+  }
+
+  // Página fuera de rango (`?pagina=9` de un link viejo, con menos fijos que
+  // eso): no es "sin turnos fijos" — con esa lectura, un complejo con 30
+  // fijos activos vería el empty state de "cargá el primero" mintiendo.
+  const pageOutOfRange = page > 0 && abonados.length === 0
 
   return (
     <div className="p-6 space-y-6">
@@ -96,15 +133,41 @@ export default async function AbonadosPage(props: {
         ))}
       </div>
 
-      <div className="card-entrance" style={{ animationDelay: '160ms' }}>
-        <AbonadosList
-          abonados={abonados}
-          filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
-          justCreated={justCreated}
-          reactivateAction={reactivateAbonadoAction}
-          cancelAction={cancelAbonadoAction}
-          previewSlotsAction={previewAbonadoSlotsAction}
-        />
+      <div className="card-entrance space-y-4" style={{ animationDelay: '160ms' }}>
+        {pageOutOfRange ? (
+          <EmptyState
+            icon={Users}
+            title="Esa página no existe"
+            description="Este filtro tiene menos turnos fijos que los que pide el link."
+            action={
+              <Link
+                href={abonadosHref(0)}
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Volver al principio
+              </Link>
+            }
+          />
+        ) : (
+          <>
+            <AbonadosList
+              abonados={abonados}
+              filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
+              justCreated={justCreated}
+              reactivateAction={reactivateAbonadoAction}
+              cancelAction={cancelAbonadoAction}
+              previewSlotsAction={previewAbonadoSlotsAction}
+            />
+            <Pager
+              label="Paginación de turnos fijos"
+              page={page}
+              total={total}
+              pageSize={PAGE_SIZE}
+              shown={abonados.length}
+              hrefFor={abonadosHref}
+            />
+          </>
+        )}
       </div>
     </div>
   )

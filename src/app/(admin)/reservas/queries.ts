@@ -137,7 +137,7 @@ function bookingSelectColumns(): SQL {
 }
 
 /** Cuántas reservas entran en una página de la lista. */
-export const RESERVAS_PAGE_SIZE = 100
+export const RESERVAS_PAGE_SIZE = 50
 
 export type ReservaListPage = {
   rows: ReservaListRow[]
@@ -173,13 +173,16 @@ export async function listTenantBookings(
   page = 0,
 ): Promise<ReservaListPage> {
   // Hoy: agrupable por cancha con horarios ascendentes. Próximas: lo más
-  // cercano primero. Historial: lo más reciente primero.
+  // cercano primero. Historial: lo más reciente primero. `b.id` desempata: una
+  // reserva cancelada y la que reocupó su lugar comparten cancha, día y hora, y
+  // sin un orden total el OFFSET puede repetir una entre dos páginas y saltear
+  // la otra.
   const orderBy =
     filters.scope === 'hoy'
-      ? sql`ORDER BY c.name ASC, b.time_start ASC`
+      ? sql`ORDER BY c.name ASC, b.time_start ASC, b.id ASC`
       : filters.scope === 'proximas'
-        ? sql`ORDER BY b.date ASC, b.time_start ASC, c.name ASC`
-        : sql`ORDER BY b.date DESC, b.time_start DESC, c.name ASC`
+        ? sql`ORDER BY b.date ASC, b.time_start ASC, c.name ASC, b.id ASC`
+        : sql`ORDER BY b.date DESC, b.time_start DESC, c.name ASC, b.id ASC`
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 0
   const rows = await tx.execute(sql`
     SELECT ${bookingSelectColumns()}

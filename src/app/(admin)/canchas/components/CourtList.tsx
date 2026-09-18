@@ -279,13 +279,17 @@ function CourtCard({
   // destructivo, este no.
   const [billingPreview, setBillingPreview] = useState<BillingChangePreview | null>(null)
 
+  // activate/deactivateDirect también son el "Deshacer" de un toast, o sea un
+  // closure de un render viejo: el revert NO puede salir de `currentStatus`
+  // capturado ahí (sería el estado de antes del toggle anterior). Cada una se
+  // llama solo desde el estado opuesto, así que el revert es ese literal. El
+  // set va en startTransition porque corre después del await (React 19).
   function activate() {
-    const prev = currentStatus
     setCurrentStatus('online')
     startTransition(async () => {
       const res = await toggleStatusAction(court.id, 'online')
       if (!res.success) {
-        setCurrentStatus(prev)
+        startTransition(() => setCurrentStatus('offline'))
         if (res.requiresBillingConfirmation) {
           // No es un error: la cancha sigue apagada porque prenderla sube la
           // cuota y el dueño tiene que ver el monto nuevo antes.
@@ -318,12 +322,11 @@ function CourtCard({
   }
 
   function deactivateDirect() {
-    const prev = currentStatus
     setCurrentStatus('offline')
     startTransition(async () => {
       const res = await toggleStatusAction(court.id, 'offline')
       if (!res.success) {
-        setCurrentStatus(prev)
+        startTransition(() => setCurrentStatus('online'))
         toast({ title: 'No se pudo desactivar', description: res.error, variant: 'destructive' })
         return
       }

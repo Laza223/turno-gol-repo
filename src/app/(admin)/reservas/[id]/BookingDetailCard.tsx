@@ -79,10 +79,19 @@ export function BookingDetailCard({
   ]
 
   return (
-    <div className="card-premium rounded-xl p-6">
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-        {rows.map(([label, value]) => (
-          <div key={label}>
+    // Sin recuadro (2026-09-17): en escritorio esta ficha es la columna de la
+    // derecha del detalle y la separa un filete vertical; en el teléfono, el
+    // espacio. La caja con borde, sombra y 24px de padding era la mitad de la
+    // altura que hacía scrollear la página.
+    <section aria-labelledby="datos-del-turno">
+      <h2 id="datos-del-turno" className="text-sm font-semibold text-foreground">
+        Datos del turno
+      </h2>
+      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+        {rows.map(([label, value], i) => (
+          // La fecha larga ("Jueves, 17 de septiembre · 11:00–12:00") ocupa
+          // la fila entera: en media columna se partía en dos renglones.
+          <div key={label} className={i === 0 ? 'sm:col-span-2' : undefined}>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
             <dd className="text-sm font-medium text-foreground">{value}</dd>
           </div>
@@ -108,6 +117,6 @@ export function BookingDetailCard({
           <dd className="mt-1 text-sm text-foreground">{booking.canceledReason}</dd>
         </dl>
       )}
-    </div>
+    </section>
   )
 }

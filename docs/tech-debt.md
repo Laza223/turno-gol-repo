@@ -6,6 +6,20 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 ---
 
+## TG-HP-210 se reescribió y nunca se corrió
+
+**Qué es**: [TG-HP-210.spec.ts](../tests/e2e/qa-happy-paths/admin/TG-HP-210.spec.ts) (cobro desde el detalle de la reserva) cambió en #338. El monto pasó de `#charge-amount` a `#charge-amount-1`. El método de pago dejó de ser un `<select>` con `selectOption('transfer')`: ahora es un click en el botón "Método de pago" y otro en "Transferencia", porque el detalle usa el `SplitPaymentFields` compartido con `SelectMenu`.
+
+**Por qué existe**: el CI solo corre los e2e marcados `@critical`, y este no lo está. Local no se pudo correr porque el worktree del esfuerzo no tenía `.env.local` (2026-09-18). Lo que sí pasó en CI es la story `BookingCharges › AgregarCargo`, que hace el mismo recorrido de monto y método sobre el componente.
+
+**Costo de no resolverla ahora**: bajo. El riesgo es solo el spec: si un selector quedó mal, falla la próxima vez que se corra la suite completa y parece una regresión de producto que no existe.
+
+**Costo estimado de resolverla**: minutos, con Supabase local levantado: `pnpm exec playwright test tests/e2e/qa-happy-paths/admin/TG-HP-210.spec.ts --project chromium`.
+
+**Disparador de resolución**: la próxima corrida local de los e2e, o antes si se vuelve a tocar el cobro del detalle.
+
+---
+
 ## Los pagos no tienen una pasada completa de punta a punta en el sandbox de MercadoPago
 
 **Qué es**: cada circuito de plata tiene tests unitarios y de integración con MP simulado, y algunos pasos se probaron a mano en producción con el complejo de prueba. Nunca se hizo una corrida completa contra el sandbox de MP que recorra todos los caminos con cobros, webhooks y cancelaciones reales.

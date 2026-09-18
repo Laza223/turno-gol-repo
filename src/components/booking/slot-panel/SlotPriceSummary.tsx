@@ -1,4 +1,3 @@
-import { User } from 'lucide-react'
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
 import { TONE_TEXT } from '@/lib/status-tone'
@@ -8,7 +7,6 @@ import { chargeSplit } from './charge-copy'
 
 type Props = {
   booking: GridBooking
-  displayName: string | null
   /** Jugadores de la cancha. Sin esto el renglon dice equipos y no cuenta gente. */
   capacity?: number
 }
@@ -20,7 +18,7 @@ type Props = {
  * para lo mismo: saber cuánto falta. Ahora esa respuesta está en grande y el
  * resto queda como pie de página, que es el peso que tiene.
  */
-export function SlotPriceSummary({ booking, displayName, capacity }: Props) {
+export function SlotPriceSummary({ booking, capacity }: Props) {
   const pending = typeof booking.pending === 'number' ? booking.pending : null
   const paid = typeof booking.totalPaid === 'number' ? booking.totalPaid : null
   const split = chargeSplit(booking, capacity)
@@ -33,7 +31,9 @@ export function SlotPriceSummary({ booking, displayName, capacity }: Props) {
   if (booking.paymentMethod) detail.push(METHOD_LABELS[booking.paymentMethod])
 
   return (
-    <section className="rounded-lg border border-border p-3">
+    // Sin recuadro: es el primer bloque del panel y lo que tiene que gritar es
+    // el numero, no una caja alrededor del numero.
+    <section>
       {booking.priceSnapshot === 0 ? (
         // Rediseño 2026-09-14: "No se cobra" (priceOverride 0). "Cobrado $0"
         // sonaba a que sí se cobró un monto nulo — esto es un turno que nunca
@@ -69,13 +69,6 @@ export function SlotPriceSummary({ booking, displayName, capacity }: Props) {
           el rediseño de Caja sacó a propósito. */}
       {split.note && (
         <p className={cn('mt-1.5 text-xs font-medium', TONE_TEXT.warning)}>{split.note}</p>
-      )}
-
-      {displayName && (
-        <p className="mt-2 flex items-center gap-1.5 border-t border-border pt-2 text-xs text-muted-foreground">
-          <User aria-hidden className="h-3.5 w-3.5" />
-          {displayName}
-        </p>
       )}
     </section>
   )

@@ -215,6 +215,7 @@ export function InscripcionesPanel({
                           submitQuickAllCash(row.teamId, row.teamName, row.pending)
                         }
                         disabled={pending}
+                        idPrefix={`inscripcion-${row.teamId}`}
                       />
                       <button
                         type="submit"

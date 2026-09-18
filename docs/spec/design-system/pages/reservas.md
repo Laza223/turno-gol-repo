@@ -131,9 +131,26 @@ el resto de vistas responsive del panel (ej. `GridHeaderBar`).
   columna, con separador sticky. En `< lg` las columnas miden 85% de ancho (la siguiente cancha
   asoma) y alto natural, sin scroll anidado — la página entera scrollea (el root de
   `(list)/page.tsx` es el `overflow-y-auto` de ese caso; en `lg`+ es `overflow-hidden` y el
-  tablero es quien scrollea). Historial NO usa el tablero (mezcla canchas por fecha, un header de
-  columna no aplicaría): sigue siendo una lista agrupada por fecha con la misma tarjeta,
-  `xl:grid-cols-2`. La paginación sigue existiendo para los 3 scopes, debajo del tablero/lista.
+  tablero es quien scrollea). **En `lg`+ el tablero baja de fila desde la sexta cancha**
+  (2026-09-17, pedido del dueño): hasta 5 canchas van en una fila; con más, dos filas PAREJAS
+  (`courtsPerRow`: 6 = 3+3, 7 = 4+3, 10 = 5+5), cada columna de `minmax(13.75rem, 1fr)`, así que
+  con 11+ vuelve el scroll horizontal solo. A 1440 px la quinta columna ya desbordaba y con 7 o 10
+  canchas media pantalla quedaba afuera sin indicador. Historial NO usa el tablero (mezcla canchas
+  por fecha, un header de columna no aplicaría): sigue siendo una lista agrupada por fecha con la
+  misma tarjeta, `xl:grid-cols-2`. La paginación sigue existiendo para los 3 scopes, debajo del
+  tablero/lista.
+- **Densidad de la fila (2026-09-17).** La fila de un turno dejó de ser una tarjeta con borde,
+  sombra y 8 px de aire: la lista separa con `divide-y` y el estado lo marca la tira de 3 px. El
+  corte del `@container` a una sola fila pasó de `@3xl` (768 px, que ninguna columna del tablero
+  alcanza) a `@2xl` (672 px), y la variante ancha de `QuickActions` (tres botones, 247 px) subió de
+  `@sm` a `@3xl`. Medido a 1440×900: la fila pasó de 121 px a 52 px en una columna de 680 px y a
+  74 px en una de 460 px. En el teléfono el botón de acciones sigue midiendo 44×44.
+- **Detalle `/reservas/[id]` (2026-09-17).** Dos columnas en `lg`+ (`max-w-6xl`, 7fr/5fr): la plata
+  ("Cobros de turno") a la izquierda y la ficha + acciones a la derecha, separadas por un filete
+  vertical; sin `card-premium`. Antes usaba 672 de los 1216 px disponibles y aun así scrolleaba. El
+  formulario de cobro es `SplitPaymentFields`, el mismo de la grilla y Caja: se fueron las
+  pestañas "Pago único / Pago dividido (2 medios)" y el tope de dos líneas. Sin cobros (turno no
+  cobrable) queda una columna de `max-w-3xl`.
 
 ## §5 Guided UX
 

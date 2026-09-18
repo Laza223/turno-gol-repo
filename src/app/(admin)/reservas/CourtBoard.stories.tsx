@@ -41,7 +41,11 @@ const meta = {
   args: { actions: ACTIONS, scope: 'hoy' },
   decorators: [
     (Story) => (
-      <div className="h-[560px] p-4">
+      // Columna flex con alto fijo, como el wrapper de `(list)/page.tsx`: sin
+      // eso el `lg:flex-1` del tablero no tiene contra qué crecer y las
+      // columnas quedan del alto de su contenido, que no es lo que pasa en la
+      // página real.
+      <div className="flex h-[560px] flex-col p-4">
         <Story />
       </div>
     ),
@@ -82,7 +86,7 @@ export const DosCanchas: Story = {
   },
 }
 
-/** 8 canchas: el tablero scrollea horizontalmente en vez de apilar 8 secciones verticales. */
+/** 8 canchas: dos filas de 4 en escritorio; en el teléfono sigue siendo un carrusel. */
 export const OchoCanchas: Story = {
   args: {
     courts: Array.from({ length: 8 }, (_, i) => ({
@@ -100,6 +104,44 @@ export const OchoCanchas: Story = {
     for (let i = 1; i <= 8; i++) {
       await expect(canvas.getByRole('region', { name: `Cancha ${i}` })).toBeInTheDocument()
     }
+  },
+}
+
+/**
+ * 6 canchas: en escritorio bajan de fila (3+3) en vez de empujar dos columnas
+ * fuera del viewport. El reparto es parejo — no "llenar 5 y bajar una".
+ */
+export const SeisCanchas: Story = {
+  args: {
+    courts: Array.from({ length: 6 }, (_, i) => ({ id: uid(130 + i), name: `Cancha ${i + 1}` })),
+    bookings: [
+      row({ courtName: 'Cancha 1', timeStart: '19:00', timeEnd: '20:00' }),
+      row({ courtName: 'Cancha 1', timeStart: '20:00', timeEnd: '21:00' }),
+      row({ courtName: 'Cancha 4', timeStart: '21:00', timeEnd: '22:00' }),
+      row({ courtName: 'Cancha 6', timeStart: '18:00', timeEnd: '19:00' }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    for (let i = 1; i <= 6; i++) {
+      await expect(canvas.getByRole('region', { name: `Cancha ${i}` })).toBeInTheDocument()
+    }
+    const board = canvasElement.querySelector('[class*="grid-flow-col"]') as HTMLElement
+    await expect(board.style.getPropertyValue('--tg-board-cols')).toBe('3')
+  },
+}
+
+/** 10 canchas: dos filas de 5. Es el tope antes de que vuelva el scroll horizontal. */
+export const DiezCanchas: Story = {
+  args: {
+    courts: Array.from({ length: 10 }, (_, i) => ({ id: uid(140 + i), name: `Cancha ${i + 1}` })),
+    bookings: [row({ courtName: 'Cancha 7', timeStart: '19:00', timeEnd: '20:00' })],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('region', { name: 'Cancha 10' })).toBeInTheDocument()
+    const board = canvasElement.querySelector('[class*="grid-flow-col"]') as HTMLElement
+    await expect(board.style.getPropertyValue('--tg-board-cols')).toBe('5')
   },
 }
 

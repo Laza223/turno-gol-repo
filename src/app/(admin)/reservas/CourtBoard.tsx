@@ -27,6 +27,24 @@ type Props = {
 }
 
 /**
+ * Hasta acá el tablero entra en UNA fila. Con 1216px útiles (1440 de pantalla
+ * menos el riel de 72px y el `lg:px-8` del main) la quinta columna ya desborda,
+ * así que a partir de la sexta cancha conviene bajar de fila antes que empujar
+ * media pantalla fuera del viewport sin ningún indicador.
+ */
+const MAX_COLUMNS = 5
+
+/**
+ * Columnas por fila en escritorio: a lo sumo dos filas, todas del mismo ancho.
+ * 6 canchas = 3+3, 7 = 4+3, 10 = 5+5. Repartir parejo y no "llenar 5 y bajar
+ * una" evita la fila con una sola columna y un hueco de cuatro.
+ */
+export function courtsPerRow(total: number): number {
+  if (total <= MAX_COLUMNS) return Math.max(1, total)
+  return Math.ceil(total / 2)
+}
+
+/**
  * Tablero de Hoy/Próximas: una columna por cancha, cada una con su propio
  * scroll (`lg`+). Antes "Hoy" apilaba secciones (una cancha abajo de la
  * otra) — con 4+ canchas eso era puro scroll vertical para llegar a la
@@ -36,9 +54,9 @@ type Props = {
  *
  * `< lg`: columnas de 85% de ancho (la siguiente cancha asoma) y alto
  * natural — nada de scroll anidado, la página entera scrollea (el root de
- * `(list)/page.tsx` es el `overflow-y-auto` de ese caso). `lg`+: columnas
- * fijas que llenan el alto disponible y scrollean cada una por su cuenta,
- * así "Cancha 1" con 15 turnos nunca empuja a "Cancha 2".
+ * `(list)/page.tsx` es el `overflow-y-auto` de ese caso). `lg`+: hasta dos
+ * filas balanceadas que llenan el alto disponible y scrollean cada una por su
+ * cuenta, así "Cancha 1" con 15 turnos nunca empuja a "Cancha 2".
  */
 export function CourtBoard({
   courts,
@@ -56,8 +74,18 @@ export function CourtBoard({
     byCourt.get(b.courtName)?.push(b)
   }
 
+  const perRow = courtsPerRow(courts.length)
+
   return (
-    <div className="grid min-h-0 auto-cols-[85%] grid-flow-col items-start gap-3 overflow-x-auto snap-x pb-2 lg:min-h-0 lg:flex-1 lg:auto-cols-[minmax(17.5rem,1fr)] lg:items-stretch">
+    <div
+      // `< lg`: carrusel horizontal de una fila, columnas al 85% (la siguiente
+      // asoma) — es lo correcto en un teléfono y no cambia.
+      // `lg`+: filas balanceadas (6 canchas = 3+3, 10 = 5+5), todas del mismo
+      // ancho y con su propio scroll. `minmax(13.75rem, 1fr)` deja que con 11+
+      // canchas vuelva el scroll horizontal solo, sin caso especial.
+      className="grid min-h-0 auto-cols-[85%] grid-flow-col items-start gap-3 overflow-x-auto snap-x pb-2 lg:min-h-0 lg:flex-1 lg:snap-none lg:auto-rows-fr lg:grid-flow-row lg:grid-cols-[repeat(var(--tg-board-cols),minmax(13.75rem,1fr))] lg:items-stretch"
+      style={{ ['--tg-board-cols' as string]: String(perRow) }}
+    >
       {courts.map((court) => {
         const rows = byCourt.get(court.name) ?? []
         // El header SIEMPRE muestra el total REAL de la cancha (hallazgo #3):
@@ -68,19 +96,22 @@ export function CourtBoard({
           <section
             key={court.id}
             aria-label={court.name}
-            className="card-premium flex min-h-0 shrink-0 snap-start flex-col rounded-2xl lg:h-full lg:overflow-hidden"
+            // Borde de 1px y 12px de radio en vez de `card-premium`: esa receta
+            // trae tres sombras y un filete emerald arriba, y con 10 columnas
+            // en pantalla eso es decoración repetida diez veces.
+            className="flex min-h-0 shrink-0 snap-start flex-col rounded-xl border border-border bg-card lg:h-full lg:min-w-0 lg:overflow-hidden"
           >
-            <header className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-card/95 px-3 py-2 backdrop-blur-xs">
+            <header className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-3 py-2 backdrop-blur-xs">
               <h3 className="truncate text-sm font-semibold text-foreground">{court.name}</h3>
               <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
                 {total}
               </span>
             </header>
-            <div className="p-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+            <div className="py-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               {rows.length === 0 ? (
-                <p className="px-2 py-6 text-center text-xs text-muted-foreground">Sin reservas</p>
+                <p className="px-3 py-6 text-center text-xs text-muted-foreground">Sin reservas</p>
               ) : scope === 'hoy' ? (
-                <ul className="space-y-2">
+                <ul className="divide-y divide-border">
                   {rows.map((r) => (
                     <BookingListItem
                       key={r.id}
@@ -94,10 +125,10 @@ export function CourtBoard({
               ) : (
                 groupByDate(rows).map(([date, dateRows]) => (
                   <div key={date}>
-                    <p className="sticky top-0 z-[5] -mx-2 bg-card/95 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-xs">
+                    <p className="sticky top-0 z-[5] bg-card/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur-xs">
                       {formatDateLong(date)}
                     </p>
-                    <ul className="space-y-2 pb-2">
+                    <ul className="divide-y divide-border pb-1">
                       {dateRows.map((r) => (
                         <BookingListItem
                           key={r.id}

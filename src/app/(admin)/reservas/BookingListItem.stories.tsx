@@ -263,7 +263,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <ul className="max-w-2xl space-y-2">
+      // 672px y filas separadas por filete: el mismo ancho y el mismo
+      // tratamiento que una columna del tablero con dos canchas.
+      <ul className="max-w-2xl divide-y divide-border">
         <Story />
       </ul>
     ),
@@ -287,8 +289,10 @@ export const Senada: Story = {
     await expect(
       canvas.getByText(`Seña pagada (${money(ROW_SENADA.depositAmount)})`, { exact: false }),
     ).toBeVisible()
-    // pending_payment/confirmed: la fila ofrece acciones rápidas.
-    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+    // pending_payment/confirmed: la fila ofrece acciones rápidas. A este ancho
+    // (672px, el de una columna del tablero) manda la variante compacta: la
+    // acción primaria a la vista y el resto en el menú de "Acciones".
+    await expect(canvas.getByRole('button', { name: /^Acciones para / })).toBeVisible()
   },
 }
 
@@ -464,7 +468,7 @@ export const Abonado: Story = {
     await expect(
       canvas.getByRole('article', { name: ariaLabelFor(ROW_ABONADO) }),
     ).toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /^Acciones para / })).toBeVisible()
   },
 }
 

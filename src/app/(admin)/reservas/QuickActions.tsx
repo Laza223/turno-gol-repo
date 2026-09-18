@@ -316,12 +316,13 @@ export function QuickActions({
 
   const inlineBtn =
     'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
-  // La tarjeta angosta vive tanto en columnas de escritorio (mouse, puede ser
-  // chica) como en el teléfono (touch, siempre chica) — sin forma de
-  // distinguir por CSS, se asume touch (MASTER §10, 44px) como antes hacía
-  // el trigger mobile-only que este botón reemplaza en parte.
+  // La tarjeta angosta vive tanto en columnas de escritorio (mouse) como en el
+  // teléfono (touch). El ancho del contenedor no los distingue, pero el del
+  // VIEWPORT sí: `lg`+ es escritorio, y ahí 44px por fila era la mitad del alto
+  // de un turno en una columna del tablero. Debajo de `lg` sigue en 44px
+  // (MASTER §10) — el teléfono no cambia y `touch-targets.spec.ts` lo cubre.
   const narrowBtn =
-    'h-11 rounded-md px-3 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
+    'h-11 rounded-md px-3 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 lg:h-8'
 
   return (
     <>
@@ -334,7 +335,12 @@ export function QuickActions({
           este id (ver reservas-quick-actions.test.tsx). */}
       <div
         data-testid="quick-actions-wide"
-        className="relative z-10 hidden shrink-0 items-center gap-1.5 @sm:flex"
+        // El corte estaba en @sm (384px) y dejaba los tres botones (247px) en
+        // columnas del tablero de ~700px, donde al nombre del cliente le
+        // quedaban 96px y la seña salía cortada. A 768px entran los tres y
+        // sobra ancho para el nombre; abajo de eso gana la variante compacta,
+        // que igual deja la acción primaria a la vista (H079).
+        className="relative z-10 hidden shrink-0 items-center gap-1.5 @3xl:flex"
       >
         {isPendingPayment ? (
           <button
@@ -390,7 +396,7 @@ export function QuickActions({
           no tiene secundarias, así que no hay menú en ese caso. */}
       <div
         data-testid="quick-actions-narrow"
-        className="relative z-10 flex shrink-0 items-center gap-1 @sm:hidden"
+        className="relative z-10 flex shrink-0 items-center gap-1 @3xl:hidden"
       >
         {isPendingPayment ? (
           <button
@@ -425,7 +431,7 @@ export function QuickActions({
                   <DropdownMenuTrigger
                     disabled={pending}
                     aria-label={`Acciones para ${label}`}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60 lg:h-8 lg:w-8"
                   >
                     <MoreVertical aria-hidden className="h-5 w-5" />
                   </DropdownMenuTrigger>

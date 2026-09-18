@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ExternalLink, Mail, MessageCircle } from 'lucide-react'
 import { SectionHeader } from '@/components/admin/SectionHeader'
+import { Pager } from '@/components/ui/pager'
 import { formatArs, relativeTimeEs } from '@/lib/format'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
 import { bookingCode } from '@/lib/booking-code'
@@ -18,6 +19,14 @@ const ORIGIN_TAG: Record<string, string> = {
   transfer: 'Transferencia',
   other: 'Otro medio',
 }
+
+/**
+ * Devoluciones por página. La sección va arriba de las deudas: con más filas
+ * que esto empujaría la tabla de deudas y el diario del día fuera de la vista.
+ * Vienen de la más vieja a la más nueva, así que la página 1 es la cola por
+ * donde se empieza.
+ */
+const PAGE_SIZE = 5
 
 /** "del lun 14 de septiembre a las 21:00", o nada si el turno no trae fecha. */
 function turnoDetalle(row: PendingRefundRow): string {
@@ -73,10 +82,16 @@ export function PendingRefundsList({
   const [settling, setSettling] = useState<PendingRefundRow | null>(null)
   // Instante fijo por render (mismo criterio que StreetMoneyList).
   const [nowMs] = useState(() => Date.now())
+  const [page, setPage] = useState(0)
 
   if (rows.length === 0) return null
 
   const total = rows.reduce((s, r) => s + r.amountCents, 0)
+  // Marcar la última devolución de la última página la deja vacía: el clamp
+  // muestra la anterior.
+  const lastPage = Math.max(Math.ceil(rows.length / PAGE_SIZE) - 1, 0)
+  const current = Math.min(page, lastPage)
+  const pageRows = rows.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)
 
   return (
     <section aria-labelledby="devolver-titulo" className="space-y-3">
@@ -94,7 +109,7 @@ export function PendingRefundsList({
       />
 
       <ul className="divide-y divide-border border-b border-border" role="list">
-        {rows.map((row) => {
+        {pageRows.map((row) => {
           const wa = whatsappUrl(row)
           return (
             <li
@@ -174,6 +189,14 @@ export function PendingRefundsList({
           )
         })}
       </ul>
+
+      <Pager
+        label="Paginación de devoluciones"
+        page={current}
+        total={rows.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       <p className="text-xs text-muted-foreground">
         Devolvés por donde quieras — MercadoPago, transferencia o efectivo. Acá solo queda

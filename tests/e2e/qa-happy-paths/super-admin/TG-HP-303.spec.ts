@@ -11,8 +11,8 @@ import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
  * cambio de filtro/página es una recarga completa. Ground truth vía runSql
  * (COUNT total + status real del tenant Demo) para no depender de qué banda
  * corrió antes.
- * Evidence anchors: src/app/(super-admin)/super-admin/tenants/page.tsx:44-93,
- * .../tenants/_components/tenants-filters.tsx:1-99, .../tenants-table.tsx:1-109,
+ * Evidence anchors: src/app/(super-admin)/super-admin/tenants/page.tsx:40-83,
+ * .../tenants/_components/tenants-filters.tsx:1-99, .../tenants-table.tsx:1-93,
  * src/modules/super-admin/tenants.service.ts:78-151.
  */
 test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
@@ -74,12 +74,12 @@ test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
       await page.waitForURL(new RegExp(`/super-admin/tenants/${E2E_TENANT_ID}`))
       expect(page.url()).toContain(`/super-admin/tenants/${E2E_TENANT_ID}`)
 
-      // ── Paginación (condicional a totalPages > 1) ───────────────────────
+      // ── Paginación (condicional a más de una página; ahora vía Pager compartido) ──
       await page.goto('/super-admin/tenants')
-      const pagingNav = page.getByRole('navigation', { name: 'Paginación' })
+      const pagingNav = page.getByRole('navigation', { name: 'Paginación de complejos' })
       const hasPaging = await pagingNav.isVisible().catch(() => false)
       if (hasPaging) {
-        await expect(pagingNav.getByText(/Página \d+ de \d+/)).toBeVisible()
+        await expect(pagingNav.getByText(/Mostrando/)).toBeVisible()
       }
 
       await writeEvidence('TG-HP-303', {

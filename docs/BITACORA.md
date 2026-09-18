@@ -140,3 +140,4 @@ lo que está abierto se consulta en los PRs y el CI, no se escribe acá.
 - **2026-09-17 15:56** `fix/mp-checkout-sin-cancelar` — Main integrado y pusheado (`ba888eb1`). Formato y tipos en verde. GitHub lo marca sin conflictos.
 - **2026-09-17 17:11** `fix/mp-checkout-sin-cancelar` — Cambiar entre plan mensual y anual ya no manda mails de "cancelada". Si alguien paga un link viejo, el sistema lo cancela y avisa.
 - **2026-09-18 13:34** `worktree-redisenio-caja` — Las tres vistas quedaron sin cards y a 1600 px de ancho.
+- **2026-09-18 14:40** `worktree-redisenio-caja` — Un solo paginador en todo el producto, con el total y las páginas numeradas: Caja, Turnos fijos, Jugadores y su ficha (antes cortaba el historial en 20), historial de Reservas, Mis reservas y super-admin.

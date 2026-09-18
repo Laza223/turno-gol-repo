@@ -18,7 +18,14 @@ import {
   ensureRoles,
   linkPlayerToTenant,
 } from '../helpers/tenant'
-import { CLIENTES_PAGE_SIZE, listTenantClients } from '@/app/(admin)/jugadores/queries'
+import {
+  CLIENTES_PAGE_SIZE,
+  PLAYER_HISTORY_PAGE_SIZE,
+  countPlayerBookingHistory,
+  getPlayerBookingHistory,
+  listTenantClients,
+} from '@/app/(admin)/jugadores/queries'
+import { insertBooking } from '../helpers/factories'
 import {
   linkContactToPlayer,
   unlinkContactFromPlayer,
@@ -154,19 +161,18 @@ describe('listTenantClients — paginación (B10)', () => {
     `
   }
 
-  it('devuelve una página completa y avisa que hay más', async () => {
+  it('devuelve una página completa y dice el total', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     await seedPersonas(tenant.id, CLIENTES_PAGE_SIZE + 3)
 
     const primera = await withTenantContext(tenant.id, (tx) => listTenantClients(tenant.id, {}, tx))
 
-    // El `LIMIT n+1` es para DETECTAR, no para devolver una fila de más.
     expect(primera.rows).toHaveLength(CLIENTES_PAGE_SIZE)
-    expect(primera.hasMore).toBe(true)
+    expect(primera.total).toBe(CLIENTES_PAGE_SIZE + 3)
   })
 
-  it('las páginas no se pisan ni se saltean personas', async () => {
+  it('las páginas juntas reproducen la lista sin repetir ni saltear, y el total coincide', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const total = CLIENTES_PAGE_SIZE + 3
@@ -176,8 +182,10 @@ describe('listTenantClients — paginación (B10)', () => {
     const p1 = await withTenantContext(tenant.id, (tx) => listTenantClients(tenant.id, {}, tx, 1))
     const keys = new Set([...p0.rows, ...p1.rows].map((r) => r.key))
 
+    expect(p0.rows).toHaveLength(CLIENTES_PAGE_SIZE)
     expect(p1.rows).toHaveLength(3)
-    expect(p1.hasMore).toBe(false)
+    expect(p0.total).toBe(total)
+    expect(p1.total).toBe(total)
     expect(keys.size).toBe(total)
   })
 
@@ -191,7 +199,12 @@ describe('listTenantClients — paginación (B10)', () => {
     )
 
     expect(lejos.rows).toHaveLength(0)
-    expect(lejos.hasMore).toBe(false)
+    // `COUNT(*) OVER()` viaja pegado a cada fila: sin filas (el OFFSET se
+    // comió todo el resultado) no hay de dónde leerlo, así que cae al default
+    // 0 — no es "el complejo no tiene personas". Inofensivo porque la vista
+    // no dibuja el paginador cuando la página no trajo filas (JugadoresView:
+    // `clients.length > 0 &&`).
+    expect(lejos.total).toBe(0)
   })
 })
 
@@ -509,5 +522,62 @@ describe('players.phone_hint8 — paridad con suggestionPhoneSql (migr. 075)', (
     expect(rows).toHaveLength(1)
     expect(rows[0]!.indexdef).toContain(PLAYER_PHONE_HINT_COLUMN)
     expect(rows[0]!.indexdef).toContain('WHERE')
+  })
+})
+
+/**
+ * B14 — el historial de la ficha se cortaba en 20 SIN forma de ver las
+ * reservas anteriores. Mismo requisito que B10, para otra query del mismo
+ * módulo: acá `getPlayerBookingHistory` y `countPlayerBookingHistory` sí
+ * comparten el WHERE trivial de una sola tabla, así que el total va en un
+ * COUNT aparte y no en un `COUNT(*) OVER()`.
+ */
+describe('getPlayerBookingHistory / countPlayerBookingHistory — paginación (B14)', () => {
+  it('las páginas juntas reproducen el historial sin repetir ni saltear, y el total coincide', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const courtId = await insertCourt(tenant.id)
+    const player = await createTestPlayer(sql)
+    await linkPlayerToTenant(sql, tenant.id, player.id)
+
+    const total = PLAYER_HISTORY_PAGE_SIZE + 3
+    const ids: string[] = []
+    for (let i = 0; i < total; i++) {
+      ids.push(
+        await insertBooking(sql, {
+          tenantId: tenant.id,
+          courtId,
+          playerId: player.id,
+          // Una fecha distinta por reserva: la exclusion constraint de la
+          // cancha (no_overlapping_bookings) no deja dos turnos en el mismo
+          // horario, y `total` acá siempre entra dentro de un mes.
+          date: `2030-02-${String(i + 1).padStart(2, '0')}`,
+        }),
+      )
+    }
+
+    const count = await withTenantContext(tenant.id, (tx) =>
+      countPlayerBookingHistory(tenant.id, player.id, tx),
+    )
+    expect(count).toBe(total)
+
+    const p0 = await withTenantContext(tenant.id, (tx) =>
+      getPlayerBookingHistory(tenant.id, player.id, tx, PLAYER_HISTORY_PAGE_SIZE, 0),
+    )
+    const p1 = await withTenantContext(tenant.id, (tx) =>
+      getPlayerBookingHistory(
+        tenant.id,
+        player.id,
+        tx,
+        PLAYER_HISTORY_PAGE_SIZE,
+        PLAYER_HISTORY_PAGE_SIZE,
+      ),
+    )
+
+    expect(p0).toHaveLength(PLAYER_HISTORY_PAGE_SIZE)
+    expect(p1).toHaveLength(3)
+    const seen = new Set([...p0, ...p1].map((r) => r.id))
+    expect(seen.size).toBe(total)
+    for (const id of ids) expect(seen.has(id)).toBe(true)
   })
 })

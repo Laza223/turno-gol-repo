@@ -49,7 +49,9 @@ contados sobre la app corriendo:
 8. **Paginación donde no había techo.** Deudas de a 25 en el cliente (ya se cargan enteras y se
    filtran por nombre y origen sobre la lista entera), diario de a 25 y ledger de a 20 por URL.
    `getCashFlows` y `getLedger` aceptan `offset` (y `getCashFlows`, `limit`), con `id` como
-   desempate del orden.
+   desempate del orden. Ampliado el 2026-09-18: el paginador dice el total y numera las páginas
+   (`countCashFlows`, `countLedger`), el catálogo pagina de a 25 y las devoluciones de a 5, y el
+   mismo `Pager` pasó al resto del producto (MASTER §6.6).
 9. **El alta de producto controla stock por defecto**, y el modal se agranda en dos bloques ("El
    producto" / "Stock") con una línea de ayuda por campo —qué es el costo, el stock inicial y el
    mínimo— y la ganancia por unidad dicha en palabras. El stock inicial pasa a ser obligatorio en

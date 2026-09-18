@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ClientesTabs } from './ClientesTabs'
 import { PlayerTagChips } from './PlayerTagChips'
 import { LinkContactDialog, type LinkContactDialogProps } from './LinkContactDialog'
-import type { ClientListRow } from './queries'
+import { CLIENTES_PAGE_SIZE, type ClientListRow } from './queries'
 
 /**
  * Vista presentacional de /jugadores: header, tabs, buscador (form GET, sin JS) y
@@ -25,8 +25,8 @@ export type JugadoresViewProps = {
   linkAction: LinkContactDialogProps['linkAction']
   /** Página 0-based que se está viendo (B10). */
   page?: number
-  /** Hay al menos una persona más después de esta página (B10). */
-  hasMore?: boolean
+  /** Total de personas, sumando todas las páginas (B10). */
+  total?: number
 }
 
 /** `/jugadores?…` preservando la búsqueda. `?pagina=` es 1-based en la URL. */
@@ -62,7 +62,9 @@ export function JugadoresView({
   searchAction,
   linkAction,
   page = 0,
-  hasMore = false,
+  // Sin total explícito (stories viejas), se asume que lo que llegó es todo:
+  // una sola página, el mismo comportamiento que el `hasMore=false` de antes.
+  total = clients.length,
 }: JugadoresViewProps) {
   const renderLinkButton = (c: ClientListRow) =>
     c.kind === 'contact' ? (
@@ -270,14 +272,21 @@ export function JugadoresView({
 
       {/* B10 — antes la lista se cortaba en 200 SIN decirlo: la persona 201 no
           existía para esta pantalla y el único modo de alcanzarla era adivinar
-          su nombre en el buscador. */}
-      <Pager
-        label="Paginación de personas"
-        page={page}
-        hasMore={hasMore}
-        className="pt-4"
-        hrefFor={(p) => pageHref(q, p)}
-      />
+          su nombre en el buscador. Condicionado a que haya filas: una página
+          fuera de rango ya tiene su propio link de vuelta arriba, así que acá
+          abajo el paginador sería ruido (o peor, un "Anteriores" que lleva a
+          otra página igual de vacía). */}
+      {clients.length > 0 && (
+        <Pager
+          label="Paginación de personas"
+          page={page}
+          total={total}
+          pageSize={CLIENTES_PAGE_SIZE}
+          shown={clients.length}
+          className="pt-4"
+          hrefFor={(p) => pageHref(q, p)}
+        />
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, MoreHorizontal, Package, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Pager } from '@/components/ui/pager'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { formatArs } from '@/lib/format'
 import { toast } from '@/hooks/use-toast'
@@ -26,6 +27,13 @@ import {
 import { StockEntryDialog, type RegisterPurchaseAction } from './StockEntryDialog'
 import { StockExitDialog, type RegisterStockExitAction } from './StockExitDialog'
 import type { ProductActionResult } from './actions'
+
+/**
+ * Productos por página. Los pausados no se borran nunca (`deactivateProduct` es
+ * una baja lógica), así que el catálogo solo crece: sin techo, la tabla empuja
+ * el ledger de stock fuera de la vista.
+ */
+const PAGE_SIZE = 25
 
 /** deactivateProductAction llega por PROP: '../actions' es `'use server'`. */
 type DeactivateProductAction = (productId: string) => Promise<ProductActionResult>
@@ -80,7 +88,22 @@ export function ProductsTable({
   const [entryProduct, setEntryProduct] = useState<CanteenProductRow | null>(null)
   const [exitProduct, setExitProduct] = useState<CanteenProductRow | null>(null)
 
+  const [page, setPage] = useState(0)
+  const sectionRef = useRef<HTMLElement>(null)
+
   const ordered = activeFirst(products)
+  // Pausar el último producto de la última página la deja vacía: el clamp
+  // muestra la anterior en vez de una tabla sin filas.
+  const lastPage = Math.max(Math.ceil(ordered.length / PAGE_SIZE) - 1, 0)
+  const current = Math.min(page, lastPage)
+  const pageRows = ordered.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)
+
+  function changePage(next: number) {
+    setPage(next)
+    // El paginador queda abajo de la tabla: sin esto, cambiar de página deja la
+    // vista al final de la página nueva.
+    sectionRef.current?.scrollIntoView({ block: 'start' })
+  }
 
   function openCreate() {
     setEditing(null)
@@ -111,7 +134,7 @@ export function ProductsTable({
   const lowCount = countLowStock(products)
 
   return (
-    <section aria-labelledby="catalogo-titulo" className="space-y-3">
+    <section ref={sectionRef} aria-labelledby="catalogo-titulo" className="space-y-3">
       <SectionHeader
         id="catalogo-titulo"
         title="Catálogo"
@@ -188,7 +211,7 @@ export function ProductsTable({
           flat
           cards={
             <ul className="divide-y divide-border border-b border-border">
-              {ordered.map((p) => {
+              {pageRows.map((p) => {
                 const badge = canteenStockBadge(p.stock, p.minStock)
                 return (
                   <li
@@ -264,7 +287,7 @@ export function ProductsTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {ordered.map((p) => {
+                {pageRows.map((p) => {
                   const badge = canteenStockBadge(p.stock, p.minStock)
                   return (
                     <tr
@@ -329,6 +352,14 @@ export function ProductsTable({
           }
         />
       )}
+
+      <Pager
+        label="Paginación del catálogo"
+        page={current}
+        total={ordered.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={changePage}
+      />
 
       <ProductFormDialog
         open={formOpen}

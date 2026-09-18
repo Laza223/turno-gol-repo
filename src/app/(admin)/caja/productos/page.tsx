@@ -1,6 +1,6 @@
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
-import { getLedger } from '@/modules/canteen/stock.service'
+import { countLedger, getLedger } from '@/modules/canteen/stock.service'
 import {
   getCanteenDailyTotals,
   getCanteenTotalsByMethod,
@@ -45,26 +45,31 @@ export default async function CajaProductosPage(props: {
 
   const reportRange = { from: addDays(today, -(range - 1)), to: today }
 
-  const { products, ledger, ranking, byMethod, daily } = await withTenantContext(
+  const { products, ledgerRows, ledgerTotal, ranking, byMethod, daily } = await withTenantContext(
     tenant.id,
     async (tx) => {
-      const [p, l, rk, bm, dl] = await Promise.all([
+      const [p, l, n, rk, bm, dl] = await Promise.all([
         listProducts(tenant.id, tx, { includeInactive: true }),
-        // `limit + 1`: la fila sobrante es `hasMore`, sin un COUNT aparte.
         getLedger(tenant.id, tx, {
-          limit: LEDGER_PAGE_SIZE + 1,
+          limit: LEDGER_PAGE_SIZE,
           offset: ledgerPage * LEDGER_PAGE_SIZE,
         }),
+        // El total del paginador: el primer movimiento de todos queda a un clic.
+        countLedger(tenant.id, tx),
         getSalesRanking(tenant.id, tx, reportRange, cutoffMins),
         getCanteenTotalsByMethod(tenant.id, tx, reportRange, cutoffMins),
         getCanteenDailyTotals(tenant.id, tx, reportRange, cutoffMins),
       ])
-      return { products: p, ledger: l, ranking: rk, byMethod: bm, daily: dl }
+      return {
+        products: p,
+        ledgerRows: l,
+        ledgerTotal: n,
+        ranking: rk,
+        byMethod: bm,
+        daily: dl,
+      }
     },
   )
-
-  const ledgerHasMore = ledger.length > LEDGER_PAGE_SIZE
-  const ledgerRows = ledger.slice(0, LEDGER_PAGE_SIZE)
 
   function ledgerHref(page: number): string {
     const qs = new URLSearchParams()
@@ -114,12 +119,16 @@ export default async function CajaProductosPage(props: {
         <StockLedgerList
           entries={ledgerRows}
           footer={
-            <Pager
-              label="Paginación de movimientos de stock"
-              page={ledgerPage}
-              hasMore={ledgerHasMore}
-              hrefFor={ledgerHref}
-            />
+            ledgerRows.length > 0 && (
+              <Pager
+                label="Paginación de movimientos de stock"
+                page={ledgerPage}
+                total={ledgerTotal}
+                pageSize={LEDGER_PAGE_SIZE}
+                shown={ledgerRows.length}
+                hrefFor={ledgerHref}
+              />
+            )
           }
         />
       </Disclosure>

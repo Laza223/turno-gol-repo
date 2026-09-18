@@ -42,6 +42,12 @@ const meta = {
       success: true as const,
       booking: {} as never,
     })),
+    page: 0,
+    // Default bajo a propósito: con `total <= pageSize` el Pager nunca se
+    // dibuja, que es el caso normal de casi todas las stories de acá. Las que
+    // sí quieren mostrarlo (HistorialPaginado) lo pisan con un total real.
+    total: 1,
+    pageSize: 20,
   },
   decorators: [
     (Story) => (
@@ -205,13 +211,15 @@ export const HistorialPaginado: Story = {
     tab: 'historial',
     upcomingCount: 2,
     page: 1,
-    hasMore: true,
+    // 45 con pageSize 20: tres páginas, la 2 (index 1) tiene anterior Y siguiente.
+    total: 45,
     bookings: [row({ id: 'h1', date: artDateString(daysFromNow(-40)), status: 'completed' })],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const pager = canvas.getByRole('navigation', { name: 'Paginación de reservas' })
-    await expect(pager).toHaveTextContent('Página 2')
+    // Pager compartido en modo total: dice el tramo visto sobre el total.
+    await expect(within(pager).getByRole('status')).toHaveTextContent('45')
     // Los dos links preservan el tab; la página 1 va sin `?pagina=`.
     await expect(within(pager).getByRole('link', { name: /Anteriores/ })).toHaveAttribute(
       'href',
@@ -221,6 +229,31 @@ export const HistorialPaginado: Story = {
       'href',
       '/mis-reservas?tab=historial&pagina=3',
     )
+  },
+}
+
+/**
+ * Página fuera de rango (link viejo/compartido): ni "no tenés reservas" ni
+ * paginador — "esa página no existe" con un link de vuelta al principio.
+ */
+export const PaginaFueraDeRango: Story = {
+  args: {
+    tab: 'historial',
+    upcomingCount: 0,
+    page: 2,
+    total: 1,
+    bookings: [],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Esa página no existe')).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: /volver al principio/i })).toHaveAttribute(
+      'href',
+      '/mis-reservas?tab=historial',
+    )
+    await expect(
+      canvas.queryByRole('navigation', { name: 'Paginación de reservas' }),
+    ).not.toBeInTheDocument()
   },
 }
 

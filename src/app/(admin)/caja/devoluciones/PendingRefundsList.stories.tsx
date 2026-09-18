@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, within } from 'storybook/test'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import type { PendingRefundRow } from '@/modules/payments/refund.service'
 import { PendingRefundsList } from './PendingRefundsList'
 
@@ -61,6 +61,33 @@ export const ConDevoluciones: Story = {
     // H105: el nombre accesible ahora lleva monto y jugador (no solo "Ya
     // devolví"), así que el match es por substring.
     await expect(canvas.getAllByRole('button', { name: /Ya devolví/ })).toHaveLength(2)
+  },
+}
+
+/**
+ * Siete señas: de a cinco, empezando por la más vieja. El total del encabezado
+ * suma las siete, no solo la página.
+ */
+export const VariasPaginas: Story = {
+  args: {
+    rows: Array.from({ length: 7 }, (_, i) =>
+      row({
+        refundPaymentId: `44444444-4444-4444-8444-44444444444${i}`,
+        debtorName: `Jugador ${i + 1}`,
+        amountCents: 100000,
+      }),
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/7\.000/)).toBeInTheDocument()
+    await expect(canvas.getAllByRole('button', { name: /Ya devolví/ })).toHaveLength(5)
+    const pager = within(canvas.getByRole('navigation', { name: 'Paginación de devoluciones' }))
+    await expect(pager.getByRole('status')).toHaveTextContent('1–5 de 7')
+
+    await userEvent.click(pager.getByRole('button', { name: /Siguientes/ }))
+    await expect(canvas.getAllByRole('button', { name: /Ya devolví/ })).toHaveLength(2)
+    await expect(canvas.getByText('Jugador 6')).toBeInTheDocument()
   },
 }
 

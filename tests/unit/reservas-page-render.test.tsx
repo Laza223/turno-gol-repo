@@ -67,7 +67,7 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
   // (el board no pagina). Los casos que quieran `courtId`/`courtTotal` en la
   // fila los agregan en su propio `row()`.
   listTenantBookingsForBoard: (...args: unknown[]) => listMock(...(args as [])),
-  RESERVAS_PAGE_SIZE: 100,
+  RESERVAS_PAGE_SIZE: 50,
   countTenantBookingsByStatus: (...args: unknown[]) => countsMock(...(args as [])),
   sumBookingChargesByBooking: (...args: unknown[]) => chargesMock(...(args as [])),
 }))
@@ -339,14 +339,15 @@ describe('ReservasPage — paginación', () => {
     expect(within(pager).queryByRole('link', { name: /Anteriores/ })).toBeNull()
   })
 
-  it('en la página 2 el rango arranca en 101 y "Anteriores" vuelve a la 1', async () => {
+  it('en la página 2 el rango arranca en 51 y "Anteriores" vuelve a la 1', async () => {
     hasMore.value = false
     listMock.mockResolvedValue([row({ id: 'b1' }), row({ id: 'b2' })])
-    countsMock.mockResolvedValue({ confirmed: 102 })
+    // 52 = una página llena (50) + las 2 de acá: la última página, sin "Siguientes".
+    countsMock.mockResolvedValue({ confirmed: 52 })
 
     render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', pagina: '2' }) }))
 
-    expect(screen.getByRole('status').textContent).toContain('101–102')
+    expect(screen.getByRole('status').textContent).toContain('51–52')
     const pager = screen.getByRole('navigation', { name: 'Paginación de reservas' })
     // Sin `?pagina=` — la página 1 es la URL limpia.
     expect(

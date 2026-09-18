@@ -173,21 +173,22 @@ export const BusquedaSinResultados: Story = {
 }
 
 /**
- * B10 — la lista paginada. Antes se cortaba en 200 sin decirlo: la persona 201
- * no existía para esta pantalla y el único modo de alcanzarla era adivinar su
- * nombre en el buscador.
+ * B10 — la lista paginada, con el total (antes se cortaba en 200 sin decirlo:
+ * la persona 201 no existía para esta pantalla y el único modo de alcanzarla
+ * era adivinar su nombre en el buscador). 3 páginas de 50: esta es la del medio.
  */
 export const ConPaginas: Story = {
   args: {
     clients: [jugador({ key: uid(301), playerId: uid(301), name: 'Ana Ruiz' })],
     q: 'ruiz',
     page: 1,
-    hasMore: true,
+    total: 120,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const pager = canvas.getByRole('navigation', { name: 'Paginación de personas' })
-    await expect(pager).toHaveTextContent('Página 2')
+    await expect(pager).toHaveTextContent('Mostrando')
+    await expect(pager).toHaveTextContent('120')
     // Los dos links preservan la búsqueda; la página 1 va sin `?pagina=`.
     await expect(within(pager).getByRole('link', { name: /Anteriores/ })).toHaveAttribute(
       'href',
@@ -211,7 +212,7 @@ export const SinPaginador: Story = {
   },
 }
 
-/** 50 registros: la tabla no se rompe con volumen (páginas de 100 en listTenantClients). */
+/** 50 registros: la tabla no se rompe con volumen (páginas de 50 en listTenantClients). */
 export const MuchosRegistros: Story = {
   args: {
     clients: Array.from({ length: 50 }, (_, i) =>

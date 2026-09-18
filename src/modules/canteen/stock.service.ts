@@ -226,6 +226,21 @@ export async function adjustStock(
 }
 
 /** Últimos movimientos del ledger, con nombre actual del producto (UI tab Productos). */
+/** Cuántos movimientos de stock hay: el total del paginador del ledger. */
+export async function countLedger(
+  tenantId: string,
+  tx: DbTx,
+  opts: { productId?: string } = {},
+): Promise<number> {
+  const rows = await tx.execute(sql`
+    SELECT COUNT(*)::int AS n
+    FROM stock_movements
+    WHERE tenant_id = ${tenantId}
+      ${opts.productId ? sql`AND product_id = ${opts.productId}` : sql``}
+  `)
+  return (rows as unknown as Array<{ n: number }>)[0]?.n ?? 0
+}
+
 export async function getLedger(
   tenantId: string,
   tx: DbTx,

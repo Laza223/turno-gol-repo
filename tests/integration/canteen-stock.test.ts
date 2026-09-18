@@ -4,6 +4,7 @@ import { cleanupAll, createTestStaffUser, createTestTenant, ensureRoles } from '
 import { createProduct } from '@/modules/canteen/canteen.service'
 import {
   adjustStock,
+  countLedger,
   getLedger,
   registerExit,
   registerPurchase,
@@ -94,7 +95,10 @@ describe('stock service — getLedger con offset', () => {
       await getLedger(tenant.id, tx, { limit: 3, offset: 3 }),
     ])
 
+    const total = await withTenantContext(tenant.id, (tx) => countLedger(tenant.id, tx))
+
     expect(all).toHaveLength(5)
+    expect(total).toBe(5)
     expect([p1.length, p2.length]).toEqual([3, 2])
     expect([...p1, ...p2].map((e) => e.id)).toEqual(all.map((e) => e.id))
     // Del más nuevo al más viejo: la última compra cargada fue de 5 unidades.

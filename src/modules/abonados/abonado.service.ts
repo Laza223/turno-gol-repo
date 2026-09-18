@@ -462,24 +462,35 @@ export async function getAbonadoSlotConflicts(
 /**
  * Los turnos fijos del complejo.
  *
- * B10 — **sin `LIMIT`, y a propósito**. El total que muestra la pantalla sale de
- * `.length` sobre estas mismas filas, así que el número nunca puede contradecir
- * a la lista: no es la clase "la UI miente" que se cerró en `/reservas` y
- * `/jugadores`. El conjunto además está acotado por la capacidad física del
- * complejo (una fila por slot semanal por cancha) más los `canceled` que se
- * acumulan, y la pantalla ya filtra por estado. Paginar acá sería ceremonia.
+ * `opts.limit` / `opts.offset` paginan `/abonados` de a 25: los `canceled` NUNCA
+ * se borran (dar de baja es un UPDATE de estado, no un DELETE) y un complejo con
+ * meses de uso acumula cientos de filas sin techo. Sin `limit` la query queda
+ * como antes —trae todo— pero ya nadie debería llamarla así desde una pantalla;
+ * el total para "Mostrando N de M" sale de `countAbonados`, con el MISMO WHERE,
+ * para que el número de arriba nunca contradiga a la lista.
  *
- * Lo que sí se arregló es el `SELECT *`: el cast prometía una forma exacta de
- * fila que la query no garantizaba. Nombrar las columnas convierte un renombre
- * o un DROP en un error de Postgres —ruidoso, en el deploy— en vez de un campo
- * `undefined` con tipo no-nullable llegando a la UI. `abonados.notes` se dropeó
- * en la 074 y este `SELECT *` no se enteró; la próxima puede no ser tan barata.
+ * El `ORDER BY` suma `id` como desempate: dos abonados con el mismo
+ * day_of_week/time_start (canchas distintas) no tienen un orden estable entre sí
+ * sin él, y una página podía repetir una fila que la anterior ya había mostrado
+ * o saltearse una.
+ *
+ * Lo que ya estaba arreglado sigue igual: el `SELECT *` prometía una forma
+ * exacta de fila que la query no garantizaba. Nombrar las columnas convierte un
+ * renombre o un DROP en un error de Postgres —ruidoso, en el deploy— en vez de
+ * un campo `undefined` con tipo no-nullable llegando a la UI. `abonados.notes`
+ * se dropeó en la 074 y este `SELECT *` no se enteró; la próxima puede no ser
+ * tan barata.
  */
 export async function getAbonados(
   tenantId: string,
   filters: { status?: AbonadoStatus },
   tx: DbTx,
+  opts: { limit?: number; offset?: number } = {},
 ): Promise<AbonadoRow[]> {
+  // Mismo clamp que getCashFlows: un `?pagina=` con basura no puede pedirle a
+  // Postgres más de 500 filas de un tirón.
+  const limit = opts.limit == null ? null : Math.min(Math.max(opts.limit, 1), 500)
+  const offset = Math.max(opts.offset ?? 0, 0)
   const rows = await tx.execute<{
     id: string
     tenant_id: string
@@ -507,7 +518,8 @@ export async function getAbonados(
     FROM abonados
     WHERE tenant_id = ${tenantId}
     ${filters.status ? sql`AND status = ${filters.status}` : sql``}
-    ORDER BY day_of_week, time_start
+    ORDER BY day_of_week, time_start, id
+    ${limit == null ? sql`` : sql`LIMIT ${limit} OFFSET ${offset}`}
   `)
 
   return [...rows].map((r) => ({
@@ -528,4 +540,24 @@ export async function getAbonados(
     createdAt: new Date(r.created_at),
     updatedAt: new Date(r.updated_at),
   }))
+}
+
+/**
+ * Cuántos turnos fijos tiene el complejo con este filtro: el total del
+ * paginador de /abonados ("Mostrando 26–50 de 63"). MISMO WHERE que
+ * getAbonados — si se desalinean, el subtítulo del encabezado puede
+ * contradecir a la lista.
+ */
+export async function countAbonados(
+  tenantId: string,
+  filters: { status?: AbonadoStatus },
+  tx: DbTx,
+): Promise<number> {
+  const rows = await tx.execute<{ n: number }>(sql`
+    SELECT COUNT(*)::int AS n
+    FROM abonados
+    WHERE tenant_id = ${tenantId}
+    ${filters.status ? sql`AND status = ${filters.status}` : sql``}
+  `)
+  return [...rows][0]?.n ?? 0
 }

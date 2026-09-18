@@ -24,7 +24,12 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
   }
 })
 
-import { createCashFlow, getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
+import {
+  countCashFlows as countDayCashFlows,
+  createCashFlow,
+  getCashFlows,
+  getDaySummary,
+} from '@/modules/cashflow/cashflow.service'
 import { InvalidCashFlowCategoryError } from '@/modules/cashflow/cashflow.errors'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 
@@ -333,8 +338,13 @@ describe('cashflow service', () => {
       await getCashFlows(tenant.id, TODAY, 0, tx, { limit: 3, offset: 3 }),
       await getCashFlows(tenant.id, TODAY, 0, tx, { limit: 3, offset: 6 }),
     ])
+    // El total del paginador cuenta el mismo día que la lista.
+    const total = await withTenantContext(tenant.id, (tx) =>
+      countDayCashFlows(tenant.id, TODAY, 0, tx),
+    )
 
     expect(all).toHaveLength(7)
+    expect(total).toBe(7)
     expect([p1.length, p2.length, p3.length]).toEqual([3, 3, 1])
     expect([...p1, ...p2, ...p3].map((cf) => cf.id)).toEqual(all.map((cf) => cf.id))
     // Del más nuevo al más viejo: la primera fila es la última venta cargada.

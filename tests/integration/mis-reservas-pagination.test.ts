@@ -49,7 +49,7 @@ type ViewProps = {
   bookings: MisReservasBookingRow[]
   tab: 'proximos' | 'historial'
   page: number
-  hasMore: boolean
+  total: number
   upcomingCount: number
 }
 
@@ -144,11 +144,13 @@ describe('/mis-reservas — paginación por tab (B10)', () => {
 
     const p0 = await render({ tab: 'historial' })
     expect(p0.bookings).toHaveLength(MIS_RESERVAS_PAGE_SIZE)
-    expect(p0.hasMore).toBe(true)
+    expect(p0.total).toBe(MIS_RESERVAS_PAGE_SIZE + 4)
 
     const p1 = await render({ tab: 'historial', pagina: '2' })
     expect(p1.bookings).toHaveLength(4)
-    expect(p1.hasMore).toBe(false)
+    // El total es el MISMO en las dos páginas: viene de la misma ventana
+    // (`COUNT(*) OVER()`), no de cuántas filas trajo esta página puntual.
+    expect(p1.total).toBe(MIS_RESERVAS_PAGE_SIZE + 4)
 
     // Ni se pisan ni se saltean.
     const ids = new Set([...p0.bookings, ...p1.bookings].map((b) => b.id))

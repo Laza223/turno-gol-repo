@@ -43,15 +43,36 @@ export const SinActividad: Story = {
   },
 }
 
-/** Página 2 de 2: el link "Anterior" es un <a> real (paginación GET), "Siguiente" queda deshabilitado. */
+/**
+ * `?actPage=99` con eventos: la tarjeta no puede decir "Audit trail (N)" y
+ * "Sin eventos" a la vez. Dice que la página no existe y no dibuja paginador.
+ */
+export const PaginaFueraDeRango: Story = {
+  args: {
+    activity: { ...tenantActivity(), logs: [], page: 99, totalLogs: 30, pageSize: 25 },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Esa página no existe/)).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Volver al principio' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('actPage=1'),
+    )
+    await expect(
+      canvas.queryByRole('navigation', { name: 'Paginación del audit trail' }),
+    ).toBeNull()
+  },
+}
+
+/** Página 2 de 2: el link "Anteriores" es un <a> real (paginación GET), "Siguientes" queda deshabilitado. */
 export const SegundaPagina: Story = {
   args: { activity: tenantActivityPage2() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Anterior' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Anteriores' })).toHaveAttribute(
       'href',
       expect.stringContaining('actPage=1'),
     )
-    await expect(canvas.getByText('Siguiente')).not.toHaveAttribute('href')
+    await expect(canvas.getByText('Siguientes')).not.toHaveAttribute('href')
   },
 }

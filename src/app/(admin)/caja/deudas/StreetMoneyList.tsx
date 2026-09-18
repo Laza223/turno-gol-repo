@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AlertCircle, MessageCircle, Search } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Pager, pageRangeLabel } from '@/components/ui/pager'
+import { Pager } from '@/components/ui/pager'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { SectionHeader } from '@/components/admin/SectionHeader'
 import { formatArs, relativeTimeEs } from '@/lib/format'
@@ -359,8 +359,8 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
       <Pager
         label="Paginación de deudas"
         page={current}
-        hasMore={current < lastPage}
-        summary={pageRangeLabel(current, PAGE_SIZE, filtered.length)}
+        total={filtered.length}
+        pageSize={PAGE_SIZE}
         onPageChange={changePage}
       />
 

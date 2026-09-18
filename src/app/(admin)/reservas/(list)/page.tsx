@@ -84,7 +84,7 @@ export default async function ReservasPage(props: Props) {
   const requestedCourt = searchParams.cancha ?? ''
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
-  const { rows, counts, hasMore, courts, courtId, courtTotals } = await withTenantContext(
+  const { rows, counts, courts, courtId, courtTotals } = await withTenantContext(
     tenant.id,
     async (tx) => {
       // H110 — allowlist contra las canchas reales del tenant, mismo criterio
@@ -138,7 +138,7 @@ export default async function ReservasPage(props: Props) {
       // (`isUnpaidAlarm` en slot-visual.ts, que solo mira completed): 3.2
       // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
       // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
-      // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (100) ids —
+      // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (50) ids —
       // el mismo costo que ya paga la grilla con todos los turnos del día.
       const charges = await sumBookingChargesByBooking(
         tenant.id,
@@ -178,11 +178,10 @@ export default async function ReservasPage(props: Props) {
 
   // B10 — el subtítulo y las píldoras salen de un COUNT sin techo, y la lista
   // venía de un `LIMIT 200` mudo: podía decir "740 reservas" y mostrar 200, sin
-  // avisar ni dar forma de llegar al resto. Ahora el rango que se está viendo se
-  // dice explícito y las páginas siguientes son alcanzables.
-  const firstIndex = page * RESERVAS_PAGE_SIZE + 1
-  const lastIndex = page * RESERVAS_PAGE_SIZE + rows.length
-  const paginado = !boardMode && (page > 0 || hasMore)
+  // avisar ni dar forma de llegar al resto. Ahora el Pager en modo total dice el
+  // rango que se está viendo ("Mostrando 51–100 de 740", abajo de la lista) y
+  // las páginas siguientes son alcanzables. Nunca en el tablero (`boardMode`):
+  // ahí el cupo es por cancha, no una página global de toda la lista.
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-3">
@@ -228,16 +227,6 @@ export default async function ReservasPage(props: Props) {
         />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto lg:overflow-hidden">
-          {paginado && (
-            <p className="shrink-0 text-sm text-muted-foreground" role="status">
-              Mostrando{' '}
-              <span className="font-medium tabular-nums text-foreground">
-                {firstIndex}–{lastIndex}
-              </span>{' '}
-              de <span className="font-medium tabular-nums text-foreground">{total}</span>
-            </p>
-          )}
-
           {scope === 'historial' ? (
             <div className="grid min-h-0 content-start gap-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 xl:grid-cols-2">
               {historialGroups.map(([date, dateRows]) => (
@@ -271,11 +260,13 @@ export default async function ReservasPage(props: Props) {
             />
           )}
 
-          {paginado && (
+          {!boardMode && (
             <Pager
               label="Paginación de reservas"
               page={page}
-              hasMore={hasMore}
+              total={total}
+              pageSize={RESERVAS_PAGE_SIZE}
+              shown={rows.length}
               className="shrink-0"
               hrefFor={(p) => buildHref({ dia: scope, status, q, cancha: courtId ?? '', page: p })}
             />

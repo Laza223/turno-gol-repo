@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { withTenantContext } from '@/shared/db/client'
-import { getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
+import { countCashFlows, getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import {
   DEFAULT_STREET_MONEY_WINDOW,
@@ -60,27 +60,31 @@ export default async function CajaCuentasPage(props: {
   const window = showAll ? 'all' : DEFAULT_STREET_MONEY_WINDOW
   const movPage = parseMovementsPage(searchParams.mov)
 
-  const { summary, cashFlows, streetMoneyRows, refunds, lowStock } = await withTenantContext(
-    tenant.id,
-    async (tx) => {
-      const [s, cf, sm, rf, ls] = await Promise.all([
+  const { summary, movRows, movTotal, streetMoneyRows, refunds, lowStock } =
+    await withTenantContext(tenant.id, async (tx) => {
+      const [s, cf, n, sm, rf, ls] = await Promise.all([
         getDaySummary(tenant.id, today, cutoffMins, tx),
-        // `limit + 1`: la fila sobrante es `hasMore`, sin un COUNT aparte.
         getCashFlows(tenant.id, today, cutoffMins, tx, {
-          limit: MOVEMENTS_PAGE_SIZE + 1,
+          limit: MOVEMENTS_PAGE_SIZE,
           offset: movPage * MOVEMENTS_PAGE_SIZE,
         }),
+        // El total del paginador: "Mostrando 26–50 de 63" y el número de la
+        // última página, a un clic.
+        countCashFlows(tenant.id, today, cutoffMins, tx),
         getStreetMoney(tenant.id, tx, window),
         listPendingRefunds(tenant.id, tx),
         // Cuentas no carga el catálogo: el aviso de stock sale de un COUNT.
         lowStockCount(tenant.id, tx),
       ])
-      return { summary: s, cashFlows: cf, streetMoneyRows: sm, refunds: rf, lowStock: ls }
-    },
-  )
-
-  const movHasMore = cashFlows.length > MOVEMENTS_PAGE_SIZE
-  const movRows = cashFlows.slice(0, MOVEMENTS_PAGE_SIZE)
+      return {
+        summary: s,
+        movRows: cf,
+        movTotal: n,
+        streetMoneyRows: sm,
+        refunds: rf,
+        lowStock: ls,
+      }
+    })
 
   // Único uso: la instrumentación de abajo. La propia StreetMoneyList calcula
   // este mismo total sobre las MISMAS filas para su encabezado — no hay dos cuentas.
@@ -183,12 +187,16 @@ export default async function CajaCuentasPage(props: {
               }
             : {})}
           footer={
-            <Pager
-              label="Paginación de movimientos del día"
-              page={movPage}
-              hasMore={movHasMore}
-              hrefFor={movHref}
-            />
+            movRows.length > 0 && (
+              <Pager
+                label="Paginación de movimientos del día"
+                page={movPage}
+                total={movTotal}
+                pageSize={MOVEMENTS_PAGE_SIZE}
+                shown={movRows.length}
+                hrefFor={movHref}
+              />
+            )
           }
         />
       </div>

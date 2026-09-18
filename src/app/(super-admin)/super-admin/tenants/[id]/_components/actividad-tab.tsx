@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { formatArs } from '@/lib/format'
 import type { TenantActivity } from '@/modules/super-admin/tenants.service'
+import { Pager } from '@/components/ui/pager'
 import { formatDateTimeArt } from '../../_components/format'
 import { Card } from './detail-primitives'
 
 /**
- * Tab "Actividad" del detalle de tenant: audit trail paginado + últimas 10
- * reservas. Presentacional puro — la paginación es 100% GET (Link), sin
- * estado de cliente.
+ * Tab "Actividad" del detalle de tenant: audit trail paginado (Pager
+ * compartido) + últimas 10 reservas. Presentacional puro — la paginación es
+ * 100% GET (Link), sin estado de cliente.
  */
 export function ActividadTab({
   tenantId,
@@ -16,12 +17,27 @@ export function ActividadTab({
   tenantId: string
   activity: TenantActivity
 }) {
-  const totalPages = Math.max(1, Math.ceil(activity.totalLogs / activity.pageSize))
   return (
     <div className="space-y-4">
       <Card title={`Audit trail (${activity.totalLogs})`}>
         {activity.logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin eventos de auditoría.</p>
+          // `?actPage=99` de un link viejo: hay eventos, lo que no existe es
+          // esa página (el título de la tarjeta ya dice cuántos hay).
+          <p className="text-sm text-muted-foreground">
+            {activity.totalLogs > 0 ? (
+              <>
+                Esa página no existe.{' '}
+                <Link
+                  href={`/super-admin/tenants/${tenantId}?tab=actividad&actPage=1`}
+                  className="font-medium underline underline-offset-4"
+                >
+                  Volver al principio
+                </Link>
+              </>
+            ) : (
+              'Sin eventos de auditoría.'
+            )}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left">
@@ -58,48 +74,15 @@ export function ActividadTab({
             </table>
           </div>
         )}
-        {totalPages > 1 && (
-          <nav
-            aria-label="Paginación del audit trail"
-            className="mt-4 flex items-center justify-between text-sm"
-          >
-            <span className="text-muted-foreground">
-              Página {activity.page} de {totalPages}
-            </span>
-            <div className="flex gap-2">
-              {activity.page > 1 ? (
-                <Link
-                  href={`/super-admin/tenants/${tenantId}?tab=actividad&actPage=${activity.page - 1}`}
-                  className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
-                >
-                  Anterior
-                </Link>
-              ) : (
-                <span
-                  aria-disabled="true"
-                  className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
-                >
-                  Anterior
-                </span>
-              )}
-              {activity.page < totalPages ? (
-                <Link
-                  href={`/super-admin/tenants/${tenantId}?tab=actividad&actPage=${activity.page + 1}`}
-                  className="rounded-md border border-border px-3 py-1.5 text-foreground hover:bg-accent"
-                >
-                  Siguiente
-                </Link>
-              ) : (
-                <span
-                  aria-disabled="true"
-                  className="rounded-md border border-border px-3 py-1.5 text-muted-foreground/40"
-                >
-                  Siguiente
-                </span>
-              )}
-            </div>
-          </nav>
-        )}
+        <Pager
+          label="Paginación del audit trail"
+          className="mt-4"
+          page={activity.page - 1}
+          total={activity.totalLogs}
+          pageSize={activity.pageSize}
+          shown={activity.logs.length}
+          hrefFor={(p) => `/super-admin/tenants/${tenantId}?tab=actividad&actPage=${p + 1}`}
+        />
       </Card>
 
       <Card title="Últimas 10 reservas">

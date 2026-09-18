@@ -86,17 +86,20 @@ const PLAYER_HINT = sql.raw(`sp.${PLAYER_PHONE_HINT_COLUMN}`)
  *
  * B10 — el `LIMIT 200` heredado truncaba en SILENCIO: la persona 201 no existía
  * para la pantalla y no había nada que lo dijera ni forma de alcanzarla salvo
- * adivinar el nombre en el buscador. Ahora devuelve páginas y avisa que hay más.
+ * adivinar el nombre en el buscador. Ahora devuelve páginas con el total, así
+ * el Pager numera y dice "Mostrando 51–100 de 312" en vez de un simple "hay
+ * más". El total sale de `COUNT(*) OVER()` sobre el `UNION ALL` envuelto en un
+ * subquery — una sola pasada, sin repetir las CTEs en una segunda query.
  * Offset y no keyset por el mismo motivo que en `/reservas`: el orden mezcla
  * `lastBookingAt` (nullable) con `name`, y un cursor sobre eso son tres campos
  * de desempate para ahorrar un `OFFSET` sobre la lista de clientes de UN
  * complejo.
  */
-export const CLIENTES_PAGE_SIZE = 100
+export const CLIENTES_PAGE_SIZE = 50
 
 export type ClientListPage = {
   rows: ClientListRow[]
-  hasMore: boolean
+  total: number
 }
 
 export async function listTenantClients(
@@ -120,6 +123,7 @@ export async function listTenantClients(
     fixedCount: number
     suggestedPlayerId: string | null
     suggestedPlayerName: string | null
+    total: number
   }>(sql`
     WITH registered AS (
       SELECT p.id::text AS key,
@@ -212,17 +216,33 @@ export async function listTenantClients(
         ORDER BY sr.last_booking_at DESC NULLS LAST
         LIMIT 1
       ) s ON TRUE
+    ),
+    combined AS (
+      SELECT * FROM registered
+      UNION ALL
+      SELECT * FROM contacts
     )
-    SELECT * FROM registered
-    UNION ALL
-    SELECT * FROM contacts
-    ORDER BY "lastBookingAt" DESC NULLS LAST, name ASC
-    LIMIT ${CLIENTES_PAGE_SIZE + 1} OFFSET ${safePage * CLIENTES_PAGE_SIZE}
+    -- El total sale de esta MISMA pasada (COUNT(*) OVER(), sin PARTITION BY:
+    -- cuenta el resultado entero del combined, antes del LIMIT) — no una
+    -- segunda query que repita las cinco CTEs de arriba.
+    SELECT *, COUNT(*) OVER()::int AS total
+    FROM combined
+    -- "key" como último desempate: sin él, dos personas con el mismo
+    -- lastBookingAt Y el mismo nombre no tenían orden estable entre páginas
+    -- (podían intercambiarse o repetirse de una página a la siguiente).
+    ORDER BY "lastBookingAt" DESC NULLS LAST, name ASC, key ASC
+    LIMIT ${CLIENTES_PAGE_SIZE} OFFSET ${safePage * CLIENTES_PAGE_SIZE}
   `)
 
-  const list = [...rows].map((r) => ({ ...r, tags: normalizePlayerTags(r.tags ?? []) }))
-  const hasMore = list.length > CLIENTES_PAGE_SIZE
-  return { rows: hasMore ? list.slice(0, CLIENTES_PAGE_SIZE) : list, hasMore }
+  const list = [...rows]
+  const total = list[0]?.total ?? 0
+  return {
+    rows: list.map(({ total: _total, ...r }) => ({
+      ...r,
+      tags: normalizePlayerTags(r.tags ?? []),
+    })),
+    total,
+  }
 }
 
 export type LinkCandidate = {
@@ -404,6 +424,9 @@ export type PlayerBookingRow = {
   totalPaid: number
 }
 
+/** Historial de reservas por página en la ficha del jugador. */
+export const PLAYER_HISTORY_PAGE_SIZE = 20
+
 /**
  * H128 (auditoría de coherencia 2026-09): el historial mostraba precio +
  * estado del sistema, sin decir si esa plata está cobrada, pendiente o
@@ -418,7 +441,8 @@ export async function getPlayerBookingHistory(
   tenantId: string,
   playerId: string,
   tx: DbTx,
-  limit = 20,
+  limit = PLAYER_HISTORY_PAGE_SIZE,
+  offset = 0,
 ): Promise<PlayerBookingRow[]> {
   const rows = await tx.execute(sql`
     SELECT b.id, b.date::text AS date,
@@ -439,8 +463,11 @@ export async function getPlayerBookingHistory(
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
     WHERE b.tenant_id = ${tenantId} AND b.player_id = ${playerId}
-    ORDER BY b.date DESC, b.time_start DESC
-    LIMIT ${limit}
+    -- "b.id" como desempate: dos turnos del mismo día y hora no deberían
+    -- existir, pero el orden tiene que ser determinista igual — si no, una
+    -- fila puede saltar de página al pasar de la 1 a la 2.
+    ORDER BY b.date DESC, b.time_start DESC, b.id DESC
+    LIMIT ${limit} OFFSET ${offset}
   `)
   const list = rows as unknown as Array<Omit<PlayerBookingRow, 'pending' | 'totalPaid'>>
   const charges = await sumBookingChargesByBooking(
@@ -457,4 +484,23 @@ export async function getPlayerBookingHistory(
     })
     return { ...r, pending: money.pending, totalPaid: money.totalPaid }
   })
+}
+
+/**
+ * Cuántas reservas tiene el historial de esta persona: el total del paginador
+ * de la ficha. Mismo WHERE que `getPlayerBookingHistory`, en un COUNT aparte
+ * — acá no hay un UNION de CTEs que valga la pena no repetir (es una sola
+ * tabla con dos condiciones), mismo patrón que `countCashFlows`.
+ */
+export async function countPlayerBookingHistory(
+  tenantId: string,
+  playerId: string,
+  tx: DbTx,
+): Promise<number> {
+  const rows = await tx.execute<{ n: number }>(sql`
+    SELECT COUNT(*)::int AS n
+    FROM bookings
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+  `)
+  return [...rows][0]?.n ?? 0
 }

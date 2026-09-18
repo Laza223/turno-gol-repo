@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import { canteenProductsWithInactive } from '@/test/fixtures'
+import { canteenProduct, canteenProductsWithInactive } from '@/test/fixtures'
+import { uid } from '@/test/fixtures/ids'
 import { ProductsTable } from './ProductsTable'
 import type { ProductActionResult, StockActionResult } from './actions'
 
@@ -78,6 +79,35 @@ export const AccionesALaVista: Story = {
     })
     await expect(body.queryByRole('menuitem', { name: 'Reponer' })).toBeNull()
     await expect(body.queryByRole('menuitem', { name: 'Editar' })).toBeNull()
+  },
+}
+
+/**
+ * Catálogo de 30: de a 25 por página, con el total y la página 2 a un clic. El
+ * pausado va último aunque sea el primero de la lista.
+ */
+export const CatalogoLargo: Story = {
+  args: {
+    products: Array.from({ length: 30 }, (_, i) =>
+      canteenProduct({
+        id: uid(900 + i),
+        name: `Producto ${String(i + 1).padStart(2, '0')}`,
+        isActive: i !== 0,
+      }),
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const table = within(canvas.getByRole('table'))
+    const pager = within(canvas.getByRole('navigation', { name: 'Paginación del catálogo' }))
+    await expect(pager.getByRole('status')).toHaveTextContent('1–25 de 30')
+    await expect(table.getByText('Producto 02')).toBeVisible()
+    await expect(table.queryByText('Producto 01')).toBeNull()
+
+    await userEvent.click(pager.getByRole('button', { name: 'Página 2' }))
+    await expect(pager.getByRole('status')).toHaveTextContent('26–30 de 30')
+    await expect(table.getByText('Producto 01')).toBeVisible()
+    await expect(table.queryByText('Producto 02')).toBeNull()
   },
 }
 

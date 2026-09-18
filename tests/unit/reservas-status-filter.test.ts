@@ -23,7 +23,7 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
   // Hoy/Próximas sin filtro de cancha (boardMode, hallazgo #3) pasan por acá
   // en vez de `listTenantBookings` — ver `(list)/page.tsx`.
   listTenantBookingsForBoard: vi.fn(async () => []),
-  RESERVAS_PAGE_SIZE: 100,
+  RESERVAS_PAGE_SIZE: 50,
   countTenantBookingsByStatus: vi.fn(async () => ({})),
   // La page la usa para derivar el saldo de los turnos terminados (píldora
   // "Sin cobrar"). Acá la lista siempre viene vacía, así que devuelve un Map

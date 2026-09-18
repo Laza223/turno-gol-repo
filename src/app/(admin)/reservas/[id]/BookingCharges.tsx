@@ -157,7 +157,8 @@ export default function BookingCharges({
         setUnconfirmed(null)
         setIdempotencyKey(crypto.randomUUID())
         if (!res.success) {
-          setError(res.error)
+          // Re-envuelto por lo mismo que el catch: el error sale con los botones ya habilitados.
+          startTransition(() => setError(res.error))
           return
         }
         toast({
@@ -170,8 +171,17 @@ export default function BookingCharges({
         router.refresh()
       } catch (err) {
         Sentry.captureException(err)
-        setError(null)
-        setUnconfirmed(attempt)
+        // Lo que viene después de un `await` ya no es parte de la transición
+        // (React pierde el contexto async: "React doesn't treat my state update
+        // after await as a Transition", doc de useTransition). Suelto, pintaba
+        // "Reintentar" un render ANTES de que `pending` bajara: el botón y
+        // "Cancelar" aparecían deshabilitados y un toque en ese instante se
+        // perdía (así fallaba booking-charges-network-error, ~2 de cada 100).
+        // Adentro de startTransition sale en el mismo commit que pending=false.
+        startTransition(() => {
+          setError(null)
+          setUnconfirmed(attempt)
+        })
       }
     })
   }

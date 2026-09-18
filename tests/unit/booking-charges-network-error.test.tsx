@@ -57,8 +57,12 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
 
     const retry = await screen.findByRole('button', { name: /^Reintentar cobro de/ })
     expect(screen.getByText(/no sabemos si ese cobro entró/i)).toBeInTheDocument()
-    // No se puede cambiar el monto ni el modo: lo único que sale es ESE cobro.
-    expect(screen.getByRole('button', { name: 'Pago único' })).toBeDisabled()
+    // No se puede cambiar el monto, el método ni sumar líneas: lo único que sale
+    // es ESE cobro. (Antes se medía con la pestaña "Pago único", que se fue
+    // cuando el detalle pasó al control de cobro compartido.)
+    expect(screen.getByLabelText('Monto')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Método de pago' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Agregar pago dividido/ })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Registrar cobro' })).toBeNull()
 
     fireEvent.click(retry)

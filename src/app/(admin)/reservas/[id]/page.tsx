@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isUuid } from '@/shared/validation/primitives'
+import { cn } from '@/lib/utils'
 import { getBookingDetail, getBookingCharges } from '../queries'
 import {
   addBookingChargeAction,
@@ -51,48 +52,39 @@ export default async function ReservaDetailPage(props: Props) {
   if (!booking) notFound()
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <Link
-        href="/reservas"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden /> Reservas
-      </Link>
-      <h1 className="text-2xl font-semibold text-foreground">Detalle de la reserva</h1>
+    // 2026-09-17 (pedido del dueño): la página usaba 672px de los 1216 que
+    // deja el shell a 1440, pegada a la izquierda, y aun así scrolleaba. Con
+    // dos columnas en escritorio (la plata a la izquierda, la ficha y las
+    // acciones a la derecha) entra entera en una notebook. Sin cobros (turno
+    // no cobrable) queda una sola columna: estirar la ficha a 1152px sería
+    // leerla de punta a punta de la pantalla.
+    <div className={cn('space-y-6', charges ? 'max-w-6xl' : 'max-w-3xl')}>
+      <div className="space-y-2">
+        <Link
+          href="/reservas"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden /> Reservas
+        </Link>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Detalle de la reserva
+        </h1>
+      </div>
 
       {/*
-        H080: en mobile, "Cobros de turno" (con el saldo pendiente y el CTA de
-        cobro) va ANTES que la ficha estática — Marcelo entra desde el celu a
-        cobrar, no a leer el teléfono. `order-*`/`md:order-*` reordena sin
-        tocar el layout de desktop (mismo patrón que ExplorarSplitView.tsx).
+        H080: en el teléfono, "Cobros de turno" (con el saldo pendiente y el CTA
+        de cobro) va ANTES que la ficha estática — Marcelo entra desde el celu a
+        cobrar, no a leer el teléfono. En escritorio es la columna izquierda,
+        que es el mismo orden de lectura.
       */}
-      <div className="flex flex-col gap-6">
-        {/*
-          Cero queries nuevas: `charges` ya vino del withTenantContext de
-          arriba. Sin esto el detalle se contradecía a sí mismo — badge
-          "Jugada" verde arriba y "Saldo pendiente: $X" en Cobros, veinte
-          centímetros más abajo.
-        */}
-        <div className="order-2 md:order-1">
-          <BookingDetailCard
-            booking={{
-              ...booking,
-              ...summarizeBookingCharges({
-                priceSnapshot: booking.priceSnapshot,
-                depositAmount: booking.depositAmount,
-                depositStatus: booking.depositStatus,
-                chargesTotal: charges?.chargesTotal ?? 0,
-              }),
-            }}
-            // H063: Precio/Seña ya se muestran en "Cobros de turno" (más
-            // abajo/arriba según viewport) cuando ese bloque existe — no
-            // repetir el mismo monto con dos redacciones en dos tarjetas.
-            hideMoneyRows={Boolean(charges)}
-          />
-        </div>
-
+      <div
+        className={cn(
+          'grid gap-8',
+          charges && 'lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-10',
+        )}
+      >
         {charges && (
-          <div className="order-1 md:order-2">
+          <div>
             <BookingCharges
               bookingId={booking.id}
               priceSnapshot={booking.priceSnapshot}
@@ -106,7 +98,39 @@ export default async function ReservaDetailPage(props: Props) {
           </div>
         )}
 
-        <div className="order-3">
+        {/*
+          Un filete vertical separa las columnas: es la única línea que queda
+          de las dos cajas con borde que había (el dueño: "no todo deben ser
+          cajas"). En el teléfono, un filete horizontal hace lo mismo.
+        */}
+        <div
+          className={cn(
+            'space-y-6',
+            charges && 'border-t border-border pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10',
+          )}
+        >
+          {/*
+            Cero queries nuevas: `charges` ya vino del withTenantContext de
+            arriba. Sin esto el detalle se contradecía a sí mismo — badge
+            "Jugada" verde arriba y "Saldo pendiente: $X" en Cobros, veinte
+            centímetros más abajo.
+          */}
+          <BookingDetailCard
+            booking={{
+              ...booking,
+              ...summarizeBookingCharges({
+                priceSnapshot: booking.priceSnapshot,
+                depositAmount: booking.depositAmount,
+                depositStatus: booking.depositStatus,
+                chargesTotal: charges?.chargesTotal ?? 0,
+              }),
+            }}
+            // H063: Precio/Seña ya se muestran en "Cobros de turno" (la otra
+            // columna) cuando ese bloque existe — no repetir el mismo monto con
+            // dos redacciones en dos bloques.
+            hideMoneyRows={Boolean(charges)}
+          />
+
           <BookingActions
             bookingId={booking.id}
             status={booking.status}

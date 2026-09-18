@@ -80,12 +80,16 @@ test.describe('TG-HP-210 — agregar cobro parcial', () => {
 
       await page.getByRole('button', { name: '+ Agregar cobro' }).click()
 
-      // El monto viene prefilled con el pendiente total (BookingCharges.tsx:69) —
-      // lo reemplazamos por un monto PARCIAL.
-      const amountInput = page.locator('#charge-amount')
+      // El monto viene prefilled con el pendiente total (`openForm` de
+      // BookingCharges) — lo reemplazamos por un monto PARCIAL.
+      // Desde 2026-09-17 el detalle usa el control de cobro compartido
+      // (SplitPaymentFields): los ids son por línea (`-1`, `-2`, …) y el
+      // método es un SelectMenu (DropdownMenu de Radix), no un <select>.
+      const amountInput = page.locator('#charge-amount-1')
       await expect(amountInput).toHaveValue(String(priceSnapshot / 100))
       await amountInput.fill(String(partialCharge / 100))
-      await page.locator('#charge-method').selectOption('transfer')
+      await page.getByRole('button', { name: 'Método de pago' }).click()
+      await page.getByRole('menuitemradio', { name: 'Transferencia' }).click()
 
       await page.getByRole('button', { name: 'Registrar cobro' }).click()
 

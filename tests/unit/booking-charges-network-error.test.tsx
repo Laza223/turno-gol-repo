@@ -83,7 +83,14 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     fireEvent.click(screen.getByRole('button', { name: 'Registrar cobro' }))
     await screen.findByRole('button', { name: /^Reintentar cobro de/ })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    // "Reintentar" aparece dentro de la transición (el catch corre antes de
+    // que termine), y "Cancelar" está `disabled={pending}` hasta que termina:
+    // sin esperar, el click caía sobre un botón deshabilitado y, con la CPU
+    // cargada por otros archivos en paralelo, el formulario seguía abierto
+    // (~1 de cada 3 corridas en lote, medido 2026-09-18).
+    const cancel = screen.getByRole('button', { name: 'Cancelar' })
+    await waitFor(() => expect(cancel).toBeEnabled())
+    fireEvent.click(cancel)
     fireEvent.click(screen.getByRole('button', { name: '+ Agregar cobro' }))
 
     expect(screen.getByRole('button', { name: /^Reintentar cobro de/ })).toBeInTheDocument()

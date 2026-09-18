@@ -317,12 +317,13 @@ export function QuickActions({
   const inlineBtn =
     'h-8 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500'
   // La tarjeta angosta vive tanto en columnas de escritorio (mouse) como en el
-  // teléfono (touch). El ancho del contenedor no los distingue, pero el del
-  // VIEWPORT sí: `lg`+ es escritorio, y ahí 44px por fila era la mitad del alto
-  // de un turno en una columna del tablero. Debajo de `lg` sigue en 44px
-  // (MASTER §10) — el teléfono no cambia y `touch-targets.spec.ts` lo cubre.
+  // teléfono y la tablet del mostrador (touch). Ni el ancho del contenedor ni
+  // el del viewport los distinguen —un iPad apaisado mide 1024px y es táctil—,
+  // así que el achique a 32px va por el PUNTERO (`pointer-fine`: mouse o
+  // trackpad), no por `lg`. Con el dedo sigue en 44px (MASTER §10); con mouse,
+  // 44px por fila era la mitad del alto de un turno en una columna del tablero.
   const narrowBtn =
-    'h-11 rounded-md px-3 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 lg:h-8'
+    'h-11 rounded-md px-3 text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 pointer-fine:h-8'
 
   return (
     <>
@@ -431,7 +432,7 @@ export function QuickActions({
                   <DropdownMenuTrigger
                     disabled={pending}
                     aria-label={`Acciones para ${label}`}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60 lg:h-8 lg:w-8"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60 pointer-fine:h-8 pointer-fine:w-8"
                   >
                     <MoreVertical aria-hidden className="h-5 w-5" />
                   </DropdownMenuTrigger>

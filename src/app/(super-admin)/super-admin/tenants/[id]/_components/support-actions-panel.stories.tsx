@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, screen, userEvent, within } from 'storybook/test'
-import { planSummaries, supportPanelSettings } from '@/test/fixtures/super-admin'
+import { billedCourtsPricing, supportPanelSettings } from '@/test/fixtures/super-admin'
 import { SupportActionsPanel } from './support-actions-panel'
 
 /**
@@ -9,7 +9,6 @@ import { SupportActionsPanel } from './support-actions-panel'
  * sirve, ese módulo es `'use server'` y arrastra node:async_hooks.
  * `router.refresh()` (next/navigation) queda mockeado por el framework.
  */
-const plans = planSummaries()
 const settings = supportPanelSettings()
 
 function mockActions(
@@ -20,7 +19,7 @@ function mockActions(
     forceStatus: ok("Estado forzado: 'active' → 'past_due'."),
     reactivate: ok("Complejo reactivado (estaba 'suspended')."),
     extendTrial: ok('Trial extendido 7 días (vence 2026-03-21).'),
-    changePlan: ok('Plan cambiado sin cobro.'),
+    changeBilledCourts: ok('Canchas facturadas corregidas, sin cobro.'),
     updateSettings: ok('Settings actualizados.'),
     resetPassword: ok('Contraseña temporal: TG-a1b2c3d4e5 — dictásela al titular.'),
     cancelSubscription: ok('Suscripción cancelada. Acceso hasta 2026-04-14.'),
@@ -45,8 +44,10 @@ const meta = {
     canReactivate: false,
     isTrialing: false,
     hasSubscription: true,
-    currentPlanId: plans[1]!.id,
-    plans,
+    billedCourts: 5,
+    billingCycle: 'monthly',
+    onlineCourts: 4,
+    pricing: billedCourtsPricing(),
     settings,
     actions: mockActions(),
   },
@@ -55,7 +56,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Tenant activo con suscripción: no puede reactivar (ya está activo), sí cambiar plan/forzar estado. */
+/** Tenant activo con suscripción: no puede reactivar (ya está activo), sí corregir canchas/forzar estado. */
 export const TenantActivo: Story = {}
 
 /** Tenant en trial, sin suscripción todavía: ExtendTrial es la única acción con sentido de negocio real. */
@@ -66,14 +67,15 @@ export const TenantEnTrial: Story = {
     canReactivate: false,
     isTrialing: true,
     hasSubscription: false,
-    currentPlanId: null,
+    billedCourts: null,
+    billingCycle: null,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
       canvas.queryByText('El complejo no está en trial — no aplica.'),
     ).not.toBeInTheDocument()
-    // Sin suscripción: ChangePlan y Cancel muestran el mismo aviso de "no aplica".
+    // Sin suscripción: BilledCourts y Cancel muestran el mismo aviso de "no aplica".
     await expect(canvas.getAllByText(/no tiene suscripción registrada/i).length).toBeGreaterThan(0)
   },
 }
@@ -104,7 +106,8 @@ export const ExtenderTrialDePuntaAPunta: Story = {
     forceableTargets: ['active'],
     isTrialing: true,
     hasSubscription: false,
-    currentPlanId: null,
+    billedCourts: null,
+    billingCycle: null,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

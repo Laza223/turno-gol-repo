@@ -657,16 +657,21 @@ La suscripción mensual/anual del complejo al servicio de TurnoGol. Completament
 ```
 id                UUID          PK
 tenant_id         UUID          FK → tenants (UNIQUE — un tenant tiene una sola suscripción activa)
-plan_id           UUID          FK → plans
+plan_id           UUID          FK → plans (fila única 'turnogol': aporta los PARÁMETROS del precio, no el precio)
+billed_courts     integer       Canchas sobre las que está calculado el cobro VIGENTE, o sea lo que está
+                                cargado en el preapproval de MP. NOT NULL, default 1. NO es "cuántas canchas
+                                tiene hoy" (eso es `courts WHERE status='online'`) — ver la nota de abajo.
 billing_cycle     enum          'monthly' | 'annual'
 status            enum          'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned'
 current_period_start  timestamp
 current_period_end    timestamp
-price_locked_until    timestamp? Para clientes anuales con precio bloqueado
+price_locked_until    timestamp? Diseñado para clientes anuales con precio bloqueado. COLUMNA INERTE:
+                                ningún código la escribe ni la lee (grep, 2026-09-17)
 mp_subscription_id    string?   ID de la suscripción en MercadoPago
 mp_payer_email        string?   Con qué cuenta de MP paga el complejo, desacoplado del email de login. NULL = el del dueño (migr. 078)
-pending_plan_change   UUID?     FK → plans (si hay un downgrade pendiente)
-pending_change_at     timestamp? Cuándo aplicar el cambio pendiente
+pending_billed_courts integer?  A cuántas canchas pasa el cobro en `pending_change_at`. NULL = sin cambio pendiente (migr. 090)
+pending_change_at     timestamp? Cuándo aplicar el cambio pendiente (= `current_period_end`)
+pending_plan_change   UUID?     FK → plans. DEPRECADA (migr. 090/091), sin escritores; se dropea después
 canceled_at           timestamp? Si canceló
 cancellation_reason   text?
 scheduled_deletion_at timestamp? `CANCELED_BLOCKED_DELETION_DAYS` = 97 días (90+7) tras bloqueo/cancelación; el path por `churned` usa `CHURNED_DELETION_DAYS` = 90 días (ver ENTIDAD 1)
@@ -677,6 +682,20 @@ created_at        timestamp
 updated_at        timestamp
 ```
 
+> [!IMPORTANT]
+> **`billed_courts` vs. canchas reales — son dos cosas distintas y es a propósito** (migr. 090,
+> decisión [`2026-09-17-precio-por-cancha.md`](../decisions/2026-09-17-precio-por-cancha.md) P4).
+> `billed_courts` es lo que MercadoPago está cobrando hoy; las canchas reales salen de
+> `courts WHERE status = 'online'`. Pueden diferir legítimamente entre que el dueño pide el cambio
+> y el cierre del período, porque **sumar o sacar una cancha nunca se cobra prorrateado**: en
+> `trialing` el cambio se aplica en el acto, y con la suscripción `active` se agenda en
+> `pending_billed_courts` / `pending_change_at` y lo aplica el sweep diario de
+> `dunning-retry.worker.ts`.
+>
+> Lo único que el sistema **impide** es facturar por MENOS canchas de las que están prendidas
+> (`DowngradeBlockedError`): sin ese piso, apagar canchas, bajar la cuota y volver a prenderlas
+> deja al complejo operando de más y pagando de menos.
+
 > [!NOTE]
 > `subscription_status` tiene 7 estados (sin `deleted`) porque la suscripción no sobrevive
 > a la eliminación del tenant. Cuando el tenant pasa a `deleted`, los datos (incluyendo la
@@ -684,24 +703,40 @@ updated_at        timestamp
 
 ---
 
-## ENTIDAD 13: Plan (Plan de Suscripción)
+## ENTIDAD 13: Plan (parámetros del precio del SaaS)
 
 ### Definición
-Definición global de un plan de suscripción (no por tenant). Los precios y features de cada plan.
+Definición global del producto SaaS (no por tenant). **Desde la migr. 091 hay UNA sola fila
+activa** (`slug = 'turnogol'`) y ya no aporta un precio: aporta los **parámetros** con los que se
+calcula uno. El monto no está en ninguna columna — es una función de
+`tenant_subscriptions.billed_courts`, en
+[`src/modules/billing/pricing.ts`](../../src/modules/billing/pricing.ts).
 
 ### Atributos propios
 ```
 id                    UUID          PK
-name                  string        'Predio' | 'Complejo' | 'Estadio' (nombre para mostrar; NO el slug)
-slug                  string        Único. 'predio' | 'complejo' | 'estadio'
-max_courts            integer?      3 | 6 | NULL (ilimitado) — umbrales reales en `plans.max_courts`, ver Stack confirmado
-price_monthly         integer       Precio mensual en centavos (sin IVA)
-price_annual          integer       Precio mensual del plan anual en centavos, ya con el descuento anual (sin IVA)
-features              JSONB         Feature flags por plan
-is_active             boolean       DEFAULT true
+name                  string        'TurnoGol' (nombre para mostrar; NO el slug)
+slug                  string        Único. 'turnogol'; legacy inactivos: 'predio' | 'complejo' | 'estadio'
+max_courts            integer?      NULL en la fila activa = SIN TECHO. Agregar una cancha no se bloquea, cuesta más
+price_first_court_cents integer?    Centavos ARS/mes de la primera cancha (4700000 = $47.000)
+price_extra_court_cents integer?    Centavos ARS/mes por cada cancha extra (3000000 = $30.000)
+annual_discount_bps     integer?    Descuento del ciclo anual en basis points (1000 = 10%)
+price_monthly         integer       LEGACY del modelo de bandas. Valor de referencia, ningún cobro sale de acá
+price_annual          integer       LEGACY del modelo de bandas. Valor de referencia, ningún cobro sale de acá
+features              JSONB         Heredado de las bandas. Hoy no gatea nada (ver doc4 §8)
+is_active             boolean       DEFAULT true. Solo 'turnogol' en true desde la migr. 091
 sort_order            integer       DEFAULT 0. Orden de presentación en la UI de precios
 created_at            timestamp     UTC
 ```
+
+**Fórmula**: `price_first_court_cents + (billed_courts − 1) × price_extra_court_cents`; si el
+ciclo es anual, el cobro único del año es
+`round(mensual × (1 − annual_discount_bps/10000)) × 12`.
+
+> [!NOTE]
+> Los tres campos del precio lineal son **nullable a propósito**: solo la fila `turnogol` los usa.
+> Las tres filas de bandas los tienen en NULL y quedaron con `is_active = false`; no se borran
+> porque `price_versions` tiene FK a su `id`.
 
 **Desglose de `features` (JSONB):**
 ```json
@@ -715,11 +750,14 @@ created_at            timestamp     UTC
 ```
 
 > [!NOTE]
-> **Enforcement de `history_months` (GAP-07, Decisión de auditoría 2026-07-21)**: es un **soft-limit a nivel
-> QUERY** — acota los reportes/historial visibles a la ventana del plan (Predio 6 / Complejo 12 / Estadio
-> ilimitado, es decir sin filtro). NUNCA es un borrado físico ni una purga de datos: el borrado físico
-> complicaría las obligaciones de la Ley 25.326 y la trazabilidad de auditoría. Los datos se conservan
-> siempre; solo se filtra lo que se muestra/consulta. (implementación de código pendiente)
+> **Enforcement de `history_months` (GAP-07, Decisión de auditoría 2026-07-21)**: era un **soft-limit a nivel
+> QUERY** — acotaba los reportes/historial visibles a la ventana del plan (Predio 6 / Complejo 12 / Estadio
+> ilimitado, es decir sin filtro). NUNCA fue un borrado físico ni una purga de datos: el borrado físico
+> complicaría las obligaciones de la Ley 25.326 y la trazabilidad de auditoría.
+>
+> **Quedó sin objeto con la fila única (migr. 091)**: no hay planes entre los cuales variar la ventana, y
+> la implementación de código nunca existió. Si alguna vez se quiere diferenciar por feature, es una
+> decisión de producto a tomar explícitamente (doc4 §8).
 
 ---
 
@@ -827,16 +865,24 @@ id                UUID          PK
 plan_id           UUID          FK → plans
 price_monthly     integer       Centavos ARS
 price_annual      integer       Centavos ARS (mensualizado)
+price_first_court_cents integer? Centavos ARS/mes de la primera cancha (migr. 090)
+price_extra_court_cents integer? Centavos ARS/mes por cada cancha extra (migr. 090)
+annual_discount_bps     integer? Descuento anual en basis points (migr. 090)
 valid_from        date          Fecha desde la que aplica
 valid_until       date?         NULL = vigente
 reason            string?       "Ajuste por inflación Q2 2026"
 created_at        timestamp     UTC
 ```
 
+> [!NOTE]
+> Desde la migr. 090 una versión puede describir **una regla** (los tres parámetros del precio
+> lineal) en vez de un par de precios fijos. Las filas anteriores al 2026-09-17 tienen esos tres
+> campos en NULL; la 091 les puso `valid_until = '2026-09-17'` a las de las tres bandas.
+
 ### Invariantes
 1. **INSERT only**, nunca UPDATE. Los precios históricos son inmutables.
 2. Solo un registro por plan puede tener `valid_until = NULL` (el precio vigente).
-3. Los clientes anuales con `price_locked_until` usan el precio de la versión vigente al momento de su suscripción.
+3. ~~Los clientes anuales con `price_locked_until` usan el precio de la versión vigente al momento de su suscripción.~~ **Diseño, no implementado**: `price_locked_until` es una columna inerte (ningún escritor ni lector, grep 2026-09-17) y no hay resolución de precio por fecha de suscripción — todos calculan con los parámetros de la fila activa. Ver doc4 §5.
 
 ---
 

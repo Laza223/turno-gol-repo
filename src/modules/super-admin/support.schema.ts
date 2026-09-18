@@ -50,9 +50,10 @@ export const forceStatusInputSchema = z.object({
 
 export const reactivateInputSchema = z.object({ tenantId: uuid })
 
-export const changePlanInputSchema = z.object({
+/** Corregir por cuantas canchas se le factura a un complejo (migr. 090/091). */
+export const changeBilledCourtsInputSchema = z.object({
   tenantId: uuid,
-  targetPlanId: uuid,
+  billedCourts: z.number().int().min(1).max(200),
 })
 
 export const cancelSubscriptionInputSchema = z.object({

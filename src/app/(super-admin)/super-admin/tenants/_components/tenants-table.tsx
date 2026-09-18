@@ -31,7 +31,7 @@ export function TenantsTable({
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Slug</th>
               <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Plan</th>
+              <th className="px-4 py-3 text-right">Canchas</th>
               <th className="px-4 py-3 text-right">MRR</th>
               <th className="px-4 py-3">Fin de trial</th>
               <th className="px-4 py-3">Creado</th>
@@ -60,7 +60,9 @@ export function TenantsTable({
                 <td className="px-4 py-3">
                   <TenantStatusBadge status={t.status} />
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{t.planName ?? '—'}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                  {t.billedCourts ?? '—'}
+                </td>
                 <td className="px-4 py-3 text-right tabular-nums">
                   {t.mrrCents > 0 ? formatArs(t.mrrCents) : '—'}
                 </td>

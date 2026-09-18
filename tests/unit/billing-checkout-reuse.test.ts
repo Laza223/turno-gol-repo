@@ -24,20 +24,33 @@ import type { GatewaySubscriptionState } from '@/modules/payments/payment.types'
 import type { DbTx } from '@/shared/db/client'
 
 const TENANT_ID = 't-1'
-const PLAN_ID = 'plan-1'
+const PLAN_ID = 'plan-turnogol'
+const BILLED_COURTS = 2
 const OLD_PREAPPROVAL = 'mp-pending-1'
-// El preapproval no lleva `plan_id`: el `reason` es el único vínculo con el
-// plan, y es lo que el pagador ve en la pantalla de MP.
-const REASON_MENSUAL = 'TurnoGol — Predio (mensual)'
-const REASON_REACTIVACION = 'TurnoGol — Predio (reactivación)'
+// El preapproval no lleva `billed_courts`: el `reason` es el único vínculo con
+// la cantidad de canchas, y es lo que el pagador ve en la pantalla de MP.
+const REASON_MENSUAL = 'TurnoGol — 2 canchas (mensual)'
+const REASON_REACTIVACION = 'TurnoGol — 2 canchas (mensual) — reactivación'
+const REASON_REACTIVACION_ANUAL = 'TurnoGol — 2 canchas (anual) — reactivación'
+// $47.000 + 1 × $30.000 (2 canchas) = $77.000/mes; anual = $69.300 (10% off) × 12.
+const MONTHLY_AMOUNT = 7_700_000
+const ANNUAL_AMOUNT = 83_160_000
 
+/**
+ * La fila ÚNICA de `plans` desde la migr. 091 (`slug = 'turnogol'`,
+ * `max_courts = NULL`). Mismos valores que `billing-subscribe-billed-courts-floor.test.ts`
+ * ($47.000 la primera + $30.000 cada extra, 10% off anual).
+ */
 const planRow = {
   id: PLAN_ID,
-  slug: 'predio',
-  name: 'Predio',
-  max_courts: 2,
-  price_monthly: 5_500_000,
-  price_annual: 4_400_000,
+  slug: 'turnogol',
+  name: 'TurnoGol',
+  max_courts: null,
+  price_monthly: 4_700_000,
+  price_annual: 4_230_000,
+  price_first_court_cents: 4_700_000,
+  price_extra_court_cents: 3_000_000,
+  annual_discount_bps: 1_000,
 }
 
 const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: 'marcelo@x.com' }
@@ -94,9 +107,12 @@ function makeSubscribeTx(
 
 /**
  * tx.execute order dentro de `reactivate()` — mismo criterio que
- * `makeSubscribeTx` (no hay guard de cupo de plan acá, así que un llamado menos):
- * - Gana: 1) loadSub, 2) loadPlan, 3) loadTenantOwner, 4) UPDATE con CAS.
- * - No gana: 1-3 iguales, más 4) loadSubForUpdate y 5) UPDATE final.
+ * `makeSubscribeTx`. Con el piso de canchas online (P3, `assertBilledCourtsCoverOnline`)
+ * reactivate() ahora SÍ cuenta canchas, igual que subscribe(): un llamado más
+ * que antes de la migración a precio por cancha.
+ * - Gana: 1) loadSub, 2) loadPlan, 3) countOnlineCourts, 4) loadTenantOwner,
+ *   5) UPDATE con CAS.
+ * - No gana: 1-4 iguales, más 5) loadSubForUpdate y 6) UPDATE final.
  */
 function makeReactivateTx(
   subRow: ReturnType<typeof makeSubscribeSubRow>,
@@ -107,6 +123,7 @@ function makeReactivateTx(
     .fn()
     .mockResolvedValueOnce([subRow])
     .mockResolvedValueOnce([planRow])
+    .mockResolvedValueOnce([{ n: 0 }])
     .mockResolvedValueOnce([ownerRow])
   if (reused) {
     execute.mockResolvedValueOnce([{ tenant_id: TENANT_ID }])
@@ -126,7 +143,7 @@ function pendingState(over: Partial<GatewaySubscriptionState> = {}): GatewaySubs
     lastChargedDate: null,
     lastChargedAmountCents: null,
     initPoint: 'https://mp.test/preapproval/old-pending',
-    amountCents: planRow.price_monthly,
+    amountCents: MONTHLY_AMOUNT,
     frequency: 1,
     frequencyType: 'months',
     reason: REASON_MENSUAL,
@@ -164,7 +181,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState()
 
-    const result = await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    const result = await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(result).toEqual({
       checkoutUrl: 'https://mp.test/preapproval/old-pending',
@@ -191,7 +208,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState() // pending mensual, chargedQuantity 0
 
-    await subscribe(TENANT_ID, PLAN_ID, 'annual', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'annual', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -207,9 +224,9 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   it('el monto no coincide (otro plan, o el precio cambió desde el intento anterior) → NO reusa Y NO cancela: sigue pending sin cobros de este tenant', async () => {
     const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
-    gateway.subscriptionState = pendingState({ amountCents: planRow.price_monthly - 1 })
+    gateway.subscriptionState = pendingState({ amountCents: MONTHLY_AMOUNT - 1 })
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -220,7 +237,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ status: 'authorized' })
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -232,7 +249,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ status: 'cancelled' })
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -243,7 +260,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: 'TurnoGol — Complejo (mensual)' })
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -254,7 +271,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ externalReference: 'tenant-ajeno' })
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -266,7 +283,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ chargedQuantity: 1 })
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -291,7 +308,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     // nuevo), no a nivel MP.
     gateway.subscriptionState = pendingState()
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     // Cancela el preapproval FRESCO (el que dejó la otra tx), no el viejo que
     // vimos en la lectura sin lock.
@@ -318,7 +335,14 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ startDate: new Date('2027-02-01T00:00:00Z') })
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx, new Date('2027-01-15T00:00:00Z'))
+    await subscribe(
+      TENANT_ID,
+      BILLED_COURTS,
+      'monthly',
+      gateway,
+      tx,
+      new Date('2027-01-15T00:00:00Z'),
+    )
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -342,7 +366,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
 
     const result = await subscribe(
       TENANT_ID,
-      PLAN_ID,
+      BILLED_COURTS,
       'monthly',
       gateway,
       tx,
@@ -359,7 +383,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
     const gateway = new MockGateway()
     gateway.getSubscriptionState = vi.fn().mockRejectedValue(new Error('ECONNRESET'))
 
-    const result = await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    const result = await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(result.preapprovalId).toBeTruthy()
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
@@ -375,8 +399,8 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
     const tx = makeReactivateTx(makeSubscribeSubRow({ status: 'canceled' }))
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({
-      reason: REASON_REACTIVACION,
-      amountCents: planRow.price_annual * 12,
+      reason: REASON_REACTIVACION_ANUAL,
+      amountCents: ANNUAL_AMOUNT,
       frequency: 12,
       startDate: new Date('2026-09-16T17:38:00.000-04:00'),
       chargedQuantity: 0,
@@ -384,7 +408,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
 
     const result = await reactivate(
       TENANT_ID,
-      PLAN_ID,
+      BILLED_COURTS,
       'annual',
       gateway,
       tx,
@@ -404,7 +428,14 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
       startDate: new Date('2026-10-01T00:00:00Z'),
     })
 
-    await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx, new Date('2026-09-16T21:39:30Z'))
+    await reactivate(
+      TENANT_ID,
+      BILLED_COURTS,
+      'monthly',
+      gateway,
+      tx,
+      new Date('2026-09-16T21:39:30Z'),
+    )
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -415,7 +446,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION })
 
-    const result = await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    const result = await reactivate(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(result).toEqual({
       checkoutUrl: 'https://mp.test/preapproval/old-pending',
@@ -442,7 +473,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION }) // pending mensual
 
-    await reactivate(TENANT_ID, PLAN_ID, 'annual', gateway, tx)
+    await reactivate(TENANT_ID, BILLED_COURTS, 'annual', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -460,7 +491,7 @@ describe('reactivate — mismo reuso de checkout pendiente que subscribe', () =>
     const gateway = new MockGateway()
     gateway.getSubscriptionState = vi.fn().mockRejectedValue(new Error('ECONNRESET'))
 
-    const result = await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    const result = await reactivate(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(result.preapprovalId).toBeTruthy()
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
@@ -481,7 +512,7 @@ describe('reactivate — sigue cancelando el preapproval viejo cuando NO es "pen
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION, status: 'authorized' })
 
-    await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await reactivate(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -493,7 +524,7 @@ describe('reactivate — sigue cancelando el preapproval viejo cuando NO es "pen
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION, chargedQuantity: 1 })
 
-    await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await reactivate(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -508,7 +539,7 @@ describe('reactivate — sigue cancelando el preapproval viejo cuando NO es "pen
       externalReference: 'tenant-ajeno',
     })
 
-    await reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await reactivate(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual([OLD_PREAPPROVAL])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -533,7 +564,7 @@ describe('reactivate — sigue cancelando el preapproval viejo cuando NO es "pen
     const gateway = new MockGateway()
     gateway.subscriptionState = pendingState({ reason: REASON_REACTIVACION }) // pending, nunca cobró — pero es el id VIEJO
 
-    await reactivate(TENANT_ID, PLAN_ID, 'annual', gateway, tx)
+    await reactivate(TENANT_ID, BILLED_COURTS, 'annual', gateway, tx)
 
     // Cancela el id FRESCO (el que dejó la otra tx), no el que vimos sin lock:
     // la condición (a) de "dejar pendiente" exige que sea EL MISMO id.

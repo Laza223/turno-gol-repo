@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Bug de plata: `runDunningSweep` aplicaba un downgrade pendiente moviendo
-// `plan_id` en la DB, pero nunca tocaba el preapproval de MP — el complejo
-// seguía pagando el monto del plan VIEJO después de bajar. Este test cubre
-// el camino nuevo: tras el UPDATE, si hay `mp_subscription_id`, se llama a
-// `getBillingGateway().updatePreapprovalAmount` con `planAmount(planDestino,
-// billingCycle)` (mismo patrón "MP último" que `handleUpgradeApproved`).
+// Bug de plata: `runDunningSweep` aplicaba el cambio pendiente moviendo la DB,
+// pero nunca tocaba el preapproval de MP — el complejo seguía pagando el monto
+// VIEJO después de bajar. Tras el UPDATE, si hay `mp_subscription_id`, se llama
+// a `getBillingGateway().updatePreapprovalAmount` con el monto lineal nuevo
+// (patrón "MP último": si MP falla, la tx rollbackea y el próximo tick reintenta).
+//
+// Con precio por cancha (migr. 090/091) este barrido dejó de ser "el downgrade
+// de plan de vez en cuando": es el ÚNICO lugar donde el monto de una suscripción
+// que ya cobra se mueve. Cada complejo que suma o saca una cancha pasa por acá,
+// así que un fallo silencioso acá cobra mal a TODOS los que cambiaron.
 
 vi.mock('@/modules/notifications/notification.service', () => ({
   enqueueTenantOwnerNotification: vi.fn(),
@@ -69,67 +73,115 @@ vi.mock('@/shared/db/client', () => ({
 
 import { runDunningSweep } from '@/shared/jobs/workers/dunning-retry.worker'
 
+// La fila única del catálogo (migr. 091). Los montos esperados de abajo se
+// escriben a mano, NO derivados de la fórmula: un test que recalcula con la
+// misma fórmula que el código no prueba nada.
 const PLAN_ROW = {
-  id: 'plan-complejo',
-  slug: 'complejo',
-  name: 'Complejo',
-  max_courts: 6,
-  price_monthly: 9_900_000,
-  price_annual: 7_920_000,
+  id: 'plan-turnogol',
+  slug: 'turnogol',
+  name: 'TurnoGol',
+  max_courts: null,
+  price_monthly: 4_700_000,
+  price_annual: 4_230_000,
+  price_first_court_cents: 4_700_000,
+  price_extra_court_cents: 3_000_000,
+  annual_discount_bps: 1_000,
 }
+
+/** 5 canchas = $47.000 + 4 × $30.000 = $167.000 por mes. */
+const CINCO_CANCHAS_MENSUAL = 16_700_000
+/** El mismo con 10% off, y el preapproval anual cobra UNA vez al año: × 12. */
+const CINCO_CANCHAS_ANUAL = 15_030_000 * 12
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente en MP', () => {
-  it('billing_cycle mensual: PUT con price_monthly del plan destino', async () => {
+  it('baja agendada por debajo de las canchas prendidas: MP cobra lo que quedó en la base, no lo agendado', async () => {
+    // El dueño agendó bajar a 3 y antes del cierre volvió a prender la 4ª y la
+    // 5ª. El UPDATE aplica GREATEST(agendado, prendidas) y devuelve 5: el
+    // preapproval tiene que quedar en 5 canchas. Con el número agendado a
+    // ciegas quedaba operando 5 y pagando 3 para siempre.
     sqlMock = makeSqlMock([
       [], // pastDueRows
       [], // suspendedRows
       [], // blockedRows
       [], // canceledRows
-      [{ tenant_id: 'tenant-1', pendingPlanChange: 'plan-complejo' }], // pendingItems
+      [{ tenant_id: 'tenant-1', pendingBilledCourts: 3 }], // pendingItems
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }], // loadTenantOwners
     ])
     txMock = makeTxMock([
-      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'monthly' }], // UPDATE ... RETURNING
-      [PLAN_ROW], // SELECT plan destino
+      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'monthly', billed_courts: 5 }], // UPDATE ... RETURNING
+      [PLAN_ROW], // loadActivePlan
+    ])
+
+    await runDunningSweep()
+
+    expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', CINCO_CANCHAS_MENSUAL, {
+      reason: 'TurnoGol — 5 canchas (mensual)',
+    })
+  })
+
+  it('mensual: PUT con la cuota lineal de las canchas nuevas', async () => {
+    sqlMock = makeSqlMock([
+      [], // pastDueRows
+      [], // suspendedRows
+      [], // blockedRows
+      [], // canceledRows
+      [{ tenant_id: 'tenant-1', pendingBilledCourts: 5 }], // pendingItems
+      [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }], // loadTenantOwners
+    ])
+    txMock = makeTxMock([
+      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'monthly', billed_courts: 5 }], // UPDATE ... RETURNING
+      [PLAN_ROW], // loadActivePlan
     ])
 
     await runDunningSweep()
 
     expect(updatePreapprovalAmount).toHaveBeenCalledTimes(1)
-    expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 9_900_000)
+    // El `reason` viaja en el PUT porque es el único vínculo entre un
+    // preapproval y su cantidad de canchas: si queda viejo, el reuso de
+    // checkout pendiente deja de matchear (billing.service.ts).
+    expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', CINCO_CANCHAS_MENSUAL, {
+      reason: 'TurnoGol — 5 canchas (mensual)',
+    })
   })
 
-  it('billing_cycle anual: PUT con price_annual × 12 del plan destino (NUNCA el equivalente mensual a pelo)', async () => {
+  it('anual: PUT con el equivalente mensual con descuento POR 12 (NUNCA el mensual a pelo)', async () => {
     sqlMock = makeSqlMock([
       [],
       [],
       [],
       [],
-      [{ tenant_id: 'tenant-1', pendingPlanChange: 'plan-complejo' }],
+      [{ tenant_id: 'tenant-1', pendingBilledCourts: 5 }],
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }],
     ])
-    txMock = makeTxMock([[{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'annual' }], [PLAN_ROW]])
+    txMock = makeTxMock([
+      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'annual', billed_courts: 5 }],
+      [PLAN_ROW],
+    ])
 
     await runDunningSweep()
 
     expect(updatePreapprovalAmount).toHaveBeenCalledTimes(1)
-    expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 7_920_000 * 12)
+    expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', CINCO_CANCHAS_ANUAL, {
+      reason: 'TurnoGol — 5 canchas (anual)',
+    })
   })
 
-  it('sin mp_subscription_id: aplica el downgrade local y NO llama a MP', async () => {
+  it('sin mp_subscription_id: aplica el cambio local y NO llama a MP', async () => {
     sqlMock = makeSqlMock([
       [],
       [],
       [],
       [],
-      [{ tenant_id: 'tenant-1', pendingPlanChange: 'plan-complejo' }],
+      [{ tenant_id: 'tenant-1', pendingBilledCourts: 5 }],
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }],
     ])
-    txMock = makeTxMock([[{ mp_subscription_id: null, billing_cycle: 'monthly' }]])
+    txMock = makeTxMock([
+      [{ mp_subscription_id: null, billing_cycle: 'monthly', billed_courts: 5 }],
+    ])
 
     await runDunningSweep()
 

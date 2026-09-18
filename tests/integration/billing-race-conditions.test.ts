@@ -248,11 +248,12 @@ describe('billing race conditions', () => {
 
     const results = await Promise.allSettled([
       withTenantContext(raceTenant.id, (tx) =>
-        subscribe(raceTenant.id, planId, 'monthly', gateway, tx),
+        // `planId` (seed del FK) ya no es el argumento: subscribe() ahora
+        // recibe `billedCourts`. Sin canchas online sembradas, 1 alcanza para
+        // pasar el piso (`assertBilledCourtsCoverOnline`).
+        subscribe(raceTenant.id, 1, 'monthly', gateway, tx),
       ),
-      withTenantContext(raceTenant.id, (tx) =>
-        subscribe(raceTenant.id, planId, 'monthly', gateway, tx),
-      ),
+      withTenantContext(raceTenant.id, (tx) => subscribe(raceTenant.id, 1, 'monthly', gateway, tx)),
     ])
 
     // Ambas deberían completar: la segunda, serializada por el lock, ve
@@ -288,7 +289,9 @@ describe('billing race conditions', () => {
 
     for (let i = 0; i < RACE_ROUNDS; i++) {
       const seedId = `preapp-seed-cancel-subscribe-${i}-${Date.now()}`
-      const { tenantId, planId } = await seedRaceSubscription({
+      // `planId` del seed queda sin usar acá: subscribe() ya no lo recibe
+      // (billedCourts en su lugar), solo lo necesita el INSERT del seed.
+      const { tenantId } = await seedRaceSubscription({
         status: 'trialing',
         mpSubscriptionId: seedId,
       })
@@ -296,7 +299,7 @@ describe('billing race conditions', () => {
 
       const [cancelRes, subscribeRes] = await Promise.allSettled([
         withTenantContext(tenantId, (tx) => cancel(tenantId, 'race test', gateway, tx)),
-        withTenantContext(tenantId, (tx) => subscribe(tenantId, planId, 'monthly', gateway, tx)),
+        withTenantContext(tenantId, (tx) => subscribe(tenantId, 1, 'monthly', gateway, tx)),
       ])
 
       // cancel() nunca debería fallar acá: ni subscribe() ni reactivate() tocan
@@ -328,7 +331,7 @@ describe('billing race conditions', () => {
 
     for (let i = 0; i < RACE_ROUNDS; i++) {
       const seedId = `preapp-seed-cancel-reactivate-${i}-${Date.now()}`
-      const { tenantId, planId } = await seedRaceSubscription({
+      const { tenantId } = await seedRaceSubscription({
         status: 'suspended',
         mpSubscriptionId: seedId,
       })
@@ -336,7 +339,7 @@ describe('billing race conditions', () => {
 
       const [cancelRes, reactivateRes] = await Promise.allSettled([
         withTenantContext(tenantId, (tx) => cancel(tenantId, 'race test', gateway, tx)),
-        withTenantContext(tenantId, (tx) => reactivate(tenantId, planId, 'monthly', gateway, tx)),
+        withTenantContext(tenantId, (tx) => reactivate(tenantId, 1, 'monthly', gateway, tx)),
       ])
 
       expect(cancelRes.status, `round ${i}: cancel() debe completar`).toBe('fulfilled')
@@ -396,7 +399,7 @@ describe('billing race conditions', () => {
 
     const s = getSql()
     const seedId = `preapp-seed-toctou-${Date.now()}`
-    const { tenantId, planId } = await seedRaceSubscription({
+    const { tenantId } = await seedRaceSubscription({
       status: 'suspended',
       mpSubscriptionId: seedId,
     })
@@ -432,7 +435,7 @@ describe('billing race conditions', () => {
     }
 
     const reactivatePromise = withTenantContext(tenantId, (tx) =>
-      reactivate(tenantId, planId, 'monthly', gateway, tx),
+      reactivate(tenantId, 1, 'monthly', gateway, tx),
     )
 
     await lockAcquired // reactivate() sostiene el FOR UPDATE, esperando en el barrier

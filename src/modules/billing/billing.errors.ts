@@ -15,15 +15,23 @@ export class InvalidTransitionError extends Error {
   }
 }
 
+/**
+ * No se puede facturar por MENOS canchas de las que el complejo tiene
+ * prendidas. Con el modelo de bandas esto era "el plan destino tiene un techo
+ * mas bajo que tus canchas"; con precio por cancha (migr. 090/091) no hay
+ * techo, pero el piso sigue: operar 5 canchas pagando 3 seria operar de mas
+ * pagando de menos. Se conserva el nombre y el `code` porque las rutas y la
+ * UI ya los mapean.
+ */
 export class DowngradeBlockedError extends Error {
   readonly code = 'DOWNGRADE_BLOCKED'
   constructor(
     public readonly tenantId: string,
     public readonly currentCourtCount: number,
-    public readonly targetMaxCourts: number,
+    public readonly targetBilledCourts: number,
   ) {
     super(
-      `Tenant ${tenantId} has ${currentCourtCount} courts; target plan caps at ${targetMaxCourts}`,
+      `Tenant ${tenantId} tiene ${currentCourtCount} canchas prendidas; no puede facturar por ${targetBilledCourts}`,
     )
     this.name = 'DowngradeBlockedError'
   }
@@ -53,29 +61,6 @@ export class PlanNotFoundError extends Error {
   constructor(public readonly planId: string) {
     super(`Plan ${planId} not found or inactive`)
     this.name = 'PlanNotFoundError'
-  }
-}
-
-/**
- * 01-billing-upgrade-dedup: `upgrade()` creaba una preferencia MP nueva y
- * pisaba `pending_plan_change` sin chequear si ya había OTRO cambio
- * pendiente (upgrade sin pagar, o downgrade agendado). Si el pago de la
- * preferencia VIEJA se acreditaba después de que una llamada posterior ya
- * hubiera sobreescrito `pending_plan_change`, el CAS de `handleUpgradeApproved`
- * no matcheaba y ese pago quedaba huérfano en silencio. Mensaje en español:
- * llega directo al dueño vía `ChangePlanSection` (mismo patrón que
- * `InvalidPayerEmailError`).
- */
-export class UpgradeAlreadyPendingError extends Error {
-  readonly code = 'UPGRADE_ALREADY_PENDING'
-  constructor(
-    public readonly tenantId: string,
-    public readonly pendingPlanId: string,
-  ) {
-    super(
-      'Ya tenés un cambio de plan pendiente. Completá o esperá a que venza ese pago antes de pedir otro cambio.',
-    )
-    this.name = 'UpgradeAlreadyPendingError'
   }
 }
 

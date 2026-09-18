@@ -12,13 +12,12 @@ import {
 } from '@/modules/billing/lifecycle.service'
 import {
   cancel as billingCancel,
-  planAmount,
-  type PlanRow,
+  loadActivePlan,
+  subscriptionAmount,
 } from '@/modules/billing/billing.service'
 import {
   DowngradeBlockedError,
   InvalidTransitionError,
-  PlanNotFoundError,
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
@@ -151,17 +150,29 @@ type SubRowLite = {
   status: string
   plan_id: string
   billing_cycle: BillingCycle
+  billed_courts: number
   mp_subscription_id: string | null
 }
 
 async function loadSubForUpdate(tx: DbTx, tenantId: string): Promise<SubRowLite | null> {
   const rows = await tx.execute(sql`
-    SELECT status, plan_id, billing_cycle, mp_subscription_id
+    SELECT status, plan_id, billing_cycle, billed_courts, mp_subscription_id
     FROM tenant_subscriptions
     WHERE tenant_id = ${tenantId}
     FOR UPDATE
   `)
   return (rows as unknown as SubRowLite[])[0] ?? null
+}
+
+/**
+ * Mismo texto que `billing.service.billingReason`: es lo que el pagador ve en
+ * MercadoPago Y el unico vinculo entre un preapproval y su cantidad de
+ * canchas. Si soporte corrige el numero y el `reason` queda viejo, el reuso de
+ * checkout pendiente deja de matchear.
+ */
+function billingReasonForSupport(billedCourts: number, cycle: BillingCycle): string {
+  const canchas = billedCourts === 1 ? '1 cancha' : `${billedCourts} canchas`
+  return `TurnoGol — ${canchas} (${cycle === 'annual' ? 'anual' : 'mensual'})`
 }
 
 function supportAudit(
@@ -317,72 +328,71 @@ export async function reactivateTenant(
 // ─── Cambiar plan sin cobro ──────────────────────────────────────────────────
 
 /**
- * Cambio de plan inmediato SIN cobro MP. No reusa `billing.upgrade` /
- * `billing.downgrade` porque esos caminos siempre pasan por MP (preference de
- * proración / cambio diferido al fin del período) y agregar un flag de soporte
- * ahí tocaba flujos compartidos con el checkout real. Esto replica solo el
- * efecto final (mismo UPDATE que `handleUpgradeApproved`):
- *   - valida el límite de canchas del plan destino (mismo invariante que
- *     billing.downgrade),
- *   - swapea plan_id y limpia cualquier cambio pendiente,
- *   - si hay preapproval MP activo, actualiza el monto recurrente para que el
- *     próximo ciclo cobre el precio nuevo (sin cargo hoy).
+ * Corrige, desde soporte, por cuántas canchas se le factura a un complejo.
+ * Aplica YA y sin cobrar nada.
+ *
+ * No reusa `billing.changeBilledCourts` a propósito: ese camino agenda el
+ * cambio para el próximo ciclo (decisión 2026-09-17, P4) porque es el dueño el
+ * que lo pide. Acá es soporte arreglando un número mal cargado, y esperar un
+ * mes a que se corrija sería absurdo. El efecto final es el mismo UPDATE más
+ * el ajuste del monto en MercadoPago.
+ *
+ * Antes de la migr. 090/091 esto elegía un plan del catálogo; con precio por
+ * cancha el catálogo tiene una sola fila y lo único que se corrige es la
+ * cantidad.
  */
-export async function changePlanForSupport(
+export async function changeBilledCourtsForSupport(
   tenantId: string,
-  targetPlanId: string,
+  targetBilledCourts: number,
   systemAdminId: string,
   gateway: PaymentGateway,
-): Promise<{ fromPlanId: string; toPlanId: string }> {
+): Promise<{ fromBilledCourts: number; toBilledCourts: number }> {
   return withTenantContext(tenantId, async (tx) => {
     const sub = await loadSubForUpdate(tx, tenantId)
     if (!sub) throw new SubscriptionNotFoundError(tenantId)
-    if (sub.plan_id === targetPlanId) throw new PlanAlreadyAssignedError(tenantId)
+    if (sub.billed_courts === targetBilledCourts) throw new PlanAlreadyAssignedError(tenantId)
 
-    const planRows = await tx.execute(sql`
-      SELECT id, slug, name, max_courts, price_monthly, price_annual
-      FROM plans
-      WHERE id = ${targetPlanId} AND is_active = true
-      LIMIT 1
+    const plan = await loadActivePlan(tx)
+
+    // Mismo invariante que `billing.changeBilledCourts`: no se puede facturar
+    // por menos canchas de las que el complejo tiene prendidas.
+    const courtRows = await tx.execute(sql`
+      SELECT COUNT(*)::int AS n
+      FROM courts
+      WHERE tenant_id = ${tenantId} AND status = 'online'
     `)
-    const plan = (planRows as unknown as Array<PlanRow>)[0]
-    if (!plan) throw new PlanNotFoundError(targetPlanId)
-
-    if (plan.max_courts !== null) {
-      const courtRows = await tx.execute(sql`
-        SELECT COUNT(*)::int AS n
-        FROM courts
-        WHERE tenant_id = ${tenantId} AND status = 'online'
-      `)
-      const courtCount = (courtRows as unknown as Array<{ n: number }>)[0]!.n
-      if (courtCount > plan.max_courts) {
-        throw new DowngradeBlockedError(tenantId, courtCount, plan.max_courts)
-      }
+    const courtCount = (courtRows as unknown as Array<{ n: number }>)[0]!.n
+    if (targetBilledCourts < courtCount) {
+      throw new DowngradeBlockedError(tenantId, courtCount, targetBilledCourts)
     }
 
     await tx.execute(sql`
       UPDATE tenant_subscriptions
-      SET plan_id = ${targetPlanId},
+      SET billed_courts = ${targetBilledCourts},
+          plan_id = ${plan.id},
           pending_plan_change = NULL,
+          pending_billed_courts = NULL,
           pending_change_at = NULL,
           updated_at = NOW()
       WHERE tenant_id = ${tenantId}
     `)
 
     // Dentro de la tx (mismo patrón que billing.service): si MP falla, el
-    // cambio de plan rollbackea junto con el audit.
+    // cambio rollbackea junto con el audit.
     if (sub.mp_subscription_id) {
-      const newAmount = planAmount(plan, sub.billing_cycle)
-      await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount)
+      const newAmount = subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle)
+      await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount, {
+        reason: billingReasonForSupport(targetBilledCourts, sub.billing_cycle),
+      })
     }
 
     await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.plan_changed', {
-      before: { planId: sub.plan_id },
-      after: { planId: targetPlanId },
+      before: { billedCourts: sub.billed_courts },
+      after: { billedCourts: targetBilledCourts },
       mpAmountUpdated: sub.mp_subscription_id !== null,
     })
 
-    return { fromPlanId: sub.plan_id, toPlanId: targetPlanId }
+    return { fromBilledCourts: sub.billed_courts, toBilledCourts: targetBilledCourts }
   })
 }
 

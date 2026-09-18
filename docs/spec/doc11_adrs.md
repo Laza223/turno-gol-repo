@@ -399,7 +399,7 @@ TurnoGol procesa pagos en dos contextos completamente separados:
 
 1. **Señas de reservas (B2C)**: El jugador paga un porcentaje (default 30%) al reservar una cancha. Son pagos únicos, de montos variables (~$10.500-19.500 ARS por seña típica: 30% de un turno de $35.000-65.000 en 2026). Necesitan checkout rápido, mobile-first.
 
-2. **Suscripciones SaaS (B2B)**: El dueño del complejo paga $63.000-129.000 ARS/mes por usar TurnoGol (migr. 071). Son cobros recurrentes, automáticos, con necesidad de reintentos, dunning y cancelación.
+2. **Suscripciones SaaS (B2B)**: El dueño del complejo paga por usar TurnoGol — desde el 2026-09-17, $47.000/mes la primera cancha + $30.000 por cada extra, sin techo (migr. 090/091; antes eran tres bandas de $63.000-129.000, migr. 071). Son cobros recurrentes, automáticos, con necesidad de reintentos, dunning y cancelación.
 
 El Doc 5 establece: timeout de 8 segundos en llamadas a MP, webhooks idempotentes, y modo fallback "sin seña digital" si MP está caído.
 
@@ -1188,8 +1188,22 @@ Revisitar si:
 
 ## ADR-010: Estrategia de Feature Flags para Planes SaaS
 
-**Estado**: ✅ Decidido
+**Estado**: ✅ Decidido · ⚠️ **su premisa ya no existe** (2026-09-17)
 **Fecha**: 2026-04-17
+
+> [!WARNING]
+> **Este ADR razona sobre 3 planes con límites distintos, y desde el 2026-09-17 hay UNO SOLO.**
+> La decisión de precio lineal por cancha
+> ([`docs/decisions/2026-09-17-precio-por-cancha.md`](../decisions/2026-09-17-precio-por-cancha.md),
+> migr. 090/091) dejó `plans` con una única fila activa, `max_courts = NULL` y sin techo de
+> canchas. La tabla de features de más abajo **nunca se implementó** (retirada de doc4 el
+> 2026-08-27 por prometer gates que no existían en el código) y hoy no gatea nada: todas las
+> funciones están para todos y lo único que varía es cuántas canchas se facturan.
+>
+> Lo que sí sobrevive del ADR y sigue vigente: la elección de **Opción A (flags en la DB)** para
+> los flags operativos, que es lo que hoy usa la tabla `feature_flags` (fila con `tenant_id NULL`
+> = default global, con `tenant_id` = override por complejo) — por ejemplo `tournaments` y
+> `saas_upgrade`. Se conserva el ADR como registro histórico; no se reescribe.
 
 ### Contexto
 
@@ -1329,6 +1343,12 @@ function createCourt(courtData: CourtInput, ctx: TenantContext) {
 │  [Actualizar a Complejo →]  [Ahora no]       │
 └──────────────────────────────────────────────┘
 ```
+
+> [!WARNING]
+> **Esta pantalla ya no existe y no hay que reconstruirla.** Sin techo de canchas no hay límite
+> que chocar: agregar una cancha no se bloquea, cuesta $30.000 más por mes. El único gate que
+> queda va en el otro sentido — no se puede facturar por MENOS canchas de las que están
+> prendidas. La copy vigente y el flujo están en doc4 §6.
 
 ### Consecuencias
 

@@ -50,10 +50,12 @@ import { MercadoPagoGateway } from '@/modules/payments/mp-gateway.implementation
 const INPUT = {
   tenantId: '00000000-0000-0000-0000-0000000000aa',
   payerEmail: 'dueno@complejo.test',
-  amount: 9_900_000, // centavos ARS → $99.000 (plan Complejo, migr. 071)
+  // 5 canchas mensual con la lista lineal (decisión 2026-09-17): 4.700.000 +
+  // 4 × 3.000.000 centavos ARS → $167.000. Ya no hay plan Complejo ni $99.000.
+  amount: 16_700_000,
   frequency: 'monthly' as const,
   planId: '00000000-0000-0000-0000-0000000000bb',
-  reason: 'TurnoGol — Complejo (mensual)',
+  reason: 'TurnoGol — 5 canchas (mensual)',
   returnUrl: 'https://turnogol.app/settings/facturacion',
   notificationUrl:
     'https://turnogol.app/api/webhooks/mercadopago?tenant=00000000-0000-0000-0000-0000000000aa&source=saas',
@@ -98,7 +100,7 @@ describe('MercadoPagoGateway.createPreapproval — notification_url', () => {
     expect(body.auto_recurring).toEqual({
       frequency: 1,
       frequency_type: 'months',
-      transaction_amount: 99_000, // pesos, no centavos
+      transaction_amount: 167_000, // pesos, no centavos
       currency_id: 'ARS',
     })
   })

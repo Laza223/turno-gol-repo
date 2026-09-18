@@ -12,9 +12,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // extiende el trial a mano — bug conocido documentado aparte). `loadTenantOwner`
 // ya hacía `SELECT ... FROM tenants t` para el dueño/tenantName; se le sumó la
 // columna en vez de una query nueva. La secuencia de `tx.execute` de
-// `subscribe()` es loadSubForUpdate → loadPlan → countOnlineCourts (guard de
-// cupo de plan, fix aparte) → loadTenantOwner → UPDATE — mismo orden que
-// `billing-subscribe-orphan-guard.test.ts` y `billing-payer-email.test.ts`.
+// `subscribe()` es loadSub → loadActivePlan → countOnlineCourts (piso de
+// canchas facturadas) → loadTenantOwner → loadSubForUpdate → UPDATE — mismo
+// orden que `billing-subscribe-orphan-guard.test.ts` y
+// `billing-payer-email.test.ts`.
 
 vi.mock('@/shared/db/audit', () => ({ insertSystemAuditLog: vi.fn() }))
 
@@ -23,7 +24,8 @@ import { MockGateway } from '@/modules/payments/mp-gateway.mock'
 import type { DbTx } from '@/shared/db/client'
 
 const TENANT_ID = 't-1'
-const PLAN_ID = 'plan-1'
+/** Canchas facturadas del pedido. Con 0 prendidas cualquier número ≥ 1 pasa el piso. */
+const BILLED_COURTS = 1
 const NOW = new Date('2026-09-07T12:00:00Z')
 
 function makeSubRow() {
@@ -31,6 +33,8 @@ function makeSubRow() {
     status: 'trialing',
     plan_id: 'plan-old',
     billing_cycle: 'monthly',
+    billed_courts: 1,
+    pending_billed_courts: null,
     current_period_start: '2027-01-01T00:00:00Z',
     current_period_end: '2027-02-01T00:00:00Z',
     mp_subscription_id: null,
@@ -46,13 +50,17 @@ function makeSubRow() {
   }
 }
 
+/** Fila única de `plans` desde la migr. 091: el monto sale de estas 3 columnas. */
 const planRow = {
-  id: PLAN_ID,
-  slug: 'predio',
-  name: 'Predio',
-  max_courts: 2,
-  price_monthly: 5_500_000,
-  price_annual: 4_400_000,
+  id: 'plan-turnogol',
+  slug: 'turnogol',
+  name: 'TurnoGol',
+  max_courts: null,
+  price_monthly: 4_700_000,
+  price_annual: 4_230_000,
+  price_first_court_cents: 4_700_000,
+  price_extra_court_cents: 3_000_000,
+  annual_discount_bps: 1_000,
 }
 
 /** `trialEndsAt` en el shape que devuelve `loadTenantOwner` (columna de `tenants`). */
@@ -66,8 +74,8 @@ function makeTx(trialEndsAt: string | null): DbTx {
   const execute = vi
     .fn()
     .mockResolvedValueOnce([makeSubRow()]) // loadSub (sin lock)
-    .mockResolvedValueOnce([planRow]) // loadPlan
-    .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts (guard de plan, 0 < max_courts)
+    .mockResolvedValueOnce([planRow]) // loadActivePlan
+    .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts (piso: 0 prendidas, nunca bloquea)
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
     // Fix D4-A1: mp_subscription_id siempre NULL acá → nunca reusa, cae
     // directo a pedir el lock real (mismo estado: nada cambió).
@@ -85,7 +93,7 @@ describe('subscribe — el primer cobro no puede salir antes de que termine el t
     const tx = makeTx('2026-12-06T00:00:00.000Z')
     const gateway = new MockGateway()
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx, NOW)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx, NOW)
 
     expect(gateway.preapprovalCalls).toHaveLength(1)
     expect(gateway.preapprovalCalls[0]?.firstChargeAt).toEqual(new Date('2026-12-06T00:00:00.000Z'))
@@ -95,7 +103,7 @@ describe('subscribe — el primer cobro no puede salir antes de que termine el t
     const tx = makeTx('2026-01-01T00:00:00.000Z')
     const gateway = new MockGateway()
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx, NOW)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx, NOW)
 
     expect(gateway.preapprovalCalls).toHaveLength(1)
     expect(gateway.preapprovalCalls[0]?.firstChargeAt).toBeUndefined()
@@ -105,7 +113,7 @@ describe('subscribe — el primer cobro no puede salir antes de que termine el t
     const tx = makeTx(null)
     const gateway = new MockGateway()
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx, NOW)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx, NOW)
 
     expect(gateway.preapprovalCalls).toHaveLength(1)
     expect(gateway.preapprovalCalls[0]?.firstChargeAt).toBeUndefined()

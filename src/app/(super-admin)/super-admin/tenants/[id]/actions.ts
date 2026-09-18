@@ -29,7 +29,7 @@ import {
 } from '@/modules/billing/billing.errors'
 import {
   cancelSubscriptionInputSchema,
-  changePlanInputSchema,
+  changeBilledCourtsInputSchema,
   confirmNameMatches,
   extendTrialInputSchema,
   forceStatusInputSchema,
@@ -39,7 +39,7 @@ import {
 } from '@/modules/super-admin/support.schema'
 import {
   cancelSubscriptionForSupport,
-  changePlanForSupport,
+  changeBilledCourtsForSupport,
   extendTrial,
   forceTenantStatus,
   PlanAlreadyAssignedError,
@@ -89,7 +89,7 @@ function mapKnownError(err: unknown): SupportActionResult {
   if (err instanceof DowngradeBlockedError) {
     return {
       success: false,
-      error: `El complejo tiene ${err.currentCourtCount} canchas online y el plan destino permite ${err.targetMaxCourts}. Desactivá canchas antes de bajar de plan.`,
+      error: `El complejo tiene ${err.currentCourtCount} canchas online: no se puede facturar por ${err.targetBilledCourts}. Desactivá canchas antes de bajar la cuota.`,
     }
   }
   if (err instanceof TenantNotFoundError) {
@@ -185,24 +185,24 @@ export async function extendTrialAction(input: unknown): Promise<SupportActionRe
   }
 }
 
-// ─── Cambiar plan sin cobro ──────────────────────────────────────────────────
+// ─── Corregir canchas facturadas, sin cobro ──────────────────────────────────
 
-export async function changePlanAction(input: unknown): Promise<SupportActionResult> {
+export async function changeBilledCourtsAction(input: unknown): Promise<SupportActionResult> {
   const auth = await requireSystemAdminAction()
   if (!auth.ok) return { success: false, error: auth.error }
 
-  const parsed = changePlanInputSchema.safeParse(input)
+  const parsed = changeBilledCourtsInputSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
   try {
-    await changePlanForSupport(
+    await changeBilledCourtsForSupport(
       parsed.data.tenantId,
-      parsed.data.targetPlanId,
+      parsed.data.billedCourts,
       auth.admin.id,
       getBillingGateway(),
     )
     revalidateTenantPaths(parsed.data.tenantId)
-    return { success: true, message: 'Plan cambiado sin cobro.' }
+    return { success: true, message: 'Canchas facturadas corregidas, sin cobro.' }
   } catch (err) {
     return mapKnownError(err)
   }

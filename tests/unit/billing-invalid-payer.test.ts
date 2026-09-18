@@ -17,7 +17,8 @@ import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { DbTx } from '@/shared/db/client'
 
 const TENANT_ID = 't-1'
-const PLAN_ID = 'plan-1'
+/** Canchas facturadas del pedido. Con 0 prendidas cualquier número ≥ 1 pasa el piso. */
+const BILLED_COURTS = 1
 const OWNER_EMAIL = 'marcelo@sin-cuenta-mp.com'
 
 const INVALID_PAYER_MP_ERROR = new MpGatewayError(
@@ -25,11 +26,26 @@ const INVALID_PAYER_MP_ERROR = new MpGatewayError(
   { message: 'Both payer and collector must be real or test users', status: 400 },
 )
 
+/** Fila única de `plans` desde la migr. 091: el monto sale de estas 3 columnas. */
+const PLAN_ROW = {
+  id: 'plan-turnogol',
+  slug: 'turnogol',
+  name: 'TurnoGol',
+  max_courts: null,
+  price_monthly: 4_700_000,
+  price_annual: 4_230_000,
+  price_first_court_cents: 4_700_000,
+  price_extra_court_cents: 3_000_000,
+  annual_discount_bps: 1_000,
+}
+
 function makeSubscribeTx() {
   const subRow = {
     status: 'trialing',
     plan_id: 'plan-old',
     billing_cycle: 'monthly',
+    billed_courts: 1,
+    pending_billed_courts: null,
     current_period_start: '2027-01-01T00:00:00Z',
     current_period_end: '2027-02-01T00:00:00Z',
     mp_subscription_id: null,
@@ -42,20 +58,12 @@ function makeSubscribeTx() {
     last_payment_failed_at: null,
     last_payment_at: null,
   }
-  const planRow = {
-    id: PLAN_ID,
-    slug: 'predio',
-    name: 'Predio',
-    max_courts: 2,
-    price_monthly: 5_500_000,
-    price_annual: 4_400_000,
-  }
   const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: OWNER_EMAIL }
   const execute = vi
     .fn()
     .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
-    .mockResolvedValueOnce([planRow]) // loadPlan
-    .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts (guard de plan nuevo, 0 < max_courts)
+    .mockResolvedValueOnce([PLAN_ROW]) // loadActivePlan
+    .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts (piso: 0 prendidas, nunca bloquea)
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
     // Fix D4-A1: mp_subscription_id es NULL → no hay nada que reusar, así que
     // sigue derecho a pedir el lock real (mismo estado, nada cambió).
@@ -68,6 +76,8 @@ function makeReactivateTx() {
     status: 'canceled',
     plan_id: 'plan-old',
     billing_cycle: 'monthly',
+    billed_courts: 1,
+    pending_billed_courts: null,
     current_period_start: '2027-01-01T00:00:00Z',
     current_period_end: '2027-02-01T00:00:00Z',
     mp_subscription_id: 'mp-old',
@@ -80,19 +90,14 @@ function makeReactivateTx() {
     last_payment_failed_at: null,
     last_payment_at: null,
   }
-  const planRow = {
-    id: PLAN_ID,
-    slug: 'predio',
-    name: 'Predio',
-    max_courts: 2,
-    price_monthly: 5_500_000,
-    price_annual: 4_400_000,
-  }
   const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: OWNER_EMAIL }
   const execute = vi
     .fn()
     .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
-    .mockResolvedValueOnce([planRow]) // loadPlan
+    .mockResolvedValueOnce([PLAN_ROW]) // loadActivePlan
+    // `reactivate()` también mide el piso de canchas (antes no lo hacía: con
+    // bandas el techo se chequeaba solo al bajar de plan).
+    .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
     // Fix D4-A1: mp_subscription_id = 'mp-old' → SÍ intenta reusar, pero el
     // gateway acá no define getSubscriptionState (ver comentario abajo), así
@@ -125,7 +130,7 @@ describe('subscribe — payer sin cuenta de MP (ENS-23)', () => {
 
     expect.assertions(3)
     try {
-      await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+      await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
     } catch (err) {
       expect(err).toBeInstanceOf(InvalidPayerEmailError)
       // Migr. 078: el mensaje nombra el email rechazado y manda al campo donde
@@ -143,7 +148,9 @@ describe('subscribe — payer sin cuenta de MP (ENS-23)', () => {
     })
     const gateway = gatewayRejecting(networkError)
 
-    await expect(subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toBe(networkError)
+    await expect(subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)).rejects.toBe(
+      networkError,
+    )
   })
 })
 
@@ -152,9 +159,9 @@ describe('reactivate — payer sin cuenta de MP (ENS-23, comparte createPreappro
     const tx = makeReactivateTx()
     const gateway = gatewayRejecting(INVALID_PAYER_MP_ERROR)
 
-    await expect(reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toBeInstanceOf(
-      InvalidPayerEmailError,
-    )
+    await expect(
+      reactivate(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx),
+    ).rejects.toBeInstanceOf(InvalidPayerEmailError)
   })
 
   it('NO enmascara otros errores de MP', async () => {
@@ -164,6 +171,8 @@ describe('reactivate — payer sin cuenta de MP (ENS-23, comparte createPreappro
     })
     const gateway = gatewayRejecting(otherError)
 
-    await expect(reactivate(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)).rejects.toBe(otherError)
+    await expect(reactivate(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)).rejects.toBe(
+      otherError,
+    )
   })
 })

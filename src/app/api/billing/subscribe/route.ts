@@ -35,26 +35,26 @@ export const POST = withTenant(
     try {
       const result = await subscribe(
         user.tenantId!,
-        parsed.data.planId,
+        parsed.data.billedCourts,
         parsed.data.billingCycle,
         getBillingGateway(),
         tx,
       )
       return NextResponse.json({ data: result }, { status: 201 })
     } catch (err) {
-      // El plan elegido no le entra por cantidad de canchas. Sin este catch el
-      // error salía como 500 genérico justo en el alta —el momento donde el
-      // complejo confirma su plan por primera vez— y el dueño se quedaba sin
-      // saber qué hacer. Mensaje propio, no `err.message`: el del error es
-      // técnico y en inglés, pensado para los logs.
+      // Pidió facturar por menos canchas de las que tiene prendidas. Sin este
+      // catch el error salía como 500 genérico justo en el alta —el momento
+      // donde el complejo confirma su cuota por primera vez— y el dueño se
+      // quedaba sin saber qué hacer. Mensaje propio, no `err.message`: el del
+      // error es técnico, pensado para los logs.
       if (err instanceof DowngradeBlockedError) {
         return businessRule(
-          `Ese plan cubre hasta ${err.targetMaxCourts} canchas y tenés ${err.currentCourtCount} activas. Elegí un plan más grande, o desactivá las canchas que no estés usando.`,
+          `Tenés ${err.currentCourtCount} canchas prendidas, así que no podés activar por ${err.targetBilledCourts}. Apagá las canchas que no estés usando, o activá por las ${err.currentCourtCount} que tenés.`,
           {
             code: 'DOWNGRADE_BLOCKED',
             details: {
               currentCourtCount: err.currentCourtCount,
-              targetMaxCourts: err.targetMaxCourts,
+              targetBilledCourts: err.targetBilledCourts,
             },
           },
         )

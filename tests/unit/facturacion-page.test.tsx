@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 
 // ENS-25: la sección de baja voluntaria (CancelSubscriptionSection) se cablea
 // en /settings/facturacion, visible solo en estados cancelables.
@@ -67,7 +67,13 @@ vi.mock('@/modules/billing/billing.service', () => ({
     override: null,
     ownerEmail: 'a@b.com',
   })),
-  listActivePlans: vi.fn(async () => []),
+  // Precio lineal por cancha (migr. 090/091, decisión 2026-09-17): sin estos
+  // tres campos `firstCuotaPricing` devuelve null y la página cae al estado
+  // "Todavía no tenés una suscripción activa" aunque SÍ haya `sub` — por eso
+  // no alcanza con `[]` como antes de la migración.
+  listActivePlans: vi.fn(async () => [
+    { priceFirstCourtCents: 4_700_000, priceExtraCourtCents: 3_000_000, annualDiscountBps: 1000 },
+  ]),
   // doc15 §5.8: historial de pagos SaaS. Sin este mock, `page.tsx` llama
   // `undefined(...)` — el `try/catch` de ahí lo traga en silencio y las
   // tests de este archivo pasarían igual sin haber tocado nunca la rama con
@@ -112,6 +118,12 @@ function sub(status: string) {
     planSlug: 'predio',
     planName: 'Predio',
     billingCycle: 'monthly' as const,
+    // Precio lineal por cancha (migr. 090): CuotaSection y el desglose de
+    // sólo-lectura leen `billedCourts`/`pendingBilledCourts` directo de acá —
+    // sin esto `buildPriceBreakdown` explota (INVALID_BILLED_COURTS, courts
+    // indefinido no es un entero >= 1).
+    billedCourts: 3,
+    pendingBilledCourts: null as number | null,
     currentPeriodStart: new Date('2026-08-13T12:00:00.000Z'),
     currentPeriodEnd: new Date('2026-09-13T12:00:00.000Z'),
     mpSubscriptionId: 'mp-1',
@@ -135,22 +147,30 @@ beforeEach(() => {
 })
 
 describe('/settings/facturacion — CancelSubscriptionSection por estado', () => {
-  it('trialing: muestra el plan real calificado (no "Sin plan elegido") y NO muestra el botón de cancelar', async () => {
+  // Desde el precio lineal por cancha (2026-09-17) la página ya no nombra un
+  // plan — el "Predio · todavía no se cobra" de antes ahora es el estado de
+  // `SUBSCRIPTION_STATUS_LABEL` calificado igual.
+  it('trialing: muestra "Prueba gratis · todavía no se cobra" y NO muestra el botón de cancelar', async () => {
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
 
     render(await FacturacionPage())
 
-    expect(screen.getByText('Predio · todavía no se cobra')).toBeTruthy()
-    expect(screen.queryByText('Sin plan elegido')).toBeNull()
+    expect(screen.getByText('Prueba gratis · todavía no se cobra')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
   })
 
-  it('active: muestra el nombre del plan y el botón de cancelar suscripción', async () => {
+  it('active: muestra el desglose de la cuota (CuotaSection) y el botón de cancelar suscripción', async () => {
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('active') as never)
 
     render(await FacturacionPage())
 
-    expect(screen.getByText('Predio')).toBeTruthy()
+    // `active` con suscripción ya cargada en MP es modo "manage": el CTA de
+    // CuotaSection es "Guardar", no "Activar"/"Reactivar". Se scopea a la
+    // section de CuotaSection porque "Guardar" también es el label del form
+    // de MpPayerEmailSection, más abajo en la misma página.
+    const cuotaHeading = screen.getByRole('heading', { name: 'Tu cuota' })
+    const cuotaSection = cuotaHeading.closest('section') as HTMLElement
+    expect(within(cuotaSection).getByRole('button', { name: 'Guardar' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cancelar suscripción' })).toBeTruthy()
   })
 
@@ -233,7 +253,7 @@ describe('/settings/facturacion — aviso de suscripción de MercadoPago ya crea
     render(await FacturacionPage())
 
     expect(
-      screen.getByText(/Ya hay una suscripción de MercadoPago creada para este plan/),
+      screen.getByText(/Ya hay una suscripción de MercadoPago creada para tu cuota/),
     ).toBeTruthy()
   })
 

@@ -11,12 +11,12 @@ import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
  * cambio de filtro/página es una recarga completa. Ground truth vía runSql
  * (COUNT total + status real del tenant Demo) para no depender de qué banda
  * corrió antes.
- * Evidence anchors: src/app/(super-admin)/super-admin/tenants/page.tsx:44-93,
- * .../tenants/_components/tenants-filters.tsx:1-99, .../tenants-table.tsx:1-109,
- * src/modules/super-admin/tenants.service.ts:78-151.
+ * Evidence anchors: src/app/(super-admin)/super-admin/tenants/page.tsx,
+ * .../tenants/_components/tenants-filters.tsx, .../tenants-table.tsx,
+ * src/modules/super-admin/tenants.service.ts (listTenants).
  */
 test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
-  test('buscar, filtrar por estado/plan, limpiar y navegar al detalle', async ({ browser }) => {
+  test('buscar, filtrar por estado, limpiar y navegar al detalle', async ({ browser }) => {
     const ctx = await newAuthedContext(browser, QA_EMAILS.superadmin)
     try {
       const page = await ctx.newPage()
@@ -56,17 +56,11 @@ test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
       // El tenant Demo matchea su propio status → sigue visible en la tabla.
       await expect(page.getByRole('link', { name: demo.name })).toBeVisible()
 
-      // ── Filtro Plan ──────────────────────────────────────────────────────
-      const planOptionValue = await page
-        .locator('#plan option')
-        .nth(1) // 0 = "Todos"
-        .getAttribute('value')
-      expect(planOptionValue).toBeTruthy()
-      await page.locator('#plan').selectOption(planOptionValue!)
-      await page.getByRole('button', { name: 'Filtrar' }).click()
-      await page.waitForURL((url) => url.searchParams.get('plan') === planOptionValue)
-      // No se afirma presencia del tenant Demo acá: filtrar por plan puede
-      // excluirlo si no tiene esa suscripción asignada en este punto de la corrida.
+      // El filtro por plan se eliminó con el precio por cancha (decisión
+      // 2026-09-17): `plans` quedó con una sola fila activa, así que filtraba
+      // todo o nada. La columna "Plan" de la tabla pasó a ser "Canchas".
+      await expect(page.locator('#plan')).toHaveCount(0)
+      await expect(page.getByRole('columnheader', { name: 'Canchas' })).toBeVisible()
 
       // ── Navegación a detalle ─────────────────────────────────────────────
       await page.goto('/super-admin/tenants')
@@ -86,11 +80,10 @@ test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
         status: 'pass',
         totalTenants,
         demoTenant: demo,
-        planFilterValue: planOptionValue,
         paginationVisible: hasPaging,
         dbWrites: 'ninguno (listTenants es lectura pura vía getWorkerDb, filtros 100% GET)',
         notes:
-          'Estado/plan filtrados con el valor REAL del tenant Demo leído por runSql, no hardcodeado.',
+          'Estado filtrado con el valor REAL del tenant Demo leído por runSql, no hardcodeado. El filtro por plan ya no existe (precio por cancha).',
       })
     } finally {
       await ctx.close()

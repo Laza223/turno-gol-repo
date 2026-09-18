@@ -84,10 +84,10 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
         status: 'active',
         trialEndsAt: null,
         createdAt: new Date('2026-01-01'),
-        planName: 'Complejo',
-        planSlug: 'complejo',
-        priceMonthly: 55000,
-        priceAnnual: 550000,
+        billedCourts: 5,
+        priceFirstCourtCents: 4_700_000,
+        priceExtraCourtCents: 3_000_000,
+        annualDiscountBps: 1000,
         billingCycle: 'monthly',
         subscriptionStatus: 'active',
       },
@@ -98,15 +98,16 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
     const result = await listTenants({ page: 1, pageSize: 20 })
 
     expect(result.rows).toHaveLength(1)
-    expect(result.rows[0]).toMatchObject({ id: 't1', planSlug: 'complejo', mrrCents: 55000 })
+    // 5 canchas mensual: 4.700.000 + 4 × 3.000.000.
+    expect(result.rows[0]).toMatchObject({ id: 't1', billedCourts: 5, mrrCents: 16_700_000 })
     expect(h.getWorkerDb).toHaveBeenCalled()
     expect(h.getDb).not.toHaveBeenCalled()
   })
 
-  // Bug de plata: `plans.price_annual` YA es el equivalente mensual con 20%
-  // off (migr. 071) — `monthlyEquivalentCents` volvía a dividirlo /12, así
-  // que el MRR de un tenant anual salía 12 veces menor.
-  it('ciclo anual: mrrCents es priceAnnual TAL CUAL (nunca priceAnnual / 12)', async () => {
+  // Bug de plata: el MRR es una TASA MENSUAL. El ciclo anual aporta su
+  // equivalente mensual con el descuento aplicado (annual_discount_bps), no el
+  // cobro del año — que es ese mismo número × 12.
+  it('ciclo anual: mrrCents es el equivalente MENSUAL con descuento, no el cobro del año', async () => {
     const rows: FakeRow[] = [
       {
         id: 't2',
@@ -116,10 +117,10 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
         status: 'active',
         trialEndsAt: null,
         createdAt: new Date('2026-01-01'),
-        planName: 'Complejo',
-        planSlug: 'complejo',
-        priceMonthly: 8_500_000,
-        priceAnnual: 6_800_000,
+        billedCourts: 5,
+        priceFirstCourtCents: 4_700_000,
+        priceExtraCourtCents: 3_000_000,
+        annualDiscountBps: 1000,
         billingCycle: 'annual',
         subscriptionStatus: 'active',
       },
@@ -129,7 +130,8 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
 
     const result = await listTenants({ page: 1, pageSize: 20 })
 
-    expect(result.rows[0]).toMatchObject({ id: 't2', mrrCents: 6_800_000 })
+    // 16.700.000 × 0,90 = 15.030.000 por mes (el cobro anual es ×12 de eso).
+    expect(result.rows[0]).toMatchObject({ id: 't2', mrrCents: 15_030_000 })
   })
 })
 
@@ -155,15 +157,15 @@ describe('getTenantDetail (tenants.service) — subscription vía getWorkerDb, t
     const subRow: FakeRow = {
       status: 'active',
       planId: 'p1',
-      planName: 'Complejo',
-      planSlug: 'complejo',
-      priceMonthly: 55000,
-      priceAnnual: 550000,
+      billedCourts: 5,
+      pendingBilledCourts: null,
+      priceFirstCourtCents: 4_700_000,
+      priceExtraCourtCents: 3_000_000,
+      annualDiscountBps: 1000,
       billingCycle: 'monthly',
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(),
       mpSubscriptionId: null,
-      pendingPlanChange: null,
       pendingChangeAt: null,
       canceledAt: null,
       cancellationReason: null,
@@ -182,7 +184,7 @@ describe('getTenantDetail (tenants.service) — subscription vía getWorkerDb, t
     expect(detail!.tenant.id).toBe('t1')
     // Si getTenantDetail volviera a leer la suscripción del pool restringido,
     // esto traería el centinela TRAP en vez de la fila real de subRow.
-    expect(detail!.subscription).toMatchObject({ planSlug: 'complejo', status: 'active' })
+    expect(detail!.subscription).toMatchObject({ billedCourts: 5, status: 'active' })
     expect(h.getWorkerDb).toHaveBeenCalled()
   })
 })

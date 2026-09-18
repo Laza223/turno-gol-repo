@@ -78,7 +78,21 @@ export interface PaymentGateway {
    */
   getSubscriptionState(preapprovalId: string): Promise<GatewaySubscriptionState | null>
   /** `amount` in centavos ARS. */
-  updatePreapprovalAmount(preapprovalId: string, amount: number): Promise<void>
+  /**
+   * Cambia el monto de un preapproval YA existente, in-place.
+   *
+   * PELIGRO DE PLATA: la API de MP REEMPLAZA el objeto `auto_recurring`
+   * entero. Mandar solo `transaction_amount` borra `frequency`,
+   * `frequency_type` y — lo peor — `start_date`, que es lo que mantiene el
+   * primer cobro al final de la prueba. La implementacion tiene que releer el
+   * preapproval y reenviar el objeto completo. Ver
+   * `mp-gateway.implementation.ts`.
+   */
+  updatePreapprovalAmount(
+    preapprovalId: string,
+    amount: number,
+    opts?: { reason?: string },
+  ): Promise<void>
   /**
    * One-off Preference for upgrade proration. external_reference is set to
    * `saas-upgrade:<tenantId>:<targetPlanId>` so the webhook dispatcher can

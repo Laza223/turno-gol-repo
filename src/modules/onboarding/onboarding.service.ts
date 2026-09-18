@@ -8,10 +8,12 @@ import type { OpeningHours, TenantRow, TenantSettings } from '@/modules/tenants/
 import {
   appendCourtPhoto,
   createCourt,
-  getCourtCountAndLimit,
+  getCourtCountAndBilled,
   listCourts,
   validatePricingRulesCoverage,
 } from '@/modules/courts/court.service'
+import { changeBilledCourts } from '@/modules/billing/billing.service'
+import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { keyFromPublicUrl } from '@/shared/storage/r2-config'
 import { createCourtSchema } from '@/modules/courts/court.schema'
 import { uniformRulesFromOpeningHours } from '@/modules/courts/pricing-grid'
@@ -162,10 +164,10 @@ export async function createOnboardingCourts(
   if (!built.ok) return { success: false, error: built.error }
 
   const result = await withTenantContext(tenant.id, async (tx) => {
-    const { count, maxCourts } = await getCourtCountAndLimit(tenant.id, tx)
+    const { onlineCourts } = await getCourtCountAndBilled(tenant.id, tx)
 
     // Continuar sin drafts es válido en una revisita ("Volver") si ya hay canchas.
-    if (built.inputs.length === 0 && count === 0) {
+    if (built.inputs.length === 0 && onlineCourts === 0) {
       return { success: false as const, error: 'Agregá al menos una cancha para continuar.' }
     }
 
@@ -184,13 +186,11 @@ export async function createOnboardingCourts(
         existingNames.has(data.name.trim().toLocaleLowerCase('es')) && data.photos?.[0] != null,
     )
 
-    if (maxCourts !== null && count + toCreate.length > maxCourts) {
-      return {
-        success: false as const,
-        error: `Tu plan soporta hasta ${maxCourts} canchas. Hacé upgrade para agregar más.`,
-      }
-    }
-
+    // Acá vivía el techo del plan ("Tu plan soporta hasta N canchas. Hacé
+    // upgrade para agregar más."). Con precio lineal por cancha no hay techo
+    // (decisión 2026-09-17, P3): en el alta el complejo carga las canchas que
+    // tiene y ESO define su cuota. Trabar el wizard acá dejaba al complejo más
+    // grande que el plan default sin salida in-app.
     for (const data of toCreate) {
       await createCourt(tenant.id, data, tx)
     }
@@ -206,6 +206,18 @@ export async function createOnboardingCourts(
         }
       }
     }
+
+    // `billed_courts` tiene que quedar diciendo la verdad desde el alta: si no,
+    // la primera vez que el dueño entra a /canchas le salta un aviso de suba de
+    // cuota por canchas que él ya cargó en el wizard. El tenant está en trial,
+    // así que `changeBilledCourts` lo aplica en el acto y no cobra nada. Solo
+    // sube: bajar por cuántas canchas se factura es una decisión deliberada del
+    // dueño en Facturación, nunca un efecto lateral.
+    const after = await getCourtCountAndBilled(tenant.id, tx)
+    if (after.billedCourts !== null && after.onlineCourts > after.billedCourts) {
+      await changeBilledCourts(tenant.id, after.onlineCourts, getBillingGateway(), tx)
+    }
+
     return { success: true as const }
   })
 

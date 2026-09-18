@@ -1,7 +1,7 @@
 import { Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
-import { isTenantStatus, listActivePlans, listTenants } from '@/modules/super-admin/tenants.service'
+import { isTenantStatus, listTenants } from '@/modules/super-admin/tenants.service'
 import { TenantsFilters } from './_components/tenants-filters'
 import { TenantsTable } from './_components/tenants-table'
 
@@ -12,7 +12,6 @@ const PAGE_SIZE = 20
 type SearchParams = {
   q?: string
   status?: string
-  plan?: string
   page?: string
 }
 
@@ -25,7 +24,6 @@ function buildQuery(params: SearchParams, overrides: Record<string, string | und
   const merged: Record<string, string | undefined> = {
     q: params.q,
     status: params.status,
-    plan: params.plan,
     page: params.page,
     ...overrides,
   }
@@ -48,12 +46,7 @@ export default async function SuperAdminTenantsPage(props: {
     searchParams.status && isTenantStatus(searchParams.status) ? searchParams.status : undefined
   const page = parsePage(searchParams.page)
 
-  const plansList = await listActivePlans()
-  const planSlug = plansList.some((p) => p.slug === searchParams.plan)
-    ? searchParams.plan
-    : undefined
-
-  const result = await listTenants({ q, status, planSlug, page, pageSize: PAGE_SIZE })
+  const result = await listTenants({ q, status, page, pageSize: PAGE_SIZE })
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE))
 
   return (
@@ -66,7 +59,7 @@ export default async function SuperAdminTenantsPage(props: {
         }
       />
 
-      <TenantsFilters q={q} status={status} planSlug={planSlug} plans={plansList} />
+      <TenantsFilters q={q} status={status} />
 
       <TenantsTable
         rows={result.rows}

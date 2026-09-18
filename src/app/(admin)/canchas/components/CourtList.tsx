@@ -7,6 +7,11 @@ import { LandPlot, LayoutGrid, Lock } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
+import {
+  billingChangeMessage,
+  billingChangeTitle,
+  type BillingChangePreview,
+} from '../billing-copy'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
@@ -23,10 +28,16 @@ import type {
 /**
  * Las 2 Server Actions propias de esta lista llegan por PROP, mismo motivo
  * que CourtForm (ver su comentario): '../actions' es `'use server'`.
+ *
+ * `confirmBillingChange`: prender una cancha por encima de las que se facturan
+ * no se bloquea, pero tampoco se hace en silencio. La primera llamada vuelve
+ * con `requiresBillingConfirmation` y sin tocar nada; la segunda, ya con el
+ * dueño informado del monto, prende la cancha y agenda la suba.
  */
 type ToggleCourtStatusAction = (
   courtId: string,
   status: 'online' | 'offline',
+  confirmBillingChange?: boolean,
 ) => Promise<CourtActionResult>
 type GetCourtDeactivationImpactAction = (courtId: string) => Promise<CourtDeactivationImpactResult>
 
@@ -263,6 +274,10 @@ function CourtCard({
     null,
   )
   const [loadingImpact, setLoadingImpact] = useState(false)
+  // Aviso de "prender esta cancha te sube la cuota". Es un diálogo aparte del
+  // de desactivar: son dos decisiones distintas y el de desactivar es
+  // destructivo, este no.
+  const [billingPreview, setBillingPreview] = useState<BillingChangePreview | null>(null)
 
   function activate() {
     const prev = currentStatus
@@ -271,6 +286,12 @@ function CourtCard({
       const res = await toggleStatusAction(court.id, 'online')
       if (!res.success) {
         setCurrentStatus(prev)
+        if (res.requiresBillingConfirmation) {
+          // No es un error: la cancha sigue apagada porque prenderla sube la
+          // cuota y el dueño tiene que ver el monto nuevo antes.
+          setBillingPreview(res.requiresBillingConfirmation)
+          return
+        }
         toast({ title: 'No se pudo activar', description: res.error, variant: 'destructive' })
         return
       }
@@ -283,6 +304,17 @@ function CourtCard({
         action: { label: 'Deshacer', onClick: () => deactivateDirect() },
       })
     })
+  }
+
+  async function confirmActivateWithBilling(): Promise<ActionResult> {
+    const res = await toggleStatusAction(court.id, 'online', true)
+    if (!res.success) return { success: false, error: res.error }
+    setCurrentStatus('online')
+    // Sin "Deshacer" acá, a diferencia del activar normal: apagar la cancha NO
+    // revierte la suba de cuota que se acaba de agendar (decisión 2026-09-17,
+    // P3), así que ofrecerlo diría una mentira.
+    toast({ title: 'Cancha activada', variant: 'success' })
+    return { success: true }
   }
 
   function deactivateDirect() {
@@ -393,6 +425,20 @@ function CourtCard({
           {isPending || loadingImpact ? '…' : currentStatus === 'online' ? 'Desactivar' : 'Activar'}
         </button>
       </div>
+
+      {billingPreview && (
+        <ConfirmDialog
+          open
+          onOpenChange={(next) => {
+            if (!next) setBillingPreview(null)
+          }}
+          title={billingChangeTitle(billingPreview)}
+          description={<p>{billingChangeMessage(billingPreview)}</p>}
+          confirmLabel="Confirmar"
+          cancelLabel="Cancelar"
+          onConfirm={confirmActivateWithBilling}
+        />
+      )}
 
       {confirmOpen && (
         <ConfirmDialog

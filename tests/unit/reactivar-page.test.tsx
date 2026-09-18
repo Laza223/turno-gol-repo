@@ -84,14 +84,15 @@ const STAFF_USER = {
   id: 'auth-1',
   email: 'a@b.com',
 }
+// Precio lineal por cancha (migr. 090/091, decisión 2026-09-17): `loadCuotaPricing`
+// lee estas tres columnas directo de `plans` — sin ellas `firstCuotaPricing`
+// no las ve `null` (son `undefined`, no pasan el filtro) y arma un
+// `PricingParams` con `undefined` que revienta el desglose en "$ NaN".
 const PLANS = [
   {
-    id: 'plan-predio',
-    slug: 'predio',
-    name: 'Predio',
-    maxCourts: 2,
-    priceMonthly: 5_500_000,
-    priceAnnual: 4_400_000,
+    priceFirstCourtCents: 4_700_000,
+    priceExtraCourtCents: 3_000_000,
+    annualDiscountBps: 1000,
   },
 ]
 
@@ -167,7 +168,7 @@ describe('/reactivar — rol no-admin', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText(/Pedile al dueño del complejo/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Reactivar plan' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Reactivar —/ })).toBeNull()
   })
 })
 
@@ -179,7 +180,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText('Tu cuenta está suspendida')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Reactivar plan' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
   })
 
   it('blocked: muestra el botón de reactivar', async () => {
@@ -189,7 +190,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText('Tu cuenta está bloqueada')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Reactivar plan' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
   })
 
   it('churned con deadline futuro: muestra la fecha límite y el botón', async () => {
@@ -200,7 +201,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText(/Tenés hasta el/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Reactivar plan' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
   })
 
   it('churned con deadline vencido: NO muestra el botón, muestra fallback de soporte', async () => {
@@ -211,7 +212,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText(/El plazo para reactivar venció/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Reactivar plan' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Reactivar —/ })).toBeNull()
     expect(screen.getByText('Contactar a soporte')).toBeTruthy()
   })
 })
@@ -224,7 +225,7 @@ describe('/reactivar — past_due (sigue con acceso completo al panel)', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText('Tu último pago falló')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Reactivar plan' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Reactivar —/ })).toBeNull()
     expect(screen.getByText('Volver al panel')).toBeTruthy()
   })
 })
@@ -242,7 +243,7 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
 
     render(await ReactivarPage())
 
-    expect(screen.getByRole('button', { name: 'Reactivar plan' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cancelar suscripción' })).toBeTruthy()
   })
 
@@ -252,7 +253,7 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
 
     render(await ReactivarPage())
 
-    expect(screen.getByRole('button', { name: 'Reactivar plan' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
   })
 

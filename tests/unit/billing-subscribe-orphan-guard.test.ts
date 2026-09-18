@@ -19,13 +19,16 @@ import { MpGatewayError } from '@/modules/payments/payment.errors'
 import type { DbTx } from '@/shared/db/client'
 
 const TENANT_ID = 't-1'
-const PLAN_ID = 'plan-1'
+/** Canchas facturadas del pedido. Con 0 prendidas, cualquier número ≥ 1 pasa el piso. */
+const BILLED_COURTS = 1
 
 function makeSubRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     status: 'trialing',
     plan_id: 'plan-old',
     billing_cycle: 'monthly',
+    billed_courts: 1,
+    pending_billed_courts: null,
     current_period_start: '2027-01-01T00:00:00Z',
     current_period_end: '2027-02-01T00:00:00Z',
     mp_subscription_id: null,
@@ -41,21 +44,25 @@ function makeSubRow(overrides: Partial<Record<string, unknown>> = {}) {
   }
 }
 
+/** Fila única de `plans` desde la migr. 091: el monto sale de estas 3 columnas. */
 const planRow = {
-  id: PLAN_ID,
-  slug: 'predio',
-  name: 'Predio',
-  max_courts: 2,
-  price_monthly: 5_500_000,
-  price_annual: 4_400_000,
+  id: 'plan-turnogol',
+  slug: 'turnogol',
+  name: 'TurnoGol',
+  max_courts: null,
+  price_monthly: 4_700_000,
+  price_annual: 4_230_000,
+  price_first_court_cents: 4_700_000,
+  price_extra_court_cents: 3_000_000,
+  annual_discount_bps: 1_000,
 }
 
 const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: 'marcelo@x.com' }
 
 /**
  * tx.execute order dentro de `subscribe()`: 1) loadSub (sin lock, Fix D4-A1),
- * 2) loadPlan, 3) countOnlineCourts (guard de cupo de plan, fix aparte — 0 <
- * max_courts así que nunca bloquea acá), 4) loadTenantOwner, 5) loadSubForUpdate
+ * 2) loadActivePlan, 3) countOnlineCourts (piso de canchas facturadas — 0
+ * prendidas, así que nunca bloquea acá), 4) loadTenantOwner, 5) loadSubForUpdate
  * (con `mp_subscription_id` seteado, `reusablePendingCheckout` SÍ dispara el
  * GET a MP acá arriba — pero el `MockGateway` sin `subscriptionState` sembrado
  * devuelve `null`, así que nunca reusa y cae derecho a pedir el lock real; con
@@ -67,7 +74,7 @@ function makeTx(subRow: ReturnType<typeof makeSubRow>) {
   const execute = vi
     .fn()
     .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
-    .mockResolvedValueOnce([planRow]) // loadPlan
+    .mockResolvedValueOnce([planRow]) // loadActivePlan
     .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
     .mockResolvedValueOnce([subRow]) // loadSubForUpdate
@@ -99,7 +106,7 @@ describe('subscribe — cancela el preapproval viejo antes de crear el nuevo (Fi
       return originalCreate(input)
     }
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual(['mp-old-1'])
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -110,7 +117,7 @@ describe('subscribe — cancela el preapproval viejo antes de crear el nuevo (Fi
     const tx = makeTx(makeSubRow({ mp_subscription_id: null }))
     const gateway = new MockGateway()
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
@@ -127,7 +134,7 @@ describe('subscribe — cancela el preapproval viejo antes de crear el nuevo (Fi
       },
     )
 
-    await subscribe(TENANT_ID, PLAN_ID, 'monthly', gateway, tx)
+    await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 
     expect(gateway.cancelPreapprovalCalls).toEqual(['mp-old-1'])
     expect(gateway.preapprovalCalls).toHaveLength(1)

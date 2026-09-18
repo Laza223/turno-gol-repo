@@ -10,7 +10,7 @@ import {
   transitionPastDueToSuspended,
   transitionSuspendedToBlocked,
 } from '@/modules/billing/lifecycle.service'
-import { planAmount, type PlanRow } from '@/modules/billing/billing.service'
+import { loadActivePlan, subscriptionAmount } from '@/modules/billing/billing.service'
 import type { BillingCycle } from '@/modules/billing/billing.types'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
@@ -105,11 +105,15 @@ export async function runDunningSweep(): Promise<void> {
   `
   const canceledIds = canceledRows.map((r) => r.tenant_id)
 
-  // ─── 5. pending_plan_change applies (downgrade) ────────────────────────
-  const pendingItems = await sql<{ tenant_id: string; pendingPlanChange: string }[]>`
-    SELECT tenant_id, pending_plan_change AS "pendingPlanChange"
+  // ─── 5. se aplica el cambio de canchas facturadas agendado ─────────────
+  // Con precio por cancha (migr. 090/091) este barrido dejó de ser "el
+  // downgrade de plan de vez en cuando" y pasó a ser el ÚNICO lugar donde el
+  // monto de una suscripción que ya cobra se mueve: cada vez que un complejo
+  // suma o saca una cancha, el cambio espera acá hasta el fin del período.
+  const pendingItems = await sql<{ tenant_id: string; pendingBilledCourts: number }[]>`
+    SELECT tenant_id, pending_billed_courts AS "pendingBilledCourts"
     FROM tenant_subscriptions
-    WHERE pending_plan_change IS NOT NULL
+    WHERE pending_billed_courts IS NOT NULL
       AND pending_change_at IS NOT NULL
       AND pending_change_at <= NOW()
       AND status = 'active'
@@ -257,58 +261,73 @@ export async function runDunningSweep(): Promise<void> {
   for (const item of pendingItems) {
     try {
       await withTenantContext(item.tenant_id, async (tx) => {
+        // Piso: nunca se aplica una baja por debajo de las canchas prendidas
+        // HOY. Entre que el dueño agendó la baja y el cierre del período pudo
+        // haber vuelto a prender canchas por un camino que no avisa (p. ej.
+        // estando en mora), y aplicar el número agendado a ciegas lo dejaba
+        // operando 5 canchas y pagando 3 para siempre.
         const updated = await tx.execute(drizzleSql`
           UPDATE tenant_subscriptions
-          SET plan_id = ${item.pendingPlanChange},
+          SET billed_courts = GREATEST(
+                ${item.pendingBilledCourts}::int,
+                (SELECT COUNT(*)::int FROM courts
+                 WHERE tenant_id = ${item.tenant_id} AND status = 'online')
+              ),
+              pending_billed_courts = NULL,
               pending_plan_change = NULL,
               pending_change_at = NULL,
               updated_at = NOW()
           WHERE tenant_id = ${item.tenant_id} AND status = 'active'
-          RETURNING mp_subscription_id, billing_cycle
+          RETURNING mp_subscription_id, billing_cycle, billed_courts
         `)
-        await insertSystemAuditLog(tx, {
-          tenantId: item.tenant_id,
-          action: 'subscription.downgrade_applied',
-          resourceType: 'tenant_subscription',
-          resourceId: item.tenant_id,
-          metadata: { newPlanId: item.pendingPlanChange },
-        })
-
-        // Bug de plata: aplicar el downgrade acá sólo movía `plan_id` — el
-        // preapproval de MP seguía cobrando el monto del plan VIEJO. "MP
-        // último" (mismo patrón que `handleUpgradeApproved`,
-        // billing.service.ts): si esta llamada falla, la tx entera (UPDATE +
-        // audit) rollbackea y el próximo tick del cron reintenta.
         const row = (
           updated as unknown as Array<{
             mp_subscription_id: string | null
             billing_cycle: BillingCycle
+            billed_courts: number
           }>
         )[0]
+        const appliedBilledCourts = row?.billed_courts ?? item.pendingBilledCourts
+        await insertSystemAuditLog(tx, {
+          tenantId: item.tenant_id,
+          action: 'subscription.billed_courts_applied',
+          resourceType: 'tenant_subscription',
+          resourceId: item.tenant_id,
+          metadata: {
+            billedCourts: appliedBilledCourts,
+            scheduled: item.pendingBilledCourts,
+            raisedToOnlineCourts: appliedBilledCourts !== item.pendingBilledCourts,
+          },
+        })
+
+        // Bug de plata: aplicar el cambio acá sólo movía la DB — el
+        // preapproval de MP seguía cobrando el monto VIEJO. "MP último": si
+        // esta llamada falla, la tx entera (UPDATE + audit) rollbackea y el
+        // próximo tick del cron reintenta.
         // Modo mock (E2E/dev): `getBillingGateway()` NO honra MP_MOCK_ENABLED
         // —sólo lo hace `resolveTenantGateway`—, así que sin este guard
         // pegaría contra MP con el token vacío (mismo guard que
         // reconcile-subscriptions.worker.ts). El downgrade local se aplica
         // igual.
         if (row?.mp_subscription_id && !MP_MOCK_ENABLED) {
-          const planRows = await tx.execute(drizzleSql`
-            SELECT id, slug, name, max_courts, price_monthly, price_annual
-            FROM plans
-            WHERE id = ${item.pendingPlanChange}
-            LIMIT 1
-          `)
-          const plan = (planRows as unknown as Array<PlanRow>)[0]
-          if (plan) {
-            await getBillingGateway().updatePreapprovalAmount(
-              row.mp_subscription_id,
-              planAmount(plan, row.billing_cycle),
-            )
-          }
+          const plan = await loadActivePlan(tx)
+          const canchas = appliedBilledCourts === 1 ? '1 cancha' : `${appliedBilledCourts} canchas`
+          await getBillingGateway().updatePreapprovalAmount(
+            row.mp_subscription_id,
+            subscriptionAmount(plan, appliedBilledCourts, row.billing_cycle),
+            {
+              reason: `TurnoGol — ${canchas} (${row.billing_cycle === 'annual' ? 'anual' : 'mensual'})`,
+            },
+          )
         }
       })
-      logger.info('tenant downgrade applied', { module: 'dunning-retry', tenantId: item.tenant_id })
+      logger.info('billed courts change applied', {
+        module: 'dunning-retry',
+        tenantId: item.tenant_id,
+        billedCourts: item.pendingBilledCourts,
+      })
     } catch (err) {
-      logger.warn('failed downgrade', {
+      logger.warn('failed billed courts change', {
         module: 'dunning-retry',
         tenantId: item.tenant_id,
         error: String(err),

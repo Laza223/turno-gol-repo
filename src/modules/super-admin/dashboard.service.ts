@@ -44,9 +44,9 @@ type RecentWebhook = {
 
 export type DashboardData = {
   /**
-   * MRR en centavos ARS de las subs activas (doc12 §9.5): `price_monthly`
-   * para ciclo mensual, `price_annual` (ya es el equivalente mensual, migr.
-   * 071) para ciclo anual.
+   * MRR en centavos ARS de las subs activas (doc12 §9.5), como equivalente
+   * MENSUAL: se calcula sobre `billed_courts` con la regla lineal por cancha
+   * (decisión 2026-09-17), no sobre una columna de precio del plan.
    */
   mrrCents: number
   /** Conteo de tenants por cada uno de los 8 estados (0 incluido). */
@@ -162,15 +162,36 @@ async function getOnboardingFunnel(): Promise<OnboardingFunnelData> {
   }
 }
 
+/**
+ * MRR = suma del equivalente MENSUAL de cada suscripción activa.
+ *
+ * Este es el número que MIENTE si alguien se olvida de tocarlo. La versión
+ * anterior sumaba `plans.price_monthly` / `plans.price_annual`; desde la migr.
+ * 091 `plans` tiene una sola fila activa, así que esa query no rompe: devuelve
+ * "precio de una cancha × cantidad de complejos" y el tile muestra un número
+ * plausible y falso. La fórmula real es lineal sobre `billed_courts`
+ * (decisión 2026-09-17): primera cancha + extras.
+ *
+ * Va en SQL y no en TypeScript porque es una agregada sobre todos los tenants
+ * — traerse las filas para sumarlas en memoria sería peor. El equivalente puro
+ * (misma fórmula, para una suscripción) vive en `@/modules/billing/pricing`.
+ */
 async function getMrrCents(): Promise<number> {
   const db = getWorkerDb()
+  const monthlyList = sql`(${plans.priceFirstCourtCents} + (${tenantSubscriptions.billedCourts} - 1) * ${plans.priceExtraCourtCents})`
   const rows = await db
     .select({
-      // `plans.price_annual` YA es el equivalente mensual con 20% off (migr.
-      // 071) — no el total anual — así que el MRR de una sub anual suma esa
-      // columna tal cual, nunca `price_monthly` ni `price_annual / 12`.
-      // SUM(integer) llega como bigint (string) — coalesce + cast a number.
-      mrr: sql<string>`coalesce(sum(case when ${tenantSubscriptions.billingCycle} = 'annual' then ${plans.priceAnnual} else ${plans.priceMonthly} end), 0)`,
+      // El ciclo anual aporta su equivalente mensual CON descuento
+      // (`annual_discount_bps`, 1000 = 10%), nunca el cobro del año: el MRR es
+      // una tasa mensual. `round()` de Postgres redondea igual que el
+      // `Math.round` de `annualMonthlyEquivalent` para montos positivos.
+      // SUM llega como numeric/bigint (string) — coalesce + cast a number.
+      mrr: sql<string>`coalesce(sum(
+        case when ${tenantSubscriptions.billingCycle} = 'annual'
+          then round(${monthlyList}::numeric * (10000 - ${plans.annualDiscountBps}) / 10000)
+          else ${monthlyList}
+        end
+      ), 0)`,
     })
     .from(tenantSubscriptions)
     .innerJoin(plans, eq(plans.id, tenantSubscriptions.planId))

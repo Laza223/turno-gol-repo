@@ -38,7 +38,7 @@ export default async function TorneoInscripcionesPage(props: { params: Promise<{
   const { tournament, rows } = data
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <Link
         href="/torneos"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

@@ -163,24 +163,24 @@ export function ActaPanel({
   )
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
       {error ? (
         <p
           role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-300"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-red-700 dark:text-red-300 lg:col-span-2"
         >
           {error}
         </p>
       ) : null}
 
       {undefinedTeams ? (
-        <p className="rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-muted-foreground lg:col-span-2">
           Todavía no se sabe qué equipos juegan este partido: primero se tiene que definir la llave.
         </p>
       ) : null}
 
       {suspendedInActa.length > 0 ? (
-        <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+        <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-300 lg:col-span-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             Hay {suspendedInActa.length} jugador(es) en el acta que arrastran fechas de suspensión.

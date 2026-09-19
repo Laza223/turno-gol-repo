@@ -75,9 +75,9 @@ const noopSearch: JugadoresViewProps['searchAction'] = async () => ({
 
 /**
  * Vista Personas (lista única de clientes, admin+manager).
- * `content-area-gradient` reproduce el fondo real del `<main>` del shell admin
- * (admin-layout-shell.tsx), donde vive esta vista sin ningún wrapper propio —
- * mismo patrón que StaffRosterView.
+ * `content-area-gradient` reproduce el fondo real del shell admin
+ * (admin-layout-shell.tsx, en el contenedor de contenido), donde vive esta vista
+ * sin ningún wrapper propio — mismo patrón que StaffRosterView.
  */
 const meta = {
   title: 'Admin/Jugadores/JugadoresView',

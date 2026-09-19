@@ -27,50 +27,54 @@ export default async function PerfilPage() {
       {/* MASTER §6.8: la vista no abre encabezado propio — ver reservas/page.tsx. */}
       <SettingsTabs active="/settings/perfil" />
 
-      {/* Maqueta de la cabecera pública (cover + logo + nombre + dirección) +
+      {/* Las dos cards de datos del complejo van lado a lado en escritorio; las
+          filas plegables de abajo siguen a ancho completo. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
+        {/* Maqueta de la cabecera pública (cover + logo + nombre + dirección) +
           las dos filas de subida: antes había que abrir "Ver mi perfil
           público" en otra pestaña a ciegas para comprobar cómo quedaba una
           imagen recién subida. */}
-      <div className="card-premium rounded-lg p-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-foreground">Perfil público</h2>
-          {/* H067: sin este link no había forma de verificar cómo quedaron
+        <div className="card-premium rounded-lg p-6">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-foreground">Perfil público</h2>
+            {/* H067: sin este link no había forma de verificar cómo quedaron
               el logo y la portada en el perfil público real. */}
-          <a
-            href={`/${tenant.slug}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Ver mi perfil público
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-          </a>
+            <a
+              href={`/${tenant.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Ver mi perfil público
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          </div>
+          <PerfilImagesForm
+            tenantName={tenant.name}
+            tenantAddress={tenant.address}
+            tenantCity={tenant.city}
+            logoUrl={tenant.logoUrl}
+            coverUrl={tenant.coverUrl}
+            setImageAction={setTenantImageAction}
+            removeImageAction={removeTenantImageAction}
+          />
         </div>
-        <PerfilImagesForm
-          tenantName={tenant.name}
-          tenantAddress={tenant.address}
-          tenantCity={tenant.city}
-          logoUrl={tenant.logoUrl}
-          coverUrl={tenant.coverUrl}
-          setImageAction={setTenantImageAction}
-          removeImageAction={removeTenantImageAction}
+
+        {/* Fusiona Contacto + Ubicación en un solo form con un solo "Guardar
+          cambios" — antes eran dos cards con dos botones. */}
+        <TenantProfileForm
+          currentPhone={tenant.phone}
+          currentEmail={tenant.email}
+          currentWhatsapp={tenant.whatsapp}
+          currentAddress={tenant.address}
+          currentCity={tenant.city}
+          currentProvince={tenant.province}
+          currentLatitude={tenant.latitude}
+          currentLongitude={tenant.longitude}
+          action={updateTenantProfileAction}
+          geocodeAction={geocodeAddressAction}
         />
       </div>
-
-      {/* Fusiona Contacto + Ubicación en un solo form con un solo "Guardar
-          cambios" — antes eran dos cards con dos botones. */}
-      <TenantProfileForm
-        currentPhone={tenant.phone}
-        currentEmail={tenant.email}
-        currentWhatsapp={tenant.whatsapp}
-        currentAddress={tenant.address}
-        currentCity={tenant.city}
-        currentProvince={tenant.province}
-        currentLatitude={tenant.latitude}
-        currentLongitude={tenant.longitude}
-        action={updateTenantProfileAction}
-        geocodeAction={geocodeAddressAction}
-      />
 
       {/* H161: Avisos era su propia pestaña top-level para esta única
           preferencia — se plegó como una fila más, colapsada por defecto, con

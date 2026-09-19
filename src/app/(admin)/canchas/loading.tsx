@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Loading() {
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8 space-y-6" aria-busy="true">
+    <div className="space-y-6" aria-busy="true">
       {/* PageHeader: icon halo + título + subtítulo + CTA */}
       <div className="page-header-band relative overflow-hidden rounded-2xl border border-border/60 px-5 py-5 sm:px-7 sm:py-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -18,7 +18,7 @@ export default function Loading() {
       </div>
 
       {/* Cards de cancha */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
@@ -38,6 +38,6 @@ export default function Loading() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   )
 }

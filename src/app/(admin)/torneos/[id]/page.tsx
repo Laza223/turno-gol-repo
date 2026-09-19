@@ -73,7 +73,7 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
   const courtNames = Object.fromEntries(courts.map((c) => [c.id, c.name]))
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <Link
         href="/torneos"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -104,38 +104,45 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
 
       <TorneoTabs tournamentId={tournament.id} active={`/torneos/${tournament.id}`} />
 
-      <TeamsPanel
-        tournamentId={tournament.id}
-        teams={teams}
-        maxTeams={tournament.maxTeams}
-        rosters={rosters}
-        addAction={addTeamAction}
-        removeAction={removeTeamAction}
-        updateAction={updateTeamAction}
-        searchCaptainAction={searchPlayersForCaptainAction}
-        addPlayerAction={addTeamPlayerAction}
-        removePlayerAction={removeTeamPlayerAction}
-      />
+      {/* `min-[1440px]` y no `lg`: los formularios de TeamsPanel arman sus columnas por
+          viewport (`sm:grid-cols-[1fr_5rem_8rem_auto]`), y en media columna a 1024–1200px
+          el nombre del jugador queda de 24–130px. */}
+      <div className="grid grid-cols-1 gap-6 min-[1440px]:grid-cols-2 min-[1440px]:items-start">
+        <TeamsPanel
+          tournamentId={tournament.id}
+          teams={teams}
+          maxTeams={tournament.maxTeams}
+          rosters={rosters}
+          addAction={addTeamAction}
+          removeAction={removeTeamAction}
+          updateAction={updateTeamAction}
+          searchCaptainAction={searchPlayersForCaptainAction}
+          addPlayerAction={addTeamPlayerAction}
+          removePlayerAction={removeTeamPlayerAction}
+        />
 
-      <SlotsPanel
-        tournamentId={tournament.id}
-        courts={courts.map((c) => ({ id: c.id, name: c.name }))}
-        slots={slots}
-        courtNames={courtNames}
-        reserveAction={reserveSlotsAction}
-        releaseAction={releaseSlotsAction}
-      />
+        <div className="space-y-6">
+          <SlotsPanel
+            tournamentId={tournament.id}
+            courts={courts.map((c) => ({ id: c.id, name: c.name }))}
+            slots={slots}
+            courtNames={courtNames}
+            reserveAction={reserveSlotsAction}
+            releaseAction={releaseSlotsAction}
+          />
 
-      <PortalPanel
-        tournamentId={tournament.id}
-        slug={tournament.slug}
-        tenantSlug={tenant.slug}
-        status={tournament.status}
-        isPublic={tournament.isPublic}
-        canPublish={role === 'admin'}
-        setVisibilityAction={updateTournamentAction}
-        openRegistrationAction={updateTournamentAction}
-      />
+          <PortalPanel
+            tournamentId={tournament.id}
+            slug={tournament.slug}
+            tenantSlug={tenant.slug}
+            status={tournament.status}
+            isPublic={tournament.isPublic}
+            canPublish={role === 'admin'}
+            setVisibilityAction={updateTournamentAction}
+            openRegistrationAction={updateTournamentAction}
+          />
+        </div>
+      </div>
 
       {/* Borrar solo aplica en borrador: después el torneo se cancela, no se
           borra (`deleteTournament`, tournament.service.ts). Fuera de ese estado

@@ -51,7 +51,7 @@ export default async function TorneoFixturePage(props: { params: Promise<{ id: s
   const { tournament, stages, matches, slots, courts } = data
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <Link
         href="/torneos"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

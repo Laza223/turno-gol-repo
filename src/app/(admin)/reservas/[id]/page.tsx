@@ -52,13 +52,13 @@ export default async function ReservaDetailPage(props: Props) {
   if (!booking) notFound()
 
   return (
-    // 2026-09-17 (pedido del dueño): la página usaba 672px de los 1216 que
-    // deja el shell a 1440, pegada a la izquierda, y aun así scrolleaba. Con
-    // dos columnas en escritorio (la plata a la izquierda, la ficha y las
-    // acciones a la derecha) entra entera en una notebook. Sin cobros (turno
-    // no cobrable) queda una sola columna: estirar la ficha a 1152px sería
-    // leerla de punta a punta de la pantalla.
-    <div className={cn('space-y-6', charges ? 'max-w-6xl' : 'max-w-3xl')}>
+    // 2026-09-17 (pedido del dueño): la página usaba 672px, pegada a la
+    // izquierda, y aun así scrolleaba. Con dos columnas en escritorio (la
+    // plata a la izquierda, la ficha y las acciones a la derecha) entra entera
+    // en una notebook, y ocupa todo el ancho que deja el shell. Sin cobros
+    // (turno no cobrable) queda una sola columna: estirar la ficha al ancho
+    // completo sería leerla de punta a punta de la pantalla.
+    <div className={cn('space-y-6', !charges && 'max-w-3xl')}>
       <div className="space-y-2">
         <Link
           href="/reservas"

@@ -154,55 +154,74 @@ export function JugadorProfileView({
   ]
 
   return (
-    <div className="max-w-3xl space-y-6 p-6">
+    // Una columna en mobile (el orden de lectura de siempre). En `lg`: los datos
+    // del jugador arriba a la izquierda, el historial a la derecha ocupando las
+    // filas 2-4, y etiquetas + turnos fijos debajo de los datos; la última fila
+    // (1fr) absorbe la altura sobrante del historial para que la columna
+    // izquierda no se abra en huecos. `grid-cols-1` explícito: sin columna, la
+    // implícita crece con el texto más largo y desborda. Sin turnos fijos (la
+    // card devuelve null) el historial ocupa una fila menos y sobra una pista
+    // vacía menos: una pista vacía igual paga sus dos `gap`.
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start',
+        fixedSlots.length > 0
+          ? 'lg:grid-rows-[auto_auto_auto_1fr]'
+          : 'lg:grid-rows-[auto_auto_1fr]',
+      )}
+    >
       <Link
         href="/jugadores"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="col-span-full inline-flex items-center gap-1.5 justify-self-start text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden /> Personas
       </Link>
 
-      <div className="card-premium rounded-xl p-6">
-        <h1 className="text-2xl font-semibold text-foreground">{profile.name}</h1>
-        <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
-            <dd className="text-foreground">{profile.email}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Teléfono</dt>
-            <dd className="text-foreground">{derivedPhone ?? '—'}</dd>
-          </div>
-          {profile.firstSeenAt && (
+      <div className="space-y-6">
+        <div className="card-premium rounded-xl p-6">
+          <h1 className="text-2xl font-semibold text-foreground">{profile.name}</h1>
+          {/* `min-w-0` + `break-words`: en media columna un email largo se pisaba con el
+              teléfono (las dos columnas de acá son por viewport, no por la card). */}
+          <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2 [&>div]:min-w-0 [&_dd]:break-words">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Cliente desde
-              </dt>
-              <dd className="text-foreground">{formatDateArt(new Date(profile.firstSeenAt))}</dd>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
+              <dd className="text-foreground">{profile.email}</dd>
             </div>
-          )}
-        </dl>
-      </div>
-
-      {ban.banned && (
-        <div className="card-premium rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-          <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
-            Bloqueado para reservar online
-          </p>
-          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400/80">
-            {ban.reason}
-            {ban.until ? ` Hasta el ${formatDateArt(ban.until)}.` : ' Sin fecha de fin.'}
-          </p>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Teléfono</dt>
+              <dd className="text-foreground">{derivedPhone ?? '—'}</dd>
+            </div>
+            {profile.firstSeenAt && (
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Cliente desde
+                </dt>
+                <dd className="text-foreground">{formatDateArt(new Date(profile.firstSeenAt))}</dd>
+              </div>
+            )}
+          </dl>
         </div>
-      )}
 
-      <BanPlayerControls
-        playerId={profile.playerId}
-        playerName={profile.name}
-        ban={ban}
-        banPlayerAction={banPlayerAction}
-        liftPlayerBanAction={liftPlayerBanAction}
-      />
+        {ban.banned && (
+          <div className="card-premium rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+              Bloqueado para reservar online
+            </p>
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400/80">
+              {ban.reason}
+              {ban.until ? ` Hasta el ${formatDateArt(ban.until)}.` : ' Sin fecha de fin.'}
+            </p>
+          </div>
+        )}
+
+        <BanPlayerControls
+          playerId={profile.playerId}
+          playerName={profile.name}
+          ban={ban}
+          banPlayerAction={banPlayerAction}
+          liftPlayerBanAction={liftPlayerBanAction}
+        />
+      </div>
 
       {/*
         H133/H128 (auditoría de coherencia 2026-09): regla del dueño #4
@@ -211,7 +230,12 @@ export function JugadorProfileView({
         acá arriba; los 4 KPIs analíticos (regla #1: "ocasionales") bajan al
         final de la ficha.
       */}
-      <section className="card-premium rounded-xl p-6">
+      <section
+        className={cn(
+          'card-premium rounded-xl p-6 lg:col-start-2 lg:row-start-2',
+          fixedSlots.length > 0 ? 'lg:row-span-3' : 'lg:row-span-2',
+        )}
+      >
         <h2 className="text-sm font-semibold text-foreground">Historial de reservas</h2>
         {history.length === 0 ? (
           historyPage > 0 ? (
@@ -293,7 +317,7 @@ export function JugadorProfileView({
         unlinkContactAction={unlinkContactAction}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="col-span-full grid grid-cols-2 gap-3 sm:grid-cols-4">
         {statCards.map((card) => (
           <div
             key={card.label}

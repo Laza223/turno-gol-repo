@@ -99,7 +99,7 @@ el resto de vistas responsive del panel (ej. `GridHeaderBar`).
   ícono halo. `/reservas` pasa a ser full-bleed (`admin-layout-shell.tsx`: la variable que antes
   se llamaba `isGrilla` pasó a `isFullBleed` e incluye la ruta exacta `/reservas`, mismo
   tratamiento de viewport fijo que `/grilla` — `/reservas/[id]` sigue con el layout normal de
-  `max-w-7xl`). Queda un `<h1 className="sr-only">Reservas</h1>` solo para el árbol de
+  `max-w-[1600px]`). Queda un `<h1 className="sr-only">Reservas</h1>` solo para el árbol de
   accesibilidad: el nombre visible de la pantalla lo sigue dando `GrillaTabs` (Grilla|Reservas),
   como en Fase 4.
 - **`ReservasHeaderBar.tsx`** (nuevo, `'use client'`) reemplaza a `ReservasToolbar.tsx` (borrado) y

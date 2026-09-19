@@ -89,7 +89,7 @@ export default async function AbonadosPage(props: {
   const pageOutOfRange = page > 0 && abonados.length === 0
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <ClientesTabs active="/abonados" />
 
       <PageHeader

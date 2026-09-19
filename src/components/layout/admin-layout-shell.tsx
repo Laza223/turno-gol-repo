@@ -43,17 +43,16 @@ export function AdminLayoutShell({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
   const pathname = usePathname()
-  // Grilla y Reservas (lista) comparten el mismo tratamiento de viewport fijo
-  // full-bleed: sin `max-w-7xl` y sin scroll de página propio, cada una
+  // Dos modos de contenedor. Grilla y Reservas (lista) son viewport fijo
+  // full-bleed: sin tope de ancho y sin scroll de página propio, cada una
   // resuelve el scroll adentro (GridScroller / CourtBoard). Comparación
-  // exacta: `/reservas/[id]` sigue con el layout normal (max-w-7xl).
+  // exacta: `/reservas/[id]` sigue con el modo normal.
+  // Todo lo demás es scroll de página normal con tope de 1600 px: el viejo
+  // `max-w-7xl` dejaba ~320 px muertos de cada lado en un monitor de 1920, y
+  // sin tope alguno una fila de lista se estira de punta a punta y el ojo pierde
+  // el renglón. El fondo (`content-area-gradient`) va en el contenedor SIN tope,
+  // no en el `<main>`: si no, el tope dibuja una caja con franjas de otro tono.
   const isFullBleed = pathname === '/grilla' || pathname === '/reservas'
-  // Caja es el tercer modo: scroll de página normal, pero sin el `max-w-7xl`
-  // que en un monitor de 1920 dejaba ~320 px muertos de cada lado. Sus tres
-  // pantallas son listas densas de dos columnas y ese ancho lo pagaban en
-  // scroll. No va full-bleed: pasados los 1600 px una fila de deuda se estira
-  // de punta a punta y el ojo pierde el renglón.
-  const isWide = !isFullBleed && pathname.startsWith('/caja')
 
   function handleSignOut() {
     startTransition(async () => {
@@ -93,7 +92,10 @@ export function AdminLayoutShell({
 
       {/* Main content */}
       <div
-        className={cn('lg:pl-[72px]', isFullBleed && 'h-dvh flex flex-col min-h-0 overflow-hidden')}
+        className={cn(
+          'content-area-gradient lg:pl-[72px]',
+          isFullBleed && 'h-dvh flex flex-col min-h-0 overflow-hidden',
+        )}
       >
         <div
           className={cn(
@@ -118,13 +120,10 @@ export function AdminLayoutShell({
           <main
             id="main-content"
             className={cn(
-              'content-area-gradient mx-auto w-full px-4 sm:px-6 lg:px-8',
+              'mx-auto w-full px-4 sm:px-6 lg:px-8',
               isFullBleed
                 ? 'max-w-full flex-1 flex flex-col min-h-0 overflow-hidden pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-4'
-                : cn(
-                    'pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-3.75rem)]',
-                    isWide ? 'max-w-[1600px]' : 'max-w-7xl',
-                  ),
+                : 'max-w-[1600px] pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-3.75rem)]',
             )}
           >
             {/* Va acá, en flujo y dentro del contenedor de la página, y no como

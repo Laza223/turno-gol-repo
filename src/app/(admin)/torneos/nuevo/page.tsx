@@ -22,7 +22,7 @@ export default async function NuevoTorneoPage() {
   if (role !== 'admin') redirect('/torneos')
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <Link
         href="/torneos"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

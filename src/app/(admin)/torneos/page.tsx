@@ -33,7 +33,7 @@ export default async function TorneosPage() {
   const total = tournaments.length
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Torneos"
         subtitle={total === 1 ? '1 torneo' : `${total} torneos`}
@@ -84,7 +84,7 @@ export default async function TorneosPage() {
           }
         />
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {tournaments.map((t, i) => (
             // Delay capeado: sin cota, en listas largas los últimos ítems quedan
             // invisibles (opacity 0) más de un segundo aunque ya sean focuseables.

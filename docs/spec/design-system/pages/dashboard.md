@@ -12,8 +12,9 @@
 > misma pantalla (todo junto, por equipo, por jugador, cantina, ausente, editar, reprogramar,
 > cancelar), sin navegar a `/reservas/[id]`; (b) el turno terminado sin cobrar deja de ser una
 > alerta y pasa a ser una fila del tablero (una cosa, un lugar); (c) Hoy se refresca solo cada
-> minuto; (d) el Encargado también la ve (checklist y tour siguen siendo del dueño). La columna
-> "Vender" a la derecha llega en un cambio posterior y se documenta cuando entre.
+> minuto; (d) el Encargado también la ve (checklist y tour siguen siendo del dueño); (e) **"Vender"**:
+> la venta de cantina de Caja (el mismo ticket, stock y fiado) queda a mano en una columna fija a
+> la derecha desde 1280 px, y en un diálogo abierto por un botón "Vender" debajo (§2b).
 >
 > **Versión 4 — 2026-09-12 (bajada del handoff de Claude Design).** Cuatro cambios de forma,
 > ninguno de dato: (a) la banda `PageHeader` se fue y la fecha cuelga del hueco de la barra
@@ -89,8 +90,8 @@ propio (el shell ya lo es).
   Grilla. Al hueco NO va un `<h1>`: MASTER §6.8 lo prohíbe explícitamente y es la fila que el
   rediseño del armazón vino a eliminar. El `<h1>Hoy</h1>` sobrevive `sr-only` en el contenido,
   para el esquema de encabezados y los lectores de pantalla.
-- **Sin acciones en el header** (por ahora): el botón "Vender" entra con la columna de venta, en un
-  cambio posterior. Reservar sigue viviendo en la Grilla.
+- **Una sola acción en el header, debajo de `xl`**: el botón "Vender" (§2b). Desde `xl` la venta es
+  una columna y el botón se oculta. Reservar sigue viviendo en la Grilla.
 
 ## §2 "Turnos de hoy" — una columna por cancha
 
@@ -177,6 +178,33 @@ Precio $60.000 · Cobrado $12.000     Pagaron 4 de 10
   pantallas no discrepan) y el cancelar usa `SlotCancelDialog` con sus avisos de reembolso. Marcar
   ausente cierra el modal (el "Deshacer" queda en el aviso).
 - **La cantina no se suma a la cuenta del turno**: se cobra aparte, como siempre.
+
+### 2b. Vender: la venta de Caja, a mano
+
+Componentes: `dashboard/_components/VenderProvider.tsx` (estado + diálogo), `VenderRail.tsx` (la
+columna) y el botón en `HoyHeaderSlot.tsx`. Reusan `TicketPanel` de `/caja/cantina` tal cual —
+mismo stock, mismo ledger, mismo fiado, mismas Server Actions (`sellTicketAction`,
+`createTabAction`) —: **no es una segunda caja**, que era la condición con la que en 2026-09-09 se
+había descartado la venta rápida. El catálogo sale de `listProducts`, en la misma transacción.
+
+- **Desde `xl` (1280 px)**: Hoy pasa a dos columnas, `xl:grid-cols-[minmax(0,1fr)_380px]`. A la
+  derecha, `VenderRail`: `TicketPanel layout="rail"` — UNA columna (catálogo arriba, con techo
+  propio, y el ticket siempre a la vista debajo), **sin foco automático** (el buscador no le
+  roba el foco a quien está cobrando un turno al lado) y sin la barra de cobro pegada abajo del
+  teléfono. Va `sticky`, sin card alrededor (el catálogo y el ticket ya traen filete propio).
+- **Debajo de `xl`**: la columna se oculta por CSS (`hidden xl:block`) y en la barra superior
+  aparece "Vender" (`xl:hidden`), que abre el mismo ticket en un `Dialog` (`layout="dialog"`). Por
+  CSS y no con `useIsDesktop`: ese hook responde `true` en el servidor y durante la hidratación, y
+  haría nacer la columna en el teléfono.
+- **En el teléfono no cambia el orden de lo demás**: la venta nunca se apila arriba ni abajo del
+  tablero.
+- **El diálogo se monta al abrirse** (ticket limpio en cada apertura) y **mientras está abierto la
+  columna no se renderiza**: dos `TicketPanel` a la vez repetirían los ids del buscador y del
+  método de pago. Por eso el estado vive en un proveedor: lo comparten el botón (que cuelga de la
+  barra por un portal), el diálogo y la columna.
+- La venta es para el dueño y el Encargado: Caja es de los dos.
+- **Qué NO hace**: no suma la cantina a la cuenta de un turno (eso sigue siendo "Cantina" adentro
+  del modal del turno, que carga el consumo al turno); la venta suelta es una venta suelta.
 
 ### Refresco automático
 
@@ -326,5 +354,5 @@ pre-Fase 2 de este documento en git. Fase 2 no lo tocó.
    tokens sigue viva en Caja.
 5. **El resumen diario (D8) llega solo al dueño** (`notifyAdminPush(..., { ownerOnly: true })`): trae
    el cobrado y la ocupación de ayer, el mismo tipo de dato que Métricas, que el Encargado no ve.
-6. **Sigue pendiente**: la columna "Vender" (venta rápida con el mismo flujo de Caja) y
-   `/reservas/[id]`, que quedó atrás del modal (su "+ Agregar cobro" no divide por equipo).
+6. **Sigue pendiente**: `/reservas/[id]`, que quedó atrás del modal (su "+ Agregar cobro" no
+   divide por equipo).

@@ -1,8 +1,8 @@
 # Hoy es la pantalla del mostrador: cobrar turnos en un modal, vender al lado, y el Encargado la ve
 
-**Fecha**: 2026-09-19 · **Estado**: en implementación — PR1 (roles) y PR2 (tablero + modal de cobro +
-refresco automático) aplicados; PR3 (columna Vender) pendiente · **Decide**: el dueño (las cuatro
-decisiones de abajo) + esta sesión (cómo)
+**Fecha**: 2026-09-19 · **Estado**: implementada — PR1 (roles), PR2 (tablero + modal de cobro +
+refresco automático) y PR3 (columna Vender) aplicados · **Decide**: el dueño (las cuatro decisiones
+de abajo) + esta sesión (cómo)
 
 ## Origen
 
@@ -67,3 +67,14 @@ camino actual lo saca de la vista y no le da todo lo que necesita en el momento.
 - **Hoy se refresca solo cada 60 s**, salvo con un modal abierto o la pestaña oculta. Un turno cobrado
   desde otro puesto aparece a más tardar al minuto (no hay Realtime en Hoy).
 - **`getStreetMoney` sale de `getHoyData`**: era la query más pesada de Hoy y ya nadie leía su total.
+- **Vender no es una segunda caja**: la columna (desde 1280 px) y el diálogo (debajo) montan el
+  `TicketPanel` de `/caja/cantina` con las mismas Server Actions. Una venta desde Hoy descuenta el
+  mismo stock y entra al mismo ledger que una de Caja. El catálogo se recarga con cada refresco de
+  Hoy (60 s), así que el stock que se ve envejece como mucho un minuto — y cada venta hace
+  además su propio `router.refresh()`.
+- **Un ticket de venta a la vez**: mientras el diálogo de venta está abierto la columna no se
+  renderiza. Consecuencia visible: si alguien achica la ventana con el diálogo abierto, la venta
+  sigue en el diálogo.
+- **El diálogo de venta no se cierra con una venta sin confirmar** (Esc y ✕ quedan bloqueados) y
+  tocar afuera nunca lo cierra. Si la red se corta y no se sabe si la venta entró, el ticket guarda
+  la clave del reintento; desmontarlo la pierde y cobrar de nuevo duplicaría venta, stock y caja.

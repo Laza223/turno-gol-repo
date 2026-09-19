@@ -63,6 +63,7 @@ vi.mock('@/modules/home/home.service', () => ({
   }),
 }))
 vi.mock('@/modules/courts/court.service', () => ({ listCourts: async () => [] }))
+vi.mock('@/modules/canteen/canteen.service', () => ({ listProducts: async () => [] }))
 vi.mock('@/app/(admin)/reservas/queries', () => ({ listDayGridBookings: async () => [] }))
 vi.mock('@/app/(admin)/dashboard/queries', () => ({ getChecklistState: state.getChecklistState }))
 vi.mock('@/app/(admin)/dashboard/actions', () => ({
@@ -86,6 +87,7 @@ vi.mock('@/app/(admin)/reservas/edit-detail-actions', () => ({
 }))
 vi.mock('@/app/(admin)/caja/deudas/actions', () => ({ chargeDebtAction: vi.fn() }))
 vi.mock('@/app/(admin)/caja/cantina/actions', () => ({
+  createTabAction: vi.fn(),
   listCanteenForBookingAction: vi.fn(),
   sellTicketAction: vi.fn(),
 }))
@@ -114,6 +116,15 @@ vi.mock('@/app/(admin)/dashboard/_components/HoyShell', async () => {
   }
 })
 vi.mock('@/app/(admin)/dashboard/HoyHeaderSlot', () => stub('HoyHeaderSlot', 'header'))
+vi.mock('@/app/(admin)/dashboard/_components/VenderRail', () => stub('VenderRail', 'vender'))
+// El proveedor deja pasar lo que envuelve: sin eso desaparecería toda la página.
+vi.mock('@/app/(admin)/dashboard/_components/VenderProvider', async () => {
+  const { createElement, Fragment } = await import('react')
+  return {
+    VenderProvider: (props: { children: React.ReactNode }) =>
+      createElement(Fragment, null, props.children),
+  }
+})
 
 import DashboardPage from '@/app/(admin)/dashboard/page'
 
@@ -154,6 +165,15 @@ describe('Hoy — qué ve cada rol', () => {
 
     expect(state.getChecklistState).not.toHaveBeenCalled()
     expect(screen.queryByTestId('checklist')).toBeNull()
+  })
+
+  it('los dos roles ven la venta: Caja es de los dos', async () => {
+    for (const role of ['admin', 'manager'] as const) {
+      state.role = role
+      const { unmount } = render(await DashboardPage())
+      expect(screen.getByTestId('vender')).toBeInTheDocument()
+      unmount()
+    }
   })
 
   it('al Encargado ni siquiera se le pagan las consultas del checklist', async () => {

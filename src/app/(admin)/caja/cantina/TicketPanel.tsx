@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, useTransition, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Minus, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -65,17 +65,44 @@ const GROUP_FILTERS: { value: GroupFilter; label: string }[] = [
   { value: 'service', label: 'Servicios' },
 ]
 
+/**
+ * Dónde vive el ticket, que decide la forma y nada más — la venta es la misma:
+ *  - `page`: la pantalla Vender de /caja. Catálogo y ticket lado a lado desde
+ *    `md`, ticket `sticky` en `lg`, y en el teléfono una barra de cobro pegada
+ *    abajo.
+ *  - `dialog`: adentro de un diálogo (cantina de un turno, Vender en Hoy bajo
+ *    `xl`). Foco a cargo de Radix, catálogo con techo propio.
+ *  - `rail`: la columna fija de Hoy desde `xl` (380 px). UNA sola columna
+ *    (catálogo arriba, ticket abajo, siempre visible), sin foco automático — el
+ *    buscador no le puede robar el foco a quien está cobrando un turno al lado —
+ *    y sin barra pegada abajo, que no tiene sentido en una columna.
+ */
+export type TicketLayout = 'page' | 'dialog' | 'rail'
+
 export function TicketPanel({
   products,
   sellTicketAction,
   createTabAction,
-  isInDialog,
+  layout = 'page',
+  onUnconfirmedChange,
 }: {
   products: CanteenProductRow[]
   sellTicketAction: SellTicketAction
   createTabAction?: CreateTabAction
-  isInDialog?: boolean
+  layout?: TicketLayout
+  /**
+   * Avisa cuando hay una venta o un fiado que salió y cuya respuesta no volvió (no se
+   * sabe si entró). Quien monta el ticket adentro de algo que se puede cerrar lo usa
+   * para no cerrarlo: el estado de reintento y su clave viven acá, y desmontar el
+   * ticket los pierde — al reabrir, cobrar de nuevo duplicaría venta, stock y caja.
+   */
+  onUnconfirmedChange?: (unconfirmed: boolean) => void
 }) {
+  // Un id por instancia: en Hoy puede haber la columna y el ticket de la cantina de un
+  // turno en el DOM a la vez, y dos `id` iguales rompen la asociación del buscador.
+  const searchId = useId()
+  const isInDialog = layout === 'dialog'
+  const isPage = layout === 'page'
   const router = useRouter()
   const [lines, setLines] = useState<TicketLine[]>([])
   const [method, setMethod] = useState<SaleMethod>('cash')
@@ -91,6 +118,10 @@ export function TicketPanel({
   const saleRetry = sale.retryPayload
   const tabRetry = tab.retryPayload
   const locked = isPending || saleRetry !== null || tabRetry !== null
+  const hasUnconfirmed = saleRetry !== null || tabRetry !== null
+  useEffect(() => {
+    onUnconfirmedChange?.(hasUnconfirmed)
+  }, [hasUnconfirmed, onUnconfirmedChange])
   const [tabDialogOpen, setTabDialogOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -98,10 +129,10 @@ export function TicketPanel({
   // teclado del teléfono apenas entrás y tapa medio catálogo, justo en la
   // pantalla que se usa de pie y tocando. Quien tiene teclado ya está escribiendo.
   useEffect(() => {
-    if (isInDialog) return // adentro del diálogo el foco lo maneja Radix
+    if (!isPage) return // en un diálogo el foco lo maneja Radix; en la columna de Hoy no se roba
     if (typeof window === 'undefined' || !window.matchMedia('(pointer: fine)').matches) return
     searchRef.current?.focus()
-  }, [isInDialog])
+  }, [isPage])
 
   const total = ticketTotal(lines)
   const count = ticketCount(lines)
@@ -229,7 +260,12 @@ export function TicketPanel({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px]">
+      <div
+        className={cn(
+          'grid gap-4',
+          layout !== 'rail' && 'md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px]',
+        )}
+      >
         <div className="flex min-w-0 flex-col gap-3">
           {/* Buscador SIEMPRE, no a partir de 13 productos: con el foco puesto
               acá se vende sin tocar el mouse (escribir + Enter), que es lo que
@@ -243,7 +279,7 @@ export function TicketPanel({
               />
               <Input
                 ref={searchRef}
-                id="ticket-product-search"
+                id={searchId}
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -297,8 +333,11 @@ export function TicketPanel({
             data-testid="canteen-catalog"
             className={cn(
               'min-w-0 divide-y divide-border border-y border-border',
-              !isInDialog && 'lg:max-h-[max(12rem,calc(100dvh-35rem))] lg:overflow-y-auto',
+              isPage && 'lg:max-h-[max(12rem,calc(100dvh-35rem))] lg:overflow-y-auto',
               isInDialog && 'max-h-[40vh] overflow-y-auto',
+              // La columna de Hoy: el catálogo scrollea adentro y el ticket, que va
+              // debajo, queda siempre a la vista.
+              layout === 'rail' && 'max-h-60 overflow-y-auto',
             )}
           >
             {visible.length === 0 ? (
@@ -347,8 +386,8 @@ export function TicketPanel({
         <div
           className={cn(
             'flex-col justify-between rounded-xl border border-border',
-            isInDialog ? 'flex' : 'hidden md:flex',
-            !isInDialog && 'lg:sticky lg:top-4 lg:self-start',
+            isPage ? 'hidden md:flex' : 'flex',
+            isPage && 'lg:sticky lg:top-4 lg:self-start',
           )}
         >
           <div>
@@ -457,7 +496,7 @@ export function TicketPanel({
           pegada arriba de la barra de navegación inferior. Nada se mueve de
           lugar al tocar el primer producto — la barra entra en un espacio que
           antes no ocupaba nadie. */}
-      {!isInDialog && lines.length > 0 && (
+      {isPage && lines.length > 0 && (
         <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-3 space-y-2 border-t border-border bg-card px-4 pb-3 pt-2.5 shadow-[0_-8px_24px_-12px_rgba(2,6,23,.25)] md:hidden">
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 truncate text-sm text-muted-foreground">

@@ -271,7 +271,7 @@ function TeamBlock({
           disabled={disabled}
           // El nombre accesible contiene el texto visible ("Cobrar $24.000"): quien
           // maneja por voz activa el botón diciendo lo que ve (WCAG 2.5.3).
-          aria-label={isPending ? undefined : `Cobrar ${formatArs(total)} al Equipo ${team}`}
+          aria-label={`Cobrar ${formatArs(total)} al Equipo ${team}`}
           className="h-10 shrink-0 rounded-lg bg-primary px-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         >
           {isPending ? 'Procesando…' : `Cobrar ${formatArs(total)}`}

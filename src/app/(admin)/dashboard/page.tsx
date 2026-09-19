@@ -5,6 +5,7 @@ import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { daySlotsFor } from '@/lib/dashboard/day-bookings'
 import { getHoyData } from '@/modules/home/home.service'
 import { listCourts } from '@/modules/courts/court.service'
+import { listProducts } from '@/modules/canteen/canteen.service'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { WhileYouWereAway } from '@/components/dashboard/WhileYouWereAway'
@@ -23,9 +24,15 @@ import {
 } from '@/app/(admin)/reservas/actions'
 import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-actions'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
-import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
+import {
+  createTabAction,
+  listCanteenForBookingAction,
+  sellTicketAction,
+} from '@/app/(admin)/caja/cantina/actions'
 import { HoyHeaderSlot } from './HoyHeaderSlot'
 import { HoyShell } from './_components/HoyShell'
+import { VenderProvider } from './_components/VenderProvider'
+import { VenderRail } from './_components/VenderRail'
 import { getChecklistState } from './queries'
 import {
   markPublicLinkSharedAction,
@@ -67,11 +74,11 @@ export default async function DashboardPage() {
   const now = new Date()
   const date = operatingDateOf(now, cutoffMins)
 
-  const [{ data, courts, dayBookings }, checklistState] = await Promise.all([
+  const [{ data, courts, dayBookings, products }, checklistState] = await Promise.all([
     withTenantContext(tenant.id, async (tx) => {
       // El tablero de turnos sale del MISMO loader que la Grilla (`listDayGridBookings`):
       // el "falta cobrar" de cada fila es el número de la Grilla, del detalle y de Deudas.
-      const [hoy, courtRows, bookingRows] = await Promise.all([
+      const [hoy, courtRows, bookingRows, productRows] = await Promise.all([
         getHoyData(tenant.id, tx, {
           date,
           cutoffMins,
@@ -81,8 +88,10 @@ export default async function DashboardPage() {
         }),
         listCourts(tenant.id, tx),
         listDayGridBookings(tenant.id, date, tx),
+        // El catálogo de la venta (columna y diálogo de "Vender"): el mismo de /caja.
+        listProducts(tenant.id, tx),
       ])
-      return { data: hoy, courts: courtRows, dayBookings: bookingRows }
+      return { data: hoy, courts: courtRows, dayBookings: bookingRows, products: productRows }
     }),
     // El checklist de arranque es solo del dueño: al Encargado no se le pagan sus queries.
     // Y si el dueño ya lo descartó tampoco: Hoy se refresca cada minuto y no tiene
@@ -127,84 +136,97 @@ export default async function DashboardPage() {
   }))
 
   return (
-    <div className="space-y-4">
-      {showTour && <DashboardTour action={markTourSeenAction} />}
+    <VenderProvider
+      products={products}
+      sellTicketAction={sellTicketAction}
+      createTabAction={createTabAction}
+    >
+      {/* Desde `xl` (1280 px) Hoy es de dos columnas: el mostrador a la izquierda y la
+          venta fija a la derecha. Debajo de `xl` la columna se oculta por CSS y la venta
+          pasa al botón "Vender" de la barra superior. En el teléfono el orden de lo demás
+          no cambia: la columna nunca se apila arriba ni abajo. */}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+        <div className="min-w-0 space-y-4">
+          {showTour && <DashboardTour action={markTourSeenAction} />}
 
-      {/* La banda `PageHeader` se fue (rediseño 2026-09-12): el riel ya dice
+          {/* La banda `PageHeader` se fue (rediseño 2026-09-12): el riel ya dice
           "Hoy" y la fecha cuelga del hueco de la barra superior, que es la
           regla del armazón desde MASTER §6.8 y lo que ya hicieron la Grilla y
           Configuración. En 375px eso devuelve ~110px a la primera pantalla.
           El `<h1>` sigue existiendo para lectores de pantalla y para el
           esquema de encabezados: lo que se eliminó es la FILA, no el título. */}
-      <HoyHeaderSlot dateLabel={todayMediumArt(now)} />
-      <h1 className="sr-only">Hoy</h1>
+          <HoyHeaderSlot dateLabel={todayMediumArt(now)} />
+          <h1 className="sr-only">Hoy</h1>
 
-      {/* ORDEN (rediseño 2026-09-12): lo que exige acción va primero y siempre
+          {/* ORDEN (rediseño 2026-09-12): lo que exige acción va primero y siempre
           en el mismo lugar. Antes las alertas quedaban entre dos bloques de
           lectura —lo crítico en el medio, justo lo que MASTER §9 (serial
           position) dice que no—, así que a las 17:00, con el cliente parado en
           el mostrador, el botón de cobrar aparecía después de scrollear el
           tablero entero. Vacío, este bloque mide una línea de 44px y no
           empuja nada. */}
-      <div className="card-entrance">
-        <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
-      </div>
+          <div className="card-entrance">
+            <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
+          </div>
 
-      {showChecklist && checklistState && (
-        <div className="card-entrance" style={{ animationDelay: '60ms' }}>
-          <OnboardingChecklist
-            state={checklistState}
-            tenantSlug={tenant.slug}
-            appUrl={appUrl}
-            action={markPublicLinkSharedAction}
-            onDismiss={markChecklistDismissedAction}
-            staffRole={role}
-          />
-        </div>
-      )}
+          {showChecklist && checklistState && (
+            <div className="card-entrance" style={{ animationDelay: '60ms' }}>
+              <OnboardingChecklist
+                state={checklistState}
+                tenantSlug={tenant.slug}
+                appUrl={appUrl}
+                action={markPublicLinkSharedAction}
+                onDismiss={markChecklistDismissedAction}
+                staffRole={role}
+              />
+            </div>
+          )}
 
-      {/* H010 (auditoría de coherencia, 2026-09-10): acá había tres tarjetas de
+          {/* H010 (auditoría de coherencia, 2026-09-10): acá había tres tarjetas de
           métrica, y dos de ellas —"Cobrado hoy" y "Deudas"— eran el mismo
           componente con el mismo dato que Caja muestra un click más allá. Hoy
           dejó de ser un tablero de números y pasó a ser la pantalla operativa:
           qué falta jugar, qué hay que resolver, y qué pasó sin el dueño. La
           ocupación sobrevive como subtítulo del bloque de turnos, que es el
           único lugar donde ese porcentaje significa algo. */}
-      <div className="card-entrance" style={{ animationDelay: '120ms' }}>
-        <HoyShell
-          bookings={hoyBookings}
-          courts={hoyCourts}
-          daySlots={daySlots}
-          occupancy={numbers.occupancy}
-          dayIsClosed={dayIsClosed}
-          // Solo el dueño puede activar canchas (Configuración es suya).
-          canManageCourts={isAdmin}
-          serverNowMs={now.getTime()}
-          actions={{
-            chargeDebtAction,
-            completeAndChargeBookingAction,
-            addBookingChargeAction,
-            markNoShowAction,
-            revertNoShowAction,
-            listRescheduleSlotsAction,
-            rescheduleBookingAction,
-            cancelBookingAction,
-            releaseBlockAction,
-            editBookingAction,
-            getBookingEditDetailAction,
-          }}
-          canteen={{
-            listCatalogAction: listCanteenForBookingAction,
-            // sellTicketAction toma `unknown` y valida con Zod: el bookingId
-            // extra que le agrega el diálogo entra por el mismo schema.
-            sellTicketAction,
-          }}
-        />
-      </div>
+          <div className="card-entrance" style={{ animationDelay: '120ms' }}>
+            <HoyShell
+              bookings={hoyBookings}
+              courts={hoyCourts}
+              daySlots={daySlots}
+              occupancy={numbers.occupancy}
+              dayIsClosed={dayIsClosed}
+              // Solo el dueño puede activar canchas (Configuración es suya).
+              canManageCourts={isAdmin}
+              serverNowMs={now.getTime()}
+              actions={{
+                chargeDebtAction,
+                completeAndChargeBookingAction,
+                addBookingChargeAction,
+                markNoShowAction,
+                revertNoShowAction,
+                listRescheduleSlotsAction,
+                rescheduleBookingAction,
+                cancelBookingAction,
+                releaseBlockAction,
+                editBookingAction,
+                getBookingEditDetailAction,
+              }}
+              canteen={{
+                listCatalogAction: listCanteenForBookingAction,
+                // sellTicketAction toma `unknown` y valida con Zod: el bookingId
+                // extra que le agrega el diálogo entra por el mismo schema.
+                sellTicketAction,
+              }}
+            />
+          </div>
 
-      <div className="card-entrance" style={{ animationDelay: '180ms' }}>
-        <WhileYouWereAway items={whileYouWereAway} />
+          <div className="card-entrance" style={{ animationDelay: '180ms' }}>
+            <WhileYouWereAway items={whileYouWereAway} />
+          </div>
+        </div>
+        <VenderRail />
       </div>
-    </div>
+    </VenderProvider>
   )
 }

@@ -113,6 +113,44 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
     }
   })
 
+  test('la venta está a mano: columna fija desde 1280 px, botón "Vender" y diálogo debajo', async ({
+    browser,
+    adminStorageState,
+  }) => {
+    const cookies = JSON.parse(adminStorageState).cookies
+
+    // Escritorio ancho: la venta es una columna fija a la derecha y el botón sobra.
+    const wide = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    try {
+      await wide.addCookies(cookies)
+      const page = await wide.newPage()
+      await page.goto('/dashboard', { waitUntil: 'networkidle' })
+      await expect(page.getByRole('complementary', { name: 'Vender' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Vender', exact: true })).toBeHidden()
+    } finally {
+      await wide.close()
+    }
+
+    // Más angosto: sin columna; el botón de la barra superior abre la MISMA venta en un
+    // diálogo. Mientras está abierto la columna no existe (no se duplican los ids).
+    const narrow = await browser.newContext({ viewport: { width: 1024, height: 800 } })
+    try {
+      await narrow.addCookies(cookies)
+      const page = await narrow.newPage()
+      await page.goto('/dashboard', { waitUntil: 'networkidle' })
+      await expect(page.getByRole('complementary', { name: 'Vender' })).toBeHidden()
+      await page.getByRole('button', { name: 'Vender', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Vender' })
+      await expect(dialog).toBeVisible()
+      // La columna sale del DOM mientras el diálogo está abierto (no dos tickets a la vez).
+      await expect(page.getByRole('complementary', { name: 'Vender' })).toHaveCount(0)
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+    } finally {
+      await narrow.close()
+    }
+  })
+
   test('el encargado ve "Hoy", pero no "Métricas": /analiticas lo devuelve a /dashboard', async ({
     browser,
     managerStorageState,

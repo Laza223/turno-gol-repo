@@ -43,9 +43,6 @@ function dateLabelMedium(date: string): string {
  * opt-in (`tenants.settings.daily_summary_email_opt_in`, default false — el
  * push es gratis, el email tiene costo por tenant×día).
  *
- * Destinatario del push: solo el dueño (`ownerOnly`). El resumen trae el cobrado
- * del día y el Encargado no ve Métricas (2026-09-19).
- *
  * Alcance de tenants: `trialing`/`active`/`past_due` — los mismos estados que
  * dejan operar al staff (`BLOCKED_TENANT_STATUSES`/`READ_ONLY_TENANT_STATUSES`
  * en with-tenant.ts excluyen suspended/blocked/churned/deleted/canceled). No
@@ -114,20 +111,15 @@ async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {
   const occupiedLabel = `${data.numbers.occupancy.occupied}/${data.numbers.occupancy.available}`
   const summaryLabel = `${dateLabelMedium(yesterday)}: $${collectedArs} · ${occupiedLabel}`
 
-  await notifyAdminPush(
-    tenant.id,
-    {
-      type: 'daily_summary',
-      // `date` (día que resume, no "hoy") es lo que push.service.ts usa para
-      // construir la dedupeKey — sin esto un reintento de pg-boss del job
-      // push-send duplicaría el resumen visible al admin.
-      date: yesterday,
-      summaryLabel,
-      url: '/dashboard',
-    },
-    // Lleva el cobrado de ayer: el Encargado no ve Métricas, tampoco esto.
-    { ownerOnly: true },
-  )
+  await notifyAdminPush(tenant.id, {
+    type: 'daily_summary',
+    // `date` (día que resume, no "hoy") es lo que push.service.ts usa para
+    // construir la dedupeKey — sin esto un reintento de pg-boss del job
+    // push-send duplicaría el resumen visible al admin.
+    date: yesterday,
+    summaryLabel,
+    url: '/dashboard',
+  })
 
   if (tenant.dailySummaryEmailOptIn) {
     // Post-commit dispatch no es necesario: send-email.worker barre 'queued'

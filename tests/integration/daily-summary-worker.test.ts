@@ -112,30 +112,6 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
     expect(notifs).toHaveLength(0)
   }, 30_000)
 
-  it('el push del resumen (lleva plata) llega al dueño y NO a la suscripción del Encargado', async () => {
-    const sql = getSql()
-    const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
-    const manager = await createTestStaffUser(sql)
-    await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
-    const managerSub = await sql<{ id: string }[]>`
-      INSERT INTO push_subscriptions (tenant_id, staff_user_id, endpoint, p256dh_key, auth_key)
-      VALUES (${tenant.id}, ${manager.id}, ${`https://push.example.com/daily-summary-manager-${crypto.randomUUID()}`}, ${'p256dh-key'}, ${'auth-key'})
-      RETURNING id
-    `
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
-
-    await runDailySummarySweep()
-
-    const owner = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
-    `
-    const mgr = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${managerSub[0]!.id}
-    `
-    expect(owner).toHaveLength(1)
-    expect(mgr).toHaveLength(0)
-  }, 30_000)
-
   it('encola push Y notificación de email cuando el tenant activó el opt-in', async () => {
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(true)

@@ -47,11 +47,9 @@ camino actual lo saca de la vista y no le da todo lo que necesita en el momento.
   desvío conocido y pendiente de unificar, fuera de este cambio.
 - **Un Encargado que llega a `/analiticas`** (link viejo, `/metricas`, `/reportes`) cae en Hoy sin aviso. No
   se agregó un aviso como el de Configuración (H163): `/analiticas` ya no aparece en su navegación.
-- **El push de resumen diario** (`daily-summary.worker.ts`) pasa a llegar solo a las suscripciones del
-  dueño (`notifyAdminPush(..., { ownerOnly: true })`). Es un resumen de rendimiento (cobrado y ocupación de
-  ayer), el mismo tipo de dato que Métricas. El Encargado sigue viendo la plata del día en Caja porque la
-  necesita para operar. Decisión tomada por criterio (el dueño delegó la elección): se revierte con un
-  cambio de una línea si prefiere que le siga llegando.
+- **El push de resumen diario** (`daily-summary.worker.ts`) **sigue llegando también al Encargado**,
+  con el cobrado y la ocupación de ayer. Decisión del dueño (2026-09-19): "sin Métricas" alcanza; el push
+  no se corta. (Se había restringido al dueño por criterio y el dueño lo revirtió.)
 - **Hoy deja de depender de un solo rol**: el estado vacío "Ir a Canchas" apuntaba a una pantalla
   solo-admin. Resuelto en PR2: `TodayBoard` ofrece el link solo al dueño; al Encargado le dice "Pedile al
   dueño que active una".
@@ -63,7 +61,9 @@ camino actual lo saca de la vista y no le da todo lo que necesita en el momento.
   panel sin cambio de comportamiento.
 - **"Equipo 1 ✓" y "Pagaron 4 de 10" son deducciones**, no registros: el sistema no guarda quién pagó
   cada peso (veto de texto libre sobre personas / Ley 25.326). Si alguien paga por el "Equipo 2" primero,
-  el sistema igual le cuenta esa plata al Equipo 1: los totales son correctos, la atribución no.
+  el sistema igual le cuenta esa plata al Equipo 1: los totales son correctos, la atribución no. Aceptado
+  por el dueño (2026-09-19): es una ayuda visual para quien cobra; **lo que quede debiendo se le reclama
+  a quien reservó, nunca a un "Equipo"**, porque no se sabe quiénes son.
 - **Hoy se refresca solo cada 60 s**, salvo con un modal abierto o la pestaña oculta. Un turno cobrado
   desde otro puesto aparece a más tardar al minuto (no hay Realtime en Hoy).
 - **`getStreetMoney` sale de `getHoyData`**: era la query más pesada de Hoy y ya nadie leía su total.

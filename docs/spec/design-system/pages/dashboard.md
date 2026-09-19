@@ -352,7 +352,7 @@ pre-Fase 2 de este documento en git. Fase 2 no lo tocó.
    `src/shared/jobs/workers/daily-summary.worker.ts` y `/settings/avisos` (opt-in de email).
 4. `StatCard` ya no se usa en esta pantalla (se fue con las tarjetas de H010); su deuda de
    tokens sigue viva en Caja.
-5. **El resumen diario (D8) llega solo al dueño** (`notifyAdminPush(..., { ownerOnly: true })`): trae
-   el cobrado y la ocupación de ayer, el mismo tipo de dato que Métricas, que el Encargado no ve.
+5. **El resumen diario (D8) llega al dueño y al Encargado** (decisión del dueño, 2026-09-19): trae el
+   cobrado y la ocupación de ayer.
 6. **Sigue pendiente**: `/reservas/[id]`, que quedó atrás del modal (su "+ Agregar cobro" no
    divide por equipo).

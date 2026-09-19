@@ -7,9 +7,9 @@ import { suppressPushPrompt } from '../_qa/session'
 /**
  * TG-HP-206 — Crear cancha + subir FOTOS a R2 (≤6, upload real).
  * Rol: Admin (dueño) — requireAdminStaffAction en create/update/upload.
- * GAP importante (documentado, no es bug): el uploader de fotos SOLO aparece en
- * modo EDICIÓN (CourtForm.tsx:250-268) — hay que crear la cancha primero y
- * reabrirla en "Editar" para subir fotos.
+ * Este spec cubre el camino de EDICIÓN (fotos que se guardan al elegirlas). Desde
+ * 2026-09-19 el alta también ofrece el uploader: las fotos se eligen en "Nueva
+ * cancha" y se suben al crear (cubierto en tests/unit/court-form-photos.test.tsx).
  * Evidence anchors: src/app/(admin)/canchas/actions.ts:34-91,226-277,
  *   CourtForm.tsx:162-283, CourtList.tsx:128-149.
  */
@@ -102,8 +102,7 @@ test.describe('TG-HP-206 — Crear cancha + subir fotos a R2', () => {
         photos,
         dbWrites:
           'courts (INSERT) + courts.photos (appendCourtPhoto ×3, canchas/actions.ts:266-269)',
-        notes:
-          'Upload real a R2; el uploader de fotos solo existe en modo edición (CourtForm.tsx:250-268).',
+        notes: 'Upload real a R2, camino de edición (las fotos del alta se cubren en unit).',
       })
     } finally {
       await context.close()

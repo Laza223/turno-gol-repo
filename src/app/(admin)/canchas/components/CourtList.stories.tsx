@@ -53,6 +53,19 @@ export const ConCanchas: Story = {
   },
 }
 
+/**
+ * Las canchas del fixture no tienen foto: el aviso de arriba y la marca en cada
+ * cancha son la única señal de que en el perfil público salen como un fondo verde
+ * vacío (nada bloquea crearlas así).
+ */
+export const SinFotos: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Ninguna de tus canchas tiene foto\./)).toBeVisible()
+    await expect(canvas.getAllByRole('button', { name: /Sin foto · agregar/ })).toHaveLength(4)
+  },
+}
+
 export const SinCanchas: Story = {
   args: { initialCourts: [] },
   play: async ({ canvasElement }) => {

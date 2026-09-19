@@ -380,10 +380,7 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
 // TEST 5 — Smoke: edit court shows photos section
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — smoke: edit court photos section', () => {
-  test('existing court edit form renders Fotos section (images only in edit mode)', async ({
-    browser,
-    adminStorageState,
-  }) => {
+  test('existing court edit form renders Fotos section', async ({ browser, adminStorageState }) => {
     const supabase = makeServiceClient()
     const courtId = randomUUID()
     const courtName = `E2E Cancha Photos ${courtId.slice(0, 8)}`
@@ -406,7 +403,7 @@ test.describe('canchas — smoke: edit court photos section', () => {
       await expect(courtCard).toBeVisible({ timeout: 10_000 })
       await courtCard.getByRole('button', { name: /editar/i }).click()
 
-      // Verify the Fotos section is visible (smoke test: section only renders in edit mode).
+      // Verify the Fotos section is visible in the edit form.
       await expect(page.getByText('Fotos')).toBeVisible({ timeout: 10_000 })
     } finally {
       await context.close()

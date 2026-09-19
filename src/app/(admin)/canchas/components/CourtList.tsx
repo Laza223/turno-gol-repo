@@ -3,8 +3,9 @@
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { LandPlot, LayoutGrid, Lock } from 'lucide-react'
+import { ImageOff, LandPlot, LayoutGrid, Lock } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
+import { countCourtsWithoutPhoto } from '@/modules/tenants/setup-gaps'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
 import {
@@ -137,12 +138,26 @@ export function CourtList({
     setShowForm(true)
   }
 
-  function closeForm() {
+  // Las fotos se guardan en la DB apenas se eligen, aunque después se cancele el
+  // form: sin llevarlas a `courts` la lista sigue marcando "sin foto" y "Editar"
+  // reabre con la lista vieja.
+  function closeForm(photos?: string[]) {
+    const editedId = editingCourt?.id
+    if (editedId && photos) {
+      setCourts((prev) => prev.map((c) => (c.id === editedId ? { ...c, photos } : c)))
+    }
     setShowForm(false)
     setEditingCourt(null)
   }
 
   const totalWord = courts.length === 1 ? '1 cancha' : `${courts.length} canchas`
+  const withoutPhoto = countCourtsWithoutPhoto(courts)
+  const withoutPhotoText =
+    withoutPhoto === courts.length
+      ? courts.length === 1
+        ? 'Tu cancha no tiene foto.'
+        : 'Ninguna de tus canchas tiene foto.'
+      : `${withoutPhoto} de ${courts.length} canchas sin foto.`
 
   const header = (
     <PageHeader
@@ -237,17 +252,31 @@ export function CourtList({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {courts.map((court) => (
-            <CourtCard
-              key={court.id}
-              court={court}
-              onEdit={openEdit}
-              isAdmin={isAdmin}
-              toggleStatusAction={toggleStatusAction}
-              getDeactivationImpactAction={getDeactivationImpactAction}
-            />
-          ))}
+        <div className="space-y-3">
+          {/* Nada bloquea crear una cancha sin foto, así que sin este aviso el
+              dueño no se entera de que en el perfil público sale como un fondo
+              verde vacío. Solo el dueño puede arreglarlo (el manager no edita). */}
+          {isAdmin && withoutPhoto > 0 && (
+            <p className="flex items-start gap-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-200">
+              <ImageOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                {withoutPhotoText} Una cancha sin foto sale en tu perfil público como un fondo verde
+                vacío.
+              </span>
+            </p>
+          )}
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {courts.map((court) => (
+              <CourtCard
+                key={court.id}
+                court={court}
+                onEdit={openEdit}
+                isAdmin={isAdmin}
+                toggleStatusAction={toggleStatusAction}
+                getDeactivationImpactAction={getDeactivationImpactAction}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -397,6 +426,16 @@ function CourtCard({
         <p className="text-xs text-muted-foreground tabular-nums">
           {SURFACE_LABELS[court.surfaceType] ?? court.surfaceType} · {court.capacity} jugadores
         </p>
+        {isAdmin && court.photos.length === 0 && (
+          <button
+            type="button"
+            onClick={() => onEdit(court)}
+            className="inline-flex min-h-9 items-center gap-1 rounded-md py-1 text-xs font-medium text-amber-700 hover:underline dark:text-amber-400"
+          >
+            <ImageOff className="h-3.5 w-3.5" aria-hidden="true" />
+            Sin foto · agregar
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 shrink-0">

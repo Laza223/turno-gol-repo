@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   daySlotsFor,
   occupancyForDay,
-  relativeStartLabel,
   rowDisplayName,
   slotHours,
-  upcomingForDay,
   type DayBookingRow,
 } from '@/lib/dashboard/day-bookings'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -16,20 +14,17 @@ import type { OpeningHours } from '@/modules/tenants/tenant.types'
 
 function makeRow(overrides: Partial<DayBookingRow>): DayBookingRow {
   return {
-    id: 'b1',
-    courtName: 'Cancha 1',
     timeStart: '18:00',
     timeEnd: '19:00',
-    status: 'confirmed',
     type: 'spontaneous',
-    depositStatus: 'not_required',
-    depositAmount: 0,
-    guestName: null,
-    playerFirstName: 'Tomás',
-    playerLastName: 'García',
-    priceSnapshot: 2500000,
     ...overrides,
   }
+}
+
+type Named = Parameters<typeof rowDisplayName>[0]
+
+function makeNamed(overrides: Partial<Named>): Named {
+  return { guestName: null, playerFirstName: 'Tomás', playerLastName: 'García', ...overrides }
 }
 
 const HOURS: OpeningHours = {
@@ -100,9 +95,9 @@ describe('daySlotsFor', () => {
 describe('occupancyForDay', () => {
   it('reservas suman horas ocupadas; bloqueos restan oferta', () => {
     const rows = [
-      makeRow({ id: 'a', timeStart: '18:00', timeEnd: '19:00' }),
-      makeRow({ id: 'b', timeStart: '19:00', timeEnd: '21:00' }), // 120 min
-      makeRow({ id: 'c', type: 'block', timeStart: '10:00', timeEnd: '12:00' }),
+      makeRow({ timeStart: '18:00', timeEnd: '19:00' }),
+      makeRow({ timeStart: '19:00', timeEnd: '21:00' }), // 120 min
+      makeRow({ type: 'block', timeStart: '10:00', timeEnd: '12:00' }),
     ]
     // 15 slots × 2 canchas = 30 − 2 bloqueadas = 28 disponibles; 3 ocupadas.
     const occ = occupancyForDay(rows, 15, 2)
@@ -117,76 +112,14 @@ describe('occupancyForDay', () => {
 })
 
 // ---------------------------------------------------------------------------
-// upcomingForDay
-// ---------------------------------------------------------------------------
-
-describe('upcomingForDay', () => {
-  it('filtra jugadas/bloqueos y lo ya terminado; incluye el turno en curso', () => {
-    const rows = [
-      makeRow({ id: 'past', timeStart: '10:00', timeEnd: '11:00' }),
-      makeRow({ id: 'played', timeStart: '11:00', timeEnd: '12:00', status: 'completed' }),
-      makeRow({ id: 'current', timeStart: '15:00', timeEnd: '16:00' }),
-      makeRow({ id: 'later', timeStart: '18:00', timeEnd: '19:00', status: 'pending_payment' }),
-      makeRow({ id: 'block', type: 'block', timeStart: '20:00', timeEnd: '21:00' }),
-    ]
-    const ids = upcomingForDay(rows, '15:30', '08:00', false).map((r) => r.id)
-    expect(ids).toEqual(['current', 'later'])
-  })
-
-  it('madrugada operativa ordena al final (01:00 después de 23:00)', () => {
-    const rows = [
-      makeRow({ id: 'late-night', timeStart: '01:00', timeEnd: '02:00' }),
-      makeRow({ id: 'night', timeStart: '23:00', timeEnd: '24:00' }),
-    ]
-    const ids = upcomingForDay(rows, '22:00', '08:00', true).map((r) => r.id)
-    expect(ids).toEqual(['night', 'late-night'])
-  })
-
-  it("sin closesNextDay no normaliza: '24:00' igual compara bien", () => {
-    const rows = [makeRow({ id: 'night', timeStart: '23:00', timeEnd: '24:00' })]
-    expect(upcomingForDay(rows, '23:30', '08:00', false).map((r) => r.id)).toEqual(['night'])
-  })
-})
-
-// ---------------------------------------------------------------------------
-// relativeStartLabel
-// ---------------------------------------------------------------------------
-
-describe('relativeStartLabel', () => {
-  it("en curso → 'ahora'", () => {
-    expect(
-      relativeStartLabel({ timeStart: '15:00', timeEnd: '16:00' }, '15:30', '08:00', false),
-    ).toBe('ahora')
-  })
-
-  it("arranca dentro de la hora → 'en X min'", () => {
-    expect(
-      relativeStartLabel({ timeStart: '16:00', timeEnd: '17:00' }, '15:20', '08:00', false),
-    ).toBe('en 40 min')
-  })
-
-  it('más de 60 min → null (alcanza la hora absoluta)', () => {
-    expect(
-      relativeStartLabel({ timeStart: '18:00', timeEnd: '19:00' }, '15:30', '08:00', false),
-    ).toBeNull()
-  })
-
-  it('madrugada operativa: 00:30 con apertura 08:00 y flag → en 30 min desde las 24:00', () => {
-    expect(
-      relativeStartLabel({ timeStart: '00:30', timeEnd: '01:30' }, '24:00', '08:00', true),
-    ).toBe('en 30 min')
-  })
-})
-
-// ---------------------------------------------------------------------------
 // rowDisplayName
 // ---------------------------------------------------------------------------
 
 describe('rowDisplayName', () => {
   it('guest primero, después jugador, después fallback', () => {
-    expect(rowDisplayName(makeRow({ guestName: 'Cacho' }))).toBe('Cacho')
-    expect(rowDisplayName(makeRow({}))).toBe('Tomás García')
-    expect(rowDisplayName(makeRow({ playerFirstName: null, playerLastName: null }))).toBe(
+    expect(rowDisplayName(makeNamed({ guestName: 'Cacho' }))).toBe('Cacho')
+    expect(rowDisplayName(makeNamed({}))).toBe('Tomás García')
+    expect(rowDisplayName(makeNamed({ playerFirstName: null, playerLastName: null }))).toBe(
       'Sin nombre',
     )
   })

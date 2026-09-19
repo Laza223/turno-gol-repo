@@ -260,3 +260,39 @@ export const FiltroPorGrupo: Story = {
     ).toHaveLength(0)
   },
 }
+
+/**
+ * La columna de Hoy (`layout="rail"`): 380 px, UNA sola columna. Catálogo arriba y
+ * ticket siempre a la vista debajo — sin depender de un breakpoint —, un solo botón
+ * de cobrar (no hay barra pegada abajo, que en una columna no tiene sentido).
+ */
+export const Columna: Story = {
+  args: { layout: 'rail' },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 380 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    const product = PRODUCTS[0]!
+
+    // El ticket está a la vista sin tocar nada.
+    await expect(canvas.getByText('Buscá o tocá un producto para empezar')).toBeVisible()
+    // Sin foco automático: el buscador no le roba el foco a quien cobra un turno al lado.
+    await expect(canvas.getByRole('searchbox')).not.toHaveFocus()
+
+    await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
+    await expect(canvas.getAllByText('×1')[0]).toBeVisible()
+
+    // UN solo botón de cobrar.
+    await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
+    await waitFor(() =>
+      expect(args.sellTicketAction).toHaveBeenCalledWith(
+        expect.objectContaining({ lines: [{ productId: product.id, qty: 1 }], method: 'cash' }),
+      ),
+    )
+  },
+}

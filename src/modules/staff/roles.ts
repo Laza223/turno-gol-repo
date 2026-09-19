@@ -1,7 +1,7 @@
 // 2 roles fijos de staff (migración 029 quitó 'read_only'). NO es RBAC
 // granular: cada rol mapea a un set cerrado de vistas, sin permisos configurables.
 //   * admin   → acceso total (única que ve Configuración y gestiona Equipo)
-//   * manager → Encargado: grilla + reservas + caja
+//   * manager → Encargado: hoy + grilla + reservas + caja + clientes (sin configuración ni métricas)
 
 export const STAFF_ROLES = ['admin', 'manager'] as const
 
@@ -13,13 +13,15 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
 }
 
 // H070: la descripción del manager listaba solo grilla/reservas/caja y omitía
-// que también entra a Clientes, Torneos (tras su feature flag) y Métricas
-// (reducidas) — settings/layout.tsx bloquea TODO /settings/* (incluida
-// Equipo) con requireAdminStaff, así que "sin acceso a configuración" ya
-// cubre Equipo, no hace falta nombrarla aparte.
+// que también entra a Clientes y Torneos (tras su feature flag) — settings/layout.tsx
+// bloquea TODO /settings/* (incluida Equipo) con requireAdminStaff, así que "sin
+// acceso a configuración" ya cubre Equipo, no hace falta nombrarla aparte.
+// 2026-09-19: el Encargado entra a Hoy (es la pantalla del mostrador) y deja de
+// ver Métricas (son del dueño).
 export const STAFF_ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
   admin: 'Acceso total, incluida la configuración del complejo.',
-  manager: 'Grilla, reservas, caja, clientes, torneos y métricas. Sin acceso a configuración.',
+  manager:
+    'Hoy, grilla, reservas, caja, clientes y torneos. Sin acceso a configuración ni métricas.',
 }
 
 // Al invitar, el rol arranca en Encargado: sumar un admin con acceso total
@@ -53,13 +55,13 @@ export type StaffRoleSpace = {
 }
 
 export const STAFF_ROLE_SPACES: StaffRoleSpace[] = [
-  { label: 'Hoy', adminOnly: true },
+  { label: 'Hoy', adminOnly: false },
   { label: 'Grilla', adminOnly: false },
   { label: 'Caja', adminOnly: false },
   { label: 'Clientes', adminOnly: false },
   { label: 'Canchas', adminOnly: true },
   { label: 'Torneos', adminOnly: false, requiresTournaments: true },
-  { label: 'Métricas', adminOnly: false },
+  { label: 'Métricas', adminOnly: true },
   { label: 'Configuración', adminOnly: true },
 ]
 

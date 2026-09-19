@@ -84,10 +84,7 @@ export function AdminLayoutShell({
       />
 
       {/* Header */}
-      <AdminHeader
-        tenantName={tenantName}
-        homeHref={staffRole === 'admin' ? '/dashboard' : '/grilla'}
-      />
+      <AdminHeader tenantName={tenantName} homeHref="/dashboard" />
 
       {/* Navegación primaria en mobile (Fase 4): reemplaza a la hamburguesa. */}
       <AdminBottomNav

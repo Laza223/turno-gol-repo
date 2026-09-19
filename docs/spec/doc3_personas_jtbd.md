@@ -262,7 +262,7 @@ El "jugador" no es un perfil monolítico. Tiene dos modos de uso:
 |---|:---:|:---:|:---:|
 | Panel Admin - Grilla | ✅ | ✅ | |
 | Panel Admin - Caja | ✅ | ✅ (limitada) | |
-| Panel Admin - Reportes | ✅ | ✅ (sin métricas de sistema) | |
+| Panel Admin - Reportes y métricas | ✅ | | |
 | Panel Admin - Config | ✅ | | |
 | Panel Admin - Abonados (gestión turnos fijos) | ✅ | ✅ | |
 | App - Búsqueda de canchas | | | ✅ |

@@ -56,8 +56,11 @@ const PUBLIC_FILES = ['page.tsx'] as const
 const MOCK_ONLY_ROOTS = ['mock-mp'] as const
 const MOCK_GATE = 'computeMpMockEnabled'
 
-/** Zonas donde el rol `manager` (Encargado) no entra — CLAUDE.md, roles 026. */
-const ADMIN_ONLY_PREFIXES = [join('(admin)', 'settings')] as const
+/**
+ * Zonas donde el rol `manager` (Encargado) no entra — CLAUDE.md, roles 026.
+ * `analiticas` se suma el 2026-09-19: las métricas del negocio son del dueño.
+ */
+const ADMIN_ONLY_PREFIXES = [join('(admin)', 'settings'), join('(admin)', 'analiticas')] as const
 
 /**
  * Guards que sí miran el rol contra `tenant_staff_members`. `extractAuthUser` NO

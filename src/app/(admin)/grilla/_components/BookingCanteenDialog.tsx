@@ -107,7 +107,7 @@ export function BookingCanteenDialog({
         {catalog && (
           <TicketPanel
             products={catalog.products}
-            isInDialog
+            layout="dialog"
             sellTicketAction={(input) => sellTicketAction({ ...input, bookingId })}
           />
         )}

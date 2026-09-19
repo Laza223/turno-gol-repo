@@ -515,7 +515,7 @@ created_at        timestamp     UTC
 ## ENTIDAD 7: StaffUser (Usuario del Sistema)
 
 ### Definición
-Un StaffUser es la persona que administra un Tenant. Hay **2 roles** (Modelo ATC): `admin` (dueño, acceso total; único que conecta MP, edita precios, configuración general, factura y gestiona staff) y `manager` (encargado permisivo: grilla/reservas/caja, reportes y métricas). El gating de acciones sensibles es por **rol** en la capa de aplicación (`requireAdminStaff` / `requireOperatorStaff`), **sin sistema de PIN**.
+Un StaffUser es la persona que administra un Tenant. Hay **2 roles** (Modelo ATC): `admin` (dueño, acceso total; único que conecta MP, edita precios, configuración general, factura y gestiona staff) y `manager` (encargado permisivo: Hoy, grilla/reservas/caja; sin reportes ni métricas, que son del dueño). El gating de acciones sensibles es por **rol** en la capa de aplicación (`requireAdminStaff` / `requireOperatorStaff`), **sin sistema de PIN**.
 
 ### Atributos propios
 ```

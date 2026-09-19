@@ -16,9 +16,9 @@ import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
  * Gate: se mintea sesión para el manager recién invitado (ya provisionado en
  * Supabase Auth por `inviteUserByEmail`, con `app_metadata.role='manager'`
  * seteado por la propia action) y se confirma que `/settings/equipo` y `/settings/*`
- * redirigen a `/dashboard` (`SettingsLayout` + `requireAdminStaff`) — y de ahí,
- * por D5 (Fase 2: "Hoy" es solo del admin), `/dashboard` rebota una segunda vez
- * a `/grilla` para un manager, así que la URL final observada es `/grilla`.
+ * lo rebotan (`SettingsLayout` + `requireAdminStaff`, H163: directo a `/grilla`
+ * con `?notice=`), así que la URL final observada es `/grilla`. "Hoy" ya no
+ * interviene: desde 2026-09-19 es también del Encargado.
  * NO-PLATA: se borra `tenant_staff_members`/`staff_users` del invitado en
  * `finally` (mismo alcance de limpieza que `staff-crud.spec.ts`, que tampoco
  * borra el auth user creado — deuda preexistente, no de este spec).
@@ -103,7 +103,7 @@ test.describe('TG-HP-226 — Equipo: invitar Encargado + gate solo-admin', () =>
         status: 'pass',
         invitedEmail: email,
         dbRow: member,
-        gate: 'manager GET /settings/equipo → /dashboard (requireAdminStaff) → /grilla (D5); manager GET /settings/reservas → /dashboard (SettingsLayout requireAdminStaff) → /grilla (D5)',
+        gate: 'manager GET /settings/equipo → /grilla (SettingsLayout requireAdminStaff, H163); manager GET /settings/reservas → /grilla (SettingsLayout requireAdminStaff, H163)',
       })
     } finally {
       await runSql(

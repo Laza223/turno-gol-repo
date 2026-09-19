@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react'
-import { redirect } from 'next/navigation'
 import { CalendarCheck, ChartLine, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { StatCard } from '@/components/admin/StatCard'
 import { ResponsiveList } from '@/components/ui/responsive-list'
-import { requireOperatorStaff } from '@/modules/staff/guards'
+import { requireAdminStaff } from '@/modules/staff/guards'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { MetricsDashboardLoader } from '@/app/(admin)/analiticas/MetricsDashboardLoader'
 import { getRevenueReport } from '@/modules/reports/report.service'
@@ -57,9 +56,10 @@ function isValidMonth(s: string): boolean {
  * reporte mensual de /reportes (abajo, con navegación mes a mes y export CSV
  * acotado al mes seleccionado).
  *
- * Zona sensible (ingresos visibles): el guard es el `requireOperatorStaff()` de
- * ESTA página (más abajo), no algo del layout de (admin) — el layout solo
- * resuelve `getStaffRole` para el chrome, no corta el acceso. La versión previa
+ * Zona sensible (ingresos visibles), SOLO DEL DUEÑO (2026-09-19): el guard es el
+ * `requireAdminStaff()` de ESTA página (más abajo), no algo del layout de
+ * (admin) — el layout solo resuelve `getStaffRole` para el chrome, no corta el
+ * acceso. La versión previa
  * de este comentario decía "el layout" y antes de eso "va detrás del PinGate"
  * (`PinGate` nunca existió en el repo: el sistema de PIN se eliminó con el modelo
  * de 2 roles). Un comentario que promete una barrera que está en otro lado es
@@ -71,9 +71,9 @@ export default async function AnaliticasPage(props: {
   searchParams: Promise<{ month?: string | string[] }>
 }) {
   const searchParams = await props.searchParams
-  const auth = await requireOperatorStaff()
-  if (!auth.ok) redirect('/login')
-  const { tenant } = auth
+  // El Encargado rebota a /dashboard (default de requireAdminStaff), que ahora
+  // también es suya: no hay loop.
+  const { tenant } = await requireAdminStaff()
 
   const systemAdmin = await resolveSystemAdmin()
   const canSeeSystem = systemAdmin !== null

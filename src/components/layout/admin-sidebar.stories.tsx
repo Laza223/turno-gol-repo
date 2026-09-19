@@ -39,7 +39,6 @@ type Story = StoryObj<typeof meta>
 
 export const RutaDashboard: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
-  // requiresAdmin (D5: "Hoy" es solo del admin) — sin staffRole='admin' el ítem no renderiza.
   args: { staffRole: 'admin' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -62,16 +61,18 @@ export const RutaGrilla: Story = {
 }
 
 /**
- * D5: el manager no tiene "Hoy" — ahí el ítem no existe para él, así que no se
- * muestra. Configuración es otra cosa: existe y está bloqueada, así que se ve
- * con candado (MASTER §6.8) en vez de desaparecer del DOM.
+ * El Encargado ve "Hoy" (es la pantalla del mostrador) pero no "Métricas": ese
+ * ítem no existe para él, así que no se muestra. Configuración es otra cosa:
+ * existe y está bloqueada, así que se ve con candado (MASTER §6.8) en vez de
+ * desaparecer del DOM.
  */
 export const RolManager: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/grilla' } } },
   args: { staffRole: 'manager' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('link', { name: 'Hoy' })).not.toBeInTheDocument()
+    await expect(canvas.getAllByRole('link', { name: 'Hoy' })[0]).toBeInTheDocument()
+    await expect(canvas.queryByRole('link', { name: 'Métricas' })).not.toBeInTheDocument()
     await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toBeInTheDocument()
     // Configuración: visible, no navegable. En el riel el rótulo dice "Ajustes"
     // por ancho, así que el nombre accesible lo da el aria-label completo.

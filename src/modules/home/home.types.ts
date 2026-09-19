@@ -1,11 +1,10 @@
 /**
  * "Hoy" (Fase 2 del contrato v2 — docs/planning/2026-08-01-decisiones-de-fase-v2.md
- * §3): home solo-admin (decisión D5). Taxonomía de alertas cerrada por escrito
+ * §3): home del dueño y del Encargado (D5 la hizo solo-admin; abierta al Encargado
+ * el 2026-09-19). Taxonomía de alertas cerrada por escrito
  * en docs/decisions/2026-08-02-taxonomia-alertas-hoy.md — este módulo es su
  * única implementación, no se agregan alertas nuevas sin pasar por ese doc.
  */
-
-import type { BookingStatus, BookingType, DepositStatus } from '@/modules/bookings/booking.types'
 
 export type HoyData = {
   /** Día operativo (YYYY-MM-DD) sobre el que se arma esta respuesta. */
@@ -13,34 +12,9 @@ export type HoyData = {
   numbers: {
     collectedTodayCents: number
     occupancy: { occupied: number; available: number; blocked: number; pct: number }
-    /** === sumStreetMoney(streetMoneyRows) — misma fuente que /caja y /caja/deudas. */
-    streetMoneyCents: number
   }
   whileYouWereAway: WhileAwayItem[]
   needsAttention: AttentionItem[]
-  /** Lo que falta jugar hoy, una entrada por cancha online. Vacío para el
-   *  worker del resumen diario, que pide AYER: a un día terminado no le queda
-   *  nada por delante. */
-  upcoming: UpcomingCourt[]
-}
-
-/** Una cancha online y los turnos que le quedan por jugar hoy. */
-export type UpcomingCourt = {
-  courtId: string
-  courtName: string
-  turns: UpcomingTurn[]
-}
-
-export type UpcomingTurn = {
-  bookingId: string
-  /** "20:00-21:00" */
-  timeLabel: string
-  /** "ahora" o "en 25 min" cuando arranca dentro de la hora; null si falta mas. */
-  relativeLabel: string | null
-  contactName: string
-  status: BookingStatus
-  type: BookingType
-  depositStatus: DepositStatus
 }
 
 export type WhileAwayItem =
@@ -70,15 +44,6 @@ export type WhileAwayItem =
     }
 
 export type AttentionItem =
-  | {
-      kind: 'unpaid_completed_booking'
-      bookingId: string
-      pendingCents: number
-      since: Date
-      courtName: string
-      timeLabel: string
-      contactName: string
-    }
   | {
       kind: 'failed_deposit'
       paymentId: string

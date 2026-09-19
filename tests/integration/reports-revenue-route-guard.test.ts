@@ -128,10 +128,11 @@ describe('GET /api/reports/revenue — guard de rol + lifecycle (B10)', () => {
     expect(res.headers.get('Content-Type')).toBe('text/csv; charset=utf-8')
   })
 
-  it('deja exportar al encargado: es la misma superficie que /analiticas', async () => {
+  it('rechaza al encargado: la plata del negocio en bloque es del dueño, como /analiticas', async () => {
     asUser(makeStaffUser(managerStaffId))
     const res = await exportRevenue(csvRequest())
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(403)
+    expect(await res.text()).not.toContain('fecha,tipo')
   })
 
   it('sigue rechazando un rango de fechas inválido', async () => {

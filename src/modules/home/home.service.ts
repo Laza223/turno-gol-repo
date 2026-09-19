@@ -1,26 +1,11 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { getDaySummary } from '@/modules/cashflow/cashflow.service'
-import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import { countPendingRefunds } from '@/modules/payments/refund.service'
 import { operatingDayRangeUtc } from '@/shared/time/operating-day'
-import {
-  daySlotsFor,
-  occupancyForDay,
-  relativeStartLabel,
-  rowDisplayName,
-  upcomingForDay,
-  type DayBookingRow,
-} from '@/lib/dashboard/day-bookings'
-import { DAY_KEYS } from '@/lib/booking/grid-cells'
+import { daySlotsFor, occupancyForDay, type DayBookingRow } from '@/lib/dashboard/day-bookings'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import type {
-  HoyData,
-  WhileAwayItem,
-  AttentionItem,
-  UpcomingCourt,
-  UpcomingTurn,
-} from './home.types'
+import type { HoyData, WhileAwayItem, AttentionItem } from './home.types'
 import { sortAttentionItems, sortWhileAwayItems } from './home.lib'
 
 export type GetHoyDataOpts = {
@@ -47,126 +32,33 @@ function contactNameOf(
   return full || 'Sin nombre'
 }
 
-const ART_TZ = 'America/Argentina/Buenos_Aires'
-
-/** Hora de pared ART como 'HH:MM' — el reloj contra el que se decide qué turno
- *  ya pasó. Es el instante real, no el día operativo: a la 01:00 de la
- *  madrugada de un viernes que cierra a las 02:00, "ahora" es la 01:00. */
-function nowHhmmArt(instant: Date): string {
-  return instant.toLocaleTimeString('es-AR', {
-    timeZone: ART_TZ,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-}
-
-/** Hora de apertura del día operativo `date`; '00:00' si ese día está cerrado
- *  (sin horarios no hay turnos, así que el origen del eje da igual). */
-function openHhmmFor(date: string, openingHours: OpeningHours): string {
-  const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!
-  const day = openingHours[dayKey]
-  return day && !day.closed ? day.open.slice(0, 5) : '00:00'
-}
-
 /**
- * Las dos lecturas que salen de la MISMA foto del día: cuánto se ocupó y qué
- * falta jugar. Una sola query de bookings para las dos — hasta 2026-09-10 esta
- * función pedía las mismas filas y tiraba todo menos los horarios.
+ * Cuánto se ocupó el día. Es lo único que Hoy y el worker del resumen diario
+ * (D8) leen de la ocupación: el tablero de turnos ya no sale de acá, lo arma la
+ * pantalla con el loader compartido con la Grilla (`listDayGridBookings`).
  */
-async function getDayBoard(
+async function getOccupancy(
   tenantId: string,
   date: string,
   opts: GetHoyDataOpts,
   tx: DbTx,
-): Promise<{ occupancy: HoyData['numbers']['occupancy']; upcoming: UpcomingCourt[] }> {
+): Promise<HoyData['numbers']['occupancy']> {
   const [bookingRows, courtRows] = await Promise.all([
     tx.execute(sql`
-      SELECT b.id, b.court_id AS "courtId", c.name AS "courtName",
-             b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
-             b.status, b.type, b.deposit_status AS "depositStatus",
-             b.deposit_amount AS "depositAmount", b.guest_name AS "guestName",
-             pl.first_name AS "firstName", pl.last_name AS "lastName"
+      SELECT b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd", b.type
       FROM bookings b
-      JOIN courts c ON c.id = b.court_id AND c.tenant_id = ${tenantId}
-      LEFT JOIN players pl ON pl.id = b.player_id
       WHERE b.tenant_id = ${tenantId} AND b.date = ${date}::date
         AND b.status IN ('confirmed', 'pending_payment', 'completed', 'no_show')
     `),
-    // `created_at` es el MISMO orden con el que la grilla dibuja las columnas
-    // (listCourts, court.service.ts:45): las dos pantallas nombran las canchas
-    // en la misma secuencia, o el dueño tiene que volver a buscar cuál es cuál.
-    tx.execute(
-      sql`SELECT id, name, status FROM courts WHERE tenant_id = ${tenantId} ORDER BY created_at`,
-    ),
+    tx.execute(sql`SELECT status FROM courts WHERE tenant_id = ${tenantId}`),
   ])
 
-  const raw = bookingRows as unknown as Array<{
-    id: string
-    courtId: string
-    courtName: string
-    timeStart: string
-    timeEnd: string
-    status: string
-    type: string
-    depositStatus: string
-    depositAmount: number
-    guestName: string | null
-    firstName: string | null
-    lastName: string | null
-  }>
-
-  const rows: DayBookingRow[] = raw.map((r) => ({
-    id: r.id,
-    courtName: r.courtName,
-    timeStart: r.timeStart,
-    timeEnd: r.timeEnd,
-    status: r.status as DayBookingRow['status'],
-    type: r.type as DayBookingRow['type'],
-    depositStatus: r.depositStatus as DayBookingRow['depositStatus'],
-    depositAmount: r.depositAmount,
-    guestName: r.guestName,
-    playerFirstName: r.firstName,
-    playerLastName: r.lastName,
-    priceSnapshot: 0,
-  }))
-
-  const courts = courtRows as unknown as Array<{ id: string; name: string; status: string }>
-  const online = courts.filter((c) => c.status === 'online')
+  const rows = bookingRows as unknown as DayBookingRow[]
+  const online = (courtRows as unknown as Array<{ status: string }>).filter(
+    (c) => c.status === 'online',
+  )
   const slots = daySlotsFor(date, opts.openingHours, opts.closedDates ?? [], opts.closesNextDay)
-  const occupancy = occupancyForDay(rows, slots.length, online.length)
-
-  const courtIdByBooking = new Map(raw.map((r) => [r.id, r.courtId]))
-  const nowHhmm = nowHhmmArt(new Date())
-  const openHhmm = openHhmmFor(date, opts.openingHours)
-
-  const byCourt = new Map<string, UpcomingTurn[]>()
-  for (const row of upcomingForDay(rows, nowHhmm, openHhmm, opts.closesNextDay)) {
-    const courtId = courtIdByBooking.get(row.id)
-    if (!courtId) continue
-    const turn: UpcomingTurn = {
-      bookingId: row.id,
-      timeLabel: timeLabel(row.timeStart, row.timeEnd),
-      relativeLabel: relativeStartLabel(row, nowHhmm, openHhmm, opts.closesNextDay),
-      contactName: rowDisplayName(row),
-      status: row.status,
-      type: row.type,
-      depositStatus: row.depositStatus,
-    }
-    const list = byCourt.get(courtId)
-    if (list) list.push(turn)
-    else byCourt.set(courtId, [turn])
-  }
-
-  // Las canchas pausadas quedan afuera aunque tengan turnos viejos encima: esta
-  // pantalla dice qué se juega hoy, y en una cancha pausada no se juega.
-  const upcoming: UpcomingCourt[] = online.map((c) => ({
-    courtId: c.id,
-    courtName: c.name,
-    turns: byCourt.get(c.id) ?? [],
-  }))
-
-  return { occupancy, upcoming }
+  return occupancyForDay(rows, slots.length, online.length)
 }
 
 async function getFailedDepositsToday(
@@ -353,9 +245,11 @@ async function getDepositsPaidToday(
 
 /**
  * "Hoy" (Fase 2 — docs/planning/2026-08-01-decisiones-de-fase-v2.md §3):
- * agregador único de la home solo-admin (D5). Reusa getStreetMoney (Fase 1)
- * para "plata en la calle" y para el alert "turno sin cobrar" — nunca
- * recalcula esa cifra, es la garantía de fuente única del contrato.
+ * agregador único de la home (del dueño y del Encargado desde 2026-09-19).
+ * Devuelve los números (cobrado y ocupación), lo que pasó sin el dueño y las
+ * anomalías que exigen una decisión. La lista de turnos NO sale de acá: el
+ * tablero "Turnos de hoy" se arma con el loader compartido con la Grilla, y el
+ * turno terminado sin cobrar vive ahí, no como alerta (una cosa, un lugar).
  *
  * `opts.date` es el día que se está reportando: la pantalla en vivo pasa HOY;
  * el worker de resumen diario (D8) pasa AYER y solo lee `numbers` (alertas y
@@ -370,8 +264,7 @@ export async function getHoyData(
 
   const [
     todaySummary,
-    streetMoneyRows,
-    board,
+    occupancy,
     failedDeposits,
     onlineBookings,
     cancellations,
@@ -379,29 +272,13 @@ export async function getHoyData(
     pendingRefunds,
   ] = await Promise.all([
     getDaySummary(tenantId, date, cutoffMins, tx),
-    getStreetMoney(tenantId, tx),
-    getDayBoard(tenantId, date, opts, tx),
+    getOccupancy(tenantId, date, opts, tx),
     getFailedDepositsToday(tenantId, date, cutoffMins, tx),
     getOnlineBookingsToday(tenantId, date, cutoffMins, tx),
     getCancellationsToday(tenantId, date, cutoffMins, tx),
     getDepositsPaidToday(tenantId, date, cutoffMins, tx),
     countPendingRefunds(tenantId, tx),
   ])
-
-  const unpaidBookingAlerts: AttentionItem[] = streetMoneyRows
-    .filter(
-      (r): r is Extract<typeof r, { origin: 'booking' }> =>
-        r.origin === 'booking' && r.date === date,
-    )
-    .map((r) => ({
-      kind: 'unpaid_completed_booking',
-      bookingId: r.refId,
-      pendingCents: r.pendingCents,
-      since: r.since,
-      courtName: r.courtName,
-      timeLabel: timeLabel(r.timeStart, r.timeEnd),
-      contactName: r.debtorName,
-    }))
 
   // Tenant-wide y sin filtro por fecha, a diferencia de las otras tres: una
   // devolución que el complejo debe desde hace una semana sigue debiéndose hoy.
@@ -418,11 +295,7 @@ export async function getHoyData(
         ]
       : []
 
-  const needsAttention = sortAttentionItems([
-    ...unpaidBookingAlerts,
-    ...failedDeposits,
-    ...refundAlerts,
-  ])
+  const needsAttention = sortAttentionItems([...failedDeposits, ...refundAlerts])
   const whileYouWereAway = sortWhileAwayItems([
     ...onlineBookings,
     ...cancellations,
@@ -435,11 +308,9 @@ export async function getHoyData(
       // B14: `collected` es la cuenta única (cashflow/totals.ts). Nadie lo suma
       // a mano de este lado: el resumen diario y la pantalla leen el mismo valor.
       collectedTodayCents: todaySummary.collected,
-      occupancy: board.occupancy,
-      streetMoneyCents: sumStreetMoney(streetMoneyRows),
+      occupancy,
     },
     whileYouWereAway,
     needsAttention,
-    upcoming: board.upcoming,
   }
 }

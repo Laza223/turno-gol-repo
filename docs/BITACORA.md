@@ -204,3 +204,22 @@ lo que está abierto se consulta en los PRs y el CI, no se escribe acá.
 - **2026-09-18 21:30** `fix/canchas-deshacer-revert-estado-real` — Merge de `origin/main` resuelto y pusheado (`4e295f0a`). El PR quedó `MERGEABLE` y el diff contra main son solo los 2 archivos del fix.
 - **2026-09-18 22:03** `claude/adoring-fermi-37328e` — Las 59 ramas del barrido, el arreglo de BookingCharges y los dos bugs aparte (#345, #346) están en main. Rama remota del barrido borrada y worktree limpio.
 - **2026-09-19 17:16** `fix/ancho-panel-admin` — El panel deja de tener franjas laterales muertas: un solo ancho de 1600 px, fondo sin caja, y las vistas de una columna estirada (Canchas, Torneos, ficha de jugador, Analíticas, Perfil, Horarios) pasan a dos columnas. Hoy queda como estaba.
+- **2026-09-19 17:45** `main` — Árbol principal en `main` al día. Quedan 3 worktrees (el principal, `fix-ancho-panel-admin` de otra sesión y `ui-tonos-v2`), 8 ramas locales, 0 stashes y 8 remotas. El backup está en `C:\Users\Lazar\Documents\backups\turnogol-pre-limpieza-2026-09-19`.
+- **2026-09-19 17:50** `main` — Sin cambios en este turno: el borrado fue denegado.
+- **2026-09-19 18:13** `main` — De 22 directorios bajaron a 5, y esos 5 ya están en borrado paralelo.
+- **2026-09-19 18:24** `main` — Sin stashes y con 3 worktrees. 7 ramas locales: `main`, `archive/stash-1`, `archive/stash-3`, `archive/stash-6`, `demo-recorder-dark`, `ui-tonos` y `test/cobertura-verificada`. Sumo `fix/ancho-panel-admin` de la sesión activa. Remotas: `main`, `ui-tonos`, `turnogol-pendientes` y 5 sin mergear que no toqué (`cranky-bassi`, 3 `verificacion-*` y `sentry-fix/prueba-workflow`). Backup en `C:\Users\Lazar\Documents\backups\turnogol-pre-limpieza-2026-09-19`.
+- **2026-09-19 18:43** `main` — Borré `modest-brattain`. Quedan 2 worktrees (`fix-ancho-panel-admin`, de otra sesión activa, y `TurnoGol-ui-tonos-v2`) y una carpeta vacía bloqueada.
+- **2026-09-19 18:57** `main` — Medí 35 días de transcripts. El consumo es contexto largo (74%) más fan-out de agentes (48% esta semana). Caveman ya está activo y pesa menos de 3%.
+- **2026-09-19 19:16** `main` — Legal, Marketing y Prisma desinstalados y verificados; lo marqué en `~/.claude/backups/tokens-20260919/handoff.md`
+- **2026-09-19 19:31** `main` — Chequeé los dos tokens: el viejo sigue vivo y el secret de GitHub se actualizó hoy a las 16:29; lo anoté en `~/.claude/backups/tokens-20260919/handoff.md`
+- **2026-09-19 19:39** `main` — Busqué el error: no hay causa ni solución publicada; te dejé los pasos a probar
+- **2026-09-19 19:47** `main` — Anoté los dos tokens pendientes ("claude code CLI" y el de ejemplo) en la memoria del proyecto y en `~/.claude/backups/tokens-20260919/handoff.md`, con el chequeo de 401 para cuando se borren
+- **2026-09-19 19:53** `main` — Corrí a mano "DB Migrate (producción)" ([run 35465650534](https://github.com/Laza223/turno-gol-repo/actions/runs/35465650534)): los 10 pasos en verde y no aplicó nada. Lo anoté en la memoria y en el handoff.
+- **2026-09-19 19:57** `main` — Medí la sesión 979f896b: 95,4k al arrancar contra 114k antes; lo anoté en `~/.claude/backups/tokens-20260919/handoff.md`
+- **2026-09-19 20:11** `main` — Medí 35 días de transcripts por hook, bloqueo, skill, agente y archivo de estado; Free Claude Code no dejó nada activo
+- **2026-09-19 20:26** `main` — Probé codebase-memory-mcp: índice del 30 de junio, da ubicaciones viejas; context7 anda solo. Plan de la fase 2 anotado en `~/.claude/backups/tokens-20260919/handoff.md`.
+- **2026-09-19 20:56** `main` — Diagnostiqué la Fase 2: qué vive en el repo del OS, qué en `settings.json` y qué en Lazaro-OS-AI. Repo del OS igual que al arrancar.
+- **2026-09-19 20:57** `main` — Repo del OS verificado idéntico al inicio: 88 tests en verde y presupuesto OK. Nada aplicado en `~/.claude`.
+- **2026-09-19 21:23** `main` — Subí el límite de compactación de 300k a 500k en `~/.claude/settings.json` y lo anoté en el handoff. Rige para las sesiones que abras de ahora en adelante; las que ya están abiertas siguen con 300k.
+- **2026-09-19 21:24** `main` — `global/CLAUDE.md` commiteado (`beb1e05`) y desplegado; el patch de hooks y el script de `settings.json` quedaron listos y probados.
+- **2026-09-19 21:26** `main` — Patch de hooks verificado (86 tests en la copia, 88 en el repo sin tocar), y el gotcha registrado como candidato.

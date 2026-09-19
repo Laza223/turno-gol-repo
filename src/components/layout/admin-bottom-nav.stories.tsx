@@ -50,17 +50,16 @@ export const RolAdmin: Story = {
 }
 
 /**
- * Encargado: sin "Hoy" (D5), el tercer acceso pasa a ser Clientes. No hay
- * ninguna lista aparte — sale solo del orden por frecuencia de `NAV_ITEMS`.
+ * Encargado: ve los mismos tres accesos que el dueño (Hoy · Grilla · Caja). No
+ * hay ninguna lista aparte — sale del orden por frecuencia de `NAV_ITEMS`.
  */
 export const RolManager: Story = {
   args: { staffRole: 'manager' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('link', { name: 'Hoy' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Hoy' })).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Grilla' })).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Caja' })).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Clientes' })).toBeInTheDocument()
   },
 }
 

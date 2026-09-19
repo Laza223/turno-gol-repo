@@ -100,6 +100,96 @@ export function playerShare(priceSnapshot: number, capacity: number | undefined)
   return Math.ceil(priceSnapshot / capacity)
 }
 
+/**
+ * Lo cobrado EN EL MOSTRADOR, sin la seña. Es la regla de `summarizeBookingCharges`
+ * (la seña cuenta solo si está `paid`/`captured`) vista al revés: `totalPaid` la
+ * incluye, y para saber cuánta gente puso plata acá hay que descontarla. Vive
+ * en un solo lugar porque la usan el renglón de estado, "Pagaron 4 de 10" y el
+ * "Equipo 1 ✓" del modal de Hoy — con tres cuentas distintas, tres respuestas.
+ */
+export function counterPaidCents(booking: GridBooking): number {
+  const totalPaid = typeof booking.totalPaid === 'number' ? booking.totalPaid : 0
+  const depositCounted =
+    booking.depositStatus === 'paid' || booking.depositStatus === 'captured'
+      ? (booking.depositAmount ?? 0)
+      : 0
+  return Math.max(0, totalPaid - depositCounted)
+}
+
+export type TeamDues = {
+  /** Lo que le falta al Equipo 1 para completar su mitad. */
+  team1Cents: number
+  /** Lo que le falta al Equipo 2: el resto, que nunca es menor que su mitad. */
+  team2Cents: number
+  team1Paid: boolean
+  team2Paid: boolean
+}
+
+/**
+ * Lo que debe cada equipo, deducido de lo que ya entró en el mostrador.
+ *
+ * La mitad se calcula sobre lo que se le cobra a la gente en el mostrador
+ * (`pending + counterPaid`, o sea precio menos seña) y NO sobre el precio: la
+ * seña ya la puso quien reservó y no es de ningún equipo. Equipo 1 es el primero
+ * que va pagando, así que si ya entró algo (por ejemplo cuatro "Pagó uno") esa
+ * plata se le cuenta a él: le falta solo lo que resta para su mitad, y "Equipo
+ * 1 ✓" aparece recién cuando la completó. Es una deducción, no un registro —
+ * el sistema no guarda quién pagó cada peso (`chargeSplit`).
+ *
+ * `team1Cents + team2Cents === pending` siempre: el modal nunca ofrece cobrar
+ * más de lo que falta.
+ */
+export function teamDues(booking: GridBooking): TeamDues {
+  const pending = typeof booking.pending === 'number' && booking.pending > 0 ? booking.pending : 0
+  const counterPaid = counterPaidCents(booking)
+  const share = halfOfPending(pending + counterPaid)
+  const team1Cents = Math.min(pending, Math.max(0, share - counterPaid))
+  return {
+    team1Cents,
+    team2Cents: pending - team1Cents,
+    team1Paid: share > 0 && counterPaid >= share,
+    team2Paid: share > 0 && pending === 0,
+  }
+}
+
+export type ChargeTab = 'all' | 'teams' | 'players'
+
+/**
+ * Cómo se puede cobrar este turno en el modal de Hoy, y con cuál abrir.
+ *
+ *  - **Todo junto** siempre.
+ *  - **Por equipo** mientras tenga sentido: falta plata y lo cobrado hasta ahora
+ *    no pasó de la mitad — si ya pagaron más que un equipo, "Equipo 2" sería un
+ *    número inventado.
+ *  - **Por jugador** solo si se sabe cuántos entran en la cancha: sin capacidad
+ *    no hay parte que cobrar, y no se inventa un monto.
+ *
+ * Abre en la pestaña que corresponde a lo que ya pasó: si un equipo ya pagó,
+ * en "Por equipo"; si ya pagó parte de la gente, en "Por jugador"; si no pagó
+ * nadie, en "Todo junto". Así el que vuelve al turno retoma donde lo dejó.
+ */
+export function chargeTabs(
+  booking: GridBooking,
+  capacity?: number,
+): { available: ChargeTab[]; initial: ChargeTab } {
+  const pending = typeof booking.pending === 'number' && booking.pending > 0 ? booking.pending : 0
+  const counterPaid = counterPaidCents(booking)
+  const share = halfOfPending(pending + counterPaid)
+  const canTeams = pending > 0 && counterPaid <= share
+  const canPlayers = pending > 0 && playerShare(booking.priceSnapshot, capacity) !== null
+
+  const available: ChargeTab[] = ['all']
+  if (canTeams) available.push('teams')
+  if (canPlayers) available.push('players')
+
+  let initial: ChargeTab = 'all'
+  if (counterPaid > 0) {
+    if (canTeams && counterPaid === share) initial = 'teams'
+    else if (canPlayers) initial = 'players'
+  }
+  return { available, initial }
+}
+
 export type ChargeSplit = {
   /** La mitad de lo que falta. Lo que precarga cada fila de "Dividir pago por equipo". */
   halfCents: number
@@ -138,12 +228,7 @@ export type ChargeSplit = {
  */
 export function chargeSplit(booking: GridBooking, capacity?: number): ChargeSplit {
   const pending = typeof booking.pending === 'number' ? booking.pending : 0
-  const totalPaid = typeof booking.totalPaid === 'number' ? booking.totalPaid : 0
-  const depositCounted =
-    booking.depositStatus === 'paid' || booking.depositStatus === 'captured'
-      ? (booking.depositAmount ?? 0)
-      : 0
-  const counterPaid = Math.max(0, totalPaid - depositCounted)
+  const counterPaid = counterPaidCents(booking)
 
   const halfCents = halfOfPending(pending)
   const shareCents = playerShare(booking.priceSnapshot, capacity)

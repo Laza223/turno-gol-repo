@@ -12,7 +12,6 @@ import {
 } from '../helpers/tenant'
 import { insertBooking, insertCourt } from '../helpers/factories'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
-import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import { getHoyData } from '@/modules/home/home.service'
 import { createAbonado } from '@/modules/abonados/abonado.service'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -52,11 +51,11 @@ const DEFAULT_OPENING_HOURS: OpeningHours = {
 
 /**
  * Fase 2 del contrato (docs/planning/2026-08-01-decisiones-de-fase-v2.md §3):
- * "Hoy" agrega 3 números + 2 listas ("Mientras no estabas"/"Necesita tu
- * atención") sobre datos que YA existen en tablas distintas. Este archivo
- * verifica la taxonomía de alertas (docs/decisions/2026-08-02-taxonomia-alertas-hoy.md)
- * contra código real y que "plata en la calle" nunca se recalcula — se reusa
- * la MISMA getStreetMoney de Fase 1 (criterio de "fuente única").
+ * "Hoy" agrega los números (cobrado y ocupación) + 2 listas ("Mientras no
+ * estabas"/"Necesita tu atención") sobre datos que YA existen en tablas
+ * distintas. Este archivo verifica la taxonomía de alertas
+ * (docs/decisions/2026-08-02-taxonomia-alertas-hoy.md) contra código real. El
+ * turno sin cobrar ya no es alerta (2026-09-19): lo muestra el tablero.
  */
 
 beforeAll(async () => {
@@ -157,21 +156,6 @@ describe('home.service — números de Hoy', () => {
     expect(data.numbers.collectedTodayCents).toBe(100000)
   })
 
-  it('plata en la calle es EXACTAMENTE la de getStreetMoney — nunca se recalcula', async () => {
-    const { tenant } = await seedTenant()
-    const courtId = await insertCourt(getSql(), tenant.id)
-    await insertBooking(getSql(), { tenantId: tenant.id, courtId, status: 'completed' })
-    const today = artDateOf(new Date())
-
-    const [data, directRows] = await Promise.all([
-      withTenantContext(tenant.id, (tx) => getHoyData(tenant.id, tx, hoyOpts(tenant, today))),
-      withTenantContext(tenant.id, (tx) => getStreetMoney(tenant.id, tx)),
-    ])
-
-    expect(data.numbers.streetMoneyCents).toBe(sumStreetMoney(directRows))
-    expect(data.numbers.streetMoneyCents).toBeGreaterThan(0)
-  })
-
   it('occupancy cuenta el turno confirmado de hoy (wiring SQL de getOccupancy, no solo la matemática pura)', async () => {
     const { tenant, courtId } = await seedTenant()
     const today = artDateOf(new Date())
@@ -194,10 +178,10 @@ describe('home.service — números de Hoy', () => {
 })
 
 describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2026-08-02-taxonomia-alertas-hoy.md)', () => {
-  it('turno terminado sin cobrar hoy aparece como P1, con el mismo pendingCents que street-money', async () => {
+  it('un turno terminado sin cobrar YA NO es una alerta: vive en el tablero "Turnos de hoy"', async () => {
     const { tenant, courtId } = await seedTenant()
     const today = artDateOf(new Date())
-    const bookingId = await insertBooking(getSql(), {
+    await insertBooking(getSql(), {
       tenantId: tenant.id,
       courtId,
       status: 'completed',
@@ -208,10 +192,7 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
       getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
     )
 
-    const alert = data.needsAttention.find((a) => a.kind === 'unpaid_completed_booking')
-    expect(alert).toBeDefined()
-    expect((alert as { bookingId: string }).bookingId).toBe(bookingId)
-    expect((alert as { pendingCents: number }).pendingCents).toBe(800000)
+    expect(data.needsAttention).toEqual([])
   })
 
   it('seña rechazada hoy aparece como alerta de seña fallida', async () => {
@@ -270,7 +251,7 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
     expect(data.needsAttention.some((a) => a.kind === 'failed_deposit')).toBe(false)
   })
 
-  it('ordena las alertas por prioridad P1 (turno)→P3 (seña), y por antigüedad DENTRO de la misma prioridad', async () => {
+  it('con un turno sin cobrar y una seña rechazada, solo la seña es alerta', async () => {
     const { tenant, courtId } = await seedTenant()
     const today = artDateOf(new Date())
 
@@ -280,20 +261,7 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
       status: 'pending_payment',
     })
     await insertDepositPayment(tenant.id, failedBookingId, 'rejected')
-    // 2 turnos P1 con horarios distintos — since viene de starts_at
-    // (street-money.service.ts), así que el más temprano debe listarse primero.
-    // Prueba que sortAttentionItems se invoca de verdad: con ≤1 ítem por
-    // categoría el orden de concatenación del código fuente ya "parecía"
-    // correcto sin el sort (hallazgo de la revisión adversarial).
-    const laterBookingId = await insertBooking(getSql(), {
-      tenantId: tenant.id,
-      courtId,
-      status: 'completed',
-      date: today,
-      timeStart: '20:00',
-      timeEnd: '21:00',
-    })
-    const earlierBookingId = await insertBooking(getSql(), {
+    await insertBooking(getSql(), {
       tenantId: tenant.id,
       courtId,
       status: 'completed',
@@ -306,15 +274,7 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
       getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
     )
 
-    expect(data.needsAttention.map((a) => a.kind)).toEqual([
-      'unpaid_completed_booking',
-      'unpaid_completed_booking',
-      'failed_deposit',
-    ])
-    const p1BookingIds = data.needsAttention
-      .filter((a) => a.kind === 'unpaid_completed_booking')
-      .map((a) => (a as { bookingId: string }).bookingId)
-    expect(p1BookingIds).toEqual([earlierBookingId, laterBookingId])
+    expect(data.needsAttention.map((a) => a.kind)).toEqual(['failed_deposit'])
   })
 
   it('sin ninguna anomalía, "Necesita tu atención" queda vacío', async () => {
@@ -434,12 +394,12 @@ describe('home.service — aislamiento entre tenants', () => {
     const { tenant: tenantA, courtId: courtA } = await seedTenant()
     const { tenant: tenantB } = await seedTenant()
     const today = artDateOf(new Date())
-    await insertBooking(getSql(), {
+    const bookingA = await insertBooking(getSql(), {
       tenantId: tenantA.id,
       courtId: courtA,
-      status: 'completed',
-      date: today,
+      status: 'pending_payment',
     })
+    await insertDepositPayment(tenantA.id, bookingA, 'rejected')
 
     const [dataA, dataB] = await Promise.all([
       withTenantContext(tenantA.id, (tx) => getHoyData(tenantA.id, tx, hoyOpts(tenantA, today))),
@@ -448,6 +408,6 @@ describe('home.service — aislamiento entre tenants', () => {
 
     expect(dataA.needsAttention.length).toBeGreaterThan(0)
     expect(dataB.needsAttention).toEqual([])
-    expect(dataB.numbers.streetMoneyCents).toBe(0)
+    expect(dataB.numbers.occupancy.occupied).toBe(0)
   })
 })

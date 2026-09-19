@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { and, eq, sql } from 'drizzle-orm'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import {
   SETTINGS_ADMIN_ONLY_NOTICE,
@@ -9,7 +8,6 @@ import {
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { safeDateParam } from '@/shared/validation/calendar-date'
-import { bookings, players } from '@/shared/db/schema'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import { GrillaView } from './GrillaView'
 import { GrillaTabs } from './GrillaTabs'
@@ -32,15 +30,8 @@ import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-a
 import { createAbonadoAction } from '@/app/(admin)/abonados/actions'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
-import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
-import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { listDayGridBookings } from '@/app/(admin)/reservas/queries'
 import { artTodayStr } from '@/shared/dates/art'
-import type {
-  BookingStatus,
-  BookingType,
-  DepositStatus,
-  PaymentMethodValue,
-} from '@/modules/bookings/booking.types'
 
 export default async function GrillaPage(props: {
   searchParams: Promise<{ date?: string; notice?: string }>
@@ -60,86 +51,19 @@ export default async function GrillaPage(props: {
   // aparece otro motivo de rebote con aviso, se suma acá.
   const showAdminOnlyNotice = searchParams.notice === SETTINGS_ADMIN_ONLY_NOTICE
 
-  const { courts, rawBookings, chargesByBooking } = await withTenantContext(
-    tenant.id,
-    async (tx) => {
-      const [courtList, bookingRows] = await Promise.all([
-        listCourts(tenant.id, tx),
-        tx
-          .select({
-            id: bookings.id,
-            courtId: bookings.courtId,
-            date: bookings.date,
-            timeStart: bookings.timeStart,
-            timeEnd: bookings.timeEnd,
-            status: bookings.status,
-            type: bookings.type,
-            tournamentId: bookings.tournamentId,
-            guestName: bookings.guestName,
-            priceSnapshot: bookings.priceSnapshot,
-            paymentMethod: bookings.paymentMethod,
-            depositStatus: bookings.depositStatus,
-            depositAmount: bookings.depositAmount,
-            // B15: sin created_at la grilla no puede decir cuánto le queda al
-            // hold. Eran 15 columnas y esta no estaba.
-            createdAt: bookings.createdAt,
-            playerFirstName: players.firstName,
-            playerLastName: players.lastName,
-          })
-          .from(bookings)
-          .leftJoin(players, eq(bookings.playerId, players.id))
-          .where(
-            and(
-              eq(bookings.tenantId, tenant.id),
-              sql`${bookings.date} = ${dateStr}::date`,
-              sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
-            ),
-          ),
-      ])
-
-      // Los cobros de mostrador se piden DESPUÉS de saber qué turnos hay: es una
-      // sola query agregada para todo el día, no una por celda.
-      const charges = await sumBookingChargesByBooking(
-        tenant.id,
-        bookingRows.map((r) => r.id),
-        tx,
-      )
-
-      return { courts: courtList, rawBookings: bookingRows, chargesByBooking: charges }
-    },
-  )
-
-  const initialBookings: GridBooking[] = rawBookings.map((r) => {
-    // La alarma "sin cobrar" de Fase 3 necesita plata, no estado: el saldo sale
-    // de la misma función que usa el detalle del turno, así los dos números no
-    // pueden discrepar.
-    const { totalPaid, pending } = summarizeBookingCharges({
-      priceSnapshot: r.priceSnapshot,
-      depositAmount: r.depositAmount,
-      depositStatus: r.depositStatus,
-      chargesTotal: chargesByBooking.get(r.id) ?? 0,
-    })
-    return {
-      id: r.id,
-      courtId: r.courtId,
-      date: (r.date as Date).toISOString().slice(0, 10),
-      timeStart: r.timeStart.slice(0, 5),
-      timeEnd: r.timeEnd.slice(0, 5),
-      status: r.status as BookingStatus,
-      type: r.type as BookingType,
-      tournamentId: r.tournamentId ?? null,
-      guestName: r.guestName ?? null,
-      playerFirstName: r.playerFirstName ?? null,
-      playerLastName: r.playerLastName ?? null,
-      priceSnapshot: r.priceSnapshot,
-      paymentMethod: r.paymentMethod as PaymentMethodValue | null,
-      depositStatus: r.depositStatus as DepositStatus,
-      depositAmount: r.depositAmount,
-      createdAt: r.createdAt,
-      totalPaid,
-      pending,
-    }
+  const { courts, dayBookings } = await withTenantContext(tenant.id, async (tx) => {
+    const [courtList, bookingRows] = await Promise.all([
+      listCourts(tenant.id, tx),
+      listDayGridBookings(tenant.id, dateStr, tx),
+    ])
+    return { courts: courtList, dayBookings: bookingRows }
   })
+
+  // El loader compartido con Hoy trae también los instantes físicos del turno;
+  // la Grilla no los usa y no viajan al cliente (su payload no cambia).
+  const initialBookings: GridBooking[] = dayBookings.map(
+    ({ startsAt: _startsAt, endsAt: _endsAt, ...booking }) => booking,
+  )
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4 h-full">

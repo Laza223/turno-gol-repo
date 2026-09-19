@@ -9,8 +9,8 @@ interface AdminHeaderProps {
   /** Nombre del complejo: era la tarjeta de la barra lateral vieja. */
   tenantName: string
   /**
-   * Destino del logo en mobile (donde el riel no se ve): el espacio "casa"
-   * del rol — `/dashboard` para el dueño, `/grilla` para el encargado.
+   * Destino del logo en mobile (donde el riel no se ve): el espacio "casa" —
+   * `/dashboard` (Hoy) para el dueño y para el encargado.
    */
   homeHref?: string
 }
@@ -22,7 +22,7 @@ interface AdminHeaderProps {
  * {@link AdminHeaderSlot}: ahí cada vista cuelga lo suyo (fecha, pestañas,
  * semana), que es lo que saca cuatro filas de encabezado de la Grilla.
  */
-export function AdminHeader({ tenantName, homeHref = '/grilla' }: AdminHeaderProps) {
+export function AdminHeader({ tenantName, homeHref = '/dashboard' }: AdminHeaderProps) {
   return (
     <header className="fixed inset-x-0 top-0 z-20 flex h-[calc(3.75rem+env(safe-area-inset-top))] items-center gap-4 border-b border-border bg-card px-4 pt-[env(safe-area-inset-top)] sm:px-6 lg:left-[72px]">
       {/* Marca en mobile: acá no hay hamburguesa (Fase 4 — la navegación

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertTriangle, CheckCircle2, Undo2, XCircle } from 'lucide-react'
+import { CheckCircle2, Undo2, XCircle } from 'lucide-react'
 import { TONE_BADGE, TONE_BORDER, TONE_TINT, type StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { formatArs, relativeTimeEs } from '@/lib/format'
@@ -10,58 +10,47 @@ import type { AttentionItem } from '@/modules/home/home.types'
  * literal se mantiene igual a `ATTENTION_EMPTY_COPY` en
  * `@/modules/home/home.lib` a mano; `home.lib.test.ts` es la fuente de
  * verdad que lo verifica contra el contrato. */
-const ATTENTION_EMPTY_COPY = 'Nada pendiente. Todo cobrado y cerrado.'
+const ATTENTION_EMPTY_COPY = 'Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.'
 
 /**
- * Tono por alerta = ESTADO DE LA PLATA, no severidad genérica. Rojo es plata
- * que el complejo tendría que tener y no tiene (turno jugado sin cobrar);
- * ámbar es plata que está trabada en las dos direcciones — la que el complejo
- * debe devolver y la seña que el jugador no llegó a pagar. Antes las tres
- * filas eran idénticas con un ícono ámbar igual para todas, así que la única
- * que exige plata ya no se distinguía de un aviso de higiene.
+ * Tono por alerta = ESTADO DE LA PLATA, no severidad genérica: ámbar es plata
+ * que está trabada en las dos direcciones — la que el complejo debe devolver y
+ * la seña que el jugador no llegó a pagar. El turno jugado sin cobrar (que era
+ * la fila roja) salió de acá el 2026-09-19: se cobra desde el tablero "Turnos
+ * de hoy", que es donde está el cliente esperando en el mostrador.
  */
 const TONE_BY_KIND: Record<AttentionItem['kind'], StatusTone> = {
-  unpaid_completed_booking: 'destructive',
   pending_refunds: 'warning',
   failed_deposit: 'warning',
 }
 
 const ICON_BY_KIND = {
-  unpaid_completed_booking: AlertTriangle,
   failed_deposit: XCircle,
   pending_refunds: Undo2,
 } as const
 
-/** Renglón principal: quién y dónde. El rango horario va aparte para que no se
- *  parta al medio en 375px (`whitespace-nowrap` sobre el `<span>`). */
-function headlineFor(item: AttentionItem): { text: string; timeLabel?: string } {
+/** Renglón principal: quién y dónde, o cuántas devoluciones y por cuánto. */
+function headlineFor(item: AttentionItem): string {
   switch (item.kind) {
-    case 'unpaid_completed_booking':
-      return { text: `${item.contactName} · ${item.courtName}`, timeLabel: item.timeLabel }
     case 'failed_deposit':
-      return { text: `${item.contactName} · ${item.courtName}` }
+      return `${item.contactName} · ${item.courtName}`
     case 'pending_refunds':
-      return {
-        text:
-          item.count === 1
-            ? `1 devolución pendiente · ${formatArs(item.totalCents)}`
-            : `${item.count} devoluciones pendientes · ${formatArs(item.totalCents)}`,
-      }
+      return item.count === 1
+        ? `1 devolución pendiente · ${formatArs(item.totalCents)}`
+        : `${item.count} devoluciones pendientes · ${formatArs(item.totalCents)}`
   }
 }
 
 /**
  * Segundo renglón: qué pasa y DESDE CUÁNDO. `since` ya llegaba en los tres
  * kinds y solo se usaba para ordenar (`sortAttentionItems`); pintarlo es lo
- * que deja ver de un vistazo si el turno sin cobrar es de recién o de hace
- * seis horas, que es exactamente lo que decide si hay que salir a buscar a
- * alguien. Mismo helper que ya usan `/caja/deudas` y `/caja/devoluciones`.
+ * que deja ver de un vistazo si la seña se cayó recién o hace seis horas, que
+ * es lo que decide si hay que llamar al jugador. Mismo helper que ya usan
+ * `/caja/deudas` y `/caja/devoluciones`.
  */
 function subtitleFor(item: AttentionItem, nowMs: number): string {
   const ago = relativeTimeEs(item.since.toISOString(), nowMs)
   switch (item.kind) {
-    case 'unpaid_completed_booking':
-      return `Jugada y sin cobrar · ${ago}`
     case 'failed_deposit':
       return `Seña rechazada · ${ago}`
     case 'pending_refunds':
@@ -71,11 +60,6 @@ function subtitleFor(item: AttentionItem, nowMs: number): string {
 
 function actionFor(item: AttentionItem): { label: string; href: string } {
   switch (item.kind) {
-    case 'unpaid_completed_booking':
-      return {
-        label: `Cobrar ${formatArs(item.pendingCents)}`,
-        href: `/reservas/${item.bookingId}`,
-      }
     case 'failed_deposit':
       return { label: 'Ver reserva', href: `/reservas/${item.bookingId}` }
     // "Gestionar" no decía a dónde llevaba y era el único botón de la pantalla
@@ -158,15 +142,7 @@ export function NeedsAttention({ items, nowMs }: { items: AttentionItem[]; nowMs
               </span>
 
               <div className="min-w-0 flex-[1_1_220px]">
-                <p className="text-sm font-semibold leading-tight text-foreground">
-                  {headline.text}
-                  {headline.timeLabel && (
-                    <>
-                      {' · '}
-                      <span className="whitespace-nowrap tabular-nums">{headline.timeLabel}</span>
-                    </>
-                  )}
-                </p>
+                <p className="text-sm font-semibold leading-tight text-foreground">{headline}</p>
                 <p className="mt-0.5 text-sm text-muted-foreground">{subtitleFor(item, nowMs)}</p>
               </div>
 

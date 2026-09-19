@@ -26,7 +26,7 @@ test.describe('admin login flow (email + password)', () => {
     // el <h1> "Hoy" pasó a ser sr-only en el rediseño del 2026-09-12 (el riel
     // y la barra superior nombran la vista), así que un assert de visibilidad
     // sobre él mediría 1x1 px.
-    await expect(page.getByRole('heading', { name: 'Próximos turnos' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Turnos de hoy' })).toBeVisible()
   })
 
   test('with admin storageState, /dashboard renders', async ({ browser, adminStorageState }) => {
@@ -40,7 +40,7 @@ test.describe('admin login flow (email + password)', () => {
     // el <h1> "Hoy" pasó a ser sr-only en el rediseño del 2026-09-12 (el riel
     // y la barra superior nombran la vista), así que un assert de visibilidad
     // sobre él mediría 1x1 px.
-    await expect(page.getByRole('heading', { name: 'Próximos turnos' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Turnos de hoy' })).toBeVisible()
     await ctx.close()
   })
 

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   chargeSplit,
+  chargeTabs,
+  counterPaidCents,
   halfOfPending,
   playerShare,
+  teamDues,
 } from '@/components/booking/slot-panel/charge-copy'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 
@@ -168,5 +171,137 @@ describe('chargeSplit', () => {
     expect(s.canSplitShare).toBe(false)
     expect(s.note).toBeNull()
     expect(s.halfCents).toBe(0)
+  })
+})
+
+describe('counterPaidCents', () => {
+  it('sin cobros es cero', () => {
+    expect(counterPaidCents(booking())).toBe(0)
+  })
+
+  it('descuenta la seña pagada: no es gente que puso plata en el mostrador', () => {
+    const b = booking({
+      depositStatus: 'paid',
+      depositAmount: 1_800_000,
+      totalPaid: 1_800_000,
+      pending: 4_200_000,
+    })
+    expect(counterPaidCents(b)).toBe(0)
+  })
+
+  it('una seña sin pagar no se descuenta', () => {
+    const b = booking({
+      depositStatus: 'pending',
+      depositAmount: 1_800_000,
+      totalPaid: 600_000,
+      pending: 5_400_000,
+    })
+    expect(counterPaidCents(b)).toBe(600_000)
+  })
+})
+
+describe('teamDues', () => {
+  it('sin cobros, cada equipo debe su mitad y ninguno está saldado', () => {
+    expect(teamDues(booking())).toEqual({
+      team1Cents: 3_000_000,
+      team2Cents: 3_000_000,
+      team1Paid: false,
+      team2Paid: false,
+    })
+  })
+
+  it('la mitad se calcula sobre lo que se cobra en el mostrador, sin la seña', () => {
+    // $60.000, seña $12.000: en el mostrador se cobran $48.000, $24.000 por equipo.
+    const b = booking({
+      depositStatus: 'paid',
+      depositAmount: 1_200_000,
+      totalPaid: 1_200_000,
+      pending: 4_800_000,
+    })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(2_400_000)
+    expect(d.team2Cents).toBe(2_400_000)
+    expect(d.team1Paid).toBe(false)
+  })
+
+  it('con la mitad cobrada, Equipo 1 está ✓ y Equipo 2 debe el resto', () => {
+    const b = booking({ totalPaid: 3_000_000, pending: 3_000_000 })
+    expect(teamDues(b)).toEqual({
+      team1Cents: 0,
+      team2Cents: 3_000_000,
+      team1Paid: true,
+      team2Paid: false,
+    })
+  })
+
+  it('cobros sueltos de jugadores cuentan para el Equipo 1 hasta completar su mitad', () => {
+    // Cuatro "Pagó uno" de $6.000: $24.000 de $60.000. A Equipo 1 le faltan $6.000.
+    const b = booking({ totalPaid: 2_400_000, pending: 3_600_000 })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(600_000)
+    expect(d.team2Cents).toBe(3_000_000)
+    expect(d.team1Paid).toBe(false)
+    expect(d.team1Cents + d.team2Cents).toBe(b.pending)
+  })
+
+  it('todo cobrado: los dos equipos ✓ y nada por cobrar', () => {
+    const b = booking({ totalPaid: 6_000_000, pending: 0 })
+    expect(teamDues(b)).toEqual({
+      team1Cents: 0,
+      team2Cents: 0,
+      team1Paid: true,
+      team2Paid: true,
+    })
+  })
+
+  it('un turno sin costo no tiene equipos saldados ni deudas', () => {
+    const b = booking({ priceSnapshot: 0, totalPaid: 0, pending: 0 })
+    expect(teamDues(b)).toEqual({
+      team1Cents: 0,
+      team2Cents: 0,
+      team1Paid: false,
+      team2Paid: false,
+    })
+  })
+
+  it('lo debido nunca supera lo pendiente, aunque el redondeo de la mitad sobre', () => {
+    const b = booking({ priceSnapshot: 5_000_001, totalPaid: 0, pending: 5_000_001 })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(2_500_001)
+    expect(d.team1Cents + d.team2Cents).toBe(5_000_001)
+  })
+})
+
+describe('chargeTabs', () => {
+  it('sin cobros: las tres formas, abre en "todo junto"', () => {
+    expect(chargeTabs(booking(), F5)).toEqual({
+      available: ['all', 'teams', 'players'],
+      initial: 'all',
+    })
+  })
+
+  it('sin capacidad no hay "por jugador": no se inventa una parte', () => {
+    expect(chargeTabs(booking()).available).toEqual(['all', 'teams'])
+  })
+
+  it('con parte de la gente pagada, abre en "por jugador"', () => {
+    const b = booking({ totalPaid: 2_400_000, pending: 3_600_000 })
+    expect(chargeTabs(b, F5).initial).toBe('players')
+  })
+
+  it('con un equipo pagado (justo la mitad), abre en "por equipo"', () => {
+    const b = booking({ totalPaid: 3_000_000, pending: 3_000_000 })
+    expect(chargeTabs(b, F5).initial).toBe('teams')
+  })
+
+  it('si ya pagó más que un equipo, "por equipo" deja de tener sentido', () => {
+    const b = booking({ totalPaid: 4_200_000, pending: 1_800_000 })
+    expect(chargeTabs(b, F5).available).toEqual(['all', 'players'])
+    expect(chargeTabs(b, F5).initial).toBe('players')
+  })
+
+  it('sin saldo solo queda "todo junto"', () => {
+    const b = booking({ totalPaid: 6_000_000, pending: 0 })
+    expect(chargeTabs(b, F5).available).toEqual(['all'])
   })
 })

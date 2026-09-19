@@ -2,30 +2,21 @@
  * Helpers puros del dashboard admin (pages/dashboard.md §9) — sin imports de DB
  * para que el unit test no arrastre el cliente de Supabase.
  *
- * Convención de tiempos: minutos "del día operativo". Con `closesNextDay`, un
- * horario anterior a la apertura pertenece a la madrugada de la noche en curso
- * y se corre +1440, así '01:00' ordena después de '23:00' y '24:00' (medianoche
- * como fin de slot, ver operating-day.ts) compara bien.
+ * `slotHours` tolera rangos que cruzan medianoche y '24:00' como fin de slot (ver
+ * operating-day.ts). Qué turno terminó y cuál sigue lo decide `today-board.ts`
+ * con los instantes físicos del turno, no con aritmética de strings de hora.
  */
 import { DAY_KEYS, generateTimeSlots } from '@/lib/booking/grid-cells'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
-import type { BookingStatus, BookingType, DepositStatus } from '@/modules/bookings/booking.types'
+import type { BookingType } from '@/modules/bookings/booking.types'
 
+/** Lo que la ocupación necesita saber de un turno del día. */
 export interface DayBookingRow {
-  id: string
-  courtName: string
   /** 'HH:MM' */
   timeStart: string
   /** 'HH:MM' — puede ser '24:00' (slot que termina a medianoche). */
   timeEnd: string
-  status: BookingStatus
   type: BookingType
-  depositStatus: DepositStatus
-  depositAmount: number
-  guestName: string | null
-  playerFirstName: string | null
-  playerLastName: string | null
-  priceSnapshot: number
 }
 
 function timeToMins(hhmm: string): number {
@@ -86,65 +77,14 @@ export function occupancyForDay(
   return { occupied, available, blocked, pct }
 }
 
-/** Minutos normalizados al día operativo (§9): antes de la apertura → +1440. */
-function operatingMins(hhmm: string, openMins: number, closesNextDay: boolean): number {
-  const mins = timeToMins(hhmm)
-  return closesNextDay && mins < openMins ? mins + 24 * 60 : mins
-}
-
-/**
- * Reservas de hoy que faltan jugar (o están en curso): sin bloqueos, solo
- * `confirmed`/`pending_payment`, fin posterior a ahora. Orden cronológico
- * operativo (la madrugada de la noche va al final, como en la grilla).
- */
-export function upcomingForDay(
-  rows: DayBookingRow[],
-  nowHhmm: string,
-  openHhmm: string,
-  closesNextDay: boolean,
-): DayBookingRow[] {
-  const openMins = timeToMins(openHhmm)
-  const nowMins = operatingMins(nowHhmm, openMins, closesNextDay)
-  return rows
-    .filter(
-      (r) =>
-        r.type !== 'block' &&
-        (r.status === 'confirmed' || r.status === 'pending_payment') &&
-        operatingMins(r.timeEnd, openMins, closesNextDay) > nowMins,
-    )
-    .sort(
-      (a, b) =>
-        operatingMins(a.timeStart, openMins, closesNextDay) -
-        operatingMins(b.timeStart, openMins, closesNextDay),
-    )
-}
-
-/**
- * Etiqueta relativa §8.3 para la fila: 'ahora' (en curso), 'en X min' (arranca
- * dentro de la hora), o null (más lejos — alcanza con la hora absoluta).
- */
-export function relativeStartLabel(
-  row: Pick<DayBookingRow, 'timeStart' | 'timeEnd'>,
-  nowHhmm: string,
-  openHhmm: string,
-  closesNextDay: boolean,
-): string | null {
-  const openMins = timeToMins(openHhmm)
-  const now = operatingMins(nowHhmm, openMins, closesNextDay)
-  const start = operatingMins(row.timeStart, openMins, closesNextDay)
-  const end = operatingMins(row.timeEnd, openMins, closesNextDay)
-  if (start <= now && now < end) return 'ahora'
-  const diff = start - now
-  if (diff > 0 && diff <= 60) return `en ${diff} min`
-  return null
-}
-
 /** Nombre a mostrar: guest > jugador > fallback. (Duplicado consciente de
  * BookingCard.bookingDisplayName: aquel vive en un módulo 'use client' y un
  * Server Component no puede importarlo sin romper en runtime.) */
-export function rowDisplayName(
-  row: Pick<DayBookingRow, 'guestName' | 'playerFirstName' | 'playerLastName'>,
-): string {
+export function rowDisplayName(row: {
+  guestName: string | null
+  playerFirstName: string | null
+  playerLastName: string | null
+}): string {
   if (row.guestName) return row.guestName
   const full = [row.playerFirstName, row.playerLastName].filter(Boolean).join(' ')
   return full || 'Sin nombre'

@@ -1,6 +1,17 @@
-import { sql, type SQL } from 'drizzle-orm'
+import { and, eq, sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { depositCashFlowDescription } from '@/modules/bookings/booking.charges'
+import { bookings, players } from '@/shared/db/schema'
+import {
+  depositCashFlowDescription,
+  summarizeBookingCharges,
+} from '@/modules/bookings/booking.charges'
+import type {
+  BookingStatus,
+  BookingType,
+  DepositStatus,
+  PaymentMethodValue,
+} from '@/modules/bookings/booking.types'
+import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { RefundState } from './deposit-display'
 
 export type ReservaListRow = {
@@ -461,4 +472,99 @@ export async function sumBookingChargesByBooking(
   `)
   const list = rows as unknown as { bookingId: string; total: number }[]
   return new Map(list.map((r) => [r.bookingId, r.total]))
+}
+
+/** Un turno del día tal como lo dibujan la grilla y Hoy, más sus instantes físicos. */
+export type DayGridBooking = GridBooking & {
+  /** `bookings.starts_at` — fuente de "ya empezó / falta X". */
+  startsAt: Date
+  /** `bookings.ends_at` — fuente de "ya terminó": el mismo instante que valida el servidor. */
+  endsAt: Date
+}
+
+/**
+ * Todos los turnos del día operativo `date` con su saldo, para la Grilla y para
+ * Hoy. Una sola definición: los dos números de "falta cobrar" salen de
+ * `summarizeBookingCharges` sobre la misma query agregada de cobros, así que no
+ * pueden discrepar entre pantallas ni con el detalle (`/reservas/[id]`) o Deudas.
+ *
+ * La Grilla descarta `startsAt`/`endsAt` (su payload queda idéntico al de antes);
+ * Hoy los necesita para decidir qué turno terminó sin adivinar con la hora de
+ * pared (`slotHasPassed` se equivoca con `24:00` y con los slots de madrugada).
+ */
+export async function listDayGridBookings(
+  tenantId: string,
+  date: string,
+  tx: DbTx,
+): Promise<DayGridBooking[]> {
+  const rows = await tx
+    .select({
+      id: bookings.id,
+      courtId: bookings.courtId,
+      date: bookings.date,
+      timeStart: bookings.timeStart,
+      timeEnd: bookings.timeEnd,
+      startsAt: bookings.startsAt,
+      endsAt: bookings.endsAt,
+      status: bookings.status,
+      type: bookings.type,
+      tournamentId: bookings.tournamentId,
+      guestName: bookings.guestName,
+      priceSnapshot: bookings.priceSnapshot,
+      paymentMethod: bookings.paymentMethod,
+      depositStatus: bookings.depositStatus,
+      depositAmount: bookings.depositAmount,
+      // B15: sin created_at la grilla no puede decir cuánto le queda al hold.
+      createdAt: bookings.createdAt,
+      playerFirstName: players.firstName,
+      playerLastName: players.lastName,
+    })
+    .from(bookings)
+    .leftJoin(players, eq(bookings.playerId, players.id))
+    .where(
+      and(
+        eq(bookings.tenantId, tenantId),
+        sql`${bookings.date} = ${date}::date`,
+        sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+      ),
+    )
+
+  // Los cobros de mostrador se piden DESPUÉS de saber qué turnos hay: es una
+  // sola query agregada para todo el día, no una por celda.
+  const charges = await sumBookingChargesByBooking(
+    tenantId,
+    rows.map((r) => r.id),
+    tx,
+  )
+
+  return rows.map((r) => {
+    const { totalPaid, pending } = summarizeBookingCharges({
+      priceSnapshot: r.priceSnapshot,
+      depositAmount: r.depositAmount,
+      depositStatus: r.depositStatus,
+      chargesTotal: charges.get(r.id) ?? 0,
+    })
+    return {
+      id: r.id,
+      courtId: r.courtId,
+      date: (r.date as Date).toISOString().slice(0, 10),
+      timeStart: r.timeStart.slice(0, 5),
+      timeEnd: r.timeEnd.slice(0, 5),
+      startsAt: r.startsAt,
+      endsAt: r.endsAt,
+      status: r.status as BookingStatus,
+      type: r.type as BookingType,
+      tournamentId: r.tournamentId ?? null,
+      guestName: r.guestName ?? null,
+      playerFirstName: r.playerFirstName ?? null,
+      playerLastName: r.playerLastName ?? null,
+      priceSnapshot: r.priceSnapshot,
+      paymentMethod: r.paymentMethod as PaymentMethodValue | null,
+      depositStatus: r.depositStatus as DepositStatus,
+      depositAmount: r.depositAmount,
+      createdAt: r.createdAt,
+      totalPaid,
+      pending,
+    }
+  })
 }

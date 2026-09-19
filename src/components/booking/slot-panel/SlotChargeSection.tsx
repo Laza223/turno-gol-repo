@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type FocusEvent, type MouseEvent } from 'react'
+import { useState } from 'react'
 import {
   newChargeLine,
   SplitPaymentFields,
@@ -9,6 +9,7 @@ import {
 import { formatArs } from '@/lib/format'
 import type { MethodKey } from '@/lib/payment-method'
 import { chargeCta, type ChargeMode, type ChargeSplit } from './charge-copy'
+import { selectAllOnFocus, selectAllOnMouseDown } from './select-all-on-focus'
 
 /**
  * Tope de líneas del cobro. Es el MENOR de los tres schemas Zod que puede
@@ -125,44 +126,6 @@ export function SlotChargeSection({
   function setTeamLines(team: 1 | 2, next: ChargeLine[]) {
     const tagged = next.map((l) => ({ ...l, team }))
     onLinesChange(team === 1 ? [...tagged, ...teams[1]] : [...teams[0], ...tagged])
-  }
-
-  /**
-   * Diagnóstico Stream D (2026-09-15): editar EN EL SITIO un valor ya
-   * agrupado en miles ("24.000" + una tecla al final, único lugar donde puede
-   * estar el caret) lo corrompe — `money.ts` reinterpreta el separador de
-   * miles ya escrito como coma decimal. Seleccionar todo el texto al enfocar
-   * hace que la PRIMERA tecla reemplace el valor entero: el admin vuelve a
-   * escribir el monto en vez de "corregirlo" por el medio, que es la única
-   * operación que rompe el parser. Vía delegación de foco/mouse de React
-   * (bubblean desde React 17): no toca `money-input.tsx` ni
-   * `SplitPaymentFields.tsx`, que quedan fuera de este alcance.
-   *
-   * `onFocus` solo no alcanza en un click real: el navegador posiciona el
-   * caret en el punto tocado como parte del propio `mousedown` (ANTES de que
-   * el `focus` corra `.select()`), así que la selección queda pisada por el
-   * click que la originó — medido con Storybook en Chromium real (el unit
-   * test con `fireEvent.focus` no lo agarra porque no simula el mousedown).
-   * Frenar ese `mousedown` con `preventDefault` cuando el campo TODAVÍA no
-   * estaba enfocado, y enfocarlo a mano, evita que el navegador llegue a
-   * poner el caret — un click posterior con el campo YA enfocado no entra acá
-   * y reposiciona el caret con normalidad (corregir un dígito puntual).
-   */
-  function selectAllOnMouseDown(e: MouseEvent<HTMLDivElement>) {
-    const target = e.target
-    if (
-      target instanceof HTMLInputElement &&
-      target.type === 'text' &&
-      document.activeElement !== target
-    ) {
-      e.preventDefault()
-      target.focus()
-    }
-  }
-
-  function selectAllOnFocus(e: FocusEvent<HTMLDivElement>) {
-    const target = e.target
-    if (target instanceof HTMLInputElement && target.type === 'text') target.select()
   }
 
   return (

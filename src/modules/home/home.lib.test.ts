@@ -3,15 +3,6 @@ import { sortAttentionItems, sortWhileAwayItems, ATTENTION_EMPTY_COPY } from './
 import type { AttentionItem, WhileAwayItem } from './home.types'
 
 describe('sortAttentionItems', () => {
-  const booking: AttentionItem = {
-    kind: 'unpaid_completed_booking',
-    bookingId: 'b1',
-    pendingCents: 1000,
-    since: new Date('2026-08-02T10:00:00Z'),
-    courtName: 'Cancha 1',
-    timeLabel: '10:00-11:00',
-    contactName: 'Juan',
-  }
   const deposit: AttentionItem = {
     kind: 'failed_deposit',
     paymentId: 'p1',
@@ -28,23 +19,19 @@ describe('sortAttentionItems', () => {
     since: new Date('2026-08-01T00:00:00Z'),
   }
 
-  it('ordena por prioridad P1 (turno sin cobrar) antes que P2 (devolución pendiente) antes que P3 (seña fallida), sin importar el orden de entrada', () => {
-    const sorted = sortAttentionItems([deposit, refund, booking])
-    expect(sorted.map((i) => i.kind)).toEqual([
-      'unpaid_completed_booking',
-      'pending_refunds',
-      'failed_deposit',
-    ])
+  it('devolución pendiente (P1) antes que seña fallida (P2), sin importar el orden de entrada', () => {
+    const sorted = sortAttentionItems([deposit, refund])
+    expect(sorted.map((i) => i.kind)).toEqual(['pending_refunds', 'failed_deposit'])
   })
 
   it('dentro de la misma prioridad, ordena por antigüedad ascendente (más vieja primero)', () => {
-    const booking2: AttentionItem = {
-      ...booking,
+    const deposit2: AttentionItem = {
+      ...deposit,
       bookingId: 'b3',
       since: new Date('2026-08-02T08:00:00Z'),
     }
-    const sorted = sortAttentionItems([booking, booking2])
-    expect(sorted.map((i) => (i as { bookingId: string }).bookingId)).toEqual(['b3', 'b1'])
+    const sorted = sortAttentionItems([deposit, deposit2])
+    expect(sorted.map((i) => (i as { bookingId: string }).bookingId)).toEqual(['b3', 'b2'])
   })
 
   it('lista vacía da lista vacía', () => {
@@ -76,6 +63,8 @@ describe('sortWhileAwayItems', () => {
 
 describe('ATTENTION_EMPTY_COPY', () => {
   it('es el copy exacto del contrato', () => {
-    expect(ATTENTION_EMPTY_COPY).toBe('Nada pendiente. Todo cobrado y cerrado.')
+    expect(ATTENTION_EMPTY_COPY).toBe(
+      'Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.',
+    )
   })
 })

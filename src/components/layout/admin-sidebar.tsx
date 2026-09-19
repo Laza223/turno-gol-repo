@@ -73,7 +73,7 @@ export interface NavItem {
  * ninguna ruta se movió, sólo dejaron de ser ítems de primer nivel.
  */
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Hoy', requiresAdmin: true },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Hoy' },
   {
     href: '/grilla',
     icon: CalendarDays,
@@ -93,7 +93,9 @@ const NAV_ITEMS: NavItem[] = [
   // enterrada a dos niveles. Sigue siendo solo del dueño.
   { href: '/canchas', icon: LandPlot, label: 'Canchas', requiresAdmin: true, alertKey: 'courts' },
   { href: '/torneos', icon: Trophy, label: 'Torneos', requiresTournaments: true },
-  { href: '/analiticas', icon: ChartLine, label: 'Métricas' },
+  // Solo del dueño (2026-09-19): las métricas del negocio son sensibles y el
+  // Encargado opera el día a día, no lo mira.
+  { href: '/analiticas', icon: ChartLine, label: 'Métricas', requiresAdmin: true },
 ]
 
 /**
@@ -279,7 +281,7 @@ function SidebarRail({
   return (
     <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[72px] flex-col items-center gap-1 border-r border-border bg-card py-3">
       <Link
-        href={staffRole === 'admin' ? '/dashboard' : '/grilla'}
+        href="/dashboard"
         aria-label="TurnoGol"
         className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >

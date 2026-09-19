@@ -1,6 +1,8 @@
 'use client'
 
+import { ShoppingBag } from 'lucide-react'
 import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
+import { useVender } from './_components/VenderProvider'
 
 /**
  * Lo único que Hoy le pide al armazón: el día operativo en el hueco de la
@@ -19,9 +21,20 @@ import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
  * lectores de pantalla queda en el contenido.
  */
 export function HoyHeaderSlot({ dateLabel }: { dateLabel: string }) {
+  const { setOpen } = useVender()
   return (
     <AdminHeaderSlot>
       <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{dateLabel}</p>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        // Solo el ícono en el teléfono: con el logo y el menú de tema a los costados, un botón
+        // con texto le dejaba a la fecha ~25 px y la aplastaba. El nombre accesible es el mismo.
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto sm:px-3.5 md:h-10 xl:hidden"
+      >
+        <ShoppingBag aria-hidden className="h-4 w-4" />
+        <span className="max-sm:sr-only">Vender</span>
+      </button>
     </AdminHeaderSlot>
   )
 }

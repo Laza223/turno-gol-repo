@@ -62,14 +62,12 @@ Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → 
 - `tenant_status` (8): trialing, active, past_due, suspended, blocked, canceled, churned, deleted. `player_status`: active, banned (ban global del sistema), anonymized (ARCO Ley 25.326) — bans per-tenant van en `tenant_player_bans`. `court_status`: `online` | `offline`.
 - **Turno de 60 min fijo** (`SLOT_DURATION_MINUTES`, `src/shared/constants.ts`) para la reserva online y la reprogramación (`assertSlotDuration`). **Excepción del staff**: desde la grilla se agenda un **evento de N horas enteras** (`type='spontaneous'`, `assertWholeHours`) con precio total = suma de la tarifa de cada hora, editable o 0 ("No se cobra"); un `block` nunca carga plata. Decisión: `docs/decisions/2026-09-14-alta-grilla-modal-unico-y-reservas-por-cancha.md`. El campo configurable `booking_duration_minutes` se eliminó (dead code). Precios por cancha: JSONB con puntos de corte horarios, **un precio por franja** — no hay precio por duración.
 - **Día operativo** (`tenants.closes_next_day`): para complejos que cierran pasada la medianoche, `bookings.date` es el día OPERATIVO, no el calendario; el slot 23:00→00:00 se guarda con `time_end='24:00'`. Helpers en `src/shared/time/operating-day.ts`, consumidos por TODOS los generadores de slots — nunca reimplementar esa aritmética.
-- **Día operativo en caja/cantina/métricas**: criterio DISTINTO al de bookings — cutoff ÚNICO por tenant (`nightCutoffMins`), no por día de semana, usado por las lecturas (`getCashFlows`/`getDaySummary`). `src/modules/reports/` sigue en UTC calendario puro (fuera de alcance, documentado). Decisión original: `docs/decisions/2026-07-24-caja-cantina-dia-operativo.md`. **"Caja del día" (apertura/cierre/arqueo) se eliminó** — `daily_cash_opens`/`daily_cash_closes` quedan con datos históricos sin UI ni escritura desde código de aplicación, nunca reinterpretar esas filas. Ningún movimiento de plata se bloquea por "caja cerrada". Decisión: `docs/decisions/2026-09-11-eliminar-caja-del-dia.md`
-- **Caja son 3 destinos colgados del `AdminHeaderSlot`, no 4 pestañas en el cuerpo**: `/caja` es **Vender** (catálogo como lista con buscador, ticket, los últimos 3 movimientos y una línea de aviso de fiados — nada agregado: ni totales ni lista de fiados; los fiados se cobran en Cuentas), `/caja/cuentas` es el libro del dueño (Deudas y Devolvés como dos listas que NUNCA se netean — Devolvés solo existe con filas —, y el diario del día con lo cobrado hoy) y `/caja/productos` es lo semanal (catálogo + informe desplegado al lado, ledger de stock plegado y paginado). Superficies planas sin card, a 1600 px. `/caja/deudas`, `/caja/devoluciones` y `/caja/cantina` son redirects de compat; sus componentes y Server Actions siguen viviendo en esas carpetas. Spec: `docs/spec/design-system/pages/caja.md` v3.0 · Decisiones: `docs/decisions/2026-09-12-rediseno-caja-tres-destinos.md`, `docs/decisions/2026-09-17-caja-densidad-y-espacio.md`
-- **`DaySummary` trae DOS desgloses por método y el equivocado no rompe nada**: `byMethod` es neto (sus partes suman `balance`) y `collectedByMethod` excluye egresos (suman `collected`). Adentro de una card que dice "Cobrado hoy" va el segundo; el primero contesta "cuánto quedó", no "cuánto entró y por dónde".
+- **Caja y cantina**: el día operativo de caja usa un cutoff propio por tenant (distinto al de bookings), `/caja` son 3 destinos y `DaySummary` trae dos desgloses por método. Detalle: regla `.claude/rules/caja.md` (se carga sola al tocar caja).
 - **Instantes físicos**: `bookings.starts_at`/`ends_at` (TIMESTAMPTZ) = fuente única para lógica fuerte ("ya pasó / falta X"); `date` + `time_start`/`time_end` son día operativo y display.
-- **`staff_role` tiene 2 roles** (migr. 029 quitó `read_only`): `admin` (dueño, acceso total) y `manager` (Encargado: grilla, reservas, caja, jugadores). **El manager NO accede a Configuración ni a gestión de Equipo**; ve `/metricas` pero sin las métricas de sistema. Sin sistema de PIN. El bloqueo de Configuración es de `settings/layout.tsx` (`requireAdminStaff()`) y cubre las 6 pestañas por igual, **sin excepción en Canchas**: `settings/canchas/page.tsx` usa `requireOperatorStaff()` a nivel de página, pero ese guard nunca llega a correr — el del layout redirige antes de que la página se renderice (H163, auditoría de coherencia 2026-09).
+- **`staff_role` tiene 2 roles**: `admin` (dueño) y `manager` (Encargado: grilla, reservas, caja, jugadores). El manager NO entra a Configuración ni a Equipo. Detalle: `.claude/rules/staff-roles.md`.
 - Auth staff: email+password. Jugador: passwordless (Magic Link). SuperAdmin: `seed:system-admin` + allowlist `SYSTEM_ADMIN_EMAILS` (MFA TOTP: columnas en schema, **aún NO enforced** en los guards). La identidad sale del JWT (`app_metadata`), no del método de login.
 - Seña: configurable por complejo (`settings.requires_deposit` + `settings.deposit_percentage`, default 30). Sin modo garantía. Anticipación de reserva: `settings.booking_advance_days`, default 6.
-- **Precio del SaaS: lineal por cancha** (decisión 2026-09-17). $47.000 la primera cancha + $30.000 por cada extra, por mes, **sin techo**; anual = 10% off. `plans` tiene **una sola fila activa** (`slug='turnogol'`, `max_courts` NULL) con `price_first_court_cents`/`price_extra_court_cents`/`annual_discount_bps`; las 3 filas viejas quedan `is_active=false`. El monto NO sale de una columna: lo calcula `src/modules/billing/pricing.ts` sobre `tenant_subscriptions.billed_courts`, que es la cantidad de canchas cargada en el preapproval de MP (no "las canchas que tiene hoy"). No hay techo de canchas: sumar una cancha se confirma y se cobra **desde el próximo mes**, nunca prorrateado. La página pública `/precios` sigue **congelada** con los 3 planes viejos a propósito (`plans-data.ts` es un snapshot de marketing, NO se sincroniza con la tabla).
+- **Precio del SaaS: lineal por cancha** (decisión 2026-09-17): $47.000 la primera + $30.000 por extra, sin techo ni prorrateo. El monto lo calcula `src/modules/billing/pricing.ts`, no sale de una columna. Detalle: `.claude/rules/billing-precio.md`.
 
 ## Vetos de producto (no reproponer)
 
@@ -80,8 +78,8 @@ Decisiones ya tomadas que un modelo tendería a re-proponer "de buena fe". Cada 
 - **No-show NO es deuda** — REVERTIDO 2026-07-11; `player_tenant_relationships.balance` no existe (eliminada migr. 044). El modelo vigente es softban por reincidencia vía `tenant_player_bans` (mismo mecanismo que los bans manuales — no inventar un gate nuevo). Constantes en `src/shared/constants.ts`; lógica en `handleNoShow` → `applyNoShowStrike`.
 - **Nunca texto libre sobre personas** (Ley 25.326: lo que un cliente puede leer ejerciendo derecho de acceso se controla en origen). Etiquetas = **ENUM CERRADO de 5** (`player_tenant_relationships.tags`, labels en `src/modules/relationships/player-tags.ts`); `abonados.notes` se ELIMINÓ por esto. Agregar una sexta etiqueta es aditivo; **agregar texto libre no se concede: se reabre D3 con el dueño**.
 - **Personas (`/jugadores`): no hay tabla de contactos y es deliberado** — el contacto se DERIVA de abonados con `player_id NULL` (`UNION ALL` en `listTenantClients`); una tabla duplicaría la fuente de verdad del nombre. Consecuencia asumida: persona sin cuenta NO puede tener etiquetas. Vinculación contacto→player siempre manual y sin softbans retroactivos. Fuera por producto: invitados de `guest_name` y deudores de `canteen_tabs`.
-- **Caja/Cantina**: catálogo en tablas reales — no volver a guardar productos en `tenants.settings` (el JSONB se eliminó, migr. 051). Cierres legacy con `expected_cash NULL`: **nunca reinterpretarlos**. Detalle: `docs/decisions/2026-07-22-caja-cantina-redesign.md`
-- **Torneos**: nace detrás del feature flag `tournaments` (global en `false`) y **el flag se chequea en las páginas Y en cada Server Action**, no solo en el menú. Todo lo que ocupa cancha es una fila en `bookings` — no inventar tablas de slots paralelas. La Server Action genérica de Caja NO ofrece el ingreso `tournament` (la plata ligada a algo tiene un solo camino de entrada); un cobro de inscripción no se deshace (el que se baja es `withdrawn`). Portal público: **no se publica DNI, contacto, `player_id` ni plantel completo**. Reglas del motor (walkover, marcador, eventos): motor puro en `src/modules/tournaments/standings/` + `tests/unit/tournament-standings.test.ts` + `docs/decisions/2026-07-24-torneos.md`
+- **Caja/Cantina**: catálogo en tablas reales — no volver a guardar productos en `tenants.settings` (el JSONB se eliminó, migr. 051). Cierres legacy con `expected_cash NULL`: nunca reinterpretarlos. Detalle: `.claude/rules/caja.md`.
+- **Torneos**: detrás del feature flag `tournaments` (global en `false`), chequeado en páginas Y en cada Server Action. Todo lo que ocupa cancha es una fila en `bookings`. Detalle: `.claude/rules/torneos.md`.
 - **NO hay billetera virtual del jugador** — reembolsos se resuelven entre jugador y complejo.
 - **NO hay recordatorio 24hs al jugador en v1** (worker y template eliminados; se reconstruye con WhatsApp post-v1).
 - **El jugador NO tiene Realtime en v1** (polling/refresh) — Realtime es solo para la grilla admin.
@@ -90,15 +88,8 @@ Decisiones ya tomadas que un modelo tendería a re-proponer "de buena fe". Cada 
 
 ## Multi-tenancy
 
-- **Tablas aisladas** (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_opens, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, analytics_events, canteen_products, canteen_tabs, stock_movements, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events
-- **Globales sin RLS** (sin tenant_id y sin policies): tenants, plans, price_versions, processed_webhooks. El rol de la app las lee y escribe, pero **no las borra** y el catálogo comercial es de sólo lectura (migr. 085).
-- **Globales CON RLS** (sin tenant_id, pero con policies + FORCE): players, staff_users. Medido el 2026-09-05 — la lectura de un jugador desde el panel depende de que exista la relación con el complejo.
-- **Híbridas** (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (por `app.current_player_id`)
-- **Del sistema, denegada para la app**: `push_send_log` — RLS + FORCE y **cero permisos** para el rol web (migr. 059); la escribe sólo el pool de workers.
-- **Operacional**: feature_flags (fila con tenant_id NULL = default global; con tenant_id = override por complejo). **Del sistema**: `system_admins` — RLS + FORCE self-scoped, **sin policy de INSERT**; el bootstrap inserta vía pool worker BYPASSRLS.
-- **`analytics_events`** (migr. 072): destino durable de `track.*`. `tenant_id` NULLABLE — el tráfico público no tiene complejo, y la policy de INSERT acepta NULL por eso; la de SELECT sigue estricta. Append-only (sin UPDATE + REVOKE). **No guarda identificadores de persona** (`PII_KEYS` filtra `playerId`/`staffUserId`/`endpoint`), lo que la mantiene fuera del régimen de datos personales. La escribe el pool BYPASSRLS vía `after()`. `breadcrumbs.ts` es isomórfico y **NO la importa**: el sink se registra al revés, desde `instrumentation.ts` y `run-workers.ts`.
+- **Qué tabla vive bajo qué régimen** (aisladas por tenant, globales con y sin RLS, híbridas, las del sistema): inventario completo en `.claude/rules/tablas-y-rls.md`, que se carga al tocar `src/shared/db/**` o una migración.
 - Players son cross-tenant (reservan en N complejos). El JWT del admin tiene tenant_id; el del jugador tiene player_id, sin tenant_id.
-- **RLS dual** en `bookings` y `player_tenant_relationships`: policy para admin (`app.current_tenant_id`) + policy para jugador (`app.current_player_id`). Policy Realtime solo en `bookings`.
 - `tenants.mp_access_token`/`mp_refresh_token`: credenciales OAuth del complejo, cifradas at-rest. `tenants` es global y sin RLS, así que **el cifrado es la única barrera** — jamás loguearlos ni devolverlos en payloads.
 - **Super Admin**: panel `/super-admin/*`, ve todos los tenants y puede **impersonar** (cookie firmada `tg_sa_impersonate` HMAC, TTL 1h — `src/shared/security/impersonation-cookie.ts` + `src/modules/auth/impersonation.server.ts`).
 - Cómo setear contexto, defensa en profundidad y checklist de tabla nueva: skill `convenciones-stack`.
@@ -107,46 +98,40 @@ Decisiones ya tomadas que un modelo tendería a re-proponer "de buena fe". Cada 
 
 `docs/spec/` es la fuente de verdad: 19 documentos (doc9 eliminado; lifecycle SaaS unificado en doc4 §2). El resto de `docs/` está en subcarpetas — mapa completo en `docs/README.md`: `business/`, `decisions/`, `operations/`, `qa/`, `audit/`, `planning/`, `superpowers/`, `archive/`.
 
-- **Negocio**: doc1 problema y mercado · doc2 teardown vs ATC Sports (el competidor de referencia — "modelo ATC" en este archivo refiere a él) · doc3 personas (Marcelo = Owner/`admin`, Rodrigo = Empleado/`manager`, Tomás = Jugador) · doc4 monetización
-- **Funcional**: doc5 NFR (99.5% SLA, p95 <500ms) · doc6 entidades y state machines · doc7 flujos end-to-end · doc8 ~42 user stories · doc10 onboarding (Aha Moment = primera reserva online)
-- **Técnica**: doc11 13 ADRs · doc12 tenant isolation · doc13 SQL completo · doc14 tech stack (**DESACTUALIZADO** — el stack real es el de arriba) · doc15 API contracts
-- **Calidad y ops**: doc16 testing (aislamiento BLOQUEANTE) · doc17 observabilidad · doc18 privacy Ley 25.326 · doc19 runbook · doc20 design system (`docs/spec/design-system/MASTER.md`)
+- Qué contiene cada doc (doc1 a doc20) y el mapa de subcarpetas: `.claude/rules/mapa-docs.md`, que se carga al tocar `docs/**`.
 
 Drift conocido: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció. Ante contradicción entre docs, señalarla explícitamente en vez de elegir en silencio.
 
 ## Skill routing
 
-Hay varios sistemas de skills instalados que se pisan. Cuando más de una matchea, **esta tabla decide** — los "pierden" no se eligen aunque su descripción calce. Evidencia y racional: `docs/decisions/2026-08-28-skill-routing.md`.
+Cuando más de una skill matchea, **esta tabla decide**. Evidencia y racional: `docs/decisions/2026-08-28-skill-routing.md` (documenta la arbitración original contra gstack, caveman, superpowers y engineering — todos desinstalados desde entonces).
 
-| Situación | Gana | Pierden (no elegir) |
-|---|---|---|
-| Tarea no trivial — SIEMPRE primero | `protocolo-orquestacion` | — |
-| Feature nuevo | `entrega-feature` (adentro: superpowers brainstorming → writing-plans → TDD) | gstack `spec` · caveman `lean-build` |
-| Bug / comportamiento raro | `superpowers:systematic-debugging` (delegado: agente `sonnet-debugger`) | gstack `investigate` · caveman `investigate-first` · engineering `debug` |
-| Fixes de una lista de hallazgos | `protocolo-fixes-general` | — |
-| Revisar PR / diff | `revision-pr` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) | gstack `review` · `caveman-review` · `cavecrew-reviewer` · plugin `code-review:code-review` · engineering `code-review` |
-| Verificar implementación propia ya hecha | `verificacion-fresca` (agente `sonnet-adversarial-reviewer`, nunca la misma conversación) | — |
-| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) | gstack `qa` (commitea por fix) |
-| Diseñar qué testear | `estrategia-tests` (agente `sonnet-test-designer`) | engineering `testing-strategy` |
-| Correr / arreglar tests | `protocolo-testing` (repo) | — |
-| Tocar DB/Drizzle/RLS/pg-boss/MP/Server Actions | `convenciones-stack` (repo) + `supabase-postgres-best-practices` si hay SQL | — |
-| Cerrar esfuerzo / release (GO/NO-GO) | `cierre-release` (agente `sonnet-release-verifier`) | gstack `ship` · `land-and-deploy` |
-| Decisión de arquitectura | `decision-arquitectura` (agente `architecture-decision-reviewer`) | engineering `architecture` |
-| Migración de schema / dependencia | `migracion-segura` + `convenciones-stack` | caveman `migration` |
-| Webhook / OAuth / API de terceros | `integracion-externa` | — |
-| Auditar repo o módulo | `auditoria-codigo` + `audit` (repo, capa Karpathy). Pesadas, solo por nombre: `/audit-docs`, `/test-audit`, workflows `caza-bugs-turnogol` / `fable5-backend-audit` | — |
-| Seguridad | `/security-review` (harness); `claude-security` solo a pedido explícito | gstack `cso` |
-| Escribir commit | convención del repo (`convenciones-trabajo`) | `caveman-commit` (inglés) |
-| ¿Qué sigue? / arranque del día | `donde-estoy` | gstack `landing-report` / `context-restore` · engineering `standup` |
-| Handoff / límite de contexto | `compresion-contexto` | gstack `context-save` |
-| Cierre multi-sesión con aprendizajes | `retrospectiva` | gstack `retro` |
-| Gotcha nuevo descubierto | `captura-conocimiento` | — |
-| Deuda técnica | `deuda-tecnica` | engineering `tech-debt` |
+| Situación | Gana |
+|---|---|
+| Tarea no trivial — SIEMPRE primero | `protocolo-orquestacion` |
+| Feature nuevo | `entrega-feature` |
+| Fixes de una lista de hallazgos | `protocolo-fixes-general` |
+| Revisar PR / diff | `revision-pr` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) |
+| Verificar implementación propia ya hecha | `verificacion-fresca` (agente `sonnet-adversarial-reviewer`, nunca la misma conversación) |
+| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) — no usar `qa` / `qa-only`: commitean por fix |
+| Diseñar qué testear | `estrategia-tests` (agente `sonnet-test-designer`) |
+| Correr / arreglar tests | `protocolo-testing` (repo) |
+| Tocar DB/Drizzle/RLS/pg-boss/MP/Server Actions | `convenciones-stack` (repo) + `supabase-postgres-best-practices` si hay SQL |
+| Cerrar esfuerzo / release (GO/NO-GO) | `cierre-release` (agente `sonnet-release-verifier`) |
+| Decisión de arquitectura | `decision-arquitectura` (agente `architecture-decision-reviewer`) |
+| Migración de schema / dependencia | `migracion-segura` + `convenciones-stack` |
+| Webhook / OAuth / API de terceros | `integracion-externa` |
+| Auditar repo o módulo | `auditoria-codigo` + `audit` (repo, capa Karpathy). Pesadas, solo por nombre: `/audit-docs`, `/test-audit`, workflows `caza-bugs-turnogol` / `fable5-backend-audit` |
+| Seguridad | `/security-review` (harness); `claude-security` solo a pedido explícito |
+| Escribir commit | convención del repo (`convenciones-trabajo`) |
+| ¿Qué sigue? / arranque del día | `donde-estoy` |
+| Handoff / límite de contexto | `compresion-contexto` |
+| Cierre multi-sesión con aprendizajes | `retrospectiva` |
+| Gotcha nuevo descubierto | `captura-conocimiento` |
+| Deuda técnica | `deuda-tecnica` |
 
 Gobernanza:
-- **gstack y caveman solo corren si Lazar los invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
-- Utilidades gstack sin conflicto (`browse`, `make-pdf`, `watch`, `diagram`, `careful`/`guard`/`freeze`) siguen disponibles como herramientas.
-- El modo caveman (compresión de estilo) es ortogonal a esta tabla y no se toca.
+- Lo que sobrevive de gstack (`qa`, `qa-only`, `watch`, `agent-browser`, `find-skills`) **solo corre si Lazar lo invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
 - **Regla de mantenimiento**: si algo aplica SOLO cuando tocás X, va a la skill de X, no acá. Este archivo se carga entero en cada sesión.
 
 ## UX

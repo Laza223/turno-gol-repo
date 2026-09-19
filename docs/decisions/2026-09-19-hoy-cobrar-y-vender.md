@@ -1,7 +1,8 @@
 # Hoy es la pantalla del mostrador: cobrar turnos en un modal, vender al lado, y el Encargado la ve
 
-**Fecha**: 2026-09-19 · **Estado**: en implementación — PR1 (roles) aplicado; PR2 (tablero + modal de cobro) y
-PR3 (columna Vender) pendientes · **Decide**: el dueño (las cuatro decisiones de abajo) + esta sesión (cómo)
+**Fecha**: 2026-09-19 · **Estado**: en implementación — PR1 (roles) y PR2 (tablero + modal de cobro +
+refresco automático) aplicados; PR3 (columna Vender) pendiente · **Decide**: el dueño (las cuatro
+decisiones de abajo) + esta sesión (cómo)
 
 ## Origen
 
@@ -51,5 +52,18 @@ camino actual lo saca de la vista y no le da todo lo que necesita en el momento.
   ayer), el mismo tipo de dato que Métricas. El Encargado sigue viendo la plata del día en Caja porque la
   necesita para operar. Decisión tomada por criterio (el dueño delegó la elección): se revierte con un
   cambio de una línea si prefiere que le siga llegando.
-- **Hoy deja de depender de un solo rol**: el estado vacío "Ir a Canchas" de `ProximosTurnos` apunta a una
-  pantalla solo-admin. Se resuelve en PR2, donde ese componente es reemplazado.
+- **Hoy deja de depender de un solo rol**: el estado vacío "Ir a Canchas" apuntaba a una pantalla
+  solo-admin. Resuelto en PR2: `TodayBoard` ofrece el link solo al dueño; al Encargado le dice "Pedile al
+  dueño que active una".
+- **El turno terminado sin cobrar deja de ser una alerta** y pasa a ser una fila del tablero
+  (enmienda a `2026-08-02-taxonomia-alertas-hoy.md`): una cosa, un lugar. "Necesita tu atención" queda con
+  dos eventos y el copy del vacío cambia.
+- **El modal es solo de Hoy.** El panel de la Grilla no cambia (decisión 2). Comparten `useSlotCharges`,
+  las compuertas de acciones (`slotGates`) y el diálogo de cancelar (`SlotCancelDialog`), extraídos del
+  panel sin cambio de comportamiento.
+- **"Equipo 1 ✓" y "Pagaron 4 de 10" son deducciones**, no registros: el sistema no guarda quién pagó
+  cada peso (veto de texto libre sobre personas / Ley 25.326). Si alguien paga por el "Equipo 2" primero,
+  el sistema igual le cuenta esa plata al Equipo 1: los totales son correctos, la atribución no.
+- **Hoy se refresca solo cada 60 s**, salvo con un modal abierto o la pestaña oculta. Un turno cobrado
+  desde otro puesto aparece a más tardar al minuto (no hay Realtime en Hoy).
+- **`getStreetMoney` sale de `getHoyData`**: era la query más pesada de Hoy y ya nadie leía su total.

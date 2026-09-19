@@ -4,12 +4,28 @@ import { withTenantContext } from '@/shared/db/client'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { daySlotsFor } from '@/lib/dashboard/day-bookings'
 import { getHoyData } from '@/modules/home/home.service'
+import { listCourts } from '@/modules/courts/court.service'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { WhileYouWereAway } from '@/components/dashboard/WhileYouWereAway'
 import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
-import { ProximosTurnos } from '@/components/dashboard/ProximosTurnos'
+import { listDayGridBookings } from '@/app/(admin)/reservas/queries'
+import {
+  addBookingChargeAction,
+  cancelBookingAction,
+  completeAndChargeBookingAction,
+  editBookingAction,
+  listRescheduleSlotsAction,
+  markNoShowAction,
+  releaseBlockAction,
+  rescheduleBookingAction,
+  revertNoShowAction,
+} from '@/app/(admin)/reservas/actions'
+import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-actions'
+import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
+import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
 import { HoyHeaderSlot } from './HoyHeaderSlot'
+import { HoyShell } from './_components/HoyShell'
 import { getChecklistState } from './queries'
 import {
   markPublicLinkSharedAction,
@@ -42,6 +58,7 @@ export default async function DashboardPage() {
   // era solo del admin (D5) y el manager rebotaba a /grilla. Lo que sigue siendo
   // solo del dueño es la configuración: el checklist de arranque y el tour.
   const isAdmin = role === 'admin'
+  const wantsChecklist = isAdmin && !tenant.settings.checklist_dismissed_at
 
   const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
   // Un solo reloj para todo el render: el día operativo y el "hace N min" de
@@ -50,36 +67,64 @@ export default async function DashboardPage() {
   const now = new Date()
   const date = operatingDateOf(now, cutoffMins)
 
-  const [data, checklistState] = await Promise.all([
-    withTenantContext(tenant.id, (tx) =>
-      getHoyData(tenant.id, tx, {
-        date,
-        cutoffMins,
-        openingHours: tenant.openingHours,
-        closedDates: tenant.closedDates,
-        closesNextDay: tenant.closesNextDay,
-      }),
-    ),
+  const [{ data, courts, dayBookings }, checklistState] = await Promise.all([
+    withTenantContext(tenant.id, async (tx) => {
+      // El tablero de turnos sale del MISMO loader que la Grilla (`listDayGridBookings`):
+      // el "falta cobrar" de cada fila es el número de la Grilla, del detalle y de Deudas.
+      const [hoy, courtRows, bookingRows] = await Promise.all([
+        getHoyData(tenant.id, tx, {
+          date,
+          cutoffMins,
+          openingHours: tenant.openingHours,
+          closedDates: tenant.closedDates,
+          closesNextDay: tenant.closesNextDay,
+        }),
+        listCourts(tenant.id, tx),
+        listDayGridBookings(tenant.id, date, tx),
+      ])
+      return { data: hoy, courts: courtRows, dayBookings: bookingRows }
+    }),
     // El checklist de arranque es solo del dueño: al Encargado no se le pagan sus queries.
-    isAdmin ? getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt) : null,
+    // Y si el dueño ya lo descartó tampoco: Hoy se refresca cada minuto y no tiene
+    // sentido consultar siete pasos para no dibujarlos.
+    wantsChecklist ? getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt) : null,
   ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
   // podía dar "por terminado" el onboarding con canchas/horarios sin cargar).
   const allDone = checklistState === null || Object.values(checklistState).every(Boolean)
-  const showChecklist = isAdmin && !allDone && !tenant.settings.checklist_dismissed_at
+  const showChecklist = wantsChecklist && !allDone
   const showTour =
     isAdmin && tenant.settings.onboarding_completed === true && !tenant.settings.admin_tour_seen_at
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const { numbers, whileYouWereAway, needsAttention, upcoming } = data
+  const { numbers, whileYouWereAway, needsAttention } = data
 
   // `dayIsClosed` se recalcula acá (función pura, sin DB) porque getHoyData no
   // distingue "día cerrado" de "0 disponible": los dos casos llegan con
   // `available = 0` y se leen distinto en pantalla.
-  const dayIsClosed =
-    daySlotsFor(date, tenant.openingHours, tenant.closedDates ?? [], tenant.closesNextDay)
-      .length === 0
+  const daySlots = daySlotsFor(
+    date,
+    tenant.openingHours,
+    tenant.closedDates ?? [],
+    tenant.closesNextDay,
+  )
+  const dayIsClosed = daySlots.length === 0
+
+  // Lo que baja al cliente: canchas sin fotos ni datos de más, y los turnos con
+  // sus instantes físicos en milisegundos (fuente de "ya terminó").
+  const hoyCourts = courts.map((c) => ({
+    id: c.id,
+    name: c.name,
+    status: c.status,
+    capacity: c.capacity,
+    pricing: c.pricing,
+  }))
+  const hoyBookings = dayBookings.map(({ startsAt, endsAt, ...booking }) => ({
+    ...booking,
+    startsAtMs: startsAt.getTime(),
+    endsAtMs: endsAt.getTime(),
+  }))
 
   return (
     <div className="space-y-4">
@@ -126,7 +171,35 @@ export default async function DashboardPage() {
           ocupación sobrevive como subtítulo del bloque de turnos, que es el
           único lugar donde ese porcentaje significa algo. */}
       <div className="card-entrance" style={{ animationDelay: '120ms' }}>
-        <ProximosTurnos courts={upcoming} occupancy={numbers.occupancy} dayIsClosed={dayIsClosed} />
+        <HoyShell
+          bookings={hoyBookings}
+          courts={hoyCourts}
+          daySlots={daySlots}
+          occupancy={numbers.occupancy}
+          dayIsClosed={dayIsClosed}
+          // Solo el dueño puede activar canchas (Configuración es suya).
+          canManageCourts={isAdmin}
+          serverNowMs={now.getTime()}
+          actions={{
+            chargeDebtAction,
+            completeAndChargeBookingAction,
+            addBookingChargeAction,
+            markNoShowAction,
+            revertNoShowAction,
+            listRescheduleSlotsAction,
+            rescheduleBookingAction,
+            cancelBookingAction,
+            releaseBlockAction,
+            editBookingAction,
+            getBookingEditDetailAction,
+          }}
+          canteen={{
+            listCatalogAction: listCanteenForBookingAction,
+            // sellTicketAction toma `unknown` y valida con Zod: el bookingId
+            // extra que le agrega el diálogo entra por el mismo schema.
+            sellTicketAction,
+          }}
+        />
       </div>
 
       <div className="card-entrance" style={{ animationDelay: '180ms' }}>

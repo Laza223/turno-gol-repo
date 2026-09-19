@@ -8,13 +8,9 @@ import { CalendarClock } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
-import { formatArs } from '@/lib/format'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
-import { hhmmToMins } from '@/shared/time/operating-day'
-import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtPricingData } from '@/modules/courts/court.types'
@@ -24,6 +20,8 @@ import { SlotPriceSummary } from './slot-panel/SlotPriceSummary'
 import { SlotChargeSection } from './slot-panel/SlotChargeSection'
 import { SlotActionButtons } from './slot-panel/SlotActionButtons'
 import { chargeSplit } from './slot-panel/charge-copy'
+import { slotGates } from './slot-panel/slot-gates'
+import { SlotCancelDialog } from './slot-panel/SlotCancelDialog'
 import type { RenderCanteenDialog, SlotPanelActions } from './slot-panel/actions'
 
 // Los tipos de las Server Actions (y el de RenderCanteenDialog) viven en
@@ -138,8 +136,6 @@ export function BookingSlotPanel({
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [cancelType, setCancelType] = useState<'complejo' | 'jugador' | null>(null)
-  const [cancelReason, setCancelReason] = useState('')
   const [releaseBlockOpen, setReleaseBlockOpen] = useState(false)
 
   // Cambio de turno → estado limpio. Patrón "derived state on prop change"
@@ -211,74 +207,24 @@ export function BookingSlotPanel({
   // la capacidad de SU cancha; nada de esto se guarda.
   const split = chargeSplit(booking, courts?.find((c) => c.id === booking.courtId)?.capacity)
 
-  // Marcar ausente: sólo sobre un turno de un cliente que ya terminó. Una hora
-  // de torneo no tiene a quién dar por ausente (el torneo es dueño del horario,
-  // no un jugador) y un bloqueo de mantenimiento tampoco.
-  const canMarkNoShow =
-    booking.status === 'confirmed' &&
-    hasEnded &&
-    booking.type !== 'tournament' &&
-    booking.type !== 'block'
-  const canRevertNoShow = booking.status === 'no_show' && Boolean(actions?.revertNoShowAction)
-
-  // Un bloqueo de mantenimiento y una hora de torneo no son el turno de nadie:
-  // no hay a quién venderle ni a quién mover.
-  const isClientBooking = booking.type !== 'block' && booking.type !== 'tournament'
-
-  // Mismo criterio que QuickActions.tsx (lista de /reservas): cancelar solo
-  // aplica a un turno `confirmed` — `pending_payment` expira solo (hold de 6
-  // min) y el resto de estados ya son terminales. Sin `cancelBookingAction`
-  // (stories/tests viejas) el botón no se ofrece, como el resto del panel.
-  const canCancel =
-    isClientBooking && booking.status === 'confirmed' && Boolean(actions?.cancelBookingAction)
-
-  // Liberar un bloqueo de mantenimiento (RI G2.1): sólo para type='block' en un
-  // estado que todavía se puede tocar (un `block` siempre nace 'confirmed';
-  // 'pending_payment' es defensivo). Sin `releaseBlockAction` (stories/tests
-  // viejas) el botón no se ofrece, como el resto del panel.
-  const canReleaseBlock =
-    booking.type === 'block' &&
-    (booking.status === 'confirmed' || booking.status === 'pending_payment') &&
-    Boolean(actions?.releaseBlockAction)
-
-  // La cantina sigue disponible con el turno ya jugado: lo normal es que la
-  // gente consuma durante el partido y pague todo junto al final.
-  const canSellCanteen = isClientBooking && Boolean(renderCanteenDialog)
-
-  // D2: editar nombre/teléfono, duración y precio — sólo turnos `confirmed`
-  // que son la reserva de alguien (nunca block/tournament; un turno terminal
-  // ya lo bloquea el trigger de DB, este gate evita ofrecer un botón que el
-  // backend siempre rechazaría). Visible SIEMPRE que aplique, no detrás de
-  // "Más" (a diferencia de reprogramar/cancelar: no es una tarea semanal, es
-  // la corrección de un dato mal cargado).
-  const canEdit =
-    isClientBooking &&
-    booking.status === 'confirmed' &&
-    Boolean(actions?.editBookingAction && actions?.getBookingEditDetailAction)
+  // Qué acciones se ofrecen además de cobrar: una sola definición compartida con
+  // el modal de Hoy (`slot-gates.ts`), así las dos pantallas no discrepan.
+  const {
+    canMarkNoShow,
+    canRevertNoShow,
+    canCancel,
+    canReleaseBlock,
+    canSellCanteen,
+    canEdit,
+    canReschedule,
+  } = slotGates({
+    booking,
+    hasEnded,
+    actions,
+    hasCourts: Boolean(courts?.length),
+    hasCanteen: Boolean(renderCanteenDialog),
+  })
   const editCourt = courts?.find((c) => c.id === booking.courtId)
-
-  // Mismos estados Y tipos que acepta `rescheduleBooking`: un botón que el
-  // backend siempre va a rechazar es peor que no tener el botón.
-  //
-  // `fixed` (sesión de abonado) SÍ entra desde la decisión del dueño del
-  // 2026-08-05: se mueve conservando el precio del contrato (el backend lo
-  // impone, no depende de esta UI).
-  //
-  // Duración: rediseño 2026-09-14. `rescheduleBooking` sólo valida la duración
-  // del DESTINO (siempre 60 min, vía `assertSlotDuration`) — nunca mira la del
-  // turno que se mueve. Un evento de N horas ofrecido acá se "reprogramaría"
-  // recortado a un único slot de 60 min sin que el backend lo frene: el gate
-  // vive acá, no allá. `endMins === 0` cubre el legado `time_end='00:00'`
-  // (medianoche), mismo criterio que `slotDurationMins`.
-  const bookingEndMins = hhmmToMins(booking.timeEnd)
-  const bookingDurationMins =
-    (bookingEndMins === 0 ? 24 * 60 : bookingEndMins) - hhmmToMins(booking.timeStart)
-  const canReschedule =
-    isClientBooking &&
-    bookingDurationMins === SLOT_DURATION_MINUTES &&
-    (booking.status === 'confirmed' || booking.status === 'pending_payment') &&
-    Boolean(actions?.listRescheduleSlotsAction && actions?.rescheduleBookingAction) &&
-    Boolean(courts?.length)
 
   const displayName =
     booking.guestName ??
@@ -287,26 +233,7 @@ export function BookingSlotPanel({
       : null)
 
   function openCancel() {
-    setCancelReason('')
-    setCancelType(null)
     setCancelOpen(true)
-  }
-
-  async function onConfirmCancel(): Promise<ActionResult> {
-    if (!actions?.cancelBookingAction) return { success: false, error: 'Sin acciones disponibles.' }
-    if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
-    if (cancelReason.trim().length < 3) {
-      return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
-    }
-    const res = await actions.cancelBookingAction(booking!.id, cancelReason.trim(), cancelType)
-    if (res.success) {
-      // H093: mismo toast que BookingActions.tsx/QuickActions.tsx tras la
-      // MISMA acción — acá se cerraba en silencio.
-      toast({ title: 'Reserva cancelada', variant: 'success' })
-      setLastId(null)
-      notifyMutated()
-    }
-    return res
   }
 
   async function onConfirmReleaseBlock(): Promise<ActionResult> {
@@ -319,29 +246,6 @@ export function BookingSlotPanel({
       notifyMutated()
     }
     return res
-  }
-
-  // Sin `startsAt`/`cancellationPolicyHours` a mano en este panel (GridBooking
-  // no los trae — ver su comentario): mismo fallback genérico que usa
-  // QuickActions.tsx cuando esos datos faltan (`inPolicy === null`), no un
-  // mensaje inventado nuevo.
-  const hasPaidDeposit = booking.depositStatus === 'paid' && (booking.depositAmount ?? 0) > 0
-  // H095: visible DESDE que se abre el diálogo, no recién tras elegir "quién
-  // cancela" — mismo criterio que `refundPreview` en BookingActions.tsx (ENS-2).
-  let cancelRefundWarning: string | null = null
-  if (!hasPaidDeposit) {
-    cancelRefundWarning = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
-  } else if (hasEnded) {
-    cancelRefundWarning = 'El turno ya se jugó: la seña queda para el complejo (sin reembolso).'
-  } else if (!cancelType) {
-    cancelRefundWarning = `Hay una seña de ${formatArs(booking.depositAmount ?? 0)} pagada: el reembolso depende de quién cancela (elegí una opción abajo).`
-  } else if (cancelType === 'complejo') {
-    cancelRefundWarning =
-      booking.paymentMethod === 'mercadopago'
-        ? `La seña de ${formatArs(booking.depositAmount ?? 0)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
-        : `La seña de ${formatArs(booking.depositAmount ?? 0)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
-  } else {
-    cancelRefundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount ?? 0)} si está dentro del plazo, retención si no.`
   }
 
   function handleOpenChange(next: boolean) {
@@ -502,63 +406,18 @@ export function BookingSlotPanel({
       )}
 
       {actions?.cancelBookingAction && (
-        <ConfirmDialog
+        <SlotCancelDialog
           open={cancelOpen}
           onOpenChange={setCancelOpen}
-          title="Cancelar reserva"
-          description={`${displayName ?? visual.label}, ${booking.timeStart}–${booking.timeEnd}. Esta acción cancela el turno y libera el horario. Ingresá el motivo.`}
-          variant="destructive"
-          confirmLabel="Cancelar reserva"
-          cancelLabel="Volver"
-          onConfirm={onConfirmCancel}
-        >
-          <div className="space-y-3">
-            <fieldset className="space-y-1.5">
-              <legend className="text-xs font-medium text-foreground">¿Quién cancela?</legend>
-              <RadioChipGroup
-                value={cancelType ?? ''}
-                onValueChange={(v) => setCancelType(v as 'complejo' | 'jugador')}
-              >
-                <RadioChip
-                  value="complejo"
-                  description={
-                    hasPaidDeposit
-                      ? 'Rotura, mantenimiento o error. La seña queda para que se la devuelvas vos.'
-                      : 'Rotura, mantenimiento o error.'
-                  }
-                >
-                  El complejo necesita cancelar
-                </RadioChip>
-                <RadioChip
-                  value="jugador"
-                  description="Se aplica la política de cancelación del complejo."
-                >
-                  El jugador pidió cancelar
-                </RadioChip>
-              </RadioChipGroup>
-            </fieldset>
-            {cancelRefundWarning && (
-              <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
-                {cancelRefundWarning}
-              </div>
-            )}
-            <div className="space-y-1">
-              <label
-                htmlFor={`slot-cancel-reason-${booking.id}`}
-                className="text-xs font-medium text-foreground"
-              >
-                Motivo (obligatorio)
-              </label>
-              <textarea
-                id={`slot-cancel-reason-${booking.id}`}
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                rows={2}
-                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
-              />
-            </div>
-          </div>
-        </ConfirmDialog>
+          booking={booking}
+          label={displayName ?? visual.label}
+          hasEnded={hasEnded}
+          cancelAction={actions.cancelBookingAction}
+          onCancelled={() => {
+            setLastId(null)
+            notifyMutated()
+          }}
+        />
       )}
 
       {actions?.releaseBlockAction && (

@@ -2,8 +2,9 @@
  * E2E — "Hoy" (Fase 2 del contrato v2, docs/planning/2026-08-01-decisiones-de-fase-v2.md §3)
  *
  * Cubre lo que un test de integración no puede probar solo: que la pantalla
- * en vivo (Server Component real, sesión real) muestra los 3 números + los
- * 2 bloques, que una alerta real de la taxonomía aparece con su acción, y
+ * en vivo (Server Component real, sesión real) muestra el tablero de turnos +
+ * los bloques de alertas y de "Mientras no estabas", que un turno sin cobrar
+ * aparece en el tablero y abre el modal de cobro, y
  * que los guards de rol (el encargado ve Hoy pero no Métricas) funcionan de punta a punta — no solo a
  * nivel de función aislada (eso ya lo cubre tests/integration/home-service.test.ts
  * y tests/unit/staff-guards.test.ts / admin-sidebar.stories.tsx).
@@ -51,13 +52,13 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       // `page-has-heading-one` como `moderate` y el helper de a11y sólo falla
       // con `critical`/`serious`.
       await expect(page.locator('h1')).toHaveText('Hoy')
-      await expect(page.getByText('Próximos turnos')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Turnos de hoy' })).toBeVisible()
       await expect(page.getByText('Mientras no estabas')).toBeVisible()
       // "Necesita tu atención" sólo existe con alertas: vacío es una línea con
       // el copy del premio, que es el estado normal de un tenant de prueba.
       await expect(
         page
-          .getByText('Nada pendiente. Todo cobrado y cerrado.')
+          .getByText('Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.')
           .or(page.getByText('Necesita tu atención')),
       ).toBeVisible()
     } finally {
@@ -65,7 +66,7 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
     }
   })
 
-  test('turno completado sin cobrar hoy aparece en "Necesita tu atención" con su acción de cobro', async ({
+  test('un turno sin cobrar aparece en el tablero y se cobra desde un modal, sin salir de Hoy', async ({
     browser,
     adminStorageState,
   }) => {
@@ -86,10 +87,26 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       const page = await context.newPage()
       await page.goto('/dashboard', { waitUntil: 'networkidle' })
 
-      await expect(page.getByText('QA Hoy Turno Sin Cobrar')).toBeVisible({ timeout: 10_000 })
-      const chargeLink = page.getByRole('link', { name: /Cobrar/ }).filter({ hasText: /\$/ })
-      await expect(chargeLink.first()).toBeVisible()
-      await expect(chargeLink.first()).toHaveAttribute('href', `/reservas/${bookingId}`)
+      // La fila es UN botón que abre el modal: no un link a /reservas/[id].
+      const row = page.getByRole('button', { name: /QA Hoy Turno Sin Cobrar/ })
+      await expect(row).toBeVisible({ timeout: 10_000 })
+      await expect(row).toContainText('Cobrar')
+      await expect(page.getByRole('link', { name: /QA Hoy Turno Sin Cobrar/ })).toHaveCount(0)
+
+      await row.click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toContainText('QA Hoy Turno Sin Cobrar')
+      await expect(dialog).toContainText('Falta cobrar')
+      // Las formas de cobrar, y el cobro con el monto adentro. No se cobra de verdad:
+      // el cobro tocaría la caja del tenant de prueba y `e2e-tests` corre contra una
+      // base compartida; el comportamiento del cobro lo fijan las stories del modal.
+      await expect(dialog.getByRole('radio', { name: 'Por equipo' })).toBeVisible()
+      await expect(dialog.getByRole('button', { name: /^Cobrar \$/ })).toBeVisible()
+      // Nada de navegar: sigue en Hoy.
+      await expect(page).toHaveURL(/\/dashboard/)
+
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
     } finally {
       await context.close()
       if (bookingId) await cleanupBookingsByIds(supabase, [bookingId])
@@ -108,6 +125,8 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
 
       await expect(page).toHaveURL(/\/dashboard/)
       await expect(page.getByRole('link', { name: 'Hoy' }).first()).toBeVisible()
+      // El tablero del mostrador es suyo; el checklist de arranque y el tour, del dueño.
+      await expect(page.getByRole('heading', { name: 'Turnos de hoy' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Métricas' })).toHaveCount(0)
 
       await page.goto('/analiticas', { waitUntil: 'networkidle' })

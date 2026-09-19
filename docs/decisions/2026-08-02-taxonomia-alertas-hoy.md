@@ -1,7 +1,7 @@
 # Taxonomía de alertas de "Hoy" (Fase 2 del contrato v2)
 
 **Fecha:** 2026-08-02
-**Estado:** Decidida (dueño: Lazar) — implementación en curso
+**Estado:** Decidida (dueño: Lazar) — implementada. **Enmendada el 2026-08-23** (cuarto evento: devoluciones) y **el 2026-09-19** (sale "turno sin cobrar"; ver la última enmienda).
 **Migraciones:** ninguna (todo se computa en vivo sobre tablas existentes + 1 flag jsonb en `tenants.settings`)
 **Origen:** criterio de ENTRADA bloqueante de Fase 2, `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3 ("taxonomía de alertas cerrada por escrito, lista finita de eventos y alertas, con prioridad y umbral cada una"). El pase crítico (`docs/planning/2026-08-01-vision-v2-pase-critico.md:115`) marca esto como bloqueante explícito: *"Sin taxonomía, Hoy degenera en bandeja de notificaciones — exactamente lo que vino a matar."*
 
@@ -41,6 +41,20 @@ Este documento exige por escrito volver acá antes de agregar un cuarto evento. 
 
 **Umbral de "turno sin cobrar" — la decisión que el pase crítico marcaba sin resolver** (¿alarma al terminar o a los 30 min?): Lazar confirmó **inmediato**. Razón registrada: `auto_complete_minutes` (configurable por tenant) ya es el retraso entre el fin real del turno y el pase a `completed` — sumarle una segunda ventana de gracia encima retrasaría el aviso justo cuando el cliente todavía está en el mostrador, contra el principio P6 ("el sistema avisa antes de que lo descubras solo").
 
+## Enmienda 2026-09-19 — "turno terminado sin cobrar" sale de las alertas
+
+Este documento exige volver acá para tocar la lista; se toca.
+
+**Qué cambió afuera:** Hoy pasó a ser la pantalla del mostrador (`docs/decisions/2026-09-19-hoy-cobrar-y-vender.md`). Su tablero "Turnos de hoy" muestra, cancha por cancha, cada turno que terminó y falta plata (borde rojo, "Falta $X", "Cobrar"), y **cada fila abre el modal de cobro** en la misma pantalla. Dejar además una alerta para el mismo turno era decir la misma cosa en dos lugares, y una de las dos era un link a otra pantalla.
+
+**Qué se decide:** el evento **#1 "Turno terminado sin cobrar" deja de ser una alerta**. No se abandona la regla ni su umbral (**inmediato, sin ventana de gracia**, decisión de Lazar que sigue vigente): se muda de lugar. La fila sin cobrar del tablero aparece apenas el turno termina o pasa a `completed` con saldo, con el saldo de `summarizeBookingCharges` (el mismo número de la Grilla, del detalle y de Deudas), y **va fija arriba, nunca detrás de "Ver N más"**.
+
+**Lista vigente de "Necesita tu atención": dos eventos**, en este orden de prioridad (`ATTENTION_PRIORITY`): devoluciones de seña pendientes (P1 desde esta enmienda) y seña que falló (P2). "Caja de ayer sin cerrar" ya no existe (`2026-09-11-eliminar-caja-del-dia.md`). La lista sigue siendo **cerrada**.
+
+**Estado vacío:** *"Nada pendiente. Sin señas rechazadas ni devoluciones por resolver."* El copy anterior ("Todo cobrado y cerrado") pasó a mentir: con el turno sin cobrar fuera del bloque, un bloque vacío ya no significa que esté todo cobrado.
+
+**Por qué no se rompe el "principio P6"** (avisar antes de que lo descubras solo): el aviso ahora es más fuerte, no más débil — la fila roja está en la pantalla donde está parado el que cobra, y un toque abre el cobro.
+
 ## Alternativas descartadas
 
 - **Ventana de gracia de 30 min en "turno sin cobrar"** (la opción que el pase crítico ofrecía como ejemplo): descartada por Lazar — el costo de avisar de más es menor que el costo de un cobro perdido por aviso tardío.
@@ -53,7 +67,7 @@ Ver `docs/planning/planes de implementación` de Fase 2 (sesión 2026-08-02) —
 
 ## Reversibilidad
 
-Alta — ninguna de las 3 reglas está persistida; son filtros en `home.service.ts`. Cambiar un umbral (ej. agregar ventana de gracia a "turno sin cobrar" si en uso real resulta ruidoso) es un cambio de función + su test, sin tocar datos.
+Alta — ninguna de las reglas está persistida; son filtros en `home.service.ts`. Cambiar un umbral (ej. agregar ventana de gracia a "turno sin cobrar" si en uso real resulta ruidoso) es un cambio de función + su test, sin tocar datos.
 
 ## Consecuencias aceptadas
 

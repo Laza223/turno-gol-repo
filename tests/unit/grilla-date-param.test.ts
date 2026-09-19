@@ -22,13 +22,13 @@ vi.mock('@/modules/staff/guards', () => ({
   })),
 }))
 // withTenantContext NO invoca el callback: evita la query drizzle/SQL real.
-// Devuelve la misma forma que arma el page (canchas + reservas + saldos), no
-// una tupla: el page destructura por nombre.
+// Devuelve la misma forma que arma el page (canchas + turnos del día con su
+// saldo ya calculado por el loader compartido con Hoy), no una tupla: el page
+// destructura por nombre.
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async () => ({
     courts: [],
-    rawBookings: [],
-    chargesByBooking: new Map<string, number>(),
+    dayBookings: [],
   })),
 }))
 vi.mock('@/modules/courts/court.service', () => ({ listCourts: vi.fn() }))

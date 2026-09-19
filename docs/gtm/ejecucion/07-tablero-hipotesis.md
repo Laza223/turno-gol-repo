@@ -58,12 +58,20 @@
 | Umbral mata | <8 → ampliar a 3-6 o a otra zona |
 | Quién decide | Lazar, con la lista (acción 5) |
 
-## Hipótesis de precio (no numeradas: se resuelven con Van Westendorp y con el pago de P1)
+## Hipótesis de precio (no numeradas: se resuelven con ofertas escritas y pagos reales; Van Westendorp descartado el 2026-09-17)
 
 - HP1: $99.000 para 4-6 canchas se percibe como "menos de dos turnos". — abierta.
 - HP2: el salto 3→4 (+57%) se percibe como injusto. — abierta.
 - HP3: 1-2 canchas no es mercado para TurnoGol a $63.000. — abierta (no se prospecta; se registra si aparece).
-- HP4 (2026-09-15): precio lineal $47.000 la primera cancha + $30.000 por cada extra ($137k-$197k a 4-6 canchas) no mata la venta en el ICP. Umbral confirma: en ≥10 Van Westendorp cotizando ese precio, "demasiado caro" NO es mayoritario a 4-6 canchas. Umbral mata: mayoría "demasiado caro" o ≥3 ventas perdidas por precio puro (mismo criterio que D3). Si se confirma, se implementa con el contrato de [`board/2026-09-15-precio-por-cancha.md`](../board/2026-09-15-precio-por-cancha.md) §5; resuelve HP2 de paso. Revisión: 2026-10-02. — abierta.
+- HP4 (2026-09-15, método cambiado el 2026-09-17): el precio lineal de $47.000 la primera cancha + $30.000 por cada extra ($137k-$197k a 4-6 canchas) se paga en el ICP. — abierta.
+  - **Método:** preferencia revelada. Solo cuentan pagos y firmas con fecha sobre ofertas escritas. Van Westendorp queda descartado por decisión del founder.
+  - **Evidencia:** (2026-09-17, prod) a la facturación medida de P-Vagón, $167k son ~0,9% de lo que entra y ~3× el valor central estimado — SIGNAL de que el complejo puede pagarlo, no de que lo vaya a pagar. Modelo y supuestos en [board §7](../board/2026-09-15-precio-por-cancha.md).
+  - **Evidencia** (2026-09-17, founder + mercado): con el ticket promedio de Luján ($5.000 por jugador, contra los $6.000 de P-Vagón que es el más caro), un complejo promedio factura ~$3,2M por cancha, así que la lista queda en 1,0-1,1% de lo que factura en todos los tamaños — el techo de lo cómodo, no debajo. Segunda pasada del board en [§8](../board/2026-09-15-precio-por-cancha.md).
+  - **Umbral confirma** (propuesto, a confirmar): al 2026-12-15, al menos 2 pagos a lista con como mucho 1 venta perdida por precio puro. P-Vagón puede ser uno. El anual prepago cuenta al pagarse; el mensual, en su primer cobro.
+  - **Umbral mata** (propuesto, a confirmar): 3 o más ventas perdidas por precio puro, con la definición estricta de board §7.7 C, en 8 ofertas escritas o menos. Fallback: misma estructura a $35.000 + $16.000.
+  - **Sin veredicto:** menos de 5 ofertas escritas al 2026-12-15. Es volumen y no precio; se extiende un mes.
+  - **Puntos de control:** 2026-10-02 (cantidad de ofertas, junto con D3) · 2026-10-14 (oferta a P-Vagón) · 2026-10-31 (vence la preventa del anual de P-Vagón) · 2026-12-15 (veredicto).
+  - **Si se confirma:** se implementa con el contrato de [board §5](../board/2026-09-15-precio-por-cancha.md), y resuelve HP2 de paso.
 
 ## Cerradas
 

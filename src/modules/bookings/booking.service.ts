@@ -656,13 +656,16 @@ async function createOnlineBookingImpl(
 
     // El aha moment real (plan de refactor §I): la primera reserva que entra
     // SOLA para este tenant. Mismo predicado que `firstBookingReceived`
-    // (dashboard/queries.ts): `created_by_staff IS NULL`. El COUNT corre
-    // DESPUÉS del insert, adentro de la misma tx, así que ya incluye esta fila
-    // — `=== 1` es "esta es la primera", sin una segunda query de "¿existía
-    // antes?" separada que pudiera racear contra otra reserva concurrente.
+    // (dashboard/queries.ts): `type = 'spontaneous' AND created_by_staff IS
+    // NULL` — created_by_staff solo no alcanza, los fijos de abonado (worker
+    // y alta) también nacen con esa columna en NULL (QA 2026-09-13). El COUNT
+    // corre DESPUÉS del insert, adentro de la misma tx, así que ya incluye
+    // esta fila — `=== 1` es "esta es la primera", sin una segunda query de
+    // "¿existía antes?" separada que pudiera racear contra otra reserva
+    // concurrente.
     const onlineCountRows = (await tx.execute(sql`
       SELECT COUNT(*)::int AS count FROM bookings
-      WHERE tenant_id = ${tenantId} AND created_by_staff IS NULL
+      WHERE tenant_id = ${tenantId} AND type = 'spontaneous' AND created_by_staff IS NULL
     `)) as unknown as Array<{ count: number }>
     if (onlineCountRows[0]?.count === 1) {
       const completedAt = tenantRows[0]?.settings?.onboarding_completed_at

@@ -100,8 +100,8 @@ const SOFTBAN: BanCheckResult = {
 
 /**
  * Ficha de jugador (admin+manager). `content-area-gradient` reproduce el
- * fondo real del `<main>` del shell admin — mismo patrón que StaffRosterView
- * y JugadoresView.
+ * fondo real del shell admin (en su contenedor de contenido) — mismo patrón que
+ * StaffRosterView y JugadoresView.
  */
 const meta = {
   title: 'Admin/Jugadores/JugadorProfileView',

@@ -232,6 +232,15 @@ Todo `input`, `textarea`, `select`, `[contenteditable]`, y el input interno de `
 `space-1` 4 · `space-2` 8 · `space-3` 12 · `space-4` 16 · `space-6` 24 (padding card) ·
 `space-8` 32 (secciones) · `space-12` 48 (hero). Vertical entre secciones: `space-y-6`.
 
+**Contenedor de página del panel admin.** Lo pone `admin-layout-shell.tsx` y la página NO agrega
+margen propio: sin `p-6`/`p-8` en el wrapper raíz (el shell ya da `px-4 sm:px-6 lg:px-8`) y sin
+`max-w-*` salvo en un formulario o una lectura angosta a propósito. Dos modos: normal con tope de
+`max-w-[1600px]` (todo el panel) y full-bleed (`/grilla`, `/reservas`). El fondo
+(`content-area-gradient`) va en el contenedor SIN tope, nunca en el `<main>`: ahí el tope dibuja una
+caja con franjas de otro tono. Una lista de una fila por elemento que en 1600 px queda estirada de
+punta a punta pasa a dos columnas en `lg` (`grid grid-cols-1 lg:grid-cols-2`, con `grid-cols-1`
+explícito) o a tabla. Decisión: `docs/decisions/2026-09-19-ancho-panel-admin.md`.
+
 ### 4.2 Radio (mapeo shadcn real: `--radius: 0.5rem`)
 
 | Token          | Valor | Uso                              |

@@ -202,112 +202,121 @@ export default async function AnaliticasPage(props: {
               />
             </div>
 
-            {/* Tendencia mensual */}
-            {report.prevPeriod && (
-              <TrendChart
-                current={{ income: report.income, balance: report.balance }}
-                prev={report.prevPeriod}
-              />
-            )}
+            {/* Escritorio: de a dos. Ambos bloques son condicionales — un hijo solo
+                ocupa las dos columnas (`only-child`) y sin hijos la fila desaparece
+                (`empty:hidden`), así el `space-y-6` no deja un hueco de 24px. */}
+            <div className="grid grid-cols-1 gap-6 empty:hidden lg:grid-cols-2 lg:[&>:only-child]:col-span-2">
+              {/* Tendencia mensual */}
+              {report.prevPeriod && (
+                <TrendChart
+                  current={{ income: report.income, balance: report.balance }}
+                  prev={report.prevPeriod}
+                />
+              )}
 
-            {/* Ocupación por cancha */}
-            {report.byCourt.length > 0 && <OccupancyChart byCourt={report.byCourt} />}
+              {/* Ocupación por cancha */}
+              {report.byCourt.length > 0 && <OccupancyChart byCourt={report.byCourt} />}
+            </div>
 
-            {/* By court */}
-            {report.byCourt.length > 0 && (
-              <ResponsiveList
-                className="overflow-hidden shadow-xs"
-                header={
-                  <div className="border-b border-border px-6 py-4">
-                    <h2 className="text-sm font-semibold text-foreground">Por cancha</h2>
-                  </div>
-                }
-                cards={
-                  <ul className="divide-y divide-border">
-                    {report.byCourt.map((c) => (
-                      <li
-                        key={c.courtId}
-                        className="flex items-center justify-between gap-3 px-4 py-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {c.courtName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {c.bookingCount} reservas · {formatPct(c.occupancyPct)} ocupación
-                          </p>
-                        </div>
-                        <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                          {formatArs(c.income)}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                }
-                table={
-                  <table className="w-full min-w-[520px] text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        <th className="px-6 py-3 text-left">Cancha</th>
-                        <th className="px-6 py-3 text-right">Ingresos</th>
-                        <th className="px-6 py-3 text-right">Reservas</th>
-                        <th className="px-6 py-3 text-right">Ocupación</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
+            {/* `xl` y no `lg`: la tabla "Por cancha" pide 520px (`min-w`) y a media
+                columna recién los tiene desde ~1200px de viewport. */}
+            <div className="grid grid-cols-1 gap-6 empty:hidden xl:grid-cols-2 xl:items-start xl:[&>:only-child]:col-span-2">
+              {/* By court */}
+              {report.byCourt.length > 0 && (
+                <ResponsiveList
+                  className="overflow-hidden shadow-xs"
+                  header={
+                    <div className="border-b border-border px-6 py-4">
+                      <h2 className="text-sm font-semibold text-foreground">Por cancha</h2>
+                    </div>
+                  }
+                  cards={
+                    <ul className="divide-y divide-border">
                       {report.byCourt.map((c) => (
-                        <tr key={c.courtId} className="transition-colors hover:bg-accent/40">
-                          <td className="px-6 py-3 text-foreground">{c.courtName}</td>
-                          <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                        <li
+                          key={c.courtId}
+                          className="flex items-center justify-between gap-3 px-4 py-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {c.courtName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {c.bookingCount} reservas · {formatPct(c.occupancyPct)} ocupación
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
                             {formatArs(c.income)}
-                          </td>
-                          <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                            {c.bookingCount}
-                          </td>
-                          <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                            {formatPct(c.occupancyPct)}
-                          </td>
-                        </tr>
+                          </p>
+                        </li>
                       ))}
-                    </tbody>
-                  </table>
-                }
-              />
-            )}
+                    </ul>
+                  }
+                  table={
+                    <table className="w-full min-w-[520px] text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          <th className="px-6 py-3 text-left">Cancha</th>
+                          <th className="px-6 py-3 text-right">Ingresos</th>
+                          <th className="px-6 py-3 text-right">Reservas</th>
+                          <th className="px-6 py-3 text-right">Ocupación</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {report.byCourt.map((c) => (
+                          <tr key={c.courtId} className="transition-colors hover:bg-accent/40">
+                            <td className="px-6 py-3 text-foreground">{c.courtName}</td>
+                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                              {formatArs(c.income)}
+                            </td>
+                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                              {c.bookingCount}
+                            </td>
+                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                              {formatPct(c.occupancyPct)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  }
+                />
+              )}
 
-            {/* By payment method */}
-            {report.byMethod.length > 0 && (
-              <div
-                className="card-entrance overflow-hidden rounded-lg border border-border bg-card shadow-xs"
-                style={{ animationDelay: '360ms' }}
-              >
-                <div className="border-b border-border px-6 py-4">
-                  <h2 className="text-sm font-semibold text-foreground">Por método de pago</h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        <th className="px-6 py-3 text-left">Método</th>
-                        <th className="px-6 py-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {report.byMethod.map((m) => (
-                        <tr key={m.method} className="transition-colors hover:bg-accent/40">
-                          <td className="px-6 py-3 text-foreground">
-                            {formatMethodLabel(m.method)}
-                          </td>
-                          <td className="px-6 py-3 text-right tabular-nums text-foreground">
-                            {formatArs(m.total)}
-                          </td>
+              {/* By payment method */}
+              {report.byMethod.length > 0 && (
+                <div
+                  className="card-entrance overflow-hidden rounded-lg border border-border bg-card shadow-xs"
+                  style={{ animationDelay: '360ms' }}
+                >
+                  <div className="border-b border-border px-6 py-4">
+                    <h2 className="text-sm font-semibold text-foreground">Por método de pago</h2>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          <th className="px-6 py-3 text-left">Método</th>
+                          <th className="px-6 py-3 text-right">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {report.byMethod.map((m) => (
+                          <tr key={m.method} className="transition-colors hover:bg-accent/40">
+                            <td className="px-6 py-3 text-foreground">
+                              {formatMethodLabel(m.method)}
+                            </td>
+                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                              {formatArs(m.total)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
 

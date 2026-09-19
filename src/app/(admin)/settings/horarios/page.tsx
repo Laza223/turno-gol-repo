@@ -21,13 +21,16 @@ export default async function HorariosPage() {
       {/* MASTER §6.8: la vista no abre encabezado propio — ver reservas/page.tsx. */}
       <SettingsTabs active="/settings/horarios" />
 
-      <div className="card-premium space-y-6 rounded-lg p-6">
+      {/* `min-[1440px]` y no `lg`: los días de "Excepciones por día" van en dos columnas
+          por viewport (`md:grid-cols-2` en ScheduleFields), y a media card quedan
+          de ~190px en 1024px (con la card a 3fr/2fr, desde 1440px son ~360px) — no entra "Miércoles + 10:00 a 23:00 + Personalizar". */}
+      <div className="card-premium grid grid-cols-1 gap-6 rounded-lg p-6 min-[1440px]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div>
           <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>
           <HorariosForm hours={hours} action={updateHorariosAction} />
         </div>
 
-        <div className="space-y-3 border-t border-border pt-6">
+        <div className="space-y-3 border-t border-border pt-6 min-[1440px]:border-t-0 min-[1440px]:border-l min-[1440px]:pt-0 min-[1440px]:pl-6">
           <div className="flex items-center gap-2">
             <CalendarOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-foreground">Días cerrados</h2>

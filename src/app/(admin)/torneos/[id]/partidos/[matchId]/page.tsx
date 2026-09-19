@@ -75,7 +75,7 @@ export default async function ActaPartidoPage(props: {
     .map((r) => r.teamPlayerId)
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <Link
         href={`/torneos/${tournament.id}/fixture`}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

@@ -130,4 +130,23 @@ describe('SuperAdminLayoutShell', () => {
     expect(screen.getAllByText('TurnoGol — SuperAdmin').length).toBeGreaterThan(0)
     expect(screen.getAllByText('duenio@turnogol.app').length).toBeGreaterThan(0)
   })
+
+  it('el contenido va con tope de 1600 px y el fondo en el contenedor sin tope', () => {
+    render(
+      <SuperAdminLayoutShell
+        userEmail="duenio@turnogol.app"
+        adminName="Lázaro Feijoo"
+        signOut={vi.fn() as unknown as () => Promise<never>}
+      >
+        <p>hola</p>
+      </SuperAdminLayoutShell>,
+    )
+
+    const main = document.querySelector('main#main-content')
+    expect(main?.className).toContain('max-w-[1600px]')
+    expect(main?.className).not.toContain('max-w-7xl')
+    // El fondo en el `<main>` con tope dibujaría una caja con franjas a los costados.
+    expect(main?.className).not.toContain('content-area-gradient')
+    expect(main?.parentElement?.parentElement?.className).toContain('content-area-gradient')
+  })
 })

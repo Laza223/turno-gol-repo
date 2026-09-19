@@ -17,7 +17,7 @@ export default async function NuevoAbonadoPage() {
   const courtOptions = courts.map((c) => ({ id: c.id, name: c.name }))
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="space-y-6">
       <div className="space-y-1">
         <Link
           href="/abonados"

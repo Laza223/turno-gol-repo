@@ -19,8 +19,8 @@ const ROSTER = [ADMIN, staffManager(), staffInactive()].map(toRosterMember)
 
 /**
  * Vista Equipo completa (extraída de staff/page.tsx). Reproduce el contenedor
- * real: `content-area-gradient` es el fondo del `<main>` del shell admin
- * (admin-layout-shell.tsx), donde vive esta vista sin ningún wrapper propio.
+ * real: `content-area-gradient` es el fondo del contenedor de contenido del
+ * shell admin (admin-layout-shell.tsx), donde vive esta vista sin ningún wrapper propio.
  */
 const meta = {
   title: 'Admin/Staff/StaffRosterView',

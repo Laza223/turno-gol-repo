@@ -65,7 +65,7 @@ detalle.
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Root: `space-y-4` dentro del `<main>` del shell (que ya da `max-w-7xl px-4 py-8`). Sin `<main>`
+Root: `space-y-4` dentro del `<main>` del shell (que ya da `max-w-[1600px] px-4 py-8`). Sin `<main>`
 propio (el shell ya lo es).
 
 - **Sin banda de encabezado.** La `PageHeader` que esta vista tenía salió en la v4: costaba

@@ -206,11 +206,13 @@ export function SuperAdminLayoutShell({
       </header>
 
       {/* Main content */}
-      <div className="lg:pl-60">
+      {/* El fondo va acá, sin tope de ancho: en el `<main>` el tope dibuja una caja
+          con franjas de otro tono a los costados (mismo criterio que AdminLayoutShell). */}
+      <div className="content-area-gradient lg:pl-60">
         <div className="pt-[calc(4rem+env(safe-area-inset-top))]">
           <main
             id="main-content"
-            className="content-area-gradient mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100dvh-4rem)]"
+            className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 min-h-[calc(100dvh-4rem)]"
           >
             {children}
           </main>

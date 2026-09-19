@@ -46,6 +46,18 @@ export async function listCourts(tenantId: string, tx: DbTx): Promise<CourtRow[]
   return rows.map(rowToCourtRow)
 }
 
+/**
+ * Canchas sin ninguna foto (online o pausadas, igual que la lista de /canchas).
+ * `photos` es nullable en el schema: NULL y `{}` cuentan como sin foto.
+ */
+export async function countCourtsWithoutPhotos(tenantId: string, tx: DbTx): Promise<number> {
+  const [row] = await tx
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(courts)
+    .where(and(eq(courts.tenantId, tenantId), sql`COALESCE(cardinality(${courts.photos}), 0) = 0`))
+  return Number(row?.count ?? 0)
+}
+
 export async function getCourtById(
   courtId: string,
   tenantId: string,

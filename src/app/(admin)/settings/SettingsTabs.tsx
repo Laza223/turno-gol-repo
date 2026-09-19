@@ -3,6 +3,8 @@
 import type { ReactNode } from 'react'
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
 import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
+import { SetupAlertDot } from '@/components/layout/setup-alert-dot'
+import { useSetupAlerts } from '@/components/layout/setup-alerts-context'
 
 // H161: Avisos se plegó dentro de Perfil (una sola preferencia no
 // justificaba pestaña propia con la pantalla vacía alrededor). Baja de 7 a 6.
@@ -30,10 +32,27 @@ const SETTINGS_TABS = [
  * `PageHeader` que esta vista ya no tiene.
  */
 export function SettingsTabs({ active, actions }: { active: string; actions?: ReactNode }) {
+  // Al perfil público le falta algo (portada, logo, ubicación): punto rojo en Perfil.
+  const { profile } = useSetupAlerts()
+  const tabs =
+    profile > 0
+      ? SETTINGS_TABS.map((t) =>
+          t.href === '/settings/perfil'
+            ? {
+                ...t,
+                badge: (
+                  <SetupAlertDot
+                    label={`— ${profile} ${profile === 1 ? 'cosa por completar' : 'cosas por completar'}`}
+                  />
+                ),
+              }
+            : t,
+        )
+      : SETTINGS_TABS
   return (
     <AdminHeaderSlot>
       <ScrollTabs
-        tabs={SETTINGS_TABS}
+        tabs={tabs}
         activeHref={active}
         ariaLabel="Secciones de configuración"
         className="min-w-0 flex-1 border-b-0"

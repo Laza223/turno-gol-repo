@@ -4,6 +4,10 @@ import type { ReactNode } from 'react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import type { TenantRow } from '@/modules/tenants/tenant.types'
+import { getProfileGaps } from '@/modules/tenants/setup-gaps'
+import { NO_SETUP_ALERTS, type SetupAlerts } from '@/components/layout/setup-alerts'
+import { countCourtsWithoutPhotos } from '@/modules/courts/court.service'
 import { withTenantContext } from '@/shared/db/client'
 import { redirectIfTenantSuspended } from '@/shared/kill-switch'
 import { isFeatureEnabled } from '@/shared/feature-flags'
@@ -15,6 +19,18 @@ import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
 import { signOutAction } from '@/app/(admin)/actions/auth'
 import { stopImpersonationAction } from '@/app/(super-admin)/super-admin/tenants/[id]/actions'
 
+/**
+ * Lo que el dueño todavía no completó y el jugador sí nota (canchas sin foto,
+ * perfil sin portada/logo/ubicación). Se calcula acá, una vez por render, y de acá
+ * salen los puntos rojos del menú y de las pestañas. Tras cada acción que sube o
+ * borra una imagen, `revalidatePath` vuelve a renderizar este layout, así que el
+ * punto se apaga solo cuando se completa.
+ */
+async function loadSetupAlerts(tenant: TenantRow): Promise<SetupAlerts> {
+  const courts = await withTenantContext(tenant.id, (tx) => countCourtsWithoutPhotos(tenant.id, tx))
+  return { courts, profile: getProfileGaps(tenant).length }
+}
+
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   // Impersonación (spec §6): el super admin entra a CUALQUIER tenant para dar
   // soporte, salteando las puertas de billing/kill-switch/onboarding — puede
@@ -22,14 +38,17 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // para arreglarlo. El banner rojo (commit de banner+audit) avisa el modo.
   const imp = await resolveImpersonatedStaffContext()
   if (imp) {
-    const impSub = await withTenantContext(imp.tenant.id, async (tx) =>
-      tx
-        .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
-        .from(tenantSubscriptions)
-        .where(eq(tenantSubscriptions.tenantId, imp.tenant.id))
-        .limit(1)
-        .then((r) => r[0] ?? null),
-    )
+    const [impSub, impAlerts] = await Promise.all([
+      withTenantContext(imp.tenant.id, async (tx) =>
+        tx
+          .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
+          .from(tenantSubscriptions)
+          .where(eq(tenantSubscriptions.tenantId, imp.tenant.id))
+          .limit(1)
+          .then((r) => r[0] ?? null),
+      ),
+      loadSetupAlerts(imp.tenant),
+    ])
     return (
       <AdminLayoutShell
         tenantName={imp.tenant.name}
@@ -42,6 +61,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <ImpersonationBanner tenantName={imp.tenant.name} action={stopImpersonationAction} />
         }
         staffRole="admin"
+        setupAlerts={impAlerts}
       >
         {children}
       </AdminLayoutShell>
@@ -86,7 +106,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Independientes entre sí: van en paralelo. El flag de torneos nace global en
   // false (migr. 062) y se prende por complejo con una fila de override, así el
   // módulo se pilotea sin redeploy. Cachea 60s in-process (feature-flags.ts).
-  const [sub, tournamentsEnabled, staffRole] = await Promise.all([
+  const [sub, tournamentsEnabled, staffRole, alerts] = await Promise.all([
     withTenantContext(tenant.id, async (tx) =>
       tx
         .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
@@ -97,7 +117,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     ),
     isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id),
     getStaffRole(tenant.id, user.staffUserId),
+    // En paralelo con el rol y no detrás de él: esperarlo sumaría un viaje a la DB en
+    // cada carga del panel. Solo el dueño ve los avisos (el encargado no tiene Canchas
+    // ni Configuración), así que para el resto se descartan abajo.
+    loadSetupAlerts(tenant),
   ])
+  const setupAlerts = staffRole === 'admin' ? alerts : NO_SETUP_ALERTS
 
   return (
     <AdminLayoutShell
@@ -109,6 +134,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       signOut={signOutAction}
       tournamentsEnabled={tournamentsEnabled}
       staffRole={staffRole ?? 'manager'}
+      setupAlerts={setupAlerts}
     >
       {children}
     </AdminLayoutShell>

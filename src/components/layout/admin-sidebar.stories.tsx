@@ -129,3 +129,19 @@ export const TenantNameLargo: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
   args: { tenantName: 'Polideportivo y Complejo Deportivo Municipal Belgrano Sur' },
 }
+
+/** Faltan fotos de canchas y datos del perfil: punto rojo en Canchas y en Ajustes. */
+export const ConAvisosDeConfiguracion: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/grilla' } } },
+  args: { staffRole: 'admin', setupAlerts: { courts: 2, profile: 1 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('link', { name: /Canchas.*hay algo por completar/ }),
+    ).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('link', { name: /Configuración.*hay algo por completar/ }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Grilla' })).toBeInTheDocument()
+  },
+}

@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils'
 import { WhatsappIcon } from '@/components/icons/WhatsappIcon'
 import { SUPPORT_WHATSAPP_URL } from '@/shared/constants'
 import type { StaffRole } from '@/modules/staff/roles'
+import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
+import { SetupAlertDot } from './setup-alert-dot'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -37,6 +39,8 @@ interface SidebarProps {
   /** Rol del staff logueado, leído de la DB server-side. Sin valor (p. ej. stories/tests
    *  sin threadear el prop) se trata como no-admin, igual criterio que `tournamentsEnabled`. */
   staffRole?: StaffRole
+  /** Cuántas cosas por completar tiene cada zona: prende el punto rojo del ítem. */
+  setupAlerts?: SetupAlerts
 }
 
 export interface NavItem {
@@ -47,6 +51,8 @@ export interface NavItem {
   requiresTournaments?: boolean
   /** Solo se muestra al rol admin (el manager no puede completar estas pantallas). */
   requiresAdmin?: boolean
+  /** Qué aviso de `SetupAlerts` prende el punto rojo de este espacio. */
+  alertKey?: keyof SetupAlerts
   /** Ancla para DashboardTour/useCoachmarkTour (`[data-tour-id]`). */
   tourId?: string
   /**
@@ -85,7 +91,7 @@ const NAV_ITEMS: NavItem[] = [
   // Canchas salió de Configuración el 2026-09-10, a pedido del dueño: define el
   // inventario y los precios, que es de lo que vive el complejo, y estaba
   // enterrada a dos niveles. Sigue siendo solo del dueño.
-  { href: '/canchas', icon: LandPlot, label: 'Canchas', requiresAdmin: true },
+  { href: '/canchas', icon: LandPlot, label: 'Canchas', requiresAdmin: true, alertKey: 'courts' },
   { href: '/torneos', icon: Trophy, label: 'Torneos', requiresTournaments: true },
   { href: '/analiticas', icon: ChartLine, label: 'Métricas' },
 ]
@@ -99,11 +105,12 @@ const NAV_ITEMS: NavItem[] = [
  * después mandar al navegador a hacer una segunda navegación. El destino final
  * es el mismo. `/settings` sigue existiendo para links y favoritos viejos.
  */
-const CONFIG_ITEM: NavItem = {
+export const CONFIG_ITEM: NavItem = {
   href: '/settings/reservas',
   icon: Settings,
   label: 'Configuración',
   requiresAdmin: true,
+  alertKey: 'profile',
   match: (p) => p === '/settings' || p.startsWith('/settings/'),
 }
 
@@ -119,6 +126,11 @@ const CONFIG_RAIL_LABEL = 'Ajustes'
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
   if (item.match) return item.match(pathname)
   return pathname === item.href || pathname.startsWith(item.href + '/')
+}
+
+/** El espacio lleva punto rojo si la zona que le corresponde tiene algo por completar. */
+export function navItemHasAlert(item: NavItem, alerts: SetupAlerts): boolean {
+  return item.alertKey != null && alerts[item.alertKey] > 0
 }
 
 export function visibleNavItems(opts: {
@@ -139,8 +151,13 @@ export function visibleNavItems(opts: {
  */
 const RAIL_ITEM =
   'group flex w-[60px] min-h-[52px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[10px] px-1 text-[10px] font-semibold tracking-[0.01em] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+/** Texto que un lector de pantalla oye en lugar del color del punto. */
+const ALERT_LABEL = '— hay algo por completar'
 const NAV_ACTIVE = 'bg-primary/10 text-emerald-800 dark:text-emerald-300'
 const NAV_IDLE = 'text-muted-foreground hover:bg-accent hover:text-foreground'
+
+/** Esquina superior derecha del ícono; el aro lo separa del glifo y del fondo del riel. */
+const RAIL_DOT = 'absolute -right-1 -top-0.5 ring-2 ring-card'
 
 function navIconClass(active: boolean) {
   return cn('h-5 w-5 shrink-0', active && 'text-emerald-700 dark:text-emerald-400')
@@ -244,17 +261,20 @@ function SidebarRail({
   onSignOut,
   tournamentsEnabled,
   staffRole,
+  setupAlerts,
 }: {
   pathname: string
   userEmail: string
   onSignOut: () => void
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
+  setupAlerts: SetupAlerts
 }) {
   const navItems = visibleNavItems({ tournamentsEnabled, staffRole })
   const canConfigure = staffRole === 'admin'
   const ConfigIcon = CONFIG_ITEM.icon
   const configActive = isNavItemActive(CONFIG_ITEM, pathname)
+  const configAlert = navItemHasAlert(CONFIG_ITEM, setupAlerts)
 
   return (
     <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[72px] flex-col items-center gap-1 border-r border-border bg-card py-3">
@@ -289,8 +309,12 @@ function SidebarRail({
               aria-current={isActive ? 'page' : undefined}
               className={cn(RAIL_ITEM, isActive ? NAV_ACTIVE : NAV_IDLE)}
             >
-              <Icon className={navIconClass(isActive)} />
+              <span className="relative flex">
+                <Icon className={navIconClass(isActive)} />
+                {navItemHasAlert(item, setupAlerts) && <SetupAlertDot className={RAIL_DOT} />}
+              </span>
               <span className="max-w-full truncate">{label}</span>
+              {navItemHasAlert(item, setupAlerts) && <span className="sr-only">{ALERT_LABEL}</span>}
             </Link>
           )
         })}
@@ -303,11 +327,14 @@ function SidebarRail({
       {canConfigure ? (
         <Link
           href={CONFIG_ITEM.href}
-          aria-label={CONFIG_ITEM.label}
+          aria-label={configAlert ? `${CONFIG_ITEM.label} ${ALERT_LABEL}` : CONFIG_ITEM.label}
           aria-current={configActive ? 'page' : undefined}
           className={cn(RAIL_ITEM, configActive ? NAV_ACTIVE : NAV_IDLE)}
         >
-          <ConfigIcon className={navIconClass(configActive)} />
+          <span className="relative flex">
+            <ConfigIcon className={navIconClass(configActive)} />
+            {configAlert && <SetupAlertDot className={RAIL_DOT} />}
+          </span>
           <span className="max-w-full truncate">{CONFIG_RAIL_LABEL}</span>
         </Link>
       ) : (
@@ -358,6 +385,7 @@ function SidebarDrawerContent({
   onSignOut,
   tournamentsEnabled,
   staffRole,
+  setupAlerts,
 }: {
   tenantName: string
   pathname: string
@@ -366,6 +394,7 @@ function SidebarDrawerContent({
   onSignOut: () => void
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
+  setupAlerts: SetupAlerts
 }) {
   const navItems = visibleNavItems({ tournamentsEnabled, staffRole })
   const canConfigure = staffRole === 'admin'
@@ -414,6 +443,7 @@ function SidebarDrawerContent({
             >
               <Icon className={navIconClass(isActive)} />
               <span className="flex-1 truncate">{label}</span>
+              {navItemHasAlert(item, setupAlerts) && <SetupAlertDot label={ALERT_LABEL} />}
             </Link>
           )
         })}
@@ -429,6 +459,7 @@ function SidebarDrawerContent({
           >
             <ConfigIcon className={navIconClass(configActive)} />
             <span className="flex-1 truncate">{CONFIG_ITEM.label}</span>
+            {navItemHasAlert(CONFIG_ITEM, setupAlerts) && <SetupAlertDot label={ALERT_LABEL} />}
           </Link>
         ) : (
           <div
@@ -466,6 +497,7 @@ export function AdminSidebar({
   onSignOut,
   tournamentsEnabled,
   staffRole,
+  setupAlerts = NO_SETUP_ALERTS,
 }: SidebarProps) {
   const pathname = usePathname()
 
@@ -477,6 +509,7 @@ export function AdminSidebar({
         onSignOut={onSignOut}
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
+        setupAlerts={setupAlerts}
       />
 
       {/* Cajón mobile — Sheet Radix (focus-trap + scroll-lock + Esc; MASTER §6.8).
@@ -497,6 +530,7 @@ export function AdminSidebar({
             onSignOut={onSignOut}
             tournamentsEnabled={tournamentsEnabled}
             staffRole={staffRole}
+            setupAlerts={setupAlerts}
           />
         </SheetContent>
       </Sheet>

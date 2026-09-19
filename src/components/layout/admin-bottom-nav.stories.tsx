@@ -85,3 +85,14 @@ export const ReservasEnciendeGrilla: Story = {
     )
   },
 }
+
+/** Canchas y Ajustes quedan detrás de "Más": el punto rojo sube a ese botón. */
+export const ConAvisosDeConfiguracion: Story = {
+  args: { staffRole: 'admin', setupAlerts: { courts: 1, profile: 0 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('button', { name: /Más.*hay algo por completar/ }),
+    ).toBeInTheDocument()
+  },
+}

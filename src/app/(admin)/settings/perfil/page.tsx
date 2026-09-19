@@ -1,5 +1,6 @@
-import { Bell, ChevronDown, ExternalLink, Mail } from 'lucide-react'
+import { Bell, ChevronDown, CircleAlert, ExternalLink, Mail } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
+import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { PerfilImagesForm } from './PerfilImagesForm'
 import { AccountEmailForm } from './AccountEmailForm'
@@ -21,11 +22,33 @@ const TRIGGER_CLASS =
 export default async function PerfilPage() {
   const { user, tenant } = await requireAdminStaff()
   const s = tenant.settings
+  const gaps = getProfileGaps(tenant)
 
   return (
     <div className="space-y-6">
       {/* MASTER §6.8: la vista no abre encabezado propio — ver reservas/page.tsx. */}
       <SettingsTabs active="/settings/perfil" />
+
+      {/* Lo que el punto de la pestaña Perfil anuncia: qué falta y qué se pierde.
+          Se va solo cuando se completa — no hay nada que descartar. */}
+      {gaps.length > 0 && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-lg border border-amber-300/70 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-200"
+        >
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <div className="space-y-1">
+            <p className="font-medium">Tu perfil público está incompleto</p>
+            <ul className="list-disc space-y-0.5 pl-4 text-xs">
+              {gaps.map((g) => (
+                <li key={g.key}>
+                  <span className="font-semibold">{g.label}:</span> {g.impact}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Las dos cards de datos del complejo van lado a lado en escritorio; las
           filas plegables de abajo siguen a ancho completo. */}

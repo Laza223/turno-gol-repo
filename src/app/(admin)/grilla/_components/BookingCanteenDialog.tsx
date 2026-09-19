@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useUnconfirmedDialogGuard } from '@/hooks/use-unconfirmed-dialog-guard'
 import { TicketPanel, type SellTicketAction } from '../../caja/cantina/TicketPanel'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 
@@ -17,6 +18,10 @@ import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
  * El catálogo se pide al ABRIR, no al renderizar la grilla: el stock cambia
  * durante todo el día y una grilla abierta desde la mañana ofrecería unidades
  * que ya se vendieron.
+ *
+ * Con una venta sin confirmar (se cortó la red en "Cobrar") el diálogo no se cierra
+ * ni por Esc/✕ ni tocando afuera: el caller lo desmonta al cerrar y la clave de
+ * reintento se perdería — ver `useUnconfirmedDialogGuard`.
  *
  * NO se ofrece "anotar como fiado" acá: un fiado se le anota a una PERSONA
  * (`canteen_tabs.debtor_name`), no a un turno — no hay dónde guardar el
@@ -65,6 +70,7 @@ export function BookingCanteenDialog({
 }: Props) {
   const [catalog, setCatalog] = useState<{ products: CanteenProductRow[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const guard = useUnconfirmedDialogGuard(onOpenChange)
 
   useEffect(() => {
     let alive = true
@@ -88,8 +94,8 @@ export function BookingCanteenDialog({
   }, [listCatalogAction])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+    <Dialog open={open} onOpenChange={guard.onOpenChange}>
+      <DialogContent className="max-w-4xl" onInteractOutside={guard.onInteractOutside}>
         <DialogHeader>
           <DialogTitle>Cantina{displayName ? ` — ${displayName}` : ''}</DialogTitle>
         </DialogHeader>
@@ -108,6 +114,7 @@ export function BookingCanteenDialog({
           <TicketPanel
             products={catalog.products}
             layout="dialog"
+            onUnconfirmedChange={guard.onUnconfirmedChange}
             sellTicketAction={(input) => sellTicketAction({ ...input, bookingId })}
           />
         )}

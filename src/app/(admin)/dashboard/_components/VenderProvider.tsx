@@ -2,6 +2,7 @@
 
 import { createContext, use, useState, type ReactNode } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useUnconfirmedDialogGuard } from '@/hooks/use-unconfirmed-dialog-guard'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import {
   TicketPanel,
@@ -42,12 +43,8 @@ export function useVender(): VenderContextValue {
  * Las Server Actions llegan por prop (una Server Component no puede pasarlas de
  * otra forma a un componente cliente).
  *
- * **No se cierra con una venta sin confirmar.** Si la red se corta y no se sabe si
- * la venta entró, el ticket guarda la clave para reintentar ESA venta; cerrar el
- * diálogo lo desmonta y la pierde, y al reabrir cobrar de nuevo la duplicaría (venta,
- * stock y caja). Mientras tanto Esc y ✕ no cierran y el ticket ya dice qué hacer.
- * Tocar afuera NUNCA cierra: un toque de más en el overlay no puede borrar un ticket
- * armado con gente esperando.
+ * No se cierra con una venta sin confirmar y tocar afuera nunca cierra — ver
+ * `useUnconfirmedDialogGuard`.
  */
 export function VenderProvider({
   products,
@@ -61,22 +58,14 @@ export function VenderProvider({
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
-  const [unconfirmed, setUnconfirmed] = useState(false)
-
-  function handleOpenChange(next: boolean) {
-    if (!next && unconfirmed) return
-    setOpen(next)
-  }
+  const guard = useUnconfirmedDialogGuard(setOpen)
 
   return (
     <VenderContext value={{ open, setOpen, products, sellTicketAction, createTabAction }}>
       {children}
       {open && (
-        <Dialog open onOpenChange={handleOpenChange}>
-          <DialogContent
-            className="max-w-4xl"
-            onInteractOutside={(event) => event.preventDefault()}
-          >
+        <Dialog open onOpenChange={guard.onOpenChange}>
+          <DialogContent className="max-w-4xl" onInteractOutside={guard.onInteractOutside}>
             <DialogHeader>
               <DialogTitle>Vender</DialogTitle>
             </DialogHeader>
@@ -85,7 +74,7 @@ export function VenderProvider({
               products={products}
               sellTicketAction={sellTicketAction}
               createTabAction={createTabAction}
-              onUnconfirmedChange={setUnconfirmed}
+              onUnconfirmedChange={guard.onUnconfirmedChange}
             />
           </DialogContent>
         </Dialog>

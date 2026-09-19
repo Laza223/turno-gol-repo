@@ -36,11 +36,22 @@ export type AdminPushPayload = PushSendJobData['payload']
 export async function notifyAdminPush(
   tenantId: string,
   payload: AdminPushPayload,
+  opts: { ownerOnly?: boolean } = {},
 ): Promise<{ enqueued: number }> {
   const sql = getWorkerSql()
-  const subs = await sql<{ id: string }[]>`
-    SELECT id FROM push_subscriptions WHERE tenant_id = ${tenantId}
-  `
+  // `ownerOnly`: el push lleva plata del negocio (el resumen diario), el mismo
+  // dato que Métricas, que el Encargado no ve. Solo llega a suscripciones del
+  // dueño con membresía activa.
+  const subs = opts.ownerOnly
+    ? await sql<{ id: string }[]>`
+        SELECT ps.id FROM push_subscriptions ps
+        JOIN tenant_staff_members m
+          ON m.tenant_id = ps.tenant_id AND m.staff_user_id = ps.staff_user_id
+        WHERE ps.tenant_id = ${tenantId} AND m.role = 'admin' AND m.is_active
+      `
+    : await sql<{ id: string }[]>`
+        SELECT id FROM push_subscriptions WHERE tenant_id = ${tenantId}
+      `
   if (subs.length === 0) {
     return { enqueued: 0 }
   }

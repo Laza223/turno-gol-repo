@@ -46,8 +46,10 @@ camino actual lo saca de la vista y no le da todo lo que necesita en el momento.
   desvío conocido y pendiente de unificar, fuera de este cambio.
 - **Un Encargado que llega a `/analiticas`** (link viejo, `/metricas`, `/reportes`) cae en Hoy sin aviso. No
   se agregó un aviso como el de Configuración (H163): `/analiticas` ya no aparece en su navegación.
-- **El push de resumen diario** (`daily-summary.worker.ts`) sigue llegando a todas las suscripciones del
-  complejo, Encargado incluido, con el cobrado del día. Ya era así y el Encargado también ve la plata del
-  día en Caja: queda como pregunta abierta para el dueño (¿alcanza con "sin Métricas"?).
+- **El push de resumen diario** (`daily-summary.worker.ts`) pasa a llegar solo a las suscripciones del
+  dueño (`notifyAdminPush(..., { ownerOnly: true })`). Es un resumen de rendimiento (cobrado y ocupación de
+  ayer), el mismo tipo de dato que Métricas. El Encargado sigue viendo la plata del día en Caja porque la
+  necesita para operar. Decisión tomada por criterio (el dueño delegó la elección): se revierte con un
+  cambio de una línea si prefiere que le siga llegando.
 - **Hoy deja de depender de un solo rol**: el estado vacío "Ir a Canchas" de `ProximosTurnos` apunta a una
   pantalla solo-admin. Se resuelve en PR2, donde ese componente es reemplazado.

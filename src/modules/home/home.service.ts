@@ -234,6 +234,12 @@ async function getOnlineBookingsToday(
     JOIN courts c ON c.id = b.court_id AND c.tenant_id = ${tenantId}
     LEFT JOIN players pl ON pl.id = b.player_id
     WHERE b.tenant_id = ${tenantId}
+      -- 'fixed' (abonado) nunca lo carga un jugador desde el portal: los slots
+      -- rolling del worker (generate-abonado-slots.worker.ts) y los del alta
+      -- (insertBookingsForSlots, abonado.service.ts) nacen con created_by_staff
+      -- NULL igual que una reserva online — created_by_staff solo no alcanza
+      -- para distinguirlas. QA 2026-09-13: 4 fijos daban "10 reservas online".
+      AND b.type = 'spontaneous'
       AND b.created_by_staff IS NULL
       AND b.created_at >= ${range.fromUtc.toISOString()}
       AND b.created_at < ${range.toUtc.toISOString()}

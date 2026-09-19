@@ -14,7 +14,13 @@ import { insertBooking, insertCourt } from '../helpers/factories'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import { getHoyData } from '@/modules/home/home.service'
+import { createAbonado } from '@/modules/abonados/abonado.service'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+
+// 2030-01-07 es lunes (dayOfWeek=1) — lejos en el futuro, sin conflictos con
+// otras suites (mismo par usado en abonados.test.ts).
+const ABO_START = '2030-01-07'
+const ABO_DOW = 1
 
 /**
  * Horarios de un tenant REAL, no el default crudo de la migración 003.
@@ -372,6 +378,37 @@ describe('home.service — "Mientras no estabas"', () => {
     expect(data.whileYouWereAway.find((i) => i.kind === 'deposit_paid')?.bookingId).toBe(
       paidBookingId,
     )
+  })
+
+  it('un turno fijo (abonado) creado por staff NO cuenta como "reserva online" (QA 2026-09-13)', async () => {
+    const { tenant, staffId, courtId } = await seedTenant()
+    const today = artDateOf(new Date())
+
+    const { slotsGenerated } = await withTenantContext(tenant.id, (tx) =>
+      createAbonado(
+        tenant.id,
+        staffId,
+        {
+          courtId,
+          contactName: 'Grupo Test',
+          contactPhone: '1122334455',
+          dayOfWeek: ABO_DOW,
+          timeStart: '20:00',
+          timeEnd: '21:00',
+          pricePerSession: 800000,
+          startsOn: ABO_START,
+          paymentMethod: 'cash',
+        },
+        tx,
+      ),
+    )
+    expect(slotsGenerated).toBeGreaterThan(0)
+
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, hoyOpts(tenant, today)),
+    )
+
+    expect(data.whileYouWereAway.filter((i) => i.kind === 'booking_online')).toEqual([])
   })
 
   it('una cancelación hecha POR el admin no aparece (no es algo que pasó "sin él")', async () => {

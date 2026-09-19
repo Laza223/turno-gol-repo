@@ -31,7 +31,17 @@ export async function getChecklistState(
       tx
         .select({ id: bookings.id })
         .from(bookings)
-        .where(and(eq(bookings.tenantId, tenantId), isNull(bookings.createdByStaff)))
+        // 'spontaneous' + created_by_staff NULL: solo created_by_staff no
+        // alcanza — los fijos de abonado (alta y worker rolling) también
+        // nacen con esa columna en NULL sin ser una reserva online (QA
+        // 2026-09-13, mismo predicado en home.service.ts/booking.service.ts).
+        .where(
+          and(
+            eq(bookings.tenantId, tenantId),
+            eq(bookings.type, 'spontaneous'),
+            isNull(bookings.createdByStaff),
+          ),
+        )
         .limit(1)
         .then((r) => r[0] ?? null),
     ])

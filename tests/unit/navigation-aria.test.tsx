@@ -103,6 +103,16 @@ describe('AdminSidebar — los 6 espacios', () => {
     expect(screen.queryByRole('link', { name: 'Turnos fijos' })).toBeNull()
   })
 
+  it('el encargado ve Hoy y no ve Métricas; el dueño ve las dos', () => {
+    renderSidebar('/grilla', 'manager')
+    expect(screen.getAllByRole('link', { name: 'Hoy' }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('link', { name: 'Métricas' })).toBeNull()
+    cleanup()
+    renderSidebar('/grilla', 'admin')
+    expect(screen.getAllByRole('link', { name: 'Hoy' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'Métricas' }).length).toBeGreaterThan(0)
+  })
+
   it('al manager Configuración se le bloquea con candado, no se le esconde', () => {
     renderSidebar('/grilla', 'manager')
     expect(screen.queryByRole('link', { name: 'Configuración' })).toBeNull()
@@ -152,10 +162,11 @@ describe('AdminBottomNav', () => {
     expect(screen.getByRole('button', { name: 'Más' })).toBeTruthy()
   })
 
-  it('el encargado, sin Hoy, ve Grilla · Caja · Clientes · Más', () => {
+  it('el encargado también ve Hoy · Grilla · Caja · Más', () => {
     renderBottomNav('/grilla', 'manager')
-    expect(screen.queryByRole('link', { name: 'Hoy' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'Clientes' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Hoy' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Grilla' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Caja' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Más' })).toBeTruthy()
   })
 

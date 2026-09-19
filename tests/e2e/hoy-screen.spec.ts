@@ -4,7 +4,7 @@
  * Cubre lo que un test de integración no puede probar solo: que la pantalla
  * en vivo (Server Component real, sesión real) muestra los 3 números + los
  * 2 bloques, que una alerta real de la taxonomía aparece con su acción, y
- * que el guard D5 (manager sin "Hoy") funciona de punta a punta — no solo a
+ * que los guards de rol (el encargado ve Hoy pero no Métricas) funcionan de punta a punta — no solo a
  * nivel de función aislada (eso ya lo cubre tests/integration/home-service.test.ts
  * y tests/unit/staff-guards.test.ts / admin-sidebar.stories.tsx).
  *
@@ -29,7 +29,7 @@ function todayDateIsoArt(): string {
   return formatInTimeZone(new Date(), 'America/Argentina/Buenos_Aires', 'yyyy-MM-dd')
 }
 
-test.describe('Hoy (Fase 2) — home solo-admin', () => {
+test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
   test('admin ve el tablero del día + "Mientras no estabas" @critical', async ({
     browser,
     adminStorageState,
@@ -96,7 +96,7 @@ test.describe('Hoy (Fase 2) — home solo-admin', () => {
     }
   })
 
-  test('manager no tiene "Hoy": /dashboard rebota a /grilla y el ítem no aparece en el nav (D5)', async ({
+  test('el encargado ve "Hoy", pero no "Métricas": /analiticas lo devuelve a /dashboard', async ({
     browser,
     managerStorageState,
   }) => {
@@ -106,8 +106,12 @@ test.describe('Hoy (Fase 2) — home solo-admin', () => {
       const page = await context.newPage()
       await page.goto('/dashboard', { waitUntil: 'networkidle' })
 
-      await expect(page).toHaveURL(/\/grilla/)
-      await expect(page.getByRole('link', { name: 'Hoy' })).toHaveCount(0)
+      await expect(page).toHaveURL(/\/dashboard/)
+      await expect(page.getByRole('link', { name: 'Hoy' }).first()).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Métricas' })).toHaveCount(0)
+
+      await page.goto('/analiticas', { waitUntil: 'networkidle' })
+      await expect(page).toHaveURL(/\/dashboard/)
     } finally {
       await context.close()
     }

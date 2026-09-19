@@ -353,7 +353,7 @@ async function getDepositsPaidToday(
 
 /**
  * "Hoy" (Fase 2 — docs/planning/2026-08-01-decisiones-de-fase-v2.md §3):
- * agregador único de la home solo-admin (D5). Reusa getStreetMoney (Fase 1)
+ * agregador único de la home (del dueño y del Encargado desde 2026-09-19). Reusa getStreetMoney (Fase 1)
  * para "plata en la calle" y para el alert "turno sin cobrar" — nunca
  * recalcula esa cifra, es la garantía de fuente única del contrato.
  *

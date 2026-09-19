@@ -154,9 +154,9 @@ export async function requireAuthenticatedStaffAction(): Promise<AuthenticatedSt
 }
 
 /**
- * Guard server-side para zonas solo-admin (Configuración, Vista Equipo).
- * El Encargado (manager) rebota a /dashboard por default — esa página lo
- * manda a su vez a /grilla (es solo-admin también, B10). `opts.onRoleRejected`
+ * Guard server-side para zonas solo-admin (Configuración, Vista Equipo,
+ * Métricas). El Encargado (manager) rebota a /dashboard por default: Hoy es
+ * también suya (2026-09-19), así que no hay segundo salto. `opts.onRoleRejected`
  * lo pisa: lo usa settings/layout.tsx (H163) para ir directo a /grilla con un
  * `?notice=` que esa página traduce a un aviso, evitando el salto extra por
  * /dashboard (que perdería el query param: no reenvía searchParams al

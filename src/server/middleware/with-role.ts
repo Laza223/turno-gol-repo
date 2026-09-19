@@ -34,35 +34,12 @@ export function withRole(required: Role, handler: RoleInnerHandler): RoleInnerHa
       })
     }
     // Sin try/catch acá a propósito: este layer corre DENTRO de la transacción
-    // que abre withTenantContext (withRole/withAnyRole siempre se componen
+    // que abre withTenantContext (withRole siempre se compone
     // adentro de withTenant). Atajar la excepción acá la convierte en un valor
     // resuelto normal para `db.transaction`, que hace COMMIT en vez de
     // ROLLBACK aunque el handler haya fallado a mitad de una escritura
     // multi-paso — el catch+captureException+internal() vive en with-tenant.ts,
     // que envuelve la llamada a withTenantContext DESDE AFUERA de la tx.
-    return handler(req, user, tx)
-  }
-}
-
-/**
- * Como `withRole` pero acepta cualquiera de varios roles. Para endpoints
- * operator-level (admin + manager) — p.ej. las métricas de NEGOCIO del complejo,
- * que el encargado ve igual que grilla/caja/reportes. El rol real se lee de
- * `tenant_staff_members` (nunca del claim del JWT).
- */
-export function withAnyRole(allowed: readonly Role[], handler: RoleInnerHandler): RoleInnerHandler {
-  return async (req, user, tx) => {
-    if (!user.tenantId || !user.staffUserId) {
-      return forbidden('Falta el contexto de complejo.', { code: 'NO_TENANT_CONTEXT' })
-    }
-    const role = await getStaffRole(user.tenantId, user.staffUserId)
-    if (role === null || !allowed.includes(role)) {
-      return forbidden('No tenés el rol requerido para esta acción.', {
-        code: 'ROLE_REQUIRED',
-        details: { required: allowed },
-      })
-    }
-    // Ídem withRole: sin try/catch, corre dentro de la tx de withTenantContext.
     return handler(req, user, tx)
   }
 }

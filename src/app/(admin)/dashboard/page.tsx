@@ -29,22 +29,19 @@ function todayMediumArt(now: Date): string {
 }
 
 export default async function DashboardPage() {
-  // B10 — `requireOperatorStaff` y no `requireAdminStaff`, aunque la pantalla
-  // sea solo-admin: `requireAdminStaff` rebota al manager A `/dashboard`, que es
-  // ESTA página, así que sería un loop de redirects. El guard operator deja
-  // pasar a los dos y devuelve el rol ya leído, que es justo lo que hace falta
-  // para el rebote de abajo — y ahorra el `getStaffRole` suelto que había acá.
+  // B10 — `requireOperatorStaff` y no `requireAdminStaff`: `requireAdminStaff`
+  // rebota al manager A `/dashboard`, que es ESTA página, así que sería un loop
+  // de redirects. El guard operator deja pasar a los dos y devuelve el rol ya
+  // leído, que es lo que hace falta para decidir qué bloques ve cada uno.
   const auth = await requireOperatorStaff()
   if (!auth.ok) redirect('/login')
   const { tenant, role } = auth
 
-  // D5 (docs/planning/2026-08-01-decisiones-de-fase-v2.md): "Hoy" es solo del
-  // admin — no existe versión manager. Mismo patrón que requireAdminStaff
-  // (guards.ts:124), destino invertido: acá rebota A la grilla en vez de
-  // rebotar DESDE ella. Los 9 call-sites que hacen redirect('/dashboard')
-  // genérico (login, onboarding, etc.) siguen aterrizando acá sin tocarlos —
-  // el rebote ocurre en el primer render de esta página.
-  if (role !== 'admin') redirect('/grilla')
+  // Hoy es la pantalla del mostrador y la ve también el Encargado (decisión del
+  // dueño, 2026-09-19: docs/decisions/2026-09-19-hoy-cobrar-y-vender.md). Antes
+  // era solo del admin (D5) y el manager rebotaba a /grilla. Lo que sigue siendo
+  // solo del dueño es la configuración: el checklist de arranque y el tour.
+  const isAdmin = role === 'admin'
 
   const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
   // Un solo reloj para todo el render: el día operativo y el "hace N min" de
@@ -63,15 +60,16 @@ export default async function DashboardPage() {
         closesNextDay: tenant.closesNextDay,
       }),
     ),
-    getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt),
+    // El checklist de arranque es solo del dueño: al Encargado no se le pagan sus queries.
+    isAdmin ? getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt) : null,
   ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
   // podía dar "por terminado" el onboarding con canchas/horarios sin cargar).
-  const allDone = Object.values(checklistState).every(Boolean)
-  const showChecklist = !allDone && !tenant.settings.checklist_dismissed_at
+  const allDone = checklistState === null || Object.values(checklistState).every(Boolean)
+  const showChecklist = isAdmin && !allDone && !tenant.settings.checklist_dismissed_at
   const showTour =
-    tenant.settings.onboarding_completed === true && !tenant.settings.admin_tour_seen_at
+    isAdmin && tenant.settings.onboarding_completed === true && !tenant.settings.admin_tour_seen_at
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const { numbers, whileYouWereAway, needsAttention, upcoming } = data
@@ -107,7 +105,7 @@ export default async function DashboardPage() {
         <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
       </div>
 
-      {showChecklist && (
+      {showChecklist && checklistState && (
         <div className="card-entrance" style={{ animationDelay: '60ms' }}>
           <OnboardingChecklist
             state={checklistState}

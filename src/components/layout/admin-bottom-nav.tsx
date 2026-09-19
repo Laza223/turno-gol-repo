@@ -13,8 +13,8 @@ import { isNavItemActive, visibleNavItems } from './admin-sidebar'
  *
  * Los tres accesos directos son los TRES PRIMEROS espacios visibles para el rol
  * — y como `NAV_ITEMS` ya está ordenado por frecuencia real de uso, eso da
- * `Hoy · Grilla · Caja` para el dueño y `Grilla · Caja · Clientes` para el
- * encargado (que no tiene Hoy, por D5) sin ninguna lista aparte que mantener.
+ * `Hoy · Grilla · Caja` para el dueño y para el encargado (Hoy es de los dos
+ * desde 2026-09-19) sin ninguna lista aparte que mantener.
  * El cuarto lugar es "Más", que abre el drawer con los 6 espacios completos.
  *
  * `lg:hidden` como el sidebar es `hidden lg:flex`: nunca están los dos en el

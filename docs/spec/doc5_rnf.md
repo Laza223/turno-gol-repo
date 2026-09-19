@@ -132,14 +132,14 @@ Runbook de emergencia (documentar antes de lanzar):
 
 **Permisos por rol (RBAC):**
 
-**2 roles (Modelo ATC):** `admin` (dueño, acceso total) y `manager` (encargado permisivo). El `manager` opera el día a día (grilla, reservas, caja, abonados, reportes y métricas). El `admin` es el único que edita precios, configuración general, conecta MercadoPago, gestiona facturación/staff y la suscripción SaaS. **No hay sistema de PIN** ni rol `read_only` (eliminado, migr. 029).
+**2 roles (Modelo ATC):** `admin` (dueño, acceso total) y `manager` (encargado permisivo). El `manager` opera el día a día (Hoy, grilla, reservas, caja y abonados). El `admin` es el único que ve reportes y métricas, edita precios, configuración general, conecta MercadoPago, gestiona facturación/staff y la suscripción SaaS. **No hay sistema de PIN** ni rol `read_only` (eliminado, migr. 029).
 
 | Acción | Admin | Manager | Jugador |
 |---|:---:|:---:|:---:|
 | Ver grilla de reservas | ✅ | ✅ | ❌ |
 | Crear reserva manual | ✅ | ✅ | ❌ |
 | Cancelar reserva | ✅ | ✅ | Sólo la propia |
-| Ver reportes / métricas | ✅ | ✅ | ❌ |
+| Ver reportes / métricas | ✅ | ❌ | ❌ |
 | Gestionar abonados | ✅ | ✅ | ❌ |
 | Gestionar caja (ingresos/gastos/cierre) | ✅ | ✅ | ❌ |
 | Editar precios de canchas | ✅ | ❌ | ❌ |

@@ -17,9 +17,9 @@ import { suppressPushPrompt } from '../_qa/session'
  * contenido real (MetricsDashboard) se embebe ahí vía MetricsDashboardLoader.
  * Rol: Admin — el panel "Estado del sistema" está reservado únicamente para SuperAdmin
  * de plataforma (`resolveSystemAdmin`, `analiticas/page.tsx`), por lo que un admin estándar no lo ve.
- * NOTA (verificación fresca de código, no del manual): `GET /api/admin/metrics`
- * usa `withAnyRole(['admin','manager'])` (`route.ts:21`) — NO `withRole('admin')`
- * como decía el GAP #2 del manual (ya desactualizado respecto al código actual).
+ * NOTA: `GET /api/admin/metrics` usa `withRole('admin')` desde 2026-09-19 (antes
+ * `withAnyRole(['admin','manager'])`): las métricas del negocio son solo del dueño
+ * (`tests/integration/admin-metrics-route-guard.test.ts` cubre el 403 del encargado).
  * Prereq: actividad en los últimos 30 días — se siembra acá mismo (1 booking
  * `completed` + 1 cash_flow `income` con fecha/hora de HOY en ART) para no
  * depender de residuos de otros specs de la corrida QA.
@@ -163,8 +163,8 @@ test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
         today,
         apiMetrics: apiJson.data,
         notes:
-          'Sesión admin: ve negocio + Estado del sistema. withAnyRole admite también manager para el negocio ' +
-          '(GAP #2 del manual desactualizado respecto a route.ts:21) — no se re-probó con manager en este caso.',
+          'Sesión admin: ve negocio + Estado del sistema. El encargado ya no accede: ' +
+          "withRole('admin') en route.ts, cubierto por admin-metrics-route-guard.test.ts.",
       })
     } finally {
       await context.close()

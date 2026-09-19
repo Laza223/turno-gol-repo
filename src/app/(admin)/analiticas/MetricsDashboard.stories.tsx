@@ -51,7 +51,7 @@ export const Default: Story = {
   },
 }
 
-/** El manager ve sus métricas pero no el panel de observabilidad del sistema (solo admin). */
+/** El dueño ve sus métricas pero no el panel de observabilidad del sistema (solo superadmin de la plataforma). */
 export const SinPanelDeSistema: Story = {
   args: { canSeeSystem: false },
   play: async ({ canvasElement }) => {

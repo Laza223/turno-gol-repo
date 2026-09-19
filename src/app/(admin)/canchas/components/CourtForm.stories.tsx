@@ -33,7 +33,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Cancha nueva: arranca sin fotos (recién se puede subir tras crear) y sin precios. */
+/** Cancha nueva: arranca sin fotos (se eligen acá y se suben al crear) y sin precios. */
 export const NuevaCancha: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -41,7 +41,11 @@ export const NuevaCancha: Story = {
     await expect(
       canvas.getByText('Sin precios todavía. Empezá por la plantilla rápida.'),
     ).toBeVisible()
-    await expect(canvas.queryByText('Fotos')).not.toBeInTheDocument()
+    await expect(canvas.getByText('Fotos')).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Agregar foto' })).toBeVisible()
+    // Vista previa: cómo sale la cancha en el perfil público sin foto y con foto.
+    await expect(canvas.getByText('Así lo ve el jugador en tu perfil')).toBeVisible()
+    await expect(canvas.getByText('Elegí una foto para ver cómo queda')).toBeVisible()
   },
 }
 

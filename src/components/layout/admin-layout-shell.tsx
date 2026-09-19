@@ -5,9 +5,11 @@ import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { StaffRole } from '@/modules/staff/roles'
+import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
 import { AdminSidebar } from './admin-sidebar'
 import { AdminBottomNav } from './admin-bottom-nav'
 import { AdminHeader } from './admin-header'
+import { SetupAlertsProvider } from './setup-alerts-context'
 import { StatusBanner } from './status-banner'
 import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 
@@ -26,6 +28,9 @@ interface AdminLayoutShellProps {
   /** Rol del staff logueado, leído de la DB server-side. Sin valor se trata como
    *  no-admin en el sidebar (mismo criterio que `tournamentsEnabled`). */
   staffRole?: StaffRole
+  /** Lo que le falta completar al complejo: prende los puntos rojos del menú y de las
+   *  pestañas de Configuración. Sin valor, sin avisos. */
+  setupAlerts?: SetupAlerts
 }
 
 export function AdminLayoutShell({
@@ -39,6 +44,7 @@ export function AdminLayoutShell({
   impersonationBanner,
   tournamentsEnabled,
   staffRole,
+  setupAlerts = NO_SETUP_ALERTS,
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -74,6 +80,7 @@ export function AdminLayoutShell({
         onSignOut={handleSignOut}
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
+        setupAlerts={setupAlerts}
       />
 
       {/* Header */}
@@ -85,6 +92,7 @@ export function AdminLayoutShell({
         moreOpen={mobileOpen}
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
+        setupAlerts={setupAlerts}
       />
 
       {/* Main content */}
@@ -126,7 +134,7 @@ export function AdminLayoutShell({
             {/* Va acá, en flujo y dentro del contenedor de la página, y no como
                 overlay fijo: ver el comentario del propio componente. */}
             <PushNotificationManagerLoader />
-            {children}
+            <SetupAlertsProvider alerts={setupAlerts}>{children}</SetupAlertsProvider>
           </main>
         </div>
       </div>

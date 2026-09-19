@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
@@ -15,9 +15,11 @@ import {
   type BillingChangePreview,
 } from '../billing-copy'
 import { PricingSection, type CourtPricingSource } from './PricingSection'
+import { CourtPhotoPreview } from './CourtPhotoPreview'
 import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/components/ui/image-uploader'
 import { SelectMenu } from '@/components/ui/select-menu'
+import { toast } from '@/hooks/use-toast'
 
 /**
  * Las 5 Server Actions llegan por PROP, no por import: '../actions' es
@@ -63,6 +65,10 @@ const SURFACE_OPTIONS = [
 
 const FORMAT_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11] as const
 
+const MAX_PHOTOS = 6
+
+type StagedPhoto = { blob: Blob; url: string }
+
 type Props = {
   court: CourtRow | null
   /** Complejo dueño del formulario. Llega por prop y no de `court` porque al
@@ -74,7 +80,8 @@ type Props = {
   /** Otras canchas del complejo, para "Copiar precios de otra cancha". */
   otherCourts: CourtPricingSource[]
   onSaved: (court: CourtRow) => void
-  onCancel: () => void
+  /** Al editar lleva las fotos actuales: se guardan al elegirlas, aunque después se cancele. */
+  onCancel: (photos?: string[]) => void
   createAction: CreateCourtAction
   updateAction: UpdateCourtAction
   uploadPhotoAction: UploadCourtPhotoAction
@@ -121,6 +128,14 @@ export function CourtForm({
   )
 
   const [photos, setPhotos] = useState<string[]>(court?.photos ?? [])
+  // Alta: la cancha todavía no existe, así que no hay `courtId` al que subir. Las
+  // fotos elegidas quedan acá (con un blob: URL para la vista previa) y se suben
+  // recién cuando `createAction` devuelve el id.
+  const [staged, setStaged] = useState<StagedPhoto[]>([])
+  const currentPhotos = isEdit ? photos : staged.map((p) => p.url)
+  const stagedRef = useRef(staged)
+  stagedRef.current = staged
+  useEffect(() => () => stagedRef.current.forEach((p) => URL.revokeObjectURL(p.url)), [])
 
   const handleRulesChange = useCallback(
     (nextRules: PricingRule[], meta: { emptyCount: number }) => {
@@ -131,7 +146,10 @@ export function CourtForm({
   )
 
   async function handlePhotoUpload(blob: Blob) {
-    if (!court) return
+    if (!court) {
+      setStaged((prev) => [...prev, { blob, url: URL.createObjectURL(blob) }])
+      return
+    }
     const fd = new FormData()
     fd.set('file', blob, 'photo.webp')
     const result = await uploadPhotoAction(court.id, fd)
@@ -140,17 +158,56 @@ export function CourtForm({
   }
 
   async function handlePhotoRemove(url: string) {
-    if (!court) return
+    if (!court) {
+      URL.revokeObjectURL(url)
+      setStaged((prev) => prev.filter((p) => p.url !== url))
+      return
+    }
     const result = await removePhotoAction(court.id, url)
     if (result.success) setPhotos(result.photos)
     else setError(result.error)
   }
 
   async function handlePhotoReorder(urls: string[]) {
-    if (!court) return
+    if (!court) {
+      setStaged((prev) => urls.flatMap((u) => prev.filter((p) => p.url === u)))
+      return
+    }
     const result = await reorderPhotosAction(court.id, urls)
     if (result.success) setPhotos(result.photos)
     else setError(result.error)
+  }
+
+  /**
+   * Sube las fotos elegidas en el alta a la cancha recién creada. La cancha ya
+   * existe y no se deshace: si una foto falla, se avisa y las demás siguen —
+   * se pueden volver a cargar desde "Editar". Devuelve la lista final.
+   */
+  async function uploadStagedPhotos(courtId: string): Promise<string[]> {
+    let uploaded: string[] = []
+    let failed = 0
+    let lastError = ''
+    for (const p of staged) {
+      const fd = new FormData()
+      fd.set('file', p.blob, 'photo.webp')
+      // El fetch de una Server Action rechaza si se cae la red. Con la cancha ya
+      // creada eso NO puede escapar de acá: el form quedaría abierto y reenviarlo
+      // crearía OTRA cancha (y sumaría otra a la cuota).
+      const result = await uploadPhotoAction(courtId, fd).catch(() => null)
+      if (result?.success) uploaded = result.photos
+      else {
+        failed += 1
+        lastError = result?.error ?? 'No pudimos subir la imagen. Probá de nuevo en un momento.'
+      }
+    }
+    if (failed > 0) {
+      toast({
+        title: `La cancha se creó, pero ${failed === 1 ? 'una foto no se subió' : `${failed} fotos no se subieron`}`,
+        description: `${lastError} Cargala${failed === 1 ? '' : 's'} desde «Editar».`,
+        variant: 'destructive',
+      })
+    }
+    return uploaded
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -201,20 +258,34 @@ export function CourtForm({
         startTransition(() => setError(result.error))
         return
       }
-      notifySaved(result)
+      await finishSave(result)
     })
+  }
+
+  // Alta: sube las fotos elegidas a la cancha recién creada; edición: no hay nada
+  // que subir (cada foto ya se guardó al elegirla).
+  async function finishSave(result: { courtId?: string }) {
+    const { courtId } = result
+    if (!isEdit && courtId && staged.length > 0) {
+      notifySaved(result, await uploadStagedPhotos(courtId))
+      return
+    }
+    notifySaved(result)
   }
 
   // Reload page data by triggering a navigation refresh — parent handles via revalidatePath
   // For now signal parent with a stub row so list updates optimistically
-  function notifySaved(result: { courtId?: string }) {
+  function notifySaved(result: { courtId?: string }, createdPhotos?: string[]) {
     onSaved({
       ...(court ?? {
         id: result.courtId ?? '',
         tenantId: '',
-        photos: [],
         createdAt: new Date(),
       }),
+      // `photos` (estado) y no `court.photos`: en edición las fotos se guardan al
+      // elegirlas, y CourtList no resincroniza con el servidor, así que con la lista
+      // vieja "Editar" volvía a abrir con fotos que ya no existen.
+      photos: createdPhotos ?? photos,
       name,
       surfaceType,
       format,
@@ -232,7 +303,7 @@ export function CourtForm({
     const result = await createAction(formData, true)
     if (!result.success) return { success: false, error: result.error }
     pendingFormData.current = null
-    notifySaved(result)
+    await finishSave(result)
   }
 
   return (
@@ -246,8 +317,9 @@ export function CourtForm({
         </h2>
         <button
           type="button"
-          onClick={onCancel}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          onClick={() => onCancel(isEdit ? photos : undefined)}
+          disabled={isPending}
+          className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           Cancelar
         </button>
@@ -315,25 +387,38 @@ export function CourtForm({
         />
       </div>
 
-      {isEdit && (
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Fotos</h3>
-            <p className="text-xs text-muted-foreground">
-              La primera foto es la que se ve en la card de la cancha. Hasta 6.
-            </p>
-          </div>
-          <ImageUploader
-            preset="court"
-            value={photos}
-            max={6}
-            onUpload={handlePhotoUpload}
-            onRemove={handlePhotoRemove}
-            onReorder={handlePhotoReorder}
-            emptyLabel="Agregar foto"
-          />
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Fotos</h3>
+          <p className="text-xs text-muted-foreground">
+            La primera foto es la que se ve en la card de la cancha. Hasta {MAX_PHOTOS}
+            {isEdit ? '.' : '. Se suben cuando creás la cancha.'}
+          </p>
         </div>
-      )}
+        <ImageUploader
+          preset="court"
+          value={currentPhotos}
+          max={MAX_PHOTOS}
+          onUpload={handlePhotoUpload}
+          onRemove={handlePhotoRemove}
+          onReorder={handlePhotoReorder}
+          disabled={isPending}
+          emptyLabel="Agregar foto"
+        />
+        <CourtPhotoPreview
+          court={{
+            id: court?.id ?? 'preview',
+            name: name.trim() || 'Nombre de la cancha',
+            surfaceType,
+            isCovered: false,
+            hasLighting: false,
+            format,
+            capacity: format * 2,
+            fromPriceCents: rules.length > 0 ? Math.min(...rules.map((r) => r.price)) : null,
+          }}
+          photos={currentPhotos}
+        />
+      </div>
 
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

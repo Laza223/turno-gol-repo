@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { BadgeCheck, MessageSquare } from 'lucide-react'
+import Link from 'next/link'
+import { BadgeCheck, MessageSquare, Star } from 'lucide-react'
 import RatingStars from '@/components/public/RatingStars'
 
 type ReviewItem = {
@@ -101,6 +102,25 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
           )}
         </>
       )}
+
+      {/* Las reseñas son verificadas (atadas a un turno jugado), así que no hay un
+          formulario acá: se dejan desde el historial del jugador. Sin esta línea la
+          sección no decía cómo reseñar y parecía que no se podía. Esta página es
+          estática/cacheada: no puede saber si quien mira jugó, por eso el enlace es
+          fijo y `/mis-reservas` pide el ingreso si hace falta. */}
+      <div className="mt-5 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-muted-foreground">
+          Solo reseñan quienes ya jugaron acá. Un rato después de tu turno aparece «Dejar reseña» en
+          tu historial de reservas.
+        </p>
+        <Link
+          href="/mis-reservas?tab=historial"
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10 sm:self-auto"
+        >
+          <Star className="h-4 w-4" aria-hidden />
+          Dejar una reseña
+        </Link>
+      </div>
     </section>
   )
 }

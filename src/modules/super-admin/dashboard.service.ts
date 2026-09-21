@@ -3,7 +3,8 @@ import { getDb, getWorkerDb } from '@/shared/db/client'
 import { plans, processedWebhooks, tenants, tenantSubscriptions } from '@/shared/db/schema'
 import { tenantStatusEnum } from '@/shared/db/schema/enums'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
-import { getQueueDepths, type QueueDepthEntry } from '@/shared/jobs/queue-stats'
+import type { QueueDepthEntry } from '@/shared/jobs/queue-stats'
+import { withTimeout } from '@/shared/utils/async'
 import { WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 
 /**
@@ -273,13 +274,35 @@ async function getRecentWebhooks(): Promise<RecentWebhook[]> {
     .limit(10)
 }
 
+/** Tope de la lectura de colas: es un dato accesorio, no puede colgar la página. */
+const QUEUE_DEPTH_TIMEOUT_MS = 4_000
+
 /**
- * Si pg-boss no puede ni arrancar (DB de colas caída), el dashboard degrada
- * a "no disponible" en vez de romper el render completo.
+ * Profundidad de cada cola pg-boss, leída con UNA query sobre `pgboss.job` por
+ * el pool worker — la misma cuenta que `boss.getQueueSize` (`state < 'active'`
+ * = creado o en reintento), sin instanciar pg-boss.
+ *
+ * `getBoss()` NO va acá: su `start()` arranca en el proceso web el supervisor,
+ * el cron y sus `setInterval`/pollers, y esperarlo dejó `/super-admin`
+ * cargando hasta el timeout de 300 s de Vercel (2026-09-20, "Ir a mi panel"
+ * no entraba). Si la lectura falla o tarda más que el tope, el dashboard
+ * degrada a "no disponible" en vez de romper o colgar el render completo.
  */
 async function getQueueDepthsSafe(): Promise<QueueDepthEntry[]> {
   try {
-    return await getQueueDepths()
+    const rows = await withTimeout(
+      getWorkerDb().execute(sql`
+        SELECT name, COUNT(*)::int AS depth
+        FROM pgboss.job
+        WHERE state < 'active'
+        GROUP BY name
+      `),
+      QUEUE_DEPTH_TIMEOUT_MS,
+    )
+    const depthByQueue = new Map(
+      (rows as unknown as Array<{ name: string; depth: number }>).map((r) => [r.name, r.depth]),
+    )
+    return ALL_QUEUES.map((queue) => ({ queue, depth: depthByQueue.get(queue) ?? 0 }))
   } catch {
     return ALL_QUEUES.map((queue) => ({
       queue,

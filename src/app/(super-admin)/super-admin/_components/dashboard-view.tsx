@@ -74,9 +74,13 @@ export function SuperAdminDashboardView({ data }: { data: DashboardData }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SaMetricCard
           label="MRR"
-          value={formatArs(data.mrrCents)}
+          value={data.mrrCents === null ? '—' : formatArs(data.mrrCents)}
           icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
-          sub="Suscripciones activas, equivalente mensual"
+          sub={
+            data.mrrCents === null
+              ? 'No se pudo leer ahora, recargá en un rato'
+              : 'Suscripciones activas, equivalente mensual'
+          }
         />
         <SaMetricCard
           label="Tenants"

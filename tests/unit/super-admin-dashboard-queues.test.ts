@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // pg-boss arranca supervisor, cron y pollers en el proceso web). Estos tests
 // fijan que las colas se leen con UNA query por el pool worker, sin pg-boss, y
 // que si esa lectura falla o no vuelve el dashboard igual carga.
+//
+// 2026-09-21: sacar pg-boss no alcanzó — en producción la que se colgaba era la
+// query del MRR, la única del pool worker con un parámetro enlazado (`status =
+// $1`): con `prepare: false` postgres.js la manda en dos tiempos (Parse +
+// Describe + Flush y espera la respuesta), y las conexiones quedaban `active`/
+// `ClientRead` para siempre. El segundo bloque de abajo lo fija.
 
 const h = vi.hoisted(() => ({
   getDb: vi.fn(),
@@ -115,5 +121,42 @@ describe('getDashboardData — profundidad de colas', () => {
     const data = await pending
 
     expect(data.queues.every((q) => q.depth === null && q.error === 'unavailable')).toBe(true)
+  })
+})
+
+describe('getDashboardData — MRR', () => {
+  it('filtra por estado con un literal, sin parámetro enlazado', async () => {
+    const wheres: unknown[] = []
+    const chain = makeChain([{ mrr: '0' }])
+    chain.where = (condition: unknown) => {
+      wheres.push(condition)
+      return chain
+    }
+    h.getWorkerDb.mockReturnValue({ ...chain, execute: h.workerExecute })
+    const { getDashboardData } = await import('@/modules/super-admin/dashboard.service')
+
+    await getDashboardData()
+
+    // `eq(col, 'active')` enlazaría un Param y el texto quedaría " = ": el literal es lo que evita el describe-first.
+    expect(sqlText(wheres[0])).toContain("'active'")
+  })
+
+  it('si la query del MRR no vuelve nunca, el dashboard carga igual con el MRR en null', async () => {
+    vi.useFakeTimers()
+    const hanging = makeChain([])
+    hanging.then = () => undefined
+    h.getWorkerDb.mockReturnValue({ ...hanging, execute: h.workerExecute })
+    const { getDashboardData } = await import('@/modules/super-admin/dashboard.service')
+
+    const pending = getDashboardData()
+    await vi.advanceTimersByTimeAsync(5_100)
+    const data = await pending
+
+    // Nunca $0: un MRR que no se pudo leer no puede mostrarse como cero.
+    expect(data.mrrCents).toBeNull()
+    expect(data.queues).toEqual([
+      { queue: 'send-email', depth: 3 },
+      { queue: 'push-send', depth: 0 },
+    ])
   })
 })

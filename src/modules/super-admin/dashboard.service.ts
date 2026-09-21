@@ -4,6 +4,7 @@ import { plans, processedWebhooks, tenants, tenantSubscriptions } from '@/shared
 import { tenantStatusEnum } from '@/shared/db/schema/enums'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
 import type { QueueDepthEntry } from '@/shared/jobs/queue-stats'
+import { logger } from '@/shared/lib/logger'
 import { withTimeout } from '@/shared/utils/async'
 import { WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 
@@ -48,8 +49,9 @@ export type DashboardData = {
    * MRR en centavos ARS de las subs activas (doc12 §9.5), como equivalente
    * MENSUAL: se calcula sobre `billed_courts` con la regla lineal por cancha
    * (decisión 2026-09-17), no sobre una columna de precio del plan.
+   * `null` = no se pudo leer a tiempo: el tile lo dice, nunca lo muestra como $0.
    */
-  mrrCents: number
+  mrrCents: number | null
   /** Conteo de tenants por cada uno de los 8 estados (0 incluido). */
   tenantsByStatus: Record<TenantStatus, number>
   /** Tenants `trialing` cuyo trial vence en ≤7 días, ordenados por vencimiento. */
@@ -196,8 +198,31 @@ async function getMrrCents(): Promise<number> {
     })
     .from(tenantSubscriptions)
     .innerJoin(plans, eq(plans.id, tenantSubscriptions.planId))
-    .where(eq(tenantSubscriptions.status, 'active'))
+    // Literal y NO `eq(…, 'active')` a propósito: `eq` enlaza un parámetro, y con
+    // `prepare: false` postgres.js manda toda query con parámetros en dos tiempos
+    // (Parse+Describe+Flush, espera la respuesta, recién ahí Bind/Execute/Sync).
+    // Si esa respuesta no vuelve, el backend queda `active`/`ClientRead` y la
+    // promesa no resuelve nunca. En producción (2026-09-21) esta query fue la
+    // única del dashboard que se colgó así — 5 conexiones del pool worker con
+    // hasta 3 min — y dejó `/super-admin` cargando hasta el timeout de Vercel.
+    // Las queries sin parámetros (embudo, colas) van en un solo envío y nunca.
+    .where(sql`${tenantSubscriptions.status} = 'active'`)
   return Number(rows[0]?.mrr ?? 0)
+}
+
+/** Tope del MRR: un dato más del dashboard no puede dejarlo cargando. */
+const MRR_TIMEOUT_MS = 5_000
+
+async function getMrrCentsSafe(): Promise<number | null> {
+  try {
+    return await withTimeout(getMrrCents(), MRR_TIMEOUT_MS)
+  } catch (err) {
+    logger.warn('super-admin.dashboard_mrr_unavailable', {
+      module: 'super-admin',
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return null
+  }
 }
 
 async function getTenantsByStatus(): Promise<Record<TenantStatus, number>> {
@@ -324,7 +349,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentWebhooks,
     onboardingFunnel,
   ] = await Promise.all([
-    getMrrCents(),
+    getMrrCentsSafe(),
     getTenantsByStatus(),
     getExpiringTrials(now),
     getRecentSignups(now),

@@ -4,6 +4,8 @@ import { Pager } from '@/components/ui/pager'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
+import { TONE_BADGE } from '@/lib/status-tone'
+import { cn } from '@/lib/utils'
 import { ClientesTabs } from './ClientesTabs'
 import { PlayerTagChips } from './PlayerTagChips'
 import { LinkContactDialog, type LinkContactDialogProps } from './LinkContactDialog'
@@ -48,7 +50,10 @@ function metaLine(c: ClientListRow): string {
 function SinCuentaBadge() {
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold',
+        TONE_BADGE.neutral,
+      )}
       title="Sin ficha ni etiquetas hasta vincular a una cuenta"
     >
       Sin cuenta

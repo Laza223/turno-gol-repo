@@ -66,9 +66,9 @@ Si los workers no corren, se cae la mitad invisible del negocio:
 Reglas:
 
 - **Web (Vercel):** `DATABASE_URL` debe apuntar al **pooler de Supabase (Supavisor), transaction mode, puerto `6543`** — NO al directo `5432`. El código ya es compatible: `prepare: false` + `SET LOCAL` dentro de transacciones funciona en transaction-mode pooling.
-- **Workers (Railway):** un solo proceso estable con pocas conexiones → usar la **conexión directa (`5432`)**. pg-boss mantiene su propio pool y necesita conexión estable para `LISTEN/NOTIFY`.
+- **Workers (Railway):** también van por el **pooler (`6543`)**. La conexión directa (`db.<ref>.supabase.co:5432`) ya no resuelve (ENOTFOUND), así que no hay alternativa. El `sslmode` del DSN no decide nada: el TLS lo fija `src/shared/db/ssl.ts` (ver `railway.toml` y `docs/audit/2026-08-25-auditoria-infra.md` §11-12 y §22).
 
-> Verificación: en prod, `DATABASE_URL` de Vercel termina en `:6543/...?pgbouncer=true`; el de Railway en `:5432`.
+> Verificación: en prod, el `DATABASE_URL` de Vercel y el de Railway terminan los dos en `:6543`.
 
 ## 5. Robustez y recuperación
 
@@ -81,7 +81,7 @@ Reglas:
 
 El servicio de workers necesita (además de las de la web):
 
-- `DATABASE_URL` — **conexión directa** (`:5432`) a Supabase Postgres.
+- `DATABASE_URL` — **pooler de Supabase** (`:6543`); la conexión directa ya no existe.
 - `NODE_ENV=production`
 - Credenciales que usan los workers: `RESEND_API_KEY`, encryption key de tokens MP, claves de MercadoPago, `SUPABASE_*` (las que requieran los workers de push/email), VAPID keys (push), `SENTRY_DSN`.
 - Mantener estos secrets en el dashboard de Railway, replicando los de Vercel que apliquen.

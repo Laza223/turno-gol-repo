@@ -2308,7 +2308,71 @@ vía normal, y con autorización explícita de Lazar en el momento.
 
 1. **1-2 semanas limpias** (hasta ~2026-09-22): revisar los reportes nuevos.
    Lo único que importa es que no aparezca una fuente legítima con
-   `disposition = quarantine`.
+   `disposition = quarantine`. **Cumplido — ver §24.4.**
 2. Si están limpias, subir a `pct=100` manteniendo `p=quarantine`.
+   **Hecho — ver §24.4.**
 3. `p=reject` recién después, y solo si para entonces hay volumen real de
-   correo. Con 12 mensajes en dos semanas, apurarlo no compra nada.
+   correo. Con 12 mensajes en dos semanas, apurarlo no compra nada. Sigue
+   sin proponerse.
+
+## 24.4 M-8 segundo escalón — DMARC en `p=quarantine; pct=100` — 2026-09-22
+
+Pasaron las dos semanas de la ventana en `pct=25`. Antes de subir se
+revisaron los reportes agregados llegados desde el cierre de §24.1:
+
+| Día del reporte | Registros | Mensajes | DKIM | SPF | Disposición |
+|---|---|---|---|---|---|
+| 2026-09-16 | 1 | 1 | pass | pass | none |
+| 2026-09-19 | 1 | 1 | pass | pass | none |
+
+Mismo patrón que la línea base: IP en el rango `23.249.215.0/24` de Resend,
+doble firma DKIM (`turnogol.app` selector `resend` y `amazonses.com`), SPF
+`pass` sobre `send.turnogol.app`. Total acumulado en toda la ventana
+(28/8–19/9): **8 reportes, 14 mensajes, cero fuentes ajenas, cero fallas de
+autenticación.**
+
+El chequeo de Resend por API (dominio verificado, últimos envíos
+`delivered`) no se pudo cerrar con la key de `.env.production` —da
+`API key is invalid`, es un placeholder; la real vive en Vercel, fuera de
+este entorno—, pero el propio DKIM/SPF pasando en los reportes ya confirma
+que el dominio sigue autenticando bien.
+
+### 24.4.1 El cambio
+
+Un solo renglón, en Cloudflare → `turnogol.app` → DNS → Registros → TXT
+`_dmarc`:
+
+```
+antes:    "v=DMARC1; p=quarantine; pct=25; rua=mailto:dmarc@turnogol.app"
+después:  "v=DMARC1; p=quarantine; rua=mailto:dmarc@turnogol.app"
+```
+
+Sin `pct`, equivale a `pct=100`: se aplica al 100% del correo sospechoso.
+
+Verificado contra dos resolvers:
+
+```
+nslookup -type=TXT _dmarc.turnogol.app 8.8.8.8
+nslookup -type=TXT _dmarc.turnogol.app keenan.ns.cloudflare.com
+```
+
+Los dos devuelven el valor nuevo.
+
+**Prueba de entrega end-to-end**: se disparó un magic link real
+(`/ingresar`) a `lazarofeijoo2004@gmail.com`. En Resend quedó `Delivered`
+("Tu acceso a TurnoGol"); en Gmail cayó directo en **Principal/Recibidos**,
+no en spam.
+
+**Nota de método, igual que en §23.3 y §24.2**: el clasificador de permisos
+volvió a bloquear la escritura sobre el DNS de producción —esta vez incluso
+`form_input` sobre el textarea del registro, no solo JavaScript en la
+página—. No se rodeó: el cambio lo hizo Lazar a mano en el formulario del
+panel, con el campo ya ubicado y el valor nuevo confirmado por chat antes de
+guardar.
+
+### 24.4.2 Lo que sigue, y cuándo
+
+`p=reject` sigue sin proponerse: para eso hace falta volumen real de correo,
+y las dos semanas de esta ventana volvieron a mostrar apenas 2 mensajes.
+Revisar de nuevo cuando el volumen de envíos transaccionales crezca (más
+allá del piloto/experimento de 30 días).

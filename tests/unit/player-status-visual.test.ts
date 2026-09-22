@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, relative, resolve, sep } from 'node:path'
 import { playerBookingVisual } from '@/app/(player)/mis-reservas/status-visual'
 import { bookingBadgeVisual } from '@/lib/booking/slot-visual'
 import type { BookingStatus } from '@/modules/bookings/booking.types'
@@ -81,5 +83,40 @@ describe('un turno fijo no dice dos veces que es fijo', () => {
       bookingBadgeVisual({ status: 'confirmed', type: 'fixed', pending: null, totalPaid: null })
         .label,
     ).toBe('Abonado')
+  })
+})
+
+/**
+ * El trinquete de la CLASE, no de la instancia. Cuatro superficies habían
+ * escrito su propia tabla de labels de `booking_status` y las cuatro habían
+ * divergido: la del jugador decía "Pago pendiente", la de la ficha del cliente
+ * decía "Pago pendiente" y "Completada", y la grilla decía "Pagando ahora".
+ * El término canónico es "Esperando seña" (MASTER §8.5, decisión del dueño
+ * 2026-09-10) y el completado es "Jugada".
+ *
+ * `slot-visual.ts` declara sus estados como `{ label, icon, tone }`, no como
+ * `estado: 'texto'`, así que esta forma solo aparece cuando alguien vuelve a
+ * escribir la tabla a mano.
+ */
+const ROOT = resolve(__dirname, '../..')
+
+/** Camina `src/` y devuelve los `.ts`/`.tsx`, en paths relativos con `/`. */
+function findSources(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) findSources(full, out)
+    else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
+      out.push(relative(ROOT, full).split(sep).join('/'))
+    }
+  }
+  return out
+}
+
+describe('nadie declara su propia tabla de labels de reserva', () => {
+  it('ningún archivo mapea pending_payment a un texto suelto', () => {
+    const culpables = findSources(join(ROOT, 'src')).filter((rel) =>
+      /pending_payment:\s*['"]/.test(readFileSync(join(ROOT, rel), 'utf8')),
+    )
+    expect(culpables, 'el label sale de slot-visual.ts, no de una copia').toEqual([])
   })
 })

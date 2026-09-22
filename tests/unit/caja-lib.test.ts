@@ -210,3 +210,27 @@ describe('categoría tournament (migr. 066)', () => {
     expect(CATEGORY_BADGE.tournament).not.toBe(CATEGORY_BADGE.fallback)
   })
 })
+
+describe('paleta por categoría', () => {
+  const EGRESOS = [
+    'operating_expense',
+    'merchandise',
+    'salaries',
+    'utilities',
+    'maintenance',
+    'other_expense',
+  ] as const
+
+  it('los seis egresos comparten exactamente el mismo chip', () => {
+    // El color codifica el SIGNO, no el rubro (migr. 050). Eran seis copias del
+    // mismo string: cualquiera podía divergir sola y nadie se enteraba.
+    const chips = new Set(EGRESOS.map((c) => CATEGORY_BADGE[c]))
+    expect(chips.size).toBe(1)
+  })
+
+  it('cada chip trae su propio ring: los renderers no lo agregan', () => {
+    for (const chip of Object.values(CATEGORY_BADGE)) {
+      expect(chip).toContain('ring-1 ring-inset')
+    }
+  })
+})

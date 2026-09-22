@@ -1,5 +1,6 @@
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import type { TenantDetail } from '@/modules/super-admin/tenants.service'
+import { CourtStatusBadge } from '@/app/(admin)/canchas/components/status-visual'
 import { formatDateArt, formatDateTimeArt } from '../../_components/format'
 import { Card, Dt } from './detail-primitives'
 import { ImpersonateButton, type StartImpersonationAction } from './impersonate-button'
@@ -119,15 +120,13 @@ export function ResumenTab({
                     <td className="py-2 pr-4 text-muted-foreground">{c.surfaceType}</td>
                     <td className="py-2 pr-4 text-right tabular-nums">{c.capacity}</td>
                     <td className="py-2">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-                          c.status === 'online'
-                            ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-500/30'
-                            : 'bg-muted text-muted-foreground ring-slate-500/20'
-                        }`}
-                      >
-                        {c.status}
-                      </span>
+                      {/* El mismo badge que ve el complejo en Configuracion >
+                          Canchas. Antes esta tabla tenia su propia receta, con
+                          `bg-muted text-muted-foreground` para offline (4.21:1,
+                          falla AA) y un verde de la escala `green`, que no es la
+                          `emerald` pineada del sistema. Y mostraba el valor
+                          crudo del enum en vez del label. */}
+                      <CourtStatusBadge status={c.status} />
                     </td>
                   </tr>
                 ))}

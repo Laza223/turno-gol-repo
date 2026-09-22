@@ -21,10 +21,15 @@ import { resolve } from 'node:path'
  *   4.21:1 lo pasa. Solo el TEXTO sobre ese fondo es el bug.
  */
 const YA_MIGRADOS = [
+  'src/app/(admin)/caja/caja-lib.ts',
   'src/app/(admin)/caja/devoluciones/PendingRefundsList.tsx',
+  'src/app/(admin)/caja/productos/ProductsTable.tsx',
   'src/app/(admin)/jugadores/JugadoresView.tsx',
+  'src/app/(admin)/jugadores/PlayerTagChips.tsx',
   'src/app/(admin)/reservas/(list)/page.tsx',
+  'src/app/(admin)/settings/facturacion/InvoiceHistorySection.tsx',
   'src/app/(admin)/torneos/torneos-lib.ts',
+  'src/app/(super-admin)/super-admin/tenants/[id]/_components/resumen-tab.tsx',
   'src/components/booking/BookingFormModal.tsx',
   'src/components/schedule/ScheduleFields.tsx',
   'src/lib/tournaments/status-visual.ts',

@@ -5,6 +5,7 @@
  */
 
 import { formatArs } from '@/lib/format'
+import { TONE_BADGE } from '@/lib/status-tone'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
 import { startLabelFromMins } from '@/shared/time/operating-day'
 import type { CashFlowCategory } from '@/modules/cashflow/cashflow.types'
@@ -127,33 +128,40 @@ export function movementTitle(description: string): string {
   return description
 }
 
+/**
+ * Todos los gastos comparten la familia roja: el color codifica el SIGNO
+ * (egreso), no la categoría — el texto del chip diferencia (migr. 050). Eran
+ * seis copias del mismo string, que podían divergir de a una.
+ */
+const EGRESO = TONE_BADGE.destructive
+const SIN_FAMILIA = TONE_BADGE.neutral
+
+/**
+ * Color del chip por categoría. Los tonos salen de `TONE_BADGE` salvo dos
+ * excepciones deliberadas: celeste y violeta NO son `StatusTone` y no deberían
+ * serlo. Los seis tonos del sistema son el semáforo de la plata (más marca y
+ * neutro), no una taxonomía de rubros; agregarlos a la tabla global para que
+ * los use un módulo solo ensuciaría la fuente única.
+ *
+ * Estos strings YA traen `ring-1 ring-inset`: los renderers no lo agregan.
+ */
 export const CATEGORY_BADGE: Record<CashFlowCategory | 'fallback', string> = {
-  booking:
-    'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-600/20 dark:ring-emerald-500/30',
+  booking: TONE_BADGE.success,
   product_sale:
-    'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-sky-600/20 dark:ring-sky-500/30',
-  // Todos los gastos comparten la familia roja: el color codifica el SIGNO
-  // (egreso), no la categoría — el texto del chip diferencia (migr. 050).
-  operating_expense:
-    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
-  merchandise:
-    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
-  salaries:
-    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
-  utilities:
-    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
-  maintenance:
-    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
-  other_expense:
-    'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/30',
-  no_show_correction:
-    'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-500/30',
+    'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20 dark:ring-sky-500/30',
+  operating_expense: EGRESO,
+  merchandise: EGRESO,
+  salaries: EGRESO,
+  utilities: EGRESO,
+  maintenance: EGRESO,
+  other_expense: EGRESO,
+  no_show_correction: TONE_BADGE.warning,
   // Ingreso (migr. 066), pero con familia propia: el violeta lo separa de la
   // reserva y de la cantina en el listado del día sin depender del texto.
   tournament:
-    'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-violet-600/20 dark:ring-violet-500/30',
-  other: 'bg-muted text-foreground ring-slate-500/20',
-  fallback: 'bg-muted text-foreground ring-slate-500/20',
+    'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-1 ring-inset ring-violet-600/20 dark:ring-violet-500/30',
+  other: SIN_FAMILIA,
+  fallback: SIN_FAMILIA,
 }
 
 // ── Fechas ───────────────────────────────────────────────────────────────────

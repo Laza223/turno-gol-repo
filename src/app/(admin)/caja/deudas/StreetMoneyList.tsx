@@ -205,7 +205,10 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
 
   const badge = (row: StreetMoneyRow) => (
     <span
-      className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${ORIGIN_BADGE[row.origin]}`}
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium',
+        ORIGIN_BADGE[row.origin],
+      )}
     >
       {ORIGIN_TAG[row.origin]}
     </span>

@@ -1,5 +1,7 @@
 import { Receipt } from 'lucide-react'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { InvoiceEntry } from '@/modules/billing/billing.types'
 
@@ -18,17 +20,19 @@ export const STATUS_LABELS: Record<InvoiceEntry['status'], string> = {
   cancelled: 'Cancelado',
 }
 
-const STATUS_STYLES: Record<InvoiceEntry['status'], string> = {
-  approved:
-    'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30',
-  pending:
-    'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30',
-  in_process:
-    'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30',
-  rejected:
-    'bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/30',
-  refunded: 'bg-muted text-muted-foreground ring-border',
-  cancelled: 'bg-muted text-muted-foreground ring-border',
+/**
+ * El estado del cobro va al semáforo del sistema, no a una paleta propia: es
+ * plata, y tiene que leerse igual que el resto del producto. `refunded` y
+ * `cancelled` usaban `bg-muted text-muted-foreground`, que da 4.21:1 y falla
+ * AA (`status-tone.ts:5-10`).
+ */
+const STATUS_TONE: Record<InvoiceEntry['status'], StatusTone> = {
+  approved: 'success',
+  pending: 'warning',
+  in_process: 'warning',
+  rejected: 'destructive',
+  refunded: 'neutral',
+  cancelled: 'neutral',
 }
 
 function formatDate(d: Date | null): string {
@@ -87,7 +91,10 @@ export function InvoiceHistorySection({ invoices }: Props) {
                   </td>
                   <td className="py-2.5">
                     <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLES[invoice.status]}`}
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        TONE_BADGE[STATUS_TONE[invoice.status]],
+                      )}
                     >
                       {STATUS_LABELS[invoice.status]}
                     </span>

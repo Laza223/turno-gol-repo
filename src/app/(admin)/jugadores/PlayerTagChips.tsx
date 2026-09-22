@@ -1,19 +1,22 @@
 import { PLAYER_TAG_LABELS, type PlayerTag } from '@/modules/relationships/player-tags'
+import { cn } from '@/lib/utils'
+import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
 
 /**
  * Las 3 que cambian una decisión de mostrador se pintan; el resto queda neutro.
  * `no_credit` y `difficult` en ámbar (la misma familia visual que el indicador
  * de ausencias, que es el otro "ojo con este"); `gets_credit` en emerald.
+ *
+ * Los colores salen de `TONE_BADGE`, que es donde vive esa familia. Antes eran
+ * recetas propias y las dos neutras usaban `bg-muted text-muted-foreground`
+ * (4.21:1, falla AA — `status-tone.ts:5-10`).
  */
-const TAG_TONE: Record<PlayerTag, string> = {
-  no_credit:
-    'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400',
-  difficult:
-    'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400',
-  gets_credit:
-    'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400',
-  group_organizer: 'border-border bg-muted text-muted-foreground',
-  agreed_price: 'border-border bg-muted text-muted-foreground',
+const TAG_TONE: Record<PlayerTag, StatusTone> = {
+  no_credit: 'warning',
+  difficult: 'warning',
+  gets_credit: 'success',
+  group_organizer: 'neutral',
+  agreed_price: 'neutral',
 }
 
 type Props = {
@@ -25,11 +28,14 @@ type Props = {
 export function PlayerTagChips({ tags, className }: Props) {
   if (tags.length === 0) return null
   return (
-    <ul className={`flex flex-wrap gap-1 ${className ?? ''}`}>
+    <ul className={cn('flex flex-wrap gap-1', className)}>
       {tags.map((tag) => (
         <li
           key={tag}
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${TAG_TONE[tag]}`}
+          className={cn(
+            'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+            TONE_BADGE[TAG_TONE[tag]],
+          )}
         >
           {PLAYER_TAG_LABELS[tag]}
         </li>

@@ -2,13 +2,9 @@ import type {
   TournamentMatchView,
   TournamentStageRow,
 } from '@/modules/tournaments/tournament.types'
-import {
-  MATCH_STATUS_LABELS,
-  formatMatchWhen,
-  formatScore,
-  matchStatusBadgeClass,
-  roundLabel,
-} from '@/app/(admin)/torneos/torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { MATCH_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { formatMatchWhen, formatScore, roundLabel } from '@/app/(admin)/torneos/torneos-lib'
 
 /**
  * Fixture público, agrupado por fase y fecha.
@@ -106,11 +102,10 @@ export function PublicFixture({
                   {/* Solo lo que no se deduce del marcador: 'Jugado' con un 3-1
                       al lado es ruido, pero 'No se presentó' o 'Postergado' no. */}
                   {m.status !== 'scheduled' && m.status !== 'played' ? (
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${matchStatusBadgeClass(m.status)}`}
-                    >
-                      {MATCH_STATUS_LABELS[m.status]}
-                    </span>
+                    <StatusBadge
+                      visual={MATCH_STATUS_VISUAL[m.status]}
+                      className="shrink-0 text-[11px]"
+                    />
                   ) : null}
                 </li>
               ))}

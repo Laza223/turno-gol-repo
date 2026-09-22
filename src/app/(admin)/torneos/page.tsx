@@ -10,7 +10,9 @@ import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
 import { listTournaments } from '@/modules/tournaments/tournament.service'
 import { listTournamentPendingTotals } from '@/modules/tournaments/tournament-payment.service'
 import { formatArs } from '@/lib/format'
-import { FORMAT_SHORT, STATUS_LABELS, formatDateRange, statusBadgeClass } from './torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { TOURNAMENT_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { FORMAT_SHORT, formatDateRange } from './torneos-lib'
 
 export default async function TorneosPage() {
   // Crear un torneo es configuración: solo el dueño (mismo criterio que
@@ -109,11 +111,10 @@ export default async function TorneosPage() {
                       Pendiente: {formatArs(pendingTotals[t.id]!)}
                     </span>
                   )}
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(t.status)}`}
-                  >
-                    {STATUS_LABELS[t.status]}
-                  </span>
+                  <StatusBadge
+                    visual={TOURNAMENT_STATUS_VISUAL[t.status]}
+                    className="px-2.5 py-1"
+                  />
                 </span>
               </Link>
             </li>

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
+import { TONE_BADGE } from '@/lib/status-tone'
 
 const badgeVariants = cva(
   'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2',
@@ -12,15 +13,24 @@ const badgeVariants = cva(
           'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
         destructive:
           'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        // `text-success`/`text-warning` (el token semántico crudo) no llegan a
-        // 4.5:1 en light sobre este fill translúcido (medido con axe: 4.43 y
-        // 2.82 respectivamente) — mismo patrón que el bug conocido de
-        // `emerald-400` en superficie clara (MASTER §2.4). El dark sigue
-        // usando el token (ya pasa AA ahí), solo se fija el foreground light.
-        success:
-          'border-transparent bg-success/10 text-green-800 ring-1 ring-inset ring-success/25 hover:bg-success/15 dark:bg-success/15 dark:text-success dark:ring-success/40 dark:hover:bg-success/20',
-        warning:
-          'border-transparent bg-warning/10 text-amber-700 ring-1 ring-inset ring-warning/25 dark:bg-warning/15 dark:text-warning dark:ring-warning/40',
+        // El tono sale de `TONE_BADGE`, no de una copia local. Estas dos filas
+        // eran la séptima copia de la receta de estado del sistema y ya habían
+        // divergido de la tabla en las dos puntas: en light usaban `green-800`
+        // (escala OKLCH de Tailwind 4, la única familia verde del repo que NO
+        // está pineada a hex en `globals.css`) donde todo el resto del sistema
+        // usa `emerald-800`; en dark usaban el token crudo `text-success`,
+        // más apagado que el `emerald-300` que la tabla eligió para labels.
+        // El motivo original — el token crudo no llega a 4.5:1 en light sobre
+        // este fill translúcido (MASTER §2.4) — sigue respetado: la tabla
+        // también fija el foreground en las dos puntas.
+        // Los `hover:` quedan acá porque son propios de `Badge`; `TONE_BADGE`
+        // pinta estado, no interacción.
+        success: cn(
+          'border-transparent',
+          TONE_BADGE.success,
+          'hover:bg-success/15 dark:hover:bg-success/20',
+        ),
+        warning: cn('border-transparent', TONE_BADGE.warning),
         outline: 'text-foreground border-border',
       },
     },

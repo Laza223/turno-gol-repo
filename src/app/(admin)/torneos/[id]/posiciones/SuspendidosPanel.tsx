@@ -1,7 +1,8 @@
-import { AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { SuspensionRow } from '@/modules/tournaments/standings/suspensions'
-import { SUSPENSION_REASON_LABELS, suspensionBadgeClass } from '../../torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { SUSPENSION_VISUAL } from '@/lib/tournaments/status-visual'
+import { SUSPENSION_REASON_LABELS } from '../../torneos-lib'
 
 export type SuspendidoView = SuspensionRow & {
   playerName: string
@@ -37,12 +38,14 @@ export function SuspendidosPanel({ rows }: { rows: SuspendidoView[] }) {
                 {row.reason === 'yellow_accumulation' ? ` (${row.yellowCards} amarillas)` : ''}
               </span>
             </span>
-            <span
-              className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${suspensionBadgeClass}`}
-            >
-              <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-              {row.pendingMatches === 1 ? 'Debe 1 fecha' : `Debe ${row.pendingMatches} fechas`}
-            </span>
+            <StatusBadge
+              visual={{
+                ...SUSPENSION_VISUAL,
+                label:
+                  row.pendingMatches === 1 ? 'Debe 1 fecha' : `Debe ${row.pendingMatches} fechas`,
+              }}
+              className="rounded"
+            />
             {row.suspendedMatchIds.length === 0 ? (
               <span className="w-full text-xs text-muted-foreground">
                 Sin partidos programados por delante: la cumple cuando se agende la próxima fecha.

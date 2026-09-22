@@ -7,13 +7,9 @@ import type {
   TournamentMatchView,
   TournamentStageRow,
 } from '@/modules/tournaments/tournament.types'
-import {
-  MATCH_STATUS_LABELS,
-  formatMatchWhen,
-  formatScore,
-  matchStatusBadgeClass,
-  roundLabel,
-} from '../../torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { MATCH_STATUS_LABELS, MATCH_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
+import { formatMatchWhen, formatScore, roundLabel } from '../../torneos-lib'
 
 /**
  * El fixture como listado, agrupado por fase y fecha.
@@ -136,11 +132,7 @@ export function FixtureListado({
                     </td>
                     <td className="p-2.5 text-muted-foreground">{m.courtName ?? '—'}</td>
                     <td className="p-2.5 pr-4 text-right">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${matchStatusBadgeClass(m.status)}`}
-                      >
-                        {MATCH_STATUS_LABELS[m.status]}
-                      </span>
+                      <StatusBadge visual={MATCH_STATUS_VISUAL[m.status]} />
                       <Link
                         href={`/torneos/${tournamentId}/partidos/${m.id}`}
                         className="ml-2 text-xs font-medium text-primary underline-offset-2 hover:underline"

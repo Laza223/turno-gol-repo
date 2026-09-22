@@ -9,7 +9,8 @@ import {
   newChargeLine,
   type ChargeLine,
 } from '@/components/admin/SplitPaymentFields'
-import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../../torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { TEAM_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
 import { formatArs } from '@/lib/format'
 import { EmptyState } from '@/components/ui/empty-state'
 import { toast } from '@/hooks/use-toast'
@@ -161,11 +162,7 @@ export function InscripcionesPanel({
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
                         {row.teamName}
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${teamStatusBadgeClass(row.teamStatus)}`}
-                        >
-                          {TEAM_STATUS_LABELS[row.teamStatus]}
-                        </span>
+                        <StatusBadge visual={TEAM_STATUS_VISUAL[row.teamStatus]} />
                       </p>
                       <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
                         {row.fee === 0

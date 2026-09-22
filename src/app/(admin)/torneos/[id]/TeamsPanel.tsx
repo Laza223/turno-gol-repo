@@ -11,7 +11,8 @@ import type {
 } from '@/modules/tournaments/tournament.types'
 import type { PlayerSearchResult } from '@/modules/players/player-search.service'
 import type { SearchPlayersActionResult, TournamentActionResult } from '../actions'
-import { TEAM_STATUS_LABELS, teamStatusBadgeClass } from '../torneos-lib'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { TEAM_STATUS_LABELS, TEAM_STATUS_VISUAL } from '@/lib/tournaments/status-visual'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { MoneyInput } from '@/components/ui/money-input'
@@ -241,11 +242,7 @@ export function TeamsPanel({
                     </div>
                   </button>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${teamStatusBadgeClass(t.status)}`}
-                    >
-                      {TEAM_STATUS_LABELS[t.status]}
-                    </span>
+                    <StatusBadge visual={TEAM_STATUS_VISUAL[t.status]} />
                     <button
                       type="button"
                       onClick={() => setRemoveConfirm(t)}

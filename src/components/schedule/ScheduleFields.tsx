@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { TONE_BADGE } from '@/lib/status-tone'
 import { TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
 import { DAY_KEYS, DAY_LABELS_LONG, type DayKey } from '@/shared/time/week-days'
 import { effectiveCloseMins, END_OF_DAY_MINS } from '@/shared/time/operating-day'
@@ -245,7 +246,12 @@ export function ScheduleFields({ view, onViewChange }: Props) {
 
                     <div className="flex items-center gap-2">
                       {closed ? (
-                        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground border border-border/50">
+                        <span
+                          className={cn(
+                            'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+                            TONE_BADGE.neutral,
+                          )}
+                        >
                           Cerrado
                         </span>
                       ) : expanded ? (

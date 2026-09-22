@@ -6,6 +6,8 @@ import { ExternalLink, Mail, MessageCircle } from 'lucide-react'
 import { SectionHeader } from '@/components/admin/SectionHeader'
 import { Pager } from '@/components/ui/pager'
 import { formatArs, relativeTimeEs } from '@/lib/format'
+import { TONE_BADGE } from '@/lib/status-tone'
+import { cn } from '@/lib/utils'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
 import { bookingCode } from '@/lib/booking-code'
 import type { PendingRefundRow } from '@/modules/payments/refund.service'
@@ -118,7 +120,12 @@ export function PendingRefundsList({
             >
               <div className="min-w-0 flex-1 space-y-0.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+                      TONE_BADGE.neutral,
+                    )}
+                  >
                     {ORIGIN_TAG[row.method] ?? row.method}
                   </span>
                   <span className="truncate text-sm font-medium text-foreground">

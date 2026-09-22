@@ -1,21 +1,17 @@
 import type { StandingRow } from '@/modules/tournaments/standings/types'
-import type {
-  TournamentFormat,
-  TournamentEventType,
-  TournamentMatchStatus,
-  TournamentStatus,
-  TournamentTeamStatus,
-} from '@/modules/tournaments/tournament.types'
+import type { TournamentFormat } from '@/modules/tournaments/tournament.types'
 
 // H027: existía un `formatArs` local (`$85.000`, sin espacio) que divergía del
 // único formateador de plata del repo (`@/lib/format`, con NBSP: `$ 85.000`) —
 // el mismo monto de inscripción se veía distinto en dos pestañas del mismo
-// torneo. Se re-exporta el canónico en vez de duplicar la lógica, para no
-// tocar los import-sites de este módulo.
-export { formatArs } from '@/lib/format'
+// torneo. Los montos se formatean con `@/lib/format`; no hay copia acá.
 
 // Helpers puros de presentación: sin DB, sin React. Se testean solos
 // (mismo criterio que caja-lib.ts).
+//
+// Los estados (labels, tono e ícono de torneo, equipo, partido y evento) NO
+// viven acá: son `@/lib/tournaments/status-visual`, porque el portal público
+// muestra los mismos estados y no debería importar de la ruta del admin.
 
 export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   league: 'Liga (todos contra todos)',
@@ -29,53 +25,6 @@ export const FORMAT_SHORT: Record<TournamentFormat, string> = {
   groups_playoff: 'Grupos + playoffs',
 }
 
-export const STATUS_LABELS: Record<TournamentStatus, string> = {
-  draft: 'Borrador',
-  registration: 'Inscripción abierta',
-  in_progress: 'En curso',
-  finished: 'Terminado',
-  canceled: 'Cancelado',
-}
-
-export const TEAM_STATUS_LABELS: Record<TournamentTeamStatus, string> = {
-  registered: 'Inscripto',
-  confirmed: 'Confirmado',
-  withdrawn: 'Se bajó',
-  disqualified: 'Descalificado',
-}
-
-/**
- * Clases del badge de estado. Color + TEXTO siempre: el color solo no comunica
- * (MASTER §1.4, ~8% de daltonismo).
- */
-export function statusBadgeClass(status: TournamentStatus): string {
-  switch (status) {
-    case 'draft':
-      return 'bg-muted text-muted-foreground'
-    case 'registration':
-      return 'bg-info/15 text-blue-800 dark:text-blue-300'
-    case 'in_progress':
-      return 'bg-success/15 text-emerald-800 dark:text-emerald-300'
-    case 'finished':
-      return 'bg-muted text-foreground'
-    case 'canceled':
-      return 'bg-destructive/10 text-red-700 dark:text-red-300'
-  }
-}
-
-export function teamStatusBadgeClass(status: TournamentTeamStatus): string {
-  switch (status) {
-    case 'registered':
-      return 'bg-muted text-muted-foreground'
-    case 'confirmed':
-      return 'bg-success/15 text-emerald-800 dark:text-emerald-300'
-    case 'withdrawn':
-      return 'bg-warning/15 text-amber-800 dark:text-amber-300'
-    case 'disqualified':
-      return 'bg-destructive/10 text-red-700 dark:text-red-300'
-  }
-}
-
 /** 'YYYY-MM-DD' → '12/07/2026'. Sin `new Date()`: evita el corrimiento de zona. */
 export function formatDate(isoDate: string): string {
   const [y, m, d] = isoDate.split('-')
@@ -87,29 +36,6 @@ export function formatDateRange(startsOn: string, endsOn: string | null): string
   if (!endsOn) return `Desde el ${formatDate(startsOn)}`
   if (endsOn === startsOn) return formatDate(startsOn)
   return `${formatDate(startsOn)} — ${formatDate(endsOn)}`
-}
-
-export const MATCH_STATUS_LABELS: Record<TournamentMatchStatus, string> = {
-  scheduled: 'Programado',
-  played: 'Jugado',
-  walkover: 'No se presentó',
-  postponed: 'Postergado',
-  canceled: 'Cancelado',
-}
-
-export function matchStatusBadgeClass(status: TournamentMatchStatus): string {
-  switch (status) {
-    case 'scheduled':
-      return 'bg-muted text-muted-foreground'
-    case 'played':
-      return 'bg-success/15 text-emerald-800 dark:text-emerald-300'
-    case 'walkover':
-      return 'bg-warning/15 text-amber-800 dark:text-amber-300'
-    case 'postponed':
-      return 'bg-info/15 text-blue-800 dark:text-blue-300'
-    case 'canceled':
-      return 'bg-destructive/10 text-red-700 dark:text-red-300'
-  }
 }
 
 /** 'Fecha 3' en liga, 'Semifinal' en llaves. */
@@ -172,32 +98,6 @@ export function summarizeSlots(slots: ReadonlyArray<{ courtId: string; date: str
     plural(dates, 'fecha', 'fechas'),
   ].join(' · ')
 }
-
-// ─── Resultados y disciplina (migr. 065) ────────────────────────────
-
-export const EVENT_TYPE_LABELS: Record<TournamentEventType, string> = {
-  goal: 'Gol',
-  own_goal: 'Gol en contra',
-  yellow_card: 'Amarilla',
-  red_card: 'Roja',
-}
-
-/** Siempre ícono + texto, nunca color solo (MASTER §6.5). */
-export function eventTypeBadgeClass(type: TournamentEventType): string {
-  switch (type) {
-    case 'goal':
-      return 'bg-success/15 text-emerald-800 dark:text-emerald-300'
-    case 'own_goal':
-      return 'bg-muted text-muted-foreground'
-    case 'yellow_card':
-      return 'bg-warning/15 text-amber-800 dark:text-amber-300'
-    case 'red_card':
-      return 'bg-destructive/10 text-red-700 dark:text-red-300'
-  }
-}
-
-export const qualificationBadgeClass = 'bg-success/15 text-emerald-800 dark:text-emerald-300'
-export const suspensionBadgeClass = 'bg-warning/15 text-amber-800 dark:text-amber-300'
 
 /** '+5' / '-3' / '0' — la diferencia de gol se lee mejor con signo. */
 export function formatGoalDiff(diff: number): string {

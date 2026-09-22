@@ -60,7 +60,7 @@ test.describe('Player bookings', () => {
     try {
       await page.goto('/mis-reservas')
       await expect(page.getByRole('heading', { name: 'Mis Reservas' })).toBeVisible()
-      await expect(page.getByText('Confirmado').first()).toBeVisible()
+      await expect(page.getByText('Confirmada').first()).toBeVisible()
 
       // Click cancel button on the booking row → ConfirmDialog opens
       await page.getByRole('button', { name: 'Cancelar' }).first().click()
@@ -81,7 +81,7 @@ test.describe('Player bookings', () => {
       // lo que verificaba el original:
       //   1) la tarjeta desaparece de Próximos  → prueba que el router.refresh()
       //      corrió (era lo que cubría el `toBeVisible` con timeout),
-      //   2) el badge "Cancelado" aparece en Historial → prueba el estado.
+      //   2) el badge "Cancelada" aparece en Historial → prueba el estado.
       // Acotado a SU tarjeta (el slot 20:00) y no a `.first()` global: una
       // reserva ajena no puede satisfacer el assert por accidente.
       // El locator es perezoso: la misma definición sirve antes y después de
@@ -90,7 +90,7 @@ test.describe('Player bookings', () => {
       await expect(card).toHaveCount(0, { timeout: 8_000 })
 
       await page.goto('/mis-reservas?tab=historial')
-      await expect(card.getByText('Cancelado')).toBeVisible({ timeout: 8_000 })
+      await expect(card.getByText('Cancelada')).toBeVisible({ timeout: 8_000 })
 
       // DB assertion
       const { data: row, error } = await supabase
@@ -199,7 +199,7 @@ test.describe('Player bookings', () => {
     try {
       await page.goto('/mis-reservas')
       await expect(page.getByRole('heading', { name: 'Mis Reservas' })).toBeVisible()
-      await expect(page.getByText('Confirmado').first()).toBeVisible()
+      await expect(page.getByText('Confirmada').first()).toBeVisible()
 
       // Click cancel button on the booking row → ConfirmDialog opens.
       await page.getByRole('button', { name: 'Cancelar' }).first().click()
@@ -220,7 +220,7 @@ test.describe('Player bookings', () => {
       await expect(card).toHaveCount(0, { timeout: 8_000 })
 
       await page.goto('/mis-reservas?tab=historial')
-      await expect(card.getByText('Cancelado')).toBeVisible({ timeout: 8_000 })
+      await expect(card.getByText('Cancelada')).toBeVisible({ timeout: 8_000 })
 
       // ── DB assertion ────────────────────────────────────────────────────
       // status must be one of the two canceled variants (policy-dependent).

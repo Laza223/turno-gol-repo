@@ -142,8 +142,12 @@ export function BookingListItem({
           className="absolute inset-0 z-0 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         />
         <span aria-hidden className={cn('w-1 shrink-0 self-stretch rounded-full', visual.accent)} />
-        {/* Angosta (columna del tablero): DOS renglones — horario + plata |
-            estado, y nombre + seña | acciones. Ancha (@2xl, 42rem): una sola
+        {/* Angosta (columna del tablero): DOS renglones — horario + plata +
+            estado, y nombre + seña | acciones. El primero es un `flex-wrap`:
+            si el estado no entra al lado del horario y la plata, baja solo a
+            otra línea. Con el estado en su propia columna de grid, 5 canchas a
+            1366 px (fila de 172-197 px) pisaban horario, plata y badges letra
+            sobre letra (crítica 2026-09-23). Ancha (@2xl, 42rem): una sola
             fila; el `order` devuelve el orden de lectura horario → nombre →
             estado → plata. El corte estaba en 48rem y no lo alcanzaba ninguna
             columna del tablero (con 2 canchas a 1440px la columna mide 680px),
@@ -151,11 +155,11 @@ export function BookingListItem({
         <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 @2xl:flex @2xl:items-center @2xl:gap-3">
           {/* `@2xl:contents`: el mismo horario y la misma plata, colocados
               distinto. En angosto van juntos en el renglón de arriba (la plata
-              no gasta un renglón propio); en ancho el wrapper desaparece del
-              layout y los dos pasan a ser hijos del flex del padre, cada uno en
-              su `order`. Un `@2xl:hidden` + una copia habría duplicado el monto
+              no gasta un renglón propio), con el estado; en ancho el wrapper
+              desaparece del layout y los tres pasan a ser hijos del flex del
+              padre, cada uno en su `order`. Un `@2xl:hidden` + una copia habría duplicado el monto
               en el DOM y roto por strict-mode cualquier `getByText` de plata. */}
-          <div className="flex min-w-0 items-baseline gap-x-2 @2xl:contents">
+          <div className="col-span-2 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 @2xl:contents">
             <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400 @2xl:order-1 @2xl:w-24">
               {timeRange}
             </span>
@@ -184,6 +188,16 @@ export function BookingListItem({
                 )}
               </span>
             )}
+            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5 @2xl:order-3 @2xl:ml-0 @2xl:justify-start">
+              <ReservaStatusBadge visual={visual} />
+              {/* La plata va antes que "Turno fijo": gana prioridad de lectura. */}
+              {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
+              {isAbonado && (
+                <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/30">
+                  Turno fijo
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="col-start-1 row-start-2 min-w-0 @2xl:order-2 @2xl:flex-1">
@@ -195,17 +209,6 @@ export function BookingListItem({
             </p>
             {secondaryParts.length > 0 && (
               <p className="truncate text-xs text-muted-foreground">{secondaryParts.join(' · ')}</p>
-            )}
-          </div>
-
-          <div className="col-start-2 row-start-1 flex shrink-0 flex-wrap items-center justify-end gap-1.5 @2xl:order-3 @2xl:justify-start">
-            <ReservaStatusBadge visual={visual} />
-            {/* La plata va antes que "Turno fijo": gana prioridad de lectura. */}
-            {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
-            {isAbonado && (
-              <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/30">
-                Turno fijo
-              </span>
             )}
           </div>
 

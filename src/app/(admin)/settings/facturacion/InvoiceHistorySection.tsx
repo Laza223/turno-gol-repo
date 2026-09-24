@@ -1,7 +1,6 @@
-import { Receipt } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, Receipt, RefreshCw, Undo2, XCircle } from 'lucide-react'
 import { formatArs } from '@/lib/format'
-import { cn } from '@/lib/utils'
-import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
+import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { InvoiceEntry } from '@/modules/billing/billing.types'
 
@@ -21,18 +20,21 @@ export const STATUS_LABELS: Record<InvoiceEntry['status'], string> = {
 }
 
 /**
- * El estado del cobro va al semáforo del sistema, no a una paleta propia: es
- * plata, y tiene que leerse igual que el resto del producto. `refunded` y
+ * El estado del cobro va al `StatusBadge` del sistema, no a una pastilla
+ * propia: es plata, y tiene que leerse (color + ícono + texto, DESIGN.md
+ * Chips/StatusBadge) igual que el resto del producto. `refunded` y
  * `cancelled` usaban `bg-muted text-muted-foreground`, que da 4.21:1 y falla
- * AA (`status-tone.ts:5-10`).
+ * AA (`status-tone.ts:5-10`). Íconos con el significado del resto del panel:
+ * `XCircle` = cancelado, `AlertCircle` = problema de pago (`past_due`), `Ban`
+ * queda para bloqueado.
  */
-const STATUS_TONE: Record<InvoiceEntry['status'], StatusTone> = {
-  approved: 'success',
-  pending: 'warning',
-  in_process: 'warning',
-  rejected: 'destructive',
-  refunded: 'neutral',
-  cancelled: 'neutral',
+const STATUS_VISUALS: Record<InvoiceEntry['status'], StatusBadgeVisual> = {
+  approved: { icon: CheckCircle2, label: STATUS_LABELS.approved, tone: 'success' },
+  pending: { icon: Clock, label: STATUS_LABELS.pending, tone: 'warning' },
+  in_process: { icon: RefreshCw, label: STATUS_LABELS.in_process, tone: 'warning' },
+  rejected: { icon: AlertCircle, label: STATUS_LABELS.rejected, tone: 'destructive' },
+  refunded: { icon: Undo2, label: STATUS_LABELS.refunded, tone: 'neutral' },
+  cancelled: { icon: XCircle, label: STATUS_LABELS.cancelled, tone: 'neutral' },
 }
 
 function formatDate(d: Date | null): string {
@@ -90,14 +92,7 @@ export function InvoiceHistorySection({ invoices }: Props) {
                     {formatArs(invoice.amount)}
                   </td>
                   <td className="py-2.5">
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                        TONE_BADGE[STATUS_TONE[invoice.status]],
-                      )}
-                    >
-                      {STATUS_LABELS[invoice.status]}
-                    </span>
+                    <StatusBadge visual={STATUS_VISUALS[invoice.status]} />
                   </td>
                 </tr>
               ))}

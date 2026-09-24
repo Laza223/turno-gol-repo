@@ -61,6 +61,15 @@ const meta = {
       slotsGenerated: 8,
       conflictDates: [],
     })),
+    // Doble mínimo: el comportamiento real del modal (cobrar, cantina,
+    // reprogramar…) lo cubre HoyChargeModal.stories.tsx. Acá solo importa que
+    // GridOverlays invoque el render prop al tocar un turno — `@/components`
+    // no puede importar el modal real de `@/app` (turnogol/capas-components).
+    renderChargeModal: (args) => (
+      <div role="dialog" aria-label={`Detalle del turno ${args.booking.id}`}>
+        Detalle
+      </div>
+    ),
   },
   decorators: [
     (Story) => (

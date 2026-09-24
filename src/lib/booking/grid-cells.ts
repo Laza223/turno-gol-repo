@@ -46,6 +46,14 @@ export type GridBooking = {
   // los payloads viejos (fixtures, Realtime crudo) pueden no traerlo, y ahí el
   // link simplemente no se ofrece.
   tournamentId?: string | null
+  // Instantes físicos (`bookings.starts_at`/`ends_at`), fuente de "ya
+  // terminó" para el modal de cobro (paso 3, docs/decisions/
+  // 2026-09-24-navegacion-panel.md). Opcionales: un evento de Realtime crudo
+  // los trae siempre (replica la fila completa), pero el tipo queda laxo por
+  // las fixtures/stories que no los cargan — ahí el modal cae al fallback de
+  // `hasEnded` que ya calcula la grilla y no muestra el renglón "cuándo".
+  startsAtMs?: number | null
+  endsAtMs?: number | null
 }
 
 export type CellState =

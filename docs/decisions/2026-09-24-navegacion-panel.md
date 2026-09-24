@@ -1,6 +1,6 @@
 # Navegación del panel: una pregunta por pantalla, y Hoy no se toca
 
-**Fecha**: 2026-09-24 · **Estado**: aprobada por el dueño; paso 1 mergeado (#363), paso 2 implementado · **Decide**: el dueño
+**Fecha**: 2026-09-24 · **Estado**: aprobada por el dueño; paso 1 mergeado (#363), paso 2 mergeado (#364), paso 3 implementado · **Decide**: el dueño
 (qué) + esta sesión (cómo) · **Marco**: refinamiento del panel sobre el estilo actual (`DESIGN.md`),
 sin tocar lógica, Server Actions, consultas ni schema.
 

@@ -8,22 +8,36 @@ vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
 
 import { toast } from '@/hooks/use-toast'
-import { BookingSlotPanel, type SlotPanelActions } from '@/components/booking/BookingSlotPanel'
+import { HoyChargeModal } from '@/app/(admin)/dashboard/_components/HoyChargeModal'
+import type { SlotPanelActions } from '@/components/booking/slot-panel/actions'
 import { booking, bookingNoShow, toGridBooking } from '@/test/fixtures/booking'
 import { player } from '@/test/fixtures/player'
 
 /**
- * "Deshacer la ausencia" sólo existe con el turno en `no_show`, y en ese estado
- * el panel no monta la sección de cobro — que era el único lugar que pintaba el
- * `error` del hook. Si la action fallaba, el aviso se perdía y el botón no hacía
- * nada visible.
+ * "Deshacer la ausencia" sólo existe con el turno en `no_show`, y en ese
+ * estado el modal no monta la sección de cobro — que era el único lugar que
+ * pintaba el `error` del hook. Si la action fallaba, el aviso se perdía y el
+ * botón no hacía nada visible.
+ *
+ * Mudado de BookingSlotPanel.tsx a HoyChargeModal (paso 3, docs/decisions/
+ * 2026-09-24-navegacion-panel.md): el panel de la Grilla se borró.
  */
+const COURTS = [
+  {
+    id: 'court-1',
+    name: 'Cancha 1',
+    status: 'online' as const,
+    capacity: 10,
+    pricing: { rules: [] } as never,
+  },
+]
+
 afterEach(() => {
   cleanup()
   vi.mocked(toast).mockClear()
 })
 
-describe('panel del turno: deshacer la ausencia', () => {
+describe('modal de cobro: deshacer la ausencia', () => {
   it('si la action falla, el error se ve junto al botón', async () => {
     const revertNoShowAction = vi.fn(async () => ({ success: false as const, error: 'X' }))
     const actions: SlotPanelActions = {
@@ -35,13 +49,17 @@ describe('panel del turno: deshacer la ausencia', () => {
     }
     const b = toGridBooking(bookingNoShow(), player())
     render(
-      <BookingSlotPanel
+      <HoyChargeModal
         booking={b}
         courtName="Cancha 1"
+        courts={[{ ...COURTS[0]!, id: b.courtId }]}
+        dayBookings={[]}
+        daySlots={[]}
+        nowMs={Date.now()}
+        isRefreshing={false}
         onClose={vi.fn()}
         onMutated={vi.fn()}
         hasEnded
-        courts={[{ id: b.courtId, name: 'Cancha 1', capacity: 10 }]}
         actions={actions}
       />,
     )
@@ -50,6 +68,33 @@ describe('panel del turno: deshacer la ausencia', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('X')
     expect(revertNoShowAction).toHaveBeenCalledWith(b.id)
+  })
+
+  it('un ausente no muestra "Cobrado ✓" (no es deuda, pero tampoco está "cobrado")', async () => {
+    const b = toGridBooking(bookingNoShow(), player())
+    render(
+      <HoyChargeModal
+        booking={b}
+        courtName="Cancha 1"
+        courts={[{ ...COURTS[0]!, id: b.courtId }]}
+        dayBookings={[]}
+        daySlots={[]}
+        nowMs={Date.now()}
+        isRefreshing={false}
+        onClose={vi.fn()}
+        onMutated={vi.fn()}
+        hasEnded
+        actions={{
+          chargeDebtAction: vi.fn(async () => ({ success: true as const })),
+          completeAndChargeBookingAction: vi.fn(async () => ({ success: true as const })),
+          addBookingChargeAction: vi.fn(async () => ({ success: true as const })),
+          markNoShowAction: vi.fn(async () => ({ success: true as const })),
+        }}
+      />,
+    )
+
+    await screen.findByText('Cancha 1', { exact: false })
+    expect(screen.queryByText('Cobrado ✓')).toBeNull()
   })
 
   it('el "Deshacer" del aviso de ausencia también avisa si falla', async () => {
@@ -63,18 +108,21 @@ describe('panel del turno: deshacer la ausencia', () => {
     }
     const b = toGridBooking(booking({ status: 'confirmed' }), player())
     render(
-      <BookingSlotPanel
+      <HoyChargeModal
         booking={b}
         courtName="Cancha 1"
+        courts={[{ ...COURTS[0]!, id: b.courtId }]}
+        dayBookings={[]}
+        daySlots={[]}
+        nowMs={Date.now()}
+        isRefreshing={false}
         onClose={vi.fn()}
         onMutated={vi.fn()}
         hasEnded
-        courts={[{ id: b.courtId, name: 'Cancha 1', capacity: 10 }]}
         actions={actions}
       />,
     )
 
-    fireEvent.click(await screen.findByRole('button', { name: /^Más/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Marcar ausente' }))
     const dialog = await screen.findByRole('dialog', { name: 'Marcar como ausente' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar ausente' }))

@@ -18,6 +18,7 @@ import {
   searchBookingPlayersAction,
   addBookingChargeAction,
   completeAndChargeBookingAction,
+  confirmDepositPaymentAction,
   markNoShowAction,
   revertNoShowAction,
   listRescheduleSlotsAction,
@@ -59,11 +60,15 @@ export default async function GrillaPage(props: {
     return { courts: courtList, dayBookings: bookingRows }
   })
 
-  // El loader compartido con Hoy trae también los instantes físicos del turno;
-  // la Grilla no los usa y no viajan al cliente (su payload no cambia).
-  const initialBookings: GridBooking[] = dayBookings.map(
-    ({ startsAt: _startsAt, endsAt: _endsAt, ...booking }) => booking,
-  )
+  // El loader compartido con Hoy trae también los instantes físicos del turno:
+  // desde el paso 3 (docs/decisions/2026-09-24-navegacion-panel.md) la Grilla
+  // los necesita para abrir el mismo modal de cobro de Hoy, con el mismo
+  // mapeo a milisegundos que dashboard/page.tsx.
+  const initialBookings: GridBooking[] = dayBookings.map(({ startsAt, endsAt, ...booking }) => ({
+    ...booking,
+    startsAtMs: startsAt.getTime(),
+    endsAtMs: endsAt.getTime(),
+  }))
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-4 h-full">
@@ -89,6 +94,7 @@ export default async function GrillaPage(props: {
           chargeDebtAction,
           completeAndChargeBookingAction,
           addBookingChargeAction,
+          confirmDepositPaymentAction,
           markNoShowAction,
           revertNoShowAction,
           listRescheduleSlotsAction,

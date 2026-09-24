@@ -3,8 +3,6 @@ import { Ban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs, formatTime } from '@/lib/format'
 import { TONE_TEXT } from '@/lib/status-tone'
-import { QuickActions, type BookingQuickActions } from './QuickActions'
-import { hasQuickActions } from './quick-actions-helpers'
 import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from './status-visual'
 import { moneyLine } from './money-line'
 import { resolveDepositDisplayStatus } from './deposit-display'
@@ -38,18 +36,6 @@ function clientName(booking: Pick<ReservaListRow, 'playerName' | 'guestName' | '
 type Props = {
   booking: ReservaListRow
   /**
-   * Server Actions de QuickActions, reenviadas tal cual (Server Component →
-   * Client Component). Solo se usan si `hasQuickActions(booking)` es true.
-   */
-  actions: BookingQuickActions
-  /**
-   * Horas de anticipación de la política de cancelación del complejo (mismo
-   * dato en las 200 filas de la página — se calcula una sola vez arriba,
-   * page.tsx, no por fila). Reenviado a QuickActions para el preview de
-   * plazo de cancelación (cluster F bug 2).
-   */
-  cancellationPolicyHours?: number
-  /**
    * La pestaña Hoy agrupa por cancha y el nombre ya es el título de la
    * sección: repetirlo en la línea secundaria de cada fila es ruido. Próximas
    * e Historial agrupan por fecha y mezclan canchas, ahí sí hace falta.
@@ -61,15 +47,12 @@ type Props = {
 /**
  * Fila de /reservas. `@container`: en el teléfono y en cada una de las dos
  * columnas de escritorio la fila es angosta; en una pantalla muy ancha puede
- * no serlo — el layout interno y `QuickActions` responden al ancho REAL de la
- * fila, no al viewport.
+ * no serlo. Sin botones propios (paso 3, docs/decisions/
+ * 2026-09-24-navegacion-panel.md): la fila entera abre el turno, como ya
+ * hacía el link estirado — "Confirmar pago" se mudó a "Cobrar seña $X" en el
+ * modal y en la página del turno (`CobrarSenaButton`).
  */
-export function BookingListItem({
-  booking,
-  actions,
-  cancellationPolicyHours,
-  showCourt = true,
-}: Props) {
+export function BookingListItem({ booking, showCourt = true }: Props) {
   const visual = reservaStatusVisual(booking)
   const name = clientName(booking)
   const isBlock = booking.type === 'block'
@@ -92,33 +75,6 @@ export function BookingListItem({
   ]
     .filter(Boolean)
     .join(', ')
-
-  const withActions = hasQuickActions(booking)
-
-  // QuickActions ya se posiciona (z-10) contra el Link estirado de la fila
-  // (Fitts: la fila entera navega al detalle, menos donde hay otro control).
-  const quickActions = withActions && (
-    <QuickActions
-      booking={{
-        id: booking.id,
-        status: booking.status,
-        type: booking.type,
-        depositStatus: booking.depositStatus,
-        depositAmount: booking.depositAmount,
-        priceSnapshot: booking.priceSnapshot,
-        paymentMethod: booking.paymentMethod,
-        guestName: booking.guestName ?? null,
-        guestPhone: null,
-        playerName: booking.playerName,
-        pending: booking.pending,
-        startsAt: booking.startsAt,
-        endsAt: booking.endsAt,
-      }}
-      label={`${name} · ${timeRange}`}
-      cancellationPolicyHours={cancellationPolicyHours}
-      {...actions}
-    />
-  )
 
   const secondaryParts = [
     showCourt ? booking.courtName : null,
@@ -209,12 +165,6 @@ export function BookingListItem({
               <p className="truncate text-xs text-muted-foreground">{secondaryParts.join(' · ')}</p>
             )}
           </div>
-
-          {quickActions && (
-            <div className="col-start-2 row-start-2 justify-self-end @2xl:order-5">
-              {quickActions}
-            </div>
-          )}
         </div>
       </article>
     </li>

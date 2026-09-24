@@ -27,23 +27,6 @@ import {
   groupBy,
   parsePage,
 } from '../reservas-filters'
-import {
-  cancelBookingAction,
-  completeAndChargeBookingAction,
-  confirmDepositPaymentAction,
-  markNoShowAction,
-  revertNoShowAction,
-} from '../actions'
-import { getBookingChargesAction } from '../charges-actions'
-
-const QUICK_ACTIONS = {
-  cancelBookingAction,
-  completeAndChargeBookingAction,
-  confirmDepositPaymentAction,
-  markNoShowAction,
-  revertNoShowAction,
-  getBookingChargesAction,
-}
 
 type Props = {
   searchParams: Promise<{
@@ -61,11 +44,6 @@ export default async function ReservasPage(props: Props) {
   const auth = await requireOperatorStaff()
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
-  // Mismo dato/mismo default (24) que `getBookingDetail` (queries.ts) usa vía
-  // COALESCE en SQL para `ReservaDetail.cancellationPolicyHours` — acá se lee
-  // en JS porque el guard ya devuelve el `tenant` con `settings` completo, sin
-  // query extra. Reenviado a QuickActions (cluster F bug 2).
-  const cancellationPolicyHours = tenant.settings?.cancellation_policy?.hours_before ?? 24
 
   const today = artTodayStr()
   const requestedScope = searchParams.dia ?? ''
@@ -219,13 +197,7 @@ export default async function ReservasPage(props: Props) {
                 </h2>
                 <ul className="divide-y divide-border py-1">
                   {groupRows.map((r) => (
-                    <BookingListItem
-                      key={r.id}
-                      booking={r}
-                      actions={QUICK_ACTIONS}
-                      cancellationPolicyHours={cancellationPolicyHours}
-                      showCourt={!byCourt}
-                    />
+                    <BookingListItem key={r.id} booking={r} showCourt={!byCourt} />
                   ))}
                 </ul>
               </section>

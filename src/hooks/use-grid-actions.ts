@@ -48,8 +48,11 @@ export function useGridActions(params: {
   const closeDetail = useCallback(() => setDetailBookingId(null), [])
 
   /**
-   * El panel cobró / marcó ausente: hay que refrescar los DOS lados, igual que
-   * al crear una reserva.
+   * El modal cobró / marcó ausente: hay que refrescar los DOS lados, igual que
+   * al crear una reserva. El modal NO se cierra acá: igual que en Hoy, queda
+   * abierto entre pagos ("Pagó uno" diez veces, Equipo 1 y después Equipo 2).
+   * Se cierra solo cuando el turno deja de estar en el día (ver `detailBooking`
+   * en BookingGrid) o cuando el propio modal lo decide (ausente).
    *
    * `router.refresh()` solo no alcanza: el hook de Realtime lee
    * `initialBookings` únicamente al montar, así que la grilla seguiría pintando
@@ -59,7 +62,6 @@ export function useGridActions(params: {
    * `cash_flows`, que no emite por el canal de Realtime — nadie más va a avisar.
    */
   const handleSlotMutated = useCallback(() => {
-    setDetailBookingId(null)
     router.refresh()
     void refetch()
     // Cubre addBookingChargeAction / completeAndChargeBookingAction /

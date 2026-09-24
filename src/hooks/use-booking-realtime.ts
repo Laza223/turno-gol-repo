@@ -33,7 +33,16 @@ type ApiResponse = {
     total_paid: number
     pending: number
     created_at: string
+    starts_at: string
+    ends_at: string
   }>
+}
+
+/** `starts_at`/`ends_at` de un payload crudo (Realtime o fixture), a ms o `null`. */
+function toMsOrNull(v: unknown): number | null {
+  if (typeof v !== 'string') return null
+  const ms = new Date(v).getTime()
+  return Number.isFinite(ms) ? ms : null
 }
 
 function normalizeRealtimeRow(row: RawRow): GridBooking {
@@ -66,6 +75,11 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
     // todo INSERT/UPDATE por el mismo motivo que faltan los nombres del jugador.
     totalPaid: null,
     pending: null,
+    // A diferencia de lo anterior, SÍ vienen: son columnas de `bookings`, y el
+    // canal replica la fila completa. Si algún payload viejo no los trae,
+    // quedan en null y el modal cae a su fallback (sin el renglón "cuándo").
+    startsAtMs: toMsOrNull(row['starts_at']),
+    endsAtMs: toMsOrNull(row['ends_at']),
   }
 }
 
@@ -93,6 +107,8 @@ function carryMoney(next: GridBooking, prev: GridBooking | undefined): GridBooki
     // un `next.createdAt` ausente borre el que ya teníamos y tire abajo el
     // contador de hold a mitad de cuenta regresiva.
     createdAt: next.createdAt ?? prev.createdAt ?? null,
+    startsAtMs: next.startsAtMs ?? prev.startsAtMs ?? null,
+    endsAtMs: next.endsAtMs ?? prev.endsAtMs ?? null,
   }
 }
 
@@ -123,6 +139,8 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
     createdAt: row.created_at,
     totalPaid: row.total_paid ?? null,
     pending: row.pending ?? null,
+    startsAtMs: toMsOrNull(row.starts_at),
+    endsAtMs: toMsOrNull(row.ends_at),
   }
 }
 

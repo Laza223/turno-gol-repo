@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { useArtNow } from '@/hooks/use-art-now'
+import { useNowMs } from '@/hooks/use-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { useDismissibleHint } from '@/hooks/use-dismissible-hint'
 import { useRealtimePulse } from '@/hooks/use-realtime-pulse'
@@ -14,7 +15,7 @@ import { GridScroller } from './grid/GridScroller'
 import { GridOverlays } from './grid/GridOverlays'
 import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
-import type { RenderCanteenDialog, SlotPanelActions } from './BookingSlotPanel'
+import type { RenderCanteenDialog, RenderChargeModal, SlotPanelActions } from './slot-panel/actions'
 import { sumPendingCents, type GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -64,6 +65,8 @@ type Props = {
   slotPanelActions?: SlotPanelActions
   /** Se reenvía tal cual al panel del turno — ver `RenderCanteenDialog`. */
   renderCanteenDialog?: RenderCanteenDialog
+  /** El modal de cobro de Hoy (paso 3) — ver `RenderChargeModal`. Sin esto, tocar un turno no abre nada. */
+  renderChargeModal?: RenderChargeModal
   actions?: React.ReactNode
 }
 
@@ -81,11 +84,15 @@ export function BookingGrid({
   searchPlayersAction,
   slotPanelActions,
   renderCanteenDialog,
+  renderChargeModal,
   actions,
 }: Props) {
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
   const artNow = useArtNow()
+  // Reloj del modal de cobro (paso 3, docs/decisions/
+  // 2026-09-24-navegacion-panel.md): 30s alcanza para "Terminó hace N min".
+  const nowMs = useNowMs(30_000)
 
   const { dismissed: hintDismissed, dismiss: dismissHint } = useDismissibleHint(HINT_STORAGE_KEY)
 
@@ -169,10 +176,17 @@ export function BookingGrid({
   // El panel se alimenta de `bookings` (la lista viva), no de un snapshot al
   // abrir: si entra un cobro por Realtime mientras el panel está abierto, el
   // saldo que muestra se actualiza solo en vez de quedar mintiendo.
-  const detailBooking = useMemo(
-    () => (detailBookingId ? (bookings.find((b) => b.id === detailBookingId) ?? null) : null),
-    [detailBookingId, bookings],
-  )
+  //
+  // El modal queda abierto entre cobros, así que se cierra solo cuando el turno
+  // deja de estar activo en este día: la carga inicial trae solo estados
+  // activos, pero Realtime y `/api/bookings` también traen los cancelados y
+  // los que se reprogramaron a otro día. Un bloqueo liberado se borra.
+  const detailBooking = useMemo(() => {
+    if (!detailBookingId) return null
+    const found = bookings.find((b) => b.id === detailBookingId)
+    if (!found || found.date !== date || found.status.startsWith('canceled')) return null
+    return found
+  }, [detailBookingId, bookings, date])
 
   const courtNameById = useMemo(() => new Map(courts.map((c) => [c.id, c.name])), [courts])
 
@@ -272,6 +286,8 @@ export function BookingGrid({
         courts={courts}
         renderCanteenDialog={renderCanteenDialog}
         slotPanelActions={slotPanelActions}
+        nowMs={nowMs}
+        renderChargeModal={renderChargeModal}
       />
     </div>
   )

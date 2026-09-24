@@ -1,9 +1,10 @@
 'use client'
 
+import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { CheckCircle2, CupSoda, MoreHorizontal, Trophy, UserX } from 'lucide-react'
+import { CheckCircle2, CupSoda, MoreHorizontal, Trash2, Trophy, UserX } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   DropdownMenu,
@@ -13,7 +14,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { toast } from '@/hooks/use-toast'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
+import { CobrarSenaButton } from '@/components/booking/CobrarSenaButton'
 import { useSlotCharges } from '@/components/booking/slot-panel/use-slot-charges'
 import { SlotPriceSummary } from '@/components/booking/slot-panel/SlotPriceSummary'
 import { SlotCancelDialog } from '@/components/booking/slot-panel/SlotCancelDialog'
@@ -21,13 +24,24 @@ import { slotGates } from '@/components/booking/slot-panel/slot-gates'
 import type { RenderCanteenDialog, SlotPanelActions } from '@/components/booking/slot-panel/actions'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
-import { hasEndedAt, startLabel, type BoardBooking } from '@/lib/dashboard/today-board'
+import { hasEndedAt, startLabel } from '@/lib/dashboard/today-board'
 import { rowDisplayName } from '@/lib/dashboard/day-bookings'
 import { relativeTimeEs } from '@/lib/format'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
+import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 import { HoyChargeSection } from './HoyChargeSection'
+
+/**
+ * El turno que recibe el modal desde la Grilla no siempre trae los instantes
+ * físicos (un evento de Realtime crudo puede no traerlos — ver
+ * `use-booking-realtime.ts`): a diferencia de Hoy, que SIEMPRE los tiene
+ * (`dashboard/page.tsx` los mapea desde `listDayGridBookings`), así que acá
+ * quedan opcionales (mismo shape que `GridBooking`) y el modal cae a los
+ * fallbacks documentados en cada uso.
+ */
+type ChargeBooking = GridBooking
 
 // Se cargan recién al abrirlos: cobrar es de todos los días, mover o corregir
 // un turno es de una vez por semana.
@@ -83,12 +97,13 @@ export function HoyChargeModal({
   renderCanteenDialog,
   onClose,
   onMutated,
+  hasEnded: hasEndedFallback,
 }: {
-  booking: BoardBooking
+  booking: ChargeBooking
   courtName: string
   courts: HoyCourt[]
   /** Todas las reservas del día (todas las canchas): el diálogo de editar las necesita. */
-  dayBookings: BoardBooking[]
+  dayBookings: ChargeBooking[]
   daySlots: string[]
   nowMs: number
   /** Los datos se están refrescando tras una mutación. */
@@ -98,8 +113,18 @@ export function HoyChargeModal({
   onClose: () => void
   /** Se cobró (o se movió/canceló): el shell tiene que refrescar la pantalla. */
   onMutated: () => void
+  /**
+   * "¿Ya terminó?" cuando el turno no trae `endsAtMs` (Realtime crudo, ver
+   * `ChargeBooking`). Hoy siempre trae el instante y este prop no hace falta;
+   * la Grilla lo pasa ya calculado con `isSlotPast` (día operativo) como red
+   * de contención — nunca se usa si `endsAtMs` está presente.
+   */
+  hasEnded?: boolean
 }) {
-  const hasEnded = hasEndedAt(booking, nowMs)
+  const hasEnded =
+    typeof booking.endsAtMs === 'number'
+      ? hasEndedAt({ endsAtMs: booking.endsAtMs }, nowMs)
+      : (hasEndedFallback ?? false)
   const court = courts.find((c) => c.id === booking.courtId)
 
   const [noShowOpen, setNoShowOpen] = useState(false)
@@ -107,6 +132,7 @@ export function HoyChargeModal({
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [releaseBlockOpen, setReleaseBlockOpen] = useState(false)
 
   // Estado limpio tras cada mutación exitosa: mismo patrón "derived state on
   // prop change" que el panel de la Grilla (sin useEffect). `resetLastId` lo
@@ -133,6 +159,7 @@ export function HoyChargeModal({
     retryTotal,
     retryUnconfirmedCharge,
     confirmNoShow,
+    revertNoShow,
   } = useSlotCharges({
     booking,
     hasEnded,
@@ -169,20 +196,38 @@ export function HoyChargeModal({
   })
   const visual = gridSlotVisual(booking)
   const name = rowDisplayName(booking)
-  const settled = pending === 0 && booking.priceSnapshot > 0
+  // Un ausente nunca "Cobrado ✓": la seña capturada no es "se cobró todo", es
+  // el único costo real de un no-show (veto de producto, CLAUDE.md).
+  const settled = pending === 0 && booking.priceSnapshot > 0 && booking.status !== 'no_show'
   const isTournament = booking.type === 'tournament'
 
   // "Terminó hace 4 min" / "Empieza en 25 min" / "En juego": lo que el mostrador
-  // necesita saber para decidir, en una línea.
-  const startsIn = startLabel(booking, nowMs)
-  const when = hasEnded
-    ? `Terminó ${relativeTimeEs(new Date(booking.endsAtMs).toISOString(), nowMs)}`
-    : startsIn === 'ahora'
-      ? 'En juego'
-      : startsIn
+  // necesita saber para decidir, en una línea. Sin instantes (fallback de la
+  // Grilla) no se muestra el renglón — no se inventa una hora relativa.
+  const when =
+    typeof booking.startsAtMs === 'number' && typeof booking.endsAtMs === 'number'
+      ? (() => {
+          const startsIn = startLabel(
+            { startsAtMs: booking.startsAtMs!, endsAtMs: booking.endsAtMs! },
+            nowMs,
+          )
+          return hasEnded
+            ? `Terminó ${relativeTimeEs(new Date(booking.endsAtMs!).toISOString(), nowMs)}`
+            : startsIn === 'ahora'
+              ? 'En juego'
+              : startsIn
+        })()
+      : null
 
   const hasMenu = gates.canEdit || gates.canReschedule || gates.canCancel
   const hasActions = gates.canSellCanteen || gates.canMarkNoShow
+  // "Cobrar seña $X" (paso 3, docs/decisions/2026-09-24-navegacion-panel.md):
+  // única puerta a `confirmDepositPaymentAction` desde que se retiran los
+  // botones de las filas de /reservas.
+  const canConfirmDeposit =
+    booking.status === 'pending_payment' &&
+    (booking.depositAmount ?? 0) > 0 &&
+    Boolean(actions.confirmDepositPaymentAction)
 
   // Cerrar con un cobro que se cortó por la red y no se sabe si entró: el aviso de
   // reintento vive en el estado de este modal y se pierde al desmontarlo. Si entró,
@@ -197,6 +242,20 @@ export function HoyChargeModal({
     const res = await confirmNoShow()
     // Un ausente no tiene nada más para hacer acá: el "Deshacer" queda en el aviso.
     if (res.success) onClose()
+    return res
+  }
+
+  async function onConfirmReleaseBlock(): Promise<ActionResult> {
+    if (!actions.releaseBlockAction) return { success: false, error: 'Sin acciones disponibles.' }
+    const res = await actions.releaseBlockAction(booking.id)
+    if (res.success) {
+      // Mismo toast que BookingActions.tsx / BookingSlotPanel.tsx tras la MISMA acción.
+      // Sin onClose(): el bloqueo desaparece de `bookings` tras el DELETE, y el
+      // caller (HoyShell/BookingGrid) cierra el modal solo cuando ya no lo encuentra.
+      toast({ title: 'Bloqueo liberado', variant: 'success' })
+      setLastId(null)
+      onMutated()
+    }
     return res
   }
 
@@ -316,6 +375,15 @@ export function HoyChargeModal({
                   Listo
                 </button>
               </>
+            ) : canConfirmDeposit ? (
+              <CobrarSenaButton
+                bookingId={booking.id}
+                depositAmount={booking.depositAmount ?? 0}
+                confirmDepositPaymentAction={actions.confirmDepositPaymentAction!}
+                onSuccess={onMutated}
+                disabled={locked}
+                className="w-full"
+              />
             ) : null}
 
             {isTournament && (
@@ -368,6 +436,47 @@ export function HoyChargeModal({
                     <UserX aria-hidden className="h-4 w-4" />
                     Marcar ausente
                   </button>
+                )}
+              </div>
+            )}
+
+            {gates.canReleaseBlock && (
+              <div className="border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={() => setReleaseBlockOpen(true)}
+                  disabled={locked}
+                  className={cn(
+                    ACTION_BUTTON,
+                    'w-full border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10',
+                  )}
+                >
+                  <Trash2 aria-hidden className="h-4 w-4" />
+                  Liberar el bloqueo
+                </button>
+              </div>
+            )}
+
+            {gates.canRevertNoShow && (
+              <div className="flex flex-col border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={revertNoShow}
+                  disabled={locked}
+                  className={cn(
+                    ACTION_BUTTON,
+                    'border-border bg-card font-medium text-foreground hover:bg-accent',
+                  )}
+                >
+                  Deshacer la ausencia
+                </button>
+                {/* En `no_show` no hay sección de cobro que pinte `error`: es el
+                    único lugar del modal que lo muestra (mismo criterio que
+                    `SlotActionButtons.tsx`). */}
+                {error && (
+                  <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-300">
+                    {error}
+                  </p>
                 )}
               </div>
             )}
@@ -450,6 +559,23 @@ export function HoyChargeModal({
             setLastId(null)
             onMutated()
           }}
+        />
+      )}
+
+      {actions.releaseBlockAction && (
+        <ConfirmDialog
+          open={releaseBlockOpen}
+          onOpenChange={setReleaseBlockOpen}
+          title="Liberar el bloqueo"
+          description={`${name}, ${booking.timeStart}–${booking.timeEnd}. La cancha queda libre para reservar.`}
+          variant="destructive"
+          confirmLabel="Liberar"
+          cancelLabel="Volver"
+          consequences={[
+            'El bloqueo se elimina: no queda como reserva cancelada.',
+            'Si te equivocaste de horario, volvé a bloquear con el horario correcto.',
+          ]}
+          onConfirm={onConfirmReleaseBlock}
         />
       )}
     </>

@@ -31,7 +31,7 @@ import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtPricingData } from '@/modules/courts/court.types'
-import { HoyChargeSection } from './HoyChargeSection'
+import { HoyChargeSection } from '@/components/booking/slot-panel/HoyChargeSection'
 
 /**
  * El turno que recibe el modal desde la Grilla no siempre trae los instantes

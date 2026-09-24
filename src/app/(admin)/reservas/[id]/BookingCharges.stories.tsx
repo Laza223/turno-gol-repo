@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import { expectGone } from '@/test/expect-gone'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { uid } from '@/test/fixtures/ids'
-import { cashFlow } from '@/test/fixtures/cashflow'
+import { artDateString, hoursFromNow } from '@/test/fixtures/clock'
+import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import type { GridBooking } from '@/lib/booking/grid-cells'
+import type { BookingStatus } from '@/modules/bookings/booking.types'
+import type { ActionResult } from '@/shared/types/action-result'
 import type { BookingChargeRow } from '../queries'
-import type { BookingChargeActionResult } from '../actions'
 import BookingCharges from './BookingCharges'
 
 /**
@@ -24,21 +26,71 @@ const charge = (overrides: Partial<BookingChargeRow> = {}): BookingChargeRow => 
 
 const BOOKING_ID = uid(1001)
 
+/**
+ * 2026-09-24: arma el turno con el MISMO shape que consumen Hoy y la Grilla
+ * (`GridBooking`) — `pending`/`totalPaid` salen de `summarizeBookingCharges`,
+ * igual que hace `toGridBooking` en la página real, para no desincronizar los
+ * números a mano en cada story.
+ */
+function booking(
+  overrides: Partial<
+    Pick<GridBooking, 'status' | 'priceSnapshot' | 'depositAmount' | 'depositStatus'>
+  > & { chargesTotal?: number; endsInHours?: number } = {},
+): GridBooking {
+  const priceSnapshot = overrides.priceSnapshot ?? 1_500_000
+  const depositAmount = overrides.depositAmount ?? 450_000
+  const depositStatus = overrides.depositStatus ?? 'paid'
+  const chargesTotal = overrides.chargesTotal ?? 0
+  const { totalPaid, pending } = summarizeBookingCharges({
+    priceSnapshot,
+    depositAmount,
+    depositStatus,
+    chargesTotal,
+  })
+  // Positivo = todavía no terminó (modo 'advance'); negativo = ya terminó (modo
+  // 'finish'). Sin efecto sobre 'completed' (modo 'settle' no mira `hasEnded`).
+  const endsInHours = overrides.endsInHours ?? 1
+  return {
+    id: BOOKING_ID,
+    courtId: uid(101),
+    date: artDateString(),
+    timeStart: '19:00',
+    timeEnd: '20:00',
+    status: (overrides.status ?? 'confirmed') as BookingStatus,
+    type: 'spontaneous',
+    guestName: 'Juan Pérez',
+    playerFirstName: null,
+    playerLastName: null,
+    priceSnapshot,
+    paymentMethod: null,
+    depositStatus,
+    depositAmount,
+    totalPaid,
+    pending,
+    startsAtMs: hoursFromNow(endsInHours - 1).getTime(),
+    endsAtMs: hoursFromNow(endsInHours).getTime(),
+  }
+}
+
+/** Cada acción de cobro por defecto resuelve OK; las stories pisan la que les toca aseverar. */
+function makeActions() {
+  return {
+    addBookingChargeAction: fn(async (): Promise<ActionResult> => ({ success: true })),
+    completeAndChargeBookingAction: fn(async (): Promise<ActionResult> => ({ success: true })),
+    chargeDebtAction: fn(async (): Promise<ActionResult> => ({ success: true })),
+    markNoShowAction: fn(async (): Promise<ActionResult> => ({ success: true })),
+  }
+}
+
 const meta = {
   title: 'Admin/Reservas/BookingCharges',
   component: BookingCharges,
   parameters: { layout: 'padded' },
   args: {
-    bookingId: BOOKING_ID,
-    priceSnapshot: 1_500_000,
-    depositAmount: 450_000,
-    depositStatus: 'paid',
+    booking: booking(),
     charges: [],
     chargesTotal: 0,
-    addBookingChargeAction: fn(async (): Promise<BookingChargeActionResult> => ({
-      success: true,
-      cashFlow: cashFlow(),
-    })),
+    actions: makeActions(),
   },
   decorators: [
     // `[id]/page.tsx` monta BookingCharges bajo el mismo <h1> "Detalle de la
@@ -77,6 +129,7 @@ export const SinCargos: Story = {
 /** Con un cobro de mostrador registrado: aparece en la lista y entra en "Pagado". */
 export const ConCargosYTotal: Story = {
   args: {
+    booking: booking({ chargesTotal: 300_000 }),
     charges: [charge({ id: uid(602), amount: 300_000, method: 'transfer' })],
     chargesTotal: 300_000,
   },
@@ -91,10 +144,11 @@ export const ConCargosYTotal: Story = {
   },
 }
 
-/** Saldo cubierto por completo: el renglón cambia a "Pagado completo" en verde. */
+/** Saldo cubierto por completo: el renglón cambia a "Pagado completo" y el CTA queda apagado. */
 export const PagadoCompleto: Story = {
   args: {
     // priceSnapshot 15.000 - seña 4.500 = falta 10.500 exactos.
+    booking: booking({ chargesTotal: 1_050_000 }),
     charges: [charge({ id: uid(602), amount: 1_050_000 })],
     chargesTotal: 1_050_000,
   },
@@ -105,120 +159,120 @@ export const PagadoCompleto: Story = {
     // Pagado = seña 4.500 + cobro 10.500 = 15.000, igual al precio del turno:
     // "$ 15.000" aparece dos veces (Precio del turno y Pagado).
     await expect(canvas.getAllByText('$ 15.000')).toHaveLength(2)
+    // `chargeMode` da `null` con `pending <= 0`: sin turno que cobrar, el CTA
+    // sigue existiendo pero apagado (mismo criterio que antes de este cambio).
+    await expect(canvas.getByRole('button', { name: '+ Agregar cobro' })).toBeDisabled()
   },
 }
 
 /**
- * Agregar un cobro: el form arranca prefillado con el saldo pendiente, pero
- * acá se pisa con un monto propio para probar la conversión pesos → centavos
- * que hace el componente antes de llamar la action.
+ * Modo 'advance': el turno todavía no terminó, cobrar es un adelanto. El
+ * control es el mismo que Hoy y la Grilla (`HoyChargeSection`): al abrir, el
+ * monto viene precargado con el saldo pendiente completo.
  */
-export const AgregarCargo: Story = {
+export const Anticipo: Story = {
+  args: {
+    booking: booking({ endsInHours: 2 }),
+  },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
 
     await userEvent.click(canvas.getByRole('button', { name: '+ Agregar cobro' }))
     const amountInput = canvas.getByLabelText('Monto')
+    await expect(amountInput).toHaveValue('10.500')
     await userEvent.clear(amountInput)
-    await userEvent.type(amountInput, '5000')
-    // El método es el `SelectMenu` del control compartido (2026-09-17): un
-    // DropdownMenu de Radix cuyo panel va portaled a document.body.
+    await userEvent.type(amountInput, '6000')
     await userEvent.click(canvas.getByRole('button', { name: 'Método de pago' }))
     await userEvent.click(await body.findByRole('menuitemradio', { name: 'Transferencia' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Registrar cobro' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Cobrar .* por adelantado/ }))
 
-    // $5.000 en pesos → 500.000 centavos: el número exacto que tiene que viajar al servidor.
     await waitFor(() =>
-      expect(args.addBookingChargeAction).toHaveBeenCalledWith(
+      expect(args.actions.addBookingChargeAction).toHaveBeenCalledWith(
         expect.objectContaining({
           bookingId: BOOKING_ID,
-          charges: [{ amount: 500_000, method: 'transfer' }],
+          charges: [{ amount: 600_000, method: 'transfer' }],
         }),
       ),
     )
+    await expect(args.actions.completeAndChargeBookingAction).not.toHaveBeenCalled()
+    await expect(args.actions.chargeDebtAction).not.toHaveBeenCalled()
     await waitFor(() => expect(getRouter().refresh).toHaveBeenCalled())
     // El form se cierra solo tras el éxito: vuelve a aparecer el botón de abrirlo.
     await expect(await canvas.findByRole('button', { name: '+ Agregar cobro' })).toBeVisible()
-
-    // El toast (variant success) sobrevive al cambio de story (store a nivel de
-    // módulo): cerrarlo acá evita que la siguiente story lo agarre a mitad de la
-    // animación de salida (mismo patrón que CanteenQuickSale.stories.tsx).
-    const toastText = await body.findByText('Cobro registrado')
-    const toastItem = toastText.closest('li')
-    if (!toastItem) throw new Error('No se encontró el toast')
-    await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
-    // El default de waitForElementToBeRemoved (1000ms) alcanza sobrado en
-    // condiciones normales (el setTimeout interno de dismiss() es de 200ms),
-    // pero bajo carga completa de la batería de stories medí timeouts reales
-    // acá: timeout explícito más generoso (mismo criterio que los
-    // findByRole('dialog', {}, { timeout: 15_000 }) de AbonadosList.stories.tsx
-    // para diálogos que entran por next/dynamic).
-    await expectGone(toastText, { timeout: 5000 })
   },
 }
 
 /**
- * Pagaron con dos medios: se agrega una línea, y las dos viajan en UN solo
- * llamado (la action las inserta en la misma transacción). Antes el detalle
- * tenía su propio "Pago dividido (2 medios)" fijo a dos líneas y con el
- * segundo monto bloqueado; ahora es el mismo control que la grilla y Caja.
+ * Modo 'finish': el turno ya terminó. Cobrar el saldo completo lo da por
+ * jugado en el MISMO llamado (`completeAndChargeBookingAction`) — ya no hace
+ * falta pasar antes por "Marcar completada".
  */
-export const CobroEnDosMedios: Story = {
+export const TurnoTerminado: Story = {
+  args: {
+    booking: booking({ endsInHours: -1 }),
+  },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('button', { name: 'Pago único' })).toBeNull()
-
     await userEvent.click(canvas.getByRole('button', { name: '+ Agregar cobro' }))
-    // Arranca con lo que falta ($10.500) en efectivo; se baja a $6.000 y el
-    // resto va por transferencia en una línea nueva.
-    const primero = canvas.getByLabelText('Monto')
-    await userEvent.clear(primero)
-    await userEvent.type(primero, '6000')
-    await userEvent.click(canvas.getByRole('button', { name: 'Agregar pago dividido' }))
-    await userEvent.type(canvas.getByLabelText('Monto · cobro 2'), '4500')
-    await expect(
-      canvas.getByRole('button', { name: 'Método de pago · cobro 2' }),
-    ).toHaveTextContent('Transferencia')
-    await userEvent.click(canvas.getByRole('button', { name: 'Registrar cobro' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Cobrar .* y dar por jugado/ }))
 
     await waitFor(() =>
-      expect(args.addBookingChargeAction).toHaveBeenCalledWith(
+      expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledWith(
         expect.objectContaining({
-          charges: [
-            { amount: 600_000, method: 'cash' },
-            { amount: 450_000, method: 'transfer' },
-          ],
+          bookingId: BOOKING_ID,
+          charges: [{ amount: 1_050_000, method: 'cash' }],
         }),
       ),
     )
-    await expect(args.addBookingChargeAction).toHaveBeenCalledTimes(1)
-
-    const body = within(canvasElement.ownerDocument.body)
-    const toastText = await body.findByText('Cobro dividido registrado')
-    const toastItem = toastText.closest('li')
-    if (!toastItem) throw new Error('No se encontró el toast')
-    await userEvent.click(within(toastItem).getByRole('button', { name: 'Cerrar' }))
-    await expectGone(toastText, { timeout: 5000 })
+    await expect(args.actions.addBookingChargeAction).not.toHaveBeenCalled()
   },
 }
 
-/** El servidor rechaza el cobro (ej. caja del día ya cerrada): error inline, el form no se cierra. */
-export const ErrorDelServidor: Story = {
+/**
+ * Modo 'settle': el turno ya se jugó (`completed`) y quedó saldo — mismo
+ * cobro de deuda que `/caja/deudas` (`chargeDebtAction`).
+ */
+export const SaldoDeTurnoJugado: Story = {
   args: {
-    addBookingChargeAction: fn(async (): Promise<BookingChargeActionResult> => ({
-      success: false,
-      error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
-    })),
+    booking: booking({ status: 'completed' }),
   },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: '+ Agregar cobro' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Registrar cobro' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
+
+    await waitFor(() =>
+      expect(args.actions.chargeDebtAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bookingId: BOOKING_ID,
+          charges: [{ amount: 1_050_000, method: 'cash' }],
+        }),
+      ),
+    )
+  },
+}
+
+/** El servidor rechaza el cobro (ej. turno ya saldado en otra pestaña): error inline, el form no se cierra. */
+export const ErrorDelServidor: Story = {
+  args: {
+    booking: booking({ endsInHours: 2 }),
+    actions: {
+      ...makeActions(),
+      addBookingChargeAction: fn(async (): Promise<ActionResult> => ({
+        success: false,
+        error: 'La caja de hoy ya fue cerrada. Registrá el cobro como ajuste en Caja.',
+      })),
+    },
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: '+ Agregar cobro' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Cobrar/ }))
 
     await expect(await canvas.findByRole('alert')).toHaveTextContent(/ya fue cerrada/i)
-    await expect(args.addBookingChargeAction).toHaveBeenCalled()
-    // El form sigue abierto: "Registrar cobro" sigue en pantalla, no volvió "+ Agregar cobro".
-    await expect(canvas.getByRole('button', { name: 'Registrar cobro' })).toBeVisible()
+    await expect(args.actions.addBookingChargeAction).toHaveBeenCalled()
+    // El form sigue abierto: "Cancelar" sigue en pantalla, no volvió "+ Agregar cobro".
+    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
   },
 }

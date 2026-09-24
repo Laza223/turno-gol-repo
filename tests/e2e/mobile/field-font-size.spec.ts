@@ -33,7 +33,10 @@ const PUBLIC_ROUTES = [
 
 const ADMIN_ROUTES = [
   '/grilla',
-  '/caja',
+  // '/caja' es un redirect a '/caja/cuentas' (ya cubierta abajo): '/dashboard'
+  // la reemplaza porque ahí vive el buscador de Vender (TicketPanel), un campo
+  // nuevo que el redirect ya no ejercita.
+  '/dashboard',
   '/caja/cuentas',
   '/caja/productos',
   '/reservas',

@@ -97,6 +97,9 @@ const REDIRECT_STUBS = [
   // Eliminación de "Caja del día": Cantina pasó a vivir en /caja (raíz) y
   // /caja/cantina quedó como redirect de compat para bookmarks del staff.
   join('(admin)', 'caja', 'cantina', 'page.tsx'),
+  // Navegación del panel (2026-09-24): Vender se fue a Hoy y /caja quedó como
+  // redirect a /caja/cuentas.
+  join('(admin)', 'caja', 'page.tsx'),
   // Rediseño de Caja: Deudas y Devoluciones se fusionaron en /caja/cuentas —
   // son las dos direcciones de la misma pregunta. Sus componentes y Server
   // Actions siguen en esas carpetas; lo que quedó como redirect es la página.
@@ -198,7 +201,7 @@ describe('cadena de guards de las páginas', () => {
     REDIRECT_STUBS.includes(p.rel as (typeof REDIRECT_STUBS)[number]),
   )
 
-  it('los 8 redirects de compat existen (si alguien borra uno, la lista miente)', () => {
+  it('los redirects de compat existen (si alguien borra uno, la lista miente)', () => {
     expect(stubs.map((s) => s.rel).sort()).toEqual([...REDIRECT_STUBS].sort())
   })
 

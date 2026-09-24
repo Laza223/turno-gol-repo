@@ -182,7 +182,7 @@ export function ProductsTable({
         <EmptyState
           icon={Package}
           title="Todavía no cargaste productos"
-          description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Vender."
+          description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Hoy."
           action={
             canEditCatalog ? (
               <button

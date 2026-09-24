@@ -21,10 +21,15 @@ test.describe('TG-HP-214 — caja: agregar movimiento', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      await page.goto('/caja')
-      await expect(page.getByRole('heading', { name: 'Cantina' })).toBeVisible({ timeout: 15_000 })
+      // "Agregar movimiento" vive en Cuentas — Vender se fue a Hoy (/dashboard).
+      await page.goto('/caja/cuentas')
+      await expect(page.getByRole('heading', { name: 'Movimientos del día' })).toBeVisible({
+        timeout: 15_000,
+      })
 
-      await page.getByRole('button', { name: '+ Agregar movimiento' }).click()
+      // El botón cuelga del encabezado del diario con el label "Registrar
+      // movimiento" (src/app/(admin)/caja/cuentas/page.tsx:166).
+      await page.getByRole('button', { name: 'Registrar movimiento' }).click()
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
       await expect(page.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
 

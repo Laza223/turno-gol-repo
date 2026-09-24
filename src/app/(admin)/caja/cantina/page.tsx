@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 
 /**
- * Compat: Cantina pasó a vivir en la raíz de /caja (eliminación de "Caja del
- * día"). Redirect permanente para bookmarks/atajos del personal acostumbrado
- * a esta URL.
+ * Compat: vender vive en Hoy (docs/decisions/2026-09-24-navegacion-panel.md).
+ * Redirect para bookmarks/atajos del personal acostumbrado a esta URL.
  */
 export default function CajaCantinaRedirectPage() {
-  redirect('/caja')
+  redirect('/dashboard')
 }

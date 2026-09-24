@@ -1,10 +1,11 @@
 /**
- * E2E — Caja: Vender (raíz de /caja) y Cuentas (/caja/cuentas)
+ * E2E — Caja: Vender (Hoy, /dashboard) y Cuentas (/caja/cuentas)
  *
- * Desde el rediseño de 2026-09-12, `/caja` es SOLO la pantalla de venta: el
- * diario de movimientos, los totales y el alta manual de un movimiento viven
- * en `/caja/cuentas`. Por eso cada test vende en `/caja` y verifica en
- * `/caja/cuentas`.
+ * Desde 2026-09-24 Vender se fue de `/caja` a Hoy (`/dashboard`): la columna
+ * fija desde 1280 px (`VenderRail`, el viewport del proyecto `chromium`). `/caja`
+ * es ahora un redirect a `/caja/cuentas`, que sigue siendo el libro con el
+ * diario de movimientos, los totales y el alta manual de un movimiento. Por
+ * eso cada test vende en `/dashboard` y verifica en `/caja/cuentas`.
  *
  * 1. Ticket de Cantina/Bar (multi-ítem): cargar un producto en el catálogo
  *    (/caja/productos), venderlo con dos taps (tap producto x2 + Cobrar — sin
@@ -57,10 +58,11 @@ test.describe('Caja redesign', () => {
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
     await createCanteenProduct(page, productName, '500')
 
-    // Vender x2 en efectivo desde /caja (Cantina, raíz): tap producto, tap
-    // producto de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo
-    // intermedio (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    // Vender x2 en efectivo desde Hoy (columna Vender, `VenderRail`, fija desde
+    // 1280 px — el viewport del proyecto chromium): tap producto, tap producto
+    // de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo intermedio
+    // (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
+    await page.goto('/dashboard', { waitUntil: 'networkidle' })
     const aguaButton = page.getByRole('button', { name: new RegExp(`^${productName}`) }).first()
     await aguaButton.click()
     await aguaButton.click()
@@ -70,15 +72,6 @@ test.describe('Caja redesign', () => {
     await page.getByRole('button', { name: /^Cobrar/ }).click()
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
-
-    // Acuse de recibo sin salir de Vender: la venta aparece en "Últimos
-    // movimientos" apenas el server component se refresca.
-    await expect(
-      page
-        .getByRole('row')
-        .filter({ hasText: `${productName} x2` })
-        .first(),
-    ).toBeVisible({ timeout: 10_000 })
 
     // La venta aparece en "Movimientos del día", que vive en Cuentas — recarga
     // completa para confirmar que persistió en DB, no solo en el estado local.
@@ -124,7 +117,7 @@ test.describe('Caja redesign', () => {
     await createCanteenProduct(page, nameB, '200')
 
     // Un ticket con las dos líneas (1 tap cada una) y un solo Cobrar.
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    await page.goto('/dashboard', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: new RegExp(`^${nameA}`) }).click()
     await page.getByRole('button', { name: new RegExp(`^${nameB}`) }).click()
     await page.getByRole('button', { name: /^Cobrar/ }).click()
@@ -193,7 +186,7 @@ test.describe('Caja redesign', () => {
     await createCanteenProduct(page, productName, '400')
 
     // Cargar el ticket y anotarlo como fiado en vez de cobrarlo.
-    await page.goto('/caja', { waitUntil: 'networkidle' })
+    await page.goto('/dashboard', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: new RegExp(productName) }).click()
     await page.getByRole('button', { name: 'Anotar como fiado' }).click()
 
@@ -205,12 +198,10 @@ test.describe('Caja redesign', () => {
 
     await expect(page.getByText(`Fiado anotado — ${debtorName}`).first()).toBeVisible()
 
-    // Vender ya no lista los fiados (2026-09-17): deja UNA línea que avisa
-    // cuántos hay y lleva a Cuentas, donde se cobran todas las deudas.
-    const fiadosLink = page.getByRole('link', { name: /fiados? abiertos?.*Cobrar en Cuentas/ })
-    await expect(fiadosLink).toBeVisible({ timeout: 10_000 })
-    await fiadosLink.click()
-    await expect(page).toHaveURL(/\/caja\/cuentas/)
+    // Los fiados se cobran en Cuentas, junto con el resto de las deudas. La
+    // línea "N fiados abiertos · Cobrar en Cuentas" vivía en la pantalla Vender
+    // de Caja y se fue con ella (2026-09-24): se entra por el menú.
+    await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
 
     // En Cuentas el fiado es una fila más de la tabla de deudas. Se filtra por
     // nombre porque el tenant demo lo comparten otros specs.

@@ -33,8 +33,8 @@ type Props = {
 }
 
 /**
- * "Completar turno": SOLO cambia el estado, con confirmación — el cobro se
- * mudó a "Cobros de turno" (BookingCharges, el mismo componente que Hoy). Si
+ * "Completar turno": SOLO cambia el estado, con confirmación — el cobro vive
+ * en "Cobros de turno" (BookingCharges), la única forma de cobrar. Si
  * queda saldo, la nota de deuda y el contacto por WhatsApp se conservan acá
  * porque son parte de "dar por terminado un turno con deuda", no del cobro.
  */
@@ -67,9 +67,6 @@ export default function CompleteBookingDialog({
   })
 
   const hasDebt = summary.pending > 0
-
-  const contactName = booking.playerName || booking.guestName
-  const contactPhone = booking.playerPhone || booking.guestPhone
 
   function handleClose(next: boolean) {
     if (isPending) return
@@ -107,12 +104,6 @@ export default function CompleteBookingDialog({
     })
   }
 
-  const whatsappUrl = contactPhone
-    ? `https://wa.me/${contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
-        `Hola${contactName ? ` ${contactName}` : ''}, te contactamos por el turno del ${label}. Quedó un saldo pendiente de ${formatArs(summary.pending)}. ¿Cuándo podés pasar a saldar?`,
-      )}`
-    : null
-
   return (
     <Dialog open={booking !== null} onOpenChange={handleClose}>
       <DialogContent className="w-[95vw] max-w-md">
@@ -122,88 +113,16 @@ export default function CompleteBookingDialog({
         <p className="text-sm text-muted-foreground">{label}</p>
 
         <div className="space-y-4">
-          <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
-            {/* h3, no h4: `DialogTitle` renderiza un h2 y saltar a h4 rompe
-                `heading-order` de axe. El tamaño lo da la clase, no el tag. */}
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Resumen de cuenta
-            </h3>
+          <AccountSummary booking={booking} summary={summary} />
 
-            <dl className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Precio del turno</dt>
-                <dd className="font-semibold text-foreground">
-                  {formatArs(booking.priceSnapshot)}
-                </dd>
-              </div>
-              {summary.depositCounted > 0 && (
-                <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">
-                    Seña pagada{' '}
-                    <Check
-                      aria-hidden
-                      className="inline h-3.5 w-3.5 text-emerald-800 dark:text-emerald-400"
-                    />
-                  </dt>
-                  <dd className="text-foreground">−{formatArs(summary.depositCounted)}</dd>
-                </div>
-              )}
-              {booking.chargesTotal > 0 && (
-                <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">Cobros previos</dt>
-                  <dd className="text-foreground">−{formatArs(booking.chargesTotal)}</dd>
-                </div>
-              )}
-              <div className="flex items-center justify-between border-t border-border/80 pt-2">
-                <dt className="font-medium text-foreground">Saldo</dt>
-                <dd className="font-bold text-base text-foreground">
-                  {hasDebt ? (
-                    formatArs(summary.pending)
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-400">
-                      <Check className="h-3.5 w-3.5" aria-hidden />
-                      Pagado completo
-                    </span>
-                  )}
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* Debt section */}
           {hasDebt && (
-            <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Queda una deuda de {formatArs(summary.pending)}
-              </p>
-              <textarea
-                value={debtNote}
-                onChange={(e) => setDebtNote(e.target.value)}
-                placeholder="Nota de deuda (opcional) — ej: le faltó a Juan"
-                rows={2}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              {contactName && contactPhone && (
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Phone className="h-3.5 w-3.5" aria-hidden />
-                    {contactName} — {contactPhone}
-                  </span>
-                  {whatsappUrl && (
-                    <a
-                      href={whatsappUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-                      WhatsApp
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
+            <DebtNotice
+              booking={booking}
+              label={label}
+              pendingCents={summary.pending}
+              debtNote={debtNote}
+              onDebtNoteChange={setDebtNote}
+            />
           )}
 
           {/* Error */}
@@ -230,5 +149,123 @@ export default function CompleteBookingDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+type ChargesSummary = ReturnType<typeof summarizeBookingCharges>
+
+/** Precio, seña, cobros previos y saldo: solo lectura, el cobro no vive acá. */
+function AccountSummary({
+  booking,
+  summary,
+}: {
+  booking: CompleteBookingDialogBooking
+  summary: ChargesSummary
+}) {
+  return (
+    <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+      {/* h3, no h4: `DialogTitle` renderiza un h2 y saltar a h4 rompe
+          `heading-order` de axe. El tamaño lo da la clase, no el tag. */}
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Resumen de cuenta
+      </h3>
+
+      <dl className="space-y-2 text-sm">
+        <div className="flex items-center justify-between">
+          <dt className="text-muted-foreground">Precio del turno</dt>
+          <dd className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</dd>
+        </div>
+        {summary.depositCounted > 0 && (
+          <div className="flex items-center justify-between">
+            <dt className="text-muted-foreground">
+              Seña pagada{' '}
+              <Check
+                aria-hidden
+                className="inline h-3.5 w-3.5 text-emerald-800 dark:text-emerald-400"
+              />
+            </dt>
+            <dd className="text-foreground">−{formatArs(summary.depositCounted)}</dd>
+          </div>
+        )}
+        {booking.chargesTotal > 0 && (
+          <div className="flex items-center justify-between">
+            <dt className="text-muted-foreground">Cobros previos</dt>
+            <dd className="text-foreground">−{formatArs(booking.chargesTotal)}</dd>
+          </div>
+        )}
+        <div className="flex items-center justify-between border-t border-border/80 pt-2">
+          <dt className="font-medium text-foreground">Saldo</dt>
+          <dd className="font-bold text-base text-foreground">
+            {summary.pending > 0 ? (
+              formatArs(summary.pending)
+            ) : (
+              <span className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-400">
+                <Check className="h-3.5 w-3.5" aria-hidden />
+                Pagado completo
+              </span>
+            )}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
+/** Aviso de deuda con la nota opcional y el contacto por WhatsApp. */
+function DebtNotice({
+  booking,
+  label,
+  pendingCents,
+  debtNote,
+  onDebtNoteChange,
+}: {
+  booking: CompleteBookingDialogBooking
+  label: string
+  pendingCents: number
+  debtNote: string
+  onDebtNoteChange: (note: string) => void
+}) {
+  const contactName = booking.playerName || booking.guestName
+  const contactPhone = booking.playerPhone || booking.guestPhone
+  const whatsappUrl = contactPhone
+    ? `https://wa.me/${contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+        `Hola${contactName ? ` ${contactName}` : ''}, te contactamos por el turno del ${label}. Quedó un saldo pendiente de ${formatArs(pendingCents)}. ¿Cuándo podés pasar a saldar?`,
+      )}`
+    : null
+
+  return (
+    <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5 p-3">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        Queda una deuda de {formatArs(pendingCents)}
+      </p>
+      <textarea
+        aria-label="Nota de deuda (opcional)"
+        value={debtNote}
+        onChange={(e) => onDebtNoteChange(e.target.value)}
+        placeholder="Nota de deuda (opcional) — ej: le faltó a Juan"
+        rows={2}
+        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      {contactName && contactPhone && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Phone className="h-3.5 w-3.5" aria-hidden />
+            {contactName} — {contactPhone}
+          </span>
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
+            >
+              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+              WhatsApp
+            </a>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

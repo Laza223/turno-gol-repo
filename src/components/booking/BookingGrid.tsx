@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { useCallback, useMemo, useState, type KeyboardEvent } from 'react'
 import { useArtNow } from '@/hooks/use-art-now'
 import { useNowMs } from '@/hooks/use-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { useDismissibleHint } from '@/hooks/use-dismissible-hint'
+import { useOfflineBannerDelay } from '@/hooks/use-offline-banner-delay'
 import { useRealtimePulse } from '@/hooks/use-realtime-pulse'
 import { useGridLayout } from '@/hooks/use-grid-layout'
 import { useNowLine } from '@/hooks/use-now-line'
@@ -39,6 +40,16 @@ const LABEL_DAYS: Record<string, string> = {
   fri: 'Vie',
   sat: 'Sáb',
   sun: 'Dom',
+}
+
+/** "Lun 24 de septiembre": el título del día que ve la Grilla y su aria-label. */
+function gridDateHeading(date: string, dayKey: string): { dateLabel: string; dayLabel: string } {
+  const dateLabel = new Date(`${date}T12:00:00Z`).toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  })
+  return { dateLabel, dayLabel: LABEL_DAYS[dayKey] ?? '' }
 }
 
 type Props = {
@@ -109,25 +120,7 @@ export function BookingGrid({
   // no se encuentran solo por el color.
   const [highlightPending, setHighlightPending] = useState(false)
 
-  // El socket de Realtime tiene blips normales y auto-recuperables (carga en
-  // frío, laptop que despierta, handoff de wifi) que resuelven en <1s sin que
-  // el usuario pierda un solo dato — el polling de 30s del hook ya está activo
-  // desde el instante 0, esté o no el banner en pantalla. Mostrar "Sin
-  // conexión" ante CADA blip, por más breve que sea, alarma con algo que ya se
-  // solucionó solo y contradice lo que el usuario ve ("estoy conectado"). Con
-  // este delay el banner solo aparece si la caída dura más de 1.5s.
-  const [showOfflineBanner, setShowOfflineBanner] = useState(false)
-  useEffect(() => {
-    if (status !== 'OFFLINE') return
-    const t = setTimeout(() => setShowOfflineBanner(true), 1500)
-    // El cleanup corre tanto al desmontar como al pasar a otro `status` — así
-    // el flag vuelve a false apenas se reconecta y queda listo para debouncear
-    // de nuevo si vuelve a caer.
-    return () => {
-      clearTimeout(t)
-      setShowOfflineBanner(false)
-    }
-  }, [status])
+  const showOfflineBanner = useOfflineBannerDelay(status)
 
   const {
     dayKey,
@@ -196,17 +189,7 @@ export function BookingGrid({
     [courts.length, visibleSlots.length],
   )
 
-  const dateLabel = useMemo(
-    () =>
-      new Date(`${date}T12:00:00Z`).toLocaleDateString('es-AR', {
-        day: 'numeric',
-        month: 'long',
-        timeZone: 'America/Argentina/Buenos_Aires',
-      }),
-    [date],
-  )
-
-  const dayLabel = LABEL_DAYS[dayKey] ?? ''
+  const { dateLabel, dayLabel } = useMemo(() => gridDateHeading(date, dayKey), [date, dayKey])
 
   const showFirstHint =
     !hintDismissed && !closedToday && courts.length > 0 && slots.length > 0 && bookings.length === 0

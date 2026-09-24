@@ -33,6 +33,76 @@ function clientName(booking: Pick<ReservaListRow, 'playerName' | 'guestName' | '
   return booking.playerName ?? booking.guestName ?? 'Sin nombre'
 }
 
+/**
+ * La fila entera es un Link estirado con ESTE aria-label: quien navega por
+ * links con lector de pantalla escucha solo este string. Dejar la plata
+ * afuera se la escondería justo a quien no puede ver la píldora roja.
+ */
+function buildAriaLabel({
+  timeRange,
+  courtName,
+  name,
+  visual,
+  money,
+  isAbonado,
+}: {
+  timeRange: string
+  courtName: string
+  name: string
+  visual: Pick<ReturnType<typeof reservaStatusVisual>, 'label' | 'unpaid'>
+  money: ReturnType<typeof moneyLine>
+  isAbonado: boolean
+}): string {
+  return [
+    `Reserva ${timeRange}`,
+    courtName,
+    name,
+    visual.label,
+    money?.text ?? null,
+    visual.unpaid ? 'sin cobrar' : null,
+    isAbonado ? 'abonado' : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
+}
+
+/** La celda de plata: precio del turno + qué falta (o "Sin costo" si no cobra). */
+function MoneyCell({
+  noCost,
+  priceSnapshot,
+  money,
+}: {
+  noCost: boolean
+  priceSnapshot: number
+  money: ReturnType<typeof moneyLine>
+}) {
+  return (
+    <span className="flex min-w-0 items-baseline gap-x-1.5 @2xl:order-4 @2xl:w-24 @2xl:shrink-0 @2xl:flex-col @2xl:items-end">
+      {noCost ? (
+        <span className="truncate text-xs font-semibold text-muted-foreground @2xl:text-sm">
+          Sin costo
+        </span>
+      ) : (
+        <>
+          <span className="text-xs font-semibold tabular-nums text-foreground @2xl:text-sm">
+            {formatArs(priceSnapshot)}
+          </span>
+          {money && (
+            <span
+              className={cn(
+                'truncate text-xs tabular-nums',
+                money.tone === 'paid' ? TONE_TEXT.success : 'text-muted-foreground',
+              )}
+            >
+              {money.text}
+            </span>
+          )}
+        </>
+      )}
+    </span>
+  )
+}
+
 type Props = {
   booking: ReservaListRow
   /**
@@ -61,20 +131,14 @@ export function BookingListItem({ booking, showCourt = true }: Props) {
   const money = moneyLine(booking)
   const noCost = !isBlock && booking.priceSnapshot === 0
 
-  const ariaLabel = [
-    `Reserva ${timeRange}`,
-    booking.courtName,
+  const ariaLabel = buildAriaLabel({
+    timeRange,
+    courtName: booking.courtName,
     name,
-    visual.label,
-    // La fila entera es un Link estirado con ESTE aria-label: quien navega por
-    // links con lector de pantalla escucha solo este string. Dejar la plata
-    // afuera se la escondería justo a quien no puede ver la píldora roja.
-    money?.text ?? null,
-    visual.unpaid ? 'sin cobrar' : null,
-    isAbonado ? 'abonado' : null,
-  ]
-    .filter(Boolean)
-    .join(', ')
+    visual,
+    money,
+    isAbonado,
+  })
 
   const secondaryParts = [
     showCourt ? booking.courtName : null,
@@ -118,29 +182,7 @@ export function BookingListItem({ booking, showCourt = true }: Props) {
               {timeRange}
             </span>
             {!isBlock && (
-              <span className="flex min-w-0 items-baseline gap-x-1.5 @2xl:order-4 @2xl:w-24 @2xl:shrink-0 @2xl:flex-col @2xl:items-end">
-                {noCost ? (
-                  <span className="truncate text-xs font-semibold text-muted-foreground @2xl:text-sm">
-                    Sin costo
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-xs font-semibold tabular-nums text-foreground @2xl:text-sm">
-                      {formatArs(booking.priceSnapshot)}
-                    </span>
-                    {money && (
-                      <span
-                        className={cn(
-                          'truncate text-xs tabular-nums',
-                          money.tone === 'paid' ? TONE_TEXT.success : 'text-muted-foreground',
-                        )}
-                      >
-                        {money.text}
-                      </span>
-                    )}
-                  </>
-                )}
-              </span>
+              <MoneyCell noCost={noCost} priceSnapshot={booking.priceSnapshot} money={money} />
             )}
             <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5 @2xl:order-3 @2xl:ml-0 @2xl:justify-start">
               <ReservaStatusBadge visual={visual} />

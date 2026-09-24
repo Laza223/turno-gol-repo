@@ -29,6 +29,9 @@ type CancelBookingFn = (
 /** `releaseBlockAction` no devuelve `booking`: la fila ya no existe tras el DELETE. */
 type ReleaseBlockFn = (bookingId: string) => Promise<ActionResult>
 
+/** El router de Next, para el `router.refresh()` que sigue a cada mutación exitosa. */
+type BookingActionsRouter = ReturnType<typeof useRouter>
+
 type Props = {
   bookingId: string
   status: string
@@ -114,14 +117,294 @@ function bookingStartMs(dateStr: string, hhmmss: string): number {
 }
 
 /**
- * Las 3 Server Actions llegan por PROP, no por import (ver comentario
- * homólogo en ReservasPolicyForm.tsx / QuickActions.tsx): '../actions' es
- * `'use server'` y arrastra node:async_hooks, que rompe Storybook.
+ * ENS-2: qué pasa con la seña de ESTE turno si se cancela AHORA, para el
+ * aviso del diálogo de cancelar. Visible desde que se abre (antes solo
+ * aparecía tras elegir "quién cancela"), usando la política real: sin seña
+ * no hay nada que decidir; con seña, la ventana horaria decide salvo que el
+ * complejo asuma la culpa (reembolsa siempre, Tarea #3).
  */
-export default function BookingActions({
+function refundPreviewText({
+  hasPaidDeposit,
+  cancelType,
+  inPolicy,
+  turnoEnded,
+  depositAmount,
+  paymentMethod,
+  cancellationPolicyHours,
+}: {
+  hasPaidDeposit: boolean
+  cancelType: CancellationType | null
+  inPolicy: boolean
+  turnoEnded: boolean
+  depositAmount: number
+  paymentMethod: string | null
+  cancellationPolicyHours: number
+}): string {
+  if (!hasPaidDeposit) return 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
+
+  if (!cancelType) {
+    return inPolicy
+      ? `Corresponde devolver la seña de ${formatArs(depositAmount)} (dentro del plazo de cancelación).`
+      : `La seña de ${formatArs(depositAmount)} quedó fuera de la ventana de devolución (política de ${cancellationPolicyHours}h).`
+  }
+
+  const willRefund = turnoEnded ? false : cancelType === 'complejo' ? true : inPolicy
+  if (willRefund) {
+    return paymentMethod === 'mercadopago'
+      ? `La seña de ${formatArs(depositAmount)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
+      : `La seña de ${formatArs(depositAmount)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
+  }
+  if (turnoEnded) {
+    return `El turno ya se jugó: la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
+  }
+  return `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
+}
+
+/**
+ * RI G2.1: un bloqueo de mantenimiento no es una reserva de un jugador —
+ * "Marcar completada"/"Marcar ausente" no significan nada, y "Cancelar" lo
+ * dejaría como `canceled_*` PARA SIEMPRE (exactamente el bug que motiva este
+ * fix: g2.md línea 10d). La única acción es liberarlo (DELETE físico, mismo
+ * botón/copy que SlotActionButtons.tsx en el panel de la grilla).
+ */
+function BlockActions({
   bookingId,
   status,
-  type,
+  releaseBlockAction,
+  router,
+}: {
+  bookingId: string
+  status: string
+  releaseBlockAction: ReleaseBlockFn | undefined
+  router: BookingActionsRouter
+}) {
+  const [releaseBlockOpen, setReleaseBlockOpen] = useState(false)
+
+  if (status !== 'confirmed' && status !== 'pending_payment') return null
+  if (!releaseBlockAction) return null
+
+  async function onConfirmReleaseBlock(): Promise<ActionResult> {
+    const res = await releaseBlockAction!(bookingId)
+    if (res.success) {
+      toast({ title: 'Bloqueo liberado', variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setReleaseBlockOpen(true)}
+        className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
+      >
+        Liberar el bloqueo
+      </button>
+
+      <ConfirmDialog
+        open={releaseBlockOpen}
+        onOpenChange={setReleaseBlockOpen}
+        title="Liberar el bloqueo"
+        description="La cancha queda libre para reservar."
+        variant="destructive"
+        confirmLabel="Liberar"
+        cancelLabel="Volver"
+        onConfirm={onConfirmReleaseBlock}
+        consequences={[
+          'El bloqueo se elimina: no queda como reserva cancelada.',
+          'Si te equivocaste de horario, volvé a bloquear con el horario correcto.',
+        ]}
+      />
+    </div>
+  )
+}
+
+/**
+ * "Cobrar seña $X" (paso 3): la única puerta a `confirmDepositPaymentAction`
+ * ahora que se retiró de las filas de /reservas (`QuickActions.tsx`).
+ */
+function PendingPaymentActions({
+  bookingId,
+  depositAmount,
+  confirmDepositPaymentAction,
+  router,
+}: {
+  bookingId: string
+  depositAmount: number
+  confirmDepositPaymentAction: ConfirmDepositFn | undefined
+  router: BookingActionsRouter
+}) {
+  if (depositAmount <= 0 || !confirmDepositPaymentAction) return null
+  return (
+    <CobrarSenaButton
+      bookingId={bookingId}
+      depositAmount={depositAmount}
+      confirmDepositPaymentAction={confirmDepositPaymentAction}
+      onSuccess={() => router.refresh()}
+    />
+  )
+}
+
+/**
+ * RI #1 — corrección inversa: un turno marcado ausente por error vuelve a
+ * 'completed' dentro de las 24h. Única acción disponible fuera de
+ * 'confirmed'; pasada la ventana el turno es inmutable y no se ofrece nada.
+ */
+function NoShowActions({
+  bookingId,
+  depositStatus,
+  depositAmount,
+  updatedAt,
+  nowMs,
+  revertNoShowAction,
+  router,
+}: {
+  bookingId: string
+  depositStatus: string
+  depositAmount: number
+  updatedAt: string | null | undefined
+  nowMs: number
+  revertNoShowAction: SimpleBookingFn
+  router: BookingActionsRouter
+}) {
+  const [revertNoShowOpen, setRevertNoShowOpen] = useState(false)
+
+  const markedAtMs = updatedAt ? new Date(updatedAt).getTime() : null
+  const withinWindow =
+    markedAtMs !== null && Number.isFinite(markedAtMs) && nowMs - markedAtMs < CORRECTION_WINDOW_MS
+  if (!withinWindow) return null
+
+  const depositWarning =
+    depositStatus === 'captured' && depositAmount > 0
+      ? ` La seña de ${formatArs(depositAmount)} ya quedó cobrada y NO se devuelve sola: si corresponde reintegrarla, coordinala con el jugador.`
+      : ''
+
+  async function onConfirmRevertNoShow(): Promise<ActionResult> {
+    const res = await revertNoShowAction(bookingId)
+    if (res.success) {
+      toast({ title: 'Ausencia deshecha', variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setRevertNoShowOpen(true)}
+        className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+      >
+        Deshacer ausente
+      </button>
+
+      <ConfirmDialog
+        open={revertNoShowOpen}
+        onOpenChange={setRevertNoShowOpen}
+        title="Deshacer la ausencia"
+        description={`El turno vuelve a quedar como completado y se borra la ausencia del historial del jugador (si el bloqueo por reincidencia lo había disparado esta marca, se levanta).${depositWarning}`}
+        confirmLabel="Deshacer ausente"
+        cancelLabel="Volver"
+        onConfirm={onConfirmRevertNoShow}
+      />
+    </div>
+  )
+}
+
+/**
+ * Corrección de asistencia (doc6 §3, P5): un turno que quedó `completed` sin
+ * que nadie lo mirara vuelve a `no_show` dentro de las 24h de esa marca.
+ *
+ * El motor, la state machine y el trigger de la migración 060 ya lo
+ * soportaban desde siempre; lo que faltaba era la puerta. Sin ella, la
+ * ÚNICA ventana real para registrar una ausencia eran los ≤30 minutos entre
+ * que el turno termina y que el cron `auto-complete-bookings` lo pasa a
+ * "Jugada" — un plazo que nadie que esté atendiendo el complejo puede
+ * cumplir, y que dejaba la falta sin registrar (y por lo tanto sin contar
+ * para el bloqueo por reincidencia).
+ *
+ * Sin `updatedAt` no se ofrece: el server igual rechazaría fuera de ventana,
+ * pero no ofrecemos una acción que no sabemos si es válida (mismo criterio
+ * que "Deshacer ausente" arriba).
+ */
+function CompletedActions({
+  bookingId,
+  updatedAt,
+  nowMs,
+  markNoShowAction,
+  revertNoShowAction,
+  router,
+}: {
+  bookingId: string
+  updatedAt: string | null | undefined
+  nowMs: number
+  markNoShowAction: SimpleBookingFn
+  revertNoShowAction: SimpleBookingFn
+  router: BookingActionsRouter
+}) {
+  const [noShowOpen, setNoShowOpen] = useState(false)
+
+  const completedAtMs = updatedAt ? new Date(updatedAt).getTime() : null
+  const withinWindow =
+    completedAtMs !== null &&
+    Number.isFinite(completedAtMs) &&
+    nowMs - completedAtMs < CORRECTION_WINDOW_MS
+  if (!withinWindow) return null
+
+  async function onConfirmRevertNoShow(): Promise<ActionResult> {
+    const res = await revertNoShowAction(bookingId)
+    if (res.success) {
+      toast({ title: 'Ausencia deshecha', variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
+  async function onConfirmNoShow(): Promise<ActionResult> {
+    const res = await markNoShowAction(bookingId)
+    if (res.success) {
+      toast({
+        title: 'Marcada como ausente',
+        variant: 'success',
+        action: { label: 'Deshacer', onClick: () => void onConfirmRevertNoShow() },
+      })
+      router.refresh()
+    }
+    return res
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setNoShowOpen(true)}
+        className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+      >
+        Marcar ausente
+      </button>
+      <p className="text-xs text-muted-foreground">
+        El turno figura como jugado. Si el equipo no vino, se puede corregir hasta 24 h después.
+      </p>
+
+      <ConfirmDialog
+        open={noShowOpen}
+        onOpenChange={setNoShowOpen}
+        title="Marcar como ausente"
+        description="El turno figura como jugado. Se corrige a ausente y queda registrado que el jugador no se presentó."
+        consequences={NO_SHOW_CONSEQUENCES}
+        variant="destructive"
+        confirmLabel="Marcar ausente"
+        cancelLabel="Volver"
+        onConfirm={onConfirmNoShow}
+      />
+    </div>
+  )
+}
+
+/** Las acciones de un turno `confirmed`: completar, marcar ausente, cancelar. */
+function ConfirmedActions({
+  bookingId,
   depositStatus,
   depositAmount,
   paymentMethod,
@@ -129,7 +412,6 @@ export default function BookingActions({
   timeStart,
   startsAt,
   endsAt,
-  updatedAt,
   cancellationPolicyHours,
   priceSnapshot,
   chargesTotal,
@@ -141,185 +423,38 @@ export default function BookingActions({
   markNoShowAction,
   revertNoShowAction,
   cancelBookingAction,
-  releaseBlockAction,
-  confirmDepositPaymentAction,
-}: Props) {
-  const router = useRouter()
+  nowMs,
+  router,
+}: {
+  bookingId: string
+  depositStatus: string
+  depositAmount: number
+  paymentMethod: string | null
+  bookingDate: string
+  timeStart: string
+  startsAt: string | null | undefined
+  endsAt: string | null | undefined
+  cancellationPolicyHours: number
+  priceSnapshot: number
+  chargesTotal: number
+  guestName: string | null
+  guestPhone: string | null
+  playerName: string | null | undefined
+  playerPhone: string | null | undefined
+  completeAndChargeBookingAction: (
+    input: CompleteAndChargeInput,
+  ) => Promise<CompleteAndChargeResult>
+  markNoShowAction: SimpleBookingFn
+  revertNoShowAction: SimpleBookingFn
+  cancelBookingAction: CancelBookingFn
+  nowMs: number
+  router: BookingActionsRouter
+}) {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [noShowOpen, setNoShowOpen] = useState(false)
-  const [revertNoShowOpen, setRevertNoShowOpen] = useState(false)
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
-  const [releaseBlockOpen, setReleaseBlockOpen] = useState(false)
   const [cancelType, setCancelType] = useState<CancellationType | null>(null)
   const [reason, setReason] = useState('')
-  // Reloj reactivo (ver use-now.ts). Las tres lecturas de abajo deciden UI:
-  // si todavía se puede deshacer la ausencia, si la cancelación entra en
-  // política, y si el turno ya terminó. Con `Date.now()` en el render, una
-  // pestaña abierta cruzaba cualquiera de esos límites sin enterarse.
-  const nowMs = useNowMs()
-
-  async function onConfirmReleaseBlock(): Promise<ActionResult> {
-    if (!releaseBlockAction) return { success: false, error: 'Acción no disponible.' }
-    const res = await releaseBlockAction(bookingId)
-    if (res.success) {
-      toast({ title: 'Bloqueo liberado', variant: 'success' })
-      router.refresh()
-    }
-    return res
-  }
-
-  // RI G2.1: un bloqueo de mantenimiento no es una reserva de un jugador —
-  // "Marcar completada"/"Marcar ausente" no significan nada, y "Cancelar" lo
-  // dejaría como `canceled_*` PARA SIEMPRE (exactamente el bug que motiva este
-  // fix: g2.md línea 10d). La única acción es liberarlo (DELETE físico, mismo
-  // botón/copy que SlotActionButtons.tsx en el panel de la grilla).
-  if (type === 'block') {
-    if (status !== 'confirmed' && status !== 'pending_payment') return null
-    if (!releaseBlockAction) return null
-
-    return (
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setReleaseBlockOpen(true)}
-          className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
-        >
-          Liberar el bloqueo
-        </button>
-
-        <ConfirmDialog
-          open={releaseBlockOpen}
-          onOpenChange={setReleaseBlockOpen}
-          title="Liberar el bloqueo"
-          description="La cancha queda libre para reservar."
-          variant="destructive"
-          confirmLabel="Liberar"
-          cancelLabel="Volver"
-          onConfirm={onConfirmReleaseBlock}
-          consequences={[
-            'El bloqueo se elimina: no queda como reserva cancelada.',
-            'Si te equivocaste de horario, volvé a bloquear con el horario correcto.',
-          ]}
-        />
-      </div>
-    )
-  }
-
-  // "Cobrar seña $X" (paso 3): la única puerta a `confirmDepositPaymentAction`
-  // ahora que se retiró de las filas de /reservas (`QuickActions.tsx`).
-  if (status === 'pending_payment') {
-    if (depositAmount <= 0 || !confirmDepositPaymentAction) return null
-    return (
-      <CobrarSenaButton
-        bookingId={bookingId}
-        depositAmount={depositAmount}
-        confirmDepositPaymentAction={confirmDepositPaymentAction}
-        onSuccess={() => router.refresh()}
-      />
-    )
-  }
-
-  async function onConfirmRevertNoShow(): Promise<ActionResult> {
-    const res = await revertNoShowAction(bookingId)
-    if (res.success) {
-      toast({ title: 'Ausencia deshecha', variant: 'success' })
-      router.refresh()
-    }
-    return res
-  }
-
-  // RI #1 — corrección inversa: un turno marcado ausente por error vuelve a
-  // 'completed' dentro de las 24h. Única acción disponible fuera de
-  // 'confirmed'; pasada la ventana el turno es inmutable y no se ofrece nada.
-  if (status === 'no_show') {
-    const markedAtMs = updatedAt ? new Date(updatedAt).getTime() : null
-    const withinWindow =
-      markedAtMs !== null &&
-      Number.isFinite(markedAtMs) &&
-      nowMs - markedAtMs < CORRECTION_WINDOW_MS
-    if (!withinWindow) return null
-
-    const depositWarning =
-      depositStatus === 'captured' && depositAmount > 0
-        ? ` La seña de ${formatArs(depositAmount)} ya quedó cobrada y NO se devuelve sola: si corresponde reintegrarla, coordinala con el jugador.`
-        : ''
-
-    return (
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setRevertNoShowOpen(true)}
-          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
-        >
-          Deshacer ausente
-        </button>
-
-        <ConfirmDialog
-          open={revertNoShowOpen}
-          onOpenChange={setRevertNoShowOpen}
-          title="Deshacer la ausencia"
-          description={`El turno vuelve a quedar como completado y se borra la ausencia del historial del jugador (si el bloqueo por reincidencia lo había disparado esta marca, se levanta).${depositWarning}`}
-          confirmLabel="Deshacer ausente"
-          cancelLabel="Volver"
-          onConfirm={onConfirmRevertNoShow}
-        />
-      </div>
-    )
-  }
-
-  /**
-   * Corrección de asistencia (doc6 §3, P5): un turno que quedó `completed` sin
-   * que nadie lo mirara vuelve a `no_show` dentro de las 24h de esa marca.
-   *
-   * El motor, la state machine y el trigger de la migración 060 ya lo
-   * soportaban desde siempre; lo que faltaba era la puerta. Sin ella, la
-   * ÚNICA ventana real para registrar una ausencia eran los ≤30 minutos entre
-   * que el turno termina y que el cron `auto-complete-bookings` lo pasa a
-   * "Jugada" — un plazo que nadie que esté atendiendo el complejo puede
-   * cumplir, y que dejaba la falta sin registrar (y por lo tanto sin contar
-   * para el bloqueo por reincidencia).
-   *
-   * Sin `updatedAt` no se ofrece: el server igual rechazaría fuera de ventana,
-   * pero no ofrecemos una acción que no sabemos si es válida (mismo criterio
-   * que "Deshacer ausente" arriba).
-   */
-  if (status === 'completed') {
-    const completedAtMs = updatedAt ? new Date(updatedAt).getTime() : null
-    const withinWindow =
-      completedAtMs !== null &&
-      Number.isFinite(completedAtMs) &&
-      nowMs - completedAtMs < CORRECTION_WINDOW_MS
-    if (!withinWindow) return null
-
-    return (
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setNoShowOpen(true)}
-          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
-        >
-          Marcar ausente
-        </button>
-        <p className="text-xs text-muted-foreground">
-          El turno figura como jugado. Si el equipo no vino, se puede corregir hasta 24 h después.
-        </p>
-
-        <ConfirmDialog
-          open={noShowOpen}
-          onOpenChange={setNoShowOpen}
-          title="Marcar como ausente"
-          description="El turno figura como jugado. Se corrige a ausente y queda registrado que el jugador no se presentó."
-          consequences={NO_SHOW_CONSEQUENCES}
-          variant="destructive"
-          confirmLabel="Marcar ausente"
-          cancelLabel="Volver"
-          onConfirm={onConfirmNoShow}
-        />
-      </div>
-    )
-  }
-
-  if (status !== 'confirmed') return null
 
   const hasPaidDeposit = depositStatus === 'paid' && depositAmount > 0
   const bookingStartUtcMs = startsAt
@@ -351,6 +486,15 @@ export default function BookingActions({
     return res
   }
 
+  async function onConfirmRevertNoShow(): Promise<ActionResult> {
+    const res = await revertNoShowAction(bookingId)
+    if (res.success) {
+      toast({ title: 'Ausencia deshecha', variant: 'success' })
+      router.refresh()
+    }
+    return res
+  }
+
   async function onConfirmNoShow(): Promise<ActionResult> {
     const res = await markNoShowAction(bookingId)
     if (res.success) {
@@ -364,31 +508,15 @@ export default function BookingActions({
     return res
   }
 
-  // ENS-2: qué pasa con la seña de ESTE turno si se cancela AHORA. Visible
-  // desde que se abre el diálogo (antes solo aparecía tras elegir "quién
-  // cancela"), usando la política real: sin seña no hay nada que decidir;
-  // con seña, la ventana horaria decide salvo que el complejo asuma la culpa
-  // (reembolsa siempre, Tarea #3).
-  let refundPreview: string
-  if (!hasPaidDeposit) {
-    refundPreview = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
-  } else if (!cancelType) {
-    refundPreview = inPolicy
-      ? `Corresponde devolver la seña de ${formatArs(depositAmount)} (dentro del plazo de cancelación).`
-      : `La seña de ${formatArs(depositAmount)} quedó fuera de la ventana de devolución (política de ${cancellationPolicyHours}h).`
-  } else {
-    const willRefund = turnoEnded ? false : cancelType === 'complejo' ? true : inPolicy
-    if (willRefund) {
-      refundPreview =
-        paymentMethod === 'mercadopago'
-          ? `La seña de ${formatArs(depositAmount)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
-          : `La seña de ${formatArs(depositAmount)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
-    } else if (turnoEnded) {
-      refundPreview = `El turno ya se jugó: la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
-    } else {
-      refundPreview = `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
-    }
-  }
+  const refundPreview = refundPreviewText({
+    hasPaidDeposit,
+    cancelType,
+    inPolicy,
+    turnoEnded,
+    depositAmount,
+    paymentMethod,
+    cancellationPolicyHours,
+  })
 
   return (
     <div className="space-y-2">
@@ -515,5 +643,126 @@ export default function BookingActions({
         />
       )}
     </div>
+  )
+}
+
+/**
+ * Las Server Actions llegan por PROP, no por import (ver comentario
+ * homólogo en ReservasPolicyForm.tsx / QuickActions.tsx): '../actions' es
+ * `'use server'` y arrastra node:async_hooks, que rompe Storybook.
+ *
+ * Máquina de estados con early-returns por `status` (block, pending_payment,
+ * no_show, completed, resto/confirmed): cada rama es su propio componente,
+ * este solo despacha según `type`/`status`.
+ */
+export default function BookingActions({
+  bookingId,
+  status,
+  type,
+  depositStatus,
+  depositAmount,
+  paymentMethod,
+  bookingDate,
+  timeStart,
+  startsAt,
+  endsAt,
+  updatedAt,
+  cancellationPolicyHours,
+  priceSnapshot,
+  chargesTotal,
+  guestName,
+  guestPhone,
+  playerName,
+  playerPhone,
+  completeAndChargeBookingAction,
+  markNoShowAction,
+  revertNoShowAction,
+  cancelBookingAction,
+  releaseBlockAction,
+  confirmDepositPaymentAction,
+}: Props) {
+  const router = useRouter()
+  // Reloj reactivo (ver use-now.ts). Lo consumen las ramas `no_show`,
+  // `completed` y `confirmed`: si todavía se puede deshacer la ausencia, si la
+  // cancelación entra en política, y si el turno ya terminó. Con `Date.now()`
+  // en el render, una pestaña abierta cruzaba cualquiera de esos límites sin
+  // enterarse.
+  const nowMs = useNowMs()
+
+  if (type === 'block') {
+    return (
+      <BlockActions
+        bookingId={bookingId}
+        status={status}
+        releaseBlockAction={releaseBlockAction}
+        router={router}
+      />
+    )
+  }
+
+  if (status === 'pending_payment') {
+    return (
+      <PendingPaymentActions
+        bookingId={bookingId}
+        depositAmount={depositAmount}
+        confirmDepositPaymentAction={confirmDepositPaymentAction}
+        router={router}
+      />
+    )
+  }
+
+  if (status === 'no_show') {
+    return (
+      <NoShowActions
+        bookingId={bookingId}
+        depositStatus={depositStatus}
+        depositAmount={depositAmount}
+        updatedAt={updatedAt}
+        nowMs={nowMs}
+        revertNoShowAction={revertNoShowAction}
+        router={router}
+      />
+    )
+  }
+
+  if (status === 'completed') {
+    return (
+      <CompletedActions
+        bookingId={bookingId}
+        updatedAt={updatedAt}
+        nowMs={nowMs}
+        markNoShowAction={markNoShowAction}
+        revertNoShowAction={revertNoShowAction}
+        router={router}
+      />
+    )
+  }
+
+  if (status !== 'confirmed') return null
+
+  return (
+    <ConfirmedActions
+      bookingId={bookingId}
+      depositStatus={depositStatus}
+      depositAmount={depositAmount}
+      paymentMethod={paymentMethod}
+      bookingDate={bookingDate}
+      timeStart={timeStart}
+      startsAt={startsAt}
+      endsAt={endsAt}
+      cancellationPolicyHours={cancellationPolicyHours}
+      priceSnapshot={priceSnapshot}
+      chargesTotal={chargesTotal}
+      guestName={guestName}
+      guestPhone={guestPhone}
+      playerName={playerName}
+      playerPhone={playerPhone}
+      completeAndChargeBookingAction={completeAndChargeBookingAction}
+      markNoShowAction={markNoShowAction}
+      revertNoShowAction={revertNoShowAction}
+      cancelBookingAction={cancelBookingAction}
+      nowMs={nowMs}
+      router={router}
+    />
   )
 }

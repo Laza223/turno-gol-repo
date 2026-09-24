@@ -230,6 +230,11 @@ export const MarcarAusenteConfirmado: Story = {
     await expectGone(dialogEl)
     await expect(await body.findByText('Marcada como ausente')).toBeVisible()
     await expect(getRouter().refresh).toHaveBeenCalled()
+
+    // El "Deshacer" del toast tiene que llamar al revert real con ESTE turno:
+    // al partir BookingActions por estado, ese callback se perdió una vez.
+    await userEvent.click(await body.findByRole('button', { name: 'Deshacer' }))
+    await waitFor(() => expect(args.revertNoShowAction).toHaveBeenCalledWith(BOOKING_ID))
   },
 }
 

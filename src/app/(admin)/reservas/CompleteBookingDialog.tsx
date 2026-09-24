@@ -2,38 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, MessageCircle, Phone, Check, AlertTriangle } from 'lucide-react'
+import { MessageCircle, Phone, Check, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { MoneyInput } from '@/components/ui/money-input'
-import { SegmentedControl } from '@/components/ui/segmented-control'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
-import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
-import { halfOfPending } from '@/components/booking/slot-panel/charge-copy'
 import type { CompleteAndChargeInput, CompleteAndChargeResult } from './actions'
-
-// Mismas etiquetas cortas que ya tenía el render (Transf./MP), ahora precalculadas.
-const METHOD_OPTIONS = PAYMENT_METHOD_OPTIONS.map((m) => ({
-  value: m.value,
-  label: m.label === 'Transferencia' ? 'Transf.' : m.label === 'MercadoPago' ? 'MP' : m.label,
-}))
-
-type Method = MethodKey
-
-type ChargeLine = {
-  id: string
-  amountCents: number | null
-  method: Method
-}
-
-const chipClass = (active: boolean) =>
-  `h-9 rounded-lg px-3 text-xs font-semibold transition-all duration-200 ${
-    active
-      ? 'bg-primary text-primary-foreground shadow-xs'
-      : 'border border-border bg-card text-foreground hover:bg-accent'
-  }`
 
 type CompleteBookingDialogBooking = {
   id: string
@@ -58,10 +33,10 @@ type Props = {
 }
 
 /**
- * Modal de "Completar + Cobrar" con soporte de pagos divididos.
- * El encargado ve el desglose del turno (precio, seña, saldo) y puede
- * agregar N líneas de cobro con método de pago distinto (efectivo,
- * transferencia, MercadoPago, otro). Si hay deuda, se registra una nota.
+ * "Completar turno": SOLO cambia el estado, con confirmación — el cobro se
+ * mudó a "Cobros de turno" (BookingCharges, el mismo componente que Hoy). Si
+ * queda saldo, la nota de deuda y el contacto por WhatsApp se conservan acá
+ * porque son parte de "dar por terminado un turno con deuda", no del cobro.
  */
 export default function CompleteBookingDialog({
   booking,
@@ -72,38 +47,14 @@ export default function CompleteBookingDialog({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [charges, setCharges] = useState<ChargeLine[]>([])
   const [debtNote, setDebtNote] = useState('')
   const [lastBookingId, setLastBookingId] = useState<string | null>(null)
-  // "Dividir pago por equipo": sólo cambia los rótulos de las dos líneas. Se
-  // apaga solo si el admin agrega o saca una línea (deja de haber dos equipos).
-  const [teamMode, setTeamMode] = useState(false)
 
   // Reset when a new booking is passed
   if (booking && booking.id !== lastBookingId) {
     setLastBookingId(booking.id)
     setError(null)
     setDebtNote('')
-    setTeamMode(false)
-
-    // Pre-fill with a single charge for the pending amount
-    const summary = summarizeBookingCharges({
-      priceSnapshot: booking.priceSnapshot,
-      depositAmount: booking.depositAmount,
-      depositStatus: booking.depositStatus,
-      chargesTotal: booking.chargesTotal,
-    })
-    if (summary.pending > 0) {
-      setCharges([
-        {
-          id: crypto.randomUUID(),
-          amountCents: summary.pending,
-          method: 'cash',
-        },
-      ])
-    } else {
-      setCharges([])
-    }
   }
 
   if (!booking) return null
@@ -115,58 +66,10 @@ export default function CompleteBookingDialog({
     chargesTotal: booking.chargesTotal,
   })
 
-  const totalChargingCents = charges.reduce((sum, c) => {
-    return sum + (c.amountCents != null && c.amountCents > 0 ? c.amountCents : 0)
-  }, 0)
-
-  const showTeams = teamMode && charges.length === 2
-  const remainingAfterCharge = Math.max(0, summary.pending - totalChargingCents)
-  const hasDebt = remainingAfterCharge > 0
+  const hasDebt = summary.pending > 0
 
   const contactName = booking.playerName || booking.guestName
   const contactPhone = booking.playerPhone || booking.guestPhone
-
-  function addChargeLine() {
-    setCharges((prev) => [...prev, { id: crypto.randomUUID(), amountCents: null, method: 'cash' }])
-  }
-
-  function removeChargeLine(id: string) {
-    setCharges((prev) => prev.filter((c) => c.id !== id))
-  }
-
-  function updateChargeLine(id: string, patch: Partial<Omit<ChargeLine, 'id'>>) {
-    setCharges((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
-  }
-
-  /**
-   * Cobro por equipo desde esta puerta: parte lo que falta en dos líneas de la
-   * mitad, rotuladas Equipo 1 / Equipo 2 — el mismo gesto que el panel de la
-   * grilla. Cada equipo elige su método; si uno todavía no pagó, se borra su
-   * línea y queda como deuda.
-   *
-   * Sólo se ofrece mientras no haya cobros previos — si ya pagó uno, "Cobrar
-   * todo en efectivo" ya es exactamente lo que falta del otro.
-   */
-  function quickTeamSplit() {
-    const half = halfOfPending(summary.pending)
-    if (half <= 0) return
-    setTeamMode(true)
-    setCharges([
-      { id: crypto.randomUUID(), amountCents: half, method: 'cash' },
-      { id: crypto.randomUUID(), amountCents: summary.pending - half, method: 'cash' },
-    ])
-  }
-
-  function quickAllCash() {
-    if (summary.pending <= 0) return
-    setCharges([
-      {
-        id: crypto.randomUUID(),
-        amountCents: summary.pending,
-        method: 'cash',
-      },
-    ])
-  }
 
   function handleClose(next: boolean) {
     if (isPending) return
@@ -178,39 +81,19 @@ export default function CompleteBookingDialog({
 
   function submit() {
     setError(null)
-
-    // Validate charge amounts
-    const parsedCharges: { amount: number; method: Method }[] = []
-    for (const c of charges) {
-      if (c.amountCents == null || c.amountCents <= 0) {
-        setError('Todos los cobros deben tener un monto mayor a $0.')
-        return
-      }
-      parsedCharges.push({ amount: c.amountCents, method: c.method })
-    }
-
-    const totalCents = parsedCharges.reduce((s, c) => s + c.amount, 0)
-    if (totalCents > summary.pending) {
-      setError(
-        `El cobro total (${formatArs(totalCents)}) supera lo pendiente (${formatArs(summary.pending)}).`,
-      )
-      return
-    }
-
     const clientIdempotencyKey = crypto.randomUUID()
 
     startTransition(async () => {
       const res = await completeAndChargeAction({
         bookingId: booking!.id,
-        charges: parsedCharges,
+        charges: [],
         debtNote: hasDebt ? debtNote : undefined,
         clientIdempotencyKey,
       })
       if (res.success) {
-        const desc = totalCents > 0 ? `${label} — cobrado ${formatArs(totalCents)}` : label
         toast({
-          title: hasDebt ? 'Completada con deuda pendiente' : 'Completada y cobrada',
-          description: desc,
+          title: hasDebt ? 'Completada con deuda pendiente' : 'Turno completado',
+          description: label,
           variant: 'success',
         })
         setLastBookingId(null)
@@ -226,189 +109,65 @@ export default function CompleteBookingDialog({
 
   const whatsappUrl = contactPhone
     ? `https://wa.me/${contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
-        `Hola${contactName ? ` ${contactName}` : ''}, te contactamos por el turno del ${label}. Quedó un saldo pendiente de ${formatArs(remainingAfterCharge)}. ¿Cuándo podés pasar a saldar?`,
+        `Hola${contactName ? ` ${contactName}` : ''}, te contactamos por el turno del ${label}. Quedó un saldo pendiente de ${formatArs(summary.pending)}. ¿Cuándo podés pasar a saldar?`,
       )}`
     : null
 
   return (
     <Dialog open={booking !== null} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-2xl">
+      <DialogContent className="w-[95vw] max-w-md">
         <DialogHeader>
           <DialogTitle>Completar turno</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">{label}</p>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-            {/* Columna Izquierda: Breakdown de precio y cobro rápido */}
-            <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
-              {/* h3, no h4: `DialogTitle` renderiza un h2 y saltar a h4 rompe
-                  `heading-order` de axe. El tamaño lo da la clase, no el tag. */}
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Resumen de cuenta
-              </h3>
+          <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+            {/* h3, no h4: `DialogTitle` renderiza un h2 y saltar a h4 rompe
+                `heading-order` de axe. El tamaño lo da la clase, no el tag. */}
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Resumen de cuenta
+            </h3>
 
-              <dl className="space-y-2 text-sm">
+            <dl className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Precio del turno</dt>
+                <dd className="font-semibold text-foreground">
+                  {formatArs(booking.priceSnapshot)}
+                </dd>
+              </div>
+              {summary.depositCounted > 0 && (
                 <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">Precio del turno</dt>
-                  <dd className="font-semibold text-foreground">
-                    {formatArs(booking.priceSnapshot)}
-                  </dd>
-                </div>
-                {summary.depositCounted > 0 && (
-                  <div className="flex items-center justify-between">
-                    <dt className="text-muted-foreground">
-                      Seña pagada{' '}
-                      <Check
-                        aria-hidden
-                        className="inline h-3.5 w-3.5 text-emerald-800 dark:text-emerald-400"
-                      />
-                    </dt>
-                    <dd className="text-foreground">−{formatArs(summary.depositCounted)}</dd>
-                  </div>
-                )}
-                {booking.chargesTotal > 0 && (
-                  <div className="flex items-center justify-between">
-                    <dt className="text-muted-foreground">Cobros previos</dt>
-                    <dd className="text-foreground">−{formatArs(booking.chargesTotal)}</dd>
-                  </div>
-                )}
-                <div className="flex items-center justify-between border-t border-border/80 pt-2">
-                  <dt className="font-medium text-foreground">Saldo a cobrar</dt>
-                  <dd className="font-bold text-base text-foreground">
-                    {formatArs(summary.pending)}
-                  </dd>
-                </div>
-              </dl>
-
-              {summary.pending > 0 && (
-                <button
-                  type="button"
-                  onClick={quickAllCash}
-                  className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
-                >
-                  Cobrar todo en efectivo — {formatArs(summary.pending)}
-                </button>
-              )}
-
-              {summary.pending > 0 && booking.chargesTotal === 0 && (
-                <button
-                  type="button"
-                  onClick={quickTeamSplit}
-                  className="w-full h-10 rounded-lg border border-dashed border-border text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                >
-                  {/* Mismo gesto y mismo rótulo que el panel de la grilla: dos
-                      nombres para el mismo cobro es lo que H017 prohíbe. Acá no
-                      va "Pagó uno" — este diálogo no conoce la cancha del turno,
-                      y sin los jugadores que entran no hay parte que ofrecer. */}
-                  Dividir pago por equipo
-                </button>
-              )}
-            </div>
-
-            {/* Columna Derecha: Carga de cobros y método */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Registro de pago
-              </h3>
-
-              {charges.length > 0 && (
-                <div className="space-y-2">
-                  {charges.map((c, idx) => (
-                    <div key={c.id} className="flex items-center gap-2">
-                      <div className="flex-1 space-y-1">
-                        {showTeams ? (
-                          <span className="text-xs font-semibold text-foreground">
-                            Equipo {idx + 1}
-                          </span>
-                        ) : (
-                          idx === 0 && (
-                            <span className="text-xs font-medium text-muted-foreground">Monto</span>
-                          )
-                        )}
-                        <MoneyInput
-                          valueCents={c.amountCents}
-                          onValueChange={(cents) => updateChargeLine(c.id, { amountCents: cents })}
-                          minCents={1}
-                          placeholder="0"
-                        />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        {(showTeams || idx === 0) && (
-                          <span className="text-xs font-medium text-muted-foreground">Método</span>
-                        )}
-                        <SegmentedControl
-                          className="flex flex-wrap gap-1"
-                          // F-007: varias líneas de cobro = varios radiogroups
-                          // idénticos — mismo criterio que el `aria-label` del
-                          // `<select>` de `SplitPaymentFields.tsx`, el índice
-                          // entra al nombre para que un lector de pantalla
-                          // los distinga.
-                          aria-label={
-                            charges.length > 1
-                              ? `Método de pago del cobro ${idx + 1}`
-                              : 'Método de pago'
-                          }
-                          value={c.method}
-                          onValueChange={(v) => updateChargeLine(c.id, { method: v })}
-                          itemClassName={chipClass}
-                          options={METHOD_OPTIONS}
-                        />
-                      </div>
-                      {charges.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeChargeLine(c.id)}
-                          aria-label="Eliminar cobro"
-                          className="mt-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" aria-hidden />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  <dt className="text-muted-foreground">
+                    Seña pagada{' '}
+                    <Check
+                      aria-hidden
+                      className="inline h-3.5 w-3.5 text-emerald-800 dark:text-emerald-400"
+                    />
+                  </dt>
+                  <dd className="text-foreground">−{formatArs(summary.depositCounted)}</dd>
                 </div>
               )}
-
-              {charges.length < 10 && summary.pending > 0 && (
-                <button
-                  type="button"
-                  onClick={addChargeLine}
-                  // Mismo caso que `SplitPaymentFields`: 12px con `text-primary`
-                  // (= emerald-700 en claro) sobre fondo atenuado queda en 4.47:1.
-                  className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:underline md:min-h-0"
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Agregar otro cobro (pago dividido)
-                </button>
+              {booking.chargesTotal > 0 && (
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Cobros previos</dt>
+                  <dd className="text-foreground">−{formatArs(booking.chargesTotal)}</dd>
+                </div>
               )}
-
-              {charges.length > 0 && (
-                <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total cobrado ahora</span>
-                    <span className="font-semibold text-foreground">
-                      {formatArs(totalChargingCents)}
+              <div className="flex items-center justify-between border-t border-border/80 pt-2">
+                <dt className="font-medium text-foreground">Saldo</dt>
+                <dd className="font-bold text-base text-foreground">
+                  {hasDebt ? (
+                    formatArs(summary.pending)
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-400">
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                      Pagado completo
                     </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Resta</span>
-                    <span
-                      className={`font-semibold ${hasDebt ? 'text-amber-800 dark:text-amber-400' : 'text-emerald-800 dark:text-emerald-400'}`}
-                    >
-                      {hasDebt ? (
-                        formatArs(remainingAfterCharge)
-                      ) : (
-                        <span className="inline-flex items-center gap-1">
-                          <Check className="h-3.5 w-3.5" aria-hidden />
-                          Pagado completo
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+                  )}
+                </dd>
+              </div>
+            </dl>
           </div>
 
           {/* Debt section */}
@@ -416,7 +175,7 @@ export default function CompleteBookingDialog({
             <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5 p-3">
               <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Queda una deuda de {formatArs(remainingAfterCharge)}
+                Queda una deuda de {formatArs(summary.pending)}
               </p>
               <textarea
                 value={debtNote}
@@ -465,13 +224,7 @@ export default function CompleteBookingDialog({
               Cancelar
             </button>
             <Button type="button" isLoading={isPending} onClick={submit} className="px-5">
-              {isPending
-                ? 'Procesando…'
-                : hasDebt
-                  ? 'Completar con deuda'
-                  : charges.length > 0
-                    ? 'Completar y cobrar'
-                    : 'Completar sin cobrar'}
+              {isPending ? 'Procesando…' : hasDebt ? 'Completar con deuda' : 'Completar'}
             </Button>
           </div>
         </div>

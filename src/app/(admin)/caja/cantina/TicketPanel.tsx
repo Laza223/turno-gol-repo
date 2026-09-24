@@ -91,10 +91,17 @@ export function TicketPanel({
   createTabAction?: CreateTabAction
   layout?: TicketLayout
   /**
-   * Avisa cuando hay una venta o un fiado que salió y cuya respuesta no volvió (no se
-   * sabe si entró). Quien monta el ticket adentro de algo que se puede cerrar lo usa
-   * para no cerrarlo: el estado de reintento y su clave viven acá, y desmontar el
-   * ticket los pierde — al reabrir, cobrar de nuevo duplicaría venta, stock y caja.
+   * Avisa cuando hay una venta en vuelo, o una venta o un fiado que salió y cuya
+   * respuesta no volvió (no se sabe si entró). Quien monta el ticket adentro de algo
+   * que se puede cerrar lo usa para no cerrarlo: el estado de reintento y su clave
+   * viven acá, y desmontar el ticket los pierde — al reabrir, cobrar de nuevo
+   * duplicaría venta, stock y caja.
+   *
+   * El "en vuelo" no es un extra: el aviso de reintento sale en una transición y este
+   * effect le avisa al diálogo recién un par de tareas DESPUÉS de pintarlo. Si el aviso
+   * pasara de false a true en ese commit, un Esc en el hueco cerraba igual. Como la
+   * venta ya estaba trabada desde el click (`isPending`), el valor no cambia y no hay
+   * hueco.
    */
   onUnconfirmedChange?: (unconfirmed: boolean) => void
 }) {
@@ -118,10 +125,9 @@ export function TicketPanel({
   const saleRetry = sale.retryPayload
   const tabRetry = tab.retryPayload
   const locked = isPending || saleRetry !== null || tabRetry !== null
-  const hasUnconfirmed = saleRetry !== null || tabRetry !== null
   useEffect(() => {
-    onUnconfirmedChange?.(hasUnconfirmed)
-  }, [hasUnconfirmed, onUnconfirmedChange])
+    onUnconfirmedChange?.(locked)
+  }, [locked, onUnconfirmedChange])
   const [tabDialogOpen, setTabDialogOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 

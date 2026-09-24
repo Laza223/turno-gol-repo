@@ -9,12 +9,7 @@
   "extraFonts": ".design-sync/fonts/fonts.css",
   "docsDir": ".design-sync/groups",
   "guidelinesGlob": [
-    "docs/spec/design-system/MASTER.md",
-    "docs/spec/design-system/gramatica-interaccion.md",
-    "docs/spec/design-system/pages/dashboard.md",
-    "docs/spec/design-system/pages/grilla.md",
-    "docs/spec/design-system/pages/horarios-precios.md",
-    "docs/spec/design-system/pages/staff.md"
+    "DESIGN.md"
   ],
   "readmeHeader": ".design-sync/conventions.md",
   "componentSrcMap": {

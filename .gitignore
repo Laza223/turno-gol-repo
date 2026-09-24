@@ -77,3 +77,9 @@ docs/audit/screenshots/2026-09/**/*.png
 
 # Paquetes de entrega a claude.ai/design: capturas y copias de specs, regenerables
 .design-sync/handoff/
+
+# Impeccable: `config.json`, `design.json` y `critique/` se versionan. El
+# consentimiento del hook y sus cachés son por máquina y guardan paths absolutos.
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json

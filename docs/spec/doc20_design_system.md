@@ -1,6 +1,14 @@
 # DOC 20 — Design System & UI/UX
 ## TurnoGol: Cómo Definimos y Construimos las Interfaces
 
+> [!CAUTION]
+> **Superado el 2026-09-23.** La única autoridad de diseño es [`DESIGN.md`](../../DESIGN.md), en la
+> raíz del repo, escrito a partir del código. `MASTER.md`, la gramática de interacción y las specs
+> por página que describe este documento se archivaron en
+> [`docs/archive/design-system/`](../archive/design-system/). Lo que sigue queda como registro de
+> cómo se trabajaba antes: no es regla. No se vuelve a crear `design-system/MASTER.md` ni specs por
+> página: si falta una regla, va a `DESIGN.md`.
+
 > **Propósito**: Documentar la estrategia de diseño visual de TurnoGol y la herramienta
 > que la gobierna. Este documento asegura que todo el equipo (humanos y AI assistants)
 > sepa de dónde viene cada decisión de color, tipografía, estilo y layout.
@@ -57,8 +65,8 @@
 │   └──────────────────────────────────────────────────────┘     │
 │                                                                │
 │   REGLA: Nunca elegir un color, tipografía o estilo "a dedo".  │
-│   Siempre consultar MASTER.md → si no existe, crearlo          │
-│   antes de comenzar a codear.                                  │
+│   Hoy la regla vive en DESIGN.md (raíz del repo);              │
+│   MASTER.md está archivado y no se vuelve a crear.             │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -135,6 +143,10 @@ Cuando se necesita profundizar en un aspecto específico, agregar secciones al M
 ---
 
 ## 4. Flujo de Trabajo para Crear UI
+
+> [!CAUTION]
+> Flujo superado el 2026-09-23. Hoy se lee [`DESIGN.md`](../../DESIGN.md) y se aplica; no se
+> genera `MASTER.md` ni specs por página.
 
 ### 4.1 Al crear una página nueva
 
@@ -282,7 +294,7 @@ Antes de entregar cualquier pantalla, verificar:
 ┌────────────────────────────────────────────────────────────────┐
 │               DESIGN SYSTEM - TURNOGOL                         │
 │                                                                │
-│  FUENTE DE VERDAD: design-system/MASTER.md                     │
+│  FUENTE DE VERDAD: DESIGN.md (antes: design-system/MASTER.md)  │
 │                                                                │
 │  GENERA:                                                       │
 │    • Estilo visual completo                                    │
@@ -305,12 +317,12 @@ Antes de entregar cualquier pantalla, verificar:
 │                                                                │
 │  REGLA CARDINAL:                                               │
 │    Nunca inventar colores, fuentes o estilos "a dedo".         │
-│    Siempre consultar MASTER.md.                               │
-│    Si no existe → crearlo antes de comenzar a codear.            │
+│    Hoy se consulta DESIGN.md (raíz del repo).                  │
+│    MASTER.md está archivado: no se vuelve a crear.             │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-> [!TIP]
-> **Para Claude Code**: Cuando el usuario pida construir una pantalla, primero verificar
-> si existe `design-system/MASTER.md`. Si existe, leerlo y aplicar las reglas. Si no existe,
-> crearlo definiendo estilo, colores, tipografía y efectos antes de codear.
+> [!CAUTION]
+> **Para Claude Code**: este flujo está superado. La autoridad de diseño es
+> [`DESIGN.md`](../../DESIGN.md), en la raíz del repo. No crear `design-system/MASTER.md`: si
+> falta una regla, se agrega a `DESIGN.md`.

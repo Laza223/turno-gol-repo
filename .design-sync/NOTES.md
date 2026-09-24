@@ -47,8 +47,10 @@ is pre-bundled with the AUTOMATIC runtime (react* external → package-build's r
 - **Grouping**: all 14 live flat in `src/components/ui/`, so groups come from frontmatter-only
   category stubs in `.design-sync/groups/<Name>.md` (cfg.docsDir). Empty body → synthesized
   `.prompt.md` is preserved.
-- **guidelinesGlob** is pinned to `docs/spec/design-system/MASTER.md`; the default globs pulled in
-  unrelated `docs/*.md` (audit_report, infraestructura, README, walkthrough).
+- **guidelinesGlob** is pinned to `DESIGN.md` (the only design authority since 2026-09-23; before
+  that it read `docs/spec/design-system/MASTER.md` plus five page/interaction specs, now archived in
+  `docs/archive/design-system/`); the default globs pulled in unrelated `docs/*.md` (audit_report,
+  infraestructura, README, walkthrough).
 
 ## Render check
 
@@ -83,9 +85,10 @@ imports) más `PageHeader` y `StatCard`, que llevan TODAS las pantallas del pane
   carpeta crecía a 31.
 - `PageHeader` y `StatCard` viven en `src/components/admin/`, fuera de `cfg.srcDir`: entran por
   `componentSrcMap`, que agrega además de pinear (`source-kit.mjs:83`).
-- **`guidelinesGlob` ahora es un array** con MASTER + la gramática de interacción + cuatro specs
-  de pantalla. Antes era solo MASTER, así que el agente de diseño no tenía la anatomía de ninguna
-  vista.
+- **`guidelinesGlob` fue un array** con MASTER + la gramática de interacción + cuatro specs de
+  pantalla (antes, solo MASTER, y el agente de diseño no tenía la anatomía de ninguna vista). Desde
+  el 2026-09-23 es solo `DESIGN.md`, la única autoridad de diseño: las specs por pantalla quedaron
+  archivadas y ya no viajan como guía.
 - **Los previews enseñan vocabulario.** El de `Badge` decía "Pendiente", "Cancelada" y "Nueva" —
   tres términos que la auditoría de coherencia eliminó — y era lo primero que leía el agente. Al
   tocar un preview, revisar que las palabras sean las que usa el panel hoy.

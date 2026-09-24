@@ -163,7 +163,7 @@ const preview: Preview = {
     },
 
     a11y: {
-      // MASTER §2.4 apunta a WCAG AA. Las violaciones rompen el runner, no se avisan.
+      // DESIGN.md apunta a WCAG AA en los dos temas. Las violaciones rompen el runner, no se avisan.
       test: 'error',
     },
 

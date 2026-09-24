@@ -54,7 +54,7 @@ Direct palette the components themselves use: `emerald-600/500`, `slate-900/600/
 
 - `_ds/<folder>/styles.css` and its `@import` closure — the real tokens/fonts/component CSS.
 - Per-component `<Name>.d.ts` (the prop contract) and `<Name>.prompt.md` (usage + examples).
-- `guidelines/` carries the visual source of truth (design-system MASTER).
+- `guidelines/` carries the visual source of truth (`DESIGN.md`, the project's only design authority).
 
 ## Idiomatic example
 

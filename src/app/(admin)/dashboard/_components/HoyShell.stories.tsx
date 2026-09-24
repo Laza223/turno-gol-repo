@@ -79,6 +79,7 @@ function Harness({
       dayIsClosed={false}
       canManageCourts
       serverNowMs={NOW_MS}
+      cancellationPolicyHours={24}
       actions={{
         chargeDebtAction: ok(),
         completeAndChargeBookingAction: ok(),

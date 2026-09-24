@@ -52,19 +52,19 @@ function renderActions(overrides: Partial<Parameters<typeof BookingActions>[0]> 
  * seña es visible apenas se abre el diálogo, con la política real.
  */
 describe('BookingActions — preview de seña visible antes de elegir "quién cancela" (ENS-2)', () => {
-  it('sin elegir quién cancela, dentro de la ventana: corresponde devolver', () => {
+  it('sin elegir quién cancela, dentro de la ventana: muestra los dos resultados, ambos "queda para devolver"', () => {
     renderActions({ bookingDate: '2026-03-16' }) // +2 días → dentro del plazo de 12h
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Corresponde devolver la seña de $ 4.500 (dentro del plazo de cancelación).',
+      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 12h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
-  it('sin elegir quién cancela, fuera de la ventana: avisa que quedó fuera de la devolución', () => {
+  it('sin elegir quién cancela, fuera de la ventana: el resultado difiere según quién cancele', () => {
     renderActions() // hoy 20:00, ventana de 12h ya cerrada a las 15:30
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'La seña de $ 4.500 quedó fuera de la ventana de devolución (política de 12h).',
+      'Si cancela el jugador: la seña de $ 4.500 queda para el complejo (fuera del plazo de 12h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
@@ -111,11 +111,11 @@ describe('BookingActions — preview de plazo usa starts_at físico cuando está
     })
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Corresponde devolver la seña de $ 4.500 (dentro del plazo de cancelación).',
+      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 6h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
-  it('sin starts_at (null), cae al cálculo manual — mismo resultado que antes del fix', () => {
+  it('sin starts_at (null), cae al cálculo manual: da "01:00 ART del 14" — ya pasado, turno_ended (clase B3, no motivo equivocado)', () => {
     renderActions({
       bookingDate: '2026-03-14',
       timeStart: '01:00:00',
@@ -124,7 +124,7 @@ describe('BookingActions — preview de plazo usa starts_at físico cuando está
     })
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'La seña de $ 4.500 quedó fuera de la ventana de devolución (política de 6h).',
+      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (sin reembolso).',
     )
   })
 })

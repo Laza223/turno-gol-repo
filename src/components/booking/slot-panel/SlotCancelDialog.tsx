@@ -8,6 +8,8 @@ import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { SlotPanelActions } from './actions'
+import type { RefundOutcome } from '@/modules/bookings/refund-outcome'
+import { refundOutcomeText } from './refund-outcome-text'
 
 type CancelType = 'complejo' | 'jugador'
 
@@ -27,6 +29,7 @@ export function SlotCancelDialog({
   booking,
   label,
   hasEnded,
+  computeRefundOutcome,
   cancelAction,
   onCancelled,
 }: {
@@ -36,6 +39,15 @@ export function SlotCancelDialog({
   /** A quién se cancela: el nombre del cliente, o el rótulo del estado si no hay. */
   label: string
   hasEnded: boolean
+  /**
+   * `getRefundOutcome` (`@/modules/bookings/refund-outcome`) ya aplicado por
+   * el caller (un componente reusable no puede importar el dominio como
+   * VALOR — regla `turnogol/capas-components` — así que llega inyectado, mismo
+   * patrón que las Server Actions de `ReservasPolicyForm`/`InviteStaffDialog`).
+   * `null` cuando falta `startsAtMs`/`endsAtMs`/la política: degrada al texto
+   * genérico, no inventa un plazo que no tiene.
+   */
+  computeRefundOutcome: (cancellationType: CancelType | null) => RefundOutcome | null
   cancelAction: NonNullable<SlotPanelActions['cancelBookingAction']>
   /** Se canceló: el caller refresca y decide qué cerrar. */
   onCancelled: () => void
@@ -67,14 +79,19 @@ export function SlotCancelDialog({
     return res
   }
 
-  // Sin `startsAt`/`cancellationPolicyHours` a mano (GridBooking no los trae —
-  // ver su comentario): mismo fallback genérico que usa QuickActions.tsx cuando
-  // esos datos faltan (`inPolicy === null`), no un mensaje inventado nuevo.
-  const hasPaidDeposit = booking.depositStatus === 'paid' && (booking.depositAmount ?? 0) > 0
   // H095: visible DESDE que se abre el diálogo, no recién tras elegir "quién
   // cancela" — mismo criterio que `refundPreview` en BookingActions.tsx (ENS-2).
+  //
+  // Con `computeRefundOutcome` disponible (el caller tenía `startsAtMs`/
+  // `endsAtMs`/la política), delega TODO en `getRefundOutcome` (única fuente,
+  // compartida con BookingActions.tsx). Sin eso cae al fallback genérico de
+  // siempre: no inventa un plazo que no tiene.
+  const hasPaidDeposit = booking.depositStatus === 'paid' && (booking.depositAmount ?? 0) > 0
+  const refundOutcome = computeRefundOutcome(cancelType)
   let cancelRefundWarning: string | null = null
-  if (!hasPaidDeposit) {
+  if (refundOutcome) {
+    cancelRefundWarning = refundOutcomeText(refundOutcome)
+  } else if (!hasPaidDeposit) {
     cancelRefundWarning = 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
   } else if (hasEnded) {
     cancelRefundWarning = 'El turno ya se jugó: la seña queda para el complejo (sin reembolso).'

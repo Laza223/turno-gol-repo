@@ -51,6 +51,7 @@ export function HoyShell({
   dayIsClosed,
   canManageCourts,
   serverNowMs,
+  cancellationPolicyHours,
   actions,
   canteen,
 }: {
@@ -63,6 +64,8 @@ export function HoyShell({
   canManageCourts: boolean
   /** La hora con la que el servidor armó esta respuesta: el reloj nunca va por detrás. */
   serverNowMs: number
+  /** Horas de anticipación de la política de cancelación, para el aviso de seña del modal. */
+  cancellationPolicyHours: number
   actions: SlotPanelActions
   canteen: { listCatalogAction: ListCanteenCatalog; sellTicketAction: SellTicketForBooking }
 }) {
@@ -139,6 +142,7 @@ export function HoyShell({
           renderCanteenDialog={renderCanteenDialog}
           onClose={() => setOpenId(null)}
           onMutated={() => startRefresh(() => router.refresh())}
+          cancellationPolicyHours={cancellationPolicyHours}
         />
       )}
     </>

@@ -18,7 +18,10 @@ import { cleanup, render, screen } from '@testing-library/react'
 
 const state = vi.hoisted(() => ({
   role: 'admin' as 'admin' | 'manager',
-  settings: { onboarding_completed: true } as Record<string, unknown>,
+  settings: {
+    onboarding_completed: true,
+    cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
+  } as Record<string, unknown>,
   getChecklistState: vi.fn(),
 }))
 
@@ -131,7 +134,10 @@ import DashboardPage from '@/app/(admin)/dashboard/page'
 
 beforeEach(() => {
   // Con la checklist incompleta, el dueño la ve.
-  state.settings = { onboarding_completed: true }
+  state.settings = {
+    onboarding_completed: true,
+    cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
+  }
   state.getChecklistState.mockReset()
   state.getChecklistState.mockResolvedValue({ courts: false, hours: false })
 })
@@ -161,7 +167,11 @@ describe('Hoy — qué ve cada rol', () => {
 
   it('si el dueño ya descartó el checklist, tampoco se consulta (Hoy se refresca cada minuto)', async () => {
     state.role = 'admin'
-    state.settings = { onboarding_completed: true, checklist_dismissed_at: '2026-09-01T00:00:00Z' }
+    state.settings = {
+      onboarding_completed: true,
+      checklist_dismissed_at: '2026-09-01T00:00:00Z',
+      cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
+    }
     render(await DashboardPage())
 
     expect(state.getChecklistState).not.toHaveBeenCalled()

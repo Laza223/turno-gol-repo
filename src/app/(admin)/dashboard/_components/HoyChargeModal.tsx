@@ -70,6 +70,7 @@ export function HoyChargeModal({
   onClose,
   onMutated,
   hasEnded: hasEndedFallback,
+  cancellationPolicyHours = null,
 }: {
   booking: ChargeBooking
   courtName: string
@@ -92,6 +93,13 @@ export function HoyChargeModal({
    * de contención — nunca se usa si `endsAtMs` está presente.
    */
   hasEnded?: boolean
+  /**
+   * Horas de anticipación de la política de cancelación del complejo, para el
+   * aviso de seña de `SlotCancelDialog`. Opcional (default `null`): callers
+   * viejos/stories que no la cablean siguen compilando, y el diálogo degrada
+   * solo al texto genérico.
+   */
+  cancellationPolicyHours?: number | null
 }) {
   const hasEnded =
     typeof booking.endsAtMs === 'number'
@@ -305,6 +313,8 @@ export function HoyChargeModal({
         booking={booking}
         name={name}
         hasEnded={hasEnded}
+        nowMs={nowMs}
+        cancellationPolicyHours={cancellationPolicyHours}
         courts={courts}
         court={court}
         dayBookings={dayBookings}

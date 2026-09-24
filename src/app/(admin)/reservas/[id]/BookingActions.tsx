@@ -10,6 +10,8 @@ import { useNowMs } from '@/hooks/use-now'
 import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
+import { getRefundOutcome } from '@/modules/bookings/refund-outcome'
+import { refundOutcomeText } from '@/components/booking/slot-panel/refund-outcome-text'
 import { CobrarSenaButton, type ConfirmDepositFn } from '@/components/booking/CobrarSenaButton'
 import CompleteBookingDialog from '../CompleteBookingDialog'
 import type {
@@ -114,50 +116,6 @@ function bookingStartMs(dateStr: string, hhmmss: string): number {
   const [y, mo, d] = dateStr.split('-').map(Number)
   const [h, m] = hhmmss.split(':').map(Number)
   return Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (h ?? 0) + 3, m ?? 0)
-}
-
-/**
- * ENS-2: qué pasa con la seña de ESTE turno si se cancela AHORA, para el
- * aviso del diálogo de cancelar. Visible desde que se abre (antes solo
- * aparecía tras elegir "quién cancela"), usando la política real: sin seña
- * no hay nada que decidir; con seña, la ventana horaria decide salvo que el
- * complejo asuma la culpa (reembolsa siempre, Tarea #3).
- */
-function refundPreviewText({
-  hasPaidDeposit,
-  cancelType,
-  inPolicy,
-  turnoEnded,
-  depositAmount,
-  paymentMethod,
-  cancellationPolicyHours,
-}: {
-  hasPaidDeposit: boolean
-  cancelType: CancellationType | null
-  inPolicy: boolean
-  turnoEnded: boolean
-  depositAmount: number
-  paymentMethod: string | null
-  cancellationPolicyHours: number
-}): string {
-  if (!hasPaidDeposit) return 'Esta reserva no tiene seña pagada. Solo se libera el turno.'
-
-  if (!cancelType) {
-    return inPolicy
-      ? `Corresponde devolver la seña de ${formatArs(depositAmount)} (dentro del plazo de cancelación).`
-      : `La seña de ${formatArs(depositAmount)} quedó fuera de la ventana de devolución (política de ${cancellationPolicyHours}h).`
-  }
-
-  const willRefund = turnoEnded ? false : cancelType === 'complejo' ? true : inPolicy
-  if (willRefund) {
-    return paymentMethod === 'mercadopago'
-      ? `La seña de ${formatArs(depositAmount)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
-      : `La seña de ${formatArs(depositAmount)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
-  }
-  if (turnoEnded) {
-    return `El turno ya se jugó: la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
-  }
-  return `Fuera del plazo de cancelación (${cancellationPolicyHours}h): la seña de ${formatArs(depositAmount)} queda para el complejo (sin reembolso).`
 }
 
 /**
@@ -463,7 +421,6 @@ function ConfirmedActions({
   const bookingEndUtcMs = endsAt
     ? new Date(endsAt).getTime()
     : bookingStartUtcMs + SLOT_DURATION_MINUTES * 60_000
-  const inPolicy = nowMs < bookingStartUtcMs - cancellationPolicyHours * 3_600_000
   // MEJORA-UX QA: "Marcar completada"/"Marcar ausente" abrían el diálogo
   // entero sin aviso — recién al confirmar el server devolvía "El turno
   // todavía no terminó...". "Cancelar" ya usaba este mismo cálculo (antes
@@ -508,15 +465,18 @@ function ConfirmedActions({
     return res
   }
 
-  const refundPreview = refundPreviewText({
-    hasPaidDeposit,
-    cancelType,
-    inPolicy,
-    turnoEnded,
-    depositAmount,
-    paymentMethod,
-    cancellationPolicyHours,
-  })
+  const refundPreview = refundOutcomeText(
+    getRefundOutcome({
+      depositStatus,
+      depositAmountCents: depositAmount,
+      paymentMethod,
+      bookingStartUtcMs,
+      bookingEndUtcMs,
+      policyHours: cancellationPolicyHours,
+      nowMs,
+      cancellationType: cancelType,
+    }),
+  )
 
   return (
     <div className="space-y-2">

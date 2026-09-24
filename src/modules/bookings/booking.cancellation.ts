@@ -21,34 +21,13 @@ import {
 import type { BookingRow, DepositStatus } from './booking.types'
 import { track } from '@/shared/observability'
 
-export type AdminCancellationType = 'complejo' | 'jugador'
-
-/**
- * Tarea #3: el motivo decide el reembolso, el admin ya no elige a ciegas.
- * - 'complejo' (rotura / mantenimiento / error del admin): reembolso SIEMPRE,
- *   sin importar el plazo — no es culpa del jugador.
- * - 'jugador' (pidió por teléfono): aplica la política normal — dentro del
- *   plazo reembolsa, fuera retiene.
- * `inPolicy` se devuelve para el rastro de auditoría (también en el caso
- * 'complejo', donde no afecta la decisión pero documenta el contexto).
- *
- * Bug B3 (guard de turno YA TERMINADO): si `nowMs >= bookingEndUtcMs` el
- * servicio ya se prestó — el admin puede cancelar sin reembolso, pero NUNCA
- * reembolsar, ni siquiera con cancellationType='complejo'. Este guard corta
- * el camino antes de mirar el motivo.
- */
-export function decideAdminRefund(opts: {
-  cancellationType: AdminCancellationType
-  bookingStartUtcMs: number
-  bookingEndUtcMs: number
-  policyHours: number
-  nowMs: number
-}): { shouldRefund: boolean; inPolicy: boolean } {
-  const inPolicy = opts.nowMs < opts.bookingStartUtcMs - opts.policyHours * 3_600_000
-  const turnoTermino = opts.nowMs >= opts.bookingEndUtcMs
-  const shouldRefund = turnoTermino ? false : opts.cancellationType === 'complejo' ? true : inPolicy
-  return { shouldRefund, inPolicy }
-}
+// `decideAdminRefund`/`AdminCancellationType` viven en `refund-policy.ts`
+// (mismo código, sin cambios de comportamiento) para que se puedan importar
+// desde un componente cliente sin arrastrar el resto de este archivo (DB,
+// pagos, notificaciones, audit) al bundle del browser. Se reexportan acá para
+// que `cancellation-preview.ts` y `reservas/actions.ts` no cambien su import.
+import { decideAdminRefund, type AdminCancellationType } from './refund-policy'
+export { decideAdminRefund, type AdminCancellationType }
 
 type LockedBooking = {
   id: string

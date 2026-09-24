@@ -5,6 +5,7 @@ import { SlotCancelDialog } from '@/components/booking/slot-panel/SlotCancelDial
 import type { SlotGates } from '@/components/booking/slot-panel/slot-gates'
 import type { RenderCanteenDialog, SlotPanelActions } from '@/components/booking/slot-panel/actions'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
+import { getRefundOutcome, type RefundOutcome } from '@/modules/bookings/refund-outcome'
 import type { ChargeBooking, HoyCourt } from './HoyChargeModal'
 
 // Se cargan recién al abrirlos: cobrar es de todos los días, mover o corregir
@@ -29,6 +30,8 @@ export function HoyChargeModalDialogs({
   booking,
   name,
   hasEnded,
+  nowMs,
+  cancellationPolicyHours,
   courts,
   court,
   dayBookings,
@@ -56,6 +59,9 @@ export function HoyChargeModalDialogs({
   booking: ChargeBooking
   name: string
   hasEnded: boolean
+  nowMs: number
+  /** `null` si el caller no tiene la política a mano: `SlotCancelDialog` degrada solo. */
+  cancellationPolicyHours: number | null
   courts: HoyCourt[]
   court: HoyCourt | undefined
   dayBookings: ChargeBooking[]
@@ -150,6 +156,22 @@ export function HoyChargeModalDialogs({
           booking={booking}
           label={name}
           hasEnded={hasEnded}
+          computeRefundOutcome={(cancellationType): RefundOutcome | null =>
+            booking.startsAtMs != null &&
+            booking.endsAtMs != null &&
+            cancellationPolicyHours != null
+              ? getRefundOutcome({
+                  depositStatus: booking.depositStatus ?? 'not_required',
+                  depositAmountCents: booking.depositAmount ?? 0,
+                  paymentMethod: booking.paymentMethod ?? null,
+                  bookingStartUtcMs: booking.startsAtMs,
+                  bookingEndUtcMs: booking.endsAtMs,
+                  policyHours: cancellationPolicyHours,
+                  nowMs,
+                  cancellationType,
+                })
+              : null
+          }
           cancelAction={actions.cancelBookingAction}
           onCancelled={() => {
             setLastId(null)

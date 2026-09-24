@@ -51,7 +51,7 @@ export function AdminLayoutShell({
   const pathname = usePathname()
   // Dos modos de contenedor. Grilla y Reservas (lista) son viewport fijo
   // full-bleed: sin tope de ancho y sin scroll de página propio, cada una
-  // resuelve el scroll adentro (GridScroller / CourtBoard). Comparación
+  // resuelve el scroll adentro (GridScroller / la lista). Comparación
   // exacta: `/reservas/[id]` sigue con el modo normal.
   // Todo lo demás es scroll de página normal con tope de 1600 px: el viejo
   // `max-w-7xl` dejaba ~320 px muertos de cada lado en un monitor de 1920, y

@@ -18,8 +18,8 @@ vi.mock('@/modules/staff/guards', () => ({
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb({})),
 }))
-// H110 — la page pide las canchas del tenant (filtro por cancha, columnas del
-// tablero) dentro del mismo `withTenantContext`; sin este mock, `listCourts`
+// H110 — la page pide las canchas del tenant (filtro por cancha) dentro del
+// mismo `withTenantContext`; sin este mock, `listCourts`
 // real corre contra el `tx` de mentira de arriba y explota.
 const courtsMock = vi.fn(async (): Promise<Array<{ id: string; name: string }>> => [])
 vi.mock('@/modules/courts/court.service', () => ({
@@ -62,11 +62,6 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
     rows: await listMock(...(args as [])),
     hasMore: hasMore.value,
   }),
-  // Hoy/Próximas SIN filtro de cancha (boardMode) pasan por acá en vez de
-  // `listTenantBookings` — mismo `listMock`, sin el wrapper `{rows,hasMore}`
-  // (el board no pagina). Los casos que quieran `courtId`/`courtTotal` en la
-  // fila los agregan en su propio `row()`.
-  listTenantBookingsForBoard: (...args: unknown[]) => listMock(...(args as [])),
   RESERVAS_PAGE_SIZE: 50,
   countTenantBookingsByStatus: (...args: unknown[]) => countsMock(...(args as [])),
   sumBookingChargesByBooking: (...args: unknown[]) => chargesMock(...(args as [])),
@@ -108,11 +103,13 @@ describe('ReservasPage — render', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Reservas' })).toBeTruthy()
   })
 
-  it('hoy: el tablero tiene una columna por cancha del tenant, incluida la que no tiene reservas', async () => {
-    courtsMock.mockResolvedValue([
-      { id: 'c1', name: 'Cancha 1' },
-      { id: 'c2', name: 'Cancha 2' },
-    ])
+  /**
+   * 2026-09-24 (docs/decisions/2026-09-24-navegacion-panel.md): el tablero por
+   * cancha de Hoy/Próximas se fue. Hoy es una lista agrupada por cancha —el
+   * orden que ya trae la query (cancha y después hora)— y la fila no repite
+   * la cancha, que es el título de su sección.
+   */
+  it('hoy: una sección por cancha, en el orden de la query, sin repetir la cancha en la fila', async () => {
     listMock.mockResolvedValue([
       row({ id: 'b1', courtName: 'Cancha 1', timeStart: '14:00:00', timeEnd: '15:00:00' }),
       row({
@@ -122,58 +119,47 @@ describe('ReservasPage — render', () => {
         timeEnd: '17:00:00',
         guestName: 'Ana López',
       }),
+      row({ id: 'b3', courtName: 'Cancha 2', timeStart: '09:00:00', timeEnd: '10:00:00' }),
+    ])
+    countsMock.mockResolvedValue({ confirmed: 3 })
+
+    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
+
+    const secciones = screen.getAllByRole('region')
+    expect(secciones.map((r) => r.getAttribute('aria-label'))).toEqual(['Cancha 1', 'Cancha 2'])
+    const cancha1 = within(secciones[0]).getAllByRole('article')
+    expect(cancha1).toHaveLength(2)
+    expect(within(cancha1[0]).getByText('14:00–15:00')).toBeTruthy()
+    expect(within(cancha1[1]).getByText('16:00–17:00')).toBeTruthy()
+    // La línea secundaria dice la seña, no la cancha (ya es el título).
+    expect(within(cancha1[0]).getByText(/Seña pagada/).textContent).not.toContain('Cancha 1')
+    expect(within(secciones[1]).getAllByRole('article')).toHaveLength(1)
+  })
+
+  it('próximas: una sección por fecha que mezcla canchas, y la fila dice la cancha', async () => {
+    listMock.mockResolvedValue([
+      row({ id: 'b1', date: '2026-06-13', courtName: 'Cancha 1' }),
+      row({ id: 'b2', date: '2026-06-13', courtName: 'Cancha 2', guestName: 'Ana López' }),
     ])
     countsMock.mockResolvedValue({ confirmed: 2 })
 
-    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
+    render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'proximas' }) }))
 
-    const cancha1 = screen.getByRole('region', { name: 'Cancha 1' })
-    expect(within(cancha1).getAllByRole('article')).toHaveLength(2)
-    // Cancha 2 no tiene reservas: columna igual, con el mensaje — nunca se
-    // pierde silenciosamente.
-    const cancha2 = screen.getByRole('region', { name: 'Cancha 2' })
-    expect(within(cancha2).getByText('Sin reservas')).toBeTruthy()
-    expect(within(cancha2).queryAllByRole('article')).toHaveLength(0)
+    expect(screen.queryByRole('region', { name: 'Cancha 1' })).toBeNull()
+    const dia = screen.getByRole('region', { name: /13 de junio/ })
+    const filas = within(dia).getAllByRole('article')
+    expect(filas).toHaveLength(2)
+    expect(within(filas[1]).getByText(/Cancha 2/)).toBeTruthy()
   })
 
-  /**
-   * Hallazgo #3 (revisión redesign booking modal, 2026-09-14): con el cupo
-   * por cancha, una columna puede mostrar MENOS filas que su total real — el
-   * header tiene que decir el total real y ofrecer un link para verlas todas.
-   */
-  it('cancha con más reservas que el cupo mostrado: header dice el total real y ofrece "Ver todas"', async () => {
-    courtsMock.mockResolvedValue([{ id: 'c1', name: 'Cancha 1' }])
-    listMock.mockResolvedValue([
-      { ...row({ id: 'b1', courtName: 'Cancha 1' }), courtId: 'c1', courtTotal: 60 } as never,
-    ])
-    countsMock.mockResolvedValue({ confirmed: 60 })
-
-    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
-
-    const cancha1 = screen.getByRole('region', { name: 'Cancha 1' })
-    // El badge del header es el TOTAL real (60), no las filas mostradas (1).
-    expect(within(cancha1).getByText('60')).toBeTruthy()
-    const link = within(cancha1).getByRole('link', { name: 'Ver las 60 reservas' })
-    expect(link.getAttribute('href')).toBe('/reservas?cancha=c1')
-  })
-
-  it('cancha vacía (total 0): "Sin reservas" y sin link "Ver todas"', async () => {
-    courtsMock.mockResolvedValue([
-      { id: 'c1', name: 'Cancha 1' },
-      { id: 'c2', name: 'Cancha 2' },
-    ])
-    // Cancha 2 no aparece en absoluto en `bookings` — total 0 real, no un
-    // recorte del cupo.
-    listMock.mockResolvedValue([
-      { ...row({ id: 'b1', courtName: 'Cancha 1' }), courtId: 'c1', courtTotal: 1 } as never,
-    ])
-    countsMock.mockResolvedValue({ confirmed: 1 })
-
-    render(await ReservasPage({ searchParams: Promise.resolve({}) }))
-
-    const cancha2 = screen.getByRole('region', { name: 'Cancha 2' })
-    expect(within(cancha2).getByText('Sin reservas')).toBeTruthy()
-    expect(within(cancha2).queryByRole('link', { name: /Ver las/ })).toBeNull()
+  it('hoy pagina igual que historial: la query recibe la página', async () => {
+    render(await ReservasPage({ searchParams: Promise.resolve({ pagina: '2' }) }))
+    expect(listMock).toHaveBeenCalledWith(
+      'tenant-1',
+      { scope: 'hoy', today: '2026-06-12' },
+      expect.anything(),
+      1,
+    )
   })
 
   it('cada reserva es un article con aria-label descriptivo', async () => {
@@ -254,12 +240,11 @@ describe('ReservasPage — render', () => {
 
   it('la búsqueda se pasa a la query junto al scope', async () => {
     render(await ReservasPage({ searchParams: Promise.resolve({ q: '  maría  ' }) }))
-    // Hoy sin filtro de cancha es boardMode: pasa por `listTenantBookingsForBoard`
-    // (sin `page`, el board no pagina — ver hallazgo #3).
     expect(listMock).toHaveBeenCalledWith(
       'tenant-1',
       { scope: 'hoy', today: '2026-06-12', q: 'maría' },
       expect.anything(),
+      0,
     )
     expect(countsMock).toHaveBeenCalledWith(
       'tenant-1',
@@ -280,9 +265,7 @@ describe('ReservasPage — historial', () => {
 
     render(await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial' }) }))
 
-    // No hay tablero por cancha en historial: no aparece una región por
-    // "Cancha 1"/"Cancha 2" (esas quedarían como sección del tablero de
-    // Hoy/Próximas, no de Historial).
+    // Secciones por fecha, no por cancha.
     expect(screen.queryByRole('region', { name: 'Cancha 1' })).toBeNull()
     const grupo10 = screen.getByRole('region', { name: /10 de junio/ })
     expect(within(grupo10).getAllByRole('article')).toHaveLength(2)
@@ -362,8 +345,6 @@ describe('ReservasPage — paginación', () => {
     listMock.mockResolvedValue([row({})])
     countsMock.mockResolvedValue({ confirmed: 1 })
 
-    // Historial (no boardMode): sigue paginado con `listTenantBookings`, que
-    // es lo que este caso ejercita — el board (Hoy/Próximas) ni recibe `page`.
     render(
       await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial', pagina: 'seis' }) }),
     )

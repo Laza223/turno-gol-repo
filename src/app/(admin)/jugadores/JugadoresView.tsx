@@ -4,6 +4,7 @@ import { Pager } from '@/components/ui/pager'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Th, Td, Tr } from '@/components/ui/table'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { ClientesTabs } from './ClientesTabs'
@@ -208,22 +209,22 @@ export function JugadoresView({
           }
           table={
             <table className="w-full min-w-[680px] text-sm">
-              <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="border-b border-border bg-muted/40 text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Persona</th>
-                  <th className="px-4 py-3 font-medium">Contacto</th>
-                  <th className="px-4 py-3 font-medium text-right">Reservas</th>
-                  <th className="px-4 py-3 font-medium text-right">Fijos</th>
-                  <th className="px-4 py-3 font-medium text-right">Ausencias</th>
-                  <th className="px-4 py-3 font-medium">
+                  <Th>Persona</Th>
+                  <Th>Contacto</Th>
+                  <Th align="right">Reservas</Th>
+                  <Th align="right">Fijos</Th>
+                  <Th align="right">Ausencias</Th>
+                  <Th>
                     <span className="sr-only">Acciones</span>
-                  </th>
+                  </Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {clients.map((c) => (
-                  <tr key={c.key} className="hover:bg-accent">
-                    <td className="px-4 py-3">
+                  <Tr key={c.key}>
+                    <Td>
                       {c.kind === 'player' ? (
                         <>
                           <Link
@@ -247,17 +248,19 @@ export function JugadoresView({
                           )}
                         </>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{c.phone ?? c.email}</td>
-                    <td className="px-4 py-3 text-right text-foreground">{c.bookingsCount}</td>
-                    <td className="px-4 py-3 text-right text-foreground">
+                    </Td>
+                    <Td className="text-muted-foreground">{c.phone ?? c.email}</Td>
+                    <Td align="right" className="text-foreground">
+                      {c.bookingsCount}
+                    </Td>
+                    <Td align="right" className="text-foreground">
                       {c.fixedCount > 0 ? (
                         c.fixedCount
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </Td>
+                    <Td align="right">
                       {c.noshowCount > 0 ? (
                         <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
                           {c.noshowCount}
@@ -265,9 +268,9 @@ export function JugadoresView({
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-right">{renderLinkButton(c)}</td>
-                  </tr>
+                    </Td>
+                    <Td align="right">{renderLinkButton(c)}</Td>
+                  </Tr>
                 ))}
               </tbody>
             </table>

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { formatArs } from '@/lib/format'
+import { Th, Td, Tr } from '@/components/ui/table'
 // Tipos puros (DTOs) colocados junto a las queries en canteen-report.service.ts
 // (server-only, NO se toca ese archivo). `import type` se borra en compilación
 // (isolatedModules): no arrastra nada server-only al bundle del cliente.
@@ -64,26 +65,22 @@ export function CanteenReport({ range, ranking, byMethod, daily }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Producto
-                  </th>
-                  <th className="p-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Unidades
-                  </th>
-                  <th className="p-2 pr-0 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Th>Producto</Th>
+                  <Th align="right">Unidades</Th>
+                  <Th align="right" className="pr-0">
                     Plata
-                  </th>
+                  </Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {ranking.map((row) => (
-                  <tr key={row.productId}>
-                    <td className="p-2 text-foreground">{row.productName}</td>
-                    <td className="p-2 text-right tabular-nums text-foreground">{row.units}</td>
-                    <td className="p-2 pr-0 text-right tabular-nums font-medium text-foreground">
+                  <Tr key={row.productId}>
+                    <Td className="text-foreground">{row.productName}</Td>
+                    <Td numeric>{row.units}</Td>
+                    <Td numeric className="pr-0 font-medium">
                       {formatArs(row.revenue)}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
             </table>
@@ -130,22 +127,20 @@ export function CanteenReport({ range, ranking, byMethod, daily }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Fecha
-                  </th>
-                  <th className="p-2 pr-0 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Th>Fecha</Th>
+                  <Th align="right" className="pr-0">
                     Cobrado
-                  </th>
+                  </Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {daily.map((d) => (
-                  <tr key={d.day}>
-                    <td className="p-2 text-foreground">{mediumDateLabel(d.day)}</td>
-                    <td className="p-2 pr-0 text-right tabular-nums font-medium text-foreground">
+                  <Tr key={d.day}>
+                    <Td className="text-foreground">{mediumDateLabel(d.day)}</Td>
+                    <Td numeric className="pr-0 font-medium">
                       {formatArs(d.total)}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
             </table>

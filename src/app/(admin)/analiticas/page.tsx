@@ -3,6 +3,7 @@ import { CalendarCheck, ChartLine, SlidersHorizontal, TrendingUp, Wallet } from 
 import { PageHeader } from '@/components/admin/PageHeader'
 import { StatCard } from '@/components/admin/StatCard'
 import { ResponsiveList } from '@/components/ui/responsive-list'
+import { Th, Td, Tr } from '@/components/ui/table'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { MetricsDashboardLoader } from '@/app/(admin)/analiticas/MetricsDashboardLoader'
@@ -255,27 +256,33 @@ export default async function AnaliticasPage(props: {
                   table={
                     <table className="w-full min-w-[520px] text-sm">
                       <thead>
-                        <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          <th className="px-6 py-3 text-left">Cancha</th>
-                          <th className="px-6 py-3 text-right">Ingresos</th>
-                          <th className="px-6 py-3 text-right">Reservas</th>
-                          <th className="px-6 py-3 text-right">Ocupación</th>
+                        <tr className="border-b border-border">
+                          <Th className="px-6">Cancha</Th>
+                          <Th className="px-6" align="right">
+                            Ingresos
+                          </Th>
+                          <Th className="px-6" align="right">
+                            Reservas
+                          </Th>
+                          <Th className="px-6" align="right">
+                            Ocupación
+                          </Th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {report.byCourt.map((c) => (
-                          <tr key={c.courtId} className="transition-colors hover:bg-accent/40">
-                            <td className="px-6 py-3 text-foreground">{c.courtName}</td>
-                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                          <Tr key={c.courtId}>
+                            <Td className="px-6 text-foreground">{c.courtName}</Td>
+                            <Td className="px-6" numeric>
                               {formatArs(c.income)}
-                            </td>
-                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                            </Td>
+                            <Td className="px-6" numeric>
                               {c.bookingCount}
-                            </td>
-                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                            </Td>
+                            <Td className="px-6" numeric>
                               {formatPct(c.occupancyPct)}
-                            </td>
-                          </tr>
+                            </Td>
+                          </Tr>
                         ))}
                       </tbody>
                     </table>
@@ -295,21 +302,21 @@ export default async function AnaliticasPage(props: {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          <th className="px-6 py-3 text-left">Método</th>
-                          <th className="px-6 py-3 text-right">Total</th>
+                        <tr className="border-b border-border">
+                          <Th className="px-6">Método</Th>
+                          <Th className="px-6" align="right">
+                            Total
+                          </Th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {report.byMethod.map((m) => (
-                          <tr key={m.method} className="transition-colors hover:bg-accent/40">
-                            <td className="px-6 py-3 text-foreground">
-                              {formatMethodLabel(m.method)}
-                            </td>
-                            <td className="px-6 py-3 text-right tabular-nums text-foreground">
+                          <Tr key={m.method}>
+                            <Td className="px-6 text-foreground">{formatMethodLabel(m.method)}</Td>
+                            <Td className="px-6" numeric>
                               {formatArs(m.total)}
-                            </td>
-                          </tr>
+                            </Td>
+                          </Tr>
                         ))}
                       </tbody>
                     </table>

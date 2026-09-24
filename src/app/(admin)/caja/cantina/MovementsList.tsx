@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Receipt } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
+import { Th, Td, Tr } from '@/components/ui/table'
 import { SectionHeader } from '@/components/admin/SectionHeader'
 import type { CashFlowListRow } from '@/modules/cashflow/cashflow.types'
 import { SignedAmount } from './SignedAmount'
@@ -83,24 +84,18 @@ export function MovementsList({
           <table className="w-full min-w-[420px] text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="w-14 py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Hora
-                </th>
-                <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Movimiento
-                </th>
-                <th className="py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Monto
-                </th>
+                <Th className="w-14">Hora</Th>
+                <Th>Movimiento</Th>
+                <Th align="right">Monto</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {cashFlows.map((cf) => (
-                <tr key={cf.id} className="transition-colors hover:bg-accent/50">
-                  <td className="py-2 pr-3 align-top tabular-nums text-muted-foreground">
+                <Tr key={cf.id}>
+                  <Td className="align-top tabular-nums text-muted-foreground">
                     {formatTimeArt(cf.occurredAt)}
-                  </td>
-                  <td className="max-w-0 py-2 pr-3">
+                  </Td>
+                  <Td className="max-w-0">
                     <p className="truncate text-foreground">
                       {movementTitle(cf.description)}
                       {cf.counterpartName != null && (
@@ -111,11 +106,11 @@ export function MovementsList({
                       <CategoryBadge type={cf.type} category={cf.category} />
                       {METHOD_LABELS[cf.method] ?? cf.method}
                     </p>
-                  </td>
-                  <td className="whitespace-nowrap py-2 text-right align-top">
+                  </Td>
+                  <Td align="right" className="whitespace-nowrap align-top">
                     <SignedAmount type={cf.type} amount={cf.amount} />
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
             </tbody>
           </table>

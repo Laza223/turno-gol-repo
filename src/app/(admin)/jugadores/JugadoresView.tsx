@@ -221,7 +221,7 @@ export function JugadoresView({
                   </Th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {clients.map((c) => (
                   <Tr key={c.key}>
                     <Td>

@@ -434,15 +434,15 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await takeShot(adminPage, 'admin', 'reservas_cancelacion_modal')
     await adminPage.keyboard.press('Escape')
 
-    // Caja — Vender (raíz) y Cuentas (el libro del día)
-    await adminPage.goto('/caja')
+    // Caja — Vender vive en Hoy (columna desde 1280px) y Cuentas es el libro del día.
+    await adminPage.goto('/dashboard')
     await takeShot(adminPage, 'admin', 'caja')
 
     await adminPage.goto('/caja/cuentas')
     await takeShot(adminPage, 'admin', 'caja_cuentas')
 
     // Caja Registrar Movimiento modal (cuelga del encabezado de Cuentas)
-    await adminPage.getByRole('button', { name: /agregar movimiento/i }).click()
+    await adminPage.getByRole('button', { name: /registrar movimiento/i }).click()
     await expect(adminPage.getByRole('dialog')).toBeVisible()
     await takeShot(adminPage, 'admin', 'caja_registrar_movimiento_modal')
     await adminPage.keyboard.press('Escape')

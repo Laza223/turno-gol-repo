@@ -38,8 +38,9 @@ export type SettleTabActionResult =
 export type CancelTabActionResult = { success: true } | { success: false; error: string }
 
 function revalidateCaja(): void {
-  // Vender (catálogo y fiados abiertos), Cuentas (el cobro entra al diario y a
-  // los totales del día) y Productos (el stock bajó).
+  // Cuentas (el cobro entra al diario y a los totales del día) y Productos (el
+  // stock bajó). `/caja` ya solo redirige; Hoy, que es donde se vende, se
+  // refresca con el `router.refresh()` que hace el ticket después de cada venta.
   revalidatePath('/caja')
   revalidatePath('/caja/cuentas')
   revalidatePath('/caja/productos')

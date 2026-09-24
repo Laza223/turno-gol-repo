@@ -221,10 +221,10 @@ export function RegisterMovementModal({
                 <p className="text-xs text-muted-foreground">
                   ¿Vendiste algo de la cantina?{' '}
                   <Link
-                    href="/caja"
+                    href="/dashboard"
                     className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
                   >
-                    Cargalo arriba
+                    Vendelo desde Hoy
                   </Link>{' '}
                   para que descuente el stock.
                 </p>

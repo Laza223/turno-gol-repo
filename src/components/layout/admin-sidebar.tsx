@@ -81,7 +81,14 @@ const NAV_ITEMS: NavItem[] = [
     tourId: 'tour-grilla',
     match: (p) => p === '/grilla' || p === '/reservas' || p.startsWith('/reservas/'),
   },
-  { href: '/caja', icon: Banknote, label: 'Caja' },
+  // Directo a Cuentas: `/caja` solo redirige desde que Vender se fue a Hoy
+  // (mismo criterio que CONFIG_ITEM, un render de servidor menos).
+  {
+    href: '/caja/cuentas',
+    icon: Banknote,
+    label: 'Caja',
+    match: (p) => p === '/caja' || p.startsWith('/caja/'),
+  },
   {
     href: '/jugadores',
     icon: Contact,

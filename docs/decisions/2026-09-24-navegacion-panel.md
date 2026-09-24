@@ -1,6 +1,6 @@
 # Navegación del panel: una pregunta por pantalla, y Hoy no se toca
 
-**Fecha**: 2026-09-24 · **Estado**: aprobada por el dueño; paso 1 implementado · **Decide**: el dueño
+**Fecha**: 2026-09-24 · **Estado**: aprobada por el dueño; paso 1 mergeado (#363), paso 2 implementado · **Decide**: el dueño
 (qué) + esta sesión (cómo) · **Marco**: refinamiento del panel sobre el estilo actual (`DESIGN.md`),
 sin tocar lógica, Server Actions, consultas ni schema.
 
@@ -53,17 +53,16 @@ Contado en el código al 2026-09-24:
   grilla queda como está"): deja de valer con el punto 7.
 - **`2026-09-12-rediseno-caja-tres-destinos.md`**: Caja pasa de tres destinos a dos (punto 5).
 
-## Pendiente: REQUIERE INPUT
+## Botones de cada fila de Reservas (decidido el 2026-09-24)
 
-El plan también sacaba los botones de cada fila de Reservas (Cobrar, Ausente, Cancelar, Confirmar
-pago), con el argumento de que "la fila abre el turno y ahí están". **Es falso para "Confirmar
-pago"**: confirmar a mano una seña pendiente (`confirmDepositPaymentAction`) solo se puede desde esos
-botones (`QuickActions.tsx`). Ni la página del turno ni el modal de Hoy lo ofrecen. Los botones
-quedan como están hasta que el dueño elija:
+El plan sacaba los botones de cada fila de Reservas (Cobrar, Ausente, Cancelar, Confirmar pago)
+porque "la fila abre el turno y ahí están". Eso era falso para "Confirmar pago": confirmar a mano
+una seña pendiente (`confirmDepositPaymentAction`) solo se podía desde esos botones
+(`QuickActions.tsx`). Ni la página del turno ni el modal de Hoy lo ofrecían.
 
-1. dejarlos;
-2. sacar Cobrar, Ausente y Cancelar, y dejar solo Confirmar pago en la fila;
-3. mudar Confirmar pago a la página del turno y recién ahí sacar todos los botones de la fila.
+**Decisión del dueño (opción c, dentro del paso 3):** la seña se cobra desde el modal y desde la
+página del turno, con un botón **"Cobrar seña $X"** en la parte de cobro. Recién entonces se sacan
+los botones de las filas de Reservas.
 
 ## Orden de trabajo
 
@@ -72,8 +71,9 @@ Un PR por paso, de menos a más riesgo:
 1. Reservas es una lista y el "Volver" vuelve a donde estabas (puntos 3 y 4).
 2. Caja sin Vender (puntos 5 y 6). En ese PR se actualizan `.claude/rules/caja.md` y `CLAUDE.md`
    ("Caja son 3 destinos").
-3. La Grilla abre el modal de Hoy (punto 7). Hay que revisar ahí cómo se lee en el modal un turno de
-   otro día, porque el modal se hizo pensando en esta noche.
+3. La Grilla abre el modal de Hoy (punto 7). Además, "Cobrar seña $X" en el modal y en la página
+   del turno, y se sacan los botones de las filas de Reservas (ver arriba). Hay que revisar ahí cómo
+   se lee en el modal un turno de otro día, porque el modal se hizo pensando en esta noche.
 
 ## Lo que no se toca
 

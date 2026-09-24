@@ -137,7 +137,8 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
     expect(espacios).toEqual([
       '/dashboard',
       '/grilla',
-      '/caja',
+      // Caja apunta a Cuentas: `/caja` solo redirige desde que Vender se fue a Hoy.
+      '/caja/cuentas',
       '/jugadores',
       // Canchas salió de Configuración el 2026-09-10: espacio propio del menú.
       '/canchas',

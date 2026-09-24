@@ -16,7 +16,7 @@ import { randomUUID } from 'node:crypto'
 // Routes that must render without horizontal scroll on mobile.
 const ROUTES = [
   '/grilla',
-  '/caja',
+  '/caja', // redirect a /caja/cuentas (Vender se fue a /dashboard) — sigue midiendo la pantalla real
   '/reservas',
   '/canchas',
   // /settings/equipo siempre tiene datos (el admin seedeado); /abonados con datos se
@@ -225,8 +225,13 @@ test.describe('Admin mobile smoke', () => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
     try {
-      // La venta vive en la raíz de /caja ("Vender").
-      await page.goto('/caja', { waitUntil: 'networkidle' })
+      // La venta vive en Hoy. Debajo de 1280px (Pixel 5: 393px) es el diálogo
+      // que abre el botón "Vender" de la barra superior (HoyHeaderSlot) — en el
+      // teléfono ese botón muestra solo el ícono, con nombre accesible "Vender".
+      await page.goto('/dashboard', { waitUntil: 'networkidle' })
+      await page.getByRole('button', { name: 'Vender', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Vender' })
+      await expect(dialog).toBeVisible()
 
       // boundingBox con poll: el router.refresh() tras guardar puede detachar el
       // nodo entre el toBeVisible y la medición (boundingBox → null transitorio).
@@ -244,24 +249,23 @@ test.describe('Admin mobile smoke', () => {
       }
 
       // Botón de producto ≥44x44 (el admin vende parado en la barra, desde el celular).
-      const product = page
+      const product = dialog
         .getByTestId('canteen-catalog')
         .getByRole('button', { name: /^Agua/ })
         .first()
       await expect(product).toBeVisible()
       await measure(product, 'producto Agua')
 
-      // El tap agrega al ticket directo, sin diálogo. En el teléfono el panel
-      // del Ticket no se renderiza (`hidden md:flex`): lo reemplaza la barra de
-      // cobro pegada abajo, y ahí están los controles que hay que medir. La
-      // cantidad se sube tocando la tarjeta de nuevo, no con un +/−.
+      // El tap agrega al ticket directo, sin diálogo intermedio. En `layout="dialog"`
+      // el panel del Ticket SÍ se renderiza (a diferencia de `layout="page"` en el
+      // teléfono): ahí están los controles que hay que medir. La cantidad se sube
+      // tocando la tarjeta de nuevo, no con un +/−.
       await product.click()
-      await expect(page.getByText('×1')).toBeVisible()
+      await expect(dialog.getByText('×1')).toBeVisible()
 
-      await measure(page.getByRole('button', { name: 'Efectivo' }), 'Efectivo')
-      await measure(page.getByRole('button', { name: /^Cobrar/ }), 'Cobrar')
-      await measure(page.getByRole('button', { name: 'Fiado' }), 'Fiado')
-      await measure(page.getByRole('button', { name: 'Vaciar' }), 'Vaciar')
+      await measure(dialog.getByRole('button', { name: 'Efectivo' }), 'Efectivo')
+      await measure(dialog.getByRole('button', { name: /^Cobrar/ }), 'Cobrar')
+      await measure(dialog.getByRole('button', { name: 'Anotar como fiado' }), 'Anotar como fiado')
     } finally {
       await ctx.close()
       await supabase.from('canteen_products').delete().eq('id', productId)

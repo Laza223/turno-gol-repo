@@ -53,11 +53,14 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      // Cantina es la vista raíz de /caja (eliminación de "Caja del día").
-      await page.goto('/caja')
-      await expect(page.getByRole('heading', { name: 'Cantina' })).toBeVisible({ timeout: 15_000 })
+      // Vender vive en Hoy: columna fija desde 1280px (VenderRail, viewport de
+      // chromium), h2 "Vender" (src/app/(admin)/dashboard/_components/VenderRail.tsx:30-32).
+      await page.goto('/dashboard')
+      await expect(page.getByRole('heading', { name: 'Vender', level: 2 })).toBeVisible({
+        timeout: 15_000,
+      })
       // Ticket vacío: hint de arranque de TicketPanel (Fase 3).
-      await expect(page.getByText('Tocá un producto para empezar')).toBeVisible()
+      await expect(page.getByText('Buscá o tocá un producto para empezar')).toBeVisible()
 
       // Retry el click: primer hit a esta ruta con productos reales (214/216
       // corren con canteen_products vacío) — en dev local el primer click a
@@ -83,11 +86,14 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
 
       await page.getByRole('button', { name: /^Cobrar/ }).click()
 
-      await expect(page.getByText(/Venta registrada/)).toBeVisible({
+      // `.first()`: el toast existe dos veces (visible + región aria-live).
+      await expect(page.getByText(/Venta registrada/).first()).toBeVisible({
         timeout: 10_000,
       })
       // Éxito: el ticket se vacía (vuelve el hint) — listo para la próxima venta.
-      await expect(page.getByText('Tocá un producto para empezar')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('Buscá o tocá un producto para empezar')).toBeVisible({
+        timeout: 10_000,
+      })
 
       // ── DB assertion: cash_flow ──────────────────────────────────────────
       const cfRows = await runSql<{

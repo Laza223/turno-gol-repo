@@ -177,6 +177,16 @@ export const PrimeraReserva: Story = {
 
 export const DetalleDeReserva: Story = {
   name: 'Click en una reserva abre su popover de detalle',
+  // Los fixtures caen en el día de hoy y la story mira el 2026-03-14: la grilla
+  // no abre el modal de un turno de otro día (es lo que pasa al reprogramarlo),
+  // así que acá los turnos tienen que ser del día que se muestra.
+  beforeEach: () => {
+    mocked(useBookingRealtime).mockReturnValue({
+      bookings: saturdayAfternoonGridBookings().map((b) => ({ ...b, date: '2026-03-14' })),
+      status: 'SUBSCRIBED',
+      refetch: fn(async () => {}),
+    })
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const slot = canvas.getByRole('button', { name: /Cancha 1 15:00–16:00/ })

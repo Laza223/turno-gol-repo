@@ -2,36 +2,23 @@
 
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
-import dynamic from 'next/dynamic'
-import Link from 'next/link'
-import { CheckCircle2, CupSoda, MoreHorizontal, Trash2, Trophy, UserX } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
-import { CobrarSenaButton } from '@/components/booking/CobrarSenaButton'
 import { useSlotCharges } from '@/components/booking/slot-panel/use-slot-charges'
 import { SlotPriceSummary } from '@/components/booking/slot-panel/SlotPriceSummary'
-import { SlotCancelDialog } from '@/components/booking/slot-panel/SlotCancelDialog'
 import { slotGates } from '@/components/booking/slot-panel/slot-gates'
 import type { RenderCanteenDialog, SlotPanelActions } from '@/components/booking/slot-panel/actions'
-import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
-import { hasEndedAt, startLabel } from '@/lib/dashboard/today-board'
+import { hasEndedAt, whenLabel } from '@/lib/dashboard/today-board'
 import { rowDisplayName } from '@/lib/dashboard/day-bookings'
-import { relativeTimeEs } from '@/lib/format'
-import { TONE_BADGE } from '@/lib/status-tone'
-import { cn } from '@/lib/utils'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtPricingData } from '@/modules/courts/court.types'
-import { HoyChargeSection } from './HoyChargeSection'
+import { HoyChargeModalHeader } from './HoyChargeModalHeader'
+import { HoyChargeModalMenu } from './HoyChargeModalMenu'
+import { HoyChargeModalPaymentStatus } from './HoyChargeModalPaymentStatus'
+import { HoyChargeModalActions } from './HoyChargeModalActions'
+import { HoyChargeModalDialogs } from './HoyChargeModalDialogs'
 
 /**
  * El turno que recibe el modal desde la Grilla no siempre trae los instantes
@@ -41,19 +28,7 @@ import { HoyChargeSection } from './HoyChargeSection'
  * quedan opcionales (mismo shape que `GridBooking`) y el modal cae a los
  * fallbacks documentados en cada uso.
  */
-type ChargeBooking = GridBooking
-
-// Se cargan recién al abrirlos: cobrar es de todos los días, mover o corregir
-// un turno es de una vez por semana.
-const BookingRescheduleDialog = dynamic(
-  () =>
-    import('@/components/booking/BookingRescheduleDialog').then((m) => m.BookingRescheduleDialog),
-  { ssr: false },
-)
-const BookingEditDialog = dynamic(
-  () => import('@/components/booking/BookingEditDialog').then((m) => m.BookingEditDialog),
-  { ssr: false },
-)
+export type ChargeBooking = GridBooking
 
 export type HoyCourt = {
   id: string
@@ -62,9 +37,6 @@ export type HoyCourt = {
   capacity: number
   pricing: CourtPricingData
 }
-
-const ACTION_BUTTON =
-  'flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-60 md:h-10'
 
 /**
  * El turno de Hoy, en un modal: cobrar sin salir de la pantalla del mostrador.
@@ -204,23 +176,9 @@ export function HoyChargeModal({
   // "Terminó hace 4 min" / "Empieza en 25 min" / "En juego": lo que el mostrador
   // necesita saber para decidir, en una línea. Sin instantes (fallback de la
   // Grilla) no se muestra el renglón — no se inventa una hora relativa.
-  const when =
-    typeof booking.startsAtMs === 'number' && typeof booking.endsAtMs === 'number'
-      ? (() => {
-          const startsIn = startLabel(
-            { startsAtMs: booking.startsAtMs!, endsAtMs: booking.endsAtMs! },
-            nowMs,
-          )
-          return hasEnded
-            ? `Terminó ${relativeTimeEs(new Date(booking.endsAtMs!).toISOString(), nowMs)}`
-            : startsIn === 'ahora'
-              ? 'En juego'
-              : startsIn
-        })()
-      : null
+  const when = whenLabel(booking, hasEnded, nowMs)
 
   const hasMenu = gates.canEdit || gates.canReschedule || gates.canCancel
-  const hasActions = gates.canSellCanteen || gates.canMarkNoShow
   // "Cobrar seña $X" (paso 3, docs/decisions/2026-09-24-navegacion-panel.md):
   // única puerta a `confirmDepositPaymentAction` desde que se retiran los
   // botones de las filas de /reservas.
@@ -279,305 +237,98 @@ export function HoyChargeModal({
             if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
           }}
         >
-          <div className="border-b border-border p-5 pr-24">
-            <DialogTitle className="font-display text-lg leading-tight">{name}</DialogTitle>
-            <p className="mt-1.5 text-xs tabular-nums text-muted-foreground">
-              {courtName} · {booking.timeStart}–{booking.timeEnd}
-              {when ? ` · ${when}` : ''}
-            </p>
-            {/* El badge explica por qué NO hay cobro (esperando seña, ausente, hora
-                de torneo): con cobro disponible, el renglón de arriba ya alcanza. */}
-            {!mode && (
-              <div className="pt-2">
-                <StatusBadge
-                  visual={{ icon: visual.icon, label: visual.label, tone: visual.tone }}
-                />
-              </div>
-            )}
-          </div>
+          <HoyChargeModalHeader
+            name={name}
+            courtName={courtName}
+            timeStart={booking.timeStart}
+            timeEnd={booking.timeEnd}
+            when={when}
+            showBadge={!mode}
+            visual={visual}
+          />
 
           {hasMenu && (
-            // A la izquierda del ✕ del diálogo (right-4). `modal={false}` por el
-            // mismo motivo que el resto del repo: con el default, Radix marca todo
-            // el árbol como aria-hidden, incluido el trigger.
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                disabled={isPending}
-                aria-label="Más acciones del turno"
-                className="absolute right-11 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-              >
-                <MoreHorizontal aria-hidden className="h-5 w-5" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {gates.canEdit && (
-                  <DropdownMenuItem onSelect={() => setEditOpen(true)}>Editar</DropdownMenuItem>
-                )}
-                {gates.canReschedule && (
-                  <DropdownMenuItem onSelect={() => setRescheduleOpen(true)}>
-                    Reprogramar
-                  </DropdownMenuItem>
-                )}
-                {gates.canCancel && (
-                  <DropdownMenuItem
-                    onSelect={() => setCancelOpen(true)}
-                    className="text-red-700 focus:text-red-800 dark:text-red-300"
-                  >
-                    Cancelar reserva
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <HoyChargeModalMenu
+              gates={gates}
+              isPending={isPending}
+              onEdit={() => setEditOpen(true)}
+              onReschedule={() => setRescheduleOpen(true)}
+              onCancel={() => setCancelOpen(true)}
+            />
           )}
 
           <div className="flex flex-col gap-4 p-5">
             <SlotPriceSummary booking={booking} capacity={court?.capacity} />
 
-            {mode ? (
-              <HoyChargeSection
-                booking={booking}
-                mode={mode}
-                capacity={court?.capacity}
-                lines={lines}
-                // F-010 (QA prod 2026-08-17): sin esto, corregir el monto dejaba el
-                // error de sobrecobro viejo en pantalla, contradiciendo lo que el
-                // usuario ve mientras toca plata.
-                onLinesChange={(next) => {
-                  setError(null)
-                  setLines(next)
-                }}
-                error={error}
-                isPending={isPending}
-                locked={locked}
-                onSubmit={submitCharge}
-                onPartialCharge={submitPartialCharge}
-                onTeamCharge={submitTeamCharge}
-                retryTotal={retryTotal}
-                onRetry={retryUnconfirmedCharge}
-              />
-            ) : settled ? (
-              <>
-                <p
-                  role="status"
-                  className={cn(
-                    'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold',
-                    TONE_BADGE.success,
-                  )}
-                >
-                  <CheckCircle2 aria-hidden className="h-4 w-4" />
-                  Cobrado ✓
-                </p>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={locked}
-                  className="h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
-                >
-                  Listo
-                </button>
-              </>
-            ) : canConfirmDeposit ? (
-              <CobrarSenaButton
-                bookingId={booking.id}
-                depositAmount={booking.depositAmount ?? 0}
-                confirmDepositPaymentAction={actions.confirmDepositPaymentAction!}
-                onSuccess={onMutated}
-                disabled={locked}
-                className="w-full"
-              />
-            ) : null}
+            <HoyChargeModalPaymentStatus
+              booking={booking}
+              mode={mode}
+              capacity={court?.capacity}
+              lines={lines}
+              // F-010 (QA prod 2026-08-17): sin esto, corregir el monto dejaba el
+              // error de sobrecobro viejo en pantalla, contradiciendo lo que el
+              // usuario ve mientras toca plata.
+              onLinesChange={(next) => {
+                setError(null)
+                setLines(next)
+              }}
+              error={error}
+              isPending={isPending}
+              locked={locked}
+              onSubmit={submitCharge}
+              onPartialCharge={submitPartialCharge}
+              onTeamCharge={submitTeamCharge}
+              retryTotal={retryTotal}
+              onRetry={retryUnconfirmedCharge}
+              settled={settled}
+              onClose={onClose}
+              canConfirmDeposit={canConfirmDeposit}
+              confirmDepositPaymentAction={actions.confirmDepositPaymentAction}
+              onMutated={onMutated}
+              isTournament={isTournament}
+            />
 
-            {isTournament && (
-              <>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Esta hora la ocupa un torneo. La plata del torneo entra por la inscripción, no por
-                  turno — se gestiona desde la pantalla del torneo.
-                </p>
-                {booking.tournamentId && (
-                  <Link
-                    href={`/torneos/${booking.tournamentId}`}
-                    className={cn(
-                      ACTION_BUTTON,
-                      'flex-none border-border bg-card text-foreground hover:bg-accent',
-                    )}
-                  >
-                    <Trophy aria-hidden className="h-4 w-4" />
-                    Ir al torneo
-                  </Link>
-                )}
-              </>
-            )}
-
-            {hasActions && (
-              <div className="flex gap-2 border-t border-border pt-4">
-                {gates.canSellCanteen && (
-                  <button
-                    type="button"
-                    onClick={() => setCanteenOpen(true)}
-                    disabled={locked}
-                    className={cn(
-                      ACTION_BUTTON,
-                      'border-border bg-card text-foreground hover:bg-accent',
-                    )}
-                  >
-                    <CupSoda aria-hidden className="h-4 w-4" />
-                    Cantina
-                  </button>
-                )}
-                {gates.canMarkNoShow && (
-                  <button
-                    type="button"
-                    onClick={() => setNoShowOpen(true)}
-                    disabled={locked}
-                    className={cn(
-                      ACTION_BUTTON,
-                      'border-destructive/40 bg-destructive/5 text-red-700 hover:bg-destructive/10 dark:text-red-300',
-                    )}
-                  >
-                    <UserX aria-hidden className="h-4 w-4" />
-                    Marcar ausente
-                  </button>
-                )}
-              </div>
-            )}
-
-            {gates.canReleaseBlock && (
-              <div className="border-t border-border pt-4">
-                <button
-                  type="button"
-                  onClick={() => setReleaseBlockOpen(true)}
-                  disabled={locked}
-                  className={cn(
-                    ACTION_BUTTON,
-                    'w-full border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10',
-                  )}
-                >
-                  <Trash2 aria-hidden className="h-4 w-4" />
-                  Liberar el bloqueo
-                </button>
-              </div>
-            )}
-
-            {gates.canRevertNoShow && (
-              <div className="flex flex-col border-t border-border pt-4">
-                <button
-                  type="button"
-                  onClick={revertNoShow}
-                  disabled={locked}
-                  className={cn(
-                    ACTION_BUTTON,
-                    'border-border bg-card font-medium text-foreground hover:bg-accent',
-                  )}
-                >
-                  Deshacer la ausencia
-                </button>
-                {/* En `no_show` no hay sección de cobro que pinte `error`: es el
-                    único lugar del modal que lo muestra (mismo criterio que
-                    `SlotActionButtons.tsx`). */}
-                {error && (
-                  <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-300">
-                    {error}
-                  </p>
-                )}
-              </div>
-            )}
+            <HoyChargeModalActions
+              gates={gates}
+              locked={locked}
+              error={error}
+              onOpenCanteen={() => setCanteenOpen(true)}
+              onOpenNoShow={() => setNoShowOpen(true)}
+              onOpenReleaseBlock={() => setReleaseBlockOpen(true)}
+              onRevertNoShow={revertNoShow}
+            />
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Los diálogos se MONTAN al abrirse: el catálogo de cantina y los huecos
-          libres se piden una vez por apertura, con el estado limpio. */}
-      {gates.canSellCanteen &&
-        canteenOpen &&
-        renderCanteenDialog?.({
-          open: true,
-          onOpenChange: setCanteenOpen,
-          bookingId: booking.id,
-          displayName: name,
-        })}
-
-      {gates.canReschedule &&
-        rescheduleOpen &&
-        actions.listRescheduleSlotsAction &&
-        actions.rescheduleBookingAction && (
-          <BookingRescheduleDialog
-            open
-            onOpenChange={setRescheduleOpen}
-            booking={booking}
-            courts={courts}
-            listSlotsAction={actions.listRescheduleSlotsAction}
-            rescheduleAction={actions.rescheduleBookingAction}
-            onSuccess={() => {
-              setRescheduleOpen(false)
-              setLastId(null)
-              onMutated()
-            }}
-          />
-        )}
-
-      {gates.canEdit &&
-        editOpen &&
-        actions.editBookingAction &&
-        actions.getBookingEditDetailAction && (
-          <BookingEditDialog
-            open
-            onOpenChange={setEditOpen}
-            booking={booking}
-            dayBookings={dayBookings}
-            daySlots={daySlots}
-            pricing={court?.pricing}
-            getDetailAction={actions.getBookingEditDetailAction}
-            editAction={actions.editBookingAction}
-            onSuccess={() => {
-              setEditOpen(false)
-              setLastId(null)
-              onMutated()
-            }}
-          />
-        )}
-
-      <ConfirmDialog
-        open={noShowOpen}
-        onOpenChange={setNoShowOpen}
-        title="Marcar como ausente"
-        description={`${name} no se presentó a su turno de ${booking.timeStart}.`}
-        consequences={NO_SHOW_CONSEQUENCES}
-        confirmLabel="Marcar ausente"
-        cancelLabel="Volver"
-        variant="destructive"
-        onConfirm={onConfirmNoShow}
+      <HoyChargeModalDialogs
+        booking={booking}
+        name={name}
+        hasEnded={hasEnded}
+        courts={courts}
+        court={court}
+        dayBookings={dayBookings}
+        daySlots={daySlots}
+        gates={gates}
+        actions={actions}
+        renderCanteenDialog={renderCanteenDialog}
+        canteenOpen={canteenOpen}
+        setCanteenOpen={setCanteenOpen}
+        rescheduleOpen={rescheduleOpen}
+        setRescheduleOpen={setRescheduleOpen}
+        editOpen={editOpen}
+        setEditOpen={setEditOpen}
+        noShowOpen={noShowOpen}
+        setNoShowOpen={setNoShowOpen}
+        cancelOpen={cancelOpen}
+        setCancelOpen={setCancelOpen}
+        releaseBlockOpen={releaseBlockOpen}
+        setReleaseBlockOpen={setReleaseBlockOpen}
+        onMutated={onMutated}
+        setLastId={setLastId}
+        onConfirmNoShow={onConfirmNoShow}
+        onConfirmReleaseBlock={onConfirmReleaseBlock}
       />
-
-      {actions.cancelBookingAction && (
-        <SlotCancelDialog
-          open={cancelOpen}
-          onOpenChange={setCancelOpen}
-          booking={booking}
-          label={name}
-          hasEnded={hasEnded}
-          cancelAction={actions.cancelBookingAction}
-          onCancelled={() => {
-            setLastId(null)
-            onMutated()
-          }}
-        />
-      )}
-
-      {actions.releaseBlockAction && (
-        <ConfirmDialog
-          open={releaseBlockOpen}
-          onOpenChange={setReleaseBlockOpen}
-          title="Liberar el bloqueo"
-          description={`${name}, ${booking.timeStart}–${booking.timeEnd}. La cancha queda libre para reservar.`}
-          variant="destructive"
-          confirmLabel="Liberar"
-          cancelLabel="Volver"
-          consequences={[
-            'El bloqueo se elimina: no queda como reserva cancelada.',
-            'Si te equivocaste de horario, volvé a bloquear con el horario correcto.',
-          ]}
-          onConfirm={onConfirmReleaseBlock}
-        />
-      )}
     </>
   )
 }

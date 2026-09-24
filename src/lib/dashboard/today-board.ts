@@ -10,6 +10,7 @@
  * hora dé la respuesta equivocada (`slotHasPassed`, operating-day.ts).
  */
 import type { GridBooking } from '@/lib/booking/grid-cells'
+import { relativeTimeEs } from '@/lib/format'
 
 /** Un turno del día con sus instantes físicos en milisegundos. */
 export type BoardBooking = GridBooking & { startsAtMs: number; endsAtMs: number }
@@ -127,4 +128,24 @@ export function startLabel(
   const minutes = Math.ceil((booking.startsAtMs - nowMs) / 60_000)
   if (minutes > 0 && minutes <= 60) return `en ${minutes} min`
   return null
+}
+
+/**
+ * "Terminó hace 4 min" / "Empieza en 25 min" / "En juego": lo que el
+ * mostrador necesita saber para decidir, en una línea (`HoyChargeModal`). Sin
+ * instantes físicos (fallback de la Grilla, ver `ChargeBooking`) no hay
+ * renglón — no se inventa una hora relativa.
+ */
+export function whenLabel(
+  booking: { startsAtMs?: number | null; endsAtMs?: number | null },
+  hasEnded: boolean,
+  nowMs: number,
+): string | null {
+  if (typeof booking.startsAtMs !== 'number' || typeof booking.endsAtMs !== 'number') return null
+  const startsIn = startLabel({ startsAtMs: booking.startsAtMs, endsAtMs: booking.endsAtMs }, nowMs)
+  return hasEnded
+    ? `Terminó ${relativeTimeEs(new Date(booking.endsAtMs).toISOString(), nowMs)}`
+    : startsIn === 'ahora'
+      ? 'En juego'
+      : startsIn
 }

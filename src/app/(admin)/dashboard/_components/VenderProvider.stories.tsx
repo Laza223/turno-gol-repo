@@ -137,6 +137,40 @@ export const NoSeCierraConUnaVentaSinConfirmar: Story = {
   },
 }
 
+/**
+ * Esc con la venta todavía saliendo tampoco cierra: desmontaría el ticket antes de saber
+ * si la red se cortó, y si se corta no queda clave para reintentar. Es además lo que
+ * cierra la carrera de la story anterior: el aviso de reintento sale en una transición y
+ * el diálogo se enteraba por un effect, un par de tareas DESPUÉS de pintarlo — un Esc en
+ * ese hueco cerraba (pasó en CI). Trabado desde el click, no hay hueco.
+ */
+export const NoSeCierraConLaVentaEnVuelo: Story = {
+  args: {
+    sellTicketAction: fn(
+      () =>
+        new Promise<SellTicketActionResult>((_, reject) => {
+          rejectInFlight = reject
+        }),
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const product = PRODUCTS[0]!
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Abrir venta' }))
+    const dialog = await openDialog()
+    await userEvent.click(dialog.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
+    await userEvent.click(dialog.getByRole('button', { name: /^Cobrar/ }))
+    await expect(dialog.getByRole('button', { name: /Cobrando/ })).toBeInTheDocument()
+
+    await userEvent.keyboard('{Escape}')
+    await expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    rejectInFlight?.(new Error('Failed to fetch'))
+    await waitFor(() => expect(dialog.getByRole('alert')).toHaveTextContent(/no sabemos si/i))
+    await expect(dialog.getByRole('button', { name: /Reintentar cobro/ })).toBeVisible()
+  },
+}
+let rejectInFlight: ((err: Error) => void) | undefined
+
 /** Tocar el fondo nunca cierra: un toque de más no puede borrar un ticket armado. */
 export const TocarAfueraNoCierra: Story = {
   play: async ({ canvasElement }) => {

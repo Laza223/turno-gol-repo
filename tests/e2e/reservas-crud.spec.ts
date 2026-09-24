@@ -148,21 +148,20 @@ test.describe('reservas — happy: mark completed', () => {
       // The booking must be confirmed for the action buttons to appear.
       await expect(page.getByText('Confirmada')).toBeVisible()
 
-      // "Marcar completada" ya NO completa de una: desde Fase 3 abre
-      // `CompleteBookingDialog` (Completar + Cobrar). Este test venía midiendo
-      // el flujo viejo y fallaba esperando el badge que nunca llegaba — no era
-      // un flake, era un contrato desactualizado.
+      // "Marcar completada" ya NO completa de una: abre `CompleteBookingDialog`
+      // (solo cambio de estado, sin cobro — el cobro se mudó a "Cobros de
+      // turno"). Este test venía midiendo el flujo viejo y fallaba esperando
+      // el badge que nunca llegaba — no era un flake, era un contrato
+      // desactualizado.
       await page.getByRole('button', { name: 'Marcar completada' }).click()
       await expect(page.getByRole('heading', { name: 'Completar turno' })).toBeVisible({
         timeout: 15_000,
       })
 
       // El label del submit depende de si queda saldo: con `price_snapshot`
-      // 10000 y sin seña queda deuda, pero el regex cubre las tres variantes
+      // 10000 y sin seña queda deuda, pero el regex cubre las dos variantes
       // para no atarse a esa aritmética.
-      await page
-        .getByRole('button', { name: /^Completar (con deuda|y cobrar|sin cobrar)$/ })
-        .click()
+      await page.getByRole('button', { name: /^Completar( con deuda)?$/ }).click()
 
       // After router.refresh() the status badge should update to "Jugada" (§8.5).
       await expect(page.getByText('Jugada')).toBeVisible({ timeout: 15_000 })

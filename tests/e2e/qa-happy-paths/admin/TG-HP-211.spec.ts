@@ -2,16 +2,15 @@
  * TG-HP-211 — Marcar COMPLETADA (jugada).
  * Rol: Admin/manager (requireOperatorStaff). Prereq: reserva confirmed cuyo
  * horario de FIN ya pasó (server valida BookingNotYetEndedError si no).
- * Desde la Fase 3 "Marcar completada" abre `CompleteBookingDialog` ("Completar
- * turno") y la completación sale por `completeAndChargeBookingAction`, que en la
- * misma transacción registra el cobro del saldo como `cash_flows`. Con el seed
- * (price_snapshot 10000, sin seña) el diálogo precarga un cobro en efectivo por
- * el total: el submit es "Completar y cobrar" y deja un ingreso de $100.
+ * "Marcar completada" abre `CompleteBookingDialog` ("Completar turno"), que
+ * SOLO cambia el estado (el cobro se mudó a "Cobros de turno", el mismo
+ * componente que Hoy — refactor/extract-cobro). La completación sale por
+ * `completeAndChargeBookingAction` con `charges: []`: con el seed
+ * (price_snapshot 10000, sin seña) queda saldo pendiente, así que el diálogo
+ * muestra el aviso de deuda y el submit es "Completar con deuda" — sin
+ * `cash_flows` generado.
  * Evidencia: src/app/(admin)/reservas/actions.ts (completeAndChargeBookingAction),
  * src/app/(admin)/reservas/CompleteBookingDialog.tsx.
- * Cleanup: el cash_flow referencia al booking (FK NO ACTION), así que se borra
- * antes que el booking — si no, el DELETE falla en silencio y el turno de ayer
- * queda vivo en la cancha E2E.
  */
 import { subDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
@@ -67,9 +66,10 @@ test.describe('TG-HP-211 — marcar completada', () => {
       })
 
       // Label exacto a propósito (no el regex de reservas-crud): con el seed de
-      // arriba no queda deuda, y si cambia la aritmética del saldo este test
-      // tiene que enterarse.
-      await page.getByRole('button', { name: 'Completar y cobrar', exact: true }).click()
+      // arriba (price_snapshot 10000, sin seña, sin cobros) queda deuda, y si
+      // cambia la aritmética del saldo este test tiene que enterarse.
+      await expect(page.getByText(/Queda una deuda de/)).toBeVisible()
+      await page.getByRole('button', { name: 'Completar con deuda', exact: true }).click()
 
       await expect(page.locator('dd').filter({ hasText: 'Jugada' })).toBeVisible({
         timeout: 10_000,
@@ -87,16 +87,14 @@ test.describe('TG-HP-211 — marcar completada', () => {
       expect(error).toBeNull()
       expect(row?.status).toBe('completed')
 
-      // El cobro precargado entra a caja en la misma transacción.
+      // "Completar turno" ya no cobra: sin líneas de cobro, no hay cash_flow.
       const { data: flows, error: flowsError } = await supabase
         .from('cash_flows')
         .select('type, category, amount, method')
         .eq('booking_id', bookingId)
 
       expect(flowsError).toBeNull()
-      expect(flows).toEqual([
-        { type: 'income', category: 'booking', amount: 10000, method: 'cash' },
-      ])
+      expect(flows).toEqual([])
 
       await writeEvidence('TG-HP-211', {
         status: 'pass',
@@ -104,12 +102,10 @@ test.describe('TG-HP-211 — marcar completada', () => {
         finalStatus: row?.status,
         cashFlows: flows,
         notes:
-          'Completado vía CompleteBookingDialog ("Completar y cobrar"), cobro en efectivo por el saldo.',
+          'Completado vía CompleteBookingDialog ("Completar con deuda"), sin cobro — la deuda queda pendiente para "Cobros de turno".',
       })
     } finally {
       await context.close()
-      const cash = await supabase.from('cash_flows').delete().eq('booking_id', bookingId)
-      if (cash.error) console.warn(`[TG-HP-211] cleanup cash_flows: ${cash.error.message}`)
       await cleanupBookingsByIds(supabase, [bookingId])
     }
   })

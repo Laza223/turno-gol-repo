@@ -13,7 +13,8 @@ import { toast } from '@/hooks/use-toast'
 import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
 import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
 import { formatArs } from '@/lib/format'
-import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
+import type { MethodKey } from '@/lib/payment-method'
+import { PaymentMethodChips } from '@/components/ui/payment-method-chips'
 import { MoneyInput } from '@/components/ui/money-input'
 import type { CashFlowCategory, CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
@@ -79,7 +80,7 @@ export function RegisterMovementModal({
   const [error, setError] = useState<string | null>(null)
   const [type, setType] = useState<CfType>('income')
   const [category, setCategory] = useState('booking')
-  const [method, setMethod] = useState('cash')
+  const [method, setMethod] = useState<MethodKey>('cash')
   const [amountCents, setAmountCents] = useState<number | null>(null)
   const [description, setDescription] = useState('')
   // Fix #55: la clave de idempotencia deja que el server ignore un reenvío.
@@ -237,20 +238,13 @@ export function RegisterMovementModal({
                 <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Método de pago
                 </legend>
-                <div className="grid grid-cols-2 gap-2">
-                  {PAYMENT_METHOD_OPTIONS.map((m) => (
-                    <button
-                      key={m.value}
-                      type="button"
-                      disabled={isPending}
-                      aria-pressed={method === m.value}
-                      onClick={() => setMethod(m.value)}
-                      className={chipClass(method === m.value)}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                <PaymentMethodChips
+                  className="grid grid-cols-2 gap-2"
+                  aria-label="Método de pago"
+                  value={method}
+                  onValueChange={setMethod}
+                  disabled={isPending}
+                />
               </fieldset>
 
               <div className="space-y-1">

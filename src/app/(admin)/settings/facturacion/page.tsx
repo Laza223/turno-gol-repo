@@ -21,6 +21,7 @@ import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import type { SubscriptionStatus } from '@/modules/billing/billing.types'
 import { formatArs } from '@/lib/format'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { HashOpenCollapsible } from './HashOpenCollapsible'
 import { SettingsTabs } from '../SettingsTabs'
 import { CuotaSection } from './CuotaSection'
@@ -276,9 +277,10 @@ export default async function FacturacionPage(
                 MercadoPago para cobrar señas
               </h2>
               {mpConnected && (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20 dark:ring-emerald-500/30">
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Conectado
-                </span>
+                <StatusBadge
+                  className="shrink-0"
+                  visual={{ icon: CheckCircle2, label: 'Conectado', tone: 'success' }}
+                />
               )}
             </div>
 

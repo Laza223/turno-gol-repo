@@ -63,7 +63,9 @@ describe('RegisterMovementModal — chips', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Gasto' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Transferencia' }))
+    // "Transferencia" ya no es un <button aria-pressed>: PaymentMethodChips
+    // monta el método sobre SegmentedControl (Radix radiogroup, role="radio").
+    fireEvent.click(screen.getByRole('radio', { name: 'Transferencia' }))
     fireEvent.change(screen.getByLabelText('Monto (pesos)'), { target: { value: '1234' } })
     fireEvent.change(screen.getByLabelText('Descripción'), { target: { value: 'Hielo' } })
     fireEvent.submit(screen.getByRole('button', { name: 'Guardar' }).closest('form')!)

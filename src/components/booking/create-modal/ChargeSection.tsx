@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { MoneyInput } from '@/components/ui/money-input'
 import { SegmentedControl } from '@/components/ui/segmented-control'
+import { PaymentMethodChips } from '@/components/ui/payment-method-chips'
 import { cn } from '@/lib/utils'
 import type { ChargeChoice, DepositMethod } from './types'
 
@@ -10,13 +11,6 @@ const CHOICES: Array<{ value: ChargeChoice; label: string }> = [
   { value: 'none', label: 'No cobré' },
   { value: 'partial', label: 'Una parte' },
   { value: 'full', label: 'Todo' },
-]
-
-const METHODS: Array<{ value: DepositMethod; label: string }> = [
-  { value: 'cash', label: 'Efectivo' },
-  { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
-  { value: 'other', label: 'Otro' },
 ]
 
 const chipClass = (active: boolean) =>
@@ -92,13 +86,11 @@ export function ChargeSection({
       />
       {choice !== 'none' && (
         <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-          <SegmentedControl
+          <PaymentMethodChips<DepositMethod>
             className="grid grid-cols-4 gap-1.5"
             aria-label="Método de cobro"
             value={method ?? 'cash'}
             onValueChange={onMethodChange}
-            itemClassName={chipClass}
-            options={METHODS}
           />
           <MoneyInput
             aria-label="Monto cobrado"

@@ -1,6 +1,4 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isUuid } from '@/shared/validation/primitives'
@@ -18,6 +16,7 @@ import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { BookingDetailCard } from './BookingDetailCard'
 import BookingActions from './BookingActions'
 import BookingCharges from './BookingCharges'
+import { BackLink } from './BackLink'
 
 // H103: 'no_show' AFUERA a propósito — veto de producto "No-show NO es
 // deuda" (CLAUDE.md). La Grilla ya no ofrece cobro sobre un ausente
@@ -60,12 +59,7 @@ export default async function ReservaDetailPage(props: Props) {
     // completo sería leerla de punta a punta de la pantalla.
     <div className={cn('space-y-6', !charges && 'max-w-3xl')}>
       <div className="space-y-2">
-        <Link
-          href="/reservas"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden /> Reservas
-        </Link>
+        <BackLink />
         <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Detalle de la reserva
         </h1>

@@ -263,8 +263,8 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      // 672px y filas separadas por filete: el mismo ancho y el mismo
-      // tratamiento que una columna del tablero con dos canchas.
+      // 672px y filas separadas por filete, como en la lista: el ancho más
+      // grande en el que la fila todavía usa la variante compacta.
       <ul className="max-w-2xl divide-y divide-border">
         <Story />
       </ul>
@@ -290,8 +290,8 @@ export const Senada: Story = {
       canvas.getByText(`Seña pagada (${money(ROW_SENADA.depositAmount)})`, { exact: false }),
     ).toBeVisible()
     // pending_payment/confirmed: la fila ofrece acciones rápidas. A este ancho
-    // (672px, el de una columna del tablero) manda la variante compacta: la
-    // acción primaria a la vista y el resto en el menú de "Acciones".
+    // (672px) manda la variante compacta: la acción primaria a la vista y el
+    // resto en el menú de "Acciones".
     await expect(canvas.getByRole('button', { name: /^Acciones para / })).toBeVisible()
   },
 }
@@ -508,8 +508,8 @@ export const NombreYCanchaLargos: Story = {
   },
 }
 
-/** `showCourt={false}` (uso dentro de `CourtBoard`): la línea secundaria pierde el nombre de cancha — ya es el header de columna, repetirlo es ruido. */
-export const DentroDeUnaColumnaDeCourtBoard: Story = {
+/** `showCourt={false}` (pestaña Hoy, agrupada por cancha): la línea secundaria pierde el nombre de cancha — ya es el título de la sección, repetirlo es ruido. */
+export const DentroDeUnaSeccionPorCancha: Story = {
   args: { booking: ROW_SENADA, showCourt: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

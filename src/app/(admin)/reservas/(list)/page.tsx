@@ -9,16 +9,13 @@ import { formatDateLong } from '@/lib/format'
 import {
   countTenantBookingsByStatus,
   listTenantBookings,
-  listTenantBookingsForBoard,
   RESERVAS_PAGE_SIZE,
   sumBookingChargesByBooking,
-  type ReservaListRow,
   type ReservaScope,
 } from '../queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { listCourts } from '@/modules/courts/court.service'
 import { BookingListItem } from '../BookingListItem'
-import { CourtBoard } from '../CourtBoard'
 import { ReservasHeaderBar } from '../ReservasHeaderBar'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Pager } from '@/components/ui/pager'
@@ -84,95 +81,73 @@ export default async function ReservasPage(props: Props) {
   const requestedCourt = searchParams.cancha ?? ''
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
-  const { rows, counts, courts, courtId, courtTotals } = await withTenantContext(
-    tenant.id,
-    async (tx) => {
-      // H110 — allowlist contra las canchas reales del tenant, mismo criterio
-      // que #30 con `status`: un `?cancha` que no es una cancha del tenant
-      // (basura, o de otro tenant) se degrada a "sin filtro", nunca revienta
-      // la query ni filtra por una cancha ajena.
-      const courtRows = await listCourts(tenant.id, tx)
-      const courtIds = new Set(courtRows.map((c) => c.id))
-      const courtId = courtIds.has(requestedCourt) ? requestedCourt : undefined
+  const { rows, counts, courts, courtId } = await withTenantContext(tenant.id, async (tx) => {
+    // H110 — allowlist contra las canchas reales del tenant, mismo criterio
+    // que #30 con `status`: un `?cancha` que no es una cancha del tenant
+    // (basura, o de otro tenant) se degrada a "sin filtro", nunca revienta
+    // la query ni filtra por una cancha ajena.
+    const courtRows = await listCourts(tenant.id, tx)
+    const courtIds = new Set(courtRows.map((c) => c.id))
+    const courtId = courtIds.has(requestedCourt) ? requestedCourt : undefined
 
-      // Tablero (Hoy/Próximas) SIN filtro de cancha: cupo por cancha, no
-      // OFFSET global (hallazgo #3, revisión redesign booking modal
-      // 2026-09-14) — ver `listTenantBookingsForBoard`. Con `?cancha=` (una
-      // sola columna) o en Historial, sigue el paginado de siempre.
-      const boardMode = scope !== 'historial' && !courtId
+    // Las tres pestañas son la misma lista paginada. El tablero por cancha
+    // de Hoy/Próximas se fue (2026-09-24, docs/decisions/
+    // 2026-09-24-navegacion-panel.md): repetía Hoy y la Grilla, y con 7 o 10
+    // canchas dejaba media pantalla afuera.
+    const { rows: list, hasMore: more } = await listTenantBookings(
+      tenant.id,
+      {
+        scope,
+        today,
+        ...(status ? { status } : {}),
+        ...(q ? { q } : {}),
+        ...(courtId ? { courtId } : {}),
+      },
+      tx,
+      page,
+    )
 
-      let list: ReservaListRow[]
-      let more = false
-      let courtTotals: Map<string, number> | undefined
-      if (boardMode) {
-        const boardRows = await listTenantBookingsForBoard(
-          tenant.id,
-          { scope, today, ...(status ? { status } : {}), ...(q ? { q } : {}) },
-          tx,
-        )
-        list = boardRows
-        courtTotals = new Map(boardRows.map((r) => [r.courtId, r.courtTotal]))
-      } else {
-        const page1 = await listTenantBookings(
-          tenant.id,
-          {
-            scope,
-            today,
-            ...(status ? { status } : {}),
-            ...(q ? { q } : {}),
-            ...(courtId ? { courtId } : {}),
-          },
-          tx,
-          page,
-        )
-        list = page1.rows
-        more = page1.hasMore
-      }
+    const byStatus = await countTenantBookingsByStatus(
+      tenant.id,
+      { scope, today, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
+      tx,
+    )
+    // El saldo pendiente dejó de ser insumo exclusivo de la alarma
+    // (`isUnpaidAlarm` en slot-visual.ts, que solo mira completed): 3.2
+    // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
+    // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
+    // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (50) ids —
+    // el mismo costo que ya paga la grilla con todos los turnos del día.
+    const charges = await sumBookingChargesByBooking(
+      tenant.id,
+      list.map((r) => r.id),
+      tx,
+    )
+    const withMoney = list.map((r) => ({
+      ...r,
+      ...summarizeBookingCharges({
+        priceSnapshot: r.priceSnapshot,
+        depositAmount: r.depositAmount,
+        depositStatus: r.depositStatus,
+        chargesTotal: charges.get(r.id) ?? 0,
+      }),
+    }))
+    return {
+      rows: withMoney,
+      counts: byStatus,
+      hasMore: more,
+      courts: courtRows.map((c) => ({ id: c.id, name: c.name })),
+      courtId,
+    }
+  })
 
-      const byStatus = await countTenantBookingsByStatus(
-        tenant.id,
-        { scope, today, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
-        tx,
-      )
-      // El saldo pendiente dejó de ser insumo exclusivo de la alarma
-      // (`isUnpaidAlarm` en slot-visual.ts, que solo mira completed): 3.2
-      // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
-      // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
-      // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (50) ids —
-      // el mismo costo que ya paga la grilla con todos los turnos del día.
-      const charges = await sumBookingChargesByBooking(
-        tenant.id,
-        list.map((r) => r.id),
-        tx,
-      )
-      const withMoney = list.map((r) => ({
-        ...r,
-        ...summarizeBookingCharges({
-          priceSnapshot: r.priceSnapshot,
-          depositAmount: r.depositAmount,
-          depositStatus: r.depositStatus,
-          chargesTotal: charges.get(r.id) ?? 0,
-        }),
-      }))
-      return {
-        rows: withMoney,
-        counts: byStatus,
-        hasMore: more,
-        courts: courtRows.map((c) => ({ id: c.id, name: c.name })),
-        courtId,
-        courtTotals,
-      }
-    },
-  )
-
-  // Historial: secciones por fecha (mezcla canchas, así que el header de
-  // columna de CourtBoard no serviría). Hoy/Próximas: tablero por cancha,
-  // ver CourtBoard (agrupa adentro).
-  const historialGroups = scope === 'historial' ? groupBy(rows, (r) => r.date) : []
-  const boardCourts = courtId ? courts.filter((c) => c.id === courtId) : courts
-  // Tablero sin filtro de cancha: sin paginado global (cada columna tiene su
-  // propio cupo/link "Ver todas" — nunca un OFFSET que corta canchas).
-  const boardMode = scope !== 'historial' && !courtId
+  // Hoy se agrupa por cancha porque la query ya lo ordena así (cancha y
+  // después hora): en una sola sección el orden saltaba en el tiempo. Próximas
+  // e Historial ordenan por fecha y hora, y se agrupan por fecha.
+  const byCourt = scope === 'hoy'
+  const groups = byCourt
+    ? groupBy(rows, (r) => r.courtName)
+    : groupBy(rows, (r) => formatDateLong(r.date))
 
   const total = countFor(counts, status)
 
@@ -180,8 +155,7 @@ export default async function ReservasPage(props: Props) {
   // venía de un `LIMIT 200` mudo: podía decir "740 reservas" y mostrar 200, sin
   // avisar ni dar forma de llegar al resto. Ahora el Pager en modo total dice el
   // rango que se está viendo ("Mostrando 51–100 de 740", abajo de la lista) y
-  // las páginas siguientes son alcanzables. Nunca en el tablero (`boardMode`):
-  // ahí el cupo es por cancha, no una página global de toda la lista.
+  // las páginas siguientes son alcanzables.
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-3">
@@ -227,50 +201,46 @@ export default async function ReservasPage(props: Props) {
         />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto lg:overflow-hidden">
-          {scope === 'historial' ? (
-            <div className="grid min-h-0 content-start gap-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1 xl:grid-cols-2">
-              {historialGroups.map(([date, dateRows]) => (
-                <section key={date} aria-label={formatDateLong(date)}>
-                  <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    {formatDateLong(date)}
-                  </h2>
-                  <ul className="space-y-2">
-                    {dateRows.map((r) => (
-                      <BookingListItem
-                        key={r.id}
-                        booking={r}
-                        actions={QUICK_ACTIONS}
-                        cancellationPolicyHours={cancellationPolicyHours}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <CourtBoard
-              courts={boardCourts}
-              bookings={rows}
-              scope={scope}
-              status={status}
-              q={q}
-              actions={QUICK_ACTIONS}
-              cancellationPolicyHours={cancellationPolicyHours}
-              courtTotals={courtTotals}
-            />
-          )}
+          {/* Dos columnas desde `lg` (DESIGN.md, "Listas anchas"): /reservas es
+              de ancho completo y una sola columna estiraba cada fila de punta
+              a punta. `min-h-0` solo desde `lg`, donde la lista scrollea
+              adentro: en el teléfono scrollea el contenedor de afuera, y con
+              `min-h-0` la grilla se achicaba y su contenido pisaba el
+              paginador. */}
+          <div className="grid grid-cols-1 content-start items-start gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-2 lg:overflow-y-auto lg:pr-1">
+            {groups.map(([title, groupRows]) => (
+              <section
+                key={title}
+                aria-label={title}
+                className="rounded-xl border border-border bg-card shadow-xs"
+              >
+                <h2 className="border-b border-border px-3 py-2 text-sm font-semibold text-foreground">
+                  {title}
+                </h2>
+                <ul className="divide-y divide-border py-1">
+                  {groupRows.map((r) => (
+                    <BookingListItem
+                      key={r.id}
+                      booking={r}
+                      actions={QUICK_ACTIONS}
+                      cancellationPolicyHours={cancellationPolicyHours}
+                      showCourt={!byCourt}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
 
-          {!boardMode && (
-            <Pager
-              label="Paginación de reservas"
-              page={page}
-              total={total}
-              pageSize={RESERVAS_PAGE_SIZE}
-              shown={rows.length}
-              className="shrink-0"
-              hrefFor={(p) => buildHref({ dia: scope, status, q, cancha: courtId ?? '', page: p })}
-            />
-          )}
+          <Pager
+            label="Paginación de reservas"
+            page={page}
+            total={total}
+            pageSize={RESERVAS_PAGE_SIZE}
+            shown={rows.length}
+            className="shrink-0"
+            hrefFor={(p) => buildHref({ dia: scope, status, q, cancha: courtId ?? '', page: p })}
+          />
         </div>
       )}
     </div>

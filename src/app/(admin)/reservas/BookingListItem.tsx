@@ -50,19 +50,19 @@ type Props = {
    */
   cancellationPolicyHours?: number
   /**
-   * `CourtBoard` ya muestra el nombre de la cancha como header de columna:
-   * repetirlo en la línea secundaria de cada fila es ruido. Historial mezcla
-   * canchas por fecha (no hay columna que lo diga), ahí sí hace falta.
+   * La pestaña Hoy agrupa por cancha y el nombre ya es el título de la
+   * sección: repetirlo en la línea secundaria de cada fila es ruido. Próximas
+   * e Historial agrupan por fecha y mezclan canchas, ahí sí hace falta.
    * Default `true` — el caso "sin especificar" es el que necesita el dato.
    */
   showCourt?: boolean
 }
 
 /**
- * Fila de /reservas. `@container`: dentro del tablero (`CourtBoard`) la
- * tarjeta puede ser angosta (una columna de ~280px) aun en escritorio, y en
- * Historial (`xl:grid-cols-2`) puede ser ancha — el layout interno y
- * `QuickActions` responden al ancho REAL de la tarjeta, no al viewport.
+ * Fila de /reservas. `@container`: en el teléfono y en cada una de las dos
+ * columnas de escritorio la fila es angosta; en una pantalla muy ancha puede
+ * no serlo — el layout interno y `QuickActions` responden al ancho REAL de la
+ * fila, no al viewport.
  */
 export function BookingListItem({
   booking,
@@ -142,16 +142,14 @@ export function BookingListItem({
           className="absolute inset-0 z-0 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         />
         <span aria-hidden className={cn('w-1 shrink-0 self-stretch rounded-full', visual.accent)} />
-        {/* Angosta (columna del tablero): DOS renglones — horario + plata +
+        {/* Angosta (teléfono, columna de escritorio): DOS renglones — horario + plata +
             estado, y nombre + seña | acciones. El primero es un `flex-wrap`:
             si el estado no entra al lado del horario y la plata, baja solo a
             otra línea. Con el estado en su propia columna de grid, 5 canchas a
             1366 px (fila de 172-197 px) pisaban horario, plata y badges letra
             sobre letra (crítica 2026-09-23). Ancha (@2xl, 42rem): una sola
             fila; el `order` devuelve el orden de lectura horario → nombre →
-            estado → plata. El corte estaba en 48rem y no lo alcanzaba ninguna
-            columna del tablero (con 2 canchas a 1440px la columna mide 680px),
-            así que la fila SIEMPRE caía en el layout apilado. */}
+            estado → plata. */}
         <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 @2xl:flex @2xl:items-center @2xl:gap-3">
           {/* `@2xl:contents`: el mismo horario y la misma plata, colocados
               distinto. En angosto van juntos en el renglón de arriba (la plata

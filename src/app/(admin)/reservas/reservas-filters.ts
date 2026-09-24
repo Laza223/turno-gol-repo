@@ -1,4 +1,4 @@
-import type { ReservaListRow, ReservaScope } from './queries'
+import type { ReservaScope } from './queries'
 
 /**
  * Vocabulario de scope/estado + `buildHref`, compartidos entre `(list)/page.tsx`
@@ -79,9 +79,4 @@ export function groupBy<T>(rows: T[], key: (r: T) => string): Array<[string, T[]
 export function parsePage(raw: string | undefined): number {
   const n = Number.parseInt(raw ?? '', 10)
   return Number.isFinite(n) && n > 1 ? n - 1 : 0
-}
-
-/** Agrupa las reservas de UNA cancha por fecha, preservando el orden cronológico que ya trae la query (Próximas). */
-export function groupByDate(rows: ReservaListRow[]): Array<[string, ReservaListRow[]]> {
-  return groupBy(rows, (r) => r.date)
 }

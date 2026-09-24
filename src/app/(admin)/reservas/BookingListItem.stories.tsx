@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, within } from 'storybook/test'
 import { formatArs } from '@/lib/format'
 import { artDateString } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
@@ -7,8 +7,6 @@ import type { ReservaListRow } from './queries'
 import { BookingListItem } from './BookingListItem'
 import { moneyLine } from './money-line'
 import { reservaStatusVisual } from './status-visual'
-
-const SUCCESS = { success: true as const, booking: {} as never }
 
 /**
  * `formatArs` (Intl.NumberFormat) mete un NBSP (U+00A0) entre "$" y el número.
@@ -244,7 +242,8 @@ const ROW_TEXTOS_LARGOS = row({
 /**
  * Fila de la lista de /reservas. `reservas/page.tsx` la renderiza SIEMPRE dentro
  * de un `<ul>`: sin ese wrapper el `<li>` propio del componente queda huérfano y
- * axe marca `listitem`.
+ * axe marca `listitem`. Sin botones propios (paso 3): la fila entera abre el
+ * turno.
  */
 const meta = {
   title: 'Admin/Reservas/BookingListItem',
@@ -252,14 +251,6 @@ const meta = {
   parameters: {
     layout: 'padded',
     nextjs: { appDirectory: true, navigation: { pathname: '/reservas' } },
-  },
-  args: {
-    actions: {
-      cancelBookingAction: fn(async () => SUCCESS),
-      completeAndChargeBookingAction: fn(async () => SUCCESS),
-      confirmDepositPaymentAction: fn(async () => SUCCESS),
-      markNoShowAction: fn(async () => SUCCESS),
-    },
   },
   decorators: [
     (Story) => (
@@ -289,10 +280,6 @@ export const Senada: Story = {
     await expect(
       canvas.getByText(`Seña pagada (${money(ROW_SENADA.depositAmount)})`, { exact: false }),
     ).toBeVisible()
-    // pending_payment/confirmed: la fila ofrece acciones rápidas. A este ancho
-    // (672px) manda la variante compacta: la acción primaria a la vista y el
-    // resto en el menú de "Acciones".
-    await expect(canvas.getByRole('button', { name: /^Acciones para / })).toBeVisible()
   },
 }
 
@@ -318,8 +305,6 @@ export const PendientePago: Story = {
     await expect(
       canvas.getByText(`Seña pendiente (${money(ROW_PENDIENTE.depositAmount)})`, { exact: false }),
     ).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Confirmar pago' })).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
   },
 }
 
@@ -354,9 +339,6 @@ export const Jugada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugada')).toBeVisible()
-    // Un turno ya jugado no ofrece acciones rápidas: no se puede reabrir.
-    await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
-    await expect(canvas.queryByRole('button', { name: 'Completada' })).toBeNull()
   },
 }
 
@@ -365,7 +347,6 @@ export const Ausente: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: 'Ausente' })).toBeNull()
   },
 }
 
@@ -403,14 +384,12 @@ export const AusenteSinCobrar: Story = {
   },
 }
 
-/** Una reserva ya cancelada no puede cancelarse de nuevo: sin acciones rápidas. */
 export const CanceladaConReembolso: Story = {
   args: { booking: ROW_CANCELADA_REEMBOLSADA },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Cancelada')).toBeVisible()
     await expect(canvas.getByText('Seña devuelta', { exact: false })).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
     // Control negativo: una reserva cancelada no juega, no debe plata aunque
     // `pending` (derivado de `priceSnapshot - totalPaid`) siga siendo > 0.
     await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
@@ -422,7 +401,6 @@ export const CanceladaSinReembolso: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Cancelada')).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
     // Idem: la seña quedó como penalidad, el resto del precio nunca se cobra.
     await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
   },
@@ -433,7 +411,6 @@ export const Expirada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Expirada')).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: 'Confirmar pago' })).toBeNull()
     // Idem: el hold expiró, la reserva no se juega.
     await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
   },
@@ -454,12 +431,10 @@ export const BloqueoAdministrativo: Story = {
     ).toBeInTheDocument()
     await expect(canvas.getByText('Bloqueo')).toBeVisible()
     await expect(canvas.getByText('Bloqueado')).toBeVisible()
-    // Sin importar el status, un bloqueo administrativo nunca ofrece acciones de reserva.
-    await expect(canvas.queryByRole('button')).toBeNull()
   },
 }
 
-/** Turno fijo de abonado: sigue ofreciendo acciones rápidas (no es un bloqueo). */
+/** Turno fijo de abonado: no es un bloqueo, muestra el badge "Abonado". */
 export const Abonado: Story = {
   args: { booking: ROW_ABONADO },
   play: async ({ canvasElement }) => {
@@ -468,7 +443,6 @@ export const Abonado: Story = {
     await expect(
       canvas.getByRole('article', { name: ariaLabelFor(ROW_ABONADO) }),
     ).toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: /^Acciones para / })).toBeVisible()
   },
 }
 
@@ -515,24 +489,5 @@ export const DentroDeUnaSeccionPorCancha: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.queryByText(ROW_SENADA.courtName, { exact: false })).toBeNull()
     await expect(canvas.getByText('Seña pagada', { exact: false })).toBeVisible()
-  },
-}
-
-// ─── `actions` se reenvía tal cual a QuickActions ──────────────────────────
-
-/**
- * Confirma que el prop `actions` (Server Component → Client Component) llega
- * intacto hasta QuickActions: "Completada" abre CompleteBookingDialog
- * (Completar + Cobrar), nunca llama una action directa — `./actions` ya no
- * expone `completeBookingAction` a QuickActions (quedó muerto tras el
- * rediseño a "Completar + Cobrar", ver comentario en QuickActions.tsx).
- */
-export const AccionRapidaCompletarSePropaga: Story = {
-  args: { booking: ROW_SENADA },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Completada' }))
-    const body = within(document.body)
-    await expect(await body.findByRole('heading', { name: 'Completar turno' })).toBeInTheDocument()
   },
 }

@@ -10,6 +10,7 @@ import { useNowMs } from '@/hooks/use-now'
 import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
+import { CobrarSenaButton, type ConfirmDepositFn } from '@/components/booking/CobrarSenaButton'
 import CompleteBookingDialog from '../CompleteBookingDialog'
 import type {
   BookingActionResult,
@@ -89,6 +90,12 @@ type Props = {
    * sin ella el botón de bloqueo no se ofrece y stories/callers viejos siguen compilando.
    */
   releaseBlockAction?: ReleaseBlockFn
+  /**
+   * "Cobrar seña $X" (paso 3, docs/decisions/2026-09-24-navegacion-panel.md):
+   * único lugar de la página para confirmar a mano la seña de un
+   * `pending_payment`. Opcional, mismo criterio que el resto.
+   */
+  confirmDepositPaymentAction?: ConfirmDepositFn
 }
 
 /** Ventana de corrección de asistencia (doc6 §3, trigger de la migración 060). */
@@ -135,6 +142,7 @@ export default function BookingActions({
   revertNoShowAction,
   cancelBookingAction,
   releaseBlockAction,
+  confirmDepositPaymentAction,
 }: Props) {
   const router = useRouter()
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -194,6 +202,20 @@ export default function BookingActions({
           ]}
         />
       </div>
+    )
+  }
+
+  // "Cobrar seña $X" (paso 3): la única puerta a `confirmDepositPaymentAction`
+  // ahora que se retiró de las filas de /reservas (`QuickActions.tsx`).
+  if (status === 'pending_payment') {
+    if (depositAmount <= 0 || !confirmDepositPaymentAction) return null
+    return (
+      <CobrarSenaButton
+        bookingId={bookingId}
+        depositAmount={depositAmount}
+        confirmDepositPaymentAction={confirmDepositPaymentAction}
+        onSuccess={() => router.refresh()}
+      />
     )
   }
 

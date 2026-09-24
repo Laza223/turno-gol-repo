@@ -113,6 +113,8 @@ function makeActions(
       maxDate: DAY,
     })),
     rescheduleBookingAction: fn(async () => ({ success: true })),
+    releaseBlockAction: fn(async () => ({ success: true as const })),
+    confirmDepositPaymentAction: fn(async () => ({ success: true as const })),
     editBookingAction: fn(async () => ({ success: true as const })),
     getBookingEditDetailAction: fn(async () => ({
       success: true as const,
@@ -445,6 +447,58 @@ export const EsperandoSena: Story = {
     const dialog = await openDialog()
     await expect(dialog.queryByRole('radio')).toBeNull()
     await expect(dialog.queryByRole('button', { name: /Cobrar/ })).toBeNull()
+  },
+}
+
+/**
+ * Esperando seña CON monto (paso 3, docs/decisions/
+ * 2026-09-24-navegacion-panel.md): "Cobrar seña $X" — confirmarla a mano
+ * abre el mismo diálogo de método que ya usaba QuickActions en /reservas.
+ */
+export const EsperandoSenaConMontoOfreceCobrarla: Story = {
+  args: scenario(
+    enJuego({ status: 'pending_payment', depositStatus: 'pending', depositAmount: 450_000 }),
+  ),
+  play: async ({ args }) => {
+    const dialog = await openDialog()
+    await userEvent.click(dialog.getByRole('button', { name: /^Cobrar seña \$\s4\.500$/ }))
+
+    const body = within(document.body)
+    const confirm = await body.findByRole('dialog', { name: 'Cobrar seña' })
+    await expect(within(confirm).getByRole('radio', { name: 'Efectivo' })).toBeChecked()
+    await userEvent.click(within(confirm).getByRole('button', { name: /^Cobrar \$\s4\.500$/ }))
+
+    await waitFor(() =>
+      expect(args.actions.confirmDepositPaymentAction).toHaveBeenCalledWith('b1', 'cash'),
+    )
+  },
+}
+
+/** Un bloqueo de mantenimiento no se cobra: la única acción es liberarlo. */
+export const Bloqueo: Story = {
+  args: scenario(enJuego({ type: 'block', priceSnapshot: 0, pending: 0, guestName: null })),
+  play: async ({ args }) => {
+    const dialog = await openDialog()
+    await expect(dialog.queryByRole('radio')).toBeNull()
+    await expect(dialog.queryByRole('button', { name: /Cobrar/ })).toBeNull()
+    await expect(dialog.getByRole('button', { name: 'Liberar el bloqueo' })).toBeVisible()
+
+    await userEvent.click(dialog.getByRole('button', { name: 'Liberar el bloqueo' }))
+    const body = within(document.body)
+    const confirm = await body.findByRole('dialog', { name: 'Liberar el bloqueo' })
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Liberar' }))
+
+    await waitFor(() => expect(args.actions.releaseBlockAction).toHaveBeenCalledWith('b1'))
+  },
+}
+
+/** Un ausente no debe plata (veto "No-show NO es deuda") pero tampoco está "Cobrado ✓". */
+export const Ausente: Story = {
+  args: scenario(terminado({ status: 'no_show', depositStatus: 'captured', pending: 0 })),
+  play: async () => {
+    const dialog = await openDialog()
+    await expect(dialog.queryByText('Cobrado ✓')).toBeNull()
+    await expect(dialog.getByRole('button', { name: 'Deshacer la ausencia' })).toBeVisible()
   },
 }
 

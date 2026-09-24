@@ -127,6 +127,13 @@ export const GET = withTenant(
         notes_internal: r.booking.notesInternal,
         created_by_staff: r.booking.createdByStaff,
         created_at: r.booking.createdAt,
+        // Instantes físicos: fuente de "ya terminó" para el modal de cobro que
+        // la Grilla abre desde el paso 3 (docs/decisions/
+        // 2026-09-24-navegacion-panel.md). Aditivo — la query ya seleccionaba
+        // la fila completa (`booking: bookings`), esto solo suma dos campos a
+        // la respuesta.
+        starts_at: r.booking.startsAt,
+        ends_at: r.booking.endsAt,
       }
     })
 

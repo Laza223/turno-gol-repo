@@ -8,6 +8,7 @@ import {
   addBookingChargeAction,
   cancelBookingAction,
   completeAndChargeBookingAction,
+  confirmDepositPaymentAction,
   markNoShowAction,
   releaseBlockAction,
   revertNoShowAction,
@@ -149,6 +150,7 @@ export default async function ReservaDetailPage(props: Props) {
             revertNoShowAction={revertNoShowAction}
             cancelBookingAction={cancelBookingAction}
             releaseBlockAction={releaseBlockAction}
+            confirmDepositPaymentAction={confirmDepositPaymentAction}
           />
         </div>
       </div>

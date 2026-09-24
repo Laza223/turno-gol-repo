@@ -49,6 +49,28 @@ vi.mock('next/dynamic', () => ({
 }))
 
 import { BookingGrid } from '@/components/booking/BookingGrid'
+import { HoyChargeModal } from '@/app/(admin)/dashboard/_components/HoyChargeModal'
+import type { RenderChargeModal } from '@/components/booking/slot-panel/actions'
+
+// El modal de cobro llega INYECTADO (paso 3, docs/decisions/
+// 2026-09-24-navegacion-panel.md): se usa el componente real, no un stub —
+// es la misma pieza que monta la app vía GrillaView.
+const renderChargeModal: RenderChargeModal = (args) => (
+  <HoyChargeModal
+    booking={args.booking}
+    courtName={args.courtName}
+    courts={args.courts}
+    dayBookings={args.dayBookings}
+    daySlots={args.daySlots}
+    nowMs={args.nowMs}
+    isRefreshing={args.isRefreshing}
+    hasEnded={args.hasEnded}
+    actions={args.actions!}
+    renderCanteenDialog={args.renderCanteenDialog}
+    onClose={args.onClose}
+    onMutated={args.onMutated}
+  />
+)
 
 afterEach(() => cleanup())
 
@@ -161,6 +183,7 @@ function renderGrid(opts?: {
       // el TicketPanel de /caja). Acá alcanza con un stub: lo que se testea es
       // si el panel OFRECE la acción, no lo que hay adentro del diálogo.
       renderCanteenDialog={({ open }) => (open ? <div data-testid="canteen-dialog" /> : null)}
+      renderChargeModal={renderChargeModal}
     />,
   )
 }
@@ -348,6 +371,10 @@ describe('BookingGrid — panel de acciones del turno', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
 
+    // Con plata ya cobrada en el mostrador el modal abre en "Por jugador"
+    // (chargeTabs): el botón principal vive en "Todo junto".
+    fireEvent.click(within(panel).getByRole('radio', { name: 'Todo junto' }))
+
     // El monto va EN el botón: es lo que falta, y verlo antes de tocar es el
     // punto del rediseño.
     // `formatArs` separa con NBSP y testing-library no lo normaliza en el
@@ -364,6 +391,9 @@ describe('BookingGrid — panel de acciones del turno', () => {
     // El resto de las acciones de cobro NO se disparan por este atajo.
     expect(actions.chargeDebtAction).not.toHaveBeenCalled()
     expect(actions.completeAndChargeBookingAction).not.toHaveBeenCalled()
+    // Como en Hoy, el modal sigue abierto después del cobro: cerrarlo obligaba
+    // a volver a tocar el turno para cobrarle al segundo jugador.
+    expect(screen.getByRole('dialog')).toBe(panel)
   })
 
   /**
@@ -381,9 +411,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 08:00–09:00/ }))
     const panel = await screen.findByRole('dialog')
-    // Semanal: vive detrás de "Más", para no competir con Cobrar.
-    expect(within(panel).queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
-    fireEvent.click(within(panel).getByRole('button', { name: 'Más' }))
+    // En el modal "Marcar ausente" está a la vista, no detrás de un fold.
     expect(within(panel).getByRole('button', { name: /Marcar ausente/ })).toBeTruthy()
   })
 
@@ -444,7 +472,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     const panel = await screen.findByRole('dialog')
     expect(panel.textContent).toContain('Torneo')
     expect(within(panel).queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
-    expect(within(panel).queryByRole('button', { name: /Cargar cantina/ })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /Cantina/ })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -490,14 +518,16 @@ describe('BookingGrid — panel de acciones del turno', () => {
     expect(within(panel).queryByRole('link', { name: /Ir al torneo/ })).toBeNull()
   })
 
-  it('un turno confirmado ofrece cargar cantina, y reprogramar detrás de "Más"', async () => {
+  it('un turno confirmado ofrece cantina, y reprogramar en el menú "Más acciones"', async () => {
     renderGrid({ bookings: [booking({ pending: 2000000, totalPaid: 0 })] })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
-    expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
-    fireEvent.click(within(panel).getByRole('button', { name: 'Más' }))
-    expect(within(panel).getByRole('button', { name: /Reprogramar/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
+    expect(screen.queryByRole('menuitem', { name: 'Reprogramar' })).toBeNull()
+    const trigger = within(panel).getByRole('button', { name: 'Más acciones del turno' })
+    fireEvent.pointerDown(trigger)
+    fireEvent.click(trigger)
+    expect(await screen.findByRole('menuitem', { name: 'Reprogramar' })).toBeTruthy()
   })
 
   /**
@@ -513,7 +543,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–19:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -530,7 +560,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 08:00–09:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -546,9 +576,11 @@ describe('BookingGrid — panel de acciones del turno', () => {
     renderGrid({ bookings: [booking({ type: 'fixed', pending: 2000000, totalPaid: 0 })] })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cargar cantina/ })).toBeTruthy()
-    fireEvent.click(within(panel).getByRole('button', { name: 'Más' }))
-    expect(within(panel).getByRole('button', { name: /Reprogramar/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
+    const trigger = within(panel).getByRole('button', { name: 'Más acciones del turno' })
+    fireEvent.pointerDown(trigger)
+    fireEvent.click(trigger)
+    expect(await screen.findByRole('menuitem', { name: 'Reprogramar' })).toBeTruthy()
   })
 
   it('un bloqueo no ofrece cantina ni reprogramar: no es el turno de nadie', async () => {
@@ -565,7 +597,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).queryByRole('button', { name: /Cargar cantina/ })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /Cantina/ })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -575,7 +607,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     const panel = await screen.findByRole('dialog')
     expect(screen.queryByTestId('canteen-dialog')).toBeNull()
 
-    fireEvent.click(within(panel).getByRole('button', { name: /Cargar cantina/ }))
+    fireEvent.click(within(panel).getByRole('button', { name: /Cantina/ }))
     expect(await screen.findByTestId('canteen-dialog')).toBeTruthy()
   })
 })

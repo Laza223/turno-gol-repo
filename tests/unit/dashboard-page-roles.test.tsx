@@ -75,6 +75,7 @@ vi.mock('@/app/(admin)/reservas/actions', () => ({
   addBookingChargeAction: vi.fn(),
   cancelBookingAction: vi.fn(),
   completeAndChargeBookingAction: vi.fn(),
+  confirmDepositPaymentAction: vi.fn(),
   editBookingAction: vi.fn(),
   listRescheduleSlotsAction: vi.fn(),
   markNoShowAction: vi.fn(),

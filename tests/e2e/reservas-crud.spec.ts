@@ -376,10 +376,13 @@ test.describe('reservas — edge: no-show', () => {
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// TEST 5 — Quick action: confirm deposit payment inline from the list
+// TEST 5 — Confirm deposit payment from the booking detail page
 // ════════════════════════════════════════════════════════════════════════════
-test.describe('reservas — quick action: confirmar pago inline', () => {
-  test('lista Hoy → "Confirmar pago" inline → badge Señada sin full reload @critical', async ({
+// Paso 3 (docs/decisions/2026-09-24-navegacion-panel.md): "Confirmar pago"
+// era un botón por fila en /reservas (QuickActions, retirado); el mismo
+// cobro ahora vive en la página del turno, como "Cobrar seña $X".
+test.describe('reservas — cobrar seña desde el detalle del turno', () => {
+  test('detalle del turno → "Cobrar seña $X" → badge Señada sin full reload @critical', async ({
     browser,
     adminStorageState,
   }) => {
@@ -407,37 +410,35 @@ test.describe('reservas — quick action: confirmar pago inline', () => {
         depositAmount: 5000,
       })
 
-      await page.goto('/reservas')
-      const article = page.getByRole('article', { name: /E2E Reservas Guest/ })
-      await expect(article).toBeVisible({ timeout: 15_000 })
+      await page.goto(`/reservas/${bookingId}`)
       // El label de `pending_payment` lo manda `lib/booking/slot-visual.ts`,
       // fuente única de la grilla Y del listado; B15 (decisión v2 D1) lo
       // renombró y este assert quedó con el texto viejo, dejando el job de e2e
       // rojo cinco merges. El candado que lo caza ahora vive en
       // `tests/unit/slot-visual.test.ts` — no pegues acá el texto anterior, el
       // control negativo de ese candado verifica que no sobreviva en ningún spec.
-      await expect(article.getByText('Esperando seña')).toBeVisible()
+      await expect(page.getByText('Esperando seña')).toBeVisible({ timeout: 15_000 })
 
       // Marker that survives RSC refreshes but dies on a full page load.
       await page.evaluate(() => {
         ;(window as unknown as Record<string, unknown>).__e2eNoReload = true
       })
 
-      await article.getByRole('button', { name: 'Confirmar pago' }).click()
+      await page.getByRole('button', { name: /^Cobrar seña/ }).click()
 
       // El staff elige el medio de cobro (picker de método, Efectivo
       // preseleccionado) antes de confirmar — ya no es un click directo.
       const dialog = page.getByRole('dialog')
-      await expect(dialog.getByRole('heading', { name: 'Confirmar pago' })).toBeVisible()
-      await dialog.getByRole('button', { name: 'Confirmar' }).click()
+      await expect(dialog.getByRole('heading', { name: 'Cobrar seña' })).toBeVisible()
+      await dialog.getByRole('button', { name: /^Cobrar \$/ }).click()
 
-      // After the server action + router.refresh() the same article re-renders
-      // with the new status — no navigation, no reload.
+      // Tras la Server Action + router.refresh() la misma página re-renderiza
+      // con el estado nuevo — sin navegación, sin reload.
       // "Señada" y no "Confirmada": confirmar el pago deja el booking en
       // `confirmed` + `deposit_status='paid'` (se verifica contra la DB unas
       // líneas más abajo), y desde el 2026-09-12 el listado distingue las dos.
-      await expect(article.getByText('Señada')).toBeVisible({ timeout: 10_000 })
-      await expect(article.getByText('Esperando seña')).not.toBeVisible()
+      await expect(page.getByText('Señada')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('Esperando seña')).not.toBeVisible()
       const marker = await page.evaluate(
         () => (window as unknown as Record<string, unknown>).__e2eNoReload,
       )

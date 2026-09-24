@@ -1,5 +1,7 @@
 import type { ActionResult } from '@/shared/types/action-result'
 import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
+import type { GridBooking } from '@/lib/booking/grid-cells'
+import type { CourtRow } from '@/modules/courts/court.types'
 import type { ListRescheduleSlots, RescheduleBooking } from '../BookingRescheduleDialog'
 
 /**
@@ -13,6 +15,28 @@ export type RenderCanteenDialog = (args: {
   onOpenChange: (open: boolean) => void
   bookingId: string
   displayName: string | null
+}) => React.ReactNode
+
+/**
+ * El modal de cobro de Hoy llega INYECTADO, no importado (paso 3, docs/
+ * decisions/2026-09-24-navegacion-panel.md): vive en
+ * `app/(admin)/dashboard/_components/HoyChargeModal.tsx` y `@/components` no
+ * puede importar de `@/app` — mismo motivo que `RenderCanteenDialog`. Lo
+ * enchufa `GrillaView` (dynamic import, mismo patrón que `BookingCanteenDialog`).
+ */
+export type RenderChargeModal = (args: {
+  booking: GridBooking
+  courtName: string
+  courts: CourtRow[]
+  dayBookings: GridBooking[]
+  daySlots: string[]
+  nowMs: number
+  isRefreshing: boolean
+  hasEnded: boolean
+  actions?: SlotPanelActions
+  renderCanteenDialog?: RenderCanteenDialog
+  onClose: () => void
+  onMutated: () => void
 }) => React.ReactNode
 
 export type ChargeInput = { amount: number; method: ChargeLine['method'] }
@@ -76,4 +100,13 @@ export type SlotPanelActions = {
     | { success: true; guestPhone: string | null; createdByStaff: string | null }
     | { success: false; error: string }
   >
+  /**
+   * Confirmar a mano la seña de un turno `pending_payment` (paso 3, docs/
+   * decisions/2026-09-24-navegacion-panel.md): "Cobrar seña $X". Opcional,
+   * mismo criterio que el resto: sin ella el botón no se ofrece.
+   */
+  confirmDepositPaymentAction?: (
+    bookingId: string,
+    method: 'cash' | 'transfer' | 'other',
+  ) => Promise<ActionResult>
 }

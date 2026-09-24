@@ -1,11 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import {
-  BookingSlotPanel,
-  type RenderCanteenDialog,
-  type SlotPanelActions,
-} from '../BookingSlotPanel'
+import type {
+  RenderCanteenDialog,
+  RenderChargeModal,
+  SlotPanelActions,
+} from '../slot-panel/actions'
 import type { SelectedSlot } from '@/hooks/use-grid-actions'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
@@ -48,6 +48,8 @@ export function GridOverlays({
   courts,
   renderCanteenDialog,
   slotPanelActions,
+  nowMs,
+  renderChargeModal,
 }: {
   selectedSlot: SelectedSlot | null
   onCloseModal: () => void
@@ -67,6 +69,9 @@ export function GridOverlays({
   courts: CourtRow[]
   renderCanteenDialog?: RenderCanteenDialog
   slotPanelActions?: SlotPanelActions
+  nowMs: number
+  /** El modal de cobro de Hoy (paso 3): sin esto no se ofrece detalle del turno. */
+  renderChargeModal?: RenderChargeModal
 }) {
   const selectedCourt = selectedSlot ? courts.find((c) => c.id === selectedSlot.courtId) : undefined
 
@@ -89,25 +94,29 @@ export function GridOverlays({
         />
       )}
 
-      {detailBooking && (
-        <BookingSlotPanel
-          booking={detailBooking}
-          courtName={courtName}
-          onClose={onCloseDetail}
-          onMutated={onMutated}
-          // El "ya terminó" sale de la grilla, que es la que sabe de día
-          // operativo; el panel no lo recalcula (ver su prop hasEnded).
-          hasEnded={hasEnded}
-          courts={courts}
+      {detailBooking &&
+        renderChargeModal?.({
+          booking: detailBooking,
+          courtName,
+          courts,
           // D2: BookingEditDialog necesita el día completo (para calcular la
           // duración máxima sin pisar otro turno) y la grilla horaria — ya
           // están acá para BookingFormModal, sólo se reenvían.
-          dayBookings={bookings}
-          daySlots={daySlots}
-          renderCanteenDialog={renderCanteenDialog}
-          actions={slotPanelActions}
-        />
-      )}
+          dayBookings: bookings,
+          daySlots,
+          nowMs,
+          // El stream de Realtime ya reemplaza los datos en vivo: acá no hay
+          // un `router.refresh()` cuyo tránsito haya que bloquear.
+          isRefreshing: false,
+          // El "ya terminó" sale de la grilla, que es la que sabe de día
+          // operativo — se pasa como red de contención para un turno sin
+          // instantes físicos (ver el fallback del modal).
+          hasEnded,
+          actions: slotPanelActions,
+          renderCanteenDialog,
+          onClose: onCloseDetail,
+          onMutated,
+        })}
     </>
   )
 }

@@ -6,7 +6,7 @@ import type { ChargeMode } from '@/components/booking/slot-panel/charge-copy'
 import type { MethodKey } from '@/lib/payment-method'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
-import { HoyChargeSection } from './HoyChargeSection'
+import { HoyChargeSection } from '@/components/booking/slot-panel/HoyChargeSection'
 import type { ChargeBooking } from './HoyChargeModal'
 
 const ACTION_BUTTON =

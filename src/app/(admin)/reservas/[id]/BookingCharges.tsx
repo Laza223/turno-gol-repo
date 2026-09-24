@@ -1,50 +1,43 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import * as Sentry from '@sentry/nextjs'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
-import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
-import {
-  SplitPaymentFields,
-  newChargeLine,
-  type ChargeLine as FieldLine,
-} from '@/components/admin/SplitPaymentFields'
+import { newChargeLine } from '@/components/admin/SplitPaymentFields'
+import { useSlotCharges } from '@/components/booking/slot-panel/use-slot-charges'
+import { HoyChargeSection } from '@/components/booking/slot-panel/HoyChargeSection'
+import type { SlotPanelActions } from '@/components/booking/slot-panel/actions'
+import { hasEndedAt } from '@/lib/dashboard/today-board'
+import { useNowMs } from '@/hooks/use-now'
+import type { GridBooking } from '@/lib/booking/grid-cells'
 import { resolveDepositDisplayStatus, type RefundState } from '../deposit-display'
 import type { BookingChargeRow } from '../queries'
-import type { AddBookingChargeInput, BookingChargeActionResult } from '../actions'
+
+/**
+ * Las cuatro acciones de plata que puede disparar el control de cobro
+ * compartido (`useSlotCharges`, `chargeMode`): `markNoShowAction` es
+ * obligatoria en `SlotPanelActions` pero acá nunca se usa — "Marcar ausente"
+ * vive en `BookingActions.tsx`, no en este bloque — así que llega igual desde
+ * la page (mismo import que ya usa `BookingActions`) solo para que el tipo
+ * cierre.
+ */
+type ChargeActions = Pick<
+  SlotPanelActions,
+  | 'chargeDebtAction'
+  | 'completeAndChargeBookingAction'
+  | 'addBookingChargeAction'
+  | 'markNoShowAction'
+>
 
 type Props = {
-  bookingId: string
-  priceSnapshot: number
-  depositAmount: number
-  depositStatus: string
+  booking: GridBooking
   /** Ver `deposit-display.ts`: `depositStatus` se congela al cancelar, así que `payments` manda. */
   refundState?: RefundState
   charges: BookingChargeRow[]
   chargesTotal: number
-  /**
-   * Server Action por PROP, no por import (ver comentario homólogo en
-   * ReservasPolicyForm.tsx): '../actions' es `'use server'` y arrastra
-   * node:async_hooks, que rompe Storybook.
-   */
-  addBookingChargeAction: (input: AddBookingChargeInput) => Promise<BookingChargeActionResult>
-}
-
-type ChargeLine = AddBookingChargeInput['charges'][number]
-
-/** El tope del schema de `addBookingChargeAction` (`.min(1).max(5)`). */
-const MAX_LINES = 5
-
-/** Un cobro que salió y cuya respuesta no llegó: no se sabe si entró. */
-type UnconfirmedCharge = {
-  key: string
-  charges: ChargeLine[]
-  total: number
-  toastTitle: string
-  toastDescription?: string
+  actions: ChargeActions
 }
 
 const DEPOSIT_STATUS_LABELS: Record<string, string> = {
@@ -55,33 +48,65 @@ const DEPOSIT_STATUS_LABELS: Record<string, string> = {
   not_required: 'no requerida',
 }
 
+/**
+ * 2026-09-24: arma el cobro con el MISMO control que Hoy y la Grilla
+ * (`HoyChargeSection` + `useSlotCharges`) — antes tenía su propio form con
+ * `SplitPaymentFields` a mano y siempre cobraba por `addBookingChargeAction`,
+ * sin importar si el turno ya había terminado. Ahora `chargeMode` decide como
+ * en cualquier otra pantalla: adelanto, cobrar-y-dar-por-jugado, o saldo de un
+ * turno ya jugado (`caja/deudas`).
+ */
 export default function BookingCharges({
-  bookingId,
-  priceSnapshot,
-  depositAmount,
-  depositStatus,
+  booking,
   refundState,
   charges,
   chargesTotal,
-  addBookingChargeAction,
+  actions,
 }: Props) {
   const router = useRouter()
-  const [pending, startTransition] = useTransition()
+  const nowMs = useNowMs()
   const [open, setOpen] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [lines, setLines] = useState<FieldLine[]>([])
-  /**
-   * La key vive lo que vive UN intento de cobro. Antes se armaba una nueva en
-   * cada toque de "Registrar cobro": si la request se cortaba por la red pero el
-   * cobro entraba, el reintento viajaba con otra key y el servidor lo insertaba
-   * de nuevo. Ahora se conserva hasta que el servidor contesta y, mientras no se
-   * sepa si el cobro entró, lo único que se puede mandar es ESE cobro — si se
-   * pudiera cargar otro con la misma key, un cobro idéntico se tomaría por
-   * reintento (el mismo problema que el panel de la grilla).
-   */
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
-  const [unconfirmed, setUnconfirmed] = useState<UnconfirmedCharge | null>(null)
-  const retryCharge = unconfirmed?.key === idempotencyKey ? unconfirmed : null
+  // `resetLastId` corre DENTRO de la transición del hook (después de un cobro
+  // resuelto), así que no puede tocar el `setIdempotencyKey` de ESTE render
+  // directamente. Se marca acá y se resuelve en el cuerpo del render (mismo
+  // patrón "derived state" que `HoyChargeModal`, sin `useEffect`): sin esto,
+  // el próximo cobro reusaría la key del anterior y el backend lo rechazaría
+  // por "ya se había registrado" (`resolveIdempotentCharges`).
+  const [needsKeyReset, setNeedsKeyReset] = useState(false)
+  const hasEnded =
+    typeof booking.endsAtMs === 'number' ? hasEndedAt({ endsAtMs: booking.endsAtMs }, nowMs) : false
+
+  const {
+    isPending,
+    error,
+    setError,
+    lines,
+    setLines,
+    setIdempotencyKey,
+    mode,
+    pending,
+    submitCharge,
+    submitPartialCharge,
+    submitTeamCharge,
+    retryTotal,
+    retryUnconfirmedCharge,
+  } = useSlotCharges({
+    booking,
+    hasEnded,
+    actions,
+    notifyMutated: () => router.refresh(),
+    // Cierra el form (lo que hacía este componente al final de cada cobro
+    // exitoso) y pide la rotación de la key para el próximo cobro.
+    resetLastId: () => {
+      setOpen(false)
+      setNeedsKeyReset(true)
+    },
+  })
+
+  if (needsKeyReset) {
+    setNeedsKeyReset(false)
+    setIdempotencyKey(crypto.randomUUID())
+  }
 
   const {
     depositCounted,
@@ -90,107 +115,30 @@ export default function BookingCharges({
   } = useMemo(
     () =>
       summarizeBookingCharges({
-        priceSnapshot,
-        depositAmount,
-        depositStatus,
+        priceSnapshot: booking.priceSnapshot,
+        depositAmount: booking.depositAmount ?? 0,
+        depositStatus: booking.depositStatus ?? 'not_required',
         chargesTotal,
       }),
-    [priceSnapshot, depositAmount, depositStatus, chargesTotal],
+    [booking.priceSnapshot, booking.depositAmount, booking.depositStatus, chargesTotal],
   )
   const isPaidInFull = pendingAmount === 0
   // Solo la ETIQUETA. `summarizeBookingCharges` de arriba sigue recibiendo el
   // `depositStatus` crudo: los totales son plata, no texto.
-  const depositDisplayStatus = resolveDepositDisplayStatus(depositStatus, refundState)
+  const depositDisplayStatus = resolveDepositDisplayStatus(
+    booking.depositStatus ?? 'not_required',
+    refundState,
+  )
 
   function openForm() {
     setError(null)
     // Precargado con lo que falta, en efectivo: se corrige para abajo, no se
     // escribe de cero (mismo criterio que el panel del turno en la grilla).
-    setLines([newChargeLine(pendingAmount > 0 ? pendingAmount : null, 'cash')])
+    // La idempotencyKey NO se toca acá: si queda un cobro sin confirmar
+    // (`retryTotal`), tiene que sobrevivir a un cierre y reapertura del form —
+    // la rota `resetLastId` recién cuando el cobro se resuelve.
+    setLines([newChargeLine(pending > 0 ? pending : null, 'cash')])
     setOpen(true)
-  }
-
-  function onSubmit() {
-    setError(null)
-    const attempt: ChargeLine[] = []
-    for (const l of lines) {
-      if (l.amountCents == null || l.amountCents <= 0) {
-        setError('Todos los cobros deben tener un monto mayor a $0.')
-        return
-      }
-      attempt.push({ amount: l.amountCents, method: l.method })
-    }
-    if (attempt.length === 0) {
-      setError('Ingresá al menos una línea de cobro.')
-      return
-    }
-    const total = attempt.reduce((s, c) => s + c.amount, 0)
-    if (total > pendingAmount) {
-      setError(`El cobro (${formatArs(total)}) supera lo pendiente (${formatArs(pendingAmount)}).`)
-      return
-    }
-    // Un solo llamado, atómico (addBookingChargeAction inserta las N líneas en
-    // la MISMA transacción): un fallo a mitad de camino no deja la plata de una
-    // línea adentro sin la otra.
-    runCharge({
-      key: idempotencyKey,
-      charges: attempt,
-      total,
-      toastTitle: attempt.length > 1 ? 'Cobro dividido registrado' : 'Cobro registrado',
-      toastDescription:
-        attempt.length > 1
-          ? attempt.map((c) => `${formatArs(c.amount)} (${METHOD_LABELS[c.method]})`).join(' + ')
-          : undefined,
-    })
-  }
-
-  function runCharge(attempt: UnconfirmedCharge) {
-    startTransition(async () => {
-      try {
-        const res = await addBookingChargeAction({
-          bookingId,
-          charges: attempt.charges,
-          clientIdempotencyKey: attempt.key,
-        })
-        // El servidor contestó: el intento quedó resuelto (entró, o no dejó nada
-        // escrito), así que el próximo cobro va con otra key.
-        setUnconfirmed(null)
-        setIdempotencyKey(crypto.randomUUID())
-        if (!res.success) {
-          // Re-envuelto por lo mismo que el catch: el error sale con los botones ya habilitados.
-          startTransition(() => setError(res.error))
-          return
-        }
-        toast({
-          title: attempt.toastTitle,
-          description: attempt.toastDescription,
-          variant: 'success',
-        })
-        setOpen(false)
-        setLines([])
-        router.refresh()
-      } catch (err) {
-        Sentry.captureException(err)
-        // Lo que viene después de un `await` ya no es parte de la transición
-        // (React pierde el contexto async: "React doesn't treat my state update
-        // after await as a Transition", doc de useTransition). Suelto, pintaba
-        // "Reintentar" un render ANTES de que `pending` bajara: el botón y
-        // "Cancelar" aparecían deshabilitados y un toque en ese instante se
-        // perdía (así fallaba booking-charges-network-error, ~2 de cada 100).
-        // Adentro de startTransition sale en el mismo commit que pending=false.
-        startTransition(() => {
-          setError(null)
-          setUnconfirmed(attempt)
-        })
-      }
-    })
-  }
-
-  /** Reenvía el cobro que quedó sin confirmar: mismas líneas, misma key. */
-  function retryUnconfirmedCharge() {
-    if (!retryCharge) return
-    setError(null)
-    runCharge(retryCharge)
   }
 
   return (
@@ -205,9 +153,9 @@ export default function BookingCharges({
       <dl className="mt-3 space-y-2 text-sm">
         <div className="flex items-center justify-between">
           <dt className="text-muted-foreground">Precio del turno</dt>
-          <dd className="font-semibold text-foreground">{formatArs(priceSnapshot)}</dd>
+          <dd className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</dd>
         </div>
-        {depositAmount > 0 && (
+        {(booking.depositAmount ?? 0) > 0 && (
           <div className="flex items-center justify-between">
             <dt className="text-muted-foreground">
               Seña{' '}
@@ -219,7 +167,7 @@ export default function BookingCharges({
                 </span>
               )}
             </dt>
-            <dd className="text-foreground">{formatArs(depositAmount)}</dd>
+            <dd className="text-foreground">{formatArs(booking.depositAmount ?? 0)}</dd>
           </div>
         )}
         {charges.map((c, i) => (
@@ -249,12 +197,47 @@ export default function BookingCharges({
         </div>
       </dl>
 
-      {!open ? (
+      {open && mode ? (
+        // 2026-09-24: el mismo control de cobro que Hoy, la Grilla y Caja
+        // (pestañas Todo junto / Por equipo / Por jugador). Antes este era el
+        // último lugar con un form propio y una sola forma de cobrar.
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <HoyChargeSection
+            booking={booking}
+            mode={mode}
+            // Esta página no trae la capacidad de la cancha (`getBookingDetail`
+            // solo pide `courtName`): "Por jugador" no se ofrece sin inventar un
+            // monto, mismo criterio que cuando la Grilla no la conoce.
+            capacity={undefined}
+            lines={lines}
+            onLinesChange={(next) => {
+              setError(null)
+              setLines(next)
+            }}
+            error={error}
+            isPending={isPending}
+            locked={isPending}
+            onSubmit={submitCharge}
+            onPartialCharge={submitPartialCharge}
+            onTeamCharge={submitTeamCharge}
+            retryTotal={retryTotal}
+            onRetry={retryUnconfirmedCharge}
+          />
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => setOpen(false)}
+            className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60 cursor-pointer"
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
         <button
           type="button"
           onClick={openForm}
-          disabled={isPaidInFull}
-          title={isPaidInFull ? 'Este turno ya está pagado por completo.' : undefined}
+          disabled={!mode}
+          title={!mode ? 'Este turno ya está pagado por completo.' : undefined}
           // H078: este es el CTA que cobra la plata que se debe — es el
           // primario (sólido) de la vista, no "Marcar completada" (estado del
           // sistema). BONUS-62 / regla del dueño §8.4.
@@ -262,60 +245,6 @@ export default function BookingCharges({
         >
           + Agregar cobro
         </button>
-      ) : (
-        // 2026-09-17: el mismo control de cobro que el panel del turno de la
-        // grilla, Caja y torneos. Antes esta era la última pantalla con uno
-        // propio: pestañas "Pago único / Pago dividido (2 medios)", exactamente
-        // dos líneas y tres <select> ocultos espejando Popovers.
-        <div className="mt-4 space-y-3 border-t border-border pt-4">
-          {/* Con un cobro sin confirmar no se toca nada: sólo se reintenta ese. */}
-          <fieldset disabled={retryCharge !== null} className="min-w-0">
-            <legend className="sr-only">Nuevo cobro</legend>
-            <SplitPaymentFields
-              lines={lines}
-              onChange={(next) => {
-                setError(null)
-                setLines(next)
-              }}
-              maxLines={MAX_LINES}
-              disabled={retryCharge !== null || pending}
-              idPrefix="charge"
-            />
-          </fieldset>
-
-          {error && (
-            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-              {error}
-            </p>
-          )}
-          {retryCharge && (
-            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-              Se cortó la conexión y no sabemos si ese cobro entró. Reintentalo antes de cargar
-              otro: si ya había entrado, no se cobra dos veces.
-            </p>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={retryCharge ? retryUnconfirmedCharge : onSubmit}
-              className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60 cursor-pointer"
-            >
-              {retryCharge
-                ? `Reintentar cobro de ${formatArs(retryCharge.total)}`
-                : 'Registrar cobro'}
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setOpen(false)}
-              className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60 cursor-pointer"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
       )}
     </section>
   )

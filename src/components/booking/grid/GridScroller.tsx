@@ -32,6 +32,11 @@ type Props = {
   onExpandMorning: () => void
 }
 
+/** "Cancha 3" → "C3" para la columna angosta del teléfono; otro nombre, igual. */
+function shortCourtName(name: string): string {
+  return name.replace(/^cancha\s*(?=\d)/i, 'C')
+}
+
 /**
  * Región scrollable de la grilla: CSS Grid con posición explícita (columna de
  * horas sticky, headers de cancha, banda de madrugada, línea de "ahora" y las
@@ -133,9 +138,27 @@ export function GridScroller({
             style={{ gridColumn: ci + 2, gridRow: 1 }}
             className="sticky top-0 z-20 flex min-w-0 snap-start scroll-ml-11 flex-col items-center justify-center border-b border-border bg-card/95 px-1 leading-tight backdrop-blur-sm lg:scroll-ml-14 lg:flex-row lg:gap-1 lg:px-2"
           >
-            <span className="max-w-full truncate text-[12px] font-bold text-foreground lg:text-xs lg:font-semibold">
-              {court.name}
-            </span>
+            {/* En el teléfono "Cancha 3" no entra en la columna y se truncaba
+                a "Canc…", justo sin el número. Ahí va "C3"; el nombre entero
+                queda para lectores de pantalla y vuelve a verse desde `lg`.
+                Un nombre que no es "Cancha N" se muestra tal cual. */}
+            {shortCourtName(court.name) === court.name ? (
+              <span className="max-w-full truncate text-[12px] font-bold text-foreground lg:text-xs lg:font-semibold">
+                {court.name}
+              </span>
+            ) : (
+              <>
+                <span
+                  aria-hidden
+                  className="max-w-full truncate text-[12px] font-bold text-foreground lg:hidden"
+                >
+                  {shortCourtName(court.name)}
+                </span>
+                <span className="sr-only lg:not-sr-only lg:max-w-full lg:truncate lg:text-xs lg:font-semibold lg:text-foreground">
+                  {court.name}
+                </span>
+              </>
+            )}
             {/* En 44 px no entra "(pausada)" al lado del nombre: abajo va el dato
                 corto —el formato, o el aviso de pausa si la cancha lo está—. */}
             <span className="max-w-full truncate text-[9px] font-semibold uppercase tracking-[0.03em] text-muted-foreground lg:hidden">

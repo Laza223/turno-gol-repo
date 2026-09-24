@@ -15,10 +15,12 @@ import {
   releaseBlockAction,
   revertNoShowAction,
 } from '../actions'
+import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { BookingDetailCard } from './BookingDetailCard'
 import BookingActions from './BookingActions'
 import BookingCharges from './BookingCharges'
+import { toGridBooking } from './to-grid-booking'
 
 // H103: 'no_show' AFUERA a propósito — veto de producto "No-show NO es
 // deuda" (CLAUDE.md). La Grilla ya no ofrece cobro sobre un ausente
@@ -85,14 +87,16 @@ export default async function ReservaDetailPage(props: Props) {
         {charges && (
           <div>
             <BookingCharges
-              bookingId={booking.id}
-              priceSnapshot={booking.priceSnapshot}
-              depositAmount={booking.depositAmount}
-              depositStatus={booking.depositStatus}
+              booking={toGridBooking(booking, charges.chargesTotal)}
               refundState={booking.refundState}
               charges={charges.charges}
               chargesTotal={charges.chargesTotal}
-              addBookingChargeAction={addBookingChargeAction}
+              actions={{
+                addBookingChargeAction,
+                completeAndChargeBookingAction,
+                chargeDebtAction,
+                markNoShowAction,
+              }}
             />
           </div>
         )}

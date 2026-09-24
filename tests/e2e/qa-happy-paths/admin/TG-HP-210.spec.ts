@@ -4,7 +4,8 @@
  * pendiente > 0.
  * CASO DE PLATA — no se limpia la fila al final (queda viva para verificadores).
  * Evidencia: src/app/(admin)/reservas/actions.ts:363-486 (addBookingChargeAction),
- * src/app/(admin)/reservas/[id]/BookingCharges.tsx:39-236.
+ * src/app/(admin)/reservas/[id]/BookingCharges.tsx (arma el cobro con el
+ * mismo control que Hoy/la Grilla, `HoyChargeSection` + `useSlotCharges`).
  */
 import type { Locator } from '@playwright/test'
 import { test, expect } from '../../fixtures'
@@ -82,19 +83,22 @@ test.describe('TG-HP-210 — agregar cobro parcial', () => {
 
       // El monto viene prefilled con el pendiente total (`openForm` de
       // BookingCharges) — lo reemplazamos por un monto PARCIAL.
-      // Desde 2026-09-17 el detalle usa el control de cobro compartido
-      // (SplitPaymentFields): los ids son por línea (`-1`, `-2`, …) y el
-      // método es un SelectMenu (DropdownMenu de Radix), no un <select>. El
-      // monto es un MoneyInput: muestra el separador de miles ("2.000").
-      const amountInput = page.locator('#charge-amount-1')
+      // Desde 2026-09-24 el detalle arma el cobro con el MISMO control que Hoy
+      // y la Grilla (`HoyChargeSection` + `useSlotCharges`): los ids llevan el
+      // prefijo `hoy-cobro` y el método es un SelectMenu (DropdownMenu de
+      // Radix), no un <select>. El monto es un MoneyInput: muestra el
+      // separador de miles ("2.000").
+      const amountInput = page.locator('#hoy-cobro-amount-1')
       await expect(amountInput).toHaveValue('2.000')
       await amountInput.fill(String(partialCharge / 100))
       await page.getByRole('button', { name: 'Método de pago' }).click()
       await page.getByRole('menuitemradio', { name: 'Transferencia' }).click()
 
-      await page.getByRole('button', { name: 'Registrar cobro' }).click()
+      // El turno todavía no empezó: `chargeMode` es 'advance' y el CTA dice
+      // "Cobrar $X por adelantado · quedan $Y" (`charge-copy.ts#chargeCta`).
+      await page.getByRole('button', { name: /^Cobrar/ }).click()
 
-      await expect(page.getByText('Cobro registrado', { exact: true })).toBeVisible({
+      await expect(page.getByText(/^Cobro registrado/)).toBeVisible({
         timeout: 10_000,
       })
 

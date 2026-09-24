@@ -16,8 +16,12 @@ vi.mock('@/modules/staff/guards', () => ({
       openingHours: {},
       closedDates: [],
       // `TenantRow.settings` no es opcional en producción; el mock lo omitía y el
-      // page empezó a leerlo (deposit_percentage, Fase 3 T6).
-      settings: { deposit_percentage: 30 },
+      // page empezó a leerlo (deposit_percentage, Fase 3 T6; cancellation_policy
+      // para el aviso de seña de `SlotCancelDialog`, este PR).
+      settings: {
+        deposit_percentage: 30,
+        cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
+      },
     },
   })),
 }))

@@ -200,6 +200,7 @@ export default async function DashboardPage() {
               // Solo el dueño puede activar canchas (Configuración es suya).
               canManageCourts={isAdmin}
               serverNowMs={now.getTime()}
+              cancellationPolicyHours={tenant.settings.cancellation_policy.hours_before}
               actions={{
                 chargeDebtAction,
                 completeAndChargeBookingAction,

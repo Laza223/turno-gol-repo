@@ -38,9 +38,11 @@ type Props = Omit<
     listCatalogAction: ListCanteenCatalog
     sellTicketAction: SellTicketForBooking
   }
+  /** Horas de anticipación de la política de cancelación, para el aviso de seña del modal. */
+  cancellationPolicyHours: number
 }
 
-export function GrillaView({ canteen, ...gridProps }: Props) {
+export function GrillaView({ canteen, cancellationPolicyHours, ...gridProps }: Props) {
   return (
     <BookingGrid
       {...gridProps}
@@ -73,6 +75,7 @@ export function GrillaView({ canteen, ...gridProps }: Props) {
             renderCanteenDialog={args.renderCanteenDialog}
             onClose={args.onClose}
             onMutated={args.onMutated}
+            cancellationPolicyHours={cancellationPolicyHours}
           />
         )
       }

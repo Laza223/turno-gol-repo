@@ -22,7 +22,7 @@
 | **UI Library** | React | 19.x (`^19.2.7`) | ADR-008 |
 | **Component Library** | shadcn/ui + Radix UI | Latest | — |
 | **Estilos** | Tailwind CSS | 4.x (`^4.3.2`) | — |
-| **Design System** | Propio (design-system/MASTER.md) | — | — |
+| **Design System** | Propio (`DESIGN.md`, raíz del repo) | — | — |
 | **Base de datos** | PostgreSQL | 15.x (vía Supabase) | ADR-001 |
 | **ORM / Query Builder** | Drizzle ORM | `^0.45.2` | — |
 | **Autenticación** | Supabase Auth | Managed | ADR-002 |
@@ -552,7 +552,7 @@ FLUJO DE DEPENDENCIAS (unidireccional):
     // Storage (Cloudflare R2, NO Supabase Storage)
     "@aws-sdk/client-s3": "^3.1079.0",
 
-    // UI (componentes primitivos — el design system visual se define en design-system/MASTER.md)
+    // UI (componentes primitivos — el design system visual se define en DESIGN.md)
     "@radix-ui/react-dialog": "^1.0",
     "@radix-ui/react-dropdown-menu": "^2.0",
     "@radix-ui/react-popover": "^1.0",
@@ -1256,7 +1256,7 @@ MRR estimado = 500 × $55 = **$27.500 USD/mes**. Infra = 0.7-1.3% del MRR. **Mar
 │                  (Pagos)                 (Email)               │
 │                                                             │
 │  Lenguaje: TypeScript                                       │
-│  UI: React + shadcn/ui + Tailwind (design system: MASTER.md)  │
+│  UI: React + shadcn/ui + Tailwind (design system: DESIGN.md)  │
 │  Testing: Vitest + Playwright                               │
 │  Monitoring: Sentry + Vercel Analytics                      │
 │  CI/CD: GitHub Actions → Vercel                             │

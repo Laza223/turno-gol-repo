@@ -10,9 +10,10 @@
 
 > [!WARNING]
 > **§2 (mockups paso a paso) SUPERSEDED por el refactor 2026-08-16** —
-> `docs/spec/design-system/pages/onboarding.md` es la fuente de verdad de la UI actual (orden de
-> pasos, contenido de cada uno, paso 4 = primera reserva en vez de MP, fotos fuera del wizard). Los
-> mockups de acá ya no coinciden con el código y no se deben usar como referencia de implementación.
+> la UI actual (orden de pasos, contenido de cada uno, paso 4 = primera reserva en vez de MP, fotos
+> fuera del wizard) es la del código en `src/app/onboarding/` y quedó descripta en
+> `docs/archive/design-system/pages/onboarding.md` (archivada el 2026-09-23: la autoridad de diseño
+> es `DESIGN.md`, en la raíz). Los mockups de acá ya no coinciden con el código y no se deben usar como referencia de implementación.
 > **Siguen vigentes**: §1 (Aha Moment, cadena de valor, métricas de éxito), §3 (WhatsApp share, ya
 > implementado en `ShareActions`), §4 (anti-patterns), §6 (razonamiento de negocio) — es estrategia,
 > no describe pantallas.

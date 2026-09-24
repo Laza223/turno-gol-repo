@@ -21,7 +21,7 @@ Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 
 | [`business/`](./business) | Planes originales de negocio, sistema e historias de usuario (precursores de los doc) | Referencia histórica |
 | [`superpowers/`](./superpowers) | Planes y specs de implementación (workflow superpowers) | Histórico |
 | [`testing/`](./testing) | Prompts de testeo de vistas | Proceso |
-| [`archive/`](./archive) | Planes de ataque, prompts one-shot, TODOs viejos, blueprints ejecutados, walkthroughs | Archivado |
+| [`archive/`](./archive) | Planes de ataque, prompts one-shot, TODOs viejos, blueprints ejecutados, walkthroughs y el design system anterior ([`archive/design-system/`](./archive/design-system): MASTER, gramática de interacción y specs por página, archivado el 2026-09-23) | Archivado |
 
 Archivo suelto vigente: [`infraestructura.md`](./infraestructura.md) (plan de infra prod — lo cita `planning/deploy-playbook.md`).
 
@@ -53,9 +53,10 @@ Archivo suelto vigente: [`infraestructura.md`](./infraestructura.md) (plan de in
 - `doc17` — Observabilidad (Sentry, logs, métricas)
 - `doc18` — Privacy/Compliance (Ley 25.326)
 - `doc19` — Runbook operativo
-- `doc20` — Design System (ver `design-system/MASTER.md` como fuente visual)
+- `doc20` — Design System (**superado**: la única autoridad de diseño es [`DESIGN.md`](../DESIGN.md), en la raíz)
 
 ## Otras referencias clave fuera de `docs/`
 - `CLAUDE.md` — instrucciones del proyecto (raíz)
 - `CONTRIBUTING.md` — setup, flujo de PR, migraciones, deploy (raíz)
-- `design-system/MASTER.md` — fuente de verdad visual
+- `DESIGN.md` — única autoridad de diseño: tokens, tipografía, superficies y componentes (raíz)
+- `PRODUCT.md` — para quién y para qué es el panel, con la evidencia de uso real (raíz)

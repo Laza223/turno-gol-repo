@@ -136,7 +136,7 @@ Gobernanza:
 
 ## UX
 
-Tan simple que un niño lo entienda (regla explícita del dueño). Portal jugador: cero fricción, tipo ecommerce. Admin: denso pero obvio. Son las dos personalidades del design system (doc20). Nada de configurabilidad "por las dudas".
+Tan simple que un niño lo entienda (regla explícita del dueño). Portal jugador: cero fricción, tipo ecommerce. Admin: denso pero obvio. Son las dos personalidades del design system ([`DESIGN.md`](DESIGN.md), única autoridad de diseño). Nada de configurabilidad "por las dudas".
 
 ## Comunicación
 
@@ -152,6 +152,7 @@ Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no 
 
 **FEATURE FREEZE hasta 2026-11-01** (decisión del dueño, [`docs/decisions/2026-09-02-experimento-30-dias.md`](docs/decisions/2026-09-02-experimento-30-dias.md) D4)
 - **Permitido**: bugs · seguridad · circuitos de plata · blockers observados en usuarios/clientes reales · fricción de adopción observada · instrumentación necesaria para medir · mejoras pequeñas justificadas directamente por uso real. Antes de programar cualquiera de estas, la observación se registra en `docs/gtm/ejecucion/10-aprendizajes.md`.
+- **Refinamiento del panel admin: permitido** por decisión del dueño del 2026-09-23. Es refinamiento sobre el estilo actual, no rediseño: no toca lógica, Server Actions, queries ni schema (si una mejora los necesita, se frena y se decide aparte). Autoridad visual: [`DESIGN.md`](DESIGN.md); contexto de producto: [`PRODUCT.md`](PRODUCT.md).
 - **No permitido**: features especulativas · features copiadas de competidores sin evidencia · North Star · rankings · Cam · Falta Uno · profesores · marketplace · nuevas expansiones de producto. Tampoco cambiar seña default, lifecycle, referidos ni la web comercial hasta tener evidencia del caso cero. **El pricing en código YA se liberó** por [`docs/decisions/2026-09-17-precio-por-cancha.md`](docs/decisions/2026-09-17-precio-por-cancha.md), que supera a D3: ese esfuerzo está autorizado, cualquier OTRO cambio de precio sigue necesitando decisión escrita del dueño. Si un pedido cae acá, señalarlo y devolver "REQUIERE INPUT" en vez de implementar.
 
 **PREGUNTAR ANTES**

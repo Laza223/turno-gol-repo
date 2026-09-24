@@ -1,0 +1,722 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-24T03:35:53Z",
+  "title": "Design System: TurnoGol",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Esmeralda de marca (claro)",
+        "canonical": "hsl(163 94% 24%)",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "primary-foreground": {
+        "role": "primary",
+        "displayName": "Texto sobre esmeralda (claro)",
+        "canonical": "hsl(0 0% 100%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Slate frío de fondo",
+        "canonical": "hsl(214 25% 91%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "hsl(224 71% 4%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Blanco de tarjeta",
+        "canonical": "hsl(0 0% 100%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "Slate anidado",
+        "canonical": "hsl(214 32% 85%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Texto secundario",
+        "canonical": "hsl(215 20% 36%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Línea",
+        "canonical": "hsl(214 32% 83%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "ring": {
+        "role": "primary",
+        "displayName": "Esmeralda de foco",
+        "canonical": "hsl(160 84% 39%)",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "success": {
+        "role": "status",
+        "displayName": "Cobrado",
+        "canonical": "hsl(142 72% 29%)",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#15803d",
+          "#16a34a",
+          "#22c55e",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "warning": {
+        "role": "status",
+        "displayName": "Pendiente",
+        "canonical": "hsl(32 95% 44%)",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "info": {
+        "role": "status",
+        "displayName": "Informativo",
+        "canonical": "hsl(221 83% 53%)",
+        "tonalRamp": [
+          "#172554",
+          "#1e3a8a",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#60a5fa",
+          "#bfdbfe",
+          "#eff6ff"
+        ]
+      },
+      "destructive": {
+        "role": "status",
+        "displayName": "Peligro",
+        "canonical": "hsl(0 72% 51%)",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "Esmeralda de marca (oscuro)",
+        "canonical": "hsl(160 84% 39%)",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "primary-foreground-dark": {
+        "role": "primary",
+        "displayName": "Texto sobre esmeralda (oscuro)",
+        "canonical": "hsl(224 71% 4%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "background-dark": {
+        "role": "neutral",
+        "displayName": "Losa slate-950",
+        "canonical": "hsl(224 71% 4%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "foreground-dark": {
+        "role": "neutral",
+        "displayName": "Tinta clara",
+        "canonical": "hsl(210 40% 98%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "card-dark": {
+        "role": "neutral",
+        "displayName": "Superficie nocturna",
+        "canonical": "hsl(222 33% 9%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "secondary-dark": {
+        "role": "neutral",
+        "displayName": "Slate anidado (oscuro)",
+        "canonical": "hsl(217 33% 14%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "accent-dark": {
+        "role": "neutral",
+        "displayName": "Hover (oscuro)",
+        "canonical": "hsl(217 33% 17%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "muted-foreground-dark": {
+        "role": "neutral",
+        "displayName": "Texto secundario (oscuro)",
+        "canonical": "hsl(215 20% 65%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "border-dark": {
+        "role": "neutral",
+        "displayName": "Línea (oscuro)",
+        "canonical": "hsl(217 33% 17%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "success-dark": {
+        "role": "status",
+        "displayName": "Cobrado (oscuro)",
+        "canonical": "hsl(142 70% 45%)",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#15803d",
+          "#16a34a",
+          "#22c55e",
+          "#4ade80",
+          "#bbf7d0",
+          "#f0fdf4"
+        ]
+      },
+      "warning-dark": {
+        "role": "status",
+        "displayName": "Pendiente (oscuro)",
+        "canonical": "hsl(38 92% 50%)",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "info-dark": {
+        "role": "status",
+        "displayName": "Informativo (oscuro)",
+        "canonical": "hsl(217 91% 60%)",
+        "tonalRamp": [
+          "#172554",
+          "#1e3a8a",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#60a5fa",
+          "#bfdbfe",
+          "#eff6ff"
+        ]
+      },
+      "brand-text": {
+        "role": "primary",
+        "displayName": "Esmeralda de texto",
+        "canonical": "#047857",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "brand-text-strong": {
+        "role": "primary",
+        "displayName": "Esmeralda de rótulo",
+        "canonical": "#065f46",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "brand-text-dark": {
+        "role": "primary",
+        "displayName": "Esmeralda de texto (oscuro)",
+        "canonical": "#34d399",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "brand-label-dark": {
+        "role": "primary",
+        "displayName": "Esmeralda de rótulo (oscuro)",
+        "canonical": "#6ee7b7",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ]
+      },
+      "night-slab": {
+        "role": "neutral",
+        "displayName": "Losa nocturna",
+        "canonical": "#020617",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Titulares del portal del jugador, en itálica. Uno por pantalla."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Título de página del panel (PageHeader); 30 px desde 640 px."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Cifra de un KPI (StatCard) y totales destacados. Tabular."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Título de diálogo y de sheet."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto del panel; mínimo 14 px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Botones, rótulos de formulario e ítems de menú."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Badges, ayudas y encabezados de tabla."
+      },
+      "microlabel": {
+        "displayName": "Microlabel",
+        "purpose": "Rótulo en mayúsculas de una o dos palabras (nombre del complejo en la barra)."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-light",
+        "value": "0 1px 2px rgba(2,6,23,.05), 0 4px 12px -4px rgba(2,6,23,.08), 0 12px 32px -12px rgba(2,6,23,.12)",
+        "purpose": ".card-premium en claro, con border-top 2px rgba(5,150,105,.2)."
+      },
+      {
+        "name": "card-dark",
+        "value": "0 1px 0 rgba(255,255,255,.03) inset, 0 24px 50px -34px rgba(0,0,0,.9)",
+        "purpose": ".card-premium en oscuro, sobre rgba(255,255,255,.03) con blur(12px)."
+      },
+      {
+        "name": "card-interactive-hover-light",
+        "value": "0 1px 2px rgba(2,6,23,.06), 0 8px 20px -8px rgba(16,185,129,.14), 0 20px 44px -16px rgba(16,185,129,.2)",
+        "purpose": ".card-premium-interactive al hover (sube 4 px). Solo tarjetas clickeables."
+      },
+      {
+        "name": "button-primary",
+        "value": "0 4px 6px -1px hsl(163 94% 24% / .2), 0 2px 4px -2px hsl(163 94% 24% / .2)",
+        "purpose": "shadow-md shadow-primary/20 del botón primario; al hover shadow-lg shadow-primary/30."
+      },
+      {
+        "name": "floating",
+        "value": "0 25px 50px -12px rgba(0,0,0,.25)",
+        "purpose": "shadow-2xl de diálogo y sheet (popover shadow-lg, menú shadow-xl)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "fast",
+        "value": "150ms ease",
+        "purpose": "Hover y color de pestañas, navegación y celdas."
+      },
+      {
+        "name": "base",
+        "value": "200ms",
+        "purpose": "Botones, diálogos, menús: el techo del panel."
+      },
+      {
+        "name": "sheet",
+        "value": "300ms",
+        "purpose": "Entrada de la sheet."
+      },
+      {
+        "name": "ease-out-cubic",
+        "value": "cubic-bezier(0.33, 1, 0.68, 1)",
+        "purpose": "Lift de tarjetas y pelotita de carga."
+      },
+      {
+        "name": "realtime-pulse",
+        "value": "slot-pulse 600ms ease-out 1",
+        "purpose": "Reserva que entra por Realtime; también el éxito del portal. Una sola vez."
+      },
+      {
+        "name": "skeleton",
+        "value": "shimmer 1.8s ease-in-out infinite",
+        "purpose": "Carga con la silueta del contenido."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "@media (prefers-reduced-motion: reduce) → 0.01ms",
+        "purpose": "Contrato global en globals.css."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
+      },
+      {
+        "name": "content-max",
+        "value": "1600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "La acción principal de la vista; uno por vista. En plata, el rótulo dice efecto y monto.",
+      "html": "<button class=\"ds-btn-primary\">Cobrar $&nbsp;12.500</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; justify-content:center; height:40px; padding:8px 16px; border:0; border-radius:8px; background:hsl(var(--primary, 163 94% 24%)); color:hsl(var(--primary-foreground, 0 0% 100%)); font:500 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; box-shadow:0 4px 6px -1px hsl(163 94% 24% / .2), 0 2px 4px -2px hsl(163 94% 24% / .2); transition:background-color 200ms, translate 200ms, scale 200ms; cursor:pointer; } .ds-btn-primary:hover { background:hsl(var(--primary, 163 94% 24%) / .9); translate:0 -2px; box-shadow:0 10px 15px -3px hsl(163 94% 24% / .3), 0 4px 6px -4px hsl(163 94% 24% / .3); } .ds-btn-primary:focus-visible { outline:none; box-shadow:0 0 0 2px hsl(var(--card, 0 0% 100%)), 0 0 0 4px hsl(var(--ring, 160 84% 39%)); } .ds-btn-primary:active { scale:.97; }"
+    },
+    {
+      "name": "Botón secundario (outline)",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "La segunda acción importante de una vista.",
+      "html": "<button class=\"ds-btn-outline\">Ver detalle</button>",
+      "css": ".ds-btn-outline { display:inline-flex; align-items:center; height:40px; padding:8px 16px; border:1px solid hsl(var(--border, 214 32% 83%)); border-radius:8px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); font:500 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; box-shadow:0 1px 2px rgba(0,0,0,.05); transition:background-color 200ms; cursor:pointer; } .ds-btn-outline:hover { background:hsl(var(--accent, 214 32% 85%)); } .ds-btn-outline:focus-visible { outline:none; box-shadow:0 0 0 2px hsl(var(--card, 0 0% 100%)), 0 0 0 4px hsl(var(--ring, 160 84% 39%)); }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Rótulo siempre visible arriba; 16 px en el teléfono, 14 px desde 768 px.",
+      "html": "<label class=\"ds-field\"><span>Nombre</span><input class=\"ds-input\" placeholder=\"Ej: Copados FC\" /></label>",
+      "css": ".ds-field { display:grid; gap:6px; font:500 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--foreground, 224 71% 4%)); } .ds-input { height:40px; padding:8px 14px; border:1px solid hsl(var(--border, 214 32% 83%)); border-radius:8px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); font:400 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; } .ds-input::placeholder { color:hsl(var(--muted-foreground, 215 20% 36%) / .6); } .ds-input:focus-visible { outline:none; border-color:hsl(var(--primary, 163 94% 24%)); box-shadow:0 0 0 2px hsl(var(--card, 0 0% 100%)), 0 0 0 4px hsl(var(--ring, 160 84% 39%)); }"
+    },
+    {
+      "name": "Badge de estado",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Color + ícono + texto, desde status-tone.ts. Nunca color solo.",
+      "html": "<span class=\"ds-badge\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6 7 17l-5-5\"/><path d=\"m22 10-7.5 7.5L13 16\"/></svg>Jugada</span>",
+      "css": ".ds-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:9999px; font:500 12px/1.333 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:#065f46; background:hsl(var(--success, 142 72% 29%) / .1); box-shadow:inset 0 0 0 1px hsl(var(--success, 142 72% 29%) / .25); }"
+    },
+    {
+      "name": "Ítem del riel",
+      "kind": "nav",
+      "refersTo": "nav-rail-item-active",
+      "description": "Riel de 72 px: ícono arriba, rótulo abajo, siempre visible. Activo en esmeralda al 10 %.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-item is-active\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M16 2v4\"/><path d=\"M8 2v4\"/><path d=\"M3 10h18\"/></svg><span>Grilla</span></a><a class=\"ds-rail-item\" href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M6 12h.01M18 12h.01\"/></svg><span>Caja</span></a></nav>",
+      "css": ".ds-rail { display:flex; flex-direction:column; align-items:center; gap:4px; width:72px; padding:12px 0; background:hsl(var(--card, 0 0% 100%)); border-right:1px solid hsl(var(--border, 214 32% 83%)); } .ds-rail-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:60px; min-height:52px; border-radius:10px; font:600 10px/1.2 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215 20% 36%)); text-decoration:none; transition:background-color 150ms, color 150ms; } .ds-rail-item:hover { background:hsl(var(--accent, 214 32% 85%)); color:hsl(var(--foreground, 224 71% 4%)); } .ds-rail-item.is-active { background:hsl(var(--primary, 163 94% 24%) / .1); color:#065f46; } .ds-rail-item.is-active svg { color:#047857; } .ds-rail-item:focus-visible { outline:none; box-shadow:0 0 0 2px hsl(var(--ring, 160 84% 39%)); }"
+    },
+    {
+      "name": "KPI (StatCard)",
+      "kind": "card",
+      "refersTo": "card-premium",
+      "description": "Único formato de KPI: rótulo, cifra en Archivo tabular, ícono en cuadrado tintado.",
+      "html": "<div class=\"ds-stat\"><div class=\"ds-stat-head\"><p>Cobrado hoy</p><span class=\"ds-stat-icon\">$</span></div><p class=\"ds-stat-value\">$&nbsp;186.000</p><p class=\"ds-stat-sub\">14 cobros</p></div>",
+      "css": ".ds-stat { max-width:260px; padding:20px; background:hsl(var(--card, 0 0% 100%)); border:1px solid hsl(var(--border, 214 32% 83%)); border-top:2px solid rgba(5,150,105,.2); border-radius:12px; box-shadow:0 1px 2px rgba(2,6,23,.05), 0 4px 12px -4px rgba(2,6,23,.08), 0 12px 32px -12px rgba(2,6,23,.12); transition:transform 250ms cubic-bezier(0.33,1,0.68,1), box-shadow 250ms cubic-bezier(0.33,1,0.68,1); } .ds-stat:hover { transform:translateY(-4px); border-color:rgba(16,185,129,.35); } .ds-stat-head { display:flex; justify-content:space-between; align-items:center; font:500 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215 20% 36%)); } .ds-stat-head p { margin:0; } .ds-stat-icon { display:inline-flex; width:36px; height:36px; align-items:center; justify-content:center; border-radius:8px; background:rgba(16,185,129,.1); color:#059669; box-shadow:inset 0 0 0 1px rgba(16,185,129,.2); font-weight:700; } .ds-stat-value { margin:12px 0 0; font:700 30px/1.2 var(--font-archivo, Archivo), ui-sans-serif, system-ui, sans-serif; letter-spacing:-.025em; font-variant-numeric:tabular-nums; color:hsl(var(--foreground, 224 71% 4%)); } .ds-stat-sub { margin:6px 0 0; font:400 12px/1.333 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215 20% 36%)); }"
+    },
+    {
+      "name": "Pestañas (ScrollTabs)",
+      "kind": "nav",
+      "refersTo": "nav-tab-active",
+      "description": "Subrayado de 2 px; la activa en esmeralda. Se deslizan si no entran.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><a class=\"ds-tab is-active\" href=\"#\">Vender</a><a class=\"ds-tab\" href=\"#\">Cuentas</a><a class=\"ds-tab\" href=\"#\">Productos</a></div>",
+      "css": ".ds-tabs { display:flex; gap:4px; border-bottom:1px solid hsl(var(--border, 214 32% 83%)); overflow-x:auto; } .ds-tab { display:flex; align-items:center; min-height:36px; padding:0 16px; border-bottom:2px solid transparent; font:500 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215 20% 36%)); text-decoration:none; transition:color 150ms; } .ds-tab:hover { color:hsl(var(--foreground, 224 71% 4%)); } .ds-tab.is-active { border-bottom-color:#059669; color:#065f46; }"
+    },
+    {
+      "name": "Turno en la grilla",
+      "kind": "custom",
+      "refersTo": "grid-slot",
+      "description": "Firma del panel: borde izquierdo de 3 px del tono del estado + tinte suave; el ícono y el rótulo dicen qué es.",
+      "html": "<div class=\"ds-slot-grid\"><button class=\"ds-slot is-paid\"><strong>20:00</strong><span>Copados FC · Jugada</span></button><button class=\"ds-slot is-pending\"><strong>21:00</strong><span>Los Pibes · Esperando seña</span></button><button class=\"ds-slot-free\" aria-label=\"Cargar turno a las 22:00\">+</button></div>",
+      "css": ".ds-slot-grid { display:grid; gap:4px; max-width:240px; } .ds-slot { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:6px 8px; border:0; border-left:3px solid; border-radius:6px; font:600 11px/1.2 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--foreground, 224 71% 4%)); text-align:left; cursor:pointer; } .ds-slot strong { font:700 13px/1.2 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; font-variant-numeric:tabular-nums; } .ds-slot.is-paid { border-left-color:hsl(var(--success, 142 72% 29%)); background:hsl(var(--success, 142 72% 29%) / .15); } .ds-slot.is-pending { border-left-color:hsl(var(--warning, 32 95% 44%)); background:hsl(var(--warning, 32 95% 44%) / .1); } .ds-slot-free { height:36px; border:1px solid hsl(var(--border, 214 32% 83%) / .6); border-radius:6px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--muted-foreground, 215 20% 36%) / .4); font:600 14px/1 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:border-color 150ms, color 150ms; } .ds-slot-free:hover { border-color:#10b981; color:#059669; background:rgba(16,185,129,.05); } .ds-slot:focus-visible, .ds-slot-free:focus-visible { outline:none; box-shadow:inset 0 0 0 2px hsl(var(--ring, 160 84% 39%)); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Mostrador y La Previa",
+    "overview": "TurnoGol es un solo sistema con dos personalidades. Comparten paleta, tipografías y primitivas; cambia cuánta expresión se permite cada una. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Previa** es el portal del jugador y la web: una vidriera con checkout, una idea por pantalla, el verde usado como deseo (resplandores, cifras de precio, el CTA de reservar) y titulares en Archivo negra e itálica.\n\nEl mundo es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y \"después se verá\" el otro; arranca el del sistema (`next-themes`, `defaultTheme=\"system\"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.\n\nEste documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\").",
+    "keyCharacteristics": [
+      "Esmeralda sobre slate, con claro y oscuro como temas de primera.",
+      "Claro = elevación (sombras en capas). Oscuro = vidrio (blanco al 3 % + blur + resplandor).",
+      "Inter trabaja; Archivo titula, pone las cifras clave y firma el logo. Toda cifra es tabular.",
+      "Estado = color + ícono + texto, siempre desde `src/lib/status-tone.ts`.",
+      "Panel denso y movimiento corto (200 ms en los controles). Lo único largo es un pulso de 600 ms, una sola vez: el turno que entra a la grilla o la reserva recién confirmada.",
+      "Un solo primario por vista."
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Por vista, un solo elemento grita en verde sólido: el CTA primario o el dato clave. Los acentos susurran (texto o borde esmeralda) y todo lo demás calla en slate. En la grilla se invierte a propósito: el verde marca lo cobrado, no la acción.",
+        "section": "colors"
+      },
+      {
+        "name": "The Reserved Hues Rule",
+        "body": "`success`, `warning`, `info` y `destructive` son estado, no decoración. Lo que entra va en verde y lo que sale en rojo, siempre con signo y rótulo.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measured Contrast Rule",
+        "body": "Las escalas emerald, red y amber están fijadas en hex (valores de Tailwind 3) dentro del `@theme` de `globals.css`, porque las de Tailwind 4 en OKLCH rompían AA. Texto esmeralda: 700 sobre tarjeta clara, 800 sobre el fondo de página, 400 en oscuro. Nunca emerald-500 (2,5:1) ni emerald-600 (3,8:1) como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600 (3,8:1 y 3,2:1).",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Toda cifra que se compara o cambia (plata, horas, contadores, columnas) lleva `tabular-nums`. La plata se muestra `$ 12.500`, sin decimales, siempre con `formatArs` de `src/lib/format.ts` (el espacio después del `$` es uno duro, U+00A0; nada de formateadores propios con `Intl.NumberFormat` o `toLocaleString`); la hora, en 24 h (`18:00`); los rangos, con raya y sin espacios (`17:00–18:00`). Nada de fechas ISO frente al usuario: \"vie 3 jul\", \"mié 1 de julio\".",
+        "section": "typography"
+      },
+      {
+        "name": "The Display Discipline Rule",
+        "body": "`font-display` solo en títulos, cifras clave, el logo y los titulares del portal. Nunca en párrafos, tablas ni formularios.",
+        "section": "typography"
+      },
+      {
+        "name": "The 16px Field Rule",
+        "body": "Todo campo donde se tipea mide 16 px por debajo de 768 px y 14 px desde ahí (`text-base md:text-sm`); si no, iOS hace zoom al enfocar. No hay escape hacia abajo; hacia arriba existe `.field-lg` (18 px). `globals.css` tiene una red de seguridad fuera de `@layer`, que no reemplaza escribir la clase.",
+        "section": "typography"
+      },
+      {
+        "name": "The Recipe Rule",
+        "body": "Una vista no inventa su sombra, su degradé ni su vidrio inline. Si la receta no existe, se agrega a `globals.css` con su par claro/oscuro y se documenta acá.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Opaque Work Rule",
+        "body": "En claro, lo que se trabaja (tarjetas, tablas, formularios) es opaco. La translucidez es del tema oscuro y de piezas flotantes puntuales (diálogo, menú, la navegación flotante de la landing).",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** usar solo tokens semánticos en las primitivas (`bg-card`, `text-foreground`, `border-border`, `bg-primary`, `ring-ring`). La paleta cruda de Tailwind entra solo para semántica de dominio, y a través de `src/lib/status-tone.ts`.",
+      "**Do** pintar cada estado con color, ícono y texto (`StatusBadge`, `slot-visual.ts`), con el vocabulario único de estados: el panel y el portal dicen lo mismo.",
+      "**Do** probar cada pantalla en claro y en oscuro, con contraste medido: 4,5:1 en texto y 3:1 en componentes (la suite a11y de Storybook corre en los dos temas).",
+      "**Do** mantener el movimiento de los controles del panel en 200 ms o menos, animando transform, opacidad, color o sombra, nunca ancho, alto ni posición. Las excepciones de hoy: la sheet al abrir (300 ms), el levante de `.card-premium-interactive` (250 ms) y el pulso de un turno nuevo (600 ms, una vez). `prefers-reduced-motion` congela todo desde `globals.css`: una animación nueva tiene que verse bien congelada.",
+      "**Do** colgar los controles de una vista en el hueco de la barra superior (`AdminHeaderSlot`) en vez de sumar filas de encabezado.",
+      "**Do** reservar 44 px de blanco táctil debajo de 768 px (`h-11 md:h-10`) y dejar la fila entera clickeable cuando abre un detalle.",
+      "**Do** escribir en voseo, en sentence case y con el vocabulario de pantalla de `PRODUCT.md`; mayúsculas solo en microrrótulos de una o dos palabras con `tracking`."
+    ],
+    "donts": [
+      "**Don't** reemplazar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\", descartada por el dueño el 2026-09-23).",
+      "**Don't** mostrar el turno terminado y sin cobrar como alarma ni como deuda: es \"por cobrar\" (principio 3 de `PRODUCT.md`). El anillo rojo actual (`.slot-alarm-ring`) es lo primero que corrige el refinamiento.",
+      "**Don't** usar emerald-500 o emerald-600 como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600.",
+      "**Don't** escribir hex inline en JSX, ni sombras, degradés o vidrio inline; tampoco `dark:` sueltos para arreglar una primitiva: se arregla el token.",
+      "**Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`.",
+      "**Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton y de la web comercial.",
+      "**Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard (\"Revenue\", \"Booking\") frente al usuario.",
+      "**Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240)."
+    ]
+  }
+}

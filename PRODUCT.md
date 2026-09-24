@@ -46,11 +46,11 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 - **Nunca, en los 8 días:** cierre de caja, reposición de stock, equipo, métricas, fotos, logo o perfil público.
 - **Dispositivo.** El mostrador usa una notebook chica con mouse. El piso de diseño es 1366×768, que con el navegador deja unos 1280×650 px útiles. El dueño usa el celular.
 - **Cantidad de canchas.** El Vagón tiene 5 y el ICP comercial es de 4 a 6, pero hay complejos de 10 y quizá más (el founder, 2026-09-23). Con el precio por cancha, uno de 10 paga casi el doble que uno de 5. El panel trata 10 canchas como un caso de primera clase en la notebook, con la grilla, el cobro y Vender a la vista a la vez, y no se rompe hasta 16. Más de 16 queda sin diseñar. Ya hay un roce registrado: con 7 o 10 canchas, el tablero de `/reservas` deja la mitad fuera de pantalla (`10-aprendizajes.md`).
-- **Cuenta compartida.** El encargado entra con el usuario del dueño y el panel no sabe quién cobra. El rediseño tiene que andar bien así: ni la pantalla de inicio ni la navegación pueden depender de que el encargado tenga usuario propio.
+- **Cuenta compartida.** El encargado entra con el usuario del dueño y el panel no sabe quién cobra. El refinamiento sobre el estilo actual tiene que andar bien así: ni la pantalla de inicio ni la navegación pueden depender de que el encargado tenga usuario propio.
 
 ## Capabilities and Constraints
 
-**Lo que existe y el rediseño conserva:**
+**Lo que existe y el refinamiento sobre el estilo actual conserva:**
 
 - grilla por cancha y por día;
 - turnos sueltos de 60 minutos;
@@ -70,12 +70,12 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 **Restricciones:**
 
-- Este rediseño es de presentación. La lógica de negocio, las Server Actions, las queries y el schema no cambian. Si una mejora de UX los necesita, se frena y se decide aparte.
+- Este refinamiento sobre el estilo actual es de presentación. La lógica de negocio, las Server Actions, las queries y el schema no cambian. Si una mejora de UX los necesita, se frena y se decide aparte.
 - Roles: `admin` (todo) y `manager` (Hoy, grilla, reservas, caja y jugadores; sin Configuración, Equipo ni Métricas).
 - Montos en centavos de ARS. Horas en UTC en la base, que se muestran en hora argentina. Día operativo: el turno de las 23 y los de la madrugada pertenecen al día en que arrancó la jornada.
 - Ley 25.326: nunca texto libre sobre personas. Las etiquetas son un enum cerrado de 5.
 - Vetos de producto que están en `CLAUDE.md`: sin Falta Uno, sin billetera, sin saldo a favor de abonados, el no-show no es deuda, sin recordatorio de 24 h, el jugador no tiene Realtime y no hay AFIP.
-- Feature freeze hasta el 2026-11-01 (D4). El rediseño del panel queda afuera del freeze por decisión del dueño (2026-09-23).
+- Feature freeze hasta el 2026-11-01 (D4). El refinamiento sobre el estilo actual del panel queda afuera del freeze por decisión del dueño (2026-09-23).
 - Vocabulario de pantalla: Hoy, Grilla, Reservas, Caja, Cantina, Cuentas, Jugadores, Turnos fijos, turno, evento, bloqueo, seña, fiado, cancha (F5/F7).
 
 **Sin decidir:**
@@ -85,7 +85,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 ## Brand Commitments
 
-- El nombre es TurnoGol. El logo es el wordmark "TURNO" + "GOL" (verde, cursiva pesada) y el isotipo "TG", en `public/brand-assets/`. El rediseño del panel no toca el logo.
+- El nombre es TurnoGol. El logo es el wordmark "TURNO" + "GOL" (verde, cursiva pesada) y el isotipo "TG", en `public/brand-assets/`. El refinamiento sobre el estilo actual del panel no toca el logo.
 - La voz es español rioplatense, directo y sin tecnicismos: "tan simple que un niño lo entienda" (regla del dueño). El panel admin es "denso pero obvio".
 - El manual visual y el marketing brain de `public/brand-assets/` son marketing anterior. Hablan de multideporte y ponen la seña automática de titular, así que contradicen decisiones vigentes (solo fútbol, D2) y no son autoridad para el panel.
 

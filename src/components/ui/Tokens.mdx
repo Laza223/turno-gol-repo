@@ -4,8 +4,9 @@ import { Meta } from '@storybook/addon-docs/blocks'
 
 # Tokens
 
-Fuente de verdad: `src/app/globals.css` (`:root` / `.dark`) + `tailwind.config.ts`
-(`theme.extend`). Esta página documenta lo que ya existe en el código — no
+Autoridad de diseño: `DESIGN.md`, en la raíz del repo. Los valores viven en
+`src/app/globals.css` (`@theme`, `:root` / `.dark`): Tailwind v4 no usa
+`tailwind.config.ts`. Esta página documenta lo que ya existe en el código — no
 inventa nombres nuevos. Los swatches usan `style={{ background: 'hsl(var(--x))' }}`
 en vez de clases Tailwind para que el valor mostrado sea siempre el real,
 inclusive si algún día cambia el HSL sin que nadie toque este archivo.
@@ -67,7 +68,7 @@ Base shadcn/ui (`background`/`foreground`/`card`/`popover`/`primary`/`secondary`
 </div>
 
 `--primary`: `emerald-700 #047857` en light (5.5:1 sobre blanco), `emerald-500
-#10b981` en dark (7.9:1 sobre `slate-950`) — MASTER §2.4. El link/texto de marca
+#10b981` en dark (7.9:1 sobre `slate-950`) — `DESIGN.md`, Colors. El link/texto de marca
 usa el mismo par por fuera de `--primary`: clase `text-emerald-700
 dark:text-emerald-400` (ver Button `variant="link"`, Logo). **Bug conocido**:
 `text-emerald-400` sobre `bg-emerald-500/10` en una superficie CLARA da 1.75:1
@@ -90,7 +91,7 @@ señas pendientes, abonados pausados, avisos neutros.
 
 ## Radius
 
-`--radius: 0.5rem` (8px). `tailwind.config.ts` deriva 3 escalones:
+`--radius: 0.5rem` (8px). El `@theme` de `globals.css` deriva 3 escalones:
 
 | Clase Tailwind | Valor                             | Uso                     |
 | -------------- | --------------------------------- | ----------------------- |
@@ -105,7 +106,7 @@ controles internos.
 ## Tipografía — 3 familias
 
 Self-hosted vía `next/font` (`src/app/layout.tsx`), expuestas como CSS vars
-que `tailwind.config.ts` mapea a utilidades:
+que el `@theme` de `globals.css` mapea a utilidades:
 
 | Utilidad Tailwind | CSS var          | Fuente  | Uso                                                                  |
 | ----------------- | ---------------- | ------- | -------------------------------------------------------------------- |
@@ -133,7 +134,7 @@ consumen directo por `className`, en vez de reconstruir la sombra/blur a mano.
 ### `.card-premium`
 
 Superficie elevada estándar. Light = elevación (sombra en capas, sin
-translucidez); dark = glass (`bg-white/3` + `blur(8px)` + sombra profunda).
+translucidez); dark = glass (`bg-white/3` + `blur(12px)` + sombra profunda).
 `.card-premium-interactive` (opt-in) suma lift + glow emerald en `:hover`.
 Es el contenedor real de `ReservasPolicyForm`, `HorariosForm`, etc.
 
@@ -147,7 +148,7 @@ Es el contenedor real de `ReservasPolicyForm`, `HorariosForm`, etc.
 ### `.skeleton`
 
 Shimmer CSS (`@keyframes shimmer`, gradiente `--muted` → `--secondary` →
-`--muted`, 1.5s). La usa `Skeleton` (`src/components/ui/skeleton.tsx`) y
+`--muted`, 1.8s). La usa `Skeleton` (`src/components/ui/skeleton.tsx`) y
 todos los `loading.tsx` de ruta. Respeta `prefers-reduced-motion` (la
 animación se apaga vía el bloque `@media` global).
 

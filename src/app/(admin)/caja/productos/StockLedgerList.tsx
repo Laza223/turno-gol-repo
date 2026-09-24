@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { History } from 'lucide-react'
 import { ResponsiveList } from '@/components/ui/responsive-list'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Th, Td, Tr } from '@/components/ui/table'
 import type { StockLedgerEntry, StockMovementKind } from '@/modules/canteen/canteen.types'
 
 const KIND_LABELS: Record<StockMovementKind, string> = {
@@ -108,32 +109,22 @@ export function StockLedgerList({
           <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Fecha
-                </th>
-                <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Producto
-                </th>
-                <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Tipo
-                </th>
-                <th className="py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Cantidad
-                </th>
+                <Th>Fecha</Th>
+                <Th>Producto</Th>
+                <Th>Tipo</Th>
+                <Th align="right">Cantidad</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {entries.map((e) => (
-                <tr key={e.id} className="transition-colors hover:bg-accent/50">
-                  <td className="py-2 pr-3 tabular-nums text-muted-foreground">
-                    {shortDate(e.occurredAt)}
-                  </td>
-                  <td className="py-2 pr-3 text-foreground">{e.productName}</td>
-                  <td className="py-2 pr-3 text-foreground">{kindLabel(e)}</td>
-                  <td className="py-2 text-right">
+                <Tr key={e.id}>
+                  <Td className="tabular-nums text-muted-foreground">{shortDate(e.occurredAt)}</Td>
+                  <Td className="text-foreground">{e.productName}</Td>
+                  <Td className="text-foreground">{kindLabel(e)}</Td>
+                  <Td align="right">
                     <QtyChip qty={e.qty} />
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
             </tbody>
           </table>

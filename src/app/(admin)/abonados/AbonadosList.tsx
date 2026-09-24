@@ -12,6 +12,7 @@ import type { AbonadoActionResult } from './actions'
 import type { PreviewAbonadoSlotsInput, PreviewAbonadoSlotsResult } from './nuevo/actions'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ResponsiveList } from '@/components/ui/responsive-list'
+import { Th, Td, Tr } from '@/components/ui/table'
 import { formatArs, formatTime } from '@/lib/format'
 import { AbonadoStatusBadge } from './status-visual'
 import { toast } from '@/hooks/use-toast'
@@ -155,21 +156,11 @@ export function AbonadosList({
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Día / horario
-                </th>
-                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Contacto
-                </th>
-                <th className="p-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Precio por turno
-                </th>
-                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Estado
-                </th>
-                <th className="p-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Acciones
-                </th>
+                <Th>Día / horario</Th>
+                <Th>Contacto</Th>
+                <Th align="right">Precio por turno</Th>
+                <Th>Estado</Th>
+                <Th>Acciones</Th>
               </tr>
             </thead>
             <tbody>
@@ -335,19 +326,19 @@ function AbonadoTableRow({
 
   return (
     <>
-      <tr className="border-b border-border last:border-0 transition-colors hover:bg-accent/50">
-        <td className="p-3 font-medium tabular-nums">
+      <Tr className="border-b border-border last:border-0">
+        <Td className="font-medium tabular-nums">
           {DAY_NAMES[a.dayOfWeek]} {formatTime(a.timeStart)}–{formatTime(a.timeEnd)}
-        </td>
-        <td className="p-3">
+        </Td>
+        <Td>
           <div>{a.contactName}</div>
           <div className="text-muted-foreground text-xs">{a.contactPhone}</div>
-        </td>
-        <td className="p-3 text-right tabular-nums">{formatArs(a.pricePerSession)}</td>
-        <td className="p-3">
+        </Td>
+        <Td numeric>{formatArs(a.pricePerSession)}</Td>
+        <Td>
           <AbonadoStatusBadge status={a.status} />
-        </td>
-        <td className="p-3 space-x-3">
+        </Td>
+        <Td className="space-x-3">
           {isActive && (
             <>
               <button
@@ -388,8 +379,8 @@ function AbonadoTableRow({
               </button>
             </>
           )}
-        </td>
-      </tr>
+        </Td>
+      </Tr>
 
       <AbonadoActionDialogs abonado={a} actions={actions} />
     </>

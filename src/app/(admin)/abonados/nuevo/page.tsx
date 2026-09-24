@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
+import { PageHeader } from '@/components/admin/PageHeader'
+import { BackLink } from '@/components/admin/BackLink'
 import AbonadoForm from './AbonadoForm'
 import { submitNewAbonado, previewAbonadoSlotsAction } from './actions'
 import { searchAbonadoPlayersAction } from '../actions'
@@ -18,18 +18,12 @@ export default async function NuevoAbonadoPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <Link
-          href="/abonados"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-1"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> Volver a Turnos fijos
-        </Link>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Nuevo turno fijo</h1>
-        <p className="text-xs text-muted-foreground">
-          Configurá la reserva fija semanal y los datos del cliente regular.
-        </p>
-      </div>
+      <PageHeader
+        variant="plain"
+        title="Nuevo turno fijo"
+        subtitle="Configurá la reserva fija semanal y los datos del cliente regular."
+        back={<BackLink href="/abonados">Volver a Turnos fijos</BackLink>}
+      />
       <AbonadoForm
         courts={courtOptions}
         submitAction={submitNewAbonado}

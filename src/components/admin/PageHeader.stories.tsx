@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { LayoutDashboard } from 'lucide-react'
+import { ChevronLeft, LayoutDashboard } from 'lucide-react'
 import { PageHeader } from './PageHeader'
 
 /**
@@ -40,6 +40,20 @@ export const ConAcciones: Story = {
       >
         Ir a la grilla
       </button>
+    ),
+  },
+}
+
+/** `variant="plain"`: sin banda, para páginas de detalle (`/reservas/[id]`, `/jugadores/[playerId]`). */
+export const Plain: Story = {
+  args: {
+    variant: 'plain',
+    title: 'Detalle de la reserva',
+    subtitle: undefined,
+    back: (
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+        <ChevronLeft className="h-4 w-4" aria-hidden /> Volver
+      </span>
     ),
   },
 }

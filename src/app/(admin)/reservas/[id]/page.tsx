@@ -3,6 +3,8 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isUuid } from '@/shared/validation/primitives'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/admin/PageHeader'
+import { BackLink } from '@/components/admin/BackLink'
 import { getBookingDetail, getBookingCharges } from '../queries'
 import {
   addBookingChargeAction,
@@ -17,7 +19,6 @@ import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { BookingDetailCard } from './BookingDetailCard'
 import BookingActions from './BookingActions'
 import BookingCharges from './BookingCharges'
-import { BackLink } from './BackLink'
 
 // H103: 'no_show' AFUERA a propósito — veto de producto "No-show NO es
 // deuda" (CLAUDE.md). La Grilla ya no ofrece cobro sobre un ausente
@@ -59,12 +60,15 @@ export default async function ReservaDetailPage(props: Props) {
     // (turno no cobrable) queda una sola columna: estirar la ficha al ancho
     // completo sería leerla de punta a punta de la pantalla.
     <div className={cn('space-y-6', !charges && 'max-w-3xl')}>
-      <div className="space-y-2">
-        <BackLink />
-        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Detalle de la reserva
-        </h1>
-      </div>
+      <PageHeader
+        variant="plain"
+        title="Detalle de la reserva"
+        back={
+          <BackLink href="/reservas" smart>
+            Volver
+          </BackLink>
+        }
+      />
 
       {/*
         H080: en el teléfono, "Cobros de turno" (con el saldo pendiente y el CTA

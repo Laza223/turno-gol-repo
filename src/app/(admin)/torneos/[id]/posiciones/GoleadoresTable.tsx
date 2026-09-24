@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Th, Td, Tr } from '@/components/ui/table'
 import type { TopScorersResult } from '@/modules/tournaments/tournament.types'
 
 /**
@@ -43,37 +44,31 @@ export function GoleadoresTable({ scorers }: { scorers: TopScorersResult }) {
           <table className="w-full min-w-[420px] text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                <th className="p-2 pl-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  #
-                </th>
-                <th className="p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Jugador
-                </th>
-                <th className="p-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Equipo
-                </th>
-                <th className="p-2 pr-4 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Th className="pl-4">#</Th>
+                <Th>Jugador</Th>
+                <Th>Equipo</Th>
+                <Th align="right" className="pr-4">
                   Goles
-                </th>
+                </Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {scorers.rows.map((row, i) => (
-                <tr key={row.teamPlayerId}>
-                  <td className="p-2 pl-4 tabular-nums text-muted-foreground">{i + 1}</td>
-                  <td className="p-2 font-medium text-foreground">
+                <Tr key={row.teamPlayerId}>
+                  <Td className="pl-4 tabular-nums text-muted-foreground">{i + 1}</Td>
+                  <Td className="font-medium text-foreground">
                     {row.playerName}
                     {row.shirtNumber !== null ? (
                       <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">
                         #{row.shirtNumber}
                       </span>
                     ) : null}
-                  </td>
-                  <td className="p-2 text-muted-foreground">{row.teamName}</td>
-                  <td className="p-2 pr-4 text-right font-semibold tabular-nums text-foreground">
+                  </Td>
+                  <Td className="text-muted-foreground">{row.teamName}</Td>
+                  <Td numeric className="pr-4 font-semibold">
                     {row.goals}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
             </tbody>
           </table>

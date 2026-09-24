@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { EmptyState } from '@/components/ui/empty-state'
 import { Pager } from '@/components/ui/pager'
 import { ResponsiveList } from '@/components/ui/responsive-list'
+import { Th, Td, Tr } from '@/components/ui/table'
 import { formatArs } from '@/lib/format'
 import { toast } from '@/hooks/use-toast'
 import { SectionHeader } from '@/components/admin/SectionHeader'
@@ -272,32 +273,22 @@ export function ProductsTable({
             <table className="w-full min-w-[460px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Producto
-                  </th>
-                  <th className="py-2 pr-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Precio
-                  </th>
-                  <th className="py-2 pr-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Stock
-                  </th>
-                  <th className="py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Acciones
-                  </th>
+                  <Th>Producto</Th>
+                  <Th align="right">Precio</Th>
+                  <Th>Stock</Th>
+                  <Th align="right">Acciones</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {pageRows.map((p) => {
                   const badge = canteenStockBadge(p.stock, p.minStock)
                   return (
-                    <tr
+                    <Tr
                       key={p.id}
-                      className={`transition-colors hover:bg-accent/50 ${
-                        badge?.tone === 'out' ? 'bg-red-50 dark:bg-red-500/10' : ''
-                      }`}
+                      className={badge?.tone === 'out' ? 'bg-red-50 dark:bg-red-500/10' : ''}
                     >
-                      <td
-                        className={`py-2 pr-3 font-medium ${
+                      <Td
+                        className={`font-medium ${
                           p.isActive ? 'text-foreground' : 'text-muted-foreground'
                         }`}
                       >
@@ -307,14 +298,14 @@ export function ProductsTable({
                             (pausado)
                           </span>
                         )}
-                      </td>
-                      <td className="py-2 pr-3 text-right tabular-nums text-foreground">
+                      </Td>
+                      <Td numeric className="text-foreground">
                         {formatArs(p.price)}
-                      </td>
-                      <td className="py-2 pr-3">
+                      </Td>
+                      <Td>
                         <StockCell badge={badge} />
-                      </td>
-                      <td className="py-2 text-right">
+                      </Td>
+                      <Td align="right">
                         <div className="flex items-center justify-end gap-1">
                           {/* Reponer y Editar a la vista: son las dos acciones de la
                               visita semanal, y esconderlas en un menú "..." obliga a
@@ -343,8 +334,8 @@ export function ProductsTable({
                             onTogglePause={togglePause}
                           />
                         </div>
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   )
                 })}
               </tbody>

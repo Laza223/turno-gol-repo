@@ -127,13 +127,20 @@ describe('StaffActions — deactivate dialog', () => {
     const item = body.getByRole('menuitem', { name: 'Desactivar' })
     fireEvent.click(item)
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole('heading', {
-          name: `Desactivar ${ACTIVE_MEMBER.firstName} ${ACTIVE_MEMBER.lastName}`,
-        }),
-      ).toBeTruthy()
-    })
+    // timeout explícito: primer test del archivo que dispara el next/dynamic de
+    // ConfirmDialog, así que paga el cold-start del chunk (~1.4s medido, más que
+    // el waitFor default de 1s de RTL). No depende del reloj ni de la TZ; los
+    // tests siguientes reusan el módulo cacheado. Si el diálogo no abre, igual falla.
+    await waitFor(
+      () => {
+        expect(
+          screen.getByRole('heading', {
+            name: `Desactivar ${ACTIVE_MEMBER.firstName} ${ACTIVE_MEMBER.lastName}`,
+          }),
+        ).toBeTruthy()
+      },
+      { timeout: 5000 },
+    )
   })
 
   it('typing wrong email keeps confirm disabled', async () => {

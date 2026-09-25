@@ -21,7 +21,7 @@ export function MorningCollapseBand({ firstSlot, boundarySlot, onExpand }: Props
       type="button"
       onClick={onExpand}
       aria-expanded={false}
-      aria-label={`Mostrar horarios sin actividad de ${firstSlot} a ${boundarySlot}`}
+      aria-label={`Mostrar horarios sin turnos de ${firstSlot} a ${boundarySlot}`}
       style={{ gridColumn: '1 / -1', gridRow: 2 }}
       className={cn(
         'group flex items-center overflow-hidden border-b border-border bg-muted/30 text-xs text-muted-foreground',
@@ -34,7 +34,7 @@ export function MorningCollapseBand({ firstSlot, boundarySlot, onExpand }: Props
         <span className="tabular-nums">
           {firstSlot}–{boundarySlot}
         </span>
-        <span>· Sin actividad ·</span>
+        <span>· Sin turnos ·</span>
         <span className="font-medium text-foreground group-hover:underline">Mostrar</span>
       </span>
     </button>

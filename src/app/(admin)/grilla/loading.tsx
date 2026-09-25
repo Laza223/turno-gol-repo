@@ -27,7 +27,7 @@ export default function GrillaLoading() {
       {/* Matriz: eje horario + columnas de canchas, con las medidas de §4. */}
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div
-          className="grid gap-1 p-1 [--tg-col:3rem] [--tg-hours:2.75rem] lg:[--tg-col:8.5rem] lg:[--tg-hours:3.5rem]"
+          className="grid gap-1 p-1 [--tg-col:3rem] [--tg-hours:2.75rem] lg:[--tg-col:4.75rem] lg:[--tg-hours:3.5rem]"
           style={{ gridTemplateColumns: 'var(--tg-hours) repeat(3, minmax(var(--tg-col), 1fr))' }}
         >
           {/* Header de canchas */}

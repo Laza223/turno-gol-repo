@@ -1,9 +1,22 @@
 import type { ReactNode } from 'react'
 import { formatArs, formatDateLong, formatTime } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
-import { reservaStatusVisual, ReservaStatusBadge, RESERVA_UNPAID_VISUAL } from '../status-visual'
+import {
+  reservaStatusVisual,
+  ReservaStatusBadge,
+  RESERVA_UNPAID_VISUAL,
+  reservaHasEnded,
+} from '../status-visual'
 import { resolveDepositDisplayStatus } from '../deposit-display'
 import type { ReservaDetail } from '../queries'
+
+// Función aparte, no `Date.now()` directo en el cuerpo del componente:
+// react-compiler marca como impura una llamada directa a un builtin conocido
+// DENTRO de un componente, pero no una función común — mismo patrón que
+// `mis-reservas/page.tsx`. Server Component: `Date.now()` en el server alcanza.
+function nowMs(): number {
+  return Date.now()
+}
 
 const DEPOSIT_LABEL: Record<string, string> = {
   paid: 'pagada',
@@ -35,7 +48,7 @@ export function BookingDetailCard({
   booking: ReservaDetail
   hideMoneyRows?: boolean
 }) {
-  const visual = reservaStatusVisual(booking)
+  const visual = reservaStatusVisual({ ...booking, ended: reservaHasEnded(booking, nowMs()) })
   const depositDisplayStatus = resolveDepositDisplayStatus(
     booking.depositStatus,
     booking.refundState,

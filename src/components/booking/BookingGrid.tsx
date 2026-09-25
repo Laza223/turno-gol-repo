@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, type KeyboardEvent } from 'react'
 import { useArtNow } from '@/hooks/use-art-now'
-import { useNowMs } from '@/hooks/use-now'
+import { useNowMs, useNowMsAfterHydration } from '@/hooks/use-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
 import { useDismissibleHint } from '@/hooks/use-dismissible-hint'
 import { useOfflineBannerDelay } from '@/hooks/use-offline-banner-delay'
@@ -104,6 +104,12 @@ export function BookingGrid({
   // Reloj del modal de cobro (paso 3, docs/decisions/
   // 2026-09-24-navegacion-panel.md): 30s alcanza para "Terminó hace N min".
   const nowMs = useNowMs(30_000)
+  // Reloj de lo que PINTA la matriz ("¿terminó?" decide el rojo de la celda y
+  // la cuenta del chip): 0 en el servidor y durante la hidratación, igual que
+  // `artNow`. Con `nowMs` el servidor contaba con SU hora y el cliente con la
+  // suya, y cruzar el fin de un turno entre los dos renders rompía la
+  // hidratación del chip y de cada celda del borde.
+  const paintNowMs = useNowMsAfterHydration(30_000)
 
   const { dismissed: hintDismissed, dismiss: dismissHint } = useDismissibleHint(HINT_STORAGE_KEY)
 
@@ -113,9 +119,12 @@ export function BookingGrid({
   // el server dejaría el número congelado y contradiciendo la grilla apenas
   // entra un cobro por Realtime. Cero queries nuevas — `pending` ya viaja en
   // cada `GridBooking` (ver grilla/page.tsx y /api/bookings).
-  const pendingSummary = useMemo(() => sumPendingCents(bookings), [bookings])
+  const pendingSummary = useMemo(
+    () => sumPendingCents(bookings, paintNowMs),
+    [bookings, paintNowMs],
+  )
 
-  // El chip "No cobrados hoy" dejó de ser texto muerto: encenderlo le pone un
+  // El chip "N sin cobrar" dejó de ser texto muerto: encenderlo le pone un
   // anillo rojo a los turnos que deben plata, que en una matriz de 7 canchas
   // por 14 horas ya no se encuentran solo por el color. Es el ÚNICO anillo de
   // la grilla: la celda "No cobrado" no lo lleva sola.
@@ -159,12 +168,10 @@ export function BookingGrid({
   } = useGridActions({ courts, date, refetch })
 
   const { pulseIds, lastArrival } = useRealtimePulse(bookings, courts)
-  const { nowTopRem, gridScrollRef } = useNowLine({
+  const { nowRowIndex, nowFraction, gridScrollRef, nowLineRef } = useNowLine({
     artNow,
     date,
     visibleSlots,
-    hasBand,
-    rowHeightRem,
   })
 
   // El panel se alimenta de `bookings` (la lista viva), no de un snapshot al
@@ -233,8 +240,11 @@ export function BookingGrid({
             hasBand={hasBand}
             rowOffset={rowOffset}
             rowHeightRem={rowHeightRem}
-            nowTopRem={nowTopRem}
+            nowRowIndex={nowRowIndex}
+            nowFraction={nowFraction}
+            nowLineRef={nowLineRef}
             isNavPending={isNavPending}
+            nowMs={paintNowMs}
             highlightPending={highlightPending}
             gridScrollRef={gridScrollRef}
             ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}

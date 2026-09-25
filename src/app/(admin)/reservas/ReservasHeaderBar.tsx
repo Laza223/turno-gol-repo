@@ -3,14 +3,13 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
+import { SelectMenu } from '@/components/ui/select-menu'
 import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
 import { GrillaTabs } from '@/app/(admin)/grilla/GrillaTabs'
-import { SCOPES, FILTERS, buildHref, countFor } from './reservas-filters'
+import { SCOPES, STATUS_CHIPS, buildHref, countFor } from './reservas-filters'
 import type { ReservaScope } from './queries'
 
 type Props = {
@@ -20,26 +19,23 @@ type Props = {
   cancha: string
   courts: Array<{ id: string; name: string }>
   counts: Record<string, number>
-  /** Total ya resuelto por la page (según status activo) — evita recalcularlo acá. */
-  total: number
 }
 
 /**
- * Cabecera de /reservas: `GrillaTabs` (reusado, se porta a sí mismo) + un
- * único `AdminHeaderSlot` propio con el segmento de rango, la búsqueda, el
- * botón "Filtros" y el contador. En `< lg` ese contenido se repite en el
- * cuerpo de la página (misma búsqueda, mismo estado — un solo `useState`
+ * Cabecera de la Agenda (`/reservas`): `GrillaTabs` (reusado, se porta a sí
+ * mismo) + un `AdminHeaderSlot` propio con el buscador, el segmento
+ * Próximos/Pasados y el select de cancha. En `< lg` ese contenido se repite
+ * en el cuerpo de la página (mismo `useState` de búsqueda — un solo estado
  * compartido) porque la barra superior en mobile ya está ocupada por la
  * marca; el corte es SIEMPRE por CSS (`hidden lg:flex` / `lg:hidden`), nunca
  * por un hook de viewport (`useIsDesktop` responde recién después del primer
  * pintado — el SSR asume escritorio, ver comentario del hook).
  *
- * Los dos renders comparten estado de React (mismo componente, un solo
- * árbol) pero NO pueden compartir `id`/`htmlFor`: los dos existen a la vez en
- * el DOM (uno oculto por CSS), así que cada input de búsqueda lleva su propio
- * sufijo.
+ * Los chips de estado (Todos/Esperando seña/Ausentes/Cancelados) NO viven acá:
+ * van en su propia fila arriba de la lista, en el cuerpo de la página — no son
+ * un control de navegación como el segmento, son parte del contenido.
  */
-export function ReservasHeaderBar({ scope, status, q, cancha, courts, counts, total }: Props) {
+export function ReservasHeaderBar({ scope, status, q, cancha, courts, counts }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -88,28 +84,18 @@ export function ReservasHeaderBar({ scope, status, q, cancha, courts, counts, to
     pushQ('')
   }
 
-  /** Estado/cancha van por `router.replace` (no `<Link>`): son filtros, no navegación de página. `pagina` se resetea siempre. */
-  function setFilterParam(key: 'status' | 'cancha', next: string) {
+  /** Cancha va por `router.replace` (no `<Link>`): es un filtro, no navegación de página. `pagina` se resetea siempre. */
+  function setCourt(next: string) {
     replaceWith((params) => {
-      if (next) params.set(key, next)
-      else params.delete(key)
+      if (next) params.set('cancha', next)
+      else params.delete('cancha')
       params.delete('pagina')
     })
   }
-
-  function clearFilters() {
-    replaceWith((params) => {
-      params.delete('status')
-      params.delete('cancha')
-      params.delete('pagina')
-    })
-  }
-
-  const activeFilters = (status ? 1 : 0) + (cancha ? 1 : 0)
 
   function scopeNav() {
     return (
-      <nav aria-label="Rango de fechas" className="inline-flex shrink-0 rounded-lg bg-muted p-1">
+      <nav aria-label="Rango" className="inline-flex shrink-0 rounded-lg bg-muted p-1">
         {SCOPES.map((s) => {
           const active = scope === s.value
           return (
@@ -171,103 +157,83 @@ export function ReservasHeaderBar({ scope, status, q, cancha, courts, counts, to
     )
   }
 
-  function filtersPopover(idSuffix: string) {
+  /** H110 — sin sentido elegir cancha cuando hay una sola. */
+  function courtSelect(idSuffix: string) {
+    if (courts.length <= 1) return null
     return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="relative inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 lg:h-8 lg:text-[13px]"
-          >
-            <SlidersHorizontal aria-hidden className="h-3.5 w-3.5" />
-            Filtros
-            {activeFilters > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground tabular-nums">
-                {activeFilters}
-              </span>
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 space-y-4">
-          <fieldset className="space-y-1.5">
-            <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Estado
-            </legend>
-            <RadioChipGroup
-              value={status}
-              onValueChange={(v) => setFilterParam('status', v)}
-              aria-label="Estado"
-            >
-              {FILTERS.map((f) => (
-                <RadioChip key={`${idSuffix}-${f.label}`} value={f.value}>
-                  <span className="flex w-full items-center justify-between gap-2">
-                    <span>{f.label}</span>
-                    <span className="tabular-nums text-xs text-muted-foreground">
-                      {countFor(counts, f.value)}
-                    </span>
-                  </span>
-                </RadioChip>
-              ))}
-            </RadioChipGroup>
-          </fieldset>
-
-          {/* H110 — sin sentido elegir cancha cuando hay una sola. */}
-          {courts.length > 1 && (
-            <fieldset className="space-y-1.5">
-              <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Cancha
-              </legend>
-              <RadioChipGroup
-                value={cancha}
-                onValueChange={(v) => setFilterParam('cancha', v)}
-                aria-label="Cancha"
-              >
-                <RadioChip value="">Todas las canchas</RadioChip>
-                {courts.map((c) => (
-                  <RadioChip key={c.id} value={c.id}>
-                    {c.name}
-                  </RadioChip>
-                ))}
-              </RadioChipGroup>
-            </fieldset>
-          )}
-
-          {activeFilters > 0 && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400"
-            >
-              Limpiar filtros
-            </button>
-          )}
-        </PopoverContent>
-      </Popover>
+      <SelectMenu
+        id={`${searchId}-cancha-${idSuffix}`}
+        value={cancha}
+        onChange={setCourt}
+        options={[
+          { value: '', label: 'Todas las canchas' },
+          ...courts.map((c) => ({ value: c.id, label: c.name })),
+        ]}
+        aria-label="Filtrar por cancha"
+        className="h-11 w-auto shrink-0 lg:h-8 lg:text-[13px]"
+      />
     )
   }
 
-  const reservaWord = total === 1 ? '1 reserva' : `${total} reservas`
+  function statusChips() {
+    return (
+      <div
+        role="group"
+        aria-label="Filtrar por estado"
+        className="flex shrink-0 items-center gap-1.5"
+      >
+        {STATUS_CHIPS.map((f) => {
+          const active = status === f.value
+          const count = countFor(counts, f.value)
+          return (
+            <button
+              key={f.value || 'todos'}
+              type="button"
+              onClick={() =>
+                replaceWith((params) => {
+                  if (f.value) params.set('status', f.value)
+                  else params.delete('status')
+                  params.delete('pagina')
+                })
+              }
+              aria-pressed={active}
+              className={cn(
+                'inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-semibold tabular-nums transition-colors',
+                active
+                  ? 'border-primary bg-primary/5 text-foreground dark:bg-primary/10'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground',
+              )}
+            >
+              {f.value ? `${f.label} (${count})` : f.label}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <>
       <GrillaTabs active="/reservas" />
       <AdminHeaderSlot>
         <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
-          {scopeNav()}
           {searchField('slot')}
-          {filtersPopover('slot')}
-          <span className="hidden shrink-0 text-xs text-muted-foreground xl:inline">
-            {reservaWord}
-          </span>
+          {scopeNav()}
+          {courtSelect('slot')}
         </div>
       </AdminHeaderSlot>
 
-      {/* < lg: la barra superior ya la ocupa la marca — este control vive arriba del tablero. */}
-      <div className="flex flex-wrap items-center gap-2 lg:hidden">
-        {scopeNav()}
-        {searchField('body')}
-        {filtersPopover('body')}
+      {/* < lg: la barra superior ya la ocupa la marca — buscador arriba de todo. */}
+      <div className="lg:hidden">{searchField('body')}</div>
+
+      {/* Chips de estado: fila propia arriba de la lista, en todos los anchos.
+          En < lg comparte fila con el segmento (la barra superior no tiene
+          lugar para él) y scrollea horizontal. */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:overflow-visible lg:pb-0">
+        <span className="lg:hidden">{scopeNav()}</span>
+        {statusChips()}
       </div>
+      <div className="lg:hidden">{courtSelect('body')}</div>
     </>
   )
 }

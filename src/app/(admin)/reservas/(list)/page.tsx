@@ -4,8 +4,7 @@ import Link from 'next/link'
 import { CalendarX, CalendarDays } from 'lucide-react'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
-import { artTodayStr } from '@/shared/dates/art'
-import { formatDateLong } from '@/lib/format'
+import { artTodayStr, addDays } from '@/shared/dates/art'
 import {
   countTenantBookingsByStatus,
   listTenantBookings,
@@ -20,12 +19,13 @@ import { ReservasHeaderBar } from '../ReservasHeaderBar'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Pager } from '@/components/ui/pager'
 import {
-  ALLOWED_SCOPES,
   ALLOWED_STATUS,
+  agendaDayLabel,
   buildHref,
   countFor,
   groupBy,
   parsePage,
+  resolveScope,
 } from '../reservas-filters'
 
 type Props = {
@@ -39,6 +39,15 @@ type Props = {
   }>
 }
 
+// Función aparte, no `new Date()` directo en el cuerpo del componente:
+// react-compiler marca como impura una llamada directa a un builtin conocido
+// DENTRO de un componente, pero no una función común — mismo patrón que
+// `BookingListItem.tsx`/`BookingDetailCard.tsx`. Server Component: el reloj
+// del server alcanza, no hace falta que sea reactivo.
+function now(): Date {
+  return new Date()
+}
+
 export default async function ReservasPage(props: Props) {
   const searchParams = await props.searchParams
   const auth = await requireOperatorStaff()
@@ -46,17 +55,15 @@ export default async function ReservasPage(props: Props) {
   const { tenant } = auth
 
   const today = artTodayStr()
-  const requestedScope = searchParams.dia ?? ''
-  const scope: ReservaScope = ALLOWED_SCOPES.has(requestedScope)
-    ? (requestedScope as ReservaScope)
-    : 'hoy'
+  const tomorrow = addDays(today, 1)
+  const yesterday = addDays(today, -1)
+  const scope: ReservaScope = resolveScope(searchParams.dia ?? '')
   const requestedStatus = searchParams.status ?? ''
   const status = ALLOWED_STATUS.has(requestedStatus) ? requestedStatus : ''
   const q = (searchParams.q ?? '').trim().slice(0, 80)
-  // `?vista=` (densidad) se eliminó del todo: un valor viejo en un link
-  // compartido/bookmark se ignora en silencio, no rompe nada.
   const page = parsePage(searchParams.pagina)
   const requestedCourt = searchParams.cancha ?? ''
+  const instant = now()
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
   const { rows, counts, courts, courtId } = await withTenantContext(tenant.id, async (tx) => {
@@ -68,15 +75,11 @@ export default async function ReservasPage(props: Props) {
     const courtIds = new Set(courtRows.map((c) => c.id))
     const courtId = courtIds.has(requestedCourt) ? requestedCourt : undefined
 
-    // Las tres pestañas son la misma lista paginada. El tablero por cancha
-    // de Hoy/Próximas se fue (2026-09-24, docs/decisions/
-    // 2026-09-24-navegacion-panel.md): repetía Hoy y la Grilla, y con 7 o 10
-    // canchas dejaba media pantalla afuera.
     const { rows: list, hasMore: more } = await listTenantBookings(
       tenant.id,
       {
         scope,
-        today,
+        now: instant,
         ...(status ? { status } : {}),
         ...(q ? { q } : {}),
         ...(courtId ? { courtId } : {}),
@@ -87,15 +90,11 @@ export default async function ReservasPage(props: Props) {
 
     const byStatus = await countTenantBookingsByStatus(
       tenant.id,
-      { scope, today, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
+      { scope, now: instant, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
       tx,
     )
-    // El saldo pendiente dejó de ser insumo exclusivo de "Por cobrar"
-    // (`isPendingCharge` en slot-visual.ts, que solo mira completed): 3.2
-    // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
-    // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
-    // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (50) ids —
-    // el mismo costo que ya paga la grilla con todos los turnos del día.
+    // El saldo pendiente es insumo de la plata de TODAS las filas (`agendaMoneyCell`),
+    // así que se pide para toda la página. Acotado a `RESERVAS_PAGE_SIZE` (50) ids.
     const charges = await sumBookingChargesByBooking(
       tenant.id,
       list.map((r) => r.id),
@@ -119,28 +118,21 @@ export default async function ReservasPage(props: Props) {
     }
   })
 
-  // Hoy se agrupa por cancha porque la query ya lo ordena así (cancha y
-  // después hora): en una sola sección el orden saltaba en el tiempo. Próximas
-  // e Historial ordenan por fecha y hora, y se agrupan por fecha.
-  const byCourt = scope === 'hoy'
-  const groups = byCourt
-    ? groupBy(rows, (r) => r.courtName)
-    : groupBy(rows, (r) => formatDateLong(r.date))
+  // Un solo agrupador: por día operativo (`b.date`). Los dos segmentos
+  // (Próximos/Pasados) son por INSTANTE físico, no por día — un turno de hoy
+  // que ya terminó cae en Pasados igual, y su grupo sigue diciendo "Hoy".
+  const groups = groupBy(rows, (r) => r.date)
 
   const total = countFor(counts, status)
-
-  // B10 — el subtítulo y las píldoras salen de un COUNT sin techo, y la lista
-  // venía de un `LIMIT 200` mudo: podía decir "740 reservas" y mostrar 200, sin
-  // avisar ni dar forma de llegar al resto. Ahora el Pager en modo total dice el
-  // rango que se está viendo ("Mostrando 51–100 de 740", abajo de la lista) y
-  // las páginas siguientes son alcanzables.
+  const oppositeScope: ReservaScope = scope === 'proximos' ? 'pasados' : 'proximos'
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-3">
-      {/* Fase 4/rediseño: sin `PageHeader` — el segmento Grilla|Reservas
-          (ReservasHeaderBar, portalizado) es el único lugar donde la
-          pantalla se nombra. El h1 queda solo para el árbol de accesibilidad. */}
-      <h1 className="sr-only">Reservas</h1>
+      {/* Fase 4/rediseño de la Agenda: sin `PageHeader` — el segmento
+          Grilla|Agenda (ReservasHeaderBar, portalizado) es el único lugar
+          donde la pantalla se nombra. El h1 queda solo para el árbol de
+          accesibilidad. */}
+      <h1 className="sr-only">Agenda</h1>
 
       {/* useSearchParams adentro: sin Suspense, Next renderiza en el cliente
           todo lo que está por encima del límite más cercano. */}
@@ -152,52 +144,57 @@ export default async function ReservasPage(props: Props) {
           cancha={courtId ?? ''}
           courts={courts}
           counts={counts}
-          total={total}
         />
       </Suspense>
 
       {rows.length === 0 ? (
         <EmptyState
           icon={CalendarX}
-          title="Sin reservas"
+          title="Sin turnos"
           description={
             q
-              ? `No hay resultados para “${q}” con los filtros seleccionados.`
-              : scope === 'hoy'
-                ? 'No hay reservas para hoy con los filtros seleccionados.'
-                : 'No hay reservas para los filtros seleccionados.'
+              ? `Sin resultados para “${q}” en ${scope === 'proximos' ? 'Próximos' : 'Pasados'}.`
+              : `No hay turnos ${scope === 'proximos' ? 'próximos' : 'pasados'} con estos filtros.`
           }
           action={
-            <Link
-              href="/grilla"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <CalendarDays className="h-4 w-4" aria-hidden="true" />
-              Cargar una reserva
-            </Link>
+            q ? (
+              <Link
+                href={buildHref({ dia: oppositeScope, status, q, cancha: courtId ?? '' })}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                Buscar en {oppositeScope === 'proximos' ? 'Próximos' : 'Pasados'}
+              </Link>
+            ) : (
+              <Link
+                href="/grilla"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                Cargar una reserva
+              </Link>
+            )
           }
         />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto lg:overflow-hidden">
-          {/* Dos columnas desde `lg` (DESIGN.md, "Listas anchas"): /reservas es
-              de ancho completo y una sola columna estiraba cada fila de punta
-              a punta. `min-h-0` solo desde `lg`, donde la lista scrollea
-              adentro: en el teléfono scrollea el contenedor de afuera, y con
-              `min-h-0` la grilla se achicaba y su contenido pisaba el
-              paginador. */}
-          <div className="grid grid-cols-1 content-start items-start gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-2 lg:overflow-y-auto lg:pr-1">
-            {groups.map(([title, groupRows]) => (
-              <section
-                key={title}
-                aria-label={title}
-                className="rounded-xl border border-border bg-card shadow-xs"
-              >
-                <h2 className="border-b border-border px-3 py-2 text-sm font-semibold text-foreground">
-                  {title}
-                </h2>
-                <ul className="divide-y divide-border py-1">
+          {/* Una sola lista a todo el ancho (no dos columnas, Fase Agenda):
+              `min-h-0` solo desde `lg`, donde la lista scrollea adentro con
+              encabezados de día pegajosos; en el teléfono scrollea el
+              contenedor de afuera. */}
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card shadow-xs lg:min-h-0">
+            {groups.map(([date, groupRows]) => (
+              <section key={date} aria-label={agendaDayLabel(date, today, tomorrow, yesterday)}>
+                {/* Sin "N turnos" al lado: la lista está paginada de a 50, así que
+                    el número contaba solo lo de esta página y un día de 130
+                    turnos decía "50". El total real va en el paginador. */}
+                <div className="sticky top-0 z-10 border-b border-border bg-card px-3 py-2">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {agendaDayLabel(date, today, tomorrow, yesterday)}
+                  </h2>
+                </div>
+                <ul className="divide-y divide-border">
                   {groupRows.map((r) => (
-                    <BookingListItem key={r.id} booking={r} showCourt={!byCourt} />
+                    <BookingListItem key={r.id} booking={r} />
                   ))}
                 </ul>
               </section>
@@ -205,7 +202,7 @@ export default async function ReservasPage(props: Props) {
           </div>
 
           <Pager
-            label="Paginación de reservas"
+            label="Paginación de la Agenda"
             page={page}
             total={total}
             pageSize={RESERVAS_PAGE_SIZE}

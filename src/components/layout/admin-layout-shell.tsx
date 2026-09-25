@@ -55,7 +55,7 @@ export function AdminLayoutShell({
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
   const pathname = usePathname()
-  // Dos modos de contenedor. Grilla y Reservas (lista) son viewport fijo
+  // Dos modos de contenedor. Grilla y Agenda (ex-Reservas, lista) son viewport fijo
   // full-bleed: sin tope de ancho y sin scroll de página propio, cada una
   // resuelve el scroll adentro (GridScroller / la lista). Comparación
   // exacta: `/reservas/[id]` sigue con el modo normal.

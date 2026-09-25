@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   CircleDollarSign,
+  Gift,
   HandCoins,
   HelpCircle,
   Repeat,
@@ -68,6 +69,16 @@ export type SlotFacts = {
   pending?: number | null
   /** Total cobrado en centavos: seña contada + cobros de mostrador. */
   totalPaid?: number | null
+  /**
+   * ¿Ya pasó `ends_at` (el instante físico de fin del turno)? Solo cambia algo
+   * para `confirmed`: el auto-complete tarda ~30 min en pasarlo a `completed`,
+   * así que sin este dato un turno recién terminado seguía leyéndose
+   * "Confirmada" con plata pendiente en vez de "No cobrado". Opcional, y
+   * default `undefined` (≠ `true`) a propósito: sin pasarlo, el comportamiento
+   * es IDÉNTICO al de antes de esta bandera — el portal del jugador
+   * (`mis-reservas/status-visual.ts`) no lo pasa y no tiene por qué cambiar.
+   */
+  ended?: boolean
 }
 
 type SlotStateMeta = {
@@ -172,6 +183,11 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
  * Decisión de producto (2026-08-04, corregida 2026-09-09): "No cobrado"
  * significa **plata en cero o incompleta Y cobrable**, no "algo salió mal".
  * - `completed` con saldo pendiente → no cobrado: se jugó y falta plata.
+ * - `confirmed` con saldo pendiente Y `ended` → también: el auto-complete
+ *   tarda ~30 min en pasarlo a `completed`, y en esa ventana el turno YA se
+ *   jugó (el instante físico `ends_at` ya pasó) aunque el status todavía diga
+ *   `confirmed`. Sin `ended` (undefined) esta rama nunca dispara — así el
+ *   portal del jugador, que no lo pasa, queda exactamente igual que antes.
  * - `no_show` → NUNCA, cobrado o no. En un no-show la seña es lo único
  *   cobrable (regla de producto) y ya se cobró; lo que queda sin cobrar no es
  *   deuda (veto "No-show NO es deuda", CLAUDE.md) y no hay ningún botón para
@@ -182,7 +198,8 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
  * falsa entrena al staff a ignorarlas.
  */
 function isPendingCharge(facts: SlotFacts): boolean {
-  return facts.status === 'completed' && typeof facts.pending === 'number' && facts.pending > 0
+  if (typeof facts.pending !== 'number' || facts.pending <= 0) return false
+  return facts.status === 'completed' || (facts.status === 'confirmed' && facts.ended === true)
 }
 
 /**
@@ -295,7 +312,7 @@ export type BookingBadgeVisual = {
 
 /**
  * "No cobrado" fuera de la celda: la píldora del listado y del detalle de
- * Reservas, la fila del tablero de Hoy y el chip "No cobrados hoy" de la
+ * Reservas, la fila del tablero de Hoy y el chip "N sin cobrar" de la
  * Grilla. Sale de la MISMA fila de `SLOT_STATES` que pinta la celda, así que
  * ninguna superficie puede decir otra cosa de la misma situación.
  */
@@ -400,3 +417,198 @@ export const GRID_LEGEND_ITEMS: readonly LegendItem[] = LEGEND_ORDER.filter(
     iconClass: TONE_TEXT[meta.tone],
   }
 })
+
+// ---------------------------------------------------------------------------
+// Vista 4 — celda de la Grilla, variante "Entra entera" (decisión del dueño,
+// 2026-09-25): el color deja de ser 1:1 con `booking_status` y pasa a ser
+// SOLO de la plata — rojo lo jugado y no cobrado, verde lo pagado entero, el
+// resto sin color. Reemplaza a `gridSlotVisual` ÚNICAMENTE en la celda de la
+// Grilla (BookingCard): `gridSlotVisual`/`SLOT_STATES` siguen intactos porque
+// los sigue usando el modal de cobro de Hoy y el listado de /reservas.
+// ---------------------------------------------------------------------------
+
+type GridMoneyStateKey =
+  | 'tournament'
+  | 'block'
+  | 'pending_payment'
+  | 'no_show'
+  | 'free_event'
+  | 'no_data'
+  | 'paid'
+  | 'pending_charge'
+  | 'fixed'
+  | 'live'
+  | 'upcoming'
+
+export type GridMoneyFacts = SlotFacts & {
+  /** Precio total del turno en centavos: 0 en escuelitas/torneos internos → "Sin cargo". */
+  priceSnapshot: number
+  /** ¿Ya empezó este turno (`isSlotPast` de su propio horario)? Decide "Se juega" vs vacío en lo que no terminó. */
+  started: boolean
+}
+
+export type GridMoneyVisual = {
+  key: GridMoneyStateKey
+  label: string
+  icon: LucideIcon | null
+  tone: StatusTone
+  /** Rayado diagonal: bloqueo y torneo, igual que en `gridSlotVisual`. */
+  striped: boolean
+  /** Plata a mostrar en la celda, en centavos. `null` = nada que decir. */
+  amountCents: number | null
+  /** Hubo un pago parcial: el monto largo es "Falta $X", no el saldo pelado. */
+  partial: boolean
+}
+
+/**
+ * El color de la celda de la Grilla (variante "Entra entera"): el primero que
+ * matchea gana — torneo → bloqueo → esperando seña → ausente → sin cargo
+ * (precio 0) → sin dato de plata (Realtime crudo) → pagado → no cobrado → el
+ * resto, sin color.
+ *
+ * "No cobrado" usa la MISMA regla que `gridSlotVisual` (`slotStateKey` con
+ * `ended`), así que las dos celdas —esta y la del modal de cobro de Hoy—
+ * nunca pueden decir cosas distintas del mismo turno.
+ */
+export function gridMoneyVisual(facts: GridMoneyFacts): GridMoneyVisual {
+  if (facts.type === 'tournament') {
+    return {
+      key: 'tournament',
+      label: 'Torneo',
+      icon: Trophy,
+      tone: 'warning',
+      striped: true,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (facts.type === 'block') {
+    return {
+      key: 'block',
+      label: 'Bloqueado',
+      icon: Ban,
+      tone: 'neutral',
+      striped: true,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (facts.status === 'pending_payment') {
+    return {
+      key: 'pending_payment',
+      label: 'Esperando seña',
+      icon: Clock,
+      tone: 'warning',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (facts.status === 'no_show') {
+    return {
+      key: 'no_show',
+      label: 'Ausente',
+      icon: UserX,
+      tone: 'neutral',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (facts.priceSnapshot === 0) {
+    return {
+      key: 'free_event',
+      label: 'Sin cargo',
+      icon: Gift,
+      tone: 'neutral',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (typeof facts.pending !== 'number') {
+    // Realtime crudo / fixtures viejas: sin dato de plata no se inventa nada.
+    return {
+      key: 'no_data',
+      label: '',
+      icon: null,
+      tone: 'neutral',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (facts.pending === 0) {
+    return {
+      key: 'paid',
+      label: 'Pagado',
+      icon: CheckCheck,
+      tone: 'success',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (slotStateKey(facts) === 'pending_charge') {
+    return {
+      key: 'pending_charge',
+      label: 'No cobrado',
+      icon: CircleDollarSign,
+      tone: 'destructive',
+      striped: false,
+      amountCents: facts.pending,
+      partial: (facts.totalPaid ?? 0) > 0,
+    }
+  }
+  return {
+    key: facts.type === 'fixed' ? 'fixed' : facts.started ? 'live' : 'upcoming',
+    label: facts.type === 'fixed' ? 'Turno fijo' : facts.started ? 'Se juega' : '',
+    icon: facts.type === 'fixed' ? Repeat : null,
+    tone: 'neutral',
+    striped: false,
+    amountCents: facts.pending,
+    partial: (facts.totalPaid ?? 0) > 0,
+  }
+}
+
+/** Item de la leyenda derivada de {@link gridMoneyVisual} (distinta de {@link LegendItem}: sus keys no son `SlotStateKey`). */
+export type GridMoneyLegendItem = {
+  key: GridMoneyStateKey | 'free'
+  label: string
+  /** `null` cuando la celda real no pinta ícono (el turno por jugar): la leyenda no enseña lo que no se ve. */
+  icon: LucideIcon | null
+  swatch: string
+  iconClass: string
+}
+
+const GRID_MONEY_LEGEND: readonly {
+  key: GridMoneyStateKey
+  label: string
+  icon: LucideIcon | null
+  tone: StatusTone
+  striped?: boolean
+}[] = [
+  { key: 'pending_charge', label: 'No cobrado', icon: CircleDollarSign, tone: 'destructive' },
+  { key: 'paid', label: 'Pagado', icon: CheckCheck, tone: 'success' },
+  { key: 'pending_payment', label: 'Esperando seña', icon: Clock, tone: 'warning' },
+  { key: 'upcoming', label: 'Por jugar', icon: null, tone: 'neutral' },
+  { key: 'block', label: 'Bloqueado', icon: Ban, tone: 'neutral', striped: true },
+]
+
+/**
+ * Leyenda de la celda "Entra entera": los 5 estados que el dueño eligió que
+ * se expliquen (no está "Sin cargo", "Ausente" ni "Torneo" — la celda los
+ * sigue pintando, pero no forman parte del mini-tutorial).
+ */
+export const GRID_MONEY_LEGEND_ITEMS: readonly GridMoneyLegendItem[] = GRID_MONEY_LEGEND.map(
+  (item) => {
+    const swatch = TONE_SWATCH[item.tone]
+    return {
+      key: item.key,
+      label: item.label,
+      icon: item.icon,
+      swatch: item.striped ? `slot-blocked-stripes ${swatch}` : swatch,
+      iconClass: TONE_TEXT[item.tone],
+    }
+  },
+)

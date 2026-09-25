@@ -197,7 +197,9 @@ describe('BookingGrid — layout CSS Grid', () => {
     const eight = Array.from({ length: 8 }, (_, i) => court(`c${i}`, `Cancha ${i + 1}`))
     renderGrid({ courts: eight })
     for (let i = 1; i <= 8; i++) {
-      expect(screen.getByText(`Cancha ${i}`)).toBeTruthy()
+      // Desde `lg` el header combina nombre y formato en una sola línea
+      // ("Cancha N · F5"); en el teléfono es "CN" solo (shortCourtName).
+      expect(screen.getByText(`Cancha ${i} · F5`)).toBeTruthy()
     }
   })
 
@@ -210,20 +212,30 @@ describe('BookingGrid — layout CSS Grid', () => {
     expect(dialog.textContent).toContain('Cancha 1')
   })
 
-  it('una reserva confirmada muestra nombre y estado "Confirmada"', () => {
-    renderGrid({ bookings: [booking({})] })
-    // within(grid): la leyenda de abajo repite los nombres de estado.
+  // Desde la variante "Entra entera" (2026-09-25) el color de la celda es SOLO
+  // de la plata (`gridMoneyVisual`): una reserva confirmada y pagada dice
+  // "Pagado" en vez de repetir el estado de `booking_status`.
+  it('una reserva confirmada y pagada muestra nombre y "Pagado"', () => {
+    renderGrid({ bookings: [booking({ pending: 0, totalPaid: 2000000 })] })
     const grid = within(screen.getByTestId('booking-grid'))
     expect(grid.getByText('Tomás García')).toBeTruthy()
-    expect(grid.getByText('Confirmada')).toBeTruthy()
+    // Corto y largo son DOS nodos (uno por ancho, ver BookingCard.stories.tsx).
+    expect(grid.getAllByText('Pagado').length).toBeGreaterThan(0)
     // El slot ocupado no ofrece botón de reservar.
     expect(screen.queryByRole('button', { name: 'Reservar turno 16:00 en Cancha 1' })).toBeNull()
   })
 
-  it('abonado se distingue de reserva y de bloqueo', () => {
+  it('un abonado sin cobrar se distingue de un bloqueo', () => {
     renderGrid({
       bookings: [
-        booking({ id: 'b1', type: 'fixed', timeStart: '16:00', timeEnd: '17:00' }),
+        booking({
+          id: 'b1',
+          type: 'fixed',
+          timeStart: '16:00',
+          timeEnd: '17:00',
+          pending: 2000000,
+          totalPaid: 0,
+        }),
         booking({
           id: 'b2',
           type: 'block',
@@ -234,8 +246,12 @@ describe('BookingGrid — layout CSS Grid', () => {
       ],
     })
     const grid = within(screen.getByTestId('booking-grid'))
-    expect(grid.getByText('Abonado')).toBeTruthy()
-    expect(grid.getByText('Bloqueado')).toBeTruthy()
+    // "Turno fijo" no es texto visible cuando hay monto (el monto le gana el
+    // lugar, igual que en la lámina elegida): vive en el aria-label.
+    expect(grid.getByRole('button', { name: /Turno fijo/ })).toBeTruthy()
+    // Corto y largo son DOS nodos (uno por ancho — el CSS decide cuál se ve;
+    // BookingCard.stories.tsx prueba lo mismo para el monto).
+    expect(grid.getAllByText('Bloqueado').length).toBeGreaterThan(0)
   })
 
   it('una reserva de 120 min ocupa dos filas (span 2) y no duplica celdas', () => {

@@ -4,6 +4,7 @@ import {
   index,
   integer,
   pgTable,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -41,6 +42,13 @@ export const cashFlows = pgTable(
      */
     tournamentTeamId: uuid('tournament_team_id').references(() => tournamentTeams.id),
 
+    /**
+     * Migr. 092. Equipo (1 o 2) del cobro de mostrador de un turno — decisión
+     * del dueño 2026-09-25, reabre docs/decisions/2026-09-15-cobro-por-equipo.md.
+     * Nullable: la mayoría de los movimientos no distinguen equipo.
+     */
+    bookingTeam: smallint('booking_team'),
+
     registeredBy: uuid('registered_by')
       .notNull()
       .references(() => staffUsers.id),
@@ -71,6 +79,13 @@ export const cashFlows = pgTable(
     tournamentTeamValid: check(
       'chk_cashflow_tournament_team',
       sql`(${table.category} = 'tournament') = (${table.tournamentTeamId} IS NOT NULL)`,
+    ),
+    // Migr. 092. Unidireccional a propósito (a diferencia del check de arriba):
+    // booking_team exige category='booking' + booking_id, pero un cobro de
+    // turno SIN equipo sigue siendo válido (cobro genérico, filas viejas).
+    bookingTeamValid: check(
+      'chk_cashflow_booking_team',
+      sql`${table.bookingTeam} IS NULL OR (${table.bookingTeam} IN (1, 2) AND ${table.bookingId} IS NOT NULL AND ${table.category} = 'booking')`,
     ),
     tenantDateIdx: index('idx_cash_flows_tenant_date').on(table.tenantId, table.occurredAt),
     tenantTypeIdx: index('idx_cash_flows_tenant_type').on(table.tenantId, table.type),

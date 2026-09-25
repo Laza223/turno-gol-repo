@@ -40,10 +40,19 @@ export function HoyHeaderSlot({
         onClick={() => setOpen(true)}
         // Solo el ícono en el teléfono: con el logo y el menú de tema a los costados, un botón
         // con texto le dejaba a la fecha ~25 px y la aplastaba. El nombre accesible es el mismo.
-        className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto sm:px-3.5 md:h-10 xl:hidden"
+        // En todos los anchos (2026-09-25): la venta es un modal y ya no hay columna fija.
+        // La V también lo abre; la tecla se muestra solo donde hay teclado.
+        aria-keyshortcuts="V"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto sm:px-3.5 md:h-10"
       >
         <ShoppingBag aria-hidden className="h-4 w-4" />
         <span className="max-sm:sr-only">Vender</span>
+        <kbd
+          aria-hidden
+          className="hidden rounded bg-white/20 px-1.5 font-sans text-[11px] font-medium pointer-fine:lg:inline"
+        >
+          V
+        </kbd>
       </button>
     </AdminHeaderSlot>
   )

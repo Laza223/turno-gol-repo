@@ -20,6 +20,7 @@ type ProductFormFields = {
   cost?: number | null
   stock?: number | null
   minStock?: number | null
+  category?: string | null
 }
 
 /**
@@ -62,6 +63,7 @@ function profitLabel(
 export function ProductFormDialog({
   open,
   product,
+  categorySuggestions,
   onClose,
   onSaved,
   createProductAction,
@@ -70,6 +72,8 @@ export function ProductFormDialog({
   open: boolean
   /** null = alta; con valor = edición. */
   product: CanteenProductRow | null
+  /** Categorías ya usadas en el catálogo, para sugerir sin obligar a un enum cerrado. */
+  categorySuggestions: string[]
   onClose: () => void
   onSaved: () => void
   createProductAction: CreateProductAction
@@ -80,6 +84,7 @@ export function ProductFormDialog({
   const [name, setName] = useState('')
   const [priceCents, setPriceCents] = useState<number | null>(null)
   const [costCents, setCostCents] = useState<number | null>(null)
+  const [category, setCategory] = useState('')
   // Controla stock por defecto: el 90 % de lo que vende una cantina es
   // mercadería contable (bebidas, kiosco). Lo que no se cuenta —alquiler de
   // pecheras, fichas de ducha— es la excepción y se elige a propósito.
@@ -96,6 +101,7 @@ export function ProductFormDialog({
     setName(product?.name ?? '')
     setPriceCents(product ? product.price : null)
     setCostCents(product?.cost ?? null)
+    setCategory(product?.category ?? '')
     setTrackStock(product ? product.stock != null : true)
     setStock(product?.stock != null ? String(product.stock) : '')
     setMinStock(product?.minStock != null ? String(product.minStock) : '')
@@ -131,6 +137,8 @@ export function ProductFormDialog({
     }
     const price = priceCents
     const cost = costCents
+    const trimmedCategory = category.trim()
+    const categoryValue = trimmedCategory === '' ? null : trimmedCategory
 
     let minStockValue: number | null = null
     if (trackStock && minStock.trim() !== '') {
@@ -182,7 +190,14 @@ export function ProductFormDialog({
         const res = product
           ? await updateProductAction({
               productId: product.id,
-              patch: { name: trimmedName, price, cost, stock: stockValue, minStock: minStockValue },
+              patch: {
+                name: trimmedName,
+                price,
+                cost,
+                stock: stockValue,
+                minStock: minStockValue,
+                category: categoryValue,
+              },
             })
           : await createProductAction({
               name: trimmedName,
@@ -190,6 +205,7 @@ export function ProductFormDialog({
               cost,
               stock: stockValue,
               minStock: minStockValue,
+              category: categoryValue,
             })
         if (res.success) {
           toast({ title: product ? 'Producto actualizado' : 'Producto creado', variant: 'success' })
@@ -248,6 +264,28 @@ export function ProductFormDialog({
                 disabled={isPending}
                 aria-describedby="pf-name-help"
               />
+            </Field>
+
+            <Field
+              id="pf-category"
+              label="Categoría (opcional)"
+              help="Para agrupar en Vender: Bebidas, Cervezas, Comida…"
+            >
+              <Input
+                id="pf-category"
+                list="pf-category-suggestions"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                maxLength={40}
+                placeholder="Ej.: Bebidas"
+                disabled={isPending}
+                aria-describedby="pf-category-help"
+              />
+              <datalist id="pf-category-suggestions">
+                {categorySuggestions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </Field>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">

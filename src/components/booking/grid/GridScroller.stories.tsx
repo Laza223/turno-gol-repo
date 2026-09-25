@@ -124,11 +124,11 @@ export const EnTelefono: Story = {
 }
 
 /**
- * Chip "Por cobrar hoy" encendido: los turnos con saldo llevan un anillo
- * ámbar, así se encuentran de un vistazo en una matriz llena.
+ * Chip "No cobrados hoy" encendido: los turnos con saldo llevan un anillo
+ * rojo, así se encuentran de un vistazo en una matriz llena.
  */
 export const ResaltandoLoPendiente: Story = {
-  name: 'highlightPending=true (los turnos con saldo llevan anillo ámbar)',
+  name: 'highlightPending=true (los turnos con saldo llevan anillo rojo)',
   args: { highlightPending: true },
 }
 

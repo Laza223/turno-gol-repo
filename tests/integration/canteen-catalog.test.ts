@@ -49,6 +49,50 @@ describe('canteen catalog service', () => {
     expect(product.minStock).toBeNull()
     expect(product.isActive).toBe(true)
     expect(product.tenantId).toBe(tenant.id)
+    expect(product.category).toBeNull()
+  })
+
+  // Migración 093 (decisión del dueño 2026-09-25): rubro opcional para
+  // agrupar el modal de Vender.
+  describe('category (migración 093)', () => {
+    it('crea un producto con categoría', async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+
+      const product = await withTenantContext(tenant.id, (tx) =>
+        createProduct(tenant.id, { name: 'Cerveza IPA', price: 350000, category: 'Cervezas' }, tx),
+      )
+
+      expect(product.category).toBe('Cervezas')
+    })
+
+    it('edita la categoría de un producto existente', async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+      const product = await withTenantContext(tenant.id, (tx) =>
+        createProduct(tenant.id, { name: 'Agua', price: 150000 }, tx),
+      )
+      expect(product.category).toBeNull()
+
+      const updated = await withTenantContext(tenant.id, (tx) =>
+        updateProduct(tenant.id, product.id, { category: 'Bebidas' }, tx),
+      )
+      expect(updated.category).toBe('Bebidas')
+    })
+
+    it('categoría vacía (trim) se normaliza a null', async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+      const product = await withTenantContext(tenant.id, (tx) =>
+        createProduct(tenant.id, { name: 'Gatorade', price: 250000, category: 'Bebidas' }, tx),
+      )
+      expect(product.category).toBe('Bebidas')
+
+      const updated = await withTenantContext(tenant.id, (tx) =>
+        updateProduct(tenant.id, product.id, { category: null }, tx),
+      )
+      expect(updated.category).toBeNull()
+    })
   })
 
   it('updateProduct edits the owner tenant product (control positivo de autorización)', async () => {

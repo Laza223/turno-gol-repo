@@ -22,6 +22,8 @@ export type CanteenProductRow = {
   minStock: number | null
   isActive: boolean
   sortOrder: number
+  /** Rubro opcional (Bebidas, Cervezas, Comida…) para agrupar el modal de Vender. null = sin categorizar. */
+  category: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -103,6 +105,7 @@ export type CreateProductInput = {
   stock?: number | null
   minStock?: number | null
   sortOrder?: number
+  category?: string | null
 }
 
 export type UpdateProductInput = Partial<CreateProductInput> & {

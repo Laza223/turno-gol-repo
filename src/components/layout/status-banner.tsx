@@ -1,12 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertTriangle, Clock, XCircle } from 'lucide-react'
+import { AlertTriangle, XCircle } from 'lucide-react'
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_NUMBER, SUPPORT_WHATSAPP_URL } from '@/shared/constants'
 
+/**
+ * La banda de estado de la cuenta, arriba de toda pantalla del panel. Es solo
+ * para lo que corta o puede cortar el servicio (servicio degradado, pago
+ * fallido, suscripción cancelada, cuenta suspendida). El período de prueba NO va
+ * acá desde el 2026-09-24: vive en el pie del riel, arriba de Ayuda
+ * (`admin-sidebar.tsx`), porque una banda de 90 días le comía a cada vista el
+ * alto de un renglón de trabajo.
+ */
 interface StatusBannerProps {
   tenantStatus: string
-  trialEndsAt: string | null
   periodEnd: string | null
   /**
    * Override para Storybook/tests: por default lee `NEXT_PUBLIC_SERVICE_DEGRADED`
@@ -14,10 +21,6 @@ interface StatusBannerProps {
    * pasa esta prop; el default preserva el comportamiento exacto de siempre.
    */
   serviceDegraded?: boolean
-}
-
-function daysUntil(iso: string): number {
-  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000))
 }
 
 function formatDate(iso: string): string {
@@ -37,7 +40,6 @@ function ctaClass(hover: string): string {
 
 export function StatusBanner({
   tenantStatus,
-  trialEndsAt,
   periodEnd,
   serviceDegraded = process.env.NEXT_PUBLIC_SERVICE_DEGRADED === 'true',
 }: StatusBannerProps) {
@@ -56,30 +58,7 @@ export function StatusBanner({
     )
   }
 
-  // Priority 2: Trialing
-  if (tenantStatus === 'trialing' && trialEndsAt) {
-    const days = daysUntil(trialEndsAt)
-    return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border-b border-emerald-200 text-sm text-emerald-900 dark:bg-emerald-500/10 dark:border-emerald-500/25 dark:text-emerald-100">
-        <Clock
-          className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-          aria-hidden="true"
-        />
-        <span className="flex-1">
-          Período de prueba: <strong>{days}</strong>{' '}
-          {days === 1 ? 'día restante' : 'días restantes'}.
-        </span>
-        <Link
-          href="/settings/facturacion"
-          className={ctaClass('hover:text-emerald-700 dark:hover:text-emerald-300')}
-        >
-          Elegir plan
-        </Link>
-      </div>
-    )
-  }
-
-  // Priority 3: Past due
+  // Priority 2: Past due
   if (tenantStatus === 'past_due' && periodEnd) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200">
@@ -94,7 +73,7 @@ export function StatusBanner({
     )
   }
 
-  // Priority 4: Canceled (voluntary, ENS-25/26). El acceso sigue intacto
+  // Priority 3: Canceled (voluntary, ENS-25/26). El acceso sigue intacto
   // hasta `periodEnd` — el hard-lock del layout NO incluye `canceled` (el
   // sweep `canceled → blocked` recién corta el acceso cuando vence el
   // período; `blocked` sí sigue en el hard-lock).
@@ -119,7 +98,7 @@ export function StatusBanner({
     )
   }
 
-  // Priority 5: Suspended
+  // Priority 4: Suspended
   if (tenantStatus === 'suspended') {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200">

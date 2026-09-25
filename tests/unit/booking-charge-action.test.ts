@@ -316,6 +316,53 @@ describe('addBookingChargeAction', () => {
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
   })
 
+  // Decisión del dueño 2026-09-25 (cobro por equipo): cada línea acepta un
+  // `team` opcional (1 o 2) que se persiste como `bookingTeam`.
+  it('acepta team 1/2 y lo manda a createCashFlow como bookingTeam', async () => {
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-team' } as never)
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash', team: 2 }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(vi.mocked(createCashFlow)).toHaveBeenCalledWith(
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ bookingTeam: 2 }),
+      expect.anything(),
+    )
+  })
+
+  it('rechaza team fuera de {1,2}', async () => {
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash', team: 3 }],
+    } as never)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+  })
+
+  it('sin team, createCashFlow lo recibe igual que antes (sin bookingTeam)', async () => {
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-no-team' } as never)
+
+    const res = await addBookingChargeAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash' }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(vi.mocked(createCashFlow)).toHaveBeenCalledWith(
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ amount: 100_00, method: 'cash' }),
+      expect.anything(),
+    )
+  })
+
   // Idempotencia POR LÍNEA: cada cash_flow se inserta con `${key}-${i}`, y el
   // dedupe de reintento chequea la existencia de CADA key sufijada.
   it('inserta cada línea con su propia clientIdempotencyKey (`${key}-${i}`)', async () => {

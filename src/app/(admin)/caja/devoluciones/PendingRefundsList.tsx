@@ -97,7 +97,7 @@ export function PendingRefundsList({
 
   return (
     <section aria-labelledby="devolver-titulo" className="space-y-3">
-      {/* Rojo porque es plata que SALE (MASTER §2.5), lo opuesto de "Deudas",
+      {/* Rojo porque es plata que SALE (MASTER §2.5), lo opuesto de "Sin cobrar",
           que es plata pendiente de ENTRAR. */}
       <SectionHeader
         id="devolver-titulo"

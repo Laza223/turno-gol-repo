@@ -146,3 +146,29 @@ export const ConAvisosDeConfiguracion: Story = {
     await expect(canvas.getByRole('link', { name: 'Grilla' })).toBeInTheDocument()
   },
 }
+
+/**
+ * Período de prueba en el pie del riel, arriba de Ayuda (2026-09-24): al dueño lo
+ * lleva a elegir plan. Antes era una banda a lo ancho de cada pantalla.
+ */
+export const EnPeriodoDePrueba: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
+  args: { staffRole: 'admin', trialDaysLeft: 73 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('link', { name: /Prueba 73 días\W+Elegir plan/ }),
+    ).toHaveAttribute('href', '/settings/facturacion')
+  },
+}
+
+/** La última semana de prueba el chip pasa a ámbar; al encargado, sin link. */
+export const PruebaPorVencerEncargado: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
+  args: { staffRole: 'manager', trialDaysLeft: 3 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('3 días')).toBeVisible()
+    await expect(canvas.queryByRole('link', { name: /Elegir plan/ })).toBeNull()
+  },
+}

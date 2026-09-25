@@ -157,13 +157,13 @@ export function useSlotCharges({
    * error, pero cobrar de más nunca puede depender de que el cliente calcule
    * bien. Con el turno casi saldado, "Pagó uno" cobra lo que queda y no más.
    */
-  function submitPartialCharge(amountCents: number, method: MethodKey) {
+  function submitPartialCharge(amountCents: number, method: MethodKey, team?: 1 | 2) {
     if (!booking || !mode || pending <= 0 || retryCharge) return
     const amount = Math.min(amountCents, pending)
     if (amount <= 0) return
     setError(null)
-    setLines([newChargeLine(amount, method)])
-    runCharge([{ amount, method }], amount)
+    setLines([newChargeLine(amount, method, team)])
+    runCharge([{ amount, method, team }], amount)
   }
 
   /**
@@ -181,7 +181,7 @@ export function useSlotCharges({
    * las filas sobreviven al error; si el cobro sale bien, el refresco del
    * turno las resincroniza solo.
    */
-  function submitTeamCharge(teamLines: ChargeLine[]) {
+  function submitTeamCharge(teamLines: ChargeLine[], team?: 1 | 2) {
     if (!booking || !mode || retryCharge) return
     setError(null)
     const charges: ChargeInput[] = []
@@ -190,7 +190,7 @@ export function useSlotCharges({
         setError('Todos los cobros deben tener un monto mayor a $0.')
         return
       }
-      charges.push({ amount: l.amountCents, method: l.method })
+      charges.push({ amount: l.amountCents, method: l.method, team: team ?? l.team })
     }
     if (charges.length === 0) {
       setError('Ingresá al menos una línea de cobro.')

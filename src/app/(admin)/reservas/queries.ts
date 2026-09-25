@@ -2,6 +2,7 @@ import { and, eq, sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { bookings, players } from '@/shared/db/schema'
 import {
+  DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX,
   depositCashFlowDescription,
   summarizeBookingCharges,
 } from '@/modules/bookings/booking.charges'
@@ -12,6 +13,10 @@ import type {
   PaymentMethodValue,
 } from '@/modules/bookings/booking.types'
 import type { GridBooking } from '@/lib/booking/grid-cells'
+import {
+  DEFAULT_STREET_MONEY_WINDOW,
+  streetMoneyCutoffDate,
+} from '@/modules/cashflow/street-money-window'
 import type { RefundState } from './deposit-display'
 
 export type ReservaListRow = {
@@ -325,6 +330,8 @@ export type BookingChargeRow = {
   method: string
   description: string
   occurredAt: string
+  /** Migr. 092. Equipo (1/2) al que se atribuyó este cobro; null/ausente sin atribuir. */
+  bookingTeam?: 1 | 2 | null
 }
 
 export type BookingCharges = {
@@ -360,7 +367,8 @@ export async function getBookingCharges(
   tx: DbTx,
 ): Promise<BookingCharges> {
   const rows = await tx.execute(sql`
-    SELECT id, amount, method, description, occurred_at::text AS "occurredAt"
+    SELECT id, amount, method, description, occurred_at::text AS "occurredAt",
+           booking_team AS "bookingTeam"
     FROM cash_flows
     WHERE tenant_id = ${tenantId} AND booking_id = ${bookingId} AND type = 'income'
       AND category = 'booking'
@@ -384,13 +392,17 @@ export async function getBookingCharges(
  * 'booking' + excluir la fila de la seña) — si divergen, el saldo que pinta la
  * grilla deja de coincidir con el que muestra el detalle del turno.
  *
- * Devuelve un Map en centavos; un booking sin cobros simplemente no aparece.
+ * Devuelve un Map en centavos con el total y lo atribuido a cada equipo
+ * (`booking_team`, decisión del dueño 2026-09-25); un booking sin cobros
+ * simplemente no aparece.
  */
+export type BookingChargesSum = { total: number; team1: number; team2: number }
+
 export async function sumBookingChargesByBooking(
   tenantId: string,
   bookingIds: string[],
   tx: DbTx,
-): Promise<Map<string, number>> {
+): Promise<Map<string, BookingChargesSum>> {
   if (bookingIds.length === 0) return new Map()
   // La descripción de la seña se excluye pasándola como PARÁMETRO por booking,
   // no reconstruyendo el formato en SQL: así el literal sigue viviendo en un
@@ -404,7 +416,10 @@ export async function sumBookingChargesByBooking(
     WITH wanted (booking_id, deposit_desc) AS (
       VALUES ${sql.join(pairs, sql`, `)}
     )
-    SELECT cf.booking_id AS "bookingId", COALESCE(SUM(cf.amount), 0)::int AS total
+    SELECT cf.booking_id AS "bookingId",
+           COALESCE(SUM(cf.amount), 0)::int AS total,
+           COALESCE(SUM(cf.amount) FILTER (WHERE cf.booking_team = 1), 0)::int AS team1,
+           COALESCE(SUM(cf.amount) FILTER (WHERE cf.booking_team = 2), 0)::int AS team2
     FROM cash_flows cf
     JOIN wanted w ON w.booking_id = cf.booking_id
     WHERE cf.tenant_id = ${tenantId}
@@ -413,8 +428,8 @@ export async function sumBookingChargesByBooking(
       AND cf.description <> w.deposit_desc
     GROUP BY cf.booking_id
   `)
-  const list = rows as unknown as { bookingId: string; total: number }[]
-  return new Map(list.map((r) => [r.bookingId, r.total]))
+  const list = rows as unknown as Array<{ bookingId: string } & BookingChargesSum>
+  return new Map(list.map((r) => [r.bookingId, { total: r.total, team1: r.team1, team2: r.team2 }]))
 }
 
 /** Un turno del día tal como lo dibujan la grilla y Hoy, más sus instantes físicos. */
@@ -426,18 +441,14 @@ export type DayGridBooking = GridBooking & {
 }
 
 /**
- * Todos los turnos del día operativo `date` con su saldo, para la Grilla y para
- * Hoy. Una sola definición: los dos números de "falta cobrar" salen de
- * `summarizeBookingCharges` sobre la misma query agregada de cobros, así que no
- * pueden discrepar entre pantallas ni con el detalle (`/reservas/[id]`) o Deudas.
- *
- * La Grilla descarta `startsAt`/`endsAt` (su payload queda idéntico al de antes);
- * Hoy los necesita para decidir qué turno terminó sin adivinar con la hora de
- * pared (`slotHasPassed` se equivoca con `24:00` y con los slots de madrugada).
+ * Núcleo compartido de `listDayGridBookings`/`listUnpaidGridBookingsBefore`:
+ * el SELECT de turnos + el saldo (misma `sumBookingChargesByBooking` +
+ * `summarizeBookingCharges`) para que las dos pantallas nunca discrepen ni
+ * dupliquen el cálculo. `extraWhere` es lo único que cambia entre una y otra.
  */
-export async function listDayGridBookings(
+async function selectGridBookingsWithBalance(
   tenantId: string,
-  date: string,
+  extraWhere: SQL,
   tx: DbTx,
 ): Promise<DayGridBooking[]> {
   const rows = await tx
@@ -464,16 +475,10 @@ export async function listDayGridBookings(
     })
     .from(bookings)
     .leftJoin(players, eq(bookings.playerId, players.id))
-    .where(
-      and(
-        eq(bookings.tenantId, tenantId),
-        sql`${bookings.date} = ${date}::date`,
-        sql`${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
-      ),
-    )
+    .where(and(eq(bookings.tenantId, tenantId), extraWhere))
 
   // Los cobros de mostrador se piden DESPUÉS de saber qué turnos hay: es una
-  // sola query agregada para todo el día, no una por celda.
+  // sola query agregada, no una por celda.
   const charges = await sumBookingChargesByBooking(
     tenantId,
     rows.map((r) => r.id),
@@ -481,11 +486,12 @@ export async function listDayGridBookings(
   )
 
   return rows.map((r) => {
+    const sum = charges.get(r.id)
     const { totalPaid, pending } = summarizeBookingCharges({
       priceSnapshot: r.priceSnapshot,
       depositAmount: r.depositAmount,
       depositStatus: r.depositStatus,
-      chargesTotal: charges.get(r.id) ?? 0,
+      chargesTotal: sum?.total ?? 0,
     })
     return {
       id: r.id,
@@ -508,6 +514,119 @@ export async function listDayGridBookings(
       createdAt: r.createdAt,
       totalPaid,
       pending,
+      team1Paid: sum?.team1 ?? 0,
+      team2Paid: sum?.team2 ?? 0,
     }
   })
+}
+
+/**
+ * Todos los turnos del día operativo `date` con su saldo, para la Grilla y para
+ * Hoy. Una sola definición: los dos números de "falta cobrar" salen de
+ * `summarizeBookingCharges` sobre la misma query agregada de cobros, así que no
+ * pueden discrepar entre pantallas ni con el detalle (`/reservas/[id]`) o Deudas.
+ *
+ * La Grilla descarta `startsAt`/`endsAt` (su payload queda idéntico al de antes);
+ * Hoy los necesita para decidir qué turno terminó sin adivinar con la hora de
+ * pared (`slotHasPassed` se equivoca con `24:00` y con los slots de madrugada).
+ */
+export async function listDayGridBookings(
+  tenantId: string,
+  date: string,
+  tx: DbTx,
+): Promise<DayGridBooking[]> {
+  return selectGridBookingsWithBalance(
+    tenantId,
+    sql`${bookings.date} = ${date}::date AND ${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+    tx,
+  )
+}
+
+/**
+ * Turnos JUGADOS y no cobrados de días ANTERIORES a `date`, para que Hoy los
+ * pueda seguir mostrando después de la medianoche (en vez de que se pierdan de
+ * vista en cuanto cambia el día operativo).
+ *
+ * Misma ventana que `getDebts`/`getStreetMoney` (`street-money-window.ts`, 12
+ * meses): el dueño no persigue deuda de más de 6 meses en la práctica, así que
+ * acotar ahí ya muestra el 100% de la deuda real con el doble de margen — y
+ * usar la MISMA constante es lo que garantiza que el saldo acá sea el mismo
+ * número que muestra Caja › Cuentas.
+ *
+ * El filtro "todavía debe" es el de `getDebts`, en SQL: Hoy se refresca cada
+ * minuto, y traer a Node todos los turnos jugados de la ventana para quedarse con
+ * los que deben es la forma de B11. Postgres filtra, ordena, cuenta y suma, y solo
+ * los `opts.limit` que se muestran pasan por el núcleo compartido
+ * (`selectGridBookingsWithBalance`): el saldo de cada fila es el de la Grilla.
+ *
+ * Orden: el instante físico (`starts_at`), el más reciente primero, y el id para
+ * desempatar. Con `date` + `time_start` el turno de las 00:00 de un complejo que
+ * cierra pasada la medianoche quedaba último siendo el más reciente, y sin
+ * desempate dos canchas a la misma hora podían cambiar de lugar entre dos
+ * lecturas (y un turno salirse de la lista sin haberse cobrado).
+ *
+ * `count`/`pendingCents` son sobre TODOS los turnos de la ventana, no solo los
+ * que entran en `limit`.
+ */
+export async function listUnpaidGridBookingsBefore(
+  tenantId: string,
+  date: string,
+  tx: DbTx,
+  opts: { limit: number },
+): Promise<{ bookings: DayGridBooking[]; count: number; pendingCents: number }> {
+  const cutoff = streetMoneyCutoffDate(DEFAULT_STREET_MONEY_WINDOW, new Date())
+  const dateBound = cutoff ? sql`AND b.date >= ${cutoff}::date` : sql``
+
+  // El prefijo de la seña va como parámetro (patrón de INV9): el literal sigue
+  // viviendo en `booking.charges.ts`.
+  const owed = (await tx.execute(sql`
+    WITH owed AS (
+      SELECT b.id,
+             b.starts_at,
+             b.price_snapshot
+               - CASE WHEN b.deposit_status IN ('paid', 'captured') THEN b.deposit_amount ELSE 0 END
+               - COALESCE(
+                   SUM(cf.amount) FILTER (
+                     WHERE cf.type = 'income'
+                       AND cf.category = 'booking'
+                       AND cf.description <> (${DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX}::text || b.id::text)
+                   ), 0
+                 ) AS pending
+      FROM bookings b
+      LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
+      WHERE b.tenant_id = ${tenantId}
+        AND b.status = 'completed'
+        AND b.date < ${date}::date
+        ${dateBound}
+      GROUP BY b.id
+    )
+    SELECT id,
+           (COUNT(*) OVER ())::int AS count,
+           (SUM(pending) OVER ())::bigint AS "pendingCents"
+    FROM owed
+    WHERE pending > 0
+    ORDER BY starts_at DESC, id DESC
+    LIMIT ${opts.limit}
+  `)) as unknown as Array<{ id: string; count: number; pendingCents: string | number }>
+
+  const first = owed[0]
+  if (!first) return { bookings: [], count: 0, pendingCents: 0 }
+
+  const ids = owed.map((r) => r.id)
+  const rows = await selectGridBookingsWithBalance(
+    tenantId,
+    sql`${bookings.id} IN (${sql.join(
+      ids.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    )})`,
+    tx,
+  )
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  // En el orden de la primera lectura. Uno que se terminó de cobrar entre las dos
+  // lecturas ya no se muestra (el total se corrige en el próximo refresco).
+  const shown = ids.flatMap((id) => {
+    const booking = byId.get(id)
+    return booking && (booking.pending ?? 0) > 0 ? [booking] : []
+  })
+  return { bookings: shown, count: first.count, pendingCents: Number(first.pendingCents) }
 }

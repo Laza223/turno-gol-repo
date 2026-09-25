@@ -19,6 +19,8 @@ import { getBookingCharges } from '@/app/(admin)/reservas/queries'
 const chargeLineSchema = z.object({
   amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+  /** Cobro por equipo (decisión del dueño 2026-09-25): a qué equipo se atribuye esta línea. */
+  team: z.union([z.literal(1), z.literal(2)]).optional(),
 })
 
 const chargeDebtSchema = z.object({
@@ -44,6 +46,13 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
   if (limited) return { success: false, error: limited }
 
   const { bookingId, charges, clientIdempotencyKey } = parsed.data
+  // El wire habla `team` (mismo nombre que manda el cliente); el service habla
+  // `bookingTeam` (nombre calificado de CreateCashFlowInput/SplitCharge).
+  const splitCharges = charges.map((c) => ({
+    amount: c.amount,
+    method: c.method,
+    bookingTeam: c.team,
+  }))
 
   const result: ChargeDebtResult = await withTenantContext(tenant.id, async (tx) => {
     // 1. Fetch booking & current charges
@@ -77,7 +86,12 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
     // rechazaba con un error falso ("ya no tiene saldo pendiente" / "supera lo
     // pendiente") aunque el cobro hubiera entrado; uno con otro monto caía en
     // el mismo silencio del 🔴 1. Las dos usan ahora la misma fuente única.
-    const idempotent = await resolveIdempotentCharges(tenant.id, charges, clientIdempotencyKey, tx)
+    const idempotent = await resolveIdempotentCharges(
+      tenant.id,
+      splitCharges,
+      clientIdempotencyKey,
+      tx,
+    )
     if (!idempotent.ok) {
       return { success: false as const, error: idempotent.error }
     }
@@ -119,7 +133,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
     await chargeSplitPayment(
       tenant.id,
       user.staffUserId,
-      charges,
+      splitCharges,
       (_charge, i) => ({
         type: 'income',
         category: 'booking',

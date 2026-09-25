@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
  * las acciones de esa sección.
  *
  * Es el reemplazo de la card con borde y sombra que envolvía cada bloque. La
- * forma salió del bloque de turnos de Hoy (`TodayBoard.tsx`, antes `ProximosTurnos`), que ya la tenía inline: `h2` a
+ * forma salió del bloque de turnos de Hoy (antes `ProximosTurnos`, hoy `CourtBoard.tsx`), que ya la tenía inline: `h2` a
  * la izquierda, la métrica a la derecha, una línea de 1 px abajo. Acá se
  * extrae sin la card para que el contenido apoye sobre el fondo de la página.
  *

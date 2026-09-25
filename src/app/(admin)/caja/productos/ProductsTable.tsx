@@ -133,6 +133,10 @@ export function ProductsTable({
 
   const activeCount = products.filter((p) => p.isActive).length
   const lowCount = countLowStock(products)
+  // Sugerencias del datalist: categorías ya cargadas, sin duplicados, orden alfabético.
+  const categorySuggestions = Array.from(
+    new Set(products.map((p) => p.category).filter((c): c is string => c != null)),
+  ).sort((a, b) => a.localeCompare(b))
 
   return (
     <section ref={sectionRef} aria-labelledby="catalogo-titulo" className="space-y-3">
@@ -228,6 +232,11 @@ export function ProductsTable({
                         }`}
                       >
                         {p.name}
+                        {p.category && (
+                          <span className="ml-1.5 font-normal text-muted-foreground">
+                            · {p.category}
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs tabular-nums text-muted-foreground">
                         {formatArs(p.price)}
@@ -293,6 +302,11 @@ export function ProductsTable({
                         }`}
                       >
                         {p.name}
+                        {p.category && (
+                          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                            · {p.category}
+                          </span>
+                        )}
                         {!p.isActive && (
                           <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                             (pausado)
@@ -355,6 +369,7 @@ export function ProductsTable({
       <ProductFormDialog
         open={formOpen}
         product={editing}
+        categorySuggestions={categorySuggestions}
         onClose={closeForm}
         onSaved={() => router.refresh()}
         createProductAction={createProductAction}

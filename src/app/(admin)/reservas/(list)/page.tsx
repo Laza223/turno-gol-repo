@@ -107,7 +107,7 @@ export default async function ReservasPage(props: Props) {
         priceSnapshot: r.priceSnapshot,
         depositAmount: r.depositAmount,
         depositStatus: r.depositStatus,
-        chargesTotal: charges.get(r.id) ?? 0,
+        chargesTotal: charges.get(r.id)?.total ?? 0,
       }),
     }))
     return {

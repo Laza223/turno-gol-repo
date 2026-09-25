@@ -61,6 +61,7 @@ const meta = {
         description: 'Reserva 20:00',
         bookingId: null,
         tournamentTeamId: null,
+        bookingTeam: null,
         registeredBy: 's-1',
         occurredAt: new Date(),
         createdAt: new Date(),

@@ -71,7 +71,11 @@ vi.mock('@/modules/home/home.service', () => ({
 }))
 vi.mock('@/modules/courts/court.service', () => ({ listCourts: async () => [] }))
 vi.mock('@/modules/canteen/canteen.service', () => ({ listProducts: async () => [] }))
-vi.mock('@/app/(admin)/reservas/queries', () => ({ listDayGridBookings: async () => [] }))
+vi.mock('@/modules/canteen/canteen-report.service', () => ({ getSalesRanking: async () => [] }))
+vi.mock('@/app/(admin)/reservas/queries', () => ({
+  listDayGridBookings: async () => [],
+  listUnpaidGridBookingsBefore: async () => ({ bookings: [], count: 0, pendingCents: 0 }),
+}))
 vi.mock('@/app/(admin)/dashboard/queries', () => ({ getChecklistState: state.getChecklistState }))
 vi.mock('@/app/(admin)/dashboard/actions', () => ({
   markPublicLinkSharedAction: vi.fn(),
@@ -124,13 +128,13 @@ vi.mock('@/app/(admin)/dashboard/_components/HoyShell', async () => {
   }
 })
 vi.mock('@/app/(admin)/dashboard/HoyHeaderSlot', () => stub('HoyHeaderSlot', 'header'))
-vi.mock('@/app/(admin)/dashboard/_components/VenderRail', () => stub('VenderRail', 'vender'))
-// El proveedor deja pasar lo que envuelve: sin eso desaparecería toda la página.
+// El proveedor (dueño del modal de Vender) deja pasar lo que envuelve: sin eso
+// desaparecería toda la página. La marca `vender` dice que la venta está montada.
 vi.mock('@/app/(admin)/dashboard/_components/VenderProvider', async () => {
-  const { createElement, Fragment } = await import('react')
+  const { createElement } = await import('react')
   return {
     VenderProvider: (props: { children: React.ReactNode }) =>
-      createElement(Fragment, null, props.children),
+      createElement('div', { 'data-testid': 'vender' }, props.children),
   }
 })
 

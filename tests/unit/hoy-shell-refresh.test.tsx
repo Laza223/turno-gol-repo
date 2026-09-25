@@ -63,9 +63,9 @@ function shell() {
   return (
     <HoyShell
       bookings={[BOOKING]}
+      earlier={{ bookings: [], count: 0, pendingCents: 0 }}
       courts={COURTS}
       daySlots={[]}
-      occupancy={{ occupied: 1, available: 14, blocked: 0, pct: 7 }}
       dayIsClosed={false}
       canManageCourts
       serverNowMs={NOW_MS}
@@ -75,10 +75,6 @@ function shell() {
         completeAndChargeBookingAction: ok(),
         addBookingChargeAction: ok(),
         markNoShowAction: ok(),
-      }}
-      canteen={{
-        listCatalogAction: vi.fn(async () => ({ success: true as const, products: [] })),
-        sellTicketAction: vi.fn() as never,
       }}
     />
   )

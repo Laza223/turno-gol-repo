@@ -36,6 +36,7 @@ export const canteenProduct = (overrides: Partial<CanteenProductRow> = {}): Cant
   minStock: 6,
   isActive: true,
   sortOrder: 0,
+  category: null,
   createdAt: hoursFromNow(-400),
   updatedAt: hoursFromNow(-2),
   ...overrides,

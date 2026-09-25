@@ -7,10 +7,10 @@ import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
 
 /**
- * `team` sólo existe para el cobro por equipo del panel del turno: agrupa las
- * líneas en pantalla, no viaja al servidor ni se guarda en ningún lado (el
- * sistema no registra quién es cada uno, ver `charge-copy.ts`). Sin él, cada
- * equipo estaba limitado a UN método de pago.
+ * `team` es del cobro por equipo del turno: agrupa las líneas en pantalla y
+ * viaja con cada cobro, que se guarda con su equipo (`cash_flows.booking_team`,
+ * decisión del dueño del 2026-09-25). Es solo "Equipo 1" o "Equipo 2": el
+ * sistema no registra quién es cada persona.
  */
 export type ChargeLine = {
   id: string
@@ -62,6 +62,7 @@ export function SplitPaymentFields({
    * QUÉ se está eligiendo ni de quién.
    */
   groupLabel,
+  showWords = true,
 }: {
   lines: ChargeLine[]
   onChange: (lines: ChargeLine[]) => void
@@ -72,6 +73,8 @@ export function SplitPaymentFields({
   methodOptions?: { value: MethodKey; label: string }[]
   idPrefix: string
   groupLabel?: string
+  /** El monto en palabras debajo de cada campo (`MoneyInput`). */
+  showWords?: boolean
 }) {
   function update(id: string, patch: Partial<Pick<ChargeLine, 'amountCents' | 'method'>>) {
     onChange(lines.map((l) => (l.id === id ? { ...l, ...patch } : l)))
@@ -117,7 +120,9 @@ export function SplitPaymentFields({
       )}
 
       {lines.map((line, i) => (
-        <div key={line.id} className="flex items-center gap-2">
+        // Arriba y no al centro: el monto en palabras va debajo del campo y, centrado,
+        // el método quedaba corrido hacia abajo respecto del monto.
+        <div key={line.id} className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <MoneyInput
               id={`${idPrefix}-amount-${i + 1}`}
@@ -126,6 +131,7 @@ export function SplitPaymentFields({
               minCents={1}
               placeholder="Monto"
               disabled={disabled}
+              showWords={showWords}
               aria-label={fieldLabel('Monto', i)}
             />
           </div>

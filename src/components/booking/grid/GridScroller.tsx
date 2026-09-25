@@ -19,7 +19,7 @@ type Props = {
   rowHeightRem: number
   nowTopRem: number | null
   isNavPending: boolean
-  /** Chip "Por cobrar hoy" encendido: los turnos que deben plata llevan anillo ámbar. */
+  /** Chip "No cobrados hoy" encendido: los turnos que deben plata llevan anillo rojo. */
   highlightPending?: boolean
   gridScrollRef: MutableRefObject<HTMLDivElement | null>
   ariaLabel: string

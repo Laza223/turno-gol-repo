@@ -480,7 +480,7 @@ export async function getPlayerBookingHistory(
       priceSnapshot: r.priceSnapshot,
       depositAmount: r.depositAmount,
       depositStatus: r.depositStatus,
-      chargesTotal: charges.get(r.id) ?? 0,
+      chargesTotal: charges.get(r.id)?.total ?? 0,
     })
     return { ...r, pending: money.pending, totalPaid: money.totalPaid }
   })

@@ -39,8 +39,8 @@ export function moneyLine(
     if (b.pending >= b.priceSnapshot) {
       // ...y cuando el turno ya se jugó, la píldora al lado del badge dice
       // EXACTAMENTE estas dos palabras (`RESERVA_UNPAID_VISUAL`, label
-      // 'Por cobrar'). Escribirlas otra vez acá abajo deja la fila diciendo
-      // "Por cobrar" dos veces —y el aria-label del Link, también—, que es el
+      // 'No cobrado'). Escribirlas otra vez acá abajo deja la fila diciendo
+      // "No cobrado" dos veces —y el aria-label del Link, también—, que es el
       // mismo ruido que este renglón vino a sacar. Es el mismo hecho con la
       // misma palabra: si la píldora cambia, esto cambia con ella.
       return reservaStatusVisual(b).unpaid

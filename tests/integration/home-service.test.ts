@@ -178,7 +178,7 @@ describe('home.service — números de Hoy', () => {
 })
 
 describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2026-08-02-taxonomia-alertas-hoy.md)', () => {
-  it('un turno terminado sin cobrar YA NO es una alerta: vive en el tablero "Turnos de hoy"', async () => {
+  it('un turno terminado sin cobrar YA NO es una alerta: vive en "Cobrar ahora" de Hoy', async () => {
     const { tenant, courtId } = await seedTenant()
     const today = artDateOf(new Date())
     await insertBooking(getSql(), {

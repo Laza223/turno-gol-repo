@@ -139,6 +139,36 @@ describe('completeAndChargeBookingAction', () => {
     )
   })
 
+  // Decisión del dueño 2026-09-25 (cobro por equipo): cada línea acepta un
+  // `team` opcional (1 o 2) que se persiste como `bookingTeam`.
+  it('acepta team 1/2 y lo manda a createCashFlow como bookingTeam', async () => {
+    vi.mocked(completeBooking).mockResolvedValue(fakeBooking({ priceSnapshot: 100_00 }) as never)
+    mockTx([[], []])
+    vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-team' } as never)
+
+    const res = await completeAndChargeBookingAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash', team: 1 }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(vi.mocked(createCashFlow)).toHaveBeenCalledWith(
+      'tenant-1',
+      'staff-1',
+      expect.objectContaining({ bookingTeam: 1 }),
+      expect.anything(),
+    )
+  })
+
+  it('rechaza team fuera de {1,2}', async () => {
+    const res = await completeAndChargeBookingAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash', team: 3 }],
+    } as never)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()
+  })
+
   // Hallazgo C (TOCTOU): la validación del monto tiene que leer los charges
   // DESPUÉS del FOR UPDATE explícito — mismo patrón que addBookingChargeAction
   // y chargeDebtAction.

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, within } from 'storybook/test'
 import { ImpersonationBanner } from './impersonation-banner'
 import { AdminLayoutShell } from './admin-layout-shell'
+import { daysFromNow } from '@/test/fixtures/clock'
 
 /**
  * `usePathname` decide `isFullBleed` (layout full-height sin scroll en /grilla
@@ -30,16 +31,24 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+/**
+ * En prueba: los días van en el pie del riel, arriba de Ayuda, y NO en una banda
+ * arriba del contenido (2026-09-24) — la página arranca pegada a la barra.
+ */
 export const Trialing: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/dashboard' } } },
   args: {
     tenantStatus: 'trialing',
-    trialEndsAt: new Date('2026-03-23').toISOString(),
+    trialEndsAt: daysFromNow(73).toISOString(),
     periodEnd: null,
+    staffRole: 'admin',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/período de prueba/i)).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('link', { name: /Prueba \d+ días\W+Elegir plan/ }),
+    ).toHaveAttribute('href', '/settings/facturacion')
+    await expect(canvas.queryByText(/días restantes/)).toBeNull()
   },
 }
 

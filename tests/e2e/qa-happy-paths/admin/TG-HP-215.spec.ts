@@ -24,6 +24,7 @@ import { test, expect } from '../../fixtures'
 import { E2E_TENANT_ID } from '../../_helpers/booking-seed'
 import { runSql, writeEvidence } from '../_qa/evidence'
 import { suppressPushPrompt } from '../_qa/session'
+import { findProduct, openVender } from '../../_helpers/vender'
 
 test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
   test('admin vende un producto de cantina con stock → cash_flows product_sale + descuento atómico', async ({
@@ -53,14 +54,15 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
       const page = await context.newPage()
 
-      // Vender vive en Hoy: columna fija desde 1280px (VenderRail, viewport de
-      // chromium), h2 "Vender" (src/app/(admin)/dashboard/_components/VenderRail.tsx:30-32).
+      // Vender vive en Hoy: un modal que abre el botón "Vender" de la barra superior
+      // (`VenderDialog`, 2026-09-25).
       await page.goto('/dashboard')
-      await expect(page.getByRole('heading', { name: 'Vender', level: 2 })).toBeVisible({
+      await expect(page.getByRole('button', { name: 'Vender', exact: true })).toBeVisible({
         timeout: 15_000,
       })
-      // Ticket vacío: hint de arranque de TicketPanel (Fase 3).
-      await expect(page.getByText('Buscá o tocá un producto para empezar')).toBeVisible()
+      const vender = await openVender(page)
+      // Venta vacía: hint de arranque.
+      await expect(vender.getByText('Elegí productos de la lista')).toBeVisible()
 
       // Retry el click: primer hit a esta ruta con productos reales (214/216
       // corren con canteen_products vacío) — en dev local el primer click a
@@ -71,29 +73,28 @@ test.describe('TG-HP-215 — caja: vender producto de cantina', () => {
       // y "Quitar {nombre} del ticket" también matchean — solo el botón del
       // grid EMPIEZA con el nombre del producto (misma clase que la story
       // VentaMultiItem de TicketPanel).
-      const productButton = page.getByRole('button', { name: new RegExp(`^${productName}`) })
-      await expect(productButton).toBeVisible()
+      const productButton = await findProduct(vender, productName)
       await expect(async () => {
         await productButton.click()
-        await expect(page.getByText('×1')).toBeVisible({ timeout: 2_000 })
+        await expect(productButton.getByText('1 en la venta')).toBeVisible({ timeout: 2_000 })
       }).toPass({ timeout: 15_000 })
-      await expect(page.getByText('Stock 5')).toBeVisible()
+      // El stock solo aparece cuando avisa algo ("Quedan N" / "Agotado"): con
+      // stock de sobra la fila es nombre y precio (Hoy limpio, 2026-09-24).
+      await expect(page.getByText('Stock 5')).toHaveCount(0)
 
       // Mock data del manual: cantidad 2 — segundo tap al mismo producto
       // (Fase 3: sin diálogo, tap suma la línea) — método Efectivo (default).
       await productButton.click()
-      await expect(page.getByText('×2')).toBeVisible()
+      await expect(productButton.getByText('2 en la venta')).toBeVisible()
 
-      await page.getByRole('button', { name: /^Cobrar/ }).click()
+      await vender.getByRole('button', { name: /^Cobrar/ }).click()
 
       // `.first()`: el toast existe dos veces (visible + región aria-live).
       await expect(page.getByText(/Venta registrada/).first()).toBeVisible({
         timeout: 10_000,
       })
-      // Éxito: el ticket se vacía (vuelve el hint) — listo para la próxima venta.
-      await expect(page.getByText('Buscá o tocá un producto para empezar')).toBeVisible({
-        timeout: 10_000,
-      })
+      // Éxito: el modal se cierra solo y se vuelve al tablero.
+      await expect(vender).toBeHidden({ timeout: 10_000 })
 
       // ── DB assertion: cash_flow ──────────────────────────────────────────
       const cfRows = await runSql<{

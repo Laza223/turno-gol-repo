@@ -96,7 +96,7 @@ export const GET = withTenant(
         priceSnapshot: r.booking.priceSnapshot,
         depositAmount: r.booking.depositAmount,
         depositStatus: r.booking.depositStatus,
-        chargesTotal: chargesByBooking.get(r.booking.id) ?? 0,
+        chargesTotal: chargesByBooking.get(r.booking.id)?.total ?? 0,
       })
       return {
         total_paid: totalPaid,

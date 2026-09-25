@@ -166,6 +166,11 @@ test.describe('reservas — happy: mark completed', () => {
       // After router.refresh() the status badge should update to "Jugada" (§8.5).
       await expect(page.getByText('Jugada')).toBeVisible({ timeout: 15_000 })
 
+      // Sin seña y sin cobrar nada más, el turno completado queda con saldo
+      // pendiente: al lado del badge "Jugada" aparece la píldora "No cobrado"
+      // (slot-visual.ts, tono `destructive` desde el 2026-09-25).
+      await expect(page.getByText('No cobrado')).toBeVisible()
+
       // The action buttons must disappear (BookingActions returns null when status != 'confirmed').
       await expect(page.getByRole('button', { name: 'Marcar completada' })).not.toBeVisible()
     } finally {

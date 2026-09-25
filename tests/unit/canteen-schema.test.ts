@@ -111,6 +111,29 @@ describe('createProductSchema', () => {
       true,
     )
   })
+
+  it('accepts a category and normalizes it (trim)', () => {
+    const result = createProductSchema.safeParse({ ...base(), category: '  Bebidas  ' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.category).toBe('Bebidas')
+  })
+
+  it('empty category normalizes to null (no a "")', () => {
+    const result = createProductSchema.safeParse({ ...base(), category: '' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.category).toBeNull()
+  })
+
+  it('missing category normalizes to null', () => {
+    const result = createProductSchema.safeParse(base())
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.category).toBeNull()
+  })
+
+  it('rejects a category longer than 40 characters', () => {
+    const result = createProductSchema.safeParse({ ...base(), category: 'x'.repeat(41) })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe('updateProductSchema', () => {

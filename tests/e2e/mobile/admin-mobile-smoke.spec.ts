@@ -225,9 +225,9 @@ test.describe('Admin mobile smoke', () => {
     const ctx = await browser.newContext({ storageState: JSON.parse(adminStorageState) })
     const page = await ctx.newPage()
     try {
-      // La venta vive en Hoy. Debajo de 1280px (Pixel 5: 393px) es el diálogo
-      // que abre el botón "Vender" de la barra superior (HoyHeaderSlot) — en el
-      // teléfono ese botón muestra solo el ícono, con nombre accesible "Vender".
+      // La venta vive en Hoy: el modal que abre el botón "Vender" de la barra
+      // superior (HoyHeaderSlot) — en el teléfono ese botón muestra solo el ícono,
+      // con nombre accesible "Vender".
       await page.goto('/dashboard', { waitUntil: 'networkidle' })
       await page.getByRole('button', { name: 'Vender', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: 'Vender' })
@@ -249,6 +249,8 @@ test.describe('Admin mobile smoke', () => {
       }
 
       // Botón de producto ≥44x44 (el admin vende parado en la barra, desde el celular).
+      // El modal arranca en "Más vendidos": el producto recién creado se busca.
+      await dialog.getByRole('searchbox').fill('Agua Mobile Smoke')
       const product = dialog
         .getByTestId('canteen-catalog')
         .getByRole('button', { name: /^Agua/ })
@@ -256,14 +258,12 @@ test.describe('Admin mobile smoke', () => {
       await expect(product).toBeVisible()
       await measure(product, 'producto Agua')
 
-      // El tap agrega al ticket directo, sin diálogo intermedio. En `layout="dialog"`
-      // el panel del Ticket SÍ se renderiza (a diferencia de `layout="page"` en el
-      // teléfono): ahí están los controles que hay que medir. La cantidad se sube
-      // tocando la tarjeta de nuevo, no con un +/−.
+      // El tap agrega a la venta directo, sin diálogo intermedio; los controles de
+      // cobro que hay que medir están abajo del modal.
       await product.click()
-      await expect(dialog.getByText('×1')).toBeVisible()
+      await expect(product.getByText('1 en la venta')).toBeVisible()
 
-      await measure(dialog.getByRole('button', { name: 'Efectivo' }), 'Efectivo')
+      await measure(dialog.getByRole('radio', { name: 'Efectivo' }), 'Efectivo')
       await measure(dialog.getByRole('button', { name: /^Cobrar/ }), 'Cobrar')
       await measure(dialog.getByRole('button', { name: 'Anotar como fiado' }), 'Anotar como fiado')
     } finally {

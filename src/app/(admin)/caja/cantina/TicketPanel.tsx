@@ -1,55 +1,33 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, useTransition, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Minus, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { PaymentMethodChips } from '@/components/ui/payment-method-chips'
 import {
   chipClass,
   canteenStockBadge,
   stockBadgeToneClass,
   METHOD_OPTIONS,
-  type SaleMethod,
   type StockBadge,
 } from '../caja-lib'
 import { formatArs } from '@/lib/format'
 import { normalizeForSearch } from '@/lib/search'
 import { cn } from '@/lib/utils'
-import { toast } from '@/hooks/use-toast'
-import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
-import { unconfirmedMessage } from '@/components/admin/UnconfirmedRetry'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
-import type { CreateTabActionResult, SellTicketActionResult } from './actions'
-import {
-  addProduct,
-  decrementLine,
-  incrementLine,
-  maxQtyFor,
-  removeLine,
-  ticketCount,
-  ticketTotal,
-  type TicketLine,
-} from './ticket-lib'
-import { TabDialog, type TabAttempt } from './TabDialog'
+import type { CreateTabActionResult } from './actions'
+import { decrementLine, incrementLine, maxQtyFor, removeLine } from './ticket-lib'
+import { TabDialog } from './TabDialog'
+import { useTicketSale, type SellTicketAction } from './use-ticket-sale'
 
-export type SellTicketAction = (input: {
-  lines: { productId: string; qty: number }[]
-  method: 'cash' | 'transfer' | 'mercadopago'
-  clientIdempotencyKey: string
-}) => Promise<SellTicketActionResult>
+export type { SellTicketAction } from './use-ticket-sale'
 
 export type CreateTabAction = (input: {
   debtorName: string
   lines: { productId: string; qty: number }[]
   clientIdempotencyKey: string
 }) => Promise<CreateTabActionResult>
-
-/** Una venta que salió: lo que se reenvía si la respuesta no vuelve. */
-type SaleAttempt = {
-  lines: { productId: string; qty: number }[]
-  method: SaleMethod
-  total: number
-}
 
 type GroupFilter = 'all' | 'product' | 'service'
 
@@ -66,18 +44,23 @@ const GROUP_FILTERS: { value: GroupFilter; label: string }[] = [
 ]
 
 /**
- * Dónde vive el ticket, que decide la forma y nada más — la venta es la misma:
+ * Dónde vive el ticket, que decide la forma y nada más — la venta es la misma
+ * (`useTicketSale`, que también usa el modal de Vender de Hoy):
  *  - `page`: la pantalla Vender de /caja. Catálogo y ticket lado a lado desde
  *    `md`, ticket `sticky` en `lg`, y en el teléfono una barra de cobro pegada
  *    abajo.
- *  - `dialog`: adentro de un diálogo (cantina de un turno, Vender en Hoy bajo
- *    `xl`). Foco a cargo de Radix, catálogo con techo propio.
- *  - `rail`: la columna fija de Hoy desde `xl` (380 px). UNA sola columna
- *    (catálogo arriba, ticket abajo, siempre visible), sin foco automático — el
- *    buscador no le puede robar el foco a quien está cobrando un turno al lado —
- *    y sin barra pegada abajo, que no tiene sentido en una columna.
+ *  - `dialog`: adentro de un diálogo (la cantina de un turno). Foco a cargo de
+ *    Radix, catálogo con techo propio.
  */
-export type TicketLayout = 'page' | 'dialog' | 'rail'
+type TicketLayout = 'page' | 'dialog'
+
+/**
+ * Scroll interno de los renglones del ticket: barra fina en el gris del texto
+ * secundario. La barra clásica de Windows, con sus dos flechas, parecía un
+ * control roto.
+ */
+const THIN_SCROLLBAR =
+  'scrollbar-thin scrollbar-thumb-muted-foreground/45 scrollbar-track-transparent'
 
 export function TicketPanel({
   products,
@@ -103,51 +86,49 @@ export function TicketPanel({
    * venta ya estaba trabada desde el click (`isPending`), el valor no cambia y no hay
    * hueco.
    */
+  /** Ver `useTicketSale`: con una venta sin confirmar, quien aloja el ticket no se cierra. */
   onUnconfirmedChange?: (unconfirmed: boolean) => void
 }) {
-  // Un id por instancia: en Hoy puede haber la columna y el ticket de la cantina de un
-  // turno en el DOM a la vez, y dos `id` iguales rompen la asociación del buscador.
+  // Un id por instancia: en la Grilla puede haber dos tickets en el DOM a la vez, y
+  // dos `id` iguales rompen la asociación del buscador.
   const searchId = useId()
   const isInDialog = layout === 'dialog'
   const isPage = layout === 'page'
-  const isRail = layout === 'rail'
+  // Adentro de un diálogo el ticket es una sección de ese diálogo.
+  const TicketHeading = isPage ? 'h2' : 'h3'
   const router = useRouter()
-  const [lines, setLines] = useState<TicketLine[]>([])
-  const [method, setMethod] = useState<SaleMethod>('cash')
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState<GroupFilter>('all')
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-  // La key de la venta y la del fiado (ver useUnconfirmedSubmit). Si una de las
-  // dos quedó sin respuesta, esas líneas pueden ya estar registradas: el ticket
-  // entero se traba hasta reintentar ESE envío.
-  const sale = useUnconfirmedSubmit<SaleAttempt>()
-  const tab = useUnconfirmedSubmit<TabAttempt>()
-  const saleRetry = sale.retryPayload
-  const tabRetry = tab.retryPayload
-  const locked = isPending || saleRetry !== null || tabRetry !== null
-  useEffect(() => {
-    onUnconfirmedChange?.(locked)
-  }, [locked, onUnconfirmedChange])
-  const [tabDialogOpen, setTabDialogOpen] = useState(false)
+  const {
+    lines,
+    setLines,
+    method,
+    setMethod,
+    total,
+    count,
+    message,
+    isPending,
+    locked,
+    saleRetry,
+    tabRetry,
+    tab,
+    add: handleAdd,
+    charge: handleCharge,
+    chargeLabel,
+    tabDialogOpen,
+    setTabDialogOpen,
+    onTabSuccess: handleTabSuccess,
+  } = useTicketSale({ sellTicketAction, onUnconfirmedChange, onSold: () => setQuery('') })
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Foco automático SOLO con mouse y teclado. Un `autoFocus` pelado abre el
   // teclado del teléfono apenas entrás y tapa medio catálogo, justo en la
   // pantalla que se usa de pie y tocando. Quien tiene teclado ya está escribiendo.
   useEffect(() => {
-    if (!isPage) return // en un diálogo el foco lo maneja Radix; en la columna de Hoy no se roba
+    if (!isPage) return // en un diálogo el foco lo maneja Radix
     if (typeof window === 'undefined' || !window.matchMedia('(pointer: fine)').matches) return
     searchRef.current?.focus()
   }, [isPage])
-
-  const total = ticketTotal(lines)
-  const count = ticketCount(lines)
-  const message = saleRetry
-    ? unconfirmedMessage(`la venta de ${formatArs(saleRetry.total)}`)
-    : tabRetry
-      ? unconfirmedMessage(`el fiado a nombre de ${tabRetry.debtorName}`)
-      : error
 
   const hasProducts = products.some((p) => p.stock !== null)
   const hasServices = products.some((p) => p.stock === null)
@@ -161,19 +142,6 @@ export function TicketPanel({
     return true
   })
 
-  function handleAdd(product: CanteenProductRow) {
-    if (locked) return
-    setError(null)
-    setLines((prev) =>
-      addProduct(prev, {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        stock: product.stock,
-      }),
-    )
-  }
-
   /** Enter en el buscador agrega el primer resultado disponible y limpia. */
   function handleSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key !== 'Enter') return
@@ -182,53 +150,6 @@ export function TicketPanel({
     if (!first) return
     handleAdd(first)
     setQuery('')
-  }
-
-  function submit() {
-    if (lines.length === 0 || locked) return
-    runSale({
-      lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
-      method,
-      total,
-    })
-  }
-
-  function runSale(payload: SaleAttempt) {
-    setError(null)
-    startTransition(async () => {
-      const res = await sale.send(payload, (p, clientIdempotencyKey) =>
-        sellTicketAction({ lines: p.lines, method: p.method, clientIdempotencyKey }),
-      )
-      if (!res) return
-      if (res.success) {
-        toast({ title: `Venta registrada — ${formatArs(res.total)}`, variant: 'success' })
-        setLines([])
-        setMethod('cash')
-        setQuery('')
-        router.refresh()
-      } else {
-        // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
-        // render antes de que `pending` bajara, con los controles todavía deshabilitados.
-        startTransition(() => setError(res.error))
-      }
-    })
-  }
-
-  /** El botón de cobrar: con una venta sin respuesta, reintenta ESA. */
-  function handleCharge() {
-    if (saleRetry) runSale(saleRetry)
-    else submit()
-  }
-
-  const chargeLabel = isPending
-    ? 'Cobrando…'
-    : saleRetry
-      ? `Reintentar cobro de ${formatArs(saleRetry.total)}`
-      : `Cobrar ${formatArs(total)}`
-
-  function handleTabSuccess() {
-    setLines([])
-    setMethod('cash')
   }
 
   if (products.length === 0) {
@@ -248,42 +169,34 @@ export function TicketPanel({
     )
   }
 
+  // El chip de método de pago del sistema (`PaymentMethodChips`, DESIGN.md §Chips):
+  // el mismo que el alta de un turno y los movimientos de caja.
   const methodChips = (
-    <div className="grid grid-cols-3 gap-2">
-      {METHOD_OPTIONS.map((m) => (
-        <button
-          key={m.value}
-          type="button"
-          onClick={() => setMethod(m.value)}
-          disabled={locked}
-          aria-pressed={method === m.value}
-          className={chipClass(method === m.value)}
-        >
-          {m.label}
-        </button>
-      ))}
-    </div>
+    <PaymentMethodChips
+      aria-label="Método de pago"
+      value={method}
+      onValueChange={setMethod}
+      options={METHOD_OPTIONS}
+      disabled={locked}
+      className="grid grid-cols-3 gap-2"
+    />
   )
+
+  const alert = message ? (
+    <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+      {message}
+    </p>
+  ) : null
 
   return (
     <>
-      <div
-        className={cn(
-          // En la columna de Hoy es flex: el catálogo encoge para que el ticket y
-          // su "Cobrar" entren en la altura que queda (ver `VenderRail`).
-          isRail ? 'flex min-h-0 flex-col gap-4' : 'grid gap-4',
-          !isRail && 'md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px]',
-        )}
-      >
-        {/* El piso va en este bloque y no en el catálogo: si este bloque encoge
-            por debajo de lo que tiene adentro, el catálogo se pinta encima del
-            ticket. 8,75 rem = buscador + separación + dos filas del catálogo. */}
-        <div className={cn('flex min-w-0 flex-col gap-3', isRail && 'min-h-[8.75rem]')}>
+      <div className="grid gap-4 md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px]">
+        <div className="flex min-w-0 flex-col gap-3">
           {/* Buscador SIEMPRE, no a partir de 13 productos: con el foco puesto
               acá se vende sin tocar el mouse (escribir + Enter), que es lo que
               separa una caja registradora de una grilla de botones. Con catálogo
               chico no estorba: filtra la lista de abajo, no abre nada. */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <div className="relative min-w-0 flex-1">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -314,18 +227,14 @@ export function TicketPanel({
           </div>
 
           {showGroups && (
-            <div
-              className="flex gap-2 overflow-x-auto pb-1"
-              role="group"
-              aria-label="Filtrar el catálogo"
-            >
+            <div className="flex shrink-0 gap-2" role="group" aria-label="Filtrar el catálogo">
               {GROUP_FILTERS.map((f) => (
                 <button
                   key={f.value}
                   type="button"
                   onClick={() => setGroup(f.value)}
                   aria-pressed={group === f.value}
-                  className={chipClass(group === f.value)}
+                  className={cn(chipClass(group === f.value), 'flex-1')}
                 >
                   {f.label}
                 </button>
@@ -347,10 +256,6 @@ export function TicketPanel({
               'min-w-0 divide-y divide-border border-y border-border',
               isPage && 'lg:max-h-[max(12rem,calc(100dvh-35rem))] lg:overflow-y-auto',
               isInDialog && 'max-h-[40vh] overflow-y-auto',
-              // La columna de Hoy: el catálogo scrollea adentro y encoge cuando el
-              // ticket crece, así el ticket y su "Cobrar", que van debajo, quedan
-              // siempre a la vista. En una pantalla alta muestra más filas.
-              isRail && 'min-h-0 overflow-y-auto',
             )}
           >
             {visible.length === 0 ? (
@@ -369,11 +274,7 @@ export function TicketPanel({
                     onClick={() => handleAdd(p)}
                     disabled={out || locked}
                     className={cn(
-                      'flex min-h-11 w-full items-center px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent md:min-h-10',
-                      // En los 380 px de la columna el nombre se llevaba 108 px y se
-                      // cortaba ("Cerveza Quil…"): columnas de stock y precio a la
-                      // medida de lo que muestran y menos aire entre ellas.
-                      isRail ? 'gap-2' : 'gap-3',
+                      'flex min-h-11 w-full items-center gap-3 px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent md:min-h-10',
                       // Lo que ya está en el ticket se marca con fondo además
                       // del contador: el ×N solo no se ve de reojo mientras se
                       // toca rápido.
@@ -383,17 +284,17 @@ export function TicketPanel({
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                       {p.name}
                     </span>
-                    <StockCell badge={badge} compact={isRail} />
-                    <span
-                      className={cn(
-                        'w-20 shrink-0 text-right text-sm font-medium tabular-nums text-foreground',
-                        !isRail && 'sm:w-24',
-                      )}
-                    >
+                    {/* Cuántos hay en el ticket, pegado al nombre y solo si hay: una
+                        columna fija vacía al final dejaba los precios flotando lejos
+                        del borde derecho. */}
+                    {line && (
+                      <span className="shrink-0 text-xs font-semibold tabular-nums text-emerald-800 dark:text-emerald-400">
+                        {`×${line.qty}`}
+                      </span>
+                    )}
+                    <StockCell badge={badge} />
+                    <span className="w-20 shrink-0 text-right text-sm font-medium tabular-nums text-foreground sm:w-24">
                       {formatArs(p.price)}
-                    </span>
-                    <span className="w-7 shrink-0 text-right text-xs font-semibold tabular-nums text-emerald-800 dark:text-emerald-400">
-                      {line ? `×${line.qty}` : ''}
                     </span>
                   </button>
                 )
@@ -402,28 +303,52 @@ export function TicketPanel({
           </div>
         </div>
 
-        {/* El ticket al costado es la vista de escritorio. En el teléfono lo
-            reemplaza la barra pegada abajo: un panel apilado debajo del catálogo
-            obliga a hacer scroll para cobrar, que es el gesto más repetido. */}
+        {/* El ticket. En el diálogo va al costado.
+            En el teléfono (`page`) lo reemplaza la barra pegada abajo: un panel
+            apilado debajo del catálogo obliga a hacer scroll para cobrar.
+            Vacío es UNA línea: sin métodos de pago ni un "Cobrar $ 0" apagado,
+            que se leía como un botón roto y le quitaba alto al catálogo. */}
         <div
           className={cn(
-            'flex-col justify-between rounded-xl border border-border',
-            isPage ? 'hidden md:flex' : 'flex',
-            isPage && 'lg:sticky lg:top-4 lg:self-start',
-            isRail && 'shrink-0',
+            'flex flex-col rounded-xl border border-border',
+            isPage && 'hidden md:flex lg:sticky lg:top-4 lg:self-start',
           )}
         >
-          <div>
-            <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold text-foreground">Ticket</h2>
-            </div>
-
-            {lines.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+          {lines.length === 0 ? (
+            <div className="px-4 py-8">
+              <p className="text-center text-sm text-muted-foreground">
                 Buscá o tocá un producto para empezar
               </p>
-            ) : (
-              <ul className="max-h-[260px] divide-y divide-border overflow-y-auto">
+              {alert && <div className="mt-2">{alert}</div>}
+            </div>
+          ) : (
+            <>
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border py-1.5 pl-4 pr-2">
+                <TicketHeading className="text-sm font-semibold text-foreground">
+                  Ticket{' '}
+                  <span className="font-normal tabular-nums text-muted-foreground">
+                    · {count} {count === 1 ? 'ítem' : 'ítems'}
+                  </span>
+                </TicketHeading>
+                {/* En el teléfono (`page`) "Vaciar" ya vive en la barra pegada abajo. */}
+                {!isPage && (
+                  <button
+                    type="button"
+                    onClick={() => setLines([])}
+                    disabled={locked}
+                    className="h-11 shrink-0 rounded-lg px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 md:h-9"
+                  >
+                    Vaciar
+                  </button>
+                )}
+              </div>
+
+              <ul
+                className={cn(
+                  THIN_SCROLLBAR,
+                  'max-h-[260px] divide-y divide-border overflow-y-auto',
+                )}
+              >
                 {lines.map((l) => (
                   <li
                     key={l.productId}
@@ -470,48 +395,35 @@ export function TicketPanel({
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
 
-          <div className="space-y-3 border-t border-border p-4">
-            {lines.length > 0 && (
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {count} {count === 1 ? 'ítem' : 'ítems'}
-                </span>
-                <span className="text-lg font-semibold tabular-nums text-foreground">
-                  {formatArs(total)}
-                </span>
+              {/* Sin renglón de total aparte: el total va en el botón, que es donde se
+                  lee al cobrar ("Cobrar $ 13.500"), y el conteo va en el título. */}
+              <div className="shrink-0 space-y-2.5 border-t border-border p-4">
+                {methodChips}
+                {alert}
+                <button
+                  type="button"
+                  onClick={handleCharge}
+                  disabled={isPending || tabRetry !== null}
+                  className="h-12 w-full rounded-lg bg-primary text-base font-semibold tabular-nums text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
+                >
+                  {chargeLabel}
+                </button>
+                {/* El fiado es de cada tanto (7 en 8 días en el Vagón): va como acción
+                    secundaria, sin borde, así el único botón que se ve es Cobrar. */}
+                {createTabAction && (
+                  <button
+                    type="button"
+                    onClick={() => setTabDialogOpen(true)}
+                    disabled={isPending || saleRetry !== null}
+                    className="h-11 w-full rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10"
+                  >
+                    {tabRetry ? 'Reintentar fiado' : 'Anotar como fiado'}
+                  </button>
+                )}
               </div>
-            )}
-            <fieldset>
-              <legend className="mb-1.5 text-xs font-medium text-foreground">Método de pago</legend>
-              {methodChips}
-            </fieldset>
-            {message && (
-              <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-                {message}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={handleCharge}
-              disabled={isPending || tabRetry !== null || lines.length === 0}
-              className="h-12 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
-            >
-              {chargeLabel}
-            </button>
-            {createTabAction && lines.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setTabDialogOpen(true)}
-                disabled={isPending || saleRetry !== null}
-                className="h-11 w-full rounded-lg border border-border text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
-              >
-                {tabRetry ? 'Reintentar fiado' : 'Anotar como fiado'}
-              </button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -583,21 +495,16 @@ export function TicketPanel({
 }
 
 /**
- * El estado de stock viaja con texto ("Agotado", "Quedan 3"), nunca solo con
- * color (MASTER §10). Sin control de stock la celda dice "Servicio" y no queda
- * vacía: una columna en blanco se lee como "falta el dato".
+ * El stock se muestra solo cuando AVISA algo: "Quedan 3" (ámbar) o "Agotado"
+ * (rojo), siempre con texto y no solo con color (MASTER §10). El "Stock 296" de
+ * cada fila no cambia ninguna venta y era la columna más ruidosa del catálogo:
+ * el número completo sigue en Caja › Productos.
  */
-function StockCell({ badge, compact }: { badge: StockBadge | null; compact: boolean }) {
+function StockCell({ badge }: { badge: StockBadge | null }) {
+  if (!badge || badge.tone === 'ok') return null
   return (
-    <span
-      className={cn(
-        'shrink-0 truncate',
-        // `compact`: la columna de Hoy, 380 px siempre (desde `xl`).
-        compact ? 'w-16 text-xs' : 'w-[4.5rem] text-[11px] sm:w-24 sm:text-xs',
-        badge ? stockBadgeToneClass(badge.tone) : 'text-muted-foreground',
-      )}
-    >
-      {badge ? badge.label : 'Servicio'}
+    <span className={cn('shrink-0 text-xs font-medium', stockBadgeToneClass(badge.tone))}>
+      {badge.label}
     </span>
   )
 }

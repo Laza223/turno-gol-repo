@@ -7,6 +7,7 @@ import {
   playerShare,
   teamDues,
 } from '@/components/booking/slot-panel/charge-copy'
+import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 
 /**
@@ -172,6 +173,37 @@ describe('chargeSplit', () => {
     expect(s.note).toBeNull()
     expect(s.halfCents).toBe(0)
   })
+
+  it('con atribución: el Equipo 1 pagó, mismo vocabulario que sin atribución', () => {
+    const s = chargeSplit(
+      booking({ totalPaid: 3_000_000, pending: 3_000_000, team1Paid: 3_000_000 }),
+      F5,
+    )
+    expect(s.note).toBe('Equipo 1 pagó · falta Equipo 2')
+  })
+
+  it('con atribución: el Equipo 2 pagó (antes esto era indistinguible del caso anterior)', () => {
+    const s = chargeSplit(
+      booking({ totalPaid: 3_000_000, pending: 3_000_000, team2Paid: 3_000_000 }),
+      F5,
+    )
+    expect(s.note).toBe('Equipo 2 pagó · falta Equipo 1')
+  })
+
+  it('con atribución: si los dos todavía deben, la nota desglosa los dos montos', () => {
+    const s = chargeSplit(
+      booking({
+        priceSnapshot: 8_400_000,
+        totalPaid: 600_000,
+        pending: 7_800_000,
+        team1Paid: 600_000,
+      }),
+      F5,
+    )
+    expect(s.note).toBe(
+      `Equipo 1: faltan ${formatArs(3_600_000)} · Equipo 2: faltan ${formatArs(4_200_000)}`,
+    )
+  })
 })
 
 describe('counterPaidCents', () => {
@@ -270,6 +302,84 @@ describe('teamDues', () => {
     expect(d.team1Cents).toBe(2_500_001)
     expect(d.team1Cents + d.team2Cents).toBe(5_000_001)
   })
+
+  /**
+   * Decisión del dueño 2026-09-25 (reabre docs/decisions/2026-09-15-cobro-por-
+   * equipo.md): el caso real de un complejo. Turno de $84.000, dos equipos de
+   * $42.000, sin seña. Paga $6.000 alguien del Equipo 1 → al Equipo 1 le
+   * quedan que faltan $36.000 y al Equipo 2 le siguen faltando $42.000 enteros.
+   */
+  it('el dueño: paga primero el Equipo 1 — se descuenta de SU mitad', () => {
+    const b = booking({
+      priceSnapshot: 8_400_000,
+      totalPaid: 600_000,
+      pending: 7_800_000,
+      team1Paid: 600_000,
+      team2Paid: null,
+    })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(3_600_000)
+    expect(d.team2Cents).toBe(4_200_000)
+  })
+
+  /**
+   * Mismo turno, pero el que paga primero es del Equipo 2. HOY (bug de
+   * negocio) el sistema lo contaba como del Equipo 1; con la atribución real
+   * el descuento es del equipo que efectivamente pagó.
+   */
+  it('el dueño: paga primero el Equipo 2 — antes se le cargaba siempre al 1', () => {
+    const b = booking({
+      priceSnapshot: 8_400_000,
+      totalPaid: 600_000,
+      pending: 7_800_000,
+      team1Paid: null,
+      team2Paid: 600_000,
+    })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(4_200_000)
+    expect(d.team2Cents).toBe(3_600_000)
+  })
+
+  it('mezcla atribuido + no atribuido: lo no atribuido sigue llenando primero al Equipo 1', () => {
+    // $600 atribuidos al Equipo 1 + $600 de un cobro viejo sin equipo.
+    const b = booking({
+      priceSnapshot: 8_400_000,
+      totalPaid: 1_200_000,
+      pending: 7_200_000,
+      team1Paid: 600_000,
+      team2Paid: null,
+    })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(3_000_000)
+    expect(d.team2Cents).toBe(4_200_000)
+    expect(d.team1Cents + d.team2Cents).toBe(b.pending)
+  })
+
+  it('con seña: la mitad se calcula sobre lo que queda por cobrar en el mostrador', () => {
+    // $84.000, seña $25.200 (30%): en el mostrador se cobran $58.800, mitad
+    // $29.400. El Equipo 2 ya puso $6.000 de su mitad.
+    const b = booking({
+      priceSnapshot: 8_400_000,
+      depositStatus: 'paid',
+      depositAmount: 2_520_000,
+      totalPaid: 3_120_000,
+      pending: 5_280_000,
+      team1Paid: null,
+      team2Paid: 600_000,
+    })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(2_940_000)
+    expect(d.team2Cents).toBe(2_340_000)
+  })
+
+  it('un equipo que pagó de más no deja al otro debiendo más que lo pendiente', () => {
+    // Equipo 1 puso $40.000 de un turno de $60.000 (más que su mitad de $30.000).
+    const b = booking({ totalPaid: 4_000_000, pending: 2_000_000, team1Paid: 4_000_000 })
+    const d = teamDues(b)
+    expect(d.team1Cents).toBe(0)
+    expect(d.team2Cents).toBe(2_000_000)
+    expect(d.team2Cents).toBeLessThanOrEqual(b.pending!)
+  })
 })
 
 describe('chargeTabs', () => {
@@ -303,5 +413,14 @@ describe('chargeTabs', () => {
   it('sin saldo solo queda "todo junto"', () => {
     const b = booking({ totalPaid: 6_000_000, pending: 0 })
     expect(chargeTabs(b, F5).available).toEqual(['all'])
+  })
+
+  it('con pagos atribuidos, "por equipo" sigue disponible aunque ya se haya pagado más de la mitad', () => {
+    // Antes (sin atribución) este mismo monto esconde "por equipo" — ver el
+    // caso 'si ya pagó más que un equipo' de arriba. Con atribución real se
+    // sabe cuánto debe cada uno igual, así que se sigue ofreciendo.
+    const b = booking({ totalPaid: 4_200_000, pending: 1_800_000, team1Paid: 4_200_000 })
+    expect(chargeTabs(b, F5).available).toContain('teams')
+    expect(chargeTabs(b, F5).initial).toBe('teams')
   })
 })

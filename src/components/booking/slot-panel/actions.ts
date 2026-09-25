@@ -39,7 +39,12 @@ export type RenderChargeModal = (args: {
   onMutated: () => void
 }) => React.ReactNode
 
-export type ChargeInput = { amount: number; method: ChargeLine['method'] }
+export type ChargeInput = {
+  amount: number
+  method: ChargeLine['method']
+  /** Cobro por equipo (decisión del dueño 2026-09-25): equipo al que se atribuye esta línea. */
+  team?: 1 | 2
+}
 
 export type SlotPanelActions = {
   /** Turno ya jugado con saldo: cobra lo que falta. Admite método mixto. */

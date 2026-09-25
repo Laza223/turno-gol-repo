@@ -36,7 +36,7 @@ export const SoloTitulo: Story = {
 /** El dato va al lado del título, no debajo: es lo que contesta su pregunta. */
 export const ConMetaYAccion: Story = {
   args: {
-    title: 'Deudas',
+    title: 'Sin cobrar',
     meta: (
       <>
         <span className="font-semibold text-foreground">$ 140.300</span> · 14 personas
@@ -53,7 +53,7 @@ export const ConMetaYAccion: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { level: 2, name: 'Deudas' })).toBeVisible()
+    await expect(canvas.getByRole('heading', { level: 2, name: 'Sin cobrar' })).toBeVisible()
     await expect(canvas.getByText(/14 personas/)).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Registrar movimiento' })).toBeVisible()
   },

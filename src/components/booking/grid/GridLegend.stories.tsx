@@ -18,14 +18,15 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * "Por cobrar" (ámbar) reemplazó a "Sin cobrar" (rojo) el 2026-09-24: la
- * leyenda se deriva de la misma tabla que la celda, así que si alguien le
- * devuelve el nombre viejo a una, rompe acá.
+ * "Por cobrar" (ámbar) reemplazó a "Sin cobrar" (rojo) el 2026-09-24, y el
+ * 2026-09-25 el dueño volvió el rojo y renombró a "No cobrado": la leyenda se
+ * deriva de la misma tabla que la celda, así que si alguien le devuelve el
+ * nombre o el color viejo a una, rompe acá.
  */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Por cobrar')).toBeInTheDocument()
-    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+    await expect(canvas.getByText('No cobrado')).toBeInTheDocument()
+    await expect(canvas.queryByText('Por cobrar')).toBeNull()
   },
 }

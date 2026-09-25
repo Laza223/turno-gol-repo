@@ -1,14 +1,12 @@
 import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { GRID_LEGEND_ITEMS, type LegendItem } from '@/lib/booking/slot-visual'
+import { GRID_MONEY_LEGEND_ITEMS, type GridMoneyLegendItem } from '@/lib/booking/slot-visual'
 
-// Leyenda = mini-tutorial del mapeo ícono↔estado (pages/grilla.md §11).
-// Desde Fase 3 se DERIVA de la misma tabla que pinta las celdas
-// (@/lib/booking/slot-visual), así que ya no puede desincronizarse de ellas —
-// era el caso hasta acá: los tintes de la leyenda usaban /15 y /25 donde las
-// celdas usaban /10 y /20, y el comentario que decía "si cambia uno, cambiar el
-// otro" no alcanzó para evitarlo.
-const FREE: LegendItem = {
+// Leyenda = mini-tutorial del mapeo color↔estado (variante "Entra entera",
+// decisión del dueño 2026-09-25: el color es de la plata). Se DERIVA de la
+// misma tabla que pinta las celdas (`gridMoneyVisual`), así que ya no puede
+// desincronizarse de ellas.
+const FREE: GridMoneyLegendItem = {
   key: 'free',
   label: 'Libre',
   icon: Plus,
@@ -16,7 +14,7 @@ const FREE: LegendItem = {
   iconClass: 'text-muted-foreground',
 }
 
-const LEGEND: readonly LegendItem[] = [FREE, ...GRID_LEGEND_ITEMS]
+const LEGEND: readonly GridMoneyLegendItem[] = [FREE, ...GRID_MONEY_LEGEND_ITEMS]
 
 /** Leyenda de estados: enseña el mapeo ícono↔estado (pages/grilla.md §11). */
 export function GridLegend() {
@@ -31,7 +29,7 @@ export function GridLegend() {
                 aria-hidden
                 className={cn('flex h-4 w-4 items-center justify-center rounded-sm', item.swatch)}
               >
-                <LegendIcon className={cn('h-2.5 w-2.5', item.iconClass)} />
+                {LegendIcon && <LegendIcon className={cn('h-2.5 w-2.5', item.iconClass)} />}
               </span>
               {item.label}
             </li>

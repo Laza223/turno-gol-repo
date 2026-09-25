@@ -22,9 +22,9 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
   listTenantBookings: vi.fn(async () => ({ rows: [], hasMore: false })),
   RESERVAS_PAGE_SIZE: 50,
   countTenantBookingsByStatus: vi.fn(async () => ({})),
-  // La page la usa para derivar el saldo de los turnos terminados (píldora
-  // "No cobrado"). Acá la lista siempre viene vacía, así que devuelve un Map
-  // vacío igual que la implementación real cuando no hay ids.
+  // La page la usa para derivar el saldo de los turnos terminados
+  // (`agendaMoneyCell`). Acá la lista siempre viene vacía, así que devuelve un
+  // Map vacío igual que la implementación real cuando no hay ids.
   sumBookingChargesByBooking: vi.fn(async () => new Map<string, number>()),
 }))
 // H110 — la page pide las canchas del tenant (filtro por cancha) dentro del
@@ -33,10 +33,10 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
 vi.mock('@/modules/courts/court.service', () => ({
   listCourts: vi.fn(async () => [] as Array<{ id: string; name: string }>),
 }))
-vi.mock('@/shared/dates/art', () => ({
-  artTodayStr: vi.fn(() => '2026-06-12'),
-  addDays: vi.fn((d: string) => d),
-}))
+vi.mock('@/shared/dates/art', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/dates/art')>()
+  return { ...actual, artTodayStr: vi.fn(() => '2026-06-12') }
+})
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => {
     throw new Error('redirect llamado')
@@ -55,47 +55,67 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
     await ReservasPage({ searchParams: Promise.resolve({ status: 'foo' }) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
-      { scope: 'hoy', today: '2026-06-12' },
+      expect.objectContaining({ scope: 'proximos' }),
       expect.anything(),
       0,
     )
-  })
-
-  it('ignora un enum valido pero no listado en FILTERS (canceled_refunded crudo)', async () => {
-    await ReservasPage({ searchParams: Promise.resolve({ status: 'canceled_refunded' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookings).not.toHaveBeenCalledWith(
       'tenant-1',
-      { scope: 'hoy', today: '2026-06-12' },
+      expect.objectContaining({ status: expect.anything() }),
       expect.anything(),
       0,
     )
   })
 
-  it('respeta un ?status del allowlist', async () => {
+  it('degrada los valores viejos "confirmed"/"completed" a sin filtro (se van del vocabulario)', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ status: 'confirmed' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookings).not.toHaveBeenCalledWith(
       'tenant-1',
-      { scope: 'hoy', today: '2026-06-12', status: 'confirmed' },
+      expect.objectContaining({ status: 'confirmed' }),
+      expect.anything(),
+      0,
+    )
+    await ReservasPage({ searchParams: Promise.resolve({ status: 'completed' }) })
+    expect(listTenantBookings).not.toHaveBeenCalledWith(
+      'tenant-1',
+      expect.objectContaining({ status: 'completed' }),
       expect.anything(),
       0,
     )
   })
 
-  it('acepta el filtro virtual "canceladas" (agrupa ambos canceled_*)', async () => {
+  it('respeta un ?status del allowlist nuevo (pending_payment/no_show)', async () => {
+    await ReservasPage({ searchParams: Promise.resolve({ status: 'pending_payment' }) })
+    expect(listTenantBookings).toHaveBeenLastCalledWith(
+      'tenant-1',
+      expect.objectContaining({ status: 'pending_payment' }),
+      expect.anything(),
+      0,
+    )
+    await ReservasPage({ searchParams: Promise.resolve({ status: 'no_show' }) })
+    expect(listTenantBookings).toHaveBeenLastCalledWith(
+      'tenant-1',
+      expect.objectContaining({ status: 'no_show' }),
+      expect.anything(),
+      0,
+    )
+  })
+
+  it('acepta el filtro virtual "canceladas" (agrupa canceled_* + expired)', async () => {
     await ReservasPage({ searchParams: Promise.resolve({ status: 'canceladas' }) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
-      { scope: 'hoy', today: '2026-06-12', status: 'canceladas' },
+      expect.objectContaining({ status: 'canceladas' }),
       expect.anything(),
       0,
     )
   })
 
-  it('sin ?status filtra por todas', async () => {
+  it('sin ?status filtra por "Todos" (sin filtro de status en la query)', async () => {
     await ReservasPage({ searchParams: Promise.resolve({}) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
+    expect(listTenantBookings).not.toHaveBeenCalledWith(
       'tenant-1',
-      { scope: 'hoy', today: '2026-06-12' },
+      expect.objectContaining({ status: expect.anything() }),
       expect.anything(),
       0,
     )
@@ -103,38 +123,55 @@ describe('ReservasPage — ?status allowlist (#30)', () => {
 })
 
 describe('ReservasPage — ?dia allowlist', () => {
-  it('default es hoy', async () => {
+  it('default es próximos', async () => {
     await ReservasPage({ searchParams: Promise.resolve({}) })
     expect(listTenantBookings).toHaveBeenCalledWith(
       'tenant-1',
-      expect.objectContaining({ scope: 'hoy' }),
+      expect.objectContaining({ scope: 'proximos' }),
       expect.anything(),
       0,
     )
   })
 
-  it('respeta ?dia=proximas y ?dia=historial', async () => {
+  it('respeta ?dia=pasados', async () => {
+    await ReservasPage({ searchParams: Promise.resolve({ dia: 'pasados' }) })
+    expect(listTenantBookings).toHaveBeenLastCalledWith(
+      'tenant-1',
+      expect.objectContaining({ scope: 'pasados' }),
+      expect.anything(),
+      0,
+    )
+  })
+
+  it('degrada un ?dia basura a próximos', async () => {
+    await ReservasPage({ searchParams: Promise.resolve({ dia: 'ayer' }) })
+    expect(listTenantBookings).toHaveBeenCalledWith(
+      'tenant-1',
+      expect.objectContaining({ scope: 'proximos' }),
+      expect.anything(),
+      0,
+    )
+  })
+
+  it('los valores viejos de las tres pestañas por día calendario migran sin romper links guardados', async () => {
+    await ReservasPage({ searchParams: Promise.resolve({ dia: 'hoy' }) })
+    expect(listTenantBookings).toHaveBeenLastCalledWith(
+      'tenant-1',
+      expect.objectContaining({ scope: 'proximos' }),
+      expect.anything(),
+      0,
+    )
     await ReservasPage({ searchParams: Promise.resolve({ dia: 'proximas' }) })
     expect(listTenantBookings).toHaveBeenLastCalledWith(
       'tenant-1',
-      expect.objectContaining({ scope: 'proximas' }),
+      expect.objectContaining({ scope: 'proximos' }),
       expect.anything(),
       0,
     )
     await ReservasPage({ searchParams: Promise.resolve({ dia: 'historial' }) })
     expect(listTenantBookings).toHaveBeenLastCalledWith(
       'tenant-1',
-      expect.objectContaining({ scope: 'historial' }),
-      expect.anything(),
-      0,
-    )
-  })
-
-  it('degrada un ?dia basura a hoy', async () => {
-    await ReservasPage({ searchParams: Promise.resolve({ dia: 'ayer' }) })
-    expect(listTenantBookings).toHaveBeenCalledWith(
-      'tenant-1',
-      expect.objectContaining({ scope: 'hoy' }),
+      expect.objectContaining({ scope: 'pasados' }),
       expect.anything(),
       0,
     )

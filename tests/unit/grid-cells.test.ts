@@ -4,6 +4,7 @@ import {
   computeCells,
   countCollapsibleLeading,
   generateTimeSlots,
+  hasBookingEnded,
   isPendingCollection,
   sumPendingCents,
 } from '@/lib/booking/grid-cells'
@@ -222,17 +223,56 @@ describe('countCollapsibleLeading', () => {
 })
 
 // ---------------------------------------------------------------------------
+// hasBookingEnded — instante físico, con fallback al status
+// ---------------------------------------------------------------------------
+
+describe('hasBookingEnded', () => {
+  const NOW = Date.parse('2026-03-14T18:30:00.000Z')
+  const base = { courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00' } as const
+
+  it('con endsAtMs: manda el instante físico, no el status', () => {
+    expect(hasBookingEnded(makeBooking({ ...base, endsAtMs: NOW - 1000 }), NOW)).toBe(true)
+    expect(hasBookingEnded(makeBooking({ ...base, endsAtMs: NOW + 1000 }), NOW)).toBe(false)
+  })
+
+  it('sin endsAtMs (Realtime crudo, fixtures viejas): degrada al status', () => {
+    expect(hasBookingEnded(makeBooking({ ...base, status: 'completed' }), NOW)).toBe(true)
+    expect(hasBookingEnded(makeBooking({ ...base, status: 'confirmed' }), NOW)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // sumPendingCents — "¿qué falta cobrar hoy?" (encabezado de la grilla)
 // ---------------------------------------------------------------------------
 
 describe('sumPendingCents', () => {
-  it('suma confirmed y completed con saldo pendiente', () => {
+  const NOW = Date.parse('2026-03-14T18:30:00.000Z')
+
+  // El bug que esto corrige (2026-09-25): un `confirmed` que TODAVÍA no se
+  // jugó sumaba igual que uno terminado, así que el chip "N sin cobrar"
+  // contaba turnos que ni se habían jugado.
+  it('NO suma un confirmed que todavía no terminó, aunque tenga saldo', () => {
     const bookings = [
       makeBooking({
         courtId: 'court1',
         timeStart: '10:00:00',
         timeEnd: '11:00:00',
         pending: 200000,
+        endsAtMs: NOW + 60_000,
+      }),
+    ]
+    expect(sumPendingCents(bookings, NOW)).toEqual({ totalCents: 0, count: 0 })
+    expect(isPendingCollection(bookings[0]!, NOW)).toBe(false)
+  })
+
+  it('suma un confirmed que ya terminó y un completed con saldo pendiente', () => {
+    const bookings = [
+      makeBooking({
+        courtId: 'court1',
+        timeStart: '10:00:00',
+        timeEnd: '11:00:00',
+        pending: 200000,
+        endsAtMs: NOW - 60_000,
       }),
       makeBooking({
         courtId: 'court1',
@@ -242,7 +282,7 @@ describe('sumPendingCents', () => {
         pending: 300000,
       }),
     ]
-    expect(sumPendingCents(bookings)).toEqual({ totalCents: 500000, count: 2 })
+    expect(sumPendingCents(bookings, NOW)).toEqual({ totalCents: 500000, count: 2 })
   })
 
   it('no_show con saldo NO suma: un no-show no es deuda', () => {
@@ -255,7 +295,7 @@ describe('sumPendingCents', () => {
         pending: 200000,
       }),
     ]
-    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
+    expect(sumPendingCents(bookings, NOW)).toEqual({ totalCents: 0, count: 0 })
   })
 
   it('pending_payment (hold de 6 min) NO suma', () => {
@@ -268,7 +308,7 @@ describe('sumPendingCents', () => {
         pending: 200000,
       }),
     ]
-    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
+    expect(sumPendingCents(bookings, NOW)).toEqual({ totalCents: 0, count: 0 })
   })
 
   it('pending null o cero se ignora, no se cuenta como cero', () => {
@@ -276,11 +316,12 @@ describe('sumPendingCents', () => {
       makeBooking({ courtId: 'court1', timeStart: '10:00:00', timeEnd: '11:00:00', pending: null }),
       makeBooking({ courtId: 'court1', timeStart: '11:00:00', timeEnd: '12:00:00', pending: 0 }),
     ]
-    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
+    expect(sumPendingCents(bookings, NOW)).toEqual({ totalCents: 0, count: 0 })
   })
 
   // Rediseño 2026-09-14: un `block` nunca carga plata — aunque un dato viejo
   // o corrupto le pegara un `pending` positivo, no cuenta como "por cobrar".
+  // `endsAtMs` en el pasado a propósito: ni terminado cuenta un bloqueo.
   it('un block con pending > 0 NO suma: un bloqueo no es el turno de nadie', () => {
     const bookings = [
       makeBooking({
@@ -289,9 +330,10 @@ describe('sumPendingCents', () => {
         timeEnd: '11:00:00',
         type: 'block',
         pending: 200000,
+        endsAtMs: NOW - 60_000,
       }),
     ]
-    expect(sumPendingCents(bookings)).toEqual({ totalCents: 0, count: 0 })
-    expect(isPendingCollection(bookings[0]!)).toBe(false)
+    expect(sumPendingCents(bookings, NOW)).toEqual({ totalCents: 0, count: 0 })
+    expect(isPendingCollection(bookings[0]!, NOW)).toBe(false)
   })
 })

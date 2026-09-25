@@ -6,14 +6,14 @@ import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
 
 const GRILLA_TABS = [
   { href: '/grilla', label: 'Grilla' },
-  { href: '/reservas', label: 'Reservas' },
+  { href: '/reservas', label: 'Agenda' },
 ]
 
 /**
  * Las dos vistas del espacio Grilla (Fase 4). La matriz responde "¿qué cancha
- * está libre ahora?" y la lista responde "¿qué pasó con ESTA reserva?" — mismo
- * hecho, dos lentes (P5), no dos módulos. "Reservas" dejó de ser ítem del
- * sidebar; su URL no se movió.
+ * está libre ahora?" y la lista ("Agenda", ex-"Reservas") responde "¿qué pasó
+ * con ESTE turno?" — mismo hecho, dos lentes (P5), no dos módulos. "Agenda"
+ * dejó de ser ítem del sidebar; su URL (`/reservas`) no se movió.
  *
  * Vive en la barra superior del panel, no arriba del contenido: era una de las
  * cuatro filas de encabezado que la matriz tenía por encima y que nadie leía —

@@ -139,8 +139,8 @@ export function AbonadosList({
           <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
           <span>
             <strong>¿El cliente avisa que no viene un día puntual?</strong> Cancelá únicamente el
-            turno de ese día desde la <strong>Grilla</strong> o <strong>Reservas</strong> sin dar de
-            baja el turno fijo permanente.
+            turno de ese día desde la <strong>Grilla</strong> o la <strong>Agenda</strong> sin dar
+            de baja el turno fijo permanente.
           </span>
         </div>
         <Link

@@ -80,7 +80,7 @@ type VisualBooking = {
  * La jugada sin cobrar entró el 2026-09-24, cuando "Sin cobrar" en rojo con
  * anillo pasó a "Por cobrar" en ámbar: sin ella la foto no cubría ese estado.
  * El 2026-09-25 volvió a rojo y pasó a llamarse "No cobrado" (sin anillo en la
- * celda, que sigue siendo del chip "No cobrados hoy"): sin esta reserva la
+ * celda, que sigue siendo del chip "N sin cobrar"): sin esta reserva la
  * foto no cubriría que el rojo volvió a la celda correcta.
  */
 const VISUAL_BOOKINGS: VisualBooking[] = [

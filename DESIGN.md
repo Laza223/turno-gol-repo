@@ -257,7 +257,7 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 El panel es un marco fijo con el contenido en el medio. En `lg` (1024 px) aparece el **riel** de 72 px a la izquierda; arriba va la **barra superior** de 60 px (más el safe-area de iOS) con el nombre del complejo, el **hueco de vista** (`AdminHeaderSlot`) y el menú de tema; debajo de `lg`, el riel se va y aparece la **barra inferior** con tres accesos directos y "Más".
 
 - **Contenedor de página:** lo pone `admin-layout-shell.tsx` y la página no agrega margen propio: `mx-auto w-full px-4 sm:px-6 lg:px-8`, tope de 1600 px (`max-w-[1600px]`) y `pt-8`. `/grilla` y `/reservas` son de ancho completo, con alto de pantalla y scroll interno. Un `max-w-*` en la página solo se justifica en un formulario o una lectura angosta.
-- **Hueco de vista:** las vistas del mostrador (Hoy, Grilla, Reservas, Caja y Configuración) cuelgan ahí sus controles (segmentos, filtros, búsqueda) en vez de abrir filas de encabezado propias. Lo que va al hueco es el control, no el título. Lo portalizado existe recién después de hidratar: un test o una foto de regresión tiene que esperarlo. Clientes, Turnos fijos, Canchas, Métricas, Torneos y el super admin todavía abren con `PageHeader`.
+- **Hueco de vista:** las vistas del mostrador (Hoy, Grilla, Agenda, Caja y Configuración) cuelgan ahí sus controles (segmentos, filtros, búsqueda) en vez de abrir filas de encabezado propias. Lo que va al hueco es el control, no el título. Lo portalizado existe recién después de hidratar: un test o una foto de regresión tiene que esperarlo. Clientes, Turnos fijos, Canchas, Métricas, Torneos y el super admin todavía abren con `PageHeader`.
 - **Medidas por CSS, superficies por hook:** un cambio de disposición se resuelve con clases responsive o `@container`. Un hook de viewport (`useIsDesktop`) solo se justifica cuando el contenido se portaliza fuera del subárbol que el CSS oculta (un popover de Radix), y nunca para el estado inicial. "Escritorio" es `lg` (1024 px) en el CSS y en el hook.
 - **Listas anchas:** una lista de una fila por elemento que a 1600 px queda estirada pasa a dos columnas en `lg` (`grid grid-cols-1 lg:grid-cols-2`, con `grid-cols-1` explícito) o a tabla.
 - **Ritmo:** grilla de 4 px. Padding de tarjeta 20 a 24 px, separación entre secciones de 24 px (`space-y-6`), celdas de tabla con `p-3`. Sin aire decorativo en tablas ni en la grilla.
@@ -354,7 +354,21 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 
 ### Grilla de turnos
 
-La pieza propia del panel (`BookingCard` + `slot-visual.ts`). Cada turno es un bloque de esquina de 6 px con el **borde izquierdo de 3 px** del tono de su estado y un tinte suave del mismo tono; el color cuenta el estado de la plata y el ícono con el rótulo cuentan qué es. El horario libre es una celda `card` con borde tenue que al pasar el mouse toma borde esmeralda y muestra un `+`. Lo bloqueado lleva el rayado diagonal. La reserva que entra por Realtime pulsa una vez (600 ms). El turno jugado y sin cobrar dice "No cobrado" en rojo (decisión del dueño del 2026-09-25: es plata que no entró, y el ámbar no se sentía urgente); nunca "deuda". El único anillo de la grilla es el rojo de 2 px que pone el chip "No cobrados hoy" al encenderse sobre los turnos que deben plata (jugados y confirmados).
+La pieza propia del panel (`BookingCard` + `gridMoneyVisual` en `slot-visual.ts`). Variante "Entra entera", elegida por el dueño el 2026-09-25 (`docs/decisions/2026-09-25-grilla-entera-y-agenda.md`).
+
+- **Entra entera:** a 1280×650 entran 12 canchas sin scroll horizontal (columnas de 4,75rem mínimo desde `lg`, 3rem en el teléfono) y las horas estiran la fila hasta llenar el alto (`minmax(3.5rem, 1fr)`). La mañana sin turnos se pliega en una línea: "09:00–17:00 · Sin turnos · Mostrar". Si igual hay scroll horizontal (teléfono con más de 6 canchas, escritorio angosto), un degradé en el borde derecho y la pastilla "N canchas →" avisan que hay más.
+- **Turno:** bloque de esquina de 6 px sobre `card`, con el **borde izquierdo de 3 px** y el tinte de su tono. **El color es de la plata**, como en Hoy: rojo "No cobrado" lo que ya terminó con saldo (por `ends_at`, esté `confirmed` o `completed`; nunca "deuda"), verde "Pagado", ámbar "Esperando seña". Lo que todavía no se jugó va neutro (`bg-secondary`, borde `slate`) con el monto en gris; ausente, sin cargo y bloqueo también (el bloqueo, rayado). El contenido responde al ancho de la celda con container queries: nombre en una o dos líneas (12 px, 14 px en celdas anchas), "Evento · N h" si entra, monto corto o "Falta $ X".
+- **Ahora:** la línea roja pasa por debajo de las tarjetas (no tacha nombres) y la hora actual va en negrita con un punto rojo.
+- **Libre:** solo las líneas de la grilla y un `+` tenue en lo que todavía no pasó. La reserva que entra por Realtime pulsa una vez (600 ms).
+- **Encabezado:** la fecha centrada en la barra superior, "‹ Viernes 25 de septiembre · Hoy · calendario ›" (corta debajo de `xl`); tocarla abre la semana y un selector de fecha, y fuera de hoy aparece "Hoy" para volver. A la derecha, el chip rojo "N sin cobrar · $ X": cuenta solo lo jugado, igual que la celda y que Hoy, y al encenderse pone el único anillo de la grilla (2 px rojo) sobre esos turnos.
+
+### Agenda
+
+`/reservas`, que en pantalla se llama Agenda desde el 2026-09-25 (la URL no cambió). Es un buscador con la lista de turnos, para contestar el WhatsApp ("¿a qué hora tenía?", "cancelá lo mío"); no se cobra desde acá, cobrar es de Hoy.
+
+- **Barra superior:** "Grilla | Agenda", el buscador (nombre, teléfono o nº de reserva), "Próximos | Pasados" y la cancha. Próximos y pasados se cortan por el instante de fin: lo que se está jugando es próximo; lo que terminó hoy ya es pasado.
+- **Chips:** Todos · Esperando seña · Ausentes · Cancelados. "Todos" no muestra cancelados ni expirados.
+- **Lista:** una sola, a todo el ancho, agrupada por día con encabezado pegajoso ("Hoy · viernes 25 de septiembre"). Cada renglón es un link al detalle: hora (con "Se juega" en verde si está en juego), cancha, nombre y teléfono, un chip neutro de tipo (Fijo, Evento · N h) y una sola lectura de la plata a la derecha, con el mismo color que la Grilla. En el teléfono, dos renglones.
 
 ### Tablero de Hoy
 
@@ -372,7 +386,7 @@ La otra pieza del mostrador (`CourtBoard` + el modal `VenderDialog`), rehecha el
 ### Do:
 
 - **Do** usar solo tokens semánticos en las primitivas (`bg-card`, `text-foreground`, `border-border`, `bg-primary`, `ring-ring`). La paleta cruda de Tailwind entra solo para semántica de dominio, y a través de `src/lib/status-tone.ts`.
-- **Do** pintar cada estado con color, ícono y texto (`StatusBadge`, `slot-visual.ts`), con el vocabulario único de estados: el panel y el portal dicen lo mismo. La excepción es el tablero de Hoy: el estado de los próximos turnos va con texto en gris, sin pastilla, porque ahí el color es de la plata: rojo lo que hay que cobrar, verde lo pagado.
+- **Do** pintar cada estado con color, ícono y texto (`StatusBadge`, `slot-visual.ts`), con el vocabulario único de estados: el panel y el portal dicen lo mismo. La excepción son Hoy, la Grilla y la Agenda: ahí el color es de la plata (rojo lo jugado y no cobrado, verde lo pagado) y lo que todavía no se jugó va en gris, sin pastilla.
 - **Do** probar cada pantalla en claro y en oscuro, con contraste medido: 4,5:1 en texto y 3:1 en componentes (la suite a11y de Storybook corre en los dos temas).
 - **Do** mantener el movimiento de los controles del panel en 200 ms o menos, animando transform, opacidad, color o sombra, nunca ancho, alto ni posición. Las excepciones de hoy: la sheet al abrir (300 ms), el levante de `.card-premium-interactive` (250 ms), el pulso de un turno nuevo (600 ms, una vez) y el punto que late en el botón "Cobrar $X" de Hoy (pedido del dueño, 2026-09-25). `prefers-reduced-motion` congela todo desde `globals.css`: una animación nueva tiene que verse bien congelada.
 - **Do** colgar los controles de una vista en el hueco de la barra superior (`AdminHeaderSlot`) en vez de sumar filas de encabezado.

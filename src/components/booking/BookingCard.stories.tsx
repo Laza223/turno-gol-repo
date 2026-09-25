@@ -14,11 +14,12 @@ import { player, playerAlt } from '@/test/fixtures/player'
 import { BookingCard } from './BookingCard'
 
 /**
- * Componente más denso del sistema (status × pago × origen × plata → 1 estado
- * vía `gridSlotVisual()`). Se posiciona con `style={{ gridColumn, gridRow }}`
- * explícitos (`placement()`), así que fuera de un contenedor `display:grid`
- * el layout no se ve — se reproduce el grid de GridScroller (columna de horas
- * + 1 cancha, `bg-card` + borde redondeado) como decorator.
+ * Componente más denso del sistema: el color de la celda es SOLO de la plata
+ * (`gridMoneyVisual()`, variante "Entra entera" — decisión del dueño,
+ * 2026-09-25). Se posiciona con `style={{ gridColumn, gridRow }}` explícitos
+ * (`placement()`), así que fuera de un contenedor `display:grid` el layout no
+ * se ve — se reproduce el grid de GridScroller (columna de horas + 1 cancha,
+ * `bg-card` + borde redondeado) como decorator.
  */
 const meta = {
   title: 'Booking/Grid/BookingCard',
@@ -90,7 +91,7 @@ export const LibreCanchaPausada: Story = {
   args: { courtId: undefined, onSlotClick: undefined },
 }
 
-// ─── Ocupado: 1 story por estado de gridSlotVisual() ───────────────────────
+// ─── Ocupado: 1 story por estado de gridMoneyVisual() ──────────────────────
 
 export const Bloqueado: Story = {
   args: { booking: toGridBooking(bookingBlock()) },
@@ -100,20 +101,23 @@ export const Ausente: Story = {
   args: { booking: toGridBooking(bookingNoShow()) },
 }
 
+/** Saldo en cero: verde, "Pagado" — el mismo verde tanto si ya se jugó como si no. */
 export const Jugada: Story = {
+  name: 'Pagado (saldo en cero)',
   args: {
     booking: { ...toGridBooking(bookingCompleted()), totalPaid: 800000, pending: 0 },
   },
 }
 
 /**
- * El turno se jugó y quedó plata sin cobrar: "No cobrado" en rojo
- * (`destructive`). Es lo normal de la media hora que sigue al partido, así que
- * no lleva anillo ni late — pasó por rojo con anillo que respiraba, ámbar
- * ("por cobrar, no alarma") desde el 2026-09-24 y volvió a rojo el
- * 2026-09-25: el complejo piloto acumuló plata sin cobrar y el ámbar no
- * transmitía urgencia. No se atenúa aunque sea pasado: desaturarlo le
- * borraría el rojo.
+ * El turno se jugó y quedó plata sin cobrar: rojo (`destructive`). Es lo
+ * normal de la media hora que sigue al partido, así que no lleva anillo ni
+ * late — pasó por rojo con anillo que respiraba, ámbar ("por cobrar, no
+ * alarma") desde el 2026-09-24 y volvió a rojo el 2026-09-25. No se atenúa
+ * aunque sea pasado: desaturarlo le borraría el rojo. "No cobrado" vive en el
+ * aria-label (un lector de pantalla necesita el verbo); en la celda el color
+ * rojo + el monto ya lo dicen — el label le cede el lugar al monto, como en
+ * la lámina que eligió el dueño.
  */
 export const PorCobrar: Story = {
   args: {
@@ -122,16 +126,14 @@ export const PorCobrar: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const cell = canvas.getByRole('button', { name: /No cobrado/ })
-    await expect(canvas.getByText('No cobrado')).toBeInTheDocument()
-    // Ni anillo ni atenuado: el anillo lo pone solo el chip "No cobrados hoy".
+    const cell = canvas.getByRole('button', { name: /No cobrado, falta cobrar/ })
+    // Ni anillo ni atenuado: el anillo lo pone solo el chip "N sin cobrar".
     await expect(cell.className).not.toMatch(/ring-warning|ring-destructive|slot-alarm|saturate-50/)
-    // El saldo va en el aria-label y, desde el rediseño, también a la vista: al
-    // costado del nombre y en el color del estado, no como tercera línea.
     await expect(canvas.getByLabelText(/, falta cobrar/)).toBeInTheDocument()
     // DOS nodos y uno solo visible: el monto vive arriba en escritorio y abajo en
-    // el teléfono, y cuál se muestra lo decide el CSS. Se afirma la cuenta exacta
-    // para que borrar uno de los dos rompa acá en vez de dejar un ancho sin saldo.
+    // el teléfono, y cuál se muestra lo decide el CSS (container query). Se
+    // afirma la cuenta exacta para que borrar uno de los dos rompa acá en vez
+    // de dejar un ancho sin saldo.
     await expect(canvas.getAllByText('$ 8.000')).toHaveLength(2)
   },
 }
@@ -202,16 +204,20 @@ export const Nueva: Story = {
 }
 
 /**
- * Chip "No cobrados hoy" encendido: el turno que debe plata lleva un anillo
+ * Chip "N sin cobrar" encendido: el turno que debe plata lleva un anillo
  * rojo para encontrarlo en una matriz llena — el tono del chip y de "No
  * cobrado". Es foco de pantalla, no estado del turno: por eso no cambia ni el
  * color de la celda ni el rótulo ni el aria-label.
  */
 export const ResaltadaPorFoco: Story = {
-  name: 'spotlighted=true (el chip "No cobrados hoy" está encendido)',
-  args: { booking: toGridBooking(booking(), player()), spotlighted: true },
+  name: 'spotlighted=true (el chip "N sin cobrar" está encendido)',
+  args: {
+    booking: { ...toGridBooking(booking(), player()), pending: 500000, totalPaid: 0 },
+    spotlighted: true,
+  },
   play: async ({ canvasElement }) => {
-    const cell = within(canvasElement).getByRole('button', { name: /Señada/ })
+    // Único botón del decorator: la reserva ocupada (sin celdas libres alrededor).
+    const cell = within(canvasElement).getByRole('button')
     await expect(cell.className).toMatch(/ring-destructive/)
     await expect(cell.className).not.toMatch(/ring-warning/)
   },

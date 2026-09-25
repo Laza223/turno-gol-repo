@@ -108,11 +108,12 @@ export function useGridLayout({
   )
   const hasBand = collapsedCount > 0
   const rowOffset = hasBand ? 3 : 2
-  // Fila fija de 4rem (64 px). El selector Cómodo/Compacto se sacó: nadie en el
-  // mostrador lo tocaba más de una vez, y la densidad real la decide la cantidad
-  // de canchas, no una preferencia. 64 px es además lo que necesita la celda para
-  // sus dos líneas — con 52 la tercera línea del saldo se recortaba.
-  const rowHeightRem = 4
+  // Alto MÍNIMO de fila (variante "Entra entera", 2026-09-25): la fila deja de
+  // ser fija y pasa a `minmax(rowHeightRem, 1fr)` (GridScroller) para que la
+  // noche entera entre sin scroll vertical en una notebook — el selector
+  // Cómodo/Compacto ya se había sacado porque nadie lo tocaba más de una vez.
+  // 3.5rem (56px) es lo mínimo para las dos líneas de la celda sin recortarse.
+  const rowHeightRem = 3.5
 
   return {
     dayKey,

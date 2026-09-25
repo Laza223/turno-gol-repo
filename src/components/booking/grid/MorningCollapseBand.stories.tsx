@@ -42,7 +42,7 @@ export const Expandir: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     const button = canvas.getByRole('button', {
-      name: 'Mostrar horarios sin actividad de 00:00 a 08:00',
+      name: 'Mostrar horarios sin turnos de 00:00 a 08:00',
     })
     await expect(button).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(button)

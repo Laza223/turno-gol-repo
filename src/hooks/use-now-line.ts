@@ -7,54 +7,65 @@ type Params = {
   artNow: ArtNow
   date: string
   visibleSlots: string[]
-  hasBand: boolean
-  rowHeightRem: number
 }
 
 /**
  * Línea de "ahora" de la grilla + scroll-to-now al cargar (pages/grilla.md §6).
- * `nowTopRem` es el offset vertical (en rem) de la línea roja, o null si el día
- * mostrado no es hoy / la hora quedó fuera del rango visible. El efecto de
- * auto-scroll corre una vez por fecha (el componente se remonta con key={date})
- * y deja la línea al ~30% del alto del scroller.
+ *
+ * Con filas fluidas (`minmax(3.5rem, 1fr)`, variante "Entra entera") ya no hay
+ * un alto de fila fijo en rem para calcular un `top` global: en su lugar la
+ * línea es un ítem MÁS de la fila de la hora actual (`nowRowIndex`, índice en
+ * `visibleSlots`) con un `top` en PORCENTAJE de esa fila (`nowFraction`). El
+ * auto-scroll ya no puede estimarse en rem tampoco — mide el DOM real
+ * (`nowLineRef` contra `gridScrollRef`) y deja la línea al ~30% del alto del
+ * scroller. Corre una vez por fecha (el componente se remonta con key={date}).
  */
-export function useNowLine({ artNow, date, visibleSlots, hasBand, rowHeightRem }: Params): {
-  nowTopRem: number | null
+export function useNowLine({ artNow, date, visibleSlots }: Params): {
+  nowRowIndex: number | null
+  nowFraction: number
   gridScrollRef: MutableRefObject<HTMLDivElement | null>
+  nowLineRef: MutableRefObject<HTMLDivElement | null>
 } {
-  // Filas de 60 min (fix del bug ÷30 que la dibujaba al doble de distancia) +
-  // offset de header y banda de colapso.
-  const nowTopRem = useMemo(() => {
-    if (!artNow.date || artNow.date !== date) return null
+  const { nowRowIndex, nowFraction } = useMemo(() => {
+    const miss = { nowRowIndex: null, nowFraction: 0 } as const
+    if (!artNow.date || artNow.date !== date) return miss
     const first = visibleSlots[0]
-    if (!first) return null
+    if (!first) return miss
     const [nH, nM] = artNow.time.split(':').map(Number)
     const [fH, fM] = first.split(':').map(Number)
-    if (nH === undefined || nM === undefined || fH === undefined || fM === undefined) return null
+    if (nH === undefined || nM === undefined || fH === undefined || fM === undefined) return miss
 
     const nowMins = nH * 60 + nM
     const firstMins = fH * 60 + fM
     // Antes de la apertura visible (o madrugada operativa) no se dibuja.
-    if (nowMins < firstMins) return null
+    if (nowMins < firstMins) return miss
 
-    // Header 2.75rem + banda de madrugada 2.75rem (44px touch — debe coincidir
-    // con gridTemplateRows de GridScroller).
-    const headerRem = 2.75 + (hasBand ? 2.75 : 0)
-    const top = headerRem + ((nowMins - firstMins) / 60) * rowHeightRem
-    const maxTop = headerRem + visibleSlots.length * rowHeightRem
-    return top <= maxTop ? top : null
-  }, [artNow.time, artNow.date, date, visibleSlots, hasBand, rowHeightRem])
+    const elapsed = nowMins - firstMins
+    const idx = Math.floor(elapsed / 60)
+    // Pasó la última fila visible: tampoco se dibuja.
+    if (idx >= visibleSlots.length) return miss
+
+    return { nowRowIndex: idx, nowFraction: (elapsed % 60) / 60 }
+  }, [artNow.time, artNow.date, date, visibleSlots])
 
   const gridScrollRef = useRef<HTMLDivElement | null>(null)
+  const nowLineRef = useRef<HTMLDivElement | null>(null)
   const didAutoScrollRef = useRef(false)
   useEffect(() => {
-    if (didAutoScrollRef.current || nowTopRem === null) return
-    const el = gridScrollRef.current
-    if (!el) return
+    if (didAutoScrollRef.current || nowRowIndex === null) return
+    const container = gridScrollRef.current
+    const marker = nowLineRef.current
+    if (!container || !marker) return
     didAutoScrollRef.current = true
-    const remPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-    el.scrollTop = Math.max(0, nowTopRem * remPx - el.clientHeight * 0.3)
-  }, [nowTopRem])
+    // Medido, no estimado: con filas `1fr` el alto real solo se sabe después
+    // del layout. La distancia del marcador al techo del scroller es la misma
+    // cuenta con la que `scrollIntoView` centraría, pero fijando el 30% (y no
+    // el 50%) que pide pages/grilla.md §6.
+    const containerRect = container.getBoundingClientRect()
+    const markerRect = marker.getBoundingClientRect()
+    const offset = markerRect.top - containerRect.top + container.scrollTop
+    container.scrollTop = Math.max(0, offset - container.clientHeight * 0.3)
+  }, [nowRowIndex])
 
-  return { nowTopRem, gridScrollRef }
+  return { nowRowIndex, nowFraction, gridScrollRef, nowLineRef }
 }

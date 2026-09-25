@@ -94,6 +94,17 @@ export function formatDateLong(value: Date | string): string {
   return capitalizeFirst(dateFormatter.format(d))
 }
 
+/**
+ * Date | "YYYY-MM-DD" → "viernes 25 de septiembre" (sin coma, minúscula).
+ * Para los encabezados de día de la Agenda ("Hoy · viernes 25 de
+ * septiembre"): la coma de `formatDateLong` queda rara pegada al prefijo
+ * relativo ("Hoy · Viernes, 25...").
+ */
+export function formatDayHeader(value: Date | string): string {
+  const d = typeof value === 'string' ? parseDateOnly(value) : value
+  return dateFormatter.format(d).replace(',', '')
+}
+
 /** Parsea "YYYY-MM-DD" como fecha local (evita el shift UTC de new Date(str)). */
 function parseDateOnly(value: string): Date {
   const [y, m, day] = value.split('-').map(Number)

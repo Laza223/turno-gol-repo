@@ -5,8 +5,8 @@ import { artDateString } from '@/test/fixtures/clock'
 import { uid } from '@/test/fixtures/ids'
 import type { ReservaListRow } from './queries'
 import { BookingListItem } from './BookingListItem'
-import { moneyLine } from './money-line'
-import { reservaStatusVisual } from './status-visual'
+import { agendaMoneyCell } from './money-line'
+import { reservaHasEnded, reservaIsLive } from './status-visual'
 
 /**
  * `formatArs` (Intl.NumberFormat) mete un NBSP (U+00A0) entre "$" y el número.
@@ -14,7 +14,7 @@ import { reservaStatusVisual } from './status-visual'
  * incluido) a un espacio simple, pero NO normaliza el string que uno le pasa
  * como matcher — así que hay que normalizarlo acá también o nunca matchea.
  */
-const money = (cents: number): string => formatArs(cents).replace(/\u00A0/g, ' ')
+const money = (cents: number): string => formatArs(cents).replace(/ /g, ' ')
 
 /**
  * `ReservaListRow` es el shape que arma `queries.ts` vía JOIN (courts + players),
@@ -32,156 +32,93 @@ const row = (overrides: Partial<ReservaListRow> = {}): ReservaListRow => ({
   courtName: 'Cancha 1',
   playerName: 'Julián Álvarez',
   guestName: null,
+  phone: '+54 9 11 5555-1234',
   priceSnapshot: 1_500_000,
-  depositAmount: 450_000,
-  depositStatus: 'paid',
-  paymentMethod: 'mercadopago',
+  depositAmount: 0,
+  depositStatus: 'not_required',
+  paymentMethod: null,
   ...overrides,
 })
 
-/** Recalcula el aria-label esperado con la MISMA lógica que BookingListItem.tsx (reusa `reservaStatusVisual`, no la reimplementa). */
+/** Recalcula el aria-label esperado con la MISMA lógica que BookingListItem.tsx (reusa `agendaMoneyCell`, no la reimplementa). */
 function ariaLabelFor(b: ReservaListRow): string {
   const isBlock = b.type === 'block'
   const name = isBlock ? 'Bloqueo' : (b.playerName ?? b.guestName ?? 'Sin nombre')
-  const isAbonado = !isBlock && b.type === 'fixed'
-  const visual = reservaStatusVisual(b)
-  return [
-    `Reserva ${b.timeStart}–${b.timeEnd}`,
-    b.courtName,
-    name,
-    visual.label,
-    moneyLine(b)?.text ?? null,
-    visual.unpaid ? 'sin cobrar' : null,
-    isAbonado ? 'abonado' : null,
-  ]
+  const ended = reservaHasEnded(b, Date.now())
+  const live = reservaIsLive(b, Date.now())
+  const timeRange = `${b.timeStart.slice(0, 5)}–${b.timeEnd.slice(0, 5)}`
+  const moneyCell = agendaMoneyCell(b, ended)
+  return [`Turno ${timeRange}`, b.courtName, name, live ? 'se juega' : null, moneyCell.text]
     .filter(Boolean)
     .join(', ')
 }
 
-// El default de `row()` trae `depositStatus: 'paid'`, así que ésta es la fila
-// de la seña YA pagada. Se llamaba ROW_CONFIRMADA cuando el listado colapsaba
-// los dos estados; desde el 2026-09-12 su badge dice "Señada".
-const ROW_SENADA = row()
-/** El otro lado del par: confirmada que se cobra entera al llegar. */
-const ROW_CONFIRMADA = row({
-  id: uid(1013),
-  depositStatus: 'not_required',
-  depositAmount: 0,
-  paymentMethod: null,
-})
-const ROW_PENDIENTE = row({
+// Por jugar, sin nada cobrado: la plata muestra el precio entero, gris.
+const ROW_POR_JUGAR = row()
+// Por jugar con una seña ya paga: "Falta $X" en gris, no el precio entero.
+const ROW_POR_JUGAR_CON_SENA = row({
   id: uid(1003),
-  status: 'pending_payment',
-  depositStatus: 'pending',
-  paymentMethod: null,
-  timeStart: '10:00',
-  timeEnd: '11:00',
+  depositAmount: 450_000,
+  depositStatus: 'paid',
+  pending: 1_050_000,
+  totalPaid: 450_000,
 })
-/**
- * Pago tardío: MP acreditó la seña DESPUÉS de que el turno expirara, así que la
- * plata entró y ya volvió — pero `deposit_status` quedó en 'pending' y no se
- * puede corregir (el trigger de estado terminal rechaza el UPDATE sobre un
- * booking `expired`). La etiqueta tiene que salir del reembolso que SÍ está en
- * `payments`. Ver `deposit-display.ts`.
- */
-const ROW_PAGO_TARDIO = row({
-  id: uid(1009),
-  status: 'expired',
-  depositStatus: 'pending',
-  refundState: 'settled',
-  paymentMethod: 'mercadopago',
-  timeStart: '21:00',
-  timeEnd: '22:00',
+// Se está jugando ahora mismo: punto verde "Se juega".
+const ROW_EN_JUEGO = row({
+  id: uid(1013),
+  startsAt: new Date(Date.now() - 15 * 60_000).toISOString(),
+  endsAt: new Date(Date.now() + 45 * 60_000).toISOString(),
 })
-/**
- * Cancelada con devolución PENDIENTE: `deposit_status` dice 'refunded' desde la
- * transacción que canceló, pero la fila de `payments` sigue en 'pending' — la
- * plata no se movió y el complejo la debe. Tiene que decir "a devolver", no
- * "devuelta". Ver `deposit-display.ts`.
- */
-const ROW_DEVOLUCION_PENDIENTE = row({
-  id: uid(1010),
-  status: 'canceled_refunded',
-  depositStatus: 'refunded',
-  refundState: 'pending',
-  paymentMethod: 'mercadopago',
-  timeStart: '20:00',
-  timeEnd: '21:00',
-})
-const ROW_JUGADA = row({
+const ROW_PAGADO = row({
   id: uid(1005),
-  status: 'completed',
-  depositStatus: 'captured',
-  timeStart: '11:00',
-  timeEnd: '12:00',
+  pending: 0,
+  totalPaid: 1_500_000,
 })
-const ROW_AUSENTE = row({
-  id: uid(1006),
-  status: 'no_show',
-  depositStatus: 'captured',
-  timeStart: '20:00',
-  timeEnd: '21:00',
-})
-// Jugada con saldo: el servicio se prestó y falta plata → "No cobrado".
-const ROW_JUGADA_SIN_COBRAR = row({
+// Jugado y nada cobrado: rojo, "No cobrado · $X".
+const ROW_JUGADO_SIN_COBRAR = row({
   id: uid(1015),
   status: 'completed',
-  depositStatus: 'not_required',
-  depositAmount: 0,
-  paymentMethod: null,
   timeStart: '13:00',
   timeEnd: '14:00',
   pending: 1_500_000,
   totalPaid: 0,
 })
-// Ausente sin un peso cobrado (sin seña que capturar) → tampoco: un
-// no-show nunca es cobrable (veto "No-show NO es deuda"), cobrado o no.
-const ROW_AUSENTE_SIN_COBRAR = row({
+// Jugado con cobro parcial: rojo, "Falta $X" (no repite "No cobrado" sobre plata que sí entró).
+const ROW_JUGADO_PARCIAL = row({
   id: uid(1016),
+  status: 'completed',
+  timeStart: '13:00',
+  timeEnd: '14:00',
+  pending: 500_000,
+  totalPaid: 1_000_000,
+})
+const ROW_ESPERANDO_SENA = row({
+  id: uid(1004),
+  status: 'pending_payment',
+  depositStatus: 'pending',
+  timeStart: '10:00',
+  timeEnd: '11:00',
+})
+// Ausente sin cobrar: gris, NUNCA rojo (veto "No-show NO es deuda") aunque `pending` venga > 0.
+const ROW_AUSENTE = row({
+  id: uid(1006),
   status: 'no_show',
-  depositStatus: 'not_required',
-  depositAmount: 0,
-  paymentMethod: null,
-  timeStart: '21:00',
-  timeEnd: '22:00',
+  timeStart: '20:00',
+  timeEnd: '21:00',
   pending: 1_500_000,
   totalPaid: 0,
 })
-/**
- * Cancelación con la devolución YA saldada: la fila de `payments` está en
- * 'approved'. Es lo único que autoriza a decir "devuelta" — sin esa evidencia,
- * `deposit_status='refunded'` solo significa que corresponde devolver.
- */
-// `pending`/`totalPaid` a mano, como los calcularía `summarizeBookingCharges`
-// en el server: la seña 'refunded' no cuenta como cobrada, así que sin el
-// corte por status en `moneyLine` esta fila mostraría "Falta $X" al lado de
-// "Seña devuelta" — deuda que no existe porque la reserva no se va a jugar.
-const ROW_CANCELADA_REEMBOLSADA = row({
+const ROW_CANCELADA = row({
   id: uid(1007),
   status: 'canceled_refunded',
-  depositStatus: 'refunded',
-  refundState: 'settled',
   timeStart: '18:00',
   timeEnd: '19:00',
   pending: 1_500_000,
   totalPaid: 0,
 })
-// Misma lógica: la seña quedó 'captured' (penalidad), pero el resto del
-// precio nunca se va a cobrar — la reserva está cancelada.
-const ROW_CANCELADA_SIN_REEMBOLSO = row({
-  id: uid(1008),
-  status: 'canceled_no_refund',
-  depositStatus: 'captured',
-  timeStart: '17:00',
-  timeEnd: '18:00',
-  pending: 1_050_000,
-  totalPaid: 450_000,
-})
 const ROW_EXPIRADA = row({
-  id: uid(1004),
+  id: uid(1008),
   status: 'expired',
-  depositStatus: 'pending',
-  paymentMethod: null,
   timeStart: '21:00',
   timeEnd: '22:00',
   pending: 1_500_000,
@@ -192,30 +129,34 @@ const ROW_BLOQUEO = row({
   type: 'block',
   playerName: null,
   guestName: null,
+  phone: null,
   priceSnapshot: 0,
   depositAmount: 0,
   depositStatus: 'not_required',
-  paymentMethod: null,
   timeStart: '09:00',
   timeEnd: '10:00',
 })
-const ROW_ABONADO = row({
+const ROW_FIJO = row({
   id: uid(1012),
   type: 'fixed',
   playerName: 'Rodrigo Fernández',
-  depositAmount: 0,
-  depositStatus: 'not_required',
-  paymentMethod: 'cash',
   timeStart: '20:00',
   timeEnd: '21:00',
+})
+// Evento de 3h desde la Grilla (excepción del staff, `assertWholeHours`): dura
+// más de un turno (60 min), así que el chip lo dice.
+const ROW_EVENTO = row({
+  id: uid(1014),
+  guestName: 'Cumple de Tobías',
+  playerName: null,
+  timeStart: '18:00',
+  timeEnd: '21:00',
+  priceSnapshot: 15_000_000,
 })
 const ROW_INVITADO = row({
   id: uid(1009),
   playerName: null,
   guestName: 'Fernando Bianchi',
-  depositAmount: 0,
-  depositStatus: 'not_required',
-  paymentMethod: 'cash',
   timeStart: '13:00',
   timeEnd: '14:00',
 })
@@ -224,6 +165,7 @@ const ROW_SIN_NOMBRE = row({
   id: uid(1017),
   playerName: null,
   guestName: null,
+  phone: null,
   timeStart: '08:00',
   timeEnd: '09:00',
 })
@@ -234,16 +176,14 @@ const ROW_TEXTOS_LARGOS = row({
   guestName: 'Sebastián Maximiliano Villalba Etcheverry',
   courtName: 'Cancha 3 - Fútbol 11 (aire libre, césped natural)',
   priceSnapshot: 1_800_000,
-  depositAmount: 540_000,
   timeStart: '22:00',
   timeEnd: '23:00',
 })
 
 /**
- * Fila de la lista de /reservas. `reservas/page.tsx` la renderiza SIEMPRE dentro
- * de un `<ul>`: sin ese wrapper el `<li>` propio del componente queda huérfano y
- * axe marca `listitem`. Sin botones propios (paso 3): la fila entera abre el
- * turno.
+ * Fila de la Agenda (`/reservas`). `(list)/page.tsx` la renderiza SIEMPRE
+ * dentro de un `<ul>`: sin ese wrapper el `<li>` propio del componente queda
+ * huérfano y axe marca `listitem`.
  */
 const meta = {
   title: 'Admin/Reservas/BookingListItem',
@@ -254,9 +194,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      // 672px y filas separadas por filete, como en la lista: el ancho más
-      // grande en el que la fila todavía usa la variante compacta.
-      <ul className="max-w-2xl divide-y divide-border">
+      <ul className="max-w-3xl divide-y divide-border">
         <Story />
       </ul>
     ),
@@ -266,79 +204,68 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-// ─── Un status por story ────────────────────────────────────────────────────
-
-export const Senada: Story = {
-  args: { booking: ROW_SENADA },
+export const PorJugar: Story = {
+  args: { booking: ROW_POR_JUGAR },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_SENADA) }),
+      canvas.getByRole('article', { name: ariaLabelFor(ROW_POR_JUGAR) }),
     ).toBeInTheDocument()
-    await expect(canvas.getByText('Señada')).toBeVisible()
-    await expect(canvas.getByText(money(ROW_SENADA.priceSnapshot))).toBeVisible()
-    await expect(
-      canvas.getByText(`Seña pagada (${money(ROW_SENADA.depositAmount)})`, { exact: false }),
-    ).toBeVisible()
+    // Dos copias en el DOM (renglón angosto + ancho, una oculta por CSS —
+    // `getByText` no filtra por visibilidad): `getAllByText`.
+    await expect(canvas.getAllByText(money(ROW_POR_JUGAR.priceSnapshot)).at(-1)!).toBeVisible()
   },
 }
 
-/** Sin seña: el badge dice "Confirmada" y la línea secundaria, "Sin seña". */
-export const Confirmada: Story = {
-  args: { booking: ROW_CONFIRMADA },
+export const PorJugarConSena: Story = {
+  args: { booking: ROW_POR_JUGAR_CON_SENA },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_CONFIRMADA) }),
-    ).toBeInTheDocument()
-    await expect(canvas.getByText('Confirmada')).toBeVisible()
-    await expect(canvas.queryByText('Señada')).toBeNull()
-    await expect(canvas.getByText('Sin seña', { exact: false })).toBeVisible()
+    await expect(canvas.getAllByText(`Falta ${money(1_050_000)}`).at(-1)!).toBeVisible()
+    // Control negativo: con una seña ya paga no repite el precio entero.
+    await expect(canvas.queryAllByText(money(ROW_POR_JUGAR_CON_SENA.priceSnapshot))).toHaveLength(0)
   },
 }
 
-export const PendientePago: Story = {
-  args: { booking: ROW_PENDIENTE },
+export const EnJuego: Story = {
+  args: { booking: ROW_EN_JUEGO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Esperando seña')).toBeVisible()
-    await expect(
-      canvas.getByText(`Seña pendiente (${money(ROW_PENDIENTE.depositAmount)})`, { exact: false }),
-    ).toBeVisible()
+    await expect(canvas.getAllByText('Se juega').at(-1)!).toBeVisible()
   },
 }
 
-export const PagoTardioReembolsado: Story = {
-  args: { booking: ROW_PAGO_TARDIO },
+export const Pagado: Story = {
+  args: { booking: ROW_PAGADO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Seña devuelta', { exact: false })).toBeVisible()
-    // Control negativo: sin el override diría "Seña pendiente", que es el dato
-    // falso que este caso existe para impedir.
-    await expect(canvas.queryByText('Seña pendiente', { exact: false })).toBeNull()
+    await expect(canvas.getAllByText('Pagado').at(-1)!).toBeVisible()
   },
 }
 
-export const DevolucionPendiente: Story = {
-  args: { booking: ROW_DEVOLUCION_PENDIENTE },
+export const JugadoSinCobrar: Story = {
+  args: { booking: ROW_JUGADO_SIN_COBRAR },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByText(`Seña a devolver (${money(ROW_DEVOLUCION_PENDIENTE.depositAmount)})`, {
-        exact: false,
-      }),
-    ).toBeVisible()
-    // Control negativo: ANTES de este cambio decía "Seña reembolsada" sobre
-    // plata que nunca salió. Es el dato falso que la fila de `payments` corrige.
-    await expect(canvas.queryByText('Seña devuelta', { exact: false })).toBeNull()
+    await expect(canvas.getAllByText(`No cobrado · ${money(1_500_000)}`).at(-1)!).toBeVisible()
   },
 }
 
-export const Jugada: Story = {
-  args: { booking: ROW_JUGADA },
+export const JugadoParcial: Story = {
+  args: { booking: ROW_JUGADO_PARCIAL },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Jugada')).toBeVisible()
+    await expect(canvas.getAllByText(`Falta ${money(500_000)}`).at(-1)!).toBeVisible()
+    // Control negativo: no repite "No cobrado" sobre plata que sí entró.
+    await expect(canvas.queryByText(/No cobrado/)).toBeNull()
+  },
+}
+
+export const EsperandoSena: Story = {
+  args: { booking: ROW_ESPERANDO_SENA },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByText('Esperando seña').at(-1)!).toBeVisible()
   },
 }
 
@@ -346,63 +273,19 @@ export const Ausente: Story = {
   args: { booking: ROW_AUSENTE },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Ausente')).toBeVisible()
+    await expect(canvas.getAllByText('Ausente').at(-1)!).toBeVisible()
+    // Control negativo: veto "No-show NO es deuda" — nunca "No cobrado"/"Falta $X"
+    // aunque `pending` venga > 0.
+    await expect(canvas.queryByText(/No cobrado|Falta/)).toBeNull()
   },
 }
 
-/**
- * El caso que cierra la contradicción del detalle: el badge sigue diciendo
- * "Jugada" (el estado del turno) y al lado aparece "No cobrado" (la plata). Si
- * la píldora pisara el label —como sí hace en la grilla, donde una celda tiene
- * lugar para una sola palabra— "Jugada" y "Ausente" colapsarían en el mismo
- * texto y la columna de estado dejaría de servir.
- */
-export const JugadaSinCobrar: Story = {
-  args: { booking: ROW_JUGADA_SIN_COBRAR },
+export const Cancelada: Story = {
+  args: { booking: ROW_CANCELADA },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Jugada')).toBeVisible()
-    await expect(canvas.getByText('No cobrado')).toBeVisible()
-    // El aria-label del Link estirado es lo único que escucha un lector de
-    // pantalla navegando por links: la plata tiene que estar ahí adentro.
-    await expect(
-      canvas.getByRole('link', { name: ariaLabelFor(ROW_JUGADA_SIN_COBRAR) }),
-    ).toBeVisible()
-  },
-}
-
-export const AusenteSinCobrar: Story = {
-  args: { booking: ROW_AUSENTE_SIN_COBRAR },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.queryByText('No cobrado')).toBeNull()
-    // Control negativo: un no-show nunca es cobrable (veto "No-show NO es
-    // deuda"), así que tampoco puede aparecer "Falta $X" aunque `pending`
-    // venga > 0.
-    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
-  },
-}
-
-export const CanceladaConReembolso: Story = {
-  args: { booking: ROW_CANCELADA_REEMBOLSADA },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('Cancelada')).toBeVisible()
-    await expect(canvas.getByText('Seña devuelta', { exact: false })).toBeVisible()
-    // Control negativo: una reserva cancelada no juega, no debe plata aunque
-    // `pending` (derivado de `priceSnapshot - totalPaid`) siga siendo > 0.
-    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
-  },
-}
-
-export const CanceladaSinReembolso: Story = {
-  args: { booking: ROW_CANCELADA_SIN_REEMBOLSO },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('Cancelada')).toBeVisible()
-    // Idem: la seña quedó como penalidad, el resto del precio nunca se cobra.
-    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
+    await expect(canvas.getAllByText('Cancelada').at(-1)!).toBeVisible()
+    await expect(canvas.queryByText(/Falta/)).toBeNull()
   },
 }
 
@@ -410,52 +293,44 @@ export const Expirada: Story = {
   args: { booking: ROW_EXPIRADA },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Expirada')).toBeVisible()
-    // Idem: el hold expiró, la reserva no se juega.
-    await expect(canvas.queryByText('Falta', { exact: false })).toBeNull()
+    await expect(canvas.getAllByText('Expirada').at(-1)!).toBeVisible()
   },
 }
 
-// ─── type: block / fixed ────────────────────────────────────────────────────
-
-export const BloqueoAdministrativo: Story = {
+export const Bloqueo: Story = {
   args: { booking: ROW_BLOQUEO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // El nombre del cliente y el badge de estado NO dicen lo mismo: la fila se
-    // llama "Bloqueo" y el estado es "Bloqueado". La story esperaba dos
-    // "Bloqueo" de cuando el label del badge era esa misma palabra; Fase 3 lo
-    // renombró en `SLOT_STATES.block` y quedó desalineada.
-    await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_BLOQUEO) }),
-    ).toBeInTheDocument()
-    await expect(canvas.getByText('Bloqueo')).toBeVisible()
-    await expect(canvas.getByText('Bloqueado')).toBeVisible()
+    await expect(canvas.getAllByText('Bloqueo').at(-1)!).toBeVisible()
+    // Un bloqueo no habla de plata: ni "Sin cargo" ni un monto.
+    await expect(canvas.queryByText('Sin cargo')).toBeNull()
+    await expect(canvas.queryByText(/\$/)).toBeNull()
   },
 }
 
-/** Turno fijo de abonado: no es un bloqueo, muestra el badge "Abonado". */
-export const Abonado: Story = {
-  args: { booking: ROW_ABONADO },
+/** Turno fijo de abonado: chip neutro "Fijo". */
+export const Fijo: Story = {
+  args: { booking: ROW_FIJO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Abonado')).toBeVisible()
-    await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_ABONADO) }),
-    ).toBeInTheDocument()
+    await expect(canvas.getAllByText('Fijo').at(-1)!).toBeVisible()
   },
 }
 
-// ─── Nombre del cliente: jugador registrado vs. invitado ───────────────────
+/** Evento de más de 60 min cargado desde la Grilla: "Evento · N h". */
+export const Evento: Story = {
+  args: { booking: ROW_EVENTO },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByText('Evento · 3 h').at(-1)!).toBeVisible()
+  },
+}
 
 export const Invitado: Story = {
   args: { booking: ROW_INVITADO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Fernando Bianchi')).toBeVisible()
-    await expect(
-      canvas.getByRole('article', { name: ariaLabelFor(ROW_INVITADO) }),
-    ).toBeInTheDocument()
+    await expect(canvas.getAllByText('Fernando Bianchi').at(-1)!).toBeVisible()
   },
 }
 
@@ -464,30 +339,20 @@ export const SinNombre: Story = {
   args: { booking: ROW_SIN_NOMBRE },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Sin nombre')).toBeVisible()
+    await expect(canvas.getAllByText('Sin nombre').at(-1)!).toBeVisible()
   },
 }
-
-// ─── Overflow ────────────────────────────────────────────────────────────
 
 /** Nombre de guest + cancha largos reales: el texto completo vive en el DOM (el truncate es solo visual, vía CSS) y en el aria-label. */
 export const NombreYCanchaLargos: Story = {
   args: { booking: ROW_TEXTOS_LARGOS },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(ROW_TEXTOS_LARGOS.guestName!)).toBeInTheDocument()
+    // Dos copias en el DOM (renglón angosto + ancho, una oculta por CSS —
+    // `getByText` no filtra por visibilidad): `getAllByText`.
+    await expect(canvas.getAllByText(ROW_TEXTOS_LARGOS.guestName!)[0]).toBeInTheDocument()
     await expect(
       canvas.getByRole('article', { name: ariaLabelFor(ROW_TEXTOS_LARGOS) }),
     ).toBeInTheDocument()
-  },
-}
-
-/** `showCourt={false}` (pestaña Hoy, agrupada por cancha): la línea secundaria pierde el nombre de cancha — ya es el título de la sección, repetirlo es ruido. */
-export const DentroDeUnaSeccionPorCancha: Story = {
-  args: { booking: ROW_SENADA, showCourt: false },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.queryByText(ROW_SENADA.courtName, { exact: false })).toBeNull()
-    await expect(canvas.getByText('Seña pagada', { exact: false })).toBeVisible()
   },
 }

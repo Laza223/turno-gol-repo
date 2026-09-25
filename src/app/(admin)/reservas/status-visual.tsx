@@ -12,6 +12,34 @@ export type ReservaStatusVisual = {
 }
 
 /**
+ * ¿Esta fila de /reservas ya terminó? Mismo criterio físico que la Grilla y
+ * Hoy (`hasBookingEnded`/`hasEndedAt`): el instante `ends_at`, nunca la hora
+ * de pared. Sin `endsAt` (fixtures/stories que arman la fila a mano) degrada
+ * al `status` — el comportamiento previo a esta bandera.
+ */
+export function reservaHasEnded(
+  row: { endsAt?: string | null; status: string },
+  nowMs: number,
+): boolean {
+  return row.endsAt ? Date.parse(row.endsAt) <= nowMs : row.status === 'completed'
+}
+
+/**
+ * ¿Esta fila se está jugando AHORA? El punto verde "Se juega" de la Agenda
+ * (mismo criterio físico que `reservaHasEnded`: `starts_at`/`ends_at`, nunca
+ * la hora de pared). Sin los dos instantes (fixtures/stories a mano) nunca es
+ * "en juego" — degrada a `false`, no inventa un punto verde que no puede
+ * justificar.
+ */
+export function reservaIsLive(
+  row: { startsAt?: string | null; endsAt?: string | null },
+  nowMs: number,
+): boolean {
+  if (!row.startsAt || !row.endsAt) return false
+  return Date.parse(row.startsAt) <= nowMs && nowMs < Date.parse(row.endsAt)
+}
+
+/**
  * La píldora "No cobrado" que acompaña —sin reemplazar— al badge de estado.
  * Es el MISMO `StatusBadge`, no un componente nuevo: hereda los tokens de tono
  * ya verificados en contraste.
@@ -49,6 +77,8 @@ export function reservaStatusVisual(booking: {
   depositStatus?: SlotFacts['depositStatus']
   pending?: number | null
   totalPaid?: number | null
+  /** Ver {@link reservaHasEnded}. Opcional: sin pasarlo, el comportamiento es el de siempre. */
+  ended?: boolean
 }): ReservaStatusVisual & { unpaid: boolean } {
   const visual = bookingBadgeVisual(booking)
   return {

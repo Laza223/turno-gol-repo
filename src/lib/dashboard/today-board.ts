@@ -137,8 +137,11 @@ export function buildCourtBoard(
   const late = queue.now.filter((item) => item.ended)
 
   const courtIds = courts.filter((c) => c.status === 'online').map((c) => c.id)
+  const listed = new Set(courtIds)
   for (const { booking } of queue.now) {
-    if (!courtIds.includes(booking.courtId)) courtIds.push(booking.courtId)
+    if (listed.has(booking.courtId)) continue
+    listed.add(booking.courtId)
+    courtIds.push(booking.courtId)
   }
 
   const tiles = courtIds.map((courtId): CourtTile => {

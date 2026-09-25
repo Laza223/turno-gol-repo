@@ -112,8 +112,8 @@ describe('sumBookingChargesByBooking — saldo batch de la grilla', () => {
       sumBookingChargesByBooking(tenantId, [a, b, sinCobros], tx),
     )
 
-    expect(map.get(a)).toBe(50000)
-    expect(map.get(b)).toBe(15000)
+    expect(map.get(a)?.total).toBe(50000)
+    expect(map.get(b)?.total).toBe(15000)
     expect(map.has(sinCobros)).toBe(false)
   }, 30_000)
 
@@ -127,7 +127,7 @@ describe('sumBookingChargesByBooking — saldo batch de la grilla', () => {
       await getBookingCharges(tenantId, id, tx),
     ])
 
-    expect(map.get(id)).toBe(10000)
+    expect(map.get(id)?.total).toBe(10000)
     expect(detalle.chargesTotal).toBe(10000)
   }, 30_000)
 
@@ -149,7 +149,7 @@ describe('sumBookingChargesByBooking — saldo batch de la grilla', () => {
       const map = await sumBookingChargesByBooking(tenantId, ids, tx)
       for (const id of ids) {
         const detalle = await getBookingCharges(tenantId, id, tx)
-        expect(map.get(id) ?? 0).toBe(detalle.chargesTotal)
+        expect(map.get(id)?.total ?? 0).toBe(detalle.chargesTotal)
       }
     })
   }, 40_000)
@@ -178,7 +178,7 @@ describe('sumBookingChargesByBooking — saldo batch de la grilla', () => {
     )
 
     // La gaseosa NO baja el saldo del turno.
-    expect(map.get(id)).toBe(12000)
+    expect(map.get(id)?.total).toBe(12000)
   }, 30_000)
 
   it('no cruza tenants', async () => {

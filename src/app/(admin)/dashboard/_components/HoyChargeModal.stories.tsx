@@ -157,15 +157,18 @@ function Harness({
     setRefreshing(true)
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
+      // Se lee y se vacía ANTES del updater: React puede correr un updater dos veces,
+      // y adentro tiene que ser puro.
+      const paid = { ...charged }
+      charged.current = 0
+      charged.team1 = 0
+      charged.team2 = 0
       setBooking((b) => {
-        const pending = Math.max(0, (b.pending ?? 0) - charged.current)
-        const totalPaid = (b.totalPaid ?? 0) + charged.current
+        const pending = Math.max(0, (b.pending ?? 0) - paid.current)
+        const totalPaid = (b.totalPaid ?? 0) + paid.current
         // El servidor suma aparte lo cobrado a cada equipo (`booking_team`).
-        const team1Paid = (b.team1Paid ?? 0) + charged.team1
-        const team2Paid = (b.team2Paid ?? 0) + charged.team2
-        charged.current = 0
-        charged.team1 = 0
-        charged.team2 = 0
+        const team1Paid = (b.team1Paid ?? 0) + paid.team1
+        const team2Paid = (b.team2Paid ?? 0) + paid.team2
         return {
           ...b,
           totalPaid,

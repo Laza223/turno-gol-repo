@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, use, useEffect, useState, type ReactNode } from 'react'
+import { createContext, use, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useUnconfirmedDialogGuard } from '@/hooks/use-unconfirmed-dialog-guard'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
@@ -57,6 +57,7 @@ export function VenderProvider({
 }) {
   const [open, setOpen] = useState(false)
   const guard = useUnconfirmedDialogGuard(setOpen)
+  const value = useMemo(() => ({ open, setOpen }), [open])
 
   // La V abre la venta desde cualquier lado de Hoy, salvo escribiendo o con otro
   // diálogo abierto (el cobro de un turno): ahí no le puede robar la pantalla.
@@ -73,7 +74,7 @@ export function VenderProvider({
   }, [])
 
   return (
-    <VenderContext value={{ open, setOpen }}>
+    <VenderContext value={value}>
       {children}
       {open && (
         <Dialog open onOpenChange={guard.onOpenChange}>

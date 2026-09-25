@@ -120,10 +120,21 @@ function searchCond(q: string | undefined): SQL {
   const escaped = q.replace(/[\\%_]/g, (m) => `\\${m}`)
   const nameLike = `%${escaped}%`
   const idPrefix = `${escaped}%`
+  // Búsqueda por teléfono (lo que llega del WhatsApp es el número): con 6+
+  // dígitos, sacando espacios/guiones/+/paréntesis, comparamos contra los
+  // dígitos de guest_phone/players.phone (texto plano, ninguno cifrado). Menos
+  // de 6 no distingue nada y solo ensuciaría la búsqueda por nombre.
+  const digits = escaped.replace(/[\s\-+()]/g, '')
+  const phoneCond =
+    digits.length >= 6
+      ? sql`OR regexp_replace(b.guest_phone, '\\D', '', 'g') LIKE '%' || ${digits} || '%'
+            OR regexp_replace(p.phone, '\\D', '', 'g') LIKE '%' || ${digits} || '%'`
+      : sql``
   return sql`AND (
     b.guest_name ILIKE ${nameLike}
     OR (p.first_name || ' ' || p.last_name) ILIKE ${nameLike}
     OR b.id::text ILIKE ${idPrefix}
+    ${phoneCond}
   )`
 }
 
@@ -188,17 +199,23 @@ export async function listTenantBookings(
   tx: DbTx,
   page = 0,
 ): Promise<ReservaListPage> {
-  // Hoy: agrupable por cancha con horarios ascendentes. Próximas: lo más
+  // c.created_at (no c.name): mismo criterio de orden de canchas que la Grilla
+  // (`listCourts`, court.service.ts) — si no, "Cancha 10" sale antes que
+  // "Cancha 2" (orden alfabético de texto) y las dos pantallas discrepan.
+  // b.starts_at (no b.time_start): en un complejo `closes_next_day` el turno de
+  // 00:00 se guarda con la hora de pared más chica pero es FÍSICAMENTE
+  // posterior al de las 23:00 de la misma cancha; `starts_at` es el instante
+  // real. Hoy: agrupable por cancha con horarios ascendentes. Próximas: lo más
   // cercano primero. Historial: lo más reciente primero. `b.id` desempata: una
   // reserva cancelada y la que reocupó su lugar comparten cancha, día y hora, y
   // sin un orden total el OFFSET puede repetir una entre dos páginas y saltear
   // la otra.
   const orderBy =
     filters.scope === 'hoy'
-      ? sql`ORDER BY c.name ASC, b.time_start ASC, b.id ASC`
+      ? sql`ORDER BY c.created_at ASC, b.starts_at ASC, b.id ASC`
       : filters.scope === 'proximas'
-        ? sql`ORDER BY b.date ASC, b.time_start ASC, c.name ASC, b.id ASC`
-        : sql`ORDER BY b.date DESC, b.time_start DESC, c.name ASC, b.id ASC`
+        ? sql`ORDER BY b.date ASC, b.starts_at ASC, c.created_at ASC, b.id ASC`
+        : sql`ORDER BY b.date DESC, b.starts_at DESC, c.created_at ASC, b.id ASC`
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 0
   const rows = await tx.execute(sql`
     SELECT ${bookingSelectColumns()}

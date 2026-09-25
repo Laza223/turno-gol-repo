@@ -141,14 +141,14 @@ export function ReservasHeaderBar({ scope, status, q, cancha, courts, counts, to
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
         />
         <label htmlFor={id} className="sr-only">
-          Buscar por nombre o número de reserva
+          Buscar por nombre, teléfono o número de reserva
         </label>
         <input
           id={id}
           type="search"
           value={value}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Buscar nombre o nº de reserva"
+          placeholder="Buscar nombre, teléfono o nº de reserva"
           autoComplete="off"
           className="h-11 w-full rounded-lg border border-input bg-background pl-9 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 lg:h-8 lg:pr-9 lg:text-[13px] [&::-webkit-search-cancel-button]:hidden"
         />

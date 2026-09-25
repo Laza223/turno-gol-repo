@@ -12,7 +12,7 @@ export type ReservaStatusVisual = {
 }
 
 /**
- * La píldora "Por cobrar" que acompaña —sin reemplazar— al badge de estado.
+ * La píldora "No cobrado" que acompaña —sin reemplazar— al badge de estado.
  * Es el MISMO `StatusBadge`, no un componente nuevo: hereda los tokens de tono
  * ya verificados en contraste.
  */
@@ -41,7 +41,7 @@ export const RESERVA_UNPAID_VISUAL: ReservaStatusVisual = {
  * llamador pinta `RESERVA_UNPAID_VISUAL` al lado. Un `no_show` NUNCA devuelve
  * `unpaid: true` (un no-show no es cobrable, veto "No-show NO es deuda"). Sin
  * datos de plata, `unpaid` es false y el comportamiento es el de siempre
- * (fixtures y payloads viejos no inventan un "Por cobrar" que no pueden justificar).
+ * (fixtures y payloads viejos no inventan un "No cobrado" que no pueden justificar).
  */
 export function reservaStatusVisual(booking: {
   status: string

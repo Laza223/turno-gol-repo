@@ -9,6 +9,8 @@ type Props = {
   booking: GridBooking
   /** Jugadores de la cancha. Sin esto el renglon dice equipos y no cuenta gente. */
   capacity?: number
+  /** Se jugó y no se cobró: lo que falta va en rojo, como "No cobrado" en la Grilla. */
+  late?: boolean
 }
 
 /**
@@ -18,7 +20,7 @@ type Props = {
  * para lo mismo: saber cuánto falta. Ahora esa respuesta está en grande y el
  * resto queda como pie de página, que es el peso que tiene.
  */
-export function SlotPriceSummary({ booking, capacity }: Props) {
+export function SlotPriceSummary({ booking, capacity, late = false }: Props) {
   const pending = typeof booking.pending === 'number' ? booking.pending : null
   const paid = typeof booking.totalPaid === 'number' ? booking.totalPaid : null
   const split = chargeSplit(booking, capacity)
@@ -45,9 +47,16 @@ export function SlotPriceSummary({ booking, capacity }: Props) {
       ) : pending !== null && pending > 0 ? (
         <p>
           <span className="block text-xs font-medium text-muted-foreground">Falta cobrar</span>
-          {/* Ámbar, el tono de lo pendiente: lo que falta cobrar de un turno no es
-              un error ni una deuda (principio 3 de PRODUCT.md). */}
-          <span className={cn('block text-2xl font-bold tabular-nums', TONE_TEXT.warning)}>
+          {/* Rojo si ya se jugó (decisión del dueño, 2026-09-25: un turno jugado y
+              sin cobrar es plata que no entró, y el ámbar no se sentía urgente);
+              antes de que termine todavía se cobra a tiempo y va sin color. Nunca
+              "deuda": es un turno no cobrado (principio 3 de PRODUCT.md). */}
+          <span
+            className={cn(
+              'block text-2xl font-bold tabular-nums',
+              late ? TONE_TEXT.destructive : 'text-foreground',
+            )}
+          >
             {formatArs(pending)}
           </span>
         </p>
@@ -69,9 +78,7 @@ export function SlotPriceSummary({ booking, capacity }: Props) {
           necesita para no cobrarle dos veces al mismo. El MONTO no se repite
           acá: ya está arriba en grande, y dos maquetas para un dato es lo que
           el rediseño de Caja sacó a propósito. */}
-      {split.note && (
-        <p className={cn('mt-1.5 text-xs font-medium', TONE_TEXT.warning)}>{split.note}</p>
-      )}
+      {split.note && <p className="mt-1.5 text-xs font-medium text-foreground">{split.note}</p>}
     </section>
   )
 }

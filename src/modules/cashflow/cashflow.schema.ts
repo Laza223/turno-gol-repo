@@ -32,6 +32,7 @@ const cashFlowRowResponseSchema = z.strictObject({
   description: z.string(),
   bookingId: uuid.nullable(),
   tournamentTeamId: uuid.nullable(),
+  bookingTeam: z.union([z.literal(1), z.literal(2)]).nullable(),
   registeredBy: z.string(),
   occurredAt: z.string(),
   createdAt: z.string(),

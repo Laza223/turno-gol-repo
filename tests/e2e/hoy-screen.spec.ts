@@ -2,9 +2,9 @@
  * E2E — "Hoy" (Fase 2 del contrato v2, docs/planning/2026-08-01-decisiones-de-fase-v2.md §3)
  *
  * Cubre lo que un test de integración no puede probar solo: que la pantalla
- * en vivo (Server Component real, sesión real) muestra el tablero de turnos +
- * los bloques de alertas y de "Mientras no estabas", que un turno sin cobrar
- * aparece en el tablero y abre el modal de cobro, y
+ * en vivo (Server Component real, sesión real) muestra el tablero por cancha
+ * (alertas y "Mientras no estabas" solo cuando tienen algo), que un turno sin cobrar
+ * aparece en su cancha y abre el modal de cobro, y
  * que los guards de rol (el encargado ve Hoy pero no Métricas) funcionan de punta a punta — no solo a
  * nivel de función aislada (eso ya lo cubre tests/integration/home-service.test.ts
  * y tests/unit/staff-guards.test.ts / admin-sidebar.stories.tsx).
@@ -31,10 +31,7 @@ function todayDateIsoArt(): string {
 }
 
 test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
-  test('admin ve el tablero del día + "Mientras no estabas" @critical', async ({
-    browser,
-    adminStorageState,
-  }) => {
+  test('admin ve el tablero del día @critical', async ({ browser, adminStorageState }) => {
     const context = await browser.newContext()
     try {
       await context.addCookies(JSON.parse(adminStorageState).cookies)
@@ -53,16 +50,17 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       // con `critical`/`serious`.
       await expect(page.locator('h1')).toHaveText('Hoy')
       await expect(page.getByRole('heading', { name: 'Turnos de hoy' })).toBeVisible()
-      await expect(page.getByText('Mientras no estabas')).toBeVisible()
       // "Necesita tu atención" sólo existe con alertas; sin alertas no se dibuja
-      // nada (2026-09-24): la línea verde "Nada pendiente" no vuelve.
+      // nada (2026-09-24): la línea verde "Nada pendiente" no vuelve. Lo mismo
+      // "Mientras no estabas": sin novedades no hay tarjeta de "Nada nuevo".
       await expect(page.getByText(/Nada pendiente/)).toHaveCount(0)
+      await expect(page.getByText(/Nada nuevo desde la última vez/)).toHaveCount(0)
     } finally {
       await context.close()
     }
   })
 
-  test('un turno sin cobrar aparece en el tablero y se cobra desde un modal, sin salir de Hoy', async ({
+  test('un turno sin cobrar aparece en su cancha y se cobra desde un modal, sin salir de Hoy', async ({
     browser,
     adminStorageState,
   }) => {
@@ -86,8 +84,9 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       // La fila es UN botón que abre el modal: no un link a /reservas/[id].
       const row = page.getByRole('button', { name: /QA Hoy Turno Sin Cobrar/ })
       await expect(row).toBeVisible({ timeout: 10_000 })
-      // "Por cobrar", no una alarma: se cobra después del partido.
-      await expect(row).toContainText('Por cobrar')
+      // Ya se jugó: dice hace cuánto terminó y ofrece cobrar lo que falta.
+      await expect(row).toContainText(/Terminó/)
+      await expect(row).toContainText('Cobrar')
       await expect(page.getByRole('link', { name: /QA Hoy Turno Sin Cobrar/ })).toHaveCount(0)
 
       await row.click()
@@ -99,6 +98,10 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       // base compartida; el comportamiento del cobro lo fijan las stories del modal.
       await expect(dialog.getByRole('radio', { name: 'Por equipo' })).toBeVisible()
       await expect(dialog.getByRole('button', { name: /^Cobrar \$/ })).toBeVisible()
+      // En Hoy el modal es solo para cobrar: la venta está al lado y el ausente
+      // se anota desde la Grilla.
+      await expect(dialog.getByRole('button', { name: /Cantina/ })).toHaveCount(0)
+      await expect(dialog.getByRole('button', { name: /Marcar ausente/ })).toHaveCount(0)
       // Nada de navegar: sigue en Hoy.
       await expect(page).toHaveURL(/\/dashboard/)
 
@@ -110,41 +113,30 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
     }
   })
 
-  test('la venta está a mano: columna fija desde 1280 px, botón "Vender" y diálogo debajo', async ({
+  test('la venta está a mano: el botón "Vender" y la tecla V abren el modal', async ({
     browser,
     adminStorageState,
   }) => {
     const cookies = JSON.parse(adminStorageState).cookies
-
-    // Escritorio ancho: la venta es una columna fija a la derecha y el botón sobra.
-    const wide = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    const context = await browser.newContext({ viewport: { width: 1366, height: 650 } })
     try {
-      await wide.addCookies(cookies)
-      const page = await wide.newPage()
+      await context.addCookies(cookies)
+      const page = await context.newPage()
       await page.goto('/dashboard', { waitUntil: 'networkidle' })
-      await expect(page.getByRole('complementary', { name: 'Vender' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Vender', exact: true })).toBeHidden()
-    } finally {
-      await wide.close()
-    }
+      // Ya no hay columna fija: el tablero ocupa todo el ancho (2026-09-25).
+      await expect(page.getByRole('complementary', { name: 'Vender' })).toHaveCount(0)
 
-    // Más angosto: sin columna; el botón de la barra superior abre la MISMA venta en un
-    // diálogo. Mientras está abierto la columna no existe (no se duplican los ids).
-    const narrow = await browser.newContext({ viewport: { width: 1024, height: 800 } })
-    try {
-      await narrow.addCookies(cookies)
-      const page = await narrow.newPage()
-      await page.goto('/dashboard', { waitUntil: 'networkidle' })
-      await expect(page.getByRole('complementary', { name: 'Vender' })).toBeHidden()
       await page.getByRole('button', { name: 'Vender', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: 'Vender' })
       await expect(dialog).toBeVisible()
-      // La columna sale del DOM mientras el diálogo está abierto (no dos tickets a la vez).
-      await expect(page.getByRole('complementary', { name: 'Vender' })).toHaveCount(0)
       await page.keyboard.press('Escape')
       await expect(dialog).toBeHidden()
+
+      // La V lo abre desde cualquier lado de Hoy (salvo escribiendo en un campo).
+      await page.keyboard.press('v')
+      await expect(dialog).toBeVisible()
     } finally {
-      await narrow.close()
+      await context.close()
     }
   })
 
@@ -160,7 +152,7 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
 
       await expect(page).toHaveURL(/\/dashboard/)
       await expect(page.getByRole('link', { name: 'Hoy' }).first()).toBeVisible()
-      // El tablero del mostrador es suyo; el checklist de arranque y el tour, del dueño.
+      // El tablero es suyo; el checklist de arranque y el tour, del dueño.
       await expect(page.getByRole('heading', { name: 'Turnos de hoy' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Métricas' })).toHaveCount(0)
 

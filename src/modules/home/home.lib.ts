@@ -3,7 +3,7 @@ import type { AttentionItem, WhileAwayItem } from './home.types'
 /**
  * Prioridad P1→P2 de la taxonomía (docs/decisions/2026-08-02-taxonomia-alertas-hoy.md).
  * El turno terminado sin cobrar (que era P1) dejó de ser una alerta el 2026-09-19:
- * vive en el tablero "Turnos de hoy", que es donde se cobra.
+ * vive en "Cobrar ahora" de Hoy (antes, el tablero "Turnos de hoy"), que es donde se cobra.
  */
 const ATTENTION_PRIORITY: Record<AttentionItem['kind'], number> = {
   // P1: plata comprometida con un jugador que espera. El daño crece con los días.

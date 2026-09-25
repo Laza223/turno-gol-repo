@@ -58,6 +58,7 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
     description: r.description,
     bookingId: r.bookingId ?? null,
     tournamentTeamId: r.tournamentTeamId ?? null,
+    bookingTeam: (r.bookingTeam as 1 | 2 | null) ?? null,
     registeredBy: r.registeredBy,
     occurredAt: r.occurredAt,
     createdAt: r.createdAt,
@@ -81,6 +82,7 @@ type CashFlowRawRow = {
   description: string
   booking_id: string | null
   tournament_team_id: string | null
+  booking_team: 1 | 2 | null
   registered_by: string
   occurred_at: string
   created_at: string
@@ -97,6 +99,7 @@ function rawRowToCashFlowRow(r: CashFlowRawRow): CashFlowRow {
     description: r.description,
     bookingId: r.booking_id,
     tournamentTeamId: r.tournament_team_id,
+    bookingTeam: r.booking_team ?? null,
     registeredBy: r.registered_by,
     occurredAt: new Date(r.occurred_at),
     createdAt: new Date(r.created_at),
@@ -126,11 +129,11 @@ export async function createCashFlow(
     const result = await tx.execute<CashFlowRawRow>(sql`
       INSERT INTO cash_flows (
         tenant_id, type, category, amount, method, description,
-        booking_id, tournament_team_id, registered_by, occurred_at, client_idempotency_key
+        booking_id, tournament_team_id, booking_team, registered_by, occurred_at, client_idempotency_key
       ) VALUES (
         ${tenantId}, ${input.type}::cashflow_type, ${input.category}::cashflow_category,
         ${input.amount}, ${input.method}::payment_method, ${input.description},
-        ${input.bookingId ?? null}, ${input.tournamentTeamId ?? null},
+        ${input.bookingId ?? null}, ${input.tournamentTeamId ?? null}, ${input.bookingTeam ?? null},
         ${staffUserId}, ${occurredAt.toISOString()},
         ${input.clientIdempotencyKey}
       )
@@ -161,7 +164,8 @@ export async function createCashFlow(
       existing.type !== input.type ||
       existing.category !== input.category ||
       existing.bookingId !== (input.bookingId ?? null) ||
-      existing.tournamentTeamId !== (input.tournamentTeamId ?? null)
+      existing.tournamentTeamId !== (input.tournamentTeamId ?? null) ||
+      (existing.bookingTeam ?? null) !== (input.bookingTeam ?? null)
     ) {
       throw new CashFlowIdempotencyConflictError(existing.amount)
     }
@@ -179,6 +183,7 @@ export async function createCashFlow(
       description: input.description,
       bookingId: input.bookingId ?? null,
       tournamentTeamId: input.tournamentTeamId ?? null,
+      bookingTeam: input.bookingTeam ?? null,
       registeredBy: staffUserId,
       occurredAt,
     })
@@ -187,7 +192,12 @@ export async function createCashFlow(
   return rowToCashFlowRow(rows[0]!)
 }
 
-export type SplitCharge = { amount: number; method: CreateCashFlowInput['method'] }
+export type SplitCharge = {
+  amount: number
+  method: CreateCashFlowInput['method']
+  /** Migr. 092. Equipo (1/2) al que se atribuye esta línea de cobro. */
+  bookingTeam?: 1 | 2
+}
 
 /**
  * Inserta N `cash_flows`, uno por línea de `charges` — el patrón de "cobro
@@ -227,6 +237,7 @@ export async function chargeSplitPayment(
           ...build(charge, i),
           amount: charge.amount,
           method: charge.method,
+          bookingTeam: charge.bookingTeam,
           clientIdempotencyKey: lineKey,
         },
         tx,
@@ -289,13 +300,18 @@ export async function resolveIdempotentCharges(
 
   const lineKeys = charges.map((_, i) => `${clientIdempotencyKey}-${i}`)
   const committedRows = (await tx.execute(sql`
-    SELECT client_idempotency_key AS key, amount, method FROM cash_flows
+    SELECT client_idempotency_key AS key, amount, method, booking_team AS "bookingTeam" FROM cash_flows
     WHERE tenant_id = ${tenantId}
       AND client_idempotency_key = ANY(ARRAY[${sql.join(
         lineKeys.map((k) => sql`${k}`),
         sql`, `,
       )}])
-  `)) as unknown as Array<{ key: string; amount: number; method: string }>
+  `)) as unknown as Array<{
+    key: string
+    amount: number
+    method: string
+    bookingTeam: 1 | 2 | null
+  }>
   const committed = new Map(committedRows.map((r) => [r.key, r]))
 
   let newChargingCents = 0
@@ -306,7 +322,11 @@ export async function resolveIdempotentCharges(
       newChargingCents += charge.amount
       continue
     }
-    if (already.amount !== charge.amount || already.method !== charge.method) {
+    if (
+      already.amount !== charge.amount ||
+      already.method !== charge.method ||
+      (already.bookingTeam ?? null) !== (charge.bookingTeam ?? null)
+    ) {
       return {
         ok: false,
         registeredCents: already.amount,

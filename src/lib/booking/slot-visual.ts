@@ -33,9 +33,11 @@ import type { BookingStatus, BookingType, DepositStatus } from '@/modules/bookin
  * la plata, el ÍCONO + label comunican qué es.**
  *
  * Lo que sí cambia en Fase 3 es que el semáforo ahora dice la verdad completa:
- * el turno que ya se prestó y no se cobró tiene estado propio ("Por cobrar"),
- * que antes se pintaba igual que uno cobrado. Nació como alarma roja; desde el
- * refinamiento del 2026-09-24 va en ámbar (ver `pending_charge`).
+ * el turno que ya se prestó y no se cobró tiene estado propio ("No cobrado"),
+ * que antes se pintaba igual que uno cobrado. Nació como alarma roja, pasó a
+ * ámbar el 2026-09-24 y volvió a rojo el 2026-09-25 — decisión del dueño: el
+ * complejo piloto acumuló cientos de miles de pesos en turnos sin cobrar y el
+ * ámbar no transmitía urgencia (ver `pending_charge`).
  */
 
 export type SlotStateKey =
@@ -56,7 +58,7 @@ export type SlotStateKey =
  * Los hechos del turno que determinan su estado visual. `pending`/`totalPaid`
  * son opcionales a propósito: los payloads que no los traen (Realtime crudo,
  * fixtures viejas) degradan al comportamiento previo a Fase 3 en vez de mentir
- * con un "Por cobrar" que no pueden justificar.
+ * con un "No cobrado" que no pueden justificar.
  */
 export type SlotFacts = {
   status: BookingStatus | string
@@ -116,14 +118,16 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
   // El turno se jugó y le falta plata. En el mostrador se cobra después del
   // partido (mediana: 29 min después de que termina,
   // docs/rediseno-panel/insumos.md), así que es el estado normal de la media
-  // hora que sigue a cada turno: ámbar, el tono de lo pendiente, y no el rojo
-  // de una alarma ni de una deuda (principio 3 de PRODUCT.md, DESIGN.md).
-  // Hasta el 2026-09-24 fue "Sin cobrar" en rojo con un anillo que respiraba,
-  // mientras Hoy ya decía "Por cobrar": dos superficies contradiciéndose.
+  // hora que sigue a cada turno. Pasó por tres colores: nació rojo con un
+  // anillo que respiraba, el refinamiento del 2026-09-24 lo bajó a ámbar
+  // ("por cobrar, no alarma") y el dueño lo volvió a rojo el 2026-09-25: el
+  // complejo piloto acumuló cientos de miles de pesos sin cobrar y el ámbar no
+  // transmitía urgencia. La palabra es "No cobrado" — nunca "deuda" (el veto
+  // "No-show NO es deuda" sigue intacto: esto es plata de un turno cobrable).
   pending_charge: {
-    label: 'Por cobrar',
+    label: 'No cobrado',
     icon: CircleDollarSign,
-    tone: 'warning',
+    tone: 'destructive',
     inLegend: true,
   },
   no_show: {
@@ -165,9 +169,9 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
 /**
  * ¿Este turno terminado se quedó sin cobrar?
  *
- * Decisión de producto (2026-08-04, corregida 2026-09-09): "Por cobrar"
+ * Decisión de producto (2026-08-04, corregida 2026-09-09): "No cobrado"
  * significa **plata en cero o incompleta Y cobrable**, no "algo salió mal".
- * - `completed` con saldo pendiente → por cobrar: se jugó y falta plata.
+ * - `completed` con saldo pendiente → no cobrado: se jugó y falta plata.
  * - `no_show` → NUNCA, cobrado o no. En un no-show la seña es lo único
  *   cobrable (regla de producto) y ya se cobró; lo que queda sin cobrar no es
  *   deuda (veto "No-show NO es deuda", CLAUDE.md) y no hay ningún botón para
@@ -186,10 +190,10 @@ function isPendingCharge(facts: SlotFacts): boolean {
  * tipo, seña y plata cobrada.
  *
  * Orden de prioridad (el primero que matchea gana):
- * torneo → bloqueo → **por cobrar** → ausente → jugada → esperando seña →
+ * torneo → bloqueo → **no cobrado** → ausente → jugada → esperando seña →
  * señada → abonado → cancelada/expirada → confirmada.
  *
- * "Por cobrar" va antes que `completed` porque justamente lo refina: abajo de
+ * "No cobrado" va antes que `completed` porque justamente lo refina: abajo de
  * `completed` no se dispararía nunca. Ya NO refina a `no_show` (ver
  * `isPendingCharge`, 2026-09-09): un no-show nunca queda por cobrar, así que el
  * orden entre los dos dejó de importar en la práctica — se deja igual para no
@@ -284,16 +288,16 @@ export type BookingBadgeVisual = {
   accent: string
   /**
    * El turno terminó sin cobrar. En el listado esto NO reemplaza al label: es
-   * un flag para pintar la píldora "Por cobrar" APARTE, al lado del badge.
+   * un flag para pintar la píldora "No cobrado" APARTE, al lado del badge.
    */
   unpaid: boolean
 }
 
 /**
- * "Por cobrar" fuera de la celda: la píldora del listado y del detalle de
- * Reservas, la fila del tablero de Hoy y el chip "Por cobrar hoy" de la Grilla.
- * Sale de la MISMA fila de `SLOT_STATES` que pinta la celda, así que ninguna
- * superficie puede decir otra cosa de la misma situación.
+ * "No cobrado" fuera de la celda: la píldora del listado y del detalle de
+ * Reservas, la fila del tablero de Hoy y el chip "No cobrados hoy" de la
+ * Grilla. Sale de la MISMA fila de `SLOT_STATES` que pinta la celda, así que
+ * ninguna superficie puede decir otra cosa de la misma situación.
  */
 export const PENDING_CHARGE_BADGE = {
   label: SLOT_STATES.pending_charge.label,
@@ -311,33 +315,33 @@ export const PENDING_CHARGE_BADGE = {
  * cuando llegue" justo en la pantalla que se abre para saber a quién hay que
  * cobrarle. Decisión del dueño: gana el criterio de la grilla, en las tres.
  *
- * "Por cobrar" viaja al listado como **flag** (`unpaid`), NUNCA como label. La
+ * "No cobrado" viaja al listado como **flag** (`unpaid`), NUNCA como label. La
  * diferencia es el contrato entero de esta función:
  *
- * - En la grilla "Por cobrar" REEMPLAZA al label, porque una celda tiene lugar
+ * - En la grilla "No cobrado" REEMPLAZA al label, porque una celda tiene lugar
  *   para una sola palabra y ahí lo que importa es la plata.
  * - En un listado cuyo trabajo es mostrar el estado de cada reserva, reemplazar
- *   colapsaría "Jugada" y "Ausente" en un mismo "Por cobrar" y la columna de
+ *   colapsaría "Jugada" y "Ausente" en un mismo "No cobrado" y la columna de
  *   estado dejaría de decir el estado. Por eso el badge sigue diciendo el
  *   estado del turno y la plata va en una píldora al lado (`PENDING_CHARGE_BADGE`).
  *
- * El `accent` sí toma el tono de "Por cobrar" cuando `unpaid`: MASTER §2.6
+ * El `accent` sí toma el tono de "No cobrado" cuando `unpaid`: MASTER §2.6
  * asigna el COLOR al estado de la plata y el ícono+label a qué es la cosa. Una
- * tira verde al lado de una píldora ámbar rompería esa partición.
+ * tira verde al lado de una píldora roja rompería esa partición.
  *
  * Esto cierra el REQUIERE INPUT de T7 (el detalle mostraba el badge "Jugada"
  * arriba y "Saldo pendiente: $X" en Cobros más abajo, contradiciéndose en la
  * misma pantalla). Decisión del dueño, 2026-08-05: indicador aparte, el badge
  * de estado no cambia.
  *
- * Lo único que sigue divergiendo entre grilla y listado es eso: "Por cobrar".
+ * Lo único que sigue divergiendo entre grilla y listado es eso: "No cobrado".
  * La grilla lo pone en el label porque una celda tiene lugar para una palabra
  * sola; el listado lo pone al lado.
  */
 export function bookingBadgeVisual(facts: SlotFacts): BookingBadgeVisual {
   const raw = slotStateKey(facts)
   const unpaid = raw === 'pending_charge'
-  // Por cobrar, el estado real se recupera re-preguntando SIN los datos de
+  // No cobrado: el estado real se recupera re-preguntando SIN los datos de
   // plata: `isPendingCharge` degrada a false con `pending`/`totalPaid` nulos,
   // así que esto devuelve el key que `slotStateKey` habría dado sin la plata. Evita
   // duplicar la tabla de prioridades y deja intacta la función que pinta la

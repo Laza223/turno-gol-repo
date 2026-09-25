@@ -1,8 +1,15 @@
 /**
- * El tablero "Turnos de hoy" de la pantalla Hoy: qué turno de cada cancha está
- * sin cobrar, en juego o por venir. Función pura — recibe los turnos del día,
+ * La cola de Hoy: a qué turnos hay que cobrarles AHORA y, cuando no queda
+ * nada, cuáles vienen. Función pura — recibe los turnos del día, el orden de
  * las canchas y un instante — para que se pueda probar con relojes fijos y
- * recalcular en el cliente cada minuto sin volver al servidor.
+ * recalcular en el cliente cada medio minuto sin volver al servidor.
+ *
+ * Rediseño del 2026-09-25 (docs/decisions/2026-09-25-hoy-cobrar-ahora.md): Hoy
+ * dejó de ser un tablero con todos los turnos del día. Mezclar los que vienen
+ * con los que hay que cobrar hacía que los segundos no se miraran, y el complejo
+ * piloto juntó cientos de miles de pesos en turnos jugados sin cobrar. Un turno
+ * entra a la cola cuando LLEGA SU HORA, no cuando termina: desde que empieza se
+ * le puede cobrar, y si termina sin cobrarse pasa a ser urgente.
  *
  * "Ya terminó" sale de `endsAt`, el instante físico que también valida el
  * servidor, y NO de la hora de pared del turno: `time_end='24:00'` y los slots
@@ -15,26 +22,20 @@ import { relativeTimeEs } from '@/lib/format'
 /** Un turno del día con sus instantes físicos en milisegundos. */
 export type BoardBooking = GridBooking & { startsAtMs: number; endsAtMs: number }
 
-export type BoardCourt = {
-  id: string
-  name: string
-  status: 'online' | 'offline'
-  /** Jugadores que entran en la cancha (`format × 2`): sin esto no se cuenta "Pagaron 4 de 10". */
-  capacity?: number
-}
+/** Un turno para cobrar ahora. `ended`: ya terminó, o sea que se jugó y no se cobró. */
+type QueueItem = { booking: BoardBooking; ended: boolean }
 
-export type BoardRowKind = 'unpaid' | 'live' | 'upcoming'
-
-export type BoardRow = { kind: BoardRowKind; booking: BoardBooking }
-
-export type BoardColumn = {
-  courtId: string
-  courtName: string
-  capacity?: number
-  /** Cancha pausada que solo aparece porque le quedó un turno sin cobrar. */
-  offline: boolean
-  /** Sin cobrar primero (van fijas), después por hora de inicio. */
-  rows: BoardRow[]
+export type ChargeQueue = {
+  /**
+   * Empezados y con saldo: primero los que terminaron, el más reciente arriba
+   * (es el grupo que está pasando por el mostrador), y después los que se están
+   * jugando. Dentro de cada tanda, en el orden de las canchas de la Grilla.
+   */
+  now: QueueItem[]
+  /** Los que todavía no empezaron, por hora y cancha: lo que Hoy muestra cuando no hay nada para cobrar. */
+  upcoming: BoardBooking[]
+  /** Si ya empezó algún turno hoy: separa "todo cobrado" de "todavía no se jugó nada". */
+  anyStarted: boolean
 }
 
 /** ¿El turno ya terminó a `nowMs`? Un turno que termina justo ahora ya terminó. */
@@ -43,75 +44,136 @@ export function hasEndedAt(booking: Pick<BoardBooking, 'endsAtMs'>, nowMs: numbe
 }
 
 /**
- * En qué bloque del tablero cae el turno, o `null` si no aparece (terminado y
- * pagado, ausente, bloqueo de mantenimiento, cancelado).
- *
- * "Sin cobrar" exige que el turno sea de un cliente: una hora de torneo no se
- * cobra por turno (la plata entra por la inscripción) y un bloqueo no es de nadie.
+ * ¿Hay que cobrarle a este turno ahora? El mismo criterio que `chargeMode` (el
+ * modal ofrece cobrar exactamente a estos): saldo conocido y positivo, turno de
+ * un cliente (una hora de torneo se paga con la inscripción y un bloqueo no es
+ * de nadie), confirmado o ya jugado — y además que haya llegado su hora.
+ * Una cancha pausada no lo saca: la plata de un turno que se jugó sigue siendo plata.
  */
-export function boardRowKind(booking: BoardBooking, nowMs: number): BoardRowKind | null {
-  if (booking.type === 'block' || booking.status === 'no_show') return null
-
-  const owes = typeof booking.pending === 'number' && booking.pending > 0
-  const isClient = booking.type !== 'tournament'
-  const ended = hasEndedAt(booking, nowMs)
-
-  if (
-    isClient &&
-    owes &&
-    (booking.status === 'completed' || (booking.status === 'confirmed' && ended))
-  ) {
-    return 'unpaid'
-  }
-  if (ended || booking.status === 'completed') return null
-
-  if (booking.status !== 'confirmed' && booking.status !== 'pending_payment') return null
-  return booking.startsAtMs <= nowMs ? 'live' : 'upcoming'
+function isDueNow(booking: BoardBooking, nowMs: number): boolean {
+  if (typeof booking.pending !== 'number' || booking.pending <= 0) return false
+  if (booking.type === 'block' || booking.type === 'tournament') return false
+  if (booking.status === 'completed') return true
+  return booking.status === 'confirmed' && booking.startsAtMs <= nowMs
 }
 
-const KIND_ORDER: Record<BoardRowKind, number> = { unpaid: 0, live: 1, upcoming: 1 }
+export function buildChargeQueue(
+  bookings: BoardBooking[],
+  courts: ReadonlyArray<{ id: string }>,
+  nowMs: number,
+): ChargeQueue {
+  const courtOrder = new Map(courts.map((c, i) => [c.id, i]))
+  // Una cancha que ya no está en la lista (borrada) va al final, no se pierde.
+  const courtRank = (b: BoardBooking) => courtOrder.get(b.courtId) ?? courts.length
+  const byCourt = (a: BoardBooking, b: BoardBooking) =>
+    courtRank(a) - courtRank(b) || a.id.localeCompare(b.id)
+
+  const now: QueueItem[] = []
+  const upcoming: BoardBooking[] = []
+  let anyStarted = false
+  for (const booking of bookings) {
+    if (booking.type === 'block') continue
+    const started = booking.startsAtMs <= nowMs
+    if (started && booking.status !== 'pending_payment') anyStarted = true
+    if (isDueNow(booking, nowMs)) {
+      now.push({ booking, ended: booking.status === 'completed' || hasEndedAt(booking, nowMs) })
+    } else if (
+      !started &&
+      (booking.status === 'confirmed' || booking.status === 'pending_payment')
+    ) {
+      upcoming.push(booking)
+    }
+  }
+
+  now.sort(
+    (a, b) =>
+      Number(b.ended) - Number(a.ended) ||
+      (a.ended ? b.booking.endsAtMs - a.booking.endsAtMs : 0) ||
+      byCourt(a.booking, b.booking),
+  )
+  upcoming.sort((a, b) => a.startsAtMs - b.startsAtMs || byCourt(a, b))
+  return { now, upcoming, anyStarted }
+}
+
+/** Qué muestra una cancha: el turno para cobrar, el que se juega o el próximo. */
+type CourtFocus = { kind: 'due' | 'live' | 'next'; booking: BoardBooking }
+
+export type CourtTile = {
+  courtId: string
+  /** `null`: no le queda nada hoy. */
+  focus: CourtFocus | null
+  /** Otros turnos de esta cancha que también hay que cobrar ahora. */
+  moreDue: number
+}
+
+export type CourtBoard = {
+  tiles: CourtTile[]
+  /** La cola completa, en el orden en que se cobra ("Siguiente para cobrar"). */
+  queue: ChargeQueue
+  /** Turnos jugados y no cobrados de hoy, y su plata: lo que va en rojo. */
+  lateCount: number
+  lateCents: number
+}
 
 /**
- * Una columna por cancha, en el orden en que llegan (el mismo de la Grilla).
- * Las canchas pausadas solo entran si tienen algún turno sin cobrar, y ahí se
- * muestran solo esos: en una cancha pausada no se juega, pero la plata de un
- * turno que ya se jugó sigue siendo plata.
+ * El tablero de Hoy: UNA tarjeta por cancha con UN turno (pedido del dueño,
+ * 2026-09-25, sobre la cola de la misma mañana: una lista larga no es una pantalla
+ * de acción y con doce canchas no entraba). Cada cancha muestra, en este orden:
+ *
+ *  1. **due**: el turno que terminó sin cobrarse (el más reciente); los otros de
+ *     esa cancha que también hay que cobrar se cuentan en `moreDue`.
+ *  2. **live**: el que se está jugando (pagado o no).
+ *  3. **next**: el próximo que empieza.
+ *
+ * Canchas: las que están en servicio, en el orden de la Grilla, más cualquier
+ * otra (pausada o borrada) que tenga algo para cobrar: esa plata no se esconde.
  */
-export function buildTodayBoard(
+export function buildCourtBoard(
   bookings: BoardBooking[],
-  courts: BoardCourt[],
+  courts: ReadonlyArray<{ id: string; status: 'online' | 'offline' }>,
   nowMs: number,
-): BoardColumn[] {
-  const rowsByCourt = new Map<string, BoardRow[]>()
-  for (const booking of bookings) {
-    const kind = boardRowKind(booking, nowMs)
-    if (!kind) continue
-    const list = rowsByCourt.get(booking.courtId)
-    if (list) list.push({ kind, booking })
-    else rowsByCourt.set(booking.courtId, [{ kind, booking }])
+): CourtBoard {
+  const queue = buildChargeQueue(bookings, courts, nowMs)
+  const late = queue.now.filter((item) => item.ended)
+
+  const courtIds = courts.filter((c) => c.status === 'online').map((c) => c.id)
+  const listed = new Set(courtIds)
+  for (const { booking } of queue.now) {
+    if (listed.has(booking.courtId)) continue
+    listed.add(booking.courtId)
+    courtIds.push(booking.courtId)
   }
 
-  const columns: BoardColumn[] = []
-  for (const court of courts) {
-    const all = rowsByCourt.get(court.id) ?? []
-    const offline = court.status === 'offline'
-    const rows = offline ? all.filter((r) => r.kind === 'unpaid') : all
-    if (offline && rows.length === 0) continue
-    rows.sort(
-      (a, b) =>
-        KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
-        a.booking.startsAtMs - b.booking.startsAtMs ||
-        a.booking.id.localeCompare(b.booking.id),
+  const tiles = courtIds.map((courtId): CourtTile => {
+    const due = queue.now.filter((item) => item.booking.courtId === courtId)
+    const ended = due.find((item) => item.ended)
+    if (ended)
+      return { courtId, focus: { kind: 'due', booking: ended.booking }, moreDue: due.length - 1 }
+
+    const own = bookings.filter((b) => b.courtId === courtId && b.type !== 'block')
+    const live = own.find(
+      (b) =>
+        b.startsAtMs <= nowMs &&
+        !hasEndedAt(b, nowMs) &&
+        (b.status === 'confirmed' || b.status === 'completed'),
     )
-    columns.push({
-      courtId: court.id,
-      courtName: court.name,
-      ...(court.capacity !== undefined ? { capacity: court.capacity } : {}),
-      offline,
-      rows,
-    })
+    if (live)
+      return {
+        courtId,
+        focus: { kind: 'live', booking: live },
+        moreDue: due.length - (due.some((d) => d.booking.id === live.id) ? 1 : 0),
+      }
+
+    const next = queue.upcoming.find((b) => b.courtId === courtId)
+    return { courtId, focus: next ? { kind: 'next', booking: next } : null, moreDue: due.length }
+  })
+
+  return {
+    tiles,
+    queue,
+    lateCount: late.length,
+    lateCents: late.reduce((sum, item) => sum + (item.booking.pending ?? 0), 0),
   }
-  return columns
 }
 
 /**

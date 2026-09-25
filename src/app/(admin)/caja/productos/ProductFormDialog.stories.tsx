@@ -13,6 +13,7 @@ const meta = {
   args: {
     open: true,
     product: null,
+    categorySuggestions: [],
     onClose: fn(),
     onSaved: fn(),
     createProductAction: fn(async (): Promise<ProductActionResult> => ({ success: true })),

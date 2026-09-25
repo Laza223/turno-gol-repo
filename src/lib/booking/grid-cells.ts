@@ -38,10 +38,16 @@ export type GridBooking = {
   // Plata efectivamente cobrada del turno (seña contada + cobros de mostrador)
   // y lo que falta, ambos en centavos. Los calcula summarizeBookingCharges en
   // el server. Sin ellos la grilla no puede saber si un turno terminado quedó
-  // sin cobrar, así que "Por cobrar" simplemente no se dispara — nunca se
+  // sin cobrar, así que "No cobrado" simplemente no se dispara — nunca se
   // inventa.
   totalPaid?: number | null
   pending?: number | null
+  // Cuánto de `totalPaid` se atribuyó a cada equipo (decisión del dueño
+  // 2026-09-25, cobro por equipo): centavos, o `null`/ausente en cobros sin
+  // atribuir. Opcionales: Realtime crudo y fixtures viejas no los traen — ahí
+  // `teamDues` (charge-copy.ts) cae al reparto deducido de siempre.
+  team1Paid?: number | null
+  team2Paid?: number | null
   // Sólo lo necesita el panel para linkear a `/torneos/{id}`. Opcional porque
   // los payloads viejos (fixtures, Realtime crudo) pueden no traerlo, y ahí el
   // link simplemente no se ofrece.
@@ -228,7 +234,7 @@ export function computeCells(
  * turnos sin dato de plata (Realtime crudo antes del reconcile) en vez de
  * contarlos como cero: el número baja un instante, nunca miente hacia arriba.
  */
-/** Un turno cuenta para "Por cobrar hoy": mismo criterio que {@link sumPendingCents}. */
+/** Un turno cuenta para "No cobrados hoy": mismo criterio que {@link sumPendingCents}. */
 export function isPendingCollection(b: GridBooking): boolean {
   return (
     typeof b.pending === 'number' &&

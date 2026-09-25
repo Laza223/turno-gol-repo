@@ -47,8 +47,8 @@ export const ConAlertas: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Necesita tu atención')).toBeVisible()
     await expect(canvas.getByText('2 pendientes')).toBeVisible()
-    // El turno terminado sin cobrar NO es una alerta: se cobra desde el tablero
-    // "Turnos de hoy" (2026-09-19), no desde un link a otra pantalla.
+    // El turno terminado sin cobrar NO es una alerta: se cobra desde "Cobrar
+    // ahora" en Hoy (2026-09-25), no desde un link a otra pantalla.
     await expect(canvas.queryByRole('link', { name: /Cobrar/ })).toBeNull()
     await expect(canvas.getByRole('link', { name: 'Ver reserva' })).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Ver devoluciones' })).toBeVisible()

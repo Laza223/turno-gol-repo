@@ -28,6 +28,11 @@ export type CashFlowRow = {
   bookingId: string | null
   /** Migr. 066. Equipo del cobro de inscripción; null en todo lo demás. */
   tournamentTeamId: string | null
+  /**
+   * Migr. 092. Equipo (1/2) del cobro de mostrador de un turno; null en todo
+   * lo que no distinga equipo (decisión del dueño 2026-09-25).
+   */
+  bookingTeam: 1 | 2 | null
   registeredBy: string
   occurredAt: Date
   createdAt: Date
@@ -93,6 +98,8 @@ export type CreateCashFlowInput = {
    * registerInscriptionPayment, igual que bookingId con addBookingChargeAction.
    */
   tournamentTeamId?: string
+  /** Migr. 092. Equipo (1/2) al que se atribuye el cobro de mostrador de un turno. */
+  bookingTeam?: 1 | 2
   occurredAt?: Date
   /** UUID v4 generado por el cliente al abrir el formulario. Previene duplicados por doble-submit. */
   clientIdempotencyKey?: string

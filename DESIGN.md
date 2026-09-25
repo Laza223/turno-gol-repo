@@ -2,169 +2,169 @@
 name: TurnoGol
 description: El sistema con el que un complejo de fútbol lleva su día (grilla, cobro, cantina y caja) y el portal donde el jugador reserva.
 colors:
-  primary: "hsl(163 94% 24%)"
-  primary-foreground: "hsl(0 0% 100%)"
-  background: "hsl(214 25% 91%)"
-  foreground: "hsl(224 71% 4%)"
-  card: "hsl(0 0% 100%)"
-  secondary: "hsl(214 32% 85%)"
-  muted-foreground: "hsl(215 20% 36%)"
-  border: "hsl(214 32% 83%)"
-  ring: "hsl(160 84% 39%)"
-  success: "hsl(142 72% 29%)"
-  warning: "hsl(32 95% 44%)"
-  info: "hsl(221 83% 53%)"
-  destructive: "hsl(0 72% 51%)"
-  primary-dark: "hsl(160 84% 39%)"
-  primary-foreground-dark: "hsl(224 71% 4%)"
-  background-dark: "hsl(224 71% 4%)"
-  foreground-dark: "hsl(210 40% 98%)"
-  card-dark: "hsl(222 33% 9%)"
-  secondary-dark: "hsl(217 33% 14%)"
-  accent-dark: "hsl(217 33% 17%)"
-  muted-foreground-dark: "hsl(215 20% 65%)"
-  border-dark: "hsl(217 33% 17%)"
-  success-dark: "hsl(142 70% 45%)"
-  warning-dark: "hsl(38 92% 50%)"
-  info-dark: "hsl(217 91% 60%)"
-  brand-text: "#047857"
-  brand-text-strong: "#065f46"
-  brand-text-dark: "#34d399"
-  brand-label-dark: "#6ee7b7"
-  night-slab: "#020617"
+  primary: 'hsl(163 94% 24%)'
+  primary-foreground: 'hsl(0 0% 100%)'
+  background: 'hsl(214 25% 91%)'
+  foreground: 'hsl(224 71% 4%)'
+  card: 'hsl(0 0% 100%)'
+  secondary: 'hsl(214 32% 85%)'
+  muted-foreground: 'hsl(215 20% 36%)'
+  border: 'hsl(214 32% 83%)'
+  ring: 'hsl(160 84% 39%)'
+  success: 'hsl(142 72% 29%)'
+  warning: 'hsl(32 95% 44%)'
+  info: 'hsl(221 83% 53%)'
+  destructive: 'hsl(0 72% 51%)'
+  primary-dark: 'hsl(160 84% 39%)'
+  primary-foreground-dark: 'hsl(224 71% 4%)'
+  background-dark: 'hsl(224 71% 4%)'
+  foreground-dark: 'hsl(210 40% 98%)'
+  card-dark: 'hsl(222 33% 9%)'
+  secondary-dark: 'hsl(217 33% 14%)'
+  accent-dark: 'hsl(217 33% 17%)'
+  muted-foreground-dark: 'hsl(215 20% 65%)'
+  border-dark: 'hsl(217 33% 17%)'
+  success-dark: 'hsl(142 70% 45%)'
+  warning-dark: 'hsl(38 92% 50%)'
+  info-dark: 'hsl(217 91% 60%)'
+  brand-text: '#047857'
+  brand-text-strong: '#065f46'
+  brand-text-dark: '#34d399'
+  brand-label-dark: '#6ee7b7'
+  night-slab: '#020617'
 typography:
   display:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(26px, 6vw, 36px)"
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
+    fontSize: 'clamp(26px, 6vw, 36px)'
     fontWeight: 900
     lineHeight: 1
-    letterSpacing: "-0.03em"
+    letterSpacing: '-0.03em'
   headline:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.5rem"
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '1.5rem'
     fontWeight: 700
     lineHeight: 1.333
-    letterSpacing: "-0.025em"
+    letterSpacing: '-0.025em'
   numeral:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.875rem"
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '1.875rem'
     fontWeight: 700
     lineHeight: 1.2
-    letterSpacing: "-0.025em"
-    fontFeature: "tnum"
+    letterSpacing: '-0.025em'
+    fontFeature: 'tnum'
   title:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.125rem"
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '1.125rem'
     fontWeight: 600
     lineHeight: 1
-    letterSpacing: "-0.025em"
+    letterSpacing: '-0.025em'
   body:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.875rem"
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '0.875rem'
     fontWeight: 400
     lineHeight: 1.43
   label:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.875rem"
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '0.875rem'
     fontWeight: 500
     lineHeight: 1.43
   caption:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.75rem"
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '0.75rem'
     fontWeight: 500
     lineHeight: 1.333
   microlabel:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.75rem"
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '0.75rem'
     fontWeight: 600
     lineHeight: 1
-    letterSpacing: "0.06em"
+    letterSpacing: '0.06em'
 rounded:
-  sm: "4px"
-  md: "6px"
-  lg: "8px"
-  xl: "12px"
-  2xl: "16px"
-  full: "9999px"
+  sm: '4px'
+  md: '6px'
+  lg: '8px'
+  xl: '12px'
+  2xl: '16px'
+  full: '9999px'
 spacing:
-  "1": "4px"
-  "2": "8px"
-  "3": "12px"
-  "4": "16px"
-  "5": "20px"
-  "6": "24px"
-  "8": "32px"
-  "12": "48px"
+  '1': '4px'
+  '2': '8px'
+  '3': '12px'
+  '4': '16px'
+  '5': '20px'
+  '6': '24px'
+  '8': '32px'
+  '12': '48px'
 components:
   button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.primary-foreground}"
-    typography: "{typography.label}"
-    rounded: "{rounded.lg}"
-    padding: "8px 16px"
-    height: "40px"
+    backgroundColor: '{colors.primary}'
+    textColor: '{colors.primary-foreground}'
+    typography: '{typography.label}'
+    rounded: '{rounded.lg}'
+    padding: '8px 16px'
+    height: '40px'
   button-primary-hover:
-    backgroundColor: "hsl(163 94% 24% / 0.9)"
+    backgroundColor: 'hsl(163 94% 24% / 0.9)'
   button-outline:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.foreground}"
-    typography: "{typography.label}"
-    rounded: "{rounded.lg}"
-    padding: "8px 16px"
-    height: "40px"
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+    typography: '{typography.label}'
+    rounded: '{rounded.lg}'
+    padding: '8px 16px'
+    height: '40px'
   button-ghost:
-    textColor: "{colors.foreground}"
-    typography: "{typography.label}"
-    rounded: "{rounded.lg}"
-    padding: "8px 16px"
-    height: "40px"
+    textColor: '{colors.foreground}'
+    typography: '{typography.label}'
+    rounded: '{rounded.lg}'
+    padding: '8px 16px'
+    height: '40px'
   button-destructive:
-    backgroundColor: "{colors.destructive}"
-    textColor: "#ffffff"
-    typography: "{typography.label}"
-    rounded: "{rounded.lg}"
-    padding: "8px 16px"
-    height: "40px"
+    backgroundColor: '{colors.destructive}'
+    textColor: '#ffffff'
+    typography: '{typography.label}'
+    rounded: '{rounded.lg}'
+    padding: '8px 16px'
+    height: '40px'
   input:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.foreground}"
-    typography: "{typography.body}"
-    rounded: "{rounded.lg}"
-    padding: "8px 14px"
-    height: "40px"
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+    typography: '{typography.body}'
+    rounded: '{rounded.lg}'
+    padding: '8px 14px'
+    height: '40px'
   status-badge:
-    typography: "{typography.caption}"
-    rounded: "{rounded.full}"
-    padding: "2px 8px"
+    typography: '{typography.caption}'
+    rounded: '{rounded.full}'
+    padding: '2px 8px'
   card-premium:
-    backgroundColor: "{colors.card}"
-    rounded: "{rounded.xl}"
-    padding: "20px"
+    backgroundColor: '{colors.card}'
+    rounded: '{rounded.xl}'
+    padding: '20px'
   nav-rail-item:
-    textColor: "{colors.muted-foreground}"
-    rounded: "10px"
-    height: "52px"
-    width: "60px"
+    textColor: '{colors.muted-foreground}'
+    rounded: '10px'
+    height: '52px'
+    width: '60px'
   nav-rail-item-active:
-    backgroundColor: "hsl(163 94% 24% / 0.1)"
-    textColor: "{colors.brand-text-strong}"
+    backgroundColor: 'hsl(163 94% 24% / 0.1)'
+    textColor: '{colors.brand-text-strong}'
   dialog:
-    backgroundColor: "{colors.card}"
-    rounded: "{rounded.2xl}"
-    padding: "24px"
+    backgroundColor: '{colors.card}'
+    rounded: '{rounded.2xl}'
+    padding: '24px'
   tooltip:
-    backgroundColor: "{colors.foreground}"
-    textColor: "{colors.background}"
-    typography: "{typography.caption}"
-    rounded: "{rounded.md}"
-    padding: "6px 10px"
+    backgroundColor: '{colors.foreground}'
+    textColor: '{colors.background}'
+    typography: '{typography.caption}'
+    rounded: '{rounded.md}'
+    padding: '6px 10px'
   nav-tab-active:
-    textColor: "{colors.brand-text-strong}"
-    typography: "{typography.label}"
-    height: "36px"
+    textColor: '{colors.brand-text-strong}'
+    typography: '{typography.label}'
+    height: '36px'
   grid-slot:
-    rounded: "{rounded.md}"
-    padding: "6px 8px"
+    rounded: '{rounded.md}'
+    padding: '6px 8px'
 ---
 
 # Design System: TurnoGol
@@ -211,9 +211,9 @@ Esmeralda de cancha sobre slate frío: un solo protagonista verde, neutros que c
 ### Status
 
 - **Cobrado** (`success`: hsl(142 72% 29%) = green-700 · `success-dark`: hsl(142 70% 45%)): confirmado, jugado, cobrado, ingreso.
-- **Pendiente** (`warning`: hsl(32 95% 44%) = amber-600 · `warning-dark`: hsl(38 92% 50%)): esperando seña, por cobrar, atención.
+- **Pendiente** (`warning`: hsl(32 95% 44%) = amber-600 · `warning-dark`: hsl(38 92% 50%)): esperando seña, atención.
 - **Informativo** (`info`: hsl(221 83% 53%) = blue-600 · `info-dark`: hsl(217 91% 60%) = blue-500): en proceso (MercadoPago), confirmado a cobrar, avisos neutros. El azul de MercadoPago se permite solo dentro del contexto de pago.
-- **Peligro** (`destructive`: hsl(0 72% 51%) = red-600, igual en los dos temas): borrar, ausente, egreso, error.
+- **Peligro** (`destructive`: hsl(0 72% 51%) = red-600, igual en los dos temas): borrar, ausente, egreso, error y el turno jugado y no cobrado ("No cobrado", decisión del dueño del 2026-09-25: es plata que no entró).
 
 Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscuro (rojo: 700 y 300). Esas clases, los tintes al 10/15 % y el borde izquierdo de la grilla salen de `TONE_BADGE`, `TONE_TEXT`, `TONE_TINT` y `TONE_BORDER` en `src/lib/status-tone.ts`, con seis tonos: `success`, `warning`, `info`, `destructive`, `neutral` y `brand`.
 
@@ -264,6 +264,8 @@ El panel es un marco fijo con el contenido en el medio. En `lg` (1024 px) aparec
 - **Breakpoints:** los de Tailwind v4 (`sm` 640, `md` 768, `lg` 1024, `xl` 1280, `2xl` 1536). En `md` los campos bajan a 14 px y los botones a 40 px; en `lg` aparece el riel.
 - **Piso:** el panel se diseña para la notebook del mostrador (ver `PRODUCT.md`) y no debe tener scroll horizontal a 375 px. En el teléfono, todo blanco táctil mide 44 px o más.
 - **Capas (z-index):** barra superior 20 · riel 30 · barra inferior y velo de diálogo 40 · diálogo, sheet, popover, menú y tooltip 50 · toasts 100.
+- **Scroll interno:** una lista que scrollea adentro de una tarjeta (el catálogo y el ticket de Vender) lleva barra fina con las utilidades nativas de Tailwind: `scrollbar-thin scrollbar-thumb-muted-foreground/45 scrollbar-track-transparent`. La barra del sistema, en oscuro, es un bloque gris claro que pesa más que la lista. No se define una utilidad propia con un nombre que Tailwind ya usa.
+- **Bandas de estado:** la banda a lo ancho de arriba (`StatusBanner`) es solo para lo que afecta el servicio: pago vencido, cuenta suspendida o cancelada, servicio degradado. El período de prueba no es una banda: vive en el riel (ver Navigation).
 
 ## Elevation & Depth
 
@@ -334,7 +336,7 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 
 ### Navigation
 
-- **Riel (`AdminSidebar`, `lg` en adelante):** 72 px de ancho sobre `card` con borde derecho. Cada ítem mide 60×52 px: ícono de 20 px arriba y rótulo de 10 px abajo, siempre visible (en una tablet no hay hover). Activo: fondo `primary` al 10 %, rótulo `emerald-800`/`emerald-300` e ícono `emerald-700`/`emerald-400`. Configuración va aparte, al pie, rotulada "Ajustes"; más abajo, el avatar de 44 px con la cuenta. Un espacio puede agrupar varias rutas y resuelve su estructura interna con pestañas, nunca con submenús.
+- **Riel (`AdminSidebar`, `lg` en adelante):** 72 px de ancho sobre `card` con borde derecho. En touch (sin hover) cada ítem mide 60×52 px: ícono de 20 px arriba y rótulo de 10 px abajo, siempre visible — en una tablet no hay hover y un ícono solo es una adivinanza. Con mouse (`pointer-fine`) el riel es solo íconos, y al pasar el mouse o tener el foco adentro se despliega en overlay a ~224 px (no empuja el contenido) mostrando el rótulo a la derecha de cada ícono, que no se mueve de su columna; abre en 200 ms con un delay de 120 ms para que cruzarlo con el mouse no lo dispare, cierra sin delay; `motion-reduce` no anima. Activo: fondo `primary` al 10 %, rótulo `emerald-800`/`emerald-300` e ícono `emerald-700`/`emerald-400`. Configuración va aparte, al pie, rotulada "Ajustes"; más abajo, el avatar de 44 px con la cuenta (no se despliega: no tiene ícono+rótulo). Durante la prueba, arriba de Ayuda va un ítem de 60×52 con anillo de 1 px: "Prueba" y los días que quedan, ya en dos líneas de texto y sin cambios al desplegar; los últimos 7 días pasa a ámbar. Al dueño lo lleva a Facturación ("Elegir plan"); al encargado solo le informa. En el cajón es una fila de dos renglones, para que los días no se corten. Un espacio puede agrupar varias rutas y resuelve su estructura interna con pestañas, nunca con submenús.
 - **Barra superior (`AdminHeader`):** 60 px sobre `card` con borde inferior. Nombre del complejo en microrrótulo a la izquierda, hueco de vista en el medio, tema a la derecha.
 - **Barra inferior (`AdminBottomNav`, debajo de `lg`):** fija, cuatro accesos de al menos 56 px de alto con ícono y rótulo de 11 px; el cuarto, "Más", abre el cajón (`Sheet` lateral) con todos los espacios.
 - **Pestañas (`ScrollTabs`):** subrayado de 2 px; la activa lleva borde `emerald-600` y texto `emerald-800`/`emerald-400`. Se deslizan en horizontal si no entran.
@@ -343,7 +345,7 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 
 ### Dialogs, Sheets and Toasts
 
-- **Diálogo:** esquina de 16 px, `p-6`, 576 px de ancho por defecto (`max-w-xl`); `ConfirmDialog`, el más usado, va en 448 px (`max-w-md`). Arriba en el teléfono y centrado desde 768 px. Entra con fade y zoom de 95 a 100 % en 200 ms. Escape y la X cierran.
+- **Diálogo:** esquina de 16 px, `p-6`, 576 px de ancho por defecto (`max-w-xl`); `ConfirmDialog`, el más usado, va en 448 px (`max-w-md`), y el modal de cobro de un turno en 672 px (`max-w-2xl`), para que los dos equipos entren lado a lado. Arriba en el teléfono y centrado desde 768 px. Entra con fade y zoom de 95 a 100 % en 200 ms. Escape y la X cierran.
 - **Confirmar o deshacer:** la fricción crece con el costo, en tres escalones. Lo reversible y barato se hace ya y ofrece "Deshacer" en el toast, solo si existe la acción inversa de verdad. Lo costoso pero explicable pasa por `ConfirmDialog` con sus consecuencias listadas. Lo irreversible con plata real suma tipear una frase (`confirmationPhrase`). En el diálogo destructivo el botón rojo va separado del cancelar. Nunca `window.confirm()` ni `alert()`.
 - **Sheet:** lateral derecho de 384 px para detalle, izquierdo de 288 px para el cajón de navegación, inferior con esquinas de 16 px en el teléfono.
 - **Toast:** abajo a la derecha, tarjeta con una barra de acento a la izquierda (esmeralda a teal, o roja). Éxito se va a los 4 s; error queda hasta que se cierra; con acción, 10 s. El texto dice qué pasó y qué sigue.
@@ -352,16 +354,27 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 
 ### Grilla de turnos
 
-La pieza propia del panel (`BookingCard` + `slot-visual.ts`). Cada turno es un bloque de esquina de 6 px con el **borde izquierdo de 3 px** del tono de su estado y un tinte suave del mismo tono; el color cuenta el estado de la plata y el ícono con el rótulo cuentan qué es. El horario libre es una celda `card` con borde tenue que al pasar el mouse toma borde esmeralda y muestra un `+`. Lo bloqueado lleva el rayado diagonal. La reserva que entra por Realtime pulsa una vez (600 ms). El turno jugado y sin cobrar dice "Por cobrar" en ámbar, sin anillo: es un estado más. El único anillo de la grilla es el ámbar de 2 px que pone el chip "Por cobrar hoy" al encenderse sobre los turnos que deben plata (jugados y confirmados).
+La pieza propia del panel (`BookingCard` + `slot-visual.ts`). Cada turno es un bloque de esquina de 6 px con el **borde izquierdo de 3 px** del tono de su estado y un tinte suave del mismo tono; el color cuenta el estado de la plata y el ícono con el rótulo cuentan qué es. El horario libre es una celda `card` con borde tenue que al pasar el mouse toma borde esmeralda y muestra un `+`. Lo bloqueado lleva el rayado diagonal. La reserva que entra por Realtime pulsa una vez (600 ms). El turno jugado y sin cobrar dice "No cobrado" en rojo (decisión del dueño del 2026-09-25: es plata que no entró, y el ámbar no se sentía urgente); nunca "deuda". El único anillo de la grilla es el rojo de 2 px que pone el chip "No cobrados hoy" al encenderse sobre los turnos que deben plata (jugados y confirmados).
+
+### Tablero de Hoy
+
+La otra pieza del mostrador (`CourtBoard` + el modal `VenderDialog`), rehecha el 2026-09-25 para que Hoy sea una pantalla de acción (`docs/decisions/2026-09-25-hoy-cobrar-ahora.md`). El dueño eligió el diseño de las filas y el del modal de Vender entre variantes ese mismo día.
+
+- **Turnos de hoy:** UNA tarjeta con una fila por cancha en servicio (en el orden de la Grilla; una pausada aparece solo si debe plata), 1 columna en el teléfono y 2 desde 40 rem de ancho. Cada fila es UN botón con UN turno: la cancha, el nombre en 15 px con "cuándo · detalle" debajo (`MetaLine`, que nunca deja un "·" colgando), la plata a la derecha y abajo el reloj del turno: hora de inicio, una barra de 4 px y hora de fin. Con menos de 25 rem de fila el nombre de la cancha sube arriba del turno para que "Cobrar $X" no aplaste el nombre. El tablero va a todo el ancho: doce canchas miden 662 px de alto en la notebook (806 px con 682 px de ancho).
+- **Qué turno muestra:** el que terminó sin cobrarse (el más reciente; los otros de esa cancha se cuentan: "+1 más por cobrar"); si no, el que se juega ("Termina en 25 min", lo que falta y la barra llenándose en verde); si no, el próximo ("Empieza en 25 min" o "Empieza a las 23:00", barra vacía); si no, "Sin más turnos hoy" con borde punteado.
+- **Cobrar ahora:** la fila del turno jugado y no cobrado va en rojo (borde al 40 %, fondo al 5 % en claro y 10 % en oscuro), con "Terminó hace N min" en rojo, la barra llena en rojo y el botón rojo "Cobrar $X" con un punto que late (`animate-ping`, congelado con `prefers-reduced-motion`). El encabezado del tablero dice "N sin cobrar · $X" en rojo, o "Todo cobrado" en verde.
+- **Pagado:** la fila de un turno pagado entero se tiñe de verde igual que la roja (borde al 40 %, fondo al 5 % y 10 %), con "Pagado" a la derecha (pedido del dueño, 2026-09-25). Un torneo no se cobra por turno y va sin color.
+- **Turnos no cobrados de días anteriores:** UN renglón debajo del tablero, con la cantidad y el total en rojo y "Ver y cobrar", que abre la lista en un diálogo; cada turno se cobra con el mismo modal. Nunca una lista en la pantalla.
+- **Vender (modal):** lo abre el botón "Vender" de la barra superior, a todos los anchos, o la tecla V (salvo escribiendo en un campo o con otro diálogo abierto). Mide hasta 1120×640 px y tiene tres columnas desde `lg`: los rubros ("Más vendidos" con estrella, cada categoría, "Otros" para lo que no tiene y "Todos"; sin categorías quedan solo "Más vendidos" y "Todos"), la lista del rubro y la venta a la derecha. Debajo de `lg` los rubros pasan a una tira de chips y, en el teléfono, la venta baja al pie. El catálogo son renglones con nombre y precio, no tarjetas (el stock solo cuando avisa: "Quedan 3" en ámbar o "Agotado" en rojo); lo que ya está en la venta muestra la cantidad en una pastilla `primary`. El buscador busca en todo el catálogo, ↑↓ eligen, Enter suma y F2 cobra; la ayuda de teclas va al pie. La venta: renglones con − cantidad +, el total en `font-display` de 28 px, el método de pago, "Cobrar $X" y "Anotar como fiado" sin borde. Después de cobrar el modal se cierra solo; con una venta sin confirmar no se cierra.
 
 ## Do's and Don'ts
 
 ### Do:
 
 - **Do** usar solo tokens semánticos en las primitivas (`bg-card`, `text-foreground`, `border-border`, `bg-primary`, `ring-ring`). La paleta cruda de Tailwind entra solo para semántica de dominio, y a través de `src/lib/status-tone.ts`.
-- **Do** pintar cada estado con color, ícono y texto (`StatusBadge`, `slot-visual.ts`), con el vocabulario único de estados: el panel y el portal dicen lo mismo.
+- **Do** pintar cada estado con color, ícono y texto (`StatusBadge`, `slot-visual.ts`), con el vocabulario único de estados: el panel y el portal dicen lo mismo. La excepción es el tablero de Hoy: el estado de los próximos turnos va con texto en gris, sin pastilla, porque ahí el color es de la plata: rojo lo que hay que cobrar, verde lo pagado.
 - **Do** probar cada pantalla en claro y en oscuro, con contraste medido: 4,5:1 en texto y 3:1 en componentes (la suite a11y de Storybook corre en los dos temas).
-- **Do** mantener el movimiento de los controles del panel en 200 ms o menos, animando transform, opacidad, color o sombra, nunca ancho, alto ni posición. Las excepciones de hoy: la sheet al abrir (300 ms), el levante de `.card-premium-interactive` (250 ms) y el pulso de un turno nuevo (600 ms, una vez). `prefers-reduced-motion` congela todo desde `globals.css`: una animación nueva tiene que verse bien congelada.
+- **Do** mantener el movimiento de los controles del panel en 200 ms o menos, animando transform, opacidad, color o sombra, nunca ancho, alto ni posición. Las excepciones de hoy: la sheet al abrir (300 ms), el levante de `.card-premium-interactive` (250 ms), el pulso de un turno nuevo (600 ms, una vez) y el punto que late en el botón "Cobrar $X" de Hoy (pedido del dueño, 2026-09-25). `prefers-reduced-motion` congela todo desde `globals.css`: una animación nueva tiene que verse bien congelada.
 - **Do** colgar los controles de una vista en el hueco de la barra superior (`AdminHeaderSlot`) en vez de sumar filas de encabezado.
 - **Do** reservar 44 px de blanco táctil debajo de 768 px (`h-11 md:h-10`) y dejar la fila entera clickeable cuando abre un detalle.
 - **Do** escribir en voseo, en sentence case y con el vocabulario de pantalla de `PRODUCT.md`; mayúsculas solo en microrrótulos de una o dos palabras con `tracking`.
@@ -369,10 +382,10 @@ La pieza propia del panel (`BookingCard` + `slot-visual.ts`). Cada turno es un b
 ### Don't:
 
 - **Don't** reemplazar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección "Tablero de partidas", descartada por el dueño el 2026-09-23).
-- **Don't** mostrar el turno terminado y sin cobrar como alarma ni como deuda: es "por cobrar" (principio 3 de `PRODUCT.md`). El anillo rojo que respiraba (`.slot-alarm-ring`) se eliminó el 2026-09-24.
+- **Don't** llamar "deuda" a un turno no cobrado, ni pintar de rojo un turno que todavía se está jugando: el rojo es de lo jugado y no cobrado (principio 3 de `PRODUCT.md`). La urgencia se dice con color y texto; el único movimiento es el punto que late en el botón "Cobrar $X" de Hoy (pedido del dueño, 2026-09-25). El anillo que respiraba alrededor de toda la celda de la Grilla (`.slot-alarm-ring`) se eliminó el 2026-09-24 y no vuelve.
 - **Don't** usar emerald-500 o emerald-600 como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600.
 - **Don't** escribir hex inline en JSX, ni sombras, degradés o vidrio inline; tampoco `dark:` sueltos para arreglar una primitiva: se arregla el token.
 - **Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`.
-- **Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton y de la web comercial.
+- **Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
 - **Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard ("Revenue", "Booking") frente al usuario.
 - **Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240).

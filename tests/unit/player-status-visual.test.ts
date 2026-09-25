@@ -58,15 +58,15 @@ describe('lo que el jugador ve distinto, a propósito', () => {
   })
 })
 
-describe('el "Por cobrar" de la caja no llega al jugador', () => {
-  it('ningún estado le muestra "Por cobrar"', () => {
+describe('el "No cobrado" de la caja no llega al jugador', () => {
+  it('ningún estado le muestra "No cobrado"', () => {
     for (const status of ESTADOS) {
       expect(playerBookingVisual(status).label, status).not.toBe(PENDING_CHARGE_BADGE.label)
     }
   })
 
   it('un turno jugado sin cobrar sigue diciendo "Jugada"', () => {
-    // En la grilla del complejo esa misma reserva dice "Por cobrar". Acá no:
+    // En la grilla del complejo esa misma reserva dice "No cobrado". Acá no:
     // que el jugador vea que el complejo no cobró no le sirve y expone un dato
     // del mostrador.
     expect(playerBookingVisual('completed').label).toBe('Jugada')

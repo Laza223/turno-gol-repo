@@ -107,11 +107,13 @@ export const Jugada: Story = {
 }
 
 /**
- * El turno se jugó y quedó plata sin cobrar: "Por cobrar" en ámbar, el tono de
- * lo pendiente. Es lo normal de la media hora que sigue al partido (principio 3
- * de PRODUCT.md), así que no lleva anillo ni late — hasta el 2026-09-24 era
- * "Sin cobrar" en rojo con un anillo que respiraba. No se atenúa aunque sea
- * pasado: desaturarlo le borraría el ámbar.
+ * El turno se jugó y quedó plata sin cobrar: "No cobrado" en rojo
+ * (`destructive`). Es lo normal de la media hora que sigue al partido, así que
+ * no lleva anillo ni late — pasó por rojo con anillo que respiraba, ámbar
+ * ("por cobrar, no alarma") desde el 2026-09-24 y volvió a rojo el
+ * 2026-09-25: el complejo piloto acumuló plata sin cobrar y el ámbar no
+ * transmitía urgencia. No se atenúa aunque sea pasado: desaturarlo le
+ * borraría el rojo.
  */
 export const PorCobrar: Story = {
   args: {
@@ -120,9 +122,9 @@ export const PorCobrar: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const cell = canvas.getByRole('button', { name: /Por cobrar/ })
-    await expect(canvas.getByText('Por cobrar')).toBeInTheDocument()
-    // Ni anillo ni atenuado: el anillo lo pone solo el chip "Por cobrar hoy".
+    const cell = canvas.getByRole('button', { name: /No cobrado/ })
+    await expect(canvas.getByText('No cobrado')).toBeInTheDocument()
+    // Ni anillo ni atenuado: el anillo lo pone solo el chip "No cobrados hoy".
     await expect(cell.className).not.toMatch(/ring-warning|ring-destructive|slot-alarm|saturate-50/)
     // El saldo va en el aria-label y, desde el rediseño, también a la vista: al
     // costado del nombre y en el color del estado, no como tercera línea.
@@ -200,18 +202,18 @@ export const Nueva: Story = {
 }
 
 /**
- * Chip "Por cobrar hoy" encendido: el turno que debe plata lleva un anillo
- * ámbar para encontrarlo en una matriz llena — el tono del chip y de "Por
- * cobrar", no el rojo de un error. Es foco de pantalla, no estado del turno:
- * por eso no cambia ni el color ni el rótulo ni el aria-label.
+ * Chip "No cobrados hoy" encendido: el turno que debe plata lleva un anillo
+ * rojo para encontrarlo en una matriz llena — el tono del chip y de "No
+ * cobrado". Es foco de pantalla, no estado del turno: por eso no cambia ni el
+ * color de la celda ni el rótulo ni el aria-label.
  */
 export const ResaltadaPorFoco: Story = {
-  name: 'spotlighted=true (el chip "Por cobrar hoy" está encendido)',
+  name: 'spotlighted=true (el chip "No cobrados hoy" está encendido)',
   args: { booking: toGridBooking(booking(), player()), spotlighted: true },
   play: async ({ canvasElement }) => {
     const cell = within(canvasElement).getByRole('button', { name: /Señada/ })
-    await expect(cell.className).toMatch(/ring-warning/)
-    await expect(cell.className).not.toMatch(/ring-destructive/)
+    await expect(cell.className).toMatch(/ring-destructive/)
+    await expect(cell.className).not.toMatch(/ring-warning/)
   },
 }
 

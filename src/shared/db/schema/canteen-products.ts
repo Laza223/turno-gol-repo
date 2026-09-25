@@ -26,6 +26,9 @@ export const canteenProducts = pgTable(
 
     isActive: boolean('is_active').notNull().default(true),
     sortOrder: integer('sort_order').notNull().default(0),
+    // Rubro opcional para agrupar el modal de Vender (Bebidas, Cervezas,
+    // Comida…). NULL = sin categorizar. Migración 093.
+    category: text('category'),
 
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
@@ -41,6 +44,10 @@ export const canteenProducts = pgTable(
     minStockNonneg: check(
       'chk_canteen_minstock_nonneg',
       sql`${table.minStock} IS NULL OR ${table.minStock} >= 0`,
+    ),
+    categoryLength: check(
+      'chk_canteen_category_length',
+      sql`${table.category} IS NULL OR length(trim(${table.category})) BETWEEN 1 AND 40`,
     ),
     tenantIdx: index('idx_canteen_products_tenant').on(
       table.tenantId,

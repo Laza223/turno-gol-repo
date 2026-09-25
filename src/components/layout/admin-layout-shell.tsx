@@ -13,6 +13,12 @@ import { SetupAlertsProvider } from './setup-alerts-context'
 import { StatusBanner } from './status-banner'
 import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 
+/** Días de prueba que le quedan al complejo, o null si no está en prueba. */
+function trialDaysLeft(tenantStatus: string, trialEndsAt: string | null): number | null {
+  if (tenantStatus !== 'trialing' || !trialEndsAt) return null
+  return Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86_400_000))
+}
+
 interface AdminLayoutShellProps {
   children: ReactNode
   tenantName: string
@@ -81,6 +87,7 @@ export function AdminLayoutShell({
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
         setupAlerts={setupAlerts}
+        trialDaysLeft={trialDaysLeft(tenantStatus, trialEndsAt)}
       />
 
       {/* Header */}
@@ -111,12 +118,9 @@ export function AdminLayoutShell({
           {/* Banner de impersonación (super admin): pegado bajo el header */}
           {impersonationBanner}
 
-          {/* Status banner */}
-          <StatusBanner
-            tenantStatus={tenantStatus}
-            trialEndsAt={trialEndsAt}
-            periodEnd={periodEnd}
-          />
+          {/* Estado de la cuenta, solo cuando corta o puede cortar el servicio.
+              El período de prueba va en el riel, arriba de Ayuda. */}
+          <StatusBanner tenantStatus={tenantStatus} periodEnd={periodEnd} />
 
           {/* Page content — slate gradient suave sobre el shell oscuro */}
           {/* El `pb` de mobile reserva el alto de AdminBottomNav (3.5rem) más el

@@ -15,6 +15,15 @@ const productNameSchema = z
   .min(1, 'El nombre no puede estar vacío.')
   .max(40, 'Máximo 40 caracteres')
 
+// Rubro opcional (Bebidas, Cervezas, Comida…): vacío se normaliza a null, no
+// a string vacío (la 093 exige `length(trim()) BETWEEN 1 AND 40` si no es NULL).
+const productCategorySchema = z
+  .string()
+  .trim()
+  .max(40, 'Máximo 40 caracteres')
+  .nullish()
+  .transform((v) => (v == null || v === '' ? null : v))
+
 export const createProductSchema = z.object({
   name: productNameSchema,
   // positive (no moneyCents/nonnegative): la 048 exige CHECK price > 0 — un 0
@@ -39,6 +48,7 @@ export const createProductSchema = z.object({
     .min(0, 'El orden no puede ser negativo.')
     .max(10_000, 'El orden no puede superar 10.000.')
     .optional(),
+  category: productCategorySchema,
 })
 
 export const updateProductSchema = z.object({

@@ -16,6 +16,7 @@ function rowToProduct(r: typeof canteenProducts.$inferSelect): CanteenProductRow
     minStock: r.minStock ?? null,
     isActive: r.isActive,
     sortOrder: r.sortOrder,
+    category: r.category ?? null,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }
@@ -60,6 +61,7 @@ export async function createProduct(
       stock: input.stock ?? null,
       minStock: input.minStock ?? null,
       sortOrder: input.sortOrder ?? 0,
+      category: input.category ?? null,
     })
     .returning()
 
@@ -106,6 +108,7 @@ export async function updateProduct(
       ...(patch.minStock !== undefined && { minStock: patch.minStock }),
       ...(patch.sortOrder !== undefined && { sortOrder: patch.sortOrder }),
       ...(patch.isActive !== undefined && { isActive: patch.isActive }),
+      ...(patch.category !== undefined && { category: patch.category }),
     })
     .where(and(eq(canteenProducts.id, productId), eq(canteenProducts.tenantId, tenantId)))
     .returning()

@@ -21,7 +21,7 @@ import { formatArs } from '@/lib/format'
 const TENANT = '11111111-1111-1111-1111-111111111111'
 const KEY = '22222222-2222-2222-2222-222222222222'
 
-type CommittedRow = { key: string; amount: number; method: string }
+type CommittedRow = { key: string; amount: number; method: string; bookingTeam?: 1 | 2 | null }
 
 /** `tx` mínimo: el helper sólo usa `execute` y lee el resultado como array. */
 function fakeTx(rows: CommittedRow[]): DbTx {
@@ -100,5 +100,27 @@ describe('resolveIdempotentCharges', () => {
   it('lote vacío no consulta la DB ni suma nada', async () => {
     const res = await resolveIdempotentCharges(TENANT, [], KEY, fakeTx([]))
     expect(res).toEqual({ ok: true, newChargingCents: 0 })
+  })
+
+  // Decisión del dueño 2026-09-25 (cobro por equipo): la comparación de
+  // contenido tiene que incluir el equipo, no solo monto y método.
+  it('reintento idéntico CON equipo: no vuelve a cobrar nada', async () => {
+    const res = await resolveIdempotentCharges(
+      TENANT,
+      [{ amount: 600_000, method: 'cash', bookingTeam: 1 }],
+      KEY,
+      fakeTx([{ key: `${KEY}-0`, amount: 600_000, method: 'cash', bookingTeam: 1 }]),
+    )
+    expect(res).toEqual({ ok: true, newChargingCents: 0 })
+  })
+
+  it('la misma clave con OTRO equipo es conflicto de contenido', async () => {
+    const res = await resolveIdempotentCharges(
+      TENANT,
+      [{ amount: 600_000, method: 'cash', bookingTeam: 2 }],
+      KEY,
+      fakeTx([{ key: `${KEY}-0`, amount: 600_000, method: 'cash', bookingTeam: 1 }]),
+    )
+    expect(res.ok).toBe(false)
   })
 })

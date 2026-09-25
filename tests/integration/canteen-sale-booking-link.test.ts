@@ -150,7 +150,7 @@ describe('venta de cantina cargada a un turno', () => {
     ])
 
     expect(detalle.chargesTotal).toBe(0)
-    expect(batch.get(bookingId) ?? 0).toBe(0)
+    expect(batch.get(bookingId)?.total ?? 0).toBe(0)
 
     const { totalPaid, pending } = summarizeBookingCharges({
       priceSnapshot: PRICE,
@@ -201,7 +201,7 @@ describe('venta de cantina cargada a un turno', () => {
 
     // Sólo el cobro de la cancha; la cerveza no suma ni resta.
     expect(detalle.chargesTotal).toBe(1_000_00)
-    expect(batch.get(bookingId)).toBe(1_000_00)
+    expect(batch.get(bookingId)?.total).toBe(1_000_00)
   }, 30_000)
 
   it('rechaza un turno de OTRO complejo: el FK no ve RLS, la validación sí', async () => {

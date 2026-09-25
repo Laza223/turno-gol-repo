@@ -74,12 +74,14 @@ type VisualBooking = {
 
 /**
  * Cuatro reservas en horarios fijos que cubren cuatro estados de badge distintos
- * (confirmada / esperando seña / señada / por cobrar). La grilla es la pantalla
+ * (confirmada / esperando seña / señada / no cobrado). La grilla es la pantalla
  * del producto: lo que interesa fotografiar es que se sigan viendo distinto.
  *
  * La jugada sin cobrar entró el 2026-09-24, cuando "Sin cobrar" en rojo con
- * anillo pasó a "Por cobrar" en ámbar: sin ella la foto no cubría ese estado y
- * un rojo de vuelta en la celda habría pasado sin que nadie lo viera.
+ * anillo pasó a "Por cobrar" en ámbar: sin ella la foto no cubría ese estado.
+ * El 2026-09-25 volvió a rojo y pasó a llamarse "No cobrado" (sin anillo en la
+ * celda, que sigue siendo del chip "No cobrados hoy"): sin esta reserva la
+ * foto no cubriría que el rojo volvió a la celda correcta.
  */
 const VISUAL_BOOKINGS: VisualBooking[] = [
   {

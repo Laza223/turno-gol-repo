@@ -2,6 +2,7 @@
 
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
@@ -30,6 +31,9 @@ import { HoyChargeModalDialogs } from './HoyChargeModalDialogs'
  */
 export type ChargeBooking = GridBooking
 
+/** El siguiente turno para cobrar, para seguir sin cerrar el modal (solo Hoy). */
+export type NextToCharge = { name: string; courtName: string; onOpen: () => void }
+
 export type HoyCourt = {
   id: string
   name: string
@@ -49,7 +53,8 @@ export type HoyCourt = {
  *
  * **Se queda abierto después de cobrar.** Los datos se refrescan solos
  * (`onMutated` dispara el `router.refresh()` del shell); cuando ya no falta
- * nada aparece "Cobrado ✓" y "Listo". Mientras hay un cobro en curso o los datos
+ * nada aparece "Cobrado ✓" y, en Hoy, "Cobrar el siguiente": cobrar cinco turnos
+ * seguidos no obliga a cerrar y buscar cada uno. Mientras hay un cobro en curso o los datos
  * se están refrescando (`locked`), nada de cobro se puede tocar: el segundo cobro
  * nunca sale con el saldo viejo, y tras "dar por jugado" el modo pasa de `finish`
  * a `settle` con la clave de idempotencia ya rotada.
@@ -67,6 +72,8 @@ export function HoyChargeModal({
   isRefreshing,
   actions,
   renderCanteenDialog,
+  allowNoShow = true,
+  next,
   onClose,
   onMutated,
   hasEnded: hasEndedFallback,
@@ -83,6 +90,13 @@ export function HoyChargeModal({
   isRefreshing: boolean
   actions: SlotPanelActions
   renderCanteenDialog?: RenderCanteenDialog
+  /**
+   * Ofrecer "Marcar ausente". La Grilla sí (es donde se anota); Hoy no: su modal
+   * es solo para cobrar (pedido del dueño, 2026-09-25).
+   */
+  allowNoShow?: boolean
+  /** El siguiente para cobrar. Sin esto (la Grilla) no se ofrece seguir de largo. */
+  next?: NextToCharge
   onClose: () => void
   /** Se cobró (o se movió/canceló): el shell tiene que refrescar la pantalla. */
   onMutated: () => void
@@ -167,19 +181,22 @@ export function HoyChargeModal({
   }
 
   const locked = isPending || isRefreshing
-  const gates = slotGates({
+  const baseGates = slotGates({
     booking,
     hasEnded,
     actions,
     hasCourts: courts.length > 0,
     hasCanteen: Boolean(renderCanteenDialog),
   })
+  const gates = { ...baseGates, canMarkNoShow: baseGates.canMarkNoShow && allowNoShow }
   const visual = gridSlotVisual(booking)
   const name = rowDisplayName(booking)
   // Un ausente nunca "Cobrado ✓": la seña capturada no es "se cobró todo", es
   // el único costo real de un no-show (veto de producto, CLAUDE.md).
   const settled = pending === 0 && booking.priceSnapshot > 0 && booking.status !== 'no_show'
   const isTournament = booking.type === 'tournament'
+  // Se jugó y no se cobró: el mismo rojo de "No cobrado" en la Grilla y en Hoy.
+  const late = (hasEnded || booking.status === 'completed') && pending > 0 && mode !== null
 
   // "Terminó hace 4 min" / "Empieza en 25 min" / "En juego": lo que el mostrador
   // necesita saber para decidir, en una línea. Sin instantes (fallback de la
@@ -202,6 +219,14 @@ export function HoyChargeModal({
   function closeModal() {
     if (retryTotal !== null) onMutated()
     onClose()
+  }
+
+  // Pasar al siguiente es cerrar este y abrir otro: mismo cuidado con un cobro
+  // que se cortó por la red.
+  function goNext() {
+    if (!next) return
+    if (retryTotal !== null) onMutated()
+    next.onOpen()
   }
 
   async function onConfirmNoShow() {
@@ -236,7 +261,13 @@ export function HoyChargeModal({
         }}
       >
         <DialogContent
-          className="max-w-lg gap-0 p-0 focus:outline-hidden"
+          // Ancho para que los dos equipos entren lado a lado (rediseño 2026-09-25):
+          // cobrar uno y después el otro sin bajar a buscarlo. `grid-cols-1` fija la
+          // columna al ancho del diálogo: sin eso, un renglón que no se parte (el de
+          // "Siguiente para cobrar") la estiraba y en el teléfono todo se salía por la
+          // derecha. Casi todo el alto de la ventana: en la notebook del mostrador
+          // (650 px) el 90% dejaba los dos equipos a medio ver.
+          className="max-w-2xl grid-cols-1 gap-0 p-0 focus:outline-hidden md:max-h-[calc(100dvh-2rem)]"
           // El foco arranca en el diálogo y no en el primer control: sería el menú
           // ⋯ (o el campo del monto, que en una tablet abre el teclado antes de
           // que se lea nada). El lector anuncia el título y Tab entra al cobro.
@@ -251,6 +282,7 @@ export function HoyChargeModal({
             timeStart={booking.timeStart}
             timeEnd={booking.timeEnd}
             when={when}
+            late={late}
             showBadge={!mode}
             visual={visual}
           />
@@ -266,7 +298,7 @@ export function HoyChargeModal({
           )}
 
           <div className="flex flex-col gap-4 p-5">
-            <SlotPriceSummary booking={booking} capacity={court?.capacity} />
+            <SlotPriceSummary booking={booking} capacity={court?.capacity} late={late} />
 
             <HoyChargeModalPaymentStatus
               booking={booking}
@@ -290,6 +322,7 @@ export function HoyChargeModal({
               onRetry={retryUnconfirmedCharge}
               settled={settled}
               onClose={onClose}
+              next={next ? { ...next, onOpen: goNext } : undefined}
               canConfirmDeposit={canConfirmDeposit}
               confirmDepositPaymentAction={actions.confirmDepositPaymentAction}
               onMutated={onMutated}
@@ -306,6 +339,31 @@ export function HoyChargeModal({
               onRevertNoShow={revertNoShow}
             />
           </div>
+
+          {/* Seguir de largo sin terminar este: un turno a medias (pagó un equipo)
+              queda a medias y vuelve a aparecer en la cola hasta que pague el otro.
+              Con el turno saldado el siguiente ya está arriba, en grande. Pegado
+              abajo: en la notebook del mostrador (650 px de alto) el modal con los
+              dos equipos se desplaza, y esto tiene que estar siempre a la vista. */}
+          {next && !settled && (
+            <div className="sticky bottom-0 border-t border-border bg-popover">
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={locked}
+                className="flex min-h-12 w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-60"
+              >
+                <span className="min-w-0 truncate text-muted-foreground">
+                  Siguiente para cobrar:{' '}
+                  <span className="font-medium text-foreground">
+                    {next.name}
+                    {next.courtName ? ` · ${next.courtName}` : ''}
+                  </span>
+                </span>
+                <ArrowRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

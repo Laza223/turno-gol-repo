@@ -176,13 +176,14 @@ export const PrimeraReserva: Story = {
 }
 
 /**
- * "Por cobrar" en ámbar (refinamiento 2026-09-24): un turno jugado con saldo y
- * otro confirmado con saldo. La celda jugada dice "Por cobrar" sin anillo — es
- * lo normal de la media hora que sigue al partido, no una alarma —, y el chip
- * "Por cobrar hoy" (ámbar) le pone un anillo ámbar a los dos al encenderse.
+ * "No cobrado" en rojo (`destructive`, decisión del dueño 2026-09-25 — revierte
+ * el ámbar del refinamiento 2026-09-24): un turno jugado con saldo y otro
+ * confirmado con saldo. La celda jugada dice "No cobrado" sin anillo — es lo
+ * normal de la media hora que sigue al partido —, y el chip "No cobrados hoy"
+ * (rojo) le pone un anillo rojo a los dos al encenderse.
  */
 export const PorCobrarHoy: Story = {
-  name: 'Chip "Por cobrar hoy" encendido → anillo ámbar en los que deben',
+  name: 'Chip "No cobrados hoy" encendido → anillo rojo en los que deben',
   beforeEach: () => {
     const [played, upcoming, ...rest] = saturdayAfternoonGridBookings().map((b) => ({
       ...b,
@@ -200,15 +201,15 @@ export const PorCobrarHoy: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const cell = canvas.getByRole('button', { name: /Por cobrar, falta cobrar/ })
-    // Sin chip: ningún anillo. El rojo que respiraba ya no existe.
+    const cell = canvas.getByRole('button', { name: /No cobrado, falta cobrar/ })
+    // Sin chip: ningún anillo. El que respiraba ya no existe.
     await expect(cell.className).not.toMatch(/ring-warning|ring-destructive|slot-alarm/)
 
-    const chip = await canvas.findByRole('button', { name: /^Por cobrar hoy/ })
+    const chip = await canvas.findByRole('button', { name: /^No cobrados hoy/ })
     await userEvent.click(chip)
     await expect(chip).toHaveAttribute('aria-pressed', 'true')
-    await waitFor(() => expect(cell.className).toMatch(/ring-warning/))
-    await expect(cell.className).not.toMatch(/ring-destructive/)
+    await waitFor(() => expect(cell.className).toMatch(/ring-destructive/))
+    await expect(cell.className).not.toMatch(/ring-warning/)
   },
 }
 

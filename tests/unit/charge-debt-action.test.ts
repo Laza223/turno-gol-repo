@@ -143,6 +143,57 @@ describe('chargeDebtAction', () => {
     )
   })
 
+  // Decisión del dueño 2026-09-25 (cobro por equipo): cada línea acepta un
+  // `team` opcional (1 o 2) que viaja al service como `bookingTeam`.
+  it('acepta team 1/2 y lo manda a chargeSplitPayment como bookingTeam', async () => {
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-team' }] as never)
+
+    const res = await chargeDebtAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash', team: 1 }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(vi.mocked(chargeSplitPayment)).toHaveBeenCalledWith(
+      'tenant-1',
+      'staff-1',
+      [{ amount: 100_00, method: 'cash', bookingTeam: 1 }],
+      expect.any(Function),
+      undefined,
+      expect.anything(),
+    )
+  })
+
+  it('rechaza team fuera de {1,2}', async () => {
+    const res = await chargeDebtAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash', team: 3 }],
+    } as never)
+    expect(res.success).toBe(false)
+    expect(vi.mocked(chargeSplitPayment)).not.toHaveBeenCalled()
+  })
+
+  it('sin team, chargeSplitPayment lo recibe igual que antes (sin bookingTeam)', async () => {
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-no-team' }] as never)
+
+    const res = await chargeDebtAction({
+      bookingId: BOOKING_ID,
+      charges: [{ amount: 100_00, method: 'cash' }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(vi.mocked(chargeSplitPayment)).toHaveBeenCalledWith(
+      'tenant-1',
+      'staff-1',
+      [{ amount: 100_00, method: 'cash' }],
+      expect.any(Function),
+      undefined,
+      expect.anything(),
+    )
+  })
+
   // Hallazgo C (TOCTOU): la validación del monto tiene que leer los charges
   // DESPUÉS de haber tomado el lock de la fila — si no, dos cobros
   // concurrentes leen el mismo pendiente y ambos pasan.

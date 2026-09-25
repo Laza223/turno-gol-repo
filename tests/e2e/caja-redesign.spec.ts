@@ -1,8 +1,8 @@
 /**
  * E2E — Caja: Vender (Hoy, /dashboard) y Cuentas (/caja/cuentas)
  *
- * Desde 2026-09-24 Vender se fue de `/caja` a Hoy (`/dashboard`): la columna
- * fija desde 1280 px (`VenderRail`, el viewport del proyecto `chromium`). `/caja`
+ * Desde 2026-09-24 Vender se fue de `/caja` a Hoy (`/dashboard`), y desde el
+ * 2026-09-25 es un modal que abre el botón "Vender" (`VenderDialog`). `/caja`
  * es ahora un redirect a `/caja/cuentas`, que sigue siendo el libro con el
  * diario de movimientos, los totales y el alta manual de un movimiento. Por
  * eso cada test vende en `/dashboard` y verifica en `/caja/cuentas`.
@@ -21,6 +21,7 @@
  */
 
 import { test, expect } from './fixtures'
+import { findProduct, openVender } from './_helpers/vender'
 
 /**
  * Crea un producto de cantina vía /caja/productos (ProductsTable + ProductFormDialog).
@@ -58,20 +59,19 @@ test.describe('Caja redesign', () => {
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
     await createCanteenProduct(page, productName, '500')
 
-    // Vender x2 en efectivo desde Hoy (columna Vender, `VenderRail`, fija desde
-    // 1280 px — el viewport del proyecto chromium): tap producto, tap producto
-    // de nuevo (suma la línea a qty 2), tap Cobrar — sin diálogo intermedio
-    // (Fase 3: TicketPanel, regla de oro 1 ítem = 2 taps).
+    // Vender x2 en efectivo desde Hoy (modal "Vender", `VenderDialog`): tocar el
+    // producto dos veces (suma la línea a qty 2) y Cobrar — sin diálogo intermedio.
     await page.goto('/dashboard', { waitUntil: 'networkidle' })
-    const aguaButton = page.getByRole('button', { name: new RegExp(`^${productName}`) }).first()
+    const vender = await openVender(page)
+    const aguaButton = await findProduct(vender, productName)
     await aguaButton.click()
     await aguaButton.click()
-    // Acotado a la fila del producto: la barra de cobro del teléfono (oculta en
-    // escritorio pero en el DOM) también dice "Agua … ×2" y rompe strict mode.
-    await expect(aguaButton.getByText('×2')).toBeVisible()
-    await page.getByRole('button', { name: /^Cobrar/ }).click()
+    await expect(aguaButton.getByText('2 en la venta')).toBeVisible()
+    await vender.getByRole('button', { name: /^Cobrar/ }).click()
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
+    // Después de cobrar el modal se cierra solo: se vuelve al tablero.
+    await expect(vender).toBeHidden()
 
     // La venta aparece en "Movimientos del día", que vive en Cuentas — recarga
     // completa para confirmar que persistió en DB, no solo en el estado local.
@@ -118,9 +118,10 @@ test.describe('Caja redesign', () => {
 
     // Un ticket con las dos líneas (1 tap cada una) y un solo Cobrar.
     await page.goto('/dashboard', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: new RegExp(`^${nameA}`) }).click()
-    await page.getByRole('button', { name: new RegExp(`^${nameB}`) }).click()
-    await page.getByRole('button', { name: /^Cobrar/ }).click()
+    const vender = await openVender(page)
+    await (await findProduct(vender, nameA)).click()
+    await (await findProduct(vender, nameB)).click()
+    await vender.getByRole('button', { name: /^Cobrar/ }).click()
 
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
 
@@ -187,10 +188,12 @@ test.describe('Caja redesign', () => {
 
     // Cargar el ticket y anotarlo como fiado en vez de cobrarlo.
     await page.goto('/dashboard', { waitUntil: 'networkidle' })
-    await page.getByRole('button', { name: new RegExp(productName) }).click()
-    await page.getByRole('button', { name: 'Anotar como fiado' }).click()
+    const vender = await openVender(page)
+    await (await findProduct(vender, productName)).click()
+    await vender.getByRole('button', { name: 'Anotar como fiado' }).click()
 
-    const tabDialog = page.getByRole('dialog')
+    // El fiado abre su diálogo encima del de Vender: se lo ubica por su título.
+    const tabDialog = page.getByRole('dialog', { name: 'Anotar fiado' })
     await expect(tabDialog).toBeVisible()
     // Una sola pregunta: el campo de nota libre se retiró (Ley 25.326).
     await tabDialog.getByLabel('¿A nombre de quién?').fill(debtorName)
@@ -205,11 +208,11 @@ test.describe('Caja redesign', () => {
 
     // En Cuentas el fiado es una fila más de la tabla de deudas. Se filtra por
     // nombre porque el tenant demo lo comparten otros specs.
-    await page.getByRole('searchbox', { name: 'Buscar deuda por nombre' }).fill(debtorName)
-    // Acotado a la región "Deudas": después del cobro, la fila del diario
+    await page.getByRole('searchbox', { name: 'Buscar por nombre' }).fill(debtorName)
+    // Acotado a la región "Sin cobrar": después del cobro, la fila del diario
     // ("Fiado cobrado — {nombre}") también contiene el nombre.
     const fiadoRow = page
-      .getByRole('region', { name: 'Deudas' })
+      .getByRole('region', { name: 'Sin cobrar' })
       .getByRole('row')
       .filter({ hasText: debtorName })
     await expect(fiadoRow).toBeVisible()

@@ -76,8 +76,8 @@ export const Bloqueo: Story = {
 }
 
 /**
- * "Por cobrar" NO reemplaza al badge de estado: el turno sigue diciendo
- * "Jugada" y la píldora "Por cobrar" va al lado. En la grilla sí reemplaza,
+ * "No cobrado" NO reemplaza al badge de estado: el turno sigue diciendo
+ * "Jugada" y la píldora "No cobrado" va al lado. En la grilla sí reemplaza,
  * porque una celda tiene lugar para una sola palabra; acá el trabajo de la
  * columna es decir el estado del turno, y perderlo sería peor que el problema
  * que la píldora vino a resolver.
@@ -100,7 +100,7 @@ export const JugadaSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugada')).toBeVisible()
-    await expect(canvas.getByText('Por cobrar')).toBeVisible()
+    await expect(canvas.getByText('No cobrado')).toBeVisible()
   },
 }
 
@@ -126,7 +126,7 @@ export const AusenteSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.queryByText('Por cobrar')).toBeNull()
+    await expect(canvas.queryByText('No cobrado')).toBeNull()
   },
 }
 
@@ -148,7 +148,7 @@ export const AusenteConSenaCapturada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.queryByText('Por cobrar')).toBeNull()
+    await expect(canvas.queryByText('No cobrado')).toBeNull()
   },
 }
 

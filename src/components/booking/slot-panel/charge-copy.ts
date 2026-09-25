@@ -127,29 +127,37 @@ export type TeamDues = {
 }
 
 /**
- * Lo que debe cada equipo, deducido de lo que ya entró en el mostrador.
+ * Lo que debe cada equipo.
  *
  * La mitad se calcula sobre lo que se le cobra a la gente en el mostrador
  * (`pending + counterPaid`, o sea precio menos seña) y NO sobre el precio: la
- * seña ya la puso quien reservó y no es de ningún equipo. Equipo 1 es el primero
- * que va pagando, así que si ya entró algo (por ejemplo cuatro "Pagó uno") esa
- * plata se le cuenta a él: le falta solo lo que resta para su mitad, y "Equipo
- * 1 ✓" aparece recién cuando la completó. Es una deducción, no un registro —
- * el sistema no guarda quién pagó cada peso (`chargeSplit`).
+ * seña ya la puso quien reservó y no es de ningún equipo.
+ *
+ * Decisión del dueño 2026-09-25 (reabre docs/decisions/2026-09-15-cobro-por-
+ * equipo.md): cuando el cobro guarda A QUÉ equipo pertenece (`team1Paid`/
+ * `team2Paid` en el booking, centavos), ESE equipo se descuenta de su propia
+ * mitad — ya no se deduce "el que pagó primero es el Equipo 1". Lo que no está
+ * atribuido (`unattributed`: cobros viejos o de "Todo junto") sigue llenando
+ * primero al Equipo 1, que es exactamente el comportamiento de siempre cuando
+ * no hay atribución (p1 = p2 = 0).
  *
  * `team1Cents + team2Cents === pending` siempre: el modal nunca ofrece cobrar
- * más de lo que falta.
+ * más de lo que falta, ni aunque un equipo haya pagado de más.
  */
 export function teamDues(booking: GridBooking): TeamDues {
   const pending = typeof booking.pending === 'number' && booking.pending > 0 ? booking.pending : 0
   const counterPaid = counterPaidCents(booking)
+  const p1 = booking.team1Paid ?? 0
+  const p2 = booking.team2Paid ?? 0
+  const unattributed = Math.max(0, counterPaid - p1 - p2)
   const share = halfOfPending(pending + counterPaid)
-  const team1Cents = Math.min(pending, Math.max(0, share - counterPaid))
+  const team1Cents = Math.min(pending, Math.max(0, share - p1 - unattributed))
+  const team2Cents = pending - team1Cents
   return {
     team1Cents,
-    team2Cents: pending - team1Cents,
-    team1Paid: share > 0 && counterPaid >= share,
-    team2Paid: share > 0 && pending === 0,
+    team2Cents,
+    team1Paid: share > 0 && team1Cents === 0,
+    team2Paid: share > 0 && team2Cents === 0,
   }
 }
 
@@ -176,7 +184,13 @@ export function chargeTabs(
   const pending = typeof booking.pending === 'number' && booking.pending > 0 ? booking.pending : 0
   const counterPaid = counterPaidCents(booking)
   const share = halfOfPending(pending + counterPaid)
-  const canTeams = pending > 0 && counterPaid <= share
+  const p1 = booking.team1Paid ?? 0
+  const p2 = booking.team2Paid ?? 0
+  // Con pagos atribuidos, "por equipo" siempre tiene sentido: se sabe cuánto
+  // debe cada uno aunque uno haya pagado de más (teamDues nunca lo manda a
+  // deber negativo). Sin atribución, el heurístico de siempre: se esconde en
+  // cuanto lo cobrado pasa la mitad, porque ahí "Equipo 2" sería un invento.
+  const canTeams = pending > 0 && (p1 + p2 > 0 || counterPaid <= share)
   const canPlayers = pending > 0 && playerShare(booking.priceSnapshot, capacity) !== null
 
   const available: ChargeTab[] = ['all']
@@ -184,7 +198,9 @@ export function chargeTabs(
   if (canPlayers) available.push('players')
 
   let initial: ChargeTab = 'all'
-  if (counterPaid > 0) {
+  if (p1 + p2 > 0) {
+    initial = 'teams'
+  } else if (counterPaid > 0) {
     if (canTeams && counterPaid === share) initial = 'teams'
     else if (canPlayers) initial = 'players'
   }
@@ -243,13 +259,31 @@ export function chargeSplit(booking: GridBooking, capacity?: number): ChargeSpli
   const canSplitShare = shareCents !== null && pending > shareCents
   const canSplitHalf = counterPaid === 0
 
+  const p1 = booking.team1Paid ?? 0
+  const p2 = booking.team2Paid ?? 0
+  const note =
+    p1 > 0 || p2 > 0 ? attributedSplitNote(booking) : splitNote(counterPaid, shareCents, capacity)
+
   return {
     halfCents,
     shareCents,
     canSplitHalf,
     canSplitShare,
-    note: splitNote(counterPaid, shareCents, capacity),
+    note,
   }
+}
+
+/**
+ * El renglón de estado cuando hay pagos ATRIBUIDOS a un equipo (decisión del
+ * dueño 2026-09-25): mismo vocabulario que la nota sin atribuir cuando un solo
+ * equipo terminó de pagar, y el desglose de los dos montos cuando los dos
+ * todavía deben.
+ */
+function attributedSplitNote(booking: GridBooking): string {
+  const { team1Cents, team2Cents, team1Paid, team2Paid } = teamDues(booking)
+  if (team1Paid && !team2Paid) return 'Equipo 1 pagó · falta Equipo 2'
+  if (team2Paid && !team1Paid) return 'Equipo 2 pagó · falta Equipo 1'
+  return `Equipo 1: faltan ${formatArs(team1Cents)} · Equipo 2: faltan ${formatArs(team2Cents)}`
 }
 
 /** El renglón de estado. El monto NO va acá: ya está arriba, en grande. */

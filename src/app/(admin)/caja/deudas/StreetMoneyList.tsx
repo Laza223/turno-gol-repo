@@ -224,7 +224,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
     <section ref={sectionRef} aria-labelledby="deudas-titulo" className="scroll-mt-20 space-y-3">
       <SectionHeader
         id="deudas-titulo"
-        title="Deudas"
+        title="Sin cobrar"
         meta={
           rows.length > 0 ? (
             <>
@@ -244,7 +244,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
             />
             <Input
               type="search"
-              aria-label="Buscar deuda por nombre"
+              aria-label="Buscar por nombre"
               placeholder="Buscar por nombre…"
               value={query}
               onChange={(e) => {
@@ -273,7 +273,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
       {filtered.length === 0 ? (
         <EmptyState
           icon={AlertCircle}
-          title={rows.length === 0 ? 'Sin deudas' : 'Nada en este filtro'}
+          title={rows.length === 0 ? 'Nada por cobrar' : 'Nada en este filtro'}
           description={
             rows.length === 0
               ? 'No hay turnos sin cobrar, fiados abiertos ni cuotas de torneo pendientes.'
@@ -360,7 +360,7 @@ export function StreetMoneyList({ rows }: { rows: StreetMoneyRow[] }) {
       )}
 
       <Pager
-        label="Paginación de deudas"
+        label="Paginación de lo sin cobrar"
         page={current}
         total={filtered.length}
         pageSize={PAGE_SIZE}

@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  boardRowKind,
-  buildTodayBoard,
+  buildChargeQueue,
+  buildCourtBoard,
   hasEndedAt,
   startLabel,
   type BoardBooking,
-  type BoardCourt,
 } from '@/lib/dashboard/today-board'
 
 /**
- * El tablero decide quién aparece sin cobrar. Un error acá no tira excepción:
+ * La cola de Hoy decide a quién hay que cobrarle ahora. Un error acá no tira excepción:
  * o esconde plata que falta, o le muestra al mostrador una fila que no existe.
  * Todos los horarios se dan en UTC: ART es UTC-3, así 20:00 ART = 23:00Z.
  */
@@ -46,127 +45,130 @@ function booking(over: Partial<BoardBooking> & { start: string; end: string }): 
   } as BoardBooking
 }
 
-const COURTS: BoardCourt[] = [
-  { id: 'c1', name: 'Cancha 1', status: 'online' },
-  { id: 'c2', name: 'Cancha 2', status: 'online' },
-  { id: 'c3', name: 'Cancha 3', status: 'offline' },
-]
+/** Solo el orden importa: es el de la Grilla. `c3` es una cancha pausada. */
+const COURTS = [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }]
 
-describe('boardRowKind', () => {
-  it('turno terminado con saldo: sin cobrar', () => {
-    const b = booking({ start: '18:00', end: '19:00' })
-    expect(boardRowKind(b, ART(DAY, '19:30'))).toBe('unpaid')
+describe('buildChargeQueue', () => {
+  const ids = (list: { booking: BoardBooking }[]) => list.map((i) => i.booking.id)
+
+  it('turno terminado con saldo: a cobrar ahora, como terminado', () => {
+    const b = booking({ id: 'b', start: '18:00', end: '19:00' })
+    const q = buildChargeQueue([b], COURTS, ART(DAY, '19:30'))
+    expect(q.now).toEqual([{ booking: b, ended: true }])
+    expect(q.upcoming).toEqual([])
   })
 
   it('en el instante exacto en que termina, ya terminó', () => {
     const b = booking({ start: '18:00', end: '19:00' })
     expect(hasEndedAt(b, b.endsAtMs)).toBe(true)
     expect(hasEndedAt(b, b.endsAtMs - 1)).toBe(false)
-    expect(boardRowKind(b, b.endsAtMs)).toBe('unpaid')
-    expect(boardRowKind(b, b.endsAtMs - 1)).toBe('live')
+    expect(buildChargeQueue([b], COURTS, b.endsAtMs).now[0]?.ended).toBe(true)
+    expect(buildChargeQueue([b], COURTS, b.endsAtMs - 1).now[0]?.ended).toBe(false)
+  })
+
+  it('cuando llega la hora, el turno ya está para cobrar aunque se esté jugando', () => {
+    const b = booking({ start: '20:00', end: '21:00' })
+    expect(buildChargeQueue([b], COURTS, ART(DAY, '19:59')).now).toEqual([])
+    expect(buildChargeQueue([b], COURTS, ART(DAY, '20:00')).now).toEqual([
+      { booking: b, ended: false },
+    ])
+  })
+
+  it('en juego y ya pagado no se cobra ni figura entre los próximos', () => {
+    const b = booking({ start: '20:00', end: '21:00', totalPaid: 6_000_000, pending: 0 })
+    const q = buildChargeQueue([b], COURTS, ART(DAY, '20:30'))
+    expect(q.now).toEqual([])
+    expect(q.upcoming).toEqual([])
   })
 
   it('un slot 23:00–24:00 termina a la medianoche, no antes ni "mañana a las 24:00"', () => {
     const b = booking({ start: '23:00', end: '24:00' })
-    // 23:30: en juego. 00:30 del día siguiente: terminó hace media hora.
-    expect(boardRowKind(b, ART(DAY, '23:30'))).toBe('live')
-    expect(boardRowKind(b, ART('2026-09-20', '00:30'))).toBe('unpaid')
+    expect(buildChargeQueue([b], COURTS, ART(DAY, '23:30')).now[0]?.ended).toBe(false)
+    expect(buildChargeQueue([b], COURTS, ART('2026-09-20', '00:30')).now[0]?.ended).toBe(true)
   })
 
   it('terminado y pagado no aparece', () => {
     const b = booking({ start: '18:00', end: '19:00', totalPaid: 6_000_000, pending: 0 })
-    expect(boardRowKind(b, ART(DAY, '19:30'))).toBeNull()
+    expect(buildChargeQueue([b], COURTS, ART(DAY, '19:30')).now).toEqual([])
   })
 
-  it('un cobro parcial sigue figurando sin cobrar', () => {
+  it('a medias (pagó un equipo) sigue para cobrar hasta que paga el otro', () => {
     const b = booking({ start: '18:00', end: '19:00', totalPaid: 3_000_000, pending: 3_000_000 })
-    expect(boardRowKind(b, ART(DAY, '19:30'))).toBe('unpaid')
+    expect(ids(buildChargeQueue([b], COURTS, ART(DAY, '19:30')).now)).toEqual([b.id])
   })
 
-  it('completado con saldo es sin cobrar, aunque el reloj diga que no terminó', () => {
+  it('completado con saldo es terminado, aunque el reloj diga que no terminó', () => {
     const b = booking({ start: '18:00', end: '19:00', status: 'completed' })
-    expect(boardRowKind(b, ART(DAY, '18:30'))).toBe('unpaid')
+    expect(buildChargeQueue([b], COURTS, ART(DAY, '18:30')).now).toEqual([
+      { booking: b, ended: true },
+    ])
   })
 
-  it('completado y saldado no aparece', () => {
-    const b = booking({ start: '18:00', end: '19:00', status: 'completed', pending: 0 })
-    expect(boardRowKind(b, ART(DAY, '19:30'))).toBeNull()
+  it('ausente y bloqueo no aparecen en ningún lado', () => {
+    const q = buildChargeQueue(
+      [
+        booking({ id: 'ausente', start: '18:00', end: '19:00', status: 'no_show' }),
+        booking({ id: 'bloqueo', start: '18:00', end: '19:00', type: 'block' }),
+        booking({ id: 'bloqueo-luego', start: '22:00', end: '23:00', type: 'block' }),
+      ],
+      COURTS,
+      ART(DAY, '19:30'),
+    )
+    expect(q.now).toEqual([])
+    expect(q.upcoming).toEqual([])
   })
 
-  it('ausente y bloqueo no aparecen', () => {
-    expect(
-      boardRowKind(booking({ start: '18:00', end: '19:00', status: 'no_show' }), ART(DAY, '19:30')),
-    ).toBeNull()
-    expect(
-      boardRowKind(booking({ start: '18:00', end: '19:00', type: 'block' }), ART(DAY, '18:30')),
-    ).toBeNull()
+  it('una hora de torneo no se cobra por turno, pero figura entre los próximos', () => {
+    const jugado = booking({ id: 'jugado', start: '18:00', end: '19:00', type: 'tournament' })
+    const luego = booking({ id: 'luego', start: '21:00', end: '22:00', type: 'tournament' })
+    const q = buildChargeQueue([jugado, luego], COURTS, ART(DAY, '19:30'))
+    expect(q.now).toEqual([])
+    expect(q.upcoming.map((b) => b.id)).toEqual(['luego'])
   })
 
-  it('una hora de torneo no se cobra por turno: nunca sin cobrar', () => {
-    const b = booking({ start: '18:00', end: '19:00', type: 'tournament' })
-    expect(boardRowKind(b, ART(DAY, '19:30'))).toBeNull()
-    expect(boardRowKind(b, ART(DAY, '18:30'))).toBe('live')
+  it('una seña sin pagar no es plata del mostrador; si todavía no empezó, es un próximo', () => {
+    const empezado = booking({ id: 'e', start: '18:00', end: '19:00', status: 'pending_payment' })
+    const luego = booking({ id: 'l', start: '21:00', end: '22:00', status: 'pending_payment' })
+    const q = buildChargeQueue([empezado, luego], COURTS, ART(DAY, '18:30'))
+    expect(q.now).toEqual([])
+    expect(q.upcoming.map((b) => b.id)).toEqual(['l'])
   })
 
-  it('en juego y por venir', () => {
-    const b = booking({ start: '20:00', end: '21:00' })
-    expect(boardRowKind(b, ART(DAY, '20:30'))).toBe('live')
-    expect(boardRowKind(b, ART(DAY, '19:00'))).toBe('upcoming')
-  })
-
-  it('una seña sin pagar (pending_payment) por venir sigue en el tablero', () => {
-    const b = booking({ start: '20:00', end: '21:00', status: 'pending_payment' })
-    expect(boardRowKind(b, ART(DAY, '19:00'))).toBe('upcoming')
-  })
-
-  it('un pending_payment que ya pasó no es plata que falta cobrar', () => {
-    const b = booking({ start: '18:00', end: '19:00', status: 'pending_payment' })
-    expect(boardRowKind(b, ART(DAY, '19:30'))).toBeNull()
-  })
-
-  it('sin saldo conocido no se inventa una deuda', () => {
+  it('sin saldo conocido no se inventa plata para cobrar', () => {
     const b = booking({ start: '18:00', end: '19:00', pending: null })
-    expect(boardRowKind(b, ART(DAY, '19:30'))).toBeNull()
-  })
-})
-
-describe('buildTodayBoard', () => {
-  const now = ART(DAY, '21:30')
-
-  it('una columna por cancha en el orden recibido; la pausada sin deuda no entra', () => {
-    const cols = buildTodayBoard([], COURTS, now)
-    expect(cols.map((c) => c.courtId)).toEqual(['c1', 'c2'])
+    expect(buildChargeQueue([b], COURTS, ART(DAY, '19:30')).now).toEqual([])
   })
 
-  it('una cancha pausada con un turno sin cobrar entra, marcada, con solo esa fila', () => {
-    const cols = buildTodayBoard(
+  it('una cancha pausada o que ya no existe no esconde un turno jugado sin cobrar', () => {
+    const q = buildChargeQueue(
       [
-        booking({ courtId: 'c3', start: '20:00', end: '21:00' }),
-        booking({ courtId: 'c3', start: '22:00', end: '23:00' }),
+        booking({ id: 'fantasma', courtId: 'borrada', start: '18:00', end: '19:00' }),
+        booking({ id: 'pausada', courtId: 'c3', start: '18:00', end: '19:00' }),
       ],
       COURTS,
-      now,
+      ART(DAY, '19:30'),
     )
-    const c3 = cols.find((c) => c.courtId === 'c3')
-    expect(c3?.offline).toBe(true)
-    expect(c3?.rows.map((r) => r.kind)).toEqual(['unpaid'])
+    expect(ids(q.now)).toEqual(['pausada', 'fantasma'])
   })
 
-  it('sin cobrar va arriba, aunque haya un turno en juego que empezó antes', () => {
-    const cols = buildTodayBoard(
+  it('orden: los que terminaron, el más reciente arriba; después los que se juegan; por cancha', () => {
+    const q = buildChargeQueue(
       [
-        booking({ id: 'live', start: '20:00', end: '23:00', endsAtMs: ART(DAY, '23:00') }),
-        booking({ id: 'unpaid', start: '20:30', end: '21:00' }),
+        booking({ id: 'viejo', courtId: 'c1', start: '18:00', end: '19:00' }),
+        booking({ id: 'vivo-c2', courtId: 'c2', start: '21:00', end: '22:00' }),
+        booking({ id: 'recien-c2', courtId: 'c2', start: '20:00', end: '21:00' }),
+        booking({ id: 'vivo-c1', courtId: 'c1', start: '21:00', end: '22:00' }),
+        booking({ id: 'recien-c1', courtId: 'c1', start: '20:00', end: '21:00' }),
       ],
       COURTS,
-      now,
+      ART(DAY, '21:05'),
     )
-    expect(cols[0]!.rows.map((r) => r.booking.id)).toEqual(['unpaid', 'live'])
+    expect(ids(q.now)).toEqual(['recien-c1', 'recien-c2', 'viejo', 'vivo-c1', 'vivo-c2'])
+    expect(q.now.map((i) => i.ended)).toEqual([true, true, true, false, false])
   })
 
-  it('00:00–01:00 va después de 23:00 (de la madrugada de esa noche)', () => {
-    const late = ART(DAY, '22:30')
-    const cols = buildTodayBoard(
+  it('próximos: por hora y después por cancha; la madrugada va después de las 23', () => {
+    const q = buildChargeQueue(
       [
         booking({
           id: 'madrugada',
@@ -175,34 +177,21 @@ describe('buildTodayBoard', () => {
           startsAtMs: ART('2026-09-20', '00:00'),
           endsAtMs: ART('2026-09-20', '01:00'),
         }),
-        booking({ id: 'noche', start: '23:00', end: '24:00' }),
+        booking({ id: 'noche-c2', courtId: 'c2', start: '23:00', end: '24:00' }),
+        booking({ id: 'noche-c1', courtId: 'c1', start: '23:00', end: '24:00' }),
       ],
       COURTS,
-      late,
+      ART(DAY, '22:30'),
     )
-    expect(cols[0]!.rows.map((r) => r.booking.id)).toEqual(['noche', 'madrugada'])
+    expect(q.upcoming.map((b) => b.id)).toEqual(['noche-c1', 'noche-c2', 'madrugada'])
   })
 
-  it('un turno de otra cancha que no existe se ignora', () => {
-    const cols = buildTodayBoard(
-      [booking({ courtId: 'fantasma', start: '20:00', end: '21:00' })],
-      COURTS,
-      now,
-    )
-    expect(cols.every((c) => c.rows.length === 0)).toBe(true)
-  })
-
-  it('no incluye pagados, ausentes ni bloqueos', () => {
-    const cols = buildTodayBoard(
-      [
-        booking({ id: 'pagado', start: '18:00', end: '19:00', pending: 0, totalPaid: 6_000_000 }),
-        booking({ id: 'ausente', start: '19:00', end: '20:00', status: 'no_show' }),
-        booking({ id: 'bloqueo', start: '20:00', end: '21:00', type: 'block' }),
-      ],
-      COURTS,
-      now,
-    )
-    expect(cols[0]!.rows).toEqual([])
+  it('anyStarted: distingue "todo cobrado" de "todavía no se jugó nada"', () => {
+    const pagado = booking({ start: '18:00', end: '19:00', totalPaid: 6_000_000, pending: 0 })
+    expect(buildChargeQueue([pagado], COURTS, ART(DAY, '17:00')).anyStarted).toBe(false)
+    expect(buildChargeQueue([pagado], COURTS, ART(DAY, '18:00')).anyStarted).toBe(true)
+    const bloqueo = booking({ start: '18:00', end: '19:00', type: 'block' })
+    expect(buildChargeQueue([bloqueo], COURTS, ART(DAY, '19:30')).anyStarted).toBe(false)
   })
 })
 
@@ -224,5 +213,94 @@ describe('startLabel', () => {
 
   it('un turno terminado no tiene etiqueta de inicio', () => {
     expect(startLabel(b, ART(DAY, '21:30'))).toBeNull()
+  })
+})
+
+describe('buildCourtBoard', () => {
+  const BOARD_COURTS = [
+    { id: 'c1', status: 'online' as const },
+    { id: 'c2', status: 'online' as const },
+    { id: 'c3', status: 'offline' as const },
+  ]
+  const focus = (board: ReturnType<typeof buildCourtBoard>) =>
+    board.tiles.map((t) => [
+      t.courtId,
+      t.focus?.kind ?? null,
+      t.focus?.booking.id ?? null,
+      t.moreDue,
+    ])
+
+  it('una tarjeta por cancha en servicio: lo terminado sin cobrar le gana a lo que se juega y a lo que viene', () => {
+    const ended = booking({ id: 'ended', start: '18:00', end: '19:00' })
+    const live = booking({ id: 'live', start: '19:00', end: '20:00' })
+    const next = booking({ id: 'next', start: '20:00', end: '21:00' })
+    const live2 = booking({
+      id: 'live2',
+      courtId: 'c2',
+      start: '19:00',
+      end: '20:00',
+      pending: 0,
+      totalPaid: 6_000_000,
+    })
+    const next2 = booking({ id: 'next2', courtId: 'c2', start: '21:00', end: '22:00' })
+    const board = buildCourtBoard(
+      [ended, live, next, live2, next2],
+      BOARD_COURTS,
+      ART(DAY, '19:30'),
+    )
+    // c1: el terminado, y el que se juega (debe) cuenta como uno más para cobrar.
+    // c2: el que se juega aunque esté pagado. c3 pausada y sin nada: no aparece.
+    expect(focus(board)).toEqual([
+      ['c1', 'due', 'ended', 1],
+      ['c2', 'live', 'live2', 0],
+    ])
+    expect(board.lateCount).toBe(1)
+    expect(board.lateCents).toBe(6_000_000)
+  })
+
+  it('sin nada jugándose muestra el próximo, y nada si no le queda ninguno', () => {
+    const next = booking({ id: 'next', courtId: 'c2', start: '21:00', end: '22:00' })
+    const paid = booking({
+      id: 'paid',
+      start: '18:00',
+      end: '19:00',
+      status: 'completed',
+      pending: 0,
+      totalPaid: 6_000_000,
+    })
+    const board = buildCourtBoard([next, paid], BOARD_COURTS, ART(DAY, '19:30'))
+    expect(focus(board)).toEqual([
+      ['c1', null, null, 0],
+      ['c2', 'next', 'next', 0],
+    ])
+    expect(board.lateCount).toBe(0)
+  })
+
+  it('una cancha pausada con un turno sin cobrar aparece igual: esa plata no se esconde', () => {
+    const b = booking({ id: 'off', courtId: 'c3', start: '18:00', end: '19:00' })
+    const board = buildCourtBoard([b], BOARD_COURTS, ART(DAY, '19:30'))
+    expect(focus(board)).toEqual([
+      ['c1', null, null, 0],
+      ['c2', null, null, 0],
+      ['c3', 'due', 'off', 0],
+    ])
+  })
+
+  it('el terminado más reciente va adelante y los demás se cuentan', () => {
+    const a = booking({ id: 'a', start: '17:00', end: '18:00' })
+    const b = booking({ id: 'b', start: '18:00', end: '19:00' })
+    const board = buildCourtBoard([a, b], BOARD_COURTS, ART(DAY, '19:30'))
+    expect(board.tiles[0]).toMatchObject({
+      focus: { kind: 'due', booking: { id: 'b' } },
+      moreDue: 1,
+    })
+    expect(board.lateCount).toBe(2)
+  })
+
+  it('un bloqueo no se muestra como el turno de la cancha', () => {
+    const block = booking({ id: 'blk', start: '19:00', end: '20:00', type: 'block', pending: null })
+    const next = booking({ id: 'next', start: '20:00', end: '21:00' })
+    const board = buildCourtBoard([block, next], BOARD_COURTS, ART(DAY, '19:30'))
+    expect(board.tiles[0]?.focus).toMatchObject({ kind: 'next', booking: { id: 'next' } })
   })
 })

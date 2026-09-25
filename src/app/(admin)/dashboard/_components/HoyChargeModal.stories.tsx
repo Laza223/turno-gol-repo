@@ -75,7 +75,10 @@ function enJuego(over: Partial<BoardBooking> = {}): BoardBooking {
   })
 }
 
-type Charged = { amount: number; method: string }[]
+type Charged = { amount: number; method: string; team?: 1 | 2 }[]
+
+/** Lo cobrado que el refresco simulado todavía no aplicó, en total y por equipo. */
+type Pending = { current: number; team1: number; team2: number }
 
 type MockedActions = SlotPanelActions & {
   chargeDebtAction: ReturnType<typeof fn>
@@ -87,16 +90,16 @@ type MockedActions = SlotPanelActions & {
  * Cada acción de cobro es un `fn` real (se puede aseverar cuántas veces y con
  * qué) que además anota la plata para que el refresco simulado la aplique.
  */
-function makeActions(
-  charged: { current: number },
-  fail?: string,
-  networkError = false,
-): MockedActions {
+function makeActions(charged: Pending, fail?: string, networkError = false): MockedActions {
   const collect = async (input: { charges: Charged }) => {
     // Se corta la conexión: el cobro pudo haber entrado o no, y no se sabe cuál.
     if (networkError) throw new Error('Failed to fetch')
     if (fail) return { success: false as const, error: fail }
-    charged.current += input.charges.reduce((sum, c) => sum + c.amount, 0)
+    for (const c of input.charges) {
+      charged.current += c.amount
+      if (c.team === 1) charged.team1 += c.amount
+      if (c.team === 2) charged.team2 += c.amount
+    }
     return { success: true as const }
   }
   return {
@@ -128,7 +131,7 @@ type HarnessProps = {
   initial: BoardBooking
   actions: MockedActions
   /** Plata que las acciones cobraron y el refresco simulado todavía no aplicó. */
-  charged: { current: number }
+  charged: Pending
   onClose: () => void
   /** Se llama cada vez que el modal pide refrescar la pantalla. */
   onRefresh: () => void
@@ -154,14 +157,24 @@ function Harness({
     setRefreshing(true)
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
+      // Se lee y se vacía ANTES del updater: React puede correr un updater dos veces,
+      // y adentro tiene que ser puro.
+      const paid = { ...charged }
+      charged.current = 0
+      charged.team1 = 0
+      charged.team2 = 0
       setBooking((b) => {
-        const pending = Math.max(0, (b.pending ?? 0) - charged.current)
-        const totalPaid = (b.totalPaid ?? 0) + charged.current
-        charged.current = 0
+        const pending = Math.max(0, (b.pending ?? 0) - paid.current)
+        const totalPaid = (b.totalPaid ?? 0) + paid.current
+        // El servidor suma aparte lo cobrado a cada equipo (`booking_team`).
+        const team1Paid = (b.team1Paid ?? 0) + paid.team1
+        const team2Paid = (b.team2Paid ?? 0) + paid.team2
         return {
           ...b,
           totalPaid,
           pending,
+          team1Paid,
+          team2Paid,
           // Cobrar un turno terminado lo da por jugado, como el servidor.
           status: b.status === 'confirmed' && b.endsAtMs <= NOW_MS ? 'completed' : b.status,
         }
@@ -212,7 +225,7 @@ function scenario(
   initial: BoardBooking,
   opts: { fail?: string; forceRefreshing?: boolean; networkError?: boolean } = {},
 ): HarnessProps {
-  const charged = { current: 0 }
+  const charged = { current: 0, team1: 0, team2: 0 }
   return {
     initial,
     charged,
@@ -257,34 +270,115 @@ export const TodoJuntoQuedaAbiertoYSeCierraConListo: Story = {
 }
 
 /**
- * Por equipo: cada equipo cobra por separado. Tras el primero aparece "Equipo 1
- * ✓" y el segundo sigue esperando; como el turno ya quedó jugado, el segundo
- * cobro va por la acción de saldo (`settle`), no por la de terminar.
+ * Por equipo: los dos equipos lado a lado, cada uno con su "Cobrar". Cada cobro
+ * viaja con su equipo. Tras el primero, el Equipo 1 queda "Pagó" y el segundo
+ * sigue esperando; como el turno ya quedó jugado, el segundo cobro va por la
+ * acción de saldo (`settle`), no por la de terminar.
  */
 export const PorEquipo: Story = {
   args: scenario(terminado()),
   play: async ({ args }) => {
     const dialog = await openDialog()
     await userEvent.click(dialog.getByRole('radio', { name: 'Por equipo' }))
-    await expect(dialog.getByText('Equipo 1')).toBeVisible()
-    await expect(dialog.getByText('Equipo 2')).toBeVisible()
+    const team1 = within(dialog.getByRole('group', { name: 'Equipo 1' }))
+    const team2 = within(dialog.getByRole('group', { name: 'Equipo 2' }))
+    await expect(
+      team1.getByRole('button', { name: /Cobrar \$\s30\.000 al Equipo 1/ }),
+    ).toBeVisible()
+    await expect(
+      team2.getByRole('button', { name: /Cobrar \$\s30\.000 al Equipo 2/ }),
+    ).toBeVisible()
 
     await userEvent.click(dialog.getByRole('button', { name: /Cobrar .* al Equipo 1/ }))
     await waitFor(() =>
       expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledTimes(1),
     )
     await expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledWith(
-      expect.objectContaining({ charges: [{ amount: 3_000_000, method: 'cash' }] }),
+      expect.objectContaining({ charges: [{ amount: 3_000_000, method: 'cash', team: 1 }] }),
     )
-    await waitFor(() => expect(dialog.getByText('Equipo 1 ✓')).toBeVisible())
+    await waitFor(() =>
+      expect(
+        within(dialog.getByRole('group', { name: 'Equipo 1' })).getByText('Pagó'),
+      ).toBeVisible(),
+    )
     await expect(dialog.queryByRole('button', { name: /Cobrar .* al Equipo 1/ })).toBeNull()
 
     await userEvent.click(dialog.getByRole('button', { name: /Cobrar .* al Equipo 2/ }))
     await waitFor(() => expect(args.actions.chargeDebtAction).toHaveBeenCalledTimes(1))
     await expect(args.actions.chargeDebtAction).toHaveBeenCalledWith(
-      expect.objectContaining({ charges: [{ amount: 3_000_000, method: 'cash' }] }),
+      expect.objectContaining({ charges: [{ amount: 3_000_000, method: 'cash', team: 2 }] }),
     )
     await waitFor(() => expect(dialog.getByText('Cobrado ✓')).toBeVisible())
+  },
+}
+
+/**
+ * El caso del dueño del piloto: paga primero UNO del Equipo 2. Se le descuenta al
+ * Equipo 2 y no al total: el Equipo 1 sigue debiendo su mitad entera.
+ */
+export const PagaPrimeroUnoDelEquipo2: Story = {
+  args: scenario(terminado()),
+  play: async ({ args }) => {
+    const dialog = await openDialog()
+    await userEvent.click(dialog.getByRole('radio', { name: 'Por equipo' }))
+
+    await userEvent.click(dialog.getByRole('button', { name: /Pagó uno del Equipo 2/ }))
+    await waitFor(() =>
+      expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledWith(
+        expect.objectContaining({ charges: [{ amount: 600_000, method: 'cash', team: 2 }] }),
+      ),
+    )
+
+    // $60.000 en dos equipos de $30.000: el Equipo 2 debe $24.000 y el 1, los $30.000.
+    await waitFor(() =>
+      expect(
+        within(dialog.getByRole('group', { name: 'Equipo 2' })).getByText(/Ya pagó \$\s6\.000/),
+      ).toBeVisible(),
+    )
+    await expect(
+      within(dialog.getByRole('group', { name: 'Equipo 2' })).getByRole('button', {
+        name: /Cobrar \$\s24\.000 al Equipo 2/,
+      }),
+    ).toBeVisible()
+    await expect(
+      within(dialog.getByRole('group', { name: 'Equipo 1' })).getByRole('button', {
+        name: /Cobrar \$\s30\.000 al Equipo 1/,
+      }),
+    ).toBeVisible()
+  },
+}
+
+/**
+ * Un equipo junta su mitad con dos medios (efectivo y transferencia): los dos
+ * cobros salen en UN llamado, los dos con su equipo, y el botón dice la suma.
+ */
+export const UnEquipoPagaConDosMedios: Story = {
+  args: scenario(terminado()),
+  play: async ({ args }) => {
+    const dialog = await openDialog()
+    await userEvent.click(dialog.getByRole('radio', { name: 'Por equipo' }))
+    const team1 = within(dialog.getByRole('group', { name: 'Equipo 1' }))
+
+    await userEvent.click(team1.getByRole('button', { name: 'Agregar pago dividido del Equipo 1' }))
+    const first = team1.getByRole('textbox', { name: 'Monto del Equipo 1 · cobro 1' })
+    await userEvent.clear(first)
+    await userEvent.type(first, '20000')
+    await userEvent.type(
+      team1.getByRole('textbox', { name: 'Monto del Equipo 1 · cobro 2' }),
+      '10000',
+    )
+
+    await userEvent.click(team1.getByRole('button', { name: /Cobrar \$\s30\.000 al Equipo 1/ }))
+    await waitFor(() =>
+      expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          charges: [
+            { amount: 2_000_000, method: 'cash', team: 1 },
+            { amount: 1_000_000, method: 'transfer', team: 1 },
+          ],
+        }),
+      ),
+    )
   },
 }
 
@@ -335,14 +429,29 @@ export const AbreEnPorJugadorSiYaPagoAlguien: Story = {
   },
 }
 
-/** Si un equipo ya pagó (justo la mitad), abre en "Por equipo" con "Equipo 1 ✓". */
+/** Si un equipo ya pagó (justo la mitad), abre en "Por equipo" con ese equipo "Pagó". */
 export const AbreEnPorEquipoSiYaPagoUnEquipo: Story = {
   args: scenario(terminado({ totalPaid: 3_000_000, pending: 3_000_000 })),
   play: async () => {
     const dialog = await openDialog()
     await expect(dialog.getByRole('radio', { name: 'Por equipo' })).toBeChecked()
-    await expect(dialog.getByText('Equipo 1 ✓')).toBeVisible()
+    await expect(
+      within(dialog.getByRole('group', { name: 'Equipo 1' })).getByText('Pagó'),
+    ).toBeVisible()
     await expect(dialog.getByRole('button', { name: /Cobrar .* al Equipo 2/ })).toBeVisible()
+  },
+}
+
+/** Lo que pagó el Equipo 2 queda del Equipo 2 al volver a abrir el turno otro rato. */
+export const AbreConElEquipo2YaPagado: Story = {
+  args: scenario(terminado({ totalPaid: 3_000_000, pending: 3_000_000, team2Paid: 3_000_000 })),
+  play: async () => {
+    const dialog = await openDialog()
+    await expect(dialog.getByRole('radio', { name: 'Por equipo' })).toBeChecked()
+    await expect(
+      within(dialog.getByRole('group', { name: 'Equipo 2' })).getByText('Pagó'),
+    ).toBeVisible()
+    await expect(dialog.getByRole('button', { name: /Cobrar .* al Equipo 1/ })).toBeVisible()
   },
 }
 

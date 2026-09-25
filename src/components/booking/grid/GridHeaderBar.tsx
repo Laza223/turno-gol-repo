@@ -64,24 +64,25 @@ export function GridHeaderBar({
       type="button"
       onClick={onToggleHighlight}
       aria-pressed={highlightPending}
-      aria-label={`Por cobrar hoy: ${formatArs(pendingSummary.totalCents)} en ${pendingSummary.count} ${pendingSummary.count === 1 ? 'turno' : 'turnos'}. Resaltar esos turnos`}
+      aria-label={`No cobrados hoy: ${formatArs(pendingSummary.totalCents)} en ${pendingSummary.count} ${pendingSummary.count === 1 ? 'turno' : 'turnos'}. Resaltar esos turnos`}
       className={cn(
         // 44px en touch (MASTER §10): dejó de ser texto y ahora se toca. En
         // escritorio baja a 36 para entrar en la barra de 60.
         'inline-flex h-11 shrink-0 items-center gap-2 rounded-full pl-2.5 pr-3 text-[13px] font-semibold whitespace-nowrap transition-colors lg:h-9',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-        // La receta del badge de "Por cobrar" (ámbar, texto 800/300 verificado
+        // La receta del badge de "No cobrado" (rojo, texto 700/300 verificado
         // en AA): el chip nombra el mismo hecho que la celda y la fila de Hoy,
-        // así que no puede venir en otro color. Era rojo hasta el 2026-09-24.
+        // así que no puede venir en otro color. Fue ámbar del 2026-09-24 al
+        // 2026-09-25 ("por cobrar, no alarma"); el dueño lo volvió a rojo.
         TONE_BADGE[PENDING_CHARGE_BADGE.tone],
-        'hover:bg-warning/15 dark:hover:bg-warning/20',
-        highlightPending && 'bg-warning/20 ring-2 dark:bg-warning/25',
+        'hover:bg-destructive/15 dark:hover:bg-destructive/20',
+        highlightPending && 'bg-destructive/20 ring-2 dark:bg-destructive/25',
       )}
     >
       <PendingIcon aria-hidden className="h-4 w-4 shrink-0" />
-      <span>Por cobrar hoy</span>
+      <span>No cobrados hoy</span>
       <span className="tabular-nums">{formatArs(pendingSummary.totalCents)}</span>
-      {/* Sin `opacity-*`: sobre el ámbar encendido baja el 800 a 3,9:1 (axe). */}
+      {/* Sin `opacity-*`: sobre el rojo encendido el texto pierde contraste (axe). */}
       <span className="font-medium">· {pendingSummary.count}</span>
     </button>
   ) : null

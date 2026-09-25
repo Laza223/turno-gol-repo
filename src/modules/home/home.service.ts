@@ -247,8 +247,8 @@ async function getDepositsPaidToday(
  * "Hoy" (Fase 2 — docs/planning/2026-08-01-decisiones-de-fase-v2.md §3):
  * agregador único de la home (del dueño y del Encargado desde 2026-09-19).
  * Devuelve los números (cobrado y ocupación), lo que pasó sin el dueño y las
- * anomalías que exigen una decisión. La lista de turnos NO sale de acá: el
- * tablero "Turnos de hoy" se arma con el loader compartido con la Grilla, y el
+ * anomalías que exigen una decisión. La lista de turnos NO sale de acá: la
+ * cola "Cobrar ahora" se arma con el loader compartido con la Grilla, y el
  * turno terminado sin cobrar vive ahí, no como alerta (una cosa, un lugar).
  *
  * `opts.date` es el día que se está reportando: la pantalla en vivo pasa HOY;

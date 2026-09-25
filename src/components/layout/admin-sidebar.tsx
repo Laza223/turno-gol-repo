@@ -6,6 +6,7 @@ import { Logo } from '@/components/ui/logo'
 import {
   LayoutDashboard,
   CalendarDays,
+  Clock,
   Contact,
   Banknote,
   LandPlot,
@@ -17,8 +18,9 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { TONE_TEXT } from '@/lib/status-tone'
 import { WhatsappIcon } from '@/components/icons/WhatsappIcon'
-import { SUPPORT_WHATSAPP_URL } from '@/shared/constants'
+import { SUPPORT_WHATSAPP_URL, TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
 import type { StaffRole } from '@/modules/staff/roles'
 import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
 import { SetupAlertDot } from './setup-alert-dot'
@@ -41,6 +43,8 @@ interface SidebarProps {
   staffRole?: StaffRole
   /** Cuántas cosas por completar tiene cada zona: prende el punto rojo del ítem. */
   setupAlerts?: SetupAlerts
+  /** Días de prueba gratis que le quedan al complejo, o null si no está en prueba. */
+  trialDaysLeft?: number | null
 }
 
 export interface NavItem {
@@ -154,12 +158,40 @@ export function visibleNavItems(opts: {
 }
 
 /**
- * Fila del riel: ícono arriba, rótulo abajo, 60×52. El rótulo se ve siempre y no
- * vive en un tooltip: el mostrador atiende desde una tablet, donde no hay hover
- * y un ícono solo es una adivinanza.
+ * Fila del riel, ícono arriba y rótulo abajo (60×52): así se ve SIEMPRE en
+ * touch (`pointer-fine` no matchea), porque el mostrador atiende desde una
+ * tablet, donde no hay hover y un ícono solo es una adivinanza.
+ *
+ * Con mouse (`pointer-fine`, ver `RAIL_ITEM_HOVERABLE`) el riel es solo
+ * íconos y pasa a fila: el rótulo se revela a la derecha del ícono cuando el
+ * riel se despliega (hover o foco adentro de `<aside>`, `group/rail` más
+ * abajo). El ícono no se mueve entre los dos estados: la fila usa
+ * `justify-start` con un padding-left fijo tanto cerrado como abierto.
  */
 const RAIL_ITEM =
-  'group flex w-[60px] min-h-[52px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[10px] px-1 text-[10px] font-semibold tracking-[0.01em] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+  'flex w-[60px] min-h-[52px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[10px] px-1 text-[10px] font-semibold tracking-[0.01em] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+/**
+ * Se suma a `RAIL_ITEM` solo en los espacios ícono+rótulo (navegación, Ayuda,
+ * Configuración): "Prueba" son dos líneas de texto sin ícono y queda afuera a
+ * propósito, no tiene un glifo que fijar en su lugar.
+ */
+const RAIL_ITEM_HOVERABLE =
+  'pointer-fine:w-full pointer-fine:min-h-[44px] pointer-fine:flex-row pointer-fine:items-center pointer-fine:justify-start pointer-fine:gap-3 pointer-fine:pl-[26px] pointer-fine:pr-4 pointer-fine:py-0'
+/**
+ * Rótulo de un espacio del riel: siempre visible en touch. Con mouse arranca
+ * en 0 de ancho y opacidad, y se desliza hacia la derecha (`translate-x`)
+ * cuando el `<aside>` (`group/rail`) recibe hover o foco adentro. El delay
+ * de apertura (120 ms) vive en la regla `group-hover`/`group-focus-within`,
+ * así que solo se aplica al abrir — cerrar es inmediato.
+ */
+const RAIL_LABEL = cn(
+  'max-w-full truncate',
+  'pointer-fine:max-w-0 pointer-fine:translate-x-1 pointer-fine:overflow-hidden pointer-fine:whitespace-nowrap pointer-fine:text-sm pointer-fine:font-medium pointer-fine:tracking-normal pointer-fine:opacity-0',
+  'pointer-fine:transition-[max-width,opacity,transform] pointer-fine:duration-200 pointer-fine:ease-out pointer-fine:delay-0',
+  'pointer-fine:group-hover/rail:max-w-[140px] pointer-fine:group-hover/rail:translate-x-0 pointer-fine:group-hover/rail:opacity-100 pointer-fine:group-hover/rail:delay-[120ms]',
+  'pointer-fine:group-focus-within/rail:max-w-[140px] pointer-fine:group-focus-within/rail:translate-x-0 pointer-fine:group-focus-within/rail:opacity-100 pointer-fine:group-focus-within/rail:delay-[120ms]',
+  'motion-reduce:transition-none motion-reduce:delay-0',
+)
 /** Texto que un lector de pantalla oye en lugar del color del punto. */
 const ALERT_LABEL = '— hay algo por completar'
 const NAV_ACTIVE = 'bg-primary/10 text-emerald-800 dark:text-emerald-300'
@@ -208,6 +240,110 @@ function SupportLink({
       <WhatsappIcon className="h-5 w-5 shrink-0" />
       <span className={labelClassName}>Ayuda</span>
     </a>
+  )
+}
+
+/**
+ * El período de prueba, en el pie del riel arriba de Ayuda (2026-09-24, pedido del
+ * dueño). Antes era una banda verde a lo ancho de TODAS las pantallas durante toda
+ * la prueba: ~45 px de cada vista para un dato que cambia una vez por día. Acá se
+ * ve siempre sin robarle lugar a nada. Pasa a ámbar desde el primer aviso por mail
+ * (`TRIAL_ENDING_WARNING_DAYS`), así el riel y el mail dicen lo mismo el mismo día.
+ *
+ * Al dueño lo lleva a Facturación ("Elegir plan"); al encargado no le ofrece un
+ * link que lo rebota (Configuración es del dueño): se lo muestra y nada más.
+ */
+const TRIAL_URGENT_DAYS = Math.max(...TRIAL_ENDING_WARNING_DAYS)
+const BILLING_HREF = '/settings/facturacion'
+
+function trialDaysLabel(days: number) {
+  return `${days} ${days === 1 ? 'día' : 'días'}`
+}
+
+function TrialRailItem({ daysLeft, canChoosePlan }: { daysLeft: number; canChoosePlan: boolean }) {
+  const urgent = daysLeft <= TRIAL_URGENT_DAYS
+  const className = cn(
+    RAIL_ITEM,
+    'mb-1 gap-0.5 text-center ring-1 ring-inset',
+    urgent ? 'bg-warning/10 ring-warning/40' : 'ring-border',
+    canChoosePlan && 'hover:bg-accent',
+  )
+  // El nombre accesible CONTIENE el texto visible ("Prueba 73 días"), con el resto
+  // de la frase en sr-only: quien maneja por voz lo activa diciendo lo que ve.
+  const content = (
+    <>
+      <span className="text-muted-foreground">
+        <span className="sr-only">Período de </span>Prueba
+      </span>
+      <span
+        className={cn(
+          'text-xs font-bold tabular-nums',
+          urgent ? TONE_TEXT.warning : 'text-foreground',
+        )}
+      >
+        {trialDaysLabel(daysLeft)}
+      </span>
+    </>
+  )
+  if (!canChoosePlan) return <div className={className}>{content}</div>
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link href={BILLING_HREF} className={className}>
+          {content}
+          <span className="sr-only">. Elegir plan</span>
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent side="right">Elegir plan</TooltipContent>
+    </Tooltip>
+  )
+}
+
+function TrialDrawerRow({
+  daysLeft,
+  canChoosePlan,
+  className,
+  onNavigate,
+}: {
+  daysLeft: number
+  canChoosePlan: boolean
+  className: string
+  onNavigate: () => void
+}) {
+  const urgent = daysLeft <= TRIAL_URGENT_DAYS
+  // Dos renglones: en los 240 px del cajón "Período de prueba · 73 días" más
+  // "Elegir plan" no entran en uno, y el que se cortaba era justo el número.
+  const content = (
+    <>
+      <Clock className={cn('h-5 w-5 shrink-0', urgent && TONE_TEXT.warning)} aria-hidden />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate">Período de prueba</span>
+        <span className="text-xs">
+          <span
+            className={cn(
+              'font-semibold tabular-nums',
+              urgent ? TONE_TEXT.warning : 'text-foreground',
+            )}
+          >
+            {trialDaysLabel(daysLeft)}
+          </span>
+          {canChoosePlan && (
+            <>
+              {' · '}
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                Elegir plan
+              </span>
+            </>
+          )}
+        </span>
+      </span>
+    </>
+  )
+  if (!canChoosePlan) return <div className={cn(className, 'text-muted-foreground')}>{content}</div>
+  return (
+    <Link href={BILLING_HREF} onClick={onNavigate} className={cn(className, NAV_IDLE)}>
+      {content}
+    </Link>
   )
 }
 
@@ -271,6 +407,7 @@ function SidebarRail({
   tournamentsEnabled,
   staffRole,
   setupAlerts,
+  trialDaysLeft,
 }: {
   pathname: string
   userEmail: string
@@ -278,6 +415,7 @@ function SidebarRail({
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
   setupAlerts: SetupAlerts
+  trialDaysLeft: number | null
 }) {
   const navItems = visibleNavItems({ tournamentsEnabled, staffRole })
   const canConfigure = staffRole === 'admin'
@@ -286,7 +424,19 @@ function SidebarRail({
   const configAlert = navItemHasAlert(CONFIG_ITEM, setupAlerts)
 
   return (
-    <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[72px] flex-col items-center gap-1 border-r border-border bg-card py-3">
+    <aside
+      className={cn(
+        'hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[72px] flex-col items-center gap-1 border-r border-border bg-card py-3',
+        // `group/rail`: con mouse, el riel se despliega en overlay (no empuja el
+        // contenido — `admin-layout-shell.tsx` deja el `lg:pl-[72px]` fijo) al
+        // pasar el mouse o tener foco adentro. `delay-[120ms]` solo en la regla
+        // hover/focus-within: abre con un respiro, cierra de una.
+        'group/rail pointer-fine:transition-[width,box-shadow] pointer-fine:duration-200 pointer-fine:ease-out pointer-fine:delay-0',
+        'pointer-fine:hover:w-56 pointer-fine:hover:shadow-xl pointer-fine:hover:delay-[120ms]',
+        'pointer-fine:focus-within:w-56 pointer-fine:focus-within:shadow-xl pointer-fine:focus-within:delay-[120ms]',
+        'motion-reduce:transition-none motion-reduce:delay-0',
+      )}
+    >
       <Link
         href="/dashboard"
         aria-label="TurnoGol"
@@ -316,13 +466,13 @@ function SidebarRail({
               href={href}
               data-tour-id={tourId}
               aria-current={isActive ? 'page' : undefined}
-              className={cn(RAIL_ITEM, isActive ? NAV_ACTIVE : NAV_IDLE)}
+              className={cn(RAIL_ITEM, RAIL_ITEM_HOVERABLE, isActive ? NAV_ACTIVE : NAV_IDLE)}
             >
-              <span className="relative flex">
+              <span className="relative flex shrink-0">
                 <Icon className={navIconClass(isActive)} />
                 {navItemHasAlert(item, setupAlerts) && <SetupAlertDot className={RAIL_DOT} />}
               </span>
-              <span className="max-w-full truncate">{label}</span>
+              <span className={RAIL_LABEL}>{label}</span>
               {navItemHasAlert(item, setupAlerts) && <span className="sr-only">{ALERT_LABEL}</span>}
             </Link>
           )
@@ -331,20 +481,24 @@ function SidebarRail({
 
       <div className="flex-1" />
 
-      <SupportLink className={RAIL_ITEM} labelClassName="max-w-full truncate" />
+      {trialDaysLeft !== null && (
+        <TrialRailItem daysLeft={trialDaysLeft} canChoosePlan={canConfigure} />
+      )}
+
+      <SupportLink className={cn(RAIL_ITEM, RAIL_ITEM_HOVERABLE)} labelClassName={RAIL_LABEL} />
 
       {canConfigure ? (
         <Link
           href={CONFIG_ITEM.href}
           aria-label={configAlert ? `${CONFIG_ITEM.label} ${ALERT_LABEL}` : CONFIG_ITEM.label}
           aria-current={configActive ? 'page' : undefined}
-          className={cn(RAIL_ITEM, configActive ? NAV_ACTIVE : NAV_IDLE)}
+          className={cn(RAIL_ITEM, RAIL_ITEM_HOVERABLE, configActive ? NAV_ACTIVE : NAV_IDLE)}
         >
-          <span className="relative flex">
+          <span className="relative flex shrink-0">
             <ConfigIcon className={navIconClass(configActive)} />
             {configAlert && <SetupAlertDot className={RAIL_DOT} />}
           </span>
-          <span className="max-w-full truncate">{CONFIG_RAIL_LABEL}</span>
+          <span className={RAIL_LABEL}>{CONFIG_RAIL_LABEL}</span>
         </Link>
       ) : (
         // MASTER §6.8: al manager el ítem se le BLOQUEA, no se le esconde — el
@@ -360,16 +514,20 @@ function SidebarRail({
               aria-disabled="true"
               aria-label={`${CONFIG_ITEM.label}: solo el dueño`}
               onClick={(e) => e.preventDefault()}
-              className={cn(RAIL_ITEM, 'cursor-not-allowed text-muted-foreground/60')}
+              className={cn(
+                RAIL_ITEM,
+                RAIL_ITEM_HOVERABLE,
+                'cursor-not-allowed text-muted-foreground/60',
+              )}
             >
-              <span className="relative">
+              <span className="relative shrink-0">
                 <ConfigIcon className="h-5 w-5 shrink-0 text-muted-foreground/50" />
                 <Lock
                   className="absolute -right-1.5 -bottom-1 h-3 w-3 text-muted-foreground/70"
                   aria-hidden
                 />
               </span>
-              <span className="max-w-full truncate">{CONFIG_RAIL_LABEL}</span>
+              <span className={RAIL_LABEL}>{CONFIG_RAIL_LABEL}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Solo el dueño</TooltipContent>
@@ -395,6 +553,7 @@ function SidebarDrawerContent({
   tournamentsEnabled,
   staffRole,
   setupAlerts,
+  trialDaysLeft,
 }: {
   tenantName: string
   pathname: string
@@ -404,6 +563,7 @@ function SidebarDrawerContent({
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
   setupAlerts: SetupAlerts
+  trialDaysLeft: number | null
 }) {
   const navItems = visibleNavItems({ tournamentsEnabled, staffRole })
   const canConfigure = staffRole === 'admin'
@@ -457,6 +617,15 @@ function SidebarDrawerContent({
           )
         })}
 
+        {trialDaysLeft !== null && (
+          <TrialDrawerRow
+            daysLeft={trialDaysLeft}
+            canChoosePlan={canConfigure}
+            className={rowClass}
+            onNavigate={onClose}
+          />
+        )}
+
         <SupportLink className={rowClass} labelClassName="flex-1 truncate" onNavigate={onClose} />
 
         {canConfigure ? (
@@ -507,6 +676,7 @@ export function AdminSidebar({
   tournamentsEnabled,
   staffRole,
   setupAlerts = NO_SETUP_ALERTS,
+  trialDaysLeft = null,
 }: SidebarProps) {
   const pathname = usePathname()
 
@@ -519,6 +689,7 @@ export function AdminSidebar({
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
         setupAlerts={setupAlerts}
+        trialDaysLeft={trialDaysLeft}
       />
 
       {/* Cajón mobile — Sheet Radix (focus-trap + scroll-lock + Esc; MASTER §6.8).
@@ -540,6 +711,7 @@ export function AdminSidebar({
             tournamentsEnabled={tournamentsEnabled}
             staffRole={staffRole}
             setupAlerts={setupAlerts}
+            trialDaysLeft={trialDaysLeft}
           />
         </SheetContent>
       </Sheet>

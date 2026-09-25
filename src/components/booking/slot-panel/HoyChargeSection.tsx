@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Check } from 'lucide-react'
 import {
   newChargeLine,
   SplitPaymentFields,
@@ -13,6 +14,7 @@ import {
   chargeSplit,
   chargeTabs,
   counterPaidCents,
+  halfOfPending,
   teamDues,
   type ChargeMode,
   type ChargeTab,
@@ -24,6 +26,7 @@ import {
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS, PAYMENT_METHOD_OPTIONS, type MethodKey } from '@/lib/payment-method'
+import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 
 const TAB_LABEL: Record<ChargeTab, string> = {
@@ -78,8 +81,8 @@ export function HoyChargeSection({
   /** Cobro en curso o datos refrescándose: nada se puede tocar. */
   locked: boolean
   onSubmit: () => void
-  onPartialCharge: (amountCents: number, method: MethodKey) => void
-  onTeamCharge: (teamLines: ChargeLine[]) => void
+  onPartialCharge: (amountCents: number, method: MethodKey, team?: 1 | 2) => void
+  onTeamCharge: (teamLines: ChargeLine[], team?: 1 | 2) => void
   /** Monto de un cobro que se cortó por la red y no se sabe si entró, o null. */
   retryTotal: number | null
   onRetry: () => void
@@ -149,9 +152,11 @@ export function HoyChargeSection({
       {tab === 'teams' && (
         <TeamsTab
           booking={booking}
+          capacity={capacity}
           disabled={disabled}
           isPending={isPending}
           onTeamCharge={onTeamCharge}
+          onPartialCharge={onPartialCharge}
         />
       )}
 
@@ -195,98 +200,186 @@ export function HoyChargeSection({
 }
 
 /**
- * Los dos equipos, cada uno con lo que le falta y su propio "Cobrar". Lo que
- * cada equipo debe se DEDUCE de lo cobrado (`teamDues`): el sistema no guarda
- * quién pagó. Un equipo saldado queda como una línea "Equipo 1 ✓" y no como un
- * formulario vacío.
+ * Los dos equipos lado a lado, cada uno con lo que le falta y su propio
+ * "Cobrar". Cada cobro se guarda con su equipo (decisión del dueño, 2026-09-25,
+ * que reabre la del 2026-09-15): si alguien del Equipo 2 paga $ 6.000, se le
+ * descuentan al Equipo 2 y no al total. Lo cobrado sin equipo (cobros viejos o
+ * "Todo junto") se le cuenta primero al Equipo 1, como antes (`teamDues`).
+ *
+ * Un equipo que pagó queda con su tilde y sin formulario; el otro sigue
+ * debiendo hasta que pague, aunque se cierre el modal y se vuelva otro día.
  */
 function TeamsTab({
   booking,
+  capacity,
   disabled,
   isPending,
   onTeamCharge,
+  onPartialCharge,
 }: {
   booking: GridBooking
+  capacity: number | undefined
   disabled: boolean
   isPending: boolean
-  onTeamCharge: (teamLines: ChargeLine[]) => void
+  onTeamCharge: (teamLines: ChargeLine[], team?: 1 | 2) => void
+  onPartialCharge: (amountCents: number, method: MethodKey, team?: 1 | 2) => void
 }) {
+  const pending = typeof booking.pending === 'number' && booking.pending > 0 ? booking.pending : 0
   const dues = teamDues(booking)
+  // La mitad de cada equipo sobre lo que se cobra en el mostrador (sin la seña):
+  // lo que ya puso cada uno es su mitad menos lo que le falta.
+  const base = pending + counterPaidCents(booking)
+  const half1 = halfOfPending(base)
   const teams = [
-    { team: 1 as const, due: dues.team1Cents, paid: dues.team1Paid },
-    { team: 2 as const, due: dues.team2Cents, paid: dues.team2Paid },
+    { team: 1 as const, due: dues.team1Cents, half: half1 },
+    { team: 2 as const, due: dues.team2Cents, half: base - half1 },
   ]
+  const playerCents = chargeSplit(booking, capacity).shareCents
+  // Con los dos equipos debiendo y alguno que ya puso algo, las dos tarjetas
+  // guardan el renglón de "Ya pagó": los campos y los botones quedan a la misma altura.
+  const reserveNote =
+    teams.every(({ due }) => due > 0) && teams.some(({ due, half }) => half - due > 0)
+
   return (
-    <div className="flex flex-col gap-4">
-      {teams.map(({ team, due, paid }) =>
-        paid && due === 0 ? (
-          <p
-            key={team}
-            className="flex items-center justify-between rounded-lg bg-success/10 px-3 py-2.5 text-sm font-semibold text-emerald-800 dark:bg-success/15 dark:text-emerald-300"
-          >
-            <span>Equipo {team} ✓</span>
-            <span className="text-xs font-medium">Pagó</span>
-          </p>
-        ) : due > 0 ? (
-          // La key lleva el monto: cuando entra un cobro y lo que falta cambia, el
-          // bloque se rearma con la plata nueva en vez de dejar la vieja tipeada.
-          <TeamBlock
-            key={`${team}-${due}`}
-            team={team}
-            due={due}
-            disabled={disabled}
-            isPending={isPending}
-            onCharge={onTeamCharge}
-          />
-        ) : null,
-      )}
+    // Lado a lado; si un equipo divide su pago en dos medios, una debajo de la otra:
+    // en media tarjeta el segundo monto no entra al lado de su medio de pago.
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:has-[[data-split]]:grid-cols-1">
+      {teams.map(({ team, due, half }) => (
+        // La key lleva el monto: cuando entra un cobro y lo que falta cambia, la
+        // tarjeta se rearma con la plata nueva en vez de dejar la vieja tipeada.
+        <TeamCard
+          key={`${team}-${due}`}
+          team={team}
+          due={due}
+          paidCents={Math.max(0, half - due)}
+          reserveNote={reserveNote}
+          playerCents={playerCents}
+          disabled={disabled}
+          isPending={isPending}
+          onCharge={onTeamCharge}
+          onPlayerCharge={onPartialCharge}
+        />
+      ))}
     </div>
   )
 }
 
-function TeamBlock({
+function TeamCard({
   team,
   due,
+  paidCents,
+  reserveNote,
+  playerCents,
   disabled,
   isPending,
   onCharge,
+  onPlayerCharge,
 }: {
   team: 1 | 2
   due: number
+  /** Lo que ya puso este equipo para su mitad. */
+  paidCents: number
+  /** Guardar el renglón de "Ya pagó" aunque este equipo no haya puesto nada. */
+  reserveNote: boolean
+  /** Lo que pone un jugador, si se sabe cuántos entran en la cancha. */
+  playerCents: number | null
   disabled: boolean
   isPending: boolean
-  onCharge: (teamLines: ChargeLine[]) => void
+  onCharge: (teamLines: ChargeLine[], team?: 1 | 2) => void
+  onPlayerCharge: (amountCents: number, method: MethodKey, team?: 1 | 2) => void
 }) {
-  const [teamLines, setTeamLines] = useState<ChargeLine[]>(() => [newChargeLine(due, 'cash')])
-  const total = teamLines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
+  const [lines, setLines] = useState<ChargeLine[]>(() => [newChargeLine(due, 'cash', team)])
+  const line = lines[0]
+  const amount = lines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
+  // El monto en palabras recién cuando se toca: precargado es el "Falta" de arriba,
+  // y repetido en media tarjeta ocupa tres renglones (en la notebook del mostrador
+  // empujaba "Pagó uno" fuera de la vista).
+  const touched = lines.length > 1 || line?.amountCents !== due
+
+  if (due === 0) {
+    return (
+      <div
+        role="group"
+        aria-label={`Equipo ${team}`}
+        // Arriba y no estirada al alto de la otra: una caja verde vacía del tamaño
+        // de la tarjeta que todavía debe distraía de la que hay que cobrar.
+        className="flex flex-col gap-1 self-start rounded-xl border border-success/30 bg-success/5 p-4 dark:bg-success/10"
+      >
+        <p className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
+          Equipo {team}
+          <span className={cn('inline-flex items-center gap-1', TONE_TEXT.success)}>
+            <Check aria-hidden className="h-4 w-4" />
+            Pagó
+          </span>
+        </p>
+        {paidCents > 0 && (
+          <p className="text-xs tabular-nums text-muted-foreground">
+            {formatArs(paidCents)} cobrados
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  // "Pagó uno" con el equipo: el caso del complejo piloto, que cobra jugador por
+  // jugador pero quiere saber de qué equipo es cada uno. Solo si falta más que
+  // una parte: si falta justo una, el "Cobrar" de arriba ya es ese cobro.
+  const canChargePlayer = playerCents !== null && due > playerCents
 
   return (
-    <div onFocus={selectAllOnFocus} onMouseDown={selectAllOnMouseDown}>
-      {/* "Cobrar" al lado del rótulo y no al final de la fila: monto + método +
-          botón en una sola línea no entra en un teléfono sin aplastar el monto,
-          que es justo lo que hay que leer. */}
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-foreground">Equipo {team}</p>
-        <button
-          type="button"
-          onClick={() => onCharge(teamLines)}
-          disabled={disabled}
-          // El nombre accesible contiene el texto visible ("Cobrar $24.000"): quien
-          // maneja por voz activa el botón diciendo lo que ve (WCAG 2.5.3).
-          aria-label={`Cobrar ${formatArs(total)} al Equipo ${team}`}
-          className="h-10 shrink-0 rounded-lg bg-primary px-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-        >
-          {isPending ? 'Procesando…' : `Cobrar ${formatArs(total)}`}
-        </button>
+    <div
+      role="group"
+      aria-label={`Equipo ${team}`}
+      data-split={lines.length > 1 || undefined}
+      className="flex flex-col gap-3 rounded-xl border border-border p-4"
+      onFocus={selectAllOnFocus}
+      onMouseDown={selectAllOnMouseDown}
+    >
+      <div>
+        <p className="flex items-baseline justify-between gap-2 text-sm font-semibold text-foreground">
+          Equipo {team}
+          <span className="tabular-nums">
+            <span className="font-normal text-muted-foreground">Falta </span>
+            {formatArs(due)}
+          </span>
+        </p>
+        {reserveNote && (
+          <p className="mt-0.5 min-h-4 text-xs tabular-nums text-muted-foreground">
+            {paidCents > 0 && `Ya pagó ${formatArs(paidCents)}`}
+          </p>
+        )}
       </div>
       <SplitPaymentFields
-        lines={teamLines}
-        onChange={setTeamLines}
+        lines={lines}
+        onChange={setLines}
         maxLines={3}
         disabled={disabled}
         idPrefix={`hoy-equipo-${team}`}
         groupLabel={`del Equipo ${team}`}
+        showWords={touched}
       />
+      <button
+        type="button"
+        onClick={() => onCharge(lines, team)}
+        disabled={disabled || amount <= 0}
+        // El nombre accesible contiene el texto visible ("Cobrar $24.000"): quien
+        // maneja por voz activa el botón diciendo lo que ve (WCAG 2.5.3).
+        aria-label={`Cobrar ${formatArs(amount)} al Equipo ${team}`}
+        className={cn(PRIMARY_BUTTON, 'h-11 text-sm md:h-10')}
+      >
+        {isPending ? 'Procesando…' : `Cobrar ${formatArs(amount)}`}
+      </button>
+      {canChargePlayer && (
+        <button
+          type="button"
+          onClick={() => onPlayerCharge(playerCents, line?.method ?? 'cash', team)}
+          disabled={disabled}
+          aria-label={`Pagó uno del Equipo ${team}: ${formatArs(playerCents)}`}
+          className="h-11 w-full rounded-lg border border-border bg-card text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10"
+        >
+          Pagó uno · {formatArs(playerCents)}
+        </button>
+      )}
     </div>
   )
 }

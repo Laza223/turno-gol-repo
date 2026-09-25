@@ -762,6 +762,8 @@ const addBookingChargeSchema = z.object({
       z.object({
         amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
         method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+        /** Cobro por equipo (decisión del dueño 2026-09-25): equipo al que se atribuye esta línea. */
+        team: z.union([z.literal(1), z.literal(2)]).optional(),
       }),
     )
     .min(1, 'Ingresá al menos un cobro.')
@@ -853,7 +855,12 @@ export async function addBookingChargeAction(
     // el ON CONFLICT dejaba la fila vieja. `resolveIdempotentCharges` compara
     // también el contenido y rechaza la key reusada con otro cobro. Misma
     // fuente única que chargeDebtAction (caja/deudas/actions.ts).
-    const idempotent = await resolveIdempotentCharges(tenant.id, charges, clientIdempotencyKey, tx)
+    const idempotent = await resolveIdempotentCharges(
+      tenant.id,
+      charges.map((c) => ({ amount: c.amount, method: c.method, bookingTeam: c.team })),
+      clientIdempotencyKey,
+      tx,
+    )
     if (!idempotent.ok) {
       return { success: false as const, error: idempotent.error }
     }
@@ -908,6 +915,7 @@ export async function addBookingChargeAction(
           method: charge.method,
           description,
           bookingId,
+          bookingTeam: charge.team,
           clientIdempotencyKey: lineKey,
         },
         tx,
@@ -930,6 +938,8 @@ export async function addBookingChargeAction(
 const chargeLineSchema = z.object({
   amount: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
   method: z.enum(['cash', 'transfer', 'mercadopago', 'other']),
+  /** Cobro por equipo (decisión del dueño 2026-09-25): equipo al que se atribuye esta línea. */
+  team: z.union([z.literal(1), z.literal(2)]).optional(),
 })
 
 const completeAndChargeSchema = z.object({
@@ -1021,7 +1031,7 @@ export async function completeAndChargeBookingAction(
         // completación de arriba tiene que deshacerse.
         const idempotent = await resolveIdempotentCharges(
           tenant.id,
-          charges,
+          charges.map((c) => ({ amount: c.amount, method: c.method, bookingTeam: c.team })),
           clientIdempotencyKey,
           tx,
         )
@@ -1054,6 +1064,7 @@ export async function completeAndChargeBookingAction(
               method: charge.method,
               description,
               bookingId,
+              bookingTeam: charge.team,
               clientIdempotencyKey: lineKey,
             },
             tx,

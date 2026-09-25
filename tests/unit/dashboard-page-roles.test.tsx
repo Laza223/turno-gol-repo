@@ -62,7 +62,11 @@ vi.mock('@/modules/home/home.service', () => ({
       occupancy: { occupied: 0, available: 0, blocked: 0, pct: 0 },
     },
     whileYouWereAway: [],
-    needsAttention: [],
+    // Una alerta: sin alertas el bloque no se monta (2026-09-24) y no habría
+    // nada que mirar en el test del Encargado.
+    needsAttention: [
+      { kind: 'pending_refunds', count: 1, totalCents: 1_000_000, since: new Date('2026-09-18') },
+    ],
   }),
 }))
 vi.mock('@/modules/courts/court.service', () => ({ listCourts: async () => [] }))

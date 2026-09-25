@@ -55,6 +55,14 @@ Este documento exige volver acá para tocar la lista; se toca.
 
 **Por qué no se rompe el "principio P6"** (avisar antes de que lo descubras solo): el aviso ahora es más fuerte, no más débil — la fila roja está en la pantalla donde está parado el que cobra, y un toque abre el cobro.
 
+## Enmienda 2026-09-24 — el vacío no se dibuja y la fila pasa a "Por cobrar"
+
+Decisión de Lazar en la sesión del pulido de Hoy (2026-09-24): pidió el "Por cobrar" en ámbar y eligió sacar el vacío y bajar la checklist. El hallazgo que lo motivó es el P1 de la crítica `.impeccable/critique/2026-09-23T21-25-51Z__src-app-admin.md`.
+
+**Estado vacío: no se dibuja nada.** La línea verde "Nada pendiente…" quedaba en el primer renglón de la pantalla del mostrador diciendo "todo en orden" justo arriba de los turnos que faltaba cobrar. El bloque sigue siendo una lista cerrada; con cero eventos, simplemente no está. Se deja sin efecto el copy verbatim del estado vacío de la enmienda anterior (y la constante `ATTENTION_EMPTY_COPY` que lo custodiaba).
+
+**La fila del tablero ya no es roja.** El turno terminado con saldo se muestra "Por cobrar", en ámbar (`PENDING_CHARGE_BADGE` en `slot-visual.ts`): en el Vagón el primer pago llega en la mediana 29 minutos después del partido (`docs/rediseno-panel/insumos.md`), así que es lo normal y no una alarma ni una deuda (principio 3 de `PRODUCT.md`). El umbral no cambia: la fila aparece apenas el turno termina. La celda de la Grilla, su leyenda y la pastilla de Reservas todavía dicen "Sin cobrar" en rojo; unificarlas es un pase aparte. El modal de cobro sí cambia en todos lados, porque la Grilla y el detalle de la reserva usan el mismo: "Falta cobrar" en ámbar y el botón parcial dice "quedan $X por cobrar" en vez de "de deuda".
+
 ## Alternativas descartadas
 
 - **Ventana de gracia de 30 min en "turno sin cobrar"** (la opción que el pase crítico ofrecía como ejemplo): descartada por Lazar — el costo de avisar de más es menor que el costo de un cobro perdido por aviso tardío.

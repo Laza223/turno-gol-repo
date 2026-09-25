@@ -1,16 +1,9 @@
 import Link from 'next/link'
-import { CheckCircle2, Undo2, XCircle } from 'lucide-react'
+import { Undo2, XCircle } from 'lucide-react'
 import { TONE_BADGE, TONE_BORDER, TONE_TINT, type StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { formatArs, relativeTimeEs } from '@/lib/format'
 import type { AttentionItem } from '@/modules/home/home.types'
-
-/** Copy exacto del contrato (verbatim, nunca parafraseado) — un componente
- * reusable no puede importar VALORES del dominio (solo tipos), así que este
- * literal se mantiene igual a `ATTENTION_EMPTY_COPY` en
- * `@/modules/home/home.lib` a mano; `home.lib.test.ts` es la fuente de
- * verdad que lo verifica contra el contrato. */
-const ATTENTION_EMPTY_COPY = 'Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.'
 
 /**
  * Tono por alerta = ESTADO DE LA PLATA, no severidad genérica: ámbar es plata
@@ -80,28 +73,13 @@ function actionFor(item: AttentionItem): { label: string; href: string } {
  * medio). A las 17:00, con el cliente parado en el mostrador, el botón de
  * cobrar tiene que caer bajo el pulgar sin scrollear.
  *
- * El vacío dejó de ser un `EmptyState` de 200px y pasó a ser una línea de
- * 44px: en los dos momentos del día en que el dueño abre esta pantalla casi
- * siempre está vacío, y una tarjeta vacía de ese tamaño empujaba el tablero
- * —lo que sí quiere ver— fuera de la primera pantalla del teléfono. El copy
- * se explica solo, así que no necesita el título arriba diciendo de qué está
- * vacío.
+ * Vacío no dibuja nada (decisión del dueño, 2026-09-24). Antes era una línea
+ * verde, "Nada pendiente…", que ocupaba el primer renglón de la pantalla del
+ * mostrador para decir "todo en orden" justo arriba de los turnos por cobrar
+ * del tablero: dos mensajes que se contradecían a la vista.
  */
 export function NeedsAttention({ items, nowMs }: { items: AttentionItem[]; nowMs: number }) {
-  if (items.length === 0) {
-    return (
-      <div
-        role="status"
-        className={cn(
-          'flex min-h-11 items-center gap-2.5 rounded-xl px-3.5 py-2 text-sm font-medium',
-          TONE_BADGE.success,
-        )}
-      >
-        <CheckCircle2 className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-        <p>{ATTENTION_EMPTY_COPY}</p>
-      </div>
-    )
-  }
+  if (items.length === 0) return null
 
   return (
     <section aria-labelledby="atencion-titulo" className="card-premium overflow-hidden rounded-2xl">

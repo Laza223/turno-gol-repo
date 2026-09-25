@@ -54,13 +54,9 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       await expect(page.locator('h1')).toHaveText('Hoy')
       await expect(page.getByRole('heading', { name: 'Turnos de hoy' })).toBeVisible()
       await expect(page.getByText('Mientras no estabas')).toBeVisible()
-      // "Necesita tu atención" sólo existe con alertas: vacío es una línea con
-      // el copy del premio, que es el estado normal de un tenant de prueba.
-      await expect(
-        page
-          .getByText('Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.')
-          .or(page.getByText('Necesita tu atención')),
-      ).toBeVisible()
+      // "Necesita tu atención" sólo existe con alertas; sin alertas no se dibuja
+      // nada (2026-09-24): la línea verde "Nada pendiente" no vuelve.
+      await expect(page.getByText(/Nada pendiente/)).toHaveCount(0)
     } finally {
       await context.close()
     }
@@ -90,7 +86,8 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       // La fila es UN botón que abre el modal: no un link a /reservas/[id].
       const row = page.getByRole('button', { name: /QA Hoy Turno Sin Cobrar/ })
       await expect(row).toBeVisible({ timeout: 10_000 })
-      await expect(row).toContainText('Cobrar')
+      // "Por cobrar", no una alarma: se cobra después del partido.
+      await expect(row).toContainText('Por cobrar')
       await expect(page.getByRole('link', { name: /QA Hoy Turno Sin Cobrar/ })).toHaveCount(0)
 
       await row.click()

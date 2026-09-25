@@ -211,12 +211,14 @@ function BookingCardComponent({
         'm-0.5 flex cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
         visual.cell,
         visual.borderL,
-        // La alarma NO se atenúa con isPast: un turno sin cobrar es pasado por
-        // definición, y apagarlo sería apagar justo lo que pide atención.
-        isPast && !visual.alarm && 'opacity-90 saturate-50',
-        visual.alarm && 'slot-alarm-ring',
+        // "Por cobrar" NO se atenúa con isPast: es pasado por definición, y
+        // desaturarlo le borraría el ámbar que dice que falta la plata.
+        isPast && !visual.pendingCharge && 'opacity-90 saturate-50',
         isNew && 'animate-slot-pulse',
-        spotlighted && 'ring-2 ring-inset ring-destructive/70',
+        // Anillo ámbar sólido, el tono de "Por cobrar": el chip que lo enciende
+        // es ámbar y lo que marca es plata pendiente, no un error. Sin `/N`:
+        // el token está calibrado para el contraste de 3:1 de un borde.
+        spotlighted && 'ring-2 ring-inset ring-warning',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
       )}
     >

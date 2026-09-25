@@ -33,14 +33,15 @@ import type { BookingStatus, BookingType, DepositStatus } from '@/modules/bookin
  * la plata, el ÍCONO + label comunican qué es.**
  *
  * Lo que sí cambia en Fase 3 es que el semáforo ahora dice la verdad completa:
- * existe un estado de ALARMA para el turno que ya se prestó y no se cobró, que
- * antes se pintaba igual que uno cobrado.
+ * el turno que ya se prestó y no se cobró tiene estado propio ("Por cobrar"),
+ * que antes se pintaba igual que uno cobrado. Nació como alarma roja; desde el
+ * refinamiento del 2026-09-24 va en ámbar (ver `pending_charge`).
  */
 
 export type SlotStateKey =
   | 'tournament'
   | 'block'
-  | 'unpaid_alarm'
+  | 'pending_charge'
   | 'no_show'
   | 'completed'
   | 'pending_payment'
@@ -55,7 +56,7 @@ export type SlotStateKey =
  * Los hechos del turno que determinan su estado visual. `pending`/`totalPaid`
  * son opcionales a propósito: los payloads que no los traen (Realtime crudo,
  * fixtures viejas) degradan al comportamiento previo a Fase 3 en vez de mentir
- * con una alarma que no pueden justificar.
+ * con un "Por cobrar" que no pueden justificar.
  */
 export type SlotFacts = {
   status: BookingStatus | string
@@ -75,8 +76,6 @@ type SlotStateMeta = {
   striped?: boolean
   /** Tinte reforzado — marca el remate de un ciclo, no un estado más. */
   strongTint?: boolean
-  /** Pide atención activa del staff (la ÚNICA alarma visual de la grilla). */
-  alarm?: boolean
   /** Aparece en la leyenda de la grilla, en este orden. */
   inLegend?: boolean
 }
@@ -114,11 +113,17 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
     strongTint: true,
     inLegend: true,
   },
-  unpaid_alarm: {
-    label: 'Sin cobrar',
-    icon: CheckCheck,
-    tone: 'destructive',
-    alarm: true,
+  // El turno se jugó y le falta plata. En el mostrador se cobra después del
+  // partido (mediana: 29 min después de que termina,
+  // docs/rediseno-panel/insumos.md), así que es el estado normal de la media
+  // hora que sigue a cada turno: ámbar, el tono de lo pendiente, y no el rojo
+  // de una alarma ni de una deuda (principio 3 de PRODUCT.md, DESIGN.md).
+  // Hasta el 2026-09-24 fue "Sin cobrar" en rojo con un anillo que respiraba,
+  // mientras Hoy ya decía "Por cobrar": dos superficies contradiciéndose.
+  pending_charge: {
+    label: 'Por cobrar',
+    icon: CircleDollarSign,
+    tone: 'warning',
     inLegend: true,
   },
   no_show: {
@@ -160,19 +165,19 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
 /**
  * ¿Este turno terminado se quedó sin cobrar?
  *
- * Decisión de producto (2026-08-04, corregida 2026-09-09): la alarma significa
- * **plata en cero o incompleta Y cobrable**, no "algo salió mal".
- * - `completed` con saldo pendiente → alarma: el servicio se prestó y falta plata.
- * - `no_show` → NUNCA alarma, cobrado o no. En un no-show la seña es lo único
+ * Decisión de producto (2026-08-04, corregida 2026-09-09): "Por cobrar"
+ * significa **plata en cero o incompleta Y cobrable**, no "algo salió mal".
+ * - `completed` con saldo pendiente → por cobrar: se jugó y falta plata.
+ * - `no_show` → NUNCA, cobrado o no. En un no-show la seña es lo único
  *   cobrable (regla de producto) y ya se cobró; lo que queda sin cobrar no es
  *   deuda (veto "No-show NO es deuda", CLAUDE.md) y no hay ningún botón para
- *   accionarlo. Alarmar algo que no se puede cobrar solo entrena al staff a
- *   ignorar la alarma.
+ *   accionarlo. Marcar algo que no se puede cobrar solo entrena al staff a
+ *   ignorar la marca.
  *
- * Sin datos de plata (`pending`/`totalPaid` ausentes) NO se dispara: una alarma
+ * Sin datos de plata (`pending`/`totalPaid` ausentes) NO se dispara: una marca
  * falsa entrena al staff a ignorarlas.
  */
-function isUnpaidAlarm(facts: SlotFacts): boolean {
+function isPendingCharge(facts: SlotFacts): boolean {
   return facts.status === 'completed' && typeof facts.pending === 'number' && facts.pending > 0
 }
 
@@ -181,21 +186,21 @@ function isUnpaidAlarm(facts: SlotFacts): boolean {
  * tipo, seña y plata cobrada.
  *
  * Orden de prioridad (el primero que matchea gana):
- * torneo → bloqueo → **alarma** → ausente → jugada → esperando seña → señada →
- * abonado → cancelada/expirada → confirmada.
+ * torneo → bloqueo → **por cobrar** → ausente → jugada → esperando seña →
+ * señada → abonado → cancelada/expirada → confirmada.
  *
- * La alarma va antes que `completed` porque justamente lo refina: abajo de
+ * "Por cobrar" va antes que `completed` porque justamente lo refina: abajo de
  * `completed` no se dispararía nunca. Ya NO refina a `no_show` (ver
- * `isUnpaidAlarm`, 2026-09-09): un no-show nunca alarma, cobrado o no, así que
- * el orden entre alarma y `no_show` dejó de importar en la práctica — se deja
- * igual para no reordenar sin necesidad. Torneo y bloqueo van primero porque no
- * son la reserva de un jugador y ninguna rama de plata los describe bien (ambos
- * tienen `price_snapshot = 0`, así que tampoco pueden alarmar).
+ * `isPendingCharge`, 2026-09-09): un no-show nunca queda por cobrar, así que el
+ * orden entre los dos dejó de importar en la práctica — se deja igual para no
+ * reordenar sin necesidad. Torneo y bloqueo van primero porque no son la
+ * reserva de un jugador y ninguna rama de plata los describe bien (ambos tienen
+ * `price_snapshot = 0`, así que tampoco pueden quedar por cobrar).
  */
 export function slotStateKey(facts: SlotFacts): SlotStateKey {
   if (facts.type === 'tournament') return 'tournament'
   if (facts.type === 'block') return 'block'
-  if (isUnpaidAlarm(facts)) return 'unpaid_alarm'
+  if (isPendingCharge(facts)) return 'pending_charge'
   if (facts.status === 'no_show') return 'no_show'
   if (facts.status === 'completed') return 'completed'
   if (facts.status === 'pending_payment') return 'pending_payment'
@@ -225,8 +230,11 @@ export type GridSlotVisual = {
   borderL: string
   /** Color del label de estado. */
   labelText: string
-  /** Requiere el tratamiento de alarma (anillo pulsante + punto). */
-  alarm: boolean
+  /**
+   * Turno jugado al que le falta plata. La celda no se atenúa aunque sea
+   * pasado: lo es por definición, y apagarla escondería lo que falta cobrar.
+   */
+  pendingCharge: boolean
 }
 
 export function gridSlotVisual(facts: SlotFacts): GridSlotVisual {
@@ -241,7 +249,7 @@ export function gridSlotVisual(facts: SlotFacts): GridSlotVisual {
     cell: meta.striped ? `slot-blocked-stripes ${tint}` : tint,
     borderL: TONE_BORDER[meta.tone],
     labelText: TONE_TEXT[meta.tone],
-    alarm: meta.alarm === true,
+    pendingCharge: key === 'pending_charge',
   }
 }
 
@@ -251,8 +259,8 @@ export function gridSlotVisual(facts: SlotFacts): GridSlotVisual {
  * fixtures viejas), saldo cero (cobrado, o bloqueo/torneo con price_snapshot 0),
  * `pending_payment` (esa línea ya la ocupa el contador del hold) o `no_show`
  * (veto "No-show NO es deuda": en un no-show lo que queda sin cobrar no es
- * cobrable, así que no hay "falta $X" que mostrar — mismo motivo que apaga la
- * alarma en `isUnpaidAlarm`).
+ * cobrable, así que no hay "falta $X" que mostrar — mismo motivo que lo deja
+ * afuera de `isPendingCharge`).
  *
  * Es un NÚMERO, no un estado: la grilla sigue teniendo 9 estados y 9 colores.
  */
@@ -276,37 +284,21 @@ export type BookingBadgeVisual = {
   accent: string
   /**
    * El turno terminó sin cobrar. En el listado esto NO reemplaza al label: es
-   * un flag para pintar un indicador APARTE, al lado del badge de estado.
+   * un flag para pintar la píldora "Por cobrar" APARTE, al lado del badge.
    */
   unpaid: boolean
 }
 
 /**
- * La píldora de plata del listado y del detalle. Sale de la MISMA fila de
- * `SLOT_STATES` que pinta la alarma de la grilla, así que las dos superficies
- * no pueden decir cosas distintas de la misma situación.
- */
-export const UNPAID_ALARM_BADGE = {
-  label: SLOT_STATES.unpaid_alarm.label,
-  icon: SLOT_STATES.unpaid_alarm.icon,
-  tone: SLOT_STATES.unpaid_alarm.tone,
-} as const
-
-/**
- * "Por cobrar": el turno del día que ya terminó y al que le falta plata, en el
- * tablero de Hoy. En el mostrador se cobra después del partido (mediana: 29 min
- * después de que termina, docs/rediseno-panel/insumos.md), así que es el estado
- * normal de la media hora que sigue a cada turno: va en ámbar, el tono de lo
- * pendiente, y no en el rojo de una alarma (principio 3 de PRODUCT.md).
- *
- * Es el mismo hecho que `unpaid_alarm`, que la Grilla y Reservas todavía dicen
- * "Sin cobrar" en rojo. Unificarlos es el pase propio de la Grilla (decisión del
- * dueño, 2026-09-24: el pulido de Hoy no la toca).
+ * "Por cobrar" fuera de la celda: la píldora del listado y del detalle de
+ * Reservas, la fila del tablero de Hoy y el chip "Por cobrar hoy" de la Grilla.
+ * Sale de la MISMA fila de `SLOT_STATES` que pinta la celda, así que ninguna
+ * superficie puede decir otra cosa de la misma situación.
  */
 export const PENDING_CHARGE_BADGE = {
-  label: 'Por cobrar',
-  icon: CircleDollarSign,
-  tone: 'warning',
+  label: SLOT_STATES.pending_charge.label,
+  icon: SLOT_STATES.pending_charge.icon,
+  tone: SLOT_STATES.pending_charge.tone,
 } as const
 
 /**
@@ -319,35 +311,35 @@ export const PENDING_CHARGE_BADGE = {
  * cuando llegue" justo en la pantalla que se abre para saber a quién hay que
  * cobrarle. Decisión del dueño: gana el criterio de la grilla, en las tres.
  *
- * La alarma de plata viaja al listado como **flag** (`unpaid`), NUNCA como
- * label. La diferencia es el contrato entero de esta función:
+ * "Por cobrar" viaja al listado como **flag** (`unpaid`), NUNCA como label. La
+ * diferencia es el contrato entero de esta función:
  *
- * - En la grilla la alarma REEMPLAZA al label, porque una celda tiene lugar
- *   para una sola palabra y ahí lo urgente es la plata.
+ * - En la grilla "Por cobrar" REEMPLAZA al label, porque una celda tiene lugar
+ *   para una sola palabra y ahí lo que importa es la plata.
  * - En un listado cuyo trabajo es mostrar el estado de cada reserva, reemplazar
- *   colapsaría "Jugada" y "Ausente" en un mismo "Sin cobrar" y la columna de
+ *   colapsaría "Jugada" y "Ausente" en un mismo "Por cobrar" y la columna de
  *   estado dejaría de decir el estado. Por eso el badge sigue diciendo el
- *   estado del turno y la plata va en una píldora al lado (`UNPAID_ALARM_BADGE`).
+ *   estado del turno y la plata va en una píldora al lado (`PENDING_CHARGE_BADGE`).
  *
- * El `accent` sí toma el tono de alarma cuando `unpaid`: MASTER §2.6 asigna el
- * COLOR al estado de la plata y el ícono+label a qué es la cosa. Una tira verde
- * al lado de una píldora roja rompería esa partición.
+ * El `accent` sí toma el tono de "Por cobrar" cuando `unpaid`: MASTER §2.6
+ * asigna el COLOR al estado de la plata y el ícono+label a qué es la cosa. Una
+ * tira verde al lado de una píldora ámbar rompería esa partición.
  *
  * Esto cierra el REQUIERE INPUT de T7 (el detalle mostraba el badge "Jugada"
  * arriba y "Saldo pendiente: $X" en Cobros más abajo, contradiciéndose en la
  * misma pantalla). Decisión del dueño, 2026-08-05: indicador aparte, el badge
  * de estado no cambia.
  *
- * Lo único que sigue divergiendo entre grilla y listado es eso: la alarma. La
- * grilla la pone en el label porque una celda tiene lugar para una palabra
- * sola; el listado la pone al lado.
+ * Lo único que sigue divergiendo entre grilla y listado es eso: "Por cobrar".
+ * La grilla lo pone en el label porque una celda tiene lugar para una palabra
+ * sola; el listado lo pone al lado.
  */
 export function bookingBadgeVisual(facts: SlotFacts): BookingBadgeVisual {
   const raw = slotStateKey(facts)
-  const unpaid = raw === 'unpaid_alarm'
-  // Con alarma, el estado real se recupera re-preguntando SIN los datos de
-  // plata: `isUnpaidAlarm` degrada a false con `pending`/`totalPaid` nulos, así
-  // que esto devuelve el key que `slotStateKey` habría dado sin alarma. Evita
+  const unpaid = raw === 'pending_charge'
+  // Por cobrar, el estado real se recupera re-preguntando SIN los datos de
+  // plata: `isPendingCharge` degrada a false con `pending`/`totalPaid` nulos,
+  // así que esto devuelve el key que `slotStateKey` habría dado sin la plata. Evita
   // duplicar la tabla de prioridades y deja intacta la función que pinta la
   // grilla.
   const key = unpaid ? slotStateKey({ ...facts, pending: null, totalPaid: null }) : raw
@@ -357,7 +349,7 @@ export function bookingBadgeVisual(facts: SlotFacts): BookingBadgeVisual {
     label: meta.label,
     icon: meta.icon,
     tone: meta.tone,
-    accent: unpaid ? TONE_ACCENT[UNPAID_ALARM_BADGE.tone] : TONE_ACCENT[meta.tone],
+    accent: unpaid ? TONE_ACCENT[PENDING_CHARGE_BADGE.tone] : TONE_ACCENT[meta.tone],
     unpaid,
   }
 }
@@ -379,7 +371,7 @@ const LEGEND_ORDER: SlotStateKey[] = [
   'confirmed',
   'deposit_paid',
   'completed',
-  'unpaid_alarm',
+  'pending_charge',
   'no_show',
   'fixed',
   'tournament',

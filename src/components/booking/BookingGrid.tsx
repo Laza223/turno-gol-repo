@@ -115,9 +115,10 @@ export function BookingGrid({
   // cada `GridBooking` (ver grilla/page.tsx y /api/bookings).
   const pendingSummary = useMemo(() => sumPendingCents(bookings), [bookings])
 
-  // El chip "Por cobrar hoy" dejó de ser texto muerto: encenderlo le pone anillo
-  // a los turnos que deben plata, que en una matriz de 7 canchas por 14 horas ya
-  // no se encuentran solo por el color.
+  // El chip "Por cobrar hoy" dejó de ser texto muerto: encenderlo le pone un
+  // anillo ámbar a los turnos que deben plata, que en una matriz de 7 canchas
+  // por 14 horas ya no se encuentran solo por el color. Es el ÚNICO anillo de
+  // la grilla: la celda "Por cobrar" no lo lleva sola (dejó de ser alarma).
   const [highlightPending, setHighlightPending] = useState(false)
 
   const showOfflineBanner = useOfflineBannerDelay(status)

@@ -1,4 +1,5 @@
 import { formatArs } from '@/lib/format'
+import { PENDING_CHARGE_BADGE } from '@/lib/booking/slot-visual'
 import { reservaStatusVisual } from './status-visual'
 import type { ReservaListRow } from './queries'
 
@@ -36,12 +37,15 @@ export function moneyLine(
     // "Falta $ 40.000" uno debajo del otro y hay que leer los dos para entender
     // que son lo mismo. El monto solo aporta cuando hubo un cobro parcial.
     if (b.pending >= b.priceSnapshot) {
-      // ...y cuando el turno ya se jugó, la píldora de alarma al lado del badge
-      // dice EXACTAMENTE estas dos palabras (`RESERVA_UNPAID_VISUAL`, label
-      // 'Sin cobrar'). Escribirlas otra vez acá abajo deja la fila diciendo
-      // "Sin cobrar" dos veces —y el aria-label del Link, también—, que es el
-      // mismo ruido que este renglón vino a sacar.
-      return reservaStatusVisual(b).unpaid ? null : { text: 'Sin cobrar', tone: 'pending' }
+      // ...y cuando el turno ya se jugó, la píldora al lado del badge dice
+      // EXACTAMENTE estas dos palabras (`RESERVA_UNPAID_VISUAL`, label
+      // 'Por cobrar'). Escribirlas otra vez acá abajo deja la fila diciendo
+      // "Por cobrar" dos veces —y el aria-label del Link, también—, que es el
+      // mismo ruido que este renglón vino a sacar. Es el mismo hecho con la
+      // misma palabra: si la píldora cambia, esto cambia con ella.
+      return reservaStatusVisual(b).unpaid
+        ? null
+        : { text: PENDING_CHARGE_BADGE.label, tone: 'pending' }
     }
     return { text: `Falta ${formatArs(b.pending)}`, tone: 'pending' }
   }

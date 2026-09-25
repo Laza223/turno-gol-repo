@@ -51,7 +51,7 @@ export function playerBookingVisual(status: string): StatusBadgeVisual {
     // una celda muestra una cosa sola, pero acá el turno fijo ya tiene su
     // propio chip al lado. Sin esto la tarjeta diría "Abonado" y "Turno fijo".
     type: 'spontaneous',
-    // Sin datos de plata: la alarma "Sin cobrar" es de la caja del complejo, no
+    // Sin datos de plata: el "Por cobrar" es de la caja del complejo, no
     // del jugador. Que él vea que el complejo no cobró no le sirve de nada y
     // expone un dato interno del mostrador.
     pending: null,

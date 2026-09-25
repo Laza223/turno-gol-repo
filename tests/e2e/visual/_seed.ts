@@ -56,6 +56,7 @@ const VISUAL_BOOKING_IDS = [
   '00000000-0000-4000-8000-000000000901',
   '00000000-0000-4000-8000-000000000902',
   '00000000-0000-4000-8000-000000000903',
+  '00000000-0000-4000-8000-000000000904',
 ] as const
 
 const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
@@ -72,9 +73,13 @@ type VisualBooking = {
 }
 
 /**
- * Tres reservas en horarios fijos que cubren tres estados de badge distintos
- * (confirmada / esperando seña / señada). La grilla es la pantalla del producto:
- * lo que interesa fotografiar es que los tres se sigan viendo distinto.
+ * Cuatro reservas en horarios fijos que cubren cuatro estados de badge distintos
+ * (confirmada / esperando seña / señada / por cobrar). La grilla es la pantalla
+ * del producto: lo que interesa fotografiar es que se sigan viendo distinto.
+ *
+ * La jugada sin cobrar entró el 2026-09-24, cuando "Sin cobrar" en rojo con
+ * anillo pasó a "Por cobrar" en ámbar: sin ella la foto no cubría ese estado y
+ * un rojo de vuelta en la celda habría pasado sin que nadie lo viera.
  */
 const VISUAL_BOOKINGS: VisualBooking[] = [
   {
@@ -106,6 +111,16 @@ const VISUAL_BOOKINGS: VisualBooking[] = [
     depositAmount: 3000,
     guestName: null,
     playerId: VISUAL_PLAYER_ID,
+  },
+  {
+    id: VISUAL_BOOKING_IDS[3],
+    timeStart: '16:00:00',
+    timeEnd: '17:00:00',
+    status: 'completed',
+    depositStatus: 'not_required',
+    depositAmount: 0,
+    guestName: 'Los Pibes del Fondo',
+    playerId: null,
   },
 ]
 

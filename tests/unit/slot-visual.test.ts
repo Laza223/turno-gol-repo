@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   GRID_LEGEND_ITEMS,
+  PENDING_CHARGE_BADGE,
   bookingBadgeVisual,
   gridSlotVisual,
   slotPendingCents,
@@ -54,20 +55,20 @@ describe('slotStateKey — prioridad y derivación', () => {
   })
 })
 
-describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
-  it('jugada con saldo pendiente alarma', () => {
+describe('"Por cobrar" — el turno jugado al que le falta plata', () => {
+  it('jugada con saldo pendiente queda por cobrar', () => {
     expect(slotStateKey(facts({ status: 'completed', pending: 24000, totalPaid: 0 }))).toBe(
-      'unpaid_alarm',
+      'pending_charge',
     )
   })
 
-  it('jugada ya cobrada NO alarma', () => {
+  it('jugada ya cobrada NO queda por cobrar', () => {
     expect(slotStateKey(facts({ status: 'completed', pending: 0, totalPaid: 24000 }))).toBe(
       'completed',
     )
   })
 
-  it('ausente con la seña capturada NO alarma: en un no-show la seña es lo único cobrable', () => {
+  it('ausente con la seña capturada NO queda por cobrar: en un no-show la seña es lo único cobrable', () => {
     expect(
       slotStateKey(
         facts({ status: 'no_show', depositStatus: 'captured', pending: 16800, totalPaid: 7200 }),
@@ -75,7 +76,7 @@ describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
     ).toBe('no_show')
   })
 
-  it('ausente sin un peso cobrado NO alarma: un no-show nunca es cobrable (veto "No-show NO es deuda")', () => {
+  it('ausente sin un peso cobrado NO queda por cobrar: un no-show nunca es cobrable (veto "No-show NO es deuda")', () => {
     expect(
       slotStateKey(
         facts({ status: 'no_show', depositStatus: 'not_required', pending: 24000, totalPaid: 0 }),
@@ -83,13 +84,13 @@ describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
     ).toBe('no_show')
   })
 
-  it('sin datos de plata NO alarma — una alarma falsa entrena a ignorarlas', () => {
+  it('sin datos de plata NO se marca — una marca falsa entrena a ignorarlas', () => {
     expect(slotStateKey(facts({ status: 'completed' }))).toBe('completed')
     expect(slotStateKey(facts({ status: 'no_show' }))).toBe('no_show')
     expect(slotStateKey(facts({ status: 'completed', pending: null }))).toBe('completed')
   })
 
-  it('un turno todavía por jugarse nunca alarma, tenga saldo o no', () => {
+  it('un turno todavía por jugarse nunca queda por cobrar, tenga saldo o no', () => {
     expect(slotStateKey(facts({ status: 'confirmed', pending: 24000, totalPaid: 0 }))).toBe(
       'confirmed',
     )
@@ -98,7 +99,7 @@ describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
     )
   })
 
-  it('un torneo no puede alarmar aunque le pasen saldo', () => {
+  it('un torneo no puede quedar por cobrar aunque le pasen saldo', () => {
     expect(
       slotStateKey(facts({ type: 'tournament', status: 'completed', pending: 999, totalPaid: 0 })),
     ).toBe('tournament')
@@ -106,14 +107,31 @@ describe('alarma "sin cobrar" — la única alarma visual de la grilla', () => {
 })
 
 describe('gridSlotVisual — la celda', () => {
-  it('marca alarm solo en el estado de alarma', () => {
-    expect(gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 })).alarm).toBe(
-      true,
-    )
-    expect(gridSlotVisual(facts({ status: 'completed', pending: 0, totalPaid: 100 })).alarm).toBe(
-      false,
-    )
-    expect(gridSlotVisual(facts({ status: 'no_show' })).alarm).toBe(false)
+  it('marca pendingCharge solo en el turno por cobrar', () => {
+    expect(
+      gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 })).pendingCharge,
+    ).toBe(true)
+    expect(
+      gridSlotVisual(facts({ status: 'completed', pending: 0, totalPaid: 100 })).pendingCharge,
+    ).toBe(false)
+    expect(gridSlotVisual(facts({ status: 'no_show' })).pendingCharge).toBe(false)
+  })
+
+  // DESIGN.md ("Don't") y principio 3 de PRODUCT.md: el turno recién jugado y
+  // sin cobrar es lo normal de la media hora que sigue al partido, no una
+  // alarma ni una deuda. Hasta el 2026-09-24 era rojo con un anillo que
+  // respiraba; si alguien le devuelve el rojo, rompe acá.
+  it('"Por cobrar" va en ámbar, nunca en el rojo de una alarma', () => {
+    const v = gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 }))
+    expect(v.label).toBe('Por cobrar')
+    expect(v.tone).toBe('warning')
+  })
+
+  // Una sola fila en la tabla: la celda, la píldora de Reservas, la fila de Hoy
+  // y el chip "Por cobrar hoy" de la Grilla dicen lo mismo del mismo hecho.
+  it('la celda y PENDING_CHARGE_BADGE salen de la misma fila', () => {
+    const v = gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 }))
+    expect(PENDING_CHARGE_BADGE).toEqual({ label: v.label, icon: v.icon, tone: v.tone })
   })
 
   it('rayado solo en torneo y bloqueo', () => {
@@ -167,34 +185,34 @@ describe('bookingBadgeVisual — el listado', () => {
     expect(bookingBadgeVisual(facts({ status: 'expired' })).label).toBe('Expirada')
   })
 
-  // La alarma viaja al listado como FLAG, nunca como label. Si pisara el label,
-  // "Jugada" y "Ausente" colapsarían las dos en "Sin cobrar" y la columna de
-  // estado dejaría de decir el estado — que es su único trabajo.
+  // "Por cobrar" viaja al listado como FLAG, nunca como label. Si pisara el
+  // label, "Jugada" y "Ausente" colapsarían las dos en "Por cobrar" y la columna
+  // de estado dejaría de decir el estado — que es su único trabajo.
   it('turno jugado sin cobrar: el badge sigue diciendo Jugada y marca unpaid', () => {
     const v = bookingBadgeVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 }))
     expect(v.label).toBe('Jugada')
     expect(v.key).toBe('completed')
     expect(v.unpaid).toBe(true)
-    // El acento sí toma el tono de alarma: MASTER §2.6 asigna el COLOR al
-    // estado de la plata (una tira verde al lado de una píldora roja mentiría).
-    expect(v.accent).toBe(TONE_ACCENT.destructive)
+    // El acento sí toma el tono de "Por cobrar": MASTER §2.6 asigna el COLOR al
+    // estado de la plata (una tira verde al lado de una píldora ámbar mentiría).
+    expect(v.accent).toBe(TONE_ACCENT.warning)
   })
 
-  it('ausente sin un peso cobrado: el badge dice Ausente SIN marcar unpaid — un no-show nunca alarma', () => {
+  it('ausente sin un peso cobrado: el badge dice Ausente SIN marcar unpaid — un no-show nunca queda por cobrar', () => {
     const v = bookingBadgeVisual(facts({ status: 'no_show', totalPaid: 0 }))
     expect(v.label).toBe('Ausente')
     expect(v.key).toBe('no_show')
     expect(v.unpaid).toBe(false)
   })
 
-  it('ausente con la seña capturada NO alarma: ya se cobró lo único cobrable', () => {
+  it('ausente con la seña capturada NO queda por cobrar: ya se cobró lo único cobrable', () => {
     const v = bookingBadgeVisual(facts({ status: 'no_show', totalPaid: 450_000 }))
     expect(v.label).toBe('Ausente')
     expect(v.unpaid).toBe(false)
     expect(v.accent).toBe(TONE_ACCENT.destructive) // el tono propio de no_show
   })
 
-  it('sin datos de plata degrada al comportamiento previo, no inventa alarma', () => {
+  it('sin datos de plata degrada al comportamiento previo, no inventa un "Por cobrar"', () => {
     const v = bookingBadgeVisual(facts({ status: 'completed' }))
     expect(v.label).toBe('Jugada')
     expect(v.unpaid).toBe(false)
@@ -208,10 +226,10 @@ describe('bookingBadgeVisual — el listado', () => {
     expect(v.unpaid).toBe(false)
   })
 
-  // La alarma tiene prioridad sobre la seña: un turno jugado y sin cobrar
+  // "Por cobrar" tiene prioridad sobre la seña: un turno jugado y sin cobrar
   // sigue diciendo "Jugada" con el flag, aunque la seña esté paga. Sacar el
   // colapso no podía cambiar esto y este caso lo fija.
-  it('con alarma de plata, la seña paga no se come el estado del turno', () => {
+  it('por cobrar, la seña paga no se come el estado del turno', () => {
     const v = bookingBadgeVisual(
       facts({ status: 'completed', depositStatus: 'paid', pending: 100, totalPaid: 50 }),
     )
@@ -219,11 +237,11 @@ describe('bookingBadgeVisual — el listado', () => {
     expect(v.unpaid).toBe(true)
   })
 
-  it('la GRILLA no se movió: ahí la alarma sigue REEMPLAZANDO al label', () => {
+  it('en la GRILLA "Por cobrar" sigue REEMPLAZANDO al label', () => {
     const g = gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 }))
-    expect(g.key).toBe('unpaid_alarm')
-    expect(g.label).toBe('Sin cobrar')
-    expect(g.alarm).toBe(true)
+    expect(g.key).toBe('pending_charge')
+    expect(g.label).toBe('Por cobrar')
+    expect(g.pendingCharge).toBe(true)
   })
 
   it('un status desconocido nunca se lee como Jugada', () => {
@@ -259,7 +277,7 @@ describe('slotPendingCents — indicador secundario de saldo en la celda', () =>
     expect(slotPendingCents(facts({ status: 'pending_payment', pending: 4000000 }))).toBeNull()
   })
 
-  it('un turno jugado sin cobrar también muestra el monto (alarma + número, no compiten)', () => {
+  it('un turno jugado sin cobrar también muestra el monto (rótulo + número, no compiten)', () => {
     expect(slotPendingCents(facts({ status: 'completed', pending: 4000000, totalPaid: 0 }))).toBe(
       4000000,
     )
@@ -286,9 +304,9 @@ describe('leyenda derivada', () => {
     }
   })
 
-  it('incluye la alarma y no incluye estados que la grilla nunca muestra', () => {
+  it('incluye "Por cobrar" y no incluye estados que la grilla nunca muestra', () => {
     const keys = GRID_LEGEND_ITEMS.map((i) => i.key)
-    expect(keys).toContain('unpaid_alarm')
+    expect(keys).toContain('pending_charge')
     expect(keys).not.toContain('canceled')
     expect(keys).not.toContain('expired')
     expect(keys).not.toContain('unknown')
@@ -317,9 +335,10 @@ describe('leyenda derivada', () => {
  * se movió y los specs quedaron atrás. Rompe en `pnpm test`, o sea antes de que
  * nadie levante un browser.
  *
- * NO cubre los estados sin cobertura e2e (torneo, bloqueo, alarma, señada,
- * expirada, desconocido): exigirles presencia inventaría un requisito que nunca
- * existió.
+ * NO cubre los estados sin cobertura e2e (torneo, bloqueo, señada, expirada,
+ * desconocido): exigirles presencia inventaría un requisito que nunca existió.
+ * "Por cobrar" sí tiene cobertura (el tablero de Hoy, `hoy-screen.spec.ts`),
+ * pero en el listado no es label sino píldora: va en su propio caso abajo.
  */
 const LABELS_AFIRMADOS_EN_E2E: ReadonlyArray<[string, SlotFacts]> = [
   ['pending_payment', facts({ status: 'pending_payment' })],
@@ -355,6 +374,11 @@ describe('candado — el texto que los e2e buscan sigue siendo el que el código
     expect(found, `ningún spec e2e busca "${label}" — ¿lo renombraste sin tocarlos?`).toBe(true)
   })
 
+  it('el rótulo de "Por cobrar" aparece en algún spec', () => {
+    const found = corpus.some((source) => source.includes(PENDING_CHARGE_BADGE.label))
+    expect(found, `ningún spec e2e busca "${PENDING_CHARGE_BADGE.label}"`).toBe(true)
+  })
+
   it('control negativo: un label que nadie pinta no se encuentra', () => {
     // Frase deliberadamente inventada: si algún día alguien la escribe en un
     // spec, este control deja de controlar nada y hay que cambiarla de nuevo.
@@ -368,7 +392,7 @@ const GRID_LEGEND_SAMPLES: Partial<Record<string, SlotFacts>> = {
   confirmed: facts({ depositStatus: 'not_required' }),
   deposit_paid: facts({ depositStatus: 'paid' }),
   completed: facts({ status: 'completed', pending: 0, totalPaid: 100 }),
-  unpaid_alarm: facts({ status: 'completed', pending: 100, totalPaid: 0 }),
+  pending_charge: facts({ status: 'completed', pending: 100, totalPaid: 0 }),
   no_show: facts({ status: 'no_show', totalPaid: 100 }),
   fixed: facts({ type: 'fixed', depositStatus: 'not_required' }),
   tournament: facts({ type: 'tournament' }),

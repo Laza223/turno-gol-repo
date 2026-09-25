@@ -1,8 +1,10 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Coins, Ellipsis } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Ellipsis } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs } from '@/lib/format'
+import { PENDING_CHARGE_BADGE } from '@/lib/booking/slot-visual'
+import { TONE_BADGE } from '@/lib/status-tone'
 import { computeArtNow } from '@/hooks/use-art-now'
 import { addDays } from '@/lib/booking/grid-cells'
 import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
@@ -50,6 +52,7 @@ export function GridHeaderBar({
 }: Props) {
   const isToday = todayArt !== '' && date === todayArt
   const hasPending = !!pendingSummary && pendingSummary.count > 0
+  const PendingIcon = PENDING_CHARGE_BADGE.icon
 
   // Se recalcula al click (no se usa `todayArt`) para no depender de la
   // hidratación ni del refresco de 60 s de useArtNow: evita quedar sin navegar
@@ -67,17 +70,19 @@ export function GridHeaderBar({
         // escritorio baja a 36 para entrar en la barra de 60.
         'inline-flex h-11 shrink-0 items-center gap-2 rounded-full pl-2.5 pr-3 text-[13px] font-semibold whitespace-nowrap transition-colors lg:h-9',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-        // red-700 y no el destructive pelado: el token cae bajo AA sobre este
-        // fondo tenue en claro (ver globals.css / Tailwind 4 OKLCH).
-        'bg-destructive/10 text-red-700 ring-1 ring-inset ring-destructive/25 hover:bg-destructive/15',
-        'dark:bg-destructive/15 dark:text-red-300 dark:ring-destructive/40',
-        highlightPending && 'bg-destructive/20 ring-2 dark:bg-destructive/25',
+        // La receta del badge de "Por cobrar" (ámbar, texto 800/300 verificado
+        // en AA): el chip nombra el mismo hecho que la celda y la fila de Hoy,
+        // así que no puede venir en otro color. Era rojo hasta el 2026-09-24.
+        TONE_BADGE[PENDING_CHARGE_BADGE.tone],
+        'hover:bg-warning/15 dark:hover:bg-warning/20',
+        highlightPending && 'bg-warning/20 ring-2 dark:bg-warning/25',
       )}
     >
-      <Coins aria-hidden className="h-4 w-4 shrink-0" />
+      <PendingIcon aria-hidden className="h-4 w-4 shrink-0" />
       <span>Por cobrar hoy</span>
       <span className="tabular-nums">{formatArs(pendingSummary.totalCents)}</span>
-      <span className="font-medium opacity-80">· {pendingSummary.count}</span>
+      {/* Sin `opacity-*`: sobre el ámbar encendido baja el 800 a 3,9:1 (axe). */}
+      <span className="font-medium">· {pendingSummary.count}</span>
     </button>
   ) : null
 

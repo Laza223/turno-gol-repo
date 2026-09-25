@@ -122,7 +122,7 @@ const ROW_AUSENTE = row({
   timeStart: '20:00',
   timeEnd: '21:00',
 })
-// Jugada con saldo: el servicio se prestó y falta plata → alarma.
+// Jugada con saldo: el servicio se prestó y falta plata → "Por cobrar".
 const ROW_JUGADA_SIN_COBRAR = row({
   id: uid(1015),
   status: 'completed',
@@ -134,7 +134,7 @@ const ROW_JUGADA_SIN_COBRAR = row({
   pending: 1_500_000,
   totalPaid: 0,
 })
-// Ausente sin un peso cobrado (sin seña que capturar) → tampoco alarma: un
+// Ausente sin un peso cobrado (sin seña que capturar) → tampoco: un
 // no-show nunca es cobrable (veto "No-show NO es deuda"), cobrado o no.
 const ROW_AUSENTE_SIN_COBRAR = row({
   id: uid(1016),
@@ -352,8 +352,8 @@ export const Ausente: Story = {
 
 /**
  * El caso que cierra la contradicción del detalle: el badge sigue diciendo
- * "Jugada" (el estado del turno) y al lado aparece "Sin cobrar" (la plata). Si
- * la alarma pisara el label —como sí hace en la grilla, donde una celda tiene
+ * "Jugada" (el estado del turno) y al lado aparece "Por cobrar" (la plata). Si
+ * la píldora pisara el label —como sí hace en la grilla, donde una celda tiene
  * lugar para una sola palabra— "Jugada" y "Ausente" colapsarían en el mismo
  * texto y la columna de estado dejaría de servir.
  */
@@ -362,7 +362,7 @@ export const JugadaSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugada')).toBeVisible()
-    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+    await expect(canvas.getByText('Por cobrar')).toBeVisible()
     // El aria-label del Link estirado es lo único que escucha un lector de
     // pantalla navegando por links: la plata tiene que estar ahí adentro.
     await expect(
@@ -376,7 +376,7 @@ export const AusenteSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+    await expect(canvas.queryByText('Por cobrar')).toBeNull()
     // Control negativo: un no-show nunca es cobrable (veto "No-show NO es
     // deuda"), así que tampoco puede aparecer "Falta $X" aunque `pending`
     // venga > 0.

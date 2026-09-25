@@ -62,7 +62,7 @@ type Story = StoryObj<typeof meta>
 /**
  * El caso que hasta ahora se contradecía a sí mismo: el badge decía "Jugada"
  * en verde arriba y "Saldo pendiente: $X" aparecía en la sección de Cobros más
- * abajo, en la misma pantalla. Ahora la píldora "Sin cobrar" convive con el
+ * abajo, en la misma pantalla. Ahora la píldora "Por cobrar" convive con el
  * badge de estado en vez de reemplazarlo.
  */
 export const JugadaSinCobrar: Story = {
@@ -79,7 +79,7 @@ export const JugadaSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugada')).toBeVisible()
-    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+    await expect(canvas.getByText('Por cobrar')).toBeVisible()
   },
 }
 
@@ -96,7 +96,7 @@ export const JugadaCobrada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugada')).toBeVisible()
-    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+    await expect(canvas.queryByText('Por cobrar')).toBeNull()
   },
 }
 

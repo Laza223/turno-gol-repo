@@ -175,6 +175,43 @@ export const PrimeraReserva: Story = {
   },
 }
 
+/**
+ * "Por cobrar" en ámbar (refinamiento 2026-09-24): un turno jugado con saldo y
+ * otro confirmado con saldo. La celda jugada dice "Por cobrar" sin anillo — es
+ * lo normal de la media hora que sigue al partido, no una alarma —, y el chip
+ * "Por cobrar hoy" (ámbar) le pone un anillo ámbar a los dos al encenderse.
+ */
+export const PorCobrarHoy: Story = {
+  name: 'Chip "Por cobrar hoy" encendido → anillo ámbar en los que deben',
+  beforeEach: () => {
+    const [played, upcoming, ...rest] = saturdayAfternoonGridBookings().map((b) => ({
+      ...b,
+      date: '2026-03-14',
+    }))
+    mocked(useBookingRealtime).mockReturnValue({
+      bookings: [
+        { ...played!, status: 'completed', totalPaid: 0, pending: played!.priceSnapshot },
+        { ...upcoming!, status: 'confirmed', totalPaid: 0, pending: upcoming!.priceSnapshot },
+        ...rest,
+      ],
+      status: 'SUBSCRIBED',
+      refetch: fn(async () => {}),
+    })
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const cell = canvas.getByRole('button', { name: /Por cobrar, falta cobrar/ })
+    // Sin chip: ningún anillo. El rojo que respiraba ya no existe.
+    await expect(cell.className).not.toMatch(/ring-warning|ring-destructive|slot-alarm/)
+
+    const chip = await canvas.findByRole('button', { name: /^Por cobrar hoy/ })
+    await userEvent.click(chip)
+    await expect(chip).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() => expect(cell.className).toMatch(/ring-warning/))
+    await expect(cell.className).not.toMatch(/ring-destructive/)
+  },
+}
+
 export const DetalleDeReserva: Story = {
   name: 'Click en una reserva abre su popover de detalle',
   // Los fixtures caen en el día de hoy y la story mira el 2026-03-14: la grilla

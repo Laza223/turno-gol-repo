@@ -232,7 +232,7 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
 
     // La seña se cuenta UNA vez, por depositCounted. Si la descripción del
     // cash_flow no fuera la canónica, chargesTotal la sumaría de nuevo y el
-    // pendiente se desplomaría (y con él, la alarma "Sin cobrar" de la grilla).
+    // pendiente se desplomaría (y con él, el "Por cobrar" de la grilla).
     const summary = summarizeBookingCharges({
       priceSnapshot: booking.priceSnapshot,
       depositAmount: booking.depositAmount,

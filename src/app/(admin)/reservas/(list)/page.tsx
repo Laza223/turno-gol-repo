@@ -90,8 +90,8 @@ export default async function ReservasPage(props: Props) {
       { scope, today, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
       tx,
     )
-    // El saldo pendiente dejó de ser insumo exclusivo de la alarma
-    // (`isUnpaidAlarm` en slot-visual.ts, que solo mira completed): 3.2
+    // El saldo pendiente dejó de ser insumo exclusivo de "Por cobrar"
+    // (`isPendingCharge` en slot-visual.ts, que solo mira completed): 3.2
     // lo usa como columna de TODAS las filas de la lista ("Cobrado"/"Falta $X"),
     // así que ahora se pide para toda la página. Siempre son 3 queries (antes 2
     // en el scope 'proximas'), pero acotadas a `RESERVAS_PAGE_SIZE` (50) ids —

@@ -112,6 +112,11 @@ const VISUAL_BOOKINGS: VisualBooking[] = [
     guestName: null,
     playerId: VISUAL_PLAYER_ID,
   },
+  // Terminal (`completed`): el trigger `enforce_booking_invariants_fn` rechaza
+  // casi cualquier UPDATE sobre él. En una corrida serial el delete de
+  // `seedVisualData` lo evita; solo si dos workers siembran a la vez el upsert
+  // puede degenerar en UPDATE, y sobrevive porque `player_id` es null (cae en
+  // la excepción ARCO del trigger). Un terminal CON jugador ahí explotaría.
   {
     id: VISUAL_BOOKING_IDS[3],
     timeStart: '16:00:00',

@@ -58,11 +58,11 @@ export type ReservaListRow = {
   /**
    * Saldo pendiente y total cobrado, en centavos. NO son columnas del SELECT:
    * los DERIVA la page con `summarizeBookingCharges` a partir de
-   * `sumBookingChargesByBooking`. Ya no son insumo exclusivo de la alarma de
-   * plata (`isUnpaidAlarm` en slot-visual.ts hoy solo dispara para
-   * `completed` — un `no_show` nunca alarma, veto "No-show NO es deuda").
+   * `sumBookingChargesByBooking`. Ya no son insumo exclusivo de "Por cobrar"
+   * (`isPendingCharge` en slot-visual.ts hoy solo dispara para `completed` —
+   * un `no_show` nunca queda por cobrar, veto "No-show NO es deuda").
    * Opcionales por el mismo motivo que `startsAt`/`endsAt`: sin ellos el badge
-   * degrada al comportamiento previo en vez de inventar una alarma que no
+   * degrada al comportamiento previo en vez de inventar un "Por cobrar" que no
    * puede justificar.
    */
   pending?: number | null
@@ -377,7 +377,7 @@ export async function getBookingCharges(
  * de MUCHOS turnos en una sola query.
  *
  * La grilla necesita el saldo de cada turno del día para decidir cuáles quedaron
- * sin cobrar (la alarma de Fase 3). Llamar `getBookingCharges` por celda sería
+ * sin cobrar ("Por cobrar", Fase 3). Llamar `getBookingCharges` por celda sería
  * un N+1 sobre la vista donde el admin vive 8h/día.
  *
  * El predicado es el MISMO que el de `getBookingCharges` (income + category

@@ -26,24 +26,33 @@ describe('useNowMs (reloj como store externo, B7)', () => {
 
   it('un solo setInterval aunque haya N consumidores montados', () => {
     vi.setSystemTime(new Date('2026-06-09T10:30:00Z'))
-    const setSpy = vi.spyOn(globalThis, 'setInterval')
+    // Timers pendientes del reloj falso, NO `vi.spyOn(globalThis, 'setInterval')`:
+    // un spy creado con fake timers captura como "original" el timer FALSO, y
+    // Vitest lo vuelve a instalar en cada `restoreAllMocks()` — incluido el que
+    // corre solo al terminar cada archivo. Bajo singleThread el archivo siguiente
+    // hereda un setInterval de un reloj muerto que nunca dispara, y todo
+    // `waitFor` que dependa de su intervalo muere en el timeout de 1 s.
     const a = renderHook(() => useNowMs())
     const b = renderHook(() => useNowMs())
     const c = renderHook(() => useArtNow())
 
-    expect(setSpy).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(1)
     expect(a.result.current).toBe(b.result.current)
 
     // El interval se limpia recién cuando se va el ÚLTIMO suscriptor: si se
     // limpiara con el primer unmount, los otros dos dejarían de actualizarse en
     // silencio (la grilla congelaría la hora y un slot vencido seguiría
     // clickeable).
-    const clearSpy = vi.spyOn(globalThis, 'clearInterval')
     a.unmount()
     b.unmount()
-    expect(clearSpy).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(1)
+    const before = c.result.current
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    expect(c.result.current).not.toEqual(before)
     c.unmount()
-    expect(clearSpy).toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('getSnapshot es estable entre ticks: dos lecturas seguidas dan el MISMO número', () => {

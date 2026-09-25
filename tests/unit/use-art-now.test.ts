@@ -33,9 +33,13 @@ describe('useArtNow (#29)', () => {
 
   it('limpia el intervalo al desmontar', () => {
     vi.setSystemTime(new Date('2026-06-09T10:30:00Z'))
-    const clearSpy = vi.spyOn(globalThis, 'clearInterval')
+    // Timers pendientes, no `vi.spyOn(globalThis, 'clearInterval')`: con fake
+    // timers ese spy captura el clearInterval FALSO y Vitest lo reinstala en cada
+    // restoreAllMocks (también al cerrar el archivo), así que los archivos
+    // siguientes del worker heredarían un clearInterval de un reloj muerto.
     const { unmount } = renderHook(() => useArtNow())
+    expect(vi.getTimerCount()).toBe(1)
     unmount()
-    expect(clearSpy).toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

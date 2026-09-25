@@ -56,7 +56,7 @@ export const GET = withPlayer(async (_req, user, tx) => {
     FROM bookings
     WHERE player_id = ${user.playerId}
       AND created_at >= NOW() - INTERVAL '12 months'
-    ORDER BY date DESC, time_start DESC
+    ORDER BY date DESC, starts_at DESC
   `
 
   const payments = await adminSql<Record<string, unknown>[]>`

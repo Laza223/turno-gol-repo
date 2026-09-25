@@ -105,6 +105,20 @@ export default tseslint.config(
           message:
             "new Date().toISOString().split('T')[0] deriva el día en UTC: entre las 21:00 y la medianoche ART ya devuelve el día siguiente. Usá artTodayStr() (@/shared/dates/art), artDateOf (@/shared/time/art-date) u operatingDateOf (@/shared/time/operating-day) según el caso.",
         },
+
+        // Spy sobre un timer global. Con fake timers activos el spy captura el
+        // timer FALSO como "original", y Vitest vuelve a instalarlo en cada
+        // restoreAllMocks() — también en el que corre solo al cerrar cada
+        // archivo —, así que los archivos siguientes del worker (singleThread)
+        // heredan un setInterval de un reloj muerto: todo waitFor que dependa de
+        // su intervalo muere en el timeout de 1 s, según el orden de archivos.
+        // Pasó con use-now.test.ts → cuota-section / clipboard-fallback.
+        {
+          selector:
+            "CallExpression[callee.property.name='spyOn'][arguments.0.name=/^(globalThis|global|window|self)$/][arguments.1.value=/^(setTimeout|setInterval|clearTimeout|clearInterval|setImmediate|clearImmediate|queueMicrotask|requestAnimationFrame|cancelAnimationFrame)$/]",
+          message:
+            'No espíes timers globales: con fake timers el spy captura el timer falso y Vitest lo reinstala al cerrar el archivo, dejando un reloj muerto a los archivos siguientes del worker. Con fake timers usá vi.getTimerCount() / vi.advanceTimersByTime(); sin ellos, afirmá el efecto observable.',
+        },
       ],
     },
   },

@@ -112,7 +112,9 @@ export function HoyChargeSection({
             className="flex gap-1 rounded-xl border border-border bg-card p-1"
             itemClassName={(active) =>
               cn(
-                'h-10 flex-1 rounded-lg px-2 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60',
+                // `px-1` en el teléfono: con `px-2`, a 375 px "Por jugador" se partía
+                // en dos renglones dentro de un segmento de 94 px.
+                'h-10 flex-1 rounded-lg px-1 text-sm font-semibold transition-colors sm:px-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60',
                 active ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent',
               )
             }

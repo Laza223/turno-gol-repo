@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sortAttentionItems, sortWhileAwayItems, ATTENTION_EMPTY_COPY } from './home.lib'
+import { sortAttentionItems, sortWhileAwayItems } from './home.lib'
 import type { AttentionItem, WhileAwayItem } from './home.types'
 
 describe('sortAttentionItems', () => {
@@ -58,13 +58,5 @@ describe('sortWhileAwayItems', () => {
       contactName: 'Ana',
     }
     expect(sortWhileAwayItems([older, newer]).map((i) => i.bookingId)).toEqual(['b2', 'b1'])
-  })
-})
-
-describe('ATTENTION_EMPTY_COPY', () => {
-  it('es el copy exacto del contrato', () => {
-    expect(ATTENTION_EMPTY_COPY).toBe(
-      'Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.',
-    )
   })
 })

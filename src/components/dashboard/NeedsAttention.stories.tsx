@@ -70,18 +70,16 @@ export const UnaSolaAlerta: Story = {
 }
 
 /**
- * El vacío es el premio (contrato §4.1): copy exacto, sin parafrasear. Desde
- * el rediseño del 2026-09-12 mide una línea de 44px en vez de una tarjeta de
- * 200px — es el estado en que el dueño encuentra la pantalla casi siempre, y
- * ocupando ese alto empujaba el tablero fuera de la primera pantalla.
+ * Vacío no dibuja nada (decisión del dueño, 2026-09-24). La línea verde "Nada
+ * pendiente…" decía "todo en orden" arriba de los turnos por cobrar del
+ * tablero, en el primer renglón de la pantalla del mostrador.
  */
 export const Vacio: Story = {
   args: { items: [], nowMs: NOW_MS },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByText('Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.'),
-    ).toBeVisible()
+    await expect(canvas.queryByText(/Nada pendiente/)).toBeNull()
     await expect(canvas.queryByText('Necesita tu atención')).toBeNull()
+    await expect(canvas.queryByRole('status')).toBeNull()
   },
 }

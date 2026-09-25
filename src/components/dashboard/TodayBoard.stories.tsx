@@ -156,7 +156,9 @@ export const Viernes2105: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Turnos de hoy')).toBeVisible()
-    // Los sin cobrar dicen cuánto falta, hace cuánto terminaron y cuánta gente ya pagó.
+    // Los terminados con saldo dicen "Por cobrar" (ámbar, no una alarma), cuánto
+    // falta, hace cuánto terminaron y cuánta gente ya pagó.
+    await expect(canvas.getAllByText('Por cobrar').length).toBeGreaterThan(0)
     await expect(canvas.getAllByText(/Terminó hace 5 min/).length).toBeGreaterThan(0)
     await expect(canvas.getByText(/Pagaron 4 de 10/)).toBeVisible()
     // La cancha pausada aparece solo por su turno sin cobrar.

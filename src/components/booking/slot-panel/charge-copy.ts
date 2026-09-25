@@ -36,9 +36,10 @@ export function chargeMode(booking: GridBooking, hasEnded: boolean): ChargeMode 
  * D3 (2026-09-15): el monto ahora se puede editar a la vista (ya no vive
  * detrás de "Cobrar otro monto"), así que el botón tiene que reflejar lo que
  * el admin tipeó, no siempre el pendiente completo. En `finish` un parcial
- * igual da el turno por jugado — el saldo que queda es deuda, no algo que
- * frene el cobro, y el rótulo lo dice para que no se confunda con un cobro
- * total.
+ * igual da el turno por jugado — el saldo que queda sigue por cobrar, no frena
+ * el cobro, y el rótulo lo dice para que no se confunda con un cobro total.
+ * "Por cobrar" y no "de deuda": el turno recién jugado es lo que Hoy muestra
+ * como "Por cobrar", y el mismo saldo no puede tener dos nombres.
  *
  * Revisión (yellow): el monto NO se clampea contra `pendingCents`. Si lo
  * tipeado queda por encima del pendiente (p. ej. por la corrupción de
@@ -64,7 +65,7 @@ export function chargeCta(
     return `Cobrar ${monto}`
   }
   const resto = formatArs(pendingCents - amountCents)
-  if (mode === 'finish') return `Cobrar ${monto} y dar por jugado · quedan ${resto} de deuda`
+  if (mode === 'finish') return `Cobrar ${monto} y dar por jugado · quedan ${resto} por cobrar`
   if (mode === 'advance') return `Cobrar ${monto} por adelantado · quedan ${resto}`
   return `Cobrar ${monto} · quedan ${resto}`
 }

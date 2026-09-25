@@ -45,7 +45,9 @@ export function SlotPriceSummary({ booking, capacity }: Props) {
       ) : pending !== null && pending > 0 ? (
         <p>
           <span className="block text-xs font-medium text-muted-foreground">Falta cobrar</span>
-          <span className="block text-2xl font-bold tabular-nums text-red-700 dark:text-red-300">
+          {/* Ámbar, el tono de lo pendiente: lo que falta cobrar de un turno no es
+              un error ni una deuda (principio 3 de PRODUCT.md). */}
+          <span className={cn('block text-2xl font-bold tabular-nums', TONE_TEXT.warning)}>
             {formatArs(pending)}
           </span>
         </p>

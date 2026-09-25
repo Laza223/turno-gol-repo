@@ -3,6 +3,7 @@ import {
   CheckCheck,
   CheckCircle2,
   Clock,
+  CircleDollarSign,
   HandCoins,
   HelpCircle,
   Repeat,
@@ -289,6 +290,23 @@ export const UNPAID_ALARM_BADGE = {
   label: SLOT_STATES.unpaid_alarm.label,
   icon: SLOT_STATES.unpaid_alarm.icon,
   tone: SLOT_STATES.unpaid_alarm.tone,
+} as const
+
+/**
+ * "Por cobrar": el turno del día que ya terminó y al que le falta plata, en el
+ * tablero de Hoy. En el mostrador se cobra después del partido (mediana: 29 min
+ * después de que termina, docs/rediseno-panel/insumos.md), así que es el estado
+ * normal de la media hora que sigue a cada turno: va en ámbar, el tono de lo
+ * pendiente, y no en el rojo de una alarma (principio 3 de PRODUCT.md).
+ *
+ * Es el mismo hecho que `unpaid_alarm`, que la Grilla y Reservas todavía dicen
+ * "Sin cobrar" en rojo. Unificarlos es el pase propio de la Grilla (decisión del
+ * dueño, 2026-09-24: el pulido de Hoy no la toca).
+ */
+export const PENDING_CHARGE_BADGE = {
+  label: 'Por cobrar',
+  icon: CircleDollarSign,
+  tone: 'warning',
 } as const
 
 /**

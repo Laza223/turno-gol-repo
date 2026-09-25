@@ -6,14 +6,14 @@ import { CalendarCheck, CalendarOff, ChevronDown, LandPlot } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { chargeSplit } from '@/components/booking/slot-panel/charge-copy'
-import { bookingBadgeVisual } from '@/lib/booking/slot-visual'
+import { bookingBadgeVisual, PENDING_CHARGE_BADGE } from '@/lib/booking/slot-visual'
 import { rowDisplayName } from '@/lib/dashboard/day-bookings'
 import { startLabel, type BoardColumn, type BoardRow } from '@/lib/dashboard/today-board'
 import { TONE_BORDER, TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
 import { capitalizeFirst, formatArs, relativeTimeEs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-/** Filas visibles por cancha antes de plegar, SIN contar las de "sin cobrar":
+/** Filas visibles por cancha antes de plegar, SIN contar las de "por cobrar":
  *  esas van siempre a la vista porque son plata que falta y esconder plata
  *  detrás de "Ver N más" es exactamente lo que este tablero viene a evitar. */
 const MAX_VISIBLE_ROWS = 4
@@ -24,8 +24,10 @@ type Occupancy = { occupied: number; available: number; blocked: number; pct: nu
  * "Turnos de hoy" — el tablero del mostrador. Una columna por cancha, en el
  * mismo orden en que la Grilla dibuja las suyas, con tres tipos de fila:
  *
- *  - **Sin cobrar** (terminó y falta plata): borde rojo, "Falta $X" y el aviso
- *    "Cobrar". Van arriba y nunca se pliegan.
+ *  - **Por cobrar** (terminó y falta plata): borde ámbar, la pastilla "Por
+ *    cobrar" y "Falta $X". Van arriba y nunca se pliegan. Ámbar y no rojo: un
+ *    turno terminado y sin cobrar es lo normal en la media hora que sigue al
+ *    partido, no una alarma ni una deuda (`PENDING_CHARGE_BADGE`).
  *  - **En juego**: la única fila teñida (Von Restorff, MASTER §9): dice cuánto
  *    falta, "Pagado" o el avance de la cobranza.
  *  - **Próximos**: hora, "en N min", nombre y el badge de siempre.
@@ -227,38 +229,33 @@ function BoardRowButton({
         type="button"
         onClick={onOpen}
         aria-haspopup="dialog"
-        className={cn(
-          ROW_BASE,
-          TONE_BORDER.destructive,
-          'hover:bg-destructive/5 dark:hover:bg-destructive/10',
-        )}
+        className={cn(ROW_BASE, TONE_BORDER[PENDING_CHARGE_BADGE.tone], 'hover:bg-accent/50')}
       >
-        {/* Hora y aviso arriba; quién y cuánto abajo. El monto va con el nombre y no
-            con la hora: en una columna de 232 px "20:00–21:00 Falta $ 60.000" no
-            entra en un renglón y el monto se salía del borde. */}
+        {/* Hora y estado arriba, como en las filas que vienen. La pastilla reemplaza
+            al chip verde "Cobrar": con cuatro turnos terminados eran cuatro verdes
+            sólidos gritando a la vez, y la fila entera ya es el botón. */}
         <span className="flex items-center justify-between gap-2">
           <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-foreground">
             {timeLabel}
           </span>
-          <span className="shrink-0 rounded-md bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
-            Cobrar
-          </span>
+          <StatusBadge visual={PENDING_CHARGE_BADGE} className="shrink-0" />
         </span>
-        <span className="mt-0.5 flex items-baseline justify-between gap-2">
-          <span className="min-w-0 truncate text-sm text-foreground">{name}</span>
+        {/* El nombre va solo en su renglón: con el monto al lado, en una columna de
+            ~230 px se cortaba justo lo que dice a quién hay que cobrarle. */}
+        <span className="mt-0.5 block truncate text-sm text-foreground">{name}</span>
+        {/* Sin `truncate`: "Pagaron 4 de 10" es justo lo que evita cobrarle dos veces al mismo. */}
+        <span className="mt-0.5 block text-xs text-muted-foreground">
           <span
             className={cn(
-              'shrink-0 whitespace-nowrap text-sm font-bold tabular-nums',
-              TONE_TEXT.destructive,
+              'whitespace-nowrap text-sm font-semibold tabular-nums',
+              TONE_TEXT[PENDING_CHARGE_BADGE.tone],
             )}
           >
             Falta {formatArs(pending)}
           </span>
-        </span>
-        {/* Sin `truncate`: "Pagaron 4 de 10" es justo lo que evita cobrarle dos veces al mismo. */}
-        <span className="mt-0.5 block text-xs text-muted-foreground">
-          Terminó {endedAgo}
-          {note ? ` · ${note}` : ''}
+          {/* Cada dato entero en su renglón: partir "Terminó hace 22 | min" se lee peor. */}
+          <span className="whitespace-nowrap">{` · Terminó ${endedAgo}`}</span>
+          {note ? <span className="whitespace-nowrap">{` · ${note}`}</span> : null}
         </span>
       </button>
     )

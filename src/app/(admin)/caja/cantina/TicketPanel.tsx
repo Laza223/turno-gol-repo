@@ -110,6 +110,7 @@ export function TicketPanel({
   const searchId = useId()
   const isInDialog = layout === 'dialog'
   const isPage = layout === 'page'
+  const isRail = layout === 'rail'
   const router = useRouter()
   const [lines, setLines] = useState<TicketLine[]>([])
   const [method, setMethod] = useState<SaleMethod>('cash')
@@ -268,11 +269,16 @@ export function TicketPanel({
     <>
       <div
         className={cn(
-          'grid gap-4',
-          layout !== 'rail' && 'md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px]',
+          // En la columna de Hoy es flex: el catálogo encoge para que el ticket y
+          // su "Cobrar" entren en la altura que queda (ver `VenderRail`).
+          isRail ? 'flex min-h-0 flex-col gap-4' : 'grid gap-4',
+          !isRail && 'md:grid-cols-[1fr_320px] lg:grid-cols-[1fr_360px]',
         )}
       >
-        <div className="flex min-w-0 flex-col gap-3">
+        {/* El piso va en este bloque y no en el catálogo: si este bloque encoge
+            por debajo de lo que tiene adentro, el catálogo se pinta encima del
+            ticket. 8,75 rem = buscador + separación + dos filas del catálogo. */}
+        <div className={cn('flex min-w-0 flex-col gap-3', isRail && 'min-h-[8.75rem]')}>
           {/* Buscador SIEMPRE, no a partir de 13 productos: con el foco puesto
               acá se vende sin tocar el mouse (escribir + Enter), que es lo que
               separa una caja registradora de una grilla de botones. Con catálogo
@@ -341,9 +347,10 @@ export function TicketPanel({
               'min-w-0 divide-y divide-border border-y border-border',
               isPage && 'lg:max-h-[max(12rem,calc(100dvh-35rem))] lg:overflow-y-auto',
               isInDialog && 'max-h-[40vh] overflow-y-auto',
-              // La columna de Hoy: el catálogo scrollea adentro y el ticket, que va
-              // debajo, queda siempre a la vista.
-              layout === 'rail' && 'max-h-60 overflow-y-auto',
+              // La columna de Hoy: el catálogo scrollea adentro y encoge cuando el
+              // ticket crece, así el ticket y su "Cobrar", que van debajo, quedan
+              // siempre a la vista. En una pantalla alta muestra más filas.
+              isRail && 'min-h-0 overflow-y-auto',
             )}
           >
             {visible.length === 0 ? (
@@ -362,7 +369,11 @@ export function TicketPanel({
                     onClick={() => handleAdd(p)}
                     disabled={out || locked}
                     className={cn(
-                      'flex min-h-11 w-full items-center gap-3 px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent md:min-h-10',
+                      'flex min-h-11 w-full items-center px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent md:min-h-10',
+                      // En los 380 px de la columna el nombre se llevaba 108 px y se
+                      // cortaba ("Cerveza Quil…"): columnas de stock y precio a la
+                      // medida de lo que muestran y menos aire entre ellas.
+                      isRail ? 'gap-2' : 'gap-3',
                       // Lo que ya está en el ticket se marca con fondo además
                       // del contador: el ×N solo no se ve de reojo mientras se
                       // toca rápido.
@@ -372,8 +383,13 @@ export function TicketPanel({
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                       {p.name}
                     </span>
-                    <StockCell badge={badge} />
-                    <span className="w-20 shrink-0 text-right text-sm font-medium tabular-nums text-foreground sm:w-24">
+                    <StockCell badge={badge} compact={isRail} />
+                    <span
+                      className={cn(
+                        'w-20 shrink-0 text-right text-sm font-medium tabular-nums text-foreground',
+                        !isRail && 'sm:w-24',
+                      )}
+                    >
                       {formatArs(p.price)}
                     </span>
                     <span className="w-7 shrink-0 text-right text-xs font-semibold tabular-nums text-emerald-800 dark:text-emerald-400">
@@ -394,6 +410,7 @@ export function TicketPanel({
             'flex-col justify-between rounded-xl border border-border',
             isPage ? 'hidden md:flex' : 'flex',
             isPage && 'lg:sticky lg:top-4 lg:self-start',
+            isRail && 'shrink-0',
           )}
         >
           <div>
@@ -570,11 +587,13 @@ export function TicketPanel({
  * color (MASTER §10). Sin control de stock la celda dice "Servicio" y no queda
  * vacía: una columna en blanco se lee como "falta el dato".
  */
-function StockCell({ badge }: { badge: StockBadge | null }) {
+function StockCell({ badge, compact }: { badge: StockBadge | null; compact: boolean }) {
   return (
     <span
       className={cn(
-        'w-[4.5rem] shrink-0 truncate text-[11px] sm:w-24 sm:text-xs',
+        'shrink-0 truncate',
+        // `compact`: la columna de Hoy, 380 px siempre (desde `xl`).
+        compact ? 'w-16 text-xs' : 'w-[4.5rem] text-[11px] sm:w-24 sm:text-xs',
         badge ? stockBadgeToneClass(badge.tone) : 'text-muted-foreground',
       )}
     >

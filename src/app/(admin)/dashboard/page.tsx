@@ -41,15 +41,19 @@ import {
   markChecklistDismissedAction,
 } from './actions'
 
-/** Fecha de hoy formato medio §8.3: "mié 2 de julio" (nunca ISO ni coma).
- * Armado por partes: el string completo del locale varía entre versiones de ICU
- * (coma, "de" incluido o no) y acá el formato es contrato de diseño. */
-function todayMediumArt(now: Date): string {
+/** Fecha de hoy formato medio §8.3, "mié 2 de julio", y corta, "mié 2 jul", para
+ * el teléfono (nunca ISO ni coma). Armado por partes: el string completo del
+ * locale varía entre versiones de ICU (coma, "de" incluido o no, "sept." con
+ * punto) y acá el formato es contrato de diseño. */
+function todayLabelsArt(now: Date): { medium: string; short: string } {
   const tz = { timeZone: 'America/Argentina/Buenos_Aires' } as const
   const weekday = now.toLocaleDateString('es-AR', { weekday: 'short', ...tz }).replace('.', '')
   const day = now.toLocaleDateString('es-AR', { day: 'numeric', ...tz })
   const month = now.toLocaleDateString('es-AR', { month: 'long', ...tz })
-  return `${weekday} ${day} de ${month}`
+  return {
+    medium: `${weekday} ${day} de ${month}`,
+    short: `${weekday} ${day} ${month.slice(0, 3)}`,
+  }
 }
 
 export default async function DashboardPage() {
@@ -130,6 +134,7 @@ export default async function DashboardPage() {
     capacity: c.capacity,
     pricing: c.pricing,
   }))
+  const today = todayLabelsArt(now)
   const hoyBookings = dayBookings.map(({ startsAt, endsAt, ...booking }) => ({
     ...booking,
     startsAtMs: startsAt.getTime(),
@@ -156,7 +161,7 @@ export default async function DashboardPage() {
           Configuración. En 375px eso devuelve ~110px a la primera pantalla.
           El `<h1>` sigue existiendo para lectores de pantalla y para el
           esquema de encabezados: lo que se eliminó es la FILA, no el título. */}
-          <HoyHeaderSlot dateLabel={todayMediumArt(now)} />
+          <HoyHeaderSlot dateLabel={today.medium} shortDateLabel={today.short} />
           <h1 className="sr-only">Hoy</h1>
 
           {/* ORDEN (rediseño 2026-09-12): lo que exige acción va primero y siempre
@@ -164,22 +169,11 @@ export default async function DashboardPage() {
           lectura —lo crítico en el medio, justo lo que MASTER §9 (serial
           position) dice que no—, así que a las 17:00, con el cliente parado en
           el mostrador, el botón de cobrar aparecía después de scrollear el
-          tablero entero. Vacío, este bloque mide una línea de 44px y no
-          empuja nada. */}
-          <div className="card-entrance">
-            <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
-          </div>
-
-          {showChecklist && checklistState && (
-            <div className="card-entrance" style={{ animationDelay: '60ms' }}>
-              <OnboardingChecklist
-                state={checklistState}
-                tenantSlug={tenant.slug}
-                appUrl={appUrl}
-                action={markPublicLinkSharedAction}
-                onDismiss={markChecklistDismissedAction}
-                staffRole={role}
-              />
+          tablero entero. Sin alertas no hay bloque (2026-09-24): el tablero
+          arranca en el primer renglón. */}
+          {needsAttention.length > 0 && (
+            <div className="card-entrance">
+              <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
             </div>
           )}
 
@@ -190,7 +184,7 @@ export default async function DashboardPage() {
           qué falta jugar, qué hay que resolver, y qué pasó sin el dueño. La
           ocupación sobrevive como subtítulo del bloque de turnos, que es el
           único lugar donde ese porcentaje significa algo. */}
-          <div className="card-entrance" style={{ animationDelay: '120ms' }}>
+          <div className="card-entrance" style={{ animationDelay: '60ms' }}>
             <HoyShell
               bookings={hoyBookings}
               courts={hoyCourts}
@@ -223,6 +217,24 @@ export default async function DashboardPage() {
               }}
             />
           </div>
+
+          {/* La checklist de arranque va DEBAJO del tablero (decisión del dueño,
+          2026-09-24): el encargado entra con el usuario del dueño, así que arriba
+          le ocupaba 240 px de la notebook del mostrador todas las noches. Lo de
+          cada mes no le gana el lugar a lo de cada minuto (principio 1 de
+          PRODUCT.md); el dueño la sigue viendo al bajar. */}
+          {showChecklist && checklistState && (
+            <div className="card-entrance" style={{ animationDelay: '120ms' }}>
+              <OnboardingChecklist
+                state={checklistState}
+                tenantSlug={tenant.slug}
+                appUrl={appUrl}
+                action={markPublicLinkSharedAction}
+                onDismiss={markChecklistDismissedAction}
+                staffRole={role}
+              />
+            </div>
+          )}
 
           <div className="card-entrance" style={{ animationDelay: '180ms' }}>
             <WhileYouWereAway items={whileYouWereAway} />

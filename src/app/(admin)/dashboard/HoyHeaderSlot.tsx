@@ -20,11 +20,21 @@ import { useVender } from './_components/VenderProvider'
  * de la Grilla. El nombre de la pantalla lo pone el riel, y el `<h1>` para
  * lectores de pantalla queda en el contenido.
  */
-export function HoyHeaderSlot({ dateLabel }: { dateLabel: string }) {
+export function HoyHeaderSlot({
+  dateLabel,
+  shortDateLabel,
+}: {
+  dateLabel: string
+  /** "jue 24 sep": en el teléfono, al lado del logo, la larga quedaba en "jue 24 d…". */
+  shortDateLabel: string
+}) {
   const { setOpen } = useVender()
   return (
     <AdminHeaderSlot>
-      <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{dateLabel}</p>
+      <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+        <span className="tracking-tight sm:hidden">{shortDateLabel}</span>
+        <span className="max-sm:hidden">{dateLabel}</span>
+      </p>
       <button
         type="button"
         onClick={() => setOpen(true)}

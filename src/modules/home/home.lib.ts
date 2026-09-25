@@ -1,8 +1,5 @@
 import type { AttentionItem, WhileAwayItem } from './home.types'
 
-export const ATTENTION_EMPTY_COPY =
-  'Nada pendiente. Sin señas rechazadas ni devoluciones por resolver.'
-
 /**
  * Prioridad P1→P2 de la taxonomía (docs/decisions/2026-08-02-taxonomia-alertas-hoy.md).
  * El turno terminado sin cobrar (que era P1) dejó de ser una alerta el 2026-09-19:

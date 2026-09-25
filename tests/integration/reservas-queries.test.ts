@@ -64,6 +64,52 @@ async function seedBooking(
   return booking[0]!.id
 }
 
+/**
+ * Como `seedBooking`, pero con cancha, horario y `starts_at`/`ends_at`
+ * explícitos — para los casos de orden de cancha y día operativo, donde el
+ * instante físico no se puede derivar de `date` + `time_start` con la
+ * aritmética simple que usa `seedBooking`.
+ */
+async function seedBookingAt(params: {
+  tenantId: string
+  courtId: string
+  date: string
+  timeStart: string
+  timeEnd: string
+  startsAt: string
+  endsAt: string
+  guestName?: string
+  guestPhone?: string
+}) {
+  const sql = getSql()
+  const booking = await sql<{ id: string }[]>`
+    INSERT INTO bookings (
+      tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+      type, status, price_snapshot, guest_name, guest_phone
+    )
+    VALUES (
+      ${params.tenantId}, ${params.courtId}, ${params.date}::date,
+      ${params.timeStart}, ${params.timeEnd},
+      ${params.startsAt}::timestamptz, ${params.endsAt}::timestamptz,
+      'spontaneous', 'confirmed', 900000,
+      ${params.guestName ?? 'Juan Invitado'}, ${params.guestPhone ?? null}
+    )
+    RETURNING id
+  `
+  return booking[0]!.id
+}
+
+/** Cancha con `created_at` explícito, para que el orden entre canchas sea determinístico. */
+async function seedCourtAt(tenantId: string, name: string, createdAt: string) {
+  const sql = getSql()
+  const court = await sql<{ id: string }[]>`
+    INSERT INTO courts (tenant_id, name, capacity, pricing, status, created_at)
+    VALUES (${tenantId}, ${name}, 10, ${sql.json(PRICING)}, 'online', ${createdAt}::timestamptz)
+    RETURNING id
+  `
+  return court[0]!.id
+}
+
 beforeAll(async () => {
   await ensureRoles()
 })
@@ -138,6 +184,108 @@ describe('reservas queries', () => {
     // "%" literal no debe matchear todo (escape de metacaracteres LIKE).
     const porPorcentaje = await filas(tenant.id, { scope: 'proximas', today: TODAY, q: '%' })
     expect(porPorcentaje).toHaveLength(0)
+  })
+
+  it('listTenantBookings busca por teléfono con formato distinto, y el nombre sigue andando', async () => {
+    const sql = getSql()
+    await cleanupAll(sql)
+    const tenant = await createTestTenant(sql)
+    const courtId = await seedCourtAt(tenant.id, 'Cancha 1', '2099-01-01T00:00:00Z')
+    const id = await seedBookingAt({
+      tenantId: tenant.id,
+      courtId,
+      date: '2099-08-16',
+      timeStart: '10:00',
+      timeEnd: '11:00',
+      startsAt: '2099-08-16T10:00:00-03:00',
+      endsAt: '2099-08-16T11:00:00-03:00',
+      guestName: 'Diego',
+      guestPhone: '+5491155550000',
+    })
+
+    // Formateado distinto al guardado (espacios/guion vs. +/código país):
+    // los dos deben normalizar a la misma cola de dígitos.
+    const porTelefono = await filas(tenant.id, {
+      scope: 'proximas',
+      today: TODAY,
+      q: '11 5555-0000',
+    })
+    expect(porTelefono.map((r) => r.id)).toEqual([id])
+
+    // (d) — la búsqueda por nombre no se rompió al sumar la de teléfono.
+    const porNombre = await filas(tenant.id, { scope: 'proximas', today: TODAY, q: 'diego' })
+    expect(porNombre.map((r) => r.id)).toEqual([id])
+
+    // Menos de 6 dígitos no dispara la rama de teléfono (no debe traer nada).
+    const pocosDigitos = await filas(tenant.id, { scope: 'proximas', today: TODAY, q: '55500' })
+    expect(pocosDigitos).toHaveLength(0)
+  })
+
+  it('listTenantBookings ordena las canchas como la Grilla (created_at, no nombre)', async () => {
+    const sql = getSql()
+    await cleanupAll(sql)
+    const tenant = await createTestTenant(sql)
+    const date = '2099-08-17'
+    const ids: string[] = []
+    for (let n = 1; n <= 10; n++) {
+      const courtId = await seedCourtAt(
+        tenant.id,
+        `Cancha ${n}`,
+        `2099-01-01T00:${String(n).padStart(2, '0')}:00Z`,
+      )
+      const id = await seedBookingAt({
+        tenantId: tenant.id,
+        courtId,
+        date,
+        timeStart: '10:00',
+        timeEnd: '11:00',
+        startsAt: `${date}T10:00:00-03:00`,
+        endsAt: `${date}T11:00:00-03:00`,
+        guestName: `Turno ${n}`,
+      })
+      ids.push(id)
+    }
+
+    const rows = await filas(tenant.id, { scope: 'hoy', today: date })
+    // Orden de creación (1..10), NUNCA alfabético de texto (que pondría
+    // "Cancha 10" entre "Cancha 1" y "Cancha 2").
+    expect(rows.map((r) => r.courtName)).toEqual(ids.map((_, i) => `Cancha ${i + 1}`))
+  })
+
+  it('listTenantBookings ordena por el instante físico: en un complejo closes_next_day, el turno de 00:00 va después del de las 23:00', async () => {
+    const sql = getSql()
+    await cleanupAll(sql)
+    const tenant = await createTestTenant(sql)
+    await sql`UPDATE tenants SET closes_next_day = true WHERE id = ${tenant.id}`
+    const courtId = await seedCourtAt(tenant.id, 'Cancha 1', '2099-01-01T00:00:00Z')
+    const date = '2099-08-18'
+
+    // Turno de las 23:00 del día operativo `date`.
+    const idNoche = await seedBookingAt({
+      tenantId: tenant.id,
+      courtId,
+      date,
+      timeStart: '23:00',
+      timeEnd: '24:00',
+      startsAt: `${date}T23:00:00-03:00`,
+      endsAt: '2099-08-19T00:00:00-03:00',
+      guestName: 'Noche',
+    })
+    // Turno de las 00:00, MISMO día operativo (closes_next_day), pero
+    // físicamente al día siguiente.
+    const idMadrugada = await seedBookingAt({
+      tenantId: tenant.id,
+      courtId,
+      date,
+      timeStart: '00:00',
+      timeEnd: '01:00',
+      startsAt: '2099-08-19T00:00:00-03:00',
+      endsAt: '2099-08-19T01:00:00-03:00',
+      guestName: 'Madrugada',
+    })
+
+    const rows = await filas(tenant.id, { scope: 'hoy', today: date })
+    expect(rows.map((r) => r.id)).toEqual([idNoche, idMadrugada])
   })
 
   it('countTenantBookingsByStatus agrupa por estado dentro del scope', async () => {

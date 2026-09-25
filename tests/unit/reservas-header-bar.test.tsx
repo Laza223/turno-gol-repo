@@ -60,7 +60,7 @@ afterEach(() => {
 describe('ReservasHeaderBar — búsqueda URL-based', () => {
   it('debounce de 300ms: una sola navegación con el valor final', () => {
     renderBar()
-    const input = screen.getAllByLabelText('Buscar por nombre o número de reserva')[0]!
+    const input = screen.getAllByLabelText('Buscar por nombre, teléfono o número de reserva')[0]!
 
     fireEvent.change(input, { target: { value: 'ju' } })
     fireEvent.change(input, { target: { value: 'juan' } })
@@ -74,9 +74,12 @@ describe('ReservasHeaderBar — búsqueda URL-based', () => {
   it('preserva status y cancha existentes en la URL', () => {
     searchParamsInit = 'status=confirmed&cancha=c1'
     renderBar({ status: 'confirmed', cancha: 'c1' })
-    fireEvent.change(screen.getAllByLabelText('Buscar por nombre o número de reserva')[0]!, {
-      target: { value: 'ana' },
-    })
+    fireEvent.change(
+      screen.getAllByLabelText('Buscar por nombre, teléfono o número de reserva')[0]!,
+      {
+        target: { value: 'ana' },
+      },
+    )
     vi.advanceTimersByTime(300)
     expect(replaceMock).toHaveBeenCalledWith('/reservas?status=confirmed&cancha=c1&q=ana', {
       scroll: false,
@@ -87,7 +90,7 @@ describe('ReservasHeaderBar — búsqueda URL-based', () => {
     searchParamsInit = 'q=maria'
     renderBar({ q: 'maria' })
     const inputs = screen.getAllByLabelText<HTMLInputElement>(
-      'Buscar por nombre o número de reserva',
+      'Buscar por nombre, teléfono o número de reserva',
     )
     expect(inputs[0]!.value).toBe('maria')
 

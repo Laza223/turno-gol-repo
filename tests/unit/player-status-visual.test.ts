@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import { playerBookingVisual } from '@/app/(player)/mis-reservas/status-visual'
-import { bookingBadgeVisual } from '@/lib/booking/slot-visual'
+import { PENDING_CHARGE_BADGE, bookingBadgeVisual } from '@/lib/booking/slot-visual'
 import type { BookingStatus } from '@/modules/bookings/booking.types'
 
 const ESTADOS: BookingStatus[] = [
@@ -58,17 +58,17 @@ describe('lo que el jugador ve distinto, a propósito', () => {
   })
 })
 
-describe('la alarma de la caja no llega al jugador', () => {
-  it('ningún estado le muestra "Sin cobrar"', () => {
+describe('el "Por cobrar" de la caja no llega al jugador', () => {
+  it('ningún estado le muestra "Por cobrar"', () => {
     for (const status of ESTADOS) {
-      expect(playerBookingVisual(status).label, status).not.toBe('Sin cobrar')
+      expect(playerBookingVisual(status).label, status).not.toBe(PENDING_CHARGE_BADGE.label)
     }
   })
 
   it('un turno jugado sin cobrar sigue diciendo "Jugada"', () => {
-    // En la grilla del complejo esa misma reserva es la ALARMA de plata. Acá
-    // no: que el jugador vea que el complejo no cobró no le sirve y expone un
-    // dato del mostrador.
+    // En la grilla del complejo esa misma reserva dice "Por cobrar". Acá no:
+    // que el jugador vea que el complejo no cobró no le sirve y expone un dato
+    // del mostrador.
     expect(playerBookingVisual('completed').label).toBe('Jugada')
     expect(playerBookingVisual('completed').tone).toBe('success')
   })

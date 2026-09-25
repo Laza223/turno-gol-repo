@@ -38,8 +38,8 @@ export type GridBooking = {
   // Plata efectivamente cobrada del turno (seña contada + cobros de mostrador)
   // y lo que falta, ambos en centavos. Los calcula summarizeBookingCharges en
   // el server. Sin ellos la grilla no puede saber si un turno terminado quedó
-  // sin cobrar, así que la alarma de Fase 3 simplemente no se dispara — nunca
-  // se inventa una.
+  // sin cobrar, así que "Por cobrar" simplemente no se dispara — nunca se
+  // inventa.
   totalPaid?: number | null
   pending?: number | null
   // Sólo lo necesita el panel para linkear a `/torneos/{id}`. Opcional porque

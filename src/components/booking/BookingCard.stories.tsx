@@ -107,17 +107,23 @@ export const Jugada: Story = {
 }
 
 /**
- * La ÚNICA alarma visual de la grilla (Fase 3): el turno se jugó y quedó plata
- * sin cobrar. Anillo rojo que respira + label "Sin cobrar". No se atenúa aunque
- * sea pasado — apagarlo sería apagar justo lo que pide atención.
+ * El turno se jugó y quedó plata sin cobrar: "Por cobrar" en ámbar, el tono de
+ * lo pendiente. Es lo normal de la media hora que sigue al partido (principio 3
+ * de PRODUCT.md), así que no lleva anillo ni late — hasta el 2026-09-24 era
+ * "Sin cobrar" en rojo con un anillo que respiraba. No se atenúa aunque sea
+ * pasado: desaturarlo le borraría el ámbar.
  */
-export const SinCobrar: Story = {
+export const PorCobrar: Story = {
   args: {
     booking: { ...toGridBooking(bookingCompleted()), totalPaid: 0, pending: 800000 },
     isPast: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    const cell = canvas.getByRole('button', { name: /Por cobrar/ })
+    await expect(canvas.getByText('Por cobrar')).toBeInTheDocument()
+    // Ni anillo ni atenuado: el anillo lo pone solo el chip "Por cobrar hoy".
+    await expect(cell.className).not.toMatch(/ring-warning|ring-destructive|slot-alarm|saturate-50/)
     // El saldo va en el aria-label y, desde el rediseño, también a la vista: al
     // costado del nombre y en el color del estado, no como tercera línea.
     await expect(canvas.getByLabelText(/, falta cobrar/)).toBeInTheDocument()
@@ -129,7 +135,7 @@ export const SinCobrar: Story = {
 }
 
 /**
- * Ausente que capturó la seña: NO alarma. En un no-show la seña es lo único
+ * Ausente que capturó la seña: NO queda por cobrar. En un no-show la seña es lo único
  * cobrable y ya se cobró — no hay nada que el staff pueda hacer.
  */
 export const AusenteConSenaCapturada: Story = {
@@ -139,7 +145,7 @@ export const AusenteConSenaCapturada: Story = {
 }
 
 /**
- * Ausente que nunca tuvo seña: tampoco alarma. Un no-show nunca es cobrable
+ * Ausente que nunca tuvo seña: tampoco. Un no-show nunca es cobrable
  * (veto "No-show NO es deuda", decisión del dueño 2026-09-09). `not_required`
  * + `depositAmount: 0` es lo que hace consistente el `totalPaid: 0` — un turno
  * `captured` con cero cobrado no puede existir.
@@ -194,13 +200,19 @@ export const Nueva: Story = {
 }
 
 /**
- * Chip "Por cobrar hoy" encendido: el turno que debe plata lleva anillo para
- * encontrarlo en una matriz llena. Es foco de pantalla, no estado del turno —
+ * Chip "Por cobrar hoy" encendido: el turno que debe plata lleva un anillo
+ * ámbar para encontrarlo en una matriz llena — el tono del chip y de "Por
+ * cobrar", no el rojo de un error. Es foco de pantalla, no estado del turno:
  * por eso no cambia ni el color ni el rótulo ni el aria-label.
  */
 export const ResaltadaPorFoco: Story = {
   name: 'spotlighted=true (el chip "Por cobrar hoy" está encendido)',
   args: { booking: toGridBooking(booking(), player()), spotlighted: true },
+  play: async ({ canvasElement }) => {
+    const cell = within(canvasElement).getByRole('button', { name: /Señada/ })
+    await expect(cell.className).toMatch(/ring-warning/)
+    await expect(cell.className).not.toMatch(/ring-destructive/)
+  },
 }
 
 export const DetalleAbierto: Story = {

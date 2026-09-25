@@ -408,7 +408,7 @@ async function recordManualBookingDepositCashFlow(
         // excluyen esta fila por match de string para no contar la seña dos
         // veces (una por `depositCounted`, otra por los cobros de mostrador).
         // Cualquier otra descripción infla el "cobrado" del turno y desactiva
-        // la alarma "Sin cobrar" de la grilla.
+        // el "Por cobrar" de la grilla.
         description: depositCashFlowDescription(booking.id),
         bookingId: booking.id,
       },

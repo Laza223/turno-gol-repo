@@ -352,7 +352,7 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 
 ### Grilla de turnos
 
-La pieza propia del panel (`BookingCard` + `slot-visual.ts`). Cada turno es un bloque de esquina de 6 px con el **borde izquierdo de 3 px** del tono de su estado y un tinte suave del mismo tono; el color cuenta el estado de la plata y el ícono con el rótulo cuentan qué es. El horario libre es una celda `card` con borde tenue que al pasar el mouse toma borde esmeralda y muestra un `+`. Lo bloqueado lleva el rayado diagonal. La reserva que entra por Realtime pulsa una vez (600 ms). Hoy el turno terminado y sin cobrar lleva un anillo rojo que respira (`.slot-alarm-ring`, 2 s); ver Do's and Don'ts.
+La pieza propia del panel (`BookingCard` + `slot-visual.ts`). Cada turno es un bloque de esquina de 6 px con el **borde izquierdo de 3 px** del tono de su estado y un tinte suave del mismo tono; el color cuenta el estado de la plata y el ícono con el rótulo cuentan qué es. El horario libre es una celda `card` con borde tenue que al pasar el mouse toma borde esmeralda y muestra un `+`. Lo bloqueado lleva el rayado diagonal. La reserva que entra por Realtime pulsa una vez (600 ms). El turno jugado y sin cobrar dice "Por cobrar" en ámbar, sin anillo: es un estado más. El único anillo de la grilla es el ámbar de 2 px que pone el chip "Por cobrar hoy" al encenderse sobre los turnos que deben plata (jugados y confirmados).
 
 ## Do's and Don'ts
 
@@ -369,7 +369,7 @@ La pieza propia del panel (`BookingCard` + `slot-visual.ts`). Cada turno es un b
 ### Don't:
 
 - **Don't** reemplazar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección "Tablero de partidas", descartada por el dueño el 2026-09-23).
-- **Don't** mostrar el turno terminado y sin cobrar como alarma ni como deuda: es "por cobrar" (principio 3 de `PRODUCT.md`). El anillo rojo actual (`.slot-alarm-ring`) es lo primero que corrige el refinamiento.
+- **Don't** mostrar el turno terminado y sin cobrar como alarma ni como deuda: es "por cobrar" (principio 3 de `PRODUCT.md`). El anillo rojo que respiraba (`.slot-alarm-ring`) se eliminó el 2026-09-24.
 - **Don't** usar emerald-500 o emerald-600 como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600.
 - **Don't** escribir hex inline en JSX, ni sombras, degradés o vidrio inline; tampoco `dark:` sueltos para arreglar una primitiva: se arregla el token.
 - **Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`.

@@ -48,7 +48,7 @@ const listMock = vi.fn(async (): Promise<ReservaListRow[]> => [])
 const countsMock = vi.fn(async (): Promise<Record<string, number>> => ({}))
 /**
  * Cobros de mostrador por turno. La page los usa para derivar `pending` y
- * decidir la píldora "Sin cobrar"; con el Map vacío el saldo sale del
+ * decidir la píldora "Por cobrar"; con el Map vacío el saldo sale del
  * price_snapshot menos la seña, que es lo que quieren estos casos.
  */
 const chargesMock = vi.fn(async (): Promise<Map<string, number>> => new Map())

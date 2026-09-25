@@ -76,11 +76,11 @@ export const Bloqueo: Story = {
 }
 
 /**
- * La alarma de plata NO reemplaza al badge de estado: el turno sigue diciendo
- * "Jugada" y la píldora "Sin cobrar" va al lado. En la grilla sí reemplaza,
+ * "Por cobrar" NO reemplaza al badge de estado: el turno sigue diciendo
+ * "Jugada" y la píldora "Por cobrar" va al lado. En la grilla sí reemplaza,
  * porque una celda tiene lugar para una sola palabra; acá el trabajo de la
  * columna es decir el estado del turno, y perderlo sería peor que el problema
- * que la alarma vino a resolver.
+ * que la píldora vino a resolver.
  */
 export const JugadaSinCobrar: Story = {
   render: () => {
@@ -100,12 +100,12 @@ export const JugadaSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugada')).toBeVisible()
-    await expect(canvas.getByText('Sin cobrar')).toBeVisible()
+    await expect(canvas.getByText('Por cobrar')).toBeVisible()
   },
 }
 
 /**
- * Ausente sin un peso cobrado: tampoco alarma. Un no-show nunca es cobrable
+ * Ausente sin un peso cobrado: tampoco queda por cobrar. Un no-show nunca es cobrable
  * (la seña es lo único cobrable y ya se cobró, o no hubo seña) — veto
  * "No-show NO es deuda". Decisión del dueño, 2026-09-09.
  */
@@ -126,7 +126,7 @@ export const AusenteSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+    await expect(canvas.queryByText('Por cobrar')).toBeNull()
   },
 }
 
@@ -148,7 +148,7 @@ export const AusenteConSenaCapturada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Ausente')).toBeVisible()
-    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+    await expect(canvas.queryByText('Por cobrar')).toBeNull()
   },
 }
 

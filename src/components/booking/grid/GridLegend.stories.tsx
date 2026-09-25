@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { expect, within } from 'storybook/test'
 import { GridLegend } from './GridLegend'
 
 /**
@@ -16,4 +17,15 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Default: Story = {}
+/**
+ * "Por cobrar" (ámbar) reemplazó a "Sin cobrar" (rojo) el 2026-09-24: la
+ * leyenda se deriva de la misma tabla que la celda, así que si alguien le
+ * devuelve el nombre viejo a una, rompe acá.
+ */
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Por cobrar')).toBeInTheDocument()
+    await expect(canvas.queryByText('Sin cobrar')).toBeNull()
+  },
+}

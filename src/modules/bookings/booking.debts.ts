@@ -102,7 +102,7 @@ export async function getDebts(
         ), 0
       )
     ) > 0
-    ORDER BY b.date DESC, b.time_start DESC
+    ORDER BY b.date DESC, b.starts_at DESC
   `)
 
   return (

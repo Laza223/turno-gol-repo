@@ -356,7 +356,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
         })
         .from(courts)
         .where(eq(courts.tenantId, tenantId))
-        .orderBy(courts.name),
+        .orderBy(courts.createdAt),
     ),
     listStaffRoster(tenantId),
   ])

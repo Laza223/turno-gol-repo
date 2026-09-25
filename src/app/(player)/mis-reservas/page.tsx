@@ -173,10 +173,10 @@ export default async function MisReservasPage(props: {
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.player_id = ${user.playerId}
         ${tabCond}
-      -- id como desempate: dos reservas con el mismo date+time_start (dos
+      -- id como desempate: dos reservas con el mismo date+starts_at (dos
       -- canchas del mismo complejo, por ejemplo) sin un orden estable movían
       -- filas entre páginas contiguas.
-      ORDER BY b.date DESC, b.time_start DESC, b.id ASC
+      ORDER BY b.date DESC, b.starts_at DESC, b.id ASC
       LIMIT ${MIS_RESERVAS_PAGE_SIZE} OFFSET ${page * MIS_RESERVAS_PAGE_SIZE}
     `)
     // "Tenés N turnos por jugar" ya no se puede derivar de las filas en

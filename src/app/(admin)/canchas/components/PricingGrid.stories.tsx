@@ -10,7 +10,7 @@ const GRID = expandRulesToGrid(pricingSynthetic().rules, HOURS, false)
 
 // Wrapper controlado: PricingGrid es "grid/onGridChange" puro (spec §3.3), así
 // que la story necesita dueño de estado para que la edición se vea reflejada
-// — igual que PricingSection en la app real.
+// — igual que PriceSetup en la app real.
 function ControlledPricingGrid({ initial }: { initial: PriceGrid }) {
   const [grid, setGrid] = useState(initial)
   return (

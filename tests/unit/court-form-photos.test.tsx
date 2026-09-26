@@ -57,11 +57,10 @@ afterEach(() => {
   URL.revokeObjectURL = originalRevoke
 })
 
-/** Llena nombre + plantilla de precios para que el gate de cobertura deje enviar. */
+/** Llena nombre + precio del turno (aplica al instante) para que el gate de cobertura deje enviar. */
 function fillValidCourt() {
   fireEvent.change(screen.getByPlaceholderText('Ej: Cancha 1'), { target: { value: 'Cancha 9' } })
-  fireEvent.change(screen.getByLabelText('Precio por turno'), { target: { value: '10000' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Aplicar a toda la semana' }))
+  fireEvent.change(screen.getByLabelText('Precio del turno'), { target: { value: '10000' } })
 }
 
 async function pickPhoto() {
@@ -83,14 +82,17 @@ describe('CourtForm — fotos en el alta', () => {
   it('muestra cómo sale la cancha sin foto y con foto, y se actualiza al elegirla', async () => {
     render(<CourtForm court={null} {...baseProps} />)
 
-    expect(screen.getByText('Así lo ve el jugador en tu perfil')).toBeVisible()
-    expect(screen.getByText('Sin foto')).toBeVisible()
-    expect(screen.getByText('Con tu foto')).toBeVisible()
-    expect(screen.getByText('Elegí una foto para ver cómo queda')).toBeVisible()
+    expect(
+      screen.getByText('Sin foto, en tu perfil la cancha sale como un fondo verde.'),
+    ).toBeVisible()
+    expect(screen.getByText('Así la ve el jugador')).toBeVisible()
+    expect(screen.queryByAltText('Cancha Nombre de la cancha')).not.toBeInTheDocument()
 
     await pickPhoto()
 
-    expect(screen.queryByText('Elegí una foto para ver cómo queda')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Sin foto, en tu perfil la cancha sale como un fondo verde.'),
+    ).not.toBeInTheDocument()
     expect(screen.getByAltText('Cancha Nombre de la cancha')).toBeInTheDocument()
   })
 
@@ -237,7 +239,9 @@ describe('CourtForm — fotos en el alta', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Quitar imagen' })).not.toBeInTheDocument(),
     )
-    fireEvent.submit(screen.getByRole('heading', { name: 'Editar cancha' }).closest('form')!)
+    // El h1 al editar muestra el NOMBRE de la cancha, no "Editar cancha", y
+    // quedó fuera del <form>: se ancla en el botón de submit.
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar cambios' }).closest('form')!)
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(onSaved.mock.calls[0]![0]).toMatchObject({ photos: [] })

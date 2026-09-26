@@ -43,10 +43,9 @@ test.describe('TG-HP-206 — Crear cancha + subir fotos a R2', () => {
       await page.getByRole('button', { name: '+ Nueva cancha' }).click()
       await expect(page.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
 
-      // Step 3-4: nombre + precio (plantilla rápida, cubre toda la semana).
+      // Step 3-4: nombre + precio (el MoneyInput cubre la semana entera al instante).
       await page.getByPlaceholder('Ej: Cancha 1').fill(courtName)
-      await page.getByLabel('Precio por turno').fill('10000')
-      await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
+      await page.getByLabel('Precio del turno').fill('10000')
 
       // Step 5: crear.
       await page.getByRole('button', { name: 'Crear cancha' }).click()
@@ -63,7 +62,7 @@ test.describe('TG-HP-206 — Crear cancha + subir fotos a R2', () => {
       expect(createdCourtId).not.toBeNull()
 
       // Step 7: reabrir en modo edición — ahí aparece la sección Fotos.
-      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      const courtCard = page.getByRole('listitem').filter({ hasText: courtName })
       await courtCard.getByRole('button', { name: /editar/i }).click()
       await expect(page.getByText('Fotos', { exact: true })).toBeVisible({ timeout: 10_000 })
 

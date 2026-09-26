@@ -63,10 +63,10 @@ afterEach(cleanup)
 // Si el revert de un Deshacer fallido sale de `currentStatus` capturado ahí, la
 // tarjeta vuelve al estado VIEJO y queda mintiendo sobre lo que hay en el server.
 describe('CourtList — Deshacer fallido deja la tarjeta en el estado real', () => {
-  it('Activar → Deshacer falla: sigue Activa con botón Desactivar', async () => {
+  it('Reactivar → Deshacer falla: sigue Activa con botón Pausar', async () => {
     renderList([courtOffline()])
-    fireEvent.click(screen.getByRole('button', { name: 'Activar' }))
-    await screen.findByRole('button', { name: 'Desactivar' })
+    fireEvent.click(screen.getByRole('button', { name: 'Reactivar' }))
+    await screen.findByRole('button', { name: 'Pausar' })
 
     const undo = await undoFromToast('Cancha activada')
     failOnce()
@@ -74,35 +74,35 @@ describe('CourtList — Deshacer fallido deja la tarjeta en el estado real', () 
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'No se pudo desactivar' }),
+        expect.objectContaining({ title: 'No se pudo pausar' }),
       ),
     )
     expect(toggleStatusAction).toHaveBeenLastCalledWith(courtOffline().id, 'offline')
-    expect(await screen.findByRole('button', { name: 'Desactivar' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Pausar' })).toBeInTheDocument()
     expect(screen.getByText('Activa')).toBeInTheDocument()
     expect(screen.queryByText('Pausada')).not.toBeInTheDocument()
   })
 
-  it('Desactivar (diálogo) → Deshacer falla: sigue Pausada con botón Activar', async () => {
+  it('Pausar (diálogo) → Deshacer falla: sigue Pausada con botón Reactivar', async () => {
     renderList([courtFutbol5()])
-    fireEvent.click(screen.getByRole('button', { name: 'Desactivar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
     // ConfirmDialog entra por next/dynamic: el primer mount paga el cold-start
     // del chunk (~1.5s, ver abonados-list.test.tsx), más que el default de RTL.
     const dialog = await screen.findByRole('dialog', {}, { timeout: 5000 })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Desactivar' }))
-    await screen.findByRole('button', { name: 'Activar' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Pausar' }))
+    await screen.findByRole('button', { name: 'Reactivar' })
 
-    const undo = await undoFromToast('Cancha desactivada')
+    const undo = await undoFromToast('Cancha pausada')
     failOnce()
     await act(async () => undo())
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'No se pudo activar' }),
+        expect.objectContaining({ title: 'No se pudo reactivar' }),
       ),
     )
     expect(toggleStatusAction).toHaveBeenLastCalledWith(courtFutbol5().id, 'online')
-    expect(await screen.findByRole('button', { name: 'Activar' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Reactivar' })).toBeInTheDocument()
     expect(screen.getByText('Pausada')).toBeInTheDocument()
     expect(screen.queryByText('Activa')).not.toBeInTheDocument()
   })

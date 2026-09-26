@@ -210,16 +210,16 @@ export default {
         rules: ['react-doctor/no-fetch-in-effect'],
       },
       {
-        files: ['**/PricingSection.tsx', 'src/components/ui/date-picker.tsx'],
+        files: ['**/PriceSetup.tsx', 'src/components/ui/date-picker.tsx'],
         rules: ['react-doctor/no-pass-data-to-parent'],
       },
-      { files: ['**/PricingSection.tsx'], rules: ['react-doctor/no-pass-live-state-to-parent'] },
+      { files: ['**/PriceSetup.tsx'], rules: ['react-doctor/no-pass-live-state-to-parent'] },
       {
-        files: ['**/PricingSection.tsx', '**/InviteStaffDialog.tsx'],
+        files: ['**/PriceSetup.tsx', '**/InviteStaffDialog.tsx'],
         rules: ['react-doctor/no-prop-callback-in-effect'],
       },
       {
-        files: ['**/PricingSection.tsx', '**/CourtList.tsx'],
+        files: ['**/PriceSummary.tsx', '**/CourtList.tsx'],
         rules: ['react-doctor/no-array-index-as-key'],
       },
       {

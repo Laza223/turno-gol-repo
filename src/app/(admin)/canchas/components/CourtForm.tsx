@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
+import { ChevronLeft } from 'lucide-react'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -14,10 +15,11 @@ import {
   billingChangeTitle,
   type BillingChangePreview,
 } from '../billing-copy'
-import { PricingSection, type CourtPricingSource } from './PricingSection'
+import { PriceSetup, type CourtPricingSource } from './price-setup/PriceSetup'
 import { CourtPhotoPreview } from './CourtPhotoPreview'
 import { Button } from '@/components/ui/button'
 import { ImageUploader } from '@/components/ui/image-uploader'
+import { Input } from '@/components/ui/input'
 import { SelectMenu } from '@/components/ui/select-menu'
 import { toast } from '@/hooks/use-toast'
 
@@ -77,11 +79,13 @@ type Props = {
   tenantId: string
   openingHours: OpeningHours
   closesNextDay: boolean
-  /** Otras canchas del complejo, para "Copiar precios de otra cancha". */
+  /** Otras canchas del complejo, para "Igual que…" (copiar su precio). */
   otherCourts: CourtPricingSource[]
   onSaved: (court: CourtRow) => void
   /** Al editar lleva las fotos actuales: se guardan al elegirlas, aunque después se cancele. */
   onCancel: (photos?: string[]) => void
+  /** "Agregar foto" desde la lista abre el editor ya parado en las fotos. */
+  initialSection?: 'photos'
   createAction: CreateCourtAction
   updateAction: UpdateCourtAction
   uploadPhotoAction: UploadCourtPhotoAction
@@ -97,6 +101,7 @@ export function CourtForm({
   otherCourts,
   onSaved,
   onCancel,
+  initialSection,
   createAction,
   updateAction,
   uploadPhotoAction,
@@ -104,6 +109,10 @@ export function CourtForm({
   reorderPhotosAction,
 }: Props) {
   const isEdit = court !== null
+  const photosRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (initialSection === 'photos') photosRef.current?.scrollIntoView({ block: 'start' })
+  }, [initialSection])
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   // Aviso de "esta cancha te sube la cuota". El FormData del intento frenado se
@@ -215,10 +224,11 @@ export function CourtForm({
     setError(null)
     // Gate client-side (el server valida cobertura igual, de backstop): guardar
     // con huecos dejaría horas operativas sin precio → irreservables online.
-    // El auto-relleno (PricingSection) ya completa las celdas al abrir el
-    // editor, así que llegar acá significa que la persona las vació a mano
-    // después (ej. "Ajustar por hora" → borrar selección) — antes este corte
-    // era mudo, sin ninguna señal de que alguien se había atascado justo acá.
+    // El auto-relleno (PriceSetup) ya completa las celdas al abrir el editor,
+    // así que llegar acá es una cancha nueva sin precio, un precio que se dejó
+    // vacío (el de la noche, el de los días distintos) o celdas vaciadas en
+    // "Ajustar hora por hora" — antes este corte era mudo, sin ninguna señal
+    // de que alguien se había atascado justo acá.
     if (emptyCount > 0) {
       track.courts('courts.pricing_save_blocked', { tenantId, emptyCount })
       // `track` en el navegador deja SOLO un breadcrumb: el sink durable de
@@ -233,9 +243,11 @@ export function CourtForm({
         extra: { emptyCount },
       })
       setError(
-        `No se puede guardar: falta${emptyCount === 1 ? '' : 'n'} ${emptyCount} horario${
-          emptyCount === 1 ? '' : 's'
-        } sin precio. Cargalo${emptyCount === 1 ? '' : 's'} con la plantilla o con «Ajustar por hora».`,
+        rules.length === 0
+          ? 'No se puede guardar: falta el precio del turno.'
+          : `No se puede guardar: ${
+              emptyCount === 1 ? 'falta 1 hora' : `faltan ${emptyCount} horas`
+            } sin precio. Están en ámbar en «Así queda la semana».`,
       )
       return
     }
@@ -306,146 +318,168 @@ export function CourtForm({
     await finishSave(result)
   }
 
+  const cancel = () => onCancel(isEdit ? photos : undefined)
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-card rounded-lg border border-border shadow-xs p-6 space-y-6"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">
-          {isEdit ? 'Editar cancha' : 'Nueva cancha'}
-        </h2>
+    <div className="mx-auto max-w-3xl space-y-5">
+      <div className="space-y-2">
         <button
           type="button"
-          onClick={() => onCancel(isEdit ? photos : undefined)}
+          onClick={cancel}
           disabled={isPending}
-          className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="-ml-1 inline-flex min-h-9 items-center gap-1 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
-          Cancelar
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          Canchas
         </button>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+          {isEdit ? court.name : 'Nueva cancha'}
+        </h1>
       </div>
 
-      {/* Basic fields */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="court-name" className="block text-sm font-medium mb-1">
-            Nombre <span className="text-red-500">*</span>
-          </label>
-          <input
-            id="court-name"
-            name="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ej: Cancha 1"
-            required
-            className="h-12 w-full rounded-xl border border-border bg-background px-3.5 text-base md:text-sm text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card shadow-xs">
+        <section className="space-y-4 p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-foreground">La cancha</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="space-y-1.5">
+              <label htmlFor="court-name" className="text-sm font-medium text-foreground">
+                Nombre
+              </label>
+              <Input
+                id="court-name"
+                name="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej: Cancha 1"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="court-format" className="text-sm font-medium text-foreground">
+                Formato
+              </label>
+              <SelectMenu
+                id="court-format"
+                name="format"
+                value={String(format)}
+                onChange={(v) => setFormat(Number(v))}
+                options={FORMAT_OPTIONS.map((f) => ({ value: String(f), label: `Fútbol ${f}` }))}
+                className="h-11 rounded-lg bg-card md:h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="court-surface" className="text-sm font-medium text-foreground">
+                Superficie
+              </label>
+              <SelectMenu
+                id="court-surface"
+                name="surfaceType"
+                value={surfaceType}
+                onChange={setSurfaceType}
+                options={SURFACE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                className="h-11 rounded-lg bg-card md:h-10"
+              />
+            </div>
+          </div>
+        </section>
 
-        <div>
-          <label htmlFor="court-surface" className="block text-sm font-medium mb-1">
-            Superficie <span className="text-red-500">*</span>
-          </label>
-          <SelectMenu
-            id="court-surface"
-            name="surfaceType"
-            value={surfaceType}
-            onChange={setSurfaceType}
-            options={SURFACE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+        <section className="space-y-4 border-t border-border p-5 sm:p-6">
+          <div className="space-y-0.5">
+            <h2 className="text-base font-semibold text-foreground">Precio del turno</h2>
+            <p className="text-sm text-muted-foreground">Lo que cobrás por un turno de una hora.</p>
+          </div>
+          <PriceSetup
+            openingHours={openingHours}
+            closesNextDay={closesNextDay}
+            initialRules={initialRules}
+            otherCourts={otherCourts}
+            onRulesChange={handleRulesChange}
           />
-        </div>
+        </section>
 
-        <div>
-          <label htmlFor="court-format" className="block text-sm font-medium mb-1">
-            Formato <span className="text-red-500">*</span>
-          </label>
-          <SelectMenu
-            id="court-format"
-            name="format"
-            value={String(format)}
-            onChange={(v) => setFormat(Number(v))}
-            options={FORMAT_OPTIONS.map((f) => ({ value: String(f), label: `Fútbol ${f}` }))}
-          />
-        </div>
-      </div>
+        <section
+          ref={photosRef}
+          className="scroll-mt-4 space-y-4 border-t border-border p-5 sm:p-6"
+        >
+          <div className="space-y-0.5">
+            <h2 className="text-base font-semibold text-foreground">Fotos</h2>
+            {currentPhotos.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Sin foto, en tu perfil la cancha sale como un fondo verde.
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_14rem]">
+            <div className="space-y-2">
+              <ImageUploader
+                preset="court"
+                value={currentPhotos}
+                max={MAX_PHOTOS}
+                onUpload={handlePhotoUpload}
+                onRemove={handlePhotoRemove}
+                onReorder={handlePhotoReorder}
+                disabled={isPending}
+                emptyLabel="Agregar foto"
+              />
+              <p className="text-xs text-muted-foreground">
+                Hasta {MAX_PHOTOS}. La primera es la que se ve en tu perfil.{' '}
+                {isEdit ? 'Se guardan apenas las elegís.' : 'Se suben cuando creás la cancha.'}
+              </p>
+            </div>
+            <CourtPhotoPreview
+              court={{
+                id: court?.id ?? 'preview',
+                name: name.trim() || 'Nombre de la cancha',
+                surfaceType,
+                isCovered: false,
+                hasLighting: false,
+                format,
+                capacity: format * 2,
+                fromPriceCents: rules.length > 0 ? Math.min(...rules.map((r) => r.price)) : null,
+              }}
+              photos={currentPhotos}
+            />
+          </div>
+        </section>
 
-      {/* Precios: plantilla rápida + resumen + ajuste fino (spec §3) */}
-      <div className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Precios</h3>
-          <p className="text-xs text-muted-foreground">
-            Los precios se ingresan en pesos, por turno de una hora.
+        {error && (
+          <p
+            role="alert"
+            className="mx-5 mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-red-700 sm:mx-6 dark:text-red-300"
+          >
+            {error}
           </p>
+        )}
+
+        {/* Guardar queda a la vista sin bajar hasta el final. En el teléfono va
+            arriba de la barra inferior de navegación (mismo corrimiento que el
+            ticket de Vender). */}
+        <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 flex items-center justify-end gap-2 rounded-b-xl border-t border-border bg-card px-5 py-3 lg:bottom-0">
+          <Button type="button" variant="ghost" onClick={cancel} disabled={isPending}>
+            Cancelar
+          </Button>
+          <Button type="submit" isLoading={isPending}>
+            {isEdit ? 'Guardar cambios' : 'Crear cancha'}
+          </Button>
         </div>
 
-        <PricingSection
-          openingHours={openingHours}
-          closesNextDay={closesNextDay}
-          initialRules={initialRules}
-          otherCourts={otherCourts}
-          onRulesChange={handleRulesChange}
-        />
-      </div>
-
-      <div className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Fotos</h3>
-          <p className="text-xs text-muted-foreground">
-            La primera foto es la que se ve en la card de la cancha. Hasta {MAX_PHOTOS}
-            {isEdit ? '.' : '. Se suben cuando creás la cancha.'}
-          </p>
-        </div>
-        <ImageUploader
-          preset="court"
-          value={currentPhotos}
-          max={MAX_PHOTOS}
-          onUpload={handlePhotoUpload}
-          onRemove={handlePhotoRemove}
-          onReorder={handlePhotoReorder}
-          disabled={isPending}
-          emptyLabel="Agregar foto"
-        />
-        <CourtPhotoPreview
-          court={{
-            id: court?.id ?? 'preview',
-            name: name.trim() || 'Nombre de la cancha',
-            surfaceType,
-            isCovered: false,
-            hasLighting: false,
-            format,
-            capacity: format * 2,
-            fromPriceCents: rules.length > 0 ? Math.min(...rules.map((r) => r.price)) : null,
-          }}
-          photos={currentPhotos}
-        />
-      </div>
-
-      {error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {error}
-        </p>
-      )}
-
-      <Button type="submit" isLoading={isPending} className="w-full h-11">
-        {isEdit ? 'Guardar cambios' : 'Crear cancha'}
-      </Button>
-
-      {billingPreview && (
-        <ConfirmDialog
-          open
-          onOpenChange={(next) => {
-            if (!next) {
-              setBillingPreview(null)
-              pendingFormData.current = null
-            }
-          }}
-          title={billingChangeTitle(billingPreview)}
-          description={<p>{billingChangeMessage(billingPreview)}</p>}
-          confirmLabel="Confirmar"
-          cancelLabel="Cancelar"
-          onConfirm={confirmBillingChange}
-        />
-      )}
-    </form>
+        {billingPreview && (
+          <ConfirmDialog
+            open
+            onOpenChange={(next) => {
+              if (!next) {
+                setBillingPreview(null)
+                pendingFormData.current = null
+              }
+            }}
+            title={billingChangeTitle(billingPreview)}
+            description={<p>{billingChangeMessage(billingPreview)}</p>}
+            confirmLabel="Confirmar"
+            cancelLabel="Cancelar"
+            onConfirm={confirmBillingChange}
+          />
+        )}
+      </form>
+    </div>
   )
 }

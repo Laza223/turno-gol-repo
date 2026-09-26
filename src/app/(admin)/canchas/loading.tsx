@@ -1,42 +1,45 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
+/** Silueta de CourtList: título plano + la tabla de canchas (una fila por cancha desde lg). */
 export default function Loading() {
   return (
-    <div className="space-y-6" aria-busy="true">
-      {/* PageHeader: icon halo + título + subtítulo + CTA */}
-      <div className="page-header-band relative overflow-hidden rounded-2xl border border-border/60 px-5 py-5 sm:px-7 sm:py-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-7 w-28" />
-              <Skeleton className="h-4 w-40" />
-            </div>
-          </div>
-          <Skeleton className="h-10 w-36 rounded-lg" />
+    <div className="space-y-5" aria-busy="true">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-44" />
         </div>
+        <Skeleton className="h-11 w-36 rounded-lg md:h-10" />
       </div>
 
-      {/* Cards de cancha */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="card-premium rounded-lg p-4 flex items-center justify-between gap-4"
-          >
-            <div className="min-w-0 space-y-2">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-5 w-14 rounded-full" />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <div className="hidden border-b border-border px-4 py-3 lg:block">
+          <Skeleton className="h-3 w-64" />
+        </div>
+        <ul className="divide-y divide-border">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <li
+              key={i}
+              className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-6 lg:py-3"
+            >
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-12 w-16 shrink-0 rounded-md lg:h-10 lg:w-14" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
               </div>
-              <Skeleton className="h-3 w-40" />
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Skeleton className="h-6 w-12" />
-              <Skeleton className="h-6 w-20" />
-            </div>
-          </div>
-        ))}
+              <Skeleton className="h-4 w-56" />
+              <div className="flex items-center justify-between gap-3 lg:contents">
+                <Skeleton className="h-5 w-40" />
+                <div className="flex gap-1.5 lg:w-44 lg:justify-end">
+                  <Skeleton className="h-10 w-20 rounded-md md:h-9" />
+                  <Skeleton className="h-10 w-20 rounded-md md:h-9" />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   )

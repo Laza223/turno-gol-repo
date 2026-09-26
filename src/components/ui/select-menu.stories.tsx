@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { SelectMenu, type SelectMenuOption } from './select-menu'
 
 /**
- * Reemplazo del `<select>` nativo en "Editar cancha" (CourtForm/PricingSection):
+ * Reemplazo del `<select>` nativo en "Editar cancha" (CourtForm/PriceSetup):
  * mismo `DropdownMenu` de Radix que el campo "Hora" de SearchBar, con
  * `DropdownMenuRadioGroup`/`DropdownMenuRadioItem` (`menuitemradio` + `aria-checked`).
  */

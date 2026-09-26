@@ -492,8 +492,8 @@
       "isolationNotes": "useTheme (next-themes) para resolvedTheme→isDark en el heatStyle; necesita ThemeProvider en el decorator."
     },
     {
-      "path": "src/app/(admin)/canchas/components/PricingSection.tsx",
-      "name": "PricingSection",
+      "path": "src/app/(admin)/canchas/components/price-setup/PriceSetup.tsx",
+      "name": "PriceSetup",
       "domain": "canchas",
       "rendering": "client",
       "role": "form",
@@ -501,13 +501,14 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "template mode=uniform/weekSplit/dayNight",
-        "otherCourts vacío/con opciones (copiar de otra cancha)",
-        "showGrid plegado/expandido",
-        "emptyCount>0 (aviso)",
+        "precio único / noche / días distintos (las dos preguntas)",
+        "otherCourts vacío/con opciones («Igual que…», agrupadas por precio)",
+        "hora por hora plegado/expandido",
+        "no entra en las preguntas («Pasar a un precio simple»)",
+        "auto-relleno de huecos al abrir (aviso)",
         "sin horas operativas (aviso con link a horarios)"
       ],
-      "proposedStoryTitle": "Admin/Canchas/PricingSection",
+      "proposedStoryTitle": "Admin/Canchas/PriceSetup",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,

@@ -151,6 +151,7 @@ export function JugadoresView({
         )
       ) : (
         <ResponsiveList
+          scrollLabel="Personas"
           className="overflow-hidden rounded-xl shadow-xs"
           cards={
             <ul className="divide-y divide-border">

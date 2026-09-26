@@ -88,19 +88,21 @@ test.describe('Caja redesign', () => {
     await expect(saleRow).toBeVisible({ timeout: 10_000 })
     await expect(saleRow.getByRole('img', { name: 'Cantina' })).toBeVisible()
 
-    // Reporte de cantina: la venta recién hecha aparece en el ranking de
-    // /caja/productos. Desde el rediseño el informe está DESPLEGADO —es la
-    // columna derecha de la pantalla, no un disclosure—, así que ya no hay que
-    // abrir nada. El `<section>` con aria-labelledby expone role "region" con
-    // su h2 como nombre accesible: lo usamos de ancla porque ProductsTable, al
-    // lado en la misma página, también lista "Agua" y un getByText sin scope
-    // resolvería ambigüedad.
+    // "Lo que más salió": la venta recién hecha aparece en el ranking de
+    // /caja/productos (la tarjeta al lado del catálogo). El `<section>` con
+    // aria-labelledby expone role "region" con su h2 como nombre accesible: lo
+    // usamos de ancla porque el catálogo, en la misma página, también lista el
+    // producto y un getByText sin scope resolvería ambigüedad.
     await page.goto('/caja/productos', { waitUntil: 'networkidle' })
-    const reportCard = page.getByRole('region', { name: /Ventas de cantina/ })
+    const topCard = page.getByRole('region', { name: /Lo que más salió/ })
     await expect(
-      reportCard.getByRole('heading', { name: /Ventas de cantina — últimos 7 días/ }),
+      topCard.getByRole('heading', { name: 'Lo que más salió en los últimos 7 días' }),
     ).toBeVisible()
-    await expect(reportCard.getByRole('cell', { name: productName, exact: true })).toBeVisible()
+    // Se ven los 8 que más plata hicieron: con el tenant demo compartido entre
+    // specs, el producto recién vendido puede quedar detrás de "Ver los otros N".
+    const more = topCard.getByText(/^Ver (los otros \d+|el que sigue)$/)
+    if (await more.isVisible()) await more.click()
+    await expect(topCard.getByText(productName, { exact: true })).toBeVisible()
   })
 
   test('ticket con 2 productos distintos genera UN solo movimiento con el monto sumado', async ({

@@ -152,6 +152,7 @@ export function AbonadosList({
       </div>
 
       <ResponsiveList
+        scrollLabel="Turnos fijos"
         table={
           <table className="w-full min-w-[640px] text-sm">
             <thead>

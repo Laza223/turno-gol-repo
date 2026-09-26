@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { ScrollRegion } from './scroll-region'
 
 type Props = {
   /** Encabezado opcional (título/acciones) renderizado dentro del borde, arriba de cards y tabla. */
@@ -16,6 +17,11 @@ type Props = {
    * sin sombra, separadas por borde de 1 px o por espacio").
    */
   flat?: boolean
+  /**
+   * Nombre de la lista cuando puede ser larga: con él, las dos vistas tienen
+   * tope de alto y scroll propio (`ScrollRegion`) en vez de estirar la página.
+   */
+  scrollLabel?: string
   className?: string
 }
 
@@ -27,7 +33,7 @@ type Props = {
  * acciones repetidas en ambas vistas y deben agarrar la visible (la tabla).
  * El orden visual no cambia: solo una vista se muestra por breakpoint.
  */
-export function ResponsiveList({ header, cards, table, flat, className }: Props) {
+export function ResponsiveList({ header, cards, table, flat, scrollLabel, className }: Props) {
   return (
     <div
       className={cn(
@@ -37,8 +43,21 @@ export function ResponsiveList({ header, cards, table, flat, className }: Props)
       )}
     >
       {header}
-      <div className="hidden overflow-x-auto sm:block">{table}</div>
-      <div className="sm:hidden">{cards}</div>
+      {scrollLabel ? (
+        <>
+          <ScrollRegion label={scrollLabel} className="hidden overflow-x-auto sm:block">
+            {table}
+          </ScrollRegion>
+          <ScrollRegion label={scrollLabel} className="sm:hidden">
+            {cards}
+          </ScrollRegion>
+        </>
+      ) : (
+        <>
+          <div className="hidden overflow-x-auto sm:block">{table}</div>
+          <div className="sm:hidden">{cards}</div>
+        </>
+      )}
     </div>
   )
 }

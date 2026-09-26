@@ -6,6 +6,7 @@ import { capitalizeFirst, formatArs } from '@/lib/format'
 import { bookingBadgeVisual } from '@/lib/booking/slot-visual'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Pager } from '@/components/ui/pager'
+import { ScrollRegion } from '@/components/ui/scroll-region'
 import { resolveDepositDisplayStatus } from '@/app/(admin)/reservas/deposit-display'
 import type { BanCheckResult } from '@/modules/bans/ban.service'
 import type { ManualBanDuration } from '@/modules/bans/ban.schema'
@@ -256,38 +257,44 @@ export function JugadorProfileView({
           )
         ) : (
           <>
-            <ul className="mt-4 divide-y divide-slate-100 text-sm">
-              {history.map((b) => {
-                const visual = bookingBadgeVisual(b)
-                const money = paymentStatus(b)
-                return (
-                  <li key={b.id}>
-                    <Link
-                      href={`/reservas/${b.id}`}
-                      className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                    >
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {formatDate(b.date)} · {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {b.courtName} · {TYPE_LABELS[b.type] ?? b.type}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <p className="text-foreground">{formatArs(b.priceSnapshot)}</p>
-                        <StatusBadge visual={visual} />
-                        {money && (
-                          <p className={cn('text-xs font-medium', PAYMENT_TONE_CLASS[money.tone])}>
-                            {money.text}
+            {/* `-mx-2 px-2`: el hover de cada fila sale 8 px a los costados y
+                el scroll lo recortaría. */}
+            <ScrollRegion label="Historial de reservas" className="-mx-2 mt-4 px-2">
+              <ul className="divide-y divide-slate-100 text-sm">
+                {history.map((b) => {
+                  const visual = bookingBadgeVisual(b)
+                  const money = paymentStatus(b)
+                  return (
+                    <li key={b.id}>
+                      <Link
+                        href={`/reservas/${b.id}`}
+                        className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {formatDate(b.date)} · {b.timeStart.slice(0, 5)}–{b.timeEnd.slice(0, 5)}
                           </p>
-                        )}
-                      </div>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
+                          <p className="text-xs text-muted-foreground">
+                            {b.courtName} · {TYPE_LABELS[b.type] ?? b.type}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="text-foreground">{formatArs(b.priceSnapshot)}</p>
+                          <StatusBadge visual={visual} />
+                          {money && (
+                            <p
+                              className={cn('text-xs font-medium', PAYMENT_TONE_CLASS[money.tone])}
+                            >
+                              {money.text}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </ScrollRegion>
             {/* Antes el historial se cortaba en 20 SIN forma de ver las
                 reservas anteriores — el Pager en modo total dice cuántas hay
                 en total y numera. */}

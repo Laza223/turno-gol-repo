@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, MoreHorizontal, Package, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,34 +13,40 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Pager } from '@/components/ui/pager'
-import { ResponsiveList } from '@/components/ui/responsive-list'
-import { Th, Td, Tr } from '@/components/ui/table'
+import { ScrollRegion } from '@/components/ui/scroll-region'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
-import { SectionHeader } from '@/components/admin/SectionHeader'
-import { canteenStockBadge, countLowStock, stockBadgeToneClass, type StockBadge } from '../caja-lib'
+import { canteenStockBadge, stockBadgeToneClass } from '../caja-lib'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 import {
   ProductFormDialog,
   type CreateProductAction,
   type UpdateProductAction,
 } from './ProductFormDialog'
+import { RestockList } from './RestockList'
 import { StockEntryDialog, type RegisterPurchaseAction } from './StockEntryDialog'
 import { StockExitDialog, type RegisterStockExitAction } from './StockExitDialog'
 import type { ProductActionResult } from './actions'
 
 /**
  * Productos por página. Los pausados no se borran nunca (`deactivateProduct` es
- * una baja lógica), así que el catálogo solo crece: sin techo, la tabla empuja
- * el ledger de stock fuera de la vista.
+ * una baja lógica), así que el catálogo solo crece: sin techo, la lista empuja
+ * el ledger de stock fuera de la vista. De a 40 el catálogo del piloto (30)
+ * entra entero.
  */
-const PAGE_SIZE = 25
+const PAGE_SIZE = 40
 
 /** deactivateProductAction llega por PROP: '../actions' es `'use server'`. */
 type DeactivateProductAction = (productId: string) => Promise<ProductActionResult>
 
 type Props = {
   products: CanteenProductRow[]
+  /**
+   * Unidades vendidas por producto en los últimos 7 días (del ranking de
+   * ventas). Mide para cuántas noches alcanza lo que hay que reponer.
+   */
+  unitsLast7Days?: Record<string, number>
   /** Solo admin edita catálogo (alta/edición/pausa); manager solo repone/da salida. */
   canEditCatalog: boolean
   createProductAction: CreateProductAction
@@ -48,6 +54,8 @@ type Props = {
   deactivateProductAction: DeactivateProductAction
   registerPurchaseAction: RegisterPurchaseAction
   registerStockExitAction: RegisterStockExitAction
+  /** Lo que va al lado del catálogo desde `lg` ("Lo que más salió"), ya armado en el server. */
+  aside?: ReactNode
 }
 
 /**
@@ -59,29 +67,53 @@ function activeFirst(products: CanteenProductRow[]): CanteenProductRow[] {
   return [...products].sort((a, b) => Number(b.isActive) - Number(a.isActive))
 }
 
-/** Clases del botón "Reponer" — resaltado cuando el stock exige acción. */
-function reponerClass(tone: StockBadge['tone'] | null): string {
-  const base = 'inline-flex items-center rounded-md px-2.5 text-xs font-medium'
-  return tone === 'out' || tone === 'low'
-    ? `${base} border border-emerald-600 bg-primary/10 text-emerald-800 hover:bg-primary/15 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-300`
-    : `${base} text-emerald-800 hover:bg-accent dark:text-emerald-400`
-}
-
-function StockCell({ badge }: { badge: StockBadge | null }) {
-  if (!badge) return <span className="text-xs text-muted-foreground">Servicio (sin stock)</span>
+/**
+ * El stock en palabras: "Stock 252 · mín 100", "Quedan 55 · mín 60" en ámbar,
+ * "Agotado" en rojo. Mismos rótulos y colores que el punto de la pestaña y la
+ * venta en Hoy (`canteenStockBadge`).
+ */
+function StockText({ product }: { product: CanteenProductRow }) {
+  const badge = canteenStockBadge(product.stock, product.minStock)
+  if (!badge) return <span className="text-muted-foreground">No lleva stock</span>
   return (
-    <span className={`text-xs font-medium ${stockBadgeToneClass(badge.tone)}`}>{badge.label}</span>
+    <span className="tabular-nums">
+      <span
+        className={
+          badge.tone === 'ok'
+            ? 'text-foreground'
+            : cn('font-medium', stockBadgeToneClass(badge.tone))
+        }
+      >
+        {badge.label}
+      </span>
+      {badge.tone !== 'out' && product.minStock != null && (
+        <span className="text-muted-foreground"> · mín {product.minStock}</span>
+      )}
+    </span>
   )
 }
 
+/** Acciones visibles de la fila desde `md`: en el teléfono viven en el menú "⋯". */
+const ROW_ACTION =
+  'hidden h-9 items-center rounded-md px-2.5 text-xs font-medium hover:bg-accent md:inline-flex'
+
+/**
+ * Productos como tarjetas (variante "Reponer primero", elegida por el dueño el
+ * 2026-09-26): arriba lo que hay que reponer, abajo el catálogo con lo que más
+ * salió al lado. Es dueño de los diálogos (alta, edición, reposición y salida),
+ * por eso arma también "Para reponer": su botón abre la misma reposición que
+ * la fila del catálogo.
+ */
 export function ProductsTable({
   products,
+  unitsLast7Days = {},
   canEditCatalog,
   createProductAction,
   updateProductAction,
   deactivateProductAction,
   registerPurchaseAction,
   registerStockExitAction,
+  aside,
 }: Props) {
   const router = useRouter()
   const [formOpen, setFormOpen] = useState(false)
@@ -91,6 +123,7 @@ export function ProductsTable({
 
   const [page, setPage] = useState(0)
   const sectionRef = useRef<HTMLElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   const ordered = activeFirst(products)
   // Pausar el último producto de la última página la deja vacía: el clamp
@@ -104,6 +137,8 @@ export function ProductsTable({
     // El paginador queda abajo de la tabla: sin esto, cambiar de página deja la
     // vista al final de la página nueva.
     sectionRef.current?.scrollIntoView({ block: 'start' })
+    // Y la lista, que scrollea adentro, arranca de arriba.
+    listRef.current?.scrollTo({ top: 0 })
   }
 
   function openCreate() {
@@ -132,128 +167,137 @@ export function ProductsTable({
   }
 
   const activeCount = products.filter((p) => p.isActive).length
-  const lowCount = countLowStock(products)
   // Sugerencias del datalist: categorías ya cargadas, sin duplicados, orden alfabético.
   const categorySuggestions = Array.from(
     new Set(products.map((p) => p.category).filter((c): c is string => c != null)),
   ).sort((a, b) => a.localeCompare(b))
 
+  const addButton = canEditCatalog ? (
+    <button
+      type="button"
+      onClick={openCreate}
+      className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent md:h-9"
+    >
+      <Plus className="h-4 w-4" aria-hidden="true" />
+      Agregar producto
+    </button>
+  ) : (
+    // Bloqueado por rol: candado, no desaparición (mismo criterio que
+    // torneos/page.tsx y CorteZonasCard.tsx — MASTER CHK-admin §12).
+    <span
+      className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground md:h-9"
+      title="Solo el dueño puede agregar productos"
+    >
+      <Lock className="h-4 w-4" aria-hidden="true" />
+      Agregar producto
+      <span className="sr-only">— solo el dueño puede hacerlo</span>
+    </span>
+  )
+
   return (
-    <section ref={sectionRef} aria-labelledby="catalogo-titulo" className="space-y-3">
-      <SectionHeader
-        id="catalogo-titulo"
-        title="Catálogo"
-        meta={
-          products.length > 0 ? (
-            <>
-              {activeCount} {activeCount === 1 ? 'producto' : 'productos'}
-              {/* Lo mismo que dice el punto de la pestaña, con el número: acá
-                  el dueño ya está parado donde se repone. */}
-              {lowCount > 0 && (
-                <span className="text-amber-800 dark:text-amber-300">
-                  {' '}
-                  · {lowCount} para reponer
-                </span>
-              )}
-            </>
-          ) : null
-        }
-        actions={
-          canEditCatalog ? (
-            <button
-              type="button"
-              onClick={openCreate}
-              className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent md:h-9"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              Agregar producto
-            </button>
-          ) : (
-            // Bloqueado por rol: candado, no desaparición (mismo criterio que
-            // torneos/page.tsx y CorteZonasCard.tsx — MASTER CHK-admin §12).
-            <span
-              className="inline-flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-muted-foreground md:h-9"
-              title="Solo el dueño puede agregar productos"
-            >
-              <Lock className="h-4 w-4" aria-hidden="true" />
-              Agregar producto
-              <span className="sr-only">— solo el dueño puede hacerlo</span>
-            </span>
-          )
-        }
+    <>
+      <RestockList
+        products={products}
+        unitsLast7Days={unitsLast7Days}
+        onRestock={setEntryProduct}
       />
 
-      {products.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title="Todavía no cargaste productos"
-          description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Hoy."
-          action={
-            canEditCatalog ? (
-              <button
-                type="button"
-                onClick={openCreate}
-                className="h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Cargar el primero
-              </button>
-            ) : (
-              // Bloqueado por rol: candado, no desaparición (mismo criterio
-              // que el header de arriba).
-              <span
-                className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium text-muted-foreground"
-                title="Solo el dueño puede agregar productos"
-              >
-                <Lock className="h-4 w-4" aria-hidden="true" />
-                Cargar el primero
-                <span className="sr-only">— solo el dueño puede hacerlo</span>
-              </span>
-            )
-          }
-        />
-      ) : (
-        <ResponsiveList
-          flat
-          cards={
-            <ul className="divide-y divide-border border-b border-border">
-              {pageRows.map((p) => {
-                const badge = canteenStockBadge(p.stock, p.minStock)
-                return (
-                  <li
-                    key={p.id}
-                    className={`flex items-center justify-between gap-3 py-2.5 ${
-                      badge?.tone === 'out' ? 'bg-red-50 dark:bg-red-500/10' : ''
-                    }`}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <section
+          ref={sectionRef}
+          aria-labelledby="catalogo-titulo"
+          className="card-premium overflow-hidden"
+        >
+          <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 sm:px-5">
+            <h2 id="catalogo-titulo" className="text-base font-semibold text-foreground">
+              Catálogo
+              {products.length > 0 && (
+                <>
+                  {' '}
+                  <span className="font-normal tabular-nums text-muted-foreground">
+                    {activeCount}
+                  </span>
+                  <span className="sr-only"> {activeCount === 1 ? 'producto' : 'productos'}</span>
+                </>
+              )}
+            </h2>
+            {addButton}
+          </header>
+
+          {products.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title="Todavía no cargaste productos"
+              description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Hoy."
+              className="border-0 py-10"
+              action={
+                canEditCatalog ? (
+                  <button
+                    type="button"
+                    onClick={openCreate}
+                    className="h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                   >
-                    <div className="min-w-0">
+                    Cargar el primero
+                  </button>
+                ) : (
+                  // Bloqueado por rol: candado, no desaparición (mismo criterio
+                  // que el encabezado).
+                  <span
+                    className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium text-muted-foreground"
+                    title="Solo el dueño puede agregar productos"
+                  >
+                    <Lock className="h-4 w-4" aria-hidden="true" />
+                    Cargar el primero
+                    <span className="sr-only">— solo el dueño puede hacerlo</span>
+                  </span>
+                )
+              }
+            />
+          ) : (
+            <ScrollRegion ref={listRef} label="Productos del catálogo">
+              <ul className="divide-y divide-border">
+                {pageRows.map((p) => (
+                  <li key={p.id} className="flex items-center gap-3 px-4 py-1.5 sm:px-5">
+                    {/* En el teléfono: nombre y stock en dos líneas, precio a la
+                      derecha. Desde `md`, tres columnas alineadas. */}
+                    <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-1 md:grid-cols-[minmax(0,1fr)_5.5rem_9rem]">
                       <p
-                        className={`truncate text-sm font-medium ${
-                          p.isActive ? 'text-foreground' : 'text-muted-foreground'
-                        }`}
+                        className={cn(
+                          'truncate text-sm font-medium',
+                          p.isActive ? 'text-foreground' : 'text-muted-foreground',
+                        )}
                       >
                         {p.name}
                         {p.category && (
-                          <span className="ml-1.5 font-normal text-muted-foreground">
-                            · {p.category}
-                          </span>
+                          <span className="font-normal text-muted-foreground"> · {p.category}</span>
                         )}
                       </p>
-                      <p className="text-xs tabular-nums text-muted-foreground">
-                        {formatArs(p.price)}
-                        {badge ? ' · ' : ''}
-                        {badge && (
-                          <span className={`font-medium ${stockBadgeToneClass(badge.tone)}`}>
-                            {badge.label}
-                          </span>
+                      <p
+                        className={cn(
+                          'row-span-2 text-right text-sm tabular-nums md:row-span-1',
+                          p.isActive ? 'text-foreground' : 'text-muted-foreground',
                         )}
-                        {!p.isActive ? ' · Pausado' : ''}
+                      >
+                        {formatArs(p.price)}
+                      </p>
+                      {/* Un pausado no se vende: en vez del stock dice eso, sin
+                        competir con el nombre por el ancho. */}
+                      <p className="text-xs md:text-right md:text-sm">
+                        {p.isActive ? (
+                          <StockText product={p} />
+                        ) : (
+                          <span className="text-muted-foreground">Pausado</span>
+                        )}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      {/* Reponer y Editar a la vista: son las dos acciones de la
+                        visita semanal (Nielsen #6). Reponer sirve también para
+                        un producto que no lleva stock: empieza a llevarlo. */}
                       <button
                         type="button"
                         onClick={() => setEntryProduct(p)}
-                        className={`h-11 ${reponerClass(badge?.tone ?? null)}`}
+                        className={cn(ROW_ACTION, 'text-emerald-800 dark:text-emerald-400')}
                       >
                         Reponer
                       </button>
@@ -261,7 +305,7 @@ export function ProductsTable({
                         <button
                           type="button"
                           onClick={() => openEdit(p)}
-                          className="inline-flex h-11 items-center rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                          className={cn(ROW_ACTION, 'text-muted-foreground hover:text-foreground')}
                         >
                           Editar
                         </button>
@@ -269,102 +313,33 @@ export function ProductsTable({
                       <ProductRowMenu
                         product={p}
                         canEditCatalog={canEditCatalog}
+                        onRestock={setEntryProduct}
+                        onEdit={openEdit}
                         onExit={setExitProduct}
                         onTogglePause={togglePause}
                       />
                     </div>
                   </li>
-                )
-              })}
-            </ul>
-          }
-          table={
-            <table className="w-full min-w-[460px] text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <Th>Producto</Th>
-                  <Th align="right">Precio</Th>
-                  <Th>Stock</Th>
-                  <Th align="right">Acciones</Th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {pageRows.map((p) => {
-                  const badge = canteenStockBadge(p.stock, p.minStock)
-                  return (
-                    <Tr
-                      key={p.id}
-                      className={badge?.tone === 'out' ? 'bg-red-50 dark:bg-red-500/10' : ''}
-                    >
-                      <Td
-                        className={`font-medium ${
-                          p.isActive ? 'text-foreground' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {p.name}
-                        {p.category && (
-                          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                            · {p.category}
-                          </span>
-                        )}
-                        {!p.isActive && (
-                          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                            (pausado)
-                          </span>
-                        )}
-                      </Td>
-                      <Td numeric className="text-foreground">
-                        {formatArs(p.price)}
-                      </Td>
-                      <Td>
-                        <StockCell badge={badge} />
-                      </Td>
-                      <Td align="right">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Reponer y Editar a la vista: son las dos acciones de la
-                              visita semanal, y esconderlas en un menú "..." obliga a
-                              recordar dónde estaban (Nielsen #6). Lo que exige acción
-                              —stock bajo o agotado— resalta el botón que la resuelve. */}
-                          <button
-                            type="button"
-                            onClick={() => setEntryProduct(p)}
-                            className={`h-11 md:h-9 ${reponerClass(badge?.tone ?? null)}`}
-                          >
-                            Reponer
-                          </button>
-                          {canEditCatalog && (
-                            <button
-                              type="button"
-                              onClick={() => openEdit(p)}
-                              className="inline-flex h-11 items-center rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground md:h-9"
-                            >
-                              Editar
-                            </button>
-                          )}
-                          <ProductRowMenu
-                            product={p}
-                            canEditCatalog={canEditCatalog}
-                            onExit={setExitProduct}
-                            onTogglePause={togglePause}
-                          />
-                        </div>
-                      </Td>
-                    </Tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          }
-        />
-      )}
+                ))}
+              </ul>
+            </ScrollRegion>
+          )}
 
-      <Pager
-        label="Paginación del catálogo"
-        page={current}
-        total={ordered.length}
-        pageSize={PAGE_SIZE}
-        onPageChange={changePage}
-      />
+          {ordered.length > PAGE_SIZE && (
+            <div className="border-t border-border px-4 py-2 sm:px-5">
+              <Pager
+                label="Paginación del catálogo"
+                page={current}
+                total={ordered.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={changePage}
+              />
+            </div>
+          )}
+        </section>
+
+        {aside}
+      </div>
 
       <ProductFormDialog
         open={formOpen}
@@ -387,24 +362,28 @@ export function ProductsTable({
         onSaved={() => router.refresh()}
         registerStockExitAction={registerStockExitAction}
       />
-    </section>
+    </>
   )
 }
 
 /**
- * Lo ocasional y nada más: dar de baja stock (merma, cortesía, consumo) y
- * pausar el producto. Reponer y Editar salieron de acá y viven en la fila —
- * son las dos acciones de la visita semanal y esconderlas obligaba a recordar
- * dónde estaban.
+ * Lo ocasional: dar de baja stock (merma, cortesía, consumo) y pausar el
+ * producto. Reponer y Editar viven en la fila desde `md` —son las dos acciones
+ * de la visita semanal—; en el teléfono no entran al lado del nombre y se
+ * suman acá arriba de todo.
  */
 function ProductRowMenu({
   product,
   canEditCatalog,
+  onRestock,
+  onEdit,
   onExit,
   onTogglePause,
 }: {
   product: CanteenProductRow
   canEditCatalog: boolean
+  onRestock: (p: CanteenProductRow) => void
+  onEdit: (p: CanteenProductRow) => void
   onExit: (p: CanteenProductRow) => void
   onTogglePause: (p: CanteenProductRow) => void
 }) {
@@ -423,6 +402,14 @@ function ProductRowMenu({
         <TooltipContent>Opciones</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem className="cursor-pointer md:hidden" onSelect={() => onRestock(product)}>
+          Reponer
+        </DropdownMenuItem>
+        {canEditCatalog && (
+          <DropdownMenuItem className="cursor-pointer md:hidden" onSelect={() => onEdit(product)}>
+            Editar
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem className="cursor-pointer" onSelect={() => onExit(product)}>
           Salida de stock
         </DropdownMenuItem>

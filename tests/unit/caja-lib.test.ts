@@ -15,6 +15,7 @@ import {
   mediumDateLabel,
   methodBreakdown,
   movementTitle,
+  nightsOfStockLeft,
   operatingDayLabel,
   parseCajaDay,
   shortDateLabel,
@@ -79,6 +80,25 @@ describe('countLowStock', () => {
 
   it('un producto pausado no pide reposición', () => {
     expect(countLowStock([p(0, 5, false), p(1, 5, false)])).toBe(0)
+  })
+})
+
+describe('nightsOfStockLeft', () => {
+  it('reparte la venta de la semana en siete noches y redondea para abajo', () => {
+    // La Imperial del piloto: 55 en stock, 48 vendidas en 7 días (~6,9 por noche).
+    expect(nightsOfStockLeft(55, 48)).toBe(8)
+    expect(nightsOfStockLeft(7, 7)).toBe(7)
+  })
+
+  it('0 cuando no alcanza para una noche entera (y un agotado)', () => {
+    expect(nightsOfStockLeft(3, 42)).toBe(0)
+    expect(nightsOfStockLeft(0, 10)).toBe(0)
+    expect(nightsOfStockLeft(-2, 10)).toBe(0)
+  })
+
+  it('sin ritmo que medir no inventa un número', () => {
+    expect(nightsOfStockLeft(5, 0)).toBeNull()
+    expect(nightsOfStockLeft(null, 12)).toBeNull()
   })
 })
 

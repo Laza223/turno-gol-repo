@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ScrollRegion } from '@/components/ui/scroll-region'
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
 import { cn } from '@/lib/utils'
@@ -153,7 +154,9 @@ export function NightLedger({
           className="border-0 py-10"
         />
       ) : (
-        <>
+        // Una noche del piloto son 40-70 filas: con tope de alto, el pie
+        // (paginador) y lo que sigue quedan a la vista.
+        <ScrollRegion label="Movimientos del día">
           <table className="hidden w-full text-sm lg:table">
             <thead className="sr-only">
               <tr>
@@ -226,7 +229,7 @@ export function NightLedger({
               Nada de esto en el día.
             </p>
           )}
-        </>
+        </ScrollRegion>
       )}
 
       {footer && <div className="border-t border-border px-4 py-3 sm:px-5">{footer}</div>}

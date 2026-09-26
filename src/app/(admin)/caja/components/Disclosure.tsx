@@ -40,9 +40,9 @@ export function Disclosure({
   const contentId = useId()
 
   return (
-    // Plano como el resto de Caja: una línea arriba y abajo marca el bloque, sin
-    // card ni sombra (plan de diseño 2026-09-17 §2).
-    <div className={cn('border-y border-border', className)}>
+    // Tarjeta como el resto de Caja desde el rediseño de Cuentas y Productos
+    // (2026-09-25/26): cerrada es una fila más de la página.
+    <div className={cn('card-premium px-4 sm:px-5', className)}>
       <h2 className="text-sm font-semibold text-foreground">
         <button
           type="button"

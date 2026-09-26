@@ -156,7 +156,7 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
     render(await FacturacionPage())
 
     expect(screen.getByText('Prueba gratis · todavía no se cobra')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 
   it('active: muestra el desglose de la cuota (CuotaSection) y el botón de cancelar suscripción', async () => {
@@ -171,7 +171,7 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
     const cuotaHeading = screen.getByRole('heading', { name: 'Tu cuota' })
     const cuotaSection = cuotaHeading.closest('section') as HTMLElement
     expect(within(cuotaSection).getByRole('button', { name: 'Guardar' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancelar suscripción' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
   })
 
   it('canceled: muestra el texto de baja + link a /reactivar, sin el botón', async () => {
@@ -179,8 +179,8 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
 
     render(await FacturacionPage())
 
-    expect(screen.getByText(/Suscripción cancelada — acceso hasta el/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
+    expect(screen.getByText(/Te diste de baja: seguís usando todo hasta el/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 
   it('sin suscripción (sub null): no rompe, no muestra la sección de cancelar', async () => {
@@ -188,8 +188,10 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
 
     render(await FacturacionPage())
 
-    expect(screen.getByText(/Todavía no tenés una suscripción activa/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
+    expect(
+      screen.getByText(/No pudimos leer tu suscripción\. Probá de nuevo en un rato/),
+    ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 })
 

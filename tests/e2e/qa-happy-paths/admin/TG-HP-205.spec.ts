@@ -40,7 +40,7 @@ test.describe('TG-HP-205 — Subir portada/cover del tenant a R2', () => {
       // silencioso (mismo gotcha que admin-create-booking-ui.spec.ts documenta
       // para /grilla).
       await page.goto('/settings/perfil', { waitUntil: 'networkidle' })
-      await expect(page.getByRole('heading', { name: 'Perfil público' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Página pública' })).toBeVisible({
         timeout: 15_000,
       })
       await expect(page.getByRole('heading', { name: 'Portada', exact: true })).toBeVisible()

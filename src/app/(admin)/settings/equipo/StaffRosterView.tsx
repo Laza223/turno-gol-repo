@@ -105,10 +105,9 @@ function RoleSpacesCard({ tournamentsEnabled }: { tournamentsEnabled: boolean })
  * ResponsiveList), badges de rol/estado y StaffActions por fila (salvo la
  * propia). Server Actions inyectadas por prop — ver ReservasPolicyForm.tsx.
  *
- * Sin `PageHeader` propio: el nombre de la vista lo dicen las pestañas
- * portaladas en la barra superior (`SettingsTabs`, equipo/page.tsx) y el botón
- * de invitar cuelga de su prop `actions` — ver `InviteStaffButton` en
- * equipo/page.tsx.
+ * Sin `PageHeader` propio: el nombre de la vista lo dice la barra superior
+ * (`SettingsHeader`, equipo/page.tsx) y el botón de invitar cuelga de su prop
+ * `actions` — ver `InviteStaffButton` en equipo/page.tsx.
  */
 export function StaffRosterView({
   members,

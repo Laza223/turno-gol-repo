@@ -86,11 +86,14 @@ function ImageRow({
   label,
   help,
   hasImage,
+  loadedLabel,
   children,
 }: {
   label: string
   help: string
   hasImage: boolean
+  /** "Cargada" (la portada) o "Cargado" (el logo). */
+  loadedLabel: string
   children: ReactNode
 }) {
   return (
@@ -101,7 +104,7 @@ function ImageRow({
           {hasImage ? (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Cargada
+              {loadedLabel}
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">Sin imagen</span>
@@ -176,8 +179,9 @@ export function PerfilImagesForm({
       <div className="divide-y divide-border/60">
         <ImageRow
           label="Portada"
-          help="Foto ancha (JPG o PNG, mínimo 1200 px de ancho)"
+          help="Foto ancha, va arriba de tu página. Se ve mejor con 1200 px de ancho o más."
           hasImage={!!coverUrl}
+          loadedLabel="Cargada"
         >
           <ImageUploader
             preset="cover"
@@ -188,7 +192,12 @@ export function PerfilImagesForm({
           />
         </ImageRow>
 
-        <ImageRow label="Logo" help="Cuadrado (mínimo 200 × 200 px)" hasImage={!!logoUrl}>
+        <ImageRow
+          label="Logo"
+          help="Cuadrado, va al lado del nombre del complejo."
+          hasImage={!!logoUrl}
+          loadedLabel="Cargado"
+        >
           <ImageUploader
             preset="logo"
             value={logoUrl ?? ''}

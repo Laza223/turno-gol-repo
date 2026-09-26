@@ -5,7 +5,7 @@ import { HorariosForm } from './HorariosForm'
 import { RemoveClosedDateForm } from './RemoveClosedDateForm'
 import type { LooseOpeningHours } from '@/lib/schedule/schedule-view'
 import { addClosedDateAction, removeClosedDateAction, updateHorariosAction } from './actions'
-import { SettingsTabs } from '../SettingsTabs'
+import { SettingsHeader } from '../SettingsHeader'
 import { artTodayStr } from '@/shared/dates/art'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -18,15 +18,17 @@ export default async function HorariosPage() {
 
   return (
     <div className="space-y-6">
-      {/* MASTER §6.8: la vista no abre encabezado propio — ver reservas/page.tsx. */}
-      <SettingsTabs active="/settings/horarios" />
+      <SettingsHeader title="Horarios" />
 
-      {/* `min-[1440px]` y no `lg`: los días de "Excepciones por día" van en dos columnas
+      {/* `min-[1440px]` y no `lg`: los días de "Días con otro horario" van en dos columnas
           por viewport (`md:grid-cols-2` en ScheduleFields), y a media card quedan
           de ~190px en 1024px (con la card a 3fr/2fr, desde 1440px son ~360px) — no entra "Miércoles + 10:00 a 23:00 + Personalizar". */}
       <div className="card-premium grid grid-cols-1 gap-6 rounded-lg p-6 min-[1440px]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div>
-          <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>
+          <h2 className="text-base font-semibold text-foreground">Horario de la semana</h2>
+          <p className="mt-0.5 mb-6 text-sm text-muted-foreground">
+            Lo que ve el jugador y las horas que muestra la Grilla.
+          </p>
           <HorariosForm hours={hours} action={updateHorariosAction} />
         </div>
 
@@ -35,8 +37,12 @@ export default async function HorariosPage() {
             <CalendarOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-foreground">Días cerrados</h2>
           </div>
+          {/* Un día cerrado solo saca los turnos de la reserva por internet: no
+              cancela lo cargado y la carga manual sigue abierta
+              (booking.service.ts, `closedDates` → `closedDay`). */}
           <p className="text-xs text-muted-foreground">
-            Bloqueá una fecha puntual (feriados, mantenimiento) sin tocar el horario semanal.
+            Un feriado o un arreglo: ese día nadie reserva por internet. Los turnos ya cargados no
+            se cancelan.
           </p>
 
           {closedDates.filter((d) => d >= minDate).length > 0 ? (

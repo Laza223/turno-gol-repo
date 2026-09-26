@@ -4,7 +4,9 @@ import { listCourts } from '@/modules/courts/court.service'
 import { effectiveCloseMins, hhmmToMins } from '@/shared/time/operating-day'
 import { ReservasPolicyForm } from './ReservasPolicyForm'
 import { updateReservasPolicyAction } from './actions'
-import { SettingsTabs } from '../SettingsTabs'
+import { MercadoPagoSenaSection } from './MercadoPagoSenaSection'
+import { disconnectMercadoPagoAction } from '../facturacion/actions'
+import { SettingsHeader } from '../SettingsHeader'
 
 /** Horas-turno reales que cubre una franja de precio (from–to × cantidad de
  *  días) — `effectiveCloseMins(from, to, true)` reusa la misma aritmética de
@@ -45,8 +47,12 @@ function mostCommonPriceCents(courts: Awaited<ReturnType<typeof listCourts>>): n
   return best
 }
 
-export default async function ReservasPolicyPage() {
+export default async function ReservasPolicyPage(
+  props: { searchParams?: Promise<{ error?: string; complejo?: string }> } = {},
+) {
   const { tenant } = await requireAdminStaff()
+  const searchParams = await props.searchParams
+  const mpConnected = !!tenant.mpConnectedAt
 
   const s = tenant.settings
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
@@ -54,21 +60,25 @@ export default async function ReservasPolicyPage() {
 
   return (
     <div className="space-y-6">
-      {/* MASTER §6.8: la vista no abre encabezado propio — las pestañas
-          portalizadas en la barra superior (abajo) son el único lugar donde
-          se nombra la sección, igual que GrillaTabs. Reemplaza al PageHeader
-          "Reservas" que quedaba redundante con la pestaña activa. */}
-      <SettingsTabs active="/settings/reservas" />
+      <SettingsHeader title="Reservas y seña" />
 
       <div className="card-premium rounded-lg p-6">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Políticas de Reserva</h2>
         <ReservasPolicyForm
           s={s}
           action={updateReservasPolicyAction}
-          mpConnected={!!tenant.mpConnectedAt}
+          mpConnected={mpConnected}
           examplePriceCents={examplePriceCents}
         />
       </div>
+
+      <MercadoPagoSenaSection
+        connected={mpConnected}
+        nickname={tenant.mpNickname}
+        requiresDeposit={s.requires_deposit === true}
+        error={searchParams?.error}
+        conflictTenant={searchParams?.complejo}
+        disconnectAction={disconnectMercadoPagoAction}
+      />
     </div>
   )
 }

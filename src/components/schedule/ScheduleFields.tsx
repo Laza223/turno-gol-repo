@@ -123,10 +123,8 @@ export function ScheduleFields({ view, onViewChange }: Props) {
       {/* Horario general: el caso común son 2 campos, no 14. */}
       <div className="space-y-3 rounded-lg border border-border p-4">
         <div>
-          <p className="text-sm font-semibold text-foreground">Horario general</p>
-          <p className="text-xs text-muted-foreground">
-            Vale para todos los días, salvo los que personalices abajo.
-          </p>
+          <p className="text-sm font-semibold text-foreground">Todos los días</p>
+          <p className="text-xs text-muted-foreground">Salvo los días con otro horario, abajo.</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1.5">
@@ -178,7 +176,7 @@ export function ScheduleFields({ view, onViewChange }: Props) {
       <Collapsible defaultOpen={hasAdvancedConfig}>
         <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0">
           <span className="flex min-w-0 flex-col items-start gap-0.5 text-left">
-            <span>Excepciones por día</span>
+            <span>Días con otro horario</span>
             <span className="truncate text-xs font-normal text-muted-foreground">
               {describeExceptions(view)}
             </span>

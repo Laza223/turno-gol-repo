@@ -1,12 +1,5 @@
 import type { ReactNode } from 'react'
-import {
-  AlertTriangle,
-  ChevronDown,
-  CreditCard,
-  CheckCircle2,
-  ExternalLink,
-  Info,
-} from 'lucide-react'
+import { ChevronDown, CreditCard } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import {
@@ -18,37 +11,20 @@ import {
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { listCourts } from '@/modules/courts/court.service'
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
-import type { SubscriptionStatus } from '@/modules/billing/billing.types'
+import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 import { formatArs } from '@/lib/format'
+import { SUPPORT_EMAIL } from '@/shared/constants'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { StatusBadge } from '@/components/ui/status-badge'
 import { HashOpenCollapsible } from './HashOpenCollapsible'
-import { SettingsTabs } from '../SettingsTabs'
+import { SettingsHeader } from '../SettingsHeader'
 import { CuotaSection } from './CuotaSection'
 import { PriceBreakdown } from './PriceBreakdown'
 import { firstCuotaPricing } from './cuota-pricing'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
-import { DisconnectMpSection } from './DisconnectMpSection'
 import { InvoiceHistorySection, STATUS_LABELS } from './InvoiceHistorySection'
 import { MpPayerEmailSection } from './MpPayerEmailSection'
+import { SUBSCRIPTION_STATUS_LABEL } from './subscription-status-label'
 import { updateMpPayerEmailAction } from './actions'
-
-// Nunca mostrar el código crudo del callback OAuth: siempre qué pasó + qué
-// hacer (pages/onboarding.md §6.7). Vivía en StepPayments.tsx —se reubica acá
-// tal cual (Fase 5 del refactor de onboarding, §D del plan: la seña se mudó
-// del wizard a esta pantalla), no se reescribe.
-const MP_UNAVAILABLE = new Set(['mp_not_configured', 'mp_config_missing'])
-
-function mpErrorMessage(code: string, conflictTenant?: string | null): string {
-  if (code === 'mp_already_connected') {
-    const cual = conflictTenant ? `"${conflictTenant}"` : 'otro complejo'
-    return `Esa cuenta de MercadoPago ya está cobrando para ${cual}. Cada complejo necesita su propia cuenta: entrá a MercadoPago con la cuenta de este complejo y volvé a intentar.`
-  }
-  if (MP_UNAVAILABLE.has(code)) {
-    return 'La conexión con MercadoPago no está disponible en este momento. Probá de nuevo más tarde.'
-  }
-  return 'No pudimos conectar MercadoPago. Probá de nuevo en un momento.'
-}
 
 function formatDate(d: string | Date | null): string {
   if (!d) return '—'
@@ -56,21 +32,7 @@ function formatDate(d: string | Date | null): string {
 }
 
 /**
- * Estado de la suscripción en criollo. El dueño no tiene por qué saber qué es
- * `past_due`; los 7 estados son los de `SubscriptionStatus` (sin `deleted`).
- */
-const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
-  trialing: 'Prueba gratis',
-  active: 'Activa',
-  past_due: 'Pago pendiente',
-  suspended: 'Suspendida',
-  blocked: 'Bloqueada',
-  canceled: 'Cancelada',
-  churned: 'Dada de baja',
-}
-
-/**
- * Progressive disclosure de una sección de Facturación (rediseño "en 3
+ * Progressive disclosure de una sección de Suscripción (rediseño "en 3
  * segundos + todo lo demás plegado"). Envuelve `children` — que siguen
  * siendo las secciones reales, con su propio `card-premium` — bajo un
  * trigger compacto con resumen, mismo patrón que "Excepciones y detalles
@@ -117,14 +79,16 @@ function BillingDisclosure({
   )
 }
 
-export default async function FacturacionPage(
-  props: { searchParams?: Promise<{ error?: string; complejo?: string }> } = {},
-) {
+/**
+ * Ajustes → Suscripción: solo lo que el complejo le paga a TurnoGol. La cuenta
+ * de MercadoPago para cobrar señas (otra app de MercadoPago, otro circuito de
+ * plata) se mudó a Reservas y seña el 2026-09-25; la URL sigue siendo
+ * `/settings/facturacion` porque la usan los mails de cobro ya mandados.
+ */
+export default async function FacturacionPage() {
   const { tenant } = await requireAdminStaff()
-  const searchParams = await props.searchParams
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
-  const mpConnected = !!tenant.mpConnectedAt
 
   try {
     sub = await withTenantContext(tenant.id, (tx) => getSubscriptionState(tenant.id, tx))
@@ -183,12 +147,15 @@ export default async function FacturacionPage(
     invoices = []
   }
   const lastInvoice = invoices[0] ?? null
-  const showCancelOrDisconnect = !!sub || mpConnected
+  // En la prueba no se puede cancelar desde la app (`CANCELABLE`): en vez de
+  // un plegable vacío, se dice qué pasa si no hacés nada. blocked/churned no
+  // llegan acá (el layout los manda a /suspended).
+  const showBaja =
+    !!sub && (CANCELABLE.has(sub.status) || sub.status === 'canceled' || sub.status === 'trialing')
 
   return (
     <div className="space-y-6">
-      {/* MASTER §6.8: la vista no abre encabezado propio — ver reservas/page.tsx. */}
-      <SettingsTabs active="/settings/facturacion" />
+      <SettingsHeader title="Suscripción" />
 
       {/* "En 3 segundos": lo único que se ve sin plegar nada. La cuota va
           primera y ocupa más ancho porque es la única pregunta que el dueño
@@ -218,9 +185,12 @@ export default async function FacturacionPage(
                   <PriceBreakdown breakdown={readOnlyBreakdown} className="mt-4" />
                 </>
               ) : (
+                // `sub` solo es null si la lectura falló: todo complejo nace con su
+                // fila de suscripción (en prueba). Activar la cuota NO pide conectar
+                // el MercadoPago del complejo — son dos apps distintas.
                 <p className="mt-4 text-sm text-muted-foreground">
-                  Todavía no tenés una suscripción activa. Conectá MercadoPago para empezar a cobrar
-                  señas y activar tu cuota.
+                  No pudimos leer tu suscripción. Probá de nuevo en un rato o escribinos a{' '}
+                  {SUPPORT_EMAIL}.
                 </p>
               )}
             </section>
@@ -266,84 +236,6 @@ export default async function FacturacionPage(
               </dl>
             </section>
           )}
-
-          <section className="card-premium rounded-xl p-6">
-            <div className="flex items-start justify-between gap-4">
-              <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                <CreditCard
-                  className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden
-                />{' '}
-                MercadoPago para cobrar señas
-              </h2>
-              {mpConnected && (
-                <StatusBadge
-                  className="shrink-0"
-                  visual={{ icon: CheckCircle2, label: 'Conectado', tone: 'success' }}
-                />
-              )}
-            </div>
-
-            {mpConnected ? (
-              <>
-                {/* Decir CUÁL cuenta está conectada, no solo que hay una: MercadoPago
-                    no vuelve a pedir permiso si la app ya está autorizada, así que
-                    conectar la cuenta personal en vez de la del complejo era un clic
-                    sin ninguna pantalla de por medio — y las señas caían ahí sin que
-                    nada lo dijera. */}
-                <p className="mt-2 text-sm text-foreground">
-                  Cobrando en la cuenta{' '}
-                  <span className="font-semibold">{tenant.mpNickname ?? 'conectada'}</span>. Si no
-                  es la del complejo, desconectala y conectá la correcta.
-                </p>
-                {/* Mercado Pago le pone 18 días de plazo a toda cuenta nueva por default
-                    (verificado en producción, 2026-08-19: la cuenta configurada libera
-                    antes, la default no). Es un ajuste DENTRO del panel de Mercado Pago,
-                    no algo que TurnoGol pueda cambiar por el complejo — por eso el aviso
-                    recién aparece acá, una vez conectado, y no en el botón de Conectar:
-                    antes de eso el complejo no tiene panel de Costos y cuotas que tocar. */}
-                <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                  <span>
-                    Por defecto, Mercado Pago tarda 18 días en acreditarte la seña.{' '}
-                    <a
-                      href="https://youtu.be/pwUFOdZMxYs"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
-                    >
-                      Mirá cómo cambiarlo a al instante (2 min)
-                    </a>
-                    .
-                  </span>
-                </p>
-              </>
-            ) : (
-              <p className="mt-1 text-sm text-muted-foreground">
-                Conectá tu cuenta de MercadoPago para cobrar las señas de las reservas online
-                directamente.
-              </p>
-            )}
-
-            {searchParams?.error && (
-              <div
-                role="alert"
-                className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-              >
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <p>{mpErrorMessage(searchParams.error, searchParams.complejo)}</p>
-              </div>
-            )}
-
-            {!mpConnected && (
-              <a
-                href="/api/mp/oauth-start"
-                className="mt-4 inline-flex h-11 md:h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Conectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
-              </a>
-            )}
-          </section>
         </div>
       </div>
 
@@ -372,7 +264,7 @@ export default async function FacturacionPage(
         <BillingDisclosure
           id="cuenta-mp"
           className="scroll-mt-24"
-          title="Cuenta con la que pagás TurnoGol"
+          title="Cuenta de MercadoPago con la que pagás"
           summary={payer.override ?? payer.ownerEmail ?? undefined}
         >
           <MpPayerEmailSection
@@ -383,21 +275,30 @@ export default async function FacturacionPage(
           />
         </BillingDisclosure>
 
-        {showCancelOrDisconnect && (
+        {showBaja && sub && (
           <BillingDisclosure
-            title="Dar de baja"
-            summary="Cancelar tu suscripción o desconectar MercadoPago."
+            id="baja"
+            className="scroll-mt-24"
+            title="Dar de baja TurnoGol"
+            summary="Qué pasa y hasta cuándo seguís."
           >
-            {sub && (
+            {sub.status === 'trialing' ? (
+              <section className="card-premium rounded-xl p-6">
+                <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
+                {/* Sin cuota activada: `expire-trials` pasa el complejo a `blocked`
+                    el día que vence la prueba, sin cobrar nada. Con la cuota ya
+                    activada hay un preapproval que MercadoPago cobra ese día, y en
+                    `trialing` no se puede cancelar desde la app (`CANCELABLE`). */}
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {sub.mpSubscriptionId
+                    ? `Para darte de baja antes del primer cobro, escribinos a ${SUPPORT_EMAIL}.`
+                    : `Estás en la prueba gratis hasta el ${formatDate(tenant.trialEndsAt)}. Si no activás la cuota, no se te cobra nada: ese día se cortan el panel y la reserva por internet.`}
+                </p>
+              </section>
+            ) : (
               <CancelSubscriptionSection
                 status={sub.status}
                 accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
-              />
-            )}
-            {mpConnected && (
-              <DisconnectMpSection
-                nickname={tenant.mpNickname}
-                requiresDeposit={!!tenant.settings?.requires_deposit}
               />
             )}
           </BillingDisclosure>

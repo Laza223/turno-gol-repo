@@ -115,23 +115,19 @@ describe('AdminSidebar — los 6 espacios', () => {
 
   it('al manager Configuración se le bloquea con candado, no se le esconde', () => {
     renderSidebar('/grilla', 'manager')
-    expect(screen.queryByRole('link', { name: 'Configuración' })).toBeNull()
-    // En el riel el rótulo visible dice "Ajustes" por ancho; el nombre accesible
-    // lo da el aria-label completo, que además lleva el motivo.
+    expect(screen.queryByRole('link', { name: 'Ajustes' })).toBeNull()
+    // El riel y el cajón dicen "Ajustes" en todos lados desde 2026-09-25: un
+    // solo nombre, así que el aria-label ya no repite un rótulo distinto.
     expect(
-      screen
-        .getByRole('button', { name: 'Configuración: solo el dueño' })
-        .getAttribute('aria-disabled'),
+      screen.getByRole('button', { name: 'Ajustes: solo el dueño' }).getAttribute('aria-disabled'),
     ).toBe('true')
   })
 
   it('al admin Configuración le queda como link navegable', () => {
     renderSidebar('/grilla', 'admin')
-    // Apunta a la sub-ruta y no a `/settings`, que es un stub de redirect: el
-    // destino final es el mismo pero sin pagar un render de servidor de más.
-    expect(screen.getByRole('link', { name: 'Configuración' }).getAttribute('href')).toBe(
-      '/settings/reservas',
-    )
+    // Apunta a la portada de Ajustes (2026-09-25): antes era la sub-ruta
+    // porque `/settings` solo redirigía; ahora `/settings` es la pantalla real.
+    expect(screen.getByRole('link', { name: 'Ajustes' }).getAttribute('href')).toBe('/settings')
   })
 
   // El href dejó de ser el prefijo del espacio, así que el activo ya no se
@@ -141,7 +137,7 @@ describe('AdminSidebar — los 6 espacios', () => {
     '%s enciende Configuración',
     (pathname) => {
       renderSidebar(pathname, 'admin')
-      expect(screen.getByRole('link', { name: 'Configuración' }).getAttribute('aria-current')).toBe(
+      expect(screen.getByRole('link', { name: 'Ajustes' }).getAttribute('aria-current')).toBe(
         'page',
       )
     },

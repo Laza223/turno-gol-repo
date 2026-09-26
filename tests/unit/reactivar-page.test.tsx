@@ -237,14 +237,14 @@ describe('/reactivar — past_due (sigue con acceso completo al panel)', () => {
 // que un `suspended` ve, así que reutiliza `CancelSubscriptionSection`
 // gateada por el mismo `CANCELABLE` que usa `/settings/facturacion`.
 describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
-  it('suspended: ve el botón de "Cancelar suscripción" además del de reactivar', async () => {
+  it('suspended: ve el botón de "Dar de baja" además del de reactivar', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('suspended') as never)
 
     render(await ReactivarPage())
 
     expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancelar suscripción' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
   })
 
   it('blocked: NO ve el botón de cancelar (blocked no es una transición válida de cancel())', async () => {
@@ -254,7 +254,7 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
     render(await ReactivarPage())
 
     expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 
   it('churned (deadline futuro): NO ve el botón de cancelar (mismo motivo que blocked)', async () => {
@@ -264,7 +264,7 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
 
     render(await ReactivarPage())
 
-    expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 
   it('past_due: ve el botón de cancelar (CANCELABLE lo incluye) junto al fallback de soporte', async () => {
@@ -274,6 +274,6 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText('Volver al panel')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancelar suscripción' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
   })
 })

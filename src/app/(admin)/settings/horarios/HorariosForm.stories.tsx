@@ -4,14 +4,14 @@ import { openingHours, openingHoursClosesNextDay } from '@/test/fixtures/tenant'
 import { HorariosForm } from './HorariosForm'
 
 /**
- * Abre "Excepciones por día" solo si está colapsado: el panel arranca abierto
- * cuando la vista ya trae config avanzada (días custom/cerrados o
+ * Abre "Días con otro horario" solo si está colapsado: el panel arranca
+ * abierto cuando la vista ya trae config avanzada (días custom/cerrados o
  * closesNextDay derivado), y un click incondicional lo cerraría. El nombre
  * accesible incluye el resumen dinámico ("Sábado 15:00–02:00 · ..."), por eso
  * el match es parcial.
  */
 async function ensureAdvancedOpen(canvas: ReturnType<typeof within>) {
-  const trigger = canvas.getByRole('button', { name: /Excepciones por día/i })
+  const trigger = canvas.getByRole('button', { name: /Días con otro horario/i })
   if (trigger.getAttribute('aria-expanded') !== 'true') {
     await userEvent.click(trigger)
   }
@@ -25,7 +25,7 @@ const meta = {
   decorators: [
     (Story) => (
       <div className="card-premium max-w-3xl rounded-lg p-6">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Horarios de apertura</h2>
+        <h2 className="mb-6 text-base font-semibold text-foreground">Horario de la semana</h2>
         <Story />
       </div>
     ),

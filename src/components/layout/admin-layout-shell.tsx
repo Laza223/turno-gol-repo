@@ -9,7 +9,6 @@ import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
 import { AdminSidebar } from './admin-sidebar'
 import { AdminBottomNav } from './admin-bottom-nav'
 import { AdminHeader } from './admin-header'
-import { SetupAlertsProvider } from './setup-alerts-context'
 import { StatusBanner } from './status-banner'
 import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 
@@ -142,7 +141,7 @@ export function AdminLayoutShell({
             {/* Va acá, en flujo y dentro del contenedor de la página, y no como
                 overlay fijo: ver el comentario del propio componente. */}
             <PushNotificationManagerLoader />
-            <SetupAlertsProvider alerts={setupAlerts}>{children}</SetupAlertsProvider>
+            {children}
           </main>
         </div>
       </div>

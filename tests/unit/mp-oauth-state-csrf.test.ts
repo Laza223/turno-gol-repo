@@ -138,7 +138,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
     expect(completeOnboarding).toHaveBeenCalledWith(TENANT)
   })
 
-  it('reconexión (onboarding ya completo): NO toca la seña y redirige a facturación', async () => {
+  it('reconexión (onboarding ya completo): NO toca la seña y vuelve a Reservas y seña', async () => {
     vi.mocked(getTenantById).mockResolvedValue({
       id: TENANT,
       settings: { onboarding_completed: true },
@@ -148,7 +148,7 @@ describe('MP OAuth callback — happy path side effects (B6.6)', () => {
 
     const res = await mpCallback(req)
 
-    expect(res.headers.get('location')).toMatch(/\/settings\/facturacion$/)
+    expect(res.headers.get('location')).toMatch(/\/settings\/reservas#mercado-pago$/)
     expect(connectMercadoPago).toHaveBeenCalledTimes(1)
     // Respeta la config del admin: reconectar MP no re-activa la seña.
     expect(updateTenantSettings).not.toHaveBeenCalled()

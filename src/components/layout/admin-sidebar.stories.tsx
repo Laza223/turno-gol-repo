@@ -74,10 +74,10 @@ export const RolManager: Story = {
     await expect(canvas.getAllByRole('link', { name: 'Hoy' })[0]).toBeInTheDocument()
     await expect(canvas.queryByRole('link', { name: 'Métricas' })).not.toBeInTheDocument()
     await expect(canvas.getAllByRole('link', { name: 'Grilla' })[0]).toBeInTheDocument()
-    // Configuración: visible, no navegable. En el riel el rótulo dice "Ajustes"
-    // por ancho, así que el nombre accesible lo da el aria-label completo.
-    await expect(canvas.queryByRole('link', { name: 'Configuración' })).not.toBeInTheDocument()
-    const locked = canvas.getByRole('button', { name: 'Configuración: solo el dueño' })
+    // Ajustes: visible, no navegable. El riel y el cajón dicen "Ajustes" en
+    // todos lados desde 2026-09-25, así que el aria-label repite ese nombre.
+    await expect(canvas.queryByRole('link', { name: 'Ajustes' })).not.toBeInTheDocument()
+    const locked = canvas.getByRole('button', { name: 'Ajustes: solo el dueño' })
     await expect(locked).toHaveAttribute('aria-disabled', 'true')
   },
 }
@@ -141,7 +141,7 @@ export const ConAvisosDeConfiguracion: Story = {
       canvas.getByRole('link', { name: /Canchas.*hay algo por completar/ }),
     ).toBeInTheDocument()
     await expect(
-      canvas.getByRole('link', { name: /Configuración.*hay algo por completar/ }),
+      canvas.getByRole('link', { name: /Ajustes.*hay algo por completar/ }),
     ).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Grilla' })).toBeInTheDocument()
   },

@@ -308,7 +308,7 @@ export type UpdateEmailActionResult =
  * declara aparte, sin tocar el de login. Por eso el mensaje lleva ahí.
  */
 const EMAIL_TAKEN_MESSAGE =
-  'Ese email ya está en uso por otra cuenta (puede ser tu propia cuenta de jugador). Si lo querés para pagar la suscripción, no hace falta cambiar este: cargalo en Configuración → Facturación, en "Cuenta de MercadoPago para pagar".'
+  'Ese email ya está en uso por otra cuenta (puede ser tu propia cuenta de jugador). Si lo querés para pagar la suscripción, no hace falta cambiar este: cargalo en Ajustes → Suscripción, en "Cuenta de MercadoPago con la que pagás".'
 
 /** Rechazo de Supabase Auth cuando el email ya existe en `auth.users`. */
 function isEmailTakenAuthError(error: { code?: string; message: string }): boolean {
@@ -330,7 +330,7 @@ function isEmailTakenAuthError(error: { code?: string; message: string }): boole
  * cliente sin su consentimiento — peor que el bug que esto cierra.
  */
 const IMPERSONATION_EMAIL_BLOCK_MESSAGE =
-  'Estás impersonando este complejo: el email de login lo tiene que cambiar el dueño desde su propia cuenta, en Configuración → Perfil.'
+  'Estás impersonando este complejo: el email de login lo tiene que cambiar el dueño desde su propia cuenta, en Ajustes → Vos y tu equipo.'
 
 export async function updateUserEmailAction(newEmail: string): Promise<UpdateEmailActionResult> {
   const auth = await requireAdminStaffAction()

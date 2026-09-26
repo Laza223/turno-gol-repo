@@ -75,9 +75,9 @@ describe('ReservasPolicyForm — el reset del form no pisa la selección', () =>
     deposit_percentage: 0,
   } as unknown as TenantSettings
 
-  const senaControl = () => screen.getByRole('radio', { name: 'Requerir seña' })
+  const senaControl = () => screen.getByRole('radio', { name: 'Cobrar seña' })
 
-  it('mantiene "Requerir seña" después de que React resetea el form', () => {
+  it('mantiene "Cobrar seña" después de que React resetea el form', () => {
     formState.mockReturnValue({ success: true })
     const { container } = render(<ReservasPolicyForm s={SIN_SENA} action={noopAction} />)
 

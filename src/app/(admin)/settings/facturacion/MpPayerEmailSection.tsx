@@ -62,7 +62,7 @@ export function MpPayerEmailSection({
         </div>
         <div>
           <h2 className="text-base font-semibold text-foreground">
-            Cuenta de MercadoPago para pagar
+            Cuenta de MercadoPago con la que pagás
           </h2>
           <p className="text-sm text-muted-foreground">
             El email con el que entrás a MercadoPago. Puede ser distinto al que usás para entrar a
@@ -112,7 +112,7 @@ export function MpPayerEmailSection({
           {saved !== undefined && (
             <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
               {saved
-                ? 'Guardado. Ya podés activar tu plan con esta cuenta.'
+                ? 'Guardado. Ya podés activar tu cuota con esta cuenta.'
                 : 'Listo: volvemos a cobrarte al email de tu cuenta de TurnoGol.'}
             </p>
           )}

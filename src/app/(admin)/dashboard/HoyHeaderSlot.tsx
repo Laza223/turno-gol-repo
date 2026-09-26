@@ -11,7 +11,7 @@ import { useVender } from './_components/VenderProvider'
  * Reemplaza a la banda `PageHeader` que esta vista tenía encima del contenido
  * y que costaba ~110px de la primera pantalla en 375px para repetir lo que el
  * riel ya dice. Es el mismo movimiento que hicieron la Grilla (`GrillaTabs`) y
- * Configuración (`SettingsTabs`).
+ * Ajustes (`SettingsHeader`).
  *
  * Va la FECHA y no el título: la regla del hueco es "el control de la vista,
  * no su título" (MASTER §6.8) — un `<h1>Hoy</h1>` acá arriba sería otra vez la

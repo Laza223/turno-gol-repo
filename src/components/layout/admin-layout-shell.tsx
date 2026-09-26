@@ -126,10 +126,14 @@ export function AdminLayoutShell({
           {/* El `pb` de mobile reserva el alto de AdminBottomNav (3.5rem) más el
               safe-area de iOS: sin eso la barra fija tapa el último turno de la
               grilla y el último movimiento de caja. En lg la barra no existe. */}
+          {/* `isolate`: los z-index de la página (encabezados sticky de la
+              grilla, z-30/z-40) quedan encerrados acá y nunca le pasan por
+              encima al riel (z-30) ni a la barra superior (z-20). Los modales
+              salen por portal a <body>, así que no los afecta. */}
           <main
             id="main-content"
             className={cn(
-              'mx-auto w-full px-4 sm:px-6 lg:px-8',
+              'isolate mx-auto w-full px-4 sm:px-6 lg:px-8',
               isFullBleed
                 ? 'max-w-full flex-1 flex flex-col min-h-0 overflow-hidden pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-4'
                 : 'max-w-[1600px] pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-3.75rem)]',

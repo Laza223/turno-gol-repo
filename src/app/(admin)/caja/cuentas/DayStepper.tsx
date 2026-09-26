@@ -46,16 +46,16 @@ export function DayStepper({
             </Link>
           ) : (
             // `aria-disabled` y no `disabled`: un botón deshabilitado no recibe el
-            // mouse y el tooltip que explica por qué no se abriría nunca.
-            <span
-              role="link"
+            // mouse y el tooltip que explica por qué no se abriría nunca. Sin
+            // `onClick`, no hace nada.
+            <button
+              type="button"
               aria-disabled="true"
               aria-label="Día siguiente"
-              tabIndex={0}
               className={cn(icon, 'cursor-not-allowed opacity-50 hover:bg-transparent')}
             >
               <ChevronRight aria-hidden className="h-4 w-4" />
-            </span>
+            </button>
           )}
         </TooltipTrigger>
         <TooltipContent>{nextHref ? 'Día siguiente' : 'Ya estás en hoy'}</TooltipContent>

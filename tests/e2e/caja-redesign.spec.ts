@@ -233,7 +233,9 @@ test.describe('Caja redesign', () => {
     // modal de la lista, que queda abierto para cobrar el siguiente.
     await expect(settleDialog).toBeHidden({ timeout: 10_000 })
     await expect(fiadoRow).toHaveCount(0, { timeout: 10_000 })
-    await page.keyboard.press('Escape')
+    // Con la X y no con Escape: el primer Escape lo toma el toast "Fiado cobrado"
+    // (Radix Toast también es una capa que se cierra con Escape).
+    await listDialog.getByRole('button', { name: 'Cerrar' }).click()
     await expect(listDialog).toBeHidden()
 
     // El cobro generó el movimiento, en el libro de la misma pantalla.

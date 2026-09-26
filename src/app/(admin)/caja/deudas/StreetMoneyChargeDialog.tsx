@@ -20,6 +20,7 @@ import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 import { chargeDebtAction } from './actions'
 import { settleTabAction } from '../cantina/actions'
 import { registerInscriptionPaymentAction } from '../../torneos/actions'
+import { refocusOpenDialog } from './refocus-open-dialog'
 
 /** Qué se cobra. Un turno es "no cobrado", nunca "deuda" (DESIGN.md). */
 const ORIGIN_LABEL: Record<StreetMoneyRow['origin'], string> = {
@@ -179,7 +180,7 @@ export function StreetMoneyChargeDialog({
 
   return (
     <Dialog open={row !== null} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" onCloseAutoFocus={refocusOpenDialog}>
         <DialogHeader>
           <DialogTitle>Cobrar — {(retry?.row ?? row).debtorName}</DialogTitle>
         </DialogHeader>

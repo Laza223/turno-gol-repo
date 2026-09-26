@@ -8,7 +8,6 @@ import {
   addDays,
   buildDelta,
   canteenStockBadge,
-  CATEGORY_BADGE,
   categoryLabel,
   chipClass,
   countLowStock,
@@ -17,6 +16,8 @@ import {
   methodBreakdown,
   movementTitle,
   operatingDayLabel,
+  parseCajaDay,
+  shortDateLabel,
   signedArs,
 } from '@/app/(admin)/caja/caja-lib'
 
@@ -96,6 +97,35 @@ describe('mediumDateLabel', () => {
   it('formatTimeArt: 24h SIEMPRE §8.3, aun en ICUs que resuelven es-AR como 12h', () => {
     expect(formatTimeArt(new Date('2026-06-11T02:40:00Z'))).toBe('23:40') // 23:40 ART del día 10
     expect(formatTimeArt(new Date('2026-06-11T03:05:00Z'))).toBe('00:05') // medianoche → 00, no 24
+  })
+})
+
+describe('shortDateLabel', () => {
+  it('fecha corta de las flechas de Cuentas: día, número y mes en tres letras', () => {
+    expect(shortDateLabel('2026-09-24')).toBe('jue 24 sep')
+    expect(shortDateLabel('2026-07-02')).toBe('jue 2 jul')
+  })
+})
+
+describe('parseCajaDay', () => {
+  const TODAY = '2026-09-25'
+
+  it('un día pasado válido se respeta; hoy es hoy', () => {
+    expect(parseCajaDay('2026-09-20', TODAY)).toBe('2026-09-20')
+    expect(parseCajaDay('2024-02-29', TODAY)).toBe('2024-02-29')
+    expect(parseCajaDay(TODAY, TODAY)).toBe(TODAY)
+  })
+
+  it('sin parámetro, mal escrito o del futuro vuelve a hoy', () => {
+    for (const raw of [undefined, '', 'ayer', '2026-9-1', '2026-09-20T00:00', '2026-10-01']) {
+      expect(parseCajaDay(raw, TODAY)).toBe(TODAY)
+    }
+  })
+
+  it('una fecha imposible vuelve a hoy sin tirar (mes 13 o 00, día 00, 30 de febrero)', () => {
+    for (const raw of ['2026-13-01', '2026-00-10', '2026-01-00', '2026-02-30', '2025-02-29']) {
+      expect(parseCajaDay(raw, TODAY)).toBe(TODAY)
+    }
   })
 })
 
@@ -201,36 +231,5 @@ describe('chipClass', () => {
 describe('categoría tournament (migr. 066)', () => {
   it('tiene su propio label y no cae al fallback', () => {
     expect(categoryLabel('income', 'tournament')).toBe('Inscripción a torneo')
-  })
-
-  it('tiene chip propio: no comparte el de reserva ni el de cantina', () => {
-    expect(CATEGORY_BADGE.tournament).toBeDefined()
-    expect(CATEGORY_BADGE.tournament).not.toBe(CATEGORY_BADGE.booking)
-    expect(CATEGORY_BADGE.tournament).not.toBe(CATEGORY_BADGE.product_sale)
-    expect(CATEGORY_BADGE.tournament).not.toBe(CATEGORY_BADGE.fallback)
-  })
-})
-
-describe('paleta por categoría', () => {
-  const EGRESOS = [
-    'operating_expense',
-    'merchandise',
-    'salaries',
-    'utilities',
-    'maintenance',
-    'other_expense',
-  ] as const
-
-  it('los seis egresos comparten exactamente el mismo chip', () => {
-    // El color codifica el SIGNO, no el rubro (migr. 050). Eran seis copias del
-    // mismo string: cualquiera podía divergir sola y nadie se enteraba.
-    const chips = new Set(EGRESOS.map((c) => CATEGORY_BADGE[c]))
-    expect(chips.size).toBe(1)
-  })
-
-  it('cada chip trae su propio ring: los renderers no lo agregan', () => {
-    for (const chip of Object.values(CATEGORY_BADGE)) {
-      expect(chip).toContain('ring-1 ring-inset')
-    }
   })
 })

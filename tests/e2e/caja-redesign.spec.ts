@@ -3,21 +3,23 @@
  *
  * Desde 2026-09-24 Vender se fue de `/caja` a Hoy (`/dashboard`), y desde el
  * 2026-09-25 es un modal que abre el botón "Vender" (`VenderDialog`). `/caja`
- * es ahora un redirect a `/caja/cuentas`, que sigue siendo el libro con el
- * diario de movimientos, los totales y el alta manual de un movimiento. Por
- * eso cada test vende en `/dashboard` y verifica en `/caja/cuentas`.
+ * es ahora un redirect a `/caja/cuentas`, que desde el 2026-09-25 es el libro
+ * de la noche: el resumen de lo que entró, una línea por tipo de lo sin cobrar
+ * (cada una abre su modal) y los movimientos agrupados por hora, con el alta
+ * manual de un movimiento. Por eso cada test vende en `/dashboard` y verifica
+ * en `/caja/cuentas`.
  *
  * 1. Ticket de Cantina/Bar (multi-ítem): cargar un producto en el catálogo
  *    (/caja/productos), venderlo con dos taps (tap producto x2 + Cobrar — sin
- *    diálogo intermedio) y verlo en el diario con la categoría "Cantina/Bar".
+ *    diálogo intermedio) y verlo en el libro con el ícono de cantina.
  * 2. Ticket con 2 productos distintos: un solo "Cobrar" genera UN solo
  *    movimiento con la descripción de ambos y el monto sumado.
  * 3. "Registrar movimiento" con tipo "Gasto" (migr. 050: categorías específicas,
- *    auto-selecciona "Mercadería") registra el egreso y aparece en la lista
- *    con su badge y el monto en negativo.
- * 4. Fiado: anotarlo en Vender (en vez de cobrarlo), seguir el aviso de
- *    "fiados abiertos" hasta Cuentas, cobrarlo en efectivo desde la tabla de
- *    deudas y verlo desaparecer + aparecer como "Fiado cobrado — …" en el diario.
+ *    auto-selecciona "Mercadería") registra el egreso y aparece en el libro
+ *    con su rubro y el monto en negativo.
+ * 4. Fiado: anotarlo en Vender (en vez de cobrarlo), abrir en Cuentas el modal
+ *    "Fiados sin cobrar", cobrarlo en efectivo desde ahí y verlo desaparecer +
+ *    aparecer como "Fiado cobrado — …" en el libro.
  */
 
 import { test, expect } from './fixtures'
@@ -44,7 +46,7 @@ async function createCanteenProduct(
 }
 
 test.describe('Caja redesign', () => {
-  test('venta rápida de cantina (tap x2 + Cobrar) aparece en la lista como Cantina/Bar', async ({
+  test('venta rápida de cantina (tap x2 + Cobrar) aparece en el libro como cantina', async ({
     page,
     adminStorageState,
   }) => {
@@ -73,17 +75,18 @@ test.describe('Caja redesign', () => {
     // Después de cobrar el modal se cierra solo: se vuelve al tablero.
     await expect(vender).toBeHidden()
 
-    // La venta aparece en "Movimientos del día", que vive en Cuentas — recarga
+    // La venta aparece en el libro de la noche, que vive en Cuentas — recarga
     // completa para confirmar que persistió en DB, no solo en el estado local.
     await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
     // Anclar a la fila de la tabla desktop: getByText pelado puede resolver la
-    // card mobile (oculta en viewport desktop) o el toast efímero.
+    // lista del teléfono (oculta en viewport desktop) o el toast efímero. La
+    // fila perdió el "Cantina: " del ticket: el tipo lo dice el ícono.
     const saleRow = page
       .getByRole('row')
       .filter({ hasText: `${productName} x2` })
       .first()
     await expect(saleRow).toBeVisible({ timeout: 10_000 })
-    await expect(saleRow.getByText('Cantina/Bar', { exact: true })).toBeVisible()
+    await expect(saleRow.getByRole('img', { name: 'Cantina' })).toBeVisible()
 
     // Reporte de cantina: la venta recién hecha aparece en el ranking de
     // /caja/productos. Desde el rediseño el informe está DESPLEGADO —es la
@@ -126,9 +129,10 @@ test.describe('Caja redesign', () => {
     await expect(page.getByText('Venta registrada').first()).toBeVisible()
 
     // ticketDescription() antepone "Cantina: " y junta las líneas con ", "
-    // (canteen-sale.service.ts) — qty 1 no lleva sufijo "xN".
+    // (canteen-sale.service.ts) — qty 1 no lleva sufijo "xN". El libro muestra
+    // el ticket sin el "Cantina: " (ledger.ts).
     await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
-    const description = `Cantina: ${nameA}, ${nameB}`
+    const description = `${nameA}, ${nameB}`
     const rows = page.getByRole('row').filter({ hasText: description })
     await expect(rows).toHaveCount(1)
     // $300 + $200 = $500, formato unificado sin decimales (4.5).
@@ -201,35 +205,40 @@ test.describe('Caja redesign', () => {
 
     await expect(page.getByText(`Fiado anotado — ${debtorName}`).first()).toBeVisible()
 
-    // Los fiados se cobran en Cuentas, junto con el resto de las deudas. La
-    // línea "N fiados abiertos · Cobrar en Cuentas" vivía en la pantalla Vender
-    // de Caja y se fue con ella (2026-09-24): se entra por el menú.
+    // Los fiados se cobran en Cuentas. La línea "N fiados abiertos · Cobrar en
+    // Cuentas" vivía en la pantalla Vender de Caja y se fue con ella
+    // (2026-09-24): se entra por el menú.
     await page.goto('/caja/cuentas', { waitUntil: 'networkidle' })
 
-    // En Cuentas el fiado es una fila más de la tabla de deudas. Se filtra por
-    // nombre porque el tenant demo lo comparten otros specs.
-    await page.getByRole('searchbox', { name: 'Buscar por nombre' }).fill(debtorName)
-    // Acotado a la región "Sin cobrar": después del cobro, la fila del diario
-    // ("Fiado cobrado — {nombre}") también contiene el nombre.
-    const fiadoRow = page
-      .getByRole('region', { name: 'Sin cobrar' })
-      .getByRole('row')
-      .filter({ hasText: debtorName })
+    // En Cuentas lo sin cobrar es una línea por tipo que abre su modal
+    // (PendingLines). El tenant demo lo comparten otros specs, así que la
+    // cantidad de fiados no es fija: se busca la fila por nombre adentro.
+    await page.getByRole('button', { name: /fiados? sin cobrar/ }).click()
+    const listDialog = page.getByRole('dialog', { name: 'Fiados sin cobrar' })
+    await expect(listDialog).toBeVisible()
+    const fiadoRow = listDialog.getByRole('listitem').filter({ hasText: debtorName })
     await expect(fiadoRow).toBeVisible()
 
-    // Cobrarlo en efectivo (método default del diálogo).
+    // Cobrarlo en efectivo (método default del diálogo). El diálogo de cobro se
+    // abre ENCIMA del de la lista, que sigue abierto: se lo ubica por título.
     await fiadoRow.getByRole('button', { name: /^Cobrar/ }).click()
-    const settleDialog = page.getByRole('dialog')
+    const settleDialog = page.getByRole('dialog', { name: `Cobrar — ${debtorName}` })
     await expect(settleDialog).toBeVisible()
     // `/^Cobrar/` matchearia tambien el atajo "Cobrar todo en efectivo" que
     // SplitPaymentFields muestra desde 2026-09-09: dos matches = strict mode
     // violation. El atajo nombra el metodo; el submit, no.
     await settleDialog.getByRole('button', { name: /^Cobrar(?! todo en efectivo)/ }).click()
 
-    // Ya está 'paid': getStreetMoney no lo trae más y la fila desaparece.
+    // Ya está 'paid': getStreetMoney no lo trae más y la fila desaparece del
+    // modal de la lista, que queda abierto para cobrar el siguiente.
+    await expect(settleDialog).toBeHidden({ timeout: 10_000 })
     await expect(fiadoRow).toHaveCount(0, { timeout: 10_000 })
+    // Con la X y no con Escape: el primer Escape lo toma el toast "Fiado cobrado"
+    // (Radix Toast también es una capa que se cierra con Escape).
+    await listDialog.getByRole('button', { name: 'Cerrar' }).click()
+    await expect(listDialog).toBeHidden()
 
-    // El cobro generó el movimiento, en el diario del día de la misma pantalla.
+    // El cobro generó el movimiento, en el libro de la misma pantalla.
     const movementRow = page.getByRole('row').filter({ hasText: `Fiado cobrado — ${debtorName}` })
     await expect(movementRow).toBeVisible({ timeout: 10_000 })
   })

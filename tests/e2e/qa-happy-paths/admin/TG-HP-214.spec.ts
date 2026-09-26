@@ -23,12 +23,13 @@ test.describe('TG-HP-214 — caja: agregar movimiento', () => {
 
       // "Agregar movimiento" vive en Cuentas — Vender se fue a Hoy (/dashboard).
       await page.goto('/caja/cuentas')
-      await expect(page.getByRole('heading', { name: 'Movimientos del día' })).toBeVisible({
+      // El libro de la noche se titula "Movimientos N" (NightLedger.tsx).
+      await expect(page.getByRole('heading', { name: /^Movimientos/ })).toBeVisible({
         timeout: 15_000,
       })
 
-      // El botón cuelga del encabezado del diario con el label "Registrar
-      // movimiento" (src/app/(admin)/caja/cuentas/page.tsx:166).
+      // El botón cuelga del encabezado del libro con el label "Registrar
+      // movimiento" (src/app/(admin)/caja/cuentas/page.tsx).
       await page.getByRole('button', { name: 'Registrar movimiento' }).click()
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
       await expect(page.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
@@ -55,7 +56,9 @@ test.describe('TG-HP-214 — caja: agregar movimiento', () => {
       })
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
 
-      // UI-sin-reload: el movimiento aparece en "Movimientos del día" sin navegar.
+      // UI-sin-reload: el movimiento aparece en el libro de la noche sin navegar.
+      // `.first()` es la tabla, la que se ve desde 1024 px (la lista es la del
+      // teléfono y va después en el DOM).
       await expect(page.getByText('Venta de gorras sueltas').first()).toBeVisible({
         timeout: 10_000,
       })

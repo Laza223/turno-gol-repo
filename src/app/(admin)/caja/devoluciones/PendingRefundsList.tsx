@@ -82,7 +82,7 @@ export function PendingRefundsList({
   action: MarkRefundSettledAction
 }) {
   const [settling, setSettling] = useState<PendingRefundRow | null>(null)
-  // Instante fijo por render (mismo criterio que StreetMoneyList).
+  // Instante fijo por render (mismo criterio que CuentasPending).
   const [nowMs] = useState(() => Date.now())
   const [page, setPage] = useState(0)
 

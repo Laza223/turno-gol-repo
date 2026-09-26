@@ -80,7 +80,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 **Sin decidir:**
 
-- Cierre de caja: nadie lo usa. El founder quiere que sea inteligente y automático en vez de un arqueo manual. Queda fuera de esta etapa.
+- Cierre de caja: el arqueo manual no lo usaba nadie y se eliminó. Desde el 2026-09-25 el cierre es automático: el resumen de arriba de Caja › Cuentas (cuánto entró, por dónde y de qué), sin contar billetes.
 - Cuentas separadas para el encargado: por ahora no se empujan. Se diseña para la cuenta compartida.
 
 ## Brand Commitments
@@ -100,7 +100,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 1. **Lo de cada minuto le gana el lugar a lo de cada mes.** Vender, cobrar y ver si hay lugar van primero. Cerrar la caja, el stock, el equipo, las métricas y la configuración van donde no estorben.
 2. **Se cobra sin irse de donde uno está.** Un cobro o una venta se registran sobre la pantalla actual, en el momento en que aparece la plata.
-3. **Jugado y sin cobrar es urgente.** Se muestra en rojo: "No cobrado" en la Grilla, "Cobrar $X" en la cancha que lo tiene y "Turnos no cobrados" en Hoy. Nunca como deuda: es plata que no entró, y hasta que se cobra no está en la caja ni en las métricas. Un turno que se está jugando y todavía debe se cobra a tiempo y va sin color; uno pagado entero va en verde.
+3. **Jugado y sin cobrar es urgente.** Se muestra en rojo: "No cobrado" en la Grilla, "Cobrar $X" en la cancha que lo tiene y "Turnos no cobrados" en Hoy y en Caja. Nunca como deuda: es plata que no entró, y hasta que se cobra no está en la caja ni en las métricas. Si nadie anota el cobro, a las 24 h de terminado se da por cobrado en efectivo (decisión del dueño, 2026-09-26). Un turno que se está jugando y todavía debe se cobra a tiempo y va sin color; uno pagado entero va en verde.
 4. **El panel muestra el estado, no pide memoria.** Quién pagó y cuánto falta se lee sin abrir nada.
 5. **Cuando la persona imaginada y el mostrador no coinciden, gana el mostrador.** Las decisiones se apoyan en lo medido en uso real, no en doc3.
 

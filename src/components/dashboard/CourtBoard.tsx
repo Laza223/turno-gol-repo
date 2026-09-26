@@ -354,8 +354,8 @@ export function EarlierUnpaidBanner({
               Turnos no cobrados
             </DialogTitle>
             <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-              Se jugaron en días anteriores y no se anotó el cobro. Hasta que se cobren, esa plata
-              no entra en la caja ni en las métricas.
+              Se jugaron en días anteriores y no se anotó el cobro. Si nadie lo anota, a las 24 h de
+              terminado se da por cobrado en efectivo.
             </p>
           </div>
           <ol className="divide-y divide-border">

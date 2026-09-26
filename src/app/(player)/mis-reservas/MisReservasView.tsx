@@ -192,7 +192,7 @@ export function MisReservasView({
           // Página fuera de rango (link viejo/compartido a una página que ya
           // no existe): no es "no tenés reservas", es "esa página no existe" —
           // decir lo primero con el tab lleno de filas sería mentir (mismo
-          // criterio que MovementsList en Cuentas).
+          // criterio que el libro de movimientos de Cuentas).
           <EmptyCard
             title="Esa página no existe"
             description={`${tab === 'proximos' ? 'Tus próximas reservas' : 'Tu historial'} tiene menos que lo que pide este link.`}

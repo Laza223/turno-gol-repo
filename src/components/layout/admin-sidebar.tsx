@@ -181,16 +181,16 @@ const RAIL_ITEM_HOVERABLE =
 /**
  * Rótulo de un espacio del riel: siempre visible en touch. Con mouse arranca
  * en 0 de ancho y opacidad, y se desliza hacia la derecha (`translate-x`)
- * cuando el `<aside>` (`group/rail`) recibe hover o foco adentro. El delay
- * de apertura (120 ms) vive en la regla `group-hover`/`group-focus-within`,
- * así que solo se aplica al abrir — cerrar es inmediato.
+ * cuando el `<aside>` (`group/rail`) recibe hover o foco de teclado adentro.
+ * El delay de apertura (120 ms) vive en esas reglas, así que solo se aplica
+ * al abrir — cerrar es inmediato.
  */
 const RAIL_LABEL = cn(
   'max-w-full truncate',
   'pointer-fine:max-w-0 pointer-fine:translate-x-1 pointer-fine:overflow-hidden pointer-fine:whitespace-nowrap pointer-fine:text-sm pointer-fine:font-medium pointer-fine:tracking-normal pointer-fine:opacity-0',
   'pointer-fine:transition-[max-width,opacity,transform] pointer-fine:duration-200 pointer-fine:ease-out pointer-fine:delay-0',
   'pointer-fine:group-hover/rail:max-w-[140px] pointer-fine:group-hover/rail:translate-x-0 pointer-fine:group-hover/rail:opacity-100 pointer-fine:group-hover/rail:delay-[120ms]',
-  'pointer-fine:group-focus-within/rail:max-w-[140px] pointer-fine:group-focus-within/rail:translate-x-0 pointer-fine:group-focus-within/rail:opacity-100 pointer-fine:group-focus-within/rail:delay-[120ms]',
+  'pointer-fine:group-has-[:focus-visible]/rail:max-w-[140px] pointer-fine:group-has-[:focus-visible]/rail:translate-x-0 pointer-fine:group-has-[:focus-visible]/rail:opacity-100 pointer-fine:group-has-[:focus-visible]/rail:delay-[120ms]',
   'motion-reduce:transition-none motion-reduce:delay-0',
 )
 /** Texto que un lector de pantalla oye en lugar del color del punto. */
@@ -430,11 +430,12 @@ function SidebarRail({
         'hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-[72px] flex-col items-center gap-1 border-r border-border bg-card py-3',
         // `group/rail`: con mouse, el riel se despliega en overlay (no empuja el
         // contenido — `admin-layout-shell.tsx` deja el `lg:pl-[72px]` fijo) al
-        // pasar el mouse o tener foco adentro. `delay-[120ms]` solo en la regla
-        // hover/focus-within: abre con un respiro, cierra de una.
+        // pasar el mouse o tener foco DE TECLADO adentro. No `focus-within`: el
+        // clic deja el foco en el link y el riel quedaba abierto hasta clickear
+        // afuera. `delay-[120ms]` solo al abrir: abre con un respiro, cierra de una.
         'group/rail pointer-fine:transition-[width,box-shadow] pointer-fine:duration-200 pointer-fine:ease-out pointer-fine:delay-0',
         'pointer-fine:hover:w-56 pointer-fine:hover:shadow-xl pointer-fine:hover:delay-[120ms]',
-        'pointer-fine:focus-within:w-56 pointer-fine:focus-within:shadow-xl pointer-fine:focus-within:delay-[120ms]',
+        'pointer-fine:has-[:focus-visible]:w-56 pointer-fine:has-[:focus-visible]:shadow-xl pointer-fine:has-[:focus-visible]:delay-[120ms]',
         'motion-reduce:transition-none motion-reduce:delay-0',
       )}
     >

@@ -1,35 +1,30 @@
-import { Bell, ChevronDown, CircleAlert, ExternalLink, Mail } from 'lucide-react'
+import { CircleAlert, ExternalLink } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { PerfilImagesForm } from './PerfilImagesForm'
-import { AccountEmailForm } from './AccountEmailForm'
 import { TenantProfileForm } from './TenantProfileForm'
-import { AvisosForm } from './AvisosForm'
 import {
   setTenantImageAction,
   removeTenantImageAction,
-  updateUserEmailAction,
   updateTenantProfileAction,
-  updateAvisosSettingsAction,
   geocodeAddressAction,
 } from './actions'
-import { SettingsTabs } from '../SettingsTabs'
+import { SettingsHeader } from '../SettingsHeader'
 
-const TRIGGER_CLASS =
-  'group flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-6 py-4 text-left text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0'
-
+/**
+ * Ajustes → Página pública: solo lo que ve el jugador. El resumen diario y el
+ * email para entrar vivían acá, al lado de lo público; desde el 2026-09-25
+ * están en "Vos y tu equipo" (`/settings/equipo`), en "Tu usuario".
+ */
 export default async function PerfilPage() {
-  const { user, tenant } = await requireAdminStaff()
-  const s = tenant.settings
+  const { tenant } = await requireAdminStaff()
   const gaps = getProfileGaps(tenant)
 
   return (
     <div className="space-y-6">
-      {/* MASTER §6.8: la vista no abre encabezado propio — ver reservas/page.tsx. */}
-      <SettingsTabs active="/settings/perfil" />
+      <SettingsHeader title="Página pública" />
 
-      {/* Lo que el punto de la pestaña Perfil anuncia: qué falta y qué se pierde.
+      {/* Lo que el punto del riel y de la portada anuncian: qué falta y qué se pierde.
           Se va solo cuando se completa — no hay nada que descartar. */}
       {gaps.length > 0 && (
         <div
@@ -38,7 +33,7 @@ export default async function PerfilPage() {
         >
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <div className="space-y-1">
-            <p className="font-medium">Tu perfil público está incompleto</p>
+            <p className="font-medium">A tu página pública le falta algo</p>
             <ul className="list-disc space-y-0.5 pl-4 text-xs">
               {gaps.map((g) => (
                 <li key={g.key}>
@@ -59,7 +54,7 @@ export default async function PerfilPage() {
           imagen recién subida. */}
         <div className="card-premium rounded-lg p-6">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-foreground">Perfil público</h2>
+            <h2 className="text-base font-semibold text-foreground">Fotos</h2>
             {/* H067: sin este link no había forma de verificar cómo quedaron
               el logo y la portada en el perfil público real. */}
             <a
@@ -68,7 +63,7 @@ export default async function PerfilPage() {
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
-              Ver mi perfil público
+              Ver mi página
               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             </a>
           </div>
@@ -97,55 +92,6 @@ export default async function PerfilPage() {
           action={updateTenantProfileAction}
           geocodeAction={geocodeAddressAction}
         />
-      </div>
-
-      {/* H161: Avisos era su propia pestaña top-level para esta única
-          preferencia — se plegó como una fila más, colapsada por defecto, con
-          el estado actual visible sin abrirla. */}
-      <div className="card-premium overflow-hidden rounded-lg">
-        <Collapsible>
-          <CollapsibleTrigger className={TRIGGER_CLASS}>
-            <span className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              Resumen diario por email
-            </span>
-            <span className="flex items-center gap-3">
-              <span className="text-sm font-normal text-muted-foreground">
-                {s.daily_summary_email_opt_in ? 'Activado' : 'Desactivado'}
-              </span>
-              <ChevronDown
-                className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
-                aria-hidden="true"
-              />
-            </span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="px-6 pb-6">
-            <AvisosForm s={s} action={updateAvisosSettingsAction} />
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
-
-      <div className="card-premium overflow-hidden rounded-lg">
-        <Collapsible>
-          <CollapsibleTrigger className={TRIGGER_CLASS}>
-            <span className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              Correo con el que entrás
-            </span>
-            <span className="flex items-center gap-3">
-              <span className="truncate text-sm font-normal text-muted-foreground">
-                {user.email}
-              </span>
-              <ChevronDown
-                className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
-                aria-hidden="true"
-              />
-            </span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="px-6 pb-6">
-            <AccountEmailForm currentEmail={user.email} updateEmailAction={updateUserEmailAction} />
-          </CollapsibleContent>
-        </Collapsible>
       </div>
     </div>
   )

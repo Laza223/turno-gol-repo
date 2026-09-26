@@ -137,7 +137,7 @@ describe('subscribe — payer sin cuenta de MP (ENS-23)', () => {
       // se declara la cuenta de MercadoPago, no a cambiar el email de login
       // (esa salida podía estar cerrada — ver billing-payer-email.test.ts).
       expect((err as Error).message).toContain(OWNER_EMAIL)
-      expect((err as Error).message).toContain('Cuenta de MercadoPago para pagar')
+      expect((err as Error).message).toContain('Cuenta de MercadoPago con la que pagás')
     }
   })
 

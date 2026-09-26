@@ -76,9 +76,9 @@ export function TenantProfileForm({
           <Building2 className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-base font-semibold text-foreground">Datos del complejo</h2>
+          <h2 className="text-base font-semibold text-foreground">Contacto y ubicación</h2>
           <p className="text-sm text-muted-foreground">
-            Contacto y ubicación que ven los jugadores en tu página pública.
+            Cómo te encuentra y te escribe el jugador.
           </p>
         </div>
       </div>
@@ -111,7 +111,7 @@ export function TenantProfileForm({
             htmlFor="tenant-contact-email"
             className="block text-sm font-medium text-foreground"
           >
-            Email <span className="text-red-500 dark:text-red-400">*</span>
+            Email de contacto <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <input
             id="tenant-contact-email"
@@ -120,8 +120,12 @@ export function TenantProfileForm({
             autoComplete="email"
             defaultValue={currentEmail}
             required
+            aria-describedby="tenant-contact-email-help"
             className={inputClass}
           />
+          <p id="tenant-contact-email-help" className="mt-1 text-xs text-muted-foreground">
+            Se lo damos al jugador si cancela y le tenés que devolver la seña.
+          </p>
         </div>
 
         <div>

@@ -1,7 +1,7 @@
 // 2 roles fijos de staff (migración 029 quitó 'read_only'). NO es RBAC
 // granular: cada rol mapea a un set cerrado de vistas, sin permisos configurables.
-//   * admin   → acceso total (única que ve Configuración y gestiona Equipo)
-//   * manager → Encargado: hoy + grilla + reservas + caja + clientes (sin configuración ni métricas)
+//   * admin   → acceso total (única que ve Ajustes y gestiona Equipo)
+//   * manager → Encargado: hoy + grilla + reservas + caja + clientes (sin Ajustes, Canchas ni métricas)
 
 export const STAFF_ROLES = ['admin', 'manager'] as const
 
@@ -19,9 +19,9 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
 // 2026-09-19: el Encargado entra a Hoy (es la pantalla del mostrador) y deja de
 // ver Métricas (son del dueño).
 export const STAFF_ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
-  admin: 'Acceso total, incluida la configuración del complejo.',
+  admin: 'Entra a todo, también a Ajustes.',
   manager:
-    'Hoy, grilla, reservas, caja, clientes y torneos. Sin acceso a configuración ni métricas.',
+    'Hoy, Grilla, Agenda, Caja, Clientes y Torneos. No entra a Ajustes, Canchas ni Métricas.',
 }
 
 // Al invitar, el rol arranca en Encargado: sumar un admin con acceso total
@@ -34,12 +34,12 @@ export const DEFAULT_INVITE_ROLE: StaffRole = 'manager'
 // y grilla/page.tsx lo traduce al toast de abajo. Un solo lugar para el
 // código y el texto evita que layout.tsx y grilla/page.tsx diverjan.
 export const SETTINGS_ADMIN_ONLY_NOTICE = 'settings-admin-only'
-export const SETTINGS_ADMIN_ONLY_NOTICE_TITLE = 'No tenés acceso a Configuración'
+export const SETTINGS_ADMIN_ONLY_NOTICE_TITLE = 'No tenés acceso a Ajustes'
 export const SETTINGS_ADMIN_ONLY_NOTICE_DESCRIPTION = 'Es solo del dueño del complejo.'
 
 /**
  * "Espacios" del panel para la sección "Qué ve cada persona" de Equipo
- * (`StaffRosterView.tsx`, rediseño Configuración → Equipo). Copia manual del
+ * (`StaffRosterView.tsx`, Ajustes → Vos y tu equipo). Copia manual del
  * mismo criterio `requiresAdmin` que ya aplica `NAV_ITEMS`/`CONFIG_ITEM` en
  * `src/components/layout/admin-sidebar.tsx` — ese archivo es 'use client'
  * (hooks de navegación) y no es importable desde un módulo de dominio, así
@@ -62,12 +62,14 @@ export const STAFF_ROLE_SPACES: StaffRoleSpace[] = [
   { label: 'Canchas', adminOnly: true },
   { label: 'Torneos', adminOnly: false, requiresTournaments: true },
   { label: 'Métricas', adminOnly: true },
-  { label: 'Configuración', adminOnly: true },
+  { label: 'Ajustes', adminOnly: true },
 ]
 
 /** Taglines cortas de la misma sección — presentación, no autorización (la
  *  autorización real vive en requireAdminStaff/getStaffRole). */
 export const STAFF_ROLE_TAGLINES: Record<StaffRole, string> = {
-  admin: 'Todo el panel, incluida esta Configuración.',
-  manager: 'Opera el día a día. No toca precios ni configuración.',
+  admin: 'Entra a todo, también a Ajustes.',
+  // "No toca precios" era falso: el encargado le pone precio a un evento desde
+  // la Grilla. Lo cierto es a qué espacios no entra (`requiresAdmin` del riel).
+  manager: 'Opera el día a día. No entra a Ajustes, Canchas ni Métricas.',
 }

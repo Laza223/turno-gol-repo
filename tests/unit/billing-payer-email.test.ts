@@ -146,7 +146,7 @@ describe('InvalidPayerEmailError', () => {
     const err = new InvalidPayerEmailError(TENANT_ID, MP_EMAIL)
 
     expect(err.message).toContain(MP_EMAIL)
-    expect(err.message).toContain('Cuenta de MercadoPago para pagar')
+    expect(err.message).toContain('Cuenta de MercadoPago con la que pagás')
     // La salida vieja ("actualizá tu email") podía ser IMPOSIBLE: ese email
     // puede estar tomado en `auth.users` por la cuenta de jugador de la misma
     // persona. Prometerla otra vez es volver a encerrar al dueño.

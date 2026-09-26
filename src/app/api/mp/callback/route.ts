@@ -76,7 +76,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   })
 
   if (!parsed.success) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_missing_params', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_missing_params#mercado-pago', req.url),
+    )
   }
   const { code, state } = parsed.data
 
@@ -87,11 +89,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // mismo patrón que el incidente de ENCRYPTION_KEY).
   const secret = process.env.MP_CLIENT_SECRET
   if (!secret) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_config_missing#mercado-pago', req.url),
+    )
   }
   const dot = state.indexOf('.')
   if (dot < 0) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_invalid_state#mercado-pago', req.url),
+    )
   }
   const payload = state.slice(0, dot)
   const sig = state.slice(dot + 1)
@@ -99,7 +105,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const a = Buffer.from(sig)
   const b = Buffer.from(expected)
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_invalid_state#mercado-pago', req.url),
+    )
   }
 
   // Decode tenantId + issued-at timestamp from the state payload.
@@ -107,7 +115,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const decoded = Buffer.from(payload, 'base64url').toString('utf8')
   const [tenantId, tsRaw] = decoded.split(':')
   if (!tenantId || !tsRaw) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_invalid_state#mercado-pago', req.url),
+    )
   }
 
   // El `state` firmado solo prueba que ESTE navegador inició un oauth-start
@@ -132,14 +142,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const STATE_TTL_MS = 10 * 60 * 1000 // 10 minutos
   const age = Date.now() - issuedAt
   if (!Number.isFinite(issuedAt) || age < 0 || age > STATE_TTL_MS) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_invalid_state', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_invalid_state#mercado-pago', req.url),
+    )
   }
 
   // Exchange code for token — require APP_URL (no req.url origin fallback to
   // avoid host-header injection into the OAuth redirect_uri).
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_config_missing#mercado-pago', req.url),
+    )
   }
   const redirectUri = `${appUrl}/api/mp/callback`
   const clientId = process.env.MP_CLIENT_ID ?? ''
@@ -183,7 +197,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       clientId: clientId === '' ? '(vacío)' : clientId,
       mpError: mpError.slice(0, 500),
     })
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_token_failed', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_token_failed#mercado-pago', req.url),
+    )
   }
 
   const tokenData = (await tokenRes.json()) as MpTokenResponse
@@ -214,7 +230,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (ocupada) {
     return NextResponse.redirect(
       new URL(
-        `/settings/facturacion?error=mp_already_connected&complejo=${encodeURIComponent(ocupada.name)}`,
+        `/settings/reservas?error=mp_already_connected&complejo=${encodeURIComponent(ocupada.name)}#mercado-pago`,
         req.url,
       ),
     )
@@ -228,7 +244,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     mpNickname: await fetchMpNickname(tokenData.access_token),
   })
   // `fromChecklist: true` siempre desde la Fase 5: el único punto de entrada
-  // real a este callback es /settings/facturacion (ver el comentario de abajo).
+  // real a este callback es /settings/reservas (ver el comentario de abajo).
   track.onboarding('onboarding.mp.connected', { tenantId, fromChecklist: true })
 
   // El alcance del token, durable y consultable.
@@ -279,7 +295,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   // Desde la Fase 5 del refactor de onboarding, conectar MP se movió del
-  // wizard (viejo paso "¿Cobrás seña?") a /settings/facturacion — el ÚNICO
+  // wizard (viejo paso "¿Cobrás seña?") a Ajustes (desde 2026-09-25, /settings/reservas,
+  // al lado de la seña; antes /settings/facturacion) — el ÚNICO
   // punto de entrada real a `/api/mp/oauth-start` es esa pantalla, y llegar
   // ahí ya exige `onboarding_completed` ((admin)/layout.tsx). La rama
   // `!onboardingDone` de abajo queda por compatibilidad con una sesión que
@@ -290,7 +307,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const tenant = await getTenantById(tenantId)
   const onboardingDone = tenant?.settings.onboarding_completed === true
   if (onboardingDone) {
-    return NextResponse.redirect(new URL('/settings/facturacion', req.url))
+    return NextResponse.redirect(new URL('/settings/reservas#mercado-pago', req.url))
   }
 
   await updateTenantSettings(tenantId, { requires_deposit: true })

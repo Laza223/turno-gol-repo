@@ -31,7 +31,7 @@ const meta = {
   decorators: [
     (Story) => (
       <div className="card-premium max-w-lg rounded-lg p-6">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Perfil público</h2>
+        <h2 className="mb-6 text-base font-semibold text-foreground">Fotos</h2>
         <Story />
       </div>
     ),

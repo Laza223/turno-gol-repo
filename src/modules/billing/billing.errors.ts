@@ -86,7 +86,7 @@ export class InvalidPayerEmailError extends Error {
     public readonly payerEmail: string,
   ) {
     super(
-      `MercadoPago no encontró una cuenta con el email ${payerEmail}. Escribí abajo, en "Cuenta de MercadoPago para pagar", el email con el que entrás a MercadoPago — puede ser distinto al que usás para entrar a TurnoGol.`,
+      `MercadoPago no encontró una cuenta con el email ${payerEmail}. Escribí abajo, en "Cuenta de MercadoPago con la que pagás", el email con el que entrás a MercadoPago — puede ser distinto al que usás para entrar a TurnoGol.`,
     )
     this.name = 'InvalidPayerEmailError'
   }

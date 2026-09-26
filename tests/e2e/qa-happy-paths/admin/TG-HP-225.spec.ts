@@ -46,7 +46,7 @@ test.describe('TG-HP-225 — Settings perfil: logo + portada en un solo flujo', 
       const page = await context.newPage()
 
       await page.goto('/settings/perfil')
-      await expect(page.getByRole('heading', { name: 'Perfil público' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Página pública' })).toBeVisible({
         timeout: 15_000,
       })
       await expect(page.getByRole('heading', { name: 'Logo', exact: true })).toBeVisible()

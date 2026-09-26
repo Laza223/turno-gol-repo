@@ -47,9 +47,7 @@ describe('AdminSidebar — punto rojo', () => {
   it('perfil incompleto: Ajustes lo anuncia por su nombre accesible', () => {
     renderSidebar({ courts: 0, profile: 3 })
 
-    expect(
-      screen.getByRole('link', { name: `Configuración — hay algo por completar` }),
-    ).toBeVisible()
+    expect(screen.getByRole('link', { name: `Ajustes — hay algo por completar` })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Canchas.*por completar/ })).toBeNull()
   })
 

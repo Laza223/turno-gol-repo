@@ -191,7 +191,7 @@ describe('updateUserEmailAction', () => {
     // este intento es pagar la suscripción — y para eso ya no hace falta
     // cambiar el email de login.
     expect(res.success === false && res.error).toContain('ya está en uso por otra cuenta')
-    expect(res.success === false && res.error).toContain('Cuenta de MercadoPago para pagar')
+    expect(res.success === false && res.error).toContain('Cuenta de MercadoPago con la que pagás')
     expect(vi.mocked(isStaffEmailTaken)).toHaveBeenCalledWith('otro@complejo.com', 'staff-1')
     expect(updateUser).not.toHaveBeenCalled()
   })
@@ -207,7 +207,7 @@ describe('updateUserEmailAction', () => {
     const res = await updateUserEmailAction('lajugadora@gmail.com')
 
     expect(res.success).toBe(false)
-    expect(res.success === false && res.error).toContain('Cuenta de MercadoPago para pagar')
+    expect(res.success === false && res.error).toContain('Cuenta de MercadoPago con la que pagás')
     expect(res.success === false && res.error).not.toContain('already been registered')
   })
 

@@ -25,11 +25,11 @@ export function renderTrialWelcome(data: TrialWelcomeData): EmailContent {
   const days = typeof data.trialDays === 'number' && data.trialDays > 0 ? data.trialDays : null
   const trialHtml =
     days === null
-      ? 'Tu prueba gratuita ya está activa: podés ver hasta cuándo va en Configuración → Facturación.'
+      ? 'Tu prueba gratuita ya está activa: podés ver hasta cuándo va en Ajustes → Suscripción.'
       : `Tenés ${days === 1 ? '1 día' : `${days} días`} de prueba gratuita para explorar todas las funcionalidades.`
   const trialText =
     days === null
-      ? 'Tu prueba gratuita ya está activa: podés ver hasta cuándo va en Configuración → Facturación.'
+      ? 'Tu prueba gratuita ya está activa: podés ver hasta cuándo va en Ajustes → Suscripción.'
       : `Tenés ${days === 1 ? '1 día' : `${days} días`} de prueba gratuita.`
 
   const html = `

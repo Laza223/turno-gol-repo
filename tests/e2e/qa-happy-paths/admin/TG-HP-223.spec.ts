@@ -43,7 +43,7 @@ test.describe('TG-HP-223 — Settings horarios: general + Sábado madrugada + d�
       const page = await context.newPage()
 
       await page.goto('/settings/horarios')
-      await expect(page.getByRole('heading', { name: 'Horarios de apertura' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Horario de la semana' })).toBeVisible({
         timeout: 15_000,
       })
 
@@ -60,7 +60,7 @@ test.describe('TG-HP-223 — Settings horarios: general + Sábado madrugada + d�
           }
         | undefined
       await expect(async () => {
-        // Horario general: 18:00–23:00 (aplica a lun-vie, que arrancan en modo 'general').
+        // Todos los días: 18:00–23:00 (aplica a lun-vie, que arrancan en modo 'general').
         await page.locator('#general-open').fill('18:00')
         await page.locator('#general-close').fill('23:00')
 

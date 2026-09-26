@@ -5,7 +5,7 @@ import { deriveScheduleView, type ScheduleView } from '@/lib/schedule/schedule-v
 import { openingHours, openingHoursClosesNextDay } from '@/test/fixtures/tenant'
 import { ScheduleFields } from './ScheduleFields'
 
-const ADVANCED_TRIGGER_NAME = /Excepciones por día/i
+const ADVANCED_TRIGGER_NAME = /Días con otro horario/i
 
 /**
  * Fase 3 UX (progressive disclosure): los días viven colapsados bajo este
@@ -68,16 +68,16 @@ export const Default: Story = {
 
 /**
  * Fase 3 UX (progressive disclosure): los días arrancan colapsados;
- * "Horario general" queda siempre visible. Click en el trigger los revela.
+ * "Todos los días" queda siempre visible. Click en el trigger los revela.
  */
 export const ExcepcionesColapsadasPorDefecto: Story = {
-  name: 'Colapsado por defecto — click en "Excepciones por día" las revela',
+  name: 'Colapsado por defecto — click en "Días con otro horario" las revela',
   // Vista VIRGEN a propósito: el fixture openingHours() trae viernes/domingo
   // custom, y con config avanzada el panel arranca abierto (ver story siguiente).
   render: () => <Controlled initialView={virginView()} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Horario general')).toBeVisible()
+    await expect(canvas.getByText('Todos los días')).toBeVisible()
     // forceMount: los campos quedan en el DOM (deben serializar en FormData
     // aun colapsados) pero no visibles hasta abrir el panel.
     await expect(canvas.getByLabelText(/Lunes abierto/)).not.toBeVisible()
@@ -152,7 +152,7 @@ export const DiaCerrado: Story = {
 /**
  * Cierra pasada la medianoche: `closesNextDay` se DERIVA solo de los pares
  * open/close (sin checkbox, rediseño de Configuración 2026-09) — el aviso
- * "Cerrás pasada la medianoche" aparece junto a "Horario general" sin que
+ * "Cerrás pasada la medianoche" aparece junto a "Todos los días" sin que
  * nadie active nada.
  */
 export const CierraDespuesDeMedianoche: Story = {

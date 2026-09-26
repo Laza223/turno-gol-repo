@@ -62,8 +62,7 @@ export function InvoiceHistorySection({ invoices }: Props) {
           — usa otra referencia de MercadoPago, ver InvoiceEntry — y se podía
           leer como un error del sistema en vez de una omisión a propósito. */}
       <p className="mt-1 text-xs text-muted-foreground">
-        Cobros mensuales o anuales del plan. Los cambios de plan con pago adicional se ven en el
-        movimiento de esa fecha, no acá.
+        Los cobros de tu cuota. Sumar o sacar canchas nunca genera un cobro aparte.
       </p>
 
       {invoices.length === 0 ? (

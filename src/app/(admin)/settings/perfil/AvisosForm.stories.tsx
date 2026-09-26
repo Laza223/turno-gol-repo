@@ -38,10 +38,10 @@ export const Default: Story = {}
 export const ToggleEsUnRadiogroupAccesible: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const email = canvas.getByRole('radio', { name: 'Recibir por email' })
-    const push = canvas.getByRole('radio', { name: 'Solo push' })
+    const email = canvas.getByRole('radio', { name: 'También por email' })
+    const push = canvas.getByRole('radio', { name: 'Solo notificación' })
     await expect(canvas.getByRole('radiogroup')).toBeInTheDocument()
-    // Default de la fixture: sin opt-in de email → "Solo push" activo.
+    // Default de la fixture: sin opt-in de email → "Solo notificación" activo.
     await expect(push).toHaveAttribute('aria-checked', 'true')
     await expect(email).toHaveAttribute('aria-checked', 'false')
 

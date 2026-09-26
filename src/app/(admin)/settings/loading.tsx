@@ -1,34 +1,32 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
 /**
- * Silueta real de `/settings/*` (ver settings/reservas/page.tsx): título, tira
- * de tabs y una card con el formulario de la sección. Cubre las 4 pantallas de
- * configuración que no declaran loading propio (perfil, reservas, horarios,
- * facturación); canchas y equipo tienen el suyo. `/settings/avisos` (H161) es
- * puro redirect a `/settings/perfil` — no llega a mostrar este skeleton.
+ * Silueta de `/settings/*` que no declara loading propio: la portada y las
+ * páginas de Reservas y seña, Horarios, Página pública y Suscripción (Equipo
+ * tiene el suyo). La barra superior la pone cada página por portal, así que
+ * acá va solo el contenido: dos columnas de tarjetas con renglones, que es la
+ * forma de la portada y a lo que se parecen las páginas en escritorio.
  */
 export default function Loading() {
   return (
-    <div className="space-y-6" aria-busy="true">
-      <Skeleton className="h-8 w-52" />
-
-      {/* SettingsTabs: 5 tabs (H161 plegó Avisos en Perfil; Canchas salió del menú de Configuración) */}
-      <div className="flex gap-1 border-b border-border">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-11 w-24 shrink-0 rounded-none" />
-        ))}
-      </div>
-
-      <div className="card-premium rounded-lg p-6 space-y-6">
-        <Skeleton className="h-5 w-48" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="space-y-2">
-            <Skeleton className="h-4 w-36" />
-            <Skeleton className="h-10 w-full max-w-md rounded-lg" />
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2" aria-busy="true">
+      {Array.from({ length: 2 }).map((_, card) => (
+        <div key={card} className="card-premium space-y-5 rounded-xl p-6">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-44" />
+            <Skeleton className="h-4 w-56" />
           </div>
-        ))}
-        <Skeleton className="h-10 w-32 rounded-lg" />
-      </div>
+          {Array.from({ length: 3 }).map((_, row) => (
+            <div key={row} className="flex items-center justify-between gap-4">
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-full max-w-xs" />
+              </div>
+              <Skeleton className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }

@@ -41,7 +41,7 @@ test.describe('TG-HP-204 — Subir logo del tenant a R2', () => {
       // silencioso (mismo gotcha que admin-create-booking-ui.spec.ts documenta
       // para /grilla).
       await page.goto('/settings/perfil', { waitUntil: 'networkidle' })
-      await expect(page.getByRole('heading', { name: 'Perfil público' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Página pública' })).toBeVisible({
         timeout: 15_000,
       })
       await expect(page.getByRole('heading', { name: 'Logo', exact: true })).toBeVisible()

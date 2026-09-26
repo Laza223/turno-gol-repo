@@ -26,7 +26,8 @@ const adminDir = path.join(projectRoot, 'src', 'app', '(admin)')
 /** Archivos que declaran navegación. Sumar uno acá al crear una barra nueva. */
 const NAV_SOURCES = [
   'src/components/layout/admin-sidebar.tsx',
-  'src/app/(admin)/settings/SettingsTabs.tsx',
+  'src/app/(admin)/settings/SettingsHeader.tsx',
+  'src/app/(admin)/settings/SettingsIndex.tsx',
   'src/app/(admin)/caja/components/CajaTabs.tsx',
   'src/app/(admin)/jugadores/ClientesTabs.tsx',
   'src/app/(admin)/grilla/GrillaTabs.tsx',
@@ -38,6 +39,14 @@ const NAV_SOURCES = [
  * el menú, esa página no debería existir.
  */
 const CONTEXTUAL_ROUTES: Record<string, string> = {
+  // Ajustes (2026-09-25): la portada `/settings` (SettingsIndex) reemplazó a
+  // las pestañas por tarjetas con `href` dinámico por grupo, no un ítem fijo
+  // que el regex de arriba pueda leer — se llega por la tarjeta, no por barra.
+  '/settings/reservas': 'tarjeta de la portada /settings (SettingsIndex)',
+  '/settings/horarios': 'tarjeta de la portada /settings (SettingsIndex)',
+  '/settings/perfil': 'tarjeta de la portada /settings (SettingsIndex)',
+  '/settings/facturacion': 'tarjeta de la portada /settings (SettingsIndex)',
+  '/settings/equipo': 'tarjeta de la portada /settings (SettingsIndex)',
   '/abonados/nuevo': 'CTA "Nuevo turno fijo" en /abonados',
   '/reservas/[id]': 'fila de la lista, "Mientras no estabas" de Hoy y Plata en la calle',
   '/jugadores/[playerId]': 'fila de la lista de clientes y nombre del deudor en Plata en la calle',
@@ -144,10 +153,10 @@ describe('navegación admin — cero rutas huérfanas (Fase 4)', () => {
       '/canchas',
       '/torneos',
       '/analiticas',
-      // Configuración apunta a la sub-ruta y no al stub `/settings`, que solo
-      // hace `redirect('/settings/reservas')`: mismo destino, un render de
-      // servidor menos.
-      '/settings/reservas',
+      // Ajustes apunta a la portada `/settings` (2026-09-25): antes era un
+      // stub `redirect('/settings/reservas')`, ahora es la pantalla con guard
+      // propio (SettingsIndex) y el destino real.
+      '/settings',
     ])
   })
 

@@ -10,9 +10,10 @@ const SETTINGS_TABS: ScrollTab[] = [
 ]
 
 /**
- * Tab bar de `next/link` — el caso real es `/settings/*` (SettingsTabs.tsx).
- * Se reproduce ese mismo set de tabs para que el estado activo se vea con
- * datos reales del dominio.
+ * Tab bar de `next/link`. Se reproduce el set que tenía `/settings/*` hasta
+ * que Ajustes pasó a ser una portada (2026-09-25) para que el estado activo se
+ * vea con datos reales del dominio; los usos reales hoy son Grilla, Caja,
+ * Clientes y Torneos.
  */
 const meta = {
   title: 'Patterns/ScrollTabs',

@@ -23,7 +23,6 @@ const meta = {
     // layout.
     (Story) => (
       <div className="card-premium max-w-2xl rounded-lg p-6">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Políticas de Reserva</h2>
         <Story />
       </div>
     ),
@@ -53,7 +52,7 @@ export const PorcentajePersonalizado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText(/porcentaje de seña/i)).toHaveValue(45)
+    await expect(canvas.getByLabelText(/cuánto paga al reservar/i)).toHaveValue(45)
   },
 }
 
@@ -69,14 +68,16 @@ export const OtroPrecargaElPresetActivo: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Hay dos opciones "Otro" en la pantalla (seña y anticipación de
-    // cancelación) — se escopea al fieldset "Seña" para no ambigüar.
+    // Hay dos opciones "Otro" en la pantalla (% de seña y horas de devolución):
+    // desde que "Devolución de la seña" se mudó adentro de la misma
+    // `<section id="sena">` (2026-09-25) ya no alcanza con escopear a esa
+    // sección — se escopea al radiogroup del % de seña por su aria-label propio.
     // F-007: ahora es un SegmentedControl (Radix RadioGroup) — role="radio",
     // no "button" (ese es justo el punto: antes un lector de pantalla lo
     // anunciaba como botón suelto, sin decir que era una opción excluyente).
-    const senaFieldset = within(canvas.getByRole('group', { name: 'Seña' }))
-    await userEvent.click(senaFieldset.getByRole('radio', { name: 'Otro' }))
-    await expect(canvas.getByLabelText(/porcentaje de seña/i)).toHaveValue(50)
+    const senaPercent = within(canvas.getByRole('radiogroup', { name: '% de seña (presets)' }))
+    await userEvent.click(senaPercent.getByRole('radio', { name: 'Otro' }))
+    await expect(canvas.getByLabelText(/cuánto paga al reservar/i)).toHaveValue(50)
   },
 }
 
@@ -93,7 +94,7 @@ export const GuardadoOk: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Guardar cambios' }))
-    await expect(await canvas.findByRole('status')).toHaveTextContent('Políticas guardadas.')
+    await expect(await canvas.findByRole('status')).toHaveTextContent('Cambios guardados.')
   },
 }
 

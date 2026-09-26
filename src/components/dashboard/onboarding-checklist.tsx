@@ -43,10 +43,10 @@ const ITEMS: ChecklistItem[] = [
   {
     key: 'mpConnected',
     label: 'MercadoPago conectado',
-    // Mismo texto que el CTA de Configuración → Facturación (page.tsx:262):
-    // un solo término para la misma acción, no uno nuevo acá.
+    // Mismo texto que el CTA de Ajustes → Reservas y seña: un solo término
+    // para la misma acción, no uno nuevo acá.
     pendingLabel: 'Conectar MercadoPago',
-    href: '/settings/facturacion',
+    href: '/settings/reservas#mercado-pago',
     adminOnly: true,
   },
   { key: 'publicLinkShared', label: 'Link público compartido', action: 'copy-link' },

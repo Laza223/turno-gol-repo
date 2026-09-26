@@ -69,18 +69,30 @@ refinamiento del panel (permitido desde el 2026-09-23): no cambia Server Actions
   `expected_cash NULL`, que siguen sin reinterpretarse (Cuentas no los lee).
 - Devolvés sigue arriba, solo con filas, y nunca se netea contra lo sin cobrar.
 
-## Pendiente aparte: acreditar en efectivo lo no cobrado a los 7 días
+## Pendiente aparte: acreditar en efectivo lo no cobrado a las 24 horas
 
-Pedido del dueño en la misma sesión: si un turno sigue sin cobrarse a los 7 días, que se acredite solo
-como cobrado en efectivo. En el piloto eso era lo que pasaba en la práctica ("si no lo reclama queda como
-pago"), y una lista de no cobrados que solo crece por mala práctica se vuelve ruido. El dueño asume que se
-pierde saber si de verdad se cobró y en qué método: queda en la responsabilidad del complejo.
+Pedido del dueño en la misma sesión: si un turno sigue sin cobrarse, que se acredite solo como cobrado en
+efectivo. En el piloto eso era lo que pasaba en la práctica ("si no lo reclama queda como pago"), y una
+lista de no cobrados que solo crece por mala práctica se vuelve ruido. El dueño asume que se pierde saber
+si de verdad se cobró y en qué método: queda en la responsabilidad del complejo.
 
-- **Regla elegida**: se acredita **en la noche en que corre el proceso** (cae en la caja de ese día, no en
-  la noche en que se jugó). Descartado: fecharlo en la noche del turno.
-- **Va en su propio PR**, después de este, con su documento de decisión y revisor con contexto fresco: es
-  un circuito de plata que escribe `cash_flows` desde un worker.
-- **Efecto en producción**: la primera corrida acreditaría en el piloto los 4 turnos de más de 7 días
-  (unos $ 336.000 medidos el 2026-09-25). Necesita el OK del dueño antes de mergear.
-- Preguntas abiertas para ese esfuerzo: cómo se marca el movimiento para distinguirlo de un cobro real, si
-  el complejo puede apagarlo y qué pasa con un turno que nadie jugó y no se marcó como ausente.
+- **Plazo: 24 horas desde que terminó el turno** (`bookings.ends_at`). Decidido por el dueño el
+  2026-09-26; reemplaza los 7 días del planteo original. Por qué:
+  - En el piloto, 163 de 190 cobros de turno entraron dentro de las 2 h de terminado el partido y solo 3
+    se cobraron otro día: pasadas 24 h, lo no cobrado casi nunca se cobra después.
+  - Es el mismo corte que ya usa la base: `enforce_booking_invariants_fn` deja pasar un turno de
+    `completed` a `no_show` solo dentro de las 24 h. Antes de eso no se acredita, porque el turno todavía
+    puede terminar como ausente; después, ya no.
+  - Costo asumido: los pocos que pagan otro día quedan acreditados en efectivo aunque paguen por otro
+    medio, y un turno a medias (pagó un equipo) se acredita por lo que falta.
+- **Cuándo cae en la caja**: en la noche en que corre el proceso, no en la noche en que se jugó.
+  Descartado: fecharlo en la noche del turno.
+- **Solo complejos vivos**: un complejo cancelado, bloqueado o dado de baja no se toca (en prod hay uno
+  cancelado con 3 turnos no cobrados).
+- **Va en su propio PR**, con revisor con contexto fresco: es un circuito de plata que escribe
+  `cash_flows` desde un worker.
+- **Efecto en producción**: medido el 2026-09-26 (solo lectura), el piloto tiene 20 turnos no cobrados
+  por $ 1.329.000; la primera corrida acreditaría los **15 de más de 24 h, $ 975.000**. Necesita el OK del
+  dueño antes de mergear.
+- **Se ve igual que un cobro en efectivo** (decisión del dueño, 2026-09-26): el libro de Cuentas no lo
+  distingue. La descripción guardada sí lo dice, para auditoría.

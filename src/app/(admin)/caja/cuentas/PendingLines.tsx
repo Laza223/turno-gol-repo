@@ -33,7 +33,7 @@ const COPY: Record<StreetMoneyOrigin, Copy> = {
     many: 'turnos no cobrados',
     title: 'Turnos no cobrados',
     description:
-      'Se jugaron y no se anotó el cobro. Hasta que se cobren, esa plata no entra en la caja ni en las métricas.',
+      'Se jugaron y no se anotó el cobro. Si nadie lo anota, a las 24 h de terminado se da por cobrado en efectivo.',
     red: true,
   },
   tournament: {

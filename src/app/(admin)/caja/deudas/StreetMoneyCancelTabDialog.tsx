@@ -11,6 +11,7 @@ import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 // (settleTabAction/registerInscriptionPaymentAction): sin story propia acá,
 // así que no hace falta pasarla por prop para no romper Storybook.
 import { cancelTabAction } from '../cantina/actions'
+import { refocusOpenDialog } from './refocus-open-dialog'
 
 /**
  * "Anular" para la fila 'Fiado' de /caja/deudas (H117): antes solo existía en
@@ -78,7 +79,7 @@ export function StreetMoneyCancelTabDialog({
 
   return (
     <Dialog open={row !== null} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" onCloseAutoFocus={refocusOpenDialog}>
         <DialogHeader>
           <DialogTitle>Anular fiado — {row?.debtorName}</DialogTitle>
         </DialogHeader>

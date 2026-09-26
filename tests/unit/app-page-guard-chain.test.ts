@@ -92,7 +92,6 @@ const REDIRECT_STUBS = [
   // en settings, para los links viejos.
   join('(admin)', 'settings', 'canchas', 'page.tsx'),
   join('(admin)', 'staff', 'page.tsx'),
-  join('(admin)', 'settings', 'page.tsx'),
   join('(admin)', 'jugadores', 'deudas', 'page.tsx'),
   // Eliminación de "Caja del día": Cantina pasó a vivir en /caja (raíz) y
   // /caja/cantina quedó como redirect de compat para bookmarks del staff.

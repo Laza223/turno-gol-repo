@@ -8,7 +8,7 @@
 export interface SetupAlerts {
   /** Canchas sin ninguna foto (se avisa en Canchas). */
   courts: number
-  /** Faltantes del perfil público (se avisa en Configuración → Perfil). */
+  /** Faltantes de la página pública (se avisa en Ajustes → Página pública). */
   profile: number
 }
 

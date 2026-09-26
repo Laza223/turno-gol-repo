@@ -9,7 +9,7 @@ import { PricingGridTable } from './pricing-grid/PricingGridTable'
 import { useCellSelection } from './pricing-grid/use-cell-selection'
 
 // Controlada (pages/horarios-precios.md §3.3): el estado vive en el
-// contenedor (PricingSection), que comprime a reglas y muestra el resumen.
+// contenedor (PriceSetup), que comprime a reglas y muestra la semana.
 type Props = {
   openingHours: OpeningHours
   closesNextDay: boolean
@@ -45,7 +45,7 @@ export function PricingGrid({ openingHours, closesNextDay, grid, onGridChange }:
   const sel = useCellSelection({ openingHours, closesNextDay, grid, onGridChange })
   const dayCount = DAY_KEYS.length
 
-  // Sin horas operativas no hay nada que editar; PricingSection ya muestra el
+  // Sin horas operativas no hay nada que editar; PriceSetup ya muestra el
   // aviso con link a /settings/horarios antes de llegar acá.
   if (hours.length === 0) return null
 

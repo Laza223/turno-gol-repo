@@ -53,7 +53,7 @@ describe('ScheduleFields — serialización con el panel colapsado', () => {
     const onData = vi.fn()
     render(<Harness onData={onData} />)
 
-    const trigger = screen.getByRole('button', { name: /Excepciones por día/i })
+    const trigger = screen.getByRole('button', { name: /Días con otro horario/i })
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.click(trigger)

@@ -4,7 +4,7 @@ import { InviteStaffButton } from './InviteStaffButton'
 
 /**
  * En la página real (equipo/page.tsx) el botón cuelga del prop `actions` de
- * `SettingsTabs`, que lo porta a `AdminHeaderSlot` — el hueco de la barra
+ * `SettingsHeader`, que lo porta a `AdminHeaderSlot` — el hueco de la barra
  * superior de 60px (`bg-card`, MASTER §6.8), no un `PageHeader`. Ese patrón
  * de contenedor se cayó cuando la vista migró al armazón nuevo (rediseño de
  * Configuración, 2026-09); se reproduce acá como una barra liviana en vez del

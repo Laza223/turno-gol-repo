@@ -3,9 +3,9 @@
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { ImageOff, LandPlot, LayoutGrid, Lock } from 'lucide-react'
+import Image from 'next/image'
+import { ImagePlus, LayoutGrid, Lock } from 'lucide-react'
 import type { CourtRow } from '@/modules/courts/court.types'
-import { countCourtsWithoutPhoto } from '@/modules/tenants/setup-gaps'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
 import {
@@ -13,11 +13,15 @@ import {
   billingChangeTitle,
   type BillingChangePreview,
 } from '../billing-copy'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/admin/PageHeader'
-import { CourtStatusBadge } from './status-visual'
+import { cn } from '@/lib/utils'
+import { COURT_STATUS_HINT, CourtStatusBadge } from './status-visual'
+import { summarizePricing } from './price-setup/price-model'
+import { PriceSummary } from './price-setup/PriceSummary'
 import type {
   CreateCourtAction,
   UpdateCourtAction,
@@ -42,33 +46,31 @@ type ToggleCourtStatusAction = (
 ) => Promise<CourtActionResult>
 type GetCourtDeactivationImpactAction = (courtId: string) => Promise<CourtDeactivationImpactResult>
 
-// The deactivate confirmation pulls in the Radix AlertDialog; only needed once an
-// admin clicks "Desactivar", so lazy-load and mount it on demand.
+// The pause confirmation pulls in the Radix AlertDialog; only needed once an
+// admin clicks "Pausar", so lazy-load and mount it on demand.
 const ConfirmDialog = dynamic(
   () => import('@/components/ui/confirm-dialog').then((m) => m.ConfirmDialog),
   { ssr: false },
 )
 
-// The court editor (pricing-rules builder + opening-hours grid) is the heaviest
-// chunk on this route but only renders after a "Nueva cancha"/"Editar" click.
-// Code-split it so it never weighs down the initial Canchas paint.
+// The court editor (price setup + hour-by-hour grid) is the heaviest chunk on
+// this route but only renders after a "Nueva cancha"/"Editar" click. Code-split
+// it so it never weighs down the initial Canchas paint.
 const CourtForm = dynamic(() => import('./CourtForm').then((m) => m.CourtForm), {
   ssr: false,
   loading: () => (
-    <div className="space-y-4" aria-busy="true" aria-label="Cargando formulario…">
-      <Skeleton className="h-9 w-48" aria-hidden />
-      <Skeleton className="h-32 w-full" aria-hidden />
-      <Skeleton className="h-48 w-full" aria-hidden />
-      <div className="flex gap-2">
-        <Skeleton className="h-10 w-28" aria-hidden />
-        <Skeleton className="h-10 w-28" aria-hidden />
+    <div className="mx-auto max-w-3xl space-y-5" aria-busy="true" aria-label="Cargando la cancha…">
+      <div className="space-y-2">
+        <Skeleton className="h-5 w-20" aria-hidden />
+        <Skeleton className="h-8 w-48" aria-hidden />
       </div>
+      <Skeleton className="h-[28rem] w-full rounded-xl" aria-hidden />
     </div>
   ),
 })
 
 const SURFACE_LABELS: Record<string, string> = {
-  synthetic_grass: 'Césped sintético',
+  synthetic_grass: 'Sintético',
   natural_grass: 'Césped natural',
   cement: 'Cemento',
   tile: 'Baldosa',
@@ -93,6 +95,25 @@ type Props = {
   reorderPhotosAction: ReorderCourtPhotosAction
 }
 
+type Editing = { court: CourtRow | null; section?: 'photos' }
+
+/** MASTER §12 CHK-admin: lo que el rol no puede usar se ve con candado, nunca desaparece. */
+function LockedAction({ label, className }: { label: string; className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-muted-foreground',
+        className,
+      )}
+      title="Solo el dueño puede hacerlo"
+    >
+      <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+      {label}
+      <span className="sr-only">— solo el dueño puede hacerlo</span>
+    </span>
+  )
+}
+
 export function CourtList({
   initialCourts,
   tenantId,
@@ -109,11 +130,10 @@ export function CourtList({
   reorderPhotosAction,
 }: Props) {
   const [courts, setCourts] = useState<CourtRow[]>(initialCourts)
-  const [showForm, setShowForm] = useState(false)
-  const [editingCourt, setEditingCourt] = useState<CourtRow | null>(null)
+  const [editing, setEditing] = useState<Editing | null>(null)
 
   function handleCourtSaved(updatedCourt: CourtRow) {
-    const wasEdit = editingCourt !== null
+    const wasEdit = editing?.court != null
     setCourts((prev) => {
       const idx = prev.findIndex((c) => c.id === updatedCourt.id)
       if (idx >= 0) {
@@ -123,103 +143,59 @@ export function CourtList({
       }
       return [...prev, updatedCourt]
     })
-    setShowForm(false)
-    setEditingCourt(null)
+    setEditing(null)
     toast({ title: wasEdit ? 'Cancha actualizada' : 'Cancha creada', variant: 'success' })
-  }
-
-  function openCreate() {
-    setEditingCourt(null)
-    setShowForm(true)
-  }
-
-  function openEdit(court: CourtRow) {
-    setEditingCourt(court)
-    setShowForm(true)
   }
 
   // Las fotos se guardan en la DB apenas se eligen, aunque después se cancele el
   // form: sin llevarlas a `courts` la lista sigue marcando "sin foto" y "Editar"
   // reabre con la lista vieja.
   function closeForm(photos?: string[]) {
-    const editedId = editingCourt?.id
+    const editedId = editing?.court?.id
     if (editedId && photos) {
       setCourts((prev) => prev.map((c) => (c.id === editedId ? { ...c, photos } : c)))
     }
-    setShowForm(false)
-    setEditingCourt(null)
+    setEditing(null)
   }
 
-  const totalWord = courts.length === 1 ? '1 cancha' : `${courts.length} canchas`
-  const withoutPhoto = countCourtsWithoutPhoto(courts)
-  const withoutPhotoText =
-    withoutPhoto === courts.length
-      ? courts.length === 1
-        ? 'Tu cancha no tiene foto.'
-        : 'Ninguna de tus canchas tiene foto.'
-      : `${withoutPhoto} de ${courts.length} canchas sin foto.`
-
-  const header = (
-    <PageHeader
-      title="Canchas"
-      subtitle={`${totalWord} · ${tenantName}`}
-      icon={<LandPlot className="h-6 w-6" aria-hidden="true" />}
-      actions={
-        // El CTA se oculta del todo con el form abierto (mismo comportamiento
-        // previo: no se podía disparar "+ Nueva cancha" mientras ya se estaba
-        // creando/editando una cancha). Texto con el "+" literal sin cambios:
-        // fijado por e2e canchas-crud (`getByRole('button', { name: '+ Nueva
-        // cancha' })`). Para el manager NO se oculta (MASTER §12 CHK-admin:
-        // "ítems bloqueados por rol muestran candado+tooltip, nunca
-        // desaparecen") — mismo patrón que `torneos/page.tsx`.
-        showForm ? undefined : isAdmin ? (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
-          >
-            + Nueva cancha
-          </button>
-        ) : (
-          <span
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground"
-            title="Solo el dueño puede crear canchas"
-          >
-            <Lock className="h-4 w-4" aria-hidden="true" />+ Nueva cancha
-            <span className="sr-only">— solo el dueño puede hacerlo</span>
-          </span>
-        )
-      }
-    />
-  )
-
-  if (showForm) {
+  if (editing) {
     return (
-      <div className="space-y-6">
-        {header}
-        <CourtForm
-          court={editingCourt}
-          tenantId={tenantId}
-          openingHours={openingHours}
-          closesNextDay={closesNextDay}
-          otherCourts={courts
-            .filter((c) => c.id !== editingCourt?.id)
-            .map((c) => ({ id: c.id, name: c.name, rules: c.pricing.rules }))}
-          onSaved={handleCourtSaved}
-          onCancel={closeForm}
-          createAction={createAction}
-          updateAction={updateAction}
-          uploadPhotoAction={uploadPhotoAction}
-          removePhotoAction={removePhotoAction}
-          reorderPhotosAction={reorderPhotosAction}
-        />
-      </div>
+      <CourtForm
+        court={editing.court}
+        tenantId={tenantId}
+        openingHours={openingHours}
+        closesNextDay={closesNextDay}
+        otherCourts={courts
+          .filter((c) => c.id !== editing.court?.id)
+          .map((c) => ({ id: c.id, name: c.name, rules: c.pricing.rules }))}
+        onSaved={handleCourtSaved}
+        onCancel={closeForm}
+        initialSection={editing.section}
+        createAction={createAction}
+        updateAction={updateAction}
+        uploadPhotoAction={uploadPhotoAction}
+        removePhotoAction={removePhotoAction}
+        reorderPhotosAction={reorderPhotosAction}
+      />
     )
   }
 
+  // Texto con el "+" literal sin cambios: fijado por e2e canchas-crud
+  // (`getByRole('button', { name: '+ Nueva cancha' })`).
+  const newCourt = isAdmin ? (
+    <Button onClick={() => setEditing({ court: null })}>+ Nueva cancha</Button>
+  ) : (
+    <LockedAction label="+ Nueva cancha" className="h-11 md:h-10" />
+  )
+
   return (
-    <div className="space-y-6">
-      {header}
+    <div className="space-y-5">
+      <PageHeader
+        variant="plain"
+        title="Canchas"
+        subtitle={`${courts.length === 1 ? '1 cancha' : `${courts.length} canchas`} · ${tenantName}`}
+        actions={newCourt}
+      />
 
       {courts.length === 0 ? (
         <EmptyState
@@ -230,69 +206,109 @@ export function CourtList({
               ? 'Creá la primera para aparecer en búsquedas públicas.'
               : 'Todavía no hay canchas cargadas. Pedile al administrador que cree la primera.'
           }
-          action={
-            isAdmin ? (
-              <button
-                type="button"
-                onClick={openCreate}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary/90"
-              >
-                + Nueva cancha
-              </button>
-            ) : (
-              // MASTER §12 CHK-admin: candado+tooltip, nunca desaparición.
-              <span
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground"
-                title="Solo el dueño puede crear canchas"
-              >
-                <Lock className="h-4 w-4" aria-hidden="true" />+ Nueva cancha
-                <span className="sr-only">— solo el dueño puede hacerlo</span>
-              </span>
-            )
-          }
+          action={newCourt}
         />
       ) : (
-        <div className="space-y-3">
-          {/* Nada bloquea crear una cancha sin foto, así que sin este aviso el
-              dueño no se entera de que en el perfil público sale como un fondo
-              verde vacío. Solo el dueño puede arreglarlo (el manager no edita). */}
-          {isAdmin && withoutPhoto > 0 && (
-            <p className="flex items-start gap-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-200">
-              <ImageOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span>
-                {withoutPhotoText} Una cancha sin foto sale en tu perfil público como un fondo verde
-                vacío.
-              </span>
-            </p>
-          )}
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          {/* Encabezado de columnas: solo desde lg, donde cada cancha es una fila. */}
+          <div
+            aria-hidden="true"
+            className="hidden border-b border-border px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_auto] lg:gap-6"
+          >
+            <span>Cancha</span>
+            <span>Precio del turno</span>
+            <span>En tu perfil</span>
+            <span className="w-44" />
+          </div>
+          <ul className="divide-y divide-border">
             {courts.map((court) => (
-              <CourtCard
+              <CourtItem
                 key={court.id}
                 court={court}
-                onEdit={openEdit}
+                openingHours={openingHours}
+                closesNextDay={closesNextDay}
                 isAdmin={isAdmin}
+                onEdit={(section) => setEditing({ court, section })}
                 toggleStatusAction={toggleStatusAction}
                 getDeactivationImpactAction={getDeactivationImpactAction}
               />
             ))}
-          </div>
+          </ul>
         </div>
       )}
     </div>
   )
 }
 
-function CourtCard({
+/** Primera foto de la cancha, o el hueco "Sin foto" que la agrega (solo el dueño). */
+function CourtThumb({
   court,
-  onEdit,
+  onAdd,
+  offline,
+}: {
+  court: CourtRow
+  onAdd?: () => void
+  offline: boolean
+}) {
+  const box = 'h-12 w-16 lg:h-10 lg:w-14'
+  const photo = court.photos[0]
+  if (photo) {
+    return (
+      <span
+        className={cn(
+          'relative shrink-0 overflow-hidden rounded-md bg-muted',
+          box,
+          offline && 'opacity-60 grayscale',
+        )}
+      >
+        <Image src={photo} alt="" fill sizes="64px" className="object-cover" />
+      </span>
+    )
+  }
+  const cls = cn(
+    'flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-border text-muted-foreground',
+    box,
+  )
+  const inner = (
+    <>
+      <ImagePlus className="h-4 w-4" aria-hidden="true" />
+      <span className="text-[11px] font-medium leading-none lg:sr-only">Sin foto</span>
+    </>
+  )
+  return onAdd ? (
+    <button
+      type="button"
+      onClick={onAdd}
+      aria-label={`Agregar foto a ${court.name}`}
+      title="Sin foto: agregala"
+      className={cn(
+        cls,
+        'transition-colors hover:border-primary hover:text-emerald-700 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:hover:text-emerald-400',
+      )}
+    >
+      {inner}
+    </button>
+  ) : (
+    <span className={cls} title="Sin foto">
+      {inner}
+    </span>
+  )
+}
+
+function CourtItem({
+  court,
+  openingHours,
+  closesNextDay,
   isAdmin,
+  onEdit,
   toggleStatusAction,
   getDeactivationImpactAction,
 }: {
   court: CourtRow
-  onEdit: (court: CourtRow) => void
+  openingHours: OpeningHours
+  closesNextDay: boolean
   isAdmin: boolean
+  onEdit: (section?: 'photos') => void
   toggleStatusAction: ToggleCourtStatusAction
   getDeactivationImpactAction: GetCourtDeactivationImpactAction
 }) {
@@ -304,8 +320,8 @@ function CourtCard({
   )
   const [loadingImpact, setLoadingImpact] = useState(false)
   // Aviso de "prender esta cancha te sube la cuota". Es un diálogo aparte del
-  // de desactivar: son dos decisiones distintas y el de desactivar es
-  // destructivo, este no.
+  // de pausar: son dos decisiones distintas y el de pausar es destructivo,
+  // este no.
   const [billingPreview, setBillingPreview] = useState<BillingChangePreview | null>(null)
 
   // activate/deactivateDirect también son el "Deshacer" de un toast, o sea un
@@ -325,7 +341,7 @@ function CourtCard({
           setBillingPreview(res.requiresBillingConfirmation)
           return
         }
-        toast({ title: 'No se pudo activar', description: res.error, variant: 'destructive' })
+        toast({ title: 'No se pudo reactivar', description: res.error, variant: 'destructive' })
         return
       }
       toast({
@@ -356,11 +372,11 @@ function CourtCard({
       const res = await toggleStatusAction(court.id, 'offline')
       if (!res.success) {
         startTransition(() => setCurrentStatus('online'))
-        toast({ title: 'No se pudo desactivar', description: res.error, variant: 'destructive' })
+        toast({ title: 'No se pudo pausar', description: res.error, variant: 'destructive' })
         return
       }
       toast({
-        title: 'Cancha desactivada',
+        title: 'Cancha pausada',
         variant: 'success',
         action: { label: 'Deshacer', onClick: () => activate() },
       })
@@ -373,7 +389,7 @@ function CourtCard({
     setLoadingImpact(false)
     if (!res.success) {
       // Fix #58: no abrir el dialog con datos falsos (0/0) — el admin podría
-      // desactivar creyendo que no hay impacto cuando en realidad no se pudo verificar.
+      // pausar creyendo que no hay impacto cuando en realidad no se pudo verificar.
       toast({
         title: 'No se pudo verificar el impacto',
         description: res.error ?? 'Reintentá en unos segundos.',
@@ -394,7 +410,7 @@ function CourtCard({
       return res
     }
     toast({
-      title: 'Cancha desactivada',
+      title: 'Cancha pausada',
       variant: 'success',
       action: { label: 'Deshacer', onClick: () => activate() },
     })
@@ -409,63 +425,84 @@ function CourtCard({
   const warningLines: string[] = []
   if (impact && impact.futureBookings > 0)
     warningLines.push(
-      `Hay ${impact.futureBookings} reserva(s) futura(s) en esta cancha. Gestionalas antes (las existentes se mantienen hasta que las canceles).`,
+      impact.futureBookings === 1
+        ? 'Tiene 1 turno por delante. Sigue en pie hasta que lo canceles.'
+        : `Tiene ${impact.futureBookings} turnos por delante. Siguen en pie hasta que los canceles.`,
     )
   if (impact && impact.activeAbonados > 0)
-    warningLines.push(`Hay ${impact.activeAbonados} turno(s) fijo(s) activo(s) en esta cancha.`)
+    warningLines.push(
+      impact.activeAbonados === 1
+        ? 'Tiene 1 turno fijo activo.'
+        : `Tiene ${impact.activeAbonados} turnos fijos activos.`,
+    )
+
+  const offline = currentStatus === 'offline'
+  const busy = isPending || loadingImpact
+  const summary = summarizePricing(court.pricing.rules, openingHours, closesNextDay)
+
+  const toggle = (
+    <Button
+      type="button"
+      size="sm"
+      variant={offline ? 'outline' : 'ghost'}
+      onClick={handleToggleClick}
+      disabled={busy}
+      className={cn(!offline && 'text-muted-foreground')}
+    >
+      {busy ? '…' : offline ? 'Reactivar' : 'Pausar'}
+    </Button>
+  )
+  const edit = isAdmin ? (
+    <Button type="button" size="sm" variant="outline" onClick={() => onEdit()}>
+      Editar
+    </Button>
+  ) : (
+    <LockedAction label="Editar" className="h-10 md:h-9" />
+  )
 
   return (
-    // rounded-lg (no rounded-xl pese a §4.2/card-premium): e2e canchas-crud
-    // ancla las 3 cards vía `div.rounded-lg` (ver canchas.md §7 deuda declarada).
-    <div className="card-premium rounded-lg p-4 flex items-center justify-between gap-4">
-      <div className="min-w-0 space-y-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">{court.name}</span>
-          <CourtStatusBadge status={currentStatus} />
+    <li className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-6 lg:py-3">
+      {/* Cancha */}
+      <div className="flex min-w-0 items-center gap-3">
+        <CourtThumb
+          court={court}
+          offline={offline}
+          onAdd={isAdmin ? () => onEdit('photos') : undefined}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold text-foreground">{court.name}</p>
+          <p className="text-xs text-muted-foreground">
+            Fútbol {court.format} · {SURFACE_LABELS[court.surfaceType] ?? court.surfaceType}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground tabular-nums">
-          {SURFACE_LABELS[court.surfaceType] ?? court.surfaceType} · {court.capacity} jugadores
-        </p>
-        {isAdmin && court.photos.length === 0 && (
-          <button
-            type="button"
-            onClick={() => onEdit(court)}
-            className="inline-flex min-h-9 items-center gap-1 rounded-md py-1 text-xs font-medium text-amber-700 hover:underline dark:text-amber-400"
-          >
-            <ImageOff className="h-3.5 w-3.5" aria-hidden="true" />
-            Sin foto · agregar
-          </button>
-        )}
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Precio */}
+      <div className="min-w-0">
         {isAdmin ? (
           <button
             type="button"
-            onClick={() => onEdit(court)}
-            className="text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-medium min-h-11 md:min-h-9 px-2 py-1 rounded-md hover:bg-accent transition-colors duration-150"
+            onClick={() => onEdit()}
+            aria-label={`Cambiar el precio de ${court.name}`}
+            className="-mx-2 -my-1 max-w-full rounded-md px-2 py-1 text-left transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Editar
+            <PriceSummary summary={summary} />
           </button>
         ) : (
-          // MASTER §12 CHK-admin: candado+tooltip, nunca desaparición.
-          <span
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground min-h-11 md:min-h-9 px-2 py-1"
-            title="Solo el dueño puede editar la cancha"
-          >
-            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-            Editar
-            <span className="sr-only">— solo el dueño puede hacerlo</span>
-          </span>
+          <PriceSummary summary={summary} />
         )}
-        <button
-          type="button"
-          onClick={handleToggleClick}
-          disabled={isPending || loadingImpact}
-          className="text-xs border border-border min-h-11 md:min-h-9 px-2 py-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
-        >
-          {isPending || loadingImpact ? '…' : currentStatus === 'online' ? 'Desactivar' : 'Activar'}
-        </button>
+      </div>
+
+      {/* En el teléfono, estado y acciones comparten renglón; desde lg son dos columnas. */}
+      <div className="flex items-center justify-between gap-3 lg:contents">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 lg:flex-col lg:items-start">
+          <CourtStatusBadge status={currentStatus} />
+          <span className="text-xs text-muted-foreground">{COURT_STATUS_HINT[currentStatus]}</span>
+        </div>
+        <div className="flex shrink-0 items-center justify-end gap-1.5 lg:w-44">
+          {toggle}
+          {edit}
+        </div>
       </div>
 
       {billingPreview && (
@@ -486,14 +523,17 @@ function CourtCard({
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title={`Desactivar ${court.name}`}
+          title={`Pausar ${court.name}`}
           description={
             <div className="space-y-2">
-              <p>Una cancha offline no recibe reservas nuevas.</p>
+              <p>
+                Mientras esté pausada, los jugadores no la ven en tu perfil y no se le pueden cargar
+                turnos nuevos. La reactivás cuando quieras.
+              </p>
               {warningLines.map((l, i) => (
                 <p
                   key={i}
-                  className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30"
+                  className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30"
                 >
                   {l}
                 </p>
@@ -501,11 +541,11 @@ function CourtCard({
             </div>
           }
           variant="destructive"
-          confirmLabel="Desactivar"
+          confirmLabel="Pausar"
           cancelLabel="Volver"
           onConfirm={onConfirmDeactivate}
         />
       )}
-    </div>
+    </li>
   )
 }

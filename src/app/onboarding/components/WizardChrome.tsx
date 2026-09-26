@@ -114,7 +114,7 @@ export function WizardChrome({ children }: Props) {
 
         {/* Anti-ansiedad (doc10 §4): cuánto falta y que nada es irreversible. */}
         <p className="relative text-xs leading-relaxed text-slate-400">
-          Menos de 5 minutos. Todo se puede cambiar después desde Configuración.
+          Menos de 5 minutos. Todo se puede cambiar después desde Ajustes.
         </p>
       </aside>
 

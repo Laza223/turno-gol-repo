@@ -121,12 +121,13 @@ test.describe('visual — admin', () => {
   test('settings de reservas @visual', async ({ page }) => {
     await suppressPushBanner(page)
     await page.goto('/settings/reservas')
-    // Sin h1 desde el rediseño de Configuración (#306): por MASTER §6.8 la
-    // sección la nombran las pestañas de la barra superior. Se espera el título
-    // de la card, que llega del servidor, y las pestañas, que llegan por portal
-    // recién con la hidratación (ver waitForHeaderSlot, misma carrera).
-    await expect(page.getByRole('heading', { name: 'Políticas de Reserva' })).toBeVisible()
-    await expect(page.getByRole('navigation', { name: 'Secciones de configuración' })).toBeVisible({
+    // Portada de Ajustes (2026-09-25): las pestañas se reemplazaron por
+    // `SettingsHeader`, una barra "‹ Ajustes" que llega por portal recién con
+    // la hidratación (ver waitForHeaderSlot, misma carrera) — por MASTER §6.8
+    // la sección no abre un `<h1>` visible propio, así que el título real de
+    // la página queda sr-only.
+    await expect(page.getByRole('heading', { name: 'Reservas y seña' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Ajustes' })).toBeVisible({
       timeout: 15_000,
     })
     // Formulario denso (switches, inputs numéricos, help text, botón sticky):

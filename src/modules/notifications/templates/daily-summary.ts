@@ -25,10 +25,10 @@ export function renderDailySummary(data: DailySummaryData): EmailContent {
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
   <h2 style="color:#059669">Resumen de ayer</h2>
   <p style="font-size:18px;font-weight:600">${summaryLine}</p>
-  <p style="color:#64748b;font-size:14px">Activaste este resumen en Configuración → Avisos. Podés desactivarlo cuando quieras.</p>
+  <p style="color:#64748b;font-size:14px">Lo activaste en Ajustes → Vos y tu equipo. Lo podés apagar cuando quieras.</p>
   <p style="color:#64748b;font-size:14px">— TurnoGol</p>
 </body>
 </html>`
-  const text = `Resumen de ayer\n\n${summaryLine}\n\nActivaste este resumen en Configuración → Avisos.\n\n— TurnoGol`
+  const text = `Resumen de ayer\n\n${summaryLine}\n\nLo activaste en Ajustes → Vos y tu equipo.\n\n— TurnoGol`
   return { subject, html, text }
 }

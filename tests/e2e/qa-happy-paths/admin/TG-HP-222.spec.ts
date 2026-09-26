@@ -8,8 +8,8 @@ import { suppressPushPrompt } from '../_qa/session'
  * + `deposit_percentage` (+ reservas online + anticipación de cancelación).
  * Rol: solo Admin — `requireAdminStaffAction` (`actions.ts:26`). El gate de
  * acceso a TODO `/settings/*` para manager se verifica en TG-HP-226.
- * Prereq: ninguno especial. Mock data (manual): Requerir seña ON, 50%,
- * Reservas online Habilitadas, Anticipación 24hs (distinto del default 12hs
+ * Prereq: ninguno especial. Mock data (manual): Cobrar seña, 50%,
+ * Reservar desde tu página: Sí, devolución 24hs (distinto del default 12hs
  * del seed, para probar una persistencia real, no un no-op).
  * NO-PLATA: el tenant Demo es fixture compartida por el resto de la corrida —
  * se captura `settings` original y se restaura en `finally`.
@@ -35,7 +35,9 @@ test.describe('TG-HP-222 — Settings reservas: seña + reservas online + antici
       const page = await context.newPage()
 
       await page.goto('/settings/reservas')
-      await expect(page.getByRole('heading', { name: 'Políticas de Reserva' })).toBeVisible({
+      // Sección "Reservas y seña" (2026-09-25): el título visible es la barra
+      // superior (`SettingsHeader`); el `<h1>` de la página quedó sr-only.
+      await expect(page.getByRole('heading', { name: 'Reservas y seña' })).toBeVisible({
         timeout: 15_000,
       })
 
@@ -56,20 +58,18 @@ test.describe('TG-HP-222 — Settings reservas: seña + reservas online + antici
           }
         | undefined
       await expect(async () => {
-        // Seña: ON + 50%.
-        await page.getByRole('button', { name: 'Requerir seña' }).click()
+        // Seña: Cobrar seña + 50%.
+        await page.getByRole('button', { name: 'Cobrar seña' }).click()
         await page.getByRole('button', { name: '50%' }).click()
 
-        // Reservas online: Habilitadas.
-        // exact:true — 'Habilitadas' es substring case-insensitive de 'Deshabilitadas'
-        // (el chip opuesto), strict mode matchea los 2 sin match exacto.
-        await page.getByRole('button', { name: 'Habilitadas', exact: true }).click()
+        // Reservar desde tu página: Sí.
+        await page.getByRole('button', { name: 'Sí', exact: true }).click()
 
-        // Anticipación mínima para cancelar: 24 hs (default seed = 12hs).
+        // Devolución de la seña si cancela: 24 hs (default seed = 12hs).
         await page.getByRole('button', { name: '24 hs' }).click()
 
         await page.getByRole('button', { name: 'Guardar cambios' }).click()
-        await expect(page.getByText('Políticas guardadas.')).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByText('Cambios guardados.')).toBeVisible({ timeout: 10_000 })
 
         // DB layer.
         ;[row] = await runSql<{
@@ -91,8 +91,8 @@ test.describe('TG-HP-222 — Settings reservas: seña + reservas online + antici
         expect(row?.hours_before).toBe(24)
       }).toPass({ timeout: 30_000 })
 
-      // UI-sin-reload: el chip "Requerir seña" sigue marcado activo sin navegación.
-      await expect(page.getByRole('button', { name: 'Requerir seña' })).toHaveClass(
+      // UI-sin-reload: el chip "Cobrar seña" sigue marcado activo sin navegación.
+      await expect(page.getByRole('button', { name: 'Cobrar seña' })).toHaveClass(
         /border-emerald-500/,
       )
 

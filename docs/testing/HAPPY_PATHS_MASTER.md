@@ -1056,93 +1056,124 @@ Fixtures usadas (ver `tests/e2e/global-setup.ts:9-14`, `tests/e2e/grilla-realtim
 ---
 
 ## TG-HP-206 — Crear cancha + subir FOTOS a R2 (≤6)
-- **Rol:** Admin (dueño) — `requireAdminStaffAction` en create/update/upload
-  (`src/app/(admin)/canchas/actions.ts:35,99,230`); listar y activar/desactivar es admin+manager
-  (`requireOperatorStaff`, `canchas/page.tsx:21`).
-- **Prerrequisitos:** Sesión admin inyectada. GAP importante: **el uploader de fotos SOLO aparece en
-  modo edición** (`{isEdit && (...)}`, `src/app/(admin)/canchas/components/CourtForm.tsx:250-268`) — no
-  existe upload de fotos durante la creación inicial. El flujo real es crear primero, después reabrir
-  en "Editar" para subir fotos.
+- **Rol:** Admin (dueño). `/canchas` entra solo con `requireAdminStaff()` (`canchas/page.tsx:20`;
+  el manager rebota a `/dashboard`) y las 7 Server Actions usan `requireAdminStaffAction()`
+  (`src/app/(admin)/canchas/actions.ts:135,218,286,346,399,458,501`).
+- **Prerrequisitos:** Sesión admin inyectada; R2 configurado para la subida real (ver GAP 2).
+  Desde 2026-09-19 el alta TAMBIÉN tiene la sección "Fotos": las elegidas en "Nueva cancha" quedan en
+  el cliente y se suben al crear (`uploadStagedPhotos`, `CourtForm.tsx:195-220`; cubierto en
+  `tests/unit/court-form-photos.test.tsx`). El spec cubre el camino de EDICIÓN, donde cada foto se
+  guarda al elegirla.
 - **Flujo de navegación (UI steps):**
-  1. Navegar a `/canchas`.
-  2. Click `+ Nueva cancha` (texto literal fijado por e2e, comentario
-     `src/app/(admin)/canchas/components/CourtList.tsx:135-137`).
-  3. Rellenar `Nombre` (`#court-name`), elegir `Superficie` (`#court-surface`), `Formato`
-     (`#court-format`, ej. "Fútbol 5") (`CourtForm.tsx:178-231`).
-  4. Cargar precios en la sección "Precios" (`PricingSection`, plantilla rápida — fuera del detalle de
-     este caso).
-  5. Click `Crear cancha` (`CourtForm.tsx:276-282`).
-  6. Toast/estado: sin toast en creación — `onSaved` cierra el form y vuelve a la lista
-     (`CourtForm.tsx:143-159`, `CourtList.tsx:97-109`).
-  7. En la lista, click `Editar` sobre la cancha recién creada (`CourtList.tsx:308-315`) — reabre
-     `CourtForm` en modo edición, ahora con la sección "Fotos" visible.
-  8. Click en el placeholder `Agregar foto` (`emptyLabel`, `CourtForm.tsx:265`) hasta 6 veces
-     (`max={6}`, `CourtForm.tsx:261`).
-  9. Click `Guardar cambios` (`CourtForm.tsx:281`, label cambia según `isEdit`).
+  1. Navegar a `/canchas` (`networkidle`: el uploader es cliente y `setInputFiles` antes de hidratar
+     es un no-op).
+  2. Click `+ Nueva cancha` (texto literal fijado por e2e, `CourtList.tsx:184-186`). La lista se
+     reemplaza por el editor: `h1` "Nueva cancha" (`CourtForm.tsx:335-337`).
+  3. Rellenar `Nombre` (`#court-name`, placeholder "Ej: Cancha 1"); `Formato` (`#court-format`,
+     default "Fútbol 5") y `Superficie` (`#court-surface`) quedan en su default
+     (`CourtForm.tsx:341-384`).
+  4. Cargar el precio en "Precio del turno" (`PriceSetup`, `CourtForm.tsx:386-398`): con las dos
+     preguntas en "No", un único `MoneyInput` con label "Precio del turno" (`#price-base-day`,
+     `price-setup/PriceSetup.tsx:422-438`) que cubre toda la semana al instante — sin botón "Aplicar".
+     Lo cargado se ve en "Así queda la semana".
+  5. Click `Crear cancha` en la barra sticky (`CourtForm.tsx:457-464`).
+  6. Vuelve a la lista (`h1` "Canchas") con la cancha nueva al final, "Activa", y toast
+     `Cancha creada` (`CourtList.tsx:135-148`).
+  7. En la fila (`li`) de la cancha, click `Editar` (`CourtList.tsx:455-461`) — reabre el editor con
+     `h1` = nombre de la cancha.
+  8. En "Fotos", `setInputFiles` sobre el uploader con label `Agregar foto` (`emptyLabel`,
+     `CourtForm.tsx:414-423`), una por vez, esperando el contador `N/6` (`max={6}`).
+  9. Click `Guardar cambios` (mismo botón, label según `isEdit`) → vuelve a la lista.
 - **Comportamiento de componentes:**
-  - Loading/Anti-doble-submit: `Button isLoading={isPending}` sobre `useTransition`
-    (`CourtForm.tsx:69,276-279`) — deshabilita el submit mientras corre `createAction`/`updateAction`.
-    El upload de fotos usa el mismo `ImageUploader` (`busy` state, `image-uploader.tsx:35,146-150`).
-  - Feedback: sin toast en ningún punto del form de cancha — error inline `role="alert"`
-    (`CourtForm.tsx:270-274`). El toggle Activar/Desactivar (fuera de este caso) sí usa `toast()`
-    (`CourtList.tsx:244-246,256-260,275`).
+  - Loading/Anti-doble-submit: `Button isLoading={isPending}` sobre `useTransition`; "Cancelar", el
+    volver a "Canchas" y el uploader quedan `disabled` mientras corre (`CourtForm.tsx:457-464`). El
+    upload de fotos usa el `busy` propio de `ImageUploader`.
+  - Feedback: toast `Cancha creada` / `Cancha actualizada` al volver a la lista
+    (`CourtList.tsx:147`); errores inline `role="alert"` arriba de la barra (`CourtForm.tsx:445-451`).
+    Guardar con horas sin precio corta en el cliente con "No se puede guardar: falta el precio del
+    turno." o "… faltan N horas sin precio. Están en ámbar en «Así queda la semana»."
+    (`CourtForm.tsx:232-253`).
+  - Aviso de cuota: si la cancha nueva deja más canchas activas que las facturadas, la primera llamada
+    vuelve `requiresBillingConfirmation` sin crear nada y abre el diálogo "Esto suma tu Nª cancha";
+    "Confirmar" reenvía el mismo `FormData` (`CourtForm.tsx:312-319`). En el tenant E2E en prueba no
+    aparece mientras no se supere `billed_courts`.
 - **Validación de datos:**
-  - DB: `createCourt(tenant.id, parsed.data, tx)` dentro de `withTenantContext`, gate de límite de
-    plan (`getCourtCountAndLimit`, `canchas/actions.ts:77-87`); fotos se agregan con
-    `appendCourtPhoto(courtId, tenant.id, url, tx)` (`canchas/actions.ts:266-269`).
-  - API/Action: `createCourtAction(formData)` (`canchas/actions.ts:34-91`) →
-    `{ success: true, courtId }`; `uploadCourtPhotoAction(courtId, formData)`
-    (`canchas/actions.ts:226-277`) → `{ success: true, photos: string[] }`.
-  - Externos: R2 real, gate `isR2Configured()` (`canchas/actions.ts:239-242`) — key
-    `${tenant.id}/courts/${courtId}/${crypto.randomUUID()}.webp` (`canchas/actions.ts:256`),
-    `MAX_PHOTO_BYTES = 2MB` (`canchas/actions.ts:222`).
-  - UI-sin-reload: `revalidatePath('/canchas')` + `revalidatePath('/${tenant.slug}')` en creación y en
-    cada foto (`canchas/actions.ts:89,271-272`).
+  - DB: `createCourt(tenant.id, parsed.data, tx)` dentro de `withTenantContext`, con el gate de
+    facturación `getCourtCountAndBilled` + `billingPreviewFor` (`canchas/actions.ts:188-206`); fotos
+    con `appendCourtPhoto(courtId, tenant.id, url, tx)` (`canchas/actions.ts:436-440`).
+  - API/Action: `createCourtAction(formData, confirmBillingChange?)` (`canchas/actions.ts:131-210`)
+    → `{ success: true, courtId }`; `uploadCourtPhotoAction(courtId, formData)`
+    (`canchas/actions.ts:395-452`) → `{ success: true, photos: string[] }`.
+  - Externos: R2 real, gate `isR2Configured()` (`canchas/actions.ts:408-411`) — key
+    `${tenant.id}/courts/${courtId}/${crypto.randomUUID()}.webp` (`canchas/actions.ts:425`),
+    `MAX_PHOTO_BYTES = 2MB` (`canchas/actions.ts:391`).
+  - UI-sin-reload: `revalidatePath('/canchas')` al crear (`canchas/actions.ts:208`) y
+    `revalidatePath('/canchas')` + `revalidatePath('/${tenant.slug}')` en cada foto
+    (`canchas/actions.ts:441-442`).
 - **Evidencia (path:línea):**
-  - `src/app/(admin)/canchas/actions.ts:34-91,226-277` (createCourtAction, uploadCourtPhotoAction)
-  - `src/app/(admin)/canchas/components/CourtForm.tsx:162-283` (form completo, gate `isEdit` para
-    fotos)
-  - `src/app/(admin)/canchas/components/CourtList.tsx:128-149` ("+ Nueva cancha" literal)
+  - `src/app/(admin)/canchas/actions.ts:131-210,395-452` (createCourtAction, uploadCourtPhotoAction)
+  - `src/app/(admin)/canchas/components/CourtForm.tsx:324-485` (editor como página, secciones, barra
+    sticky)
+  - `src/app/(admin)/canchas/components/price-setup/PriceSetup.tsx:422-438` (precio único)
+  - `src/app/(admin)/canchas/components/CourtList.tsx:184-186` ("+ Nueva cancha" literal)
+  - Spec: `tests/e2e/qa-happy-paths/admin/TG-HP-206.spec.ts`
 
 ---
 
-## TG-HP-207 — Editar cancha / desactivar (court_status online/offline)
-- **Rol:** Editar (nombre/precio/formato) = solo admin; activar/desactivar = admin + manager
-  (`src/app/(admin)/canchas/actions.ts:32-33,151-152`, decisión revisada 2026-07-01).
-- **Prerrequisitos:** Cancha E2E 1 (`...010`) existente y `online`.
+## TG-HP-207 — Editar cancha / pausar-reactivar (court_status online/offline)
+- **Rol:** Admin (dueño) para todo: editar y pausar/reactivar usan `requireAdminStaffAction()`
+  (`src/app/(admin)/canchas/actions.ts:218,286,346`). Ya no hay rama de manager: `/canchas` es solo
+  del dueño (`canchas/page.tsx:20`).
+- **Prerrequisitos:** Cancha E2E 1 (`...010`) existente y `online`. El spec restaura nombre, estado y
+  precio en `finally` (fixture compartida por la corrida QA).
 - **Flujo de navegación (UI steps) — Editar:**
   1. Navegar a `/canchas`.
-  2. Click `Editar` sobre la cancha (`CourtList.tsx:308-315`, visible solo si `isAdmin`).
-  3. Modificar `Nombre` y/o precios.
-  4. Click `Guardar cambios` (`CourtForm.tsx:281`).
-- **Flujo de navegación (UI steps) — Desactivar:**
-  5. Click `Desactivar` (texto dinámico según `currentStatus`, `CourtList.tsx:316-323`).
-  6. Se abre `ConfirmDialog` título `Desactivar {court.name}`, texto "Una cancha offline no recibe
-     reservas nuevas." + warnings si hay reservas futuras/abonados activos
-     (`CourtList.tsx:326-346`).
-  7. Click `Desactivar` dentro del diálogo (`confirmLabel="Desactivar"`).
+  2. En la fila (`li`) de la cancha, click `Editar` (`CourtList.tsx:455-461`). También abre el editor
+     el resumen de precio (`aria-label="Cambiar el precio de {nombre}"`).
+  3. El editor muestra `h1` = nombre de la cancha (`CourtForm.tsx:335-337`). Modificar `Nombre`
+     (`#court-name`) y/o el precio.
+  4. Click `Guardar cambios` → vuelve a la lista con el nombre nuevo y toast `Cancha actualizada`.
+- **Flujo de navegación (UI steps) — Pausar:**
+  5. En la fila, click `Pausar` (texto según `currentStatus`: "Pausar" si está Activa, "Reactivar" si
+     está Pausada; `CourtList.tsx:443-454`).
+  6. Se abre `ConfirmDialog` destructivo con título `Pausar {court.name}` y el texto "Mientras esté
+     pausada, los jugadores no la ven en tu perfil y no se le pueden cargar turnos nuevos. La
+     reactivás cuando quieras." + avisos ámbar si tiene turnos por delante ("Tiene N turnos por
+     delante. Siguen en pie hasta que los canceles.") o turnos fijos activos
+     (`CourtList.tsx:425-437,522-547`).
+  7. Click `Pausar` dentro del diálogo (`confirmLabel="Pausar"`, `cancelLabel="Volver"`). La fila
+     pasa a "Pausada" · "Los jugadores no la ven".
+- **Flujo de navegación (UI steps) — Reactivar:**
+  8. Click `Reactivar`: sin diálogo, la fila pasa a "Activa" de forma optimista antes de que termine
+     el `UPDATE` (el spec hace `expect.poll` sobre la DB).
 - **Comportamiento de componentes:**
-  - Loading: `getCourtDeactivationImpactAction` corre antes de abrir el diálogo (`loadingImpact`
-    state, botón muestra "…" mientras carga, `CourtList.tsx:229-235,319-323`).
-  - Anti-doble-submit: botón toggle `disabled={isPending || loadingImpact}` (`CourtList.tsx:319`).
-  - Feedback: toast `Cancha desactivada` variant `success` al confirmar
-    (`CourtList.tsx:275`); si falla la verificación de impacto, toast `No se pudo verificar el
-    impacto` variant `destructive` (`CourtList.tsx:256-260`) — el diálogo NO se abre con datos falsos
-    (comentario "Fix #58", `CourtList.tsx:254-255`).
+  - Loading: `getCourtDeactivationImpactAction` corre antes de abrir el diálogo (`loadingImpact`, el
+    botón muestra "…" mientras carga, `CourtList.tsx:386-402`).
+  - Anti-doble-submit: botón toggle `disabled={busy}` = `isPending || loadingImpact`
+    (`CourtList.tsx:443-454`).
+  - Feedback: toast `Cancha pausada` / `Cancha activada` variant `success`, los dos con acción
+    "Deshacer" que invoca el toggle inverso sin diálogo (`CourtList.tsx:332-384,404-419`); si falla la
+    verificación de impacto, toast `No se pudo verificar el impacto` variant `destructive` y el diálogo
+    NO se abre con datos falsos (fix #58, `CourtList.tsx:388-401`).
+  - Aviso de cuota: reactivar por encima de `billed_courts` no prende la cancha: abre "Esto suma tu Nª
+    cancha" y "Confirmar" la prende con `confirmBillingChange=true`, con toast sin "Deshacer"
+    (`CourtList.tsx:358-367,508-520`).
 - **Validación de datos:**
   - DB: `updateCourt` (edición) / `toggleStatus(courtId, tenant.id, 'offline'|'online', tx)`
-    (`canchas/actions.ts:95-172`); `court_status` enum valores `online`/`offline` (sin
-    active/maintenance/inactive, per CLAUDE.md).
-  - API/Action: `updateCourtAction(courtId, formData)`, `toggleCourtStatusAction(courtId, status)`
-    (`canchas/actions.ts:95-172`) → `{ success: true, courtId }`.
-  - Externos: ninguno.
-  - UI-sin-reload: `revalidatePath('/canchas')` en ambas (`canchas/actions.ts:147,170`); el badge de
-    estado se actualiza además vía `setCurrentStatus` optimista (`CourtList.tsx:238-247,266-277`).
+    (`canchas/actions.ts:214-336`); `court_status` enum `online`/`offline` — en la UI se leen
+    "Activa"/"Pausada" (`status-visual.tsx:12-24`).
+  - API/Action: `updateCourtAction(courtId, formData)`, `toggleCourtStatusAction(courtId, status,
+    confirmBillingChange?)` (`canchas/actions.ts:214-336`) → `{ success: true, courtId }`.
+  - Externos: ninguno (salvo el gateway de billing si hay que mover `billed_courts` al reactivar).
+  - UI-sin-reload: `revalidatePath('/canchas')` en ambas (`canchas/actions.ts:275,334`); el badge se
+    actualiza además vía `setCurrentStatus` optimista (`CourtList.tsx:332-419`).
 - **Evidencia (path:línea):**
-  - `src/app/(admin)/canchas/actions.ts:93-217` (updateCourtAction, toggleCourtStatusAction,
+  - `src/app/(admin)/canchas/actions.ts:214-386` (updateCourtAction, toggleCourtStatusAction,
     getCourtDeactivationImpactAction)
-  - `src/app/(admin)/canchas/components/CourtList.tsx:216-349` (card, toggle, ConfirmDialog)
-  - `src/app/(admin)/canchas/components/status-visual.tsx:16-29` (labels "Online"/"Offline")
+  - `src/app/(admin)/canchas/components/CourtList.tsx:298-551` (fila, toggle, diálogos)
+  - `src/app/(admin)/canchas/components/status-visual.tsx:12-39` (labels "Activa"/"Pausada" y "Los
+    jugadores la ven y la reservan" / "Los jugadores no la ven")
+  - Spec: `tests/e2e/qa-happy-paths/admin/TG-HP-207.spec.ts`
 
 ---
 
@@ -1414,17 +1445,16 @@ Fixtures usadas (ver `tests/e2e/global-setup.ts:9-14`, `tests/e2e/grilla-realtim
 
 ## GAPS
 
-1. **TG-HP-206 (fotos de cancha durante la creación):** no existe upload de fotos en el modo "Nueva
-   cancha" — la sección `ImageUploader` de `CourtForm.tsx` solo se renderiza con `{isEdit && (...)}`
-   (`src/app/(admin)/canchas/components/CourtForm.tsx:250-268`). El happy path real es crear → editar
-   → subir fotos (documentado arriba), no "crear con fotos" en un solo paso. (El wizard de onboarding
-   Paso 3 SÍ permite fotos en el draft de creación, `StepCourts`/`CourtDraftCard` — camino distinto,
-   fuera de `/canchas`.)
+1. **TG-HP-206 (fotos de cancha durante la creación): CERRADO 2026-09-19.** "Nueva cancha" ya
+   tiene la sección "Fotos": las elegidas quedan en el cliente y se suben cuando `createCourtAction`
+   devuelve el id (`uploadStagedPhotos`, `src/app/(admin)/canchas/components/CourtForm.tsx:195-220`;
+   cubierto en `tests/unit/court-form-photos.test.tsx`). El spec e2e sigue cubriendo el camino de
+   edición (crear → editar → subir), que es el que hace upload real a R2 por foto.
 2. **TG-HP-204/205/206 — R2 no configurado:** si `isR2Configured()` es `false` (falta la config de R2
    en el entorno de test), las 3 actions de upload devuelven exactamente
    `{ success: false, error: 'Storage no configurado en este entorno' }` sin lanzar excepción
    (`settings/perfil/actions.ts:43-46`, `onboarding/actions.ts:271-274`,
-   `canchas/actions.ts:239-242`) — el sub-agente browser debe verificar `process.env` de R2 antes de
+   `canchas/actions.ts:408-411`) — el sub-agente browser debe verificar `process.env` de R2 antes de
    asumir que el happy path completo (subida real) es alcanzable en el entorno de ejecución; si no lo
    está, el happy path documentable es el mensaje de gate, no la subida.
 3. **TG-HP-209 — cobertura automatizada real:** los 2 E2E de Realtime multi-browser (<2s propagación y

@@ -93,7 +93,7 @@
 | ID | Acción | Cómo dispararla | Resultado esperado EXACTO | Cómo verificar | Ejecutor |
 |---|---|---|---|---|---|
 | J1 | Políticas de reserva | `/settings/reservas` → editar seña/anticipación/cancelación → guardar | `tenants.settings` JSONB actualizado; NO retroactivo (US-ADM-002) | Query + reserva nueva usa política nueva | SONNET ⚠️ |
-| J2 | Desactivar cancha con reserva futura | `/canchas` → desactivar | Warning explícito; `courts.status='offline'`; slots desaparecen; booking existente se mantiene (US-ADM-001 edge) | Queries | E2E — `canchas-crud.spec.ts` |
+| J2 | Pausar cancha con reserva futura | `/canchas` → Pausar | Aviso ámbar "Tiene N turnos por delante…" en el diálogo; `courts.status='offline'`; slots desaparecen; booking existente se mantiene (US-ADM-001 edge) | Queries | E2E — `canchas-crud.spec.ts` |
 
 ## K) Billing SaaS — CERO cobertura e2e, prioridad máxima del ensayo
 

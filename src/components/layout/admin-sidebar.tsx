@@ -113,28 +113,21 @@ const NAV_ITEMS: NavItem[] = [
 /**
  * Fuera del flujo diario: se separa del resto empujándolo al pie del riel.
  *
- * Apunta a `/settings/reservas` y no a `/settings`: esa última es un stub cuyo
- * único cuerpo es `redirect('/settings/reservas')`, así que entrar por ahí
- * costaba un render de servidor entero —con su cadena de auth completa— para
- * después mandar al navegador a hacer una segunda navegación. El destino final
- * es el mismo. `/settings` sigue existiendo para links y favoritos viejos.
+ * Apunta a `/settings`, la portada de Ajustes (2026-09-25): cuatro grupos por
+ * consecuencia —lo que ve el jugador, cobrarle al jugador, lo que pagás a
+ * TurnoGol, vos y tu equipo— con el valor de hoy de cada cosa. Un solo nombre
+ * en todos lados: "Ajustes" entra en los 60 px del riel, y el cajón y el
+ * nombre accesible dicen lo mismo (antes el riel decía "Ajustes" y el lector
+ * de pantalla "Configuración", WCAG 2.5.3).
  */
 export const CONFIG_ITEM: NavItem = {
-  href: '/settings/reservas',
+  href: '/settings',
   icon: Settings,
-  label: 'Configuración',
+  label: 'Ajustes',
   requiresAdmin: true,
   alertKey: 'profile',
   match: (p) => p === '/settings' || p.startsWith('/settings/'),
 }
-
-/**
- * En el riel el rótulo dice "Ajustes" y no "Configuración": a 60 px de ancho la
- * palabra larga no entra en una línea, y partirla en dos rompe la altura de fila
- * del resto. El cajón mobile, que tiene ancho, sigue diciendo la palabra
- * completa — es el mismo espacio y el vocabulario de la auditoría lo nombra así.
- */
-const CONFIG_RAIL_LABEL = 'Ajustes'
 
 /** Un espacio está activo si su `match` lo dice; si no, por igualdad o prefijo del href. */
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
@@ -500,7 +493,7 @@ function SidebarRail({
             <ConfigIcon className={navIconClass(configActive)} />
             {configAlert && <SetupAlertDot className={RAIL_DOT} />}
           </span>
-          <span className={RAIL_LABEL}>{CONFIG_RAIL_LABEL}</span>
+          <span className={RAIL_LABEL}>{CONFIG_ITEM.label}</span>
         </Link>
       ) : (
         // MASTER §6.8: al manager el ítem se le BLOQUEA, no se le esconde — el
@@ -529,7 +522,7 @@ function SidebarRail({
                   aria-hidden
                 />
               </span>
-              <span className={RAIL_LABEL}>{CONFIG_RAIL_LABEL}</span>
+              <span className={RAIL_LABEL}>{CONFIG_ITEM.label}</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Solo el dueño</TooltipContent>

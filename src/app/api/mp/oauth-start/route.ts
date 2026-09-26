@@ -27,7 +27,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const clientId = process.env.MP_CLIENT_ID
   if (!clientId) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_not_configured', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_not_configured#mercado-pago', req.url),
+    )
   }
 
   // Falla CERRADO: sin la variable, NUNCA se firma con clave vacía (un valor
@@ -36,7 +38,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // campaña de mutación — mismo patrón que el incidente de ENCRYPTION_KEY).
   const secret = process.env.MP_CLIENT_SECRET
   if (!secret) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_config_missing#mercado-pago', req.url),
+    )
   }
   const payload = Buffer.from(`${tenant.id}:${Date.now()}`).toString('base64url')
   const sig = createHmac('sha256', secret).update(payload).digest('base64url')
@@ -44,7 +48,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) {
-    return NextResponse.redirect(new URL('/settings/facturacion?error=mp_config_missing', req.url))
+    return NextResponse.redirect(
+      new URL('/settings/reservas?error=mp_config_missing#mercado-pago', req.url),
+    )
   }
   const redirectUri = `${appUrl}/api/mp/callback`
 

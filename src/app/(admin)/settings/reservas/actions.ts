@@ -75,7 +75,7 @@ export async function updateReservasPolicyAction(
     return {
       success: false,
       error:
-        'Para cobrar seña primero tenés que conectar MercadoPago en Configuración → Facturación. Hasta entonces, dejá la reserva en "Sin seña".',
+        'Para cobrar seña primero conectá MercadoPago, abajo en esta misma pantalla. Hasta entonces, dejá "Sin seña".',
     }
   }
 

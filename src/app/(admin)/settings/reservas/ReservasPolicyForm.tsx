@@ -42,6 +42,20 @@ function formatShortDate(dateStr: string): string {
   return `${DOW_FORMATTER.format(dt)} ${DAY_MONTH_FORMATTER.format(dt)}`
 }
 
+/**
+ * Qué pasa con la seña según el plazo elegido. `hours_before` no limita cuándo
+ * se cancela: el jugador cancela hasta que termina el turno. Lo que decide es
+ * si la seña pagada se le devuelve —la devuelve el complejo y queda anotada en
+ * Caja › Cuentas, TurnoGol no reembolsa por API— o queda para el complejo
+ * (`booking.cancellation.ts`: `inPolicy` → `registerRefundDue`).
+ */
+function refundConsequence(requiresDeposit: boolean, hours: number): string {
+  if (!requiresDeposit) return 'Sin seña no hay nada que devolver: este plazo no cambia nada.'
+  if (hours === 0)
+    return 'Si cancela antes de que empiece el turno, le devolvés la seña vos (te queda anotada en Caja › Cuentas). Si ya empezó, queda para el complejo.'
+  return `Si cancela con más de ${hours} h, le devolvés la seña vos (te queda anotada en Caja › Cuentas). Con menos, queda para el complejo.`
+}
+
 /** Firma de la Server Action que consume el form. */
 export type UpdateReservasPolicy = (
   prevState: PolicyActionResult,
@@ -49,7 +63,7 @@ export type UpdateReservasPolicy = (
 ) => Promise<PolicyActionResult>
 
 /**
- * Form cliente de Políticas de Reserva (#21). Consume el PolicyActionResult vía
+ * Form cliente de Reservas y seña (#21; antes "Políticas de Reserva"). Consume el PolicyActionResult vía
  * useActionState para mostrar error/éxito y usa SubmitButton para el estado de carga.
  * Utiliza selectores de chips premium para una experiencia fluida e interactiva.
  *
@@ -158,8 +172,14 @@ export function ReservasPolicyForm({
 
           {examplePriceCents == null ? (
             <p className="text-xs text-muted-foreground">
-              Cargá el precio de tus canchas en Configuración → Canchas para ver acá una vista
-              previa con plata real.
+              Cargá el precio de tus canchas en{' '}
+              <Link
+                href="/canchas"
+                className="font-medium text-emerald-700 underline underline-offset-2 dark:text-emerald-400"
+              >
+                Canchas
+              </Link>{' '}
+              para ver acá un ejemplo con plata real.
             </p>
           ) : (
             <>
@@ -203,10 +223,14 @@ export function ReservasPolicyForm({
           )}
 
           <p className="border-t border-border pt-3 text-xs text-muted-foreground dark:border-white/10">
-            {validCancelHours != null
-              ? `Cancelación gratis hasta ${validCancelHours} h antes`
-              : 'Cancelación según tu política'}
-            {' · '}
+            {requiresDeposit && validCancelHours != null && (
+              <>
+                {validCancelHours === 0
+                  ? 'Si cancela antes de que empiece, se le devuelve la seña'
+                  : `Si cancela hasta ${validCancelHours} h antes, se le devuelve la seña`}
+                {' · '}
+              </>
+            )}
             {validAdvanceDays != null
               ? `Podés reservar hasta ${validAdvanceDays} días adelante`
               : 'Anticipación según tu política'}
@@ -217,293 +241,313 @@ export function ReservasPolicyForm({
       <form
         action={formAction}
         onSubmit={() => setDidSubmit(true)}
-        className="space-y-8 lg:order-1 lg:col-span-2"
+        className="space-y-10 lg:order-1 lg:col-span-2"
       >
-        {/* RESERVAS ONLINE */}
-        <div className="space-y-3">
-          <Label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
-            Reservas online
-          </Label>
-          <p className="text-xs text-muted-foreground max-w-md">
-            Permite que los jugadores reserven solos desde la página pública de tu complejo. Si las
-            deshabilitás, solo vos podés cargar reservas desde el panel.
-          </p>
-          <SegmentedControl
-            className="flex gap-2"
-            aria-label="Reservas online"
-            value={allowOnlineBooking ? 'yes' : 'no'}
-            onValueChange={(v) => setAllowOnlineBooking(v === 'yes')}
-            itemClassName={pillClass}
-            options={[
-              { value: 'yes', label: 'Habilitadas' },
-              { value: 'no', label: 'Deshabilitadas' },
-            ]}
-          />
-          <input
-            type="hidden"
-            name="allowOnlineBooking"
-            value={allowOnlineBooking ? 'true' : 'false'}
-          />
-        </div>
+        {/* Dos bloques y una sola action: `updateReservasPolicyAction` guarda
+            todo junto, así que se parte con títulos dentro del mismo form y no
+            en dos forms con dos "Guardar". */}
+        <section aria-labelledby="reservas-internet" className="space-y-8">
+          <header>
+            <h2 id="reservas-internet" className="text-base font-semibold text-foreground">
+              Reservas por internet
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Lo que el jugador puede hacer solo, desde tu página.
+            </p>
+          </header>
 
-        {/* SEÑA */}
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90 mb-1">
-            Seña
-          </legend>
-          <SegmentedControl
-            className={`flex gap-2 ${mpConnected ? '' : 'opacity-50 cursor-not-allowed'}`}
-            aria-label="Seña"
-            value={requiresDeposit ? 'yes' : 'no'}
-            onValueChange={(v) => setRequiresDeposit(v === 'yes')}
-            itemClassName={pillClass}
-            disabled={!mpConnected}
-            options={[
-              { value: 'yes', label: 'Requerir seña' },
-              { value: 'no', label: 'Sin seña' },
-            ]}
-          />
-          <input type="hidden" name="requiresDeposit" value={requiresDeposit ? 'true' : 'false'} />
-
-          {!mpConnected && (
+          {/* RESERVAR DESDE TU PÁGINA */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
+              Reservar desde tu página
+            </Label>
             <p className="text-xs text-muted-foreground max-w-md">
-              Para cobrar seña necesitás conectar MercadoPago.{' '}
-              <Link
-                href="/settings/facturacion"
-                className="font-medium text-emerald-700 underline underline-offset-2 dark:text-emerald-400"
-              >
-                Conectar MercadoPago
-              </Link>
-              .
+              Si decís que no, los turnos los cargan vos o el encargado desde la Grilla.
             </p>
-          )}
-
-          {requiresDeposit && (
-            <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
-              <Label htmlFor="depositPercentage" className="text-sm font-medium text-foreground">
-                Porcentaje de seña (%)
-              </Label>
-              <div className="flex flex-wrap items-center gap-2">
-                <SegmentedControl
-                  className="flex flex-wrap items-center gap-2"
-                  // No repite el texto de <Label htmlFor="depositPercentage"> a
-                  // propósito: un `aria-label` idéntico (o que lo contenga como
-                  // substring) hace que `getByLabelText(/porcentaje de seña/i)`
-                  // matchee DOS elementos — el radiogroup Y el input — y las
-                  // stories con ese query ambiguan (`getMultipleElementsFoundError`).
-                  aria-label="% de seña (presets)"
-                  value={selectedPercentage === 'other' ? 'other' : String(selectedPercentage)}
-                  onValueChange={(v) => {
-                    if (v !== 'other') {
-                      setSelectedPercentage(Number(v))
-                      return
-                    }
-                    // MEJORA-UX QA: "Otro" pisaba el input con el `customPercentage`
-                    // de INIT (30 fijo si arrancó en un preset) en vez del % activo
-                    // — con seña real en 50%, mostraba "30" y guardar de largo
-                    // bajaba la seña en silencio. Precarga con el preset activo.
-                    if (typeof selectedPercentage === 'number') {
-                      setCustomPercentage(String(selectedPercentage))
-                    }
-                    setSelectedPercentage('other')
-                  }}
-                  itemClassName={chipClass}
-                  options={[
-                    { value: '30', label: '30%' },
-                    { value: '50', label: '50%' },
-                    { value: '100', label: '100%' },
-                    { value: 'other', label: 'Otro' },
-                  ]}
-                />
-
-                {selectedPercentage === 'other' && (
-                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-                    <Input
-                      id="depositPercentage"
-                      type="number"
-                      inputMode="numeric"
-                      min={10}
-                      max={100}
-                      value={customPercentage}
-                      onChange={(e) => setCustomPercentage(e.target.value)}
-                      placeholder="Ej: 40"
-                      className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
-                      required
-                    />
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">Entre 10% y 100%</p>
-              {examplePriceCents != null && depositCents != null && (
-                <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
-                  <Wallet className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                  <span>
-                    En un turno de {formatArs(examplePriceCents)}, el jugador paga{' '}
-                    {formatArs(depositCents)} ahora y el resto en el complejo.
-                  </span>
-                </p>
-              )}
-              <input
-                type="hidden"
-                name="depositPercentage"
-                value={selectedPercentage === 'other' ? customPercentage : selectedPercentage}
-              />
-            </div>
-          )}
-        </fieldset>
-
-        {/* ANTICIPACION MAXIMA PARA RESERVAR */}
-        <div className="space-y-3">
-          <Label
-            htmlFor="bookingAdvanceDays"
-            className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
-          >
-            Anticipación para reservar
-          </Label>
-          <p className="text-xs text-muted-foreground max-w-md">
-            Cuántos días a futuro pueden ver y reservar los jugadores desde la página pública.
-          </p>
-          <div className="flex items-center gap-2">
-            <Input
-              id="bookingAdvanceDays"
-              name="bookingAdvanceDays"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={60}
-              value={advanceDaysInput}
-              onChange={(e) => setAdvanceDaysInput(e.target.value)}
-              className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
-              required
-            />
-            <span className="text-sm text-muted-foreground">días</span>
-          </div>
-          <p className="text-xs text-muted-foreground">Entre 1 y 60 días</p>
-          {validAdvanceDays != null && (
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
-              <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>
-                El jugador ve turnos hasta el{' '}
-                {formatShortDate(addDays(artTodayStr(), validAdvanceDays))}. Vos podés cargar
-                reservas más adelante desde la Grilla.
-              </span>
-            </p>
-          )}
-        </div>
-
-        {/* ANTICIPACION MINIMA PARA CANCELAR */}
-        <div className="space-y-3">
-          <Label
-            htmlFor="cancellationHoursBefore"
-            className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
-          >
-            Anticipación mínima para cancelar
-          </Label>
-          <div className="flex flex-wrap items-center gap-2">
             <SegmentedControl
-              className="flex flex-wrap items-center gap-2"
-              // Mismo motivo que el `aria-label` de "% de seña" de arriba: no
-              // repetir el texto de la <Label> vecina (evita ambigüar un futuro
-              // `getByLabelText` entre el radiogroup y el input de "Otro").
-              aria-label="Anticipación para cancelar (presets)"
-              value={selectedHours === 'other' ? 'other' : String(selectedHours)}
-              onValueChange={(v) => {
-                if (v !== 'other') {
-                  setSelectedHours(Number(v))
-                  return
-                }
-                // Misma clase que el "Otro" de seña, arriba.
-                if (typeof selectedHours === 'number') setCustomHours(String(selectedHours))
-                setSelectedHours('other')
-              }}
-              itemClassName={chipClass}
+              className="flex gap-2"
+              aria-label="Reservar desde tu página"
+              value={allowOnlineBooking ? 'yes' : 'no'}
+              onValueChange={(v) => setAllowOnlineBooking(v === 'yes')}
+              itemClassName={pillClass}
               options={[
-                { value: '0', label: 'Sin límite' },
-                { value: '2', label: '2 hs' },
-                { value: '6', label: '6 hs' },
-                { value: '12', label: '12 hs' },
-                { value: '24', label: '24 hs' },
-                { value: 'other', label: 'Otro' },
+                { value: 'yes', label: 'Sí' },
+                { value: 'no', label: 'No' },
               ]}
             />
+            <input
+              type="hidden"
+              name="allowOnlineBooking"
+              value={allowOnlineBooking ? 'true' : 'false'}
+            />
+          </div>
 
-            {selectedHours === 'other' && (
-              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-                <Input
-                  id="cancellationHoursBefore"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={72}
-                  value={customHours}
-                  onChange={(e) => setCustomHours(e.target.value)}
-                  placeholder="Ej: 48"
-                  className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
-                  required
+          {/* HASTA CUÁNTOS DÍAS ADELANTE */}
+          <div className="space-y-3">
+            <Label
+              htmlFor="bookingAdvanceDays"
+              className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
+            >
+              Hasta cuántos días adelante
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="bookingAdvanceDays"
+                name="bookingAdvanceDays"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={60}
+                value={advanceDaysInput}
+                onChange={(e) => setAdvanceDaysInput(e.target.value)}
+                className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
+                required
+              />
+              <span className="text-sm text-muted-foreground">días</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Entre 1 y 60 días</p>
+            {validAdvanceDays != null && (
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
+                <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>
+                  El jugador ve turnos hasta el{' '}
+                  {formatShortDate(addDays(artTodayStr(), validAdvanceDays))}. Vos podés cargar
+                  reservas más adelante desde la Grilla.
+                </span>
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* `scroll-mt-24`: la portada linkea acá (`#sena`) y la barra del panel
+            es sticky — sin margen, el título quedaba tapado. */}
+        <section id="sena" aria-labelledby="sena-titulo" className="scroll-mt-24 space-y-8">
+          <header>
+            <h2 id="sena-titulo" className="text-base font-semibold text-foreground">
+              Seña
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Lo que paga el jugador al reservar por internet.
+            </p>
+          </header>
+
+          <div className="space-y-4">
+            <SegmentedControl
+              className={`flex gap-2 ${mpConnected ? '' : 'opacity-50 cursor-not-allowed'}`}
+              aria-label="Seña"
+              value={requiresDeposit ? 'yes' : 'no'}
+              onValueChange={(v) => setRequiresDeposit(v === 'yes')}
+              itemClassName={pillClass}
+              disabled={!mpConnected}
+              options={[
+                { value: 'yes', label: 'Cobrar seña' },
+                { value: 'no', label: 'Sin seña' },
+              ]}
+            />
+            <input
+              type="hidden"
+              name="requiresDeposit"
+              value={requiresDeposit ? 'true' : 'false'}
+            />
+
+            {!mpConnected && (
+              <p className="text-xs text-muted-foreground max-w-md">
+                Para cobrar seña, primero{' '}
+                <a
+                  href="#mercado-pago"
+                  className="font-medium text-emerald-700 underline underline-offset-2 dark:text-emerald-400"
+                >
+                  conectá MercadoPago acá abajo
+                </a>
+                .
+              </p>
+            )}
+
+            {requiresDeposit && (
+              <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <Label htmlFor="depositPercentage" className="text-sm font-medium text-foreground">
+                  Cuánto paga al reservar
+                </Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <SegmentedControl
+                    className="flex flex-wrap items-center gap-2"
+                    // No repite el texto de <Label htmlFor="depositPercentage"> a
+                    // propósito: un `aria-label` idéntico (o que lo contenga como
+                    // substring) hace que `getByLabelText` matchee DOS elementos —
+                    // el radiogroup Y el input — y las stories con ese query
+                    // ambiguan (`getMultipleElementsFoundError`).
+                    aria-label="% de seña (presets)"
+                    value={selectedPercentage === 'other' ? 'other' : String(selectedPercentage)}
+                    onValueChange={(v) => {
+                      if (v !== 'other') {
+                        setSelectedPercentage(Number(v))
+                        return
+                      }
+                      // MEJORA-UX QA: "Otro" pisaba el input con el `customPercentage`
+                      // de INIT (30 fijo si arrancó en un preset) en vez del % activo
+                      // — con seña real en 50%, mostraba "30" y guardar de largo
+                      // bajaba la seña en silencio. Precarga con el preset activo.
+                      if (typeof selectedPercentage === 'number') {
+                        setCustomPercentage(String(selectedPercentage))
+                      }
+                      setSelectedPercentage('other')
+                    }}
+                    itemClassName={chipClass}
+                    options={[
+                      { value: '30', label: '30%' },
+                      { value: '50', label: '50%' },
+                      { value: '100', label: '100%' },
+                      { value: 'other', label: 'Otro' },
+                    ]}
+                  />
+
+                  {selectedPercentage === 'other' && (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                      <Input
+                        id="depositPercentage"
+                        type="number"
+                        inputMode="numeric"
+                        min={10}
+                        max={100}
+                        value={customPercentage}
+                        onChange={(e) => setCustomPercentage(e.target.value)}
+                        placeholder="Ej: 40"
+                        className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
+                        required
+                      />
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Entre 10% y 100%</p>
+                {examplePriceCents != null && depositCents != null && (
+                  <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
+                    <Wallet className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span>
+                      En un turno de {formatArs(examplePriceCents)}, el jugador paga{' '}
+                      {formatArs(depositCents)} ahora y el resto en el complejo.
+                    </span>
+                  </p>
+                )}
+                <input
+                  type="hidden"
+                  name="depositPercentage"
+                  value={selectedPercentage === 'other' ? customPercentage : selectedPercentage}
                 />
-                <span className="text-sm text-muted-foreground">hs</span>
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Horas previas al turno permitidas para cancelar
-          </p>
-          {validCancelHours != null && (
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
-              <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>
-                {requiresDeposit
-                  ? `Si cancela con más de ${validCancelHours} horas de anticipación, conserva la seña. Con menos, la seña queda para el complejo.`
-                  : `Puede cancelar hasta ${validCancelHours} horas antes del turno. Como no hay seña, no hay nada que retener.`}
-              </span>
-            </p>
-          )}
-          <input
-            type="hidden"
-            name="cancellationHoursBefore"
-            value={selectedHours === 'other' ? customHours : selectedHours}
-          />
-        </div>
 
-        {/* AUSENCIAS — plegado por default (Cambio 3): el texto es el mismo de
-            siempre, solo cambia de "siempre visible" a disclosure. */}
-        <Collapsible>
-          <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0">
-            <span className="flex items-center gap-2">
-              <HelpCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
-              ¿Y si el jugador falta?
-            </span>
-            <ChevronDown
-              aria-hidden="true"
-              className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+          {/* DEVOLUCIÓN DE LA SEÑA — `hours_before` NO limita cuándo se cancela
+              (el jugador cancela hasta que termina el turno,
+              booking.cancellation.ts): decide si la seña pagada se devuelve o
+              queda para el complejo. */}
+          <div className="space-y-3">
+            <Label
+              htmlFor="cancellationHoursBefore"
+              className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
+            >
+              Devolución de la seña si cancela
+            </Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <SegmentedControl
+                className="flex flex-wrap items-center gap-2"
+                // Mismo motivo que el `aria-label` de "% de seña" de arriba: no
+                // repetir el texto de la <Label> vecina (evita ambigüar un futuro
+                // `getByLabelText` entre el radiogroup y el input de "Otro").
+                aria-label="Horas antes del turno (presets)"
+                value={selectedHours === 'other' ? 'other' : String(selectedHours)}
+                onValueChange={(v) => {
+                  if (v !== 'other') {
+                    setSelectedHours(Number(v))
+                    return
+                  }
+                  // Misma clase que el "Otro" de seña, arriba.
+                  if (typeof selectedHours === 'number') setCustomHours(String(selectedHours))
+                  setSelectedHours('other')
+                }}
+                itemClassName={chipClass}
+                options={[
+                  { value: '0', label: 'Hasta que empieza' },
+                  { value: '2', label: '2 hs' },
+                  { value: '6', label: '6 hs' },
+                  { value: '12', label: '12 hs' },
+                  { value: '24', label: '24 hs' },
+                  { value: 'other', label: 'Otro' },
+                ]}
+              />
+
+              {selectedHours === 'other' && (
+                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                  <Input
+                    id="cancellationHoursBefore"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={72}
+                    value={customHours}
+                    onChange={(e) => setCustomHours(e.target.value)}
+                    placeholder="Ej: 48"
+                    className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
+                    required
+                  />
+                  <span className="text-sm text-muted-foreground">hs</span>
+                </div>
+              )}
+            </div>
+            {validCancelHours != null && (
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
+                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>{refundConsequence(requiresDeposit, validCancelHours)}</span>
+              </p>
+            )}
+            <input
+              type="hidden"
+              name="cancellationHoursBefore"
+              value={selectedHours === 'other' ? customHours : selectedHours}
             />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3">
-            <p className="text-xs text-muted-foreground max-w-md">
-              Cuando marcás a un jugador como ausente, si había pagado seña la perdés a favor del
-              complejo. La primera ausencia solo queda registrada. Si vuelve a faltar dentro de los
-              90 días, queda bloqueado para reservar online en tu complejo por 14 días. No requiere
-              configuración.
-            </p>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
 
-        <SubmitButton className="w-full sm:w-auto px-8 h-12 bg-primary hover:bg-emerald-500 text-base font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-200">
-          Guardar cambios
-        </SubmitButton>
+          {/* AUSENCIAS — plegado por default (Cambio 3). Informativo: no hay nada
+              que configurar. */}
+          <Collapsible>
+            <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0">
+              <span className="flex items-center gap-2">
+                <HelpCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
+                Si el jugador falta
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <p className="text-xs text-muted-foreground max-w-md">
+                Si lo marcás como ausente y había pagado seña, la seña queda para el complejo. La
+                primera vez solo queda anotado; si vuelve a faltar dentro de los 90 días, no puede
+                reservar por internet en tu complejo por 14 días. No hay nada que configurar.
+              </p>
+            </CollapsibleContent>
+          </Collapsible>
+        </section>
 
-        <div aria-live="polite" className="min-h-5">
-          {!state.success && (
-            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-              {state.error}
-            </p>
-          )}
-          {didSubmit && state.success && (
-            <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
-              Políticas guardadas.
-            </p>
-          )}
+        <div className="space-y-3">
+          <SubmitButton className="w-full sm:w-auto px-8 h-12 bg-primary hover:bg-emerald-500 text-base font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-200">
+            Guardar cambios
+          </SubmitButton>
+
+          <div aria-live="polite" className="min-h-5">
+            {!state.success && (
+              <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+                {state.error}
+              </p>
+            )}
+            {didSubmit && state.success && (
+              <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
+                Cambios guardados.
+              </p>
+            )}
+          </div>
         </div>
       </form>
     </div>

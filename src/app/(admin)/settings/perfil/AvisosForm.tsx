@@ -21,8 +21,9 @@ export type UpdateAvisosSettings = (
  * ('use server' arrastra drizzle/postgres al bundle de Storybook).
  *
  * H161: vivía en su propia pestaña top-level (`/settings/avisos`) con toda la
- * pantalla vacía alrededor de esta única preferencia — se plegó como una
- * sección más de Perfil (`/settings/avisos` ahora es solo redirect).
+ * pantalla vacía alrededor de esta única preferencia. Se plegó en Perfil y,
+ * desde 2026-09-25, vive en "Vos y tu equipo" (`/settings/equipo`), en el
+ * bloque "Tu usuario": no es algo que vea el jugador.
  */
 export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvisosSettings }) {
   const [state, formAction] = useActionState(action, INITIAL_STATE)
@@ -32,11 +33,17 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
   return (
     <form action={formAction} onSubmit={() => setDidSubmit(true)} className="space-y-6 max-w-lg">
       <fieldset className="space-y-3">
-        <legend className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground/90">
-          Resumen diario
-        </legend>
+        {/* El título visible lo pone la página (un `<h3>` en "Tu usuario"); la
+            leyenda queda para que el grupo tenga nombre en el lector de pantalla. */}
+        <legend className="sr-only">Resumen diario</legend>
+        {/* Llega como push a TODA suscripción del complejo (`notifyAdminPush`) y
+            el email va a hasta 5 del equipo, encargado incluido
+            (`enqueueTenantOwnerNotification` sin `onlyRole`, `LIMIT 5`). Por eso
+            dice "hasta 5" y no "todo el equipo": con seis activos, uno no lo
+            recibe. */}
         <p className="text-sm text-muted-foreground">
-          Push al admin con PWA instalada, siempre activo. El email es opcional (opt-in).
+          A las 8, lo que entró ayer y cuánto se ocupó. Llega como notificación a quien las tenga
+          prendidas; por email, a hasta 5 personas del equipo.
         </p>
         {/* MEJORA-UX QA: eran 2 <button> sueltos, sin `role`/`aria-checked` —
             un lector de pantalla los anunciaba como botones sueltos, sin
@@ -62,7 +69,7 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
                 : 'border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground'
             }`}
           >
-            Recibir por email
+            También por email
           </RadioGroupPrimitive.Item>
           <RadioGroupPrimitive.Item
             value="push"
@@ -72,7 +79,7 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
                 : 'border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground'
             }`}
           >
-            Solo push
+            Solo notificación
           </RadioGroupPrimitive.Item>
         </RadioGroupPrimitive.Root>
         <input type="hidden" name="dailySummaryEmailOptIn" value={optIn ? 'true' : 'false'} />
@@ -88,7 +95,7 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
         )}
         {didSubmit && state.success && (
           <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
-            Avisos guardados.
+            Guardado.
           </p>
         )}
       </div>

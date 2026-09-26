@@ -32,7 +32,7 @@ function mockFetch(body: unknown, status: number) {
 }
 
 async function openDialog() {
-  fireEvent.click(screen.getByRole('button', { name: 'Cancelar suscripción' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Dar de baja' }))
   return screen.findByRole('dialog')
 }
 
@@ -52,18 +52,18 @@ describe('CancelSubscriptionSection — visibilidad por estado', () => {
   })
 
   it.each(['active', 'past_due', 'suspended'] as const)(
-    '%s: muestra el botón de cancelar suscripción',
+    '%s: muestra el botón de dar de baja',
     (status) => {
       render(<CancelSubscriptionSection status={status} accessUntil={ACCESS_UNTIL} />)
-      expect(screen.getByRole('button', { name: 'Cancelar suscripción' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
     },
   )
 
   it('canceled: NO muestra el botón — muestra texto + link a /reactivar', () => {
     render(<CancelSubscriptionSection status="canceled" accessUntil={ACCESS_UNTIL} />)
-    expect(screen.queryByRole('button', { name: 'Cancelar suscripción' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
     expect(
-      screen.getByText(/Suscripción cancelada — acceso hasta el 13 de septiembre de 2026/),
+      screen.getByText(/Te diste de baja: seguís usando todo hasta el 13 de septiembre de 2026/),
     ).toBeTruthy()
     const link = screen.getByRole('link', { name: /Reactivar/i })
     expect(link.getAttribute('href')).toBe('/reactivar')
@@ -83,7 +83,7 @@ describe('CancelSubscriptionSection — modal de confirmación', () => {
     render(<CancelSubscriptionSection status="active" accessUntil={ACCESS_UNTIL} />)
     const dialog = await openDialog()
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar suscripción' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dar de baja' }))
 
     await waitFor(() => {
       expect(within(dialog).getByRole('alert').textContent).toBe('Ingresá un motivo.')
@@ -99,14 +99,14 @@ describe('CancelSubscriptionSection — modal de confirmación', () => {
     fireEvent.change(within(dialog).getByLabelText(/Motivo/i), {
       target: { value: 'Cierro el complejo por reforma' },
     })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar suscripción' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dar de baja' }))
 
     await waitFor(() => {
       expect(refreshSpy).toHaveBeenCalledTimes(1)
     })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(vi.mocked(toast)).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Suscripción cancelada', variant: 'success' }),
+      expect.objectContaining({ title: 'Te diste de baja', variant: 'success' }),
     )
 
     const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>
@@ -130,7 +130,7 @@ describe('CancelSubscriptionSection — modal de confirmación', () => {
     fireEvent.change(within(dialog).getByLabelText(/Motivo/i), {
       target: { value: 'Motivo cualquiera' },
     })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar suscripción' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dar de baja' }))
 
     await waitFor(() => {
       expect(within(dialog).getByRole('alert').textContent).toBe(

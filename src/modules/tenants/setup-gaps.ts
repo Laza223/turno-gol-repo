@@ -28,14 +28,14 @@ export function getProfileGaps(tenant: {
     gaps.push({
       key: 'cover',
       label: 'Portada',
-      impact: 'Tu perfil público arranca sin imagen.',
+      impact: 'Tu página arranca sin imagen.',
     })
   }
   if (!tenant.logoUrl) {
     gaps.push({
       key: 'logo',
       label: 'Logo',
-      impact: 'Tu perfil público sale sin tu logo.',
+      impact: 'Tu página sale sin tu logo.',
     })
   }
   if (tenant.latitude == null || tenant.longitude == null) {

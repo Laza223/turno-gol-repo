@@ -8,8 +8,8 @@ export type CourtStatusVisual = StatusBadgeVisual
 
 /** Vocabulario §8.5: court `offline` se dice "Pausada" (MASTER.md:513-514) —
  * el mismo término que ya usa la Grilla para la misma cancha
- * (`GridScroller.tsx`, "(pausada)"). "Activa" es la contraparte natural: es
- * el resultado del botón "Activar" de esta misma pantalla. */
+ * (`GridScroller.tsx`, "(pausada)"). "Activa" es la contraparte natural, y el
+ * botón que cambia entre las dos dice "Pausar" / "Reactivar". */
 const STATUS_VISUALS: Record<CourtStatus, CourtStatusVisual> = {
   online: {
     icon: CheckCircle2,
@@ -26,6 +26,16 @@ const STATUS_VISUALS: Record<CourtStatus, CourtStatusVisual> = {
 
 function courtStatusVisual(status: CourtStatus): CourtStatusVisual {
   return STATUS_VISUALS[status]
+}
+
+/**
+ * Qué ve el jugador, al lado de la pastilla. Una cancha pausada no sale en el
+ * perfil ni en las búsquedas (`status = 'online'` en public.service) y tampoco
+ * acepta turnos nuevos, ni del jugador ni del staff (`lockCourtOrThrow`).
+ */
+export const COURT_STATUS_HINT: Record<CourtStatus, string> = {
+  online: 'Los jugadores la ven y la reservan',
+  offline: 'Los jugadores no la ven',
 }
 
 /** Badge de estado (§6.5): ícono + texto, nunca color solo. */

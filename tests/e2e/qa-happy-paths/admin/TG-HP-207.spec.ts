@@ -38,11 +38,11 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       await page.goto('/canchas')
       await expect(page.getByRole('heading', { name: 'Canchas' })).toBeVisible({ timeout: 15_000 })
 
-      let courtCard = page.locator('div.rounded-lg').filter({ hasText: originalName })
+      let courtCard = page.getByRole('listitem').filter({ hasText: originalName })
       await expect(courtCard).toBeVisible({ timeout: 10_000 })
       await courtCard.getByRole('button', { name: /editar/i }).click()
 
-      await expect(page.getByRole('heading', { name: 'Editar cancha' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: originalName })).toBeVisible()
       const nameInput = page.locator('#court-name')
       await nameInput.fill(editedName)
       await page.getByRole('button', { name: 'Guardar cambios' }).click()
@@ -55,13 +55,14 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       )
       expect(afterEditRows[0]?.name).toBe(editedName)
 
-      // ── Desactivar ──────────────────────────────────────────────────
-      courtCard = page.locator('div.rounded-lg').filter({ hasText: editedName })
-      await courtCard.getByRole('button', { name: 'Desactivar' }).click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(page.getByText(`Desactivar ${editedName}`)).toBeVisible()
-      await page.getByRole('button', { name: 'Desactivar' }).last().click()
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      // ── Pausar ──────────────────────────────────────────────────────
+      courtCard = page.getByRole('listitem').filter({ hasText: editedName })
+      await courtCard.getByRole('button', { name: 'Pausar' }).click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toBeVisible()
+      await expect(page.getByText(`Pausar ${editedName}`)).toBeVisible()
+      await dialog.getByRole('button', { name: 'Pausar' }).click()
+      await expect(dialog).not.toBeVisible({ timeout: 10_000 })
       await expect(courtCard.getByText('Pausada')).toBeVisible({ timeout: 10_000 })
 
       const afterOfflineRows = await runSql<{ status: string }>(
@@ -70,14 +71,14 @@ test.describe('TG-HP-207 — Editar cancha / desactivar-activar', () => {
       )
       expect(afterOfflineRows[0]?.status).toBe('offline')
 
-      // ── Activar ─────────────────────────────────────────────────────
-      // "Activar" (a diferencia de "Desactivar") no pasa por ConfirmDialog: el
+      // ── Reactivar ───────────────────────────────────────────────────
+      // "Reactivar" (a diferencia de "Pausar") no pasa por ConfirmDialog: el
       // click dispara un optimistic update SÍNCRONO (setCurrentStatus('online')
-      // antes del await a toggleStatusAction, CourtList.tsx:237-247) — el texto
+      // antes del await a toggleStatusAction, CourtList.tsx) — el texto
       // "Activa" puede quedar visible ANTES de que el UPDATE server-side termine.
       // expect.poll evita la carrera leyendo la DB hasta que el write real
       // aterrice (mismo patrón que TG-HP-225 con logo_url/cover_url).
-      await courtCard.getByRole('button', { name: 'Activar' }).click()
+      await courtCard.getByRole('button', { name: 'Reactivar' }).click()
       await expect(courtCard.getByText('Activa')).toBeVisible({ timeout: 10_000 })
 
       let afterOnlineRows: Array<{ status: string }> = []

@@ -34,7 +34,9 @@ describe('CourtForm — gate de precios sin cubrir', () => {
   it('cancha nueva sin precios: corta el submit, avisa y deja rastro con track.courts', () => {
     render(<CourtForm court={null} {...baseProps} />)
 
-    fireEvent.submit(screen.getByRole('heading', { name: 'Nueva cancha' }).closest('form')!)
+    // El h1 "Nueva cancha" quedó FUERA del <form> (refinamiento visual): se
+    // ancla en el botón de submit para llegar al form.
+    fireEvent.submit(screen.getByRole('button', { name: 'Crear cancha' }).closest('form')!)
 
     expect(screen.getByRole('alert').textContent).toMatch(/No se puede guardar/)
     expect(vi.mocked(baseProps.createAction)).not.toHaveBeenCalled()

@@ -137,8 +137,9 @@ test.describe('onboarding', () => {
       await page.getByRole('button', { name: /guardar y continuar/i }).click()
 
       await expect(page.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      // exact: los rows de días también dicen "· horario general" (strict mode)
-      await expect(page.getByText('Horario general', { exact: true })).toBeVisible()
+      // exact: el resumen del panel colapsado, sin excepciones, dice "Todos los
+      // días con el horario general" — sin exact:true, strict mode matchea los dos.
+      await expect(page.getByText('Todos los días', { exact: true })).toBeVisible()
       await page.getByRole('button', { name: /continuar/i }).click()
 
       // Step 3: canchas inline — nombre precargado, solo falta el precio

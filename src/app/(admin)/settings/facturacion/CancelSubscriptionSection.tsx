@@ -65,9 +65,9 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
   if (status === 'canceled') {
     return (
       <section className="card-premium rounded-xl p-6">
-        <h2 className="text-base font-semibold text-foreground">Cancelar suscripción</h2>
+        <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
         <p className="mt-3 text-sm text-muted-foreground">
-          Suscripción cancelada — acceso hasta el {formatDate(accessUntil)}.
+          Te diste de baja: seguís usando todo hasta el {formatDate(accessUntil)}.
         </p>
         <Link
           href="/reactivar"
@@ -81,15 +81,29 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
 
   if (!CANCELABLE.has(status)) return null
 
+  // Hasta el fin del período el panel y la página siguen como siempre
+  // (`(admin)/layout.tsx` saca a `canceled` del bloqueo y `isPublicPortalOpen`
+  // deja la página abierta); el barrido diario lo pasa a `blocked` cuando vence
+  // (`dunning-retry.worker.ts`) y ahí se cortan los dos.
   const intro =
     context === 'reactivar'
       ? '¿No querés seguir pagando en vez de regularizar el pago? Podés dar de baja la suscripción — tu cuenta pasa a bloqueada y tus datos se conservan 60 días por si querés reactivar más adelante.'
-      : 'Podés cancelar cuando quieras. Vas a seguir operando con acceso completo hasta el fin del período que ya pagaste.'
+      : `Seguís usando todo hasta el ${formatDate(accessUntil)}, cuando termina lo que ya pagaste. Después se cortan el panel y la reserva por internet, y guardamos tus datos 60 días por si volvés.`
 
   const confirmDescription =
     context === 'reactivar'
       ? 'Tu cuenta va a quedar bloqueada y tus datos se conservan 60 días para reactivar cuando quieras.'
-      : `Vas a mantener el acceso hasta el ${formatDate(accessUntil)}. Después tu cuenta se bloquea y tus datos se conservan 60 días para reactivar.`
+      : undefined
+
+  const consequences =
+    context === 'reactivar'
+      ? undefined
+      : [
+          'Dejamos de cobrarte la cuota.',
+          `Seguís usando todo hasta el ${formatDate(accessUntil)}, y tu página sigue tomando reservas.`,
+          'Después se cortan el panel y la reserva por internet.',
+          'Guardamos tus datos 60 días por si volvés.',
+        ]
 
   async function onConfirm(): Promise<ActionResult> {
     if (reason.trim().length < 1) return { success: false, error: 'Ingresá un motivo.' }
@@ -105,8 +119,8 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
       }
       if (res.status === 200 && parsed.data?.accessUntil) {
         toast({
-          title: 'Suscripción cancelada',
-          description: `Tenés acceso hasta el ${formatDate(parsed.data.accessUntil)}.`,
+          title: 'Te diste de baja',
+          description: `Seguís usando todo hasta el ${formatDate(parsed.data.accessUntil)}.`,
           variant: 'success',
         })
         router.refresh()
@@ -123,7 +137,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
 
   return (
     <section className="card-premium rounded-xl p-6">
-      <h2 className="text-base font-semibold text-foreground">Cancelar suscripción</h2>
+      <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
       <p className="mt-1 text-sm text-muted-foreground">{intro}</p>
 
       <button
@@ -134,16 +148,17 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
         }}
         className="mt-4 h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
       >
-        Cancelar suscripción
+        Dar de baja
       </button>
 
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="¿Cancelar tu suscripción?"
+        title="¿Dar de baja TurnoGol?"
         description={confirmDescription}
+        consequences={consequences}
         variant="destructive"
-        confirmLabel="Cancelar suscripción"
+        confirmLabel="Dar de baja"
         cancelLabel="Volver"
         onConfirm={onConfirm}
       >

@@ -39,19 +39,19 @@ const noopAction = vi.fn(async () => ({ success: true as const }))
 afterEach(() => cleanup())
 
 describe('AvisosForm — el reset del form no pisa la selección', () => {
-  it('mantiene "Recibir por email" después de que React resetea el form', () => {
+  it('mantiene "También por email" después de que React resetea el form', () => {
     formState.mockReturnValue({ success: true })
     const { container } = render(<AvisosForm s={SIN_EMAIL} action={noopAction} />)
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Recibir por email' }))
-    expect(screen.getByRole('radio', { name: 'Recibir por email' })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('radio', { name: 'También por email' }))
+    expect(screen.getByRole('radio', { name: 'También por email' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
 
     fireEvent.reset(container.querySelector('form')!)
 
-    expect(screen.getByRole('radio', { name: 'Recibir por email' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'También por email' })).toHaveAttribute(
       'aria-checked',
       'true',
     )

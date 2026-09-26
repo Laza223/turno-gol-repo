@@ -5,10 +5,8 @@
  */
 
 import { formatArs } from '@/lib/format'
-import { TONE_BADGE } from '@/lib/status-tone'
 import { METHOD_LABELS, type MethodKey } from '@/lib/payment-method'
 import { startLabelFromMins } from '@/shared/time/operating-day'
-import type { CashFlowCategory } from '@/modules/cashflow/cashflow.types'
 
 // ── Métodos de pago ──────────────────────────────────────────────────────────
 // Fuente canónica: @/lib/payment-method (la necesitan componentes fuera de
@@ -64,7 +62,8 @@ export function canteenStockBadge(
  * Clases de color por tono del badge de stock — UN solo lugar (vivía duplicado
  * en TicketPanel y ProductsTable, y las dos copias usaban amber-600, que no
  * llega a AA 4.5:1 sobre la card clara con Tailwind 4/OKLCH; axe lo cazó).
- * amber-800 = mismo criterio que status-banner; red-700 = mismo que SignedAmount.
+ * amber-800 = mismo criterio que status-banner; red-700 = mismo que los gastos
+ * del libro de Cuentas (NightLedger).
  */
 export function stockBadgeToneClass(tone: StockBadge['tone']): string {
   if (tone === 'out') return 'text-red-700 dark:text-red-400'
@@ -128,42 +127,6 @@ export function movementTitle(description: string): string {
   return description
 }
 
-/**
- * Todos los gastos comparten la familia roja: el color codifica el SIGNO
- * (egreso), no la categoría — el texto del chip diferencia (migr. 050). Eran
- * seis copias del mismo string, que podían divergir de a una.
- */
-const EGRESO = TONE_BADGE.destructive
-const SIN_FAMILIA = TONE_BADGE.neutral
-
-/**
- * Color del chip por categoría. Los tonos salen de `TONE_BADGE` salvo dos
- * excepciones deliberadas: celeste y violeta NO son `StatusTone` y no deberían
- * serlo. Los seis tonos del sistema son el semáforo de la plata (más marca y
- * neutro), no una taxonomía de rubros; agregarlos a la tabla global para que
- * los use un módulo solo ensuciaría la fuente única.
- *
- * Estos strings YA traen `ring-1 ring-inset`: los renderers no lo agregan.
- */
-export const CATEGORY_BADGE: Record<CashFlowCategory | 'fallback', string> = {
-  booking: TONE_BADGE.success,
-  product_sale:
-    'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20 dark:ring-sky-500/30',
-  operating_expense: EGRESO,
-  merchandise: EGRESO,
-  salaries: EGRESO,
-  utilities: EGRESO,
-  maintenance: EGRESO,
-  other_expense: EGRESO,
-  no_show_correction: TONE_BADGE.warning,
-  // Ingreso (migr. 066), pero con familia propia: el violeta lo separa de la
-  // reserva y de la cantina en el listado del día sin depender del texto.
-  tournament:
-    'bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-1 ring-inset ring-violet-600/20 dark:ring-violet-500/30',
-  other: SIN_FAMILIA,
-  fallback: SIN_FAMILIA,
-}
-
 // ── Fechas ───────────────────────────────────────────────────────────────────
 
 /** Suma días a una fecha "YYYY-MM-DD" (aritmética UTC pura, sin TZ del host). */
@@ -171,6 +134,19 @@ export function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T00:00:00Z')
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
+}
+
+/**
+ * `?dia=AAAA-MM-DD` de Cuentas: el día operativo que se mira. Una fecha mal
+ * escrita, que no existe (mes 13, día 00, 30 de febrero) o posterior a hoy
+ * vuelve a hoy (no hay movimientos del futuro). Nunca tira: `addDays` con una
+ * fecha imposible revienta en `toISOString`, así que no se usa para validar.
+ */
+export function parseCajaDay(raw: string | undefined, today: string): string {
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return today
+  const d = new Date(raw + 'T00:00:00Z')
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== raw) return today
+  return raw <= today ? raw : today
 }
 
 /** "YYYY-MM-DD" → "mié 2 de julio" (formato medio §8.3, armado por partes:
@@ -184,6 +160,12 @@ export function mediumDateLabel(dateStr: string): string {
   const dayNum = d.toLocaleDateString('es-AR', { day: 'numeric', ...tz })
   const month = d.toLocaleDateString('es-AR', { month: 'long', ...tz })
   return `${weekday} ${dayNum} de ${month}`
+}
+
+/** "jue 24 sep": la fecha corta de las flechas de día de Cuentas. */
+export function shortDateLabel(dateStr: string): string {
+  const [weekday = '', day = '', , month = ''] = mediumDateLabel(dateStr).split(' ')
+  return `${weekday} ${day} ${month.slice(0, 3)}`
 }
 
 /**

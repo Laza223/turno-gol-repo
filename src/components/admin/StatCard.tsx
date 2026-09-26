@@ -41,7 +41,7 @@ interface StatCardProps {
  * no son alertas de plata, así que el `value` sigue en `text-foreground`.
  */
 const VALUE_TONE: Partial<Record<Accent, string>> = {
-  // amber-800, no 700 (mismo criterio que PendingRefundsList/StreetMoneyList):
+  // amber-800, no 700 (mismo criterio que PendingRefundsList):
   // sobre un fondo casi blanco, amber-700 mide por debajo de AA.
   amber: 'text-amber-800 dark:text-amber-300',
   red: 'text-red-700 dark:text-red-400',

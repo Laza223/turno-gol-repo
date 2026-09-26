@@ -1,12 +1,16 @@
 /**
- * E2E — Reportes (audit T6, fase F5)
+ * E2E — Reportes (audit T6, fase F5; UI llevada al rediseño "Canchas primero"
+ * del 2026-09-26 — ver AnaliticasView.tsx / MonthBoard.tsx / MonthStepper.tsx)
  *
  *   #1  Happy — mes con datos: pre-seed 1 confirmed booking + 1 income cashflow this month
- *              → /analiticas → KPI "Ingresos" non-zero + "Por cancha" row visible.
- *   #2  Edge — mes vacío: /analiticas?month=2019-01 → "Sin movimientos en este período."
- *   #3  Edge — nav prev/next: click prev → URL ?month=YYYY-MM-(prev); next button is
- *              disabled when target month > current.
- *   #4  Edge — CSV export: click "Exportar CSV" → download event fires with non-empty CSV.
+ *              → /analiticas → el monto entrado se muestra y la cancha sembrada aparece
+ *              en el listado "Canchas del mes".
+ *   #2  Edge — mes vacío y ya pasado: /analiticas?month=2019-01 → "En enero no hubo cobros".
+ *   #3  Edge — nav prev/next: "Mes anterior"/"Mes siguiente" son LINKS que cambian
+ *              `?month=`; en el mes en curso "Mes siguiente" pasa a ser un
+ *              `<button aria-disabled="true">` (no `disabled`).
+ *   #4  Edge — CSV export: "Exportar CSV" es un `<button>` (fetch + blob), no un link
+ *              con `href` — el download event sigue disparando igual.
  *
  * ISOLATION: Test #1 seeds rows with a unique description marker and cleans them in `finally`.
  */
@@ -42,7 +46,7 @@ function dateMidMonth(monthStr: string): string {
 }
 
 test.describe('Reportes', () => {
-  test('#1 happy — month with data renders KPIs and tables', async ({
+  test('#1 happy — month with data renders the month board and its court', async ({
     page,
     adminStorageState,
   }) => {
@@ -87,59 +91,57 @@ test.describe('Reportes', () => {
 
       await page.goto('/analiticas')
 
-      // KPIs render with non-zero values.
-      // Use the KPI <p> specifically: "Ingresos"/"Reservas" also appear as <th>
-      // column headers in the "Por cancha" table below (strict mode). `.last()`
-      // on "Ingresos" (H032): the 30-day RevenueChart card above ALSO renders an
-      // "Ingresos" StatCard now — the monthly report's own KPI is the one lower
-      // in DOM order.
-      await expect(page.getByRole('paragraph').filter({ hasText: 'Ingresos' }).last()).toBeVisible()
-      await expect(page.getByRole('paragraph').filter({ hasText: 'Reservas' })).toBeVisible()
-      // "Por cancha" table appears when there's at least one booking
+      // Con datos en el mes se renderiza el board (no el vacío): el `<h2>` de
+      // arriba es "Entró en {mes}, hasta hoy" en el mes en curso.
+      await expect(page.getByRole('heading', { name: /^Entró en/ })).toBeVisible()
+      // "Por cancha" solo aparece con al menos una cancha con cobros, y la
+      // cancha sembrada figura en el listado ordenado por plata.
       await expect(page.getByRole('heading', { name: /Por cancha/i })).toBeVisible()
-      // Cancha E2E 1 row should appear in the "Por cancha" table. Scoped to a
-      // table cell: the occupancy chart also renders the court name as an
-      // SVG axis tick, and a plain getByText would match both (strict mode).
-      await expect(page.getByRole('cell', { name: 'Cancha E2E 1' })).toBeVisible()
+      await expect(
+        page.getByRole('list', { name: 'Canchas del mes' }).getByText('Cancha E2E 1'),
+      ).toBeVisible()
     } finally {
       await supabase.from('cash_flows').delete().eq('id', cashflowId)
       await supabase.from('bookings').delete().eq('id', bookingId)
     }
   })
 
-  test('#2 edge — empty month shows the ghost-KPI empty state', async ({
+  test('#2 edge — empty month shows the honest empty state', async ({
     page,
     adminStorageState,
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
     await page.goto('/analiticas?month=2019-01')
-    await expect(page.getByText('Así se verá tu mes cuando cargues reservas')).toBeVisible()
-    await expect(page.getByText('Todavía no hay movimientos en este período.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'En enero no hubo cobros' })).toBeVisible()
   })
 
-  test('#3 edge — month nav navigates and next button gates future months', async ({
+  test('#3 edge — month nav navigates and next is gated at the current month', async ({
     page,
     adminStorageState,
   }) => {
     await page.context().addCookies(JSON.parse(adminStorageState).cookies)
     await page.goto('/analiticas?month=2020-06')
 
-    // prev arrow
-    await page.getByRole('button', { name: 'Mes anterior' }).click()
+    // prev arrow (link)
+    await page.getByRole('link', { name: 'Mes anterior' }).click()
     await expect(page).toHaveURL(/[?&]month=2020-05\b/)
 
-    // next arrow
-    await page.getByRole('button', { name: 'Mes siguiente' }).click()
+    // next arrow (link: 2020-05 no es el mes en curso)
+    await page.getByRole('link', { name: 'Mes siguiente' }).click()
     await expect(page).toHaveURL(/[?&]month=2020-06\b/)
 
-    // Navigate to current month — next must be disabled
+    // Navegar al mes en curso — "Mes siguiente" pasa a ser un botón apagado,
+    // no un link (aria-disabled, no `disabled`: ver MonthStepper.tsx).
     const cur = currentMonthStr()
     await page.goto(`/analiticas?month=${cur}`)
-    await expect(page.getByRole('button', { name: 'Mes siguiente' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Mes siguiente' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   test('#4 edge — CSV export triggers download', async ({ page, adminStorageState }) => {
-    // El link de export se oculta en un mes vacío (UX batch), así que el test
+    // El botón de export se oculta en un mes vacío (UX batch), así que el test
     // necesita al menos un movimiento propio en el mes actual.
     const supabase = makeServiceClient()
     const cashflowId = randomUUID()
@@ -163,7 +165,7 @@ test.describe('Reportes', () => {
 
       const [download] = await Promise.all([
         page.waitForEvent('download', { timeout: 10000 }),
-        page.getByRole('link', { name: /Exportar CSV/i }).click(),
+        page.getByRole('button', { name: /Exportar CSV/i }).click(),
       ])
       expect(download.suggestedFilename()).toMatch(/\.csv$/i)
     } finally {

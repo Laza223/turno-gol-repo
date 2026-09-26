@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   tenantMetrics,
   tenantMetricsEmpty,
@@ -9,19 +9,15 @@ import {
 import MetricsDashboard from './MetricsDashboard'
 
 /**
- * `fetch('/api/admin/metrics')` + `fetch('/api/admin/system-status')` propios
- * en `useEffect` (con `setInterval(60000)`, que no se ejercita acá) — se
- * mockean vía `parameters.fetchMock` (decorator `with-fetch.tsx`, sin MSW).
- * `isAnimationActive={false}` (prop nueva, default true) para que las
- * capturas de recharts sean deterministas.
+ * La parte cliente de Métricas: "Últimos 30 días" (horarios y ausencias) y el
+ * estado del sistema del superadmin. `fetch('/api/admin/metrics')` +
+ * `fetch('/api/admin/system-status')` en `useEffect` (con `setInterval(60000)`,
+ * que no se ejercita acá) — se mockean vía `parameters.fetchMock` (decorator
+ * `with-fetch.tsx`, sin MSW).
  *
- * Dos estados del inventario quedan afuera a propósito: "cargando" es una
- * ventana de un microtask entre el mount y el resolve del fetch mockeado
- * (sincrónico), imposible de capturar de forma determinista sin cambiar el
- * contrato del componente; "error con datos previos" requiere que el
- * `setInterval` de 60s falle DESPUÉS de un primer fetch exitoso — el
- * componente no expone un refresh manual ni el intervalo como prop, así que
- * no hay forma de dispararlo sin esperar 60s reales.
+ * "Error con datos previos" queda afuera: requiere que el intervalo de 60 s
+ * falle DESPUÉS de un primer fetch exitoso, y no hay forma de dispararlo sin
+ * esperar 60 s reales.
  */
 const meta = {
   title: 'Admin/Metricas/MetricsDashboard',
@@ -33,7 +29,14 @@ const meta = {
       { match: '/api/admin/system-status', json: { data: systemStatusOk() } },
     ],
   },
-  args: { canSeeSystem: true, isAnimationActive: false },
+  decorators: [
+    (Story) => (
+      <div className="grid max-w-xl grid-cols-1 gap-5">
+        <Story />
+      </div>
+    ),
+  ],
+  args: { canSeeSystem: true, showRecent: true },
 } satisfies Meta<typeof MetricsDashboard>
 
 export default meta
@@ -42,10 +45,12 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Reservas por día')).toBeVisible()
+    await expect(await canvas.findByText('Últimos 30 días')).toBeVisible()
+    await expect(canvas.getByText('Horarios más pedidos')).toBeVisible()
+    await expect(canvas.getByText('24 turnos')).toBeVisible()
     await expect(canvas.getByText('Estado del sistema')).toBeVisible()
     // Las 2 fetches (metrics, system-status) van en secuencia dentro de
-    // load(): "Reservas por día" ya renderizó con la 1ra, pero la 2da puede
+    // load(): los 30 días ya renderizaron con la 1ra, pero la 2da puede
     // seguir en vuelo — findByText espera a que resuelva.
     await expect(await canvas.findByText('Operativa · 12 ms')).toBeVisible()
   },
@@ -56,8 +61,21 @@ export const SinPanelDeSistema: Story = {
   args: { canSeeSystem: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Reservas por día')).toBeVisible()
+    await expect(await canvas.findByText('Últimos 30 días')).toBeVisible()
     await expect(canvas.queryByText('Estado del sistema')).not.toBeInTheDocument()
+  },
+}
+
+/**
+ * Mes cerrado: los 30 días corridos son de "ahora" y no se muestran al lado de
+ * agosto. El superadmin sigue viendo el estado del sistema.
+ */
+export const MesCerrado: Story = {
+  args: { showRecent: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Operativa · 12 ms')).toBeVisible()
+    await expect(canvas.queryByText('Últimos 30 días')).not.toBeInTheDocument()
   },
 }
 
@@ -75,8 +93,9 @@ export const SistemaCaido: Story = {
   },
 }
 
-/** `/api/admin/metrics` devuelve 500 y nunca hubo datos previos: banner de error, sin dashboard. */
+/** `/api/admin/metrics` devuelve 500 y nunca hubo datos previos: aviso de error en lugar de la tarjeta. */
 export const ErrorSinDatosPrevios: Story = {
+  args: { canSeeSystem: false },
   parameters: {
     fetchMock: [{ match: '/api/admin/metrics', json: { error: 'internal' }, status: 500 }],
   },
@@ -98,6 +117,7 @@ export const ErrorSinDatosPrevios: Story = {
  * leía como una caída transitoria y no lo era — reintentar no desbloquea nada.
  */
 export const ComplejoBloqueado: Story = {
+  args: { canSeeSystem: false },
   parameters: {
     fetchMock: [
       {
@@ -117,34 +137,26 @@ export const ComplejoBloqueado: Story = {
 }
 
 /**
- * Complejo recién arrancado: series en cero → ghost + CTA en Top 5 horarios, y
- * (H033) el mismo patrón "primera vez espectral" en Ingresos, Reservas por día
- * y Tasa de ausencias — antes se quedaban en blanco o en "0,0% — 0 sobre 0".
+ * Complejo recién arrancado: sin turnos en 30 días la tarjeta no aparece. El
+ * vacío lo dice el mes, sin los números de ejemplo de antes ("3,2%", barras
+ * fantasma).
  */
 export const SinDatos: Story = {
+  args: { canSeeSystem: false },
   parameters: {
-    fetchMock: [
-      { match: '/api/admin/metrics', json: { data: tenantMetricsEmpty() } },
-      { match: '/api/admin/system-status', json: { data: systemStatusOk() } },
-    ],
+    fetchMock: [{ match: '/api/admin/metrics', json: { data: tenantMetricsEmpty() } }],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      await canvas.findByText('Así se van a ver tus horarios más reservados.'),
-    ).toBeVisible()
-    await expect(
-      canvas.getByRole('link', { name: 'Cargá tu primera reserva desde la grilla' }),
-    ).toHaveAttribute('href', '/grilla')
-    await expect(canvas.getByText('Así se van a ver tus ingresos por período.')).toBeVisible()
-    await expect(canvas.getByText('Así se van a ver tus reservas por día.')).toBeVisible()
-    await expect(
-      canvas.getByText('Así se va a ver cuando termines tus primeros turnos.'),
-    ).toBeVisible()
+    await waitFor(() =>
+      expect(canvas.queryByRole('status', { name: 'Cargando métricas' })).toBeNull(),
+    )
+    await expect(canvas.queryByText('Últimos 30 días')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('3,2%')).not.toBeInTheDocument()
   },
 }
 
-/** Ausencias en alza vs el período anterior: flecha roja "+N pts". */
+/** Ausencias en alza vs los 30 días anteriores: flecha roja "+N pts". */
 export const TendenciaAusenciasEnAlza: Story = {
   parameters: {
     fetchMock: [
@@ -162,8 +174,8 @@ export const TendenciaAusenciasEnAlza: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/pts vs período anterior/)).toHaveTextContent(
-      '+8 pts vs período anterior',
+    await expect(await canvas.findByText(/pts vs los 30 días anteriores/)).toHaveTextContent(
+      '+8 pts vs los 30 días anteriores',
     )
   },
 }
@@ -193,11 +205,11 @@ export const TendenciaMuestraChica: Story = {
     await expect(
       await canvas.findByText('Todavía no hay datos suficientes para comparar.'),
     ).toBeVisible()
-    await expect(canvas.queryByText(/pts vs período anterior/)).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/pts vs los 30 días anteriores/)).not.toBeInTheDocument()
   },
 }
 
-/** Sin período anterior comparable (complejo nuevo): sin flecha, "sin datos previos". */
+/** Sin turnos terminados en los 30 días anteriores (complejo nuevo): sin flecha. */
 export const TendenciaSinDatosPrevios: Story = {
   parameters: {
     fetchMock: [
@@ -212,21 +224,6 @@ export const TendenciaSinDatosPrevios: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('sin datos previos')).toBeVisible()
-  },
-}
-
-/** Toggle día/semana/mes del gráfico de ingresos (agregación client-side). */
-export const CambiarGranularidad: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await canvas.findByText('Ingresos')
-    const monthBtn = canvas.getByRole('button', { name: 'Mes' })
-    await userEvent.click(monthBtn)
-    await waitFor(() => expect(monthBtn).toHaveAttribute('aria-pressed', 'true'))
-    await expect(canvas.getByRole('button', { name: 'Día' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    await expect(await canvas.findByText('Sin datos de los 30 días anteriores.')).toBeVisible()
   },
 }

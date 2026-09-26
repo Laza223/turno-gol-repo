@@ -1,22 +1,23 @@
 /**
  * TG-HP-220 — Reportes `/analiticas` + exportar CSV.
- * Rol: cualquier staff autenticado (sin gate de rol a nivel página — admin y
- * manager acceden). Prereq: al menos 1 cash_flow en el mes actual para que se
- * muestren los KPIs reales (si el mes está vacío, se ve el estado fantasma y
- * el link "Exportar CSV" ni siquiera se renderiza).
+ * Rol: SOLO admin — la página gatea con `requireAdminStaff()` (zona sensible,
+ * ingresos visibles, 2026-09-19); el Encargado ni entra, rebota a /dashboard.
+ * Prereq: al menos 1 cash_flow en el mes actual para que se muestre el board
+ * real (si el mes está vacío se ve el vacío honesto y el botón "Exportar
+ * CSV" ni siquiera se renderiza).
  *
  * OJO columna `monto_ars` del CSV: el manual QA (HAPPY_PATHS_MASTER.md
  * TG-HP-220) documenta un GAP diciendo que esa columna queda en CENTAVOS sin
- * dividir. Leyendo el código VIGENTE (report.service.ts:221-223,
- * `monto_ars: r.amount / 100`), la columna SÍ se divide por 100 — está en
- * PESOS. El assert de abajo tolera cualquiera de las dos convenciones para no
- * romper en falso si el código vuelve a cambiar, pero documenta cuál es la
- * real hoy (ver notes en writeEvidence). Reportar esta discrepancia manual↔código.
+ * dividir. Leyendo el código VIGENTE (report.service.ts, `getCashFlowsForExport`,
+ * `monto_ars: r.amount`), el GAP tiene razón hoy: NO se divide por 100, sigue
+ * en centavos. El assert de abajo tolera cualquiera de las dos convenciones
+ * para no romper en falso si el código vuelve a cambiar (ver notes en
+ * writeEvidence).
  *
  * No-plata: se limpia el cash_flow sembrado en finally.
- * Evidencia: src/app/(admin)/analiticas/page.tsx:73-294,
- * src/app/api/reports/revenue/route.ts:1-51,
- * src/modules/reports/report.service.ts:195-229.
+ * Evidencia: src/app/(admin)/analiticas/page.tsx,
+ * src/app/api/reports/revenue/route.ts,
+ * src/modules/reports/report.service.ts (getCashFlowsForExport).
  */
 import { test, expect } from '../../fixtures'
 import { E2E_TENANT_ID, E2E_STAFF_USER_ID } from '../../_helpers/booking-seed'
@@ -46,27 +47,33 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
       const page = await context.newPage()
 
       await page.goto('/analiticas')
-      await expect(page.getByRole('heading', { name: 'Métricas' })).toBeVisible({
+      // El `<h1>Métricas` quedó `sr-only` en el rediseño "Canchas primero"
+      // (2026-09-26): el título visible en contenido es el `<h2>` del board.
+      await expect(page.getByRole('heading', { name: /^Entró en/ })).toBeVisible({
         timeout: 15_000,
       })
 
-      // Con actividad en el mes, no se muestra el estado fantasma.
-      await expect(page.getByText('Ingresos').first()).toBeVisible()
-      await expect(page.getByText('Así se verá tu mes cuando cargues reservas')).not.toBeVisible()
+      // Con actividad en el mes, no se muestra el vacío honesto de MonthEmpty.
+      await expect(page.getByRole('heading', { name: /^Todavía no hay cobros/ })).toHaveCount(0)
 
-      const exportLink = page.getByRole('link', { name: /Exportar CSV/i })
-      await expect(exportLink).toBeVisible()
-      const href = await exportLink.getAttribute('href')
-      expect(href).toBeTruthy()
+      const exportButton = page.getByRole('button', { name: /Exportar CSV/i })
+      await expect(exportButton).toBeVisible()
 
-      // Component layer: el click real dispara una descarga de archivo (GET
-      // idempotente, sin toast — el navegador maneja la descarga nativamente).
-      const [download] = await Promise.all([page.waitForEvent('download'), exportLink.click()])
+      // Component layer: el click real dispara fetch + blob (ExportCsvButton.tsx),
+      // que termina en una descarga de archivo nativa, sin toast de éxito.
+      const [csvRequest, download] = await Promise.all([
+        page.waitForRequest(
+          (r) => r.url().includes('/api/reports/revenue') && r.url().includes('format=csv'),
+        ),
+        page.waitForEvent('download'),
+        exportButton.click(),
+      ])
       expect(download.suggestedFilename()).toMatch(/^reporte-.*\.csv$/)
 
-      // Data layer: mismo endpoint, vía APIRequestContext (comparte cookies con
-      // el context del browser) para inspeccionar el contenido exacto del CSV.
-      const res = await context.request.get(href!)
+      // Data layer: mismo endpoint y mismos params que usó el botón, vía
+      // APIRequestContext (comparte cookies con el context del browser) para
+      // inspeccionar el contenido exacto del CSV.
+      const res = await context.request.get(csvRequest.url())
       expect(res.status()).toBe(200)
       expect(res.headers()['content-type']).toContain('text/csv')
 
@@ -106,7 +113,7 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
         montoArsField,
         montoArsConvention: montoArsField === asPesos ? 'pesos (dividido /100)' : 'centavos crudos',
         notes:
-          'Código vigente (report.service.ts:221-223) divide por 100: monto_ars está en PESOS, no en centavos. El manual QA (GAP TG-HP-220) dice lo contrario — desactualizado.',
+          'Código vigente (report.service.ts, getCashFlowsForExport) NO divide por 100: monto_ars queda en centavos crudos, tal como documenta el GAP manual de TG-HP-220.',
       })
     } finally {
       await context.close()

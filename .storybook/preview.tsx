@@ -56,10 +56,10 @@ globalThis.Date = FrozenDate as DateConstructor
  *    de recipes bajo `.dark` (.card-premium, .page-header-band, .player-hero-band,
  *    .reserva-*, .skeleton). Son selectores DESCENDIENTES, así que el wrapper solo
  *    alcanza — y es lo que permite que Docs mode muestre light y dark en un iframe.
- * 2. El contexto de next-themes: src/components/admin/useChartTheme.ts llama
- *    useTheme() y devuelve colores HEX para recharts, que los toma como props
- *    inline. Una clase CSS no le llega. Sin el provider, los charts quedan en
- *    tema claro aunque el resto esté oscuro.
+ * 2. El contexto de next-themes: los componentes que leen `useTheme()`
+ *    (AdminThemeMenu, ThemeToggle, PricingGrid) deciden con el valor del
+ *    contexto, no con la clase CSS. Sin el provider muestran el tema claro
+ *    aunque el resto esté oscuro.
  */
 const withTheme: Decorator = (Story, ctx) => {
   const theme = (ctx.globals['theme'] as 'light' | 'dark' | undefined) ?? 'light'

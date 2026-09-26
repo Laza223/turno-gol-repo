@@ -1,71 +1,7 @@
-import type { DailyAmount, NoShowMetric } from '@/modules/metrics/metrics.service'
-export { formatArs as formatARS } from '@/lib/format'
+import type { NoShowMetric } from '@/modules/metrics/metrics.service'
 
-// Helpers puros del dashboard de métricas (agregación client-side y copys de
-// tendencia). Sin imports de React ni recharts: unit-testeables en aislamiento.
-
-export type RevenueGranularity = 'day' | 'week' | 'month'
-
-export type RevenueBucket = { label: string; amountCents: number }
-
-/** 'YYYY-MM-DD' → componentes numéricos sin pasar por Date (evita drift TZ). */
-function parseYmd(dateStr: string): { y: number; m: number; d: number } {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  return { y, m, d }
-}
-
-/** Etiqueta corta es-AR 'dd/MM' desde 'YYYY-MM-DD'. */
-export function dayLabel(dateStr: string): string {
-  const { m, d } = parseYmd(dateStr)
-  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
-}
-
-/** Lunes (YYYY-MM-DD) de la semana a la que pertenece la fecha; semanas lunes-domingo. */
-export function mondayOf(dateStr: string): string {
-  const { y, m, d } = parseYmd(dateStr)
-  const dt = new Date(Date.UTC(y, m - 1, d))
-  // getUTCDay(): 0=domingo … 6=sábado → offset desde el lunes previo.
-  const offset = (dt.getUTCDay() + 6) % 7
-  dt.setUTCDate(dt.getUTCDate() - offset)
-  return dt.toISOString().slice(0, 10)
-}
-
-/** Nombre de mes corto es-AR, ej. '2026-06-15' → 'jun 2026'. */
-const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat('es-AR', {
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-})
-
-function monthLabel(dateStr: string): string {
-  const { y, m } = parseYmd(dateStr)
-  return MONTH_LABEL_FORMATTER.format(new Date(Date.UTC(y, m - 1, 1)))
-}
-
-/**
- * Agrega la serie diaria de ingresos en baldes por día/semana/mes, preservando
- * el orden cronológico de la serie de entrada (que ya viene ascendente).
- * Semanas lunes-domingo; la etiqueta semanal es el lunes que la abre.
- */
-export function groupRevenue(
-  series: DailyAmount[],
-  granularity: RevenueGranularity,
-): RevenueBucket[] {
-  if (granularity === 'day') {
-    return series.map((d) => ({ label: dayLabel(d.date), amountCents: d.amountCents }))
-  }
-  const buckets = new Map<string, number>()
-  for (const d of series) {
-    const key = granularity === 'week' ? mondayOf(d.date) : d.date.slice(0, 7) + '-01'
-    buckets.set(key, (buckets.get(key) ?? 0) + d.amountCents)
-  }
-  return Array.from(buckets.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, amountCents]) => ({
-      label: granularity === 'week' ? `Sem ${dayLabel(key)}` : monthLabel(key),
-      amountCents,
-    }))
-}
+// Helper puro de la tendencia de ausencias de Métricas. Sin imports de React:
+// unit-testeable en aislamiento.
 
 /**
  * Piso mínimo de turnos terminados (completed + no_show), en CUALQUIERA de

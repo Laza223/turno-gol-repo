@@ -20,7 +20,7 @@ const COUNTED_BOOKING_STATUSES = [
 
 export type DailyCount = { date: string; count: number }
 
-export type DailyAmount = { date: string; amountCents: number }
+type DailyAmount = { date: string; amountCents: number }
 
 export type TimeSlotCount = { time: string; count: number } // time en 'HH:MM'
 
